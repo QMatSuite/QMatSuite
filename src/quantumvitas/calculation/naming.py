@@ -42,6 +42,7 @@ class CalculationFileNaming:
     POST_PROCESSING_TYPES = frozenset({
         "dos", "bands", "pp", "projwfc", "ph", "q2r", 
         "matdyn", "dynmat", "sumpdos", "band_interpolation",
+        "pw2wannier90",  # pw2wannier90.x uses pw2wan.in / pw2wan.out naming
     })
     
     # pw.x calculation types
@@ -56,8 +57,12 @@ class CalculationFileNaming:
         
         Post-processing steps get .<type>.in extension for clarity.
         pw.x steps get simple .in extension.
+        Special case: pw2wannier90 uses .in (not .pw2wannier90.in) for brevity.
         """
         step_lower = step_type.lower()
+        if step_lower == "pw2wannier90":
+            # Special case: use .in (pw2wan.in) instead of .pw2wannier90.in
+            return ".in"
         if step_lower in cls.POST_PROCESSING_TYPES:
             return f".{step_lower}.in"
         return ".in"
@@ -66,6 +71,9 @@ class CalculationFileNaming:
     def output_extension(cls, step_type: str) -> str:
         """Get output file extension for a step type."""
         step_lower = step_type.lower()
+        if step_lower == "pw2wannier90":
+            # Special case: use .out (pw2wan.out) instead of .pw2wannier90.out
+            return ".out"
         if step_lower in cls.POST_PROCESSING_TYPES:
             return f".{step_lower}.out"
         return ".out"
@@ -85,6 +93,11 @@ class CalculationFileNaming:
         Returns:
             Filename like "scf.in" or "scf-1.in" if duplicates exist
         """
+        step_lower = step_type.lower()
+        if step_lower == "pw2wannier90":
+            # Special case: use "pw2wan.in" instead of "pw2wannier90.in"
+            return "pw2wan.in"
+        
         ext = cls.input_extension(step_type)
         base_name = f"{step_type}{ext}"
         

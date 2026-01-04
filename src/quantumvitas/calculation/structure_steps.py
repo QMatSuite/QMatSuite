@@ -701,51 +701,138 @@ def materialize_step_spec(
             # Create Wannier90Input from spec parameters
             w90_input = Wannier90Input()
             w90_input.seedname = flat_params.get("seedname", spec_obj.meta.slug or "wannier")
-            if "num_wann" in flat_params:
+            if "num_wann" in flat_params and flat_params["num_wann"] is not None:
                 w90_input.num_wann = int(flat_params["num_wann"])
-            if "num_bands" in flat_params:
+            if "num_bands" in flat_params and flat_params["num_bands"] is not None:
                 w90_input.num_bands = int(flat_params["num_bands"])
-            if "num_iter" in flat_params:
+            if "num_iter" in flat_params and flat_params["num_iter"] is not None:
                 w90_input.num_iter = int(flat_params["num_iter"])
-            if "mp_grid" in flat_params:
+            if "mp_grid" in flat_params and flat_params["mp_grid"] is not None:
                 mp_grid = flat_params["mp_grid"]
                 if isinstance(mp_grid, list):
-                    w90_input.mp_grid = [int(x) for x in mp_grid]
-            if "projections" in flat_params:
+                    # Filter out None values and convert to int
+                    w90_input.mp_grid = [int(x) for x in mp_grid if x is not None]
+            
+            # CRITICAL: Extract kpoints from nscf step input (preserve exact order)
+            # Do NOT generate from mp_grid - order must match nscf to avoid pw2wannier90 errors
+            from quantumvitas.calculation.wannier90_kpoints import extract_kpoints_from_nscf_step
+            nscf_kpoints = extract_kpoints_from_nscf_step(
+                calculation_dir=calculation_dir if calculation_dir else Path("."),
+                working_dir=output_dir
+            )
+            
+            if nscf_kpoints:
+                # Use kpoints from nscf (preserving order)
+                w90_input.kpoints = nscf_kpoints
+                logger.info(
+                    f"[MATERIALIZE_STEP_SPEC] Extracted {len(nscf_kpoints)} kpoints from nscf step "
+                    f"(preserving order for pw2wannier90 compatibility)"
+                )
+                
+                # Consistency check: verify count matches mp_grid if mp_grid is set
+                if w90_input.mp_grid:
+                    expected_count = w90_input.mp_grid[0] * w90_input.mp_grid[1] * w90_input.mp_grid[2]
+                    if len(nscf_kpoints) != expected_count:
+                        logger.warning(
+                            f"[MATERIALIZE_STEP_SPEC] Kpoints count mismatch: "
+                            f"nscf has {len(nscf_kpoints)} kpoints, but mp_grid={w90_input.mp_grid} "
+                            f"expects {expected_count}. This may cause pw2wannier90 errors."
+                        )
+            elif w90_input.mp_grid:
+                # Fallback: generate from mp_grid if nscf kpoints not found (but log warning)
+                logger.warning(
+                    f"[MATERIALIZE_STEP_SPEC] Could not extract kpoints from nscf step. "
+                    f"Generating from mp_grid={w90_input.mp_grid}, but order may not match nscf."
+                )
+                from quantumvitas.io.wannier90_input import generate_kpoints_from_mp_grid
+                w90_input.kpoints = generate_kpoints_from_mp_grid(w90_input.mp_grid)
+            if "projections" in flat_params and flat_params["projections"] is not None:
                 w90_input.projections_block = str(flat_params["projections"])
+            if "projections_block" in flat_params and flat_params["projections_block"] is not None:
+                w90_input.projections_block = str(flat_params["projections_block"])
             
             # Add structure data
             if structure:
-                # Unit cell in Bohr (convert from Angstrom)
-                # 1 Bohr = 0.5291772105638411 Angstrom
-                ANGSTROM_TO_BOHR = 1.0 / 0.5291772105638411
+                # Wannier90 unit_cell_cart MUST be in Angstrom (not Bohr)
+                # Structure.lattice.matrix is always in Angstrom in pymatgen
                 lattice = structure.lattice
                 w90_input.unit_cell_cart = [
-                    [lattice.matrix[i][j] * ANGSTROM_TO_BOHR for j in range(3)]
+                    [float(lattice.matrix[i][j]) for j in range(3)]
                     for i in range(3)
                 ]
-                w90_input.length_unit = "bohr"
+                w90_input.length_unit = "ang"
                 
-                # Atoms in fractional coordinates
+                # Atoms in fractional coordinates (must come from structure.frac_coords)
+                w90_input.atoms_frac = []
                 for site in structure.sites:
                     w90_input.atoms_frac.append([
                         site.specie.symbol,
-                        site.frac_coords[0],
-                        site.frac_coords[1],
-                        site.frac_coords[2],
+                        float(site.frac_coords[0]),
+                        float(site.frac_coords[1]),
+                        float(site.frac_coords[2]),
                     ])
+                
+                # Consistency assertion: verify unit_cell_cart * atoms_frac ≈ cartesian coords
+                # This ensures we're writing the correct lattice matrix
+                import numpy as np
+                lattice_matrix = np.array(w90_input.unit_cell_cart)
+                for i, site in enumerate(structure.sites):
+                    frac_coords = np.array(site.frac_coords)
+                    expected_cart = lattice_matrix.T @ frac_coords
+                    actual_cart = np.array(site.coords)
+                    diff = np.abs(expected_cart - actual_cart)
+                    max_diff = np.max(diff)
+                    if max_diff > 1e-6:
+                        raise ValueError(
+                            f"Inconsistent structure data for atom {i} ({site.species_string}):\n"
+                            f"  unit_cell_cart (Å) = {w90_input.unit_cell_cart}\n"
+                            f"  atoms_frac[{i}] = {list(w90_input.atoms_frac[i][1:])}\n"
+                            f"  Expected cartesian (from lattice @ frac) = {expected_cart}\n"
+                            f"  Actual cartesian (from structure) = {actual_cart}\n"
+                            f"  Max difference = {max_diff} Å (tolerance: 1e-6 Å)\n"
+                            f"This indicates a bug in lattice/coordinate handling. "
+                            f"structure.lattice.matrix should be in Angstrom and structure.coords should be cartesian."
+                        )
             
             # Generate filename - ALWAYS use seedname.win (Wannier90 requirement)
             # Do NOT use input_name override for Wannier90 steps
             seedname = w90_input.seedname
             filename = f"{seedname}.win"
+            
+            # Safety check: ensure filename is valid
+            if not filename or filename == '.' or filename == './':
+                raise ValueError(
+                    f"Invalid Wannier90 input filename: '{filename}'. "
+                    f"Seedname was: {seedname}"
+                )
+            
             generated_input = output_dir / filename
+            generated_input = generated_input.resolve()
+            
+            # Safety check: ensure we're not creating a directory
+            if generated_input.exists() and generated_input.is_dir():
+                raise ValueError(
+                    f"Generated input path is a directory: {generated_input}. "
+                    f"This should not happen. Filename was: {filename}"
+                )
             
             # Write .win file
+            generated_input.parent.mkdir(parents=True, exist_ok=True)
             w90_input.write(generated_input)
             logger.info(
                 f"[MATERIALIZE_STEP_SPEC] Generated Wannier90 .win file: {generated_input}"
             )
+            
+            # Return relative path from calculation_dir if possible (for Step.input_file)
+            # Otherwise return absolute path
+            if calculation_dir:
+                calc_dir_path = Path(calculation_dir).resolve()
+                try:
+                    rel_path = generated_input.relative_to(calc_dir_path)
+                    return calc_dir_path / rel_path, spec_obj
+                except ValueError:
+                    # Not relative to calculation_dir, return absolute
+                    pass
             
             return generated_input, spec_obj
         
@@ -794,17 +881,51 @@ def materialize_step_spec(
                 pw2wan_input.prefix = flat_params.get("prefix", "pwscf")
             pw2wan_input.outdir = calc_outdir
             
-            # Generate filename - ALWAYS use seedname.pw2wan (pw2wannier90 requirement)
-            # Do NOT use input_name override for pw2wannier90 steps
-            seedname = pw2wan_input.seedname
-            filename = f"{seedname}.pw2wan"
-            generated_input = output_dir / filename
+            # Generate filename - Use standard QE naming: pw2wan.in (not seedname.pw2wan)
+            # The seedname inside the file (e.g., 'diamond') controls output file names (diamond.mmn, etc.)
+            # But the input file itself should be pw2wan.in for consistency with other QE steps
+            from quantumvitas.calculation.naming import CalculationFileNaming
+            if input_name:
+                filename = input_name
+            else:
+                # Use standard naming convention: pw2wan.in
+                filename = CalculationFileNaming.input_filename("pw2wannier90")
             
-            # Write .pw2wan file
+            # Ensure filename is not empty or '.' (safety check)
+            if not filename or filename == '.' or filename == './':
+                raise ValueError(
+                    f"Invalid pw2wannier90 input filename: '{filename}'. "
+                    f"Must be a valid filename like 'pw2wan.in'."
+                )
+            
+            generated_input = output_dir / filename
+            generated_input = generated_input.resolve()
+            
+            # Safety check: ensure we're not creating a directory
+            if generated_input.exists() and generated_input.is_dir():
+                raise ValueError(
+                    f"Generated input path is a directory: {generated_input}. "
+                    f"This should not happen. Filename was: {filename}"
+                )
+            
+            # Write .pw2wan file (content has seedname='diamond', but filename is pw2wan.in)
+            generated_input.parent.mkdir(parents=True, exist_ok=True)
             generated_input.write_text(pw2wan_input.to_string())
             logger.info(
-                f"[MATERIALIZE_STEP_SPEC] Generated pw2wannier90 .pw2wan file: {generated_input}"
+                f"[MATERIALIZE_STEP_SPEC] Generated pw2wannier90 input file: {generated_input} "
+                f"(seedname={pw2wan_input.seedname} in content)"
             )
+            
+            # Return relative path from calculation_dir if possible (for Step.input_file)
+            # Otherwise return absolute path
+            if calculation_dir:
+                calc_dir_path = Path(calculation_dir).resolve()
+                try:
+                    rel_path = generated_input.relative_to(calc_dir_path)
+                    return calc_dir_path / rel_path, spec_obj
+                except ValueError:
+                    # Not relative to calculation_dir, return absolute
+                    pass
             
             return generated_input, spec_obj
     

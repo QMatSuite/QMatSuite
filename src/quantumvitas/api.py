@@ -2907,6 +2907,359 @@ class QVService:
         except (json.JSONDecodeError, OSError) as e:
             return None
 
+    @staticmethod
+    def list_step_artifacts(
+        project_root: Path,
+        calculation_selector: str,
+        step_selector: str,
+    ) -> Dict[str, Any]:
+        """
+        List artifact files (output files) for a step.
+        
+        Returns a list of artifact entries with metadata, including which one is the
+        default candidate for display. Only returns files under the calculation's raw/
+        directory (no directory traversal allowed).
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            step_selector: Step selector (ULID from calculation.yaml)
+            
+        Returns:
+            Dict with:
+                raw_dir: str - Path to raw directory (relative to project root)
+                artifacts: List[Dict] - Artifact entries with:
+                    path_relative_to_raw: str
+                    kind: str - File type ("out", "in", "dat", etc.)
+                    size_bytes: int
+                    mtime: float - Modification time (Unix timestamp)
+                    is_default_candidate: bool
+        """
+        from quantumvitas.calculation.naming import find_calculation_raw_dir, CalculationFileNaming
+        from quantumvitas.core.resolution import require_calculation, require_step
+        
+        project_root = Path(project_root).resolve()
+        calculation = require_calculation(project_root, calculation_selector)
+        calculation_dir = calculation.absolute_path
+        if calculation_dir.name == "calculation.yaml":
+            calculation_dir = calculation_dir.parent
+        
+        # Resolve step to get step_type
+        step = require_step(project_root, calculation_selector, step_selector)
+        
+        # Get step_type and parameters from step spec
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        spec = None
+        step_params = {}
+        try:
+            spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=None)
+            step_type = spec.step_type
+            step_params = spec.parameters or {}
+        except Exception:
+            # Fallback: try to get from calculation.yaml step entry
+            from quantumvitas.core.models import load_calculation
+            from quantumvitas.core.project_utils import load_project_config
+            from quantumvitas.core.resolution import make_structure_selector_resolver
+            config = load_project_config(project_root)
+            resolver = make_structure_selector_resolver(project_root, config=config)
+            calc_yaml_path = calculation_dir / "calculation.yaml"
+            wf_model = load_calculation(calc_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
+            step_entry = next((e for e in wf_model.steps if e.step_id == step_selector), None)
+            step_type = step_entry.type if step_entry and step_entry.type else None
+            if step_entry and hasattr(step_entry, 'parameters'):
+                step_params = step_entry.parameters or {}
+        
+        if not step_type:
+            # No step type - return empty list
+            raw_dir = find_calculation_raw_dir(calculation_dir)
+            raw_dir_rel = raw_dir.relative_to(project_root) if raw_dir.is_relative_to(project_root) else str(raw_dir)
+            return {
+                "raw_dir": str(raw_dir_rel),
+                "artifacts": [],
+            }
+        
+        # Get raw directory
+        raw_dir = find_calculation_raw_dir(calculation_dir)
+        
+        if not raw_dir.exists():
+            raw_dir_rel = raw_dir.relative_to(project_root) if raw_dir.is_relative_to(project_root) else str(raw_dir)
+            return {
+                "raw_dir": str(raw_dir_rel),
+                "artifacts": [],
+            }
+        
+        # Get expected output extension for this step type
+        output_ext = CalculationFileNaming.output_extension(step_type)
+        step_type_lower = step_type.lower()
+        
+        # Use step artifacts rules to identify expected artifacts
+        from quantumvitas.calculation.step_artifacts import get_step_artifacts, get_default_artifact
+        
+        # Get step-specific artifacts (e.g., <seed>.wout, <seed>.nnkp, etc.)
+        step_artifacts = get_step_artifacts(step_type, step_params, raw_dir)
+        
+        # Collect all artifacts (both step-specific and stdout/stderr)
+        artifacts_dict = {}  # filename -> artifact dict
+        
+        # Security: Only iterate files in raw_dir, no recursion
+        for file_path in raw_dir.iterdir():
+            # Security: Reject directories
+            if file_path.is_dir():
+                continue
+            
+            # Security: Ensure file is actually in raw_dir (no symlink traversal)
+            try:
+                file_path_resolved = file_path.resolve()
+                if not file_path_resolved.is_relative_to(raw_dir.resolve()):
+                    continue
+            except (ValueError, RuntimeError):
+                # Path resolution failed (e.g., broken symlink) - skip
+                continue
+            
+            file_name = file_path.name
+            
+            # Check if file is a step-specific artifact
+            is_step_artifact = file_name in step_artifacts
+            
+            # Check if file matches step_type stdout/stderr pattern
+            stdout_file = f"{step_type}.out"
+            stderr_file = f"{step_type}.err"
+            is_stdout = file_name == stdout_file or (file_name.startswith(f"{step_type}-") and file_name.endswith(".out"))
+            is_stderr = file_name == stderr_file or (file_name.startswith(f"{step_type}-") and file_name.endswith(".err"))
+            
+            # Also check legacy patterns for backwards compatibility
+            is_legacy_match = False
+            if file_name == f"{step_type}{output_ext}":
+                is_legacy_match = True
+            elif file_name.startswith(f"{step_type}-") and file_name.endswith(output_ext):
+                middle = file_name[len(f"{step_type}-"):-len(output_ext)]
+                try:
+                    int(middle)  # Valid number
+                    is_legacy_match = True
+                except ValueError:
+                    pass
+            elif file_name.endswith(output_ext) and output_ext != ".out":
+                is_legacy_match = True
+            
+            # Include file if it matches any pattern
+            if not (is_step_artifact or is_stdout or is_stderr or is_legacy_match):
+                continue
+            
+            # Get file stats
+            try:
+                stat = file_path.stat()
+                size_bytes = stat.st_size
+                mtime = stat.st_mtime
+            except OSError:
+                # File stats unavailable - skip
+                continue
+            
+            # Determine file kind from extension
+            if file_name.endswith(".out"):
+                kind = "out"
+            elif file_name.endswith(".err"):
+                kind = "err"
+            elif file_name.endswith(".in"):
+                kind = "in"
+            elif file_name.endswith(".wout"):
+                kind = "wout"
+            elif file_name.endswith(".nnkp"):
+                kind = "nnkp"
+            elif file_name.endswith(".amn") or file_name.endswith(".mmn") or file_name.endswith(".eig"):
+                kind = file_name.split(".")[-1]
+            elif file_name.endswith(".gnu") or file_name.endswith(".dat") or file_name.endswith(".rap"):
+                kind = file_name.split(".")[-1] if "." in file_name else "unknown"
+            else:
+                suffix = file_path.suffix.lstrip(".")
+                kind = suffix if suffix else "unknown"
+            
+            artifacts_dict[file_name] = {
+                "path_relative_to_raw": file_name,
+                "kind": kind,
+                "size_bytes": size_bytes,
+                "mtime": mtime,
+                "is_default_candidate": False,  # Will set below
+            }
+        
+        # Convert dict to list
+        artifacts = list(artifacts_dict.values())
+        
+        # Determine default candidate using step artifacts rules
+        artifact_names = [a["path_relative_to_raw"] for a in artifacts]
+        default_artifact_name = get_default_artifact(step_type, step_params, raw_dir, artifact_names)
+        
+        # Mark default candidate
+        for artifact in artifacts:
+            if artifact["path_relative_to_raw"] == default_artifact_name:
+                artifact["is_default_candidate"] = True
+                break
+        else:
+            # Fallback: if no default from rules, use legacy logic
+            exact_name = f"{step_type}{output_ext}"
+            for artifact in artifacts:
+                if artifact["path_relative_to_raw"] == exact_name:
+                    artifact["is_default_candidate"] = True
+                    break
+            else:
+                # Last resort: mark first artifact as default
+                if artifacts:
+                    artifacts[0]["is_default_candidate"] = True
+        
+        # Convert Path objects to strings for JSON serialization
+        raw_dir_rel = raw_dir.relative_to(project_root) if raw_dir.is_relative_to(project_root) else str(raw_dir)
+        
+        return {
+            "raw_dir": str(raw_dir_rel),
+            "artifacts": artifacts,
+        }
+    
+    @staticmethod
+    def read_step_artifact_text(
+        project_root: Path,
+        calculation_selector: str,
+        step_selector: str,
+        artifact_path: str,
+        head_lines: Optional[int] = None,
+        tail_lines: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Read text content from a step artifact file.
+        
+        Security: Only allows reading files under <calculation_dir>/raw/.
+        Rejects directory traversal attempts and directories.
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            step_selector: Step selector (ULID from calculation.yaml)
+            artifact_path: Path relative to raw directory (e.g., "scf.out")
+            head_lines: Optional number of lines to read from start
+            tail_lines: Optional number of lines to read from end
+            (If both are None, reads entire file. If both are set, returns head + tail with truncation marker)
+            
+        Returns:
+            Dict with:
+                content: str - File content (possibly truncated)
+                truncated: bool - True if content was truncated
+                total_bytes: int - Total file size in bytes
+                resolved_path: str - Resolved file path (for logging)
+        """
+        from quantumvitas.calculation.naming import find_calculation_raw_dir
+        from quantumvitas.core.resolution import require_calculation, require_step
+        
+        project_root = Path(project_root).resolve()
+        calculation = require_calculation(project_root, calculation_selector)
+        calculation_dir = calculation.absolute_path
+        if calculation_dir.name == "calculation.yaml":
+            calculation_dir = calculation_dir.parent
+        
+        # Verify step exists (for security/validation)
+        require_step(project_root, calculation_selector, step_selector)
+        
+        # Get raw directory
+        raw_dir = find_calculation_raw_dir(calculation_dir)
+        raw_dir_resolved = raw_dir.resolve()
+        
+        # Security: Construct file path and validate it's under raw_dir
+        # D2. Traversal security: MUST check bounds BEFORE checking exists
+        # First, detect path traversal attempts in the original path
+        artifact_path_obj = Path(artifact_path)
+        if artifact_path_obj.is_absolute():
+            raise QVServiceError(
+                f"Security violation: artifact path '{artifact_path}' is an absolute path"
+            )
+        # Check for path traversal patterns (../ or ..\\)
+        if ".." in str(artifact_path):
+            raise QVServiceError(
+                f"Security violation: artifact path '{artifact_path}' contains path traversal attempt"
+            )
+        
+        # Normalize: strip any path components (just get filename)
+        artifact_path_normalized = artifact_path_obj.name
+        
+        file_path = raw_dir_resolved / artifact_path_normalized
+        
+        # Security: Ensure resolved path is actually under raw_dir (prevent directory traversal)
+        # D2. Check bounds FIRST (before exists check)
+        try:
+            file_path_resolved = file_path.resolve()
+            # D2. Check if path is within raw_dir bounds (MUST do this before exists check)
+            if not file_path_resolved.is_relative_to(raw_dir_resolved):
+                raise QVServiceError(
+                    f"Security violation: artifact path '{artifact_path}' resolves outside raw directory"
+                )
+        except (ValueError, RuntimeError) as e:
+            # D2. Also raise security error for path resolution failures
+            raise QVServiceError(f"Invalid artifact path: {artifact_path}") from e
+        
+        # Security: Reject directories (check after bounds validation)
+        if file_path_resolved.is_dir():
+            raise QVServiceError(f"Artifact path '{artifact_path}' is a directory, not a file")
+        
+        # Check if file exists (only after security checks pass)
+        if not file_path_resolved.exists():
+            raise QVServiceError(f"Artifact file not found: {artifact_path}")
+        
+        # Get file size
+        try:
+            total_bytes = file_path_resolved.stat().st_size
+        except OSError as e:
+            raise QVServiceError(f"Failed to read file stats: {e}") from e
+        
+        # Read file content
+        try:
+            if head_lines is None and tail_lines is None:
+                # Read entire file
+                content = file_path_resolved.read_text(encoding='utf-8', errors='replace')
+                truncated = False
+            elif head_lines is not None and tail_lines is not None:
+                # Read head + tail with truncation marker
+                lines = file_path_resolved.read_text(encoding='utf-8', errors='replace').splitlines(keepends=True)
+                total_lines = len(lines)
+                
+                if total_lines <= head_lines + tail_lines:
+                    # File fits entirely - no truncation
+                    content = ''.join(lines)
+                    truncated = False
+                else:
+                    # Truncate
+                    head = ''.join(lines[:head_lines])
+                    tail = ''.join(lines[-tail_lines:])
+                    content = head + f"\n... [truncated {total_lines - head_lines - tail_lines} lines] ...\n" + tail
+                    truncated = True
+            elif head_lines is not None:
+                # Read only head
+                lines = file_path_resolved.read_text(encoding='utf-8', errors='replace').splitlines(keepends=True)
+                total_lines = len(lines)
+                if total_lines <= head_lines:
+                    content = ''.join(lines)
+                    truncated = False
+                else:
+                    content = ''.join(lines[:head_lines]) + f"\n... [truncated {total_lines - head_lines} lines] ...\n"
+                    truncated = True
+            else:  # tail_lines is not None
+                # Read only tail
+                lines = file_path_resolved.read_text(encoding='utf-8', errors='replace').splitlines(keepends=True)
+                total_lines = len(lines)
+                if total_lines <= tail_lines:
+                    content = ''.join(lines)
+                    truncated = False
+                else:
+                    content = f"... [truncated {total_lines - tail_lines} lines] ...\n" + ''.join(lines[-tail_lines:])
+                    truncated = True
+        except OSError as e:
+            raise QVServiceError(f"Failed to read file: {e}") from e
+        except UnicodeDecodeError as e:
+            # File contains binary data - return error or partial content
+            raise QVServiceError(f"File contains binary data and cannot be read as text: {artifact_path}") from e
+        
+        return {
+            "content": content,
+            "truncated": truncated,
+            "total_bytes": total_bytes,
+            "resolved_path": str(file_path_resolved),
+        }
+
 
     # -------------------------------------------------------------------------
     # Environment and Settings (Phase 2 - GUI Parity)

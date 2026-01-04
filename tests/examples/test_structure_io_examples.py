@@ -167,7 +167,7 @@ class TestQEInputFromStructure:
 
         atomic_positions = qe_input.get_card(qe_input.cards[1].card_type)
         assert atomic_positions is not None
-        assert atomic_positions.option == "angstrom"
+        assert atomic_positions.option == "crystal"  # QE input generator now uses crystal (fractional) coordinates
 
         cell_parameters = qe_input.get_card(qe_input.cards[2].card_type)
         assert cell_parameters is not None
@@ -187,8 +187,9 @@ class TestQEInputFromStructure:
         assert "calculation = 'scf'" in content
         assert "ATOMIC_SPECIES" in content
         assert "ATOMIC_POSITIONS" in content
-        assert "angstrom" in content
+        assert "crystal" in content  # ATOMIC_POSITIONS uses crystal (fractional) format
         assert "CELL_PARAMETERS" in content
+        assert "angstrom" in content  # CELL_PARAMETERS still uses angstrom
         assert "K_POINTS" in content
 
     def test_generate_qe_input_with_multiple_elements(self, tmp_path):

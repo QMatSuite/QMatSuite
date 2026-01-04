@@ -9,6 +9,7 @@ export { CalculationListPanel, CalculationDetailPanel } from './CalculationListP
 export { StepDetailPanel } from './StepDetailPanel';
 export { StructureViewer3D } from './StructureViewer3D';
 export { AnalysisPanel, ScfConvergenceChart, DosChart, BandsChart } from './AnalysisPanel';
+export { StepOutputTextViewer } from './StepOutputTextViewer';
 export { DaemonErrorBanner } from './DaemonErrorBanner';
 export { JobsPanel } from './JobsPanel';
 export { SettingsPanel } from './SettingsPanel';

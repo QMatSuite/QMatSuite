@@ -10,14 +10,17 @@ from typing import Dict, List, Optional
 
 from quantumvitas.calculation.results import CalculationResult
 from quantumvitas.calculation.calculation import Calculation
-from .parsers import parse_scf_output, SCFResult
+from .parsers import parse_scf_output, parse_scf_output_path, SCFResult
 
 
 def extract_energy_metrics_from_text(text: str) -> Dict[str, float | None]:
     """
     Extract energy metrics from QE output text.
     
-    Legacy function - prefer using parse_scf_output() for full parsing.
+    Legacy function - prefer using parse_scf_output_text() for full parsing.
+    
+    Args:
+        text: QE output text content (not a path)
     
     Returns:
         Dict with keys:
@@ -26,7 +29,8 @@ def extract_energy_metrics_from_text(text: str) -> Dict[str, float | None]:
         
     Note: QE outputs Fermi energy in eV, not Ry.
     """
-    result = parse_scf_output(text)
+    from .parsers import parse_scf_output_text
+    result = parse_scf_output_text(text)
     return {
         "total_energy_ry": result.total_energy,
         "fermi_energy_ev": result.fermi_energy,  # eV, not Ry!
@@ -47,7 +51,7 @@ def analyze_energies(output_file: Path | str) -> dict:
     if not output_path.exists():
         raise FileNotFoundError(output_path)
 
-    result = parse_scf_output(output_path)
+    result = parse_scf_output_path(output_path)
     return {
         "file": str(output_path),
         "total_energy_ry": result.total_energy,
@@ -74,7 +78,7 @@ def analyze_scf_detailed(output_file: Path | str) -> SCFResult:
     if not output_path.exists():
         raise FileNotFoundError(output_path)
     
-    return parse_scf_output(output_path)
+    return parse_scf_output_path(output_path)
 
 
 def summarize_calculation_energies(

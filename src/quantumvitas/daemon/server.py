@@ -329,6 +329,8 @@ class QVDaemon:
             "get_dos_data": self._handle_get_dos_data,
             "get_band_structure_data": self._handle_get_band_structure_data,
             "get_reference_analysis": self._handle_get_reference_analysis,
+            "list_step_artifacts": self._handle_list_step_artifacts,
+            "read_step_artifact_text": self._handle_read_step_artifact_text,
             
             # Job management
             "run_calculation": self._handle_run_calculation,
@@ -4905,6 +4907,59 @@ class QVDaemon:
         
         # Return None-safe dict for JSON serialization
         return {"data": result, "has_reference": result is not None}
+    
+    def _handle_list_step_artifacts(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List artifact files (output files) for a step.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            step: str - Step selector (ULID from calculation.yaml)
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step = self._require_str(payload, "step")
+        
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_step_with_fallback(project_root, calculation, step)
+        
+        return QVService.list_step_artifacts(
+            project_root=project_root,
+            calculation_selector=calculation,
+            step_selector=step,
+        )
+    
+    def _handle_read_step_artifact_text(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Read text content from a step artifact file.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            step: str - Step selector (ULID from calculation.yaml)
+            artifact_path: str - Path relative to raw directory (e.g., "scf.out")
+            head_lines: Optional[int] - Number of lines from start
+            tail_lines: Optional[int] - Number of lines from end
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step = self._require_str(payload, "step")
+        artifact_path = self._require_str(payload, "artifact_path")
+        head_lines = payload.get("head_lines")
+        tail_lines = payload.get("tail_lines")
+        
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_step_with_fallback(project_root, calculation, step)
+        
+        return QVService.read_step_artifact_text(
+            project_root=project_root,
+            calculation_selector=calculation,
+            step_selector=step,
+            artifact_path=artifact_path,
+            head_lines=head_lines,
+            tail_lines=tail_lines,
+        )
     
     # -------------------------------------------------------------------------
     # Job management handlers

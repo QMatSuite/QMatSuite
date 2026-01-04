@@ -105,9 +105,53 @@ def ensure_qe_pseudos(
     The project_pseudo_dir should be used to set pseudo_dir in the QE input file.
     All required pseudopotentials will be copied into this directory, making the project/run self-contained.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Safety check: ensure qe_input_file is a valid file, not '.' or directory
+    qe_input_path = Path(qe_input_file)
+    qe_input_path_resolved = qe_input_path.resolve()
+    
+    logger.debug(f"[ENSURE_QE_PSEUDOS] qe_input_file: {qe_input_file}")
+    logger.debug(f"[ENSURE_QE_PSEUDOS] qe_input_path_resolved: {qe_input_path_resolved}")
+    
+    # Check for invalid paths
+    if str(qe_input_path) in (".", "./", "..") or str(qe_input_path_resolved) == ".":
+        logger.error(f"[ENSURE_QE_PSEUDOS] ERROR: qe_input_file is '.' or invalid: '{qe_input_file}'")
+        raise ValueError(
+            f"Invalid qe_input_file for ensure_qe_pseudos: '{qe_input_file}'. "
+            f"Cannot be '.' or a directory. This usually indicates a path resolution bug."
+        )
+    
+    if qe_input_path_resolved.exists() and qe_input_path_resolved.is_dir():
+        logger.error(f"[ENSURE_QE_PSEUDOS] ERROR: qe_input_file is a directory: {qe_input_path_resolved}")
+        raise ValueError(
+            f"qe_input_file is a directory: {qe_input_path_resolved}. "
+            f"Must be a file path. This usually indicates a path resolution bug."
+        )
+    
     # Parse QE input to extract required elements from ATOMIC_SPECIES
-    qe_input = QEInputParser.parse_file(qe_input_file)
-    atomic_species = qe_input.get_card(QECardType.ATOMIC_SPECIES)
+    # Only parse if species_map is not provided (use QE input as fallback)
+    qe_input = None
+    atomic_species = None
+    if not species_map:
+        logger.debug(f"[ENSURE_QE_PSEUDOS] Parsing QE input file (no species_map provided)")
+        qe_input = QEInputParser.parse_file(qe_input_path_resolved)
+        atomic_species = qe_input.get_card(QECardType.ATOMIC_SPECIES)
+    else:
+        logger.debug(f"[ENSURE_QE_PSEUDOS] Using species_map as primary source (skipping QE input parsing)")
+        # For Wannier90 steps (pw2wannier90, etc.), we may not have a valid QE input file to parse
+        # Only parse if file exists and is not a Wannier90 file (for fallback element detection)
+        # But species_map takes precedence, so parsing is optional here
+        try:
+            if qe_input_path_resolved.exists() and qe_input_path_resolved.is_file():
+                # Only try to parse if it looks like a QE input file
+                if qe_input_path_resolved.suffix in (".in", "") and "wannier90" not in str(qe_input_path_resolved).lower():
+                    qe_input = QEInputParser.parse_file(qe_input_path_resolved)
+                    atomic_species = qe_input.get_card(QECardType.ATOMIC_SPECIES)
+                    logger.debug(f"[ENSURE_QE_PSEUDOS] Parsed QE input for fallback (species_map provided)")
+        except Exception as e:
+            logger.debug(f"[ENSURE_QE_PSEUDOS] Could not parse QE input (non-fatal, using species_map): {e}")
     
     # Extract required elements from ATOMIC_SPECIES
     required_elements: List[str] = []

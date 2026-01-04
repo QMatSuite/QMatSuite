@@ -90,18 +90,46 @@ class Step:
         if not isinstance(engine, QeEngine):
             raise TypeError("QE steps require QeEngine instances")
 
-        input_path = self.resolve_input_path(calculation_raw_dir)
-        step_type_value = self.step_type.value if self.step_type else None
-        timeout = self.options.get("timeout")
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            input_path = self.resolve_input_path(calculation_raw_dir)
+            step_type_value = self.step_type.value if self.step_type else None
+            timeout = self.options.get("timeout")
 
-        result, _ = run_input_step(
-            engine=engine.backend,
-            input_file=input_path,
-            working_dir=calculation_raw_dir,
-            project_root=project_root,
-            step_type=step_type_value,
-            timeout=timeout,
-            species_map=species_map,
-        )
-        return result
+            # E. Logging: Essential info only
+            logger.debug(
+                f"[Step.run] Executing step: id={self.id}, type={step_type_value}"
+            )
+            
+            result, _ = run_input_step(
+                engine=engine.backend,
+                input_file=input_path,
+                working_dir=calculation_raw_dir,
+                project_root=project_root,
+                step_type=step_type_value,
+                timeout=timeout,
+                species_map=species_map,
+            )
+            
+            logger.debug(
+                f"[Step.run] Step {self.id} completed: success={result.success}, return_code={getattr(result, 'return_code', 'N/A')}"
+            )
+            
+            return result
+        except Exception as e:
+            import traceback
+            tb_str = traceback.format_exc()
+            logger.exception(f"[Step.run] Step {self.id} raised exception: {type(e).__name__}: {e}")
+            
+            # Create a failed StepResult from the exception
+            from quantumvitas.calculation.results import StepResult as StepResultClass
+            return StepResultClass(
+                step_type=str(self.step_type.value) if self.step_type else "unknown",
+                input_file=getattr(self, 'input_file', Path()),
+                success=False,
+                error=f"{type(e).__name__}: {str(e)}\n\nTraceback (first 500 chars):\n{tb_str[:500]}",
+                return_code=-1,
+            )
 

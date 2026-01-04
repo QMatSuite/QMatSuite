@@ -287,11 +287,17 @@ K_POINTS automatic
         assert len(orig_positions.data) == len(new_positions.data)
 
         # Verify positions match (within tolerance)
-        for orig_row, new_row in zip(orig_positions.data, new_positions.data):
-            assert orig_row[0] == new_row[0]  # Element symbol
+        # Note: Original may be in angstrom (Cartesian) while new is in crystal (fractional)
+        # We compare by extracting structures and comparing fractional coordinates
+        orig_structure = structure_from_qe_input(original_qe_input)
+        new_structure = structure_from_qe_input(new_qe_input)
+        
+        assert len(orig_structure.sites) == len(new_structure.sites)
+        for orig_site, new_site in zip(orig_structure.sites, new_structure.sites):
+            assert orig_site.specie == new_site.specie
             np.testing.assert_allclose(
-                [float(orig_row[1]), float(orig_row[2]), float(orig_row[3])],
-                [float(new_row[1]), float(new_row[2]), float(new_row[3])],
+                orig_site.frac_coords,
+                new_site.frac_coords,
                 atol=1e-6,
             )
 

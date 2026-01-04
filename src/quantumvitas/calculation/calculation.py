@@ -695,9 +695,29 @@ def _build_step_from_spec(
 
     step_type = _coerce_step_type(spec.step_type)
 
+    # Ensure generated_input is a valid file path (not directory, not '.')
+    if generated_input.exists() and generated_input.is_dir():
+        raise ValueError(
+            f"Generated input path is a directory: {generated_input}. "
+            f"This should not happen - materialize_step_spec should create a file."
+        )
+    
+    # Convert to relative path from working_dir if possible (for cleaner Step.input_file)
+    # But keep absolute if not relative to working_dir
+    try:
+        input_file_rel = generated_input.relative_to(working_dir)
+        # Use relative path only if it's a simple filename (not going up directories)
+        if not any(part == '..' for part in input_file_rel.parts):
+            input_file_value = working_dir / input_file_rel
+        else:
+            input_file_value = generated_input
+    except ValueError:
+        # Not relative to working_dir, use absolute path
+        input_file_value = generated_input.resolve()
+
     return Step(
         meta=step_meta,
-        input_file=generated_input,
+        input_file=input_file_value,
         engine=engine_name,
         step_type=step_type,
         options=options,

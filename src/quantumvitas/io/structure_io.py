@@ -172,15 +172,17 @@ def qe_input_from_structure(structure: PMGStructure) -> QEInput:
         data=atomic_species_data,
     )
 
-    # ATOMIC_POSITIONS in angstrom
+    # ATOMIC_POSITIONS in crystal (fractional) coordinates
+    # Always use crystal format for better readability and consistency
     atomic_positions_data: List[list] = []
     for site in structure.sites:
-        x, y, z = site.coords
+        # Use fractional coordinates directly from structure
+        x, y, z = site.frac_coords
         atomic_positions_data.append([site.specie.symbol, x, y, z])
 
     atomic_positions_card = QECard(
         card_type=QECardType.ATOMIC_POSITIONS,
-        option="angstrom",
+        option="crystal",
         data=atomic_positions_data,
     )
 
@@ -324,12 +326,32 @@ def qe_input_has_explicit_structure(qe_input: QEInput) -> bool:
 def structure_from_qe_input(qe_input: QEInput) -> PMGStructure:
     """
     Build a pymatgen Structure from a QEInput instance, honoring QE's ibrav rules.
+    
+    If ibrav=12/-12 is specified but required parameters (b, c, cos(angle)) are missing,
+    and CELL_PARAMETERS card exists, use CELL_PARAMETERS instead of ibrav parameters.
     """
     system = _get_system_namelist(qe_input)
     cell_card = qe_input.get_card(QECardType.CELL_PARAMETERS)
 
     if system and int(system.get("ibrav", 0) or 0) != 0:
-        lattice = _lattice_from_ibrav(system)
+        ibrav = int(system.get("ibrav", 0) or 0)
+        # For ibrav=12/-12, check if required parameters are missing
+        # If CELL_PARAMETERS exists, prefer it over incomplete ibrav parameters
+        if ibrav in (12, -12) and cell_card:
+            params = _extract_ibrav_parameters(system)
+            b = params.get("b")
+            c_val = params.get("c")
+            if ibrav == 12:
+                cos_angle = params.get("cosab")
+            else:
+                cos_angle = params.get("cosac")
+            # If any required parameter is missing, use CELL_PARAMETERS instead
+            if not b or not c_val or cos_angle is None:
+                lattice = _lattice_from_cell_card(cell_card, system)
+            else:
+                lattice = _lattice_from_ibrav(system)
+        else:
+            lattice = _lattice_from_ibrav(system)
     else:
         lattice = _lattice_from_cell_card(cell_card, system)
 
@@ -514,6 +536,8 @@ def _lattice_from_ibrav(system: Dict[str, Any]) -> Lattice:
 
 def _extract_ibrav_parameters(system: Dict[str, Any]) -> Dict[str, float]:
     params: Dict[str, float] = {}
+    ibrav = int(_get_float_parameter(system, ("ibrav",)) or 0)
+    
     a_val = _get_float_parameter(system, ("celldm(1)", "celldm1"))
     if a_val is not None:
         params["a"] = a_val * BOHR_TO_ANGSTROM
@@ -532,9 +556,31 @@ def _extract_ibrav_parameters(system: Dict[str, Any]) -> Dict[str, float]:
         if c_over_a is not None
         else _get_float_parameter(system, ("c",))
     )
-    params["cosbc"] = _get_float_parameter(system, ("celldm(4)", "celldm4", "cosbc"))
-    params["cosac"] = _get_float_parameter(system, ("celldm(5)", "celldm5", "cosac"))
-    params["cosab"] = _get_float_parameter(system, ("celldm(6)", "celldm6", "cosab"))
+    
+    # celldm mapping depends on ibrav type
+    # For ibrav=12: celldm(4) = cos(gamma) = cosab (angle between a and b)
+    # For ibrav=-12: celldm(5) = cos(beta) = cosac (angle between a and c)
+    # For other ibrav types, use standard mappings
+    if ibrav == 12:
+        # celldm(4) maps to cosab for ibrav=12
+        cosab_from_celldm4 = _get_float_parameter(system, ("celldm(4)", "celldm4"))
+        if cosab_from_celldm4 is not None:
+            params["cosab"] = cosab_from_celldm4
+        else:
+            params["cosab"] = _get_float_parameter(system, ("cosab", "celldm(6)", "celldm6"))
+    elif ibrav == -12:
+        # celldm(5) maps to cosac for ibrav=-12
+        cosac_from_celldm5 = _get_float_parameter(system, ("celldm(5)", "celldm5"))
+        if cosac_from_celldm5 is not None:
+            params["cosac"] = cosac_from_celldm5
+        else:
+            params["cosac"] = _get_float_parameter(system, ("cosac",))
+    else:
+        # Standard mappings for other ibrav types
+        params["cosbc"] = _get_float_parameter(system, ("celldm(4)", "celldm4", "cosbc"))
+        params["cosac"] = _get_float_parameter(system, ("celldm(5)", "celldm5", "cosac"))
+        params["cosab"] = _get_float_parameter(system, ("celldm(6)", "celldm6", "cosab"))
+    
     return params
 
 
