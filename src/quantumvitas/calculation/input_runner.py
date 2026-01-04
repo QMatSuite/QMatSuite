@@ -205,12 +205,13 @@ def prepare_input_step(
     species_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
     keep_original: bool = True,
     output_name: Optional[str] = None,
+    step_type: Optional[str] = None,
 ) -> PreparedInputStep:
     """
     Prepare a QE input file for execution inside a working directory.
     
     Args:
-        input_file: Path to the original QE input file
+        input_file: Path to the original QE input file (or Wannier90 .win/.pw2wan file)
         working_dir: Directory where execution will take place
         project_root: Project root for pseudo_dir resolution
         parameter_overrides: Optional parameter overrides
@@ -219,6 +220,7 @@ def prepare_input_step(
         keep_original: If True and input comes from outside working_dir, 
                        save a copy as <name>_original.in
         output_name: Optional name for the generated input file (default: use input name)
+        step_type: Optional step type (if w90_preproc, w90_run, or pw2wannier90, skip QE processing)
     
     Returns:
         PreparedInputStep with paths to working directory and input files
@@ -228,6 +230,73 @@ def prepare_input_step(
         - Original copy: <name>_original.in (only if keep_original=True and 
           input is from outside working_dir)
     """
+    # Wannier90 steps: skip QE input processing, just copy/move the file
+    WANNIER90_STEP_TYPES = {"w90_preproc", "w90_run", "pw2wannier90"}
+    if step_type and step_type.lower() in WANNIER90_STEP_TYPES:
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"[PREPARE_INPUT_STEP] Wannier90 step detected: step_type={step_type}")
+        logger.debug(f"[PREPARE_INPUT_STEP] input_file: {input_file}")
+        logger.debug(f"[PREPARE_INPUT_STEP] working_dir: {working_dir}")
+        
+        # For Wannier90 steps, the input file is already generated correctly (e.g., .win, .pw2wan)
+        # Just ensure it's in the working directory
+        input_path = Path(input_file)
+        
+        # Safety check: prevent '.' or directory paths
+        if str(input_path) in (".", "./", ".."):
+            logger.error(f"[PREPARE_INPUT_STEP] ERROR: input_file is '.' or invalid: '{input_file}'")
+            raise ValueError(
+                f"Invalid input_file for Wannier90 step: '{input_file}'. "
+                f"Cannot be '.' or a directory. Must be a valid file path (e.g., 'diamond.win', 'pw2wan.in')."
+            )
+        
+        # Resolve to absolute path for validation
+        input_path_resolved = input_path.resolve()
+        logger.debug(f"[PREPARE_INPUT_STEP] input_path_resolved: {input_path_resolved}")
+        
+        # Safety check: ensure it's not a directory
+        if input_path_resolved.exists() and input_path_resolved.is_dir():
+            logger.error(f"[PREPARE_INPUT_STEP] ERROR: input_file is a directory: {input_path_resolved}")
+            raise ValueError(
+                f"input_file is a directory: {input_path_resolved}. "
+                f"Must be a file path (e.g., 'diamond.win', 'pw2wan.in')."
+            )
+        
+        # Safety check: ensure file exists
+        if not input_path_resolved.exists():
+            logger.error(f"[PREPARE_INPUT_STEP] ERROR: input_file does not exist: {input_path_resolved}")
+            raise FileNotFoundError(
+                f"Wannier90 input file not found: {input_path_resolved}. "
+                f"Step materialization may have failed to generate the input file."
+            )
+        
+        working_dir = Path(working_dir)
+        working_dir.mkdir(parents=True, exist_ok=True)
+        
+        if output_name:
+            working_dir_input = working_dir / output_name
+        else:
+            working_dir_input = working_dir / input_path.name
+        
+        logger.debug(f"[PREPARE_INPUT_STEP] working_dir_input: {working_dir_input}")
+        
+        # Copy to working directory if different
+        if input_path_resolved != working_dir_input.resolve():
+            import shutil
+            logger.debug(f"[PREPARE_INPUT_STEP] Copying {input_path_resolved} to {working_dir_input}")
+            shutil.copy2(input_path_resolved, working_dir_input)
+        
+        logger.debug(f"[PREPARE_INPUT_STEP] Wannier90 step prepared: {working_dir_input.name}")
+        
+        # Return PreparedInputStep with original and modified pointing to same file
+        return PreparedInputStep(
+            working_dir=working_dir,
+            original_input=input_path_resolved,
+            modified_input=working_dir_input,
+            project_root=project_root,
+        )
     # Handle project_root: if None, try to detect from working_dir using marker-based detection
     # If provided, validate it is not repo root and use as-is
     from quantumvitas.core.project_utils import find_project_root
@@ -340,11 +409,39 @@ def run_prepared_step(
     """
     Execute a prepared input step via QE engine.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if step_type is None:
         step_type = engine.detect_step_type(prepared_step.modified_input)
+    
+    # E. Logging: Details at DEBUG level
+    logger.debug(
+        f"[RUN_PREPARED_STEP] step_type={step_type}, "
+        f"input={prepared_step.modified_input.name if hasattr(prepared_step.modified_input, 'name') else prepared_step.modified_input}, "
+        f"working_dir={prepared_step.working_dir}"
+    )
+    
+    # For pw2wannier90, ensure input file path is correct
+    if step_type == "pw2wannier90":
+        # Use filename relative to working_dir for -i flag
+        if prepared_step.modified_input.is_absolute():
+            try:
+                # Try to make it relative to working_dir
+                rel_path = prepared_step.modified_input.relative_to(prepared_step.working_dir.resolve())
+                logger.debug(f"[RUN_PREPARED_STEP] pw2wannier90: converted to relative: {rel_path}")
+                input_file_for_command = rel_path
+            except ValueError:
+                # Not relative, keep absolute
+                input_file_for_command = prepared_step.modified_input
+                logger.debug(f"[RUN_PREPARED_STEP] pw2wannier90: using absolute path")
+        else:
+            input_file_for_command = prepared_step.modified_input
+    else:
+        input_file_for_command = prepared_step.modified_input
 
     step_result = engine.run_step(
-        input_file=prepared_step.modified_input,
+        input_file=input_file_for_command,
         working_dir=prepared_step.working_dir,
         step_type=step_type,
         timeout=timeout,
@@ -377,10 +474,10 @@ def run_input_step(
     
     Args:
         engine: QE engine to execute the step
-        input_file: Path to the QE input file
+        input_file: Path to the QE input file (or Wannier90 .win/.pw2wan file)
         working_dir: Working directory for execution
         project_root: Project root for pseudo_dir resolution
-        step_type: Optional step type override
+        step_type: Optional step type override (used to skip QE processing for Wannier90 steps)
         timeout: Optional execution timeout
         parameter_overrides: Optional parameter overrides
         card_overrides: Optional card overrides
@@ -406,6 +503,7 @@ def run_input_step(
         species_overrides=species_overrides,
         keep_original=keep_original,
         output_name=output_name,
+        step_type=step_type,  # Pass step_type so Wannier90 steps skip QE processing
     )
     result = run_prepared_step(
         engine=engine,

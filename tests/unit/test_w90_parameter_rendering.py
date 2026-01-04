@@ -77,17 +77,20 @@ class TestW90ParameterStructure:
         
         params = pw2wannier90.get("parameters", {})
         
-        # These should be flat parameters
+        # E1: prefix/outdir are injected at execution time (from calculation.meta.slug), not in user parameters
+        # They should NOT be in step YAML parameters (they're injected via effective_parameters)
+        # Only seedname should be in user parameters
         assert "seedname" in params, "seedname not in parameters"
-        assert "prefix" in params, "prefix not in parameters"
         
-        # Verify they are scalar values
+        # E1: prefix should NOT be in step YAML parameters (it's injected at execution)
+        # If it exists, it should be ignored/overridden by calculation prefix
+        # We don't assert prefix in params - it's injected, not user-provided
+        
+        # Verify seedname is scalar value
         assert isinstance(params["seedname"], str), f"seedname should be string, got {type(params['seedname'])}"
-        assert isinstance(params["prefix"], str), f"prefix should be string, got {type(params['prefix'])}"
         
-        # Verify values
+        # Verify seedname value
         assert params["seedname"] == "diamond", f"seedname should be 'diamond', got '{params['seedname']}'"
-        assert params["prefix"] == "di", f"prefix should be 'di', got '{params['prefix']}'"
 
 
 class TestFlatParameterDetection:

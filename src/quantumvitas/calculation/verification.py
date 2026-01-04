@@ -5,7 +5,7 @@ Verification helpers for calculation steps.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 
 from quantumvitas.analysis.energy import extract_energy_metrics_from_text
 from .types import StepMode, StepStatus, StepType
@@ -85,13 +85,51 @@ def evaluate_step_result(
     step_type: StepType,
     output_text: str,
     reference_file: Path | None,
+    step_result_return_code: Optional[int] = None,
 ) -> Tuple[StepStatus, str, Dict[str, float | None]]:
     """
     Evaluate a step result according to calculation mode.
+    
+    Args:
+        mode: Step execution mode (STRICT or NORMAL)
+        step_type: Type of step that was executed
+        output_text: Standard output text from the step
+        reference_file: Optional reference file for strict verification
+        step_result_return_code: Optional return code from step execution (if return_code == 0, step succeeded)
+    
+    Returns:
+        Tuple of (StepStatus, message, metrics)
     """
+    # A. Wannier90 steps should NOT extract energy metrics (no QE output format)
+    wannier90_step_types = {"w90_preproc", "w90_run", "pw2wannier90", "wannier90", "postw90"}
+    step_type_str = str(step_type.value).lower() if step_type else ""
+    
+    if step_type_str in wannier90_step_types:
+        # For Wannier90 steps, don't extract energy metrics
+        # Message is based on return_code/result.success + artifact checks (done in run_step())
+        metrics: Dict[str, float | None] = {}
+        
+        if step_result_return_code is not None:
+            if step_result_return_code == 0:
+                # Success: return code 0 and artifacts validated in run_step()
+                return StepStatus.SUCCESS, "Wannier90 step completed successfully (return code 0, artifacts validated)", metrics
+            else:
+                # Return code non-zero: step failed
+                # Error details (stderr) are already in StepResult.error from run_step()
+                return StepStatus.FAILED, f"Wannier90 step failed with return code {step_result_return_code}", metrics
+        else:
+            # Return code not available - this shouldn't happen, but treat as failure
+            return StepStatus.FAILED, "Wannier90 step return code not available", metrics
+    
+    # For QE steps (scf, nscf, etc.), extract energy metrics
     metrics = extract_energy_metrics_from_text(output_text)
+    
+    # For QE steps (scf, nscf, etc.), check for "JOB DONE" in output
     ok, msg = basic_job_done_check(output_text)
     if not ok:
+        # If return code is available and non-zero, include it in message
+        if step_result_return_code is not None and step_result_return_code != 0:
+            msg += f" [return code: {step_result_return_code}]"
         return StepStatus.FAILED, msg, metrics
 
     if mode == StepMode.STRICT and reference_file:

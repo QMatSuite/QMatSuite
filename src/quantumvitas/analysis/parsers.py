@@ -118,9 +118,9 @@ class SCFResult:
         }
 
 
-def parse_scf_output(path_or_text: Path | str) -> SCFResult:
+def parse_scf_output_text(text: str) -> SCFResult:
     """
-    Parse QE pw.x output file.
+    Parse QE pw.x output text content.
     
     This parser handles:
     - Standard SCF calculations
@@ -129,18 +129,11 @@ def parse_scf_output(path_or_text: Path | str) -> SCFResult:
     - Interrupted calculations (partial data)
     
     Args:
-        path_or_text: Path to output file or output text content
+        text: Output text content (string, not a path)
         
     Returns:
         SCFResult with parsed data
     """
-    if isinstance(path_or_text, Path):
-        text = path_or_text.read_text()
-    elif isinstance(path_or_text, str) and len(path_or_text) < 500 and Path(path_or_text).exists():
-        text = Path(path_or_text).read_text()
-    else:
-        text = path_or_text
-    
     iterations: List[SCFIteration] = []
     converged = False
     total_energy = None
@@ -342,6 +335,63 @@ def parse_scf_output(path_or_text: Path | str) -> SCFResult:
         total_cpu_time=total_cpu,
         total_wall_time=total_wall,
     )
+
+
+def parse_scf_output_path(path: Path | str) -> SCFResult:
+    """
+    Parse QE pw.x output file from file path.
+    
+    Args:
+        path: Path to output file
+        
+    Returns:
+        SCFResult with parsed data
+        
+    Raises:
+        FileNotFoundError: If file does not exist
+        ValueError: If path is a directory (e.g., '.')
+    """
+    path_obj = Path(path)
+    
+    if not path_obj.exists():
+        raise FileNotFoundError(f"Output file not found: {path_obj}")
+    
+    if path_obj.is_dir():
+        raise ValueError(f"Expected file path, got directory: {path_obj}. Use parse_scf_output_text() for text input.")
+    
+    text = path_obj.read_text()
+    return parse_scf_output_text(text)
+
+
+def parse_scf_output(path_or_text: Path | str) -> SCFResult:
+    """
+    Parse QE pw.x output file or text.
+    
+    This is a convenience wrapper that automatically detects whether input is a path or text.
+    
+    Args:
+        path_or_text: Path to output file or output text content
+        
+    Returns:
+        SCFResult with parsed data
+        
+    Raises:
+        FileNotFoundError: If path does not exist
+        ValueError: If path is a directory (e.g., '.')
+    """
+    if isinstance(path_or_text, Path):
+        return parse_scf_output_path(path_or_text)
+    elif isinstance(path_or_text, str):
+        # Check if string is a file path (short string that exists and is a file)
+        path_obj = Path(path_or_text)
+        # B. Don't treat '.' or directories as file paths
+        if path_obj.exists() and path_obj.is_file() and len(path_or_text) < 500:
+            return parse_scf_output_path(path_obj)
+        else:
+            # Treat as text content
+            return parse_scf_output_text(path_or_text)
+    else:
+        raise TypeError(f"Expected Path or str, got {type(path_or_text)}")
 
 
 def _parse_time_string(time_str: str) -> float:
