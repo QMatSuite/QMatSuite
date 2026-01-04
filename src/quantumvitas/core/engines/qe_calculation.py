@@ -46,6 +46,29 @@ class CalculationResult:
     error: Optional[str] = None
 
 
+def get_capture_paths(raw_dir: Path, step_type: str) -> Tuple[Path, Path]:
+    """
+    Get stdout and stderr capture file paths for a step.
+    
+    This function centralizes the naming convention for capture files:
+    - stdout: {step_type}.out
+    - stderr: {step_type}.err
+    
+    These files are always overwritten (mode="w") and never versioned,
+    regardless of input file versioning (e.g., scf.in vs scf-1.in).
+    
+    Args:
+        raw_dir: Working directory where capture files are written
+        step_type: Step type (e.g., "scf", "nscf", "w90_preproc")
+        
+    Returns:
+        Tuple of (stdout_path, stderr_path)
+    """
+    stdout_path = raw_dir / f"{step_type}.out"
+    stderr_path = raw_dir / f"{step_type}.err"
+    return stdout_path, stderr_path
+
+
 class QECalculationRunner:
     """
     Runner for QE calculation steps and calculations.
@@ -265,12 +288,8 @@ class QECalculationRunner:
         # This is handled by run_and_verify_step, but we ensure it here as well
         # by checking if working_dir has the pseudopotentials
         
-        # A. Unified stdout/stderr file naming: step_type.out / step_type.err (QE convention)
-        # Output files always use step_type, not input file stem, to ensure:
-        # - Consistent naming regardless of input versioning (scf.in vs scf-1.in)
-        # - Single output file per step type (overwritten on each run)
-        stdout_capture_path = working_dir / f"{step_type}.out"
-        stderr_capture_path = working_dir / f"{step_type}.err"
+        # A. Unified stdout/stderr file naming: step_type.out / step_type.err (overwrite, never versioned)
+        stdout_capture_path, stderr_capture_path = get_capture_paths(working_dir, step_type)
         
         # B. Determine primary output file (artifact) semantics
         input_stem = input_file.stem if isinstance(input_file, Path) else Path(input_file).stem
@@ -293,6 +312,7 @@ class QECalculationRunner:
         
         # E. Logging: Only essential info at INFO level
         logger.info(f"[RUN_STEP] Starting {step_type}: {input_file.name if hasattr(input_file, 'name') else input_file}")
+        logger.info(f"[RUN_STEP] Capturing stdout/stderr to {step_type}.out/.err (overwrite)")
         
         # Execute command
         try:
@@ -327,7 +347,6 @@ class QECalculationRunner:
                 # Ensure parent directories exist and open files with mode="w" to overwrite
                 stdout_capture_path.parent.mkdir(parents=True, exist_ok=True)
                 stderr_capture_path.parent.mkdir(parents=True, exist_ok=True)
-                logger.debug(f"[RUN_STEP] Opening stdout: {stdout_capture_path.name}, stderr: {stderr_capture_path.name}")
                 
                 with open(stdin_file, 'r') as stdin_handle:
                     with open(stdout_capture_path, 'w') as output_handle:
@@ -426,7 +445,9 @@ class QECalculationRunner:
                         raise ValueError(f"pw2wannier90 command must include -i flag: {' '.join(command)}")
                 
                 # C. cwd must be raw_dir (working_dir) - wannier90 writes <seed>.nnkp/.wout there
-                logger.debug(f"[RUN_STEP] Opening stdout: {stdout_capture_path.name}, stderr: {stderr_capture_path.name}")
+                # Ensure parent directories exist and open files with mode="w" to overwrite
+                stdout_capture_path.parent.mkdir(parents=True, exist_ok=True)
+                stderr_capture_path.parent.mkdir(parents=True, exist_ok=True)
                 
                 with open(stdout_capture_path, 'w') as output_handle:
                     with open(stderr_capture_path, 'w') as stderr_handle:
@@ -570,19 +591,19 @@ class QECalculationRunner:
             # - output_file: Primary artifact (<seed>.wout for Wannier90, scf.out for QE)
             # - stdout_file: Stdout capture file (always step_type.out)
             # - stderr_file: Stderr capture file (always step_type.err)
+            # Note: output_file should always be set to the expected path, even if file doesn't exist (e.g., execution failed)
             result_output_file = None
             if step_type in ("w90_preproc", "w90_run"):
-                # Wannier90: primary artifact is <seed>.wout
+                # Wannier90: primary artifact is <seed>.wout (only if exists, otherwise None)
                 if primary_output_file.exists():
                     result_output_file = primary_output_file
             elif step_type == "pw2wannier90":
-                # pw2wannier90: primary output is the stdout capture
-                if stdout_capture_path.exists():
-                    result_output_file = stdout_capture_path
+                # pw2wannier90: primary output is the stdout capture (always set, even if empty)
+                result_output_file = stdout_capture_path
             else:
                 # QE steps: primary output is the stdout capture (scf.out, nscf.out, etc.)
-                if stdout_capture_path.exists():
-                    result_output_file = stdout_capture_path
+                # Always set to stdout_capture_path, even if execution failed and file doesn't exist
+                result_output_file = stdout_capture_path
             
             logger.debug(f"[RUN_STEP] StepResult: output_file={result_output_file.name if result_output_file else None}, "
                         f"stdout_file={stdout_capture_path.name}, stderr_file={stderr_capture_path.name}, "

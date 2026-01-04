@@ -1328,11 +1328,26 @@ class QVService:
         # The runner uses workdir as the I/O directory (source of truth)
         io_dir = str(workdir.resolve())
         
+        # Build response with output file paths
+        # Priority: output_file (primary artifact) -> stdout_file -> None
+        # Always return the expected path, even if file doesn't exist (execution may have failed)
+        output_file_str = None
+        if result.output_file:
+            output_file_str = str(result.output_file.resolve())
+        elif result.stdout_file:
+            # Fallback to stdout_file if output_file not set (e.g., for Wannier90 if .wout doesn't exist)
+            output_file_str = str(result.stdout_file.resolve())
+        
+        stdout_file_str = str(result.stdout_file.resolve()) if result.stdout_file else None
+        stderr_file_str = str(result.stderr_file.resolve()) if result.stderr_file else None
+        
         return {
             "step": step_selector,
             "step_id": step_resolved.meta.id,
             "step_type": result.step_type.value if hasattr(result.step_type, 'value') else str(result.step_type),
-            "output_file": str(result.output_file.resolve()) if result.output_file and result.output_file.exists() else None,
+            "output_file": output_file_str,  # Primary artifact (may not exist if execution failed)
+            "stdout_file": stdout_file_str,  # Stdout capture file path
+            "stderr_file": stderr_file_str,  # Stderr capture file path
             "success": result.error is None,
             "error": result.error,
             "input_file": str(input_path),

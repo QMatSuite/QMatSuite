@@ -447,10 +447,10 @@ def run_prepared_step(
         timeout=timeout,
     )
 
-    expected_output = prepared_step.working_dir / f"{prepared_step.modified_input.stem}.out"
-    if step_result.output_file and step_result.output_file.exists():
-        if step_result.output_file != expected_output:
-            step_result.output_file = expected_output
+    # Note: step_result.output_file is already correctly set by engine.run_step
+    # to {step_type}.out (not based on input filename). Do not override it.
+    # The old logic that tried to match input filename was incorrect and caused
+    # issues with versioned input files (e.g., scf-1.in -> scf-1.out instead of scf.out).
 
     return step_result
 
