@@ -29,24 +29,13 @@ interface CalculationAnalysisPanelProps {
 type StepViewMode = 'text' | 'plot';
 
 // Helper: Get step type label for display
+// Show actual step types (no collapsing) to avoid duplicates
 function getStepTypeLabel(stepType: string): string {
   const upper = stepType.toUpperCase();
-  // Map common step types to readable labels
-  const labels: Record<string, string> = {
-    'SCF': 'SCF',
-    'NSCF': 'NSCF',
-    'BANDS_PW': 'BANDS',
-    'BANDS': 'BANDS',
-    'DOS': 'DOS',
-  };
-  return labels[upper] || upper;
+  // Keep labels readable but preserve distinction between bands_pw and bands
+  return upper;
 }
 
-// Helper: Check if a step type supports plotting
-function stepTypeSupportsPlot(stepType: string): boolean {
-  const typeLower = stepType.toLowerCase();
-  return typeLower === 'scf' || typeLower === 'dos' || typeLower === 'bands' || typeLower === 'bands_pw';
-}
 
 export function CalculationAnalysisPanel({ projectRoot, calculation }: CalculationAnalysisPanelProps) {
   const qv = useQVClient();
@@ -59,6 +48,13 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
   // Step selection state
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<StepViewMode>('text');
+  
+  // Auto-select first step if none selected and steps are available
+  useEffect(() => {
+    if (!selectedStepId && steps.length > 0) {
+      setSelectedStepId(steps[0].id);
+    }
+  }, [steps, selectedStepId]);
   
   // Plot data state (keyed by step ID)
   const [scfDataMap, setScfDataMap] = useState<Record<string, ScfConvergenceData | null>>({});
@@ -83,7 +79,67 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
   // Get selected step
   const selectedStep = steps.find(s => s.id === selectedStepId) || null;
   const selectedStepType = selectedStep?.type?.toLowerCase() || '';
-  const supportsPlot = selectedStep ? stepTypeSupportsPlot(selectedStep.type) : false;
+  
+  // Check if plot is supported (based on step type and artifacts)
+  const [supportsPlot, setSupportsPlot] = useState(false);
+  const [artifactsCache, setArtifactsCache] = useState<Record<string, any[]>>({});
+  
+  useEffect(() => {
+    if (!selectedStep || !qv || !calculation) {
+      setSupportsPlot(false);
+      return;
+    }
+    
+    const typeLower = selectedStep.type.toLowerCase();
+    const calcSelector = calculation.slug || calculation.name;
+    
+    // Fast path for scf/dos (always support plot if step type matches)
+    if (typeLower === 'scf' || typeLower === 'dos') {
+      setSupportsPlot(true);
+      return;
+    }
+    
+    // For bands: only 'bands' step (post-processing) supports plot, not 'bands_pw'
+    if (typeLower === 'bands') {
+      // Check artifacts to see if this step has bands data files
+      const cachedArtifacts = artifactsCache[selectedStep.id];
+      if (cachedArtifacts) {
+        const hasBandsData = cachedArtifacts.some((a: any) => 
+          a.path_relative_to_raw.endsWith('.gnu') || 
+          a.path_relative_to_raw.includes('.dat.gnu')
+        );
+        setSupportsPlot(hasBandsData);
+        return;
+      }
+      
+      // Load artifacts if not cached
+      const normalizedRoot = normalizeProjectRoot(projectRoot);
+      if (!normalizedRoot) {
+        setSupportsPlot(false);
+        return;
+      }
+      
+      qv.call('list_step_artifacts', {
+        project_root: normalizedRoot,
+        calculation: calcSelector,
+        step: selectedStep.id,
+      }).then((response: any) => {
+        if (response.ok && response.data) {
+          const artifacts = response.data.artifacts || [];
+          setArtifactsCache(prev => ({ ...prev, [selectedStep.id]: artifacts }));
+          const hasBandsData = artifacts.some((a: any) => 
+            a.path_relative_to_raw.endsWith('.gnu') || 
+            a.path_relative_to_raw.includes('.dat.gnu')
+          );
+          setSupportsPlot(hasBandsData);
+        } else {
+          setSupportsPlot(false);
+        }
+      }).catch(() => setSupportsPlot(false));
+    } else {
+      setSupportsPlot(false);
+    }
+  }, [selectedStep, qv, calculation, projectRoot, artifactsCache]);
   
   // Load plot data for a step
   const loadPlotData = useCallback(async (stepId: string, stepType: string) => {
@@ -106,8 +162,14 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
         });
         if (response.ok && response.data) {
           setScfDataMap(prev => ({ ...prev, [stepId]: response.data as ScfConvergenceData }));
+          setFailedLoads(prev => {
+            const next = new Set(prev);
+            next.delete(stepId);
+            return next;
+          });
         } else {
           setScfDataMap(prev => ({ ...prev, [stepId]: null }));
+          setFailedLoads(prev => new Set(prev).add(stepId));
         }
       } else if (stepTypeLower === 'dos') {
         const response = await qv.call('get_dos_data', {
@@ -117,53 +179,111 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
         });
         if (response.ok && response.data) {
           setDosDataMap(prev => ({ ...prev, [stepId]: response.data as DosData }));
+          setFailedLoads(prev => {
+            const next = new Set(prev);
+            next.delete(stepId);
+            return next;
+          });
         } else {
           setDosDataMap(prev => ({ ...prev, [stepId]: null }));
+          setFailedLoads(prev => new Set(prev).add(stepId));
         }
-      } else if (stepTypeLower === 'bands' || stepTypeLower === 'bands_pw') {
+      } else if (stepTypeLower === 'bands') {
+        // Only load bands plot data for 'bands' step (post-processing), not 'bands_pw'
+        if (process.env.NODE_ENV === 'development') {
+          console.debug(`[Analysis] Calling get_band_structure_data for step=${stepId}, calculation=${calcSelector}`);
+        }
         const response = await qv.call('get_band_structure_data', {
           project_root: normalizedRoot,
           calculation: calcSelector,
-          step: stepId,
+          step: stepId,  // Use stepId (ULID) as step selector
         });
         if (response.ok && response.data) {
+          if (process.env.NODE_ENV === 'development') {
+            console.debug(`[Analysis] Received bands data: n_bands=${response.data.n_bands}, n_kpoints=${response.data.n_kpoints}, n_labels=${response.data.high_symmetry_points?.length || 0}`);
+          }
           setBandsDataMap(prev => ({ ...prev, [stepId]: response.data as BandStructureData }));
+          // Clear failure flag on success
+          setFailedLoads(prev => {
+            const next = new Set(prev);
+            next.delete(stepId);
+            return next;
+          });
         } else {
+          if (process.env.NODE_ENV === 'development') {
+            console.debug(`[Analysis] Failed to load bands data:`, response.error || 'Unknown error');
+          }
           setBandsDataMap(prev => ({ ...prev, [stepId]: null }));
+          // Mark as failed to prevent infinite retries
+          setFailedLoads(prev => new Set(prev).add(stepId));
         }
       }
     } catch (e) {
       console.error(`Failed to load plot data for step ${stepId}`, e);
-      // Set data to null on error
+      // Set data to null on error and mark as failed
       if (selectedStepType === 'scf') {
         setScfDataMap(prev => ({ ...prev, [stepId]: null }));
       } else if (selectedStepType === 'dos') {
         setDosDataMap(prev => ({ ...prev, [stepId]: null }));
-      } else if (selectedStepType === 'bands' || selectedStepType === 'bands_pw') {
+      } else if (selectedStepType === 'bands') {
         setBandsDataMap(prev => ({ ...prev, [stepId]: null }));
       }
+      setFailedLoads(prev => new Set(prev).add(stepId));
     } finally {
       setIsLoadingMap(prev => ({ ...prev, [stepId]: false }));
     }
   }, [calculation, qv, projectRoot, selectedStepType]);
   
+  // Track failed loads to prevent infinite retries
+  const [failedLoads, setFailedLoads] = useState<Set<string>>(new Set());
+  
   // Load plot data when switching to plot view
   useEffect(() => {
-    if (selectedStepId && viewMode === 'plot' && supportsPlot && selectedStep) {
-      const stepId = selectedStepId;
-      const stepType = selectedStep.type;
-      
-      // Check if we already have data for this step
-      const hasData = 
-        (stepType.toLowerCase() === 'scf' && scfDataMap[stepId] !== undefined) ||
-        (stepType.toLowerCase() === 'dos' && dosDataMap[stepId] !== undefined) ||
-        ((stepType.toLowerCase() === 'bands' || stepType.toLowerCase() === 'bands_pw') && bandsDataMap[stepId] !== undefined);
-      
-      if (!hasData && !isLoadingMap[stepId]) {
-        loadPlotData(stepId, stepType);
-      }
+    // Only proceed if we're in plot mode and have a selected step
+    if (!selectedStepId || viewMode !== 'plot' || !selectedStep) {
+      return;
     }
-  }, [selectedStepId, viewMode, supportsPlot, selectedStep, scfDataMap, dosDataMap, bandsDataMap, isLoadingMap, loadPlotData]);
+    
+    const stepId = selectedStepId;
+    const stepType = selectedStep.type;
+    const stepTypeLower = stepType.toLowerCase();
+    
+    // For bands, we need to wait for supportsPlot to be determined
+    // For scf/dos, supportsPlot is true immediately if step type matches
+    if (stepTypeLower === 'bands' && !supportsPlot) {
+      // Wait for supportsPlot to be determined (async artifacts check)
+      return;
+    }
+    
+    // If plot is not supported, don't try to load
+    if (!supportsPlot) {
+      return;
+    }
+    
+    // Don't retry if this step has already failed to load
+    if (failedLoads.has(stepId)) {
+      return;
+    }
+    
+    // Check if we already have valid data for this step
+    // Distinguish between: undefined (not loaded), null (error/empty), or actual data
+    let hasData = false;
+    if (stepTypeLower === 'scf') {
+      hasData = scfDataMap[stepId] !== undefined && scfDataMap[stepId] !== null;
+    } else if (stepTypeLower === 'dos') {
+      hasData = dosDataMap[stepId] !== undefined && dosDataMap[stepId] !== null;
+    } else if (stepTypeLower === 'bands') {
+      hasData = bandsDataMap[stepId] !== undefined && bandsDataMap[stepId] !== null;
+    }
+    
+    // Load data if we don't have it and we're not already loading
+    if (!hasData && !isLoadingMap[stepId]) {
+      if (process.env.NODE_ENV === 'development') {
+        console.debug(`[Analysis] Loading ${stepTypeLower} plot data for step=${stepId}`);
+      }
+      loadPlotData(stepId, stepType);
+    }
+  }, [selectedStepId, viewMode, supportsPlot, selectedStep, scfDataMap, dosDataMap, bandsDataMap, isLoadingMap, loadPlotData, failedLoads]);
   
   if (!calculation) {
     return (
@@ -186,15 +306,15 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
   
   // Get plot data for selected step
   let plotData: ScfConvergenceData | DosData | BandStructureData | null = null;
-  if (selectedStepId && supportsPlot) {
-    if (selectedStepType === 'scf') {
-      plotData = scfDataMap[selectedStepId] || null;
-    } else if (selectedStepType === 'dos') {
-      plotData = dosDataMap[selectedStepId] || null;
-    } else if (selectedStepType === 'bands' || selectedStepType === 'bands_pw') {
-      plotData = bandsDataMap[selectedStepId] || null;
+    if (selectedStepId && supportsPlot) {
+      if (selectedStepType === 'scf') {
+        plotData = scfDataMap[selectedStepId] || null;
+      } else if (selectedStepType === 'dos') {
+        plotData = dosDataMap[selectedStepId] || null;
+      } else if (selectedStepType === 'bands') {
+        plotData = bandsDataMap[selectedStepId] || null;
+      }
     }
-  }
   
   return (
     <div className="calculation-analysis-panel" data-testid="qv-calc-analysis-panel">
@@ -207,6 +327,7 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
         {steps.map((step) => {
           const stepTypeLabel = getStepTypeLabel(step.type);
           const isSelected = step.id === selectedStepId;
+          // Use step.id for unique testid to avoid duplicates
           return (
             <button
               key={step.id}
@@ -217,6 +338,9 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
                 setViewMode('text');
               }}
               title={`${stepTypeLabel} (${step.id.slice(0, 8)}...)`}
+              data-testid={`qv-analysis-step-tab-${step.type.toLowerCase()}`}
+              data-step-id={step.id}
+              data-step-type={step.type}
             >
               {stepTypeLabel}
             </button>
@@ -263,7 +387,7 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
                 {selectedStepType === 'dos' && (
                   <DosChart data={plotData as DosData | null} isLoading={isLoading} />
                 )}
-                {(selectedStepType === 'bands' || selectedStepType === 'bands_pw') && (
+                {selectedStepType === 'bands' && (
                   <BandsChart data={plotData as BandStructureData | null} isLoading={isLoading} />
                 )}
               </div>

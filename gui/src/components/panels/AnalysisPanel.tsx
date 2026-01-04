@@ -752,6 +752,16 @@ export function BandsChart({ data, referenceData, showReference = true, isLoadin
         </ResponsiveContainer>
       </div>
       
+      {/* Label status message (if labels are missing) */}
+      {displayData && (!displayData.high_symmetry_points || displayData.high_symmetry_points.length === 0) && (
+        <div className="chart-label-status" data-testid="qv-analysis-bands-label-status">
+          <span className="label-status-icon">ℹ️</span>
+          <span className="label-status-text">
+            High-symmetry k-point labels unavailable: bands step stdout file (bands.out) not found or could not be parsed
+          </span>
+        </div>
+      )}
+      
       <div className="chart-stats">
         {displayData?.fermi_energy_ev && (
           <div className="stat-item" data-testid="qv-analysis-fermi">
@@ -762,7 +772,9 @@ export function BandsChart({ data, referenceData, showReference = true, isLoadin
         <div className="stat-item" data-testid="qv-analysis-kpath">
           <span className="stat-label">K-path</span>
           <span className="stat-value kpath-value">
-            {displayData?.high_symmetry_points.map(pt => pt.label).join(' → ')}
+            {displayData?.high_symmetry_points && displayData.high_symmetry_points.length > 0
+              ? displayData.high_symmetry_points.map(pt => pt.label).join(' → ')
+              : '—'}
           </span>
         </div>
       </div>

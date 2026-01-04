@@ -391,6 +391,27 @@
 }
 
 /* Chart Stats */
+.chart-label-status {
+  padding: 8px 12px;
+  margin: 12px 0;
+  background-color: #f3f4f6;
+  border-left: 3px solid #6366f1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.chart-label-status .label-status-icon {
+  flex-shrink: 0;
+}
+
+.chart-label-status .label-status-text {
+  flex: 1;
+}
+
 .chart-stats {
   display: flex;
   flex-wrap: wrap;
