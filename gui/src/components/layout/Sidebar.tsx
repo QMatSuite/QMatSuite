@@ -15,7 +15,7 @@ import type { QVClient } from '../../hooks/useQVClient';
 import type { DaemonStatus, JobCounts } from '../../types/qv';
 import './Sidebar.css';
 
-export type ViewType = 'home' | 'structures' | 'calculations' | 'jobs' | 'resources' | 'settings';
+export type ViewType = 'home' | 'structures' | 'calculations' | 'jobs' | 'history' | 'resources' | 'settings';
 
 interface SidebarProps {
   qv: QVClient;
@@ -250,6 +250,16 @@ export function Sidebar({
                 {activeJobsCount}
               </span>
             )}
+          </button>
+          <button
+            className={`sidebar__tab ${currentView === 'history' ? 'active' : ''}`}
+            onClick={() => onViewChange('history')}
+            disabled={!projectLoaded}
+            title={projectLoaded ? 'View project history timeline' : 'Load a project first'}
+            data-testid="qv-nav-history"
+          >
+            <span className="sidebar__tab-icon">📜</span>
+            {!isCollapsed && 'History'}
           </button>
           <button
             className={`sidebar__tab ${currentView === 'resources' ? 'active' : ''}`}

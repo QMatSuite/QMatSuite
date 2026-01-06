@@ -35,6 +35,7 @@ class CalculationResult:
     started_at: datetime
     finished_at: datetime
     io_dir: Optional[Path] = None  # The actual I/O directory used by the runner (source of truth)
+    run_id: Optional[str] = None  # History run ULID (for linking to project history)
 
     def to_dict(self) -> Dict[str, object]:
         result = {
@@ -62,5 +63,8 @@ class CalculationResult:
         # Include io_dir if available (runner is source of truth)
         if self.io_dir:
             result["io_dir"] = str(self.io_dir.resolve())
+        # Include run_id for history reference
+        if self.run_id:
+            result["run_id"] = self.run_id
         return result
 
