@@ -1134,6 +1134,7 @@ class QVService:
         *,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
+        run_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Run all steps in a calculation.
@@ -1146,6 +1147,9 @@ class QVService:
             calculation_selector: Calculation selector
             strict: If True, fail on first error
             verbose: If True, print detailed output
+            run_id: External run ID to use (e.g., job_id from JobManager).
+                    If provided, this ID will be used for history recording
+                    to ensure job_id == run_id identity.
             
         Returns:
             Dict with run results
@@ -1188,7 +1192,7 @@ class QVService:
         registry = create_default_registry()
         runner = CalculationRunner(registry)
         
-        results = runner.run(calculation)
+        results = runner.run(calculation, run_id=run_id)
         
         # Runner is the source of truth for io_dir - it returns the actual I/O directory used
         # Do NOT construct paths here; use what the runner provides
@@ -1217,6 +1221,7 @@ class QVService:
                 for s in results.steps
             ],
             "io_dir": io_dir,  # I/O directory from runner (source of truth)
+            "run_id": results.run_id,  # History run_id (== job_id when provided)
         }
     
     @staticmethod
@@ -1228,6 +1233,7 @@ class QVService:
         *,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
+        run_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Run a single step in project mode.
@@ -1242,6 +1248,9 @@ class QVService:
             calculation_selector: Calculation selector (name, slug, path, or ULID)
             step_selector: Step selector (name, slug, ULID, or step_type)
             verbose: If True, print detailed output
+            run_id: External run ID to use (e.g., job_id from JobManager).
+                    If provided, this ID will be used for history recording
+                    to ensure job_id == run_id identity.
             
         Returns:
             Dict with run results
@@ -1316,6 +1325,9 @@ class QVService:
         engine = QuantumEspressoEngine(engine_config)
         
         # Run the step
+        from datetime import datetime, timezone
+        started = datetime.now(timezone.utc)
+        
         result, prepared = run_input_step(
             engine=engine,
             input_file=input_path,
@@ -1325,8 +1337,86 @@ class QVService:
             keep_original=False,
         )
         
+        finished = datetime.now(timezone.utc)
+        
         # The runner uses workdir as the I/O directory (source of truth)
         io_dir = str(workdir.resolve())
+        
+        # Record history (single-step run also creates a history record)
+        actual_run_id = run_id
+        try:
+            from quantumvitas.history.run_revision import create_run_revision, complete_run_revision
+            from quantumvitas.history.storage import ProjectHistory
+            from quantumvitas.history.events import RunStartedEvent, RunFinishedEvent
+            
+            # Create run revision at start (records run_started event)
+            run_revision = create_run_revision(
+                project_root=project_root,
+                calc_id=calculation.id,
+                calc_name=calculation.name if hasattr(calculation, "name") else None,
+                step_ids=[step_resolved.meta.id],
+                step_types=[spec.step_type or "scf"],
+                structure_id=calculation.structure_id,
+                structure_name=getattr(calculation, "structure_name", None),
+                engine="qe",
+                working_dir=workdir,
+                create_snapshot=False,  # Skip snapshot for single-step runs
+                run_id=run_id,  # Use external run_id (job_id) if provided
+            )
+            actual_run_id = run_revision.id
+            
+            # Record run_started event
+            history = ProjectHistory(project_root)
+            event = RunStartedEvent.create(
+                project_id=run_revision.project_id,
+                calc_id=calculation.id,
+                run_id=actual_run_id,
+                calc_name=calculation.name if hasattr(calculation, "name") else None,
+                step_ids=[step_resolved.meta.id],
+                step_types=[spec.step_type or "scf"],
+                engine="qe",
+                structure_id=calculation.structure_id,
+                snapshot_path=None,
+            )
+            history.append_event(event)
+            
+            # Complete run revision (records run_finished event)
+            status = "success" if result.error is None else "failed"
+            step_results = [{
+                "step_id": step_resolved.meta.id,
+                "step_type": spec.step_type or "scf",
+                "step_name": step_selector,
+                "status": status,
+                "message": result.error if result.error else None,
+            }]
+            
+            run_revision = complete_run_revision(
+                project_root=project_root,
+                run_id=actual_run_id,
+                status=status,
+                step_results=step_results,
+                working_dir=workdir,
+                error_summary=result.error[:200] if result.error else None,
+            )
+            
+            # Record run_finished event
+            duration_s = (finished - started).total_seconds()
+            finished_event = RunFinishedEvent.create(
+                project_id=run_revision.project_id,
+                calc_id=calculation.id,
+                run_id=actual_run_id,
+                status=status,
+                duration_seconds=duration_s,
+                step_count=1,
+                success_count=1 if status == "success" else 0,
+                failure_count=0 if status == "success" else 1,
+                error_summary=result.error[:200] if result.error else None,
+            )
+            history.append_event(finished_event)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"[HISTORY] Failed to record history for single-step run: {e}")
         
         # Build response with output file paths
         # Priority: output_file (primary artifact) -> stdout_file -> None
@@ -1354,6 +1444,7 @@ class QVService:
             "io_dir": io_dir,  # I/O directory from runner (source of truth)
             # Keep working_dir for backward compatibility during migration
             "working_dir": io_dir,
+            "run_id": actual_run_id,  # History run_id (== job_id when provided)
         }
     
     # -------------------------------------------------------------------------

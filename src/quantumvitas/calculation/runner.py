@@ -69,6 +69,7 @@ class CalculationRunner:
         calculation: Calculation,
         *,
         skip_history: bool = False,
+        run_id: Optional[str] = None,
     ) -> CalculationResult:
         """
         Execute all steps in a calculation.
@@ -76,6 +77,9 @@ class CalculationRunner:
         Args:
             calculation: The calculation to execute
             skip_history: If True, skip history recording (for testing)
+            run_id: External run ID to use (e.g., job_id from JobManager).
+                    If provided, this ID will be used for history recording
+                    to ensure job_id == run_id identity.
             
         Returns:
             CalculationResult with status and step summaries
@@ -88,10 +92,10 @@ class CalculationRunner:
         
         # History: Create run revision and record run_started event
         run_revision = None
-        run_id = None
+        actual_run_id = run_id  # Use external run_id if provided
         if not skip_history:
-            run_revision, run_id = self._start_history_recording(
-                calculation, started
+            run_revision, actual_run_id = self._start_history_recording(
+                calculation, started, run_id=run_id
             )
 
         # Step0: Prepare pseudos in project/pseudo (constitution-compliant)
@@ -330,10 +334,10 @@ class CalculationRunner:
         io_dir = calculation.raw_dir.resolve() if calculation.raw_dir else None
         
         # History: Complete run revision and record run_finished event
-        if not skip_history and run_id:
+        if not skip_history and actual_run_id:
             self._complete_history_recording(
                 calculation=calculation,
-                run_id=run_id,
+                run_id=actual_run_id,
                 status=status,
                 step_summaries=step_summaries,
                 working_dir=io_dir,
@@ -347,16 +351,24 @@ class CalculationRunner:
             started_at=started,
             finished_at=finished,
             io_dir=io_dir,  # The actual I/O directory used by the runner
-            run_id=run_id,  # Include run_id for history reference
+            run_id=actual_run_id,  # Include run_id for history reference (== job_id when provided)
         )
     
     def _start_history_recording(
         self,
         calculation: Calculation,
         started: datetime,
+        *,
+        run_id: Optional[str] = None,
     ) -> tuple:
         """
         Create run revision and record run_started event.
+        
+        Args:
+            calculation: The calculation being run
+            started: Start timestamp
+            run_id: External run ID to use (e.g., job_id from JobManager).
+                    If provided, this ID will be used instead of generating a new one.
         
         Returns:
             Tuple of (run_revision, run_id) or (None, None) on error
@@ -397,7 +409,7 @@ class CalculationRunner:
                     engine_version = getattr(engine, "version", None)
                     engine_path = str(getattr(engine, "executable_path", ""))
             
-            # Create run revision
+            # Create run revision (use external run_id if provided)
             run_revision = create_run_revision(
                 project_root=calculation.project.root,
                 calc_id=calculation.id,
@@ -413,9 +425,10 @@ class CalculationRunner:
                 species_map=calculation.species_map,
                 working_dir=calculation.raw_dir,
                 create_snapshot=True,
+                run_id=run_id,  # Use external run_id (job_id) if provided
             )
             
-            run_id = run_revision.id
+            actual_run_id = run_revision.id
             
             # Record run_started event
             history = ProjectHistory(calculation.project.root)
@@ -424,7 +437,7 @@ class CalculationRunner:
             event = RunStartedEvent.create(
                 project_id=project_id,
                 calc_id=calculation.id,
-                run_id=run_id,
+                run_id=actual_run_id,
                 calc_name=calculation.name if hasattr(calculation, "name") else None,
                 step_ids=step_ids,
                 step_types=step_types,
@@ -434,8 +447,8 @@ class CalculationRunner:
             )
             history.append_event(event)
             
-            logger.debug(f"[HISTORY] Created run revision: {run_id}")
-            return run_revision, run_id
+            logger.debug(f"[HISTORY] Created run revision: {actual_run_id}")
+            return run_revision, actual_run_id
             
         except Exception as e:
             logger.warning(f"[HISTORY] Failed to start history recording: {e}")

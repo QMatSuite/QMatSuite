@@ -352,6 +352,8 @@ class QVDaemon:
             "pin_analysis_to_history": self._handle_pin_analysis_to_history,
             "can_pin_to_run": self._handle_can_pin_to_run,
             "get_pin_data": self._handle_get_pin_data,
+            "get_latest_run_for_step": self._handle_get_latest_run_for_step,
+            "delete_project_history": self._handle_delete_project_history,
             
             # Workflow operations
             "list_workflow_templates": self._handle_list_workflow_templates,
@@ -5044,8 +5046,14 @@ class QVDaemon:
             # If we can't load calculation, just use empty steps and no io_dir
             pass
         
+        # Generate job_id using ULID (shared with history run_id)
+        import ulid as ulid_module
+        job_id = str(ulid_module.new())
+        
         # Submit job with target info for display
-        job_id = self.job_manager.submit(
+        # Note: job_id is passed to run_calculation as run_id for history unification
+        self.job_manager.submit_with_id(
+            job_id=job_id,
             job_type="run_calculation",
             func=QVService.run_calculation,
             params={
@@ -5064,6 +5072,7 @@ class QVDaemon:
             verbose=verbose,
             index=cache.index,
             config=cache.config,
+            run_id=job_id,  # Pass job_id as run_id for history unification
         )
         
         return {"job_id": job_id, "status": "pending", "target_name": calculation}
@@ -5107,8 +5116,14 @@ class QVDaemon:
         except Exception:
             pass
         
+        # Generate job_id using ULID (shared with history run_id)
+        import ulid as ulid_module
+        job_id = str(ulid_module.new())
+        
         # Submit job with target info for display
-        job_id = self.job_manager.submit(
+        # Note: job_id is passed to run_step as run_id for history unification
+        self.job_manager.submit_with_id(
+            job_id=job_id,
             job_type="run_step",
             func=QVService.run_step,
             params={
@@ -5124,6 +5139,7 @@ class QVDaemon:
             calculation_selector=calculation,
             step_selector=step,
             verbose=verbose,
+            run_id=job_id,  # Pass job_id as run_id for history unification
         )
         
         return {"job_id": job_id, "status": "pending", "target_name": target_name}
@@ -5949,6 +5965,129 @@ class QVDaemon:
         analysis_kind = self._require_str(payload, "analysis_kind")
         
         return get_pin_data(project_root, run_id, step_id, analysis_kind)
+    
+    def _handle_get_latest_run_for_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get the latest run_id that includes a specific step.
+        
+        Used by the Analysis panel to determine if "Pin to History" should be enabled.
+        
+        Payload:
+            project_root: str - Path to project root
+            step_id: str - Step ULID
+            
+        Returns:
+            run_id: Optional[str] - Latest run ULID containing this step
+            can_pin: bool - Whether pinning is allowed
+            reason: Optional[str] - Reason if cannot pin
+        """
+        from quantumvitas.history.storage import ProjectHistory
+        from quantumvitas.history.events import EventType
+        
+        project_root = Path(self._require_str(payload, "project_root"))
+        step_id = self._require_str(payload, "step_id")
+        
+        history = ProjectHistory(project_root)
+        
+        # Get latest run_id
+        latest_run_id = history.get_latest_run_id()
+        
+        if not latest_run_id:
+            return {
+                "run_id": None,
+                "can_pin": False,
+                "reason": "No runs found in history",
+            }
+        
+        # Check if the step is in the latest run
+        step_ids_in_run = history.get_run_step_ids(latest_run_id)
+        
+        if step_id not in step_ids_in_run:
+            return {
+                "run_id": None,
+                "can_pin": False,
+                "reason": "Step not in latest run",
+            }
+        
+        return {
+            "run_id": latest_run_id,
+            "can_pin": True,
+            "reason": None,
+        }
+    
+    def _handle_delete_project_history(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Delete the entire .history directory for a project.
+        
+        Safety:
+        - Only deletes the .history directory
+        - Validates path to prevent traversal attacks
+        - Does NOT delete any present-tense truth files
+        
+        Payload:
+            project_root: str - Path to project root
+            confirm: bool - Must be True to confirm deletion
+            
+        Returns:
+            success: bool
+            error: Optional[str]
+            deleted_path: Optional[str] - Path that was deleted
+        """
+        import shutil
+        from quantumvitas.history.storage import HISTORY_DIR_NAME
+        
+        project_root = Path(self._require_str(payload, "project_root"))
+        confirm = payload.get("confirm", False)
+        
+        if not confirm:
+            return {
+                "success": False,
+                "error": "Deletion requires confirmation (confirm: true)",
+            }
+        
+        # Safety: resolve paths and verify
+        project_root = project_root.resolve()
+        history_dir = project_root / HISTORY_DIR_NAME
+        
+        # Validate that history_dir is actually inside project_root
+        try:
+            history_dir_resolved = history_dir.resolve()
+            # Check that it's a subdirectory of project_root
+            if not str(history_dir_resolved).startswith(str(project_root)):
+                return {
+                    "success": False,
+                    "error": "Security error: invalid path",
+                }
+            # Check that it has the expected name
+            if history_dir_resolved.name != HISTORY_DIR_NAME:
+                return {
+                    "success": False,
+                    "error": f"Security error: unexpected path name",
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Path validation error: {e}",
+            }
+        
+        if not history_dir.exists():
+            return {
+                "success": True,
+                "deleted_path": None,
+                "message": "History directory does not exist",
+            }
+        
+        try:
+            shutil.rmtree(history_dir)
+            return {
+                "success": True,
+                "deleted_path": str(history_dir),
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to delete history: {e}",
+            }
     
     # -------------------------------------------------------------------------
     # Workflow Handlers

@@ -885,3 +885,137 @@ class TestGenerateRunId:
         
         assert len(set(ids)) == 100  # All unique
 
+
+class TestJobHistoryIdUnification:
+    """Tests for job_id == run_id unification.
+    
+    These tests verify that:
+    1. External run_id can be passed to create_run_revision
+    2. Job manager generates ULIDs (not UUIDs)
+    3. The same ID is used in both jobs and history
+    """
+    
+    def test_create_run_revision_with_external_id(self, temp_project_dir: Path):
+        """Test that create_run_revision uses external run_id if provided."""
+        external_id = str(ulid.new())
+        
+        revision = create_run_revision(
+            project_root=temp_project_dir,
+            calc_id="calc-001",
+            calc_name="Test Calc",
+            step_ids=["step-001"],
+            step_types=["scf"],
+            run_id=external_id,  # Provide external ID
+        )
+        
+        assert revision.id == external_id
+        
+        # Verify run directory uses the external ID
+        history = ProjectHistory(temp_project_dir)
+        run_dir = history.get_run_dir(external_id)
+        assert run_dir is not None
+        assert run_dir.exists()
+    
+    def test_create_run_revision_generates_id_if_not_provided(self, temp_project_dir: Path):
+        """Test that create_run_revision generates new ID if not provided."""
+        revision = create_run_revision(
+            project_root=temp_project_dir,
+            calc_id="calc-001",
+            calc_name="Test Calc",
+            step_ids=["step-001"],
+            step_types=["scf"],
+            # No run_id provided
+        )
+        
+        # Should have generated a valid ULID
+        assert revision.id is not None
+        parsed = ulid.parse(revision.id)
+        assert parsed is not None
+    
+    def test_job_manager_generates_ulid(self):
+        """Test that JobManager generates ULIDs (not UUIDs)."""
+        from quantumvitas.daemon.jobs import JobManager
+        
+        manager = JobManager()
+        
+        # Submit a dummy job
+        job_id = manager.submit(
+            job_type="test_job",
+            func=lambda: {"status": "ok"},
+            params={},
+        )
+        
+        # Job ID should be a valid ULID
+        parsed = ulid.parse(job_id)
+        assert parsed is not None
+        
+        manager.shutdown(wait=True)
+    
+    def test_job_manager_submit_with_id(self):
+        """Test that JobManager.submit_with_id uses provided ID."""
+        from quantumvitas.daemon.jobs import JobManager
+        
+        manager = JobManager()
+        
+        external_id = str(ulid.new())
+        
+        # Submit with specific ID
+        returned_id = manager.submit_with_id(
+            job_id=external_id,
+            job_type="test_job",
+            func=lambda: {"status": "ok"},
+            params={},
+        )
+        
+        assert returned_id == external_id
+        
+        # Verify job is tracked with that ID
+        job = manager.get_job(external_id)
+        assert job is not None
+        assert job.id == external_id
+        
+        manager.shutdown(wait=True)
+    
+    def test_run_revision_events_use_same_id(self, temp_project_dir: Path):
+        """Test that run events reference the same ID as the revision."""
+        external_id = str(ulid.new())
+        
+        # Create revision with external ID
+        revision = create_run_revision(
+            project_root=temp_project_dir,
+            calc_id="calc-001",
+            calc_name="Test Calc",
+            step_ids=["step-001"],
+            step_types=["scf"],
+            run_id=external_id,
+        )
+        
+        # Create run events (simulating what runner does)
+        history = ProjectHistory(temp_project_dir)
+        
+        started_event = RunStartedEvent.create(
+            project_id=revision.project_id,
+            calc_id="calc-001",
+            run_id=external_id,  # Same ID
+            step_ids=["step-001"],
+            step_types=["scf"],
+        )
+        history.append_event(started_event)
+        
+        finished_event = RunFinishedEvent.create(
+            project_id=revision.project_id,
+            calc_id="calc-001",
+            run_id=external_id,  # Same ID
+            status="success",
+        )
+        history.append_event(finished_event)
+        
+        # Verify all reference the same ID
+        assert revision.id == external_id
+        assert started_event.run_id == external_id
+        assert finished_event.run_id == external_id
+        
+        # Verify get_latest_run_id returns the external ID
+        latest = get_latest_run_id(temp_project_dir)
+        assert latest == external_id
+
