@@ -1,18 +1,23 @@
 """
 Calculation runner orchestrates step execution and verification.
+
+Integrates with Project History to record run revisions and events.
 """
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from .calculation import Calculation
 from .results import CalculationResult, StepResultSummary
 from .types import StepMode, StepStatus, StepType
 from .verification import evaluate_step_result
 from quantumvitas.engine.registry import EngineRegistry
+
+logger = logging.getLogger(__name__)
 
 
 def compute_io_dir_from_calculation_model(calculation_dir: Path, working_dir_name: Optional[str] = None) -> Path:
@@ -59,12 +64,35 @@ class CalculationRunner:
     def __init__(self, engine_registry: EngineRegistry):
         self.engine_registry = engine_registry
 
-    def run(self, calculation: Calculation) -> CalculationResult:
+    def run(
+        self,
+        calculation: Calculation,
+        *,
+        skip_history: bool = False,
+    ) -> CalculationResult:
+        """
+        Execute all steps in a calculation.
+        
+        Args:
+            calculation: The calculation to execute
+            skip_history: If True, skip history recording (for testing)
+            
+        Returns:
+            CalculationResult with status and step summaries
+        """
         calculation.io.ensure()
         started = datetime.now(timezone.utc)
         step_summaries: List[StepResultSummary] = []
         status = StepStatus.SUCCESS
         calculation_failed = False
+        
+        # History: Create run revision and record run_started event
+        run_revision = None
+        run_id = None
+        if not skip_history:
+            run_revision, run_id = self._start_history_recording(
+                calculation, started
+            )
 
         # Step0: Prepare pseudos in project/pseudo (constitution-compliant)
         # This is the ONLY place allowed to mutate project/pseudo
@@ -300,6 +328,17 @@ class CalculationRunner:
         finished = datetime.now(timezone.utc)
         # Get the actual I/O directory used by the runner (source of truth)
         io_dir = calculation.raw_dir.resolve() if calculation.raw_dir else None
+        
+        # History: Complete run revision and record run_finished event
+        if not skip_history and run_id:
+            self._complete_history_recording(
+                calculation=calculation,
+                run_id=run_id,
+                status=status,
+                step_summaries=step_summaries,
+                working_dir=io_dir,
+            )
+        
         return CalculationResult(
             calculation_id=calculation.id,
             mode=calculation.mode,
@@ -308,5 +347,172 @@ class CalculationRunner:
             started_at=started,
             finished_at=finished,
             io_dir=io_dir,  # The actual I/O directory used by the runner
+            run_id=run_id,  # Include run_id for history reference
         )
+    
+    def _start_history_recording(
+        self,
+        calculation: Calculation,
+        started: datetime,
+    ) -> tuple:
+        """
+        Create run revision and record run_started event.
+        
+        Returns:
+            Tuple of (run_revision, run_id) or (None, None) on error
+        """
+        try:
+            from quantumvitas.history.run_revision import create_run_revision
+            from quantumvitas.history.storage import ProjectHistory
+            from quantumvitas.history.events import RunStartedEvent
+            
+            # Gather step info
+            step_ids = [s.id for s in calculation.steps]
+            step_types = [
+                s.step_type.value if hasattr(s.step_type, "value") else str(s.step_type)
+                for s in calculation.steps
+            ]
+            
+            # Get preset options if available
+            preset_options = None
+            try:
+                from quantumvitas.presets.integration import detect_presets_from_calculation
+                preset_options = detect_presets_from_calculation(calculation.dir)
+                # Convert to string representations
+                if preset_options:
+                    preset_options = {
+                        k: v.value if hasattr(v, "value") else str(v)
+                        for k, v in preset_options.items()
+                    }
+            except Exception:
+                pass
+            
+            # Get engine info
+            engine_version = None
+            engine_path = None
+            if self.engine_registry and calculation.steps:
+                first_step = calculation.steps[0]
+                engine = self.engine_registry.get(first_step.engine)
+                if engine:
+                    engine_version = getattr(engine, "version", None)
+                    engine_path = str(getattr(engine, "executable_path", ""))
+            
+            # Create run revision
+            run_revision = create_run_revision(
+                project_root=calculation.project.root,
+                calc_id=calculation.id,
+                calc_name=calculation.name if hasattr(calculation, "name") else None,
+                step_ids=step_ids,
+                step_types=step_types,
+                structure_id=getattr(calculation, "structure_id", None),
+                structure_name=getattr(calculation, "structure_name", None),
+                engine="qe",
+                engine_version=engine_version,
+                engine_path=engine_path,
+                preset_options=preset_options,
+                species_map=calculation.species_map,
+                working_dir=calculation.raw_dir,
+                create_snapshot=True,
+            )
+            
+            run_id = run_revision.id
+            
+            # Record run_started event
+            history = ProjectHistory(calculation.project.root)
+            project_id = run_revision.project_id
+            
+            event = RunStartedEvent.create(
+                project_id=project_id,
+                calc_id=calculation.id,
+                run_id=run_id,
+                calc_name=calculation.name if hasattr(calculation, "name") else None,
+                step_ids=step_ids,
+                step_types=step_types,
+                engine="qe",
+                structure_id=getattr(calculation, "structure_id", None),
+                snapshot_path=run_revision.snapshot_path,
+            )
+            history.append_event(event)
+            
+            logger.debug(f"[HISTORY] Created run revision: {run_id}")
+            return run_revision, run_id
+            
+        except Exception as e:
+            logger.warning(f"[HISTORY] Failed to start history recording: {e}")
+            return None, None
+    
+    def _complete_history_recording(
+        self,
+        calculation: Calculation,
+        run_id: str,
+        status: StepStatus,
+        step_summaries: List[StepResultSummary],
+        working_dir: Optional[Path],
+    ) -> None:
+        """
+        Complete run revision with digests and record run_finished event.
+        """
+        try:
+            from quantumvitas.history.run_revision import complete_run_revision
+            from quantumvitas.history.storage import ProjectHistory
+            from quantumvitas.history.events import RunFinishedEvent
+            
+            # Convert step summaries to the format expected by complete_run_revision
+            step_results = []
+            for summary in step_summaries:
+                step_results.append({
+                    "step_id": summary.step_id,
+                    "step_type": summary.step_type,
+                    "step_name": getattr(summary, "step_name", None),
+                    "status": summary.status.value if hasattr(summary.status, "value") else str(summary.status),
+                    "message": summary.message,
+                })
+            
+            # Determine status string
+            status_str = "success" if status == StepStatus.SUCCESS else "failed"
+            
+            # Error summary for failed runs
+            error_summary = None
+            if status != StepStatus.SUCCESS:
+                failed_steps = [s for s in step_summaries if s.status != StepStatus.SUCCESS]
+                if failed_steps:
+                    error_summary = f"Failed steps: {', '.join(s.step_id for s in failed_steps[:3])}"
+                    if len(failed_steps) > 3:
+                        error_summary += f" (+{len(failed_steps) - 3} more)"
+            
+            # Complete run revision with digests
+            run_revision = complete_run_revision(
+                project_root=calculation.project.root,
+                run_id=run_id,
+                status=status_str,
+                step_results=step_results,
+                working_dir=working_dir or calculation.raw_dir,
+                error_summary=error_summary,
+            )
+            
+            # Record run_finished event
+            history = ProjectHistory(calculation.project.root)
+            
+            run_digest = run_revision.run_digest or {}
+            duration = run_digest.get("duration_seconds")
+            success_count = run_digest.get("success_count", 0)
+            failure_count = run_digest.get("failed_count", 0)
+            
+            event = RunFinishedEvent.create(
+                project_id=run_revision.project_id,
+                calc_id=calculation.id,
+                run_id=run_id,
+                status=status_str,
+                duration_seconds=duration,
+                step_count=len(step_summaries),
+                success_count=success_count,
+                failure_count=failure_count,
+                error_summary=error_summary,
+            )
+            history.append_event(event)
+            
+            logger.debug(f"[HISTORY] Completed run revision: {run_id} ({status_str})")
+            
+        except Exception as e:
+            logger.warning(f"[HISTORY] Failed to complete history recording: {e}")
 

@@ -32,6 +32,7 @@ import {
   DeleteConfirmDialog,
   JobsPanel,
   SettingsPanel,
+  HistoryPanel,
   QEParameterBrowserPanel,
   ErrorBoundary,
   CalculationOverviewTab,
@@ -2441,6 +2442,13 @@ function App() {
           />
         );
         
+      case 'history':
+        return (
+          <HistoryPanel 
+            projectRoot={projectRoot}
+          />
+        );
+        
       case 'resources':
         return <QEParameterBrowserPanel />;
         
@@ -2511,6 +2519,7 @@ function App() {
               {currentView === 'structures' && 'Structures'}
               {currentView === 'calculations' && 'Calculations'}
               {currentView === 'jobs' && 'Jobs'}
+              {currentView === 'history' && 'History'}
               {currentView === 'resources' && 'Resources'}
               {currentView === 'settings' && 'Settings'}
             </h2>
