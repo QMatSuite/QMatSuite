@@ -114,24 +114,38 @@ def load_yaml_doc(
     return doc_type(data, **kwargs)
 
 
-def save_yaml_doc(doc: YamlDoc, path: Path, *, skip_journal: bool = False) -> None:
+def save_yaml_doc(
+    doc: YamlDoc,
+    path: Path,
+    *,
+    skip_journal: bool = False,
+    skip_history: bool = False,
+    actor: Optional[str] = None,
+) -> None:
     """
     Save Doc to YAML file.
     
     This is the SINGLE COMMIT POINT for all YAML changes.
-    Journal is hooked here - no other place records changes.
+    Journal and Project History are hooked here - no other place records changes.
     
     Args:
         doc: Document to save
         path: Path to save to
         skip_journal: If True, skip journal recording (for internal use)
+        skip_history: If True, skip project history recording
+        actor: Actor for history event ("gui", "cli", "daemon", "system")
         
     Journal Integration:
         - Captures before (snapshot) and after (current state)
         - Records entry with target ULID from meta.id
         - Infers doc_type from document structure
+        
+    Project History Integration:
+        - Records semantic edit events for project-scoped files
+        - Computes structured diffs (not text diffs)
+        - Stored in project/.history/events.jsonl
     """
-    # Capture before/after for Journal
+    # Capture before/after for Journal and History
     before = doc.get_snapshot()
     after = doc.to_dict()
     
@@ -180,6 +194,191 @@ def save_yaml_doc(doc: YamlDoc, path: Path, *, skip_journal: bool = False) -> No
             # Journal failures should not break saves
             # In production, consider logging this
             pass
+    
+    # Record in Project History (lazy import to avoid circular dependencies)
+    if not skip_history and before is not None:
+        try:
+            _record_history_edit_event(
+                resolved_path=resolved_path,
+                before=before,
+                after=after,
+                actor=actor,
+            )
+        except Exception:
+            # History failures should not break saves
+            pass
+
+
+def _record_history_edit_event(
+    resolved_path: Path,
+    before: dict,
+    after: dict,
+    actor: Optional[str] = None,
+) -> None:
+    """
+    Record a semantic edit event in project history.
+    
+    Only records if we can determine the project root from the path.
+    """
+    from quantumvitas.history.events import (
+        EditEvent,
+        EditChange,
+        EditOperation,
+        compute_semantic_diff,
+    )
+    from quantumvitas.history.storage import ProjectHistory
+    
+    # Try to find project root by walking up from the file path
+    project_root = _find_project_root(resolved_path)
+    if project_root is None:
+        return  # Not inside a project, skip history recording
+    
+    history = ProjectHistory(project_root)
+    
+    # Ensure baseline exists
+    history.ensure_baseline()
+    
+    # Determine doc type and IDs
+    doc_type = _infer_history_doc_type(after)
+    project_id = _extract_project_id(project_root)
+    calc_id = _extract_calc_id(after, resolved_path)
+    step_id = _extract_step_id(after)
+    
+    # Compute semantic diff
+    changes = compute_semantic_diff(before, after)
+    
+    # Skip if no changes
+    if not changes:
+        return
+    
+    # Generate summary
+    summary = _generate_edit_summary(doc_type, changes)
+    
+    # Get relative path
+    try:
+        rel_path = str(resolved_path.relative_to(project_root))
+    except ValueError:
+        rel_path = str(resolved_path)
+    
+    # Create and append event
+    event = EditEvent.create(
+        project_id=project_id,
+        calc_id=calc_id,
+        step_id=step_id,
+        doc_type=doc_type,
+        doc_path=rel_path,
+        changes=[c.__dict__ if hasattr(c, "__dict__") else c for c in changes],
+        actor=actor,
+        summary=summary,
+    )
+    
+    history.append_event(event)
+
+
+def _find_project_root(path: Path) -> Optional[Path]:
+    """
+    Find project root by walking up from path looking for project.qv.yml.
+    """
+    current = path.resolve()
+    if current.is_file():
+        current = current.parent
+    
+    while current != current.parent:  # Stop at filesystem root
+        if (current / "project.qv.yml").exists():
+            return current
+        current = current.parent
+    
+    return None
+
+
+def _infer_history_doc_type(data: dict) -> str:
+    """Infer document type from data structure."""
+    meta = data.get("meta", {})
+    kind = meta.get("kind", "")
+    
+    if kind == "step":
+        return "step"
+    if kind == "calculation":
+        return "calc"
+    if kind == "project":
+        return "project"
+    if kind == "structure":
+        return "structure"
+    
+    # Heuristics
+    if "step_type" in data or "parameters" in data:
+        return "step"
+    if "steps" in data or "structure_id" in data:
+        return "calc"
+    if "calculations" in data or "structures" in data:
+        return "project"
+    
+    return "unknown"
+
+
+def _extract_project_id(project_root: Path) -> str:
+    """Extract project ID from project.qv.yml."""
+    try:
+        from quantumvitas.core.project_utils import load_project_config
+        config = load_project_config(project_root)
+        return config.get("project", {}).get("meta", {}).get("id", "")
+    except Exception:
+        return ""
+
+
+def _extract_calc_id(data: dict, path: Path) -> Optional[str]:
+    """Extract calculation ID from data or path context."""
+    # From data meta
+    meta = data.get("meta", {})
+    if meta.get("kind") == "calculation":
+        return meta.get("id")
+    
+    # From step's parent calculation
+    if meta.get("kind") == "step":
+        # Try to find calculation.yaml in parent directories
+        current = path.parent
+        for _ in range(3):  # Max depth
+            calc_yaml = current / "calculation.yaml"
+            if calc_yaml.exists():
+                try:
+                    import yaml
+                    calc_data = yaml.safe_load(calc_yaml.read_text()) or {}
+                    return calc_data.get("meta", {}).get("id")
+                except Exception:
+                    pass
+            current = current.parent
+    
+    return None
+
+
+def _extract_step_id(data: dict) -> Optional[str]:
+    """Extract step ID from data."""
+    meta = data.get("meta", {})
+    if meta.get("kind") == "step":
+        return meta.get("id")
+    return None
+
+
+def _generate_edit_summary(doc_type: str, changes: list) -> str:
+    """Generate human-readable summary of changes."""
+    n_changes = len(changes)
+    
+    if n_changes == 0:
+        return f"Saved {doc_type}"
+    
+    # Count operation types
+    sets = sum(1 for c in changes if getattr(c, "op", c.get("op") if isinstance(c, dict) else None) == "set")
+    deletes = sum(1 for c in changes if getattr(c, "op", c.get("op") if isinstance(c, dict) else None) == "delete")
+    
+    parts = []
+    if sets:
+        parts.append(f"+{sets}")
+    if deletes:
+        parts.append(f"-{deletes}")
+    
+    if parts:
+        return f"Edited {doc_type} ({', '.join(parts)} changes)"
+    return f"Edited {doc_type} ({n_changes} changes)"
 
 
 # =============================================================================

@@ -345,6 +345,14 @@ class QVDaemon:
             "list_journal_entries": self._handle_list_journal_entries,
             "get_journal_entry": self._handle_get_journal_entry,
             
+            # Project History (notebook timeline)
+            "get_project_history": self._handle_get_project_history,
+            "get_run_revision": self._handle_get_run_revision,
+            "list_project_runs": self._handle_list_project_runs,
+            "pin_analysis_to_history": self._handle_pin_analysis_to_history,
+            "can_pin_to_run": self._handle_can_pin_to_run,
+            "get_pin_data": self._handle_get_pin_data,
+            
             # Workflow operations
             "list_workflow_templates": self._handle_list_workflow_templates,
             "detect_workflow": self._handle_detect_workflow,
@@ -5666,6 +5674,281 @@ class QVDaemon:
             return {"entry": None}
         
         return {"entry": entry.to_dict()}
+    
+    # -------------------------------------------------------------------------
+    # Project History Handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_get_project_history(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get project history timeline for notebook view.
+        
+        Payload:
+            project_root: str - Path to project root
+            limit: Optional[int] - Maximum events (default 100)
+            calc_id: Optional[str] - Filter by calculation ID
+            
+        Returns:
+            timeline: List of timeline entries (runs, edits, pins)
+            latest_run_id: Latest run ULID or null
+        """
+        from quantumvitas.history.storage import ProjectHistory
+        from quantumvitas.history.events import EventType
+        from quantumvitas.history.run_revision import load_run_revision
+        
+        project_root = Path(self._require_str(payload, "project_root"))
+        limit = payload.get("limit", 100)
+        calc_id = payload.get("calc_id")
+        
+        history = ProjectHistory(project_root)
+        
+        # Get all events
+        events = history.list_events(
+            calc_id=calc_id,
+            limit=limit,
+            reverse=True,
+        )
+        
+        # Build timeline entries
+        timeline = []
+        run_info_cache = {}
+        
+        for event in events:
+            entry = {
+                "id": event.id,
+                "timestamp": event.timestamp,
+                "event_type": event.event_type,
+                "calc_id": event.calc_id,
+                "step_id": event.step_id,
+            }
+            
+            if event.event_type == EventType.RUN_STARTED.value:
+                entry["run_id"] = getattr(event, "run_id", "")
+                entry["step_ids"] = getattr(event, "step_ids", [])
+                entry["step_types"] = getattr(event, "step_types", [])
+                entry["calc_name"] = getattr(event, "calc_name", "")
+                
+            elif event.event_type == EventType.RUN_FINISHED.value:
+                run_id = getattr(event, "run_id", "")
+                entry["run_id"] = run_id
+                entry["status"] = getattr(event, "status", "")
+                entry["duration_seconds"] = getattr(event, "duration_seconds", None)
+                entry["step_count"] = getattr(event, "step_count", 0)
+                entry["success_count"] = getattr(event, "success_count", 0)
+                entry["failure_count"] = getattr(event, "failure_count", 0)
+                entry["error_summary"] = getattr(event, "error_summary", None)
+                
+                # Try to load run digest
+                if run_id and run_id not in run_info_cache:
+                    run_dir = history.get_run_dir(run_id)
+                    if run_dir:
+                        try:
+                            revision = load_run_revision(run_dir)
+                            run_info_cache[run_id] = {
+                                "run_digest": revision.run_digest,
+                                "step_digests": revision.step_digests,
+                            }
+                        except Exception:
+                            pass
+                
+                if run_id in run_info_cache:
+                    entry["run_digest"] = run_info_cache[run_id].get("run_digest")
+                    entry["step_digests"] = run_info_cache[run_id].get("step_digests")
+                
+            elif event.event_type == EventType.EDIT.value:
+                entry["doc_type"] = getattr(event, "doc_type", "")
+                entry["doc_path"] = getattr(event, "doc_path", "")
+                entry["summary"] = getattr(event, "summary", "")
+                entry["actor"] = getattr(event, "actor", "")
+                
+            elif event.event_type == EventType.PIN_CREATED.value:
+                entry["run_id"] = getattr(event, "run_id", "")
+                entry["analysis_kind"] = getattr(event, "analysis_kind", "")
+                entry["pin_path"] = getattr(event, "pin_path", "")
+                
+            elif event.event_type == EventType.BASELINE.value:
+                entry["structure_ids"] = getattr(event, "structure_ids", [])
+                entry["calculation_ids"] = getattr(event, "calculation_ids", [])
+            
+            timeline.append(entry)
+        
+        latest_run_id = history.get_latest_run_id()
+        
+        return {
+            "timeline": timeline,
+            "latest_run_id": latest_run_id,
+            "total": len(timeline),
+        }
+    
+    def _handle_get_run_revision(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get details of a specific run revision.
+        
+        Payload:
+            project_root: str - Path to project root
+            run_id: str - Run ULID
+            
+        Returns:
+            revision: Run revision dict or null
+        """
+        from quantumvitas.history.storage import ProjectHistory
+        from quantumvitas.history.run_revision import load_run_revision
+        
+        project_root = Path(self._require_str(payload, "project_root"))
+        run_id = self._require_str(payload, "run_id")
+        
+        history = ProjectHistory(project_root)
+        run_dir = history.get_run_dir(run_id)
+        
+        if not run_dir:
+            return {"revision": None, "error": f"Run not found: {run_id}"}
+        
+        try:
+            revision = load_run_revision(run_dir)
+            return {"revision": revision.to_dict()}
+        except Exception as e:
+            return {"revision": None, "error": str(e)}
+    
+    def _handle_list_project_runs(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List all runs for a project.
+        
+        Payload:
+            project_root: str - Path to project root
+            calc_id: Optional[str] - Filter by calculation ID
+            limit: Optional[int] - Maximum runs (default 50)
+            
+        Returns:
+            runs: List of run summaries
+        """
+        from quantumvitas.history.storage import ProjectHistory
+        from quantumvitas.history.run_revision import load_run_revision
+        
+        project_root = Path(self._require_str(payload, "project_root"))
+        calc_id = payload.get("calc_id")
+        limit = payload.get("limit", 50)
+        
+        history = ProjectHistory(project_root)
+        run_ids = history.list_runs(calc_id=calc_id, limit=limit)
+        
+        runs = []
+        for run_id in run_ids:
+            run_dir = history.get_run_dir(run_id)
+            if run_dir:
+                try:
+                    revision = load_run_revision(run_dir)
+                    runs.append({
+                        "run_id": run_id,
+                        "calc_id": revision.calc_id,
+                        "calc_name": revision.calc_name,
+                        "status": revision.status,
+                        "started_at": revision.started_at,
+                        "finished_at": revision.finished_at,
+                        "step_count": len(revision.step_ids),
+                        "run_digest": revision.run_digest,
+                    })
+                except Exception:
+                    runs.append({
+                        "run_id": run_id,
+                        "error": "Failed to load run revision",
+                    })
+        
+        return {
+            "runs": runs,
+            "total": len(runs),
+        }
+    
+    def _handle_pin_analysis_to_history(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Pin analysis results to history.
+        
+        Payload:
+            project_root: str - Path to project root
+            run_id: str - Run ULID
+            step_id: str - Step ULID
+            analysis_kind: str - Type of analysis (e.g., "bands", "dos")
+            png_data_base64: Optional[str] - Base64-encoded PNG data
+            json_payload: Optional[dict] - JSON data to store
+            
+        Returns:
+            result: Pin result dict
+        """
+        import base64
+        from quantumvitas.history.pins import pin_analysis_to_history, PinError
+        
+        project_root = Path(self._require_str(payload, "project_root"))
+        run_id = self._require_str(payload, "run_id")
+        step_id = self._require_str(payload, "step_id")
+        analysis_kind = self._require_str(payload, "analysis_kind")
+        
+        # Decode PNG if provided
+        png_data = None
+        png_base64 = payload.get("png_data_base64")
+        if png_base64:
+            try:
+                png_data = base64.b64decode(png_base64)
+            except Exception as e:
+                return {"success": False, "error": f"Failed to decode PNG: {e}"}
+        
+        json_payload = payload.get("json_payload")
+        
+        try:
+            result = pin_analysis_to_history(
+                project_root=project_root,
+                run_id=run_id,
+                step_id=step_id,
+                analysis_kind=analysis_kind,
+                png_data=png_data,
+                json_payload=json_payload,
+            )
+            return result.to_dict()
+        except PinError as e:
+            return {"success": False, "error": str(e)}
+    
+    def _handle_can_pin_to_run(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Check if pinning is allowed for a run and step.
+        
+        Payload:
+            project_root: str - Path to project root
+            run_id: str - Run ULID
+            step_id: str - Step ULID
+            
+        Returns:
+            allowed: bool
+            reason: Optional[str] - Reason if not allowed
+        """
+        from quantumvitas.history.pins import can_pin_to_run
+        
+        project_root = Path(self._require_str(payload, "project_root"))
+        run_id = self._require_str(payload, "run_id")
+        step_id = self._require_str(payload, "step_id")
+        
+        return can_pin_to_run(project_root, run_id, step_id)
+    
+    def _handle_get_pin_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get pinned data for a step analysis.
+        
+        Payload:
+            project_root: str - Path to project root
+            run_id: str - Run ULID
+            step_id: str - Step ULID
+            analysis_kind: str - Type of analysis
+            
+        Returns:
+            png_path: Optional[str] - Path to PNG file
+            json_path: Optional[str] - Path to JSON file
+            json_data: Optional[dict] - Parsed JSON data
+        """
+        from quantumvitas.history.pins import get_pin_data
+        
+        project_root = Path(self._require_str(payload, "project_root"))
+        run_id = self._require_str(payload, "run_id")
+        step_id = self._require_str(payload, "step_id")
+        analysis_kind = self._require_str(payload, "analysis_kind")
+        
+        return get_pin_data(project_root, run_id, step_id, analysis_kind)
     
     # -------------------------------------------------------------------------
     # Workflow Handlers

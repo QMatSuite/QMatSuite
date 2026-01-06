@@ -18,4 +18,5 @@ export { CalculationAnalysisPanel } from './CalculationAnalysisPanel';
 export { CalculationOverviewTab } from './CalculationOverviewTab';
 export { CalculationRunTab } from './CalculationRunTab';
 export { CalculationAnalysisTab } from './CalculationAnalysisTab';
+export { HistoryPanel } from './HistoryPanel';
 export type { AppSettings } from './SettingsPanel';
