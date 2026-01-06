@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import os
 import traceback
-import uuid
 from concurrent.futures import ThreadPoolExecutor, Future
+
+import ulid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -156,7 +157,7 @@ class JobManager:
         Returns:
             Job ID
         """
-        job_id = str(uuid.uuid4())
+        job_id = str(ulid.new())
         
         # Initialize steps if provided (for calculation jobs, steps are known at creation time)
         steps = initial_steps or []
@@ -254,6 +255,145 @@ class JobManager:
                                             # Update status and timestamps
                                             job_step["status"] = result_step.get("status", job_step.get("status", "pending"))
                                             # Note: result steps may not have started_at/ended_at, preserve existing if not provided
+                                            if "started_at" in result_step:
+                                                job_step["started_at"] = result_step.get("started_at")
+                                            if "ended_at" in result_step or "completed_at" in result_step:
+                                                job_step["ended_at"] = result_step.get("ended_at") or result_step.get("completed_at")
+                                            break
+                
+                with self._lock:
+                    job.status = JobStatus.COMPLETED
+                    job.completed_at = datetime.now(timezone.utc)
+                    job.result = result
+                    
+            except Exception as e:
+                with self._lock:
+                    job.status = JobStatus.FAILED
+                    job.completed_at = datetime.now(timezone.utc)
+                    job.error = str(e)
+                    job.error_traceback = traceback.format_exc()
+        
+        # Submit to executor
+        future = self._executor.submit(execute_job)
+        
+        with self._lock:
+            self._futures[job_id] = future
+        
+        return job_id
+    
+    def submit_with_id(
+        self,
+        job_id: str,
+        job_type: str,
+        func: Callable[..., Dict[str, Any]],
+        params: Dict[str, Any],
+        target_name: Optional[str] = None,
+        project_root_display: Optional[str] = None,
+        initial_steps: Optional[List[Dict[str, Any]]] = None,
+        initial_io_dir: Optional[str] = None,
+        **kwargs,
+    ) -> str:
+        """
+        Submit a job with a specific ID for background execution.
+        
+        This method is used when the job_id must equal a history run_id,
+        ensuring job_id == run_id identity for the Jobs ↔ History unification.
+        
+        Args:
+            job_id: The specific job ID to use (typically a ULID)
+            job_type: Type of job (e.g., "run_calculation")
+            func: Function to execute (should return Dict[str, Any])
+            params: Parameters to store with job (for reference)
+            target_name: Human-readable target name (e.g., calculation name)
+            project_root_display: Project root path (for display only)
+            initial_steps: Initial step status list
+            initial_io_dir: Initial I/O directory path
+            **kwargs: Arguments to pass to func
+            
+        Returns:
+            Job ID (same as input job_id)
+        """
+        # Initialize steps if provided
+        steps = initial_steps or []
+        
+        # Initialize io_dir if provided
+        io_dir = None
+        if initial_io_dir:
+            io_dir_path = Path(initial_io_dir)
+            if not io_dir_path.is_absolute() and project_root_display:
+                io_dir_path = Path(project_root_display) / io_dir_path
+            io_dir = str(io_dir_path.resolve())
+        
+        job = Job(
+            id=job_id,
+            job_type=job_type,
+            params=params,
+            target_name=target_name,
+            project_root=project_root_display,
+            steps=steps if steps else None,
+            io_dir=io_dir,
+        )
+        
+        with self._lock:
+            self._jobs[job_id] = job
+        
+        # Wrapper function to handle execution and status updates
+        def execute_job():
+            with self._lock:
+                job.status = JobStatus.RUNNING
+                job.started_at = datetime.now(timezone.utc)
+            
+            try:
+                result = func(**kwargs)
+                
+                # Try to extract output file and io_dir from result
+                if isinstance(result, dict):
+                    output_file = result.get("output_file") or result.get("last_output_file")
+                    if output_file:
+                        with self._lock:
+                            job.output_file = str(output_file)
+                        self._update_last_log_line(job)
+                    
+                    # Extract io_dir from result
+                    final_io_dir = (
+                        result.get("io_dir") or 
+                        result.get("working_dir") or 
+                        result.get("work_dir") or 
+                        result.get("raw_dir")
+                    )
+                    if final_io_dir:
+                        io_dir_path = Path(final_io_dir)
+                        if not io_dir_path.is_absolute():
+                            if job.project_root:
+                                io_dir_path = Path(job.project_root) / io_dir_path
+                            io_dir_path = io_dir_path.resolve()
+                        final_io_dir_str = str(io_dir_path)
+                        
+                        if job.io_dir and job.io_dir != final_io_dir_str:
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.warning(
+                                f"[WARN] job {job.id} planned io_dir != final io_dir: "
+                                f"planned={job.io_dir}, final={final_io_dir_str}"
+                            )
+                        
+                        with self._lock:
+                            job.io_dir = final_io_dir_str
+                    
+                    # Update steps status from result
+                    if job.steps and "steps" in result:
+                        result_steps = result["steps"]
+                        if isinstance(result_steps, list):
+                            with self._lock:
+                                for job_step in job.steps:
+                                    step_id = job_step.get("step_id")
+                                    step_type = job_step.get("step_type")
+                                    for result_step in result_steps:
+                                        result_step_id = result_step.get("step_id")
+                                        result_step_type = result_step.get("step_type")
+                                        if (step_id and result_step_id and step_id == result_step_id) or \
+                                           (step_type and result_step_type and step_type == result_step_type):
+                                            job_step["status"] = result_step.get("status", job_step.get("status", "pending"))
                                             if "started_at" in result_step:
                                                 job_step["started_at"] = result_step.get("started_at")
                                             if "ended_at" in result_step or "completed_at" in result_step:

@@ -331,7 +331,7 @@ export interface JobStepInfo {
 }
 
 export interface JobInfo {
-  id: string;
+  id: string;  // Job ID (ULID) - equals run_id in History for unified identity
   job_type: string;
   status: JobStatus;
   created_at: string;
@@ -1646,6 +1646,73 @@ export interface QVCommandMap {
     };
     result: StepFootprintsResult;
   };
+  
+  // History RPC commands
+  get_project_history: {
+    payload: {
+      project_root: string;
+      limit?: number;
+      calc_id?: string;
+    };
+    result: {
+      timeline: HistoryTimelineEntry[];
+      latest_run_id: string | null;
+      total: number;
+    };
+  };
+  
+  get_latest_run_for_step: {
+    payload: {
+      project_root: string;
+      step_id: string;
+    };
+    result: {
+      run_id: string | null;
+      can_pin: boolean;
+      reason: string | null;
+    };
+  };
+  
+  can_pin_to_run: {
+    payload: {
+      project_root: string;
+      run_id: string;
+      step_id: string;
+    };
+    result: {
+      allowed: boolean;
+      reason: string | null;
+    };
+  };
+  
+  pin_analysis_to_history: {
+    payload: {
+      project_root: string;
+      run_id: string;
+      step_id: string;
+      analysis_kind: string;
+      png_data_base64?: string;
+      json_payload?: Record<string, unknown>;
+    };
+    result: {
+      success: boolean;
+      pin_path?: string;
+      error?: string;
+    };
+  };
+  
+  delete_project_history: {
+    payload: {
+      project_root: string;
+      confirm: boolean;
+    };
+    result: {
+      success: boolean;
+      error?: string;
+      deleted_path?: string;
+      message?: string;
+    };
+  };
 }
 
 // =============================================================================
@@ -1735,6 +1802,45 @@ export interface DemoProjectInfo {
   tags?: string[];
   difficulty?: string;
   estimated_runtime_scf?: number | null;
+}
+
+// History types (for get_project_history)
+export interface HistoryTimelineEntry {
+  id: string;
+  timestamp: string;
+  event_type: string;
+  calc_id?: string;
+  step_id?: string;
+  run_id?: string;
+  step_ids?: string[];
+  step_types?: string[];
+  calc_name?: string;
+  status?: string;
+  duration_seconds?: number;
+  step_count?: number;
+  success_count?: number;
+  failure_count?: number;
+  error_summary?: string;
+  run_digest?: {
+    total_energy_ry?: number;
+    fermi_energy_ev?: number;
+    converged?: boolean;
+  };
+  step_digests?: Array<{
+    step_id: string;
+    step_type: string;
+    status: string;
+    total_energy?: { value: number | null; status: string };
+    fermi_energy?: { value: number | null; status: string };
+  }>;
+  doc_type?: string;
+  doc_path?: string;
+  summary?: string;
+  actor?: string;
+  analysis_kind?: string;
+  pin_path?: string;
+  structure_ids?: string[];
+  calculation_ids?: string[];
 }
 
 export interface DemoProjectResult {
