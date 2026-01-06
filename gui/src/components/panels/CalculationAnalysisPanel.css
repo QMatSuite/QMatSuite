@@ -170,5 +170,66 @@
 .calculation-analysis-panel__plot-container {
   height: 100%;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Pin to History bar */
+.calculation-analysis-panel__pin-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.calculation-analysis-panel__pin-button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--color-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.calculation-analysis-panel__pin-button:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+}
+
+.calculation-analysis-panel__pin-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.calculation-analysis-panel__pin-button--disabled {
+  border-color: var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.calculation-analysis-panel__pin-reason {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.calculation-analysis-panel__pin-success {
+  font-size: var(--text-xs);
+  color: var(--color-success);
+  font-weight: var(--font-medium);
+}
+
+.calculation-analysis-panel__pin-success--error {
+  color: var(--color-warning);
 }
 

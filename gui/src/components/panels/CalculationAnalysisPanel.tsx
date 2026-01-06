@@ -4,9 +4,10 @@
  * Shows one entry per calculation step with:
  * - Text view: Step output file content (StepOutputTextViewer)
  * - Plot view: Analysis plots for supported step types (scf/dos/bands)
+ * - Pin to History: Save analysis plots to project history (bands/dos)
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQVClient } from '../../hooks/useQVClient';
 import { ScfConvergenceChart, DosChart, BandsChart } from './AnalysisPanel';
 import { StepOutputTextViewer } from './StepOutputTextViewer';
@@ -237,6 +238,12 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
   // Track failed loads to prevent infinite retries
   const [failedLoads, setFailedLoads] = useState<Set<string>>(new Set());
   
+  // Pin to History state
+  const [pinInfo, setPinInfo] = useState<{ run_id: string | null; can_pin: boolean; reason: string | null } | null>(null);
+  const [isPinning, setIsPinning] = useState(false);
+  const [pinSuccess, setPinSuccess] = useState<string | null>(null);
+  const plotContainerRef = useRef<HTMLDivElement>(null);
+  
   // Load plot data when switching to plot view
   useEffect(() => {
     // Only proceed if we're in plot mode and have a selected step
@@ -284,6 +291,114 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
       loadPlotData(stepId, stepType);
     }
   }, [selectedStepId, viewMode, supportsPlot, selectedStep, scfDataMap, dosDataMap, bandsDataMap, isLoadingMap, loadPlotData, failedLoads]);
+  
+  // Fetch pin info for selected step when in plot mode (bands/dos only)
+  useEffect(() => {
+    if (!selectedStepId || viewMode !== 'plot' || !qv) {
+      setPinInfo(null);
+      return;
+    }
+    
+    const stepTypeLower = selectedStepType.toLowerCase();
+    // Only bands and dos support pinning
+    if (stepTypeLower !== 'bands' && stepTypeLower !== 'dos') {
+      setPinInfo(null);
+      return;
+    }
+    
+    const normalizedRoot = normalizeProjectRoot(projectRoot);
+    if (!normalizedRoot) {
+      setPinInfo(null);
+      return;
+    }
+    
+    // Check if this step can be pinned
+    qv.call('get_latest_run_for_step', {
+      project_root: normalizedRoot,
+      step_id: selectedStepId,
+    }).then((response: any) => {
+      if (response.ok && response.data) {
+        setPinInfo({
+          run_id: response.data.run_id,
+          can_pin: response.data.can_pin,
+          reason: response.data.reason,
+        });
+      } else {
+        setPinInfo({ run_id: null, can_pin: false, reason: 'Failed to check pin status' });
+      }
+    }).catch(() => {
+      setPinInfo({ run_id: null, can_pin: false, reason: 'Error checking pin status' });
+    });
+  }, [selectedStepId, viewMode, selectedStepType, qv, projectRoot]);
+  
+  // Clear pin success message after 3 seconds
+  useEffect(() => {
+    if (pinSuccess) {
+      const timer = setTimeout(() => setPinSuccess(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [pinSuccess]);
+  
+  // Handle Pin to History click
+  const handlePinToHistory = useCallback(async () => {
+    if (!selectedStepId || !pinInfo?.run_id || !pinInfo?.can_pin || !qv) return;
+    
+    setIsPinning(true);
+    setPinSuccess(null);
+    
+    try {
+      const normalizedRoot = normalizeProjectRoot(projectRoot);
+      if (!normalizedRoot) {
+        throw new Error('Invalid project root');
+      }
+      
+      const stepTypeLower = selectedStepType.toLowerCase();
+      
+      // Get PNG data from the plot canvas
+      let pngDataBase64: string | undefined;
+      if (plotContainerRef.current) {
+        const canvas = plotContainerRef.current.querySelector('canvas');
+        if (canvas) {
+          const dataUrl = canvas.toDataURL('image/png');
+          // Remove "data:image/png;base64," prefix
+          pngDataBase64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+        }
+      }
+      
+      // Get JSON payload (the raw plot data)
+      let jsonPayload: Record<string, unknown> | undefined;
+      if (stepTypeLower === 'dos') {
+        jsonPayload = dosDataMap[selectedStepId] as unknown as Record<string, unknown>;
+      } else if (stepTypeLower === 'bands') {
+        jsonPayload = bandsDataMap[selectedStepId] as unknown as Record<string, unknown>;
+      }
+      
+      const response = await qv.call('pin_analysis_to_history', {
+        project_root: normalizedRoot,
+        run_id: pinInfo.run_id,
+        step_id: selectedStepId,
+        analysis_kind: stepTypeLower,
+        png_data_base64: pngDataBase64,
+        json_payload: jsonPayload,
+      });
+      
+      if (response.ok && response.data?.success) {
+        setPinSuccess(`Pinned ${stepTypeLower.toUpperCase()} analysis to history`);
+        // Update pinInfo to reflect that we've already pinned
+        setPinInfo(prev => prev ? { ...prev, can_pin: false, reason: 'Already pinned' } : null);
+      } else {
+        const errorMsg = response.data?.error || response.error?.message || 'Failed to pin';
+        console.error('[Analysis] Pin failed:', errorMsg);
+        // Show error briefly but don't throw
+        setPinSuccess(`⚠️ ${errorMsg}`);
+      }
+    } catch (e) {
+      console.error('[Analysis] Pin error:', e);
+      setPinSuccess(`⚠️ ${e instanceof Error ? e.message : 'Failed to pin'}`);
+    } finally {
+      setIsPinning(false);
+    }
+  }, [selectedStepId, selectedStepType, pinInfo, qv, projectRoot, dosDataMap, bandsDataMap]);
   
   if (!calculation) {
     return (
@@ -380,7 +495,7 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
               />
             )}
             {viewMode === 'plot' && supportsPlot && (
-              <div className="calculation-analysis-panel__plot-container">
+              <div className="calculation-analysis-panel__plot-container" ref={plotContainerRef}>
                 {selectedStepType === 'scf' && (
                   <ScfConvergenceChart data={plotData as ScfConvergenceData | null} isLoading={isLoading} />
                 )}
@@ -389,6 +504,30 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
                 )}
                 {selectedStepType === 'bands' && (
                   <BandsChart data={plotData as BandStructureData | null} isLoading={isLoading} />
+                )}
+                
+                {/* Pin to History button - only for bands/dos */}
+                {(selectedStepType === 'bands' || selectedStepType === 'dos') && pinInfo && (
+                  <div className="calculation-analysis-panel__pin-bar">
+                    <button
+                      className={`calculation-analysis-panel__pin-button ${!pinInfo.can_pin ? 'calculation-analysis-panel__pin-button--disabled' : ''}`}
+                      onClick={handlePinToHistory}
+                      disabled={!pinInfo.can_pin || isPinning || !plotData}
+                      title={pinInfo.can_pin ? 'Save this plot to project history' : pinInfo.reason || 'Cannot pin'}
+                    >
+                      {isPinning ? '📌 Pinning...' : '📌 Pin to History'}
+                    </button>
+                    {!pinInfo.can_pin && pinInfo.reason && (
+                      <span className="calculation-analysis-panel__pin-reason" title={pinInfo.reason}>
+                        {pinInfo.reason}
+                      </span>
+                    )}
+                    {pinSuccess && (
+                      <span className={`calculation-analysis-panel__pin-success ${pinSuccess.startsWith('⚠️') ? 'calculation-analysis-panel__pin-success--error' : ''}`}>
+                        {pinSuccess}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             )}

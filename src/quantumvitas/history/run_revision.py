@@ -189,6 +189,7 @@ def create_run_revision(
     species_map: Optional[Dict[str, Dict[str, Any]]] = None,
     working_dir: Optional[Path] = None,
     create_snapshot: bool = True,
+    run_id: Optional[str] = None,
 ) -> RunRevision:
     """
     Create a new run revision at the start of a run.
@@ -210,6 +211,9 @@ def create_run_revision(
         species_map: Pseudopotential mapping
         working_dir: Working directory path
         create_snapshot: Whether to create a snapshot tar
+        run_id: External run ID to use (e.g., job_id from JobManager).
+                If provided, this ID will be used instead of generating a new one,
+                ensuring job_id == run_id identity.
         
     Returns:
         Initialized RunRevision
@@ -218,8 +222,9 @@ def create_run_revision(
     
     project_root = Path(project_root).resolve()
     
-    # Generate run ID
-    run_id = generate_run_id()
+    # Use external run_id if provided, otherwise generate one
+    if run_id is None:
+        run_id = generate_run_id()
     
     # Get project ID
     try:

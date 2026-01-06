@@ -8,62 +8,15 @@
  * - Filters and search (v1: basic grouping)
  * 
  * This is a READ-ONLY view - history is immutable.
+ * Users can filter by limit and delete history with confirmation.
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import type { HistoryTimelineEntry } from '../../types/qv';
 import './HistoryPanel.css';
 
-interface HistoryTimelineEntry {
-  id: string;
-  timestamp: string;
-  event_type: string;
-  calc_id?: string;
-  step_id?: string;
-  
-  // Run events
-  run_id?: string;
-  step_ids?: string[];
-  step_types?: string[];
-  calc_name?: string;
-  status?: string;
-  duration_seconds?: number;
-  step_count?: number;
-  success_count?: number;
-  failure_count?: number;
-  error_summary?: string;
-  run_digest?: {
-    total_energy_ry?: number;
-    fermi_energy_ev?: number;
-    converged?: boolean;
-  };
-  step_digests?: Array<{
-    step_id: string;
-    step_type: string;
-    status: string;
-    total_energy?: { value: number | null; status: string };
-    fermi_energy?: { value: number | null; status: string };
-  }>;
-  
-  // Edit events
-  doc_type?: string;
-  doc_path?: string;
-  summary?: string;
-  actor?: string;
-  
-  // Pin events
-  analysis_kind?: string;
-  pin_path?: string;
-  
-  // Baseline
-  structure_ids?: string[];
-  calculation_ids?: string[];
-}
-
-interface HistoryResponse {
-  timeline: HistoryTimelineEntry[];
-  latest_run_id: string | null;
-  total: number;
-}
+// Limit options for history display
+type LimitOption = 'all' | '50' | '200';
 
 interface HistoryPanelProps {
   projectRoot: string;
@@ -75,6 +28,9 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
+  const [limit, setLimit] = useState<LimitOption>('all');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchHistory = useCallback(async () => {
     if (!projectRoot || !window.qv) return;
@@ -83,9 +39,14 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
     setError(null);
     
     try {
-      const response = await window.qv.request<HistoryResponse>('get_project_history', {
+      const limitValue = limit === 'all' ? undefined : parseInt(limit, 10);
+      const response = await window.qv.request<{
+        timeline: HistoryTimelineEntry[];
+        latest_run_id: string | null;
+        total: number;
+      }>('get_project_history', {
         project_root: projectRoot,
-        limit: 200,
+        limit: limitValue,
       });
       
       if (response.ok && response.data) {
@@ -98,6 +59,40 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
       setError(e instanceof Error ? e.message : 'Failed to load history');
     } finally {
       setLoading(false);
+    }
+  }, [projectRoot, limit]);
+  
+  // Handle delete history
+  const handleDeleteHistory = useCallback(async () => {
+    if (!projectRoot || !window.qv) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      const response = await window.qv.request<{
+        success: boolean;
+        error?: string;
+        deleted_path?: string;
+      }>('delete_project_history', {
+        project_root: projectRoot,
+        confirm: true,
+      });
+      
+      if (response.ok && response.data?.success) {
+        // Clear timeline immediately
+        setTimeline([]);
+        setLatestRunId(null);
+        setShowDeleteModal(false);
+      } else {
+        const errorMsg = response.data?.error || response.error?.message || 'Failed to delete history';
+        setError(errorMsg);
+        setShowDeleteModal(false);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete history');
+      setShowDeleteModal(false);
+    } finally {
+      setIsDeleting(false);
     }
   }, [projectRoot]);
 
@@ -347,19 +342,51 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
           <span className="history-panel__icon">📜</span>
           Project History
         </h2>
-        <button 
-          className="history-panel__refresh"
-          onClick={fetchHistory}
-          disabled={loading}
-          title="Refresh history"
-        >
-          {loading ? '⟳' : '↻'}
-        </button>
+        <div className="history-panel__controls">
+          {/* Limit selector */}
+          <select
+            className="history-panel__limit-select"
+            value={limit}
+            onChange={(e) => setLimit(e.target.value as LimitOption)}
+            disabled={loading}
+            title="Limit number of entries"
+          >
+            <option value="all">All</option>
+            <option value="50">Last 50</option>
+            <option value="200">Last 200</option>
+          </select>
+          
+          <button 
+            className="history-panel__refresh"
+            onClick={fetchHistory}
+            disabled={loading}
+            title="Refresh history"
+          >
+            {loading ? '⟳' : '↻'}
+          </button>
+          
+          {timeline.length > 0 && (
+            <button
+              className="history-panel__delete-btn"
+              onClick={() => setShowDeleteModal(true)}
+              disabled={loading || isDeleting}
+              title="Delete all history"
+            >
+              🗑️
+            </button>
+          )}
+        </div>
       </div>
       
       {error && (
         <div className="history-panel__error">
           {error}
+          <button 
+            className="history-panel__error-dismiss"
+            onClick={() => setError(null)}
+          >
+            ×
+          </button>
         </div>
       )}
       
@@ -376,6 +403,42 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
       ) : (
         <div className="history-panel__timeline">
           {timeline.map(entry => renderTimelineEntry(entry))}
+        </div>
+      )}
+      
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <div className="history-modal-overlay" onClick={() => !isDeleting && setShowDeleteModal(false)}>
+          <div className="history-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="history-modal__header">
+              <h3>Delete Project History?</h3>
+            </div>
+            <div className="history-modal__body">
+              <p>
+                This will permanently delete the <code>.history</code> directory 
+                and all recorded runs, edits, and pins.
+              </p>
+              <p className="history-modal__note">
+                ✓ Your project files (structures, calculations, steps) will NOT be affected.
+              </p>
+            </div>
+            <div className="history-modal__footer">
+              <button
+                className="history-modal__btn history-modal__btn--cancel"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="history-modal__btn history-modal__btn--danger"
+                onClick={handleDeleteHistory}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete History'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

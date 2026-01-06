@@ -130,10 +130,11 @@
   font-size: 0.875rem;
 }
 
-/* Timeline */
+/* Timeline - ONLY scrollable area */
 .history-panel__timeline {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -145,7 +146,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible; /* Allow expansion without inner scrollbars */
   transition: box-shadow 0.2s;
 }
 
@@ -312,11 +313,12 @@
   background: var(--error-bg, rgba(239, 68, 68, 0.05));
 }
 
-/* Expanded details */
+/* Expanded details - NO inner scroll */
 .history-entry__details {
   padding: 0.75rem 1rem;
   background: var(--bg-primary);
   border-top: 1px solid var(--border-color);
+  overflow: visible; /* Ensure no inner scrollbar */
 }
 
 .history-entry__details-title {
@@ -432,6 +434,169 @@
 .history-entry__counts {
   font-size: 0.6875rem;
   color: var(--text-tertiary);
+}
+
+/* Controls bar */
+.history-panel__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.history-panel__limit-select {
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.history-panel__limit-select:hover {
+  border-color: var(--primary-color, #3b82f6);
+}
+
+.history-panel__delete-btn {
+  background: none;
+  border: 1px solid var(--error-color, #ef4444);
+  border-radius: 4px;
+  padding: 0.375rem 0.625rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--error-color, #ef4444);
+  transition: all 0.2s;
+}
+
+.history-panel__delete-btn:hover:not(:disabled) {
+  background: var(--error-bg, rgba(239, 68, 68, 0.1));
+}
+
+.history-panel__delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Error dismiss button */
+.history-panel__error {
+  position: relative;
+  padding-right: 2rem;
+}
+
+.history-panel__error-dismiss {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--error-text);
+  font-size: 1.25rem;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.history-panel__error-dismiss:hover {
+  opacity: 1;
+}
+
+/* Delete confirmation modal */
+.history-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.history-modal {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  width: 90%;
+  overflow: hidden;
+}
+
+.history-modal__header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.history-modal__header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.history-modal__body {
+  padding: 1rem 1.25rem;
+}
+
+.history-modal__body p {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.history-modal__body code {
+  background: var(--bg-tertiary);
+  padding: 0.125rem 0.375rem;
+  border-radius: 2px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8125rem;
+}
+
+.history-modal__note {
+  color: var(--success-color, #22c55e) !important;
+  font-size: 0.8125rem !important;
+}
+
+.history-modal__footer {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.history-modal__btn {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.history-modal__btn--cancel {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.history-modal__btn--cancel:hover {
+  background: var(--bg-hover);
+}
+
+.history-modal__btn--danger {
+  background: var(--error-color, #ef4444);
+  border: none;
+  color: white;
+}
+
+.history-modal__btn--danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.history-modal__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Dark mode adjustments */

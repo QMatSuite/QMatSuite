@@ -49,26 +49,35 @@ function PresetDimensionRow({
     onChange(e.target.value);
   }, [onChange]);
   
-  // Render scope information
-  const scopeText = useMemo(() => {
+  // Render scope information - compact summary with detailed tooltip
+  const { scopeText, scopeTooltip } = useMemo(() => {
     if (dimension.scope.type === 'variant_step_types') {
       const stepTypes = dimension.scope.step_types || [];
       if (stepTypes.length === 0) {
-        return 'No applicable steps';
+        return { scopeText: 'No applicable steps', scopeTooltip: 'No applicable steps' };
       }
-      return `Applies to: ${stepTypes.join(', ')}`;
+      // Compact summary: show count
+      const count = stepTypes.length;
+      return {
+        scopeText: `${count} step type${count !== 1 ? 's' : ''}`,
+        scopeTooltip: `Applies to: ${stepTypes.join(', ')}`,
+      };
     } else if (dimension.scope.type === 'variants') {
       const variants = dimension.scope.variants || [];
       if (variants.length === 0) {
-        return 'No applicable steps';
+        return { scopeText: 'No applicable steps', scopeTooltip: 'No applicable steps' };
       }
-      // For precision, show variant details
+      // For precision, show variant count + details in tooltip
       const stepTypesSet = new Set<string>();
       variants.forEach(v => v.step_types.forEach(st => stepTypesSet.add(st)));
       const stepTypes = Array.from(stepTypesSet).sort();
-      return `Applies to: ${stepTypes.join(', ')}`;
+      const count = stepTypes.length;
+      return {
+        scopeText: `${count} step type${count !== 1 ? 's' : ''}`,
+        scopeTooltip: `Applies to: ${stepTypes.join(', ')}`,
+      };
     }
-    return 'Applies to applicable steps';
+    return { scopeText: 'Applicable steps', scopeTooltip: 'Applies to applicable steps' };
   }, [dimension.scope]);
   
   return (
@@ -114,7 +123,7 @@ function PresetDimensionRow({
           </select>
         )}
       </div>
-      <div className="preset-dimension-row__scope" title={scopeText}>
+      <div className="preset-dimension-row__scope" title={scopeTooltip}>
         <small>{scopeText}</small>
       </div>
     </div>
@@ -423,7 +432,7 @@ export function PresetSection({
       
       <div className="preset-section__footer">
         <small>
-          Applies to applicable steps (preset variant scope) • Detected from step.yml
+          Values detected from step YAML • Hover step counts for details
         </small>
       </div>
       
