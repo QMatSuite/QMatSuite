@@ -5,10 +5,9 @@
  */
 
 import { useState, useEffect, useCallback, Suspense, useRef, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
-import { useQVClient } from '../../hooks/useQVClient';
 import { generateIsosurface } from '../../utils/marchingCubes';
 import './VolumeViewerSandbox.css';
 
@@ -91,7 +90,6 @@ function IsosurfaceMesh({ volumeData, metadata, isovalue, color, opacity }: Isos
 }
 
 export function VolumeViewerSandbox() {
-  const qv = useQVClient();
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,14 +100,27 @@ export function VolumeViewerSandbox() {
   const [showPlusMinusIso, setShowPlusMinusIso] = useState(false);
   const [isLoadingBlob, setIsLoadingBlob] = useState(false);
   
-  // Load fixtures on mount
-  useEffect(() => {
-    loadFixtures();
+  const loadBlob = useCallback(async (volume: CompiledVolume, calcDir: string) => {
+    setIsLoadingBlob(true);
+    try {
+      // Use preview blob for MVP
+      const blobId = volume.preview_blob_id || volume.blob_id;
+      
+      // Read blob via preload API
+      const buffer = await (window as any).qv.readBlob(blobId, calcDir);
+      const data = new Float32Array(buffer);
+      
+      setVolumeData(data);
+    } catch (e) {
+      setError(`Failed to load blob: ${e}`);
+    } finally {
+      setIsLoadingBlob(false);
+    }
   }, []);
   
   const loadFixtures = useCallback(async () => {
     try {
-      const response = await qv.request('list_wannier_3d_fixtures', {});
+      const response = await (window as any).qv.request('list_wannier_3d_fixtures', {});
       if (response.ok && response.data?.fixtures) {
         setFixtures(response.data.fixtures);
       } else {
@@ -118,7 +129,7 @@ export function VolumeViewerSandbox() {
     } catch (e) {
       setError(`Error loading fixtures: ${e}`);
     }
-  }, [qv]);
+  }, []);
   
   const compileFixture = useCallback(async (fixture: Fixture) => {
     setLoading(true);
@@ -129,7 +140,7 @@ export function VolumeViewerSandbox() {
     const calcDir = '/tmp/qv-sandbox-volume';
     
     try {
-      const response = await qv.request('compile_fixture_volume', {
+      const response = await (window as any).qv.request('compile_fixture_volume', {
         file_path: fixture.file_path,
         calc_dir: calcDir,
       });
@@ -156,25 +167,12 @@ export function VolumeViewerSandbox() {
     } finally {
       setLoading(false);
     }
-  }, [qv]);
+  }, [loadBlob]);
   
-  const loadBlob = useCallback(async (volume: CompiledVolume, calcDir: string) => {
-    setIsLoadingBlob(true);
-    try {
-      // Use preview blob for MVP
-      const blobId = volume.preview_blob_id || volume.blob_id;
-      
-      // Read blob via preload API
-      const buffer = await (window as any).qv.readBlob(blobId, calcDir);
-      const data = new Float32Array(buffer);
-      
-      setVolumeData(data);
-    } catch (e) {
-      setError(`Failed to load blob: ${e}`);
-    } finally {
-      setIsLoadingBlob(false);
-    }
-  }, []);
+  // Load fixtures on mount
+  useEffect(() => {
+    loadFixtures();
+  }, [loadFixtures]);
   
   const selectedVolume = selectedFixture ? compiledVolumes.get(selectedFixture.id) : null;
   
