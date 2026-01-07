@@ -226,18 +226,6 @@ export function VolumeViewerSandbox() {
     setDebugInfo(prev => ({ ...prev, trianglesCount: 0, blobId: null }));
   }, []);
   
-  const computeValueRange = useCallback((data: Float32Array): { min: number; max: number } => {
-    let min = Infinity;
-    let max = -Infinity;
-    for (let i = 0; i < data.length; i++) {
-      const v = data[i];
-      if (isFinite(v)) {
-        min = Math.min(min, v);
-        max = Math.max(max, v);
-      }
-    }
-    return { min, max };
-  }, []);
   
   const compileFixture = useCallback(async (fixture: Fixture) => {
     // Increment request ID
@@ -440,8 +428,8 @@ export function VolumeViewerSandbox() {
                           color="#4a90e2"
                           opacity={0.8}
                           meshKey={meshKey}
-                          onMeshGenerated={(nVertices, nTriangles) => {
-                            console.log(`[onMeshDone] requestId=${requestId} nVertices=${nVertices} nTriangles=${nTriangles}`);
+                          onMeshGenerated={(_nVertices, nTriangles) => {
+                            console.log(`[onMeshDone] requestId=${requestId} nTriangles=${nTriangles}`);
                             setDebugInfo(prev => ({ ...prev, trianglesCount: nTriangles }));
                           }}
                           onError={(err) => {
@@ -457,7 +445,7 @@ export function VolumeViewerSandbox() {
                             color="#e24a4a"
                             opacity={0.6}
                             meshKey={meshKey + 1000} // Different key for second mesh
-                            onMeshGenerated={(nVertices, nTriangles) => {
+                            onMeshGenerated={(_nVertices, nTriangles) => {
                               // Only update if this is the latest request
                               if (requestId === latestRequestIdRef.current) {
                                 setDebugInfo(prev => ({ ...prev, trianglesCount: prev.trianglesCount + nTriangles }));
