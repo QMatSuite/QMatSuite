@@ -15,7 +15,7 @@ import type { QVClient } from '../../hooks/useQVClient';
 import type { DaemonStatus, JobCounts } from '../../types/qv';
 import './Sidebar.css';
 
-export type ViewType = 'home' | 'structures' | 'calculations' | 'jobs' | 'history' | 'resources' | 'settings';
+export type ViewType = 'home' | 'structures' | 'calculations' | 'jobs' | 'history' | 'resources' | 'settings' | 'dev-volume';
 
 interface SidebarProps {
   qv: QVClient;
@@ -278,6 +278,17 @@ export function Sidebar({
           >
             <span className="sidebar__tab-icon">⚙️</span>
             {!isCollapsed && 'Settings'}
+          </button>
+          {/* DEV ONLY: Volume Viewer Sandbox */}
+          <button
+            className={`sidebar__tab ${currentView === 'dev-volume' ? 'active' : ''}`}
+            onClick={() => onViewChange('dev-volume')}
+            title="[DEV] Volume Viewer Sandbox"
+            data-testid="qv-nav-dev-volume"
+            style={{ borderTop: '2px solid #f0f0f0', marginTop: '8px', paddingTop: '8px' }}
+          >
+            <span className="sidebar__tab-icon">🧊</span>
+            {!isCollapsed && 'Volume (DEV)'}
           </button>
         </div>
       </div>

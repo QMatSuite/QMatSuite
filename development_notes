@@ -110,11 +110,17 @@ npm create electron-vite@latest gui
 cd gui
 npm install
 npm run dev
+npm install three @react-three/fiber
+npm install @react-three/drei
+npm install three-stdlib
 
 # install environment for gui if gui folder is present
 cd gui
 npm install
 npm run dev
+npm install three @react-three/fiber
+npm install @react-three/drei
+npm install three-stdlib
 
 # test environment for gui
 cd gui
