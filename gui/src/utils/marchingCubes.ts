@@ -204,6 +204,45 @@ export function generateIsosurface(
     indices[i] = i;
   }
   
+  // Sanity guard: validate mesh output
+  const numVertices = vertices.length / 3;
+  const numTriangles = indices.length / 3;
+  
+  // Check positions length
+  if (vertices.length % 3 !== 0) {
+    throw new Error(`Invalid mesh: positions length ${vertices.length} is not divisible by 3`);
+  }
+  
+  // Check normals match positions
+  if (normals.length !== vertices.length) {
+    throw new Error(`Invalid mesh: normals length ${normals.length} != positions length ${vertices.length}`);
+  }
+  
+  // Check indices length
+  if (indices.length % 3 !== 0) {
+    throw new Error(`Invalid mesh: indices length ${indices.length} is not divisible by 3`);
+  }
+  
+  // Check indices are in valid range
+  const maxIndex = Math.max(...Array.from(indices));
+  if (maxIndex >= numVertices) {
+    throw new Error(`Invalid mesh: max index ${maxIndex} >= numVertices ${numVertices}`);
+  }
+  
+  // Check for NaN/Infinity in positions
+  for (let i = 0; i < vertices.length; i++) {
+    if (!isFinite(vertices[i])) {
+      throw new Error(`Invalid mesh: non-finite value at positions[${i}]: ${vertices[i]}`);
+    }
+  }
+  
+  // Check for NaN/Infinity in normals
+  for (let i = 0; i < normals.length; i++) {
+    if (!isFinite(normals[i])) {
+      throw new Error(`Invalid mesh: non-finite value at normals[${i}]: ${normals[i]}`);
+    }
+  }
+  
   return {
     positions: new Float32Array(vertices),
     normals: new Float32Array(normals),
