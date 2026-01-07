@@ -5096,46 +5096,125 @@ class QVDaemon:
         Payload: (none required, or {"fixture_dir": str} for custom path)
         
         Returns:
-            List of fixture metadata
+            List of fixture metadata with: id, label, kind (xsf/bxsf), path
+        
+        Fixtures root discovery priority:
+        1. Environment variable QMATSUITE_WANNIER_3D_FIXTURES (if set)
+        2. Repo root derivation: Path(__file__).resolve().parents[3] / "tests/data/wannier_3d_test"
+        3. DEV fallback: <HOME>/QMatSuite/tests/data/wannier_3d_test (only if exists)
+        
+        Enumeration priority:
+        1. If manifest.json exists, use manifest (stable order)
+        2. Otherwise, recursive glob for *.xsf and *.bxsf
         """
-        # Default fixture directory (relative to repo root)
-        repo_root = Path(__file__).parent.parent.parent
-        fixture_dir = repo_root / "tests" / "data" / "wannier_3d_test"
+        import os
+        import json
+        
+        # Determine fixtures_root with priority
+        attempted_paths = []
+        fixtures_root = None
+        
+        # Priority 1: Environment variable
+        env_path = os.environ.get("QMATSUITE_WANNIER_3D_FIXTURES")
+        if env_path:
+            fixtures_root = Path(env_path).resolve()
+            attempted_paths.append(("env_var", str(fixtures_root)))
+            if fixtures_root.exists() and fixtures_root.is_dir():
+                self.log(f"Using fixtures_root from QMATSUITE_WANNIER_3D_FIXTURES: {fixtures_root}")
+            else:
+                fixtures_root = None
+        
+        # Priority 2: Repo root derivation
+        if fixtures_root is None:
+            # __file__ is src/quantumvitas/daemon/server.py
+            # parents[3] = src/quantumvitas/daemon -> src/quantumvitas -> src/ -> repo_root
+            repo_root = Path(__file__).resolve().parents[3]
+            fixtures_root = repo_root / "tests" / "data" / "wannier_3d_test"
+            attempted_paths.append(("repo_derived", str(fixtures_root)))
+            if fixtures_root.exists() and fixtures_root.is_dir():
+                self.log(f"Using fixtures_root from repo derivation: {fixtures_root}")
+            else:
+                fixtures_root = None
+        
+        # Priority 3: DEV fallback (only if exists)
+        if fixtures_root is None:
+            dev_fallback = Path("<HOME>/QMatSuite/tests/data/wannier_3d_test")
+            attempted_paths.append(("dev_fallback", str(dev_fallback)))
+            if dev_fallback.exists() and dev_fallback.is_dir():
+                fixtures_root = dev_fallback
+                self.log(f"Using fixtures_root from DEV fallback: {fixtures_root}")
+            else:
+                fixtures_root = None
+        
+        # Override with payload if provided
         if "fixture_dir" in payload:
-            fixture_dir = Path(payload["fixture_dir"])
+            fixtures_root = Path(payload["fixture_dir"]).resolve()
+            attempted_paths.append(("payload", str(fixtures_root)))
+        
+        # Validate fixtures_root exists
+        if fixtures_root is None or not fixtures_root.exists():
+            attempted_str = "\n".join(f"  {source}: {path}" for source, path in attempted_paths)
+            raise FileNotFoundError(
+                f"Wannier90 3D fixtures directory not found. Attempted paths:\n{attempted_str}\n"
+                f"Please set QMATSUITE_WANNIER_3D_FIXTURES environment variable or ensure fixtures exist."
+            )
+        
+        if not fixtures_root.is_dir():
+            raise ValueError(f"Fixtures root is not a directory: {fixtures_root}")
+        
+        self.log(f"Fixtures root resolved to: {fixtures_root}")
         
         fixtures = []
         
-        # Scan fixture directories
-        if fixture_dir.exists():
-            for example_dir in sorted(fixture_dir.iterdir()):
-                if not example_dir.is_dir():
-                    continue
+        # Check for manifest.json first
+        manifest_path = fixtures_root / "manifest.json"
+        if manifest_path.exists():
+            try:
+                manifest_data = json.loads(manifest_path.read_text())
+                manifest_fixtures = manifest_data.get("fixtures", [])
                 
-                # Look for XSF or BXSF files
-                xsf_files = sorted(example_dir.glob("*.xsf"))
-                bxsf_files = sorted(example_dir.glob("*.bxsf"))
+                for entry in manifest_fixtures:
+                    fixture_path = fixtures_root / entry["path"]
+                    if fixture_path.exists():
+                        fixtures.append({
+                            "id": entry.get("id", f"{fixture_path.parent.name}_{fixture_path.stem}"),
+                            "label": entry.get("label", str(fixture_path.relative_to(fixtures_root))),
+                            "kind": entry.get("kind", "xsf" if fixture_path.suffix == ".xsf" else "bxsf"),
+                            "path": str(fixture_path.resolve()),
+                        })
                 
-                if xsf_files:
-                    # XSF fixture (MLWF)
-                    for xsf_file in xsf_files:
-                        fixtures.append({
-                            "id": f"{example_dir.name}_{xsf_file.stem}",
-                            "name": f"{example_dir.name} - {xsf_file.stem}",
-                            "file_path": str(xsf_file.resolve()),
-                            "type": "xsf",
-                            "example_dir": example_dir.name,
-                        })
-                elif bxsf_files:
-                    # BXSF fixture (Fermi surface)
-                    for bxsf_file in bxsf_files:
-                        fixtures.append({
-                            "id": f"{example_dir.name}_{bxsf_file.stem}",
-                            "name": f"{example_dir.name} - {bxsf_file.stem}",
-                            "file_path": str(bxsf_file.resolve()),
-                            "type": "bxsf",
-                            "example_dir": example_dir.name,
-                        })
+                self.log(f"Loaded {len(fixtures)} fixtures from manifest.json")
+            except Exception as e:
+                self.log(f"Failed to load manifest.json: {e}, falling back to recursive scan")
+                fixtures = []  # Fall through to recursive scan
+        
+        # If no manifest or manifest failed, do recursive scan
+        if not fixtures:
+            # Recursive glob for *.xsf and *.bxsf
+            xsf_files = sorted(fixtures_root.rglob("*.xsf"))
+            bxsf_files = sorted(fixtures_root.rglob("*.bxsf"))
+            
+            for xsf_file in xsf_files:
+                rel_path = xsf_file.relative_to(fixtures_root)
+                fixtures.append({
+                    "id": f"{xsf_file.parent.name}_{xsf_file.stem}",
+                    "label": str(rel_path),
+                    "kind": "xsf",
+                    "path": str(xsf_file.resolve()),
+                })
+            
+            for bxsf_file in bxsf_files:
+                rel_path = bxsf_file.relative_to(fixtures_root)
+                fixtures.append({
+                    "id": f"{bxsf_file.parent.name}_{bxsf_file.stem}",
+                    "label": str(rel_path),
+                    "kind": "bxsf",
+                    "path": str(bxsf_file.resolve()),
+                })
+            
+            self.log(f"Found {len(xsf_files)} XSF files and {len(bxsf_files)} BXSF files via recursive scan")
+        
+        self.log(f"Total fixtures discovered: {len(fixtures)}")
         
         return {"fixtures": fixtures}
     
