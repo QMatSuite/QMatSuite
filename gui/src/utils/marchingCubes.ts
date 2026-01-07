@@ -216,7 +216,7 @@ export function generateIsosurface(
  * Returns array of triangles, each triangle is 3 vertices
  */
 function getTriangles(
-  cubeIndex: number,
+  _cubeIndex: number,
   edgeVertices: Array<[number, number, number]>
 ): Array<Array<[number, number, number]>> {
   // Simplified triangulation table (only a few common cases for MVP)
