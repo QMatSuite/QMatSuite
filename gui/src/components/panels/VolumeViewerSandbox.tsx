@@ -13,10 +13,9 @@ import './VolumeViewerSandbox.css';
 
 interface Fixture {
   id: string;
-  name: string;
-  file_path: string;
-  type: 'xsf' | 'bxsf';
-  example_dir: string;
+  label: string;
+  path: string;
+  kind: 'xsf' | 'bxsf';
 }
 
 interface VolumeMetadata {
@@ -141,7 +140,7 @@ export function VolumeViewerSandbox() {
     
     try {
       const response = await (window as any).qv.request('compile_fixture_volume', {
-        file_path: fixture.file_path,
+        file_path: fixture.path,
         calc_dir: calcDir,
       });
       
@@ -193,7 +192,7 @@ export function VolumeViewerSandbox() {
         <div className="volume-viewer-sandbox-sidebar">
           <h3>Fixtures ({fixtures.length})</h3>
           <div className="volume-viewer-sandbox-fixture-list">
-            {fixtures.map(fixture => {
+                {fixtures.map(fixture => {
               const isCompiled = compiledVolumes.has(fixture.id);
               return (
                 <div
@@ -207,8 +206,8 @@ export function VolumeViewerSandbox() {
                     }
                   }}
                 >
-                  <div className="fixture-name">{fixture.name}</div>
-                  <div className="fixture-type">{fixture.type.toUpperCase()}</div>
+                  <div className="fixture-name">{fixture.label}</div>
+                  <div className="fixture-type">{fixture.kind.toUpperCase()}</div>
                   {isCompiled && <div className="fixture-status">✓ Compiled</div>}
                 </div>
               );
