@@ -1,0 +1,129 @@
+.volume-viewer-sandbox {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+}
+
+.volume-viewer-sandbox-header {
+  margin-bottom: 16px;
+}
+
+.volume-viewer-sandbox-header h2 {
+  margin: 0 0 8px 0;
+}
+
+.volume-viewer-sandbox-header p {
+  margin: 0;
+  color: #666;
+}
+
+.volume-viewer-sandbox-error {
+  background: #fee;
+  border: 1px solid #fcc;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  color: #c00;
+}
+
+.volume-viewer-sandbox-layout {
+  display: flex;
+  flex: 1;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.volume-viewer-sandbox-sidebar {
+  width: 300px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.volume-viewer-sandbox-sidebar h3 {
+  margin: 0 0 12px 0;
+}
+
+.volume-viewer-sandbox-fixture-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.volume-viewer-sandbox-fixture-item {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.volume-viewer-sandbox-fixture-item:hover {
+  background: #f5f5f5;
+}
+
+.volume-viewer-sandbox-fixture-item.selected {
+  border-color: #007bff;
+  background: #e7f3ff;
+}
+
+.volume-viewer-sandbox-fixture-item.compiled {
+  border-left: 4px solid #28a745;
+}
+
+.fixture-name {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.fixture-type {
+  font-size: 0.85em;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.fixture-status {
+  font-size: 0.85em;
+  color: #28a745;
+  font-weight: 500;
+}
+
+.volume-viewer-sandbox-main {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.volume-viewer-sandbox-metadata h3 {
+  margin: 0 0 16px 0;
+}
+
+.metadata-section {
+  margin-bottom: 24px;
+}
+
+.metadata-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 1em;
+  color: #666;
+}
+
+.metadata-section pre {
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 0.9em;
+  margin: 0;
+}
+
+.volume-viewer-sandbox-placeholder {
+  text-align: center;
+  color: #999;
+  padding: 40px;
+}
+
