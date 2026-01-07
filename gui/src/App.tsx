@@ -38,6 +38,7 @@ import {
   CalculationOverviewTab,
   CalculationRunTab,
   CalculationAnalysisTab,
+  VolumeViewerSandbox,
 } from './components';
 import type { ViewType } from './components/layout/Sidebar';
 import { useQVClient, useDaemonStatus } from './hooks';
@@ -2459,6 +2460,10 @@ function App() {
             onSettingsChange={setAppSettings}
           />
         );
+      
+      // DEV ONLY: Volume viewer sandbox
+      case 'dev-volume':
+        return <VolumeViewerSandbox />;
         
       default:
         return null;
@@ -2522,6 +2527,7 @@ function App() {
               {currentView === 'history' && 'History'}
               {currentView === 'resources' && 'Resources'}
               {currentView === 'settings' && 'Settings'}
+              {currentView === 'dev-volume' && 'Volume Viewer (DEV)'}
             </h2>
             <div className="app-header__actions">
               <button
