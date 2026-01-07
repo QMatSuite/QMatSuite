@@ -205,8 +205,6 @@ export function generateIsosurface(
   }
   
   // Sanity guard: validate mesh output
-  const numVertices = vertices.length / 3;
-  const numTriangles = indices.length / 3;
   
   // Check positions length
   if (vertices.length % 3 !== 0) {
@@ -224,9 +222,11 @@ export function generateIsosurface(
   }
   
   // Check indices are in valid range
-  const maxIndex = Math.max(...Array.from(indices));
-  if (maxIndex >= numVertices) {
-    throw new Error(`Invalid mesh: max index ${maxIndex} >= numVertices ${numVertices}`);
+  if (indices.length > 0) {
+    const maxIndex = Math.max(...Array.from(indices));
+    if (maxIndex >= numVertices) {
+      throw new Error(`Invalid mesh: max index ${maxIndex} >= numVertices ${numVertices}`);
+    }
   }
   
   // Check for NaN/Infinity in positions
