@@ -4,10 +4,12 @@
  * MVP: Lists fixtures, compiles to blob, displays metadata + 3D isosurface
  */
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { useState, useEffect, useCallback, Suspense, useRef, useMemo } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
+import * as THREE from 'three';
 import { useQVClient } from '../../hooks/useQVClient';
+import { generateIsosurface } from '../../utils/marchingCubes';
 import './VolumeViewerSandbox.css';
 
 interface Fixture {
@@ -18,15 +20,74 @@ interface Fixture {
   example_dir: string;
 }
 
+interface VolumeMetadata {
+  grid_shape: [number, number, number];
+  coordinate_system: string;
+  origin_cart: [number, number, number];
+  grid_vectors_cart: [[number, number, number], [number, number, number], [number, number, number]];
+  data_order: 'fortran_i_fastest' | 'c_k_fastest';
+  length_units: string;
+  value_units: string;
+  value_min?: number;
+  value_max?: number;
+  value_mean?: number;
+}
+
 interface CompiledVolume {
   artifact_id: string;
   kind: string;
-  metadata: any;
+  metadata: VolumeMetadata;
   blob_id: string;
   preview_blob_id?: string;
   n_bands?: number;
   band_index?: number;
   fermi_energy?: number;
+}
+
+interface IsosurfaceMeshProps {
+  volumeData: Float32Array;
+  metadata: VolumeMetadata;
+  isovalue: number;
+  color: string;
+  opacity: number;
+}
+
+function IsosurfaceMesh({ volumeData, metadata, isovalue, color, opacity }: IsosurfaceMeshProps) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  const geometry = useMemo(() => {
+    try {
+      const result = generateIsosurface(
+        volumeData,
+        metadata.grid_shape,
+        metadata.origin_cart,
+        metadata.grid_vectors_cart,
+        metadata.data_order,
+        isovalue
+      );
+      
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.BufferAttribute(result.positions, 3));
+      geom.setAttribute('normal', new THREE.BufferAttribute(result.normals, 3));
+      geom.setIndex(new THREE.BufferAttribute(result.indices, 1));
+      
+      return geom;
+    } catch (e) {
+      console.error('Failed to generate isosurface:', e);
+      return new THREE.BufferGeometry();
+    }
+  }, [volumeData, metadata, isovalue]);
+  
+  return (
+    <mesh ref={meshRef} geometry={geometry}>
+      <meshStandardMaterial
+        color={color}
+        opacity={opacity}
+        transparent={opacity < 1}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
 }
 
 export function VolumeViewerSandbox() {
@@ -36,6 +97,10 @@ export function VolumeViewerSandbox() {
   const [error, setError] = useState<string | null>(null);
   const [compiledVolumes, setCompiledVolumes] = useState<Map<string, CompiledVolume>>(new Map());
   const [selectedFixture, setSelectedFixture] = useState<Fixture | null>(null);
+  const [volumeData, setVolumeData] = useState<Float32Array | null>(null);
+  const [isovalue, setIsovalue] = useState(0);
+  const [showPlusMinusIso, setShowPlusMinusIso] = useState(false);
+  const [isLoadingBlob, setIsLoadingBlob] = useState(false);
   
   // Load fixtures on mount
   useEffect(() => {
@@ -58,9 +123,9 @@ export function VolumeViewerSandbox() {
   const compileFixture = useCallback(async (fixture: Fixture) => {
     setLoading(true);
     setError(null);
+    setVolumeData(null);
     
     // Use a temporary calc_dir (sandbox output)
-    // In production, this would be a real calculation directory
     const calcDir = '/tmp/qv-sandbox-volume';
     
     try {
@@ -70,8 +135,19 @@ export function VolumeViewerSandbox() {
       });
       
       if (response.ok && response.data) {
-        setCompiledVolumes(prev => new Map(prev).set(fixture.id, response.data as CompiledVolume));
+        const volume = response.data as CompiledVolume;
+        setCompiledVolumes(prev => new Map(prev).set(fixture.id, volume));
         setSelectedFixture(fixture);
+        
+        // Load preview blob
+        await loadBlob(volume, calcDir);
+        
+        // Set initial isovalue
+        if (volume.metadata.value_mean !== undefined) {
+          setIsovalue(volume.metadata.value_mean);
+        } else if (volume.metadata.value_max !== undefined && volume.metadata.value_min !== undefined) {
+          setIsovalue((volume.metadata.value_max + volume.metadata.value_min) / 2);
+        }
       } else {
         setError(response.error?.message || 'Failed to compile volume');
       }
@@ -81,6 +157,24 @@ export function VolumeViewerSandbox() {
       setLoading(false);
     }
   }, [qv]);
+  
+  const loadBlob = useCallback(async (volume: CompiledVolume, calcDir: string) => {
+    setIsLoadingBlob(true);
+    try {
+      // Use preview blob for MVP
+      const blobId = volume.preview_blob_id || volume.blob_id;
+      
+      // Read blob via preload API
+      const buffer = await (window as any).qv.readBlob(blobId, calcDir);
+      const data = new Float32Array(buffer);
+      
+      setVolumeData(data);
+    } catch (e) {
+      setError(`Failed to load blob: ${e}`);
+    } finally {
+      setIsLoadingBlob(false);
+    }
+  }, []);
   
   const selectedVolume = selectedFixture ? compiledVolumes.get(selectedFixture.id) : null;
   
@@ -136,9 +230,65 @@ export function VolumeViewerSandbox() {
                     <ambientLight intensity={0.5} />
                     <directionalLight position={[10, 10, 5]} intensity={0.8} />
                     <Grid args={[10, 10]} />
+                    
+                    {volumeData && !isLoadingBlob && (
+                      <>
+                        <IsosurfaceMesh
+                          volumeData={volumeData}
+                          metadata={selectedVolume.metadata}
+                          isovalue={isovalue}
+                          color="#4a90e2"
+                          opacity={0.8}
+                        />
+                        {showPlusMinusIso && (
+                          <IsosurfaceMesh
+                            volumeData={volumeData}
+                            metadata={selectedVolume.metadata}
+                            isovalue={-isovalue}
+                            color="#e24a4a"
+                            opacity={0.6}
+                          />
+                        )}
+                      </>
+                    )}
+                    
                     <OrbitControls />
                   </Suspense>
                 </Canvas>
+                
+                {isLoadingBlob && (
+                  <div className="volume-viewer-canvas-loading">Loading blob...</div>
+                )}
+              </div>
+              
+              {/* Controls */}
+              <div className="volume-viewer-controls">
+                <div className="volume-viewer-control-row">
+                  <label>
+                    Isovalue:
+                    <input
+                      type="range"
+                      min={selectedVolume.metadata.value_min || -1}
+                      max={selectedVolume.metadata.value_max || 1}
+                      step={(Math.abs((selectedVolume.metadata.value_max || 1) - (selectedVolume.metadata.value_min || -1))) / 100}
+                      value={isovalue}
+                      onChange={(e) => setIsovalue(parseFloat(e.target.value))}
+                      disabled={!volumeData}
+                    />
+                    <span className="volume-viewer-control-value">{isovalue.toFixed(4)}</span>
+                  </label>
+                </div>
+                <div className="volume-viewer-control-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={showPlusMinusIso}
+                      onChange={(e) => setShowPlusMinusIso(e.target.checked)}
+                      disabled={!volumeData}
+                    />
+                    ±iso (dual surface)
+                  </label>
+                </div>
               </div>
               
               {/* Metadata panel */}

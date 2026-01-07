@@ -119,6 +119,53 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   background: #fafafa;
+  position: relative;
+}
+
+.volume-viewer-canvas-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 16px 24px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.volume-viewer-controls {
+  flex-shrink: 0;
+  padding: 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.volume-viewer-control-row {
+  margin-bottom: 12px;
+}
+
+.volume-viewer-control-row:last-child {
+  margin-bottom: 0;
+}
+
+.volume-viewer-control-row label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.volume-viewer-control-row input[type="range"] {
+  flex: 1;
+  min-width: 200px;
+}
+
+.volume-viewer-control-value {
+  font-family: monospace;
+  font-size: 0.9em;
+  color: #666;
+  min-width: 80px;
+  text-align: right;
 }
 
 .volume-viewer-sandbox-metadata {
