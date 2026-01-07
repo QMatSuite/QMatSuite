@@ -167,8 +167,10 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
   - Compute statistics: min/max/mean (lazy, but compute during parse)
   - Return: `VolumeMetadata` with blob_id and preview_blob_id
 - **Fixtures:** Use `tests/data/wannier_3d_test/example01/gaas_00001.xsf`
-- **Tests:** `tests/unit/test_volume_parsers.py::test_parse_xsf`
-  - Parse gaas_00001.xsf, verify dims (40×40×40), verify data count, verify metadata fields
+- **Tests:** `tests/unit/test_volume_parsers.py`
+  - `test_parse_xsf_gaas_00001_count_and_shape`: Parse gaas_00001.xsf, verify dims (40×40×40), verify data count exactly matches
+  - `test_xsf_order_contract`: Verify `metadata.data_order == "fortran_i_fastest"` (NOT "c_k_fastest")
+  - `test_strict_count_validation_xsf`: If count != nx*ny*nz → raises ValueError (use `pytest.raises(ValueError)`)
   - Test structure extraction (GaAs: 2 atoms)
 
 #### Task 1.4: Implement BXSF Parser
@@ -198,8 +200,11 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
   - Generate preview: Downsample band 1 by 4×
   - Return: Metadata dict with `{artifact_id, kind: "fermi_surface", metadata: {...}, blob_id_band_1, preview_blob_id, n_bands, band_indices: [1], fermi_energy: float | None}`
 - **Fixtures:** Use `tests/data/wannier_3d_test/example04/copper.bxsf` (7 bands)
-- **Tests:** `tests/unit/test_volume_parsers.py::test_parse_bxsf`
-  - Parse copper.bxsf, verify nbands=7, verify dims (51×51×51), verify Fermi Energy from BEGIN_INFO
+- **Tests:** `tests/unit/test_volume_parsers.py`
+  - `test_parse_bxsf_copper_header`: Parse copper.bxsf header, verify nbands=7, verify dims (51×51×51), verify Fermi Energy=12.21 eV
+  - `test_bxsf_order_contract`: Verify `metadata.data_order == "c_k_fastest"` (NOT "fortran_i_fastest")
+  - `test_strict_count_validation_bxsf_band1`: Per-band count must match exactly (51×51×51=132651), mismatch → raises ValueError (use `pytest.raises(ValueError)`)
+  - `test_bxsf_lazy_band_read_does_not_load_all`: Verify that `get_band_data(1)` does not read all bands (use file position tracking or mock to verify)
   - Verify band 1 blob is written and count matches
 
 #### Task 1.5: Downsampling Utility (with grid_vectors scaling)
@@ -215,7 +220,7 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
 - **Return:** `(downsampled_data, preview_shape, preview_grid_vectors_cart)`
 - **Tests:** `tests/unit/test_volume_parsers.py::test_downsample`
   - Synthetic test: 40×40×40 grid, downsample by 4 → 10×10×10, verify averages
-  - **Grid vectors test:** Verify `preview_grid_vectors[i] == full_grid_vectors[i] * factor` for all i
+  - `test_preview_grid_vectors_scaled`: Verify `preview_grid_vectors == full_grid_vectors * factor` (element-wise multiplication, all 3 vectors)
 
 ### Phase 2: Backend - RPC Handlers
 
