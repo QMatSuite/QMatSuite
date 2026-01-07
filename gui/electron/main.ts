@@ -663,6 +663,66 @@ ipcMain.handle('qv-reveal-path', async (_event, targetPath: string): Promise<boo
   }
 });
 
+/**
+ * Read binary blob file (secure, via index.json allowlist)
+ * 
+ * Security:
+ * 1. Read index.json from <calcDir>/analysis/blobs/index.json
+ * 2. Lookup blobId -> relative_path
+ * 3. Validate relative_path (no ../ traversal)
+ * 4. Resolve realpath and verify it's within blobs_dir
+ * 5. Read file and return ArrayBuffer
+ */
+ipcMain.handle('qv-read-blob', async (_event, blobId: string, calcDir: string): Promise<ArrayBuffer> => {
+  try {
+    const calcPath = path.resolve(calcDir);
+    const blobsDir = path.join(calcPath, 'analysis', 'blobs');
+    const indexPath = path.join(blobsDir, 'index.json');
+    
+    // Read index.json
+    if (!fs.existsSync(indexPath)) {
+      throw new Error(`Blob index not found: ${indexPath}`);
+    }
+    
+    const indexContent = fs.readFileSync(indexPath, 'utf-8');
+    const index: Record<string, string> = JSON.parse(indexContent);
+    
+    // Lookup blob_id
+    if (!(blobId in index)) {
+      throw new Error(`Blob ID not found in index: ${blobId}`);
+    }
+    
+    const relativePath = index[blobId];
+    
+    // Validate relative path (no traversal)
+    if (relativePath.includes('..') || path.isAbsolute(relativePath)) {
+      throw new Error(`Invalid blob path (traversal detected): ${relativePath}`);
+    }
+    
+    // Resolve absolute path
+    const blobPath = path.resolve(blobsDir, relativePath);
+    
+    // Security check: ensure resolved path is within blobs_dir
+    const blobsDirResolved = path.resolve(blobsDir);
+    if (!blobPath.startsWith(blobsDirResolved)) {
+      throw new Error(`Path traversal detected: ${blobPath} is outside ${blobsDirResolved}`);
+    }
+    
+    // Verify file exists
+    if (!fs.existsSync(blobPath)) {
+      throw new Error(`Blob file not found: ${blobPath}`);
+    }
+    
+    // Read file as ArrayBuffer
+    const buffer = fs.readFileSync(blobPath);
+    return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    
+  } catch (error) {
+    console.error('[main] Failed to read blob:', error);
+    throw error;
+  }
+});
+
 // =============================================================================
 // Remote Debugging for E2E Tests
 // =============================================================================
