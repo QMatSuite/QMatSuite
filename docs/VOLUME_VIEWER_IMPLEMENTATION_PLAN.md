@@ -132,9 +132,11 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
     - `origin_cart: np.ndarray` (3 float64)
     - `grid_vectors_cart: np.ndarray` (3×3 float64)
     - `lattice_vectors_cart: Optional[np.ndarray]` (3×3 float64)
-    - `data_order: Literal["k-fastest", "i-fastest"]` (MUST be explicit, determined via format default + self-check)
-    - `data_order_format_default: str` (the default for this format type, e.g., "XSF_DATAGRID" → "k-fastest")
-    - `data_order_self_check_passed: bool` (whether self-check validation succeeded)
+    - `data_order: Literal["fortran_i_fastest", "c_k_fastest"]` (MUST be explicit, determined via format default + self-check)
+      - **XSF DATAGRID_3D:** `"fortran_i_fastest"` (FORTRAN/column-major: i varies fastest)
+      - **BXSF BANDGRID_3D:** `"c_k_fastest"` (C/row-major: k varies fastest)
+    - `data_order_format_default: str` (the default for this format type: "XSF_DATAGRID" → "fortran_i_fastest", "BXSF_BANDGRID" → "c_k_fastest")
+    - `data_order_self_check_passed: bool` (whether strict count validation passed)
     - `length_units: str = "Å"`
     - `value_units: str = "e/voxel"`
     - `blob_id: str`
@@ -152,13 +154,13 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
   - Extract: grid dimensions (nx, ny, nz), origin, grid_vectors (3 vectors)
   - Read data values: `nx*ny*nz` floats (6 per line, handle whitespace)
   - **Data order handling (CRITICAL - NO SILENT WRONG):**
-    - **Format default:** XSF DATAGRID_3D default is `"k-fastest"` (XCrySDen convention: `for k in nz: for j in ny: for i in nx`)
-    - **Self-check:** After reading, verify using synthetic check pattern:
-      - If self-check fails → raise `ValueError("Data order validation failed. Expected k-fastest ordering but count/pattern mismatch. Please specify data_order explicitly.")`
-      - Self-check method: Verify count matches `nx*ny*nz` exactly (already done). For MVP, count validation is minimum self-check.
-      - Future enhancement: Use synthetic fixture `f(i,j,k)=i+10j+100k` to verify ordering if needed.
-    - **Override:** Parser accepts optional `data_order_override: Optional[str]` parameter. If provided, skip self-check.
-    - **Metadata:** Record `data_order` (final value), `data_order_format_default` ("k-fastest"), `data_order_self_check_passed` (bool)
+    - **Format default:** XSF DATAGRID_3D uses **FORTRAN/column-major order** = `"fortran_i_fastest"` (i varies fastest)
+      - **XCrySDen specification:** "datagrid values are specified in column-major (i.e. FORTRAN) order"
+      - **Equivalent Fortran:** `(((value(ix,iy,iz),ix=1,nx),iy=1,ny),iz=1,nz)`
+      - **Index formula:** `idx = i + nx*(j + ny*k)` where `i ∈ [0, nx-1]`, `j ∈ [0, ny-1]`, `k ∈ [0, nz-1]`
+    - **Strict count validation:** Verify `len(data) == nx*ny*nz` **exactly**. If mismatch → raise `ValueError(f"Data count mismatch: expected {nx*ny*nz}, got {len(data)}. Possible data_order issue.")`
+    - **No tolerance:** Do NOT allow "~63988-64001" tolerance. Mismatch = error.
+    - **Metadata:** Record `data_order="fortran_i_fastest"`, `data_order_format_default="fortran_i_fastest"`, `data_order_self_check_passed=True` (if count matches)
   - **Count validation:** Verify `len(data) == nx*ny*nz`, raise `ValueError` if mismatch (this is critical self-check)
   - Write to blob: `blob_store.register_blob(...)` → returns blob_id
   - Generate preview: Downsample by 4× (block average), register preview blob
@@ -185,9 +187,12 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
       - Read only `nx*ny*nz` floats for that band
       - Do NOT read entire file. Do NOT read all bands into memory.
   - **Data order handling (CRITICAL - NO SILENT WRONG):**
-    - **Format default:** BXSF BANDGRID_3D default is `"k-fastest"` (based on XCrySDen: `for i in nx: for j in ny: for k in nz`)
-    - **Self-check:** After reading each band, verify `len(band_data) == nx*ny*nz`. If mismatch → raise `ValueError` with clear message about data order.
-    - **Metadata:** Record `data_order` (final value), `data_order_format_default` ("k-fastest"), `data_order_self_check_passed` (bool)
+    - **Format default:** BXSF BANDGRID_3D uses **C/row-major order** = `"c_k_fastest"` (k varies fastest)
+      - **XCrySDen specification:** "values inside a bandgrid are specified in row-major (i.e. C) order"
+      - **Equivalent C loop:** `for i for j for k` (k varies fastest)
+      - **Index formula:** `idx = k + nz*(j + ny*i)` where `i ∈ [0, nx-1]`, `j ∈ [0, ny-1]`, `k ∈ [0, nz-1]`
+    - **Strict count validation:** Verify `len(band_data) == nx*ny*nz` **exactly** per band. If mismatch → raise `ValueError(f"Band {band_index} data count mismatch: expected {nx*ny*nz}, got {len(band_data)}. Possible data_order issue.")`
+    - **Metadata:** Record `data_order="c_k_fastest"`, `data_order_format_default="c_k_fastest"`, `data_order_self_check_passed=True` (if count matches)
   - **Count validation:** Verify `len(band_data) == nx*ny*nz` per band, raise `ValueError` if mismatch
   - Write band 1 blob: `blob_store.register_blob(...)`
   - Generate preview: Downsample band 1 by 4×
@@ -203,7 +208,7 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
 - **Requirements:**
   - Block average: Group `factor×factor×factor` voxels, average values
   - Handle non-divisible dimensions: Use floor division `(nx // factor, ny // factor, nz // factor)`
-  - Preserve data order (k-fastest remains k-fastest)
+  - Preserve data order (fortran_i_fastest remains fortran_i_fastest, c_k_fastest remains c_k_fastest)
   - **CRITICAL:** Scale grid_vectors_cart: `preview_grid_vectors = full_grid_vectors * factor` (element-wise multiplication)
   - **Origin unchanged:** `preview_origin = full_origin` (no scaling)
   - **Lattice vectors unchanged:** `preview_lattice_vectors = full_lattice_vectors` (not scaled)
@@ -316,7 +321,10 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
   - [ ] `test_data_order_self_check_fails`: If count mismatch → raises ValueError with clear message
   - [ ] `test_downsample_40x40x40_to_10x10x10`: Synthetic grid, verify downsampling
   - [ ] `test_data_count_validation`: Invalid data count → raises error
-  - [ ] `test_data_order_default_k_fastest`: Verify default ordering assumption
+  - [ ] `test_xsf_order_contract`: Parse XSF, verify `metadata.data_order == "fortran_i_fastest"`
+  - [ ] `test_bxsf_order_contract`: Parse BXSF, verify `metadata.data_order == "c_k_fastest"`
+  - [ ] `test_strict_count_validation_xsf`: If count != nx*ny*nz → raises ValueError (use `pytest.raises`)
+  - [ ] `test_strict_count_validation_bxsf_band1`: Per-band count must match exactly, mismatch → raises ValueError
 
 #### Task 5.2: Blob Store Security Tests
 - **File:** `tests/unit/test_blob_store.py`
@@ -376,14 +384,20 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
 
 ## Step 4: Implementation Notes & Risks
 
-### Risk 1: Data Ordering Ambiguity (CRITICAL - NO SILENT WRONG)
-- **Risk:** XSF vs BXSF may have different default ordering. Wrong order = wrong visualization.
+### Risk 1: Data Ordering (CRITICAL - NO SILENT WRONG)
+- **Risk:** XSF and BXSF use **OPPOSITE** ordering conventions. Wrong order = completely wrong visualization.
+- **XCrySDen Official Specification:**
+  - **XSF DATAGRID_3D:** FORTRAN/column-major = `"fortran_i_fastest"` (i varies fastest)
+    - Index: `idx = i + nx*(j + ny*k)`
+    - Source: https://www.xcrysden.org/doc/XSF.html
+  - **BXSF BANDGRID_3D:** C/row-major = `"c_k_fastest"` (k varies fastest)
+    - Index: `idx = k + nz*(j + ny*i)`
+    - Source: https://www.xcrysden.org/doc/XSF.html
 - **Mitigation:**
-  - **Format defaults:** XSF DATAGRID_3D → "k-fastest", BXSF BANDGRID_3D → "k-fastest" (documented)
-  - **Self-check:** Count validation (`len(data) == nx*ny*nz`) is minimum. Future: synthetic fixture `f(i,j,k)=i+10j+100k`.
-  - **Failure handling:** If self-check fails → raise `ValueError` with clear message. Do NOT guess or use wrong order silently.
+  - **Format defaults:** XSF → "fortran_i_fastest", BXSF → "c_k_fastest" (from official spec)
+  - **Strict count validation:** `len(data) == nx*ny*nz` **exactly**. No tolerance. Mismatch → raise ValueError.
   - **Metadata:** Always record `data_order`, `data_order_format_default`, `data_order_self_check_passed` for transparency.
-- **Fallback:** Parser accepts `data_order_override` parameter. UI dropdown for manual override (future).
+- **No fallback:** Do NOT allow override in MVP. If count mismatch, raise error (file may be corrupted or wrong format).
 
 ### Risk 2: Three.js MarchingCubes Library
 - **Risk:** `three-stdlib` may not be available or incompatible
