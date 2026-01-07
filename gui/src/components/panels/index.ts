@@ -19,4 +19,5 @@ export { CalculationOverviewTab } from './CalculationOverviewTab';
 export { CalculationRunTab } from './CalculationRunTab';
 export { CalculationAnalysisTab } from './CalculationAnalysisTab';
 export { HistoryPanel } from './HistoryPanel';
+export { VolumeViewerSandbox } from './VolumeViewerSandbox';
 export type { AppSettings } from './SettingsPanel';
