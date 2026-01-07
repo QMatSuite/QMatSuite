@@ -24,29 +24,29 @@ class VolumeMetadata:
     
     Follows strict contract from PLAN_V2 and FIXTURE_FILE_REVIEW.
     """
-    # Grid dimensions
+    # Grid dimensions (required)
     grid_shape: Tuple[int, int, int]  # (nx, ny, nz)
     
-    # Coordinate system
+    # Coordinate system (required)
     coordinate_system: Literal["real-space", "reciprocal-space"]
     
-    # Spatial information
+    # Spatial information (required)
     origin_cart: np.ndarray  # (3,) float64, in length_units
     grid_vectors_cart: np.ndarray  # (3, 3) float64, voxel step vectors in length_units
-    lattice_vectors_cart: Optional[np.ndarray] = None  # (3, 3) float64, crystal lattice (for structure overlay)
     
-    # Data ordering (CRITICAL)
+    # Data ordering (CRITICAL, required)
     data_order: DataOrder  # Enum: FORTRAN_I_FASTEST or C_K_FASTEST
     data_order_format_default: str  # Format name (e.g., "XSF_DATAGRID", "BXSF_BANDGRID")
     data_order_self_check_passed: bool  # Whether count validation passed
     
-    # Units
+    # Blob references (required)
+    blob_id: str  # Full resolution blob
+    
+    # Optional fields (with defaults)
+    lattice_vectors_cart: Optional[np.ndarray] = None  # (3, 3) float64, crystal lattice (for structure overlay)
     length_units: str = "Å"  # Length unit (Å, 1/Å, etc.)
     value_units: str = "arbitrary"  # Value unit (arbitrary, eV, etc.)
     reciprocal_convention: Optional[str] = None  # For reciprocal space: "2pi" or "unknown"
-    
-    # Blob references
-    blob_id: str  # Full resolution blob
     preview_blob_id: Optional[str] = None  # Preview blob (downsampled)
     preview_downsample_factor: Optional[int] = None  # Factor used for preview (e.g., 4)
     
