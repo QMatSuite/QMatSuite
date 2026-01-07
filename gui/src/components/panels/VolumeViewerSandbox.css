@@ -95,7 +95,38 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.volume-viewer-loading {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+}
+
+.volume-viewer-sandbox-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 16px;
+}
+
+.volume-viewer-canvas-container {
+  flex: 1;
+  min-height: 400px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.volume-viewer-sandbox-metadata {
+  flex-shrink: 0;
+  max-height: 300px;
   overflow-y: auto;
+  border-top: 1px solid #ddd;
+  padding-top: 16px;
 }
 
 .volume-viewer-sandbox-metadata h3 {
