@@ -332,6 +332,10 @@ class QVDaemon:
             "list_step_artifacts": self._handle_list_step_artifacts,
             "read_step_artifact_text": self._handle_read_step_artifact_text,
             
+            # Volume visualization (dev sandbox)
+            "list_wannier_3d_fixtures": self._handle_list_wannier_3d_fixtures,
+            "compile_fixture_volume": self._handle_compile_fixture_volume,
+            
             # Job management
             "run_calculation": self._handle_run_calculation,
             "run_step": self._handle_run_step,
@@ -4926,8 +4930,111 @@ class QVDaemon:
             analysis_type=analysis_type,  # type: ignore
         )
         
-        # Return None-safe dict for JSON serialization
-        return {"data": result, "has_reference": result is not None}
+        return result
+    
+    def _handle_list_wannier_3d_fixtures(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List available Wannier90 3D test fixtures.
+        
+        Payload: (none required, or {"fixture_dir": str} for custom path)
+        
+        Returns:
+            List of fixture metadata
+        """
+        # Default fixture directory
+        fixture_dir = Path(__file__).parent.parent.parent / "tests" / "data" / "wannier_3d_test"
+        if "fixture_dir" in payload:
+            fixture_dir = Path(payload["fixture_dir"])
+        
+        fixtures = []
+        
+        # Scan fixture directories
+        if fixture_dir.exists():
+            for example_dir in sorted(fixture_dir.iterdir()):
+                if not example_dir.is_dir():
+                    continue
+                
+                # Look for XSF or BXSF files
+                xsf_files = sorted(example_dir.glob("*.xsf"))
+                bxsf_files = sorted(example_dir.glob("*.bxsf"))
+                
+                if xsf_files:
+                    # XSF fixture (MLWF)
+                    for xsf_file in xsf_files:
+                        fixtures.append({
+                            "id": f"{example_dir.name}_{xsf_file.stem}",
+                            "name": f"{example_dir.name} - {xsf_file.stem}",
+                            "file_path": str(xsf_file.resolve()),
+                            "type": "xsf",
+                            "example_dir": example_dir.name,
+                        })
+                elif bxsf_files:
+                    # BXSF fixture (Fermi surface)
+                    for bxsf_file in bxsf_files:
+                        fixtures.append({
+                            "id": f"{example_dir.name}_{bxsf_file.stem}",
+                            "name": f"{example_dir.name} - {bxsf_file.stem}",
+                            "file_path": str(bxsf_file.resolve()),
+                            "type": "bxsf",
+                            "example_dir": example_dir.name,
+                        })
+        
+        return {"fixtures": fixtures}
+    
+    def _handle_compile_fixture_volume(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Compile fixture volume file (XSF/BXSF) to blob.
+        
+        Payload:
+            file_path: str - Path to XSF or BXSF file
+            calc_dir: str - Calculation directory (sandbox output directory)
+            
+        Returns:
+            Dict with artifact_id, kind, metadata, blob_id, preview_blob_id
+        """
+        from quantumvitas.analysis.blob_store import BlobStore
+        from quantumvitas.io.parser.volume_parsers import (
+            parse_xsf_datagrid_3d,
+            parse_bxsf_bandgrid_3d,
+        )
+        
+        file_path = Path(self._require_str(payload, "file_path")).resolve()
+        calc_dir = Path(self._require_str(payload, "calc_dir")).resolve()
+        
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+        
+        # Create blob store
+        blob_store = BlobStore(calc_dir)
+        
+        # Detect file type and parse
+        if file_path.suffix == ".xsf":
+            # XSF parser
+            metadata = parse_xsf_datagrid_3d(file_path, calc_dir, blob_store)
+            
+            return {
+                "artifact_id": f"xsf_{file_path.stem}",
+                "kind": "volume",
+                "metadata": metadata.to_dict(),
+                "blob_id": metadata.blob_id,
+                "preview_blob_id": metadata.preview_blob_id,
+            }
+        elif file_path.suffix == ".bxsf":
+            # BXSF parser (band 1 for MVP)
+            result = parse_bxsf_bandgrid_3d(file_path, calc_dir, blob_store, band_index=1)
+            
+            return {
+                "artifact_id": result["artifact_id"],
+                "kind": result["kind"],
+                "metadata": result["metadata"],
+                "blob_id": result["blob_id"],
+                "preview_blob_id": result["preview_blob_id"],
+                "n_bands": result["n_bands"],
+                "band_index": result["band_index"],
+                "fermi_energy": result["fermi_energy"],
+            }
+        else:
+            raise ValueError(f"Unsupported file type: {file_path.suffix}. Expected .xsf or .bxsf")
     
     def _handle_list_step_artifacts(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -4981,6 +5088,115 @@ class QVDaemon:
             head_lines=head_lines,
             tail_lines=tail_lines,
         )
+    
+    def _handle_list_wannier_3d_fixtures(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List available Wannier90 3D test fixtures.
+        
+        Payload: (none required, or {"fixture_dir": str} for custom path)
+        
+        Returns:
+            List of fixture metadata
+        """
+        # Default fixture directory (relative to repo root)
+        repo_root = Path(__file__).parent.parent.parent
+        fixture_dir = repo_root / "tests" / "data" / "wannier_3d_test"
+        if "fixture_dir" in payload:
+            fixture_dir = Path(payload["fixture_dir"])
+        
+        fixtures = []
+        
+        # Scan fixture directories
+        if fixture_dir.exists():
+            for example_dir in sorted(fixture_dir.iterdir()):
+                if not example_dir.is_dir():
+                    continue
+                
+                # Look for XSF or BXSF files
+                xsf_files = sorted(example_dir.glob("*.xsf"))
+                bxsf_files = sorted(example_dir.glob("*.bxsf"))
+                
+                if xsf_files:
+                    # XSF fixture (MLWF)
+                    for xsf_file in xsf_files:
+                        fixtures.append({
+                            "id": f"{example_dir.name}_{xsf_file.stem}",
+                            "name": f"{example_dir.name} - {xsf_file.stem}",
+                            "file_path": str(xsf_file.resolve()),
+                            "type": "xsf",
+                            "example_dir": example_dir.name,
+                        })
+                elif bxsf_files:
+                    # BXSF fixture (Fermi surface)
+                    for bxsf_file in bxsf_files:
+                        fixtures.append({
+                            "id": f"{example_dir.name}_{bxsf_file.stem}",
+                            "name": f"{example_dir.name} - {bxsf_file.stem}",
+                            "file_path": str(bxsf_file.resolve()),
+                            "type": "bxsf",
+                            "example_dir": example_dir.name,
+                        })
+        
+        return {"fixtures": fixtures}
+    
+    def _handle_compile_fixture_volume(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Compile fixture volume file (XSF/BXSF) to blob.
+        
+        Payload:
+            file_path: str - Path to XSF or BXSF file
+            calc_dir: str - Calculation directory (sandbox output directory)
+            
+        Returns:
+            Dict with artifact_id, kind, metadata, blob_id, preview_blob_id
+        """
+        from quantumvitas.analysis.blob_store import BlobStore
+        from quantumvitas.io.parser.volume_parsers import (
+            parse_xsf_datagrid_3d,
+            parse_bxsf_bandgrid_3d,
+            VolumeParserError,
+        )
+        
+        file_path = Path(self._require_str(payload, "file_path")).resolve()
+        calc_dir = Path(self._require_str(payload, "calc_dir")).resolve()
+        
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+        
+        # Create blob store
+        blob_store = BlobStore(calc_dir)
+        
+        try:
+            # Detect file type and parse
+            if file_path.suffix == ".xsf":
+                # XSF parser
+                metadata = parse_xsf_datagrid_3d(file_path, calc_dir, blob_store)
+                
+                return {
+                    "artifact_id": f"xsf_{file_path.stem}",
+                    "kind": "volume",
+                    "metadata": metadata.to_dict(),
+                    "blob_id": metadata.blob_id,
+                    "preview_blob_id": metadata.preview_blob_id,
+                }
+            elif file_path.suffix == ".bxsf":
+                # BXSF parser (band 1 for MVP)
+                result = parse_bxsf_bandgrid_3d(file_path, calc_dir, blob_store, band_index=1)
+                
+                return {
+                    "artifact_id": result["artifact_id"],
+                    "kind": result["kind"],
+                    "metadata": result["metadata"],
+                    "blob_id": result["blob_id"],
+                    "preview_blob_id": result["preview_blob_id"],
+                    "n_bands": result["n_bands"],
+                    "band_index": result["band_index"],
+                    "fermi_energy": result["fermi_energy"],
+                }
+            else:
+                raise ValueError(f"Unsupported file type: {file_path.suffix}. Expected .xsf or .bxsf")
+        except VolumeParserError as e:
+            raise ValueError(f"Failed to parse volume file: {e}")
     
     # -------------------------------------------------------------------------
     # Job management handlers
