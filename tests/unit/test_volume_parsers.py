@@ -224,3 +224,91 @@ def test_blob_store_rejects_unknown_blob_id(temp_calc_dir):
     # Validate returns False
     assert store.validate_blob_id("nonexistent-blob-id") is False
 
+
+# BXSF tests
+COPPER_BXSF = FIXTURE_DIR / "example04" / "copper.bxsf"
+LEAD_BXSF = FIXTURE_DIR / "example02" / "lead.bxsf"
+
+
+def test_parse_bxsf_copper_header(temp_calc_dir, blob_store):
+    """Test parsing copper.bxsf header: verify nbands, dims, Fermi Energy."""
+    if not COPPER_BXSF.exists():
+        pytest.skip(f"Fixture not found: {COPPER_BXSF}")
+    
+    from quantumvitas.io.parser.volume_parsers import parse_bxsf_bandgrid_3d
+    
+    result = parse_bxsf_bandgrid_3d(COPPER_BXSF, temp_calc_dir, blob_store, band_index=1)
+    
+    # Verify header info
+    assert result["n_bands"] == 7
+    assert result["fermi_energy"] == pytest.approx(12.2103, abs=1e-4)
+    
+    # Verify metadata
+    metadata = result["metadata"]
+    assert metadata["grid_shape"] == [51, 51, 51]
+    assert metadata["coordinate_system"] == "reciprocal-space"
+
+
+def test_bxsf_order_contract(temp_calc_dir, blob_store):
+    """Test BXSF parser: verify data_order == 'c_k_fastest' (NOT fortran_i_fastest)."""
+    if not COPPER_BXSF.exists():
+        pytest.skip(f"Fixture not found: {COPPER_BXSF}")
+    
+    from quantumvitas.io.parser.volume_parsers import parse_bxsf_bandgrid_3d
+    
+    result = parse_bxsf_bandgrid_3d(COPPER_BXSF, temp_calc_dir, blob_store, band_index=1)
+    metadata = result["metadata"]
+    
+    # CRITICAL: BXSF must use C order (k-fastest)
+    assert metadata["data_order"] == "c_k_fastest"
+    
+    # Must NOT be FORTRAN order
+    assert metadata["data_order"] != "fortran_i_fastest"
+    
+    # Verify format default
+    assert metadata["data_order_format_default"] == "BXSF_BANDGRID"
+    
+    # Verify self-check passed
+    assert metadata["data_order_self_check_passed"] is True
+
+
+def test_strict_count_validation_bxsf_band1(temp_calc_dir, blob_store):
+    """Test strict count validation for BXSF: per-band count must match exactly."""
+    if not COPPER_BXSF.exists():
+        pytest.skip(f"Fixture not found: {COPPER_BXSF}")
+    
+    from quantumvitas.io.parser.volume_parsers import parse_bxsf_bandgrid_3d
+    
+    # Parse band 1 (should pass)
+    result = parse_bxsf_bandgrid_3d(COPPER_BXSF, temp_calc_dir, blob_store, band_index=1)
+    metadata = result["metadata"]
+    assert metadata["data_order_self_check_passed"] is True
+    
+    # Verify blob size (51*51*51 * 4 bytes per float32)
+    blob_path = blob_store.get_blob_path(result["blob_id"])
+    assert blob_path is not None
+    expected_size = 51 * 51 * 51 * 4
+    assert blob_path.stat().st_size == expected_size
+
+
+def test_bxsf_lazy_band_read_does_not_load_all(temp_calc_dir, blob_store):
+    """Test that BXSF parser only reads requested band (lazy loading)."""
+    if not COPPER_BXSF.exists():
+        pytest.skip(f"Fixture not found: {COPPER_BXSF}")
+    
+    from quantumvitas.io.parser.volume_parsers import parse_bxsf_bandgrid_3d, _scan_bxsf_band_offsets
+    
+    # Scan band offsets (should not read all data)
+    band_offsets = _scan_bxsf_band_offsets(COPPER_BXSF)
+    
+    # Verify all 7 bands are recorded
+    assert len(band_offsets) == 7
+    assert set(band_offsets.keys()) == {1, 2, 3, 4, 5, 6, 7}
+    
+    # Parse only band 1
+    result = parse_bxsf_bandgrid_3d(COPPER_BXSF, temp_calc_dir, blob_store, band_index=1)
+    
+    # Verify only band 1 blob exists (not all 7)
+    assert result["blob_id"] is not None
+    assert result["band_index"] == 1
+
