@@ -21,7 +21,7 @@ import json
 import shutil
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import pytest
 
@@ -658,7 +658,7 @@ class TestCalculationFailureHandling:
         
         original_run = CalculationRunner.run
         
-        def mock_run_with_failure(self, calculation):
+        def mock_run_with_failure(self, calculation, *, skip_history: bool = False, run_id: Optional[str] = None):
             """Mock runner that simulates nscf step failure."""
             from quantumvitas.calculation.types import StepMode
             started = datetime.now(timezone.utc)
