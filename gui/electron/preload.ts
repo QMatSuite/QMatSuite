@@ -211,6 +211,17 @@ const qvApi = {
   setE2ETestDirectory: async (directory: string): Promise<void> => {
     return ipcRenderer.invoke('qv-set-e2e-test-directory', directory);
   },
+  
+  /**
+   * Read binary blob file (secure, via index.json allowlist)
+   * 
+   * @param blobId - Blob ID to read
+   * @param calcDir - Calculation directory (for blob store)
+   * @returns ArrayBuffer with blob data
+   */
+  readBlob: async (blobId: string, calcDir: string): Promise<ArrayBuffer> => {
+    return ipcRenderer.invoke('qv-read-blob', blobId, calcDir);
+  },
 };
 
 // Expose to renderer via contextBridge
