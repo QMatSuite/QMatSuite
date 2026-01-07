@@ -1,11 +1,12 @@
 /**
  * VolumeViewerSandbox - Development sandbox for volume visualization
  * 
- * MVP: Lists fixtures, compiles to blob, displays metadata
- * Future: 3D isosurface rendering with Three.js
+ * MVP: Lists fixtures, compiles to blob, displays metadata + 3D isosurface
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Grid } from '@react-three/drei';
 import { useQVClient } from '../../hooks/useQVClient';
 import './VolumeViewerSandbox.css';
 
@@ -124,10 +125,24 @@ export function VolumeViewerSandbox() {
         </div>
         
         <div className="volume-viewer-sandbox-main">
-          {loading && <div>Compiling...</div>}
+          {loading && <div className="volume-viewer-loading">Compiling...</div>}
           
           {selectedVolume && (
-            <div className="volume-viewer-sandbox-metadata">
+            <div className="volume-viewer-sandbox-content">
+              {/* 3D Canvas */}
+              <div className="volume-viewer-canvas-container">
+                <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
+                  <Suspense fallback={null}>
+                    <ambientLight intensity={0.5} />
+                    <directionalLight position={[10, 10, 5]} intensity={0.8} />
+                    <Grid args={[10, 10]} />
+                    <OrbitControls />
+                  </Suspense>
+                </Canvas>
+              </div>
+              
+              {/* Metadata panel */}
+              <div className="volume-viewer-sandbox-metadata">
               <h3>Metadata: {selectedVolume.artifact_id}</h3>
               <div className="metadata-section">
                 <h4>Grid Info</h4>
@@ -160,6 +175,7 @@ export function VolumeViewerSandbox() {
               <div className="metadata-section">
                 <h4>Full Metadata</h4>
                 <pre>{JSON.stringify(selectedVolume.metadata, null, 2)}</pre>
+              </div>
               </div>
             </div>
           )}
