@@ -24,8 +24,8 @@
   padding: 12px;
   border-radius: 4px;
   margin-bottom: 16px;
-  color: #a00;
-  font-weight: 500;
+  color: #8b0000;
+  font-weight: 600;
   font-size: 0.95em;
   line-height: 1.4;
 }
@@ -37,16 +37,20 @@
   overflow: hidden;
 }
 
+/* A1: Sidebar - dark theme */
 .volume-viewer-sandbox-sidebar {
   width: 300px;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   padding: 16px;
   overflow-y: auto;
+  background: rgba(15, 23, 42, 0.4); /* slate-950/40 */
+  color: rgb(248, 250, 252); /* slate-100 */
 }
 
 .volume-viewer-sandbox-sidebar h3 {
   margin: 0 0 12px 0;
+  color: rgb(248, 250, 252); /* slate-100 */
 }
 
 .volume-viewer-sandbox-fixture-list {
@@ -70,6 +74,16 @@
 .volume-viewer-sandbox-fixture-item.selected {
   border-color: #007bff;
   background: #e7f3ff;
+  color: #000;
+}
+
+.volume-viewer-sandbox-fixture-item.selected .fixture-name {
+  color: #000;
+  font-weight: 600;
+}
+
+.volume-viewer-sandbox-fixture-item.selected .fixture-type {
+  color: #0056b3;
 }
 
 .volume-viewer-sandbox-fixture-item.compiled {
@@ -104,27 +118,31 @@
   position: relative;
 }
 
+/* A2: Debug panel - modern glass overlay with dark theme */
 .volume-viewer-debug {
   position: absolute;
   top: 16px;
   right: 16px;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid #999;
-  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.6); /* slate-900/60 */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
   padding: 12px;
   font-size: 0.85em;
   z-index: 10;
   min-width: 250px;
   max-width: 350px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  pointer-events: auto; /* A2: Ensure pointer events work */
 }
 
 .volume-viewer-debug h4 {
   margin: 0 0 8px 0;
   font-size: 1em;
-  color: #222;
+  color: rgb(248, 250, 252); /* slate-50 */
   font-weight: 600;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   padding-bottom: 4px;
 }
 
@@ -141,16 +159,17 @@
 
 .debug-label {
   font-weight: 500;
-  color: #444;
+  color: rgb(203, 213, 225); /* slate-300 - A2: hierarchical */
   margin-right: 8px;
   flex-shrink: 0;
 }
 
 .debug-value {
   font-family: monospace;
-  color: #000;
+  color: rgb(248, 250, 252); /* slate-50 - A2: hierarchical */
   text-align: right;
   font-weight: 400;
+  font-variant-numeric: tabular-nums; /* A2: tabular nums for alignment */
 }
 
 .debug-section {
@@ -184,13 +203,15 @@
   gap: 16px;
 }
 
+/* A1: Canvas container - ensure dark background */
 .volume-viewer-canvas-container {
   flex: 1;
   min-height: 400px;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  background: #fafafa;
+  background: #1a1a1a;
   position: relative;
+  pointer-events: auto; /* A2: Ensure pointer events work */
 }
 
 .volume-viewer-canvas-loading {
@@ -204,12 +225,14 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* A1: Controls - dark theme */
 .volume-viewer-controls {
   flex-shrink: 0;
   padding: 16px;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  background: #fff;
+  background: rgba(15, 23, 42, 0.4); /* slate-950/40 */
+  color: rgb(248, 250, 252); /* slate-100 */
 }
 
 .volume-viewer-control-row {
@@ -224,19 +247,72 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  color: rgb(248, 250, 252); /* slate-100 */
 }
 
+/* A1: Dark theme form inputs */
 .volume-viewer-control-row input[type="range"] {
   flex: 1;
   min-width: 200px;
+  background: rgb(30, 41, 59); /* slate-800 */
+  accent-color: rgb(59, 130, 246); /* blue-500 */
+}
+
+.volume-viewer-control-row input[type="checkbox"] {
+  accent-color: rgb(59, 130, 246); /* blue-500 */
+}
+
+.volume-viewer-control-row select {
+  background: rgb(30, 41, 59); /* slate-800 */
+  color: rgb(248, 250, 252); /* slate-100 */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.volume-viewer-control-row select:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: rgba(59, 130, 246, 0.5); /* blue-500/50 */
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.volume-viewer-control-row select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .volume-viewer-control-value {
   font-family: monospace;
   font-size: 0.9em;
-  color: #666;
+  color: rgb(248, 250, 252); /* slate-100 */
   min-width: 80px;
   text-align: right;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.volume-viewer-set-ef-button {
+  margin-left: 8px;
+  padding: 4px 12px;
+  background: rgb(30, 41, 59); /* slate-800 */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgb(248, 250, 252); /* slate-100 */
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: background 0.2s;
+}
+
+.volume-viewer-set-ef-button:hover:not(:disabled) {
+  background: rgb(51, 65, 85); /* slate-700 */
+}
+
+.volume-viewer-set-ef-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .volume-viewer-iso-warning {
@@ -261,16 +337,19 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* A1: Metadata panel - dark theme */
 .volume-viewer-sandbox-metadata {
   flex-shrink: 0;
   max-height: 300px;
   overflow-y: auto;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 16px;
+  color: rgb(248, 250, 252); /* slate-100 */
 }
 
 .volume-viewer-sandbox-metadata h3 {
   margin: 0 0 16px 0;
+  color: rgb(248, 250, 252); /* slate-100 */
 }
 
 .metadata-section {
@@ -280,16 +359,20 @@
 .metadata-section h4 {
   margin: 0 0 8px 0;
   font-size: 1em;
-  color: #666;
+  color: rgb(203, 213, 225); /* slate-300 */
 }
 
+/* A1: Code blocks - dark theme */
 .metadata-section pre {
-  background: #f5f5f5;
+  background: rgba(0, 0, 0, 0.3); /* black/30 */
+  color: rgb(248, 250, 252); /* slate-100 */
+  font-family: monospace;
   padding: 12px;
   border-radius: 4px;
   overflow-x: auto;
   font-size: 0.9em;
   margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .volume-viewer-sandbox-placeholder {

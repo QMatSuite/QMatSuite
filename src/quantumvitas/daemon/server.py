@@ -5299,8 +5299,15 @@ class QVDaemon:
                     "preview_blob_id": metadata.preview_blob_id,
                 }
             elif file_path.suffix == ".bxsf":
-                # BXSF parser (band 1 for MVP)
-                result = parse_bxsf_bandgrid_3d(file_path, calc_dir, blob_store, band_index=1)
+                # P2: BXSF parser with optional band_index parameter
+                band_index = payload.get("band_index", 1)  # Default to band 1 (1-based)
+                if not isinstance(band_index, int) or band_index < 1:
+                    raise ValueError(f"Invalid band_index: {band_index}. Must be >= 1 (1-based)")
+                result = parse_bxsf_bandgrid_3d(file_path, calc_dir, blob_store, band_index=band_index)
+                
+                # Validate band_index is within range
+                if band_index > result["n_bands"]:
+                    raise ValueError(f"band_index {band_index} exceeds n_bands {result['n_bands']}")
                 metadata_dict = result["metadata"]
                 
                 # Log blob contract for debugging (Phase 0 contract verification)
