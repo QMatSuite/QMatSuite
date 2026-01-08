@@ -5246,10 +5246,50 @@ class QVDaemon:
         blob_store = BlobStore(calc_dir)
         
         try:
+            import os
+            import logging
+            logger = logging.getLogger(__name__)
+            
             # Detect file type and parse
             if file_path.suffix == ".xsf":
                 # XSF parser
                 metadata = parse_xsf_datagrid_3d(file_path, calc_dir, blob_store)
+                
+                # Log blob contract for debugging (Phase 0 contract verification)
+                if metadata.preview_blob_id:
+                    preview_path = blob_store.get_blob_path(metadata.preview_blob_id)
+                    if preview_path:
+                        preview_size = os.path.getsize(preview_path)
+                        if metadata.preview_grid_shape:
+                            preview_nx, preview_ny, preview_nz = metadata.preview_grid_shape
+                            preview_expected_bytes = 4 * preview_nx * preview_ny * preview_nz
+                            logger.info(
+                                f"[compile_fixture_volume] XSF preview blob contract: "
+                                f"blob_id={metadata.preview_blob_id}, "
+                                f"blob_path={preview_path}, "
+                                f"file_size={preview_size} bytes, "
+                                f"preview_grid_shape={metadata.preview_grid_shape}, "
+                                f"expected_bytes={preview_expected_bytes}, "
+                                f"match={preview_size == preview_expected_bytes}"
+                            )
+                        else:
+                            logger.warning(f"[compile_fixture_volume] XSF preview_grid_shape is None")
+                
+                if metadata.blob_id:
+                    full_path = blob_store.get_blob_path(metadata.blob_id)
+                    if full_path:
+                        full_size = os.path.getsize(full_path)
+                        nx, ny, nz = metadata.grid_shape
+                        full_expected_bytes = 4 * nx * ny * nz
+                        logger.info(
+                            f"[compile_fixture_volume] XSF full blob contract: "
+                            f"blob_id={metadata.blob_id}, "
+                            f"blob_path={full_path}, "
+                            f"file_size={full_size} bytes, "
+                            f"grid_shape={metadata.grid_shape}, "
+                            f"expected_bytes={full_expected_bytes}, "
+                            f"match={full_size == full_expected_bytes}"
+                        )
                 
                 return {
                     "artifact_id": f"xsf_{file_path.stem}",
@@ -5261,11 +5301,31 @@ class QVDaemon:
             elif file_path.suffix == ".bxsf":
                 # BXSF parser (band 1 for MVP)
                 result = parse_bxsf_bandgrid_3d(file_path, calc_dir, blob_store, band_index=1)
+                metadata_dict = result["metadata"]
+                
+                # Log blob contract for debugging (Phase 0 contract verification)
+                if result.get("preview_blob_id"):
+                    preview_path = blob_store.get_blob_path(result["preview_blob_id"])
+                    if preview_path:
+                        preview_size = os.path.getsize(preview_path)
+                        preview_grid_shape = metadata_dict.get("preview_grid_shape")
+                        if preview_grid_shape:
+                            preview_nx, preview_ny, preview_nz = preview_grid_shape
+                            preview_expected_bytes = 4 * preview_nx * preview_ny * preview_nz
+                            logger.info(
+                                f"[compile_fixture_volume] BXSF preview blob contract: "
+                                f"blob_id={result['preview_blob_id']}, "
+                                f"blob_path={preview_path}, "
+                                f"file_size={preview_size} bytes, "
+                                f"preview_grid_shape={preview_grid_shape}, "
+                                f"expected_bytes={preview_expected_bytes}, "
+                                f"match={preview_size == preview_expected_bytes}"
+                            )
                 
                 return {
                     "artifact_id": result["artifact_id"],
                     "kind": result["kind"],
-                    "metadata": result["metadata"],
+                    "metadata": metadata_dict,
                     "blob_id": result["blob_id"],
                     "preview_blob_id": result["preview_blob_id"],
                     "n_bands": result["n_bands"],

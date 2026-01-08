@@ -192,6 +192,7 @@ def parse_xsf_datagrid_3d(
         blob_id=blob_id,
         preview_blob_id=preview_blob_id,
         preview_downsample_factor=preview_factor,
+        preview_grid_shape=preview_shape,  # Store preview dimensions
         value_min=value_min,
         value_max=value_max,
         value_mean=value_mean,
@@ -408,6 +409,7 @@ def parse_bxsf_bandgrid_3d(
         blob_id=blob_id,
         preview_blob_id=preview_blob_id,
         preview_downsample_factor=preview_factor,
+        preview_grid_shape=preview_shape,  # Store preview dimensions
         value_min=value_min,
         value_max=value_max,
         value_mean=value_mean,

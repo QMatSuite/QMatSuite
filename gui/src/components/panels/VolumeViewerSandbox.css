@@ -21,10 +21,13 @@
 .volume-viewer-sandbox-error {
   background: #fee;
   border: 1px solid #fcc;
-  padding: 8px;
+  padding: 12px;
   border-radius: 4px;
   margin-bottom: 16px;
-  color: #c00;
+  color: #a00;
+  font-weight: 500;
+  font-size: 0.95em;
+  line-height: 1.4;
 }
 
 .volume-viewer-sandbox-layout {
@@ -105,26 +108,31 @@
   position: absolute;
   top: 16px;
   right: 16px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #ddd;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid #999;
   border-radius: 4px;
   padding: 12px;
   font-size: 0.85em;
   z-index: 10;
-  min-width: 200px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-width: 250px;
+  max-width: 350px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .volume-viewer-debug h4 {
   margin: 0 0 8px 0;
   font-size: 1em;
-  color: #666;
+  color: #222;
+  font-weight: 600;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 4px;
 }
 
 .debug-row {
   display: flex;
   justify-content: space-between;
   margin-bottom: 4px;
+  line-height: 1.5;
 }
 
 .debug-row:last-child {
@@ -133,14 +141,34 @@
 
 .debug-label {
   font-weight: 500;
-  color: #666;
+  color: #444;
   margin-right: 8px;
+  flex-shrink: 0;
 }
 
 .debug-value {
   font-family: monospace;
-  color: #333;
+  color: #000;
   text-align: right;
+  font-weight: 400;
+}
+
+.debug-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+}
+
+.debug-section h4 {
+  margin: 0 0 4px 0;
+  font-size: 0.9em;
+  color: #555;
+}
+
+.debug-corners {
+  font-size: 0.8em;
+  max-height: 150px;
+  overflow-y: auto;
 }
 
 .volume-viewer-loading {
