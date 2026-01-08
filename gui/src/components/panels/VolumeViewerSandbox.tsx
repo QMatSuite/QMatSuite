@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback, Suspense, useRef, useMemo } from 'rea
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
-import { generateIsosurface } from '../../utils/marchingCubes';
+import { generateIsosurface, type VolumeStats } from '../../utils/marchingCubes';
 import './VolumeViewerSandbox.css';
 
 interface Fixture {
@@ -49,7 +49,7 @@ interface IsosurfaceMeshProps {
   color: string;
   opacity: number;
   meshKey: number;
-  onMeshGenerated?: (nVertices: number, nTriangles: number) => void;
+  onMeshGenerated?: (nVertices: number, nTriangles: number, stats?: VolumeStats) => void;
   onError?: (error: string) => void;
 }
 
@@ -74,14 +74,29 @@ function IsosurfaceMesh({
     }
     
     try {
+      const stats: { current: VolumeStats } = { current: { nNaN: 0, nInf: 0, nLess: 0, nGreater: 0, nEq: 0, nActiveCubes: 0 } };
+      
       const result = generateIsosurface(
         volumeData,
         metadata.grid_shape,
         metadata.origin_cart,
         metadata.grid_vectors_cart,
         metadata.data_order,
-        isovalue
+        isovalue,
+        stats
       );
+      
+      // Log stats
+      console.log(`[MC Stats] iso=${isovalue.toFixed(4)} nNaN=${stats.current.nNaN} nInf=${stats.current.nInf} ` +
+        `nLess=${stats.current.nLess} nGreater=${stats.current.nGreater} nEq=${stats.current.nEq} ` +
+        `nActiveCubes=${stats.current.nActiveCubes}`);
+      
+      // Notify parent of stats
+      if (onMeshGenerated) {
+        const nVertices = result.positions.length / 3;
+        const nTriangles = result.indices.length / 3;
+        onMeshGenerated(nVertices, nTriangles, stats.current);
+      }
       
       const geom = new THREE.BufferGeometry();
       geom.setAttribute('position', new THREE.BufferAttribute(result.positions, 3));
@@ -89,13 +104,6 @@ function IsosurfaceMesh({
       geom.setIndex(new THREE.BufferAttribute(result.indices, 1));
       
       geometryRef.current = geom;
-      
-      const nVertices = result.positions.length / 3;
-      const nTriangles = result.indices.length / 3;
-      
-      if (onMeshGenerated) {
-        onMeshGenerated(nVertices, nTriangles);
-      }
       
       return geom;
     } catch (e) {
@@ -159,6 +167,14 @@ export function VolumeViewerSandbox() {
     valueRange: { min: number; max: number } | null;
     currentIso: number;
     trianglesCount: number;
+    volumeStats: {
+      nNaN: number;
+      nInf: number;
+      nLess: number;
+      nGreater: number;
+      nEq: number;
+      nActiveCubes: number;
+    } | null;
   }>({
     selectedLabel: null,
     requestId: 0,
@@ -167,6 +183,7 @@ export function VolumeViewerSandbox() {
     valueRange: null,
     currentIso: 0,
     trianglesCount: 0,
+    volumeStats: null,
   });
   
   const loadBlob = useCallback(async (
@@ -245,10 +262,11 @@ export function VolumeViewerSandbox() {
       requestId: currentRequestId,
       blobId: null,
       dims: null,
-      valueRange: null,
-      currentIso: 0,
-      trianglesCount: 0,
-    });
+    valueRange: null,
+    currentIso: 0,
+    trianglesCount: 0,
+    volumeStats: null,
+  });
     
     // Use a temporary calc_dir (sandbox output)
     const calcDir = '/tmp/qv-sandbox-volume';
@@ -409,6 +427,34 @@ export function VolumeViewerSandbox() {
                   <span className="debug-label">Triangles:</span>
                   <span className="debug-value">{debugInfo.trianglesCount}</span>
                 </div>
+                {debugInfo.volumeStats && (
+                  <>
+                    <div className="debug-row">
+                      <span className="debug-label">nNaN:</span>
+                      <span className="debug-value">{debugInfo.volumeStats.nNaN}</span>
+                    </div>
+                    <div className="debug-row">
+                      <span className="debug-label">nInf:</span>
+                      <span className="debug-value">{debugInfo.volumeStats.nInf}</span>
+                    </div>
+                    <div className="debug-row">
+                      <span className="debug-label">nLess:</span>
+                      <span className="debug-value">{debugInfo.volumeStats.nLess}</span>
+                    </div>
+                    <div className="debug-row">
+                      <span className="debug-label">nGreater:</span>
+                      <span className="debug-value">{debugInfo.volumeStats.nGreater}</span>
+                    </div>
+                    <div className="debug-row">
+                      <span className="debug-label">nEq:</span>
+                      <span className="debug-value">{debugInfo.volumeStats.nEq}</span>
+                    </div>
+                    <div className="debug-row">
+                      <span className="debug-label">Active Cubes:</span>
+                      <span className="debug-value">{debugInfo.volumeStats.nActiveCubes}</span>
+                    </div>
+                  </>
+                )}
               </div>
               
               {/* 3D Canvas */}
@@ -445,10 +491,21 @@ export function VolumeViewerSandbox() {
                             color="#e24a4a"
                             opacity={0.6}
                             meshKey={meshKey + 1000} // Different key for second mesh
-                            onMeshGenerated={(_nVertices, nTriangles) => {
+                            onMeshGenerated={(_nVertices, nTriangles, stats) => {
                               // Only update if this is the latest request
                               if (requestId === latestRequestIdRef.current) {
-                                setDebugInfo(prev => ({ ...prev, trianglesCount: prev.trianglesCount + nTriangles }));
+                                setDebugInfo(prev => ({ 
+                                  ...prev, 
+                                  trianglesCount: prev.trianglesCount + nTriangles,
+                                  volumeStats: stats ? {
+                                    nNaN: (prev.volumeStats?.nNaN || 0) + stats.nNaN,
+                                    nInf: (prev.volumeStats?.nInf || 0) + stats.nInf,
+                                    nLess: (prev.volumeStats?.nLess || 0) + stats.nLess,
+                                    nGreater: (prev.volumeStats?.nGreater || 0) + stats.nGreater,
+                                    nEq: (prev.volumeStats?.nEq || 0) + stats.nEq,
+                                    nActiveCubes: (prev.volumeStats?.nActiveCubes || 0) + stats.nActiveCubes,
+                                  } : prev.volumeStats,
+                                }));
                               }
                             }}
                             onError={(err) => {
