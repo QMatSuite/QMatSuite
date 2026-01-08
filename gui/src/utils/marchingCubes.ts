@@ -499,6 +499,7 @@ export function generateIsosurface(
   
   let debugFallbackCount = 0;
   let sampleActiveCubeCollected = false;
+  let triTableLogPrinted = false; // P3: Only print once
   
   // March through all cubes
   for (let k = 0; k < nz - 1; k++) {
@@ -654,6 +655,15 @@ export function generateIsosurface(
         // Generate triangles using standard Marching Cubes triTable
         const triangles = getTrianglesStandard(cubeIndex, edgeVertices);
         
+        // P3: Print triTable usage proof (once for first active cube)
+        if (!triTableLogPrinted && cubeIndex !== 0 && cubeIndex !== 255) {
+          const triCase = TRI_TABLE[cubeIndex];
+          const first12Edges = Array.from(triCase.slice(0, Math.min(12, triCase.length))).map(v => v === -1 ? 'END' : String(v));
+          console.log(`[P3 triTable Proof] First active cube: cubeIndex=${cubeIndex}, triTable[${cubeIndex}] = [${first12Edges.join(', ')}]`);
+          console.log(`[P3 triTable Proof] Generated triangles=${triangles.length} for this cube, total vertices so far=${vertices.length / 3}`);
+          triTableLogPrinted = true;
+        }
+        
         for (let triIdx = 0; triIdx < triangles.length; triIdx++) {
           const tri = triangles[triIdx];
           const v0 = tri[0];
@@ -775,7 +785,12 @@ export function generateIsosurface(
     console.log(`  activeCells: ${stats.current.cubeIndexStats.activeCells}`);
     console.log(`  cubeIndex==0: ${stats.current.cubeIndexStats.cubeIndex0}`);
     console.log(`  cubeIndex==255: ${stats.current.cubeIndexStats.cubeIndex255}`);
-    console.log(`  Top 10 cubeIndexes: ${sorted.slice(0, 5).map(([idx, cnt]) => `${idx}(${cnt})`).join(', ')}`);
+    console.log(`  Top 5 cubeIndexes: ${sorted.slice(0, 5).map(([idx, cnt]) => `${idx}(${cnt})`).join(', ')}`);
+    
+    // P3: Log final vertex/triangle counts
+    const finalVertexCount = vertices.length / 3;
+    const finalTriangleCount = indices.length / 3;
+    console.log(`[P3 triTable Proof] Final counts: vertexCount=${finalVertexCount}, triangleCount=${finalTriangleCount}, indexCount=${indices.length}`);
   }
   
   return {
