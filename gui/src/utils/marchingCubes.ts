@@ -16,9 +16,9 @@
  * 7: (i, j+1, k+1)
  * 
  * Standard edge numbering (12 edges):
- * 0: 0-1, 1: 1-2, 2: 2-3, 3: 3-0  (bottom face)
- * 4: 4-5, 5: 5-6, 6: 6-7, 7: 7-4  (top face)
- * 8: 0-4, 9: 1-5, 10: 2-6, 11: 3-7  (vertical)
+ * 0: corner 0-1, 1: corner 1-2, 2: corner 2-3, 3: corner 3-0  (bottom face)
+ * 4: corner 4-5, 5: corner 5-6, 6: corner 6-7, 7: corner 7-4  (top face)
+ * 8: corner 0-4, 9: corner 1-5, 10: corner 2-6, 11: corner 3-7  (vertical)
  * 
  * Lookup tables source: Standard Marching Cubes algorithm (Lorensen & Cline, 1987)
  * These tables are in the public domain and widely published.
@@ -34,6 +34,8 @@
  */
 
 import * as THREE from 'three';
+import { getValue as getValueIndexed } from './volumeIndexing';
+import { gridToWorld, calculateBBox, type VolumeMetadata as CoordMetadata } from './volumeCoordinates';
 
 // Marching Cubes lookup tables (standard MC33)
 // Edge table: which edges are intersected for each cube configuration (256 cases)
@@ -391,6 +393,36 @@ export function generateIsosurface(
   const vertices: number[] = [];
   const normals: number[] = [];
   
+  // ===== Phase 0: Strong validation at entry point =====
+  const expectedCount = nx * ny * nz;
+  if (values.length !== expectedCount) {
+    throw new Error(
+      `Phase 0 validation failed: values.length (${values.length}) != nx*ny*nz (${expectedCount}) ` +
+      `for dims=[${nx},${ny},${nz}], data_order=${dataOrder}`
+    );
+  }
+  
+  // Check for NaN/Inf in values
+  let firstBadIdx = -1;
+  for (let idx = 0; idx < values.length; idx++) {
+    const v = values[idx];
+    if (!Number.isFinite(v)) {
+      if (firstBadIdx === -1) {
+        firstBadIdx = idx;
+      }
+    }
+  }
+  
+  if (firstBadIdx !== -1) {
+    const v = values[firstBadIdx];
+    const badType = Number.isNaN(v) ? 'NaN' : 'Infinity';
+    throw new Error(
+      `Phase 0 validation failed: Found ${badType} at values[${firstBadIdx}]. ` +
+      `First bad index: ${firstBadIdx}, value=${v}, data_order=${dataOrder}`
+    );
+  }
+  // ===== End Phase 0 =====
+  
   // Initialize stats if provided
   if (stats) {
     stats.current = {
@@ -414,15 +446,20 @@ export function generateIsosurface(
   // CubeIndex frequency map
   const cubeIndexFreq = new Map<number, number>();
   
-  // Helper: get value at (i, j, k)
+  // Helper: get value at (i, j, k) - Phase 1: Use centralized function
   const getValue = (i: number, j: number, k: number): number => {
+    // For boundary (marching cubes needs boundary values)
     if (i < 0 || i >= nx || j < 0 || j >= ny || k < 0 || k >= nz) {
-      return 0;
+      return 0; // Outside grid = 0 (can be adjusted for different boundary conditions)
     }
-    const index = dataOrder === 'fortran_i_fastest'
-      ? i + nx * (j + ny * k)  // FORTRAN: i-fastest
-      : k + nz * (j + ny * i);  // C: k-fastest
-    return values[index];
+    try {
+      return getValueIndexed(i, j, k, dims, dataOrder, values);
+    } catch (e) {
+      // This should not happen if bounds check passed, but throw with context
+      throw new Error(
+        `getValue failed at (i=${i}, j=${j}, k=${k}): ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
   };
   
   // Safe interpolation function to prevent NaN/Inf
@@ -464,15 +501,15 @@ export function generateIsosurface(
     return [x, y, z];
   };
   
-  // Helper: compute grid point position in Cartesian space
+  // Phase 2: Use centralized gridToWorld function
+  const coordMeta: CoordMetadata = {
+    grid_shape: dims,
+    origin_cart: origin,
+    grid_vectors_cart: gridVectors,
+  };
+  
   const getPosition = (i: number, j: number, k: number): [number, number, number] => {
-    // MVP: Assume grid_vectors are axis-aligned (or nearly so)
-    // position = origin + i*vx + j*vy + k*vz
-    return [
-      origin[0] + i * gridVectors[0][0] + j * gridVectors[1][0] + k * gridVectors[2][0],
-      origin[1] + i * gridVectors[0][1] + j * gridVectors[1][1] + k * gridVectors[2][1],
-      origin[2] + i * gridVectors[0][2] + j * gridVectors[1][2] + k * gridVectors[2][2],
-    ];
+    return gridToWorld(i, j, k, coordMeta);
   };
   
   // Compute stats for all values (once, before marching)
@@ -562,9 +599,14 @@ export function generateIsosurface(
               ];
               
               const cornersWithIdx = cornerCoords.map((coords, idx) => {
-                const flatIdx = dataOrder === 'fortran_i_fastest'
-                  ? coords[0] + nx * (coords[1] + ny * coords[2])
-                  : coords[2] + nz * (coords[1] + ny * coords[0]);
+                // Phase 1: Use centralized flatIndex (via getValueIndexed, but we need flatIdx for debug)
+                // We'll calculate it directly here for debug output
+                let flatIdx: number;
+                if (dataOrder === 'fortran_i_fastest') {
+                  flatIdx = coords[0] + nx * (coords[1] + ny * coords[2]);
+                } else {
+                  flatIdx = coords[2] + nz * (coords[1] + ny * coords[0]);
+                }
                 
                 // Step B: Verify corner coords are adjacent (only i/i+1, j/j+1, k/k+1)
                 const validCorner = 
@@ -741,35 +783,16 @@ export function generateIsosurface(
     }
   }
   
-  // Compute bbox (Step A)
-  if (vertices.length > 0 && stats) {
-    let bboxMinX = Infinity, bboxMinY = Infinity, bboxMinZ = Infinity;
-    let bboxMaxX = -Infinity, bboxMaxY = -Infinity, bboxMaxZ = -Infinity;
-    
-    for (let i = 0; i < vertices.length; i += 3) {
-      bboxMinX = Math.min(bboxMinX, vertices[i]);
-      bboxMaxX = Math.max(bboxMaxX, vertices[i]);
-      bboxMinY = Math.min(bboxMinY, vertices[i + 1]);
-      bboxMaxY = Math.max(bboxMaxY, vertices[i + 1]);
-      bboxMinZ = Math.min(bboxMinZ, vertices[i + 2]);
-      bboxMaxZ = Math.max(bboxMaxZ, vertices[i + 2]);
-    }
-    
-    stats.current.bboxMin = [bboxMinX, bboxMinY, bboxMinZ];
-    stats.current.bboxMax = [bboxMaxX, bboxMaxY, bboxMaxZ];
-    stats.current.center = [
-      (bboxMinX + bboxMaxX) / 2,
-      (bboxMinY + bboxMaxY) / 2,
-      (bboxMinZ + bboxMaxZ) / 2,
-    ];
-    stats.current.maxExtent = Math.max(
-      bboxMaxX - bboxMinX,
-      bboxMaxY - bboxMinY,
-      bboxMaxZ - bboxMinZ
-    );
+  // Phase 2: Calculate bbox from grid corners (not from mesh vertices)
+  if (stats) {
+    const bbox = calculateBBox(coordMeta);
+    stats.current.bboxMin = bbox.bboxMin;
+    stats.current.bboxMax = bbox.bboxMax;
+    stats.current.center = bbox.center;
+    stats.current.maxExtent = bbox.maxExtent;
     
     // Log Step A bbox
-    console.log(`[Step A] Mesh bbox: min=[${bboxMinX.toFixed(2)}, ${bboxMinY.toFixed(2)}, ${bboxMinZ.toFixed(2)}], max=[${bboxMaxX.toFixed(2)}, ${bboxMaxY.toFixed(2)}, ${bboxMaxZ.toFixed(2)}], center=[${stats.current.center[0].toFixed(2)}, ${stats.current.center[1].toFixed(2)}, ${stats.current.center[2].toFixed(2)}], maxExtent=${stats.current.maxExtent.toFixed(2)}`);
+    console.log(`[Step A] Grid bbox: min=[${bbox.bboxMin[0].toFixed(2)}, ${bbox.bboxMin[1].toFixed(2)}, ${bbox.bboxMin[2].toFixed(2)}], max=[${bbox.bboxMax[0].toFixed(2)}, ${bbox.bboxMax[1].toFixed(2)}, ${bbox.bboxMax[2].toFixed(2)}], center=[${bbox.center[0].toFixed(2)}, ${bbox.center[1].toFixed(2)}, ${bbox.center[2].toFixed(2)}], maxExtent=${bbox.maxExtent.toFixed(2)}`);
   }
   
   // Finalize cubeIndex statistics (Step C)
