@@ -65,17 +65,39 @@ interface MarchingCubesResult {
 /**
  * Generate isosurface mesh using Marching Cubes algorithm
  */
+export interface VolumeStats {
+  nNaN: number;
+  nInf: number;
+  nLess: number;
+  nGreater: number;
+  nEq: number;
+  nActiveCubes: number; // cubes with cubeIndex != 0 && != 255
+}
+
 export function generateIsosurface(
   values: Float32Array,
   dims: [number, number, number],
   origin: [number, number, number],
   gridVectors: [[number, number, number], [number, number, number], [number, number, number]],
   dataOrder: 'fortran_i_fastest' | 'c_k_fastest',
-  isovalue: number
+  isovalue: number,
+  stats?: { current: VolumeStats }
 ): MarchingCubesResult {
   const [nx, ny, nz] = dims;
   const vertices: number[] = [];
   const normals: number[] = [];
+  
+  // Initialize stats if provided
+  if (stats) {
+    stats.current = {
+      nNaN: 0,
+      nInf: 0,
+      nLess: 0,
+      nGreater: 0,
+      nEq: 0,
+      nActiveCubes: 0,
+    };
+  }
   
   // Helper: get value at (i, j, k)
   const getValue = (i: number, j: number, k: number): number => {
@@ -88,6 +110,21 @@ export function generateIsosurface(
     return values[index];
   };
   
+  // Safe interpolation function to prevent NaN/Inf
+  const safeInterp = (iso: number, v1: number, v2: number): number => {
+    const denom = v2 - v1;
+    if (!Number.isFinite(denom) || Math.abs(denom) < 1e-12) {
+      return 0.5; // midpoint
+    }
+    let t = (iso - v1) / denom;
+    if (!Number.isFinite(t)) {
+      t = 0.5;
+    }
+    if (t < 0) t = 0;
+    if (t > 1) t = 1;
+    return t;
+  };
+  
   // Helper: interpolate vertex position between two grid points
   const interpolate = (
     p1: [number, number, number],
@@ -95,15 +132,21 @@ export function generateIsosurface(
     v1: number,
     v2: number
   ): [number, number, number] => {
-    if (Math.abs(v1 - v2) < 1e-10) {
-      return p1;
+    const t = safeInterp(isovalue, v1, v2);
+    const x = p1[0] + t * (p2[0] - p1[0]);
+    const y = p1[1] + t * (p2[1] - p1[1]);
+    const z = p1[2] + t * (p2[2] - p1[2]);
+    
+    // Fallback to midpoint if any component is non-finite
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+      return [
+        (p1[0] + p2[0]) / 2,
+        (p1[1] + p2[1]) / 2,
+        (p1[2] + p2[2]) / 2,
+      ];
     }
-    const t = (isovalue - v1) / (v2 - v1);
-    return [
-      p1[0] + t * (p2[0] - p1[0]),
-      p1[1] + t * (p2[1] - p1[1]),
-      p1[2] + t * (p2[2] - p1[2]),
-    ];
+    
+    return [x, y, z];
   };
   
   // Helper: compute grid point position in Cartesian space
@@ -116,6 +159,30 @@ export function generateIsosurface(
       origin[2] + i * gridVectors[0][2] + j * gridVectors[1][2] + k * gridVectors[2][2],
     ];
   };
+  
+  // Compute stats for all values (once, before marching)
+  if (stats) {
+    for (let idx = 0; idx < values.length; idx++) {
+      const v = values[idx];
+      if (!Number.isFinite(v)) {
+        if (Number.isNaN(v)) {
+          stats.current.nNaN++;
+        } else {
+          stats.current.nInf++;
+        }
+      } else {
+        if (v < isovalue) {
+          stats.current.nLess++;
+        } else if (v > isovalue) {
+          stats.current.nGreater++;
+        } else {
+          stats.current.nEq++;
+        }
+      }
+    }
+  }
+  
+  let debugFallbackCount = 0;
   
   // March through all cubes
   for (let k = 0; k < nz - 1; k++) {
@@ -137,6 +204,11 @@ export function generateIsosurface(
         let cubeIndex = 0;
         for (let c = 0; c < 8; c++) {
           if (v[c] < isovalue) cubeIndex |= (1 << c);
+        }
+        
+        // Track active cubes
+        if (stats && cubeIndex !== 0 && cubeIndex !== 255) {
+          stats.current.nActiveCubes++;
         }
         
         // Skip if cube is entirely inside or outside
@@ -169,7 +241,18 @@ export function generateIsosurface(
         for (let e = 0; e < 12; e++) {
           if (edgeFlags & (1 << e)) {
             const [c1, c2] = edgeConnections[e];
-            edgeVertices[e] = interpolate(p[c1], p[c2], v[c1], v[c2]);
+            const interpolated = interpolate(p[c1], p[c2], v[c1], v[c2]);
+            // Check if interpolation produced NaN/Inf and fallback to midpoint
+            if (!Number.isFinite(interpolated[0]) || !Number.isFinite(interpolated[1]) || !Number.isFinite(interpolated[2])) {
+              debugFallbackCount++;
+              edgeVertices[e] = [
+                (p[c1][0] + p[c2][0]) / 2,
+                (p[c1][1] + p[c2][1]) / 2,
+                (p[c1][2] + p[c2][2]) / 2,
+              ];
+            } else {
+              edgeVertices[e] = interpolated;
+            }
           }
         }
         
@@ -202,6 +285,18 @@ export function generateIsosurface(
   const indices = new Uint32Array(numVertices);
   for (let i = 0; i < numVertices; i++) {
     indices[i] = i;
+  }
+  
+  // Guard: if iso crosses range but no triangles, throw error
+  if (stats && stats.current.nLess > 0 && stats.current.nGreater > 0) {
+    const numTriangles = indices.length / 3;
+    if (numTriangles === 0) {
+      throw new Error(
+        `MC produced 0 triangles despite iso crossing range. ` +
+        `nLess=${stats.current.nLess} nGreater=${stats.current.nGreater} ` +
+        `nActiveCubes=${stats.current.nActiveCubes} debugFallbackCount=${debugFallbackCount}`
+      );
+    }
   }
   
   // Sanity guard: validate mesh output
