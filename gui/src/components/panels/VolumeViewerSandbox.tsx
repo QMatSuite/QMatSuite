@@ -474,9 +474,13 @@ export function VolumeViewerSandbox() {
                           color="#4a90e2"
                           opacity={0.8}
                           meshKey={meshKey}
-                          onMeshGenerated={(_nVertices, nTriangles) => {
+                          onMeshGenerated={(_nVertices, nTriangles, stats) => {
                             console.log(`[onMeshDone] requestId=${requestId} nTriangles=${nTriangles}`);
-                            setDebugInfo(prev => ({ ...prev, trianglesCount: nTriangles }));
+                            setDebugInfo(prev => ({ 
+                              ...prev, 
+                              trianglesCount: nTriangles,
+                              volumeStats: stats || null,
+                            }));
                           }}
                           onError={(err) => {
                             console.error(`[onMeshError] requestId=${requestId} error=${err}`);
