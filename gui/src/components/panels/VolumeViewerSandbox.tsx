@@ -314,8 +314,27 @@ export function VolumeViewerSandbox() {
             setError('Volume has constant value (no variation)');
             setIsovalue(volume.metadata.value_min);
           } else {
-            // Default: 20% from min
-            const defaultIso = volume.metadata.value_min + 0.2 * (volume.metadata.value_max - volume.metadata.value_min);
+            // Phase 5: Use maxAbs proportion to avoid noise fragments
+            // For MLWF (XSF), values are typically positive and centered around some level
+            // Use a proportion of maxAbs to avoid near-zero noise
+            const min = volume.metadata.value_min;
+            const max = volume.metadata.value_max;
+            const maxAbs = Math.max(Math.abs(min), Math.abs(max));
+            
+            // Default: 0.2 * maxAbs (or 0.2 * range from min, whichever is more reasonable)
+            // This avoids iso values too close to zero/min that would pick up noise
+            let defaultIso: number;
+            if (min >= 0) {
+              // All positive: use 0.2 * max
+              defaultIso = 0.2 * max;
+            } else if (max <= 0) {
+              // All negative: use 0.2 * min (negative)
+              defaultIso = 0.2 * min;
+            } else {
+              // Crosses zero: use 0.2 * maxAbs to avoid near-zero noise
+              defaultIso = 0.2 * maxAbs;
+            }
+            
             setIsovalue(defaultIso);
             setDebugInfo(prev => ({ ...prev, currentIso: defaultIso }));
           }
@@ -541,6 +560,11 @@ export function VolumeViewerSandbox() {
                           opacity={0.8}
                           meshKey={meshKey}
                           onMeshGenerated={(_nVertices, nTriangles, stats) => {
+                            // Phase 4: Check requestId to prevent stale results
+                            if (requestId !== latestRequestIdRef.current) {
+                              console.log(`[onMeshDone] Stale result discarded: requestId=${requestId} (latest=${latestRequestIdRef.current})`);
+                              return;
+                            }
                             console.log(`[onMeshDone] requestId=${requestId} nTriangles=${nTriangles}`);
                             setDebugInfo(prev => ({ 
                               ...prev, 
