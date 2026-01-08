@@ -304,7 +304,12 @@ export function VolumeViewerSandbox() {
         }
         
         // Set initial isovalue (adaptive)
-        if (volume.metadata.value_min !== undefined && volume.metadata.value_max !== undefined) {
+        // P2: For BXSF (Fermi surface), default iso = fermi_energy
+        if (volume.fermi_energy !== undefined && volume.kind === 'fermi_surface') {
+          // BXSF: iso = Ef
+          setIsovalue(volume.fermi_energy);
+          setDebugInfo(prev => ({ ...prev, currentIso: volume.fermi_energy! }));
+        } else if (volume.metadata.value_min !== undefined && volume.metadata.value_max !== undefined) {
           if (volume.metadata.value_max === volume.metadata.value_min) {
             setError('Volume has constant value (no variation)');
             setIsovalue(volume.metadata.value_min);
@@ -412,13 +417,17 @@ export function VolumeViewerSandbox() {
                   <span className="debug-label">Value Range:</span>
                   <span className="debug-value">
                     {debugInfo.valueRange 
-                      ? `${debugInfo.valueRange.min.toFixed(4)} .. ${debugInfo.valueRange.max.toFixed(4)}`
-                      : 'none'}
+                      ? `${(debugInfo.valueRange.min ?? 0).toFixed(4)} .. ${(debugInfo.valueRange.max ?? 0).toFixed(4)}`
+                      : '—'}
                   </span>
                 </div>
                 <div className="debug-row">
                   <span className="debug-label">Current ISO:</span>
-                  <span className="debug-value">{debugInfo.currentIso.toFixed(4)}</span>
+                  <span className="debug-value">
+                    {typeof debugInfo.currentIso === 'number' && !isNaN(debugInfo.currentIso) 
+                      ? debugInfo.currentIso.toFixed(4) 
+                      : '—'}
+                  </span>
                 </div>
                 <div className="debug-row">
                   <span className="debug-label">Triangles:</span>
@@ -452,32 +461,38 @@ export function VolumeViewerSandbox() {
                     </div>
                   </>
                 )}
-                {debugInfo.bboxMin && debugInfo.bboxMax && debugInfo.center && debugInfo.maxExtent !== undefined && (
-                  <>
-                    <div className="debug-row">
-                      <span className="debug-label">BBox Min:</span>
-                      <span className="debug-value">
-                        [{debugInfo.bboxMin[0].toFixed(2)}, {debugInfo.bboxMin[1].toFixed(2)}, {debugInfo.bboxMin[2].toFixed(2)}]
-                      </span>
-                    </div>
-                    <div className="debug-row">
-                      <span className="debug-label">BBox Max:</span>
-                      <span className="debug-value">
-                        [{debugInfo.bboxMax[0].toFixed(2)}, {debugInfo.bboxMax[1].toFixed(2)}, {debugInfo.bboxMax[2].toFixed(2)}]
-                      </span>
-                    </div>
-                    <div className="debug-row">
-                      <span className="debug-label">Center:</span>
-                      <span className="debug-value">
-                        [{debugInfo.center[0].toFixed(2)}, {debugInfo.center[1].toFixed(2)}, {debugInfo.center[2].toFixed(2)}]
-                      </span>
-                    </div>
-                    <div className="debug-row">
-                      <span className="debug-label">Max Extent:</span>
-                      <span className="debug-value">{debugInfo.maxExtent.toFixed(2)}</span>
-                    </div>
-                  </>
-                )}
+                <div className="debug-row">
+                  <span className="debug-label">BBox Min:</span>
+                  <span className="debug-value">
+                    {debugInfo.bboxMin && Array.isArray(debugInfo.bboxMin) && debugInfo.bboxMin.length === 3
+                      ? `[${(debugInfo.bboxMin[0] ?? 0).toFixed(2)}, ${(debugInfo.bboxMin[1] ?? 0).toFixed(2)}, ${(debugInfo.bboxMin[2] ?? 0).toFixed(2)}]`
+                      : '—'}
+                  </span>
+                </div>
+                <div className="debug-row">
+                  <span className="debug-label">BBox Max:</span>
+                  <span className="debug-value">
+                    {debugInfo.bboxMax && Array.isArray(debugInfo.bboxMax) && debugInfo.bboxMax.length === 3
+                      ? `[${(debugInfo.bboxMax[0] ?? 0).toFixed(2)}, ${(debugInfo.bboxMax[1] ?? 0).toFixed(2)}, ${(debugInfo.bboxMax[2] ?? 0).toFixed(2)}]`
+                      : '—'}
+                  </span>
+                </div>
+                <div className="debug-row">
+                  <span className="debug-label">Center:</span>
+                  <span className="debug-value">
+                    {debugInfo.center && Array.isArray(debugInfo.center) && debugInfo.center.length === 3
+                      ? `[${(debugInfo.center[0] ?? 0).toFixed(2)}, ${(debugInfo.center[1] ?? 0).toFixed(2)}, ${(debugInfo.center[2] ?? 0).toFixed(2)}]`
+                      : '—'}
+                  </span>
+                </div>
+                <div className="debug-row">
+                  <span className="debug-label">Max Extent:</span>
+                  <span className="debug-value">
+                    {typeof debugInfo.maxExtent === 'number' && !isNaN(debugInfo.maxExtent)
+                      ? debugInfo.maxExtent.toFixed(2)
+                      : '—'}
+                  </span>
+                </div>
                 {debugInfo.volumeStats?.cubeIndexStats && (
                   <>
                     <div className="debug-row">
@@ -614,7 +629,22 @@ export function VolumeViewerSandbox() {
                       }}
                       disabled={!volumeData}
                     />
-                    <span className="volume-viewer-control-value">{isovalue.toFixed(4)}</span>
+                    <span className="volume-viewer-control-value">
+                      {typeof isovalue === 'number' && !isNaN(isovalue) ? isovalue.toFixed(4) : '—'}
+                    </span>
+                    {/* P2: BXSF "Set iso=Ef" button */}
+                    {selectedVolume?.fermi_energy !== undefined && selectedVolume.kind === 'fermi_surface' && (
+                      <button
+                        onClick={() => {
+                          const ef = selectedVolume.fermi_energy!;
+                          setIsovalue(ef);
+                          setDebugInfo(prev => ({ ...prev, currentIso: ef }));
+                        }}
+                        className="volume-viewer-set-ef-button"
+                      >
+                        Set iso = Ef ({selectedVolume.fermi_energy.toFixed(4)})
+                      </button>
+                    )}
                   </label>
                   {debugInfo.valueRange && (
                     <div className="volume-viewer-iso-warning">
