@@ -534,9 +534,16 @@ export function generateIsosurface(
     }
   }
   
+  // C: Check if debug logging is enabled
+  const debugMc = typeof localStorage !== 'undefined' && localStorage.getItem('qv_mc_debug') === '1';
+  const debugLimit = debugMc ? 3 : 0; // C: Only log first N active cubes if debug enabled
+  
+  // C: Track timing for summary (moved here for consistency)
+  const startTime = performance.now();
+  
   let debugFallbackCount = 0;
   let sampleActiveCubeCollected = false;
-  let triTableLogPrinted = false; // P3: Only print once
+  let triTableLogPrinted = false; // C: Only print once if debug enabled
   
   // March through all cubes
   for (let k = 0; k < nz - 1; k++) {
@@ -631,10 +638,11 @@ export function generateIsosurface(
                 cubeIndex,
               };
               
-              if (stats.current.nActiveCubes <= 5) {
-                console.log(`[Step B] Active cube ${stats.current.nActiveCubes}: cell (${i},${j},${k}), cubeIndex=${cubeIndex}`);
+              // C: Only log detailed cube info if debug enabled and within limit
+              if (debugMc && stats.current.nActiveCubes <= debugLimit) {
+                console.debug(`[Step B] Active cube ${stats.current.nActiveCubes}: cell (${i},${j},${k}), cubeIndex=${cubeIndex}`);
                 cornersWithIdx.forEach((corner, idx) => {
-                  console.log(`  Corner ${idx}: (${corner.coords[0]},${corner.coords[1]},${corner.coords[2]}), flatIdx=${corner.flatIdx}, value=${corner.value.toFixed(4)}`);
+                  console.debug(`  Corner ${idx}: (${corner.coords[0]},${corner.coords[1]},${corner.coords[2]}), flatIdx=${corner.flatIdx}, value=${corner.value.toFixed(4)}`);
                 });
               }
               
@@ -697,12 +705,12 @@ export function generateIsosurface(
         // Generate triangles using standard Marching Cubes triTable
         const triangles = getTrianglesStandard(cubeIndex, edgeVertices);
         
-        // P3: Print triTable usage proof (once for first active cube)
-        if (!triTableLogPrinted && cubeIndex !== 0 && cubeIndex !== 255) {
+        // C: Print triTable usage proof (once for first active cube, only if debug enabled)
+        if (debugMc && !triTableLogPrinted && cubeIndex !== 0 && cubeIndex !== 255) {
           const triCase = TRI_TABLE[cubeIndex];
           const first12Edges = Array.from(triCase.slice(0, Math.min(12, triCase.length))).map(v => v === -1 ? 'END' : String(v));
-          console.log(`[P3 triTable Proof] First active cube: cubeIndex=${cubeIndex}, triTable[${cubeIndex}] = [${first12Edges.join(', ')}]`);
-          console.log(`[P3 triTable Proof] Generated triangles=${triangles.length} for this cube, total vertices so far=${vertices.length / 3}`);
+          console.debug(`[P3 triTable Proof] First active cube: cubeIndex=${cubeIndex}, triTable[${cubeIndex}] = [${first12Edges.join(', ')}]`);
+          console.debug(`[P3 triTable Proof] Generated triangles=${triangles.length} for this cube, total vertices so far=${vertices.length / 3}`);
           triTableLogPrinted = true;
         }
         
@@ -791,8 +799,10 @@ export function generateIsosurface(
     stats.current.center = bbox.center;
     stats.current.maxExtent = bbox.maxExtent;
     
-    // Log Step A bbox
-    console.log(`[Step A] Grid bbox: min=[${bbox.bboxMin[0].toFixed(2)}, ${bbox.bboxMin[1].toFixed(2)}, ${bbox.bboxMin[2].toFixed(2)}], max=[${bbox.bboxMax[0].toFixed(2)}, ${bbox.bboxMax[1].toFixed(2)}, ${bbox.bboxMax[2].toFixed(2)}], center=[${bbox.center[0].toFixed(2)}, ${bbox.center[1].toFixed(2)}, ${bbox.center[2].toFixed(2)}], maxExtent=${bbox.maxExtent.toFixed(2)}`);
+    // C: Only log Step A bbox if debug enabled
+    if (debugMc) {
+      console.debug(`[Step A] Grid bbox: min=[${bbox.bboxMin[0].toFixed(2)}, ${bbox.bboxMin[1].toFixed(2)}, ${bbox.bboxMin[2].toFixed(2)}], max=[${bbox.bboxMax[0].toFixed(2)}, ${bbox.bboxMax[1].toFixed(2)}, ${bbox.bboxMax[2].toFixed(2)}], center=[${bbox.center[0].toFixed(2)}, ${bbox.center[1].toFixed(2)}, ${bbox.center[2].toFixed(2)}], maxExtent=${bbox.maxExtent.toFixed(2)}`);
+    }
   }
   
   // Finalize cubeIndex statistics (Step C)
@@ -802,18 +812,27 @@ export function generateIsosurface(
       .slice(0, 10);
     stats.current.cubeIndexStats.topCubeIndexes = sorted.map(([index, count]) => ({ index, count }));
     
-    // Log Step C stats
-    console.log(`[Step C] CubeIndex distribution:`);
-    console.log(`  totalCells: ${stats.current.cubeIndexStats.totalCells}`);
-    console.log(`  activeCells: ${stats.current.cubeIndexStats.activeCells}`);
-    console.log(`  cubeIndex==0: ${stats.current.cubeIndexStats.cubeIndex0}`);
-    console.log(`  cubeIndex==255: ${stats.current.cubeIndexStats.cubeIndex255}`);
-    console.log(`  Top 5 cubeIndexes: ${sorted.slice(0, 5).map(([idx, cnt]) => `${idx}(${cnt})`).join(', ')}`);
-    
-    // P3: Log final vertex/triangle counts
-    const finalVertexCount = vertices.length / 3;
-    const finalTriangleCount = indices.length / 3;
-    console.log(`[P3 triTable Proof] Final counts: vertexCount=${finalVertexCount}, triangleCount=${finalTriangleCount}, indexCount=${indices.length}`);
+    // C: Log Step C stats only if debug enabled
+    if (debugMc) {
+      console.debug(`[Step C] CubeIndex distribution:`);
+      console.debug(`  totalCells: ${stats.current.cubeIndexStats.totalCells}`);
+      console.debug(`  activeCells: ${stats.current.cubeIndexStats.activeCells}`);
+      console.debug(`  cubeIndex==0: ${stats.current.cubeIndexStats.cubeIndex0}`);
+      console.debug(`  cubeIndex==255: ${stats.current.cubeIndexStats.cubeIndex255}`);
+      console.debug(`  Top 5 cubeIndexes: ${sorted.slice(0, 5).map(([idx, cnt]) => `${idx}(${cnt})`).join(', ')}`);
+      
+      // P3: Log final vertex/triangle counts
+      const finalVertexCount = vertices.length / 3;
+      const finalTriangleCount = indices.length / 3;
+      console.debug(`[P3 triTable Proof] Final counts: vertexCount=${finalVertexCount}, triangleCount=${finalTriangleCount}, indexCount=${indices.length}`);
+    }
+  }
+  
+  // C: Print one-line summary by default (no debug flag needed)
+  const elapsed = performance.now() - startTime;
+  const finalTriangleCount = indices.length / 3;
+  if (process.env.NODE_ENV === 'development') {
+    console.debug(`[MC] iso=${isovalue.toFixed(4)} dims=[${dims.join(',')}] activeCubes=${stats?.current.nActiveCubes ?? 0} triangles=${finalTriangleCount} ms=${elapsed.toFixed(1)}`);
   }
   
   return {

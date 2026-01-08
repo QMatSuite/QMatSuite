@@ -9,6 +9,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { generateIsosurface, type VolumeStats } from '../../utils/marchingCubes';
+import { inferEnergyReference, type EnergyReferenceResult } from '../../utils/energyReference';
 import './VolumeViewerSandbox.css';
 
 interface Fixture {
@@ -44,6 +45,42 @@ interface CompiledVolume {
   fermi_energy?: number;
 }
 
+// P0: Atomic compiled volume state
+interface CompiledVolumeState {
+  key: string; // `${fixturePath}|${kind}|${resolution}|${bandIndex}`
+  seq: number;
+  fixture: Fixture;
+  volume: CompiledVolume;
+  blobId: string;
+  blobData: Float32Array;
+  dims: [number, number, number];
+  data_order: 'fortran_i_fastest' | 'c_k_fastest';
+  valueRange: { min: number; max: number } | null;
+  bbox?: { min: [number, number, number]; max: [number, number, number]; center: [number, number, number]; maxExtent: number };
+  kind: string;
+  fermi_energy?: number;
+  bandIndex?: number;
+  resolution: 'preview' | 'full';
+  energy_reference?: EnergyReferenceResult;
+}
+
+// P0: Validate volume grid contract
+function validateVolumeGrid(
+  values: Float32Array,
+  dims: [number, number, number],
+  data_order: string,
+  context: { key: string; seq: number; blobId: string }
+): void {
+  const expectedValues = dims[0] * dims[1] * dims[2];
+  if (values.length !== expectedValues) {
+    throw new Error(
+      `Phase0 validation failed: values.length(${values.length}) != nx*ny*nz(${expectedValues}) ` +
+      `for dims=[${dims.join(',')}], data_order=${data_order}, ` +
+      `key=${context.key}, seq=${context.seq}, blobId=${context.blobId}`
+    );
+  }
+}
+
 interface IsosurfaceMeshProps {
   volumeData: Float32Array;
   metadata: VolumeMetadata;
@@ -51,6 +88,7 @@ interface IsosurfaceMeshProps {
   color: string;
   opacity: number;
   meshKey: number;
+  compileSeq: number; // P0: Pass compile seq to prevent stale mesh
   onMeshGenerated?: (nVertices: number, nTriangles: number, stats?: VolumeStats) => void;
   onError?: (error: string) => void;
 }
@@ -62,22 +100,39 @@ function IsosurfaceMesh({
   color, 
   opacity,
   meshKey,
+  compileSeq,
   onMeshGenerated,
   onError,
 }: IsosurfaceMeshProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const geometryRef = useRef<THREE.BufferGeometry | null>(null);
   const materialRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const lastSeqRef = useRef<number>(-1); // Track last processed compile seq
+  const lastIsoRef = useRef<number | null>(null); // B: Track last isovalue
   
+  // B: Only compute mesh when inputs actually change (volume compile OR isovalue)
   const geometry = useMemo(() => {
+    // B: Check if this is a stale compile (but allow iso changes)
+    const isStaleCompile = compileSeq < lastSeqRef.current;
+    const isSameIso = lastIsoRef.current !== null && Math.abs(lastIsoRef.current - isovalue) < 1e-10;
+    
+    // If same compile seq AND same iso, return cached geometry
+    if (isStaleCompile && isSameIso) {
+      return geometryRef.current || new THREE.BufferGeometry();
+    }
+    
+    // Update tracking refs
+    if (compileSeq > lastSeqRef.current) {
+      lastSeqRef.current = compileSeq;
+    }
+    lastIsoRef.current = isovalue;
+    
     // Dispose old geometry
     if (geometryRef.current) {
       geometryRef.current.dispose();
     }
     
     try {
-      // Use grid_shape from metadata (should match volumeData length)
-      // This is critical: grid_shape must match the actual data length
       const dims = metadata.grid_shape;
       
       const stats: { current: VolumeStats } = { current: { nNaN: 0, nInf: 0, nLess: 0, nGreater: 0, nEq: 0, nActiveCubes: 0 } };
@@ -92,12 +147,15 @@ function IsosurfaceMesh({
         stats
       );
       
-      // Log stats
-      console.log(`[MC Stats] iso=${isovalue.toFixed(4)} nNaN=${stats.current.nNaN} nInf=${stats.current.nInf} ` +
-        `nLess=${stats.current.nLess} nGreater=${stats.current.nGreater} nEq=${stats.current.nEq} ` +
-        `nActiveCubes=${stats.current.nActiveCubes}`);
+      // C: Gate debug logs - only print summary by default
+      const debugMc = typeof localStorage !== 'undefined' && localStorage.getItem('qv_mc_debug') === '1';
+      if (process.env.NODE_ENV === 'development') {
+        if (debugMc && stats.current.nActiveCubes > 0) {
+          console.debug(`[MC] seq=${compileSeq} iso=${isovalue.toFixed(4)} triangles=${result.indices.length / 3} activeCubes=${stats.current.nActiveCubes}`);
+        }
+      }
       
-      // Notify parent of stats
+      // Notify parent (always, since we recomputed)
       if (onMeshGenerated) {
         const nVertices = result.positions.length / 3;
         const nTriangles = result.indices.length / 3;
@@ -114,13 +172,13 @@ function IsosurfaceMesh({
       return geom;
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : String(e);
-      console.error('Failed to generate isosurface:', e);
+      console.error(`[MC Error] seq=${compileSeq} iso=${isovalue.toFixed(4)}:`, errorMsg);
       if (onError) {
         onError(errorMsg);
       }
       return new THREE.BufferGeometry();
     }
-  }, [volumeData, metadata, isovalue, meshKey, onMeshGenerated, onError]);
+  }, [volumeData, metadata, isovalue, meshKey, compileSeq, onMeshGenerated, onError]);
   
   // Cleanup on unmount
   useEffect(() => {
@@ -133,6 +191,18 @@ function IsosurfaceMesh({
       }
     };
   }, []);
+  
+  // B: Update mesh geometry when it changes (for iso updates)
+  useEffect(() => {
+    if (meshRef.current && geometry) {
+      const oldGeom = meshRef.current.geometry;
+      meshRef.current.geometry = geometry;
+      // Dispose old geometry if it's different
+      if (oldGeom && oldGeom !== geometry && oldGeom !== geometryRef.current) {
+        oldGeom.dispose();
+      }
+    }
+  }, [geometry]);
   
   return (
     <mesh key={meshKey} ref={meshRef} geometry={geometry}>
@@ -151,116 +221,84 @@ export function VolumeViewerSandbox() {
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [compiledVolumes, setCompiledVolumes] = useState<Map<string, CompiledVolume>>(new Map());
-  const [selectedFixture, setSelectedFixture] = useState<Fixture | null>(null);
-  const [volumeData, setVolumeData] = useState<Float32Array | null>(null);
+  
+  // P0: Atomic compiled volume state (replaces scattered state)
+  const [compiledVolume, setCompiledVolume] = useState<CompiledVolumeState | null>(null);
+  
+  // Separate UI state
   const [isovalue, setIsovalue] = useState(0);
   const [showPlusMinusIso, setShowPlusMinusIso] = useState(false);
-  const [isLoadingBlob, setIsLoadingBlob] = useState(false);
   
-  // Request tracking for race condition prevention
-  const requestIdRef = useRef(0);
-  const latestRequestIdRef = useRef(0);
-  const [requestId, setRequestId] = useState(0);
-  const [meshKey, setMeshKey] = useState(0);
+  // P0: Request sequence tracking
+  const seqRef = useRef(0);
+  const latestSeqRef = useRef(0);
+  const latestKeyRef = useRef<string>('');
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const meshKeyRef = useRef(0);
   
-  // Debug state
-  const [debugInfo, setDebugInfo] = useState<{
-    selectedLabel: string | null;
-    requestId: number;
-    blobId: string | null;
-    dims: [number, number, number] | null;
-    level?: 'preview' | 'full';
-    valueRange: { min: number; max: number } | null;
-    currentIso: number;
+  // P2/P3: Resolution and band state (affects compile key)
+  const [useFullResolution, setUseFullResolution] = useState(false);
+  const [selectedBandIndex, setSelectedBandIndex] = useState<number | null>(null);
+  
+  // Debug stats (separate from compiled volume, updated by mesh callback)
+  const [meshStats, setMeshStats] = useState<{
     trianglesCount: number;
     volumeStats: VolumeStats | null;
-    bboxMin?: [number, number, number];
-    bboxMax?: [number, number, number];
-    center?: [number, number, number];
-    maxExtent?: number;
   }>({
-    selectedLabel: null,
-    requestId: 0,
-    blobId: null,
-    dims: null,
-    level: undefined,
-    valueRange: null,
-    currentIso: 0,
     trianglesCount: 0,
     volumeStats: null,
   });
-  
-  const loadBlob = useCallback(async (
-    volume: CompiledVolume, 
-    calcDir: string,
-    currentRequestId: number
-  ) => {
-    setIsLoadingBlob(true);
-    try {
-      // Use preview blob for MVP
-      const blobId = volume.preview_blob_id || volume.blob_id;
-      const isPreview = !!volume.preview_blob_id;
-      
-      // Determine which dims to use: preview if using preview blob, full otherwise
-      const dims: [number, number, number] = isPreview && volume.metadata.preview_grid_shape
-        ? volume.metadata.preview_grid_shape as [number, number, number]
-        : volume.metadata.grid_shape as [number, number, number];
-      
-      console.log(`[onBlobReadStart] requestId=${currentRequestId} blobId=${blobId} isPreview=${isPreview} dims=[${dims.join(',')}]`);
-      
-      // Read blob via preload API
-      const buffer = await (window as any).qv.readBlob(blobId, calcDir);
-      
-      // Check if this request is still current
-      if (currentRequestId !== latestRequestIdRef.current) {
-        console.log(`[onStaleDiscarded] requestId=${currentRequestId} (latest=${latestRequestIdRef.current})`);
-        return;
-      }
-      
-      const data = new Float32Array(buffer);
-      const expectedValues = dims[0] * dims[1] * dims[2];
-      const expectedBytes = expectedValues * 4; // float32 = 4 bytes
-      
-      // Phase 0 contract logging (frontend)
-      console.log(
-        `[Phase 0 Contract] blobId=${blobId}, ` +
-        `buffer.byteLength=${buffer.byteLength}, ` +
-        `floatArray.length=${data.length}, ` +
-        `dims=[${dims.join(',')}], ` +
-        `expected=${expectedValues}, ` +
-        `expectedBytes=${expectedBytes}, ` +
-        `match=${data.length === expectedValues && buffer.byteLength === expectedBytes}`
-      );
-      
-      // Phase 0 validation (will also be checked in marchingCubes, but check here too for early error)
-      if (data.length !== expectedValues) {
-        throw new Error(
-          `Phase 0 contract failed: values.length (${data.length}) != nx*ny*nz (${expectedValues}) ` +
-          `for dims=[${dims.join(',')}], blobId=${blobId}, isPreview=${isPreview}`
-        );
-      }
-      
-      console.log(`[onBlobReadDone] requestId=${currentRequestId} byteLength=${buffer.byteLength} values=${data.length}`);
-      
-      setVolumeData(data);
-      setDebugInfo(prev => ({ 
-        ...prev, 
-        blobId,
-        dims, // Update dims to match the blob we're using
-        level: isPreview ? 'preview' : 'full',
-      }));
-    } catch (e) {
-      if (currentRequestId === latestRequestIdRef.current) {
-        setError(`Failed to load blob: ${e}`);
-      }
-    } finally {
-      if (currentRequestId === latestRequestIdRef.current) {
-        setIsLoadingBlob(false);
-      }
-    }
+
+  // P0: Generate compile key (must include all parameters that affect result)
+  const generateCompileKey = useCallback((fixture: Fixture, resolution: 'preview' | 'full', bandIndex?: number): string => {
+    const band = bandIndex !== undefined ? `${bandIndex}` : 'default';
+    return `${fixture.path}|${fixture.kind}|${resolution}|${band}`;
   }, []);
-  
+
+  // P0: Load blob with validation
+  const loadBlob = useCallback(async (
+    volume: CompiledVolume,
+    calcDir: string,
+    compileKey: string,
+    seq: number,
+    resolution: 'preview' | 'full',
+    signal: AbortSignal
+  ): Promise<{ blobId: string; data: Float32Array; dims: [number, number, number] }> => {
+    // Check if aborted
+    if (signal.aborted) {
+      throw new Error('Request aborted');
+    }
+    
+    // P3: Use full blob if requested, otherwise preview
+    const blobId = (resolution === 'full' || !volume.preview_blob_id) ? volume.blob_id : volume.preview_blob_id;
+    const isPreview = resolution === 'preview' && !!volume.preview_blob_id;
+    
+    // Determine which dims to use
+    const dims: [number, number, number] = isPreview && volume.metadata.preview_grid_shape
+      ? volume.metadata.preview_grid_shape as [number, number, number]
+      : volume.metadata.grid_shape as [number, number, number];
+    
+    // Read blob via preload API
+    const buffer = await (window as any).qv.readBlob(blobId, calcDir);
+    
+    // Check if aborted after async operation
+    if (signal.aborted) {
+      throw new Error('Request aborted');
+    }
+    
+    // P0: Check if this response is still current
+    if (seq !== latestSeqRef.current || compileKey !== latestKeyRef.current) {
+      throw new Error(`Stale response: seq=${seq} (latest=${latestSeqRef.current}), key=${compileKey} (latest=${latestKeyRef.current})`);
+    }
+    
+    const data = new Float32Array(buffer);
+    
+    // P0: Validate contract
+    validateVolumeGrid(data, dims, volume.metadata.data_order, { key: compileKey, seq, blobId });
+    
+    return { blobId, data, dims };
+  }, []);
+
   const loadFixtures = useCallback(async () => {
     try {
       const response = await (window as any).qv.request('list_wannier_3d_fixtures', {});
@@ -273,138 +311,194 @@ export function VolumeViewerSandbox() {
       setError(`Error loading fixtures: ${e}`);
     }
   }, []);
-  
-  const clearMesh = useCallback(() => {
-    setVolumeData(null);
-    setMeshKey(prev => prev + 1); // Force remount
-    setDebugInfo(prev => ({ ...prev, trianglesCount: 0, blobId: null }));
-  }, []);
-  
-  
-  const compileFixture = useCallback(async (fixture: Fixture) => {
-    // Increment request ID
-    requestIdRef.current += 1;
-    const currentRequestId = requestIdRef.current;
-    latestRequestIdRef.current = currentRequestId;
+
+  // P0: Compile fixture with proper race condition handling
+  const compileFixture = useCallback(async (
+    fixture: Fixture,
+    bandIndex?: number,
+    resolution?: 'preview' | 'full'
+  ) => {
+    // Default to current resolution state if not provided
+    const effectiveResolution = resolution ?? (useFullResolution ? 'full' : 'preview');
+    // P0: Abort previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     
-    console.log(`[onSelect] label=${fixture.label} requestId=${currentRequestId}`);
+    // P0: Create new abort controller
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
     
-    // Reset state
+    // P0: Generate compile key
+    const compileKey = generateCompileKey(fixture, effectiveResolution, bandIndex);
+    
+    // P0: Increment sequence
+    seqRef.current += 1;
+    const currentSeq = seqRef.current;
+    latestSeqRef.current = currentSeq;
+    latestKeyRef.current = compileKey;
+    
+    // Reset loading state
     setLoading(true);
     setError(null);
-    clearMesh();
-    setRequestId(currentRequestId);
-    setDebugInfo({
-      selectedLabel: fixture.label,
-      requestId: currentRequestId,
-      blobId: null,
-      dims: null,
-    valueRange: null,
-    currentIso: 0,
-    trianglesCount: 0,
-    volumeStats: null,
-  });
+    setCompiledVolume(null);
+    setMeshStats({ trianglesCount: 0, volumeStats: null });
+    meshKeyRef.current += 1; // Force mesh remount
     
-    // Use a temporary calc_dir (sandbox output)
+    // Use temporary calc_dir
     const calcDir = '/tmp/qv-sandbox-volume';
     
     try {
-      const response = await (window as any).qv.request('compile_fixture_volume', {
+      // P2: Add band_index parameter for BXSF
+      const payload: any = {
         file_path: fixture.path,
         calc_dir: calcDir,
-      });
+      };
+      if (fixture.kind === 'bxsf' && bandIndex !== undefined) {
+        payload.band_index = bandIndex;
+      }
       
-      // Check if this request is still current
-      if (currentRequestId !== latestRequestIdRef.current) {
-        console.log(`[onStaleDiscarded] requestId=${currentRequestId} (latest=${latestRequestIdRef.current})`);
+      const response = await (window as any).qv.request('compile_fixture_volume', payload);
+      
+      // P0: Check if still current after async
+      if (abortController.signal.aborted || currentSeq !== latestSeqRef.current || compileKey !== latestKeyRef.current) {
+        console.log(`[compileFixture] Stale response discarded: seq=${currentSeq}, key=${compileKey}`);
         return;
       }
       
-      if (response.ok && response.data) {
-        const volume = response.data as CompiledVolume;
-        
-        console.log(`[onCompileDone] label=${fixture.label} requestId=${currentRequestId} blobId=${volume.preview_blob_id || volume.blob_id}`);
-        
-        setCompiledVolumes(prev => new Map(prev).set(fixture.id, volume));
-        setSelectedFixture(fixture);
-        // Don't set dims here - loadBlob will set the correct dims (preview or full)
-        setDebugInfo(prev => ({
-          ...prev,
-          valueRange: volume.metadata.value_min !== undefined && volume.metadata.value_max !== undefined
-            ? { min: volume.metadata.value_min, max: volume.metadata.value_max }
-            : null,
-        }));
-        
-        // Load preview blob (will set dims to preview_grid_shape)
-        await loadBlob(volume, calcDir, currentRequestId);
-        
-        // Check again after blob load
-        if (currentRequestId !== latestRequestIdRef.current) {
-          return;
-        }
-        
-        // Set initial isovalue (adaptive)
-        // P2: For BXSF (Fermi surface), default iso = fermi_energy
-        if (volume.fermi_energy !== undefined && volume.kind === 'fermi_surface') {
-          // BXSF: iso = Ef
-          setIsovalue(volume.fermi_energy);
-          setDebugInfo(prev => ({ ...prev, currentIso: volume.fermi_energy! }));
-        } else if (volume.metadata.value_min !== undefined && volume.metadata.value_max !== undefined) {
-          if (volume.metadata.value_max === volume.metadata.value_min) {
-            setError('Volume has constant value (no variation)');
-            setIsovalue(volume.metadata.value_min);
-          } else {
-            // Phase 5: Use maxAbs proportion to avoid noise fragments
-            // For MLWF (XSF), values are typically positive and centered around some level
-            // Use a proportion of maxAbs to avoid near-zero noise
-            const min = volume.metadata.value_min;
-            const max = volume.metadata.value_max;
-            const maxAbs = Math.max(Math.abs(min), Math.abs(max));
-            
-            // Default: 0.2 * maxAbs (or 0.2 * range from min, whichever is more reasonable)
-            // This avoids iso values too close to zero/min that would pick up noise
-            let defaultIso: number;
-            if (min >= 0) {
-              // All positive: use 0.2 * max
-              defaultIso = 0.2 * max;
-            } else if (max <= 0) {
-              // All negative: use 0.2 * min (negative)
-              defaultIso = 0.2 * min;
-            } else {
-              // Crosses zero: use 0.2 * maxAbs to avoid near-zero noise
-              defaultIso = 0.2 * maxAbs;
-            }
-            
-            setIsovalue(defaultIso);
-            setDebugInfo(prev => ({ ...prev, currentIso: defaultIso }));
-          }
-        } else if (volume.metadata.value_mean !== undefined) {
-          setIsovalue(volume.metadata.value_mean);
-          setDebugInfo(prev => ({ ...prev, currentIso: volume.metadata.value_mean! }));
-        }
-      } else {
-        if (currentRequestId === latestRequestIdRef.current) {
+      if (!response.ok || !response.data) {
+        if (currentSeq === latestSeqRef.current && compileKey === latestKeyRef.current) {
           setError(response.error?.message || 'Failed to compile volume');
         }
+        return;
       }
+      
+      const volume = response.data as CompiledVolume;
+      
+      // P2: Set selected band index
+      const effectiveBandIndex = fixture.kind === 'bxsf' ? (bandIndex ?? volume.band_index ?? 1) : undefined;
+      if (effectiveBandIndex !== undefined) {
+        setSelectedBandIndex(effectiveBandIndex);
+      }
+      
+      // P1: Infer energy reference for BXSF
+      let energyRef: EnergyReferenceResult | undefined = undefined;
+      if (volume.kind === 'fermi_surface' && volume.metadata.value_min !== undefined && volume.metadata.value_max !== undefined) {
+        energyRef = inferEnergyReference(
+          volume.metadata.value_min,
+          volume.metadata.value_max,
+          volume.fermi_energy
+        );
+      }
+      
+      // Set initial isovalue
+      let initialIso: number;
+      if (energyRef) {
+        initialIso = energyRef.effective_iso_default;
+      } else if (volume.fermi_energy !== undefined && volume.kind === 'fermi_surface') {
+        initialIso = volume.fermi_energy;
+      } else if (volume.metadata.value_min !== undefined && volume.metadata.value_max !== undefined) {
+        if (volume.metadata.value_max === volume.metadata.value_min) {
+          setError('Volume has constant value (no variation)');
+          initialIso = volume.metadata.value_min;
+        } else {
+          const min = volume.metadata.value_min;
+          const max = volume.metadata.value_max;
+          const maxAbs = Math.max(Math.abs(min), Math.abs(max));
+          
+          if (min >= 0) {
+            initialIso = 0.2 * max;
+          } else if (max <= 0) {
+            initialIso = 0.2 * min;
+          } else {
+            initialIso = 0.2 * maxAbs;
+          }
+        }
+      } else if (volume.metadata.value_mean !== undefined) {
+        initialIso = volume.metadata.value_mean;
+      } else {
+        initialIso = 0;
+      }
+      
+      setIsovalue(initialIso);
+      
+      // P0: Load blob atomically
+      const { blobId, data, dims } = await loadBlob(volume, calcDir, compileKey, currentSeq, effectiveResolution, abortController.signal);
+      
+      // P0: Final check before setting state
+      if (abortController.signal.aborted || currentSeq !== latestSeqRef.current || compileKey !== latestKeyRef.current) {
+        console.log(`[compileFixture] Stale blob response discarded: seq=${currentSeq}, key=${compileKey}`);
+        return;
+      }
+      
+      // P0: Set atomic compiled volume state
+      setCompiledVolume({
+        key: compileKey,
+        seq: currentSeq,
+        fixture,
+        volume,
+        blobId,
+        blobData: data,
+        dims,
+        data_order: volume.metadata.data_order,
+        valueRange: volume.metadata.value_min !== undefined && volume.metadata.value_max !== undefined
+          ? { min: volume.metadata.value_min, max: volume.metadata.value_max }
+          : null,
+        kind: volume.kind,
+        fermi_energy: volume.fermi_energy,
+        bandIndex: effectiveBandIndex,
+        resolution: effectiveResolution,
+        energy_reference: energyRef,
+      });
+      
     } catch (e) {
-      if (currentRequestId === latestRequestIdRef.current) {
-        setError(`Error compiling volume: ${e}`);
+      // Ignore abort errors
+      if (e instanceof Error && e.message.includes('aborted')) {
+        return;
+      }
+      
+      // Only set error if still current
+      if (currentSeq === latestSeqRef.current && compileKey === latestKeyRef.current) {
+        setError(`Error: ${e instanceof Error ? e.message : String(e)}`);
       }
     } finally {
-      if (currentRequestId === latestRequestIdRef.current) {
+      if (currentSeq === latestSeqRef.current && compileKey === latestKeyRef.current) {
         setLoading(false);
       }
     }
-  }, [loadBlob, clearMesh]);
-  
+  }, [generateCompileKey, loadBlob]); // P3: Don't include useFullResolution in deps to avoid recreating on every toggle
+
   // Load fixtures on mount
   useEffect(() => {
     loadFixtures();
   }, [loadFixtures]);
-  
-  const selectedVolume = selectedFixture ? compiledVolumes.get(selectedFixture.id) : null;
-  
+
+  // P3: Handle resolution toggle (must recompile)
+  const handleResolutionToggle = useCallback((newUseFull: boolean) => {
+    setUseFullResolution(newUseFull);
+    if (compiledVolume) {
+      const newResolution = newUseFull ? 'full' : 'preview';
+      // Use current state directly (not from closure)
+      compileFixture(
+        compiledVolume.fixture,
+        compiledVolume.bandIndex,
+        newResolution
+      );
+    }
+  }, [compiledVolume, compileFixture]);
+
+  // P2: Handle band change (must recompile)
+  const handleBandChange = useCallback((newBand: number) => {
+    setSelectedBandIndex(newBand);
+    if (compiledVolume && compiledVolume.fixture.kind === 'bxsf') {
+      compileFixture(
+        compiledVolume.fixture,
+        newBand,
+        compiledVolume.resolution
+      );
+    }
+  }, [compiledVolume, compileFixture]);
+
   return (
     <div className="volume-viewer-sandbox">
       <div className="volume-viewer-sandbox-header">
@@ -422,256 +516,216 @@ export function VolumeViewerSandbox() {
         <div className="volume-viewer-sandbox-sidebar">
           <h3>Fixtures ({fixtures.length})</h3>
           <div className="volume-viewer-sandbox-fixture-list">
-                {fixtures.map(fixture => {
-              const isCompiled = compiledVolumes.has(fixture.id);
-              return (
-                <div
-                  key={fixture.id}
-                  className={`volume-viewer-sandbox-fixture-item ${selectedFixture?.id === fixture.id ? 'selected' : ''} ${isCompiled ? 'compiled' : ''}`}
-                  onClick={() => {
-                    if (!isCompiled) {
-                      compileFixture(fixture);
-                    } else {
-                      // Re-compile to ensure fresh state
-                      compileFixture(fixture);
-                    }
-                  }}
-                >
-                  <div className="fixture-name">{fixture.label}</div>
-                  <div className="fixture-type">{fixture.kind.toUpperCase()}</div>
-                  {isCompiled && <div className="fixture-status">✓ Compiled</div>}
-                </div>
-              );
-            })}
+            {fixtures.map(fixture => (
+              <div
+                key={fixture.id}
+                className={`volume-viewer-sandbox-fixture-item ${compiledVolume?.fixture.id === fixture.id ? 'selected' : ''}`}
+                onClick={() => {
+                  const bandIdx = fixture.kind === 'bxsf' ? (selectedBandIndex ?? 1) : undefined;
+                  compileFixture(fixture, bandIdx, useFullResolution ? 'full' : 'preview');
+                }}
+              >
+                <div className="fixture-name">{fixture.label}</div>
+                <div className="fixture-type">{fixture.kind.toUpperCase()}</div>
+                {compiledVolume?.fixture.id === fixture.id && (
+                  <div className="fixture-status">✓ Loaded</div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
         
         <div className="volume-viewer-sandbox-main">
           {loading && <div className="volume-viewer-loading">Compiling...</div>}
           
-          {selectedVolume && (
+          {compiledVolume && (
             <div className="volume-viewer-sandbox-content">
               {/* Debug Panel */}
               <div className="volume-viewer-debug">
                 <h4>Debug Info</h4>
                 <div className="debug-row">
                   <span className="debug-label">Fixture:</span>
-                  <span className="debug-value">{debugInfo.selectedLabel || 'none'}</span>
+                  <span className="debug-value">{compiledVolume.fixture.label}</span>
                 </div>
                 <div className="debug-row">
-                  <span className="debug-label">Request ID:</span>
-                  <span className="debug-value">{debugInfo.requestId}</span>
+                  <span className="debug-label">Compile Key:</span>
+                  <span className="debug-value" style={{ fontSize: '0.75em', wordBreak: 'break-all' }}>{compiledVolume.key}</span>
+                </div>
+                <div className="debug-row">
+                  <span className="debug-label">Seq:</span>
+                  <span className="debug-value">{compiledVolume.seq}</span>
                 </div>
                 <div className="debug-row">
                   <span className="debug-label">Blob ID:</span>
-                  <span className="debug-value">{debugInfo.blobId || 'none'}</span>
+                  <span className="debug-value" style={{ fontSize: '0.75em' }}>{compiledVolume.blobId.slice(0, 8)}...</span>
                 </div>
                 <div className="debug-row">
                   <span className="debug-label">Dims:</span>
                   <span className="debug-value">
-                    {debugInfo.dims ? `${debugInfo.dims[0]}×${debugInfo.dims[1]}×${debugInfo.dims[2]}` : 'none'}
-                    {debugInfo.level && ` (${debugInfo.level})`}
+                    {compiledVolume.dims[0]}×{compiledVolume.dims[1]}×{compiledVolume.dims[2]} ({compiledVolume.resolution})
                   </span>
                 </div>
                 <div className="debug-row">
                   <span className="debug-label">Value Range:</span>
                   <span className="debug-value">
-                    {debugInfo.valueRange 
-                      ? `${(debugInfo.valueRange.min ?? 0).toFixed(4)} .. ${(debugInfo.valueRange.max ?? 0).toFixed(4)}`
+                    {compiledVolume.valueRange 
+                      ? `${compiledVolume.valueRange.min.toFixed(4)} .. ${compiledVolume.valueRange.max.toFixed(4)}`
                       : '—'}
                   </span>
                 </div>
                 <div className="debug-row">
                   <span className="debug-label">Current ISO:</span>
                   <span className="debug-value">
-                    {typeof debugInfo.currentIso === 'number' && !isNaN(debugInfo.currentIso) 
-                      ? debugInfo.currentIso.toFixed(4) 
-                      : '—'}
+                    {isovalue.toFixed(4)}
                   </span>
                 </div>
                 <div className="debug-row">
                   <span className="debug-label">Triangles:</span>
-                  <span className="debug-value">{debugInfo.trianglesCount}</span>
+                  <span className="debug-value">{meshStats.trianglesCount}</span>
                 </div>
-                {debugInfo.volumeStats && (
+                {compiledVolume.bbox && (
                   <>
                     <div className="debug-row">
-                      <span className="debug-label">nNaN:</span>
-                      <span className="debug-value">{debugInfo.volumeStats.nNaN}</span>
+                      <span className="debug-label">BBox Min:</span>
+                      <span className="debug-value">
+                        [{compiledVolume.bbox.min.map(v => v.toFixed(2)).join(', ')}]
+                      </span>
                     </div>
                     <div className="debug-row">
-                      <span className="debug-label">nInf:</span>
-                      <span className="debug-value">{debugInfo.volumeStats.nInf}</span>
+                      <span className="debug-label">BBox Max:</span>
+                      <span className="debug-value">
+                        [{compiledVolume.bbox.max.map(v => v.toFixed(2)).join(', ')}]
+                      </span>
                     </div>
                     <div className="debug-row">
-                      <span className="debug-label">nLess:</span>
-                      <span className="debug-value">{debugInfo.volumeStats.nLess}</span>
+                      <span className="debug-label">Center:</span>
+                      <span className="debug-value">
+                        [{compiledVolume.bbox.center.map(v => v.toFixed(2)).join(', ')}]
+                      </span>
                     </div>
                     <div className="debug-row">
-                      <span className="debug-label">nGreater:</span>
-                      <span className="debug-value">{debugInfo.volumeStats.nGreater}</span>
-                    </div>
-                    <div className="debug-row">
-                      <span className="debug-label">nEq:</span>
-                      <span className="debug-value">{debugInfo.volumeStats.nEq}</span>
-                    </div>
-                    <div className="debug-row">
-                      <span className="debug-label">Active Cubes:</span>
-                      <span className="debug-value">{debugInfo.volumeStats.nActiveCubes}</span>
+                      <span className="debug-label">Max Extent:</span>
+                      <span className="debug-value">{compiledVolume.bbox.maxExtent.toFixed(2)}</span>
                     </div>
                   </>
                 )}
-                <div className="debug-row">
-                  <span className="debug-label">BBox Min:</span>
-                  <span className="debug-value">
-                    {debugInfo.bboxMin && Array.isArray(debugInfo.bboxMin) && debugInfo.bboxMin.length === 3
-                      ? `[${(debugInfo.bboxMin[0] ?? 0).toFixed(2)}, ${(debugInfo.bboxMin[1] ?? 0).toFixed(2)}, ${(debugInfo.bboxMin[2] ?? 0).toFixed(2)}]`
-                      : '—'}
-                  </span>
-                </div>
-                <div className="debug-row">
-                  <span className="debug-label">BBox Max:</span>
-                  <span className="debug-value">
-                    {debugInfo.bboxMax && Array.isArray(debugInfo.bboxMax) && debugInfo.bboxMax.length === 3
-                      ? `[${(debugInfo.bboxMax[0] ?? 0).toFixed(2)}, ${(debugInfo.bboxMax[1] ?? 0).toFixed(2)}, ${(debugInfo.bboxMax[2] ?? 0).toFixed(2)}]`
-                      : '—'}
-                  </span>
-                </div>
-                <div className="debug-row">
-                  <span className="debug-label">Center:</span>
-                  <span className="debug-value">
-                    {debugInfo.center && Array.isArray(debugInfo.center) && debugInfo.center.length === 3
-                      ? `[${(debugInfo.center[0] ?? 0).toFixed(2)}, ${(debugInfo.center[1] ?? 0).toFixed(2)}, ${(debugInfo.center[2] ?? 0).toFixed(2)}]`
-                      : '—'}
-                  </span>
-                </div>
-                <div className="debug-row">
-                  <span className="debug-label">Max Extent:</span>
-                  <span className="debug-value">
-                    {typeof debugInfo.maxExtent === 'number' && !isNaN(debugInfo.maxExtent)
-                      ? debugInfo.maxExtent.toFixed(2)
-                      : '—'}
-                  </span>
-                </div>
-                {debugInfo.volumeStats?.cubeIndexStats && (
+                {/* P1: Energy reference info for BXSF */}
+                {compiledVolume.fermi_energy !== undefined && (
                   <>
                     <div className="debug-row">
-                      <span className="debug-label">Total Cells:</span>
-                      <span className="debug-value">{debugInfo.volumeStats.cubeIndexStats.totalCells}</span>
+                      <span className="debug-label">Fermi Energy:</span>
+                      <span className="debug-value">{compiledVolume.fermi_energy.toFixed(4)}</span>
                     </div>
-                    <div className="debug-row">
-                      <span className="debug-label">Active Cells:</span>
-                      <span className="debug-value">{debugInfo.volumeStats.cubeIndexStats.activeCells}</span>
-                    </div>
-                    {debugInfo.volumeStats.cubeIndexStats.topCubeIndexes.length > 0 && (
-                      <div className="debug-row">
-                        <span className="debug-label">Top CubeIndex:</span>
-                        <span className="debug-value">
-                          {debugInfo.volumeStats.cubeIndexStats.topCubeIndexes.slice(0, 3).map(c => `${c.index}(${c.count})`).join(', ')}
-                        </span>
-                      </div>
+                    {compiledVolume.energy_reference && (
+                      <>
+                        <div className="debug-row">
+                          <span className="debug-label">Energy Reference:</span>
+                          <span className="debug-value">{compiledVolume.energy_reference.reference}</span>
+                        </div>
+                        <div className="debug-row">
+                          <span className="debug-label">ISO Default Reason:</span>
+                          <span className="debug-value">Rule {compiledVolume.energy_reference.iso_default_reason}</span>
+                        </div>
+                      </>
                     )}
                   </>
                 )}
-                {debugInfo.volumeStats?.sampleActiveCube && (
-                  <div className="debug-row" style={{ fontSize: '0.75em', marginTop: '8px' }}>
-                    <span className="debug-label">Sample Cube:</span>
-                    <span className="debug-value">
-                      ({debugInfo.volumeStats.sampleActiveCube.cell.join(',')}) idx={debugInfo.volumeStats.sampleActiveCube.cubeIndex}
-                    </span>
-                  </div>
+                {meshStats.volumeStats && (
+                  <>
+                    <div className="debug-row">
+                      <span className="debug-label">Active Cubes:</span>
+                      <span className="debug-value">{meshStats.volumeStats.nActiveCubes}</span>
+                    </div>
+                  </>
                 )}
               </div>
               
               {/* 3D Canvas */}
               <div className="volume-viewer-canvas-container">
-                <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
+                <Canvas camera={{ position: [5, 5, 5], fov: 50 }} frameloop="demand">
                   <Suspense fallback={null}>
                     <ambientLight intensity={0.5} />
                     <directionalLight position={[10, 10, 5]} intensity={0.8} />
                     <Grid args={[10, 10]} />
                     
-                    {volumeData && !isLoadingBlob && debugInfo.dims && (
-                      <>
-                        <IsosurfaceMesh
-                          volumeData={volumeData}
-                          metadata={{
-                            ...selectedVolume.metadata,
-                            grid_shape: debugInfo.dims, // Use dims that match the loaded blob
-                          }}
-                          isovalue={isovalue}
-                          color="#4a90e2"
-                          opacity={0.8}
-                          meshKey={meshKey}
-                          onMeshGenerated={(_nVertices, nTriangles, stats) => {
-                            // Phase 4: Check requestId to prevent stale results
-                            if (requestId !== latestRequestIdRef.current) {
-                              console.log(`[onMeshDone] Stale result discarded: requestId=${requestId} (latest=${latestRequestIdRef.current})`);
-                              return;
-                            }
-                            console.log(`[onMeshDone] requestId=${requestId} nTriangles=${nTriangles}`);
-                            setDebugInfo(prev => ({ 
-                              ...prev, 
-                              trianglesCount: nTriangles,
-                              volumeStats: stats || null,
-                              bboxMin: stats?.bboxMin,
-                              bboxMax: stats?.bboxMax,
-                              center: stats?.center,
-                              maxExtent: stats?.maxExtent,
+                    <IsosurfaceMesh
+                      volumeData={compiledVolume.blobData}
+                      metadata={{
+                        ...compiledVolume.volume.metadata,
+                        grid_shape: compiledVolume.dims,
+                      }}
+                      isovalue={isovalue}
+                      color="#4a90e2"
+                      opacity={0.8}
+                      meshKey={meshKeyRef.current}
+                      compileSeq={compiledVolume.seq}
+                      onMeshGenerated={(_nVertices, nTriangles, stats) => {
+                        // P0: Only update if seq matches (prevent stale results)
+                        if (compiledVolume.seq === latestSeqRef.current && compiledVolume.key === latestKeyRef.current) {
+                          setMeshStats({
+                            trianglesCount: nTriangles,
+                            volumeStats: stats || null,
+                          });
+                          // Update bbox if available
+                          if (stats?.bboxMin && stats?.bboxMax && stats?.center && stats?.maxExtent !== undefined) {
+                            setCompiledVolume(prev => prev ? {
+                              ...prev,
+                              bbox: {
+                                min: stats.bboxMin!,
+                                max: stats.bboxMax!,
+                                center: stats.center!,
+                                maxExtent: stats.maxExtent!,
+                              },
+                            } : null);
+                          }
+                        }
+                      }}
+                      onError={(err) => {
+                        if (compiledVolume.seq === latestSeqRef.current && compiledVolume.key === latestKeyRef.current) {
+                          setError(`Mesh generation failed: ${err}`);
+                        }
+                      }}
+                    />
+                    {showPlusMinusIso && (
+                      <IsosurfaceMesh
+                        volumeData={compiledVolume.blobData}
+                        metadata={{
+                          ...compiledVolume.volume.metadata,
+                          grid_shape: compiledVolume.dims,
+                        }}
+                        isovalue={-isovalue}
+                        color="#e24a4a"
+                        opacity={0.6}
+                        meshKey={meshKeyRef.current + 1000}
+                        compileSeq={compiledVolume.seq}
+                        onMeshGenerated={(_nVertices, nTriangles, stats) => {
+                          if (compiledVolume.seq === latestSeqRef.current && compiledVolume.key === latestKeyRef.current) {
+                            setMeshStats(prev => ({
+                              trianglesCount: prev.trianglesCount + nTriangles,
+                              volumeStats: stats ? {
+                                ...(prev.volumeStats || {}),
+                                ...stats,
+                              } : prev.volumeStats,
                             }));
-                          }}
-                          onError={(err) => {
-                            console.error(`[onMeshError] requestId=${requestId} error=${err}`);
-                            setError(`Mesh generation failed: ${err}`);
-                          }}
-                        />
-                        {showPlusMinusIso && debugInfo.dims && (
-                          <IsosurfaceMesh
-                            volumeData={volumeData}
-                            metadata={{
-                              ...selectedVolume.metadata,
-                              grid_shape: debugInfo.dims, // Use dims that match the loaded blob
-                            }}
-                            isovalue={-isovalue}
-                            color="#e24a4a"
-                            opacity={0.6}
-                            meshKey={meshKey + 1000} // Different key for second mesh
-                            onMeshGenerated={(_nVertices, nTriangles, stats) => {
-                              // Only update if this is the latest request
-                              if (requestId === latestRequestIdRef.current) {
-                                setDebugInfo(prev => ({ 
-                                  ...prev, 
-                                  trianglesCount: prev.trianglesCount + nTriangles,
-                                  volumeStats: stats ? {
-                                    nNaN: (prev.volumeStats?.nNaN || 0) + stats.nNaN,
-                                    nInf: (prev.volumeStats?.nInf || 0) + stats.nInf,
-                                    nLess: (prev.volumeStats?.nLess || 0) + stats.nLess,
-                                    nGreater: (prev.volumeStats?.nGreater || 0) + stats.nGreater,
-                                    nEq: (prev.volumeStats?.nEq || 0) + stats.nEq,
-                                    nActiveCubes: (prev.volumeStats?.nActiveCubes || 0) + stats.nActiveCubes,
-                                  } : prev.volumeStats,
-                                }));
-                              }
-                            }}
-                            onError={(err) => {
-                              if (requestId === latestRequestIdRef.current) {
-                                setError(`Mesh generation failed (negative iso): ${err}`);
-                              }
-                            }}
-                          />
-                        )}
-                      </>
+                          }
+                        }}
+                        onError={(err) => {
+                          if (compiledVolume.seq === latestSeqRef.current && compiledVolume.key === latestKeyRef.current) {
+                            setError(`Mesh generation failed (negative iso): ${err}`);
+                          }
+                        }}
+                      />
                     )}
                     
-                    <OrbitControls />
+                    <OrbitControls 
+                      onChange={() => {
+                        // P3: Do nothing - frameloop="demand" handles this
+                      }}
+                    />
                   </Suspense>
                 </Canvas>
                 
-                {isLoadingBlob && (
-                  <div className="volume-viewer-canvas-loading">Loading blob...</div>
-                )}
-                
-                {volumeData && !isLoadingBlob && debugInfo.trianglesCount === 0 && (
+                {meshStats.trianglesCount === 0 && (
                   <div className="volume-viewer-canvas-warning">
                     0 triangles (adjust iso value)
                   </div>
@@ -680,46 +734,91 @@ export function VolumeViewerSandbox() {
               
               {/* Controls */}
               <div className="volume-viewer-controls">
+                {/* P2: Band selector for BXSF */}
+                {compiledVolume.kind === 'fermi_surface' && compiledVolume.volume.n_bands !== undefined && (
+                  <div className="volume-viewer-control-row">
+                    <label>
+                      Band:
+                      <select
+                        value={compiledVolume.bandIndex ?? 1}
+                        onChange={(e) => {
+                          const newBand = parseInt(e.target.value, 10);
+                          handleBandChange(newBand);
+                        }}
+                        disabled={loading}
+                      >
+                        {Array.from({ length: compiledVolume.volume.n_bands }, (_, i) => i + 1).map(bandNum => (
+                          <option key={bandNum} value={bandNum}>
+                            Band {bandNum}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
+                
+                {/* P3: Resolution toggle */}
+                <div className="volume-viewer-control-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={compiledVolume.resolution === 'full'}
+                      onChange={(e) => {
+                        handleResolutionToggle(e.target.checked);
+                      }}
+                      disabled={loading}
+                    />
+                    Full Resolution (preview is faster)
+                  </label>
+                </div>
+                
                 <div className="volume-viewer-control-row">
                   <label>
                     Isovalue:
                     <input
                       type="range"
-                      min={debugInfo.valueRange?.min ?? (selectedVolume.metadata.value_min ?? -1)}
-                      max={debugInfo.valueRange?.max ?? (selectedVolume.metadata.value_max ?? 1)}
-                      step={(() => {
-                        const min = debugInfo.valueRange?.min ?? (selectedVolume.metadata.value_min ?? -1);
-                        const max = debugInfo.valueRange?.max ?? (selectedVolume.metadata.value_max ?? 1);
-                        return Math.abs(max - min) / 100;
-                      })()}
+                      min={compiledVolume.valueRange?.min ?? -1}
+                      max={compiledVolume.valueRange?.max ?? 1}
+                      step={compiledVolume.valueRange ? Math.abs(compiledVolume.valueRange.max - compiledVolume.valueRange.min) / 100 : 0.01}
                       value={isovalue}
                       onChange={(e) => {
                         const newIso = parseFloat(e.target.value);
                         setIsovalue(newIso);
-                        setDebugInfo(prev => ({ ...prev, currentIso: newIso }));
+                        // B1: Debug iso change (throttled - only log on mouse up)
                       }}
-                      disabled={!volumeData}
+                      onMouseUp={(e) => {
+                        // B1: Log once when dragging stops
+                        const newIso = parseFloat((e.target as HTMLInputElement).value);
+                        console.debug(`[iso] setIso=${newIso.toFixed(4)}`);
+                      }}
+                      disabled={!compiledVolume}
                     />
                     <span className="volume-viewer-control-value">
-                      {typeof isovalue === 'number' && !isNaN(isovalue) ? isovalue.toFixed(4) : '—'}
+                      {isovalue.toFixed(4)}
                     </span>
-                    {/* P2: BXSF "Set iso=Ef" button */}
-                    {selectedVolume?.fermi_energy !== undefined && selectedVolume.kind === 'fermi_surface' && (
-                      <button
-                        onClick={() => {
-                          const ef = selectedVolume.fermi_energy!;
-                          setIsovalue(ef);
-                          setDebugInfo(prev => ({ ...prev, currentIso: ef }));
-                        }}
-                        className="volume-viewer-set-ef-button"
-                      >
-                        Set iso = Ef ({selectedVolume.fermi_energy.toFixed(4)})
-                      </button>
+                    {/* P1: BXSF "Set iso=Ef" and "Set iso=0" buttons */}
+                    {compiledVolume.fermi_energy !== undefined && compiledVolume.kind === 'fermi_surface' && (
+                      <>
+                        <button
+                          onClick={() => setIsovalue(compiledVolume.fermi_energy!)}
+                          className="volume-viewer-set-ef-button"
+                          disabled={loading}
+                        >
+                          Set iso = Ef ({compiledVolume.fermi_energy.toFixed(4)})
+                        </button>
+                        <button
+                          onClick={() => setIsovalue(0)}
+                          className="volume-viewer-set-ef-button"
+                          disabled={loading}
+                        >
+                          Set iso = 0
+                        </button>
+                      </>
                     )}
                   </label>
-                  {debugInfo.valueRange && (
+                  {compiledVolume.valueRange && (
                     <div className="volume-viewer-iso-warning">
-                      {isovalue < debugInfo.valueRange.min || isovalue > debugInfo.valueRange.max ? (
+                      {isovalue < compiledVolume.valueRange.min || isovalue > compiledVolume.valueRange.max ? (
                         <span className="iso-out-of-range">⚠ ISO out of range</span>
                       ) : null}
                     </div>
@@ -731,7 +830,7 @@ export function VolumeViewerSandbox() {
                       type="checkbox"
                       checked={showPlusMinusIso}
                       onChange={(e) => setShowPlusMinusIso(e.target.checked)}
-                      disabled={!volumeData}
+                      disabled={!compiledVolume}
                     />
                     ±iso (dual surface)
                   </label>
@@ -740,44 +839,31 @@ export function VolumeViewerSandbox() {
               
               {/* Metadata panel */}
               <div className="volume-viewer-sandbox-metadata">
-              <h3>Metadata: {selectedVolume.artifact_id}</h3>
-              <div className="metadata-section">
-                <h4>Grid Info</h4>
-                <pre>{JSON.stringify({
-                  grid_shape: selectedVolume.metadata.grid_shape,
-                  coordinate_system: selectedVolume.metadata.coordinate_system,
-                  data_order: selectedVolume.metadata.data_order,
-                }, null, 2)}</pre>
-              </div>
-              
-              <div className="metadata-section">
-                <h4>Blob IDs</h4>
-                <pre>{JSON.stringify({
-                  blob_id: selectedVolume.blob_id,
-                  preview_blob_id: selectedVolume.preview_blob_id,
-                }, null, 2)}</pre>
-              </div>
-              
-              {selectedVolume.n_bands !== undefined && (
+                <h3>Metadata: {compiledVolume.volume.artifact_id}</h3>
                 <div className="metadata-section">
-                  <h4>Fermi Surface Info</h4>
+                  <h4>Grid Info</h4>
                   <pre>{JSON.stringify({
-                    n_bands: selectedVolume.n_bands,
-                    band_index: selectedVolume.band_index,
-                    fermi_energy: selectedVolume.fermi_energy,
+                    grid_shape: compiledVolume.dims,
+                    coordinate_system: compiledVolume.volume.metadata.coordinate_system,
+                    data_order: compiledVolume.data_order,
                   }, null, 2)}</pre>
                 </div>
-              )}
-              
-              <div className="metadata-section">
-                <h4>Full Metadata</h4>
-                <pre>{JSON.stringify(selectedVolume.metadata, null, 2)}</pre>
-              </div>
+                
+                {compiledVolume.volume.n_bands !== undefined && (
+                  <div className="metadata-section">
+                    <h4>Fermi Surface Info</h4>
+                    <pre>{JSON.stringify({
+                      n_bands: compiledVolume.volume.n_bands,
+                      band_index: compiledVolume.bandIndex,
+                      fermi_energy: compiledVolume.fermi_energy,
+                    }, null, 2)}</pre>
+                  </div>
+                )}
               </div>
             </div>
           )}
           
-          {!selectedVolume && !loading && (
+          {!compiledVolume && !loading && (
             <div className="volume-viewer-sandbox-placeholder">
               Select a fixture to compile and view metadata
             </div>
@@ -787,4 +873,3 @@ export function VolumeViewerSandbox() {
     </div>
   );
 }
-
