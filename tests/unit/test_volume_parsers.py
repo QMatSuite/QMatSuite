@@ -312,3 +312,87 @@ def test_bxsf_lazy_band_read_does_not_load_all(temp_calc_dir, blob_store):
     assert result["blob_id"] is not None
     assert result["band_index"] == 1
 
+
+def test_compile_fixture_volume_blob_contract_xsf(temp_calc_dir, blob_store):
+    """
+    Phase 0 contract test: blob file size must match dims exactly.
+    
+    This is the root contract that Phase 0 validation enforces.
+    """
+    if not GAAS_XSF.exists():
+        pytest.skip(f"Fixture not found: {GAAS_XSF}")
+    
+    import os
+    from quantumvitas.io.parser.volume_parsers import parse_xsf_datagrid_3d
+    
+    # Parse XSF (direct call, not via RPC)
+    metadata = parse_xsf_datagrid_3d(GAAS_XSF, temp_calc_dir, blob_store)
+    
+    # Test full blob contract
+    full_blob_path = blob_store.get_blob_path(metadata.blob_id)
+    assert full_blob_path is not None
+    full_size = os.path.getsize(full_blob_path)
+    nx, ny, nz = metadata.grid_shape
+    full_expected_bytes = 4 * nx * ny * nz  # float32 = 4 bytes
+    assert full_size == full_expected_bytes, (
+        f"Full blob contract failed: file_size={full_size} != expected={full_expected_bytes} "
+        f"for dims={metadata.grid_shape}, blob_id={metadata.blob_id}"
+    )
+    
+    # Test preview blob contract
+    if metadata.preview_blob_id:
+        preview_blob_path = blob_store.get_blob_path(metadata.preview_blob_id)
+        assert preview_blob_path is not None
+        preview_size = os.path.getsize(preview_blob_path)
+        if metadata.preview_grid_shape:
+            preview_nx, preview_ny, preview_nz = metadata.preview_grid_shape
+            preview_expected_bytes = 4 * preview_nx * preview_ny * preview_nz
+            assert preview_size == preview_expected_bytes, (
+                f"Preview blob contract failed: file_size={preview_size} != expected={preview_expected_bytes} "
+                f"for preview_grid_shape={metadata.preview_grid_shape}, preview_blob_id={metadata.preview_blob_id}"
+            )
+        else:
+            pytest.fail("preview_blob_id exists but preview_grid_shape is None")
+
+
+def test_compile_fixture_volume_blob_contract_bxsf(temp_calc_dir, blob_store):
+    """
+    Phase 0 contract test for BXSF: blob file size must match dims exactly.
+    """
+    if not COPPER_BXSF.exists():
+        pytest.skip(f"Fixture not found: {COPPER_BXSF}")
+    
+    import os
+    from quantumvitas.io.parser.volume_parsers import parse_bxsf_bandgrid_3d
+    
+    # Parse BXSF band 1 (direct call, not via RPC)
+    result = parse_bxsf_bandgrid_3d(COPPER_BXSF, temp_calc_dir, blob_store, band_index=1)
+    metadata_dict = result["metadata"]
+    
+    # Test full blob contract
+    full_blob_path = blob_store.get_blob_path(result["blob_id"])
+    assert full_blob_path is not None
+    full_size = os.path.getsize(full_blob_path)
+    nx, ny, nz = metadata_dict["grid_shape"]
+    full_expected_bytes = 4 * nx * ny * nz
+    assert full_size == full_expected_bytes, (
+        f"Full blob contract failed: file_size={full_size} != expected={full_expected_bytes} "
+        f"for dims={metadata_dict['grid_shape']}, blob_id={result['blob_id']}"
+    )
+    
+    # Test preview blob contract
+    if result.get("preview_blob_id"):
+        preview_blob_path = blob_store.get_blob_path(result["preview_blob_id"])
+        assert preview_blob_path is not None
+        preview_size = os.path.getsize(preview_blob_path)
+        preview_grid_shape = metadata_dict.get("preview_grid_shape")
+        if preview_grid_shape:
+            preview_nx, preview_ny, preview_nz = preview_grid_shape
+            preview_expected_bytes = 4 * preview_nx * preview_ny * preview_nz
+            assert preview_size == preview_expected_bytes, (
+                f"Preview blob contract failed: file_size={preview_size} != expected={preview_expected_bytes} "
+                f"for preview_grid_shape={preview_grid_shape}, preview_blob_id={result['preview_blob_id']}"
+            )
+        else:
+            pytest.fail("preview_blob_id exists but preview_grid_shape is None")
+

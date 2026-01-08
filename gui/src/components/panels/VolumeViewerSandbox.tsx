@@ -29,6 +29,8 @@ interface VolumeMetadata {
   value_min?: number;
   value_max?: number;
   value_mean?: number;
+  preview_grid_shape?: [number, number, number]; // Preview dimensions (if preview blob exists)
+  preview_downsample_factor?: number;
 }
 
 interface CompiledVolume {
@@ -74,11 +76,15 @@ function IsosurfaceMesh({
     }
     
     try {
+      // Use grid_shape from metadata (should match volumeData length)
+      // This is critical: grid_shape must match the actual data length
+      const dims = metadata.grid_shape;
+      
       const stats: { current: VolumeStats } = { current: { nNaN: 0, nInf: 0, nLess: 0, nGreater: 0, nEq: 0, nActiveCubes: 0 } };
       
       const result = generateIsosurface(
         volumeData,
-        metadata.grid_shape,
+        dims,
         metadata.origin_cart,
         metadata.grid_vectors_cart,
         metadata.data_order,
@@ -164,6 +170,7 @@ export function VolumeViewerSandbox() {
     requestId: number;
     blobId: string | null;
     dims: [number, number, number] | null;
+    level?: 'preview' | 'full';
     valueRange: { min: number; max: number } | null;
     currentIso: number;
     trianglesCount: number;
@@ -177,6 +184,7 @@ export function VolumeViewerSandbox() {
     requestId: 0,
     blobId: null,
     dims: null,
+    level: undefined,
     valueRange: null,
     currentIso: 0,
     trianglesCount: 0,
@@ -192,8 +200,14 @@ export function VolumeViewerSandbox() {
     try {
       // Use preview blob for MVP
       const blobId = volume.preview_blob_id || volume.blob_id;
+      const isPreview = !!volume.preview_blob_id;
       
-      console.log(`[onBlobReadStart] requestId=${currentRequestId} blobId=${blobId}`);
+      // Determine which dims to use: preview if using preview blob, full otherwise
+      const dims: [number, number, number] = isPreview && volume.metadata.preview_grid_shape
+        ? volume.metadata.preview_grid_shape as [number, number, number]
+        : volume.metadata.grid_shape as [number, number, number];
+      
+      console.log(`[onBlobReadStart] requestId=${currentRequestId} blobId=${blobId} isPreview=${isPreview} dims=[${dims.join(',')}]`);
       
       // Read blob via preload API
       const buffer = await (window as any).qv.readBlob(blobId, calcDir);
@@ -205,11 +219,37 @@ export function VolumeViewerSandbox() {
       }
       
       const data = new Float32Array(buffer);
+      const expectedValues = dims[0] * dims[1] * dims[2];
+      const expectedBytes = expectedValues * 4; // float32 = 4 bytes
       
-      console.log(`[onBlobReadDone] requestId=${currentRequestId} byteLength=${buffer.byteLength}`);
+      // Phase 0 contract logging (frontend)
+      console.log(
+        `[Phase 0 Contract] blobId=${blobId}, ` +
+        `buffer.byteLength=${buffer.byteLength}, ` +
+        `floatArray.length=${data.length}, ` +
+        `dims=[${dims.join(',')}], ` +
+        `expected=${expectedValues}, ` +
+        `expectedBytes=${expectedBytes}, ` +
+        `match=${data.length === expectedValues && buffer.byteLength === expectedBytes}`
+      );
+      
+      // Phase 0 validation (will also be checked in marchingCubes, but check here too for early error)
+      if (data.length !== expectedValues) {
+        throw new Error(
+          `Phase 0 contract failed: values.length (${data.length}) != nx*ny*nz (${expectedValues}) ` +
+          `for dims=[${dims.join(',')}], blobId=${blobId}, isPreview=${isPreview}`
+        );
+      }
+      
+      console.log(`[onBlobReadDone] requestId=${currentRequestId} byteLength=${buffer.byteLength} values=${data.length}`);
       
       setVolumeData(data);
-      setDebugInfo(prev => ({ ...prev, blobId }));
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        blobId,
+        dims, // Update dims to match the blob we're using
+        level: isPreview ? 'preview' : 'full',
+      }));
     } catch (e) {
       if (currentRequestId === latestRequestIdRef.current) {
         setError(`Failed to load blob: ${e}`);
@@ -287,15 +327,15 @@ export function VolumeViewerSandbox() {
         
         setCompiledVolumes(prev => new Map(prev).set(fixture.id, volume));
         setSelectedFixture(fixture);
+        // Don't set dims here - loadBlob will set the correct dims (preview or full)
         setDebugInfo(prev => ({
           ...prev,
-          dims: volume.metadata.grid_shape,
           valueRange: volume.metadata.value_min !== undefined && volume.metadata.value_max !== undefined
             ? { min: volume.metadata.value_min, max: volume.metadata.value_max }
             : null,
         }));
         
-        // Load preview blob
+        // Load preview blob (will set dims to preview_grid_shape)
         await loadBlob(volume, calcDir, currentRequestId);
         
         // Check again after blob load
@@ -430,6 +470,7 @@ export function VolumeViewerSandbox() {
                   <span className="debug-label">Dims:</span>
                   <span className="debug-value">
                     {debugInfo.dims ? `${debugInfo.dims[0]}×${debugInfo.dims[1]}×${debugInfo.dims[2]}` : 'none'}
+                    {debugInfo.level && ` (${debugInfo.level})`}
                   </span>
                 </div>
                 <div className="debug-row">
@@ -550,11 +591,14 @@ export function VolumeViewerSandbox() {
                     <directionalLight position={[10, 10, 5]} intensity={0.8} />
                     <Grid args={[10, 10]} />
                     
-                    {volumeData && !isLoadingBlob && (
+                    {volumeData && !isLoadingBlob && debugInfo.dims && (
                       <>
                         <IsosurfaceMesh
                           volumeData={volumeData}
-                          metadata={selectedVolume.metadata}
+                          metadata={{
+                            ...selectedVolume.metadata,
+                            grid_shape: debugInfo.dims, // Use dims that match the loaded blob
+                          }}
                           isovalue={isovalue}
                           color="#4a90e2"
                           opacity={0.8}
@@ -581,10 +625,13 @@ export function VolumeViewerSandbox() {
                             setError(`Mesh generation failed: ${err}`);
                           }}
                         />
-                        {showPlusMinusIso && (
+                        {showPlusMinusIso && debugInfo.dims && (
                           <IsosurfaceMesh
                             volumeData={volumeData}
-                            metadata={selectedVolume.metadata}
+                            metadata={{
+                              ...selectedVolume.metadata,
+                              grid_shape: debugInfo.dims, // Use dims that match the loaded blob
+                            }}
                             isovalue={-isovalue}
                             color="#e24a4a"
                             opacity={0.6}
