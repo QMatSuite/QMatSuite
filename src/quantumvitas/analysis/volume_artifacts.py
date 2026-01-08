@@ -49,6 +49,7 @@ class VolumeMetadata:
     reciprocal_convention: Optional[str] = None  # For reciprocal space: "2pi" or "unknown"
     preview_blob_id: Optional[str] = None  # Preview blob (downsampled)
     preview_downsample_factor: Optional[int] = None  # Factor used for preview (e.g., 4)
+    preview_grid_shape: Optional[Tuple[int, int, int]] = None  # Preview blob dimensions (must match preview_blob_id data length)
     
     # Statistics (optional, computed during parse)
     value_min: Optional[float] = None
@@ -82,6 +83,8 @@ class VolumeMetadata:
         if self.preview_blob_id is not None:
             result["preview_blob_id"] = self.preview_blob_id
             result["preview_downsample_factor"] = self.preview_downsample_factor
+            if self.preview_grid_shape is not None:
+                result["preview_grid_shape"] = list(self.preview_grid_shape)
         
         if self.value_min is not None:
             result["value_min"] = self.value_min
