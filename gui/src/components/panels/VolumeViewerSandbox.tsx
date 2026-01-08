@@ -167,14 +167,11 @@ export function VolumeViewerSandbox() {
     valueRange: { min: number; max: number } | null;
     currentIso: number;
     trianglesCount: number;
-    volumeStats: {
-      nNaN: number;
-      nInf: number;
-      nLess: number;
-      nGreater: number;
-      nEq: number;
-      nActiveCubes: number;
-    } | null;
+    volumeStats: VolumeStats | null;
+    bboxMin?: [number, number, number];
+    bboxMax?: [number, number, number];
+    center?: [number, number, number];
+    maxExtent?: number;
   }>({
     selectedLabel: null,
     requestId: 0,
@@ -455,6 +452,60 @@ export function VolumeViewerSandbox() {
                     </div>
                   </>
                 )}
+                {debugInfo.bboxMin && debugInfo.bboxMax && debugInfo.center && debugInfo.maxExtent !== undefined && (
+                  <>
+                    <div className="debug-row">
+                      <span className="debug-label">BBox Min:</span>
+                      <span className="debug-value">
+                        [{debugInfo.bboxMin[0].toFixed(2)}, {debugInfo.bboxMin[1].toFixed(2)}, {debugInfo.bboxMin[2].toFixed(2)}]
+                      </span>
+                    </div>
+                    <div className="debug-row">
+                      <span className="debug-label">BBox Max:</span>
+                      <span className="debug-value">
+                        [{debugInfo.bboxMax[0].toFixed(2)}, {debugInfo.bboxMax[1].toFixed(2)}, {debugInfo.bboxMax[2].toFixed(2)}]
+                      </span>
+                    </div>
+                    <div className="debug-row">
+                      <span className="debug-label">Center:</span>
+                      <span className="debug-value">
+                        [{debugInfo.center[0].toFixed(2)}, {debugInfo.center[1].toFixed(2)}, {debugInfo.center[2].toFixed(2)}]
+                      </span>
+                    </div>
+                    <div className="debug-row">
+                      <span className="debug-label">Max Extent:</span>
+                      <span className="debug-value">{debugInfo.maxExtent.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+                {debugInfo.volumeStats?.cubeIndexStats && (
+                  <>
+                    <div className="debug-row">
+                      <span className="debug-label">Total Cells:</span>
+                      <span className="debug-value">{debugInfo.volumeStats.cubeIndexStats.totalCells}</span>
+                    </div>
+                    <div className="debug-row">
+                      <span className="debug-label">Active Cells:</span>
+                      <span className="debug-value">{debugInfo.volumeStats.cubeIndexStats.activeCells}</span>
+                    </div>
+                    {debugInfo.volumeStats.cubeIndexStats.topCubeIndexes.length > 0 && (
+                      <div className="debug-row">
+                        <span className="debug-label">Top CubeIndex:</span>
+                        <span className="debug-value">
+                          {debugInfo.volumeStats.cubeIndexStats.topCubeIndexes.slice(0, 3).map(c => `${c.index}(${c.count})`).join(', ')}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {debugInfo.volumeStats?.sampleActiveCube && (
+                  <div className="debug-row" style={{ fontSize: '0.75em', marginTop: '8px' }}>
+                    <span className="debug-label">Sample Cube:</span>
+                    <span className="debug-value">
+                      ({debugInfo.volumeStats.sampleActiveCube.cell.join(',')}) idx={debugInfo.volumeStats.sampleActiveCube.cubeIndex}
+                    </span>
+                  </div>
+                )}
               </div>
               
               {/* 3D Canvas */}
@@ -480,6 +531,10 @@ export function VolumeViewerSandbox() {
                               ...prev, 
                               trianglesCount: nTriangles,
                               volumeStats: stats || null,
+                              bboxMin: stats?.bboxMin,
+                              bboxMax: stats?.bboxMax,
+                              center: stats?.center,
+                              maxExtent: stats?.maxExtent,
                             }));
                           }}
                           onError={(err) => {
