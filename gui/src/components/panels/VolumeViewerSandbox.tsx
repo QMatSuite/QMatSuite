@@ -10,6 +10,7 @@ import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { generateIsosurface, type VolumeStats } from '../../utils/marchingCubes';
 import { inferEnergyReference, type EnergyReferenceResult } from '../../utils/energyReference';
+import { AtomOverlay, UnitCellOverlay, BrillouinZoneOverlay } from './VolumeOverlay';
 import './VolumeViewerSandbox.css';
 
 interface Fixture {
@@ -32,6 +33,11 @@ interface VolumeMetadata {
   value_mean?: number;
   preview_grid_shape?: [number, number, number]; // Preview dimensions (if preview blob exists)
   preview_downsample_factor?: number;
+  // Part C: Structure overlay
+  structure_atoms?: Array<{ element: string; position: [number, number, number] }>;
+  lattice_vectors_cart?: [[number, number, number], [number, number, number], [number, number, number]];
+  // Part B: BXSF coordinate system
+  reciprocal_convention?: string; // "2pi" or "unknown"
 }
 
 interface CompiledVolume {
@@ -62,6 +68,13 @@ interface CompiledVolumeState {
   bandIndex?: number;
   resolution: 'preview' | 'full';
   energy_reference?: EnergyReferenceResult;
+  // Part B: BXSF coordinate system debug
+  grid_vectors?: [[number, number, number], [number, number, number], [number, number, number]]; // Original b1,b2,b3
+  grid_step_vectors?: [[number, number, number], [number, number, number], [number, number, number]]; // db1, db2, db3
+  vector_lengths?: [number, number, number]; // |b1|, |b2|, |b3|
+  // Part C: Structure overlay
+  structure_atoms?: Array<{ element: string; position: [number, number, number] }>;
+  lattice_vectors_cart?: [[number, number, number], [number, number, number], [number, number, number]];
 }
 
 // P0: Validate volume grid contract
@@ -228,6 +241,11 @@ export function VolumeViewerSandbox() {
   // Separate UI state
   const [isovalue, setIsovalue] = useState(0);
   const [showPlusMinusIso, setShowPlusMinusIso] = useState(false);
+  
+  // Part C: Overlay visibility toggles
+  const [showAtoms, setShowAtoms] = useState(true); // Default: on for XSF
+  const [showCell, setShowCell] = useState(true); // Default: on for XSF
+  const [showBZ, setShowBZ] = useState(true); // Default: on for BXSF
   
   // P0: Request sequence tracking
   const seqRef = useRef(0);
@@ -431,6 +449,33 @@ export function VolumeViewerSandbox() {
         return;
       }
       
+      // Part B: Calculate BXSF coordinate system info
+      let gridVectors: [[number, number, number], [number, number, number], [number, number, number]] | undefined = undefined;
+      let gridStepVectors: [[number, number, number], [number, number, number], [number, number, number]] | undefined = undefined;
+      let vectorLengths: [number, number, number] | undefined = undefined;
+      
+      if (volume.kind === 'fermi_surface' && volume.metadata.grid_vectors_cart) {
+        const [b1, b2, b3] = volume.metadata.grid_vectors_cart;
+        gridVectors = [b1, b2, b3];
+        
+        // Calculate step vectors: db1 = b1/(nx-1), etc.
+        const [nx, ny, nz] = dims;
+        const db1: [number, number, number] = [b1[0] / (nx - 1), b1[1] / (nx - 1), b1[2] / (nx - 1)];
+        const db2: [number, number, number] = [b2[0] / (ny - 1), b2[1] / (ny - 1), b2[2] / (ny - 1)];
+        const db3: [number, number, number] = [b3[0] / (nz - 1), b3[1] / (nz - 1), b3[2] / (nz - 1)];
+        gridStepVectors = [db1, db2, db3];
+        
+        // Calculate vector lengths
+        const len1 = Math.sqrt(b1[0] * b1[0] + b1[1] * b1[1] + b1[2] * b1[2]);
+        const len2 = Math.sqrt(b2[0] * b2[0] + b2[1] * b2[1] + b2[2] * b2[2]);
+        const len3 = Math.sqrt(b3[0] * b3[0] + b3[1] * b3[1] + b3[2] * b3[2]);
+        vectorLengths = [len1, len2, len3];
+      }
+      
+      // Part C: Extract structure info for overlay
+      const structureAtoms = volume.metadata.structure_atoms;
+      const latticeVectors = volume.metadata.lattice_vectors_cart;
+      
       // P0: Set atomic compiled volume state
       setCompiledVolume({
         key: compileKey,
@@ -449,6 +494,13 @@ export function VolumeViewerSandbox() {
         bandIndex: effectiveBandIndex,
         resolution: effectiveResolution,
         energy_reference: energyRef,
+        // Part B: BXSF coordinate system
+        grid_vectors: gridVectors,
+        grid_step_vectors: gridStepVectors,
+        vector_lengths: vectorLengths,
+        // Part C: Structure overlay
+        structure_atoms: structureAtoms,
+        lattice_vectors_cart: latticeVectors,
       });
       
     } catch (e) {
@@ -638,6 +690,67 @@ export function VolumeViewerSandbox() {
                     </div>
                   </>
                 )}
+                {/* Part B: BXSF coordinate system debug */}
+                {compiledVolume.kind === 'fermi_surface' && compiledVolume.grid_vectors && (
+                  <>
+                    <div className="debug-row" style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
+                      <span className="debug-label">B1:</span>
+                      <span className="debug-value" style={{ fontSize: '0.8em' }}>
+                        [{compiledVolume.grid_vectors[0].map(v => v.toFixed(4)).join(', ')}]
+                      </span>
+                    </div>
+                    <div className="debug-row">
+                      <span className="debug-label">B2:</span>
+                      <span className="debug-value" style={{ fontSize: '0.8em' }}>
+                        [{compiledVolume.grid_vectors[1].map(v => v.toFixed(4)).join(', ')}]
+                      </span>
+                    </div>
+                    <div className="debug-row">
+                      <span className="debug-label">B3:</span>
+                      <span className="debug-value" style={{ fontSize: '0.8em' }}>
+                        [{compiledVolume.grid_vectors[2].map(v => v.toFixed(4)).join(', ')}]
+                      </span>
+                    </div>
+                    {compiledVolume.vector_lengths && (
+                      <>
+                        <div className="debug-row">
+                          <span className="debug-label">|B1|:</span>
+                          <span className="debug-value">{compiledVolume.vector_lengths[0].toFixed(4)}</span>
+                        </div>
+                        <div className="debug-row">
+                          <span className="debug-label">|B2|:</span>
+                          <span className="debug-value">{compiledVolume.vector_lengths[1].toFixed(4)}</span>
+                        </div>
+                        <div className="debug-row">
+                          <span className="debug-label">|B3|:</span>
+                          <span className="debug-value">{compiledVolume.vector_lengths[2].toFixed(4)}</span>
+                        </div>
+                      </>
+                    )}
+                    {compiledVolume.grid_step_vectors && (
+                      <>
+                        <div className="debug-row">
+                          <span className="debug-label">dB1:</span>
+                          <span className="debug-value" style={{ fontSize: '0.75em' }}>
+                            [{compiledVolume.grid_step_vectors[0].map(v => v.toFixed(6)).join(', ')}]
+                          </span>
+                        </div>
+                        <div className="debug-row">
+                          <span className="debug-label">dB2:</span>
+                          <span className="debug-value" style={{ fontSize: '0.75em' }}>
+                            [{compiledVolume.grid_step_vectors[1].map(v => v.toFixed(6)).join(', ')}]
+                          </span>
+                        </div>
+                        <div className="debug-row">
+                          <span className="debug-label">dB3:</span>
+                          <span className="debug-value" style={{ fontSize: '0.75em' }}>
+                            [{compiledVolume.grid_step_vectors[2].map(v => v.toFixed(6)).join(', ')}]
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
               </div>
               
               {/* 3D Canvas */}
@@ -647,6 +760,30 @@ export function VolumeViewerSandbox() {
                     <ambientLight intensity={0.5} />
                     <directionalLight position={[10, 10, 5]} intensity={0.8} />
                     <Grid args={[10, 10]} />
+                    
+                    {/* Part C: XSF Overlay - Atoms + Unit Cell */}
+                    {compiledVolume.kind === 'volume' && (
+                      <>
+                        <AtomOverlay
+                          atoms={compiledVolume.structure_atoms || []}
+                          visible={showAtoms}
+                        />
+                        <UnitCellOverlay
+                          latticeVectors={compiledVolume.lattice_vectors_cart || [[0,0,0], [0,0,0], [0,0,0]]}
+                          origin={compiledVolume.volume.metadata.origin_cart}
+                          visible={showCell && !!compiledVolume.lattice_vectors_cart}
+                        />
+                      </>
+                    )}
+                    
+                    {/* Part C: BXSF Overlay - Brillouin Zone */}
+                    {compiledVolume.kind === 'fermi_surface' && compiledVolume.grid_vectors && (
+                      <BrillouinZoneOverlay
+                        origin={compiledVolume.volume.metadata.origin_cart}
+                        reciprocalVectors={compiledVolume.grid_vectors}
+                        visible={showBZ}
+                      />
+                    )}
                     
                     <IsosurfaceMesh
                       volumeData={compiledVolume.blobData}
@@ -835,6 +972,47 @@ export function VolumeViewerSandbox() {
                     ±iso (dual surface)
                   </label>
                 </div>
+                
+                {/* Part C: Overlay toggles */}
+                {compiledVolume.kind === 'volume' && (
+                  <>
+                    <div className="volume-viewer-control-row">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={showAtoms}
+                          onChange={(e) => setShowAtoms(e.target.checked)}
+                          disabled={!compiledVolume || !compiledVolume.structure_atoms || compiledVolume.structure_atoms.length === 0}
+                        />
+                        Show atoms {compiledVolume.structure_atoms && compiledVolume.structure_atoms.length > 0 ? `(${compiledVolume.structure_atoms.length})` : '(none)'}
+                      </label>
+                    </div>
+                    <div className="volume-viewer-control-row">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={showCell}
+                          onChange={(e) => setShowCell(e.target.checked)}
+                          disabled={!compiledVolume || !compiledVolume.lattice_vectors_cart}
+                        />
+                        Show unit cell
+                      </label>
+                    </div>
+                  </>
+                )}
+                {compiledVolume.kind === 'fermi_surface' && (
+                  <div className="volume-viewer-control-row">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={showBZ}
+                        onChange={(e) => setShowBZ(e.target.checked)}
+                        disabled={!compiledVolume || !compiledVolume.grid_vectors}
+                      />
+                      Show BZ box
+                    </label>
+                  </div>
+                )}
               </div>
               
               {/* Metadata panel */}
