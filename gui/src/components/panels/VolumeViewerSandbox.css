@@ -107,15 +107,17 @@
   font-weight: 500;
 }
 
+/* A: Main area - single scroll container */
 .volume-viewer-sandbox-main {
   flex: 1;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  padding: 16px;
+  padding: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   position: relative;
+  min-height: 0; /* A: Critical for flex scroll */
 }
 
 /* A2: Debug panel - modern glass overlay with dark theme */
@@ -196,22 +198,28 @@
   color: #666;
 }
 
+/* A: Content - single scroll container */
 .volume-viewer-sandbox-content {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0; /* A: Critical for flex scroll */
+  padding: 16px;
   gap: 16px;
 }
 
-/* A1: Canvas container - ensure dark background */
+/* A: Canvas container - fixed height, not flex-1 */
 .volume-viewer-canvas-container {
-  flex: 1;
-  min-height: 400px;
+  flex-shrink: 0; /* A: Don't shrink */
+  height: 420px; /* A: Fixed height */
+  max-height: 520px; /* A: Max height for responsive */
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   background: #1a1a1a;
   position: relative;
-  pointer-events: auto; /* A2: Ensure pointer events work */
+  pointer-events: auto;
 }
 
 .volume-viewer-canvas-loading {
@@ -337,14 +345,13 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* A1: Metadata panel - dark theme */
+/* A: Metadata panel - no internal scroll */
 .volume-viewer-sandbox-metadata {
   flex-shrink: 0;
-  max-height: 300px;
-  overflow-y: auto;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 16px;
   color: rgb(248, 250, 252); /* slate-100 */
+  /* A: Remove max-height and overflow-y - let parent scroll */
 }
 
 .volume-viewer-sandbox-metadata h3 {
@@ -362,17 +369,20 @@
   color: rgb(203, 213, 225); /* slate-300 */
 }
 
-/* A1: Code blocks - dark theme */
+/* A: Code blocks - no internal scroll, wrap long lines */
 .metadata-section pre {
   background: rgba(0, 0, 0, 0.3); /* black/30 */
   color: rgb(248, 250, 252); /* slate-100 */
   font-family: monospace;
   padding: 12px;
   border-radius: 4px;
-  overflow-x: auto;
+  overflow-x: auto; /* A: Only horizontal scroll if needed */
+  overflow-y: visible; /* A: No vertical scroll */
   font-size: 0.9em;
   margin: 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: pre-wrap; /* A: Wrap long lines */
+  word-break: break-word; /* A: Break long words */
 }
 
 .volume-viewer-sandbox-placeholder {
