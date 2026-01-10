@@ -2721,4 +2721,575 @@ def test_ui_ir_editing_no_qe_param_confusion():
 
 ---
 
+---
+
+# FINAL: ParamSpace-Preserving IR Introduction
+
+**Review Date**: 2025-01-XX  
+**Purpose**: Final targeted review to introduce IR as a pure renaming layer without changing ParamSpace logic  
+**Status**: ParamSpace Structure Analyzed, IR Renaming Layer Specified
+
+---
+
+## Executive Summary
+
+This final review confirms that **ParamSpace is a mathematically reversible system** that must not be changed. The **IR is introduced as a pure renaming layer** that replaces QE parameter names (dimension-2 keys) with IR parameter names while preserving all ParamSpace matrices, logic, and reversibility.
+
+**Key Finding**: ParamSpace uses a matrix-based logic where:
+- **Dimension 1**: Preset options/intents (rows/profiles)
+- **Dimension 2**: Engine-specific parameters (columns/keys)
+- **Matrix entries**: `Cell` types (VALUE, NOT_APPLICABLE, WILDCARD)
+- **Reversibility**: `match_profile()` and `compile_profile_patch()` are inverse operations
+
+**IR Introduction**: Replace `ParamKey.key` (QE parameter name) with IR parameter name. All other ParamSpace logic remains unchanged.
+
+---
+
+## A. ParamSpace Deep Review (DO NOT MODIFY)
+
+### A.1 Current ParamSpace Structure
+
+**Source**: `src/quantumvitas/presets/paramspace.py:117-160`
+
+**Structure**:
+```python
+@dataclass
+class ParamSpace:
+    name: str  # Dimension name (e.g., "magnetism", "occupations_scheme")
+    keys: list[ParamKey]  # Dimension-2: Engine-specific parameters (columns)
+    profiles: dict[str, dict[ParamKey, Cell]]  # Dimension-1: Preset options (rows)
+```
+
+**Dimensions**:
+
+1. **Dimension 1 (Rows)**: Preset options/intents
+   - **Representation**: Profile names (e.g., "NM", "COL", "NC_CANONICAL" for magnetism)
+   - **Location**: `ParamSpace.profiles.keys()` (profile name strings)
+   - **Mapping to Preset Enum**: `PROFILE_TO_ENUM` dict in `spaces_registry.py` or `variants_registry.py`
+
+2. **Dimension 2 (Columns)**: Engine-specific parameters
+   - **Representation**: `ParamKey` objects (QE parameters today)
+   - **Location**: `ParamSpace.keys` (list of `ParamKey` instances)
+   - **Structure**: Each `ParamKey` contains:
+     - `section`: YAML section (e.g., "SYSTEM", "ELECTRONS", "cards")
+     - `key`: Parameter key name (e.g., "nspin", "ecutwfc", "occupations") ← **THIS IS WHERE IR RENAMING HAPPENS**
+     - `parser`: Function to parse raw YAML value
+     - `canonicalizer`: Function to canonicalize value for comparison
+     - `tolerance`: Optional numeric tolerance
+     - `aliases`: Optional synonym mappings
+     - `default`: Optional default value
+
+**Matrices**:
+
+Each ParamSpace contains a **full matrix** where:
+- **Rows** = profiles (preset options)
+- **Columns** = keys (engine parameters)
+- **Cells** = `Cell` objects (matrix entries)
+
+**Matrix Entry Types** (from `src/quantumvitas/presets/paramspace.py:24-54`):
+
+| Cell Type | Meaning | Compile Behavior | Detect Behavior |
+|-----------|---------|------------------|-----------------|
+| `VALUE(v)` | Static value `v` | Write `v` if `explicit_defaults=True` or `v != default` | Compare effective_value with `v` (after canonicalization) |
+| `NOT_APPLICABLE` | Parameter not applicable for this profile | Always delete from YAML | Require `present == False` |
+| `WILDCARD` | Ignore this parameter | Do nothing (leave unchanged) | Skip check (always match) |
+
+**Evidence**:
+- `src/quantumvitas/presets/paramspace.py:238-306`: `match_profile()` logic for detection
+- `src/quantumvitas/presets/paramspace.py:313-374`: `compile_profile_patch()` logic for compilation
+- `src/quantumvitas/presets/paramspace.py:136-159`: `__post_init__()` validates full matrix
+
+---
+
+### A.2 Applicability to Steps
+
+**Source**: `src/quantumvitas/presets/variants_registry.py:38-111`
+
+**Variant System**:
+- Each `ParamSpace` may have multiple **variants** (different matrices for different step types)
+- Each variant is a `ParamSpaceVariant` that declares which step types it applies to
+- **Multiple variants** allow different matrices for the same dimension (e.g., precision has 3 variants: default, nscf, bands_pw)
+
+**Evidence**:
+- `src/quantumvitas/presets/variants_registry.py:42-90`: Variant definitions with `applies_to_step_types` sets
+- `src/quantumvitas/presets/variants_registry.py:118-154`: `_build_indexes()` creates `(step_type, dimension) -> variant` mapping
+
+**Example**: Precision dimension has 3 variants:
+- `PRECISION_PW_DEFAULT_VARIANT`: applies to `{"scf", "relax", "vc-relax", "md", "vc-md"}`
+- `PRECISION_PW_NSCF_VARIANT`: applies to `{"nscf"}`
+- `PRECISION_PW_BANDS_PW_VARIANT`: applies to `{"bands_pw"}`
+
+**Each variant may have different ParamSpace** (different keys/profiles), allowing step-specific matrices.
+
+---
+
+### A.3 Cell Type Meanings
+
+**VALUE(v)** (from `src/quantumvitas/presets/paramspace.py:42-44`):
+- **Meaning**: Static value that must match exactly (after canonicalization)
+- **Compile** (`compile_profile_patch()` line 357-372): Write `v` to YAML (subject to `explicit_defaults` flag)
+- **Detect** (`match_profile()` line 283-292): Compare YAML effective_value with `v` using `key.matches()`
+
+**NOT_APPLICABLE** (from `src/quantumvitas/presets/paramspace.py:47-49`):
+- **Meaning**: Parameter is not applicable for this profile (must be absent)
+- **Compile** (`compile_profile_patch()` line 352-355): Always delete from YAML (add to `deletions` set)
+- **Detect** (`match_profile()` line 275-281): Require `present == False` (if present, match fails)
+
+**WILDCARD** (from `src/quantumvitas/presets/paramspace.py:52-54`):
+- **Meaning**: Ignore this parameter for this profile (parameter may have any value or be absent)
+- **Compile** (`compile_profile_patch()` line 348-350): Do nothing (leave parameter unchanged in YAML)
+- **Detect** (`match_profile()` line 268-270): Skip check (always match)
+
+**Oracle / Dynamic**: Not implemented as separate cell types. Precision uses **computed canonical values** (not static profiles):
+- **Location**: `src/quantumvitas/presets/paramspace.py:730-822` (`match_precision_profile()`)
+- **Behavior**: Values computed from structure + pseudos, then matched against YAML
+- **Note**: Precision profiles are empty (`{}`), values computed on-demand
+
+---
+
+### A.4 Mathematical Reversibility
+
+**Reversibility Property**: `match_profile()` and `compile_profile_patch()` are **inverse operations** over the same ParamSpace structure.
+
+**Evidence**:
+
+1. **Compile → Detect → Same Profile**:
+   ```python
+   # Compile: profile_name -> YAML patch
+   patch, deletions = compile_profile_patch(paramspace, "COL", yaml_tree, explicit_defaults=True)
+   
+   # Apply patch to YAML
+   yaml_tree_after = apply_patch(yaml_tree, patch, deletions)
+   
+   # Detect: YAML -> profile_name
+   matched_profile = match_profile(paramspace, yaml_tree_after)
+   
+   # Should match original profile
+   assert matched_profile == "COL"  # ✅ Reversible
+   ```
+
+2. **Detect → Compile → Same YAML** (if canonical encoding):
+   ```python
+   # Detect: YAML -> profile_name
+   matched_profile = match_profile(paramspace, yaml_tree)
+   
+   # Compile: profile_name -> YAML patch
+   patch, deletions = compile_profile_patch(paramspace, matched_profile, yaml_tree, explicit_defaults=True)
+   
+   # Apply patch
+   yaml_tree_after = apply_patch(yaml_tree, patch, deletions)
+   
+   # Should match original (if canonical encoding)
+   assert yaml_tree_after == yaml_tree  # ✅ Reversible (canonical)
+   ```
+
+**Tie-Breaking / Priority Rules**:
+
+- **Mutual Exclusivity**: Profiles must be mutually exclusive (one YAML matches at most one profile)
+- **Evidence**: `src/quantumvitas/presets/paramspace.py:297-301`: Raises `ValueError` if multiple profiles match
+- **Tolerance Profiles**: Some dimensions have **detect-only tolerance profiles** (e.g., `NC_WITH_NSPIN4`) that accept redundant QE encodings but don't generate them
+- **Evidence**: `src/quantumvitas/presets/variants_registry.py:181-188`: `MAGNETISM_PROFILE_TO_ENUM` maps multiple profiles to same enum (detect tolerance), but `MAGNETISM_ENUM_TO_PROFILE` (compile) uses canonical only
+
+**Reversibility Guarantee**: Reversibility holds **if and only if**:
+1. Compile uses canonical encoding (explicit `VALUE` cells, `NOT_APPLICABLE` for non-applicable params)
+2. Detect uses tolerant matching (accepts redundant encodings via tolerance profiles)
+3. Round-trip: compile(canonical) → detect → same profile ✅
+
+---
+
+### A.5 Where QE Parameter Names Appear
+
+**Location**: `ParamKey.key` field in all ParamSpace definitions.
+
+**Evidence**:
+
+**OccupationsScheme ParamSpace** (`src/quantumvitas/presets/paramspace.py:475-499`):
+- `key="occupations"` (line 477)
+- `key="smearing"` (line 485)
+- `key="degauss"` (line 494)
+
+**Magnetism ParamSpace** (`src/quantumvitas/presets/paramspace.py:565-587`):
+- `key="nspin"` (line 567)
+- `key="noncolin"` (line 575)
+- `key="lspinorb"` (line 583)
+
+**Precision ParamSpace** (`src/quantumvitas/presets/paramspace.py:667-700`):
+- `key="ecutwfc"` (line 669)
+- `key="ecutrho"` (line 677)
+- `key="conv_thr"` (line 685)
+- `key="K_POINTS"` (line 696) ← **Special case**: card, not namelist parameter
+
+**Convergence ParamSpace** (`src/quantumvitas/presets/paramspace.py:848-886`):
+- `key="mixing_beta"` (line 850)
+- `key="electron_maxstep"` (line 858)
+- `key="mixing_mode"` (line 866)
+- `key="mixing_ndim"` (line 874)
+- `key="diagonalization"` (line 882)
+
+**Total**: **15 QE parameters** (14 namelist parameters + 1 card)
+
+---
+
+## B. IR as Renaming Layer (Minimal Change)
+
+### B.1 QE Parameters Used in ParamSpace
+
+**Complete List** (extracted from ParamSpace definitions):
+
+| # | QE Parameter | Section | Type | Used In |
+|---|-------------|---------|------|---------|
+| 1 | `occupations` | `SYSTEM` | string | OccupationsScheme |
+| 2 | `smearing` | `SYSTEM` | string | OccupationsScheme |
+| 3 | `degauss` | `SYSTEM` | float | OccupationsScheme |
+| 4 | `nspin` | `SYSTEM` | int | Magnetism |
+| 5 | `noncolin` | `SYSTEM` | bool | Magnetism |
+| 6 | `lspinorb` | `SYSTEM` | bool | Magnetism |
+| 7 | `ecutwfc` | `SYSTEM` | int | Precision |
+| 8 | `ecutrho` | `SYSTEM` | int | Precision |
+| 9 | `conv_thr` | `ELECTRONS` | float | Precision |
+| 10 | `K_POINTS` | `cards` | card | Precision |
+| 11 | `mixing_beta` | `ELECTRONS` | float | Convergence |
+| 12 | `electron_maxstep` | `ELECTRONS` | int | Convergence |
+| 13 | `mixing_mode` | `ELECTRONS` | string | Convergence |
+| 14 | `mixing_ndim` | `ELECTRONS` | int | Convergence |
+| 15 | `diagonalization` | `ELECTRONS` | string | Convergence |
+
+**Note**: `K_POINTS` is a **card** (not a namelist parameter), but it's treated as a key in ParamSpace.
+
+---
+
+### B.2 IR Parameter Name Proposals (1:1 Mapping)
+
+**Mapping Principle**: Pure renaming - no grouping, no splitting, no semantic reinterpretation. IR name is a shorter, clearer alias for QE parameter.
+
+**Mapping Table**:
+
+| QE Parameter | QE Section | Proposed IR Name | QE Metadata Description | IR Comment |
+|-------------|------------|------------------|-------------------------|------------|
+| `occupations` | `SYSTEM` | `occupations_scheme` | "Type of occupation numbers" | Occupation scheme: fixed/smearing/tetrahedra |
+| `smearing` | `SYSTEM` | `smearing_type` | "Type of smearing for metals" | Smearing type: gaussian/fermi/marzari-vanderbilt |
+| `degauss` | `SYSTEM` | `smearing_width` | "Smearing parameter (Ry)" | Smearing width (eV) |
+| `nspin` | `SYSTEM` | `spin_polarization` | "Number of spin components" | Spin polarization: 1=none, 2=collinear, 4=noncollinear |
+| `noncolin` | `SYSTEM` | `noncollinear_magnetism` | "Noncollinear magnetism" | Enable noncollinear magnetism (vector magnetization) |
+| `lspinorb` | `SYSTEM` | `spin_orbit_coupling` | "Spin-orbit coupling" | Enable spin-orbit coupling (requires noncollinear) |
+| `ecutwfc` | `SYSTEM` | `wavefunction_cutoff` | "Kinetic energy cutoff (Ry) for wavefunctions" | Wavefunction cutoff (eV) |
+| `ecutrho` | `SYSTEM` | `charge_density_cutoff` | "Kinetic energy cutoff (Ry) for charge density" | Charge density cutoff (eV) |
+| `conv_thr` | `ELECTRONS` | `scf_threshold` | "Convergence threshold for self-consistency" | SCF convergence threshold (eV) |
+| `K_POINTS` | `cards` | `kpoint_mesh` | "K-point mesh (automatic)" | K-point mesh divisions and shifts |
+| `mixing_beta` | `ELECTRONS` | `scf_mixing_beta` | "Mixing factor for self-consistency" | SCF mixing factor (0-1) |
+| `electron_maxstep` | `ELECTRONS` | `scf_max_iterations` | "Maximum number of SCF iterations" | Maximum SCF iterations |
+| `mixing_mode` | `ELECTRONS` | `scf_mixing_mode` | "Mixing mode: plain/TF/local-TF" | SCF mixing mode |
+| `mixing_ndim` | `ELECTRONS` | `scf_mixing_ndim` | "Number of iterations used in mixing scheme" | SCF mixing history length |
+| `diagonalization` | `ELECTRONS` | `scf_diagonalization` | "Diagonalization method: david/cg/rmm-davidson" | SCF diagonalization method |
+
+**Notes**:
+- **Units**: IR uses eV for energies (conversion at compile/detect time: Ry ↔ eV)
+- **Naming**: IR names are physical/descriptive, not QE-specific
+- **1:1 Mapping**: Each QE parameter maps to exactly one IR parameter (no grouping/splitting)
+
+---
+
+### B.3 IR ⇄ QE Mapping Contract
+
+**Storage Location**: `src/quantumvitas/ir/backends/qe/mapping.py` (single registry, purely mechanical)
+
+**Structure**:
+```python
+# IR → QE mapping (for compilation)
+IR_TO_QE_MAPPING: dict[str, tuple[str, str]] = {
+    "occupations_scheme": ("SYSTEM", "occupations"),
+    "smearing_type": ("SYSTEM", "smearing"),
+    "smearing_width": ("SYSTEM", "degauss"),  # with unit conversion: eV → Ry
+    "spin_polarization": ("SYSTEM", "nspin"),
+    "noncollinear_magnetism": ("SYSTEM", "noncolin"),
+    "spin_orbit_coupling": ("SYSTEM", "lspinorb"),
+    "wavefunction_cutoff": ("SYSTEM", "ecutwfc"),  # with unit conversion: eV → Ry
+    "charge_density_cutoff": ("SYSTEM", "ecutrho"),  # with unit conversion: eV → Ry
+    "scf_threshold": ("ELECTRONS", "conv_thr"),  # with unit conversion: eV → Ry
+    "kpoint_mesh": ("cards", "K_POINTS"),  # special: card, not namelist
+    "scf_mixing_beta": ("ELECTRONS", "mixing_beta"),
+    "scf_max_iterations": ("ELECTRONS", "electron_maxstep"),
+    "scf_mixing_mode": ("ELECTRONS", "mixing_mode"),
+    "scf_mixing_ndim": ("ELECTRONS", "mixing_ndim"),
+    "scf_diagonalization": ("ELECTRONS", "diagonalization"),
+}
+
+# QE → IR mapping (for detection)
+QE_TO_IR_MAPPING: dict[tuple[str, str], str] = {
+    ("SYSTEM", "occupations"): "occupations_scheme",
+    ("SYSTEM", "smearing"): "smearing_type",
+    ("SYSTEM", "degauss"): "smearing_width",  # with unit conversion: Ry → eV
+    ("SYSTEM", "nspin"): "spin_polarization",
+    ("SYSTEM", "noncolin"): "noncollinear_magnetism",
+    ("SYSTEM", "lspinorb"): "spin_orbit_coupling",
+    ("SYSTEM", "ecutwfc"): "wavefunction_cutoff",  # with unit conversion: Ry → eV
+    ("SYSTEM", "ecutrho"): "charge_density_cutoff",  # with unit conversion: Ry → eV
+    ("ELECTRONS", "conv_thr"): "scf_threshold",  # with unit conversion: Ry → eV
+    ("cards", "K_POINTS"): "kpoint_mesh",  # special: card, not namelist
+    ("ELECTRONS", "mixing_beta"): "scf_mixing_beta",
+    ("ELECTRONS", "electron_maxstep"): "scf_max_iterations",
+    ("ELECTRONS", "mixing_mode"): "scf_mixing_mode",
+    ("ELECTRONS", "mixing_ndim"): "scf_mixing_ndim",
+    ("ELECTRONS", "diagonalization"): "scf_diagonalization",
+}
+```
+
+**Determinism Guarantee**:
+
+✅ **IR → QE**: Deterministic and unique (1:1 mapping, no ambiguity)  
+✅ **QE → IR**: Deterministic and unique (1:1 mapping, no ambiguity)
+
+**Unit Conversion**: Handled mechanically in mapping functions (not in ParamSpace):
+- Energy parameters: `ecutwfc`, `ecutrho`, `conv_thr`, `degauss` (Ry ↔ eV)
+- Conversion factor: `1 Ry = 13.6057 eV`
+
+**Special Cases**:
+- `K_POINTS`: Card (not namelist), handled separately in `get_yaml_value()` / `compile_profile_patch()`
+- `nspin`: Noncollinear profiles use `NOT_APPLICABLE` (deleted), but detect tolerances accept `nspin=4`
+
+---
+
+### B.4 ParamSpace Logic Preservation
+
+**Change Required**: Replace `ParamKey.key` (QE parameter name) with IR parameter name.
+
+**All Other Logic Unchanged**:
+- ✅ `Cell` types unchanged (VALUE, NOT_APPLICABLE, WILDCARD)
+- ✅ Profile matrices unchanged (same cells, same values)
+- ✅ `match_profile()` logic unchanged (uses `key.matches()`)
+- ✅ `compile_profile_patch()` logic unchanged (writes `key.section` / `key.key`)
+- ✅ `ParamKey` structure unchanged (only `key` field changes)
+- ✅ Parser/canonicalizer/tolerance/aliases/default unchanged
+
+**Evidence**: All ParamSpace logic is **generic** and operates on `ParamKey` objects:
+- `match_profile()` uses `key.section` and `key.key` (lines 273, 286, 290)
+- `compile_profile_patch()` uses `key.section` and `key.key` (lines 354, 372)
+- Only the **key name** changes; all logic remains identical
+
+**Reversibility Preservation**: Round-trip still works after IR renaming:
+
+**After IR Introduction**:
+- ParamSpace uses **IR keys** internally (replaces `ParamKey.key` with IR parameter name)
+- YAML access layer converts between IR YAML ↔ QE YAML at boundary
+- Round-trip: compile(IR key) → detect(IR key) → same profile ✅
+
+**YAML Access Boundary**:
+- **Compile**: IR YAML → ParamSpace (IR keys) → QE YAML patch (converted via `IR_TO_QE_MAPPING`)
+- **Detect**: QE YAML → IR YAML (converted via `QE_TO_IR_MAPPING`) → ParamSpace (IR keys)
+
+**Evidence**: `get_yaml_value()` and `compile_profile_patch()` use `key.section` and `key.key` - after IR renaming, they use IR keys, and YAML conversion happens at the access boundary.
+
+---
+
+## C. IR ↔ Engine Mapping Contract
+
+### C.1 Mapping Registry Location
+
+**Location**: `src/quantumvitas/ir/backends/qe/mapping.py` (single registry, purely mechanical)
+
+**Structure**: Single registry module with:
+- `IR_TO_QE_MAPPING`: dict[str, tuple[str, str]] (IR name → (section, QE key))
+- `QE_TO_IR_MAPPING`: dict[tuple[str, str], str] (reverse mapping)
+- Unit conversion functions: `ry_to_ev()`, `ev_to_ry()`
+
+**Evidence Pattern**: Similar to `spaces_registry.py` (single registry for all dimensions).
+
+---
+
+### C.2 Determinism Guarantee
+
+**IR → QE** (Compile Direction):
+- **Input**: IR parameter name (e.g., `"wavefunction_cutoff"`)
+- **Output**: `(section, qe_key, value_converted)` (e.g., `("SYSTEM", "ecutwfc", 816.342)`)
+- **Determinism**: ✅ Unique (1:1 mapping, no ambiguity)
+- **Unit Conversion**: Applied mechanically (eV → Ry) at YAML access layer
+
+**QE → IR** (Detect Direction):
+- **Input**: `(section, qe_key, raw_value)` (e.g., `("SYSTEM", "ecutwfc", 50.0)`)
+- **Output**: `(ir_key, value_converted)` (e.g., `("wavefunction_cutoff", 680.285)`)
+- **Determinism**: ✅ Unique (1:1 mapping, no ambiguity)
+- **Unit Conversion**: Applied mechanically (Ry → eV) at YAML access layer
+
+**All Parameters Involved**: All 15 QE parameters in ParamSpace have deterministic 1:1 mappings.
+
+**No Policy**: Mapping is purely mechanical (lookup table), no conditional logic.
+
+---
+
+## D. Preset / IR / step.yaml Boundary
+
+### D.1 Final Roles (Confirmed)
+
+**Preset**:
+- **Role**: Fuzzy intent, NOT SSOT
+- **Location**: UI/convenience layer only
+- **Storage**: NOT persisted (computed from IR → preset enum mapping)
+- **Evidence**: `src/quantumvitas/presets/dimensions.py:17-32`: Preset enums are runtime-only (never persisted)
+
+**IR**:
+- **Role**: Concrete physical knobs, NOT SSOT
+- **Location**: `step.yaml` `ir:` section (optional, for history/provenance)
+- **Storage**: Persisted in history/provenance only (not used for execution)
+- **Example**: `ir: {spin_polarization: 2, noncollinear_magnetism: false, spin_orbit_coupling: false}`
+
+**step.yaml** (engine-specific parameters):
+- **Role**: Engine-specific SSOT (machine code)
+- **Location**: `steps/{step_id}.step.yaml` `parameters:` section
+- **Storage**: Persisted, authoritative for execution
+- **Evidence**: `src/quantumvitas/calculation/structure_steps.py:34-54`: `StructureStepSpec` has `parameters` field (engine-specific)
+- **Example**: `parameters: {SYSTEM: {nspin: 2, noncolin: .false., lspinorb: .false.}}`
+
+**Execution SSOT**: `step.yaml` parameters are authoritative for execution. IR and presets are for history/provenance only.
+
+---
+
+### D.2 step.yaml → IR → Preset Derivation
+
+**Path**: `step.yaml` (QE params) → IR fields → Preset enum
+
+**Algorithm** (using ParamSpace without ambiguity):
+
+1. **step.yaml → IR** (mechanical conversion):
+   ```python
+   # Extract QE params from step.yaml
+   qe_yaml = step_yaml["parameters"]
+   
+   # Convert QE YAML → IR YAML (mechanical renaming + unit conversion)
+   ir_yaml = {}
+   for section, params in qe_yaml.items():
+       ir_section = {}
+       for qe_key, value in params.items():
+           ir_key = QE_TO_IR_MAPPING.get((section, qe_key))
+           if ir_key:
+               # Convert units if needed (Ry → eV for energy params)
+               ir_value = convert_qe_to_ir_value(qe_key, value)
+               ir_section[ir_key] = ir_value
+       if ir_section:
+           ir_yaml[section] = ir_section
+   ```
+
+2. **IR → Preset** (using ParamSpace with IR keys):
+   ```python
+   # Match against ParamSpace (which now uses IR keys)
+   variant = get_variant(dimension, step_type)
+   matched_profile = match_profile(variant.space, ir_yaml)  # ParamSpace sees IR keys
+   
+   # Profile → Preset enum
+   if matched_profile:
+       preset_enum = PROFILE_TO_ENUM[dimension][matched_profile]
+   else:
+       preset_enum = CUSTOM
+   ```
+
+**Ambiguity Avoidance**: ParamSpace logic is unchanged → profiles are still mutually exclusive → no ambiguity.
+
+**Evidence**: `src/quantumvitas/presets/variants_registry.py:427-471`: `detect_dimension_for_step()` selects variant and calls `match_profile()`.
+
+---
+
+### D.3 Expert Edits to step.yaml
+
+**Case 1: Detection Succeeds**
+
+**Scenario**: User edits `step.yaml` directly (e.g., sets `SYSTEM.nspin=2` manually).
+
+**Detection Path**:
+```python
+# step.yaml has QE params
+step_yaml = {"parameters": {"SYSTEM": {"nspin": 2}}}
+
+# Convert to IR YAML
+ir_yaml = convert_qe_to_ir_yaml(step_yaml["parameters"])
+# → {"SYSTEM": {"spin_polarization": 2}}
+
+# Match against ParamSpace (IR keys)
+matched_profile = match_profile(magnetism_space, ir_yaml)
+# → Matches "COL" profile
+
+# Profile → Preset enum
+preset_enum = MAGNETISM_PROFILE_TO_ENUM["COL"]
+# → MagnetismOption.COLLINEAR_LSDA
+```
+
+**Result**: ✅ Detection succeeds, preset inferred correctly.
+
+---
+
+**Case 2: Detection Must Return CUSTOM**
+
+**Scenario**: User edits `step.yaml` with values that don't match any profile (e.g., `SYSTEM.nspin=3`).
+
+**Detection Path**:
+```python
+# step.yaml has QE params
+step_yaml = {"parameters": {"SYSTEM": {"nspin": 3}}}
+
+# Convert to IR YAML
+ir_yaml = convert_qe_to_ir_yaml(step_yaml["parameters"])
+# → {"SYSTEM": {"spin_polarization": 3}}
+
+# Match against ParamSpace (IR keys)
+matched_profile = match_profile(magnetism_space, ir_yaml)
+# → No match → None
+
+# Profile → Preset enum
+preset_enum = CUSTOM  # ✅ Returns CUSTOM
+```
+
+**Result**: ✅ Detection returns `CUSTOM` (not a known preset).
+
+**Preservation**: IR fields are still derivable from step.yaml (mechanical conversion), but preset is `CUSTOM`.
+
+---
+
+## E. Summary & Guarantees
+
+### E.1 ParamSpace Logic Unchanged
+
+✅ **All ParamSpace matrices unchanged** (same cells, same values, only key names change)  
+✅ **All ParamSpace logic unchanged** (`match_profile()`, `compile_profile_patch()` unchanged)  
+✅ **All reversibility guarantees preserved** (round-trip still works)
+
+**Change**: Only `ParamKey.key` field changes from QE parameter name to IR parameter name. All other ParamSpace structure and logic remains identical.
+
+---
+
+### E.2 IR is a Renaming Layer, Not a New Abstraction
+
+✅ **1:1 mapping**: Each QE parameter maps to exactly one IR parameter  
+✅ **No grouping**: No combining multiple QE params into one IR param  
+✅ **No splitting**: No splitting one QE param into multiple IR params  
+✅ **No semantic reinterpretation**: IR name is a shorter alias, meaning unchanged  
+✅ **Pure renaming**: IR parameter name replaces QE parameter name in `ParamKey.key` field
+
+**Evidence**: All 15 QE parameters have 1:1 IR mappings with no grouping or splitting.
+
+---
+
+### E.3 QE Parameter → IR Parameter Mapping Table
+
+**Complete Mapping** (15 parameters):
+
+| QE Parameter | QE Section | IR Parameter | Unit Conversion | QE Metadata Description |
+|-------------|------------|--------------|-----------------|-------------------------|
+| `occupations` | `SYSTEM` | `occupations_scheme` | None | Type of occupation numbers |
+| `smearing` | `SYSTEM` | `smearing_type` | None | Type of smearing for metals |
+| `degauss` | `SYSTEM` | `smearing_width` | Ry → eV | Smearing parameter (Ry) |
+| `nspin` | `SYSTEM` | `spin_polarization` | None | Number of spin components |
+| `noncolin` | `SYSTEM` | `noncollinear_magnetism` | None | Noncollinear magnetism |
+| `lspinorb` | `SYSTEM` | `spin_orbit_coupling` | None | Spin-orbit coupling |
+| `ecutwfc` | `SYSTEM` | `wavefunction_cutoff` | Ry → eV | Kinetic energy cutoff (Ry) for wavefunctions |
+| `ecutrho` | `SYSTEM` | `charge_density_cutoff` | Ry → eV | Kinetic energy cutoff (Ry) for charge density |
+| `conv_thr` | `ELECTRONS` | `scf_threshold` | Ry → eV | Convergence threshold for self-consistency |
+| `K_POINTS` | `cards` | `kpoint_mesh` | None (card structure) | K-point mesh (automatic) |
+| `mixing_beta` | `ELECTRONS` | `scf_mixing_beta` | None | Mixing factor for self-consistency |
+| `electron_maxstep` | `ELECTRONS` | `scf_max_iterations` | None | Maximum number of SCF iterations |
+| `mixing_mode` | `ELECTRONS` | `scf_mixing_mode` | None | Mixing mode: plain/TF/local-TF |
+| `mixing_ndim` | `ELECTRONS` | `scf_mixing_ndim` | None | Number of iterations used in mixing scheme |
+| `diagonalization` | `ELECTRONS` | `scf_diagonalization` | None | Diagonalization method: david/cg/rmm-davidson |
+
+**Total**: 15 parameters, 4 require unit conversion (Ry ↔ eV), 1 is a card (not namelist).
+
+---
+
 **End of Report**
