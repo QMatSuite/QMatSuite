@@ -992,4 +992,907 @@ def lower_ir_to_qe(ir: BasisIR) -> dict:
 
 ---
 
+---
+
+# Engine/Execution/Runner Generalization Review
+
+**Review Date**: 2025-01-XX  
+**Purpose**: Deep code review focused on engine/execution/runner layer to propose minimal generalization supporting both file-based engines (QE/VASP/ABINIT/Wannier90) and python-library engines (PySCF) while keeping current QE behavior unchanged  
+**Status**: Review Complete - Minimal Plan Ready
+
+---
+
+## Executive Summary
+
+This section provides a comprehensive review of the engine/execution/runner layer in QMatSuite to support generalization for both file-based engines (QE, VASP, ABINIT, Wannier90) and python-library engines (PySCF). The review focuses on **minimalism**: avoiding duplication, maintaining single source of truth, and preserving backward compatibility.
+
+**Key Findings**:
+- **Current QE execution**: Subprocess-based via `QECalculationRunner` in `core/engines/qe_calculation.py`
+- **Workdir structure**: `calculations/<calc_id>/raw/` contains all inputs/outputs, QE `outdir/` subdirectory for scratch
+- **Incremental runs**: Use manifest system with three SHA256 hashes (step_sha, structure_sha, pseudo_set_sha) to detect changes
+- **Step completion**: Detected via "JOB DONE" marker in `.out` files (QE-specific) or file existence (Wannier90)
+- **Concurrency**: `JobManager` with `ThreadPoolExecutor(max_workers=1)` for sequential QE execution; per-calc locking via `calc_run_lock()`
+- **PySCF support**: Already exists as subprocess-based engine (`engine/pyscf_engine.py`), but uses `job.json`/`results.json` file exchange
+
+**Minimal Strategy**: Introduce thin `EnginePlan` abstraction around existing step YAML/materialization, add runner interface with two implementations (SubprocessRunner, PythonWorkerRunner), keep existing QE code paths unchanged.
+
+---
+
+## A) Repo Map: Engine/Execution
+
+### A.1 Engine Representation
+
+**Engine Classes**:
+- `src/quantumvitas/engine/base.py`: Abstract `Engine` interface (`run_step(step, working_dir) -> StepResult`)
+- `src/quantumvitas/engine/qe_engine.py`: `QeEngine` adapter wrapping legacy `QuantumEspressoEngine`
+- `src/quantumvitas/engine/pyscf_engine.py`: `PySCFEngine` subprocess-based engine
+- `src/quantumvitas/core/engines/qe.py`: Legacy `QuantumEspressoEngine` (full QE implementation)
+- `src/quantumvitas/core/engines/qe_calculation.py`: `QECalculationRunner` (actual execution logic)
+
+**Engine Registry**:
+- `src/quantumvitas/engine/registry.py`: `EngineRegistry` mapping names to engine instances
+- `src/quantumvitas/core/engines/qe_registry.py`: `QEEngineRegistry` for QE-specific resolution
+
+**Engine Configuration**:
+- `src/quantumvitas/core/engines/base.py`: `EngineConfig` dataclass (executable_path, mpi_command, omp_threads, etc.)
+
+### A.2 Runner/Executor Implementation
+
+**Subprocess Execution**:
+- `src/quantumvitas/core/engines/qe_calculation.py::QECalculationRunner.run_step()`: Main QE execution entry point
+  - Builds command via `engine.build_command()`
+  - Invokes subprocess with stdin/stdout/stderr capture
+  - Writes stdout/stderr to `{step_type}.out` / `{step_type}.err`
+  - Returns `StepResult` with execution metadata
+
+**Command Building**:
+- `src/quantumvitas/core/engines/qe.py::QuantumEspressoEngine.build_command()`: Builds QE command
+  - Resolves executable path (`pw.x`, `bands.x`, etc.)
+  - Handles stdin redirection (most QE steps) vs command-line args (Wannier90)
+  - Adds MPI wrapper if configured (`mpirun -np N`)
+
+**PySCF Execution**:
+- `src/quantumvitas/engine/pyscf_engine.py::PySCFEngine.run_step()`: Subprocess-based PySCF execution
+  - Writes `job.json` to workdir
+  - Invokes `python -m quantumvitas.engines.pyscf.runner <job.json>`
+  - Reads `results.json` from workdir
+
+**Calculation Runner**:
+- `src/quantumvitas/calculation/runner.py::CalculationRunner.run()`: Orchestrates multi-step execution
+  - Manages incremental run logic (manifest reconciliation)
+  - Calls `step.run(engine, raw_dir, project_root, species_map)`
+  - Updates manifest entries (started_at, done flag, done_at)
+
+### A.3 Workdir Creation & Materialization
+
+**Workdir Structure**:
+- **Location**: `calculations/<calc_id>/raw/` (per calculation)
+- **Function**: `src/quantumvitas/calculation/runner.py::compute_io_dir_from_calculation_model()` (SSOT for I/O directory path)
+- **Default**: `calculation_dir / "raw"` (configurable via `calculation.working_dir` in `calculation.yaml`)
+
+**Input Materialization**:
+- `src/quantumvitas/calculation/structure_steps.py::materialize_step_spec()`: Generates QE input files from step YAML
+  - Reads step YAML (`*.step.yaml`)
+  - Generates QE input file (e.g., `scf.in`) in `raw/` directory
+  - Handles Wannier90 steps (`.win`, `.pw2wan` files) separately
+- `src/quantumvitas/calculation/input_runner.py::prepare_input_step()`: Prepares input for execution
+  - Sets `outdir='./outdir'` (relative to workdir)
+  - Sets `pseudo_dir` (project mode: `project/pseudo`, standalone: `workdir/pseudo`)
+  - Materializes pseudos if needed (calls `ensure_qe_pseudos()`)
+
+**Output Collection**:
+- QE outputs: `raw/{step_type}.out` (stdout capture), `raw/{step_type}.err` (stderr capture)
+- QE artifacts: `raw/outdir/` (QE scratch directory, contains `.save/`, `.wfc` files, etc.)
+- Wannier90 artifacts: `raw/{seedname}.wout` (primary output), `raw/{seedname}.mmn`, etc.
+
+### A.4 Engine Version/Command Storage
+
+**QE Engine Resolution**:
+- `src/quantumvitas/core/engines/qe_resolver.py`: Two-state resolver (external vs managed)
+- Priority: Project override → Settings → Managed engine → PATH fallback
+- **Storage**: Not persisted (resolved at runtime)
+
+**Engine Config**:
+- `EngineConfig` (in-memory only): `executable_path`, `mpi_command`, `omp_threads`, `environment`
+- **Source**: Passed to `Engine` constructor, not stored on disk
+
+**QE Installation**:
+- `src/quantumvitas/core/engines/qe_installation.py::QEInstallation`: Detects QE installation
+  - Tracks `qe_home`, `bin_dir`, `test_suite_dir`
+  - Resolves executable paths
+
+### A.5 History/Job Manager Integration
+
+**Job Manager**:
+- `src/quantumvitas/daemon/jobs.py::JobManager`: Background job execution
+  - Uses `ThreadPoolExecutor(max_workers=1)` for sequential QE execution (default)
+  - Configurable via `settings.max_concurrent_calcs`
+  - Tracks job status (pending/running/completed/failed/cancelled)
+  - Stores `io_dir` (workdir path) for UI display
+
+**History Integration**:
+- `src/quantumvitas/calculation/runner.py::CalculationRunner._start_history_recording()`: Creates run revision
+- `src/quantumvitas/history/run_revision.py::create_run_revision()`: Records run metadata (step_ids, engine, etc.)
+- `src/quantumvitas/history/events.py`: `RunStartedEvent`, `RunFinishedEvent` for timeline
+
+**Manifest System**:
+- `src/quantumvitas/calculation/manifest.py`: Tracks step completion state
+  - Stores three SHAs: `step_sha`, `structure_sha`, `pseudo_set_sha`
+  - Stores `done` flag, `started_at`, `done_at` timestamps
+  - Location: `calculations/<calc_id>/.run_tmp_info/manifest.json`
+
+---
+
+## B) Current QE Execution Pipeline (End-to-End)
+
+### B.1 Pipeline Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ UI/CLI TRIGGER                                                       │
+│ - GUI: RPC call to "run_calculation"                                │
+│ - CLI: `qv run calculation <calc>`                                  │
+└──────────────────┬──────────────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ DAEMON RPC (GUI path only)                                          │
+│ - QVDaemon.handle_request() → QVService.run_calculation()           │
+│ - JobManager.submit() → creates Job (pending)                       │
+│ Location: src/quantumvitas/daemon/server.py                         │
+└──────────────────┬──────────────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ PARAMETER RESOLUTION (QE-specific today)                            │
+│ - Load calculation.yaml → Calculation model                         │
+│ - Load step YAMLs → Step specs                                      │
+│ - Materialize inputs: materialize_step_spec() → scf.in, etc.       │
+│ Location: src/quantumvitas/calculation/structure_steps.py           │
+└──────────────────┬──────────────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ INPUT MATERIALIZATION (QE-specific)                                 │
+│ - prepare_input_step() → sets outdir, pseudo_dir                    │
+│ - QEInputGenerator.write_file() → writes .in file                   │
+│ - Materialize pseudos: ensure_qe_pseudos() → project/pseudo/       │
+│ Location: src/quantumvitas/calculation/input_runner.py              │
+└──────────────────┬──────────────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ COMMAND INVOCATION (QE-specific)                                    │
+│ - QECalculationRunner.run_step()                                    │
+│ - engine.build_command() → ["mpirun", "-np", "4", "pw.x"]          │
+│ - subprocess.run() with stdin redirection (pw.x < scf.in)          │
+│ - Capture stdout/stderr → scf.out / scf.err                         │
+│ Location: src/quantumvitas/core/engines/qe_calculation.py           │
+└──────────────────┬──────────────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ OUTPUT ARTIFACTS (QE-specific)                                      │
+│ - stdout: raw/scf.out (always overwritten, never versioned)        │
+│ - stderr: raw/scf.err (always overwritten, never versioned)        │
+│ - QE scratch: raw/outdir/ (contains .save/, .wfc, etc.)            │
+│ - Primary artifact: raw/scf.out (used for parsing)                  │
+└──────────────────┬──────────────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ PARSER (QE-specific)                                                │
+│ - parse_scf_output_text() → extracts energy, forces, etc.           │
+│ - Assumes QE file layout: regex for "JOB DONE", "total energy="    │
+│ - Returns SCFResult (units: Ry/eV, but structure is QE-specific)   │
+│ Location: src/quantumvitas/analysis/parsers.py                      │
+└──────────────────┬──────────────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ ANALYSIS ARTIFACTS (engine-agnostic today)                          │
+│ - SCFResult, DOSResult, BandsResult dataclasses                     │
+│ - Stored in results/ directory as JSON                              │
+│ - Units normalized (Ry/eV) but structure is physics-driven          │
+│ Location: src/quantumvitas/analysis/{energy,dos,bands}.py           │
+└──────────────────┬──────────────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ HISTORY/STORAGE                                                     │
+│ - Manifest update: set done=true, done_at timestamp                 │
+│ - History: RunFinishedEvent → timeline                              │
+│ - Journal: YAML change tracking (separate from execution)           │
+│ Location: src/quantumvitas/{calculation/manifest,history/}.py       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### B.2 QE-Specific Assumptions
+
+**Hardcoded QE Assumptions** (need abstraction):
+1. **Input format**: QE `.in` file format (namelists + cards)
+2. **Command syntax**: `pw.x < input.in` (stdin redirection) or `wannier90.x seedname` (args)
+3. **Output format**: `.out` file with "JOB DONE" marker (regex-based parsing)
+4. **Artifact layout**: `outdir/` subdirectory for scratch, `{step_type}.out` for stdout
+5. **Executable naming**: `pw.x`, `bands.x`, etc. (platform-specific: `.exe` on Windows)
+6. **Restart files**: QE-specific `.save/` directory structure
+
+**Potentially Engine-Agnostic**:
+1. **Workdir structure**: `raw/` directory convention (could be engine-specific subdirectory)
+2. **Manifest system**: Three SHA256 hashes (engine-agnostic, but artifact paths are QE-specific)
+3. **Step completion**: File existence + marker detection (generalizable to any engine)
+
+---
+
+## C) Step Artifact Contract
+
+### C.1 Artifact Files Per Step (QE Today)
+
+**Inputs** (expected before execution):
+- `raw/{step_type}.in`: QE input file (generated by `materialize_step_spec()`)
+- `raw/outdir/`: QE scratch directory (may contain restart files from previous steps)
+- `project/pseudo/`: Pseudopotential files (materialized by Step0, shared across steps)
+
+**Outputs** (produced during execution):
+- `raw/{step_type}.out`: Primary stdout capture (always overwritten)
+- `raw/{step_type}.err`: Stderr capture (always overwritten)
+- `raw/outdir/{prefix}.save/`: QE restart directory (contains charge density, wavefunctions)
+
+**Artifacts** (primary output file):
+- QE steps: `raw/{step_type}.out` (contains "JOB DONE" marker)
+- Wannier90 steps: `raw/{seedname}.wout` (primary output), `raw/{seedname}.mmn`, etc.
+
+### C.2 Artifacts Used for Incremental Run
+
+**Incremental Run Logic** (`calculation/runner.py::CalculationRunner.run()`):
+1. **Manifest reconciliation**: Compare three SHAs (step_sha, structure_sha, pseudo_set_sha)
+2. **Skip decision**: If `kind` matches + all SHAs match + `done==true` → skip step
+3. **Step completion**: Set `done=true` after successful execution
+
+**SHA Computation** (`calculation/hash_utils.py`):
+- `step_sha`: Hash of step YAML (meta stripped) → detects parameter changes
+- `structure_sha`: Hash of structure JSON (meta stripped) → detects geometry changes
+- `pseudo_set_sha`: Hash of pseudopotential set (file SHA256 per element) → detects pseudo changes
+
+**Step Completion Detection** (`calculation/step_done.py::is_step_done()`):
+- QE steps: Check `{step_type}.out` exists + contains "JOB DONE"
+- Wannier90 steps: Check `{seedname}.wout` exists (minimal check)
+
+### C.3 Code That Decides "Step Done / Can Reuse"
+
+**Manifest Skip Logic** (`calculation/runner.py:270-336`):
+```python
+if manifest and step_idx < len(manifest.steps):
+    entry = manifest.steps[step_idx]
+    if entry.done and entry.kind == step_kind:
+        if entry.step_sha == current_step_sha and \
+           entry.structure_sha == current_structure_sha and \
+           entry.pseudo_set_sha == current_pseudo_set_sha:
+            # Skip step
+```
+
+**Step Completion Update** (`calculation/runner.py:570-592`):
+```python
+if step_status == StepStatus.SUCCESS:
+    update_manifest_step(
+        calc_dir=calculation.dir,
+        step_index=step_idx,
+        done=True,
+        done_at=now_iso8601(),
+    )
+```
+
+---
+
+## D) Minimal EnginePlan Proposal (Engine-Specific SSOT)
+
+### D.1 EnginePlan Schema
+
+**Design Principles**:
+1. **Minimal**: Only fields needed for execution + restartability
+2. **Engine-specific**: Each engine has its own plan schema (no shared fields beyond core)
+3. **On-disk SSOT**: Plan is stored per step, not derived from YAML
+
+**Proposed Schema** (`src/quantumvitas/execution/plan.py`):
+
+```python
+@dataclass
+class EnginePlan:
+    """Engine-specific execution plan (SSOT for step execution)."""
+    engine_id: str  # "qe", "pyscf", etc.
+    step_kind: str  # "scf", "nscf", "pyscf_scf", etc. (engine-specific)
+    workdir: Path  # Absolute path to workdir
+    inputs: InputSpec  # Engine-specific input specification
+    command: CommandSpec  # Command to execute (or runner entrypoint for PySCF)
+    expected_artifacts: List[ArtifactSpec]  # Files/dirs expected after execution
+    provenance: ProvenanceMetadata  # Minimal: step_id, materialized_at, input_sha
+```
+
+**Engine-Specific Input Specs**:
+- **QE**: `QEInputSpec(input_file: Path, outdir: Path, pseudo_dir: Path, ...)`
+- **PySCF**: `PySCFInputSpec(job_file: Path, ...)` (already uses `job.json`)
+
+**Engine-Specific Command Specs**:
+- **QE**: `SubprocessCommandSpec(executable: str, args: List[str], stdin_file: Optional[Path], env: Dict[str, str])`
+- **PySCF**: `PythonCommandSpec(module: str, entrypoint: str, job_file: Path, env: Dict[str, str])`
+
+**Artifact Specs**:
+```python
+@dataclass
+class ArtifactSpec:
+    path: Path  # Relative to workdir
+    type: str  # "stdout", "stderr", "restart", "primary_output", etc.
+    required: bool  # Whether absence indicates failure
+```
+
+### D.2 Storage Location
+
+**Per-Step Plan File**: `calculations/<calc_id>/.run_tmp_info/plans/<step_id>.plan.yaml`
+
+**Rationale**:
+- Separate from step YAML (step YAML = user intent, plan = execution SSOT)
+- Stored in `.run_tmp_info/` (same location as manifest, runtime-only)
+- JSON or YAML format (TBD: prefer JSON for simplicity)
+
+**Relation to Existing Files**:
+- **Step YAML** (`steps/*.step.yaml`): User intent, editable, engine-agnostic (after IR migration)
+- **Manifest** (`.run_tmp_info/manifest.json`): Completion tracking (references plan provenance)
+- **EnginePlan**: Execution SSOT (derived from step YAML, but authoritative for execution)
+
+**Migration Strategy**:
+- Phase 0: Generate plan on-the-fly (no persistence)
+- Phase 1: Store plan alongside manifest (for restartability)
+
+---
+
+## E) Runner Generalization (Two Implementations, One Interface)
+
+### E.1 Runner Interface
+
+**Proposed Interface** (`src/quantumvitas/execution/runner.py`):
+
+```python
+class Runner(ABC):
+    """Abstract runner interface for engine execution."""
+    
+    @abstractmethod
+    def run(self, plan: EnginePlan, context: ExecutionContext) -> ExecutionResult:
+        """
+        Execute an engine plan.
+        
+        Args:
+            plan: Engine-specific execution plan
+            context: Execution context (timeout, env vars, etc.)
+            
+        Returns:
+            ExecutionResult with success flag, artifacts, stdout/stderr
+        """
+        pass
+    
+    @abstractmethod
+    def can_restart(self, plan: EnginePlan, workdir: Path) -> bool:
+        """
+        Check if step can be restarted from existing artifacts.
+        
+        Args:
+            plan: Engine plan
+            workdir: Workdir to check
+            
+        Returns:
+            True if restart artifacts exist and are valid
+        """
+        pass
+```
+
+**ExecutionContext**:
+```python
+@dataclass
+class ExecutionContext:
+    timeout: Optional[float] = None
+    environment: Dict[str, str] = field(default_factory=dict)
+    resource_limits: Optional[ResourceLimits] = None  # CPU, memory, etc.
+```
+
+**ExecutionResult**:
+```python
+@dataclass
+class ExecutionResult:
+    success: bool
+    return_code: Optional[int] = None
+    stdout: str = ""
+    stderr: str = ""
+    artifacts: Dict[str, Path] = field(default_factory=dict)  # type -> path
+    execution_time: float = 0.0
+    error: Optional[str] = None
+```
+
+### E.2 SubprocessRunner Implementation
+
+**File-Based Engines** (QE, VASP, ABINIT, Wannier90):
+
+```python
+class SubprocessRunner(Runner):
+    """Runner for file-based engines (QE, VASP, etc.)."""
+    
+    def run(self, plan: EnginePlan, context: ExecutionContext) -> ExecutionResult:
+        # 1. Validate inputs exist
+        # 2. Build command from plan.command
+        # 3. Invoke subprocess with stdin/stdout/stderr capture
+        # 4. Write stdout/stderr to capture files
+        # 5. Check expected artifacts exist
+        # 6. Return ExecutionResult
+        pass
+```
+
+**QE-Specific Logic** (wraps existing code):
+- Calls `QECalculationRunner.run_step()` internally (backward compatibility)
+- Maps `EnginePlan` → existing `StepResult` format
+
+### E.3 PythonWorkerRunner Implementation
+
+**Python-Library Engines** (PySCF):
+
+**Design Constraints**:
+1. **Long-lived process allowed**: Worker can persist across steps for speed (avoid repeated imports)
+2. **Restartability required**: After each step, MUST flush on-disk artifacts (checkpoint + summary + logs)
+3. **In-memory is cache only**: Correctness depends on disk artifacts, not in-memory state
+
+**Proposed Implementation** (`src/quantumvitas/execution/python_runner.py`):
+
+```python
+class PythonWorkerRunner(Runner):
+    """Runner for Python-library engines (PySCF)."""
+    
+    def __init__(self, worker_pool_size: int = 1):
+        self._workers: Dict[str, WorkerProcess] = {}  # calc_id -> worker
+        self._lock = Lock()
+    
+    def run(self, plan: EnginePlan, context: ExecutionContext) -> ExecutionResult:
+        # 1. Get or create worker for this calc_id (from plan.provenance)
+        # 2. Write plan to workdir/plan.json
+        # 3. Send execute request to worker (via pipe/socket)
+        # 4. Wait for completion
+        # 5. Read results from workdir/results.json
+        # 6. Validate artifacts exist (checkpoint, summary, logs)
+        # 7. Return ExecutionResult
+        pass
+    
+    def can_restart(self, plan: EnginePlan, workdir: Path) -> bool:
+        # Check for checkpoint file + summary file
+        pass
+```
+
+**Worker Process Lifecycle**:
+- **Pool size**: 1 worker per calculation (per `calc_id` binding)
+- **Lifetime**: Created on first step, destroyed on calc completion or timeout
+- **Isolation**: Separate process per calculation (no shared state)
+
+**Artifact Flush Requirements** (per step):
+- **Checkpoint**: `workdir/checkpoint_{step_id}.pkl` (or engine-specific format)
+- **Summary**: `workdir/results_{step_id}.json` (parsed results)
+- **Logs**: `workdir/log_{step_id}.txt` (stdout/stderr capture)
+
+### E.4 Daemon Worker Lifecycle Management
+
+**Minimal Management** (`src/quantumvitas/execution/worker_manager.py`):
+
+```python
+class WorkerManager:
+    """Manages Python worker lifecycle."""
+    
+    def __init__(self, max_workers_per_calc: int = 1, idle_timeout: float = 300.0):
+        self._workers: Dict[str, WorkerProcess] = {}  # calc_id -> worker
+        self._lock = Lock()
+        self.idle_timeout = idle_timeout
+    
+    def get_worker(self, calc_id: str) -> WorkerProcess:
+        """Get or create worker for calculation."""
+        with self._lock:
+            if calc_id not in self._workers:
+                self._workers[calc_id] = self._create_worker(calc_id)
+            return self._workers[calc_id]
+    
+    def cleanup_idle(self):
+        """Kill workers that have been idle > timeout."""
+        # Check last activity timestamp
+        # Kill idle workers
+        pass
+```
+
+**Integration with JobManager**:
+- `JobManager` tracks running calcs → can call `WorkerManager.cleanup_idle()` periodically
+- On calc completion: explicitly kill worker (don't wait for timeout)
+
+---
+
+## F) Parser Boundary & Canonical Artifacts
+
+### F.1 Current Parser Location
+
+**Parsers**: `src/quantumvitas/analysis/parsers.py`
+
+**QE-Specific Parsers**:
+- `parse_scf_output_text()`: Parses QE `.out` files (regex for "JOB DONE", "total energy=", etc.)
+- `parse_dos_output()`: Parses `dos.x` output
+- `parse_bands_output()`: Parses `bands.x` output
+
+**Assumptions**:
+- QE file layout (specific text patterns)
+- QE units (Ry for energies, eV for Fermi/HOMO/LUMO)
+- QE-specific artifact paths (`{step_type}.out`)
+
+### F.2 Proposed Parser Abstraction
+
+**Engine-Specific Parsers** (internal):
+- `src/quantumvitas/execution/parsers/qe_parser.py`: `parse_qe_scf_output()`
+- `src/quantumvitas/execution/parsers/pyscf_parser.py`: `parse_pyscf_scf_output()`
+
+**Canonical Artifacts** (engine-agnostic):
+- `src/quantumvitas/execution/artifacts.py`:
+  - `EnergyResult`: `{energy: float, unit: str, converged: bool}`
+  - `ForcesResult`: `{forces: array, unit: str}`
+  - `BandsResult`: `{bands: array, kpath: array, unit: str}`
+
+**Parser Interface**:
+```python
+class Parser(ABC):
+    @abstractmethod
+    def parse_energy(self, output_text: str, workdir: Path) -> EnergyResult:
+        """Extract energy from engine output."""
+        pass
+    
+    @abstractmethod
+    def parse_forces(self, output_text: str, workdir: Path) -> Optional[ForcesResult]:
+        """Extract forces from engine output."""
+        pass
+```
+
+**Parser Registration**:
+- `src/quantumvitas/execution/parser_registry.py`: Maps `(engine_id, step_kind)` → parser class
+
+### F.3 Artifact Storage Location
+
+**Stable Location**: `calculations/<calc_id>/results/<step_id>/`
+
+**Artifact Files**:
+- `results/<step_id>/energy.json`: `EnergyResult` (canonical)
+- `results/<step_id>/forces.json`: `ForcesResult` (if available)
+- `results/<step_id>/bands.json`: `BandsResult` (if available)
+
+**Relation to Raw Artifacts**:
+- Raw artifacts (`raw/{step_type}.out`) remain for debugging/restart
+- Canonical artifacts are **derived** from raw artifacts (never edited directly)
+
+---
+
+## G) Concurrency / Scheduling Review
+
+### G.1 Current Job Execution
+
+**JobManager** (`daemon/jobs.py`):
+- `ThreadPoolExecutor(max_workers=1)` by default (sequential QE execution)
+- Configurable via `settings.max_concurrent_calcs` (default: 2)
+- Jobs execute in background threads (daemon remains responsive)
+
+**Concurrency Model**:
+- **Intra-calc**: Sequential (steps run one at a time within a calculation)
+- **Inter-calc**: Configurable (can run multiple calculations concurrently if `max_workers > 1`)
+
+### G.2 Locking / Reentrancy
+
+**Per-Calc Locks** (`core/locking.py`):
+- `calc_run_lock(calc_dir)`: Long-held during entire run (materialization + execution)
+- `calc_edit_lock(calc_dir)`: Short-held during YAML writes
+- **Implementation**: `portalocker` (cross-platform file locking)
+- **Reentrancy**: NOT re-entrant (enforced with thread-local guard)
+
+**Lock Acquisition**:
+- `CalculationRunner.run()`: Acquires `calc_run_lock()` before execution
+- `save_yaml_doc()`: Acquires `calc_edit_lock()` internally
+
+**Concurrency Guarantees**:
+- **Per-calc isolation**: Only one run per calculation at a time
+- **Cross-calc**: Multiple calculations can run concurrently (if `max_workers > 1`)
+
+### G.3 Resource Hints (OMP/MPI)
+
+**OMP Threads**:
+- `EngineConfig.omp_threads` (default: 1)
+- Set via `OMP_NUM_THREADS` environment variable in `QECalculationRunner.run_step()`
+
+**MPI Cores**:
+- `EngineConfig.mpi_cores` (default: 1)
+- `EngineConfig.mpi_command` (e.g., `"mpirun"`)
+- Used in `QuantumEspressoEngine.build_command()` → `["mpirun", "-np", "4", "pw.x"]`
+
+**Storage**:
+- **Runtime**: `EngineConfig` (in-memory, not persisted)
+- **Future**: Could store in `EnginePlan` for per-step resource hints
+
+---
+
+## H) Migration Plan (Phased, Minimal)
+
+### Phase 0: Document Current QE Execution as "EngineBackend=QE"
+
+**Goal**: Document existing QE execution without changing behavior.
+
+**Changes**:
+1. **Documentation**: Add docstrings to `QECalculationRunner`, `QuantumEspressoEngine` identifying them as QE-specific
+2. **Type Hints**: Add `EngineBackend` enum (`QE`, `PYSCF`) for clarity
+
+**Files to Touch**:
+- `src/quantumvitas/core/engines/qe_calculation.py`: Add "QE-specific" docstring
+- `src/quantumvitas/core/engines/qe.py`: Add "QE-specific" docstring
+
+**Tests**: None (documentation only)
+
+**Risk**: None
+
+---
+
+### Phase 1: Introduce EnginePlan Abstraction (Thin Wrapper)
+
+**Goal**: Add `EnginePlan` as thin wrapper around existing step YAML/materialization (no behavior change).
+
+**Changes**:
+1. **New Module**: `src/quantumvitas/execution/plan.py`
+   - Define `EnginePlan` dataclass (QE-specific fields for now)
+   - Define `generate_qe_plan(step_spec, workdir) -> EnginePlan` (wraps existing materialization)
+2. **Integration**: `CalculationRunner` generates plan on-the-fly, passes to runner (stub)
+
+**Files to Create**:
+- `src/quantumvitas/execution/__init__.py`
+- `src/quantumvitas/execution/plan.py`
+
+**Files to Modify**:
+- `src/quantumvitas/calculation/runner.py`: Generate plan before execution (no-op for now)
+
+**Tests**:
+- Unit: `generate_qe_plan()` roundtrip (plan → existing execution path)
+- Integration: Existing QE execution still works (no regressions)
+
+**Risk**: Low (thin wrapper, no behavior change)
+
+---
+
+### Phase 2: Add Runner Interface (Subprocess Runner Uses Current Code Paths)
+
+**Goal**: Add runner interface, implement `SubprocessRunner` wrapping existing QE code.
+
+**Changes**:
+1. **New Module**: `src/quantumvitas/execution/runner.py`
+   - Define `Runner` abstract interface
+   - Implement `SubprocessRunner` (wraps `QECalculationRunner.run_step()`)
+2. **Integration**: `CalculationRunner` uses `SubprocessRunner` for QE steps
+
+**Files to Create**:
+- `src/quantumvitas/execution/runner.py`
+
+**Files to Modify**:
+- `src/quantumvitas/calculation/runner.py`: Replace direct `step.run()` with `runner.run(plan)`
+
+**Tests**:
+- Unit: `SubprocessRunner.run()` for QE step
+- Integration: Existing QE execution still works (no regressions)
+
+**Risk**: Low-Medium (changes execution path, but wraps existing code)
+
+---
+
+### Phase 3: Add Python Runner Skeleton (PySCF)
+
+**Goal**: Add `PythonWorkerRunner` skeleton for PySCF (no need to support full PySCF now).
+
+**Changes**:
+1. **New Module**: `src/quantumvitas/execution/python_runner.py`
+   - Implement `PythonWorkerRunner` (stub implementation)
+   - Worker process: reads `plan.json`, executes via subprocess (same as current PySCFEngine)
+2. **Integration**: `CalculationRunner` selects runner based on `plan.engine_id`
+
+**Files to Create**:
+- `src/quantumvitas/execution/python_runner.py`
+- `src/quantumvitas/execution/worker_manager.py` (skeleton)
+
+**Files to Modify**:
+- `src/quantumvitas/calculation/runner.py`: Route to `PythonWorkerRunner` for PySCF steps
+
+**Tests**:
+- Unit: `PythonWorkerRunner.run()` stub (returns success with mock artifacts)
+- Integration: PySCF execution still works (via subprocess, no long-lived worker yet)
+
+**Risk**: Medium (adds new execution path, but minimal for now)
+
+---
+
+## Critical Questions
+
+### Q1: What is the current on-disk SSOT for a step?
+
+**Answer**: **Step YAML** (`steps/*.step.yaml`) is the on-disk SSOT for user intent, but **generated input file** (`raw/{step_type}.in`) is the SSOT for execution.
+
+**Current State**:
+- **Step YAML**: User-editable, contains parameters/cards
+- **Input file**: Generated from step YAML, used by QE execution
+- **Problem**: If step YAML changes but input isn't regenerated, execution uses stale input
+
+**Solution**: **EnginePlan** becomes the execution SSOT (derived from step YAML, but authoritative for execution). Plan is regenerated before each run if step YAML changed.
+
+---
+
+### Q2: Where can "two sources of truth" drift happen today?
+
+**Answer**: **Step YAML vs generated input file** can drift if:
+1. User edits step YAML manually
+2. Step is executed without materialization (rare, but possible)
+3. Materialization fails silently (input file not updated)
+
+**Current Mitigation**: `materialize_step_spec()` is always called before execution (in `CalculationRunner.run()`).
+
+**Solution**: Store `EnginePlan` with `input_sha` → detect drift, regenerate plan if needed.
+
+---
+
+### Q3: How is "step done" defined today?
+
+**Answer**: **Manifest `done` flag + file existence + marker detection**.
+
+**Current Logic** (`calculation/step_done.py::is_step_done()`):
+- QE steps: `{step_type}.out` exists + contains "JOB DONE"
+- Wannier90 steps: `{seedname}.wout` exists
+
+**Manifest Integration**: `done==true` only set if `is_step_done()` returns `True` AND execution returned `success=True`.
+
+**Solution**: Keep manifest `done` flag, but add `artifact_sha` to plan → detect artifact corruption.
+
+---
+
+### Q4: How does incremental run decide what to reuse?
+
+**Answer**: **Three SHA256 hashes: `step_sha`, `structure_sha`, `pseudo_set_sha`**.
+
+**Current Logic** (`calculation/runner.py:270-336`):
+- If `kind` matches + all three SHAs match + `done==true` → skip step
+- If any SHA mismatches → rerun step
+
+**Rationale**: Three SHAs capture all inputs (parameters, geometry, pseudos). If inputs unchanged, output should be identical.
+
+**Solution**: Keep three SHA system, but add `plan_sha` to manifest (hash of `EnginePlan`) → detect plan changes even if step YAML unchanged.
+
+---
+
+### Q5: Where is workdir naming/structure defined? Is it stable across sessions?
+
+**Answer**: **Workdir is stable across sessions** (path: `calculations/<calc_id>/raw/`).
+
+**Definition**: `calculation/runner.py::compute_io_dir_from_calculation_model()` (SSOT for I/O directory path)
+
+**Stability**: Workdir path is based on `calculation_dir` (stable) + `working_dir` name from `calculation.yaml` (default: `"raw"`). Path persists across daemon restarts.
+
+**Restartability**: QE restart files (`outdir/{prefix}.save/`) persist in workdir → subsequent steps can read them.
+
+**Solution**: Keep workdir structure, but document engine-specific subdirectory conventions (e.g., `raw/qe_scratch/` for QE, `raw/pyscf_checkpoints/` for PySCF).
+
+---
+
+### Q6: How are stdout/stderr/logs stored and surfaced?
+
+**Answer**: **Per-step capture files: `raw/{step_type}.out` / `raw/{step_type}.err`**.
+
+**Storage**:
+- Stdout: `raw/{step_type}.out` (always overwritten, never versioned)
+- Stderr: `raw/{step_type}.err` (always overwritten, never versioned)
+
+**Surfacing**:
+- **GUI**: `JobManager.get_job_logs(job_id)` reads `output_file` (points to `{step_type}.out`)
+- **CLI**: Direct file access (not abstracted)
+
+**Solution**: Keep per-step capture files, but add `log_type` to `ArtifactSpec` (`"stdout"`, `"stderr"`, `"combined"`) → support different log formats per engine.
+
+---
+
+### Q7: How are engine commands configured (pw.x path, mpi, env vars)?
+
+**Answer**: **`EngineConfig` (in-memory only, not persisted)**.
+
+**Current Storage**:
+- **Runtime**: `EngineConfig` passed to `Engine` constructor
+- **Source**: Settings (`settings.qe.bin_dir`), environment, or explicit override
+
+**QE-Specific**:
+- Executable path: Resolved via `QEEngineRegistry` (managed engine or PATH)
+- MPI: `EngineConfig.mpi_command`, `mpi_cores` (default: 1)
+- OMP: `EngineConfig.omp_threads` (default: 1)
+
+**Solution**: Store engine config in `EnginePlan.provenance` → per-step resource hints, but keep global defaults in `EngineConfig`.
+
+---
+
+### Q8: What is the minimal artifact set required to restart a calc at step N+1 for QE today?
+
+**Answer**: **QE restart files in `raw/outdir/{prefix}.save/`**.
+
+**QE Restart Requirements**:
+- Charge density: `outdir/{prefix}.save/charge-density.dat`
+- Wavefunctions: `outdir/{prefix}.save/{K*.wfc}` (if k-points changed, may need all K files)
+- Metadata: `outdir/{prefix}.save/data-file.xml` (QE internal state)
+
+**Step Dependencies**:
+- **SCF → NSCF**: Requires SCF charge density
+- **NSCF → DOS**: Requires NSCF wavefunctions
+- **SCF → PH**: Requires SCF charge density
+
+**Solution**: Document restart artifact requirements per step type in `EnginePlan.expected_artifacts` → enable engine-agnostic restart detection.
+
+---
+
+### Q9: If we add a long-lived python worker, how do we guarantee it doesn't silently use stale in-memory state after user edits upstream?
+
+**Answer**: **Fingerprint-based invalidation + mandatory artifact flush**.
+
+**Proposed Solution**:
+1. **Plan fingerprint**: Hash of `EnginePlan` (includes all inputs: structure, parameters, pseudos)
+2. **Worker cache**: Worker stores `last_plan_fingerprint` in memory
+3. **Invalidation**: If `plan.fingerprint != worker.last_plan_fingerprint` → flush cache, reload state from disk artifacts
+4. **Mandatory flush**: After each step, worker MUST write checkpoint + summary to disk (even if in-memory state exists)
+
+**Artifact Flush Requirements**:
+- **Checkpoint**: `workdir/checkpoint_{step_id}.pkl` (or engine-specific format)
+- **Summary**: `workdir/results_{step_id}.json` (parsed results)
+- **Logs**: `workdir/log_{step_id}.txt` (stdout/stderr)
+
+**Restart Guarantee**: Worker can be killed at any time → next step loads from disk artifacts, not in-memory cache.
+
+---
+
+### Q10: What are the 10 most likely failure modes during engine generalization?
+
+**Answer**: Top 10 failure modes:
+
+1. **Path issues**: Relative vs absolute paths in `EnginePlan.workdir` → QE assumes relative `outdir`, PySCF may need absolute
+2. **Race conditions**: Multiple steps writing to same workdir simultaneously → per-calc locking mitigates, but need to verify
+3. **Partial outputs**: Step fails mid-execution → artifacts incomplete, but manifest may mark `done=false` correctly
+4. **Restart file corruption**: QE restart files corrupted → next step fails silently (need artifact validation)
+5. **Environment variable leaks**: `OMP_NUM_THREADS` set for QE but not cleared for PySCF → thread contention
+6. **Worker process zombie**: Python worker crashes but process not cleaned up → `WorkerManager` needs timeout/kill logic
+7. **Plan drift**: `EnginePlan` stored but step YAML changes → plan becomes stale (need regeneration on materialization)
+8. **Artifact path conflicts**: QE expects `{step_type}.out`, PySCF expects `results.json` → need engine-specific artifact paths
+9. **Manifest desync**: Manifest `done=true` but artifacts missing → reconciliation should detect and reset
+10. **Unit mismatch**: QE uses Ry, PySCF uses eV → canonical artifacts must normalize units
+
+**Mitigation**:
+- Comprehensive roundtrip tests (step YAML → plan → execution → artifacts)
+- Artifact validation before marking `done=true`
+- Worker health checks (ping worker, kill if unresponsive)
+- Unit normalization in canonical artifacts (always use eV for energies)
+
+---
+
+## Recommended Next PR (Phase 0 Only)
+
+### Scope: Document Current QE Execution as "EngineBackend=QE"
+
+**Goal**: Add minimal documentation identifying QE-specific components without changing behavior.
+
+**Changes**:
+1. Add docstrings to `QECalculationRunner`, `QuantumEspressoEngine` identifying them as QE-specific
+2. Add type hint: `EngineBackend = Literal["qe", "pyscf"]` for clarity
+
+**Files to Modify**:
+- `src/quantumvitas/core/engines/qe_calculation.py`: Add "QE-specific" docstring to `QECalculationRunner`
+- `src/quantumvitas/core/engines/qe.py`: Add "QE-specific" docstring to `QuantumEspressoEngine`
+- `src/quantumvitas/execution/__init__.py`: Create new module (empty for now, prepare for Phase 1)
+
+**No Changes To**:
+- Execution logic (no behavior change)
+- Tests (documentation only)
+
+**Validation**:
+- Code review: Verify docstrings are accurate
+- Existing tests: Still pass (no regressions)
+
+**Estimated Effort**: 1 hour (documentation only)
+
+---
+
 **End of Report**
