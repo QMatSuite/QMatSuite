@@ -37,6 +37,7 @@ class QMatSuiteSettings:
     version: int = 1
     qe: QEConfig = field(default_factory=QEConfig)
     debug_resolution: bool = False  # Enable detailed resolution/addressing debug logs
+    max_concurrent_calcs: int = 2  # Maximum concurrent calculation runs (default 2)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -44,6 +45,7 @@ class QMatSuiteSettings:
             "version": self.version,
             "qe": asdict(self.qe),
             "debug_resolution": self.debug_resolution,
+            "max_concurrent_calcs": self.max_concurrent_calcs,
         }
     
     @classmethod
@@ -89,6 +91,7 @@ class QMatSuiteSettings:
             version=data.get("version", 1),
             qe=qe,
             debug_resolution=data.get("debug_resolution", False),  # Default: OFF
+            max_concurrent_calcs=data.get("max_concurrent_calcs", 2),  # Default: 2
         )
 
 

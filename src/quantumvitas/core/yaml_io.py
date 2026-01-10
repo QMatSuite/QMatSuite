@@ -158,8 +158,18 @@ def save_yaml_doc(
     elif isinstance(doc, ProjectDoc) and path.is_dir():
         resolved_path = path / "project.qv.yml"
     
-    # Write to disk
-    _save_yaml_raw(after, resolved_path)
+    # Acquire edit lock for calculation/step YAML files
+    calc_dir = None
+    if isinstance(doc, (CalcDoc, StepDoc)):
+        from quantumvitas.core.locking import find_calc_dir_from_path, calc_edit_lock
+        calc_dir = find_calc_dir_from_path(resolved_path)
+    
+    # Write to disk with edit lock if applicable
+    if calc_dir:
+        with calc_edit_lock(calc_dir, fail_fast=False):
+            _save_yaml_raw(after, resolved_path)
+    else:
+        _save_yaml_raw(after, resolved_path)
     
     # Update doc's snapshot
     doc.commit_changes()
