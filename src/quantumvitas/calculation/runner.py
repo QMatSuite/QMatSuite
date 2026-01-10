@@ -285,7 +285,7 @@ class CalculationRunner:
                     if entry.kind != step_kind:
                         # Kind mismatch - shouldn't happen if reconcile worked, but continue to execute
                         logger.warning(
-                            f"[CALCULATION_RUNNER] Step {step.id} manifest kind mismatch: "
+                            f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) manifest kind mismatch: "
                             f"expected={step_kind}, manifest={entry.kind}, executing anyway"
                         )
                         continue
@@ -302,8 +302,8 @@ class CalculationRunner:
                         config = load_project_config(calculation.project.root)
                         step_resolved = require_step(
                             calculation.project.root,
-                            step.id,
-                            step.id,
+                            calculation.id,
+                            step.meta.id,
                             config=config,
                             index=None,
                         )
@@ -320,9 +320,9 @@ class CalculationRunner:
                     if shas_match and entry.done:
                         # All conditions met: skip this step
                         step_type = _coerce_step_type(step.step_type) if step.step_type else StepType.CUSTOM
-                        logger.info(f"[CALCULATION_RUNNER] Step {step.id} ({step_type}) SKIPPED (already done, inputs unchanged)")
+                        logger.info(f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}, type={step_type}) SKIPPED (already done, inputs unchanged)")
                         summary = StepResultSummary(
-                            step_id=step.id,
+                            step_id=step.meta.id,
                             step_type=step_type,
                             status=StepStatus.SUCCESS,  # Mark as success (already done)
                             working_dir=calculation.raw_dir,
@@ -338,7 +338,7 @@ class CalculationRunner:
                         # SHAs don't match or not done - shouldn't happen if reconcile worked
                         if entry.done:
                             logger.warning(
-                                f"[CALCULATION_RUNNER] Step {step.id} manifest says done=true but step_sha mismatch "
+                                f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) manifest says done=true but step_sha mismatch "
                                 f"(manifest={entry.step_sha[:16]}..., current={step_sha_current[:16] if step_sha_current else 'N/A'}...), "
                                 f"executing anyway"
                             )
@@ -347,10 +347,10 @@ class CalculationRunner:
             if calculation_failed:
                 step_type = _coerce_step_type(step.step_type) if step.step_type else StepType.CUSTOM
                 logger.warning(
-                    f"[CALCULATION_RUNNER] Step {step.id} (type={step_type}) SKIPPED because calculation_failed=True"
+                    f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}, type={step_type}) SKIPPED because calculation_failed=True"
                 )
                 summary = StepResultSummary(
-                    step_id=step.id,
+                    step_id=step.meta.id,
                     step_type=step_type,
                     status=StepStatus.SKIPPED,
                     working_dir=calculation.raw_dir,
@@ -365,7 +365,7 @@ class CalculationRunner:
 
             # E. Logging: Only essential info at INFO level
             step_type_str = str(step.step_type.value) if step.step_type else "unknown"
-            logger.info(f"[CALCULATION_RUNNER] Entering step: {step.id} ({step_type_str})")
+            logger.info(f"[CALCULATION_RUNNER] Entering step: {step.meta.slug} (ulid={step.meta.id}, type={step_type_str})")
             
             # Update manifest BEFORE execution (set started_at, done=false, run_id)
             # This happens for all steps >= start_idx (incremental or full mode)
@@ -406,22 +406,22 @@ class CalculationRunner:
                 config = load_project_config(calculation.project.root)
                 step_resolved = require_step(
                     calculation.project.root,
-                    step.id,
-                    step.id,
+                    calculation.id,
+                    step.meta.id,
                     config=config,
                     index=None,
                 )
                 step_doc_dict = StepDoc.load(step_resolved.absolute_path).to_dict()
                 step_sha = compute_step_sha(step_doc_dict)
             except Exception as e:
-                logger.warning(f"Failed to compute step_sha for step {step.id}: {e}")
+                logger.warning(f"Failed to compute step_sha for step {step.meta.slug} (ulid={step.meta.id}): {e}")
             
             # Update manifest entry: set started_at, done=false, run_id
             update_manifest_step(
                 calc_dir=calculation.dir,
                 step_index=step_idx,
                 kind=step_type_str,
-                step_ulid=step.id,
+                step_ulid=step.meta.id,
                 pseudo_set_sha=current_pseudo_sha,
                 structure_sha=structure_sha,
                 step_sha=step_sha,
@@ -447,7 +447,7 @@ class CalculationRunner:
                 )
                 # E. Logging: Essential info only
                 logger.debug(
-                    f"[CALCULATION_RUNNER] Step {step.id} run() completed: "
+                    f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) run() completed: "
                     f"success={result.success}, returncode={getattr(result, 'return_code', 'N/A')}, "
                     f"output_file={result.output_file.name if result.output_file else None}"
                 )
@@ -455,7 +455,7 @@ class CalculationRunner:
                 import traceback
                 tb_str = traceback.format_exc()
                 logger.exception(
-                    f"[CALCULATION_RUNNER] Step {step.id} run() raised exception: {type(e).__name__}: {e}"
+                    f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) run() raised exception: {type(e).__name__}: {e}"
                 )
                 # Create a failed StepResult from the exception
                 from quantumvitas.calculation.results import StepResult
@@ -495,7 +495,7 @@ class CalculationRunner:
                     # Fall back to stdout field if output_file doesn't exist
                     output_text = result.stdout if result.stdout else ""
                     logger.debug(
-                        f"[CALCULATION_RUNNER] Step {step.id} output_file not available, using stdout field: "
+                        f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) output_file not available, using stdout field: "
                         f"output_file={result.output_file}, stdout_length={len(output_text)}"
                     )
             
@@ -528,7 +528,7 @@ class CalculationRunner:
             
             # E. Logging: Evaluation results at DEBUG level
             logger.debug(
-                f"[CALCULATION_RUNNER] Step {step.id} evaluation: step_status={step_status}, "
+                f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) evaluation: step_status={step_status}, "
                 f"message_length={len(message) if message else 0}"
             )
             
@@ -548,14 +548,14 @@ class CalculationRunner:
                 if result.error:
                     enhanced_message += f"\n\nError: {result.error}"
                 message = enhanced_message
-                logger.warning(f"[CALCULATION_RUNNER] Step {step.id} ({step_type_str}) failed: {message[:150]}")
+                logger.warning(f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}, type={step_type_str}) failed: {message[:150]}")
             
             combined_metrics = dict(getattr(result, "parsed_output", {}) or {})
             for key, value in (metrics or {}).items():
                 if value is not None:
                     combined_metrics[key] = value
             summary = StepResultSummary(
-                step_id=step.id,
+                step_id=step.meta.id,
                 step_type=step_type,
                 status=step_status,
                 working_dir=raw_dir,
@@ -581,7 +581,7 @@ class CalculationRunner:
                     calc_dir=calculation.dir,
                     step_index=step_idx,
                     kind=step_type_str,
-                    step_ulid=step.id,
+                    step_ulid=step.meta.id,
                     pseudo_set_sha=current_pseudo_sha,
                     structure_sha=structure_sha,
                     step_sha=step_sha,
@@ -599,7 +599,7 @@ class CalculationRunner:
                 logger.debug(f"[CALCULATION_RUNNER] calculation_failed: {prev_failed} -> {calculation_failed}")
                 # On failure: done=false is already set in manifest, but abort run
                 if calculation.mode == StepMode.STRICT:
-                    logger.info(f"[CALCULATION_RUNNER] Strict mode: stopping after step {step.id} failure")
+                    logger.info(f"[CALCULATION_RUNNER] Strict mode: stopping after step {step.meta.slug} (ulid={step.meta.id}) failure")
                     # In strict mode, stop execution and mark remaining steps as SKIPPED
                     break
 
@@ -653,7 +653,7 @@ class CalculationRunner:
             from quantumvitas.history.events import RunStartedEvent
             
             # Gather step info
-            step_ids = [s.id for s in calculation.steps]
+            step_ids = [s.meta.id for s in calculation.steps]
             step_types = [
                 s.step_type.value if hasattr(s.step_type, "value") else str(s.step_type)
                 for s in calculation.steps

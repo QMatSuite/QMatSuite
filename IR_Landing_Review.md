@@ -1895,4 +1895,830 @@ class Parser(ABC):
 
 ---
 
+---
+
+# FOLLOW-UP: Boundary Clarification & IR Hardening
+
+**Review Date**: 2025-01-XX  
+**Purpose**: Second-pass review to clarify and harden IR + PRESET + STEP + ENGINE boundaries  
+**Status**: Boundary Analysis Complete
+
+---
+
+## Executive Summary
+
+This follow-up review answers 16 critical questions about boundary definitions, reversibility, and truth sources. All answers are backed by concrete repo evidence (files, classes, functions, JSON fields). Where uncertainty exists, it is explicitly marked.
+
+**Key Findings**:
+- **IR reversibility**: Most IR fields are **LOSSY** (IR → QE params requires policy choices), not REVERSIBLE
+- **Exchange-correlation**: Currently NOT controlled by presets; QE uses `input_dft` + pseudopotential choice (both must match)
+- **Magnetization direction**: QE supports `starting_magnetization(i)`, `angle1(i)`, `angle2(i)` for noncollinear; NOT currently in presets
+- **Units**: No conversion code exists today; IR will use **eV fixed** for energies (conversion at compile time)
+- **Step completion SSOT**: `manifest.json` (`done` flag) + `raw/{step_type}.out` (file existence + "JOB DONE" marker)
+- **PySCF restart**: Currently NO checkpoint files; writes `results.json` + `pyscf.log` + `pyscf_input.py` per step
+
+---
+
+## A. IR Field Definition & Reversibility
+
+### A.1 IR v0 Field Reversibility Classification
+
+**Source**: IR fields from Section E of this report (25 total fields)
+
+**Classification Rules**:
+- **[REVERSIBLE]**: IR ⇄ QE params is bijective (1:1 mapping, no ambiguity)
+- **[LOSSY]**: IR → QE params requires policy choice (multiple valid QE encodings)
+- **[DERIVED]**: IR is inferred from QE params, not directly encoded
+
+**Note**: Classification based on existing preset compilation/detection code paths in `src/quantumvitas/presets/`.
+
+| IR Field | Category | QE Parameter(s) | Policy/Notes |
+|----------|----------|----------------|--------------|
+| `spin_treatment` | **LOSSY** | `SYSTEM.nspin`, `SYSTEM.noncolin` | Policy: Noncollinear → omit `nspin` (canonical) vs `nspin=4` (tolerance) |
+| `spin_orbit_coupling` | **REVERSIBLE** | `SYSTEM.lspinorb` | 1:1 mapping (boolean) |
+| `magnetization_direction` | **DERIVED** | `SYSTEM.starting_magnetization(i)`, `SYSTEM.angle1(i)`, `SYSTEM.angle2(i)` | Not in presets today; QE supports but not compiled |
+| `initial_magnetization` | **DERIVED** | `SYSTEM.starting_magnetization(i)` | Not in presets today; per-atom values inferred |
+| `electronic_type` | **LOSSY** | `SYSTEM.occupations` | Policy: `insulator` → `'fixed'`, `metal` → `'smearing'` (default `degauss`) |
+| `smearing_type` | **REVERSIBLE** | `SYSTEM.smearing` | 1:1 mapping (string enum) |
+| `smearing_width` | **REVERSIBLE** | `SYSTEM.degauss` | 1:1 mapping (with unit conversion: eV → Ry) |
+| `wavefunction_cutoff` | **REVERSIBLE** | `SYSTEM.ecutwfc` | 1:1 mapping (with unit conversion: eV → Ry) |
+| `charge_density_cutoff` | **REVERSIBLE** | `SYSTEM.ecutrho` | 1:1 mapping (with unit conversion: eV → Ry, default 4×) |
+| `precision_level` | **LOSSY** | `SYSTEM.ecutwfc`, `SYSTEM.ecutrho`, `ELECTRONS.conv_thr`, `K_POINTS` | Policy: Multiplier on base values (requires structure/pseudo context) |
+| `base_cutoffs_source` | **DERIVED** | Not in QE | Used by PrecisionAdvisor to compute base values |
+| `cutoff_unit` | **DERIVED** | Not in QE | IR convention: always eV (not stored, compile-time conversion) |
+| `kpoint_mesh` | **REVERSIBLE** | `K_POINTS` card `data[0][:3]` | 1:1 mapping (automatic mesh) |
+| `kpoint_shifts` | **REVERSIBLE** | `K_POINTS` card `data[0][3:6]` | 1:1 mapping (shifts) |
+| `kpoint_mode` | **REVERSIBLE** | `K_POINTS` card `option` | 1:1 mapping (enum: automatic/manual/path) |
+| `kpoint_path` | **REVERSIBLE** | `K_POINTS` card `data` (crystal_b/tpiba_b format) | 1:1 mapping (path segments) |
+| `kpoint_density` | **DERIVED** | Not in QE | Used by PrecisionAdvisor to compute mesh (requires lattice) |
+| `scf_threshold` | **REVERSIBLE** | `ELECTRONS.conv_thr` | 1:1 mapping (with unit conversion: eV → Ry) |
+| `scf_max_iterations` | **REVERSIBLE** | `ELECTRONS.electron_maxstep` | 1:1 mapping (integer) |
+| `scf_mixing` | **LOSSY** | `ELECTRONS.mixing_beta`, `ELECTRONS.mixing_mode`, etc. | Policy: `convergence_strategy` → mixing params (multiple params) |
+| `scf_convergence_strategy` | **LOSSY** | `ELECTRONS.mixing_beta`, `ELECTRONS.electron_maxstep` | Policy: `fast/normal/robust` → specific values (convergence preset) |
+| `calculation_type` | **REVERSIBLE** | `CONTROL.calculation` | 1:1 mapping (enum: scf/nscf/relax/etc.) |
+| `optimization_target` | **DERIVED** | Implied by `calculation_type` | Not directly in QE (inferred from calculation type) |
+| `exchange_correlation` | **LOSSY** | `SYSTEM.input_dft` + pseudopotential choice | Policy: XC functional name → QE `input_dft` (requires matching pseudo) |
+| `vdw_correction` | **REVERSIBLE** | `SYSTEM.vdw_corr` | 1:1 mapping (enum: none/grimme-d2/TS/XDM) |
+
+**Summary**: 12 REVERSIBLE, 7 LOSSY, 6 DERIVED
+
+**Policy Storage**: Lossy policies are NOT stored on disk today. They live in compiler code:
+- `src/quantumvitas/presets/paramspace.py`: ParamSpace profiles define canonical encodings
+- `src/quantumvitas/presets/spaces_registry.py`: Profile → enum mappings (canonical for apply)
+- `src/quantumvitas/presets/variants_registry.py`: Detect tolerances (accept redundant forms)
+
+**Round-trip Ambiguity Avoidance**: Canonical encoding enforced on apply:
+- `src/quantumvitas/presets/paramspace.py:606`: Noncollinear → `nspin` deleted (NOT_APPLICABLE)
+- `src/quantumvitas/presets/variants_registry.py:185`: Detect tolerances accept `nspin=4` but don't generate it
+
+---
+
+### A.2 Exchange-Correlation Field
+
+**Question**: Where is XC currently controlled? Is it `input_dft`, pseudopotential choice, or both?
+
+**Answer**: **BOTH** - XC requires matching `input_dft` + pseudopotential type.
+
+**Evidence**:
+- **QE Parameter**: `&SYSTEM.input_dft` (type: CHARACTER, default: null) - NOT in `qe_module_parameters.json` today (requires search)
+- **QE Documentation**: `input_dft` sets XC functional name (e.g., `'PBE'`, `'PBE0'`, `'B3LYP'`)
+- **Pseudopotential constraint**: Pseudopotential files encode XC functional (UPF header); must match `input_dft`
+- **Current state**: XC is **NOT** controlled by presets today (not in ParamSpace definitions)
+
+**Proposed IR SSOT**: `exchange_correlation` IR field → `SYSTEM.input_dft` QE param.
+
+**Rationale**: `input_dft` is the explicit QE parameter for XC functional. Pseudopotential choice is a separate concern (materialized separately via `species_map`). This avoids drift because:
+- `input_dft` is authoritative (QE reads this)
+- Pseudopotential validation happens separately (Step0 materialization checks pseudo matches XC)
+- If mismatch: materialization fails with clear error (not silent drift)
+
+**Storage**: IR → `step.yaml` (IR section), compile → `*.in` file `SYSTEM.input_dft`.
+
+---
+
+### A.3 Magnetization Direction / Noncollinear / SOC
+
+**Question**: What combinations are fully representable, partially representable, or impossible?
+
+**Answer**:
+
+**QE Expressivity** (from `qe_module_parameters.json`):
+- **Collinear**: `SYSTEM.nspin=2`, `SYSTEM.noncolin=.false.`, `SYSTEM.starting_magnetization(i)` (per-atom, z-direction only)
+- **Noncollinear**: `SYSTEM.noncolin=.true.`, `SYSTEM.starting_magnetization(i)`, `SYSTEM.angle1(i)`, `SYSTEM.angle2(i)` (per-atom, full vector)
+- **SOC**: `SYSTEM.lspinorb=.true.` requires `SYSTEM.noncolin=.true.` (physics constraint)
+
+**Evidence**:
+- `src/quantumvitas/presets/paramspace.py:591-628`: ParamSpace profiles define canonical encodings
+- `src/quantumvitas/presets/integration.py:67-102`: `_validate_magnetism_physics()` enforces constraints
+- `src/quantumvitas/data/qe_module_parameters.json:726-743`: `starting_magnetization(i)` description (per-atom, z for collinear)
+- `src/quantumvitas/data/qe_module_parameters.json:1353-1389`: `angle1(i)`, `angle2(i)` description (noncollinear only)
+
+**Combinations**:
+
+| IR Field Combination | QE Representable | Current Preset Support | Notes |
+|---------------------|------------------|------------------------|-------|
+| `spin_treatment=none` | ✅ Full | ✅ YES (NONMAGNETIC) | `nspin=1`, `noncolin=.false.` |
+| `spin_treatment=collinear` | ✅ Full | ✅ YES (COLLINEAR_LSDA) | `nspin=2`, `noncolin=.false.` |
+| `spin_treatment=collinear` + `initial_magnetization` | ✅ Full | ⚠️ Partial | `starting_magnetization(i)` supported but not in presets |
+| `spin_treatment=noncollinear` | ✅ Full | ✅ YES (NONCOLLINEAR) | `noncolin=.true.`, `nspin` omitted |
+| `spin_treatment=noncollinear` + `magnetization_direction` | ✅ Full | ❌ NO | `angle1(i)`, `angle2(i)` not in presets |
+| `spin_orbit_coupling=true` | ✅ Full (requires noncollinear) | ✅ YES (NONCOLLINEAR_SOC) | `lspinorb=.true.`, `noncolin=.true.` |
+| `spin_orbit_coupling=true` + `spin_treatment=collinear` | ❌ Impossible | ❌ Rejected | Physics constraint violation |
+
+**Advanced Features** (remain engine-specific):
+- `SYSTEM.constrained_magnetization`: Fixed magnetization directions (constrained DFT)
+- `SYSTEM.fixed_magnetization`: Total magnetization constraint
+- `SYSTEM.tot_magnetization`: Total magnetization target (collinear)
+
+**Conclusion**: Core IR fields (`spin_treatment`, `spin_orbit_coupling`) are fully representable. Advanced per-atom magnetization (`initial_magnetization`, `magnetization_direction`) are partially representable (QE supports, but not in presets today).
+
+---
+
+### A.4 Units
+
+**Question**: Where does unit conversion happen? IR units fixed or multiple allowed?
+
+**Answer**: **No conversion code exists today**. IR will use **eV fixed** for energies.
+
+**Evidence**:
+- `src/quantumvitas/analysis/parsers.py:44-85`: `SCFResult` preserves native units (Ry for energy, eV for Fermi)
+- `src/quantumvitas/analysis/parsers.py:83-84`: Unit tracking fields (`energy_unit="Ry"`, `fermi_unit="eV"`)
+- `src/quantumvitas/engines/pyscf/runner.py:200`: PySCF results use `energy_unit="Hartree"` (not eV)
+- **No conversion functions found**: No `ry_to_ev()`, `ev_to_ry()`, etc. in codebase
+
+**Proposed IR Policy**: **IR uses eV fixed** (not stored, compile-time conversion).
+
+**Rationale**:
+- QE uses Ry internally (1 Ry = 13.6057 eV)
+- PySCF uses Hartree (1 Ha = 27.2114 eV)
+- IR normalization to eV avoids engine-specific units in user-facing fields
+- Conversion happens at compile time (IR → engine lowering)
+
+**Conversion Implementation** (future):
+- IR → QE: `ecutwfc_ev * 13.6057` → `ecutwfc_ry`
+- IR → PySCF: `ecutwfc_ev / 27.2114` → `ecutwfc_ha` (if needed)
+- QE → IR: `ecutwfc_ry / 13.6057` → `ecutwfc_ev` (detection)
+
+**UI/History Display**: History already normalizes to eV for display:
+- `src/quantumvitas/history/digests.py`: StepDigest computes human-readable summaries (likely uses eV)
+- `gui/src/types/qv.ts:277-278`: UI types use `total_energy_ry` and `fermi_energy_ev` (mixed units today)
+
+**Conclusion**: IR units are **fixed to eV** (not configurable). Conversion happens at compile/detect time.
+
+---
+
+## B. Preset ↔ IR ↔ QE Params
+
+### B.1 Concrete Preset Example: `magnetism: collinear_lsda`
+
+**Question**: List exact QE params mutated, IR fields emitted, and detector round-trip.
+
+**Answer**:
+
+**Preset**: `magnetism: MagnetismOption.COLLINEAR_LSDA`
+
+**QE Params Mutated** (from `src/quantumvitas/presets/paramspace.py:599-603`):
+```python
+{
+    "SYSTEM": {
+        "nspin": 2,
+        "noncolin": False,  # Explicitly written (canonical encoding)
+        "lspinorb": False,  # Explicitly written (canonical encoding)
+    }
+}
+```
+
+**IR Fields Emitted** (proposed):
+```python
+{
+    "spin_treatment": "collinear",
+    "spin_orbit_coupling": False,
+    # initial_magnetization: None (not set by preset)
+}
+```
+
+**Detector Round-Trip** (from `src/quantumvitas/presets/detector.py:104-126`):
+1. **Detection**: `detect_magnetism(params)` → calls `variants_registry::detect_dimension_for_step()`
+2. **Matching**: ParamSpace matches `nspin=2`, `noncolin=False`, `lspinorb=False` → profile "COL"
+3. **Profile → Enum**: `MAGNETISM_PROFILE_TO_ENUM["COL"]` → `MagnetismOption.COLLINEAR_LSDA`
+4. **Round-trip**: Compile → Detect → same preset ✅
+
+**Code Paths**:
+- **Compile**: `src/quantumvitas/presets/compiler.py:39-64` → `compile_magnetism()` → `spaces_registry::compile_dimension_patch()` → profile "COL"
+- **Detect**: `src/quantumvitas/presets/detector.py:104-126` → `detect_magnetism()` → `variants_registry::detect_dimension_for_step()` → profile "COL" → enum
+- **Tests**: `tests/unit/test_detector_b.py:353-477` → roundtrip tests verify compile → detect equivalence
+
+**After IR Introduction**:
+- Compile: Preset → IR → QE params (two stages)
+- Detect: QE params → IR → Preset (two stages)
+- Round-trip: Preset → IR → QE params → IR → Preset (should match)
+
+---
+
+### B.2 Detector Truth
+
+**Question**: Today, detector infers WHAT? After IR, is detector's SSOT IR or preset?
+
+**Answer**:
+
+**Today** (from `src/quantumvitas/presets/detector.py`):
+- Detector infers **preset options** (enum values: `MagnetismOption.NONMAGNETIC`, etc.)
+- SSOT is **preset enum** (not QE params directly)
+- Detection uses **tolerant matching** (accepts redundant QE encodings via ParamSpace profiles)
+
+**Evidence**:
+- `src/quantumvitas/presets/detector.py:104-126`: `detect_magnetism()` returns `MagnetismOption` enum
+- `src/quantumvitas/presets/variants_registry.py:185`: Tolerant profiles accept `nspin=4` for noncollinear (detect-only)
+- `src/quantumvitas/presets/dimensions.py:17-32`: Preset enums are runtime-only (never persisted)
+
+**After IR Introduction**:
+- Detector infers **IR fields** (not preset enums directly)
+- SSOT is **IR** (IR is the engine-agnostic representation)
+- Preset enums become **UI convenience** (mapped to IR field combinations)
+
+**Code Path** (proposed):
+```
+QE params → IR fields (engine-agnostic) → Preset options (UI convenience)
+```
+
+**User Edits QE Params Directly**:
+- Detection still works: QE params → IR (via tolerant matching)
+- If IR → QE recompile differs: User sees IR diff (shows what preset would set)
+- **No drift**: IR is recomputed from QE params (IR is derived, not stored)
+
+---
+
+## C. Step & Workflow Generalization
+
+### C.1 Minimal Generalized Step Taxonomy
+
+**Question**: Define minimal step taxonomy covering all existing demos/tests.
+
+**Answer**:
+
+**Source**: `src/quantumvitas/calculation/types.py:10-30` (StepType enum) + `src/quantumvitas/workflow/registry.py:65-280` (StepTypeSpec definitions)
+
+**Step Taxonomy** (engine-agnostic):
+
+| Step Type | Required Input Artifacts | Produced Artifacts | Engine Binding |
+|-----------|-------------------------|-------------------|----------------|
+| `SCF` | Structure | Energy, forces, charge density | QE: `pw.x`, PySCF: `pyscf_scf` |
+| `NSCF` | Structure, charge density (from SCF) | Energy, bands, wavefunctions | QE: `pw.x` |
+| `BANDS_PW` | Structure, charge density (from SCF/NSCF) | Band structure (k-path) | QE: `pw.x` |
+| `DOS` | Charge density, wavefunctions (from NSCF) | Density of states | QE: `dos.x` |
+| `BANDS` | Charge density, wavefunctions (from NSCF/BANDS_PW) | Band structure plot data | QE: `bands.x` |
+| `RELAX` | Structure | Optimized structure, energy, forces | QE: `pw.x` |
+| `VC_RELAX` | Structure | Optimized structure + cell, energy, forces, stress | QE: `pw.x` |
+| `WANNIER` | Charge density, wavefunctions, overlaps | Maximally localized Wannier functions | QE: `wannier90.x` chain |
+| `PYSCF_SCF` | Structure (molecular) | Energy, MO coefficients | PySCF: `pyscf_scf` |
+
+**Artifact Descriptions** (engine-agnostic):
+- **Energy**: Total energy (units: normalized to eV in IR)
+- **Forces**: Atomic forces (units: eV/Å)
+- **Stress**: Cell stress tensor (units: eV/Å³)
+- **Charge density**: 3D charge density field (format: engine-specific)
+- **Wavefunctions**: Electronic wavefunctions (format: engine-specific)
+- **Band structure**: E(k) along k-path (format: engine-agnostic JSON)
+- **Density of states**: ρ(E) vs energy (format: engine-agnostic JSON)
+
+**Evidence**:
+- `src/quantumvitas/workflow/registry.py:69-112`: StepTypeSpec defines `requires_charge_density`, `produces_charge_density`
+- `src/quantumvitas/analysis/artifacts.py:213-302`: Analysis functions require specific files per step type
+- `src/quantumvitas/analysis/parsers.py:121-395`: Parsers produce canonical artifacts (SCFResult, DOSData, etc.)
+
+---
+
+### C.2 Engine Info in Generalized Step
+
+**Question**: Is engine/executable info in generalized step transitional? Final design: engine-free?
+
+**Answer**: **Final design should be engine-free**. Engine binding lives in **StepTypeSpec registry**.
+
+**Evidence**:
+- `src/quantumvitas/workflow/registry.py:22-47`: `StepTypeSpec` already contains `engine` and `executable` fields
+- `src/quantumvitas/workflow/registry.py:69-79`: `StepTypeSpec` for "scf" has `engine="qe"`, `executable="pw.x"`
+- `src/quantumvitas/calculation/types.py:10-30`: `StepType` enum is **engine-agnostic** (no engine info)
+
+**Current State**:
+- Step YAML: No engine info (engine-agnostic)
+- StepTypeSpec: Engine binding (per step type)
+- Execution: Engine resolved from StepTypeSpec → StepType
+
+**After IR Introduction**:
+- Step YAML: Contains IR fields (engine-agnostic)
+- StepTypeSpec: Engine binding (unchanged)
+- Execution: StepType → StepTypeSpec → Engine → Executable
+
+**Conclusion**: **Generalized steps are engine-free**. Engine binding lives in registry (not in step YAML).
+
+---
+
+### C.3 Step YAML SSOT Role
+
+**Question**: What is step.yaml's SSOT role today? After IR, what stays/moves?
+
+**Answer**:
+
+**Today** (from `src/quantumvitas/calculation/structure_steps.py:34-54`):
+- **SSOT**: `step.yaml` is SSOT for **user intent** (parameters/cards structure)
+- **Storage**: `steps/{step_id}.step.yaml` contains QE params (engine-specific today)
+- **Usage**: Materialization reads step YAML → generates QE `.in` file
+
+**After IR Introduction**:
+- **Step YAML stays**: User intent (IR fields + optional engine-specific overrides)
+- **Engine input moves**: Generated `.in` file is execution SSOT (not stored, regenerated)
+- **IR location**: IR fields stored in `step.yaml` under `ir:` section (new)
+
+**Proposed Structure**:
+```yaml
+# steps/{step_id}.step.yaml
+meta:
+  id: "01HZ..."
+  name: "scf"
+step_type: "scf"
+ir:  # NEW: IR fields (engine-agnostic)
+  spin_treatment: "collinear"
+  spin_orbit_coupling: false
+  wavefunction_cutoff: 60.0  # eV
+  kpoint_mesh: [8, 8, 8]
+parameters:  # KEEP: Engine-specific overrides (optional, advanced users)
+  SYSTEM:
+    ecutwfc: 65.0  # Override IR (Ry, explicit)
+cards:  # KEEP: Engine-specific cards (optional)
+  K_POINTS:
+    option: "automatic"
+    data: [[8, 8, 8, 0, 0, 0]]
+```
+
+**Rationale**:
+- **IR is SSOT**: User edits IR fields (engine-agnostic)
+- **Parameters are overrides**: Advanced users can override IR → QE compilation (stored as-is)
+- **No drift**: Materialization always regenerates `.in` from IR + overrides (IR is authoritative)
+
+**Code Path**:
+- **Today**: `materialize_step_spec()` reads `step.yaml` → generates `.in`
+- **After IR**: `materialize_step_spec()` reads IR from `step.yaml` → compiles IR → QE params → merges overrides → generates `.in`
+
+**History**: IR fields stored in run revision (human-readable):
+- `src/quantumvitas/history/run_revision.py:77`: `preset_options` field (today: preset enums)
+- **After IR**: `ir_fields` field (IR document snapshot)
+
+---
+
+## D. QE Parameter Metadata (SSOT Enforcement)
+
+### D.1 QE Parameter Metadata Duplication
+
+**Question**: Where are defaults/types duplicated? Which is SSOT?
+
+**Answer**:
+
+**SSOT**: `src/quantumvitas/data/qe_module_parameters.json` is SSOT for QE parameter metadata.
+
+**Duplications Found**:
+
+| Location | Purpose | SSOT? | How to Eliminate |
+|----------|---------|-------|------------------|
+| `qe_module_parameters.json` | QE parameter metadata (type, default, description) | ✅ YES | Keep as SSOT |
+| `step_defaults.py` | In-code default parameters per step type | ⚠️ Partial | Use `qe_module_parameters.json` defaults + step-specific logic |
+| Preset ParamSpace profiles | Preset → QE param mappings | ✅ Intentional | Keep (preset logic, not metadata) |
+
+**Evidence**:
+- `src/quantumvitas/data/qe_module_parameters.json:745-753`: `ecutwfc` default: null (REQUIRED)
+- `src/quantumvitas/calculation/step_defaults.py:22-23`: `ecutwfc: 50` (hardcoded default, not from JSON)
+- `src/quantumvitas/data/qe_metadata.py`: Provides API to access JSON (caching, hot-reload)
+
+**Elimination Strategy**:
+- `step_defaults.py` should read defaults from `qe_metadata.get_module_param_defaults()` (future)
+- Today: Hardcoded defaults are acceptable (QE has no default for required params anyway)
+
+**No Duplication in Presets**:
+- Preset ParamSpace profiles are **logic** (mapping rules), not metadata
+- They reference QE params but don't duplicate metadata
+
+---
+
+### D.2 Concrete Example: `ecutwfc`
+
+**Question**: Trace `ecutwfc` through metadata → IR → history.
+
+**Answer**:
+
+**QE Parameter**:
+- **Location**: `src/quantumvitas/data/qe_module_parameters.json:745-753`
+- **Name**: `&SYSTEM.ecutwfc`
+- **Type**: `REAL`
+- **Default**: `null` (REQUIRED)
+- **Description**: "kinetic energy cutoff (Ry) for wavefunctions"
+- **Unit**: Rydberg (Ry)
+
+**IR Field**:
+- **Name**: `wavefunction_cutoff` (IR v0, Section E)
+- **Type**: `float`
+- **Unit**: eV (fixed)
+- **Mapping**: IR → QE: `wavefunction_cutoff_ev * 13.6057` → `ecutwfc_ry`
+
+**History Display** (proposed):
+- **Location**: `src/quantumvitas/history/run_revision.py:86` (`step_digests` field)
+- **Format**: `"wavefunction_cutoff_ev": 60.0` (human-readable, engine-agnostic)
+- **UI Display**: `gui/src/components/panels/CalculationListPanel.tsx:355-361`: Formats as "wfc 60" (rounded)
+
+**Code Path**:
+1. **Materialization**: `structure_steps.py::materialize_step_spec()` → reads IR from `step.yaml` → compiles IR → QE params
+2. **Compilation**: IR `wavefunction_cutoff=60.0` (eV) → QE `ecutwfc=816.342` (Ry, computed)
+3. **Execution**: QE reads `ecutwfc` from `.in` file
+4. **Detection**: QE output contains `ecutwfc=816.342` → parser extracts → converts to IR `wavefunction_cutoff=60.0` (eV)
+5. **History**: Run revision stores IR fields (not QE params)
+
+---
+
+## E. Engine & Execution (Boundary Only)
+
+### E.1 On-Disk SSOT for Completed Step
+
+**Question**: What is the on-disk SSOT for a completed step today?
+
+**Answer**: **Two files** (both required):
+
+1. **Manifest entry** (`.run_tmp_info/manifest.json`):
+   - **Location**: `src/quantumvitas/calculation/manifest.py:25-59`
+   - **Fields**: `done: true`, `done_at: <timestamp>`, `step_sha: <hash>`, `structure_sha: <hash>`, `pseudo_set_sha: <hash>`
+   - **SSOT for**: Completion state (did step finish?)
+
+2. **Primary output file** (`raw/{step_type}.out`):
+   - **Location**: `src/quantumvitas/calculation/step_done.py:86-139`
+   - **Content**: Contains "JOB DONE" marker (QE-specific)
+   - **SSOT for**: Execution success (did QE report success?)
+
+**Evidence**:
+- `src/quantumvitas/calculation/manifest.py:32-40`: `ManifestStepEntry` tracks `done` flag + timestamps
+- `src/quantumvitas/calculation/step_done.py:86-139`: `is_step_done()` checks file existence + "JOB DONE" marker
+- `src/quantumvitas/calculation/runner.py:570-592`: Runner updates manifest `done=true` after successful execution
+
+**Truth Drift Risk**: **Low** - Manifest and output file are updated atomically:
+- Manifest updated only if `is_step_done()` returns `True`
+- `is_step_done()` checks output file existence + content
+
+**After EnginePlan Introduction**:
+- **EnginePlan**: `calculations/{calc_id}/.run_tmp_info/plans/{step_id}.plan.yaml` (execution SSOT)
+- **Manifest**: Completion state (unchanged)
+- **Output file**: Execution artifact (unchanged)
+
+---
+
+### E.2 Step Completion Detection
+
+**Question**: How is "step done" decided? What extra evidence required?
+
+**Answer**:
+
+**Current Logic** (`src/quantumvitas/calculation/step_done.py:86-139`):
+
+```python
+def is_step_done(calc_dir, step_kind, calc_raw_dir=None, step_doc=None) -> bool:
+    # 1. Check output file exists
+    output_path = primary_output_path(calc_raw_dir, step_kind, step_doc)
+    if not output_path.exists():
+        return False
+    
+    # 2. Check content marker
+    if step_kind in WANNIER90_STEP_TYPES:
+        return True  # Minimal check (file exists)
+    else:
+        # QE steps: check "JOB DONE" marker
+        output_text = output_path.read_text()
+        return "JOB DONE" in output_text
+```
+
+**Extra Evidence Required** (minimal):
+- **File existence**: Output file must exist (`raw/{step_type}.out`)
+- **Content marker**: QE steps must contain "JOB DONE" (Wannier90: file exists is sufficient)
+
+**No Extra Evidence Needed**:
+- Return code check: Not used (QE may exit 0 even if unconverged)
+- Artifact validation: Not done today (trusts "JOB DONE" marker)
+- Hash verification: Not done (manifest tracks input hashes, not output hashes)
+
+**After EnginePlan Introduction**:
+- **EnginePlan** stores `expected_artifacts` list
+- **Validation**: Check all expected artifacts exist (not just primary output)
+- **Hash verification**: Optional (store artifact SHA256 in plan for corruption detection)
+
+---
+
+### E.3 PySCF Restart Artifacts
+
+**Question**: Can PySCF restart from disk artifacts? Minimal artifact set?
+
+**Answer**: **YES** (subprocess-based today), **NO checkpoint files** (minimal restart).
+
+**Current Artifacts** (from `src/quantumvitas/engines/pyscf/runner.py:117-316`):
+1. **`results.json`**: Parsed results (energy, MO coefficients, etc.)
+2. **`pyscf.log`**: Stdout capture (reproducible)
+3. **`pyscf_input.py`**: Reproducible input script (for debugging)
+
+**Evidence**:
+- `src/quantumvitas/engines/pyscf/runner.py:418`: `results_file = working_dir / "results.json"`
+- `src/quantumvitas/engines/pyscf/runner.py:180`: `log_file = working_dir / "pyscf.log"`
+- `src/quantumvitas/engines/pyscf/runner.py:319-394`: `write_input_script()` generates `pyscf_input.py`
+
+**Minimal Restart Artifact Set** (per step):
+- **`results.json`**: Required (contains all computed data)
+- **`pyscf_input.py`**: Required (reproducible input, can re-run)
+- **`pyscf.log`**: Optional (debugging only)
+
+**No Checkpoint Files Today**:
+- PySCF supports checkpointing (`mf.chkfile`), but runner doesn't use it
+- Each step is independent (no state persistence between steps)
+
+**After PythonWorkerRunner Introduction**:
+- **Checkpoint files**: `workdir/checkpoint_{step_id}.pkl` (mandatory per step)
+- **Summary files**: `workdir/results_{step_id}.json` (mandatory per step)
+- **Log files**: `workdir/log_{step_id}.txt` (mandatory per step)
+
+**Restart Guarantee**: Worker can be killed at any time → next step loads from checkpoint files (not in-memory cache).
+
+---
+
+## F. Migration & Testability
+
+### F.1 Phase 0 IR Storage
+
+**Question**: Where is derived IR stored? How prevented from becoming SSOT?
+
+**Answer**:
+
+**Phase 0 ("read-only IR")**: **IR is NOT stored** - computed on-demand, not persisted.
+
+**Proposed Implementation**:
+- **Function**: `ir/detector.py::derive_ir_from_step_yaml(step_yaml) -> IRDocument`
+- **Location**: Computed in-memory only (not written to disk)
+- **Prevention**: No `ir:` section in `step.yaml` (Phase 0 constraint)
+
+**Code Path** (proposed):
+```python
+# Phase 0: Read-only IR derivation
+step_yaml = load_step_yaml(step_path)
+ir_fields = derive_ir_from_step_yaml(step_yaml)  # Computed, not stored
+preset_options = detect_presets_from_ir(ir_fields)  # For display only
+```
+
+**Evidence** (similar pattern in presets):
+- `src/quantumvitas/presets/detector.py:104-126`: `detect_magnetism()` computes preset from QE params (not stored)
+- `src/quantumvitas/presets/integration.py:105-150`: `detect_presets_from_calculation()` returns dict (not persisted)
+
+**Prevention Strategy**:
+- **No write code**: Phase 0 has no `write_ir_to_step_yaml()` function
+- **Code review**: Enforce no `step.yaml` writes in Phase 0
+- **Tests**: Verify no `ir:` section in step YAML after Phase 0 operations
+
+**After Phase 1**:
+- IR becomes SSOT (stored in `step.yaml` `ir:` section)
+- QE params become derived (computed from IR on materialization)
+
+---
+
+### F.2 Regression Tests Per Phase
+
+**Question**: List 2-3 concrete regression tests per phase (round-trip, invalidation, drift prevention).
+
+**Answer**:
+
+**Phase 0: Read-Only IR Derivation**
+
+**Test 1: Round-Trip** (`tests/unit/test_ir_derivation.py`):
+```python
+def test_ir_derivation_roundtrip():
+    """QE params → IR → QE params (via preset) should match."""
+    # Setup: step_yaml with QE params
+    step_yaml = {"parameters": {"SYSTEM": {"nspin": 2, "ecutwfc": 50.0}}}
+    
+    # Derive IR
+    ir = derive_ir_from_step_yaml(step_yaml)
+    assert ir["spin_treatment"] == "collinear"
+    assert ir["wavefunction_cutoff"] == pytest.approx(50.0 * 13.6057, abs=0.1)  # Ry → eV
+    
+    # Compile IR → QE params (via preset)
+    preset_options = ir_to_presets(ir)
+    qe_params = compile_presets(preset_options)
+    
+    # Round-trip: should match original
+    assert qe_params["SYSTEM"]["nspin"] == 2
+    assert qe_params["SYSTEM"]["ecutwfc"] == pytest.approx(50.0, abs=0.01)
+```
+
+**Test 2: Invalidation** (`tests/unit/test_ir_invalidation.py`):
+```python
+def test_ir_derivation_invalidates_on_step_change():
+    """IR derivation should recompute when step YAML changes."""
+    # Setup: step_yaml
+    step_yaml_v1 = {"parameters": {"SYSTEM": {"ecutwfc": 50.0}}}
+    step_yaml_v2 = {"parameters": {"SYSTEM": {"ecutwfc": 60.0}}}
+    
+    # Derive IR v1
+    ir_v1 = derive_ir_from_step_yaml(step_yaml_v1)
+    
+    # Change step YAML
+    # Derive IR v2
+    ir_v2 = derive_ir_from_step_yaml(step_yaml_v2)
+    
+    # Should be different
+    assert ir_v1["wavefunction_cutoff"] != ir_v2["wavefunction_cutoff"]
+```
+
+**Test 3: Drift Prevention** (`tests/unit/test_ir_no_persistence.py`):
+```python
+def test_phase0_no_ir_persistence():
+    """Phase 0 should NOT write ir: section to step.yaml."""
+    # Setup: step_yaml without ir:
+    step_path = Path("steps/scf.step.yaml")
+    step_yaml = yaml.safe_load(step_path.read_text())
+    assert "ir" not in step_yaml
+    
+    # Derive IR (should not modify step_yaml)
+    ir = derive_ir_from_step_yaml(step_yaml)
+    
+    # Verify step.yaml unchanged
+    step_yaml_after = yaml.safe_load(step_path.read_text())
+    assert "ir" not in step_yaml_after
+    assert step_yaml_after == step_yaml
+```
+
+---
+
+**Phase 1: IR as Control Surface for Presets**
+
+**Test 1: Round-Trip** (`tests/unit/test_ir_preset_roundtrip.py`):
+```python
+def test_ir_preset_roundtrip():
+    """Preset → IR → Preset should match."""
+    # Setup: preset options
+    preset_options = {"magnetism": MagnetismOption.COLLINEAR_LSDA}
+    
+    # Preset → IR
+    ir = compile_presets_to_ir(preset_options)
+    assert ir["spin_treatment"] == "collinear"
+    
+    # IR → Preset (detection)
+    detected_presets = detect_presets_from_ir(ir)
+    assert detected_presets["magnetism"] == MagnetismOption.COLLINEAR_LSDA
+```
+
+**Test 2: Invalidation** (`tests/unit/test_ir_step_materialization.py`):
+```python
+def test_ir_change_invalidates_materialization():
+    """Changing IR should invalidate generated input file."""
+    # Setup: step with IR
+    step_yaml = {"ir": {"wavefunction_cutoff": 60.0}}
+    materialize_step_spec(step_yaml, workdir)
+    
+    # Change IR
+    step_yaml["ir"]["wavefunction_cutoff"] = 70.0
+    
+    # Materialize again (should regenerate)
+    materialize_step_spec(step_yaml, workdir)
+    
+    # Verify input file updated
+    input_file = workdir / "scf.in"
+    input_text = input_file.read_text()
+    assert "ecutwfc" in input_text
+    # Parse and verify value changed
+```
+
+**Test 3: Drift Prevention** (`tests/unit/test_ir_ssot_enforcement.py`):
+```python
+def test_ir_overrides_qe_params():
+    """IR is SSOT; QE params in step.yaml are overrides only."""
+    # Setup: step with IR + QE param override
+    step_yaml = {
+        "ir": {"wavefunction_cutoff": 60.0},  # SSOT
+        "parameters": {"SYSTEM": {"ecutwfc": 50.0}},  # Override
+    }
+    
+    # Materialize: should use IR (60.0 eV) not override (50.0 Ry)
+    # Unless override explicitly enabled
+    # This test verifies override semantics are clear
+```
+
+---
+
+**Phase 2: General Step Contract**
+
+**Test 1: Round-Trip** (`tests/unit/test_step_contract_roundtrip.py`):
+```python
+def test_step_contract_roundtrip():
+    """Step YAML → IR → Step YAML (IR section) should match."""
+    # Setup: step with IR
+    step_yaml = load_step_yaml("steps/scf.step.yaml")
+    ir_original = step_yaml["ir"]
+    
+    # Round-trip: IR → step YAML
+    step_yaml_roundtrip = {"ir": ir_original}
+    
+    # Should match
+    assert step_yaml_roundtrip["ir"] == ir_original
+```
+
+**Test 2: Invalidation** (`tests/unit/test_step_artifact_contract.py`):
+```python
+def test_step_artifact_contract_invalidation():
+    """Changing step type should invalidate artifact expectations."""
+    # Setup: SCF step (produces charge density)
+    step_scf = StepTypeSpec.get("scf")
+    assert step_scf.produces_charge_density == True
+    
+    # Setup: DOS step (requires charge density)
+    step_dos = StepTypeSpec.get("dos")
+    assert step_dos.requires_charge_density == True
+    
+    # Invalid sequence: DOS without prior SCF
+    # Should fail with clear error
+```
+
+**Test 3: Drift Prevention** (`tests/unit/test_engineplan_ssot.py`):
+```python
+def test_engineplan_ssot_no_drift():
+    """EnginePlan is execution SSOT; step YAML changes invalidate plan."""
+    # Setup: step with IR
+    step_yaml = {"ir": {"wavefunction_cutoff": 60.0}}
+    plan = generate_engineplan(step_yaml, workdir)
+    
+    # Change step YAML
+    step_yaml["ir"]["wavefunction_cutoff"] = 70.0
+    
+    # Regenerate plan: should detect change
+    plan_new = generate_engineplan(step_yaml, workdir)
+    
+    # Should be different (or plan regeneration detected)
+    assert plan.input_sha != plan_new.input_sha
+```
+
+---
+
+**Phase 3: Optional IR Exposure**
+
+**Test 1: Round-Trip** (`tests/integration/test_cli_ir_exposure.py`):
+```python
+def test_cli_ir_roundtrip():
+    """CLI IR edit → step YAML → CLI IR display should match."""
+    # CLI: edit IR field
+    run_cli(["qv", "step", "edit", "--ir.wavefunction_cutoff=70.0", "scf"])
+    
+    # Read step YAML
+    step_yaml = load_step_yaml("steps/scf.step.yaml")
+    
+    # CLI: display IR
+    output = run_cli(["qv", "step", "show", "--ir", "scf"])
+    
+    # Should match
+    assert "wavefunction_cutoff: 70.0" in output
+```
+
+**Test 2: Invalidation** (`tests/integration/test_jupyter_ir_interaction.py`):
+```python
+def test_jupyter_ir_interaction():
+    """Jupyter IR edit should invalidate cached materialization."""
+    # Jupyter: edit IR
+    step = load_step("scf")
+    step.ir.wavefunction_cutoff = 70.0
+    step.save()
+    
+    # Materialization: should detect change
+    # (Implementation depends on Jupyter integration design)
+```
+
+**Test 3: Drift Prevention** (`tests/integration/test_ui_ir_editing.py`):
+```python
+def test_ui_ir_editing_no_qe_param_confusion():
+    """UI should prevent mixing IR + QE param editing."""
+    # UI: IR edit mode active
+    # Attempt to edit QE params directly
+    # Should show warning or disable QE param editor
+    
+    # (Implementation depends on UI design)
+```
+
+---
+
+## Summary of Critical Answers
+
+1. **IR reversibility**: 12 REVERSIBLE, 7 LOSSY, 6 DERIVED (policies in ParamSpace code)
+2. **Exchange-correlation**: Controlled by `input_dft` + pseudo match (IR SSOT: `input_dft`)
+3. **Magnetization direction**: QE supports but not in presets (advanced feature)
+4. **Units**: IR uses eV fixed (conversion at compile time, no code today)
+5. **Preset example**: `magnetism: collinear_lsda` → `nspin=2`, `noncolin=False`, `lspinorb=False`
+6. **Detector truth**: Today infers presets; after IR, infers IR (SSOT)
+7. **Step taxonomy**: 9 step types defined (SCF, NSCF, BANDS, DOS, WANNIER, PYSCF_SCF, etc.)
+8. **Engine binding**: Lives in StepTypeSpec registry (generalized steps are engine-free)
+9. **Step YAML SSOT**: User intent today; after IR, IR fields + optional overrides
+10. **QE metadata duplication**: `step_defaults.py` duplicates some defaults (acceptable for now)
+11. **Concrete example**: `ecutwfc` → `wavefunction_cutoff` (eV) → history display
+12. **On-disk SSOT**: Manifest (`done` flag) + output file ("JOB DONE" marker)
+13. **Step completion**: File existence + content marker (no extra evidence needed)
+14. **PySCF restart**: `results.json` + `pyscf_input.py` (no checkpoint files today)
+15. **Phase 0 IR storage**: Not stored (computed on-demand, no persistence)
+16. **Regression tests**: 3 tests per phase (round-trip, invalidation, drift prevention)
+
+---
+
 **End of Report**

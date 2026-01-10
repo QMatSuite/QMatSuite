@@ -31,13 +31,6 @@ class Step:
     reference_output: Optional[Path] = None
     structure: Optional[StructureRef] = None
 
-    @property
-    def id(self) -> str:
-        """
-        Legacy identifier accessor (maps to the slug inside ``meta``).
-        """
-        return self.meta.slug
-
     def resolve_input_path(self, calculation_raw_dir: Path) -> Path:
         """
         Resolve input file path relative to calculation_raw_dir.
@@ -100,7 +93,7 @@ class Step:
 
             # E. Logging: Essential info only
             logger.debug(
-                f"[Step.run] Executing step: id={self.id}, type={step_type_value}"
+                f"[Step.run] Executing step: slug={self.meta.slug}, ulid={self.meta.id}, type={step_type_value}"
             )
             
             result, _ = run_input_step(
@@ -114,14 +107,14 @@ class Step:
             )
             
             logger.debug(
-                f"[Step.run] Step {self.id} completed: success={result.success}, return_code={getattr(result, 'return_code', 'N/A')}"
+                f"[Step.run] Step {self.meta.slug} (ulid={self.meta.id}) completed: success={result.success}, return_code={getattr(result, 'return_code', 'N/A')}"
             )
             
             return result
         except Exception as e:
             import traceback
             tb_str = traceback.format_exc()
-            logger.exception(f"[Step.run] Step {self.id} raised exception: {type(e).__name__}: {e}")
+            logger.exception(f"[Step.run] Step {self.meta.slug} (ulid={self.meta.id}) raised exception: {type(e).__name__}: {e}")
             
             # Create a failed StepResult from the exception
             from quantumvitas.calculation.results import StepResult as StepResultClass

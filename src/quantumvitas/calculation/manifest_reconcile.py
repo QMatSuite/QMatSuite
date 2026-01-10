@@ -86,7 +86,7 @@ def reconcile_manifest(
             step_doc_dict = StepDoc.load(step_yaml_path).to_dict()
             step_sha = compute_step_sha(step_doc_dict)
         except Exception as e:
-            logger.warning(f"Failed to compute step_sha for step {step.id}: {e}")
+            logger.warning(f"Failed to compute step_sha for step {step.meta.slug} (ulid={step.meta.id}): {e}")
             step_sha = ""
         
         # Check if old manifest has matching entry
@@ -152,7 +152,7 @@ def reconcile_manifest(
                                 first_changed_idx = i
                             continue
                     except Exception as e:
-                        logger.warning(f"Failed to verify step done status for step {step.id}: {e}, marking as not done")
+                        logger.warning(f"Failed to verify step done status for step {step.meta.slug} (ulid={step.meta.id}): {e}, marking as not done")
                         # On error, mark as not done
                         new_entry = ManifestStepEntry(
                             kind=step_kind,
