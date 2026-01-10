@@ -47,7 +47,8 @@ class QeEngine(Engine):
             params = getattr(step, "parameters", {})
             input_file = params.get("input_file")
             if not input_file:
-                raise ValueError(f"Step '{step.id}' is missing 'input_file' parameter")
+                step_slug = getattr(getattr(step, "meta", None), "slug", "unknown")
+                raise ValueError(f"Step '{step_slug}' is missing 'input_file' parameter")
             input_path = Path(input_file)
             if not input_path.is_absolute():
                 input_path = working_dir / input_path

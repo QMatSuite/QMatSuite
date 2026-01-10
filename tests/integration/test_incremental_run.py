@@ -1190,3 +1190,129 @@ def test_manifest_corruption_recovery(tmp_project, minimal_calculation):
     assert len(loaded.steps) == 1
     assert loaded.steps[0].kind == "scf"
 
+
+def test_step_has_no_id_property(tmp_project, minimal_calculation):
+    """
+    Contract test: Step.id property must be deleted.
+    
+    Accessing step.id should raise AttributeError (or simply assert not hasattr(step, "id")).
+    """
+    from quantumvitas.calculation.calculation import Calculation
+    from quantumvitas.project.model import Project
+    
+    calc_id, calc_dir, _ = minimal_calculation
+    
+    # Load calculation using from_yaml
+    project = Project.open(tmp_project)
+    calculation = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
+    
+    # Verify calculation has steps
+    assert len(calculation.steps) > 0, "Calculation should have at least one step"
+    step = calculation.steps[0]
+    
+    # Verify Step.id property does NOT exist
+    assert not hasattr(step, "id"), "Step.id property must be deleted"
+    
+    # Verify accessing step.id raises AttributeError
+    with pytest.raises(AttributeError):
+        _ = step.id
+    
+    # Verify step.meta.id exists (ULID)
+    assert hasattr(step.meta, "id"), "Step.meta.id must exist (ULID)"
+    assert step.meta.id is not None, "Step.meta.id must not be None"
+    assert len(step.meta.id) == 26, f"Step.meta.id must be ULID (26 chars), got length {len(step.meta.id)}"
+    
+    # Verify step.meta.slug exists (slug for display)
+    assert hasattr(step.meta, "slug"), "Step.meta.slug must exist (slug for display)"
+    assert step.meta.slug is not None, "Step.meta.slug must not be None"
+    # Slug may be shorter than ULID (typically 3-20 chars), but should be a valid string
+    assert isinstance(step.meta.slug, str), "Step.meta.slug must be a string"
+
+
+def test_manifest_stores_ulid_not_slug(tmp_project, minimal_calculation, monkeypatch):
+    """
+    Contract test: Manifest must store ULID only, never slug.
+    
+    Run reconcile/run path and assert manifest entries store step_ulid that looks like ULID,
+    and never equals the slug like "scf".
+    """
+    from quantumvitas.calculation.calculation import Calculation
+    from quantumvitas.project.model import Project
+    
+    calc_id, calc_dir, _ = minimal_calculation
+    
+    # Load calculation using from_yaml
+    project = Project.open(tmp_project)
+    calculation = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
+    
+    # Verify calculation has steps
+    assert len(calculation.steps) > 0, "Calculation should have at least one step"
+    step = calculation.steps[0]
+    
+    # Get step slug (for comparison)
+    step_slug = step.meta.slug
+    step_ulid = step.meta.id
+    
+    # Verify slug and ULID are different (slug is typically "scf", ULID is 26 chars)
+    assert step_slug != step_ulid, "Step slug and ULID must be different"
+    assert len(step_ulid) == 26, f"Step ULID must be 26 chars, got {len(step_ulid)}"
+    
+    # Mock is_step_done to return False (so we can test manifest creation)
+    monkeypatch.setattr(
+        "quantumvitas.calculation.manifest_reconcile.is_step_done",
+        lambda *args, **kwargs: False
+    )
+    
+    # Compute SHAs needed for reconcile
+    from quantumvitas.core.models import load_calculation
+    from quantumvitas.core.resolution import require_structure, build_resource_index
+    from quantumvitas.core.project_utils import load_project_config
+    
+    calc_data_path = calc_dir / "calculation.yaml"
+    calc_model = load_calculation(calc_data_path, project_root=tmp_project)
+    config = load_project_config(tmp_project)
+    index = build_resource_index(tmp_project)
+    
+    structure_id = calc_model.structure_id
+    structure_resolved = require_structure(tmp_project, structure_id, config=config, index=index)
+    structure_path = structure_resolved.absolute_path
+    structure_sha = compute_structure_sha(structure_path)
+    pseudo_sha = compute_pseudo_set_sha(tmp_project / "pseudo", calc_model.species_map or {})
+    
+    # Run reconcile to create/update manifest
+    from quantumvitas.calculation.manifest_reconcile import reconcile_manifest
+    
+    reconciled_manifest, first_changed_idx = reconcile_manifest(
+        calc_dir=calc_dir,
+        project_root=tmp_project,
+        calculation_steps=calculation.steps,
+        current_pseudo_set_sha=pseudo_sha,
+        structure_path=structure_path,
+    )
+    
+    # Load manifest
+    manifest = load_manifest(calc_dir)
+    assert manifest is not None, "Manifest should exist after reconcile"
+    assert len(manifest.steps) > 0, "Manifest should have at least one step entry"
+    
+    # Verify manifest entry stores ULID, not slug
+    entry = manifest.steps[0]
+    assert entry.step_ulid == step_ulid, f"Manifest entry step_ulid must be ULID, got {entry.step_ulid}"
+    assert entry.step_ulid != step_slug, f"Manifest entry step_ulid must NOT be slug '{step_slug}', got {entry.step_ulid}"
+    assert len(entry.step_ulid) == 26, f"Manifest entry step_ulid must be ULID (26 chars), got length {len(entry.step_ulid)}"
+    
+    # Verify slug never appears in manifest JSON as a step identifier
+    # Note: slug may appear as 'kind' if it matches step type (e.g., "scf"), but that's the step type, not identifier
+    from quantumvitas.calculation.manifest import get_manifest_path
+    import json
+    manifest_path = get_manifest_path(calc_dir)
+    if manifest_path.exists():
+        manifest_data = json.loads(manifest_path.read_text())
+        # Check that step_ulid fields contain ULID (26 chars), not slug
+        for entry_data in manifest_data.get("steps", []):
+            step_ulid_value = entry_data.get("step_ulid", "")
+            assert len(step_ulid_value) == 26, \
+                f"Manifest entry step_ulid must be ULID (26 chars), got '{step_ulid_value}' (length {len(step_ulid_value)})"
+            assert step_ulid_value != step_slug, \
+                f"Manifest entry step_ulid must NOT be slug '{step_slug}', got '{step_ulid_value}'. Manifest should only store ULID as identifier."
+
