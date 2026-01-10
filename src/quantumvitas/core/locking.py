@@ -6,13 +6,18 @@ Provides context managers for per-calc locks:
 - edit.lock: Short-held during YAML file writes
 
 Uses portalocker for cross-platform support (Windows/macOS/Linux).
+
+Reentrancy:
+- portalocker locks are NOT re-entrant. This module enforces non-reentrancy
+  with a per-thread guard to fail fast instead of deadlocking.
 """
 
 from __future__ import annotations
 
 import contextlib
+import threading
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Set
 
 import portalocker
 
@@ -20,6 +25,22 @@ import portalocker
 class CalculationLockError(Exception):
     """Raised when a calculation lock cannot be acquired."""
     pass
+
+
+class LockReentrancyError(RuntimeError):
+    """Raised when attempting to nest locks in the same thread."""
+    pass
+
+
+# Per-thread tracking of held edit locks (by canonical calc_dir path)
+_thread_local = threading.local()
+
+
+def _get_held_edit_locks() -> Set[Path]:
+    """Get the set of calc_dir paths for which this thread holds edit locks."""
+    if not hasattr(_thread_local, 'held_edit_locks'):
+        _thread_local.held_edit_locks = set()
+    return _thread_local.held_edit_locks
 
 
 def _ensure_lock_dir(calc_dir: Path) -> Path:
@@ -95,6 +116,9 @@ def calc_edit_lock(calc_dir: Path, fail_fast: bool = False):
     This lock is held during YAML file writes (calculation.yaml and step YAML files).
     Should be held for short durations only (< 100ms typically).
     
+    IMPORTANT: This lock is NOT re-entrant. Do NOT nest calc_edit_lock calls
+    in the same thread. Instead, let save_yaml_doc() acquire the lock internally.
+    
     Args:
         calc_dir: Path to calculation directory
         fail_fast: If True, raise CalculationLockError immediately if lock is held.
@@ -105,12 +129,28 @@ def calc_edit_lock(calc_dir: Path, fail_fast: bool = False):
     
     Raises:
         CalculationLockError: If fail_fast=True and lock cannot be acquired
+        LockReentrancyError: If attempting to nest locks in the same thread
         
     Example:
-        with calc_edit_lock(calc_dir, fail_fast=False):
-            # Write calculation.yaml or step YAML
-            save_yaml_doc(doc, path)
+        # CORRECT: Let save_yaml_doc handle locking internally
+        save_yaml_doc(doc, path)
+        
+        # INCORRECT: Don't nest locks
+        with calc_edit_lock(calc_dir):
+            save_yaml_doc(doc, path)  # This will raise LockReentrancyError
     """
+    # Canonicalize path for thread-local tracking
+    canonical_calc_dir = calc_dir.resolve()
+    
+    # Check for reentrancy in the same thread
+    held_locks = _get_held_edit_locks()
+    if canonical_calc_dir in held_locks:
+        raise LockReentrancyError(
+            f"Non-reentrant calc_edit_lock attempted for {calc_dir}. "
+            "Do not nest calc_edit_lock around save_yaml_doc(). "
+            "The save_yaml_doc() function already acquires the lock internally."
+        )
+    
     lock_dir = _ensure_lock_dir(calc_dir)
     lock_path = lock_dir / "edit.lock"
     
@@ -134,7 +174,14 @@ def calc_edit_lock(calc_dir: Path, fail_fast: bool = False):
             # but edit operations should be fast anyway
             portalocker.lock(lock_file, portalocker.LOCK_EX)
         
-        yield
+        # Mark as held in this thread
+        held_locks.add(canonical_calc_dir)
+        
+        try:
+            yield
+        finally:
+            # Always remove from held set, even on exceptions
+            held_locks.discard(canonical_calc_dir)
         
     finally:
         try:
