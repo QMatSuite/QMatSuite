@@ -24,7 +24,7 @@ interface CalculationOverviewTabProps {
   structures?: StructureInfo[];
   selectedStepId: string | null;
   onSelectStep: (stepId: string) => void;
-  onRunCalculation: (calculation: CalculationInfo) => void;
+  onRunCalculation: (calculation: CalculationInfo, runMode?: 'incremental' | 'full') => void;
   onDeleteStep: (stepId: string) => void;
   onGoToJobs?: () => void;
   onCalculationUpdated?: () => void;
@@ -201,7 +201,7 @@ export function CalculationOverviewTab({
             projectRoot={projectRoot}
             onSelectStep={handleSelectStep}
             onExitFocus={handleExitFocus}
-            onRunCalculation={calculation && onRunCalculation ? () => onRunCalculation(calculation) : undefined}
+            onRunCalculation={calculation && onRunCalculation ? () => onRunCalculation(calculation, 'incremental') : undefined}
             onAddStep={onCalculationUpdated}
             onImportStep={onCalculationUpdated}
             onReorder={onCalculationUpdated}
@@ -253,7 +253,7 @@ interface CompactStepListProps {
   projectRoot: string;
   onSelectStep: (stepId: string) => void;
   onExitFocus: () => void;
-  onRunCalculation?: () => void;
+  onRunCalculation?: (calculation: CalculationInfo, runMode?: 'incremental' | 'full') => void;
   onAddStep?: () => void;
   onImportStep?: () => void;
   onReorder?: () => void;
@@ -380,13 +380,13 @@ function CompactStepList({
       </div>
 
       {/* Run Calculation button */}
-      {onRunCalculation && (
+      {onRunCalculation && calculation && (
         <div className="compact-step-list__run-calculation">
           <button
             className="compact-step-list__run-calculation-btn"
             onClick={(e) => {
               e.stopPropagation(); // Prevent background click handler from firing
-              onRunCalculation();
+              onRunCalculation(calculation, 'incremental');
             }}
             title="Run all steps in this calculation"
             data-testid="qv-btn-run-calculation-focus"

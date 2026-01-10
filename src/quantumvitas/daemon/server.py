@@ -191,7 +191,11 @@ class QVDaemon:
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
-        self.job_manager = JobManager(max_workers=1)
+        # Load max_workers from settings (default 2 for concurrent calc runs)
+        from quantumvitas.core.settings import load_settings
+        settings = load_settings()
+        max_workers = settings.max_concurrent_calcs
+        self.job_manager = JobManager(max_workers=max_workers)
         self.state = DaemonState()
         self._running = False
         
@@ -339,6 +343,7 @@ class QVDaemon:
             # Job management
             "run_calculation": self._handle_run_calculation,
             "run_step": self._handle_run_step,
+            "run_single_step": self._handle_run_single_step,
             "get_job_status": self._handle_get_job_status,
             "get_job_logs": self._handle_get_job_logs,
             "list_jobs": self._handle_list_jobs,
@@ -5362,6 +5367,7 @@ class QVDaemon:
             calculation: str - Calculation selector (GUI uses calculation.slug)
             strict: bool - Optional strict mode (default false)
             verbose: bool - Optional verbose mode (default false)
+            run_mode: str - Optional run mode ("incremental" or "full", default "incremental")
             
         Returns:
             job_id: str - ID of submitted job
@@ -5372,6 +5378,7 @@ class QVDaemon:
         calculation = self._require_str(payload, "calculation")
         strict = payload.get("strict", False)
         verbose = payload.get("verbose", False)
+        run_mode = payload.get("run_mode", "incremental")  # Default incremental
         
         # Resolve with fallback to ensure cache is up-to-date before submitting job
         calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation)
@@ -5435,6 +5442,7 @@ class QVDaemon:
             index=cache.index,
             config=cache.config,
             run_id=job_id,  # Pass job_id as run_id for history unification
+            run_mode=run_mode,  # Pass run_mode ("incremental" or "full")
         )
         
         return {"job_id": job_id, "status": "pending", "target_name": calculation}
@@ -5460,6 +5468,7 @@ class QVDaemon:
         verbose = payload.get("verbose", False)
         
         # Resolve with fallback to ensure cache is up-to-date before submitting job
+        calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation)
         self._resolve_step_with_fallback(project_root, calculation, step)
         
         target_name = f"{calculation}/{step}"
@@ -5502,6 +5511,62 @@ class QVDaemon:
             step_selector=step,
             verbose=verbose,
             run_id=job_id,  # Pass job_id as run_id for history unification
+        )
+        
+        return {"job_id": job_id, "status": "pending", "target_name": target_name}
+    
+    def _handle_run_single_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Submit a single-step run job (advanced feature, always runs, never skips).
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            step_ulid: str - Step ULID (must match a step in calculation.yaml)
+            verbose: bool - Optional verbose mode (default false)
+            
+        Returns:
+            job_id: str - ID of submitted job
+            status: str - Initial status ("pending")
+            target_name: str - Step name for display
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step_ulid = self._require_str(payload, "step_ulid")
+        verbose = payload.get("verbose", False)
+        
+        # Resolve with fallback to ensure cache is up-to-date
+        calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation)
+        
+        # Pass cached index and config
+        cache = self.state.get_cache(project_root)
+        
+        target_name = f"{calculation}/{step_ulid}"
+        
+        # Generate job_id using ULID
+        import ulid as ulid_module
+        job_id = str(ulid_module.new())
+        
+        # Submit job
+        self.job_manager.submit_with_id(
+            job_id=job_id,
+            job_type="run_single_step",
+            func=QVService.run_single_step,
+            params={
+                "project_root": str(project_root),
+                "calculation": calculation,
+                "step_ulid": step_ulid,
+            },
+            target_name=target_name,
+            project_root_display=str(project_root.resolve()),
+            # kwargs for QVService.run_single_step
+            project_root=project_root,
+            calculation_selector=calculation,
+            step_ulid=step_ulid,
+            verbose=verbose,
+            index=cache.index,
+            config=cache.config,
+            run_id=job_id,  # Pass job_id as run_id
         )
         
         return {"job_id": job_id, "status": "pending", "target_name": target_name}

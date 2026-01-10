@@ -1710,7 +1710,7 @@ function App() {
     }
   }, [qv, projectRoot, fetchCalculations, refreshSummary, handleSelectCalculation]);
   
-  const handleRunCalculation = useCallback(async (calculation: CalculationInfo) => {
+  const handleRunCalculation = useCallback(async (calculation: CalculationInfo, runMode: 'incremental' | 'full' = 'incremental') => {
     // Perform preflight checks first
     const preflightResponse = await qv.call('preflight_check', {
       project_root: projectRoot,
@@ -1742,12 +1742,13 @@ function App() {
     }
     
     // Submit the calculation run
-    // Backend contract: { project_root: string (normalized absolute), calculation: string (slug), strict?: bool, verbose?: bool }
-    // GUI sends: calculation.slug (from selectedCalculation.slug)
+    // Backend contract: { project_root: string (normalized absolute), calculation: string (slug), strict?: bool, verbose?: bool, run_mode?: string }
+    // GUI sends: calculation.slug (from selectedCalculation.slug), run_mode: "incremental" or "full"
     // See tests/daemon/test_gui_job_and_step_flows.py for RPC contract details
     const response = await qv.call('run_calculation', {
       project_root: normalizedProjectRoot,
       calculation: calculation.slug, // Backend expects calculation selector (slug)
+      run_mode: runMode || 'incremental', // Default incremental (Overleaf-like)
     });
     
     if (response.ok && response.data) {
@@ -1760,7 +1761,16 @@ function App() {
       
       // Job counts will be refreshed by StatusBar and JobsPanel polling
     } else {
-      showNotification(`Failed to start job: ${response.error?.message || 'Unknown error'}`, 'error');
+      // Handle specific error codes
+      const error = response.error as any;
+      if (error?.code === 'CALCULATION_LOCKED') {
+        showNotification(
+          'Calculation is currently running. Please wait for the current run to complete or stop it first.',
+          'error'
+        );
+      } else {
+        showNotification(`Failed to start job: ${error?.message || 'Unknown error'}`, 'error');
+      }
       // Do NOT change tabs on error - stay in Overview
     }
     

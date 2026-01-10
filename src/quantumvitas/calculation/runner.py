@@ -70,9 +70,12 @@ class CalculationRunner:
         *,
         skip_history: bool = False,
         run_id: Optional[str] = None,
+        run_mode: str = "incremental",  # "incremental" or "full"
     ) -> CalculationResult:
         """
         Execute all steps in a calculation.
+        
+        Supports incremental and full run modes.
         
         Args:
             calculation: The calculation to execute
@@ -80,6 +83,9 @@ class CalculationRunner:
             run_id: External run ID to use (e.g., job_id from JobManager).
                     If provided, this ID will be used for history recording
                     to ensure job_id == run_id identity.
+            run_mode: Run mode ("incremental" or "full"). Default "incremental".
+                     Incremental skips steps that are already done and unchanged.
+                     Full reruns all steps from step0.
             
         Returns:
             CalculationResult with status and step summaries
@@ -89,6 +95,11 @@ class CalculationRunner:
         step_summaries: List[StepResultSummary] = []
         status = StepStatus.SUCCESS
         calculation_failed = False
+        
+        # Generate run_id if not provided
+        if run_id is None:
+            import ulid
+            run_id = str(ulid.new())
         
         # History: Create run revision and record run_started event
         run_revision = None
@@ -158,7 +169,180 @@ class CalculationRunner:
         import logging
         logger = logging.getLogger(__name__)
         
-        for step in calculation.steps:
+        # Manifest reconciliation (incremental run support)
+        start_idx = 0
+        manifest = None
+        
+        if run_mode == "incremental":
+            try:
+                from quantumvitas.calculation.manifest_reconcile import reconcile_manifest
+                from quantumvitas.calculation.hash_utils import (
+                    compute_pseudo_set_sha,
+                )
+                from quantumvitas.io import read_structure
+                from quantumvitas.core.resolution import require_structure
+                
+                # Compute pseudo_set_sha (should have been computed in preflight, but recompute here for reconciliation)
+                project_pseudo_dir = calculation.project.root / "pseudo"
+                species_map = calculation.species_map or {}
+                current_pseudo_set_sha = compute_pseudo_set_sha(project_pseudo_dir, species_map)
+                
+                # Resolve structure path
+                if calculation.structure_id:
+                    structure_resolved = require_structure(
+                        calculation.project.root,
+                        calculation.structure_id,
+                        config=None,
+                        index=None,
+                    )
+                    structure_path = structure_resolved.absolute_path
+                else:
+                    structure_path = None
+                
+                if structure_path and structure_path.exists():
+                    # Reconcile manifest
+                    manifest, start_idx = reconcile_manifest(
+                        calc_dir=calculation.dir,
+                        project_root=calculation.project.root,
+                        calculation_steps=calculation.steps,
+                        current_pseudo_set_sha=current_pseudo_set_sha,
+                        structure_path=structure_path,
+                    )
+                    logger.info(f"[CALCULATION_RUNNER] Manifest reconciled: start_idx={start_idx}, total_steps={len(calculation.steps)}")
+                else:
+                    logger.warning(f"[CALCULATION_RUNNER] Structure path not found, starting from beginning")
+                    start_idx = 0
+            except Exception as e:
+                logger.warning(f"[CALCULATION_RUNNER] Manifest reconciliation failed: {e}, starting from beginning")
+                start_idx = 0
+        elif run_mode == "full":
+            # Full run: reconcile manifest first, then mark all entries as done=False and clear run_id/timestamps
+            try:
+                from quantumvitas.calculation.manifest_reconcile import reconcile_manifest
+                from quantumvitas.calculation.hash_utils import compute_pseudo_set_sha
+                from quantumvitas.core.resolution import require_structure
+                
+                project_pseudo_dir = calculation.project.root / "pseudo"
+                species_map = calculation.species_map or {}
+                current_pseudo_set_sha = compute_pseudo_set_sha(project_pseudo_dir, species_map) if species_map else ""
+                
+                if calculation.structure_id:
+                    structure_resolved = require_structure(
+                        calculation.project.root,
+                        calculation.structure_id,
+                        config=None,
+                        index=None,
+                    )
+                    structure_path = structure_resolved.absolute_path
+                else:
+                    structure_path = None
+                
+                if structure_path and structure_path.exists():
+                    # Step 1: Reconcile manifest (ensures length matches topology, updates SHAs and ULIDs)
+                    manifest, _ = reconcile_manifest(
+                        calc_dir=calculation.dir,
+                        project_root=calculation.project.root,
+                        calculation_steps=calculation.steps,
+                        current_pseudo_set_sha=current_pseudo_set_sha,
+                        structure_path=structure_path,
+                    )
+                    
+                    # Step 2: Mark all entries as done=False and clear run_id/timestamps for full run
+                    from quantumvitas.calculation.manifest import save_manifest_atomic
+                    for entry in manifest.steps:
+                        entry.done = False
+                        entry.done_at = None
+                        entry.run_id = None  # Clear run_id for full run
+                        entry.started_at = None  # Clear started_at for full run
+                    save_manifest_atomic(calculation.dir, manifest)
+                    logger.info(f"[CALCULATION_RUNNER] Full run mode: reconciled manifest, marked all entries as done=False, cleared run_id/timestamps")
+                else:
+                    logger.warning(f"[CALCULATION_RUNNER] Structure path not found for full run, proceeding without reconciliation")
+                
+                start_idx = 0
+            except Exception as e:
+                logger.warning(f"[CALCULATION_RUNNER] Full run manifest reconciliation failed: {e}, proceeding anyway")
+                start_idx = 0
+        
+        # Execute steps from start_idx
+        for step_idx, step in enumerate(calculation.steps):
+            # Skip steps before start_idx (already done in incremental mode)
+            if step_idx < start_idx:
+                # Check if step should be skipped based on manifest
+                # Per spec: skip if kind + three SHAs + done==true all match
+                # Note: reconcile_manifest already verified SHAs and set done=true only if they matched,
+                # so we can trust entry.done=true means SHAs match. But we still verify to be safe.
+                if manifest and step_idx < len(manifest.steps):
+                    entry = manifest.steps[step_idx]
+                    step_kind = str(step.step_type.value) if step.step_type else "unknown"
+                    
+                    # Quick check: if done=false, don't skip
+                    if not entry.done:
+                        # Shouldn't happen if reconcile worked, but continue to execute
+                        continue
+                    
+                    # Verify kind matches (must match for skip)
+                    if entry.kind != step_kind:
+                        # Kind mismatch - shouldn't happen if reconcile worked, but continue to execute
+                        logger.warning(
+                            f"[CALCULATION_RUNNER] Step {step.id} manifest kind mismatch: "
+                            f"expected={step_kind}, manifest={entry.kind}, executing anyway"
+                        )
+                        continue
+                    
+                    # Verify SHAs match (reconcile should have done this, but double-check)
+                    # Only check if we're in incremental mode and have the manifest values
+                    from quantumvitas.calculation.hash_utils import compute_step_sha
+                    from quantumvitas.core.yamldoc import StepDoc
+                    from quantumvitas.core.resolution import require_step
+                    
+                    step_sha_current = ""
+                    try:
+                        from quantumvitas.core.project_utils import load_project_config
+                        config = load_project_config(calculation.project.root)
+                        step_resolved = require_step(
+                            calculation.project.root,
+                            step.id,
+                            step.id,
+                            config=config,
+                            index=None,
+                        )
+                        step_doc_dict = StepDoc.load(step_resolved.absolute_path).to_dict()
+                        step_sha_current = compute_step_sha(step_doc_dict)
+                    except Exception as e:
+                        logger.debug(f"Failed to compute step_sha for skip check: {e}")
+                    
+                    # Verify SHAs match (should match since reconcile set done=true, but verify)
+                    shas_match = (
+                        entry.step_sha == step_sha_current
+                    )  # pseudo_set_sha and structure_sha are same for all steps, checked in reconcile
+                    
+                    if shas_match and entry.done:
+                        # All conditions met: skip this step
+                        step_type = _coerce_step_type(step.step_type) if step.step_type else StepType.CUSTOM
+                        logger.info(f"[CALCULATION_RUNNER] Step {step.id} ({step_type}) SKIPPED (already done, inputs unchanged)")
+                        summary = StepResultSummary(
+                            step_id=step.id,
+                            step_type=step_type,
+                            status=StepStatus.SUCCESS,  # Mark as success (already done)
+                            working_dir=calculation.raw_dir,
+                            input_file=step.input_file if hasattr(step, 'input_file') else Path(),
+                            output_file=Path(),  # Output file exists but we don't track it here
+                            reference_file=step.reference_output,
+                            message="Step skipped: already completed with unchanged inputs (incremental run)",
+                            metrics={},
+                        )
+                        step_summaries.append(summary)
+                        continue
+                    else:
+                        # SHAs don't match or not done - shouldn't happen if reconcile worked
+                        if entry.done:
+                            logger.warning(
+                                f"[CALCULATION_RUNNER] Step {step.id} manifest says done=true but step_sha mismatch "
+                                f"(manifest={entry.step_sha[:16]}..., current={step_sha_current[:16] if step_sha_current else 'N/A'}...), "
+                                f"executing anyway"
+                            )
+                        # Continue to execute this step
             # If a previous step failed in strict mode, mark remaining steps as SKIPPED
             if calculation_failed:
                 step_type = _coerce_step_type(step.step_type) if step.step_type else StepType.CUSTOM
@@ -182,6 +366,70 @@ class CalculationRunner:
             # E. Logging: Only essential info at INFO level
             step_type_str = str(step.step_type.value) if step.step_type else "unknown"
             logger.info(f"[CALCULATION_RUNNER] Entering step: {step.id} ({step_type_str})")
+            
+            # Update manifest BEFORE execution (set started_at, done=false, run_id)
+            # This happens for all steps >= start_idx (incremental or full mode)
+            from quantumvitas.calculation.manifest import (
+                update_manifest_step,
+                now_iso8601,
+                load_manifest,
+            )
+            from quantumvitas.calculation.hash_utils import (
+                compute_step_sha,
+                compute_structure_sha,
+                compute_pseudo_set_sha,
+            )
+            from quantumvitas.core.yamldoc import StepDoc
+            from quantumvitas.core.resolution import require_step, require_structure
+            
+            # Recompute SHAs for this step (should match what was used in reconciliation)
+            project_pseudo_dir = calculation.project.root / "pseudo"
+            species_map = calculation.species_map or {}
+            current_pseudo_sha = compute_pseudo_set_sha(project_pseudo_dir, species_map) if species_map else ""
+            
+            structure_sha = ""
+            if calculation.structure_id:
+                try:
+                    structure_resolved = require_structure(
+                        calculation.project.root,
+                        calculation.structure_id,
+                        config=None,
+                        index=None,
+                    )
+                    structure_sha = compute_structure_sha(structure_resolved.absolute_path)
+                except Exception as e:
+                    logger.warning(f"Failed to compute structure_sha: {e}")
+            
+            step_sha = ""
+            try:
+                from quantumvitas.core.project_utils import load_project_config
+                config = load_project_config(calculation.project.root)
+                step_resolved = require_step(
+                    calculation.project.root,
+                    step.id,
+                    step.id,
+                    config=config,
+                    index=None,
+                )
+                step_doc_dict = StepDoc.load(step_resolved.absolute_path).to_dict()
+                step_sha = compute_step_sha(step_doc_dict)
+            except Exception as e:
+                logger.warning(f"Failed to compute step_sha for step {step.id}: {e}")
+            
+            # Update manifest entry: set started_at, done=false, run_id
+            update_manifest_step(
+                calc_dir=calculation.dir,
+                step_index=step_idx,
+                kind=step_type_str,
+                step_ulid=step.id,
+                pseudo_set_sha=current_pseudo_sha,
+                structure_sha=structure_sha,
+                step_sha=step_sha,
+                run_id=run_id,
+                done=False,
+                started_at=now_iso8601(),
+                done_at=None,
+            )
             
             engine = self.engine_registry.get(step.engine)
             # Use compute_io_dir_from_calculation_model to ensure consistency with server-side planned_io_dir
@@ -318,12 +566,38 @@ class CalculationRunner:
                 metrics=combined_metrics,
             )
             step_summaries.append(summary)
+            
+            # Update manifest after step execution: set done flag and done_at
+            if step_status == StepStatus.SUCCESS:
+                # Reload manifest to get current started_at
+                manifest = load_manifest(calculation.dir)
+                started_at_value = None
+                if manifest and step_idx < len(manifest.steps):
+                    started_at_value = manifest.steps[step_idx].started_at
+                if not started_at_value:
+                    started_at_value = now_iso8601()
+                
+                update_manifest_step(
+                    calc_dir=calculation.dir,
+                    step_index=step_idx,
+                    kind=step_type_str,
+                    step_ulid=step.id,
+                    pseudo_set_sha=current_pseudo_sha,
+                    structure_sha=structure_sha,
+                    step_sha=step_sha,
+                    run_id=run_id,
+                    done=True,
+                    started_at=started_at_value,
+                    done_at=now_iso8601(),
+                )
+            # On failure: done=false is already set, no need to update again
 
             if step_status != StepStatus.SUCCESS:
                 prev_failed = calculation_failed
                 status = StepStatus.FAILED
                 calculation_failed = True
                 logger.debug(f"[CALCULATION_RUNNER] calculation_failed: {prev_failed} -> {calculation_failed}")
+                # On failure: done=false is already set in manifest, but abort run
                 if calculation.mode == StepMode.STRICT:
                     logger.info(f"[CALCULATION_RUNNER] Strict mode: stopping after step {step.id} failure")
                     # In strict mode, stop execution and mark remaining steps as SKIPPED
