@@ -1135,12 +1135,12 @@ class QVService:
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
         run_id: Optional[str] = None,
+        run_mode: str = "incremental",  # "incremental" or "full"
     ) -> Dict[str, Any]:
         """
         Run all steps in a calculation.
         
-        This method clears any existing analysis artifacts before running
-        to ensure fresh analysis on completion.
+        Supports incremental and full run modes.
         
         Args:
             project_root: Project root path
@@ -1150,6 +1150,9 @@ class QVService:
             run_id: External run ID to use (e.g., job_id from JobManager).
                     If provided, this ID will be used for history recording
                     to ensure job_id == run_id identity.
+            run_mode: Run mode ("incremental" or "full"). Default "incremental".
+                     Incremental skips steps that are already done and unchanged.
+                     Full reruns all steps from step0.
             
         Returns:
             Dict with run results
@@ -1159,6 +1162,7 @@ class QVService:
         from quantumvitas.calculation.runner import CalculationRunner
         from quantumvitas.engine.registry import create_default_registry
         from quantumvitas.analysis.artifacts import clear_analysis_artifacts
+        from quantumvitas.core.locking import calc_run_lock, CalculationLockError
         
         # Use registry-based resolution
         from quantumvitas.core.resolution import build_resource_index
@@ -1172,27 +1176,78 @@ class QVService:
         
         # Resolve calculation via registry
         calculation_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
+        calculation_dir = calculation_resolved.absolute_path
         
-        # Load calculation to check structure_id (canonical source in DAG model)
-        project = Project.open(project_root)
-        calculation = Calculation.from_yaml(calculation_resolved.absolute_path, project)
-        
-        if not calculation.structure_id:
-            raise QVServiceError(
-                f"Calculation '{calculation_selector}' has no structure. Please set a structure for the calculation first."
-            )
-        
-        # Clear analysis artifacts before running (cache invalidation)
-        # This ensures fresh analysis is generated after the run completes
-        calculation_dir = calculation.dir
-        if calculation_dir and calculation_dir.exists():
-            clear_analysis_artifacts(calculation_dir)
-        
-        # CalculationRunner expects an EngineRegistry with engines registered
-        registry = create_default_registry()
-        runner = CalculationRunner(registry)
-        
-        results = runner.run(calculation, run_id=run_id)
+        # Acquire run lock (fail fast if locked)
+        try:
+            with calc_run_lock(calculation_dir, fail_fast=True):
+                # Load calculation (materialize_steps=True happens inside lock)
+                project = Project.open(project_root)
+                calculation = Calculation.from_yaml(calculation_dir, project, materialize_steps=True)
+                
+                if not calculation.structure_id:
+                    raise QVServiceError(
+                        f"Calculation '{calculation_selector}' has no structure. Please set a structure for the calculation first."
+                    )
+                
+                # Preflight: compute pseudo_set_sha fresh and warn if mismatch
+                from quantumvitas.calculation.hash_utils import (
+                    compute_pseudo_set_sha,
+                    get_pseudo_refs_from_calc,
+                )
+                from quantumvitas.core.locking import calc_edit_lock
+                import logging
+                logger = logging.getLogger(__name__)
+                
+                project_pseudo_dir = project_root / "pseudo"
+                species_map = calculation.species_map or {}
+                
+                if species_map:
+                    # Compute fresh pseudo_set_sha
+                    fresh_pseudo_sha = compute_pseudo_set_sha(project_pseudo_dir, species_map)
+                    
+                    # Compare with calc.yaml stored pseudo info
+                    calc_yaml_path = calculation_dir / "calculation.yaml"
+                    calc_data = yaml.safe_load(calc_yaml_path.read_text()) or {}
+                    calc_section = calc_data.get("calculation", {})
+                    stored_pseudo_sha = calc_section.get("pseudo_set_sha")
+                    stored_pseudo_sha_family = calc_section.get("pseudo_sha_family")
+                    
+                    if stored_pseudo_sha and stored_pseudo_sha != fresh_pseudo_sha:
+                        logger.warning(
+                            f"Pseudo set SHA mismatch for calculation {calculation_selector}: "
+                            f"stored={stored_pseudo_sha[:16]}..., fresh={fresh_pseudo_sha[:16]}..."
+                        )
+                        # Update calc.yaml with fresh values (with edit lock)
+                        with calc_edit_lock(calculation_dir, fail_fast=False):
+                            calc_data = yaml.safe_load(calc_yaml_path.read_text()) or {}
+                            if "calculation" not in calc_data:
+                                calc_data["calculation"] = {}
+                            calc_data["calculation"]["pseudo_set_sha"] = fresh_pseudo_sha
+                            if stored_pseudo_sha_family:
+                                # Keep sha_family if it exists
+                                calc_data["calculation"]["pseudo_sha_family"] = stored_pseudo_sha_family
+                            calc_yaml_path.write_text(yaml.safe_dump(calc_data, sort_keys=False))
+                
+                # Clear analysis artifacts before running (cache invalidation)
+                # This ensures fresh analysis is generated after the run completes
+                if calculation_dir.exists():
+                    clear_analysis_artifacts(calculation_dir)
+                
+                # CalculationRunner expects an EngineRegistry with engines registered
+                registry = create_default_registry()
+                runner = CalculationRunner(registry)
+                
+                results = runner.run(
+                    calculation,
+                    run_id=run_id,
+                    run_mode=run_mode,
+                )
+        except CalculationLockError as e:
+            # Convert to QVServiceError with code for GUI handling
+            error = QVServiceError(str(e))
+            error.code = "CALCULATION_LOCKED"  # type: ignore
+            raise error
         
         # Runner is the source of truth for io_dir - it returns the actual I/O directory used
         # Do NOT construct paths here; use what the runner provides
@@ -1446,6 +1501,322 @@ class QVService:
             "working_dir": io_dir,
             "run_id": actual_run_id,  # History run_id (== job_id when provided)
         }
+    
+    @staticmethod
+    def run_single_step(
+        project_root: Path,
+        calculation_selector: str,
+        step_ulid: str,
+        verbose: bool = False,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+        run_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Run a single step in a calculation (advanced feature, always runs, never skips).
+        
+        This is different from run_step() which is for standalone execution.
+        This method:
+        - Always executes the step (no skip)
+        - Runs within calculation context
+        - Updates manifest: marks this step done on success, invalidates subsequent steps
+        - Acquires run lock for the duration
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            step_ulid: Step ULID (must match a step in calculation.yaml)
+            verbose: If True, print detailed output
+            run_id: External run ID to use (e.g., job_id from JobManager)
+            
+        Returns:
+            Dict with run results
+        """
+        from quantumvitas.project.model import Project
+        from quantumvitas.calculation.calculation import Calculation
+        from quantumvitas.core.locking import calc_run_lock, CalculationLockError
+        from quantumvitas.engine.registry import create_default_registry
+        from quantumvitas.calculation.runner import CalculationRunner
+        import yaml
+        
+        # Use registry-based resolution
+        from quantumvitas.core.resolution import build_resource_index, require_calculation, require_step
+        
+        if config is None:
+            from quantumvitas.core.project_utils import load_project_config
+            config = load_project_config(project_root)
+        if index is None:
+            index = build_resource_index(project_root)
+        
+        # Acquire run lock (fail fast if locked)
+        calculation_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
+        calculation_dir = calculation_resolved.absolute_path
+        
+        try:
+            with calc_run_lock(calculation_dir, fail_fast=True):
+                # Load calculation
+                project = Project.open(project_root)
+                calculation = Calculation.from_yaml(calculation_dir, project, materialize_steps=True)
+                
+                # Find step index by scanning calculation.yaml step list for step_ulid
+                calc_yaml_path = calculation_dir / "calculation.yaml"
+                calc_data = yaml.safe_load(calc_yaml_path.read_text()) or {}
+                step_list = calc_data.get("steps", [])
+                
+                step_index = None
+                for i, step_entry in enumerate(step_list):
+                    if step_entry.get("step_id") == step_ulid:
+                        step_index = i
+                        break
+                
+                if step_index is None:
+                    raise QVServiceError(
+                        f"Step with ULID '{step_ulid}' not found in calculation '{calculation_selector}'"
+                    )
+                
+                # Preflight: compute pseudo_set_sha fresh (same as run_calculation)
+                from quantumvitas.calculation.hash_utils import (
+                    compute_pseudo_set_sha,
+                    get_pseudo_refs_from_calc,
+                )
+                from quantumvitas.core.locking import calc_edit_lock
+                import logging
+                logger = logging.getLogger(__name__)
+                
+                project_pseudo_dir = project_root / "pseudo"
+                species_map = calculation.species_map or {}
+                
+                if species_map:
+                    fresh_pseudo_sha = compute_pseudo_set_sha(project_pseudo_dir, species_map)
+                    
+                    # Compare and warn if mismatch (same as run_calculation)
+                    stored_pseudo_sha = calc_data.get("calculation", {}).get("pseudo_set_sha")
+                    if stored_pseudo_sha and stored_pseudo_sha != fresh_pseudo_sha:
+                        logger.warning(
+                            f"Pseudo set SHA mismatch for calculation {calculation_selector}: "
+                            f"stored={stored_pseudo_sha[:16]}..., fresh={fresh_pseudo_sha[:16]}..."
+                        )
+                        # Update calc.yaml with fresh values (with edit lock)
+                        with calc_edit_lock(calculation_dir, fail_fast=False):
+                            calc_data = yaml.safe_load(calc_yaml_path.read_text()) or {}
+                            if "calculation" not in calc_data:
+                                calc_data["calculation"] = {}
+                            calc_data["calculation"]["pseudo_set_sha"] = fresh_pseudo_sha
+                            calc_yaml_path.write_text(yaml.safe_dump(calc_data, sort_keys=False))
+                
+                # Manifest handling
+                from quantumvitas.calculation.manifest import (
+                    load_manifest,
+                    Manifest,
+                    ManifestStepEntry,
+                    save_manifest_atomic,
+                    update_manifest_step,
+                    clear_manifest_from_step,
+                    now_iso8601,
+                )
+                from quantumvitas.calculation.hash_utils import (
+                    compute_structure_sha,
+                    compute_step_sha,
+                )
+                from quantumvitas.core.resolution import require_structure
+                from quantumvitas.core.yamldoc import StepDoc
+                
+                manifest = load_manifest(calculation_dir)
+                
+                # If manifest doesn't exist, create it with topo length, all done=false
+                if manifest is None:
+                    manifest = Manifest()
+                    structure_sha = ""
+                    if calculation.structure_id:
+                        try:
+                            structure_resolved = require_structure(
+                                project_root,
+                                calculation.structure_id,
+                                config=config,
+                                index=index,
+                            )
+                            structure_sha = compute_structure_sha(structure_resolved.absolute_path)
+                        except Exception:
+                            pass
+                    
+                    current_pseudo_sha = fresh_pseudo_sha if species_map else ""
+                    
+                    # Fill all entries
+                    for i, step_entry in enumerate(step_list):
+                        step_id = step_entry.get("step_id")
+                        # Get step type from step entry or load step YAML
+                        step_type = step_entry.get("type", "unknown")
+                        
+                        step_sha_val = ""
+                        try:
+                            step_resolved = require_step(project_root, calculation_selector, step_id, config=config, index=index)
+                            step_doc_dict = StepDoc.load(step_resolved.absolute_path).to_dict()
+                            step_sha_val = compute_step_sha(step_doc_dict)
+                        except Exception:
+                            pass
+                        
+                        manifest.steps.append(ManifestStepEntry(
+                            kind=step_type,
+                            step_ulid=step_id,
+                            pseudo_set_sha=current_pseudo_sha,
+                            structure_sha=structure_sha,
+                            step_sha=step_sha_val,
+                            run_id=None,
+                            done=False,
+                            started_at=None,
+                            done_at=None,
+                        ))
+                    
+                    save_manifest_atomic(calculation_dir, manifest)
+                
+                # Update ONLY entry k before execution
+                step_entry = step_list[step_index]
+                step_type = step_entry.get("type", "unknown")
+                
+                structure_sha = ""
+                if calculation.structure_id:
+                    try:
+                        structure_resolved = require_structure(
+                            project_root,
+                            calculation.structure_id,
+                            config=config,
+                            index=index,
+                        )
+                        structure_sha = compute_structure_sha(structure_resolved.absolute_path)
+                    except Exception:
+                        pass
+                
+                step_sha = ""
+                try:
+                    step_resolved = require_step(project_root, calculation_selector, step_ulid, config=config, index=index)
+                    step_doc_dict = StepDoc.load(step_resolved.absolute_path).to_dict()
+                    step_sha = compute_step_sha(step_doc_dict)
+                except Exception:
+                    pass
+                
+                current_pseudo_sha = fresh_pseudo_sha if species_map else ""
+                
+                # Generate run_id if not provided
+                if run_id is None:
+                    import ulid
+                    run_id = str(ulid.new())
+                
+                # Update entry k: kind, step_ulid, SHAs, run_id, started_at, done=false, done_at=null
+                update_manifest_step(
+                    calc_dir=calculation_dir,
+                    step_index=step_index,
+                    kind=step_type,
+                    step_ulid=step_ulid,
+                    pseudo_set_sha=current_pseudo_sha,
+                    structure_sha=structure_sha,
+                    step_sha=step_sha,
+                    run_id=run_id,
+                    done=False,
+                    started_at=now_iso8601(),
+                    done_at=None,
+                )
+                
+                # Find the actual Step object to execute
+                if step_index >= len(calculation.steps):
+                    raise QVServiceError(
+                        f"Step index {step_index} out of range for calculation '{calculation_selector}'"
+                    )
+                
+                step = calculation.steps[step_index]
+                
+                # Execute step (always run, no skip)
+                registry = create_default_registry()
+                runner = CalculationRunner(registry)
+                
+                # Execute just this one step using the runner's engine
+                from quantumvitas.calculation.verification import evaluate_step_result
+                from quantumvitas.calculation.types import StepStatus
+                
+                engine = registry.get(step.engine)
+                raw_dir = calculation.raw_dir
+                raw_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Execute step
+                result = step.run(
+                    engine=engine,
+                    calculation_raw_dir=raw_dir,
+                    project_root=calculation.project.root,
+                    species_map=calculation.species_map,
+                )
+                
+                # Evaluate result
+                output_text = ""
+                if result.output_file and result.output_file.exists():
+                    output_text = result.output_file.read_text()
+                elif result.stdout:
+                    output_text = result.stdout
+                
+                step_mode = calculation.mode
+                step_type_enum = step.step_type if step.step_type else None
+                
+                step_status, message, metrics = evaluate_step_result(
+                    mode=step_mode,
+                    step_type=step_type_enum,
+                    output_text=output_text,
+                    reference_file=step.reference_output,
+                    step_result_return_code=getattr(result, 'return_code', None),
+                )
+                
+                # On success: set entry k done=true, done_at=now; invalidate suffix
+                if step_status == StepStatus.SUCCESS:
+                    # Update entry k
+                    manifest = load_manifest(calculation_dir)
+                    started_at_value = None
+                    if manifest and step_index < len(manifest.steps):
+                        started_at_value = manifest.steps[step_index].started_at
+                    if not started_at_value:
+                        started_at_value = now_iso8601()
+                    
+                    update_manifest_step(
+                        calc_dir=calculation_dir,
+                        step_index=step_index,
+                        kind=step_type,
+                        step_ulid=step_ulid,
+                        pseudo_set_sha=current_pseudo_sha,
+                        structure_sha=structure_sha,
+                        step_sha=step_sha,
+                        run_id=run_id,
+                        done=True,
+                        started_at=started_at_value,
+                        done_at=now_iso8601(),
+                    )
+                    
+                    # Invalidate suffix (only existing entries, don't extend manifest)
+                    clear_manifest_from_step(calculation_dir, step_index + 1)
+                    
+                    return {
+                        "calculation": calculation_selector,
+                        "step_ulid": step_ulid,
+                        "step_index": step_index,
+                        "status": "success",
+                        "message": message,
+                        "metrics": metrics,
+                        "io_dir": str(raw_dir.resolve()),
+                        "run_id": run_id,
+                    }
+                else:
+                    # On failure: keep done=false
+                    return {
+                        "calculation": calculation_selector,
+                        "step_ulid": step_ulid,
+                        "step_index": step_index,
+                        "status": "failed",
+                        "message": message,
+                        "metrics": metrics,
+                        "io_dir": str(raw_dir.resolve()),
+                        "run_id": run_id,
+                        "error": message,
+                    }
+        except CalculationLockError as e:
+            error = QVServiceError(str(e))
+            error.code = "CALCULATION_LOCKED"  # type: ignore
+            raise error
     
     # -------------------------------------------------------------------------
     # Analysis operations
