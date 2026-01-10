@@ -1196,6 +1196,9 @@ class QVService:
                     get_pseudo_refs_from_calc,
                 )
                 from quantumvitas.core.locking import calc_edit_lock
+                from quantumvitas.core.yaml_io import save_yaml_doc
+                from quantumvitas.core.yamldoc import CalcDoc
+                from quantumvitas.core.models import load_calculation
                 import logging
                 logger = logging.getLogger(__name__)
                 
@@ -1208,26 +1211,42 @@ class QVService:
                     
                     # Compare with calc.yaml stored pseudo info
                     calc_yaml_path = calculation_dir / "calculation.yaml"
-                    calc_data = yaml.safe_load(calc_yaml_path.read_text()) or {}
-                    calc_section = calc_data.get("calculation", {})
-                    stored_pseudo_sha = calc_section.get("pseudo_set_sha")
-                    stored_pseudo_sha_family = calc_section.get("pseudo_sha_family")
+                    
+                    # Read pseudo_set_sha from YAML (may be at top level or in "calculation" section)
+                    try:
+                        calc_data = yaml.safe_load(calc_yaml_path.read_text()) or {}
+                        # Check top level first (new format), then "calculation" section (legacy)
+                        stored_pseudo_sha = calc_data.get("pseudo_set_sha") or calc_data.get("calculation", {}).get("pseudo_set_sha")
+                    except Exception as e:
+                        logger.warning(f"Failed to read calc.yaml for preflight: {e}")
+                        stored_pseudo_sha = None
                     
                     if stored_pseudo_sha and stored_pseudo_sha != fresh_pseudo_sha:
                         logger.warning(
                             f"Pseudo set SHA mismatch for calculation {calculation_selector}: "
-                            f"stored={stored_pseudo_sha[:16]}..., fresh={fresh_pseudo_sha[:16]}..."
+                            f"stored={stored_pseudo_sha[:16] if stored_pseudo_sha else 'None'}..., fresh={fresh_pseudo_sha[:16]}..."
                         )
-                        # Update calc.yaml with fresh values (with edit lock)
-                        with calc_edit_lock(calculation_dir, fail_fast=False):
+                        # Update calc.yaml with fresh values (non-blocking)
+                        # Note: save_yaml_doc handles edit lock internally, so we don't need to acquire it here
+                        try:
+                            # Reload YAML to get latest state
                             calc_data = yaml.safe_load(calc_yaml_path.read_text()) or {}
-                            if "calculation" not in calc_data:
-                                calc_data["calculation"] = {}
-                            calc_data["calculation"]["pseudo_set_sha"] = fresh_pseudo_sha
-                            if stored_pseudo_sha_family:
-                                # Keep sha_family if it exists
-                                calc_data["calculation"]["pseudo_sha_family"] = stored_pseudo_sha_family
-                            calc_yaml_path.write_text(yaml.safe_dump(calc_data, sort_keys=False))
+                            # Update pseudo_set_sha at top level (new format)
+                            calc_data["pseudo_set_sha"] = fresh_pseudo_sha
+                            # Save using save_yaml_doc (proper write path, handles lock internally)
+                            calc_doc = CalcDoc(calc_data)
+                            save_yaml_doc(calc_doc, calc_yaml_path)
+                        except (OSError, PermissionError) as e:
+                            # Non-blocking: log warning but continue run
+                            logger.warning(
+                                f"Failed to update calc.yaml with pseudo_set_sha (non-blocking): {e}. "
+                                f"Run will continue with fresh SHA={fresh_pseudo_sha[:16]}..."
+                            )
+                        except Exception as e:
+                            # Log other errors but also non-blocking
+                            logger.warning(
+                                f"Unexpected error updating calc.yaml pseudo_set_sha (non-blocking): {e}"
+                            )
                 
                 # Clear analysis artifacts before running (cache invalidation)
                 # This ensures fresh analysis is generated after the run completes
@@ -1591,19 +1610,36 @@ class QVService:
                     fresh_pseudo_sha = compute_pseudo_set_sha(project_pseudo_dir, species_map)
                     
                     # Compare and warn if mismatch (same as run_calculation)
-                    stored_pseudo_sha = calc_data.get("calculation", {}).get("pseudo_set_sha")
+                    # Check top level first (new format), then "calculation" section (legacy)
+                    stored_pseudo_sha = calc_data.get("pseudo_set_sha") or calc_data.get("calculation", {}).get("pseudo_set_sha")
                     if stored_pseudo_sha and stored_pseudo_sha != fresh_pseudo_sha:
                         logger.warning(
                             f"Pseudo set SHA mismatch for calculation {calculation_selector}: "
-                            f"stored={stored_pseudo_sha[:16]}..., fresh={fresh_pseudo_sha[:16]}..."
+                            f"stored={stored_pseudo_sha[:16] if stored_pseudo_sha else 'None'}..., fresh={fresh_pseudo_sha[:16]}..."
                         )
-                        # Update calc.yaml with fresh values (with edit lock)
-                        with calc_edit_lock(calculation_dir, fail_fast=False):
+                        # Update calc.yaml with fresh values (non-blocking)
+                        # Note: save_yaml_doc handles edit lock internally, so we don't need to acquire it here
+                        try:
+                            from quantumvitas.core.yaml_io import save_yaml_doc
+                            from quantumvitas.core.yamldoc import CalcDoc
+                            # Reload YAML to get latest state
                             calc_data = yaml.safe_load(calc_yaml_path.read_text()) or {}
-                            if "calculation" not in calc_data:
-                                calc_data["calculation"] = {}
-                            calc_data["calculation"]["pseudo_set_sha"] = fresh_pseudo_sha
-                            calc_yaml_path.write_text(yaml.safe_dump(calc_data, sort_keys=False))
+                            # Update pseudo_set_sha at top level (new format)
+                            calc_data["pseudo_set_sha"] = fresh_pseudo_sha
+                            # Save using save_yaml_doc (proper write path, handles lock internally)
+                            calc_doc = CalcDoc(calc_data)
+                            save_yaml_doc(calc_doc, calc_yaml_path)
+                        except (OSError, PermissionError) as e:
+                            # Non-blocking: log warning but continue run
+                            logger.warning(
+                                f"Failed to update calc.yaml with pseudo_set_sha (non-blocking): {e}. "
+                                f"Run will continue with fresh SHA={fresh_pseudo_sha[:16]}..."
+                            )
+                        except Exception as e:
+                            # Log other errors but also non-blocking
+                            logger.warning(
+                                f"Unexpected error updating calc.yaml pseudo_set_sha (non-blocking): {e}"
+                            )
                 
                 # Manifest handling
                 from quantumvitas.calculation.manifest import (

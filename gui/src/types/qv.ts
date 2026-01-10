@@ -928,6 +928,16 @@ export interface QVCommandMap {
       calculation: string;
       strict?: boolean;
       verbose?: boolean;
+      run_mode?: 'incremental' | 'full'; // Default: 'incremental'
+    };
+    result: JobSubmitResult;
+  };
+  run_single_step: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      step_ulid: string;
+      verbose?: boolean;
     };
     result: JobSubmitResult;
   };

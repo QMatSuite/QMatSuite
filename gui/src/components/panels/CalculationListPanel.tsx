@@ -442,7 +442,7 @@ interface CalculationDetailPanelProps {
   projectRoot: string;
   structures?: StructureInfo[];
   onClose?: () => void;
-  onRunCalculation?: (calculation: CalculationInfo) => void;
+  onRunCalculation?: (calculation: CalculationInfo, runMode?: 'incremental' | 'full') => void;
   onSelectStep?: (stepId: string) => void;
   onDeleteStep?: (stepId: string) => void;  // Callback when step is deleted
   onGoToJobs?: () => void;
@@ -956,16 +956,106 @@ export function CalculationDetailPanel({
         </div>
         <div className="panel-header-actions">
           {onRunCalculation && (
+            <div className="qv-button-group" style={{ display: 'flex', gap: '4px' }}>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
             <button 
               className="qv-button qv-button--primary qv-button--large"
-              onClick={() => onRunCalculation(calculation)}
+                  onClick={() => onRunCalculation(calculation, 'incremental')}
               disabled={isReordering || isSaving}
-              title="Run all steps in this calculation"
+                  title="Run calculation (incremental: skip completed steps)"
               data-testid="qv-btn-run-calculation"
+                  style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, marginRight: 0 }}
             >
               <span className="qv-button-icon-left">▶️</span>
               <span>Run Calculation</span>
             </button>
+                <button 
+                  className="qv-button qv-button--primary qv-button--large"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Toggle dropdown - simple implementation
+                    const existing = document.querySelector('.qv-run-mode-dropdown') as HTMLElement;
+                    if (existing) {
+                      document.body.removeChild(existing);
+                      return;
+                    }
+                    
+                    // Show dropdown menu
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    const menu = document.createElement('div');
+                    menu.className = 'qv-run-mode-dropdown';
+                    menu.style.position = 'fixed';
+                    menu.style.top = `${rect.bottom + 4}px`;
+                    menu.style.left = `${rect.left}px`;
+                    menu.style.zIndex = '1000';
+                    menu.style.backgroundColor = '#fff';
+                    menu.style.border = '1px solid #ccc';
+                    menu.style.borderRadius = '4px';
+                    menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                    menu.style.minWidth = '200px';
+                    
+                    const incrementalBtn = document.createElement('button');
+                    incrementalBtn.textContent = 'Incremental Run (skip completed)';
+                    incrementalBtn.style.display = 'block';
+                    incrementalBtn.style.width = '100%';
+                    incrementalBtn.style.padding = '8px 12px';
+                    incrementalBtn.style.textAlign = 'left';
+                    incrementalBtn.style.border = 'none';
+                    incrementalBtn.style.background = 'none';
+                    incrementalBtn.style.cursor = 'pointer';
+                    incrementalBtn.onmouseenter = () => { incrementalBtn.style.backgroundColor = '#f0f0f0'; };
+                    incrementalBtn.onmouseleave = () => { incrementalBtn.style.backgroundColor = 'transparent'; };
+                    incrementalBtn.onclick = (e2) => {
+                      e2.stopPropagation();
+                      onRunCalculation(calculation, 'incremental');
+                      if (menu.parentNode) document.body.removeChild(menu);
+                    };
+                    
+                    const fullBtn = document.createElement('button');
+                    fullBtn.textContent = 'Full Run (rerun all steps)';
+                    fullBtn.style.display = 'block';
+                    fullBtn.style.width = '100%';
+                    fullBtn.style.padding = '8px 12px';
+                    fullBtn.style.textAlign = 'left';
+                    fullBtn.style.border = 'none';
+                    fullBtn.style.borderTop = '1px solid #eee';
+                    fullBtn.style.background = 'none';
+                    fullBtn.style.cursor = 'pointer';
+                    fullBtn.onmouseenter = () => { fullBtn.style.backgroundColor = '#f0f0f0'; };
+                    fullBtn.onmouseleave = () => { fullBtn.style.backgroundColor = 'transparent'; };
+                    fullBtn.onclick = (e2) => {
+                      e2.stopPropagation();
+                      onRunCalculation(calculation, 'full');
+                      if (menu.parentNode) document.body.removeChild(menu);
+                    };
+                    
+                    menu.appendChild(incrementalBtn);
+                    menu.appendChild(fullBtn);
+                    document.body.appendChild(menu);
+                    
+                    // Close on outside click
+                    const closeMenu = (e2: MouseEvent) => {
+                      if (!menu.contains(e2.target as Node)) {
+                        if (menu.parentNode) document.body.removeChild(menu);
+                        document.removeEventListener('click', closeMenu);
+                      }
+                    };
+                    setTimeout(() => document.addEventListener('click', closeMenu), 0);
+                  }}
+                  disabled={isReordering || isSaving}
+                  title="Run mode options"
+                  style={{ 
+                    padding: '0 8px', 
+                    minWidth: 'auto',
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    borderLeft: '1px solid rgba(255,255,255,0.2)',
+                  }}
+                >
+                  ▼
+                </button>
+              </div>
+            </div>
           )}
           {onClose && (
             <button className="panel-close" onClick={onClose}>×</button>
