@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.core.locking import calc_run_lock, CalculationLockError
+from quantumvitas.core.locking import calc_run_lock, calc_edit_lock, CalculationLockError, LockReentrancyError
 from quantumvitas.calculation.manifest import (
     Manifest,
     ManifestStepEntry,
@@ -934,23 +934,18 @@ def test_crash_recovery_incremental_rerun_from_failed_step(tmp_project, minimal_
 def test_pseudo_preflight_update_failure_non_blocking(tmp_project, minimal_calculation, caplog, monkeypatch):
     """
     Sanity test: Pseudo preflight update calc.yaml failure does not block run.
+    Also verify manifest uses fresh pseudo_set_sha and runner executes at least one step.
     """
     calc_id, calc_dir, _ = minimal_calculation
     
     # Set calc.yaml with wrong pseudo SHA (at top level, new format)
-    # Use edit lock and save_yaml_doc for proper saving
-    from quantumvitas.core.locking import calc_edit_lock
     from quantumvitas.core.yaml_io import save_yaml_doc
     from quantumvitas.core.yamldoc import CalcDoc
-    from quantumvitas.core.models import load_calculation
     
     calc_data_path = calc_dir / "calculation.yaml"
     # Set wrong SHA at top level (new format) - use raw YAML
-    # Since CalculationModel doesn't have pseudo_set_sha field, write raw YAML
     calc_data = yaml.safe_load(calc_data_path.read_text()) or {}
     calc_data["pseudo_set_sha"] = "WRONG_SHA"
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.core.yamldoc import CalcDoc
     calc_doc = CalcDoc(calc_data)
     save_yaml_doc(calc_doc, calc_data_path)  # Handles lock internally
     
@@ -960,14 +955,22 @@ def test_pseudo_preflight_update_failure_non_blocking(tmp_project, minimal_calcu
     original_mode = calc_yaml_path.stat().st_mode
     calc_yaml_path.chmod(0o444)  # Read-only
     
+    # Track execution calls
+    execution_calls = []
+    
     try:
-        # Mock runner to return success
+        # Mock runner to track execution calls
         from quantumvitas.calculation.runner import CalculationRunner
         from quantumvitas.calculation.results import CalculationResult
         from quantumvitas.calculation.types import StepStatus
         from datetime import datetime, timezone
         
         def mock_run(self, calculation, *, skip_history=False, run_id=None, run_mode="incremental", **kwargs):
+            execution_calls.append({
+                "calculation_id": calculation.id,
+                "run_id": run_id,
+                "run_mode": run_mode,
+            })
             return CalculationResult(
                 calculation_id=calculation.id,
                 mode=calculation.mode,
@@ -1004,6 +1007,9 @@ def test_pseudo_preflight_update_failure_non_blocking(tmp_project, minimal_calcu
         assert result is not None
         assert result["status"] == "success"
         
+        # Verify runner was called (run still proceeded)
+        assert len(execution_calls) > 0, "Run should have proceeded despite calc.yaml update failure"
+        
         # Should log warning about update failure or pseudo mismatch
         warning_messages = [record.message for record in caplog.records if record.levelname == "WARNING"]
         # Either pseudo mismatch warning or write failure - both acceptable
@@ -1013,9 +1019,126 @@ def test_pseudo_preflight_update_failure_non_blocking(tmp_project, minimal_calcu
         )
         assert has_relevant_warning, \
             f"No relevant warning found. Warnings: {warning_messages}"
+        
+        # Verify manifest uses fresh pseudo_set_sha (not the wrong one)
+        from quantumvitas.calculation.manifest import load_manifest
+        manifest = load_manifest(calc_dir)
+        if manifest and len(manifest.steps) > 0:
+            # Check that manifest doesn't use WRONG_SHA (should use actual computed SHA)
+            assert manifest.steps[0].pseudo_set_sha != "WRONG_SHA", \
+                "Manifest should use fresh computed pseudo_set_sha, not the wrong stored value"
     finally:
         # Restore write permissions
         calc_yaml_path.chmod(original_mode)
+
+
+def test_nested_calc_edit_lock_raises_fast(tmp_project, minimal_calculation):
+    """Test that nested calc_edit_lock raises LockReentrancyError instead of hanging."""
+    calc_id, calc_dir, step_ids = minimal_calculation
+    
+    # Acquire lock once
+    with calc_edit_lock(calc_dir, fail_fast=False):
+        # Attempt to acquire again in same thread - should raise immediately
+        with pytest.raises(LockReentrancyError, match="Non-reentrant calc_edit_lock"):
+            with calc_edit_lock(calc_dir, fail_fast=False):
+                pass  # Should never reach here
+
+
+def test_structure_sha_float_tolerance(tmp_project, minimal_structure):
+    """Test that structure_sha is stable under small float perturbations."""
+    from quantumvitas.core.resolution import require_structure, build_resource_index
+    from quantumvitas.core.project_utils import load_project_config
+    import json
+    
+    # Use existing structure from fixture
+    structure_id, structure_path = minimal_structure
+    
+    # Resolve structure to get JSON path
+    config = load_project_config(tmp_project)
+    index = build_resource_index(tmp_project)
+    structure_resolved = require_structure(tmp_project, structure_id, config=config, index=index)
+    structure_json_path = structure_resolved.absolute_path
+    
+    # Compute initial SHA
+    initial_sha = compute_structure_sha(structure_json_path)
+    
+    # Load structure JSON
+    structure_data = json.loads(structure_json_path.read_text())
+    
+    # Test 1: Small perturbation within tolerance (should not change SHA)
+    # Find a coordinate and perturb by value less than FLOAT_TOLERANCE (1e-10)
+    # We use 1e-13 which is well below tolerance
+    if "lattice" in structure_data and "matrix" in structure_data["lattice"]:
+        original_value = structure_data["lattice"]["matrix"][0][0]
+        # Small perturbation (within tolerance)
+        structure_data["lattice"]["matrix"][0][0] = original_value + 1e-13
+        # Write using same method as production (JSON with sorted keys)
+        structure_json_path.write_text(json.dumps(structure_data, sort_keys=True))
+        perturbed_sha = compute_structure_sha(structure_json_path)
+        # Should be unchanged (canonicalize_float rounds to nearest 1e-10, so 1e-13 is below threshold)
+        assert perturbed_sha == initial_sha, f"Tiny perturbation (1e-13) changed SHA: {initial_sha[:16]}... vs {perturbed_sha[:16]}..."
+        
+        # Restore original
+        structure_data["lattice"]["matrix"][0][0] = original_value
+        structure_json_path.write_text(json.dumps(structure_data, sort_keys=True))
+        
+        # Test 2: Larger perturbation (should change SHA)
+        # Use 1e-6 which is much larger than FLOAT_TOLERANCE (1e-10)
+        structure_data["lattice"]["matrix"][0][0] = original_value + 1e-6
+        structure_json_path.write_text(json.dumps(structure_data, sort_keys=True))
+        large_perturb_sha = compute_structure_sha(structure_json_path)
+        assert large_perturb_sha != initial_sha, "Large perturbation (1e-6) should change SHA"
+
+
+def test_pseudo_set_sha_stable_under_reordering_and_rename(tmp_project, minimal_calculation):
+    """Test that compute_pseudo_set_sha is stable under reordering and filename changes."""
+    calc_id, calc_dir, step_ids = minimal_calculation
+    
+    # Load calculation to get species_map
+    from quantumvitas.core.models import load_calculation
+    calc_data_path = calc_dir / "calculation.yaml"
+    calc_model = load_calculation(calc_data_path, project_root=tmp_project)
+    
+    # Create pseudo files
+    pseudo_dir = tmp_project / "pseudo"
+    pseudo_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create Si.UPF and Si_new.UPF with identical content
+    si_content = "FAKE PSEUDO FILE FOR Si\n"
+    (pseudo_dir / "Si.UPF").write_text(si_content)
+    (pseudo_dir / "Si_new.UPF").write_text(si_content)
+    
+    # Create species_map with original filename
+    species_map_original = {
+        "Si": {
+            "pseudopot": "Si.UPF",
+            "mass": 28.0855,
+        }
+    }
+    
+    # Create species_map with renamed filename (same content)
+    species_map_renamed = {
+        "Si": {
+            "pseudopot": "Si_new.UPF",
+            "mass": 28.0855,
+        }
+    }
+    
+    # Create species_map with reordered keys (different dict order)
+    species_map_reordered = {
+        "Si": {
+            "mass": 28.0855,
+            "pseudopot": "Si.UPF",
+        }
+    }
+    
+    # Compute SHAs - all should be identical since element symbol is the key
+    sha_original = compute_pseudo_set_sha(pseudo_dir, species_map_original)
+    sha_renamed = compute_pseudo_set_sha(pseudo_dir, species_map_renamed)
+    sha_reordered = compute_pseudo_set_sha(pseudo_dir, species_map_reordered)
+    
+    assert sha_original == sha_renamed, "SHA should be stable under filename change (element key unchanged)"
+    assert sha_original == sha_reordered, "SHA should be stable under dict key reordering"
 
 
 def test_manifest_corruption_recovery(tmp_project, minimal_calculation):
