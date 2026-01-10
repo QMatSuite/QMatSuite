@@ -674,8 +674,8 @@ class TestCalculationFailureHandling:
             step_ulids = [s.step_id for s in wf_model.steps]
             
             for i, step in enumerate(calculation.steps):
-                # Use ULID from calculation.yaml, not step.id (which is slug)
-                step_id = step_ulids[i] if i < len(step_ulids) else step.id
+                # Use ULID from calculation.yaml, not step.meta.slug (slug is for display only)
+                step_id = step_ulids[i] if i < len(step_ulids) else step.meta.id
                 step_type = step.step_type or StepType.CUSTOM
                 
                 # If a previous step failed, mark remaining steps as SKIPPED
