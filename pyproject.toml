@@ -23,6 +23,7 @@ dependencies = [
     "msgpack>=1.0.0",
     "requests>=2.25.0",
     "certifi>=2023.7.22",
+    "portalocker>=2.8,<3",
 ]
 
 [project.optional-dependencies]
