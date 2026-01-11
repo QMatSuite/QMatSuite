@@ -723,6 +723,16 @@ def init_calculation_command(
     template: Optional[str] = typer.Option(
         None, "--template", help="Calculation template to use (e.g., 'si-dos')"
     ),
+    structure_kind: Optional[str] = typer.Option(
+        None,
+        "--structure-kind",
+        help="Structure kind: 'periodic' or 'molecule' (default: 'periodic')",
+    ),
+    engine_family: Optional[str] = typer.Option(
+        None,
+        "--engine-family",
+        help="Engine family: 'qe', 'pyscf', etc. (default: 'qe' for periodic, 'pyscf' for molecule)",
+    ),
 ) -> None:
     """
     Scaffold a calculation folder with calculation.yaml and no pre-populated steps.
@@ -843,14 +853,21 @@ def init_calculation_command(
     else:
         calculation_meta_dict = calculation_meta.to_dict()
 
-    # Write calculation.yaml with proper meta section (contains ULID)
-    # DAG + ID-only model: use structure_id (ULID) as canonical reference
-    # Do NOT write structure_name or structure selector (violates DAG + ID-only constitution)
-    # Phase 2: Infer structure_kind and engine_family from structure
-    # TODO: Actually inspect structure to determine if periodic or molecule
-    # For now, default to periodic (qe family)
-    structure_kind = "periodic"  # Default assumption
-    engine_family = "qe"  # Default for periodic structures
+    # Phase 2: Determine structure_kind and engine_family
+    # Default structure_kind to periodic if not provided
+    if structure_kind is None:
+        structure_kind = "periodic"
+    elif structure_kind not in ("periodic", "molecule"):
+        raise typer.BadParameter(
+            f"Invalid structure_kind '{structure_kind}'. Must be 'periodic' or 'molecule'."
+        )
+    
+    # Default engine_family based on structure_kind if not provided
+    if engine_family is None:
+        if structure_kind == "molecule":
+            engine_family = "pyscf"
+        else:
+            engine_family = "qe"  # Default for periodic structures
     
     # Write calculation.yaml with proper meta section (contains ULID)
     # DAG + ID-only model: use structure_id (ULID) as canonical reference

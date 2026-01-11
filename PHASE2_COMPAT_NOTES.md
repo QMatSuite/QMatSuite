@@ -2,6 +2,8 @@
 
 This document records compatibility decisions made during Phase 2 implementation to maintain backward compatibility with existing APIs, tests, and user workflows.
 
+**Last Updated**: Phase 2 close-out (structure_kind/engine_family CLI support + normalization contract documentation)
+
 ## Overview
 
 Phase 2 introduced engine-prefixed step types (machine types) while maintaining backward compatibility with legacy public step types. The system now has two layers:
@@ -92,6 +94,21 @@ Phase 2 introduced engine-prefixed step types (machine types) while maintaining 
 **Files Modified**:
 - `src/quantumvitas/core/models.py`: Added `step_type` property to `CalculationStepEntry`
 
+### 9. structure_kind and engine_family CLI Support
+
+**Decision**: Added CLI options `--structure-kind` and `--engine-family` to `init_calculation_command`. These fields are immutable after creation.
+
+**Defaults**:
+- `structure_kind`: Defaults to "periodic" if not provided
+- `engine_family`: Defaults to "qe" for periodic structures, "pyscf" for molecule structures
+
+**Immutability**: `structure_kind` and `engine_family` are set only during calculation creation and cannot be modified afterward. There is no configure command that modifies these fields, so immutability is enforced by design (no code path exists to change them).
+
+**Files Modified**:
+- `src/quantumvitas/cli/main.py`: Added `--structure-kind` and `--engine-family` options to `init_calculation_command`
+- `src/quantumvitas/core/templates.py`: Added defaults for structure_kind/engine_family in template copying (if missing from template)
+- `tests/cli/test_calculation_structure_kind_engine_family.py`: NEW - Test suite for CLI options
+
 ## Schema Migration / Recovery Logic
 
 ### Backward Compatibility for Old Calculations
@@ -166,6 +183,52 @@ After Phase 2 implementation, several tests failed due to step_type normalizatio
   - `test_list_step_artifacts_with_files`: Fixed artifact listing
   - `test_list_step_artifacts_default_selection`: Fixed default selection
 
+## Step Type Normalization Contract
+
+### Definitions
+
+- **Public Step Type**: Legacy, user-facing step type identifier (e.g., "scf", "nscf", "dos"). Used in:
+  - `calculation.yaml` step entries (`type` field)
+  - Workflow templates and definitions
+  - UI display and user-facing APIs
+  - File naming patterns (e.g., "scf.out", "dos.out")
+
+- **Machine Step Type**: Engine-specific, execution-focused step type identifier (e.g., "qe_scf", "w90_run", "pyscf_scf"). Used in:
+  - `step.yaml` files (stored on disk)
+  - Internal execution logic
+  - Engine-specific step type resolution
+
+### Normalization Rules
+
+1. **Storage**: `step.yaml` stores machine types only. This is the execution SSOT.
+
+2. **Hash Computation**: `compute_step_sha()` normalizes step_type to public format before hashing to ensure:
+   - Hash stability across Phase 2 transition (old files with public types, new files with machine types)
+   - Manifest equivalence works correctly (SHAs match when step content is identical)
+
+3. **Step Loading**: `StructureStepSpec.from_dict()` normalizes step_type to public format when loading from `step.yaml` to ensure:
+   - Artifact listing uses public types for file matching (e.g., looks for "scf.out" not "qe_scf.out")
+   - File naming functions use public types (e.g., `CalculationFileNaming.output_filename()`)
+
+4. **API Boundary**: `StepDoc.get(["step_type"])` converts machine types to public types for backward compatibility with existing code that reads step_type from step documents.
+
+5. **Mandatory Normalization Points**:
+   - **I/O Boundary**: When reading step.yaml → convert machine type to public type
+   - **Hash Computation**: Normalize to public type before hashing
+   - **File/Path Operations**: Use public type for file naming and artifact resolution
+   - **API Responses**: Return public types to maintain backward compatibility
+
+### Helper Functions
+
+- `normalize_step_type_to_public(step_type: str) -> str`: Converts machine types to public types. Located in `src/quantumvitas/workflow/registry.py`. Should be used at all I/O boundaries where step_type is read from step.yaml.
+
+### Enforcement
+
+Normalization is **mandatory** at all boundaries where step_type crosses between storage (machine types) and user-facing APIs (public types). Failure to normalize will cause:
+- Hash mismatches (manifest equivalence failures)
+- Artifact listing failures (wrong file names)
+- Step resolution failures (wrong step type matching)
+
 ## Summary
 
 Phase 2 successfully introduced engine-prefixed step types while maintaining full backward compatibility with existing APIs, tests, and user workflows. The compatibility layer ensures that:
@@ -175,4 +238,5 @@ Phase 2 successfully introduced engine-prefixed step types while maintaining ful
 3. APIs and tests continue to work with legacy public types
 4. Materialization converts between public and machine types transparently
 5. Hash computation and step loading normalize step_type for consistent equivalence checking
+6. Step type normalization is enforced at all I/O boundaries to maintain backward compatibility
 
