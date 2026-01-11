@@ -45,7 +45,8 @@ class TestPySCFStepTypeRegistration:
         spec = get_registry().get("pyscf_scf")
         
         assert spec is not None
-        assert spec.id == "pyscf_scf"
+        assert spec.id == "scf"  # Public type (Phase 3C: pyscf_scf uses public type "scf")
+        assert spec.machine_type == "pyscf_scf"
         assert spec.engine == "pyscf"
         assert spec.executable == "python"
         assert spec.requires_structure is True
@@ -56,6 +57,36 @@ class TestPySCFStepTypeRegistration:
         from quantumvitas.cli.main import KNOWN_STEP_TYPES
         
         assert "pyscf_scf" in KNOWN_STEP_TYPES
+    
+    def test_pyscf_mp2_in_registry(self):
+        """PYSCF_MP2 step type is registered in StepTypeRegistry (Phase 3C)."""
+        from quantumvitas.workflow.registry import get_registry
+        
+        registry = get_registry()
+        assert registry.has("pyscf_mp2")
+    
+    def test_pyscf_mp2_spec_properties(self):
+        """PYSCF_MP2 StepTypeSpec has correct properties (Phase 3C)."""
+        from quantumvitas.workflow.registry import get_registry
+        
+        spec = get_registry().get("pyscf_mp2")
+        
+        assert spec is not None
+        assert spec.id == "mp2"  # Public type
+        assert spec.machine_type == "pyscf_mp2"
+        assert spec.engine == "pyscf"
+        assert spec.executable == "python"
+        assert spec.requires_structure is True
+        assert spec.requires_charge_density is True  # MP2 requires SCF charge density
+        assert spec.produces_charge_density is False  # MP2 does not produce new charge density
+        assert spec.supports_incremental_skip is False  # MP2 is always rerun in v0
+    
+    def test_pyscf_scf_supports_incremental_skip(self):
+        """PYSCF_SCF supports incremental skip (Phase 3C)."""
+        from quantumvitas.workflow.registry import get_registry
+        
+        spec = get_registry().get("pyscf_scf")
+        assert spec.supports_incremental_skip is True
 
 
 class TestPySCFEngineAvailability:
@@ -402,3 +433,46 @@ class TestPySCFDemoProject:
         assert params["method"] == "rhf"
         assert "basis" in params
         assert "atoms" in params
+
+
+class TestPySCFPhase3CMaterialization:
+    """Tests for Phase 3C: PySCF workflow materialization."""
+    
+    def test_scf_materializes_to_pyscf_scf(self):
+        """PUBLIC key 'scf' materializes to 'pyscf_scf' for PySCF family (Phase 3C)."""
+        from quantumvitas.workflow.generalized_steps import materialize_public_step_key
+        
+        result = materialize_public_step_key("scf", "pyscf")
+        assert result == "pyscf_scf"
+    
+    def test_mp2_materializes_to_pyscf_mp2(self):
+        """PUBLIC key 'mp2' materializes to 'pyscf_mp2' for PySCF family (Phase 3C)."""
+        from quantumvitas.workflow.generalized_steps import materialize_public_step_key
+        
+        result = materialize_public_step_key("mp2", "pyscf")
+        assert result == "pyscf_mp2"
+    
+    def test_scf_mp2_workflow_materializes(self):
+        """Workflow template 'scf_mp2' materializes correctly for PySCF family (Phase 3C)."""
+        from quantumvitas.workflow.generalized_steps import materialize_workflow
+        
+        result = materialize_workflow(["scf", "mp2"], "pyscf")
+        assert result == ["pyscf_scf", "pyscf_mp2"]
+    
+    def test_scf_mp2_template_exists(self):
+        """Workflow template 'scf_mp2' exists (Phase 3C)."""
+        from quantumvitas.workflow.templates import get_workflow_service
+        
+        service = get_workflow_service()
+        template = service.get_template("scf_mp2")
+        
+        assert template is not None
+        assert template.id == "scf_mp2"
+        assert template.step_sequence == ("scf", "mp2")
+    
+    def test_mp2_not_supported_by_qe_family(self):
+        """PUBLIC key 'mp2' does not materialize for QE family (Phase 3C)."""
+        from quantumvitas.workflow.generalized_steps import materialize_public_step_key
+        
+        result = materialize_public_step_key("mp2", "qe")
+        assert result is None

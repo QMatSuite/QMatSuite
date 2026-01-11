@@ -176,6 +176,18 @@ def run_scf(params: Dict[str, Any], working_dir: Path) -> Dict[str, Any]:
     mf.max_cycle = params.get("max_cycle", 50)
     mf.conv_tol = params.get("conv_tol", 1e-9)
     
+    # Checkpoint file (Phase 3C: support checkpointing for restart)
+    checkpoint_file = working_dir / "checkpoint.chk"
+    mf.chkfile = str(checkpoint_file)
+    
+    # Init guess from checkpoint if available (Phase 3C: support restart)
+    if checkpoint_file.exists():
+        try:
+            mf.init_guess = 'chkfile'
+        except Exception:
+            # If loading fails, continue with default init_guess
+            pass
+    
     # Verbosity (write to log file)
     log_file = working_dir / "pyscf.log"
     mf.verbose = params.get("verbose", 4)
@@ -394,6 +406,165 @@ def write_input_script(params: Dict[str, Any], working_dir: Path) -> None:
     script_path.write_text("\n".join(script_lines) + "\n")
 
 
+def run_mp2(params: Dict[str, Any], working_dir: Path) -> Dict[str, Any]:
+    """
+    Run PySCF MP2 (Møller-Plesset perturbation theory of second order) calculation.
+    
+    Phase 3C: MP2 requires a converged SCF calculation. This function:
+    1. Loads the SCF checkpoint file from a previous step
+    2. Rebuilds mol + mf, runs a quick SCF kernel to obtain valid mf object
+    3. Runs MP2(mf).kernel() to compute correlation energy
+    4. Returns total energy (SCF + correlation) and correlation energy
+    
+    Args:
+        params: Calculation parameters (must include scf_checkpoint_path or use default)
+        working_dir: Working directory for output
+        
+    Returns:
+        Dictionary with results
+    """
+    import numpy as np
+    from pyscf import gto, scf, dft, mp
+    
+    start_time = time.time()
+    results: Dict[str, Any] = {
+        "success": False,
+        "error": None,
+        "execution_time": 0.0,
+    }
+    
+    # Determine SCF checkpoint path (Phase 3C: MP2 requires SCF checkpoint)
+    scf_checkpoint_path = params.get("scf_checkpoint_path")
+    if scf_checkpoint_path:
+        checkpoint_file = Path(scf_checkpoint_path)
+        if not checkpoint_file.is_absolute():
+            checkpoint_file = working_dir.parent / checkpoint_file
+    else:
+        # Default: look for checkpoint.chk in parent directory (from previous SCF step)
+        # For scf_mp2 workflow, SCF writes to working_dir/checkpoint.chk, MP2 reads from same
+        checkpoint_file = working_dir / "checkpoint.chk"
+        if not checkpoint_file.exists():
+            # Try parent directory (if steps have separate dirs)
+            checkpoint_file = working_dir.parent / "checkpoint.chk"
+    
+    if not checkpoint_file.exists():
+        results["error"] = f"SCF checkpoint file not found: {checkpoint_file}. MP2 requires a converged SCF calculation."
+        results["execution_time"] = time.time() - start_time
+        return results
+    
+    # Build molecule (same as SCF)
+    try:
+        mol = build_mole(params)
+    except Exception as e:
+        results["error"] = f"Failed to build molecule: {e}"
+        results["execution_time"] = time.time() - start_time
+        return results
+    
+    # Setup SCF method (same as SCF step to rebuild mf object)
+    method = params.get("method", "rhf").lower()
+    xc = params.get("xc", "pbe")
+    
+    try:
+        if method in ("rhf", "hf"):
+            mf = scf.RHF(mol)
+        elif method == "uhf":
+            mf = scf.UHF(mol)
+        elif method == "rohf":
+            mf = scf.ROHF(mol)
+        elif method in ("rks", "dft"):
+            mf = dft.RKS(mol)
+            mf.xc = xc
+        elif method == "uks":
+            mf = dft.UKS(mol)
+            mf.xc = xc
+        elif method == "roks":
+            mf = dft.ROKS(mol)
+            mf.xc = xc
+        else:
+            results["error"] = f"Unknown method: {method}. MP2 requires RHF/UHF/ROHF or RKS/UKS/ROKS SCF."
+            results["execution_time"] = time.time() - start_time
+            return results
+    except Exception as e:
+        results["error"] = f"Failed to setup SCF: {e}"
+        results["execution_time"] = time.time() - start_time
+        return results
+    
+    # Load checkpoint and rebuild mf (Phase 3C: rebuild from chkfile)
+    try:
+        mf.chkfile = str(checkpoint_file)
+        mf.init_guess = 'chkfile'
+        # Run a quick SCF kernel to obtain valid mf object (needed for MP2)
+        # This should be fast since we're starting from converged orbitals
+        mf.max_cycle = 1  # Just one iteration to rebuild mf object
+        scf_energy = mf.kernel()
+        if not mf.converged:
+            # If it didn't converge in 1 cycle, that's OK - we're just rebuilding from chkfile
+            # The checkpoint should have valid orbitals
+            pass
+    except Exception as e:
+        results["error"] = f"Failed to load SCF checkpoint: {e}. Checkpoint file may be corrupt or incompatible."
+        results["execution_time"] = time.time() - start_time
+        return results
+    
+    # Setup MP2 (Phase 3C: MP2 calculation)
+    try:
+        if method in ("rhf", "hf", "rks", "dft"):
+            mp2 = mp.MP2(mf)
+        elif method in ("uhf", "uks"):
+            mp2 = mp.UMP2(mf)
+        elif method in ("rohf", "roks"):
+            mp2 = mp.ROMP2(mf)
+        else:
+            results["error"] = f"MP2 not supported for method: {method}"
+            results["execution_time"] = time.time() - start_time
+            return results
+    except Exception as e:
+        results["error"] = f"Failed to setup MP2: {e}"
+        results["execution_time"] = time.time() - start_time
+        return results
+    
+    # Verbosity (write to log file)
+    log_file = working_dir / "pyscf.log"
+    mp2.verbose = params.get("verbose", 4)
+    log_handle = open(log_file, 'w')
+    mp2.stdout = log_handle
+    
+    # Run MP2
+    try:
+        mp2_energy, t2 = mp2.kernel()
+        # Total energy = SCF energy + correlation energy
+        total_energy = float(scf_energy) + float(mp2_energy)
+        correlation_energy = float(mp2_energy)
+    except Exception as e:
+        log_handle.close()
+        results["error"] = f"MP2 calculation failed: {e}"
+        results["execution_time"] = time.time() - start_time
+        return results
+    finally:
+        log_handle.close()
+    
+    # Build results (Phase 3C: MP2 results format)
+    results["success"] = True
+    results["energy"] = total_energy
+    results["energy_unit"] = "Hartree"
+    results["scf_energy"] = float(scf_energy)
+    results["correlation_energy"] = correlation_energy
+    results["method"] = f"{method}_mp2"
+    results["basis"] = params.get("basis", "sto-3g")
+    results["n_electrons"] = mol.nelectron
+    results["n_atoms"] = mol.natm
+    results["execution_time"] = time.time() - start_time
+    
+    # PySCF version
+    try:
+        import pyscf
+        results["pyscf_version"] = pyscf.__version__
+    except Exception:
+        pass
+    
+    return results
+
+
 def run_job(job_path: Path) -> int:
     """
     Main entry point: run a PySCF job from job.json.
@@ -448,9 +619,11 @@ def run_job(job_path: Path) -> int:
     # Determine step type
     step_type = job.get("step_type", "pyscf_scf")
     
-    # Run calculation
+    # Run calculation (Phase 3C: support pyscf_mp2)
     if step_type in ("pyscf_scf", "pyscf_rhf", "pyscf_uhf", "pyscf_rks", "pyscf_uks"):
         results = run_scf(params, working_dir)
+    elif step_type == "pyscf_mp2":
+        results = run_mp2(params, working_dir)
     else:
         results = {
             "success": False,

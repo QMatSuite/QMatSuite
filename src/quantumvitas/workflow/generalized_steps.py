@@ -45,6 +45,9 @@ class GeneralizedStep(str, Enum):
     MD = "MD"
     VC_MD = "VC_MD"
     
+    # Post-Hartree-Fock (molecular)
+    MP2 = "MP2"  # MP2 correlation energy calculation
+    
     # Other
     CUSTOM = "CUSTOM"
 
@@ -69,7 +72,7 @@ MATERIALIZATION_MAP: Dict[Tuple[str, str], Optional[str]] = {
     
     # PySCF family mappings
     ("pyscf", "SCF"): "pyscf_scf",
-    # Other PySCF generalized steps not yet supported in v0
+    ("pyscf", "MP2"): "pyscf_mp2",
     
     # Wannier90 standalone (if needed in future)
     # ("w90", "WANNIER"): "w90_run",
