@@ -385,6 +385,16 @@ def _copy_calculation_from_path(
         raw_dest_dir = dest_dir / "raw"
         shutil.copytree(raw_src_dir, raw_dest_dir, dirs_exist_ok=True)
     
+    # Phase 2: Ensure structure_kind and engine_family are set (defaults if missing)
+    if "structure_kind" not in calculation_data:
+        calculation_data["structure_kind"] = "periodic"
+    if "engine_family" not in calculation_data:
+        structure_kind = calculation_data.get("structure_kind", "periodic")
+        if structure_kind == "molecule":
+            calculation_data["engine_family"] = "pyscf"
+        else:
+            calculation_data["engine_family"] = "qe"
+    
     # Write calculation.yaml
     calculation_dest = dest_dir / "calculation.yaml"
     with open(calculation_dest, "w") as f:
