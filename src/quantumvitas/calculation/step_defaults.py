@@ -186,6 +186,32 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
         },
         "species_overrides": {},
     },
+    # PySCF step types (Phase 3C)
+    "pyscf_scf": {
+        "parameters": {
+            "method": "rhf",  # rhf, uhf, rohf, rks, uks, roks
+            "basis": "sto-3g",
+            "max_cycle": 50,
+            "conv_tol": 1e-9,
+            "verbose": 4,
+            "xc": "pbe",  # For DFT methods
+        },
+        "cards": {},  # PySCF doesn't use cards
+        "species_overrides": {},
+    },
+    "pyscf_mp2": {
+        "parameters": {
+            # MP2 uses SCF checkpoint, no additional parameters needed
+        },
+        "cards": {},
+        "species_overrides": {},
+    },
+    # Legacy mapping for PySCF steps (for backward compatibility)
+    "mp2": {
+        "parameters": {},
+        "cards": {},
+        "species_overrides": {},
+    },
 }
 
 
@@ -221,6 +247,9 @@ def get_default_step_params(step_type: str) -> Dict[str, Any]:
             "qe_dos": "dos",
             "qe_bands": "bands",
             "qe_bands_pw": "bands_pw",
+            # PySCF step types
+            "pyscf_scf": "pyscf_scf",
+            "pyscf_mp2": "pyscf_mp2",
             # Other QE step types don't have defaults yet
         }
         legacy_name = legacy_mapping.get(step_type_lower)

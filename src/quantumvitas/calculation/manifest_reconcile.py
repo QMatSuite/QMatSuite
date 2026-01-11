@@ -104,15 +104,40 @@ def reconcile_manifest(
                 
                 if shas_match:
                     # SHAs match: verify step is actually done using StepDonePolicy
+                    # Phase 3C: Also check if step supports incremental skip
                     from quantumvitas.core.yamldoc import StepDoc
                     from quantumvitas.core.resolution import require_step
                     from quantumvitas.core.project_utils import load_project_config
+                    from quantumvitas.workflow.registry import get_registry
                     
                     try:
                         # Use same calculation_id and config from above, with step ULID
                         step_resolved = require_step(project_root, calculation_id, step_ulid, config=config)
                         step_doc = StepDoc.load(step_resolved.absolute_path)
                         step_doc_dict = step_doc.to_dict()
+                        
+                        # Phase 3C: Check if step supports incremental skip
+                        registry = get_registry()
+                        spec = registry.get(step_kind)
+                        supports_skip = spec.supports_incremental_skip if spec else True  # Default to True for backward compat
+                        
+                        if not supports_skip:
+                            # Step does not support incremental skip - force rerun even if SHAs match
+                            new_entry = ManifestStepEntry(
+                                kind=step_kind,
+                                step_ulid=step_ulid,
+                                pseudo_set_sha=current_pseudo_set_sha,
+                                structure_sha=structure_sha,
+                                step_sha=step_sha,
+                                run_id=old_entry.run_id,
+                                done=False,  # Force rerun
+                                started_at=None,
+                                done_at=None,
+                            )
+                            new_steps.append(new_entry)
+                            if first_changed_idx > i:
+                                first_changed_idx = i
+                            continue
                         
                         # Check if step is actually done (verify output file exists and contains success marker)
                         calc_raw_dir = calc_dir / "raw"
