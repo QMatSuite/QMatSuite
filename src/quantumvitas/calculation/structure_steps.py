@@ -100,6 +100,11 @@ class StructureStepSpec:
         # If present, they are kept in memory but not written to YAML.
         
         step_type = data.get("step_type", "scf")
+        # Normalize step_type to public format for backward compatibility
+        # step.yaml stores machine types (qe_scf), but StructureStepSpec uses public types (scf)
+        from quantumvitas.workflow.registry import normalize_step_type_to_public
+        step_type = normalize_step_type_to_public(str(step_type))
+        
         parameters = data.get("parameters") or {}
         if not isinstance(parameters, dict):
             raise ValueError("Step spec 'parameters' must be a mapping")
@@ -134,7 +139,7 @@ class StructureStepSpec:
             meta=meta,
             structure_id=structure_id,
             structure=structure or "",  # Provide empty string if only structure_id present
-            step_type=str(step_type),
+            step_type=step_type,
             parameters=parameters,
             input_name=input_name,
             cards=cards,

@@ -584,6 +584,26 @@ class StepDoc(YamlDoc):
         data = _load_yaml_raw(path)
         return cls(data, access_control=access_control, owner=owner)
     
+    def get(self, path: PathType, default: Any = MISSING) -> Any:
+        """
+        Get value with backward compatibility for step_type.
+        
+        If reading step_type, converts machine type (qe_scf) to public type (scf)
+        for backward compatibility with existing APIs/tests.
+        """
+        value = super().get(path, default)
+        
+        # Convert machine type to public type for step_type field
+        if path == ("step_type",) or path == ["step_type"]:
+            if isinstance(value, str):
+                from quantumvitas.workflow.registry import get_registry
+                registry = get_registry()
+                spec = registry.get(value)
+                if spec:
+                    return spec.public_type
+        
+        return value
+    
     def save(self, path: Path) -> None:
         """
         Save step document to YAML file.
