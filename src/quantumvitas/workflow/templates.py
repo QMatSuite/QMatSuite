@@ -471,23 +471,28 @@ class WorkflowService:
             if engine_family is None:
                 engine_family = "qe"
         
-        # Phase 2: Materialize public step types to machine step types
-        # Workflow templates use public types (lowercase), but we need machine types for step.yaml
-        from quantumvitas.workflow.registry import get_registry
-        registry = get_registry()
+        # Phase 3B: Materialize PUBLIC step keys to MACHINE step types using engine_family
+        # Workflow templates use PUBLIC step keys (lowercase like "scf"), materialize to MACHINE types (like "qe_scf")
+        from quantumvitas.workflow.generalized_steps import materialize_public_step_key
         
         machine_steps = []
-        public_steps = []
-        for public_step in workflow.step_sequence:
-            # Look up the spec by public type
-            spec = registry.get(public_step)
-            if spec is None:
-                raise ValueError(
-                    f"Cannot find step type '{public_step}' in registry for workflow '{workflow_id}'"
-                )
-            # Use machine type (machine_type) for step.yaml
-            machine_steps.append(spec.machine_type)
-            public_steps.append(spec.id)  # Store public type for calculation.yaml
+        unsupported_steps = []
+        for public_step_key in workflow.step_sequence:
+            # Materialize PUBLIC key to MACHINE type using engine_family
+            machine_step = materialize_public_step_key(public_step_key, engine_family)
+            if machine_step is None:
+                unsupported_steps.append(public_step_key)
+            else:
+                machine_steps.append(machine_step)
+        
+        # Phase 3B: Raise clear error if any steps are unsupported
+        if unsupported_steps:
+            raise ValueError(
+                f"Workflow '{workflow_id}' contains steps not supported by engine family '{engine_family}': {unsupported_steps}"
+            )
+        
+        # Keep public steps for calculation.yaml (templates already use PUBLIC keys)
+        public_steps = list(workflow.step_sequence)
         
         created_paths: List[Path] = []
         created_step_ulids: List[str] = []

@@ -16,3 +16,5 @@ steps:
   type: bands_pw
 - step_id: 01KC39BB6NNP4AF070GWPKK0J0
   type: bands
+structure_kind: periodic
+engine_family: qe
