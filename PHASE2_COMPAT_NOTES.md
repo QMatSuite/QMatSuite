@@ -229,14 +229,54 @@ Normalization is **mandatory** at all boundaries where step_type crosses between
 - Artifact listing failures (wrong file names)
 - Step resolution failures (wrong step type matching)
 
+## Phase 3A and 3B Additions
+
+### Calculation Identity Immutability (Phase 3A)
+
+**Decision**: `structure_kind` and `engine_family` fields in `calculation.yaml` are immutable after initial creation.
+
+**Implementation**:
+- `save_calculation()` enforces immutability by comparing existing values with new values
+- Raises `ValueError` if attempting to change either field after they are set
+- Best-effort recovery: `ensure_calculation_identity()` infers missing identity fields from existing steps and writes them back to `calculation.yaml`
+
+**Identity Inference Strategy**:
+1. Prefer `calculation.yaml` step list (public types) - convert to machine types via registry
+2. Fallback to `step.yaml` files (machine types directly) if calculation.yaml steps are empty
+3. Infer `engine_family` from machine type prefixes (qe_, pyscf_, w90_)
+4. Infer `structure_kind` from `engine_family` (pyscf → molecule, else → periodic)
+
+**Files Modified**:
+- `src/quantumvitas/core/models.py`: Added immutability enforcement in `save_calculation()`
+- `src/quantumvitas/core/calc_identity.py`: NEW - Identity inference and recovery functions
+
+### Workflow Materialization by Engine Family (Phase 3B)
+
+**Decision**: Workflow templates use PUBLIC step keys (lowercase), which are materialized to MACHINE step types based on `calculation.engine_family`.
+
+**Implementation**:
+- `materialize_public_step_key()`: Maps PUBLIC step keys (e.g., "scf", "bands_pw") to MACHINE step types (e.g., "qe_scf", "qe_bands_pw") based on `engine_family`
+- `materialize_workflow()`: Materializes entire workflow step sequences
+- 0-1 mapping invariant: Each PUBLIC step key maps to at most one MACHINE step type per `engine_family`
+- Unsupported families: Materialization returns `None` for unsupported steps, `materialize_workflow()` raises `ValueError`
+
+**Files Modified**:
+- `src/quantumvitas/workflow/generalized_steps.py`: Enhanced `materialize_public_step_key()` and `materialize_workflow()` to use `engine_family`
+- `src/quantumvitas/workflow/templates.py`: `instantiate_workflow()` now uses `engine_family` from `calculation.yaml` for materialization
+
+**Tests Added**:
+- `tests/unit/test_calc_identity.py`: Phase 3A tests (identity inference, immutability)
+- `tests/unit/test_workflow_materialization_phase3b.py`: Phase 3B tests (QE mapping, unsupported families)
+
 ## Summary
 
-Phase 2 successfully introduced engine-prefixed step types while maintaining full backward compatibility with existing APIs, tests, and user workflows. The compatibility layer ensures that:
+Phase 2 successfully introduced engine-prefixed step types while maintaining full backward compatibility with existing APIs, tests, and user workflows. Phase 3A and 3B added calculation identity immutability and workflow materialization by engine family. The compatibility layer ensures that:
 
 1. `step.yaml` stores machine types for execution
-2. `calculation.yaml` stores public types for user-facing metadata
+2. `calculation.yaml` stores public types for user-facing metadata and immutable identity fields (`structure_kind`, `engine_family`)
 3. APIs and tests continue to work with legacy public types
-4. Materialization converts between public and machine types transparently
+4. Materialization converts between public and machine types transparently based on `engine_family`
 5. Hash computation and step loading normalize step_type for consistent equivalence checking
 6. Step type normalization is enforced at all I/O boundaries to maintain backward compatibility
+7. Calculation identity fields are immutable after creation, with best-effort recovery for legacy calculations
 

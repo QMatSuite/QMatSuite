@@ -111,31 +111,90 @@ def materialize_workflow(
     """
     Materialize a list of generalized steps to engine-specific step types.
     
+    Phase 3B: Accepts PUBLIC step keys (like "scf", "bands_pw") from workflow templates.
+    Also supports GeneralizedStep enum values (uppercase like "SCF") for backward compatibility.
+    
     Args:
-        generalized_steps: List of generalized step identifiers
+        generalized_steps: List of step identifiers (PUBLIC keys like "scf" or enum values like "SCF")
         engine_family: Engine family identifier (e.g., "qe", "pyscf")
     
     Returns:
-        List of engine-specific step type identifiers
+        List of engine-specific step type identifiers (MACHINE types like "qe_scf")
     
     Raises:
         ValueError: If a generalized step is unsupported by the engine family
     
     Example:
-        >>> materialize_workflow(["SCF", "NSCF", "DOS"], "qe")
+        >>> materialize_workflow(["scf", "nscf", "dos"], "qe")  # PUBLIC keys (preferred)
         ["qe_scf", "qe_nscf", "qe_dos"]
-        >>> materialize_workflow(["SCF"], "vasp")
-        ValueError: Generalized step 'SCF' is not supported by engine family 'vasp'
+        >>> materialize_workflow(["SCF", "NSCF", "DOS"], "qe")  # Enum values (backward compat)
+        ["qe_scf", "qe_nscf", "qe_dos"]
+        >>> materialize_workflow(["scf"], "vasp")
+        ValueError: Generalized step 'scf' is not supported by engine family 'vasp'
     """
     result = []
     for gen_step in generalized_steps:
-        specific_step = materialize_step(gen_step, engine_family)
+        # Use materialize_public_step_key which handles both PUBLIC keys and enum values
+        specific_step = materialize_public_step_key(gen_step, engine_family)
         if specific_step is None:
             raise ValueError(
                 f"Generalized step '{gen_step}' is not supported by engine family '{engine_family}'"
             )
         result.append(specific_step)
     return result
+
+
+def materialize_public_step_key(
+    public_step_key: str,
+    engine_family: str,
+) -> Optional[str]:
+    """
+    Materialize a PUBLIC step key (like "scf", "bands_pw") to MACHINE step type.
+    
+    Phase 3B: Helper for materializing PUBLIC step keys from workflow templates.
+    
+    Strategy:
+    1. First try MATERIALIZATION_MAP lookup (for simple cases like "scf" -> "SCF")
+    2. If that fails, use registry to look up machine type from PUBLIC key
+    3. Verify the machine type's engine matches engine_family
+    
+    Args:
+        public_step_key: PUBLIC step key (e.g., "scf", "bands_pw", "bands", "pw2wannier90")
+        engine_family: Engine family identifier (e.g., "qe", "pyscf")
+    
+    Returns:
+        MACHINE step type (e.g., "qe_scf"), or None if unsupported
+    
+    Example:
+        >>> materialize_public_step_key("scf", "qe")
+        "qe_scf"
+        >>> materialize_public_step_key("bands_pw", "qe")
+        "qe_bands_pw"
+        >>> materialize_public_step_key("scf", "vasp")
+        None
+    """
+    # Strategy: Prioritize registry lookup for PUBLIC keys
+    # This ensures PUBLIC keys like "bands" map correctly (qe_bands, not qe_bands_pw)
+    from quantumvitas.workflow.registry import get_registry
+    registry = get_registry()
+    spec = registry.get(public_step_key)  # Lookup by PUBLIC key (also accepts machine types)
+    if spec:
+        # Check if the spec's engine matches the requested engine_family
+        # For w90 steps, they're part of qe family toolchain
+        spec_engine_family = spec.engine
+        if spec_engine_family == engine_family:
+            return spec.machine_type
+        # Special case: w90 steps are part of qe family
+        if spec_engine_family == "qe" and engine_family == "qe" and spec.machine_type.startswith("w90_"):
+            return spec.machine_type
+    
+    # Fallback: Try MATERIALIZATION_MAP (for GeneralizedStep enum values like "SCF", "BANDS")
+    # This handles backward compatibility with enum values
+    result = materialize_step(public_step_key, engine_family)
+    if result is not None:
+        return result
+    
+    return None
 
 
 def get_supported_generalized_steps(engine_family: str) -> list[str]:
