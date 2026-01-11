@@ -163,6 +163,7 @@ def compute_step_sha(step_doc: Union[Dict[str, Any], Path]) -> str:
     Compute SHA256 hash of step YAML.
     
     Strips meta fields for physics equivalence.
+    Normalizes step_type to public format for backward compatibility.
     
     Args:
         step_doc: Step YAML as dict or Path to step YAML file
@@ -179,6 +180,12 @@ def compute_step_sha(step_doc: Union[Dict[str, Any], Path]) -> str:
     
     # Strip meta fields
     step_data = strip_resource_meta(data)
+    
+    # Normalize step_type to public format for backward compatibility
+    # This ensures hashes match between machine types (qe_scf) and public types (scf)
+    if "step_type" in step_data:
+        from quantumvitas.workflow.registry import normalize_step_type_to_public
+        step_data["step_type"] = normalize_step_type_to_public(step_data["step_type"])
     
     # Canonicalize and serialize
     serialized = stable_serialize(step_data)

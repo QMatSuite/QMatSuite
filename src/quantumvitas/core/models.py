@@ -32,6 +32,69 @@ from quantumvitas.core.resources import (
 # ---------------------------------------------------------------------------
 
 
+def _infer_engine_family_from_steps(steps: List["CalculationStepEntry"]) -> Optional[str]:
+    """
+    Infer engine_family from step types (backward compatibility recovery).
+    
+    This is best-effort only; no guarantees required.
+    
+    Args:
+        steps: List of CalculationStepEntry objects
+    
+    Returns:
+        Engine family identifier if all steps belong to one family, None otherwise
+    """
+    if not steps:
+        return None
+    
+    # Map step types to engine families
+    # Old step types (without prefix) are assumed to be QE
+    step_type_to_family: Dict[str, str] = {}
+    
+    # QE step types (prefixed and legacy)
+    qe_types = {"scf", "nscf", "relax", "vc-relax", "dos", "bands", "bands_pw", "ph", "q2r", "matdyn", "dynmat", 
+                "pp", "projwfc", "md", "vc-md", "pw2wannier90", "custom"}
+    for step_type in qe_types:
+        step_type_to_family[step_type] = "qe"
+        step_type_to_family[f"qe_{step_type}"] = "qe"
+        # Handle legacy names
+        if step_type == "vc-relax":
+            step_type_to_family["qe_vc_relax"] = "qe"
+        elif step_type == "bands_pw":
+            step_type_to_family["qe_bands_pw"] = "qe"
+        elif step_type == "vc-md":
+            step_type_to_family["qe_vc_md"] = "qe"
+    
+    # Wannier90 step types
+    w90_types = {"w90_preproc", "w90_run"}
+    for step_type in w90_types:
+        step_type_to_family[step_type] = "qe"  # w90 is part of qe family toolchain
+    
+    # PySCF step types
+    pyscf_types = {"pyscf_scf"}
+    for step_type in pyscf_types:
+        step_type_to_family[step_type] = "pyscf"
+    
+    # Collect families from all steps
+    families = set()
+    for step in steps:
+        step_type = step.step_type
+        if step_type:
+            family = step_type_to_family.get(step_type)
+            if family:
+                families.add(family)
+            elif not step_type.startswith(("qe_", "w90_", "pyscf_")):
+                # Legacy step type without prefix - assume QE
+                families.add("qe")
+    
+    # Return single family if all steps belong to one family
+    if len(families) == 1:
+        return families.pop()
+    
+    # Mixed families or unknown - return None (will use default)
+    return None
+
+
 @dataclass
 class CalculationStepEntry:
     """
@@ -43,11 +106,20 @@ class CalculationStepEntry:
     The step file location is resolved via ResourceIndex using step_id, not stored here.
     """
     step_id: Optional[str] = None  # Canonical step reference (ULID from step meta) - REQUIRED
-    type: Optional[str] = None  # Calculation-local metadata (step type for display/ordering)
+    type: Optional[str] = None  # Calculation-local metadata (step type for display/ordering) - stores PUBLIC type
     input: Optional[str] = None  # Calculation-local metadata (legacy input file reference)
     reference: Optional[str] = None  # Calculation-local metadata (reference file)
     
     # Legacy field removed - step_id (ULID) is the only identifier
+    
+    @property
+    def step_type(self) -> Optional[str]:
+        """
+        Backward compatibility: step_type property returns the type field (public type).
+        
+        This allows code that expects step_type to continue working.
+        """
+        return self.type
     
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -113,9 +185,20 @@ class CalculationStepEntry:
             else:
                 raise LegacyProjectError(Path.cwd(), error_msg)
         
+        # Phase 2: Normalize machine type (qe_scf) to public type (scf) in type field
+        step_type_raw = data.get("type")
+        step_type_public = step_type_raw
+        if step_type_raw:
+            # If it's a machine type, convert to public type
+            from quantumvitas.workflow.registry import get_registry
+            registry = get_registry()
+            spec = registry.get(step_type_raw)  # Accepts both public and machine types
+            if spec:
+                step_type_public = spec.public_type
+        
         return cls(
             step_id=step_id,
-            type=data.get("type"),
+            type=step_type_public,  # Store public type for backward compatibility
             input=data.get("input") or data.get("file"),
             reference=data.get("reference"),
             # Do not store legacy id field
@@ -133,6 +216,11 @@ class CalculationModel:
     - structure_id: ULID of the structure (canonical reference)
     - structure_name: Optional display name (cosmetic only, not used for resolution)
     
+    Structure and engine metadata:
+    - structure_kind: "periodic" | "molecule" (immutable once set)
+    - engine_family: Engine family identifier (immutable once set, e.g., "qe", "pyscf")
+      Used for workflow materialization (generalized → engine-specific steps)
+    
     Pseudopotential mapping:
     - species_map: dict[element_symbol -> {pseudopot: str, mass: float?}]
       This is the authoritative source for pseudo mapping (not step-level).
@@ -144,6 +232,9 @@ class CalculationModel:
     mode: str = "normal"
     working_dir: str = "raw"
     steps: List[CalculationStepEntry] = field(default_factory=list)
+    # Phase 2: Structure and engine metadata (immutable once set)
+    structure_kind: Optional[str] = None  # "periodic" | "molecule"
+    engine_family: Optional[str] = None  # Engine family (e.g., "qe", "pyscf")
     # Calculation-level pseudopotential mapping: element -> {pseudopot, mass, pseudo_sha256, pseudo_sha_family, pseudo_basename}
     # This is the authoritative source of truth for pseudo mapping.
     # Step-level species_overrides are deprecated (used only for backwards compat on load).
@@ -183,6 +274,11 @@ class CalculationModel:
         # Do NOT write structure_name (cosmetic only, not used for resolution)
         if self.structure_id:
             result["structure_id"] = self.structure_id
+        # Phase 2: Write structure_kind and engine_family (immutable metadata)
+        if self.structure_kind:
+            result["structure_kind"] = self.structure_kind
+        if self.engine_family:
+            result["engine_family"] = self.engine_family
         # Write species_map (calculation-level pseudo mapping)
         if self.species_map:
             result["species_map"] = self.species_map
@@ -253,6 +349,21 @@ class CalculationModel:
         # Load species_map (calculation-level pseudo mapping)
         species_map = data.get("species_map") or calculation_section.get("species_map")
         
+        # Phase 2: Load structure_kind and engine_family
+        structure_kind = data.get("structure_kind")
+        engine_family = data.get("engine_family")
+        
+        # Backward compatibility: Infer engine_family from steps if missing
+        if engine_family is None:
+            engine_family = _infer_engine_family_from_steps(steps)
+        
+        # Backward compatibility: Default engine_family based on structure_kind if still missing
+        if engine_family is None:
+            if structure_kind == "molecule":
+                engine_family = "pyscf"
+            else:
+                engine_family = "qe"  # Default for periodic or unknown
+        
         return cls(
             meta=meta,
             structure_id=structure_id,
@@ -260,6 +371,8 @@ class CalculationModel:
             mode=data.get("mode", "normal"),
             working_dir=working_dir,
             steps=steps,
+            structure_kind=structure_kind,
+            engine_family=engine_family,
             species_map=species_map,
         )
     

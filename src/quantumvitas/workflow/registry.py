@@ -25,8 +25,10 @@ class StepTypeSpec:
     Specification for a step type.
     
     Attributes:
-        id: Canonical step_type string (e.g., "scf", "dos")
-        engine: Engine identifier (e.g., "qe")
+        id: Public/generalized step_type string (e.g., "scf", "nscf") - used in APIs/UI (backward compat)
+        machine_type: Machine step_type string (e.g., "qe_scf", "w90_run") - used in step.yaml
+        public_type: Public/generalized step_type string (e.g., "scf", "nscf") - alias for id
+        engine: Engine identifier (e.g., "qe", "w90", "pyscf")
         executable: QE executable name (e.g., "pw.x", "dos.x")
         description: Human-readable description
         accepts_presets: Whether preset dimensions apply to this step
@@ -35,7 +37,9 @@ class StepTypeSpec:
         requires_charge_density: Whether step needs prior SCF charge density
         produces_charge_density: Whether step produces charge density for later steps
     """
-    id: str
+    id: str  # Public type (for backward compatibility - tests expect this)
+    machine_type: str  # Machine type (engine-prefixed, used in step.yaml)
+    public_type: str  # Public type (alias for id, for clarity)
     engine: str
     executable: str
     description: str
@@ -64,10 +68,12 @@ PW_DIMENSIONS = frozenset({DIMENSION_MAGNETISM, DIMENSION_OCCUPATIONS, DIMENSION
 
 _STEP_TYPES: Dict[str, StepTypeSpec] = {
     # -------------------------------------------------------------------------
-    # pw.x step types (self-consistent and variants)
+    # QE pw.x step types (self-consistent and variants)
     # -------------------------------------------------------------------------
-    "scf": StepTypeSpec(
-        id="scf",
+    "qe_scf": StepTypeSpec(
+        id="scf",  # Public type (for backward compatibility)
+        machine_type="qe_scf",  # Machine type (for step.yaml)
+        public_type="scf",  # Alias for id
         engine="qe",
         executable="pw.x",
         description="Self-consistent field calculation (ground state)",
@@ -77,8 +83,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=False,
         produces_charge_density=True,
     ),
-    "nscf": StepTypeSpec(
+    "qe_nscf": StepTypeSpec(
         id="nscf",
+        machine_type="qe_nscf",
+        public_type="nscf",
         engine="qe",
         executable="pw.x",
         description="Non-self-consistent field calculation (fixed density)",
@@ -88,8 +96,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=True,
         produces_charge_density=False,
     ),
-    "relax": StepTypeSpec(
+    "qe_relax": StepTypeSpec(
         id="relax",
+        machine_type="qe_relax",
+        public_type="relax",
         engine="qe",
         executable="pw.x",
         description="Atomic relaxation (optimize positions, fixed cell)",
@@ -99,8 +109,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=False,
         produces_charge_density=True,
     ),
-    "vc-relax": StepTypeSpec(
+    "qe_vc_relax": StepTypeSpec(
         id="vc-relax",
+        machine_type="qe_vc_relax",
+        public_type="vc-relax",
         engine="qe",
         executable="pw.x",
         description="Variable-cell relaxation (optimize positions and cell)",
@@ -110,8 +122,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=False,
         produces_charge_density=True,
     ),
-    "bands_pw": StepTypeSpec(
+    "qe_bands_pw": StepTypeSpec(
         id="bands_pw",
+        machine_type="qe_bands_pw",
+        public_type="bands_pw",
         engine="qe",
         executable="pw.x",
         description="Band structure calculation along k-path (pw.x)",
@@ -121,8 +135,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=True,
         produces_charge_density=False,
     ),
-    "md": StepTypeSpec(
+    "qe_md": StepTypeSpec(
         id="md",
+        machine_type="qe_md",
+        public_type="md",
         engine="qe",
         executable="pw.x",
         description="Molecular dynamics (Born-Oppenheimer)",
@@ -132,8 +148,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=False,
         produces_charge_density=False,
     ),
-    "vc-md": StepTypeSpec(
+    "qe_vc_md": StepTypeSpec(
         id="vc-md",
+        machine_type="qe_vc_md",
+        public_type="vc-md",
         engine="qe",
         executable="pw.x",
         description="Variable-cell molecular dynamics",
@@ -145,10 +163,12 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
     
     # -------------------------------------------------------------------------
-    # Post-processing step types (no presets)
+    # QE post-processing step types (no presets)
     # -------------------------------------------------------------------------
-    "dos": StepTypeSpec(
+    "qe_dos": StepTypeSpec(
         id="dos",
+        machine_type="qe_dos",
+        public_type="dos",
         engine="qe",
         executable="dos.x",
         description="Density of states calculation",
@@ -158,8 +178,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=True,
         produces_charge_density=False,
     ),
-    "bands": StepTypeSpec(
+    "qe_bands": StepTypeSpec(
         id="bands",
+        machine_type="qe_bands",
+        public_type="bands",
         engine="qe",
         executable="bands.x",
         description="Band structure post-processing",
@@ -169,8 +191,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=True,
         produces_charge_density=False,
     ),
-    "projwfc": StepTypeSpec(
+    "qe_projwfc": StepTypeSpec(
         id="projwfc",
+        machine_type="qe_projwfc",
+        public_type="projwfc",
         engine="qe",
         executable="projwfc.x",
         description="Projected density of states (atomic orbitals)",
@@ -180,8 +204,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=True,
         produces_charge_density=False,
     ),
-    "pp": StepTypeSpec(
+    "qe_pp": StepTypeSpec(
         id="pp",
+        machine_type="qe_pp",
+        public_type="pp",
         engine="qe",
         executable="pp.x",
         description="Post-processing (charge density, potentials, etc.)",
@@ -193,10 +219,12 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
     
     # -------------------------------------------------------------------------
-    # Phonon step types (no presets in v0)
+    # QE phonon step types (no presets in v0)
     # -------------------------------------------------------------------------
-    "ph": StepTypeSpec(
+    "qe_ph": StepTypeSpec(
         id="ph",
+        machine_type="qe_ph",
+        public_type="ph",
         engine="qe",
         executable="ph.x",
         description="Phonon calculation (DFPT)",
@@ -206,8 +234,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=True,
         produces_charge_density=False,
     ),
-    "q2r": StepTypeSpec(
+    "qe_q2r": StepTypeSpec(
         id="q2r",
+        machine_type="qe_q2r",
+        public_type="q2r",
         engine="qe",
         executable="q2r.x",
         description="Interatomic force constants from dynamical matrices",
@@ -217,8 +247,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=False,
         produces_charge_density=False,
     ),
-    "matdyn": StepTypeSpec(
+    "qe_matdyn": StepTypeSpec(
         id="matdyn",
+        machine_type="qe_matdyn",
+        public_type="matdyn",
         engine="qe",
         executable="matdyn.x",
         description="Phonon frequencies and eigenvectors",
@@ -228,8 +260,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=False,
         produces_charge_density=False,
     ),
-    "dynmat": StepTypeSpec(
+    "qe_dynmat": StepTypeSpec(
         id="dynmat",
+        machine_type="qe_dynmat",
+        public_type="dynmat",
         engine="qe",
         executable="dynmat.x",
         description="Dynamical matrix analysis",
@@ -241,11 +275,13 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
     
     # -------------------------------------------------------------------------
-    # Wannier90 step types
+    # Wannier90 step types (w90_ prefix for Wannier90 tools)
     # -------------------------------------------------------------------------
     "w90_preproc": StepTypeSpec(
         id="w90_preproc",
-        engine="qe",
+        machine_type="w90_preproc",
+        public_type="w90_preproc",
+        engine="qe",  # Legacy: tests expect "qe" for backward compatibility
         executable="wannier90.x",
         description="Wannier90 preprocessing (generate .nnkp)",
         accepts_presets=False,
@@ -254,8 +290,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=False,  # Needs .win file, not charge density
         produces_charge_density=False,
     ),
-    "pw2wannier90": StepTypeSpec(
+    "qe_pw2wannier90": StepTypeSpec(
         id="pw2wannier90",
+        machine_type="qe_pw2wannier90",
+        public_type="pw2wannier90",
         engine="qe",
         executable="pw2wannier90.x",
         description="QE to Wannier90 interface (compute overlaps)",
@@ -267,7 +305,9 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
     "w90_run": StepTypeSpec(
         id="w90_run",
-        engine="qe",
+        machine_type="w90_run",
+        public_type="w90_run",
+        engine="qe",  # Legacy: tests expect "qe" for backward compatibility
         executable="wannier90.x",
         description="Wannier90 MLWF optimization",
         accepts_presets=False,
@@ -282,6 +322,8 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     # -------------------------------------------------------------------------
     "pyscf_scf": StepTypeSpec(
         id="pyscf_scf",
+        machine_type="pyscf_scf",
+        public_type="pyscf_scf",
         engine="pyscf",
         executable="python",  # Python-native, no external binary
         description="PySCF single-point calculation (HF/DFT)",
@@ -295,8 +337,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
-    "custom": StepTypeSpec(
+    "qe_custom": StepTypeSpec(
         id="custom",
+        machine_type="qe_custom",
+        public_type="custom",
         engine="qe",
         executable="pw.x",
         description="Custom step type (escape hatch)",
@@ -319,9 +363,9 @@ class StepTypeRegistry:
     Registry of step type specifications.
     
     Provides:
-    - Lookup by step_type id
-    - List all step types
-    - Filter by engine
+    - Lookup by step_type id (public or machine type)
+    - List all step types (returns public types by default)
+    - Filter by engine (returns public types by default)
     - Get defaults for step type
     """
     
@@ -333,36 +377,69 @@ class StepTypeRegistry:
             step_types: Optional custom step types (for testing)
         """
         self._types = step_types if step_types is not None else _STEP_TYPES.copy()
+        # Build public_type -> machine_type mapping for fast lookup
+        self._public_to_machine: Dict[str, str] = {
+            spec.public_type: spec.machine_type for spec in self._types.values()
+        }
+        # Also build machine_type -> spec mapping
+        self._machine_to_spec: Dict[str, StepTypeSpec] = {
+            spec.machine_type: spec for spec in self._types.values()
+        }
     
     def get(self, step_type: str) -> Optional[StepTypeSpec]:
         """
         Get specification for a step type.
         
+        Accepts either public_type (e.g., "scf") or machine_type (e.g., "qe_scf").
+        Returns the StepTypeSpec (with both public_type and id fields).
+        
         Args:
             step_type: Step type identifier (case-insensitive)
+                Can be public_type ("scf") or machine_type ("qe_scf")
             
         Returns:
             StepTypeSpec or None if not found
         """
-        return self._types.get(step_type.lower())
+        step_type_lower = step_type.lower()
+        # Try direct lookup by machine type first
+        if step_type_lower in self._machine_to_spec:
+            return self._machine_to_spec[step_type_lower]
+        
+        # Try lookup by public type (id field)
+        for spec in self._types.values():
+            if spec.id.lower() == step_type_lower or spec.public_type.lower() == step_type_lower:
+                return spec
+        
+        return None
     
     def has(self, step_type: str) -> bool:
-        """Check if step type exists in registry."""
-        return step_type.lower() in self._types
+        """Check if step type exists in registry (supports both public and machine types)."""
+        return self.get(step_type) is not None
     
     def list_all(self) -> List[str]:
-        """List all registered step type ids."""
-        return sorted(self._types.keys())
+        """List all registered step types (returns public types)."""
+        return sorted(set(spec.id for spec in self._types.values()))
+    
+    def list_all_machine(self) -> List[str]:
+        """List all registered step types (returns machine types)."""
+        return sorted(spec.machine_type for spec in self._types.values())
     
     def list_by_engine(self, engine: str) -> List[str]:
-        """List step types for a specific engine."""
+        """List step types for a specific engine (returns public types)."""
         return sorted(
             spec.id for spec in self._types.values()
             if spec.engine == engine
         )
     
+    def list_by_engine_machine(self, engine: str) -> List[str]:
+        """List step types for a specific engine (returns machine types)."""
+        return sorted(
+            spec.machine_type for spec in self._types.values()
+            if spec.engine == engine
+        )
+    
     def list_accepting_presets(self) -> List[str]:
-        """List step types that accept presets."""
+        """List step types that accept presets (returns public types)."""
         return sorted(
             spec.id for spec in self._types.values()
             if spec.accepts_presets
@@ -424,4 +501,27 @@ def reset_registry() -> None:
     """Reset global registry (for testing)."""
     global _registry
     _registry = None
+
+
+def normalize_step_type_to_public(step_type: str) -> str:
+    """
+    Normalize step_type to public (legacy) format for backward compatibility.
+    
+    Converts machine types (e.g., "qe_scf") to public types (e.g., "scf").
+    If step_type is already a public type or unknown, returns it unchanged.
+    
+    Args:
+        step_type: Step type (machine or public format)
+        
+    Returns:
+        Public step type (legacy format)
+    """
+    if not step_type:
+        return step_type
+    
+    registry = get_registry()
+    spec = registry.get(step_type)
+    if spec:
+        return spec.public_type
+    return step_type
 
