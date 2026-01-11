@@ -193,14 +193,42 @@ def get_default_step_params(step_type: str) -> Dict[str, Any]:
     """
     Get default parameters for a step type.
     
+    Supports Phase 2 engine-prefixed step types (e.g., "qe_scf", "qe_nscf")
+    with backward compatibility for legacy step types (e.g., "scf", "nscf").
+    
     Args:
-        step_type: Step type (e.g., "scf", "nscf", "dos", "bands")
+        step_type: Step type (e.g., "qe_scf", "qe_nscf", "scf", "nscf")
         
     Returns:
         Dict with "parameters", "cards", and "species_overrides" keys.
         Returns empty dicts if step_type is not recognized.
     """
-    defaults = DEFAULT_STEP_PARAMS.get(step_type.lower(), {})
+    step_type_lower = step_type.lower()
+    
+    # Try direct lookup first (for legacy step types)
+    if step_type_lower in DEFAULT_STEP_PARAMS:
+        defaults = DEFAULT_STEP_PARAMS[step_type_lower]
+    else:
+        # Phase 2: Map engine-prefixed step types to legacy names
+        # Extract step name by removing engine prefix (e.g., "qe_scf" -> "scf")
+        legacy_mapping = {
+            "qe_scf": "scf",
+            "qe_nscf": "nscf",
+            "qe_relax": "relax",
+            "qe_vc_relax": "vc-relax",
+            "qe_md": "md",
+            "qe_vc_md": "vc-md",
+            "qe_dos": "dos",
+            "qe_bands": "bands",
+            "qe_bands_pw": "bands_pw",
+            # Other QE step types don't have defaults yet
+        }
+        legacy_name = legacy_mapping.get(step_type_lower)
+        if legacy_name:
+            defaults = DEFAULT_STEP_PARAMS.get(legacy_name, {})
+        else:
+            defaults = {}
+    
     return {
         "parameters": defaults.get("parameters", {}),
         "cards": defaults.get("cards", {}),

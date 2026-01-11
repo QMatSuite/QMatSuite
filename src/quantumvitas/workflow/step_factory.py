@@ -45,7 +45,16 @@ def create_step_doc(
     
     registry = get_registry()
     
-    # Get defaults for step type
+    # Phase 2: Normalize step_type to machine_type for step.yaml
+    # step.yaml stores machine types only (qe_scf, w90_run, etc.)
+    spec = registry.get(step_type)  # Accepts both public and machine types
+    if spec:
+        machine_step_type = spec.machine_type  # Use machine type for step.yaml
+    else:
+        # Fallback: assume it's already a machine type or unknown
+        machine_step_type = step_type
+    
+    # Get defaults for step type (use original step_type for lookup)
     defaults = registry.get_defaults(step_type)
     
     # Generate meta
@@ -53,6 +62,7 @@ def create_step_doc(
     slug = slugify(name)
     
     # Build step data
+    # step.yaml stores machine_type (qe_scf), not public_type (scf)
     data: Dict[str, Any] = {
         "meta": {
             "id": step_id,
@@ -60,7 +70,7 @@ def create_step_doc(
             "slug": slug,
             "kind": "step",
         },
-        "step_type": step_type,
+        "step_type": machine_step_type,  # Machine type goes to step.yaml
     }
     
     # Add structure_id if provided (legacy field, kept for backwards compat)

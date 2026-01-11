@@ -74,41 +74,49 @@ class WorkflowIssue:
 # =============================================================================
 
 _WORKFLOWS: Dict[str, WorkflowTemplate] = {
+    # Phase 2: Workflows use public/generalized step keys (lowercase legacy names)
+    # Materialization happens during instantiation based on calc.engine_family
     "scf": WorkflowTemplate(
         id="scf",
         name="SCF",
         description="Self-consistent field calculation (ground state energy)",
-        step_sequence=("scf",),
+        step_sequence=("scf",),  # Public generalized step key
     ),
     "relax": WorkflowTemplate(
         id="relax",
         name="Relaxation",
         description="Atomic relaxation (optimize positions, fixed cell)",
-        step_sequence=("relax",),
+        step_sequence=("relax",),  # Public generalized step key
     ),
     "vc-relax": WorkflowTemplate(
         id="vc-relax",
         name="Full Relaxation",
         description="Variable-cell relaxation (optimize positions and cell)",
-        step_sequence=("vc-relax",),
+        step_sequence=("vc-relax",),  # Public generalized step key
     ),
     "dos": WorkflowTemplate(
         id="dos",
         name="Density of States",
         description="Electronic density of states calculation",
-        step_sequence=("scf", "nscf", "dos"),
+        step_sequence=("scf", "nscf", "dos"),  # Public generalized step keys
     ),
     "bands": WorkflowTemplate(
         id="bands",
         name="Band Structure",
         description="Electronic band structure along k-path",
-        step_sequence=("scf", "bands_pw", "bands"),
+        step_sequence=("scf", "bands_pw", "bands"),  # Public generalized step keys
     ),
     "pdos": WorkflowTemplate(
         id="pdos",
         name="Projected DOS",
         description="Atom/orbital-resolved density of states",
-        step_sequence=("scf", "nscf", "projwfc"),
+        step_sequence=("scf", "nscf", "dos"),  # Public generalized step keys
+    ),
+    "wannier": WorkflowTemplate(
+        id="wannier",
+        name="Wannierization",
+        description="Maximally localized Wannier functions",
+        step_sequence=("scf", "nscf", "pw2wannier90", "w90_run"),  # Public generalized step keys
     ),
 }
 
@@ -302,10 +310,28 @@ class WorkflowService:
                             pass
             
             if step_type:
-                present_steps.append(step_type)
+                # Phase 2: Map engine-specific step type (machine type) to public type for workflow detection
+                from quantumvitas.workflow.registry import get_registry
+                registry = get_registry()
+                spec = registry.get(step_type)  # Accepts both public and machine types
+                if spec:
+                    # Use id (public type) for workflow detection (workflows use public types)
+                    public_type = spec.id  # id is the public type
+                    present_steps.append(public_type)
+                    if debug_enabled:
+                        logger.info(
+                            f"[WORKFLOW_DETECT] Step {i+1} mapped: {step_type} -> {public_type}"
+                        )
+                else:
+                    # Fallback: use step_type as-is (may be public type already)
+                    present_steps.append(step_type)
+                    if debug_enabled:
+                        logger.warning(
+                            f"[WORKFLOW_DETECT] Step {i+1} not found in registry: {step_type}"
+                        )
                 if debug_enabled:
                     logger.info(
-                        f"[WORKFLOW_DETECT] Step {i+1} added to present_steps: {step_type}"
+                        f"[WORKFLOW_DETECT] Step {i+1} added to present_steps: {present_steps[-1]}"
                     )
             else:
                 if debug_enabled:
@@ -326,6 +352,7 @@ class WorkflowService:
         best_score = (-1.0, 0)  # (coverage, workflow_length for tiebreaker)
         
         for workflow in self._workflows.values():
+            # Phase 2: Workflow templates use generalized steps
             required_steps = set(workflow.step_sequence) - workflow.optional_steps
             present_set = set(present_steps)
             
@@ -398,23 +425,31 @@ class WorkflowService:
         calc_dir: Path,
         structure_id: str,
         parent_calculation_id: str,
+        *,
+        engine_family: Optional[str] = None,
     ) -> List[Path]:
         """
         Instantiate a workflow by creating its steps.
+        
+        Phase 2: Materializes generalized steps to engine-specific steps based on engine_family.
         
         Args:
             workflow_id: Workflow template id
             calc_dir: Path to calculation directory
             structure_id: Structure ULID
             parent_calculation_id: Parent calculation ULID
+            engine_family: Engine family identifier (e.g., "qe", "pyscf")
+                If None, attempts to load from calculation.yaml
             
         Returns:
             List of created step file paths
             
         Raises:
-            ValueError: If workflow not found
+            ValueError: If workflow not found or materialization fails
         """
         from quantumvitas.workflow.step_factory import create_step_doc, save_step_doc
+        from quantumvitas.workflow.generalized_steps import materialize_workflow
+        from quantumvitas.core.models import CalculationModel
         
         workflow = self.get_template(workflow_id)
         if workflow is None:
@@ -424,14 +459,44 @@ class WorkflowService:
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir(exist_ok=True)
         
+        # Get engine_family from calculation if not provided
+        if engine_family is None:
+            calc_yaml_path = calc_dir / "calculation.yaml"
+            if calc_yaml_path.exists():
+                import yaml
+                calc_data = yaml.safe_load(calc_yaml_path.read_text())
+                engine_family = calc_data.get("engine_family")
+            
+            # Fallback to default (qe)
+            if engine_family is None:
+                engine_family = "qe"
+        
+        # Phase 2: Materialize public step types to machine step types
+        # Workflow templates use public types (lowercase), but we need machine types for step.yaml
+        from quantumvitas.workflow.registry import get_registry
+        registry = get_registry()
+        
+        machine_steps = []
+        public_steps = []
+        for public_step in workflow.step_sequence:
+            # Look up the spec by public type
+            spec = registry.get(public_step)
+            if spec is None:
+                raise ValueError(
+                    f"Cannot find step type '{public_step}' in registry for workflow '{workflow_id}'"
+                )
+            # Use machine type (machine_type) for step.yaml
+            machine_steps.append(spec.machine_type)
+            public_steps.append(spec.id)  # Store public type for calculation.yaml
+        
         created_paths: List[Path] = []
         created_step_ulids: List[str] = []
         
-        for step_type in workflow.step_sequence:
-            # Create step document
+        for machine_step in machine_steps:
+            # Create step document with machine step type (for step.yaml)
             step_doc = create_step_doc(
-                step_type=step_type,
-                name=step_type,
+                step_type=machine_step,  # Machine type goes to step.yaml
+                name=machine_step,  # TODO: Use public step name for display
                 structure_id=structure_id,
                 parent_calculation_id=parent_calculation_id,
             )
@@ -458,11 +523,11 @@ class WorkflowService:
         if project_root is None:
             raise ValueError(f"Cannot find project root from {calc_dir}")
         
-        # Build step_types mapping: step_ulid -> step_type
-        # This ensures calculation.yaml.steps[] includes type metadata
+        # Build step_types mapping: step_ulid -> PUBLIC step_type (for calculation.yaml)
+        # calculation.yaml stores public types, step.yaml stores machine types
         step_types = {}
-        for step_type, step_ulid in zip(workflow.step_sequence, created_step_ulids):
-            step_types[step_ulid] = step_type
+        for public_step, step_ulid in zip(public_steps, created_step_ulids):
+            step_types[step_ulid] = public_step  # Store public type in calculation.yaml
         
         QVService.calc_set_steps(
             project_root=project_root,

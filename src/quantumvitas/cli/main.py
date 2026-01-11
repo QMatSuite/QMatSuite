@@ -846,12 +846,24 @@ def init_calculation_command(
     # Write calculation.yaml with proper meta section (contains ULID)
     # DAG + ID-only model: use structure_id (ULID) as canonical reference
     # Do NOT write structure_name or structure selector (violates DAG + ID-only constitution)
+    # Phase 2: Infer structure_kind and engine_family from structure
+    # TODO: Actually inspect structure to determine if periodic or molecule
+    # For now, default to periodic (qe family)
+    structure_kind = "periodic"  # Default assumption
+    engine_family = "qe"  # Default for periodic structures
+    
+    # Write calculation.yaml with proper meta section (contains ULID)
+    # DAG + ID-only model: use structure_id (ULID) as canonical reference
+    # Do NOT write structure_name or structure selector (violates DAG + ID-only constitution)
     calculation_payload = {
         "meta": calculation_meta_dict,
         "structure_id": structure_id,  # Canonical reference (ULID only)
         "mode": "normal",
         "working_dir": "raw",
         "steps": [],
+        # Phase 2: Add structure_kind and engine_family
+        "structure_kind": structure_kind,
+        "engine_family": engine_family,
     }
     (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_payload, sort_keys=False))
 
@@ -865,15 +877,22 @@ def init_calculation_command(
 
 
 
-# Known step types for validation (QE + PySCF)
+# Known step types for validation (Phase 2: engine-prefixed + legacy backward compat)
 KNOWN_STEP_TYPES = {
+    # Engine-prefixed step types (Phase 2)
+    "qe_scf", "qe_nscf", "qe_relax", "qe_vc_relax", "qe_md", "qe_vc_md",  # QE pw.x
+    "qe_dos", "qe_bands", "qe_bands_pw",  # QE post-processing
+    "qe_ph", "qe_q2r", "qe_matdyn", "qe_dynmat",  # QE phonon
+    "qe_pp", "qe_projwfc",  # QE other post-processing
+    "qe_pw2wannier90", "qe_custom",  # QE other
+    "w90_preproc", "w90_run",  # Wannier90
+    "pyscf_scf",  # PySCF molecular QC
+    # Legacy step types (backward compatibility)
     "scf", "nscf", "relax", "vc-relax", "md", "vc-md",  # pw.x calculation types
     "dos", "bands", "bands_pw",  # post-processing
     "ph", "q2r", "matdyn", "dynmat",  # phonon
     "pp", "projwfc",  # other post-processing
-    "w90_preproc", "pw2wannier90", "w90_run",  # Wannier90
-    "pyscf_scf",  # PySCF molecular QC
-    "custom",  # escape hatch for unsupported types
+    "pw2wannier90", "custom",  # escape hatch for unsupported types
 }
 
 
