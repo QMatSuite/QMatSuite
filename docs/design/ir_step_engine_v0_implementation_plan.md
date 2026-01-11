@@ -1,9 +1,16 @@
 # IR, Step, and Engine Generalization v0 Implementation Plan
 
-**Version**: 0.0  
-**Status**: Implementation Plan (Not Started)  
+**Version**: 0.1  
+**Status**: Implementation Plan (Ready to Start)  
 **Date**: 2025-01-XX  
 **Purpose**: Detailed, checkbox-driven implementation plan for v0 IR/Step/Engine generalization
+
+**Final Clarifications**:
+- ✅ IR landing MUST be fully implemented in v0 (not scaffolding)
+- ✅ Step generalization: Conceptual only (enums/mappings/docs; NO execution changes)
+- ✅ Engine generalization: QE adapter MUST be implemented; NO central registry; NO engine_id in step.yaml
+- ✅ QE/Wannier execution paths MUST NOT break (no refactoring)
+- ✅ System must be usable exactly as before from user perspective
 
 ---
 
@@ -119,10 +126,19 @@
 
 ## Phase 1: Parameter IR Landing (QE-Only Behavioral Preservation)
 
+**Status**: ✅ FULL IMPLEMENTATION REQUIRED (not scaffolding)
+
 **Architecture**: Parameter pipeline flow
 - Preset (physical intent) → IR parameters (physical quantities, engine-agnostic) → Engine-specific parameters (step.yaml, SSOT)
 - ParamSpace operates ONLY on IR keys
 - IR→QE translation happens in QE engine adapter/compiler layer, NOT inside ParamSpace
+
+**Deliverables**: 
+- IR parameter registry (fully implemented)
+- ParamSpace dimension-2 migration to IR keys (fully implemented)
+- Explicit IR↔QE adapter layer (fully implemented)
+- All existing behavior preserved
+- Tests added and passing
 
 ### A1) IR Parameter Inventory (v0)
 
@@ -438,21 +454,37 @@
 
 ---
 
-## Phase 2: Workflow Pipeline Scaffolding (Design-Level)
+## Phase 2: Step Generalization (Conceptual Only in v0)
 
-**Architecture**: Workflow pipeline flow
+**Status**: ⚠️ CONCEPTUAL ONLY (enums/mappings/documentation; NO execution changes)
+
+**Architecture**: Workflow pipeline flow (conceptual only in v0)
 - Workflow (physical intent) → Generalized Steps (physical operations, engine-agnostic) → Engine-specific Steps (step.yaml, executable, SSOT)
 - Only engine-specific steps are written to disk and executed
 
-**v0 Scope**: Design-level scaffolding only (not implementation). IR landing is primary v0 deliverable.
+**v0 Constraints**:
+- Generalized steps are conceptual ONLY (enums/mappings/documentation)
+- Generalized steps are NOT written to disk
+- Generalized steps do NOT have executables
+- Existing step types remain UNCHANGED
+- Execution logic stays EXACTLY the same
+- step.yaml schema stays EXACTLY the same
+- Runners stay EXACTLY the same
+- NO new execution pipeline
+- NO engine registries
+- NO engine_id in step.yaml
+
+**Allowed in v0**:
+- Rename or annotate existing step types internally as engine-specific
+- Add thin generalized-step abstraction that maps to existing step types (conceptual only)
 
 ### B1) Generalized Step vs Engine-Specific Step Separation
 
-**Task**: Define minimal physical step taxonomy (generalized steps vs engine-specific steps)
+**Task**: Define minimal physical step taxonomy (conceptual only; no execution changes)
 
-**Architecture**: TWO distinct step layers:
-- **Generalized Step**: Physical operation (SCF, NSCF, Wannierization, etc.), engine-agnostic, used ONLY by workflow definitions, not written to disk
-- **Engine-Specific Step**: Existing step types (qe_scf, qe_nscf, w90_run, pyscf_xxx, etc.), maps to unique executable and engine, written to step.yaml and executed
+**Architecture**: TWO distinct step layers (conceptual only):
+- **Generalized Step**: Physical operation (SCF, NSCF, Wannierization, etc.), engine-agnostic, conceptual only (not written to disk, no executables)
+- **Engine-Specific Step**: Existing step types (qe_scf, qe_nscf, w90_run, pyscf_xxx, etc.), execution unchanged, written to step.yaml and executed
 
 - [ ] **B1.1**: Inspect current step type definitions
   - **Why**: Understand existing step types and their groupings
@@ -460,26 +492,54 @@
   - **Findings**: 17 step types (SCF, NSCF, DOS, BANDS_PW, BANDS, PH, Q2R, MATDYN, DYNMAT, PP, PROJWFC, RELAX, VC_RELAX, W90_PREPROC, PW2WANNIER90, W90_RUN, PYSCF_SCF)
   - **Tests Impacted**: None (documentation only)
 
-- [ ] **B1.2**: Document generalized step vs engine-specific step separation
-  - **Why**: Design-level scaffolding only; clarify architecture for future implementation
+- [ ] **B1.2**: Create minimal generalized step taxonomy (conceptual only - enums/mappings)
+  - **Why**: Conceptual abstraction only; execution logic unchanged
+  - **Exact Edit**: New file `src/quantumvitas/workflow/generalized_steps.py` (conceptual enum only)
+  - **Structure**:
+    ```python
+    from enum import Enum
+    
+    class GeneralizedStep(str, Enum):
+        """Generalized step types (conceptual only, not written to disk)."""
+        SCF = "scf"
+        RELAX = "relax"
+        VC_RELAX = "vc_relax"
+        NSCF = "nscf"
+        BANDS = "bands"
+        DOS = "dos"
+        WANNIER = "wannier"
+        # Future: PHONON, etc.
+    
+    # Mapping: Engine-specific StepType → GeneralizedStep (conceptual only)
+    ENGINE_STEP_TO_GENERALIZED: Dict[StepType, GeneralizedStep] = {
+        StepType.SCF: GeneralizedStep.SCF,
+        StepType.RELAX: GeneralizedStep.RELAX,
+        StepType.VC_RELAX: GeneralizedStep.VC_RELAX,
+        StepType.NSCF: GeneralizedStep.NSCF,
+        StepType.BANDS_PW: GeneralizedStep.BANDS,
+        StepType.BANDS: GeneralizedStep.BANDS,
+        StepType.DOS: GeneralizedStep.DOS,
+        StepType.W90_PREPROC: GeneralizedStep.WANNIER,
+        StepType.PW2WANNIER90: GeneralizedStep.WANNIER,
+        StepType.W90_RUN: GeneralizedStep.WANNIER,
+        StepType.PYSCF_SCF: GeneralizedStep.SCF,
+        # ... other mappings
+    }
+    ```
+  - **Constraint**: This is CONCEPTUAL ONLY; execution logic unchanged
+  - **Tests Impacted**: Minimal unit tests for mapping (no execution tests)
+
+- [ ] **B1.3**: Document generalized step vs engine-specific step separation
+  - **Why**: Clarify architecture; execution unchanged
   - **Documentation**: Add to `docs/design/workflow_pipeline.md` (new file)
   - **Content**:
-    - Generalized steps: Physical operations (SCF, NSCF, Wannierization), engine-agnostic, not written to disk
-    - Engine-specific steps: Existing step types (qe_scf, qe_nscf, w90_run, pyscf_xxx), written to step.yaml, executed
-    - Workflow: Ordered list of generalized steps
-    - Materialization: Workflow → engine-specific steps mapping (e.g., generalized workflow → qe + wannier90)
+    - Generalized steps: Physical operations (SCF, NSCF, Wannierization), engine-agnostic, conceptual only (NOT written to disk, NO executables)
+    - Engine-specific steps: Existing step types (qe_scf, qe_nscf, w90_run, pyscf_xxx), execution UNCHANGED, written to step.yaml, executed
+    - Workflow: Ordered list of generalized steps (conceptual only in v0)
+    - Materialization: Workflow → engine-specific steps mapping (future work)
   - **Tests Impacted**: None (documentation only)
 
-- [ ] **B1.3**: Create minimal generalized step taxonomy (deferred to future implementation)
-  - **Why**: Design-level only; not implemented in v0
-  - **Plan**: Future implementation would define:
-    - `GeneralizedStep` enum (SCF, NSCF, WANNIER, etc.)
-    - `Workflow` class (ordered list of GeneralizedStep)
-    - Materialization mappings (generalized → engine-specific)
-  - **Location**: TBD in future implementation
-  - **Tests Impacted**: None (deferred)
-
-**Deliverable**: Documentation of generalized step vs engine-specific step separation (implementation deferred)
+**Deliverable**: Conceptual generalized step taxonomy (enums/mappings only; NO execution changes)
 
 ---
 
@@ -505,79 +565,77 @@
 
 ---
 
-## Phase 3: Engine Layer Scaffolding (Design-Level)
+## Phase 3: Engine Layer (QE Adapter Implementation)
+
+**Status**: ✅ QE ADAPTER MUST BE IMPLEMENTED (IR↔QE mapping); ⚠️ NO central registry, NO engine_id in step.yaml
 
 **Architecture**: Engines are responsible for:
-1. Translating IR parameters → engine-specific parameters
-2. Executing engine-specific steps
+1. Translating IR parameters → engine-specific parameters (QE adapter MUST be implemented)
+2. Executing engine-specific steps (unchanged in v0)
 
-**v0 Constraint**: v0 MUST NOT refactor QE or Wannier execution paths. Engine registry / engine_id introduction must be deferred or isolated and MUST NOT break existing QE/Wannier behavior.
+**v0 Constraints**:
+- QE adapter MUST be implemented (IR↔QE mapping)
+- QE execution path MUST NOT be refactored (runners, generators, done-detection unchanged)
+- Wannier execution path MUST NOT be refactored
+- NO central engine registry
+- NO engine_id in step.yaml in v0
+- PySCF may be refactored internally if needed (must not affect QE/Wannier, must remain restartable)
 
-### C1) Engine ID and Registry (Deferred/Isolated)
+### C1) Engine ID and Registry (EXPLICITLY DEFERRED)
 
-**Task**: Document engine registry concept (deferred unless strictly necessary)
+**Task**: Document that engine_id/registry is NOT implemented in v0
 
-- [ ] **C1.1**: Defer engine_id field addition to step.yaml
-  - **Why**: v0 MUST NOT break existing QE/Wannier behavior; engine_id introduction must be isolated
-  - **Plan**: Engine_id addition deferred to future phase (not v0)
-  - **Alternative**: If strictly necessary for PySCF experimental adapter, isolate in PySCF-only path
-  - **Location**: `src/quantumvitas/calculation/structure_steps.py:StructureStepSpec` (deferred)
-  - **Tests Impacted**: None (deferred)
-
-- [ ] **C1.2**: Defer central engine registry creation
-  - **Why**: v0 MUST NOT refactor QE/Wannier execution paths; central registry would require refactoring
-  - **Plan**: Central engine registry deferred to future phase (not v0)
-  - **Alternative**: If PySCF needs registry, create PySCF-only isolated registry (does not affect QE/Wannier)
-  - **Location**: TBD (deferred or PySCF-only isolated)
-  - **Tests Impacted**: None (deferred)
-
-- [ ] **C1.3**: Document engine translation responsibility
-  - **Why**: Clarify that engines translate IR → engine-specific parameters
-  - **Documentation**: Add to `docs/design/engine_contract.md` (new file)
-  - **Content**: Engines translate IR parameters → engine-specific parameters (step.yaml); engines execute engine-specific steps
+- [ ] **C1.1**: Document engine_id/registry deferral
+  - **Why**: v0 MUST NOT introduce engine_id in step.yaml or central engine registry
+  - **Documentation**: Add note in plan that engine_id/registry is explicitly deferred
+  - **Note**: Existing execution paths work without engine_id (QE/Wannier use implicit engine selection)
   - **Tests Impacted**: None (documentation only)
 
-**Deliverable**: Documentation of engine responsibilities (registry/engine_id implementation deferred)
+**Deliverable**: Documentation that engine_id/registry is explicitly deferred (not v0)
+
+**Note**: QE/Wannier execution works without engine_id (implicit engine selection via step_type)
 
 ---
 
-### C2) IR → Engine-Specific Parameter Translation (QE Adapter)
+### C2) IR → Engine-Specific Parameter Translation (QE Adapter - MUST IMPLEMENT)
 
 **Task**: Implement IR→QE translation in QE engine adapter (not ParamSpace)
 
 - [ ] **C2.1**: Implement IR→QE translation in QE adapter/compiler layer
-  - **Why**: Engines are responsible for translating IR → engine-specific parameters
-  - **Location**: QE engine adapter/compiler (e.g., `src/quantumvitas/core/engines/qe/adapter.py` or IR backend)
+  - **Why**: Engines are responsible for translating IR → engine-specific parameters; QE adapter MUST be implemented
+  - **Location**: QE engine adapter/compiler (e.g., `src/quantumvitas/core/engines/qe/adapter.py` or IR backend `src/quantumvitas/ir/backends/qe/mapping.py`)
   - **Exact Edit**: Translation function: `ir_patch_to_qe_patch(ir_patch: Dict) -> Dict` (converts IR keys to QE section/key)
   - **Architecture**: IR→QE translation happens in QE engine layer, NOT in ParamSpace
-  - **Tests Impacted**: IR→QE translation tests
+  - **Constraint**: Must NOT refactor QE execution paths (runners, generators, done-detection unchanged)
+  - **Tests Impacted**: IR→QE translation tests (new), integration tests (update)
 
 - [ ] **C2.2**: Implement QE→IR translation in QE adapter/compiler layer
   - **Why**: Detection needs QE→IR conversion before ParamSpace matching
   - **Location**: QE engine adapter/compiler
   - **Exact Edit**: Translation function: `qe_yaml_to_ir_yaml(qe_yaml: Dict) -> Dict` (converts QE section/key to IR keys)
   - **Architecture**: QE→IR translation happens in QE engine layer, NOT in ParamSpace
-  - **Tests Impacted**: QE→IR translation tests
+  - **Constraint**: Must NOT refactor QE execution paths
+  - **Tests Impacted**: QE→IR translation tests (new), detection integration tests (update)
 
-**Deliverable**: IR↔QE translation in QE engine adapter/compiler layer (separate from ParamSpace)
+**Deliverable**: ✅ FULLY IMPLEMENTED IR↔QE translation in QE engine adapter/compiler layer (separate from ParamSpace)
 
 ### C3) Session-Restartable Artifacts (Documentation)
 
 **Task**: Document current PySCF runner artifacts and restartability
 
-- [ ] **C2.1**: Inspect PySCF runner artifact persistence
+- [ ] **C3.1**: Inspect PySCF runner artifact persistence
   - **Why**: Understand what artifacts PySCF persists per step
   - **File**: `src/quantumvitas/engines/pyscf/runner.py:117-359`
   - **Finding**: Runner writes `results.json` after each step (restartable)
   - **Tests Impacted**: None (documentation only)
 
-- [ ] **C2.2**: Document PySCF session-restartable requirements
+- [ ] **C3.2**: Document PySCF session-restartable requirements
   - **Why**: Charter requires session-restartable semantics
   - **Documentation**: Add to `docs/design/engine_contract.md` (new file)
   - **Content**: Document PySCF artifacts (`results.json`, logs) and restart requirements
   - **Tests Impacted**: None (documentation only)
 
-- [ ] **C2.3**: Document QE session-restartable requirements
+- [ ] **C3.3**: Document QE session-restartable requirements
   - **Why**: Charter requires session-restartable semantics for all engines
   - **Documentation**: Add to `docs/design/engine_contract.md`
   - **Content**: Document QE artifacts (`.out`, `.wfc`, `.charge-density`) and restart requirements
@@ -591,13 +649,13 @@
 
 **Task**: Document current engine-specific "done" detection
 
-- [ ] **C3.1**: Inspect QE "done" detection
+- [ ] **C4.1**: Inspect QE "done" detection
   - **Why**: Understand how QE determines step completion
   - **File**: `src/quantumvitas/calculation/step_done.py:86-141`
   - **Finding**: QE checks for "JOB DONE" in primary `.out` file
   - **Tests Impacted**: None (documentation only)
 
-- [ ] **C3.2**: Document engine-specific "done" detection
+- [ ] **C4.2**: Document engine-specific "done" detection
   - **Why**: Charter says "done" detection remains engine-specific in v0
   - **Documentation**: Add to `docs/design/engine_contract.md`
   - **Content**: Document QE (file + "JOB DONE") and PySCF (`results.json` existence) detection methods
@@ -727,13 +785,32 @@ This plan provides a detailed, checkbox-driven implementation path for v0 IR/Ste
 
 **Key Points**:
 - **Two Parallel Pipelines**: Parameter pipeline (Preset → IR → Engine-specific) and Workflow pipeline (Workflow → Generalized Steps → Engine-specific Steps)
-- **IR Layer**: ParamSpace operates ONLY on IR keys; IR→QE translation in QE engine adapter (NOT in ParamSpace)
+- **IR Layer (FULLY IMPLEMENTED)**: ParamSpace operates ONLY on IR keys; IR→QE translation in QE engine adapter (NOT in ParamSpace)
 - **step.yaml remains SSOT**: Engine-specific parameters only (QE params in v0); no IR/preset persistence
-- **Step Layer**: Generalized steps (engine-agnostic, not written to disk) vs Engine-specific steps (written to step.yaml, executed)
-- **Engine Layer**: Engines translate IR → engine-specific params; v0 MUST NOT refactor QE/Wannier execution paths
-- **v0 Scope**: IR landing is primary deliverable; Step/Engine parts are design-level scaffolding unless strictly necessary
+- **Step Layer (CONCEPTUAL ONLY)**: Generalized steps (enums/mappings/documentation only, NOT written to disk, NO execution changes) vs Engine-specific steps (unchanged, written to step.yaml, executed)
+- **Engine Layer (QE ADAPTER IMPLEMENTED)**: QE adapter translates IR → engine-specific params; v0 MUST NOT refactor QE/Wannier execution paths; NO central registry; NO engine_id in step.yaml
+- **v0 Scope**: IR landing is FULLY IMPLEMENTED (primary deliverable); Step generalization is conceptual only (enums/mappings); Engine generalization is QE adapter only (no registry/engine_id)
 
-**Next Steps**: Review and approve this plan before starting Phase 1 implementation.
+**End State Requirement**:
+- System must be usable exactly as before from user perspective
+- Workflow UI may show generalized names, but behavior must be unchanged
+- QE + Wannier workflows must still run end-to-end
+
+**Next Steps**: 
+1. ✅ Plan updated with final clarifications
+2. ⏭️ **IMMEDIATELY START IMPLEMENTATION** following this plan
+3. Implement IR landing first (Phase 1: A1-A7)
+4. Add tests as you go
+5. Run targeted tests frequently
+6. Run full test suite at major milestones
+7. Do NOT wait for further approval unless encountering genuine ambiguity
+
+**Implementation Notes**:
+- If you change anything for test stability or compatibility, WRITE IT DOWN
+- If you encounter a real ambiguity that blocks progress, stop and ask
+- Otherwise, proceed with implementation
+- Do not over-engineer
+- Do not refactor execution
 
 ---
 

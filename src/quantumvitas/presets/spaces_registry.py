@@ -187,6 +187,10 @@ def detect_dimension(
             compute_kmesh,
             round_cutoff_integer,
         )
+        from quantumvitas.ir.backends.qe.mapping import qe_yaml_to_ir_yaml
+        
+        # Convert QE YAML → IR YAML before matching (precision matching uses IR keys)
+        ir_yaml = qe_yaml_to_ir_yaml(step_yaml, qe_module="pw")
         
         # Try matching against each precision level
         for level, constants in PRECISION_CONSTANTS.items():
@@ -203,7 +207,7 @@ def detect_dimension(
                 "profile_name": level.value.upper(),  # "LOW", "MED", "HIGH"
             }
             
-            matched_profile = match_precision_profile(step_yaml, canonical_values)
+            matched_profile = match_precision_profile(ir_yaml, canonical_values)
             
             if matched_profile is not None:
                 if matched_profile in profile_to_enum:
@@ -212,7 +216,11 @@ def detect_dimension(
         return CUSTOM
     
     # Standard ParamSpace matching for other dimensions
-    matched_profile = match_profile(space, step_yaml)
+    # Convert QE YAML → IR YAML before matching (ParamSpace operates on IR keys)
+    from quantumvitas.ir.backends.qe.mapping import qe_yaml_to_ir_yaml
+    ir_yaml = qe_yaml_to_ir_yaml(step_yaml, qe_module="pw")
+    
+    matched_profile = match_profile(space, ir_yaml)
     
     if matched_profile is None:
         return CUSTOM
@@ -302,8 +310,11 @@ def compile_dimension_patch(
                 f"Use PrecisionAdvisor to compute these from structure."
             )
         
-        # Manually construct patch for precision (values come from advisor)
-        patch: Dict[str, Dict[str, Any]] = {
+        # Manually construct IR patch for precision (values come from advisor)
+        # In v0, IR keys == QE keys, so we can construct directly as IR patch then convert
+        from quantumvitas.ir.backends.qe.mapping import ir_patch_to_qe_patch
+        
+        ir_patch: Dict[str, Dict[str, Any]] = {
             "SYSTEM": {
                 "ecutwfc": int(ecutwfc),  # Integer-rounded
                 "ecutrho": int(ecutrho),  # Integer-rounded
@@ -311,30 +322,65 @@ def compile_dimension_patch(
             "ELECTRONS": {
                 "conv_thr": conv_thr,
             },
-            "K_POINTS_CARD": {
-                "option": "automatic",
-                "data": [[nk1, nk2, nk3, sk1, sk2, sk3]],
+            "cards": {  # K_POINTS is in cards section
+                "K_POINTS": {
+                    "option": "automatic",
+                    "data": [[nk1, nk2, nk3, sk1, sk2, sk3]],
+                },
             },
         }
+        
+        # Convert IR patch → QE patch (ParamSpace produces IR keys, but step.yaml needs QE keys)
+        # Note: ir_patch_to_qe_patch should handle K_POINTS correctly via mapping,
+        # but we preserve original cards as defensive programming
+        original_cards = ir_patch.get("cards", {})
+        patch = ir_patch_to_qe_patch(ir_patch)
+        
+        # Ensure K_POINTS card is preserved (defensive check)
+        # K_POINTS mapping should work, but ensure cards section exists if needed
+        if original_cards and "K_POINTS" in original_cards:
+            if "cards" not in patch:
+                patch["cards"] = {}
+            if "K_POINTS" not in patch["cards"]:
+                # Fallback: restore from original (should not happen if mapping is correct)
+                patch["cards"]["K_POINTS"] = original_cards["K_POINTS"]
         
         deletions: set[Tuple[str, str]] = set()
         
         return (patch, deletions)
     
     # Standard ParamSpace compilation for other dimensions
-    patch, deletions = compile_profile_patch(
-        space, profile_name, step_yaml, explicit_defaults=explicit_defaults
+    # Convert QE YAML → IR YAML before compilation (ParamSpace operates on IR keys)
+    from quantumvitas.ir.backends.qe.mapping import qe_yaml_to_ir_yaml, ir_patch_to_qe_patch
+    ir_yaml = qe_yaml_to_ir_yaml(step_yaml, qe_module="pw")
+    
+    ir_patch, deletions = compile_profile_patch(
+        space, profile_name, ir_yaml, explicit_defaults=explicit_defaults
     )
     
-    # Convert bool to QE string format for certain keys
-    if "SYSTEM" in patch:
-        for key in ["noncolin", "lspinorb"]:
-            if key in patch["SYSTEM"]:
-                value = patch["SYSTEM"][key]
-                if value is True:
-                    patch["SYSTEM"][key] = ".true."
-                elif value is False:
-                    patch["SYSTEM"][key] = ".false."
+    # Convert IR patch → QE patch (ParamSpace produces IR keys, but step.yaml needs QE keys)
+    patch = ir_patch_to_qe_patch(ir_patch)
+    
+    # Also convert deletions (IR section/key → QE section/key)
+    # Note: In ParamKey, section is QE section and key is IR key (conceptually)
+    # In v0, IR sections == QE sections, so section stays the same, but we convert IR key → QE key
+    qe_deletions = set()
+    for section, ir_key in deletions:
+        # Convert IR key to QE key (section is already QE section)
+        # Note: For deletions, we don't need the value, so pass None as dummy
+        try:
+            from quantumvitas.ir.backends.qe.mapping import ir_to_qe_param
+            qe_module, qe_section, qe_key, _ = ir_to_qe_param(ir_key, None)
+            # Verify section matches (should always be true in v0, but defensive check)
+            if qe_section == section:
+                qe_deletions.add((qe_section, qe_key))
+            else:
+                # Section mismatch - use section from deletion tuple (should not happen in v0)
+                qe_deletions.add((section, qe_key))
+        except KeyError:
+            # IR key not in mapping - keep as-is (should not happen in v0, but handle gracefully)
+            qe_deletions.add((section, ir_key))
+    deletions = qe_deletions
     
     return (patch, deletions)
 

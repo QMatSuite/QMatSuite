@@ -147,6 +147,11 @@ def compile_precision(
         sk3=sk3,
     )
     
+    # Backward compatibility: Flatten cards.K_POINTS to K_POINTS_CARD at top level
+    # The new registry-based approach uses cards.K_POINTS, but tests/old code expect K_POINTS_CARD
+    if "cards" in patch and "K_POINTS" in patch["cards"]:
+        patch["K_POINTS_CARD"] = patch["cards"]["K_POINTS"]
+    
     return patch
 
 
