@@ -48,6 +48,7 @@ class StepTypeSpec:
     requires_structure: bool = True
     requires_charge_density: bool = False
     produces_charge_density: bool = False
+    supports_incremental_skip: bool = True  # Phase 3C: Whether step can be skipped in incremental runs
 
 
 # =============================================================================
@@ -321,9 +322,9 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     # PySCF step types (molecular quantum chemistry)
     # -------------------------------------------------------------------------
     "pyscf_scf": StepTypeSpec(
-        id="pyscf_scf",
+        id="scf",  # Public type (shared with qe_scf)
         machine_type="pyscf_scf",
-        public_type="pyscf_scf",
+        public_type="scf",
         engine="pyscf",
         executable="python",  # Python-native, no external binary
         description="PySCF single-point calculation (HF/DFT)",
@@ -332,6 +333,21 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_structure=True,
         requires_charge_density=False,
         produces_charge_density=False,
+        supports_incremental_skip=True,  # Can be skipped if checkpoint exists
+    ),
+    "pyscf_mp2": StepTypeSpec(
+        id="mp2",  # Public type
+        machine_type="pyscf_mp2",
+        public_type="mp2",
+        engine="pyscf",
+        executable="python",  # Python-native, no external binary
+        description="PySCF MP2 correlation energy calculation",
+        accepts_presets=False,  # MVP: no presets yet
+        allowed_dimensions=frozenset(),
+        requires_structure=True,
+        requires_charge_density=True,  # Requires SCF charge density (checkpoint)
+        produces_charge_density=False,
+        supports_incremental_skip=False,  # Always rerun (Phase 3C requirement)
     ),
     
     # -------------------------------------------------------------------------

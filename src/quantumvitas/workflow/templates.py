@@ -118,6 +118,12 @@ _WORKFLOWS: Dict[str, WorkflowTemplate] = {
         description="Maximally localized Wannier functions",
         step_sequence=("scf", "nscf", "pw2wannier90", "w90_run"),  # Public generalized step keys
     ),
+    "scf_mp2": WorkflowTemplate(
+        id="scf_mp2",
+        name="SCF + MP2",
+        description="Self-consistent field calculation followed by MP2 correlation energy",
+        step_sequence=("scf", "mp2"),  # Public generalized step keys
+    ),
 }
 
 
