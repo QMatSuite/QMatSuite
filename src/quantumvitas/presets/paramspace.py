@@ -61,7 +61,10 @@ class ParamKey:
     
     Attributes:
         section: YAML section name (e.g., "SYSTEM", "ELECTRONS", "cards")
-        key: Parameter key name (lowercase canonical)
+            In v0, IR sections == QE sections (because IR is QE-equivalent).
+        key: IR parameter key name (conceptually IR, but values same as QE in v0)
+            ParamSpace operates on IR keys internally.
+            IR↔QE translation happens at YAML I/O boundaries (in spaces_registry/variants_registry).
         parser: Function to parse raw YAML value (str -> Any)
         canonicalizer: Function to canonicalize value for comparison (Any -> Any)
         tolerance: Optional absolute tolerance for numeric comparison (float)
@@ -69,7 +72,7 @@ class ParamKey:
         default: Optional default value if key is missing
     """
     section: str
-    key: str
+    key: str  # IR key (conceptually; same as QE key in v0)
     parser: Callable[[Any], Any]
     canonicalizer: Callable[[Any], Any]
     tolerance: Optional[float] = None
