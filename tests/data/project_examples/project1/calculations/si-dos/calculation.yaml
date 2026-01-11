@@ -14,3 +14,5 @@ steps:
   type: nscf
 - step_id: 01KC38PGMYFABDDE5T6CA8A2J8
   type: dos
+structure_kind: periodic
+engine_family: qe

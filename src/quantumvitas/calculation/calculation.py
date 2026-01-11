@@ -208,6 +208,10 @@ class Calculation:
         # Cache structure_id for quick access
         calculation._structure_id = structure_id
         
+        # Phase 3A: Ensure calculation identity is set (best-effort recovery)
+        from quantumvitas.core.calc_identity import ensure_calculation_identity
+        ensure_calculation_identity(calculation_dir, project_root=project.root)
+        
         # No auto-migration - legacy calculations raise LegacyProjectError during step building
         return calculation
 

@@ -349,20 +349,47 @@ class CalculationModel:
         # Load species_map (calculation-level pseudo mapping)
         species_map = data.get("species_map") or calculation_section.get("species_map")
         
-        # Phase 2: Load structure_kind and engine_family
+        # Phase 3A: Load structure_kind and engine_family with best-effort recovery
         structure_kind = data.get("structure_kind")
         engine_family = data.get("engine_family")
         
-        # Backward compatibility: Infer engine_family from steps if missing
-        if engine_family is None:
-            engine_family = _infer_engine_family_from_steps(steps)
+        # Best-effort recovery: Infer from steps if missing
+        if structure_kind is None or engine_family is None:
+            from quantumvitas.core.calc_identity import infer_calculation_identity
+            
+            # Determine calc_dir for inference (uses step.yaml files if available)
+            calc_dir = None
+            if project_root:
+                # Try to find calculation directory from meta.path
+                meta_dict = data.get("meta", {})
+                calc_path = meta_dict.get("path", default_path)
+                if calc_path:
+                    calc_dir = (project_root / calc_path).resolve() if project_root else Path(default_path)
+            else:
+                calc_dir = Path(default_path) if default_path else Path.cwd()
+            
+            if calc_dir and calc_dir.exists():
+                try:
+                    inferred_kind, inferred_family = infer_calculation_identity(calc_dir, steps)
+                    if structure_kind is None and inferred_kind is not None:
+                        structure_kind = inferred_kind
+                    if engine_family is None and inferred_family is not None:
+                        engine_family = inferred_family
+                except Exception:
+                    # Best-effort: if inference fails, continue with defaults
+                    pass
         
-        # Backward compatibility: Default engine_family based on structure_kind if still missing
+        # Final defaults if still missing
         if engine_family is None:
             if structure_kind == "molecule":
                 engine_family = "pyscf"
             else:
                 engine_family = "qe"  # Default for periodic or unknown
+        if structure_kind is None:
+            if engine_family == "pyscf":
+                structure_kind = "molecule"
+            else:
+                structure_kind = "periodic"  # Default for qe, w90, etc.
         
         return cls(
             meta=meta,
@@ -451,15 +478,50 @@ def save_calculation(model: CalculationModel, path: Path) -> None:
     
     Uses CalcDoc + yaml_io for Journal integration (per Constitution §11.1).
     
+    Phase 3A: Enforces immutability of structure_kind and engine_family.
+    These fields cannot be changed after initial creation (first write).
+    
     Args:
         model: CalculationModel to save
         path: Path to calculation.yaml or calculation directory
+        
+    Raises:
+        ValueError: If attempting to change structure_kind or engine_family
     """
     from quantumvitas.core.yamldoc import CalcDoc
     from quantumvitas.core.yaml_io import save_yaml_doc
+    import yaml
     
     if path.is_dir():
         path = path / "calculation.yaml"
+    
+    # Phase 3A: Enforce immutability of structure_kind and engine_family
+    # If calculation.yaml exists, check that identity fields haven't changed
+    if path.exists():
+        try:
+            existing_data = yaml.safe_load(path.read_text()) or {}
+        except Exception:
+            # Best-effort: if we can't read existing file, allow save (will overwrite)
+            # This handles cases where file is corrupted or permissions issue
+            existing_data = {}
+        
+        existing_structure_kind = existing_data.get("structure_kind")
+        existing_engine_family = existing_data.get("engine_family")
+        
+        # Only enforce if existing values are not None (already set)
+        if existing_structure_kind is not None:
+            if model.structure_kind is not None and model.structure_kind != existing_structure_kind:
+                raise ValueError(
+                    f"Cannot change structure_kind from '{existing_structure_kind}' to '{model.structure_kind}'. "
+                    f"structure_kind is immutable after calculation creation."
+                )
+        
+        if existing_engine_family is not None:
+            if model.engine_family is not None and model.engine_family != existing_engine_family:
+                raise ValueError(
+                    f"Cannot change engine_family from '{existing_engine_family}' to '{model.engine_family}'. "
+                    f"engine_family is immutable after calculation creation."
+                )
     
     # Use CalcDoc + yaml_io (journaled)
     calc_doc = CalcDoc(model.to_dict())
