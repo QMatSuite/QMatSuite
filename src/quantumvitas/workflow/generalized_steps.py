@@ -48,6 +48,9 @@ class GeneralizedStep(str, Enum):
     # Post-Hartree-Fock (molecular)
     MP2 = "MP2"  # MP2 correlation energy calculation
     
+    # Excited states (generalized, engine-specific backend)
+    TD = "TD"  # Time-dependent calculation (TDDFT/TDHF, backend depends on engine)
+    
     # Other
     CUSTOM = "CUSTOM"
 
@@ -68,11 +71,13 @@ MATERIALIZATION_MAP: Dict[Tuple[str, str], Optional[str]] = {
     ("qe", "PHONON"): "qe_ph",
     ("qe", "MD"): "qe_md",
     ("qe", "VC_MD"): "qe_vc_md",
+    ("qe", "TD"): None,  # Phase 3C: QE TD not yet implemented in registry (TODO: add qe_tddft when needed)
     ("qe", "CUSTOM"): "qe_custom",
     
     # PySCF family mappings
     ("pyscf", "SCF"): "pyscf_scf",
     ("pyscf", "MP2"): "pyscf_mp2",
+    ("pyscf", "TD"): "pyscf_td",  # Phase 3C: Generalized "td" key
     
     # Wannier90 standalone (if needed in future)
     # ("w90", "WANNIER"): "w90_run",
@@ -152,27 +157,27 @@ def materialize_public_step_key(
     engine_family: str,
 ) -> Optional[str]:
     """
-    Materialize a PUBLIC step key (like "scf", "bands_pw") to MACHINE step type.
+    Materialize a PUBLIC step key (like "scf", "bands_pw", "td") to MACHINE step type.
     
-    Phase 3B: Helper for materializing PUBLIC step keys from workflow templates.
+    Phase 3B/3C: Helper for materializing PUBLIC step keys from workflow templates.
     
     Strategy:
-    1. First try MATERIALIZATION_MAP lookup (for simple cases like "scf" -> "SCF")
-    2. If that fails, use registry to look up machine type from PUBLIC key
+    1. First try registry lookup for PUBLIC keys (handles "scf", "td", etc.)
+    2. If that fails, try MATERIALIZATION_MAP (for GeneralizedStep enum values like "SCF", "TD")
     3. Verify the machine type's engine matches engine_family
     
     Args:
-        public_step_key: PUBLIC step key (e.g., "scf", "bands_pw", "bands", "pw2wannier90")
+        public_step_key: PUBLIC step key (e.g., "scf", "bands_pw", "td", "mp2")
         engine_family: Engine family identifier (e.g., "qe", "pyscf")
     
     Returns:
-        MACHINE step type (e.g., "qe_scf"), or None if unsupported
+        MACHINE step type (e.g., "qe_scf", "pyscf_td"), or None if unsupported
     
     Example:
         >>> materialize_public_step_key("scf", "qe")
         "qe_scf"
-        >>> materialize_public_step_key("bands_pw", "qe")
-        "qe_bands_pw"
+        >>> materialize_public_step_key("td", "pyscf")
+        "pyscf_td"
         >>> materialize_public_step_key("scf", "vasp")
         None
     """
@@ -191,9 +196,10 @@ def materialize_public_step_key(
         if spec_engine_family == "qe" and engine_family == "qe" and spec.machine_type.startswith("w90_"):
             return spec.machine_type
     
-    # Fallback: Try MATERIALIZATION_MAP (for GeneralizedStep enum values like "SCF", "BANDS")
+    # Fallback: Try MATERIALIZATION_MAP (for GeneralizedStep enum values like "SCF", "TD")
     # This handles backward compatibility with enum values
-    result = materialize_step(public_step_key, engine_family)
+    # Phase 3C: Also handles "td" -> "TD" enum mapping
+    result = materialize_step(public_step_key.upper(), engine_family)
     if result is not None:
         return result
     

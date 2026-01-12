@@ -15,7 +15,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from pymatgen.core import Element
 from pymatgen.core import Lattice
-from pymatgen.core import Structure as PMGStructure
+from pymatgen.core import Structure as PMGStructure, Molecule as PMGMolecule
 
 from quantumvitas.core.resources import ResourceMeta
 from quantumvitas.io.model import QECard, QECardType, QEInput, QENamelist
@@ -31,9 +31,11 @@ STRUCTURE_META_KEY = "__qv_meta__"
 STRUCTURE_DATA_KEY = "structure"
 
 
-def read_structure(filepath: Path, format: Optional[str] = None) -> PMGStructure:
+def read_structure(filepath: Path, format: Optional[str] = None) -> PMGStructure | PMGMolecule:
     """
     Read atomic structure from file using pymatgen.
+    
+    Supports both periodic structures (Structure) and molecules (Molecule).
     
     Args:
         filepath: Path to structure file
@@ -41,7 +43,7 @@ def read_structure(filepath: Path, format: Optional[str] = None) -> PMGStructure
                 If None, format is inferred from file extension
         
     Returns:
-        pymatgen Structure object
+        pymatgen Structure or Molecule object
     """
     filepath = Path(filepath)
     if format is None:
@@ -58,17 +60,48 @@ def read_structure(filepath: Path, format: Optional[str] = None) -> PMGStructure
         if STRUCTURE_META_KEY in data and STRUCTURE_DATA_KEY in data:
             metadata = data.get(STRUCTURE_META_KEY)
             structure_payload = data.get(STRUCTURE_DATA_KEY)
-        structure = PMGStructure.from_dict(structure_payload)
+        
+        # Determine if this is a Structure or Molecule
+        # Structures have a 'lattice' key, Molecules do not
+        # Also check @class field if present
+        if isinstance(structure_payload, dict):
+            structure_class = structure_payload.get("@class", "")
+            has_lattice = "lattice" in structure_payload
+            
+            if has_lattice or structure_class == "Structure":
+                structure = PMGStructure.from_dict(structure_payload)
+            elif structure_class == "Molecule" or (not has_lattice and "sites" in structure_payload):
+                # This is a Molecule (no lattice, has sites)
+                structure = PMGMolecule.from_dict(structure_payload)
+            else:
+                # Try Structure first, fallback to Molecule if it fails
+                try:
+                    structure = PMGStructure.from_dict(structure_payload)
+                except (KeyError, TypeError):
+                    # If Structure fails (likely missing lattice), try Molecule
+                    structure = PMGMolecule.from_dict(structure_payload)
+        else:
+            # Fallback: try Structure first
+            try:
+                structure = PMGStructure.from_dict(structure_payload)
+            except (KeyError, TypeError):
+                structure = PMGMolecule.from_dict(structure_payload)
+        
         if metadata is not None:
             setattr(structure, STRUCTURE_META_KEY, metadata)
         return structure
 
     # Fallback: let pymatgen auto-detect (supports cif, poscar, etc.)
-    return PMGStructure.from_file(str(filepath))
+    # This will return Structure for periodic formats
+    try:
+        return PMGStructure.from_file(str(filepath))
+    except Exception:
+        # If Structure fails, try Molecule (for xyz, etc.)
+        return PMGMolecule.from_file(str(filepath))
 
 
 def write_structure(
-    structure: PMGStructure,
+    structure: PMGStructure | PMGMolecule,
     filepath: Path,
     format: Optional[str] = None,
     metadata: Optional[Dict[str, Any] | ResourceMeta] = None,

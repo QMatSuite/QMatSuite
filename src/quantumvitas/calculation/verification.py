@@ -86,6 +86,7 @@ def evaluate_step_result(
     output_text: str,
     reference_file: Path | None,
     step_result_return_code: Optional[int] = None,
+    step_result_success: Optional[bool] = None,
 ) -> Tuple[StepStatus, str, Dict[str, float | None]]:
     """
     Evaluate a step result according to calculation mode.
@@ -96,6 +97,7 @@ def evaluate_step_result(
         output_text: Standard output text from the step
         reference_file: Optional reference file for strict verification
         step_result_return_code: Optional return code from step execution (if return_code == 0, step succeeded)
+        step_result_success: Optional success flag from step execution (for engines that use results.json)
     
     Returns:
         Tuple of (StepStatus, message, metrics)
@@ -120,6 +122,29 @@ def evaluate_step_result(
         else:
             # Return code not available - this shouldn't happen, but treat as failure
             return StepStatus.FAILED, "Wannier90 step return code not available", metrics
+    
+    # B. PySCF steps use results.json (not QE output format)
+    pyscf_step_types = {"pyscf_scf", "pyscf_rhf", "pyscf_uhf", "pyscf_rks", "pyscf_uks", "pyscf_roks", "pyscf_mp2", "pyscf_td", "pyscf_analysis", "pyscf_freq"}
+    if step_type_str in pyscf_step_types:
+        # For PySCF steps, use step_result_success (from results.json) or return_code
+        metrics: Dict[str, float | None] = {}
+        
+        # Prefer step_result_success if available (from results.json)
+        if step_result_success is not None:
+            if step_result_success:
+                return StepStatus.SUCCESS, "PySCF step completed successfully (results.json success=True)", metrics
+            else:
+                return StepStatus.FAILED, "PySCF step failed (results.json success=False)", metrics
+        
+        # Fallback to return_code if step_result_success not available
+        if step_result_return_code is not None:
+            if step_result_return_code == 0:
+                return StepStatus.SUCCESS, "PySCF step completed successfully (return code 0)", metrics
+            else:
+                return StepStatus.FAILED, f"PySCF step failed with return code {step_result_return_code}", metrics
+        
+        # Neither available - treat as failure
+        return StepStatus.FAILED, "PySCF step result status not available", metrics
     
     # For QE steps (scf, nscf, etc.), extract energy metrics
     metrics = extract_energy_metrics_from_text(output_text)

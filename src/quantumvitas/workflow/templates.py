@@ -124,6 +124,12 @@ _WORKFLOWS: Dict[str, WorkflowTemplate] = {
         description="Self-consistent field calculation followed by MP2 correlation energy",
         step_sequence=("scf", "mp2"),  # Public generalized step keys
     ),
+    "scf_td": WorkflowTemplate(
+        id="scf_td",
+        name="SCF + Excited States",
+        description="Self-consistent field calculation followed by time-dependent excited states (TDDFT/TDHF)",
+        step_sequence=("scf", "td"),  # Phase 3C: Generalized "td" key
+    ),
 }
 
 
