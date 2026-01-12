@@ -89,7 +89,7 @@ def run_chain_session(
                 )
                 
                 if not step_result["success"]:
-                    results["error"] = f"SCF step failed: {step_result.get('error', 'Unknown error')}"
+                    results["error"] = f"SCF step ({step_ulid}) failed: {step_result.get('error', 'Unknown error')}"
                     results["execution_time"] = time.time() - start_time
                     return results
                 
@@ -112,7 +112,7 @@ def run_chain_session(
                 )
                 
                 if not step_result["success"]:
-                    results["error"] = f"MP2 step failed: {step_result.get('error', 'Unknown error')}"
+                    results["error"] = f"MP2 step ({step_ulid}) failed: {step_result.get('error', 'Unknown error')}"
                     results["execution_time"] = time.time() - start_time
                     return results
                 
@@ -124,7 +124,10 @@ def run_chain_session(
                 return results
                 
         except Exception as e:
-            results["error"] = f"Step {step_ulid} ({step_type}) failed: {str(e)}"
+            import traceback
+            error_msg = f"Step {step_ulid} ({step_type}) failed: {str(e)}"
+            traceback_str = traceback.format_exc()
+            results["error"] = f"{error_msg}\n{traceback_str}"
             results["execution_time"] = time.time() - start_time
             return results
     
@@ -146,7 +149,17 @@ def _run_scf_in_session(
     
     # Build molecule
     from quantumvitas.engines.pyscf.runner import build_mole
-    mol = build_mole(params)
+    try:
+        mol = build_mole(params)
+    except Exception as e:
+        import traceback
+        error_msg = f"Failed to build molecule: {e}"
+        traceback_str = traceback.format_exc()
+        return {
+            "success": False,
+            "error": f"{error_msg}\n{traceback_str}",
+            "execution_time": 0.0,
+        }
     
     # Setup SCF/DFT method
     method = params.get("method", "rhf").lower()
@@ -182,6 +195,12 @@ def _run_scf_in_session(
     checkpoint_file = working_dir / "checkpoint.chk"
     mf.chkfile = str(checkpoint_file)
     
+    # Fix #3: Create pyscf.log file (PySCF stdout/stderr)
+    log_file = working_dir / "pyscf.log"
+    mf.verbose = params.get("verbose", 4)
+    log_handle = open(log_file, 'w')
+    mf.stdout = log_handle
+    
     # Init guess from checkpoint if available and allowed
     if allow_chkfile_init_guess and checkpoint_file.exists():
         try:
@@ -193,7 +212,9 @@ def _run_scf_in_session(
     try:
         energy = mf.kernel()
         converged = mf.converged
+        log_handle.close()
     except Exception as e:
+        log_handle.close()
         return {
             "success": False,
             "error": f"SCF calculation failed: {e}",
@@ -228,6 +249,16 @@ def _run_scf_in_session(
             mo_occ_alpha = mo_occ[0] if isinstance(mo_occ, (list, tuple)) else mo_occ[0]
             mo_occ_beta = mo_occ[1] if isinstance(mo_occ, (list, tuple)) else mo_occ[1]
             
+            # Fix #4: Add mo_energies_alpha and mo_energies_beta to results
+            if hasattr(mo_energy_alpha, 'tolist'):
+                result["mo_energies_alpha"] = mo_energy_alpha.tolist()
+            else:
+                result["mo_energies_alpha"] = list(mo_energy_alpha)
+            if hasattr(mo_energy_beta, 'tolist'):
+                result["mo_energies_beta"] = mo_energy_beta.tolist()
+            else:
+                result["mo_energies_beta"] = list(mo_energy_beta)
+            
             homo_alpha_idx = int(sum(mo_occ_alpha > 0.5)) - 1
             lumo_alpha_idx = homo_alpha_idx + 1
             homo_beta_idx = int(sum(mo_occ_beta > 0.5)) - 1
@@ -251,10 +282,14 @@ def _run_scf_in_session(
         else:
             # Restricted case
             homo_idx = int(sum(mo_occ > 0.5)) - 1
-            lumo_idx = homo_idx + 1
+            lumo_idx = homo_idx + 1 if homo_idx + 1 < len(mo_energy) else None
             homo = float(mo_energy[homo_idx]) if homo_idx >= 0 else None
-            lumo = float(mo_energy[lumo_idx]) if lumo_idx < len(mo_energy) else None
+            lumo = float(mo_energy[lumo_idx]) if lumo_idx is not None and lumo_idx < len(mo_energy) else None
             gap = (lumo - homo) if (homo is not None and lumo is not None) else None
+            
+            # Fix #2: Add homo_index and lumo_index to results
+            result["homo_index"] = homo_idx if homo_idx >= 0 else None
+            result["lumo_index"] = lumo_idx
             
             result["homo"] = homo
             result["lumo"] = lumo
@@ -266,6 +301,13 @@ def _run_scf_in_session(
     results_json = {k: v for k, v in result.items() if k != "mf_object"}  # Don't serialize mf object
     results_file = working_dir / "results.json"
     results_file.write_text(json.dumps(results_json, indent=2))
+    
+    # Write input script for reproducibility
+    try:
+        from quantumvitas.engines.pyscf.runner import write_input_script
+        write_input_script(params, working_dir)
+    except Exception:
+        pass  # Input script generation is optional
     
     # Write checkpoint
     try:
@@ -319,9 +361,12 @@ def _run_mp2_in_session(
         return result
         
     except Exception as e:
+        import traceback
+        error_msg = f"MP2 calculation failed: {e}"
+        traceback_str = traceback.format_exc()
         return {
             "success": False,
-            "error": f"MP2 calculation failed: {e}",
+            "error": f"{error_msg}\n{traceback_str}",
             "execution_time": time.time() - start_time,
         }
 

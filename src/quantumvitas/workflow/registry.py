@@ -349,12 +349,28 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         description="PySCF MP2 correlation energy calculation",
         accepts_presets=False,  # MVP: no presets yet
         allowed_dimensions=frozenset(),
-        requires_structure=True,
-        requires_charge_density=True,  # Requires SCF charge density (checkpoint)
+        requires_structure=False,  # Phase 3C: MP2 does NOT require structure; consumes mf from state
+        requires_charge_density=False,  # Phase 3C: MP2 does NOT require charge density; consumes mf from state
         produces_charge_density=False,
         supports_incremental_skip=False,  # Always rerun (Phase 3C requirement)
         consumes_state="mf",  # Phase 3C: MP2 consumes mean-field state from SCF
-        produces_state=None,  # Phase 3C: MP2 does not produce state
+        produces_state="mp2",  # Phase 3C: MP2 produces mp2 state object (in-memory)
+    ),
+    "pyscf_td": StepTypeSpec(
+        id="td",
+        machine_type="pyscf_td",
+        public_type="td",
+        engine="pyscf",
+        executable="python",
+        description="PySCF TDDFT / TDHF excited states",
+        accepts_presets=False,
+        allowed_dimensions=frozenset(),
+        requires_structure=False,  # Phase 3C: TD does NOT require structure; consumes mf from state
+        requires_charge_density=False,  # Phase 3C: TD does NOT require charge density; consumes mf from state
+        produces_charge_density=False,
+        supports_incremental_skip=False,
+        consumes_state="mf",  # Phase 3C: TD consumes mean-field state from SCF
+        produces_state=None,  # Phase 3C: TD produces no new persisted state (results to files)
     ),
     
     # -------------------------------------------------------------------------

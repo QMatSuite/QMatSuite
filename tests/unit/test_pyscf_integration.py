@@ -76,8 +76,8 @@ class TestPySCFStepTypeRegistration:
         assert spec.machine_type == "pyscf_mp2"
         assert spec.engine == "pyscf"
         assert spec.executable == "python"
-        assert spec.requires_structure is True
-        assert spec.requires_charge_density is True  # MP2 requires SCF charge density
+        assert spec.requires_structure is False  # Phase 3C: MP2 does NOT require structure; consumes mf from state
+        assert spec.requires_charge_density is False  # Phase 3C: MP2 does NOT require charge density; consumes mf from state
         assert spec.produces_charge_density is False  # MP2 does not produce new charge density
         assert spec.supports_incremental_skip is False  # MP2 is always rerun in v0
     
@@ -124,8 +124,8 @@ class TestPySCFStepTypeRegistration:
         from quantumvitas.workflow.registry import get_registry
         
         spec = get_registry().get("pyscf_mp2")
-        assert spec.consumes_state == "mf"  # Consumes mean-field state
-        assert spec.produces_state is None  # No state production
+        assert spec.consumes_state == "mf"  # Consumes mean-field state from SCF
+        assert spec.produces_state == "mp2"  # Phase 3C: MP2 produces mp2 state object (in-memory)
     
     def test_qe_steps_have_none_state_fields(self):
         """QE steps have None defaults for state fields (Phase 3C backward compat)."""

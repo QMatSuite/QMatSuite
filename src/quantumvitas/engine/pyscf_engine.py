@@ -132,6 +132,9 @@ class PySCFEngine(Engine):
         """
         Get the command to run the PySCF runner subprocess.
         
+        Phase 3C: Use quantumvitas.engines.pyscf (not .runner) to support both
+        single-step and chain execution via __main__.py.
+        
         Future: This method can be extended to support managed engine bundles
         by checking for a managed pyscf-runner executable.
         
@@ -139,14 +142,16 @@ class PySCFEngine(Engine):
             Command list for subprocess execution
         """
         # Dev-mode: use current Python interpreter
+        # Phase 3C: Use pyscf package (not pyscf.runner) to support chain execution
         # Future: check for managed bundle first
-        return [sys.executable, "-m", "quantumvitas.engines.pyscf.runner"]
+        return [sys.executable, "-m", "quantumvitas.engines.pyscf"]
     
     def run_step(self, step, working_dir: Path) -> StepResult:
         """
         Run a PySCF calculation step via subprocess.
         
-        Phase 3C: Uses per-step artifact directory if available in step.options.
+        Phase 3C: Single-step execution is now a chain of length 1.
+        All PySCF execution goes through chain execution for consistency.
         
         Args:
             step: Step object with parameters attribute
@@ -155,239 +160,33 @@ class PySCFEngine(Engine):
         Returns:
             StepResult with calculation results
         """
-        start_time = time.time()
-        # Phase 3C: Use per-step artifact directory if provided, otherwise use working_dir
+        # Phase 3C: Unify execution path - single step is now a chain of length 1
+        # Extract structure_id and project_root from step.options (set by CalculationRunner)
+        structure_id = None
+        resolved_project_root = None
+        
+        if hasattr(step, 'options'):
+            structure_id = step.options.get('structure_id')
+            project_root_str = step.options.get('project_root')
+            if project_root_str:
+                resolved_project_root = Path(project_root_str)
+        
+        # Phase 3C: Single-step execution becomes chain of length 1
+        # working_dir is the base directory (e.g., calculation.raw_dir)
+        # run_step_with_chain will create step_artifacts_dir inside it
         working_dir = Path(working_dir)
         working_dir.mkdir(parents=True, exist_ok=True)
         
-        if hasattr(step, 'options') and step.options.get('step_artifacts_dir'):
-            step_artifacts_dir = Path(step.options['step_artifacts_dir'])
-            step_artifacts_dir.mkdir(parents=True, exist_ok=True)
-        else:
-            # Fallback: use working_dir as step_artifacts_dir if not provided
-            step_artifacts_dir = working_dir
-        
-        # Determine step type (Phase 3C: map public types to machine types)
-        # Step.step_type is StepType enum with public values (e.g., "scf"), but runner expects machine types (e.g., "pyscf_scf")
-        step_type = "pyscf_scf"  # Default
-        if hasattr(step, 'step_type'):
-            step_type_attr = step.step_type
-            if hasattr(step_type_attr, 'value'):
-                public_type = step_type_attr.value
-                # Phase 3C: Map public types to PySCF machine types
-                # This mapping is PySCF-specific (engine knows it's PySCF)
-                type_map = {
-                    "scf": "pyscf_scf",
-                    "mp2": "pyscf_mp2",
-                    "td": "pyscf_td",
-                    "analysis": "pyscf_analysis",
-                    "freq": "pyscf_freq",
-                }
-                step_type = type_map.get(public_type, public_type)  # Use mapping if available, else use as-is
-            else:
-                step_type = str(step_type_attr)
-        elif hasattr(step, 'type'):
-            step_type = step.type
-        
-        # Check platform
-        if sys.platform == "win32":
-            return StepResult(
-                step_type=step_type,
-                input_file=working_dir / "job.json",
-                success=False,
-                error=(
-                    "PySCF native Windows is not supported. "
-                    "Use WSL (Windows Subsystem for Linux) or Docker."
-                ),
-                execution_time=time.time() - start_time,
-            )
-        
-        # Check if PySCF is available
-        probe_result = self.probe()
-        if not probe_result.get("available"):
-            return StepResult(
-                step_type=step_type,
-                input_file=working_dir / "job.json",
-                success=False,
-                error=probe_result.get("reason", "PySCF not available"),
-                execution_time=time.time() - start_time,
-            )
-        
-        # Extract parameters from step
-        if hasattr(step, 'parameters'):
-            params = step.parameters.copy() if isinstance(step.parameters, dict) else step.parameters
-        elif isinstance(step, dict):
-            params = step.get('parameters', step).copy() if isinstance(step.get('parameters', step), dict) else step.get('parameters', step)
-        else:
-            params = {}
-        
-        # Phase 3C: Resolve structure canonically using structure_id and project_root
-        if hasattr(step, 'options') and step.options.get('structure_id') and step.options.get('project_root'):
-            structure_id = step.options['structure_id']
-            project_root = Path(step.options['project_root'])
-            
-            try:
-                from quantumvitas.core.resolution import require_structure
-                from quantumvitas.io.structure_io import read_structure
-                from pymatgen.core import Molecule as PMGMolecule
-                
-                # Resolve structure using canonical resolver
-                structure_resolved = require_structure(
-                    project_root,
-                    structure_id,
-                    config=None,
-                    index=None,
-                )
-                structure_path = structure_resolved.absolute_path
-                
-                # Assert structure file exists
-                assert structure_path.exists(), f"Structure file does not exist: {structure_path}"
-                
-                # Load structure
-                structure = read_structure(structure_path)
-                
-                # Assert it's a Molecule (not Structure)
-                assert isinstance(structure, PMGMolecule), f"Expected Molecule, got {type(structure)}"
-                
-                # Assert molecule has sites
-                assert len(structure) > 0, "Molecule has no sites"
-                
-                # Convert pymatgen.Molecule to atoms format
-                atoms = []
-                for site in structure:
-                    atoms.append({
-                        "element": site.species_string,
-                        "coords": [float(c) for c in site.coords],
-                    })
-                
-                # Assert atoms list is non-empty
-                assert len(atoms) > 0, "Atoms list is empty after conversion"
-                
-                # Merge structure data into params
-                params["atoms"] = atoms
-                params["charge"] = structure.charge
-                params["spin"] = structure.spin_multiplicity - 1  # PySCF uses 2S, pymatgen uses 2S+1
-                params["unit"] = "Angstrom"  # Default unit (pymatgen stores in Angstrom)
-                
-            except Exception as e:
-                # If structure loading fails, return error with details
-                import traceback
-                return StepResult(
-                    step_type=step_type,
-                    input_file=working_dir / "job.json",
-                    success=False,
-                    error=f"Failed to load structure (structure_id={structure_id}, project_root={project_root}): {e}\n{traceback.format_exc()}",
-                    execution_time=time.time() - start_time,
-                )
-        
-        # Build job spec
-        job_spec = {
-            "step_type": step_type,
-            "working_dir": str(step_artifacts_dir),  # Use step_artifacts_dir for per-step artifacts
-            "parameters": params,
-            "resources": {},
-        }
-        
-        # Phase 3C: Add run_mode and allow_chkfile_init_guess control
-        if hasattr(step, 'options'):
-            options = step.options
-            run_mode = options.get("run_mode", "incremental")
-            # For SCF steps: allow_chkfile_init_guess = True if incremental, False if full
-            # For non-SCF steps: not applicable (they don't use chkfile init_guess)
-            if step_type in ("pyscf_scf", "pyscf_rhf", "pyscf_uhf", "pyscf_rks", "pyscf_uks"):
-                job_spec["allow_chkfile_init_guess"] = (run_mode == "incremental")
-            
-            # Add resource settings if available
-            if options.get("max_memory_mb"):
-                job_spec["resources"]["max_memory_mb"] = options["max_memory_mb"]
-            if options.get("scratch_dir"):
-                job_spec["resources"]["scratch_dir"] = str(options["scratch_dir"])
-            if options.get("threads"):
-                job_spec["resources"]["threads"] = options["threads"]
-        
-        # Write job.json
-        job_file = step_artifacts_dir / "job.json"
-        try:
-            job_file.write_text(json.dumps(job_spec, indent=2))
-        except Exception as e:
-            return StepResult(
-                step_type=step_type,
-                input_file=job_file,
-                success=False,
-                error=f"Failed to write job file: {e}",
-                execution_time=time.time() - start_time,
-            )
-        
-        # Run subprocess
-        cmd = self._get_runner_command() + [str(job_file)]
-        
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                cwd=step_artifacts_dir,
-                timeout=step.options.get("timeout") if hasattr(step, 'options') else None,
-            )
-            stdout = result.stdout
-            stderr = result.stderr
-            return_code = result.returncode
-        except subprocess.TimeoutExpired as e:
-            return StepResult(
-                step_type=step_type,
-                input_file=job_file,
-                success=False,
-                return_code=None,
-                stdout=e.stdout.decode() if e.stdout else "",
-                stderr=e.stderr.decode() if e.stderr else "",
-                error="Calculation timed out",
-                execution_time=time.time() - start_time,
-            )
-        except Exception as e:
-            return StepResult(
-                step_type=step_type,
-                input_file=job_file,
-                success=False,
-                error=f"Subprocess execution failed: {e}",
-                execution_time=time.time() - start_time,
-            )
-        
-        # Parse results
-        results_file = step_artifacts_dir / "results.json"
-        parsed_output: Optional[Dict[str, Any]] = None
-        success = False
-        error = None
-        
-        if results_file.exists():
-            try:
-                parsed_output = json.loads(results_file.read_text())
-                success = parsed_output.get("success", False)
-                error = parsed_output.get("error")
-            except Exception as e:
-                error = f"Failed to parse results.json: {e}"
-        else:
-            # Try to parse stdout as JSON (runner prints results to stdout)
-            try:
-                parsed_output = json.loads(stdout)
-                success = parsed_output.get("success", False)
-                error = parsed_output.get("error")
-            except Exception:
-                error = stderr or stdout or f"Runner exited with code {return_code}"
-        
-        # Log file
-        log_file = step_artifacts_dir / "pyscf.log"
-        
-        return StepResult(
-            step_type=step_type,
-            input_file=step_artifacts_dir / "pyscf_input.py",  # Reproducible script
-            output_file=results_file if results_file.exists() else log_file,
-            success=success,
-            return_code=return_code,
-            stdout=stdout,
-            stderr=stderr,
-            error=error,
-            execution_time=time.time() - start_time,
-            parsed_output=parsed_output,
+        # Phase 3C: Single-step execution becomes chain of length 1
+        # Call run_step_with_chain with a single-step chain
+        # calculation_raw_dir should be the base directory (working_dir), not step_artifacts_dir
+        # run_step_with_chain will create step_artifacts_dir inside calculation_raw_dir
+        return self.run_step_with_chain(
+            target_step=step,
+            chain_steps=[step],  # Chain of length 1
+            calculation_raw_dir=working_dir,
+            structure_id=structure_id,
+            project_root=resolved_project_root,
         )
     
     # =========================================================================
@@ -410,13 +209,92 @@ class PySCFEngine(Engine):
         Returns:
             StepResult with SCF results
         """
-        # Create a mock step object
-        class MockStep:
-            step_type = "pyscf_scf"
-            parameters = params
-            options = {}
+        # Legacy method: bypass step.yaml requirement by directly writing job.json
+        start_time = time.time()
+        working_dir = Path(working_dir)
+        working_dir.mkdir(parents=True, exist_ok=True)
         
-        return self.run_step(MockStep(), working_dir)
+        job_spec = {
+            "step_type": "pyscf_scf",
+            "working_dir": str(working_dir),
+            "parameters": params,
+            "resources": {},
+        }
+        
+        job_file = working_dir / "job.json"
+        try:
+            job_file.write_text(json.dumps(job_spec, indent=2))
+        except Exception as e:
+            return StepResult(
+                step_type="pyscf_scf",
+                input_file=job_file,
+                success=False,
+                error=f"Failed to write job file: {e}",
+                execution_time=time.time() - start_time,
+            )
+        
+        # Run subprocess
+        cmd = self._get_runner_command() + [str(job_file)]
+        
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                cwd=working_dir,
+                timeout=None,
+            )
+            stdout = result.stdout
+            stderr = result.stderr
+            return_code = result.returncode
+        except subprocess.TimeoutExpired as e:
+            return StepResult(
+                step_type="pyscf_scf",
+                input_file=job_file,
+                success=False,
+                error=f"Subprocess timeout: {e}",
+                execution_time=time.time() - start_time,
+            )
+        except Exception as e:
+            return StepResult(
+                step_type="pyscf_scf",
+                input_file=job_file,
+                success=False,
+                error=f"Subprocess execution failed: {e}",
+                execution_time=time.time() - start_time,
+            )
+        
+        # Parse results
+        results_file = working_dir / "results.json"
+        parsed_output: Optional[Dict[str, Any]] = None
+        success = False
+        error = None
+        
+        if results_file.exists():
+            try:
+                parsed_output = json.loads(results_file.read_text())
+                success = parsed_output.get("success", False)
+                error = parsed_output.get("error")
+            except Exception:
+                pass
+        
+        if not success and not error:
+            error = f"Subprocess returned code {return_code}" if return_code != 0 else "Unknown error"
+        
+        output_file = results_file if results_file.exists() else job_file
+        
+        return StepResult(
+            step_type="pyscf_scf",
+            input_file=job_file,
+            output_file=output_file,
+            success=success,
+            return_code=return_code,
+            stdout=stdout,
+            stderr=stderr,
+            error=error,
+            execution_time=time.time() - start_time,
+            parsed_output=parsed_output,
+        )
     
     def run_step_with_chain(
         self,
@@ -443,21 +321,12 @@ class PySCFEngine(Engine):
         calculation_raw_dir = Path(calculation_raw_dir)
         calculation_raw_dir.mkdir(parents=True, exist_ok=True)
         
-        # Determine target step type
-        target_step_type = "pyscf_scf"
-        if hasattr(target_step, 'step_type'):
-            step_type_attr = target_step.step_type
-            if hasattr(step_type_attr, 'value'):
-                target_step_type = step_type_attr.value
-            else:
-                target_step_type = str(step_type_attr)
-        elif hasattr(target_step, 'type'):
-            target_step_type = target_step.type
-        
-        # Check platform
+        # Fix #1: Check PySCF availability BEFORE trying to read step.yaml
+        # This allows graceful failure messages when PySCF is not installed
+        # Check platform first
         if sys.platform == "win32":
             return StepResult(
-                step_type=target_step_type,
+                step_type="unknown",
                 input_file=calculation_raw_dir / "job_chain.json",
                 success=False,
                 error=(
@@ -467,14 +336,47 @@ class PySCFEngine(Engine):
                 execution_time=time.time() - start_time,
             )
         
-        # Check if PySCF is available
+        # Check if PySCF is available (before step.yaml read for graceful failure)
         probe_result = self.probe()
         if not probe_result.get("available"):
+            return StepResult(
+                step_type="unknown",
+                input_file=calculation_raw_dir / "job_chain.json",
+                success=False,
+                error=probe_result.get("reason", "PySCF not available"),
+                execution_time=time.time() - start_time,
+            )
+        
+        # SINGLE SOURCE OF TRUTH: Read machine step_type from step.yaml
+        # step.yaml stores machine types (e.g., "pyscf_scf", "pyscf_mp2")
+        # Step.step_type enum MUST NOT be used for execution
+        target_step_type = None
+        if hasattr(target_step, 'meta') and hasattr(target_step.meta, 'path') and target_step.meta.path and project_root:
+            step_yaml_path = project_root / target_step.meta.path
+            if step_yaml_path.exists():
+                import yaml
+                step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
+                target_step_type = step_data.get("step_type")
+        
+        # HARD ERROR if step_type not found
+        if not target_step_type:
+            return StepResult(
+                step_type="unknown",
+                input_file=calculation_raw_dir / "job_chain.json",
+                success=False,
+                error=f"Failed to read machine step_type from step.yaml for target step. Step meta.path={getattr(target_step.meta, 'path', 'None') if hasattr(target_step, 'meta') else 'No meta'}, project_root={project_root}. Execution MUST use machine step_type from step.yaml, not Step.step_type enum.",
+                execution_time=time.time() - start_time,
+            )
+        
+        # Validate step_type is in registry
+        from quantumvitas.workflow.registry import get_registry
+        registry = get_registry()
+        if not registry.has(target_step_type):
             return StepResult(
                 step_type=target_step_type,
                 input_file=calculation_raw_dir / "job_chain.json",
                 success=False,
-                error=probe_result.get("reason", "PySCF not available"),
+                error=f"Step type '{target_step_type}' not found in registry. This indicates an invalid or corrupted step.yaml file.",
                 execution_time=time.time() - start_time,
             )
         
@@ -525,28 +427,33 @@ class PySCFEngine(Engine):
                     execution_time=time.time() - start_time,
                 )
             
-            # Convert pymatgen.Molecule to atoms format
-            atoms = []
-            for site in structure:
-                atoms.append({
-                    "element": site.species_string,
-                    "coords": [float(c) for c in site.coords],
-                })
-            
-            structure_data = {
-                "atoms": atoms,
-                "charge": structure.charge,
-                "spin": structure.spin_multiplicity - 1,  # PySCF uses 2S, pymatgen uses 2S+1
-                "unit": "Angstrom",
-            }
-            
-            # Assert structure_data is valid (atoms list must be non-empty)
-            if not structure_data.get("atoms") or len(structure_data["atoms"]) == 0:
+            # Validate structure has atoms
+            if len(structure) == 0:
                 return StepResult(
                     step_type=target_step_type,
                     input_file=calculation_raw_dir / "job_chain.json",
                     success=False,
                     error=f"Structure has no atoms (structure_id={structure_id})",
+                    execution_time=time.time() - start_time,
+                )
+            
+            # Store structure_path (canonical path) and metadata for chain jobs
+            # Phase 3C: Use structure_path as SSOT, not precomputed atoms list
+            structure_path_abs = Path(structure_path).resolve()
+            structure_data = {
+                "structure_path": str(structure_path_abs),
+                "charge": structure.charge,
+                "spin": structure.spin_multiplicity - 1,  # PySCF uses 2S, pymatgen uses 2S+1
+                "unit": "Angstrom",
+            }
+            
+            # Validate structure file exists
+            if not structure_path_abs.exists():
+                return StepResult(
+                    step_type=target_step_type,
+                    input_file=calculation_raw_dir / "job_chain.json",
+                    success=False,
+                    error=f"Structure file does not exist: {structure_path_abs}",
                     execution_time=time.time() - start_time,
                 )
         except Exception as e:
@@ -564,24 +471,38 @@ class PySCFEngine(Engine):
         for step in chain_steps:
             step_ulid = step.meta.id if hasattr(step, 'meta') and hasattr(step.meta, 'id') else "unknown"
             
-            step_type = "pyscf_scf"
-            if hasattr(step, 'step_type'):
-                step_type_attr = step.step_type
-                if hasattr(step_type_attr, 'value'):
-                    public_type = step_type_attr.value
-                    # Map public types to PySCF machine types
-                    type_map = {
-                        "scf": "pyscf_scf",
-                        "mp2": "pyscf_mp2",
-                        "td": "pyscf_td",
-                        "analysis": "pyscf_analysis",
-                        "freq": "pyscf_freq",
-                    }
-                    step_type = type_map.get(public_type, public_type)
-                else:
-                    step_type = str(step_type_attr)
-            elif hasattr(step, 'type'):
-                step_type = step.type
+            # Phase 3C: Read machine step_type from step.yaml (step.yaml stores machine types)
+            # Step.step_type is StepType enum which doesn't have all machine types (e.g., no "mp2")
+            step_type = "unknown"
+            if hasattr(step, 'meta') and hasattr(step.meta, 'path') and step.meta.path:
+                # step.meta.path is relative to project root
+                step_yaml_path = project_root / step.meta.path
+                if step_yaml_path.exists():
+                    import yaml
+                    step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
+                    step_type = step_data.get("step_type") or "unknown"
+            
+            # HARD ERROR if step_type not found - no fallbacks allowed
+            if step_type == "unknown" or not step_type:
+                return StepResult(
+                    step_type="unknown",
+                    input_file=calculation_raw_dir / "job_chain.json",
+                    success=False,
+                    error=f"Failed to read machine step_type from step.yaml for chain step {step_ulid}. Step meta.path={getattr(step.meta, 'path', 'None') if hasattr(step, 'meta') else 'No meta'}, project_root={project_root}. Execution MUST use machine step_type from step.yaml, not Step.step_type enum.",
+                    execution_time=time.time() - start_time,
+                )
+            
+            # Validate step_type is in registry
+            from quantumvitas.workflow.registry import get_registry
+            registry = get_registry()
+            if not registry.has(step_type):
+                return StepResult(
+                    step_type=step_type,
+                    input_file=calculation_raw_dir / "job_chain.json",
+                    success=False,
+                    error=f"Step type '{step_type}' not found in registry for chain step {step_ulid}. This indicates an invalid or corrupted step.yaml file.",
+                    execution_time=time.time() - start_time,
+                )
             
             # Get parameters
             params = {}
@@ -590,9 +511,19 @@ class PySCFEngine(Engine):
             elif isinstance(step, dict):
                 params = step.get('parameters', step).copy() if isinstance(step.get('parameters', step), dict) else step.get('parameters', step)
             
-            # Phase 3C: Merge structure data into parameters (all chain steps use the same structure)
-            if structure_data:
+            # Phase 3C: Merge structure data into parameters ONLY for steps that require structure
+            # SCF steps require structure (to build molecule), but MP2/TD steps only need mf from state
+            # Per contract: MP2 must NOT receive structure/atoms - it consumes mf from chain state only
+            from quantumvitas.workflow.registry import get_registry
+            registry = get_registry()
+            step_spec = registry.get(step_type)
+            if step_spec and step_spec.requires_structure and structure_data:
+                # Merge structure_path and metadata into params
                 params = {**params, **structure_data}
+            # Explicitly ensure MP2/TD/etc do NOT get structure data even if somehow passed
+            elif step_spec and not step_spec.requires_structure:
+                # Remove any structure-related keys that might have been incorrectly included
+                params = {k: v for k, v in params.items() if k not in ("atoms", "structure_path", "charge", "spin", "unit", "structure")}
             
             # Get step artifacts directory
             step_artifacts_dir = calculation_raw_dir / "step_artifacts" / step_ulid
@@ -602,6 +533,39 @@ class PySCFEngine(Engine):
             # Prerequisite steps: True (incremental semantics - may use chkfile)
             is_target = (step_ulid == target_step.meta.id)
             allow_chkfile_init_guess = not is_target
+            
+            # Validation before adding to chain
+            if step_spec and step_spec.requires_structure:
+                # For SCF steps: validate structure_path exists
+                if "structure_path" not in params:
+                    return StepResult(
+                        step_type=step_type,
+                        input_file=calculation_raw_dir / "job_chain.json",
+                        success=False,
+                        error=f"SCF step ({step_ulid}) requires structure_path but it's missing from parameters",
+                        execution_time=time.time() - start_time,
+                    )
+                structure_path_check = Path(params["structure_path"])
+                if not structure_path_check.exists():
+                    return StepResult(
+                        step_type=step_type,
+                        input_file=calculation_raw_dir / "job_chain.json",
+                        success=False,
+                        error=f"SCF step ({step_ulid}) structure_path does not exist: {structure_path_check}",
+                        execution_time=time.time() - start_time,
+                    )
+            elif step_spec and not step_spec.requires_structure:
+                # For MP2/TD steps: ensure no structure keys exist
+                structure_keys = {"atoms", "structure_path", "structure", "charge", "spin", "unit"}
+                found_structure_keys = structure_keys.intersection(params.keys())
+                if found_structure_keys:
+                    return StepResult(
+                        step_type=step_type,
+                        input_file=calculation_raw_dir / "job_chain.json",
+                        success=False,
+                        error=f"Step {step_ulid} ({step_type}) must not receive structure data, but found keys: {found_structure_keys}",
+                        execution_time=time.time() - start_time,
+                    )
             
             chain_step_specs.append({
                 "step_ulid": step_ulid,

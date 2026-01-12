@@ -70,34 +70,98 @@ def build_mole(params: Dict[str, Any]):
     """
     Build PySCF Mole object from parameters.
     
+    Phase 3C: Prefers structure_path over atoms list for chain execution.
+    
     Args:
-        params: Dictionary with atoms, basis, charge, spin, unit
+        params: Dictionary with structure_path (preferred) or atoms, plus basis, charge, spin, unit
         
     Returns:
         pyscf.gto.Mole object
+        
+    Raises:
+        ValueError: If structure input is missing or invalid
     """
     from pyscf import gto
+    from pathlib import Path
     
-    atoms = params.get("atoms", [])
     unit = params.get("unit", "Angstrom")
     charge = params.get("charge", 0)
     spin = params.get("spin", 0)  # 2S (number of unpaired electrons)
     basis = params.get("basis", "sto-3g")
     
+    atoms = []
+    
+    # Phase 3C: Prefer structure_path over atoms list
+    if "structure_path" in params:
+        # Load structure from file using canonical loader
+        structure_path = Path(params["structure_path"])
+        if not structure_path.exists():
+            raise ValueError(f"Structure file does not exist: {structure_path}")
+        
+        from quantumvitas.io.structure_io import read_structure
+        from pymatgen.core import Molecule as PMGMolecule
+        
+        structure = read_structure(structure_path)
+        
+        if not isinstance(structure, PMGMolecule):
+            raise ValueError(f"Expected Molecule for PySCF, got {type(structure)}")
+        
+        if len(structure) == 0:
+            raise ValueError(f"Structure has no atoms: {structure_path}")
+        
+        # Convert to atoms format
+        for site in structure:
+            coords_list = list(site.coords)
+            if len(coords_list) < 3:
+                raise ValueError(
+                    f"Structure site has invalid coordinates (expected 3, got {len(coords_list)}): {coords_list}"
+                )
+            atoms.append({
+                "element": site.species_string,
+                "coords": [float(c) for c in coords_list],
+            })
+        
+        # Override charge/spin from structure if not explicitly set in params
+        if charge == 0:  # Only override if using default
+            charge = structure.charge
+        if spin == 0:  # Only override if using default
+            spin = structure.spin_multiplicity - 1  # PySCF uses 2S, pymatgen uses 2S+1
+    
+    elif "atoms" in params:
+        # Legacy path: use atoms list directly
+        atoms = params.get("atoms", [])
+        if not atoms:
+            raise ValueError("Missing structure input: atoms list is empty")
+    else:
+        raise ValueError("Missing structure input: expected structure_path or atoms in parameters")
+    
+    # Validate atoms list
+    if not atoms:
+        raise ValueError("Invalid atoms format: atoms list is empty after processing")
+    
     # Build atom string for PySCF
     # PySCF accepts: "O 0 0 0; H 0 0.757 0.587; H 0 -0.757 0.587"
     atom_lines = []
-    for atom in atoms:
+    for i, atom in enumerate(atoms):
         element = atom.get("element", atom.get("symbol", "X"))
         
         # Handle different coordinate formats
         if "coords" in atom:
             coords = atom["coords"]
-            x, y, z = coords[0], coords[1], coords[2]
+            if not isinstance(coords, list):
+                raise ValueError(
+                    f"Atom {i} ({element}) coords must be a list, got {type(coords)}: {coords}"
+                )
+            if len(coords) != 3:
+                raise ValueError(
+                    f"Atom {i} ({element}) coordinates must have exactly 3 elements (x, y, z), "
+                    f"got coords={coords} (length={len(coords)})"
+                )
+            x, y, z = float(coords[0]), float(coords[1]), float(coords[2])
         else:
-            x = atom.get("x", 0.0)
-            y = atom.get("y", 0.0)
-            z = atom.get("z", 0.0)
+            x = float(atom.get("x", 0.0))
+            y = float(atom.get("y", 0.0))
+            z = float(atom.get("z", 0.0))
         
         atom_lines.append(f"{element} {x} {y} {z}")
     
@@ -354,6 +418,11 @@ def write_input_script(params: Dict[str, Any], working_dir: Path) -> None:
         element = atom.get("element", atom.get("symbol", "X"))
         if "coords" in atom:
             coords = atom["coords"]
+            if not coords or len(coords) < 3:
+                raise ValueError(
+                    f"Atom coordinates must have exactly 3 elements (x, y, z), "
+                    f"got coords={coords} (length={len(coords) if coords else 0}) for element={element}"
+                )
             x, y, z = coords[0], coords[1], coords[2]
         else:
             x = atom.get("x", 0.0)
@@ -663,14 +732,24 @@ def run_job_chain(job_chain_path: Path) -> int:
 
 def run_job(job_path: Path) -> int:
     """
-    Main entry point: run a PySCF job from job.json.
+    DEPRECATED: PySCF execution is chain-only.
+    
+    This function is blocked for PySCF. Use run_job_chain() instead.
+    Single-step execution is converted to chain of length 1 in __main__.py.
     
     Args:
         job_path: Path to job.json
         
     Returns:
         Exit code (0=success, 1=not converged, 2=error, 3=setup error)
+        
+    Raises:
+        RuntimeError: Always, as PySCF is chain-only
     """
+    raise RuntimeError(
+        "PySCF runner is chain-only. Single-step execution must be converted to chain of length 1. "
+        "This should be handled by __main__.py. If you see this error, the conversion failed."
+    )
     # Read job spec
     try:
         job = json.loads(job_path.read_text())
