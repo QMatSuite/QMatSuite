@@ -431,11 +431,63 @@ class CalculationRunner:
                 done_at=None,
             )
             
-            engine = self.engine_registry.get(step.engine)
+            # CLARIFIED CONTRACT: Execution routing uses step.yaml machine step_type, NOT calculation.engine_family
+            # engine_family is ONLY for materialization-time selection
+            from quantumvitas.workflow.registry import resolve_engine_for_step
+            from pathlib import Path
+            
+            # Resolve engine from step.yaml machine step_type
+            # step.meta.path is relative to project root, so construct absolute path
+            step_yaml_path = calculation.project.root / step.meta.path if step.meta.path else None
+            if not step_yaml_path or not step_yaml_path.exists():
+                # Fallback: use step.engine (for backwards compatibility with legacy steps)
+                engine_name = step.engine
+                logger.warning(
+                    f"[CALCULATION_RUNNER] Step YAML not found at {step_yaml_path}, "
+                    f"using step.engine='{engine_name}' as fallback"
+                )
+            else:
+                try:
+                    engine_name = resolve_engine_for_step(step_yaml_path=step_yaml_path)
+                    logger.debug(
+                        f"[CALCULATION_RUNNER] Resolved engine='{engine_name}' from step.yaml machine step_type"
+                    )
+                except ValueError as e:
+                    # Unknown machine step type - raise error (no "custom" fallback per contract)
+                    raise ValueError(
+                        f"Failed to resolve engine for step {step.meta.id}: {e}. "
+                        f"This step type is not supported."
+                    ) from e
+            
+            engine = self.engine_registry.get(engine_name)
             # Use compute_io_dir_from_calculation_model to ensure consistency with server-side planned_io_dir
             # calculation.raw_dir uses the same logic (calculation_dir / working_dir, default "raw")
             raw_dir = calculation.raw_dir
             raw_dir.mkdir(parents=True, exist_ok=True)
+
+            # Phase 3C: Create per-step artifact directory
+            step_artifacts_dir = raw_dir / "step_artifacts" / step.meta.id
+            step_artifacts_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Phase 3C: Clear step artifacts directory before execution (keep only newest results)
+            import shutil
+            if step_artifacts_dir.exists():
+                for item in step_artifacts_dir.iterdir():
+                    if item.is_file():
+                        item.unlink()
+                    elif item.is_dir():
+                        shutil.rmtree(item)
+
+            # Phase 3C: Inject run_mode into step.options for engine access
+            if not hasattr(step, 'options'):
+                step.options = {}
+            step.options['run_mode'] = run_mode
+            step.options['step_artifacts_dir'] = str(step_artifacts_dir)  # Pass artifacts dir to engine
+            
+            # Phase 3C: Pass structure_id and project_root to PySCF engine (for canonical structure resolution)
+            if engine_name == "pyscf" and calculation.structure_id:
+                step.options['structure_id'] = calculation.structure_id
+                step.options['project_root'] = str(calculation.project.root)
 
             # Execute step with exception handling
             try:
@@ -511,6 +563,7 @@ class CalculationRunner:
                     output_text=output_text,
                     reference_file=step.reference_output,
                     step_result_return_code=getattr(result, 'return_code', None),
+                    step_result_success=getattr(result, 'success', None),
                 )
                 logger.debug(f"[CALCULATION_RUNNER] Evaluation completed: step_status={step_status}, message={message[:100]}")
             except Exception as e:

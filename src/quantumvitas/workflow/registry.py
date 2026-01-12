@@ -16,6 +16,7 @@ Per docs/workflow_refactor_plan.md:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, FrozenSet, List, Optional
 
 
@@ -49,6 +50,8 @@ class StepTypeSpec:
     requires_charge_density: bool = False
     produces_charge_density: bool = False
     supports_incremental_skip: bool = True  # Phase 3C: Whether step can be skipped in incremental runs
+    consumes_state: Optional[str] = None  # Phase 3C: State type consumed by this step (e.g., "mf" for MP2)
+    produces_state: Optional[str] = None  # Phase 3C: State type produced by this step (e.g., "mf" for SCF)
 
 
 # =============================================================================
@@ -334,6 +337,8 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=False,
         produces_charge_density=False,
         supports_incremental_skip=True,  # Can be skipped if checkpoint exists
+        produces_state="mf",  # Phase 3C: SCF produces mean-field state
+        consumes_state=None,  # Phase 3C: SCF has no dependencies
     ),
     "pyscf_mp2": StepTypeSpec(
         id="mp2",  # Public type
@@ -348,6 +353,8 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=True,  # Requires SCF charge density (checkpoint)
         produces_charge_density=False,
         supports_incremental_skip=False,  # Always rerun (Phase 3C requirement)
+        consumes_state="mf",  # Phase 3C: MP2 consumes mean-field state from SCF
+        produces_state=None,  # Phase 3C: MP2 does not produce state
     ),
     
     # -------------------------------------------------------------------------
@@ -540,4 +547,71 @@ def normalize_step_type_to_public(step_type: str) -> str:
     if spec:
         return spec.public_type
     return step_type
+
+
+def resolve_engine_for_step(
+    step_yaml_path: Optional[Path] = None,
+    machine_step_type: Optional[str] = None,
+) -> str:
+    """
+    Resolve engine ID from step.yaml machine step_type.
+    
+    This is the canonical execution-time engine resolver. It reads the machine step_type
+    from step.yaml (or receives it directly) and looks up the engine in the registry.
+    
+    Contract (CLARIFIED):
+    - engine_family is NOT consulted (it's only for materialization-time)
+    - Machine step_type from step.yaml is the SSOT for execution routing
+    - Unknown machine step types MUST raise (no "custom" fallback)
+    - calculation.yaml is consulted ONLY for structure resolution, NOT for engine routing
+    
+    Args:
+        step_yaml_path: Path to step.yaml file (reads machine step_type from it directly)
+        machine_step_type: Direct machine step_type string (e.g., "pyscf_scf", "qe_scf")
+        
+    Returns:
+        Engine ID (e.g., "qe", "pyscf", "w90")
+        
+    Raises:
+        ValueError: If machine step_type is unknown (not in registry)
+        ValueError: If neither step_yaml_path nor machine_step_type is provided
+        FileNotFoundError: If step_yaml_path is provided but file doesn't exist
+    """
+    registry = get_registry()
+    
+    # Determine machine step_type from input
+    if machine_step_type:
+        step_type_str = machine_step_type
+    elif step_yaml_path:
+        # Read machine step_type directly from step.yaml (step.yaml stores machine type, not public type)
+        import yaml
+        step_yaml_path = Path(step_yaml_path)  # Path is imported at module level
+        if not step_yaml_path.exists():
+            raise FileNotFoundError(f"Step YAML file not found: {step_yaml_path}")
+        step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
+        step_type_str = step_data.get("step_type")
+        if not step_type_str:
+            raise ValueError(f"Step YAML file missing 'step_type' field: {step_yaml_path}")
+    else:
+        raise ValueError("Must provide one of: step_yaml_path or machine_step_type")
+    
+    if not step_type_str:
+        raise ValueError("Machine step_type is empty or None")
+    
+    # Look up machine step_type in registry (registry.get() accepts machine type directly)
+    spec = registry.get(step_type_str)
+    if spec is None:
+        # List some known types for error message (limit to avoid huge error messages)
+        # Access internal _types dict directly (registry implementation detail)
+        try:
+            known_types = sorted([s.machine_type for s in registry._types.values()])[:20]
+            known_str = ', '.join(known_types)
+        except AttributeError:
+            known_str = "unknown"
+        raise ValueError(
+            f"Unknown machine step_type '{step_type_str}' (not in registry). "
+            f"This step type is not supported. Known machine types (sample): {known_str}..."
+        )
+    
+    return spec.engine
 

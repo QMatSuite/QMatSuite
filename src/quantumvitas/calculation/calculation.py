@@ -31,6 +31,7 @@ class Calculation:
     working_dir: Path = field(default_factory=Path)
     _structure_id: Optional[str] = field(default=None, init=False, repr=False)  # Cached structure_id from model
     _species_map: Optional[Dict[str, Dict[str, Any]]] = field(default=None, init=False, repr=False)  # Cached species_map
+    _engine_family: Optional[str] = field(default=None, init=False, repr=False)  # Cached engine_family from model
 
     @property
     def raw_dir(self) -> Path:
@@ -100,6 +101,33 @@ class Calculation:
                 wf_model = load_calculation(calculation_yaml, self.project.root)
                 self._species_map = wf_model.species_map
                 return self._species_map
+            except Exception:
+                pass
+        
+        return None
+
+    @property
+    def engine_family(self) -> Optional[str]:
+        """
+        Get engine_family from the calculation.
+        
+        Engine_family determines which engine is used for execution (e.g., "qe", "pyscf").
+        
+        This property reads from the underlying calculation.yaml model.
+        Falls back to None if not set (for backwards compatibility with old projects).
+        """
+        # If cached, return it
+        if self._engine_family is not None:
+            return self._engine_family
+        
+        # Otherwise, load from calculation.yaml
+        calculation_yaml = self.dir / "calculation.yaml"
+        if calculation_yaml.exists():
+            try:
+                from quantumvitas.core.models import load_calculation
+                wf_model = load_calculation(calculation_yaml, self.project.root)
+                self._engine_family = wf_model.engine_family
+                return self._engine_family
             except Exception:
                 pass
         
@@ -331,16 +359,24 @@ def _build_step(
     options = step_data.get("options", step_data.get("params", {})) or {}
     reference_path = _resolve_reference_path(step_data.get("reference"), calculation_dir)
 
-    step_meta = _build_step_meta(
-        step_data=step_data,
-        calculation_dir=calculation_dir,
-        project=project,
-    )
+    # CONTRACT I1: Step ULID is the identity of a step resource.
+    # Step ULID must NOT change after creation. Use step_resolved.meta (from step.yaml)
+    # instead of building metadata from calculation.yaml step_data.
+    step_meta = step_resolved.meta
+    
+    # Assert step_id from calculation.yaml matches step_meta.id from step.yaml
+    # This ensures ULID consistency across calculation.yaml and step.yaml
+    if step_meta.id != step_id:
+        raise ValueError(
+            f"Step ULID mismatch: calculation.yaml step_id='{step_id}' "
+            f"does not match step.yaml meta.id='{step_meta.id}'. "
+            f"This indicates a corrupted calculation or step file."
+        )
 
     # Build from spec file (step_file_path resolved via registry)
     # Pass existing_input_file so pseudopotentials can be extracted from it
     step = _build_step_from_spec(
-        step_id=step_id,  # Use ULID from calculation.yaml
+        step_id=step_id,  # Use ULID from calculation.yaml (must match step_meta.id)
         engine_name=engine_name,
         step_file=str(step_file_path.relative_to(calculation_dir)) if step_file_path.is_relative_to(calculation_dir) else step_file_path.name,
         calculation_dir=calculation_dir,

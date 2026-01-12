@@ -1352,9 +1352,11 @@ class QVService:
         calculation_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
         step_resolved = require_step(project_root, calculation_selector, step_selector, config=config, index=index)
         
-        # Load calculation to get structure_id (canonical source)
+        # Load calculation to get structure_id and engine_family (canonical source)
         project = Project.open(project_root)
-        calculation = Calculation.from_yaml(calculation_resolved.absolute_path, project)
+        # Phase 3C: Load calculation with materialized steps for both engine detection and chain execution
+        # We need materialized steps to build the dependency chain, so load once with materialize_steps=True
+        calculation = Calculation.from_yaml(calculation_resolved.absolute_path, project, materialize_steps=True)
         
         # Structure comes from calculation.structure_id (DAG model)
         if not calculation.structure_id:
@@ -1362,15 +1364,141 @@ class QVService:
                 f"Calculation '{calculation_selector}' has no structure. Please set a structure for the calculation first."
             )
         
-        structure_resolved = require_structure(project_root, calculation.structure_id, config=config, index=index)
-        structure = read_structure(structure_resolved.absolute_path)
+        # CLARIFIED CONTRACT: Execution routing uses step.yaml machine step_type, NOT calculation.engine_family
+        # engine_family is ONLY for materialization-time selection
+        from quantumvitas.workflow.registry import resolve_engine_for_step
         
-        # Load step spec (for step_type and other step-local config)
+        # Resolve engine from step.yaml machine step_type
+        step_yaml_path = step_resolved.absolute_path
+        try:
+            engine_id = resolve_engine_for_step(step_yaml_path=step_yaml_path)
+        except ValueError as e:
+            raise QVServiceError(
+                f"Failed to resolve engine for step '{step_selector}': {e}. "
+                f"This step type is not supported."
+            ) from e
+        
+        # Debug trace (env-var gated)
+        import os
+        import logging
+        logger = logging.getLogger(__name__)
+        debug_trace = os.getenv("QV_DEBUG_RUNSTEP") == "1"
+        if debug_trace:
+            logger.warning(f"[QV_DEBUG_RUNSTEP] calculation_id={calculation.id}, engine_id={repr(engine_id)} (resolved from step.yaml)")
+        
+        # Debug file for detailed tracing (optional, for debugging)
+        debug_file = None
+        if debug_trace:
+            import tempfile
+            debug_file = Path(tempfile.gettempdir()) / f"qv_debug_runstep_{calculation.id}.log"
+        
+        # Load step spec (for step_type and other step-local config) - only needed for QE path
         from quantumvitas.calculation.structure_steps import StructureStepSpec
-        from quantumvitas.core.resolution import make_structure_selector_resolver
+        from quantumvitas.core.resolution import make_structure_selector_resolver, require_structure
+        from quantumvitas.io import read_structure
         resolver = make_structure_selector_resolver(project_root, config=config)
         spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=resolver)
         
+        if engine_id == "pyscf":
+            if debug_trace and debug_file:
+                debug_file.parent.mkdir(parents=True, exist_ok=True)
+                with open(debug_file, "a") as f:
+                    f.write(f"[QV_DEBUG_RUNSTEP] Routing to PySCF branch\n")
+                    f.flush()
+            # Phase 3C: PySCF chain execution path
+            from quantumvitas.engines.pyscf.chain import resolve_dependency_chain
+            from quantumvitas.engine.registry import create_default_registry
+            from quantumvitas.workflow.registry import get_registry
+            
+            # Reload calculation with materialized steps for chain execution
+            calculation = Calculation.from_yaml(calculation_resolved.absolute_path, project, materialize_steps=True)
+            
+            # Build step list for dependency resolution (need machine types, not public types)
+            # step.yaml stores machine types directly, so read from step.yaml
+            registry = get_registry()
+            calculation_steps = []
+            for step in calculation.steps:
+                step_ulid = step.meta.id
+                # Get machine step_type from step.yaml directly (step.yaml stores machine type)
+                machine_type = "unknown"
+                if hasattr(step.meta, 'path') and step.meta.path:
+                    # step.meta.path is relative to project root, resolve it
+                    step_yaml_path = project_root / step.meta.path
+                    if step_yaml_path.exists():
+                        import yaml
+                        step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
+                        machine_type = step_data.get("step_type") or "unknown"
+                if machine_type == "unknown":
+                    raise QVServiceError(
+                        f"Failed to read machine step_type from step.yaml for step {step_ulid}. "
+                        f"This indicates a corrupted step file."
+                    )
+                if debug_trace:
+                    logger.warning(f"[QV_DEBUG_RUNSTEP] Step {step_ulid}: machine_type={machine_type}")
+                calculation_steps.append((step_ulid, machine_type))
+            
+            # Resolve dependency chain
+            if debug_trace:
+                with open(debug_file, "a") as f:
+                    f.write(f"[QV_DEBUG_RUNSTEP] Calling resolve_dependency_chain: target={step_resolved.meta.id}, calculation_steps={calculation_steps}\n")
+                    f.flush()
+            chain_indices, error = resolve_dependency_chain(
+                target_step_ulid=step_resolved.meta.id,
+                calculation_steps=calculation_steps,
+                step_type_registry=registry,
+            )
+            
+            if debug_trace:
+                with open(debug_file, "a") as f:
+                    f.write(f"[QV_DEBUG_RUNSTEP] resolve_dependency_chain result: chain_indices={chain_indices}, error={repr(error)}\n")
+                    f.flush()
+            
+            if error:
+                # Phase 3C: Hard error if dependency chain cannot be resolved
+                if debug_trace:
+                    with open(debug_file, "a") as f:
+                        f.write(f"[QV_DEBUG_RUNSTEP] Raising QVServiceError: {error}\n")
+                        f.flush()
+                raise QVServiceError(f"Failed to resolve dependency chain: {error}")
+            
+            # Get chain steps
+            chain_step_objects = [calculation.steps[idx] for idx in chain_indices]
+            target_step = chain_step_objects[-1]  # Last step is the target
+            
+            # Create engine and execute chain
+            engine_registry = create_default_registry()
+            engine = engine_registry.get("pyscf")
+            
+            # Execute chain in one session
+            # Pass structure_id and project_root for structure resolution in chain steps
+            result = engine.run_step_with_chain(
+                target_step=target_step,
+                chain_steps=chain_step_objects,
+                calculation_raw_dir=calculation.raw_dir,
+                structure_id=calculation.structure_id,
+                project_root=project_root,
+            )
+            
+            # Convert StepResult to dict format (similar to QE path)
+            from datetime import datetime, timezone
+            finished = datetime.now(timezone.utc)
+            
+            return {
+                "calculation_id": calculation.id,
+                "step_id": step_resolved.meta.id,
+                "step_type": spec.step_type or "unknown",
+                "success": result.success,
+                "error": result.error,
+                "output_file": str(result.output_file) if result.output_file else None,
+                "execution_time": result.execution_time,
+                "finished": finished.isoformat(),
+            }
+        
+        # QE/W90 path: use existing execution (unchanged)
+        if debug_trace:
+            with open(debug_file, "a") as f:
+                f.write(f"[QV_DEBUG_RUNSTEP] Routing to QE/W90 branch (engine_family={repr(engine_family)})\n")
+                f.flush()
         # Generate QE input from structure + step spec
         # Use calc-level species_map if available (authoritative source for pseudopot mapping)
         from quantumvitas.calculation.structure_steps import generate_qe_input_from_spec

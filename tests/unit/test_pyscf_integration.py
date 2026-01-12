@@ -87,6 +87,55 @@ class TestPySCFStepTypeRegistration:
         
         spec = get_registry().get("pyscf_scf")
         assert spec.supports_incremental_skip is True
+    
+    def test_pyscf_td_in_registry(self):
+        """PYSCF_TD step type is registered in StepTypeRegistry (Phase 3C)."""
+        from quantumvitas.workflow.registry import get_registry
+        
+        registry = get_registry()
+        assert registry.has("pyscf_td")
+    
+    def test_pyscf_td_spec_properties(self):
+        """PYSCF_TD StepTypeSpec has correct properties (Phase 3C)."""
+        from quantumvitas.workflow.registry import get_registry
+        
+        spec = get_registry().get("pyscf_td")
+        
+        assert spec is not None
+        assert spec.id == "td"  # Public type (generalized "td" key)
+        assert spec.machine_type == "pyscf_td"
+        assert spec.public_type == "td"
+        assert spec.engine == "pyscf"
+        assert spec.executable == "python"
+        assert spec.supports_incremental_skip is False  # Always rerun
+        assert spec.consumes_state == "mf"  # Phase 3C: Consumes mean-field state
+        assert spec.produces_state is None  # Phase 3C: No state production
+    
+    def test_pyscf_scf_state_fields(self):
+        """PYSCF_SCF has correct state dependency fields (Phase 3C)."""
+        from quantumvitas.workflow.registry import get_registry
+        
+        spec = get_registry().get("pyscf_scf")
+        assert spec.consumes_state is None  # No dependency
+        assert spec.produces_state == "mf"  # Produces mean-field state
+    
+    def test_pyscf_mp2_state_fields(self):
+        """PYSCF_MP2 has correct state dependency fields (Phase 3C)."""
+        from quantumvitas.workflow.registry import get_registry
+        
+        spec = get_registry().get("pyscf_mp2")
+        assert spec.consumes_state == "mf"  # Consumes mean-field state
+        assert spec.produces_state is None  # No state production
+    
+    def test_qe_steps_have_none_state_fields(self):
+        """QE steps have None defaults for state fields (Phase 3C backward compat)."""
+        from quantumvitas.workflow.registry import get_registry
+        
+        registry = get_registry()
+        qe_spec = registry.get("qe_scf")
+        assert qe_spec is not None
+        assert qe_spec.consumes_state is None  # Default None
+        assert qe_spec.produces_state is None  # Default None
 
 
 class TestPySCFEngineAvailability:

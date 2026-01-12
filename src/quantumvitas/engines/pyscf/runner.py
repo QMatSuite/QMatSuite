@@ -565,6 +565,102 @@ def run_mp2(params: Dict[str, Any], working_dir: Path) -> Dict[str, Any]:
     return results
 
 
+def run_job_chain(job_chain_path: Path) -> int:
+    """
+    Main entry point for chain execution: run a PySCF dependency chain from job_chain.json.
+    
+    Phase 3C: One-session execution model for RunStep mode.
+    
+    Args:
+        job_chain_path: Path to job_chain.json
+        
+    Returns:
+        Exit code (0=success, 1=not converged, 2=error, 3=setup error)
+    """
+    # Read job chain spec
+    try:
+        job_chain = json.loads(job_chain_path.read_text())
+    except Exception as e:
+        print(f"ERROR: Failed to read job chain file: {e}", file=sys.stderr)
+        return 3
+    
+    base_working_dir = Path(job_chain.get("base_working_dir", job_chain_path.parent))
+    base_working_dir.mkdir(parents=True, exist_ok=True)
+    
+    chain_steps = job_chain.get("chain_steps", [])
+    target_step_ulid = job_chain.get("target_step_ulid")
+    
+    if not chain_steps:
+        results = {
+            "success": False,
+            "error": "Chain steps list is empty",
+            "execution_time": 0.0,
+        }
+        results_file = base_working_dir / "results.json"
+        results_file.write_text(json.dumps(results, indent=2))
+        print(json.dumps(results))
+        return 3
+    
+    if not target_step_ulid:
+        results = {
+            "success": False,
+            "error": "target_step_ulid is required",
+            "execution_time": 0.0,
+        }
+        results_file = base_working_dir / "results.json"
+        results_file.write_text(json.dumps(results, indent=2))
+        print(json.dumps(results))
+        return 3
+    
+    # Try to import PySCF
+    try:
+        import pyscf
+    except ImportError as e:
+        results = {
+            "success": False,
+            "error": f"PySCF not installed. Install with: pip install pyscf\n\nImport error: {e}",
+            "execution_time": 0.0,
+        }
+        results_file = base_working_dir / "results.json"
+        results_file.write_text(json.dumps(results, indent=2))
+        print(json.dumps(results))
+        return 2
+    
+    # Setup environment
+    resources = job_chain.get("resources", {})
+    setup_environment({"resources": resources})
+    
+    # Run chain in one session
+    from quantumvitas.engines.pyscf.chain_execution import run_chain_session
+    results = run_chain_session(
+        chain_steps=chain_steps,
+        base_working_dir=base_working_dir,
+        target_step_ulid=target_step_ulid,
+    )
+    
+    # Write final results.json (target step's results)
+    target_artifacts_dir = Path(chain_steps[-1]["step_artifacts_dir"]) if chain_steps else base_working_dir
+    results_file = target_artifacts_dir / "results.json"
+    # Remove mf_object from results before serialization
+    results_serializable = {k: v for k, v in results.items() if k != "mf_object"}
+    results_file.write_text(json.dumps(results_serializable, indent=2))
+    
+    # Also write to base_working_dir for compatibility
+    base_results_file = base_working_dir / "results.json"
+    base_results_file.write_text(json.dumps(results_serializable, indent=2))
+    
+    # Print results to stdout
+    print(json.dumps(results_serializable))
+    
+    # Return exit code
+    if results.get("success"):
+        return 0
+    elif results.get("error"):
+        return 2
+    else:
+        return 1
+
+
 def run_job(job_path: Path) -> int:
     """
     Main entry point: run a PySCF job from job.json.
