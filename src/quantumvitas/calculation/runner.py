@@ -510,7 +510,7 @@ class CalculationRunner:
                     f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) run() raised exception: {type(e).__name__}: {e}"
                 )
                 # Create a failed StepResult from the exception
-                from quantumvitas.calculation.results import StepResult
+                from quantumvitas.engine.base import StepResult
                 result = StepResult(
                     step_type=step_type_str,
                     input_file=getattr(step, 'input_file', Path()),
