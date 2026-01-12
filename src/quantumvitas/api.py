@@ -871,6 +871,22 @@ class QVService:
                 structure=structure_selector,
             )
         
+        # Phase 3C: Materialize step_type using engine_family
+        # Map public type (e.g., "scf") to machine type (e.g., "pyscf_scf") using calculation.engine_family
+        engine_family = getattr(wf_model, 'engine_family', None) if calculation_yaml_path.exists() else None
+        if engine_family:
+            from quantumvitas.workflow.generalized_steps import materialize_public_step_key
+            materialized_type = materialize_public_step_key(step_type, engine_family)
+            if materialized_type:
+                # Use materialized machine type for step.yaml
+                machine_step_type = materialized_type
+            else:
+                # Fallback: use step_type as-is (might be already a machine type)
+                machine_step_type = step_type
+        else:
+            # No engine_family: use step_type as-is (create_step_doc will handle materialization)
+            machine_step_type = step_type
+        
         # Use step factory to create and save step (journaled via yaml_io)
         from quantumvitas.workflow.step_factory import create_step_doc, save_step_doc
         from quantumvitas.core.yamldoc import StepDoc
@@ -883,12 +899,13 @@ class QVService:
             resolved_structure = require_structure(project_root, structure_selector, config)
             structure_id = resolved_structure.meta.id
         
-        # Get defaults for step type
+        # Get defaults for step type (use original step_type for lookup)
         defaults = get_default_step_params(step_type)
         
         # Create step doc using factory (ensures Journal integration)
+        # Pass machine_step_type to ensure step.yaml contains correct machine type
         step_doc = create_step_doc(
-            step_type=step_type,
+            step_type=machine_step_type,
             name=step_name,
             structure_id=structure_id,  # Will be stored but not authoritative (DAG model)
             parent_calculation_id=calculation.meta.id if hasattr(calculation, 'meta') else None,
@@ -1503,6 +1520,11 @@ class QVService:
         # Use calc-level species_map if available (authoritative source for pseudopot mapping)
         from quantumvitas.calculation.structure_steps import generate_qe_input_from_spec
         from quantumvitas.io.generator import QEInputGenerator
+        from quantumvitas.io import read_structure
+        
+        # Resolve structure from calculation.structure_id (DAG model)
+        structure_resolved = require_structure(project_root, calculation.structure_id, config=config)
+        structure = read_structure(structure_resolved.absolute_path)
         
         qe_input, _ = generate_qe_input_from_spec(
             structure, spec, species_map=calculation.species_map

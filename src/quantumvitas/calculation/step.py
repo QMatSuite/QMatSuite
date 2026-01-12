@@ -117,7 +117,7 @@ class Step:
             logger.exception(f"[Step.run] Step {self.meta.slug} (ulid={self.meta.id}) raised exception: {type(e).__name__}: {e}")
             
             # Create a failed StepResult from the exception
-            from quantumvitas.calculation.results import StepResult as StepResultClass
+            from quantumvitas.engine.base import StepResult as StepResultClass
             return StepResultClass(
                 step_type=str(self.step_type.value) if self.step_type else "unknown",
                 input_file=getattr(self, 'input_file', Path()),
