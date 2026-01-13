@@ -20,9 +20,10 @@ from typing import Dict, Optional, Tuple
 
 class GeneralizedStep(str, Enum):
     """Generalized step identifiers (engine-agnostic physical operations)."""
-    
+
     # Self-consistent field calculations
     SCF = "SCF"
+    HF = "HF"  # Hartree-Fock (explicit, primarily for molecular codes)
     NSCF = "NSCF"
     
     # Structural optimization
@@ -78,10 +79,15 @@ MATERIALIZATION_MAP: Dict[Tuple[str, str], Optional[str]] = {
     ("pyscf", "SCF"): "pyscf_scf",
     ("pyscf", "MP2"): "pyscf_mp2",
     ("pyscf", "TD"): "pyscf_td",  # Phase 3C: Generalized "td" key
-    
+
+    # ORCA family mappings
+    ("orca", "SCF"): "orca_scf",
+    ("orca", "HF"): "orca_hf",
+    ("orca", "TD"): "orca_td",  # ORCA TDDFT/CIS
+
     # Wannier90 standalone (if needed in future)
     # ("w90", "WANNIER"): "w90_run",
-    
+
     # Unsupported combinations return None (materialization will fail)
 }
 
@@ -306,9 +312,26 @@ def dematerialize_step(
     elif engine_specific_step.startswith("pyscf_"):
         engine_family = "pyscf"
         step_name = engine_specific_step[6:]  # Remove "pyscf_" prefix
-        if step_name == "scf":
-            return (engine_family, "SCF")
-    
+        step_to_generalized = {
+            "scf": "SCF",
+            "mp2": "MP2",
+            "td": "TD",
+        }
+        gen_step = step_to_generalized.get(step_name)
+        if gen_step:
+            return (engine_family, gen_step)
+    elif engine_specific_step.startswith("orca_"):
+        engine_family = "orca"
+        step_name = engine_specific_step[5:]  # Remove "orca_" prefix
+        step_to_generalized = {
+            "scf": "SCF",
+            "hf": "HF",
+            "td": "TD",
+        }
+        gen_step = step_to_generalized.get(step_name)
+        if gen_step:
+            return (engine_family, gen_step)
+
     return None
 
 

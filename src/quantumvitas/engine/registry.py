@@ -9,6 +9,7 @@ from typing import Dict, Optional
 from .base import Engine, EngineConfig
 from .qe_engine import QeEngine
 from .pyscf_engine import PySCFEngine
+from .orca_engine import ORCAEngine, ORCAEngineConfig
 
 
 class EngineRegistry:
@@ -33,18 +34,32 @@ class EngineRegistry:
         return name in self._engines
 
 
-def create_default_registry(config: Optional[EngineConfig] = None) -> EngineRegistry:
+def create_default_registry(
+    config: Optional[EngineConfig] = None,
+    include_orca: bool = True,
+) -> EngineRegistry:
     """
-    Convenience helper returning a registry with QE and PySCF engines registered.
-    
+    Convenience helper returning a registry with QE, PySCF, and optionally ORCA engines.
+
     Args:
         config: Optional engine configuration (used for QE engine)
-        
+        include_orca: If True (default), attempt to register ORCA if available
+
     Returns:
-        EngineRegistry with qe and pyscf engines
+        EngineRegistry with qe, pyscf, and optionally orca engines
     """
     registry = EngineRegistry()
     registry.register(QeEngine(config))
     registry.register(PySCFEngine())
+
+    # Register ORCA if available
+    if include_orca:
+        try:
+            from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
+            orca_bin = resolve_orca_bin()
+            registry.register(ORCAEngine(orca_bin=orca_bin))
+        except RuntimeError:
+            pass  # ORCA not available, skip
+
     return registry
 
