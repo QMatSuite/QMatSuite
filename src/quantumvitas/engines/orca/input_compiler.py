@@ -4,6 +4,10 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Protocol, Set
 
 
+# Canonical orbital file name for QC chains (immutable)
+CANONICAL_GBW_FILE = "scf.gbw"
+
+
 class MoleculeLike(Protocol):
     """Protocol for molecule-like objects."""
     atoms: str
@@ -17,6 +21,10 @@ class ORCAInputCompiler:
 
     MVP: No $new_job, single job with fused keywords/blocks.
     All steps in a chain are combined into one ORCA input.
+
+    Wavefunction reuse:
+    - Non-SCF subchains use MORead + %moinp to load orbitals from scf.gbw
+    - This allows reusing SCF orbitals without copying/linking files
     """
 
     def compile(
@@ -25,6 +33,7 @@ class ORCAInputCompiler:
         molecule: MoleculeLike,
         fresh: bool = False,
         nprocs: Optional[int] = None,
+        moread_file: Optional[str] = None,
     ) -> str:
         """
         Compile chain to ORCA input string.
@@ -34,6 +43,8 @@ class ORCAInputCompiler:
             molecule: Molecule with atoms, charge, multiplicity
             fresh: If True, add NoAutoStart to force fresh calculation
             nprocs: Number of processors (overrides step params)
+            moread_file: Path to .gbw file for MORead (wavefunction reuse)
+                         If provided, adds MORead keyword and %moinp block
 
         Returns:
             ORCA input file content as string
@@ -55,6 +66,13 @@ class ORCAInputCompiler:
         keywords.add("TightSCF")
         if fresh:
             keywords.add("NoAutoStart")
+
+        # Handle MORead for wavefunction reuse
+        # When moread_file is provided, add MORead keyword and %moinp block
+        # This allows non-SCF subchains to reuse orbitals from a previous SCF
+        if moread_file:
+            keywords.add("MORead")
+            blocks["moinp"] = f'"{moread_file}"'
 
         # Handle nprocs
         effective_nprocs = nprocs or scf_params.get("nprocs")
@@ -160,9 +178,15 @@ class ORCAInputCompiler:
             lines.append(f"%pal {blocks['pal']} end")
             lines.append("")
 
-        # Other blocks
+        # MOINP block (special single-line format for MORead)
+        # %moinp "scf.gbw"
+        if "moinp" in blocks:
+            lines.append(f"%moinp {blocks['moinp']}")
+            lines.append("")
+
+        # Other blocks (multi-line format)
         for block_name, block_content in blocks.items():
-            if block_name == "pal":
+            if block_name in ("pal", "moinp"):
                 continue
             lines.append(f"%{block_name}")
             lines.append(block_content)
@@ -182,6 +206,7 @@ def compile_chain_input(
     molecule: MoleculeLike,
     fresh: bool = False,
     nprocs: Optional[int] = None,
+    moread_file: Optional[str] = None,
 ) -> str:
     """
     Convenience function to compile a chain to ORCA input.
@@ -191,9 +216,12 @@ def compile_chain_input(
         molecule: Molecule object
         fresh: Force fresh calculation (NoAutoStart)
         nprocs: Number of processors
+        moread_file: Path to .gbw file for MORead (wavefunction reuse)
 
     Returns:
         ORCA input file content
     """
     compiler = ORCAInputCompiler()
-    return compiler.compile(chain, molecule, fresh=fresh, nprocs=nprocs)
+    return compiler.compile(
+        chain, molecule, fresh=fresh, nprocs=nprocs, moread_file=moread_file
+    )

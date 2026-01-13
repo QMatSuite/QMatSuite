@@ -24,7 +24,7 @@ from typing import Any, Dict, FrozenSet, List, Optional
 class StepTypeSpec:
     """
     Specification for a step type.
-    
+
     Attributes:
         id: Public/generalized step_type string (e.g., "scf", "nscf") - used in APIs/UI (backward compat)
         machine_type: Machine step_type string (e.g., "qe_scf", "w90_run") - used in step.yaml
@@ -37,6 +37,9 @@ class StepTypeSpec:
         requires_structure: Whether step needs structure data
         requires_charge_density: Whether step needs prior SCF charge density
         produces_charge_density: Whether step produces charge density for later steps
+        token: Stable short token for subchain basenames (immutable once published)
+               e.g., scf→s, td→t, mp2→m2, freq→f, nmr→n
+               Used in QC chain basenames: s, s_t, s_m2, s_m2_n
     """
     id: str  # Public type (for backward compatibility - tests expect this)
     machine_type: str  # Machine type (engine-prefixed, used in step.yaml)
@@ -52,6 +55,7 @@ class StepTypeSpec:
     supports_incremental_skip: bool = True  # Phase 3C: Whether step can be skipped in incremental runs
     consumes_state: Optional[str] = None  # Phase 3C: State type consumed by this step (e.g., "mf" for MP2)
     produces_state: Optional[str] = None  # Phase 3C: State type produced by this step (e.g., "mf" for SCF)
+    token: Optional[str] = None  # Stable token for subchain basenames (immutable once published)
 
 
 # =============================================================================
@@ -64,6 +68,110 @@ DIMENSION_PRECISION = "precision"
 
 # Standard preset dimensions for pw.x-based calculations
 PW_DIMENSIONS = frozenset({DIMENSION_MAGNETISM, DIMENSION_OCCUPATIONS, DIMENSION_PRECISION})
+
+
+# =============================================================================
+# Stable Token Mapping (Immutable Contract)
+# =============================================================================
+# These tokens are used for QC chain subchain basenames.
+# IMMUTABLE ONCE PUBLISHED - do not change existing mappings.
+# Format: public_type → token
+# Subchain basenames: s, s_t, s_m2, s_m2_n (joined by _)
+
+PUBLIC_TYPE_TOKENS: Dict[str, str] = {
+    "scf": "s",     # SCF/DFT root
+    "hf": "h",      # Hartree-Fock root
+    "td": "t",      # TDDFT/TDHF excited states
+    "mp2": "m2",    # MP2 correlation
+    "freq": "f",    # Frequency/vibrational analysis
+    "nmr": "n",     # NMR chemical shifts
+}
+
+
+def get_token_for_public_type(public_type: str) -> str:
+    """
+    Get stable token for a public step type.
+
+    Args:
+        public_type: Public/generalized step type (e.g., "scf", "td")
+
+    Returns:
+        Stable token for subchain basename (e.g., "s", "t")
+
+    Raises:
+        ValueError: If public_type has no defined token
+    """
+    token = PUBLIC_TYPE_TOKENS.get(public_type.lower())
+    if token is None:
+        raise ValueError(
+            f"No stable token defined for public_type '{public_type}'. "
+            f"Known tokens: {list(PUBLIC_TYPE_TOKENS.keys())}"
+        )
+    return token
+
+
+def generate_subchain_basename(public_types: List[str]) -> str:
+    """
+    Generate subchain basename from sequence of public step types.
+
+    Args:
+        public_types: List of public step types in execution order
+                      e.g., ["scf", "mp2"] or ["scf", "td"]
+
+    Returns:
+        Subchain basename using stable tokens joined by '_'
+        e.g., "s_m2", "s_t", "s_m2_n"
+
+    Raises:
+        ValueError: If any public_type has no defined token
+        ValueError: If public_types is empty
+
+    Examples:
+        >>> generate_subchain_basename(["scf"])
+        "s"
+        >>> generate_subchain_basename(["scf", "td"])
+        "s_t"
+        >>> generate_subchain_basename(["scf", "mp2"])
+        "s_m2"
+        >>> generate_subchain_basename(["scf", "mp2", "nmr"])
+        "s_m2_n"
+    """
+    if not public_types:
+        raise ValueError("public_types cannot be empty")
+
+    tokens = [get_token_for_public_type(pt) for pt in public_types]
+    return "_".join(tokens)
+
+
+def get_chain_namespace_folder(scf_root_ulid: str) -> str:
+    """
+    Get chain namespace folder name from SCF root ULID.
+
+    Chain folders are keyed by the last 6 characters of the SCF root ULID,
+    providing a stable, content-addressable namespace.
+
+    Args:
+        scf_root_ulid: Full ULID of the SCF root step
+                       e.g., "01HY2Q9W8A1234ABCDEF"
+
+    Returns:
+        Chain namespace folder name: "scf_<suffix>"
+        where suffix is the last 6 characters of the ULID
+
+    Raises:
+        ValueError: If ULID is too short (< 6 chars)
+
+    Examples:
+        >>> get_chain_namespace_folder("01HY2Q9W8A1234ABCDEF")
+        "scf_ABCDEF"
+    """
+    if len(scf_root_ulid) < 6:
+        raise ValueError(
+            f"ULID too short: '{scf_root_ulid}' (need at least 6 chars for suffix)"
+        )
+
+    suffix = scf_root_ulid[-6:]
+    return f"scf_{suffix}"
 
 
 # =============================================================================
@@ -339,6 +447,7 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         supports_incremental_skip=True,  # Can be skipped if checkpoint exists
         produces_state="mf",  # Phase 3C: SCF produces mean-field state
         consumes_state=None,  # Phase 3C: SCF has no dependencies
+        token="s",  # Stable token for subchain basenames
     ),
     "pyscf_mp2": StepTypeSpec(
         id="mp2",  # Public type
@@ -355,6 +464,7 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         supports_incremental_skip=False,  # Always rerun (Phase 3C requirement)
         consumes_state="mf",  # Phase 3C: MP2 consumes mean-field state from SCF
         produces_state="mp2",  # Phase 3C: MP2 produces mp2 state object (in-memory)
+        token="m2",  # Stable token for subchain basenames
     ),
     "pyscf_td": StepTypeSpec(
         id="td",
@@ -371,6 +481,7 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         supports_incremental_skip=False,
         consumes_state="mf",  # Phase 3C: TD consumes mean-field state from SCF
         produces_state=None,  # Phase 3C: TD produces no new persisted state (results to files)
+        token="t",  # Stable token for subchain basenames
     ),
 
     # -------------------------------------------------------------------------
@@ -391,6 +502,7 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         supports_incremental_skip=True,  # Via AutoStart from gbw
         produces_state="gbw",  # ORCA produces wavefunction file
         consumes_state=None,  # SCF has no dependencies
+        token="s",  # Stable token for subchain basenames
     ),
     "orca_hf": StepTypeSpec(
         id="hf",
@@ -407,6 +519,7 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         supports_incremental_skip=True,
         produces_state="gbw",
         consumes_state=None,
+        token="h",  # Stable token for subchain basenames
     ),
     "orca_td": StepTypeSpec(
         id="td",  # Public type (shared with pyscf_td)
@@ -423,6 +536,7 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         supports_incremental_skip=False,  # Always run with chain
         consumes_state="gbw",  # Depends on SCF wavefunction
         produces_state=None,
+        token="t",  # Stable token for subchain basenames
     ),
 
     # -------------------------------------------------------------------------
