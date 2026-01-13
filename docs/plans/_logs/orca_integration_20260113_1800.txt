@@ -1,0 +1,28 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.12, pytest-9.0.1, pluggy-1.6.0 -- /opt/homebrew/Caskroom/miniforge/base/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/hh7465/QMatSuite
+configfile: pytest.ini
+plugins: xdist-3.8.0, cov-7.0.0
+collecting ... collected 18 items
+
+tests/integration/orca/test_orca_execution.py::TestORCAExecution::test_scf_execution PASSED [  5%]
+tests/integration/orca/test_orca_execution.py::TestORCAExecution::test_scf_td_chain PASSED [ 11%]
+tests/integration/orca/test_orca_execution.py::TestORCAExecution::test_property_file_generated PASSED [ 16%]
+tests/integration/orca/test_orca_execution.py::TestORCAExecution::test_fresh_run_uses_noautostart PASSED [ 22%]
+tests/integration/orca/test_orca_execution.py::TestORCAExecution::test_chain_artifacts_exist PASSED [ 27%]
+tests/integration/orca/test_orca_execution.py::TestORCAExecution::test_dft_calculation PASSED [ 33%]
+tests/integration/orca/test_orca_execution.py::TestORCAExecution::test_energy_parsing PASSED [ 38%]
+tests/integration/orca/test_orca_execution.py::TestORCAExecution::test_tddft_excitation_energies PASSED [ 44%]
+tests/integration/orca/test_orca_execution.py::TestORCAChainBehavior::test_chain_key_in_filenames PASSED [ 50%]
+tests/integration/orca/test_orca_execution.py::TestORCAChainBehavior::test_multiple_chains_independent PASSED [ 55%]
+tests/integration/orca/test_system_integration.py::TestSystemIntegration::test_chain_folder_structure PASSED [ 61%]
+tests/integration/orca/test_system_integration.py::TestSystemIntegration::test_scf_td_chain_artifacts PASSED [ 66%]
+tests/integration/orca/test_system_integration.py::TestSystemIntegration::test_manifest_like_tracking PASSED [ 72%]
+tests/integration/orca/test_system_integration.py::TestSystemIntegration::test_energy_extraction_pipeline PASSED [ 77%]
+tests/integration/orca/test_system_integration.py::TestSystemIntegration::test_multiple_chains_isolation PASSED [ 83%]
+tests/integration/orca/test_system_integration.py::TestSystemIntegration::test_tddft_excitation_extraction PASSED [ 88%]
+tests/integration/orca/test_system_integration.py::TestSystemIntegration::test_engine_registry_integration PASSED [ 94%]
+tests/integration/orca/test_system_integration.py::TestSystemIntegration::test_fresh_vs_reuse_behavior PASSED [100%]
+
+============================== 18 passed in 9.15s ==============================
