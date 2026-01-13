@@ -4,18 +4,29 @@ These tests verify end-to-end ORCA execution through the engine API,
 including chain folder outputs, manifest-like tracking, and result extraction.
 
 Run with:
-    export QMATSUITE_ORCA_BIN=<HOME>/QMatSuite/.qmatsuite/engines/orca/orca_6_1_1_macosx_arm64_openmpi411/orca
     pytest tests/integration/orca/test_system_integration.py -v -m integration
+
+The tests will automatically find ORCA from:
+1. QMATSUITE_ORCA_BIN environment variable
+2. Bundled ORCA in .qmatsuite/engines/orca/
 """
-import os
 import json
 import pytest
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 
-ORCA_BIN = os.environ.get("QMATSUITE_ORCA_BIN")
+def get_orca_path() -> Optional[Path]:
+    """Get ORCA path using the resolver."""
+    try:
+        from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
+        return resolve_orca_bin()
+    except RuntimeError:
+        return None
+
+
+ORCA_BIN = get_orca_path()
 
 
 @dataclass

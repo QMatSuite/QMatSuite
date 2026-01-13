@@ -1,17 +1,28 @@
 """Integration tests for ORCA engine (require ORCA binary).
 
 Run with:
-    export QMATSUITE_ORCA_BIN=/path/to/orca
     pytest tests/integration/orca/ -v -m integration
+
+The tests will automatically find ORCA from:
+1. QMATSUITE_ORCA_BIN environment variable
+2. Bundled ORCA in .qmatsuite/engines/orca/
 """
-import os
 import pytest
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 
-ORCA_BIN = os.environ.get("QMATSUITE_ORCA_BIN")
+def get_orca_path() -> Optional[Path]:
+    """Get ORCA path using the resolver."""
+    try:
+        from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
+        return resolve_orca_bin()
+    except RuntimeError:
+        return None
+
+
+ORCA_BIN = get_orca_path()
 
 
 @dataclass
