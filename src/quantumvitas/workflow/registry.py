@@ -372,7 +372,59 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         consumes_state="mf",  # Phase 3C: TD consumes mean-field state from SCF
         produces_state=None,  # Phase 3C: TD produces no new persisted state (results to files)
     ),
-    
+
+    # -------------------------------------------------------------------------
+    # ORCA step types (molecular quantum chemistry - external binary)
+    # -------------------------------------------------------------------------
+    "orca_scf": StepTypeSpec(
+        id="scf",  # Public type (shared with qe_scf, pyscf_scf)
+        machine_type="orca_scf",
+        public_type="scf",
+        engine="orca",
+        executable="orca",  # External ORCA binary
+        description="ORCA DFT/HF single-point calculation",
+        accepts_presets=False,  # MVP: no presets yet
+        allowed_dimensions=frozenset(),
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=True,  # Via AutoStart from gbw
+        produces_state="gbw",  # ORCA produces wavefunction file
+        consumes_state=None,  # SCF has no dependencies
+    ),
+    "orca_hf": StepTypeSpec(
+        id="hf",
+        machine_type="orca_hf",
+        public_type="hf",
+        engine="orca",
+        executable="orca",
+        description="ORCA Hartree-Fock calculation",
+        accepts_presets=False,
+        allowed_dimensions=frozenset(),
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=True,
+        produces_state="gbw",
+        consumes_state=None,
+    ),
+    "orca_td": StepTypeSpec(
+        id="td",  # Public type (shared with pyscf_td)
+        machine_type="orca_td",
+        public_type="td",
+        engine="orca",
+        executable="orca",
+        description="ORCA TDDFT/CIS excited states",
+        accepts_presets=False,
+        allowed_dimensions=frozenset(),
+        requires_structure=False,  # Fused into chain with SCF
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=False,  # Always run with chain
+        consumes_state="gbw",  # Depends on SCF wavefunction
+        produces_state=None,
+    ),
+
     # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
