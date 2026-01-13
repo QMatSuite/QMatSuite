@@ -61,6 +61,24 @@
 ### 2.4 身份不变性
 - rename / move / 目录重排不应改变资源身份（ULID 不变）。
 
+### 2.5 不变性范围（Identity vs Info）
+
+**不变性真相键（Immutable Truth Keys）**（一旦初始化后**必须不**变）：
+- ULID
+- machine step_type
+- engine
+- executable
+- calc 身份字段（如 engine_family、structure_kind）
+
+**可变信息键（Mutable Info Keys）**（可在不改变身份的情况下变更）：
+- name
+- slug
+- path
+- description
+- 显示标签
+
+**明确规则**：metadata **并非完全不可变**；只有身份/真相键是不可变的。
+
 ---
 
 ## 3. 几何宪法：Canonicalization 只做一次；之后不 snap
@@ -436,6 +454,30 @@ repo_root/
 系统中**唯一的可执行真相**是 step.yml 中记录的 input parameters。  
 任何计算结果的可复现性，只能且必须由 step 参数保证。
 
+#### 10.1.1.1 运行时状态不可持久化（必须）
+
+对于会话链引擎（session-chain engines），中间运行时状态（mf、mp2 对象、ccsd 对象等）**必须不**作为 YAML 真相持久化。
+
+**明确规则**：
+- 除 SCF 以外，**不存在**可被可靠序列化、复用、恢复的中间态
+- MP2 / CCSD / TD / EOM 等步骤产生的对象：
+  - **仅存在于** runtime memory
+  - **不构成** artifact
+  - **不可作为**后续执行的持久化输入
+- 任何试图通过 shim / partial serialization / fake checkpoint 恢复这些对象的行为：
+  - **不被视为**合法执行路径
+  - **不属于** QMatSuite 支持范围
+
+**SCF checkpoint 的唯一例外**：
+- SCF checkpoint（如 PySCF chkfile）**仅能**作为 initial guess
+- 使用 checkpoint 后**必须**重新运行 SCF
+- checkpoint **不构成**真正意义上的 state reuse
+
+**明确禁止**：
+- MP2 / CCSD / TD 等步骤**不得** requires_structure
+- MP2 / CCSD / TD 等步骤**不得**直接读取 structure
+- 上述步骤**只能** consume 前序 mf（runtime state）
+
 #### 10.1.2 文件系统纯度
 step.yml 必须保持纯粹输入，不得包含以下任何信息：
 
@@ -463,6 +505,19 @@ workflow 与 preset 不是一等公民，不得作为持久化实体存在于文
 
 - 对当前 step DAG 的运行时解释
 - 对 step 参数集合的正向生成与反向解释
+
+#### 10.2.2 抽象层不得持久化（必须）
+以下抽象层概念必须不得持久化为 YAML 真相：
+
+- **generalized step（通用步骤类型）**：公共类型如 scf/td/mp2 仅为运行时/UI/历史记录存在
+- **IR / detector / preset 匹配结果**：检测器推断结果、预设匹配结果等仅为运行时解释
+- **UI 分类标签**：如 "custom" 等仅为 UI 显示用途
+
+**明确规则**：
+- generalized step + IR 仅存在于运行时/UI/历史记录中
+- 持久化的 step.yaml **必须包含** machine step_type（引擎特定类型）
+- machine step_type **必须**在 StepTypeRegistry 中注册
+- 禁止在持久化 YAML 中以 generalized step 类型或 "custom" 作为真相
 
 ### 10.3 Compiler（正向生成）的宪法约束
 
@@ -825,7 +880,47 @@ workflow 与 preset 只是对现状的解释，而非事实。
 
 ---
 
-## 本次修订摘要（2025-01-XX）
+## 本次修订摘要（2025-01-XX）：Phase 3C 执行语义与持久化规则（最终定稿）
+
+### 新增条款
+
+1. **§2.5 不变性范围（Identity vs Info）**
+   - 明确区分不变性真相键（ULID、machine step_type、engine、executable 等）与可变信息键（name、slug、path、description 等）
+   - 明确 metadata 并非完全不可变；只有身份/真相键是不可变的
+
+2. **§10.1.1.1 运行时状态不可持久化（必须）**
+   - 会话链引擎的中间运行时状态（mf、mp2、ccsd 对象等）**必须不**作为 YAML 真相持久化
+   - 明确除 SCF 以外不存在可被可靠序列化、复用、恢复的中间态
+   - SCF checkpoint 作为唯一例外，仅能作为 initial guess，必须重新运行 SCF
+   - 明确禁止 MP2/CCSD/TD 等步骤 requires_structure 或直接读取 structure
+
+3. **§10.2.2 抽象层不得持久化（必须）**
+   - 扩展非实体原则，明确 generalized step、IR/detector/preset 匹配结果、UI 分类标签（如 "custom"）不得持久化
+   - 持久化的 step.yaml 必须包含 machine step_type 且必须在 StepTypeRegistry 中注册
+
+4. **§13.2.1-13.2.2 StepTypeRegistry 与 step.yaml 是 step_type 的唯一真相来源**
+   - 强化 StepTypeRegistry 规则，明确 machine step_type 必须为 registry 已知类型
+   - 禁止在持久层使用 "CUSTOM"/"UNKNOWN" 作为回退
+   - 新增执行阶段必须从 step.yaml 读取 machine step_type，禁止 fallback
+   - 明确 engine_family 仅允许用于初始化阶段，执行阶段不得 consult engine_family
+
+5. **§14 引擎执行语义（Engine Execution Semantics）**
+   - 新增章节定义两类引擎执行模型：会话链引擎（PySCF/ORCA 类）与工件桥接引擎（QE/W90 类）
+   - 新增 §14.2 会话链引擎的严格线性依赖规则
+   - 明确 SCF 的唯一特殊地位：唯一 consumes structure 并 produces mf 的步骤
+   - 新增 §14.3 中间态的不可落盘原则，明确 PySCF/ORCA 不存在通用的中间态桥接机制
+
+### 关键原则
+
+- **单一真相来源**：step.yaml 与 StepTypeRegistry 是 step_type 的唯一真相来源，执行阶段禁止 fallback 到枚举或 "CUSTOM"
+- **抽象层隔离**：generalized step 和 UI 分类不得作为持久化真相
+- **运行时状态分离**：会话链引擎的中间运行时状态必须不持久化，除 SCF checkpoint 外不存在可复用的中间态
+- **严格线性依赖**：会话链引擎必须严格线性、有序、内存态传递，禁止 DAG 执行或跳跃依赖
+- **SCF 唯一特殊地位**：SCF 是唯一 consumes structure 的步骤，其 checkpoint 仅能作为 initial guess
+
+---
+
+## 历史修订摘要（2025-01-XX）
 
 ### 新增条款（Preset Space 统一框架）
 - **10.7 Preset Space 统一框架（声明式数据结构 + 通用算法）**
@@ -1047,6 +1142,27 @@ Workflow 仅用于运行时检测和实例化，不得写入 step/calc YAML。
 
 **理由**：单一真相来源，数据驱动，可查询。
 
+#### 13.2.1 StepTypeRegistry 是 step_type 的唯一真相来源（必须）
+
+- machine step_type **必须**为 registry 已知类型；未知的 machine 类型是硬错误
+- **禁止**在持久层使用 "CUSTOM"/"UNKNOWN" 作为回退（这些标签仅允许存在于 UI/运行时推断中）
+- 执行路径**必须**使用 registry 中注册的 machine step_type，**不得**回退到枚举类型或 "CUSTOM"
+
+#### 13.2.2 step.yaml 是执行阶段 step_type 的唯一真相来源（必须）
+
+任何执行路径**必须**从 step.yaml 读取 machine step_type。
+
+**明确规则**：
+- 若无法从 step.yaml 获得 machine step_type：**必须立即失败**，**不得** fallback
+- **禁止**在执行阶段：
+  - 从 generalized step 推断 step_type
+  - 使用 StepType enum 作为执行依据
+  - 引入 "custom" 作为可执行类型
+  - 重新 materialize step
+- engine_family **仅允许**用于 step 初始化 / materialization 阶段
+- 一旦 step.yaml 写入 machine step_type：engine_family **不再参与**任何执行判断
+- 执行阶段**只允许**查看 step.yaml，**不允许**再次 consult engine_family
+
 ### 13.3 Step 创建必须通过 StepFactory（必须）
 
 任何创建/更新 step.yaml 的操作必须使用集中化的 step factory/doc save 路径。  
@@ -1058,3 +1174,59 @@ Workflow 仅用于运行时检测和实例化，不得写入 step/calc YAML。
 
 这些规则由以下测试强制执行：`test_workflow`、step 创建集成测试。  
 详见 `docs/workflow_refactor_plan.md`。
+
+---
+
+## 14. 引擎执行语义（Engine Execution Semantics）
+
+### 14.1 两类引擎执行模型
+
+系统支持两类引擎执行语义：
+
+**A) 会话链引擎（Session-chain engines）**（如 PySCF/ORCA 类）：
+- 步骤在单个内存会话中执行，形成状态链
+- run-step **必须**从最近依赖源重放整个链
+- **仅链的起始步骤**消费结构（structure）
+- 后续步骤**只能**消费运行时状态（mf、mp2、ccsd 等），**必须不**直接消费结构
+
+**B) 工件桥接引擎（Artifact-bridged engines）**（如 QE/W90 类）：
+- 步骤主要通过磁盘工件桥接；会话连续性不是必需的
+- 步骤之间通过文件输入/输出传递状态
+- 每个步骤可独立执行，不要求内存状态连续性
+
+### 14.2 会话链引擎的严格线性依赖（必须）
+
+对于会话链引擎，执行语义**必须是**线性、有序、内存态传递。
+
+**明确规则**：
+- 每一步**必须** consumes 最近的、合法的前序 state
+- 若 state 不存在 → **必须 fail**，**不得**继续执行
+- **禁止**：
+  - DAG 执行
+  - 跳跃依赖
+  - 隐式补全 state
+  - 从 artifact 中"推断" state
+
+**SCF 的唯一特殊地位**：
+- SCF **是唯一一个**：
+  - consumes: structure
+  - produces: mf（in-memory state）
+- SCF checkpoint **仅能**作为 initial guess，**必须**重新运行 SCF
+- 除 SCF 外，**不存在**可被可靠序列化、复用、恢复的中间态
+
+### 14.3 中间态的不可落盘原则（必须）
+
+**明确规则**：
+- PySCF / ORCA / 量子化学引擎**不存在** Quantum ESPRESSO 那种"通用的、可复用的中间态桥接机制"
+- MP2 / CCSD / TD / EOM 等步骤产生的对象：
+  - **仅存在于** runtime memory
+  - **不构成** artifact
+  - **不可作为**后续执行的持久化输入
+- 任何试图通过 shim / partial serialization / fake checkpoint 恢复这些对象的行为：
+  - **不被视为**合法执行路径
+  - **不属于** QMatSuite 支持范围
+
+### 14.4 语义约束
+
+本定义仅描述执行语义，不规定 runner 设计或实现细节。  
+引擎类型的判定基于 StepTypeRegistry 中的引擎标识，而非实现路径。
