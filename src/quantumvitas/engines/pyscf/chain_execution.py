@@ -337,9 +337,26 @@ def _run_mp2_in_session(
         # Run MP2
         mp2_calc = mp.MP2(mf)
         mp2_energy, mp2_corr = mp2_calc.kernel()
-        
+
         scf_energy = float(mf.e_tot)
-        correlation_energy = float(mp2_corr)
+
+        # Extract correlation energy robustly (handle numpy arrays/scalars)
+        # PySCF versions may return different types
+        import numpy as np
+        if isinstance(mp2_corr, np.ndarray):
+            # Array case: extract scalar value
+            if mp2_corr.size == 1:
+                correlation_energy = float(mp2_corr.item())
+            else:
+                # Multi-element array: take first element
+                correlation_energy = float(mp2_corr.flat[0])
+        elif hasattr(mp2_corr, '__iter__') and not isinstance(mp2_corr, str):
+            # List/tuple case
+            correlation_energy = float(mp2_corr[0] if len(mp2_corr) > 0 else 0.0)
+        else:
+            # Scalar case (int/float)
+            correlation_energy = float(mp2_corr)
+
         total_energy = scf_energy + correlation_energy
         
         result = {
