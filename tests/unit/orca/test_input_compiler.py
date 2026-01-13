@@ -255,3 +255,181 @@ class TestORCAInputCompiler:
         input_text = compiler.compile(chain, MockMolecule())
 
         assert "Grid5" in input_text
+
+
+class TestMOReadFunctionality:
+    """Tests for MORead wavefunction reuse."""
+
+    def test_moread_adds_keyword(self):
+        """MORead keyword added when moread_file is provided."""
+        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
+        from quantumvitas.engine.qc_engine_base import QCChain
+
+        scf_step = MockStep(
+            id="s1",
+            public_type="scf",
+            step_type="orca_scf",
+            parameters={"functional": "B3LYP", "basis": "def2-SVP"},
+        )
+        chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
+
+        compiler = ORCAInputCompiler()
+        input_text = compiler.compile(chain, MockMolecule(), moread_file="scf.gbw")
+
+        assert "MORead" in input_text
+
+    def test_moread_adds_moinp_block(self):
+        """Correct %moinp block added with moread_file."""
+        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
+        from quantumvitas.engine.qc_engine_base import QCChain
+
+        scf_step = MockStep(
+            id="s1",
+            public_type="scf",
+            step_type="orca_scf",
+            parameters={"functional": "B3LYP", "basis": "def2-SVP"},
+        )
+        chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
+
+        compiler = ORCAInputCompiler()
+        input_text = compiler.compile(chain, MockMolecule(), moread_file="scf.gbw")
+
+        assert '%moinp "scf.gbw"' in input_text
+
+    def test_moread_with_custom_path(self):
+        """MORead with custom path works."""
+        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
+        from quantumvitas.engine.qc_engine_base import QCChain
+
+        scf_step = MockStep(
+            id="s1",
+            public_type="scf",
+            step_type="orca_scf",
+            parameters={"functional": "B3LYP", "basis": "def2-SVP"},
+        )
+        chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
+
+        compiler = ORCAInputCompiler()
+        input_text = compiler.compile(
+            chain, MockMolecule(), moread_file="../previous/calc.gbw"
+        )
+
+        assert "MORead" in input_text
+        assert '%moinp "../previous/calc.gbw"' in input_text
+
+    def test_no_moread_by_default(self):
+        """No MORead when moread_file not provided."""
+        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
+        from quantumvitas.engine.qc_engine_base import QCChain
+
+        scf_step = MockStep(
+            id="s1",
+            public_type="scf",
+            step_type="orca_scf",
+            parameters={"functional": "B3LYP", "basis": "def2-SVP"},
+        )
+        chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
+
+        compiler = ORCAInputCompiler()
+        input_text = compiler.compile(chain, MockMolecule())
+
+        assert "MORead" not in input_text
+        assert "%moinp" not in input_text
+
+    def test_moread_with_fresh_false(self):
+        """MORead can be combined with fresh=False."""
+        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
+        from quantumvitas.engine.qc_engine_base import QCChain
+
+        scf_step = MockStep(
+            id="s1",
+            public_type="scf",
+            step_type="orca_scf",
+            parameters={"functional": "B3LYP", "basis": "def2-SVP"},
+        )
+        chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
+
+        compiler = ORCAInputCompiler()
+        input_text = compiler.compile(
+            chain, MockMolecule(), fresh=False, moread_file="scf.gbw"
+        )
+
+        assert "MORead" in input_text
+        assert "NoAutoStart" not in input_text
+
+    def test_moread_with_fresh_true(self):
+        """MORead can be combined with fresh=True."""
+        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
+        from quantumvitas.engine.qc_engine_base import QCChain
+
+        scf_step = MockStep(
+            id="s1",
+            public_type="scf",
+            step_type="orca_scf",
+            parameters={"functional": "B3LYP", "basis": "def2-SVP"},
+        )
+        chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
+
+        compiler = ORCAInputCompiler()
+        input_text = compiler.compile(
+            chain, MockMolecule(), fresh=True, moread_file="scf.gbw"
+        )
+
+        assert "MORead" in input_text
+        assert "NoAutoStart" in input_text
+        assert '%moinp "scf.gbw"' in input_text
+
+    def test_moread_with_tddft(self):
+        """MORead with TDDFT chain."""
+        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
+        from quantumvitas.engine.qc_engine_base import QCChain
+
+        scf_step = MockStep(
+            id="s1",
+            public_type="scf",
+            step_type="orca_scf",
+            parameters={"functional": "B3LYP", "basis": "def2-SVP"},
+        )
+        td_step = MockStep(
+            id="s2",
+            public_type="td",
+            step_type="orca_td",
+            parameters={"nroots": 5, "tda": True},
+        )
+        chain = QCChain(scf_root=scf_step, downstream=[td_step], key="chain01_scf_td")
+
+        compiler = ORCAInputCompiler()
+        input_text = compiler.compile(chain, MockMolecule(), moread_file="scf.gbw")
+
+        assert "MORead" in input_text
+        assert '%moinp "scf.gbw"' in input_text
+        assert "%tddft" in input_text
+        assert "NRoots 5" in input_text
+
+    def test_canonical_gbw_constant(self):
+        """CANONICAL_GBW_FILE constant is defined."""
+        from quantumvitas.engines.orca.input_compiler import CANONICAL_GBW_FILE
+
+        assert CANONICAL_GBW_FILE == "scf.gbw"
+
+
+class TestConvenienceFunction:
+    """Tests for compile_chain_input convenience function."""
+
+    def test_convenience_function_moread(self):
+        """Convenience function supports moread_file."""
+        from quantumvitas.engines.orca.input_compiler import compile_chain_input
+        from quantumvitas.engine.qc_engine_base import QCChain
+
+        scf_step = MockStep(
+            id="s1",
+            public_type="scf",
+            step_type="orca_scf",
+            parameters={"functional": "B3LYP", "basis": "def2-SVP"},
+        )
+        chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
+
+        input_text = compile_chain_input(chain, MockMolecule(), moread_file="scf.gbw")
+
+        assert "MORead" in input_text
+        assert '%moinp "scf.gbw"' in input_text
