@@ -39,6 +39,76 @@
 
 ---
 
+## QC Chain Namespace + Stable Token Semantics (Finalized)
+
+**Date**: 2026-01-13 (Phase 2)
+**Status**: COMPLETE
+**Priority**: Required for stable ORCA/QC execution model
+
+### Non-Negotiable Decisions Summary
+
+1. **Generalized step types are public contract** - UI/workflow use scf/td/mp2/freq, NOT orca_scf/pyscf_scf
+2. **Chain namespace folder keyed by SCF root ULID suffix**: `calc/raw/qc_chains/scf_<suffix>/`
+3. **ORCA reuse via MORead**: canonical scf.gbw, non-SCF subchains add MORead + %moinp "scf.gbw"
+4. **Stable tokens for subchain basenames**: scf→s, td→t, mp2→m2, freq→f, nmr→n (immutable once published)
+5. **Subchain basename format**: s, s_m2, s_t, s_m2_n (joined by _)
+
+### A) Documentation Updates
+- [x] Update plan: new folder naming scf_<suffix> namespace under calc/raw/qc_chains/
+- [x] Update plan: subchain basename rules (tokens s_m2_n), overwrite OK on duplicates
+- [x] Update plan: ORCA reuse via MORead + %moinp "scf.gbw" (no copy/link)
+- [x] Update plan: generalized step type tokens contract in StepTypeRegistry
+- [x] Deprecate older naming scheme (chain01_scf_td → scf_<suffix>/s_t)
+
+### B) Implementation Changes
+- [x] Implement QC chain namespace folder resolution: scf_<suffix> scheme (`get_chain_namespace_folder()`)
+- [x] Implement subchain basename generation from generalized step tokens (`generate_subchain_basename()`)
+- [x] Add token field to generalized StepTypeRegistry (immutable contract)
+- [x] Adjust ORCA input compiler:
+  - [x] Added `CANONICAL_GBW_FILE = "scf.gbw"` constant
+  - [x] Non-SCF subchains include MORead + %moinp via `moread_file` parameter
+- [ ] Ensure output files written under chain namespace: <basename>.inp/.out/.property.txt (future: engine integration)
+- [ ] Ensure run_step partial chain uses basenames consistent with token path (future: engine integration)
+
+### C) Tests
+- [x] Unit tests: token mapping stability (tokens do not change) - 32 tests in test_qc_chain_tokens.py
+- [x] Unit tests: basename generation (s_m2_n from scf→mp2→nmr)
+- [x] Unit tests: chain namespace folder naming from SCF ULID suffix
+- [x] Unit tests: ORCA input compiler includes MORead/%moinp for non-SCF subchains - 9 tests added
+- [x] ORCA integration tests with bundled binary (not skipped) - 18/18 passed
+- [x] Save audited logs to docs/plans/_logs/
+- [x] Re-run focused PySCF tests (no regression) - 5/5 passed
+
+### D) Preflight Checks (Phase 2)
+- [x] Quick pytest smoke subset (66 ORCA unit tests + 5 PySCF Phase3C tests passed)
+- [x] ORCA manual sanity run (water.inp) - bundled ORCA detected
+
+### Implementation Summary (2026-01-13)
+
+**Files Modified:**
+- `src/quantumvitas/workflow/registry.py`:
+  - Added `token` field to `StepTypeSpec` dataclass
+  - Added `PUBLIC_TYPE_TOKENS` constant: `{"scf": "s", "hf": "h", "td": "t", "mp2": "m2", "freq": "f", "nmr": "n"}`
+  - Added `get_token_for_public_type()` function
+  - Added `generate_subchain_basename()` function
+  - Added `get_chain_namespace_folder()` function
+  - Added token values to pyscf_scf, pyscf_mp2, pyscf_td, orca_scf, orca_hf, orca_td step types
+- `src/quantumvitas/engines/orca/input_compiler.py`:
+  - Added `CANONICAL_GBW_FILE = "scf.gbw"` constant
+  - Added `moread_file` parameter to `compile()` method
+  - Added MORead keyword and %moinp block generation
+
+**Tests Added:**
+- `tests/unit/orca/test_qc_chain_tokens.py`: 32 tests for token mapping stability
+- `tests/unit/orca/test_input_compiler.py`: 9 tests added for MORead functionality
+
+**Test Results:**
+- ORCA unit tests: 107 passed
+- ORCA integration tests: 18 passed (not skipped)
+- PySCF Phase3C tests: 5 passed
+
+---
+
 ## Work Tracking Checklist
 
 ### Preflight Checks
