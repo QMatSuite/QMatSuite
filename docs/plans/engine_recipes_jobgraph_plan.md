@@ -146,82 +146,64 @@ pytest tests/unit -k "registry" -q  # 35 passed total
 
 ---
 
-## Phase 2: JobGraph Runtime Model + Recipe Materializers
+## Phase 2: JobGraph Runtime Model + Recipe Materializers ✅
 
 **Goal**: Add runtime-only JobGraph structures and recipe materialization.
 
-### P2.1: Create JobGraph Module
+### P2.1: Create JobGraph Module ✅
 
-- [ ] Create `src/quantumvitas/execution/__init__.py`
-- [ ] Create `src/quantumvitas/execution/job_graph.py`:
-  - [ ] Define `Job` dataclass:
-    ```python
-    @dataclass
-    class Job:
-        id: str                    # e.g., "step_00" or "s_m2"
-        step_ids: List[str]        # Step ULIDs covered
-        working_dir: Path          # Execution directory
-        command: List[str]         # ["pw.x", "scf.in"] or ["<internal>"]
-        input_files: List[Path]    # Input files referenced
-        expected_outputs: List[Path]  # Output files to check
-        deps: List[str]            # Job IDs this depends on
-        fingerprint: Optional[str] # Combined SHA for skip logic
-        metadata: Dict[str, Any]   # Engine-specific data
-    ```
-  - [ ] Define `JobGraph` dataclass:
-    ```python
-    @dataclass
-    class JobGraph:
-        jobs: List[Job]            # Topo-sorted list
+- [x] Create `src/quantumvitas/execution/__init__.py`
+- [x] Create `src/quantumvitas/execution/job_graph.py`:
+  - [x] Define `Job` dataclass with all specified fields
+  - [x] Define `JobGraph` dataclass with helper methods
+  - [x] Add `SelectionMode` enum (ALL, TARGET)
+  - [x] Add `compute_job_fingerprint(step_shas: List[str]) -> str`
 
-        def get_job(self, job_id: str) -> Optional[Job]: ...
-        def get_jobs_for_target(self, target_step_id: str) -> List[Job]: ...
-    ```
-  - [ ] Add `compute_job_fingerprint(step_shas: List[str]) -> str`
+### P2.2: Create Recipe Protocol and Implementations ✅
 
-### P2.2: Create Recipe Protocol and Implementations
+- [x] Create `src/quantumvitas/execution/recipes.py`:
+  - [x] Define `Recipe` protocol with `materialize()` method
+  - [x] Define `BaseRecipe` abstract class
+  - [x] Implement `QERecipe`:
+    - [x] One job per step
+    - [x] `working_dir = calc/raw/`
+    - [x] `scratch_dir = calc/raw/outdir/` in metadata
+    - [x] Conservative deps (empty, use prefix selection)
+  - [x] Implement `ORCARecipe`:
+    - [x] One job per subchain
+    - [x] `working_dir = calc/raw/scf_<suffix>/`
+    - [x] Job ID from stable tokens (`s`, `s_t`, `s_m2`)
+    - [x] Self-contained (no inter-job deps)
+  - [x] Implement `PySCFRecipe`:
+    - [x] One job per subchain (session-based)
+    - [x] `working_dir = calc/raw/scf_<suffix>/`
+    - [x] `command = ["<internal>"]` for Python subprocess
+    - [x] Self-contained
+  - [x] Add `get_recipe_for_engine()` factory function
 
-- [ ] Create `src/quantumvitas/execution/recipes.py`:
-  - [ ] Define `Recipe` protocol:
-    ```python
-    @runtime_checkable
-    class Recipe(Protocol):
-        def materialize(self, calculation: Calculation) -> JobGraph: ...
-    ```
-  - [ ] Implement `QERecipe`:
-    - [ ] One job per step
-    - [ ] `working_dir = calc/raw/`
-    - [ ] `scratch_dir = calc/raw/outdir/` (unchanged)
-    - [ ] Conservative deps (prefix-to-target for selection)
-  - [ ] Implement `ORCARecipe`:
-    - [ ] One job per subchain
-    - [ ] `working_dir = calc/raw/scf_<suffix>/`
-    - [ ] Job ID from stable tokens (`s`, `s_t`, `s_m2`)
-    - [ ] Self-contained (no inter-job deps)
-  - [ ] Implement `PySCFRecipe`:
-    - [ ] One job per subchain (session-based)
-    - [ ] `working_dir = calc/raw/scf_<suffix>/`
-    - [ ] `command = ["<internal>"]` for Python subprocess
-    - [ ] Self-contained
+### P2.3: Add Unit Tests for Materialization ✅
 
-### P2.3: Add Unit Tests for Materialization
+- [x] Create `tests/unit/execution/__init__.py`
+- [x] Create `tests/unit/execution/test_job_graph.py` (26 tests):
+  - [x] Test `Job` dataclass creation (minimal and full)
+  - [x] Test `Job.engine`, `Job.is_internal`, `Job.spec_step_type` properties
+  - [x] Test `JobGraph.get_job()`, `JobGraph.get_job_by_step_id()`
+  - [x] Test `JobGraph.get_jobs_for_target()` with ALL and TARGET modes
+  - [x] Test `JobGraph.get_dependencies()`
+  - [x] Test `compute_job_fingerprint()` (single, multiple, order-independent)
+  - [x] Test multi-step jobs (ORCA-style)
+- [x] Create `tests/unit/execution/test_recipes.py` (30 tests):
+  - [x] Test QE recipe: single step, multiple steps, fingerprints
+  - [x] Test ORCA recipe: namespace folder, gbw output, command format
+  - [x] Test PySCF recipe: internal execution, results.json, checkpoint
+  - [x] Test `get_recipe_for_engine()` factory
+  - [x] Test fingerprint computation in recipes
+  - [x] Test input file paths
 
-- [ ] Create `tests/unit/execution/__init__.py`
-- [ ] Create `tests/unit/execution/test_job_graph.py`:
-  - [ ] Test `Job` dataclass creation
-  - [ ] Test `JobGraph.get_job()`
-  - [ ] Test `compute_job_fingerprint()`
-- [ ] Create `tests/unit/execution/test_recipes.py`:
-  - [ ] Test QE recipe: 3 steps → 3 jobs with correct working_dir
-  - [ ] Test ORCA recipe: SCF+MP2+TD → jobs `s`, `s_m2`, `s_t`
-  - [ ] Test PySCF recipe: SCF+MP2 → jobs `s`, `s_m2`
-  - [ ] Verify job IDs use stable tokens from registry
-
-### P2.4: Run Focused Tests
+### P2.4: Run Focused Tests ✅
 
 ```bash
-pytest tests/unit/execution/ -q
-pytest tests/unit -k "jobgraph or recipe" -q
+pytest tests/unit/execution/ -v  # 56 passed
 ```
 
 ---
