@@ -100,46 +100,48 @@ This plan has been updated to incorporate the Constitution above and align with:
   - [x] One-pipeline runner selection (Run Step is selection mode)
   - [x] No backwards compat shims
 - [x] Add detailed checkbox roadmap for phases 1–4
-- [ ] Commit: "plan: align engine recipes/jobgraph with spec-truth + naming + mapping"
+- [x] Commit: "plan: align engine recipes/jobgraph with spec-truth + naming + mapping"
 
 ---
 
-## Phase 1: Registry + Mapping + Unit Tests (No Behavior Change)
+## Phase 1: Registry + Mapping + Unit Tests (No Behavior Change) ✅
 
 **Goal**: Ensure explicit SPEC→engine dispatch mapping with completeness enforcement.
 
-### P1.1: Verify Registry Mapping Completeness
+### P1.1: Verify Registry Mapping Completeness ✅
 
-- [ ] Review `src/quantumvitas/workflow/registry.py`:
-  - [ ] Confirm all entries in `_STEP_TYPES` use SPEC keys (e.g., `qe_scf`, not `scf`)
-  - [ ] Confirm each `StepTypeSpec` has non-empty `engine` field
-  - [ ] Confirm `StepTypeSpec.machine_type` matches the dict key
-- [ ] Check for any legacy code that normalizes step_type to GEN on load/write:
-  - [ ] Search for `public_type` normalization in step.yaml I/O
-  - [ ] Remove any such normalization (persist SPEC only)
+- [x] Review `src/quantumvitas/workflow/registry.py`:
+  - [x] Confirm all entries in `_STEP_TYPES` use SPEC keys (e.g., `qe_scf`, not `scf`)
+  - [x] Confirm each `StepTypeSpec` has non-empty `engine` field
+  - [x] Confirm `StepTypeSpec.machine_type` matches the dict key
+- [x] Check for any legacy code that normalizes step_type to GEN on load/write:
+  - [x] Search for `public_type` normalization in step.yaml I/O
+  - [x] Found: `normalize_step_type_to_public()` in `structure_steps.py:105-106` (noted as future cleanup)
+  - NOTE: step_factory.py correctly writes SPEC to step.yaml (line 73); normalization only affects in-memory model
 
-### P1.2: Add Unit Test for Dispatch Mapping Completeness
+### P1.2: Add Unit Test for Dispatch Mapping Completeness ✅
 
-- [ ] Create `tests/unit/test_step_type_mapping.py`:
-  - [ ] Test: Every key in `_STEP_TYPES` is a SPEC step type (engine-prefixed)
-  - [ ] Test: Every `StepTypeSpec.engine` is non-empty
-  - [ ] Test: Every `StepTypeSpec.machine_type` equals its dict key
-  - [ ] Test: No duplicate `engine + public_type` combinations (GEN→SPEC is 0-1 per engine family)
-  - [ ] Test: All registered engines in registry have at least one step type
+- [x] Create `tests/unit/test_step_type_mapping.py`:
+  - [x] Test: Every key in `_STEP_TYPES` is a SPEC step type (engine-prefixed)
+  - [x] Test: Every `StepTypeSpec.engine` is non-empty
+  - [x] Test: Every `StepTypeSpec.machine_type` equals its dict key
+  - [x] Test: No duplicate `engine + public_type` combinations (GEN→SPEC is 0-1 per engine family)
+  - [x] Test: All registered engines in registry have at least one step type
+  - [x] Added bonus tests: token uniqueness, QC token completeness, registry lookup
 
-### P1.3: Verify Step YAML Persistence Uses SPEC
+### P1.3: Verify Step YAML Persistence Uses SPEC ✅
 
-- [ ] Check `src/quantumvitas/workflow/step_factory.py`:
-  - [ ] Confirm `step_type` field in created YAML uses SPEC (machine_type)
-- [ ] Check `src/quantumvitas/calculation/manifest.py`:
-  - [ ] Confirm manifest `kind` field uses SPEC step type
+- [x] Check `src/quantumvitas/workflow/step_factory.py`:
+  - [x] Confirm `step_type` field in created YAML uses SPEC (machine_type) - line 73
+- [x] Check `src/quantumvitas/calculation/manifest.py`:
+  - [x] Manifest `kind` derives from step.step_type which comes from YAML (SPEC)
 
-### P1.4: Run Focused Tests
+### P1.4: Run Focused Tests ✅
 
 ```bash
-pytest tests/unit/test_step_type_mapping.py -q
-pytest tests/unit/test_pyscf_chain_registry_contract.py -q
-pytest tests/unit -k "registry" -q
+pytest tests/unit/test_step_type_mapping.py -q   # 10 passed
+pytest tests/unit/test_pyscf_chain_registry_contract.py -q  # 3 passed
+pytest tests/unit -k "registry" -q  # 35 passed total
 ```
 
 ---
