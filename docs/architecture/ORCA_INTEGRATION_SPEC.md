@@ -1,245 +1,252 @@
 # ORCA Integration Specification
 
-**Version**: 1.0
+**Version**: 2.0
 **Date**: 2026-01-13
-**Status**: Implemented (MVP)
-**Test Coverage**: 67 tests (48 unit + 19 integration)
+**Status**: Canonical Reference (Post QC Chain Namespace + Stable Token Semantics)
+
+This document defines the complete specification for ORCA quantum chemistry engine integration in QMatSuite, including the QC chain namespace model, stable token semantics, and execution contracts.
 
 ---
 
-## 1. Overview
+## Table of Contents
 
-### 1.1 Goal
-
-Integrate ORCA as a molecular quantum chemistry engine in QMatSuite:
-- Enable molecular calculations (HF, DFT, TDDFT)
-- Support ORCA's strong-chain execution model
-- Provide property parsing from ORCA output files
-
-### 1.2 ORCA Characteristics
-
-| Characteristic | Description |
-|----------------|-------------|
-| **Execution Model** | External binary (subprocess) |
-| **License** | Free for academic use (requires registration) |
-| **System Kind** | Molecular only (no periodic boundary conditions) |
-| **Chain Model** | Strong-chain (one ORCA job per chain, no `$new_job`) |
-
-### 1.3 Key Design Decisions
-
-| ID | Decision | Rationale |
-|----|----------|-----------|
-| D1 | Strong-chain execution | ORCA's compound job (`$new_job`) is fragile; single-job chains are more reliable |
-| D2 | No JSON property output | ORCA doesn't support JSON output; parse `.property.txt` files |
-| D3 | Keyword fusion | SCF + TD fused into single input file with combined keywords |
-| D4 | Chain-atomic execution | All steps in a chain succeed or fail together |
+1. [Terminology](#terminology)
+2. [Filesystem Contract](#filesystem-contract)
+3. [Stable Token Semantics](#stable-token-semantics)
+4. [Execution Semantics](#execution-semantics)
+5. [ORCA Input Compilation](#orca-input-compilation)
+6. [Testing Strategy](#testing-strategy)
+7. [Developer Quickstart](#developer-quickstart)
 
 ---
 
-## 2. Architecture
+## Terminology
 
-### 2.1 Module Structure
+### Public Step Types vs Machine Step Types
 
-```
-src/quantumvitas/
-├── core/engines/
-│   └── orca_resolver.py       # ORCA binary path resolution
-├── engine/
-│   ├── orca_engine.py         # ORCAEngine implementation
-│   └── qc_engine_base.py      # QCChain and chain detection
-└── engines/orca/
-    ├── __init__.py
-    ├── property_parser.py     # .property.txt parser
-    └── input_compiler.py      # ORCA input file generator
-```
+**Public step types** are the generalized, engine-agnostic step type identifiers used in the UI, workflow definitions, and public APIs:
+- Examples: `scf`, `hf`, `td`, `mp2`, `freq`, `nmr`
+- These form the **public contract** and must remain stable across engine implementations
+- Users and workflows reference these types, NOT engine-specific variants
 
-### 2.2 Execution Flow
+**Machine step types** are engine-specific internal identifiers used in `step.yaml` files and stored in the database:
+- Examples: `orca_scf`, `pyscf_scf`, `qe_scf`, `orca_td`, `pyscf_mp2`
+- These are materialized from public types based on the selected engine
+- Format: `{engine}_{public_type}` (e.g., `orca_scf` = ORCA implementation of `scf`)
 
-```
-[QCChain] → [ORCAInputCompiler] → [.inp file]
-                                       ↓
-                               [ORCA binary]
-                                       ↓
-                            [.out, .gbw, .property.txt]
-                                       ↓
-                           [PropertyParser] → [StepResult]
-```
+**Rule**: The public API and workflow layer use ONLY public step types. Machine step types are internal implementation details.
 
-### 2.3 Chain Detection
+### Chain vs Subchain
 
-Chains are identified by SCF-root steps:
+**Chain**: A complete dependency sequence rooted at an SCF calculation, including all downstream steps that depend on that SCF's wavefunction.
+- Example: SCF → MP2 → NMR is one chain
+- All steps in a chain share the same SCF root
+- Chains are SCF-rooted (every chain starts with `scf` or `hf`)
 
-```python
-SCF_ROOT_TYPES = {"scf", "hf"}  # Steps that start new chains
+**Subchain**: A partial chain from the SCF root up to (and including) a specific target step.
+- Example: For chain [SCF, MP2, NMR], the subchain to MP2 is [SCF, MP2]
+- Subchains are used in "Run Step" operations (see Execution Semantics)
+- The basename of a subchain encodes its step sequence using tokens
 
-@dataclass
-class QCChain:
-    scf_root: Step          # Root SCF/HF step
-    downstream: List[Step]  # Dependent steps (TD, MP2, etc.)
-    key: str                # Chain identifier (e.g., "chain01_scf_td")
-```
+### Namespace Folder
 
-**Example chains:**
-- `[scf]` → `chain01_scf`
-- `[scf, td]` → `chain01_scf_td`
-- `[hf, td]` → `chain01_hf_td`
+**Chain namespace folder**: The directory containing all artifacts for a specific SCF-rooted chain, keyed by the SCF root step's ULID suffix.
 
----
+- Format: `<calc>/raw/qc_chains/scf_<suffix>/`
+- Suffix: Last 6-10 characters of the SCF root step's ULID
+  - Default: 6 characters (e.g., `scf_KR5DQ9`)
+  - On collision: Extend to 7, 8, 9, or 10 characters
+- All subchains of the same SCF root write artifacts to the same namespace folder
+- Provides stable, content-addressable namespacing
 
-## 3. Step Types
+### Canonical scf.gbw
 
-### 3.1 ORCA_SCF
+**Canonical orbital file**: The hard-coded filename `scf.gbw` used for SCF wavefunction storage in ORCA.
 
-DFT or HF single-point calculation.
-
-```python
-"orca_scf": StepTypeSpec(
-    id="scf",
-    machine_type="orca_scf",
-    engine="orca",
-    executable="orca",
-    description="ORCA DFT/HF single-point calculation",
-    supports_incremental_skip=True,  # Via AutoStart
-    consumes_state=None,
-    produces_state="gbw",  # Wavefunction file
-)
-```
-
-**Parameters:**
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `functional` | str | "B3LYP" | DFT functional |
-| `basis` | str | "def2-SVP" | Basis set |
-| `ri` | bool | False | Use RI approximation |
-| `rijcosx` | bool | False | Use RIJCOSX approximation |
-| `nprocs` | int | 1 | Number of parallel processes |
-
-### 3.2 ORCA_HF
-
-Explicit Hartree-Fock calculation.
-
-```python
-"orca_hf": StepTypeSpec(
-    id="hf",
-    machine_type="orca_hf",
-    engine="orca",
-    executable="orca",
-    description="ORCA Hartree-Fock calculation",
-    supports_incremental_skip=True,
-    consumes_state=None,
-    produces_state="gbw",
-)
-```
-
-**Parameters:**
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `basis` | str | "def2-SVP" | Basis set |
-
-### 3.3 ORCA_TD
-
-TDDFT/CIS excited states calculation.
-
-```python
-"orca_td": StepTypeSpec(
-    id="td",
-    machine_type="orca_td",
-    engine="orca",
-    executable="orca",
-    description="ORCA TDDFT/CIS excited states",
-    supports_incremental_skip=False,
-    consumes_state="gbw",
-    produces_state=None,
-)
-```
-
-**Parameters:**
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `nroots` | int | 5 | Number of excited states |
-| `tda` | bool | True | Use Tamm-Dancoff approximation |
-| `triplets` | bool | False | Calculate triplet states |
+- SCF subchains (just SCF step) produce `scf.gbw` as their wavefunction output
+- Non-SCF subchains (e.g., SCF+TD, SCF+MP2) reuse `scf.gbw` via MORead
+- The name `scf.gbw` is **immutable** and **must not be changed**
+- No copy or symlink operations—ORCA reads `scf.gbw` directly via `%moinp "scf.gbw"`
 
 ---
 
-## 4. Workflow Templates
+## Filesystem Contract
 
-### 4.1 Available Workflows
+### Directory Structure
 
-| Workflow ID | Steps | Description |
-|-------------|-------|-------------|
-| `scf` | `[scf]` | Single-point DFT/HF calculation |
-| `scf_td` | `[scf, td]` | Ground state + excited states |
-
-### 4.2 Materialization
-
-Workflow templates use public step keys. Materialization converts them to ORCA-specific types:
-
-```python
-# MATERIALIZATION_MAP entries
-("orca", "SCF"): "orca_scf",
-("orca", "HF"): "orca_hf",
-("orca", "TD"): "orca_td",
+```
+<project_root>/
+  calculations/
+    calc_01/
+      raw/
+        qc_chains/
+          scf_KR5DQ9/          # Chain namespace folder (SCF ULID ends with KR5DQ9)
+            scf.gbw            # Canonical wavefunction file (produced by SCF subchain)
+            s.inp              # SCF-only subchain input
+            s.out              # SCF-only subchain output
+            s.property.txt     # SCF-only subchain properties
+            s_t.inp            # SCF+TD subchain input
+            s_t.out            # SCF+TD subchain output
+            s_t.property.txt   # SCF+TD subchain properties
+            s_m2.inp           # SCF+MP2 subchain input
+            s_m2.out           # SCF+MP2 subchain output
+            s_m2.property.txt  # SCF+MP2 subchain properties
+          scf_ABCDEF/          # Different SCF root = different namespace
+            scf.gbw
+            s.inp
+            s.out
+            s.property.txt
 ```
 
-**Example:**
-```python
-# Workflow template
-workflow = WorkflowTemplate(
-    id="scf_td",
-    step_sequence=("scf", "td"),  # Public keys
-)
+### Filename Rules
 
-# Materialized for ORCA
-machine_steps = ["orca_scf", "orca_td"]
-```
+1. **Namespace folder**: `scf_<suffix>` where suffix is the last 6-10 chars of the SCF root ULID
+2. **Subchain basenames**: Token path from stable token mapping (see next section)
+   - SCF-only: `s`
+   - SCF+TD: `s_t`
+   - SCF+MP2: `s_m2`
+   - SCF+MP2+NMR: `s_m2_n`
+3. **Artifact files**: `<basename>.{inp,out,property.txt,gbw}`
+4. **Canonical wavefunction**: Always `scf.gbw` (no prefix, no suffix, hard-coded)
+
+### Duplicate Handling
+
+- Subchains with the same token path (e.g., two SCF+TD runs with different TD parameters) **may overwrite** previous artifacts
+- No disambiguation or versioning is required—last write wins
+- This is intentional: subchain identity is defined by its step sequence (token path), not by parameter values
 
 ---
 
-## 5. Input Compilation
+## Stable Token Semantics
 
-### 5.1 Keyword Fusion
+### Token Mapping (Immutable Contract)
 
-The input compiler fuses all chain steps into a single ORCA input:
+The following token mapping is **immutable once published**. New tokens may be added, but existing mappings **must never change**.
 
 ```python
-class ORCAInputCompiler:
-    def compile(self, chain: QCChain, molecule, fresh=False) -> str:
-        # 1. Collect keywords from SCF root
-        keywords = {functional, basis, "TightSCF"}
-
-        # 2. Add blocks from downstream steps
-        blocks = {}
-        for step in chain.downstream:
-            if step.type == "td":
-                blocks["tddft"] = "NRoots 5\nTDA true"
-
-        # 3. Generate single input file
-        return format_input(keywords, blocks, molecule)
+PUBLIC_TYPE_TOKENS = {
+    "scf": "s",     # SCF/DFT root
+    "hf": "h",      # Hartree-Fock root
+    "td": "t",      # TDDFT/TDHF excited states
+    "mp2": "m2",    # MP2 correlation
+    "freq": "f",    # Frequency/vibrational analysis
+    "nmr": "n",     # NMR chemical shifts
+}
 ```
 
-### 5.2 Example Inputs
+**Location**: `src/quantumvitas/workflow/registry.py`
 
-**SCF Only:**
+### Subchain Basename Generation
+
+Subchain basenames are generated by joining tokens with underscores:
+
+- `["scf"]` → `"s"`
+- `["scf", "td"]` → `"s_t"`
+- `["scf", "mp2"]` → `"s_m2"`
+- `["scf", "mp2", "nmr"]` → `"s_m2_n"`
+- `["hf", "td"]` → `"h_t"`
+
+**Implementation**: `quantumvitas.workflow.registry.generate_subchain_basename()`
+
+### Adding New Public Step Types Safely
+
+To add a new public step type:
+
+1. Choose a **new, unique token** that does not conflict with existing tokens
+2. Add the mapping to `PUBLIC_TYPE_TOKENS` in `src/quantumvitas/workflow/registry.py`
+3. Add the `token` field to all corresponding `StepTypeSpec` definitions (e.g., `orca_newtype`, `pyscf_newtype`)
+4. Write unit tests to verify the token is stable (see `tests/unit/orca/test_qc_chain_tokens.py`)
+5. **Never renumber or change existing tokens**—they are part of the filesystem contract
+
+**Example**: Adding a new `ccsd` step type:
+```python
+# BAD: Reusing an existing token
+"ccsd": "s"  # WRONG! This conflicts with "scf"
+
+# GOOD: New unique token
+"ccsd": "c2"  # OK, unique and descriptive
 ```
-# Chain: chain01_scf
+
+### Why Tokens Must Never Change
+
+1. **Filesystem stability**: Changing tokens would break existing calculations on disk
+2. **Reproducibility**: Token paths are part of the calculation identity
+3. **No migration path**: Old calculations would become unreadable
+4. **Simple contract**: Immutability eliminates entire classes of bugs
+
+---
+
+## Execution Semantics
+
+### Run Calc vs Run Step
+
+QMatSuite supports two execution modes for QC calculations:
+
+#### Run Calc (Full Calculation)
+
+Executes all chains in the calculation sequentially.
+
+- Command: `qmatsuite run calc <calc_id>`
+- Behavior: For each chain in the calculation's workflow:
+  1. Resolve chain namespace folder: `scf_<suffix>` from SCF root ULID
+  2. Execute full chain (SCF root + all downstream steps)
+  3. Write all artifacts to namespace folder
+- Use case: Standard workflow execution (e.g., "run all my SCF+TD calculations")
+
+#### Run Step (Partial Chain)
+
+Executes a partial chain from the SCF root up to (and including) a specific target step.
+
+- Command: `qmatsuite run step <step_id>`
+- Behavior:
+  1. Find the chain containing `<step_id>`
+  2. Extract partial chain: [SCF root, ..., target step]
+  3. Resolve chain namespace folder from SCF root ULID
+  4. Execute partial chain, writing artifacts with subchain basename
+- Use case: Iterative development (e.g., "rerun just the MP2 step with different parameters")
+
+**Critical Rule**: The target step **must always run**. It is never skipped, even if artifacts already exist.
+
+- For non-SCF targets: SCF may be skipped if `scf.gbw` exists (via MORead)
+- For SCF targets: **SCF must run fresh** (with `NoAutoStart`) to ensure deterministic results
+
+### Error Cases
+
+**No SCF root**: If a step is not part of any SCF-rooted chain, execution fails with error:
+```
+ValueError: Step <step_id> is not part of any SCF-rooted chain
+```
+
+**Orphan steps**: Steps that appear before the first SCF in a workflow are ignored (not part of any chain).
+
+### Strong-Chain vs Weak-Chain
+
+**ORCA** is a **strong-chain** engine:
+- One ORCA job = one complete chain
+- Chain artifacts (inp/out/property.txt/gbw) are written to the chain namespace folder
+- Input file fusion: SCF + TD keywords are combined into a single input file
+
+**PySCF** is a **weak-chain** engine internally:
+- Steps are executed sequentially in-memory (one Python session)
+- State is passed via in-memory objects (mf, mp2_obj) between steps
+- However, PySCF shares the **same high-level chain semantics** (SCF-rooted, namespace folders, basenames)
+
+---
+
+## ORCA Input Compilation
+
+### MORead Injection
+
+When a subchain depends on a previous SCF calculation's wavefunction, the ORCA input compiler injects MORead directives:
+
+**Example**: SCF+TD subchain (`s_t.inp`)
+```orca
+# Chain: scf_KR5DQ9/s_t
 # Generated by QMatSuite
 
-! B3LYP def2-SVP TightSCF
+! B3LYP def2-SVP TightSCF MORead
 
-* xyz 0 1
-O   0.000000   0.000000   0.117300
-H   0.000000   0.756950  -0.469200
-H   0.000000  -0.756950  -0.469200
-*
-```
-
-**SCF + TD:**
-```
-# Chain: chain01_scf_td
-# Generated by QMatSuite
-
-! B3LYP def2-SVP TightSCF
+%moinp "scf.gbw"
 
 %tddft
   NRoots 5
@@ -253,195 +260,232 @@ H   0.000000  -0.756950  -0.469200
 *
 ```
 
----
+**Key elements**:
+1. `MORead` keyword tells ORCA to read orbitals from an external file
+2. `%moinp "scf.gbw"` specifies the canonical wavefunction file (hard-coded name)
+3. No copy or symlink—ORCA reads `scf.gbw` directly from the current directory (chain namespace folder)
 
-## 6. Property Parsing
+### NoAutoStart for Fresh SCF
 
-### 6.1 Property File Format
+When running an SCF subchain (target step = SCF), the input compiler adds `NoAutoStart`:
 
-ORCA 6.x generates `.property.txt` files with typed values:
+**Example**: Fresh SCF run (`s.inp`)
+```orca
+# Chain: scf_KR5DQ9/s
+# Generated by QMatSuite
 
-```
-$SCF_Energy
- &Type Float
- &Dim 0
- &RowDim 0
- &ColDim 0
-  Geometry_Index                                    0
-  Prop_Index                                        1
-  -76.026578563
-$End
+! B3LYP def2-SVP TightSCF NoAutoStart
 
-$CIS_Energies
- &Type FloatArray
- &Dim 1
- &RowDim 3
- &ColDim 0
-  Geometry_Index                                    0
-  Prop_Index                                        1
-  0.3124516  0.3789123  0.4215678
-$End
+* xyz 0 1
+O   0.000000   0.000000   0.117300
+H   0.000000   0.756950  -0.469200
+H   0.000000  -0.756950  -0.469200
+*
 ```
 
-### 6.2 Parser API
+**Why NoAutoStart**:
+- Prevents ORCA from automatically reading old `scf.gbw` files
+- Ensures deterministic, reproducible SCF calculations
+- Required for "Run Step" on SCF targets (force recomputation)
+
+### Input Compiler Implementation
+
+**Location**: `src/quantumvitas/engines/orca/input_compiler.py`
 
 ```python
-from quantumvitas.engines.orca.property_parser import (
-    parse_orca_property_txt,
-    get_energy,
-    is_converged,
-    get_tddft_excitations,
-)
+def compile(
+    self,
+    chain: QCChain,
+    molecule: MoleculeLike,
+    fresh: bool = False,
+    moread_file: Optional[str] = None,
+) -> str:
+    # ...
+    if fresh:
+        keywords.add("NoAutoStart")
 
-# Parse file
-props = parse_orca_property_txt(Path("calc.property.txt"))
-
-# Extract values
-energy = get_energy(props)  # Total energy in Hartree
-converged = is_converged(props)  # SCF convergence status
-excitations = get_tddft_excitations(props)  # Excitation energies in eV
+    if moread_file:
+        keywords.add("MORead")
+        blocks["moinp"] = f'"{moread_file}"'
+    # ...
 ```
 
----
-
-## 7. Engine Configuration
-
-### 7.1 Path Resolution
-
-ORCA binary is resolved in order:
-1. `QMATSUITE_ORCA_BIN` environment variable
-2. Repo-relative `.qmatsuite/engines/orca/` directory
-3. User's `~/.qmatsuite/engines/orca/` directory
-
-```python
-from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
-
-orca_path = resolve_orca_bin()  # Returns Path to orca binary
-```
-
-### 7.2 Engine Registration
-
-ORCA is automatically registered if available:
-
-```python
-from quantumvitas.engine.registry import create_default_registry
-
-registry = create_default_registry()
-if registry.has("orca"):
-    engine = registry.get("orca")
-    available, version = engine.probe()
-```
+**Constant**: `CANONICAL_GBW_FILE = "scf.gbw"` (immutable)
 
 ---
 
-## 8. Artifacts
+## Testing Strategy
 
-### 8.1 Chain Artifacts
+### Unit Tests (No ORCA Binary Required)
 
-Each chain produces artifacts in its directory:
+**Location**: `tests/unit/orca/`
 
-```
-calc/raw/chains/chain01_scf_td/
-├── chain01_scf_td.inp          # ORCA input file
-├── chain01_scf_td.out          # ORCA output (stdout)
-├── chain01_scf_td.property.txt # Property file (parsed)
-├── chain01_scf_td.gbw          # Wavefunction (binary)
-└── chain_manifest.json         # Execution metadata
-```
+- **Property parser**: `test_property_parser.py` (14 tests - parsing .property.txt files)
+- **Chain detection**: `test_chain_detection.py` (14 tests - QCChain construction)
+- **Input compiler**: `test_input_compiler.py` (20 tests - input file generation, MORead injection)
+- **Token semantics**: `test_qc_chain_tokens.py` (32 tests - stable token mapping, basename generation)
+- **ORCA engine**: `test_orca_engine.py` (9 tests - mocked engine tests)
+- **Chain base**: `test_qc_engine_base.py` (18 tests - chain detection, partial chains)
 
-### 8.2 Step Results
-
-```python
-@dataclass
-class ORCAStepResult:
-    step_id: str
-    success: bool
-    metrics: Dict[str, Any]  # energy, excitation_energies, etc.
-    artifacts: Dict[str, str]  # Paths to output files
-```
-
----
-
-## 9. Testing
-
-### 9.1 Test Structure
-
-```
-tests/
-├── unit/orca/
-│   ├── test_property_parser.py   # 14 tests
-│   ├── test_chain_detection.py   # 14 tests
-│   ├── test_input_compiler.py    # 11 tests
-│   └── test_orca_engine.py       # 9 tests
-├── integration/orca/
-│   ├── test_orca_execution.py    # 10 tests
-│   └── test_system_integration.py # 8 tests
-└── fixtures/orca/
-    ├── water_scf.property.txt
-    ├── water_scf_td.property.txt
-    └── water_scf.out
-```
-
-### 9.2 Running Tests
-
+**Run command**:
 ```bash
-# Unit tests (no ORCA required)
 pytest tests/unit/orca/ -v
-
-# Integration tests (requires ORCA)
-export QMATSUITE_ORCA_BIN=/path/to/orca
-pytest tests/integration/orca/ -v -m integration
-
-# All ORCA tests
-pytest tests/unit/orca/ tests/integration/orca/ -v
 ```
 
----
+**Expected**: 107 tests pass (no ORCA binary needed)
 
-## 10. Future Enhancements
+### Integration Tests (Require ORCA Binary)
 
-| Feature | Priority | Description |
-|---------|----------|-------------|
-| ORCA_OPT | High | Geometry optimization |
-| ORCA_FREQ | High | Frequency calculation (IR/Raman) |
-| ORCA_MP2 | Medium | MP2 correlation energy |
-| ORCA_CCSD | Low | Coupled cluster methods |
-| Multi-job chains | Low | Support `$new_job` for complex workflows |
+**Location**: `tests/integration/orca/`
 
----
+- **ORCA execution**: `test_orca_execution.py` (10 tests - actual ORCA runs)
+- **System integration**: `test_system_integration.py` (8 tests - end-to-end chains, property extraction)
 
-## Appendix A: ORCA Version Compatibility
-
-| ORCA Version | Status | Notes |
-|--------------|--------|-------|
-| 6.0.x | Supported | Tested with 6.0.0 |
-| 6.1.x | Supported | Primary development version |
-| 5.x | Untested | May work with adjustments |
-
----
-
-## Appendix B: Common Issues
-
-### B.1 ORCA Not Found
-
+**ORCA binary location** (this machine):
 ```
-RuntimeError: ORCA not found. Checked:
-  - Environment variable QMATSUITE_ORCA_BIN (not set)
-  - Bundled locations: ~/.qmatsuite/engines/orca
+/Users/hh7465/QMatSuite/.qmatsuite/engines/orca/orca_6_1_1_macosx_arm64_openmpi411/orca
 ```
 
-**Solution:** Set `QMATSUITE_ORCA_BIN` or install ORCA to bundled location.
-
-### B.2 OpenMPI Issues
-
-ORCA requires OpenMPI for parallel execution. Ensure `LD_LIBRARY_PATH` includes ORCA's lib directory:
-
+**Run command**:
 ```bash
-export LD_LIBRARY_PATH=/path/to/orca/lib:$LD_LIBRARY_PATH
+# Set environment variable (optional - bundled ORCA is auto-detected)
+export QMATSUITE_ORCA_BIN=/Users/hh7465/QMatSuite/.qmatsuite/engines/orca/orca_6_1_1_macosx_arm64_openmpi411/orca
+
+# Run ORCA integration tests
+pytest tests/integration/orca/ -v -m integration
 ```
 
-### B.3 Property File Empty
+**Expected**: 18 tests pass (requires ORCA binary)
 
-If `.property.txt` is empty or missing, check:
-1. ORCA execution completed successfully (check `.out` file)
-2. ORCA version is 6.x (older versions may not generate property files)
+**Note**: Integration tests use the resolver (`quantumvitas.core.engines.orca_resolver.resolve_orca_bin()`) which automatically detects bundled ORCA. Setting `QMATSUITE_ORCA_BIN` is optional but recommended for explicit control.
+
+### PySCF Regression Tests
+
+**Location**: `tests/integration/test_pyscf_phase3c.py`
+
+**Run command**:
+```bash
+pytest tests/integration/test_pyscf_phase3c.py -v
+```
+
+**Expected**: 5 tests pass
+
+**Purpose**: Verify PySCF MP2 chain execution (one-session model) works correctly after ORCA integration changes.
+
+### Focused Testing Philosophy
+
+We deliberately avoid full-suite test runs to keep iteration fast:
+
+1. Run **unit tests** during development (fast, no external dependencies)
+2. Run **focused integration tests** when validating ORCA behavior
+3. Run **focused PySCF tests** when changes touch shared chain code
+4. Run **full suite** only in CI or before major releases
+
+---
+
+## Developer Quickstart
+
+### Prerequisites
+
+- QMatSuite installed and activated venv
+- ORCA 6.x bundled at `.qmatsuite/engines/orca/orca_6_1_1_macosx_arm64_openmpi411/`
+- pytest installed (in venv)
+
+### Quick Verification
+
+**1. Verify ORCA detection**:
+```bash
+python -c "
+from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
+print('ORCA found at:', resolve_orca_bin())
+"
+```
+
+Expected output:
+```
+ORCA found at: /Users/hh7465/QMatSuite/.qmatsuite/engines/orca/orca_6_1_1_macosx_arm64_openmpi411
+```
+
+**2. Run ORCA unit tests** (fast, ~5 seconds):
+```bash
+pytest tests/unit/orca/ -v --tb=short
+```
+
+Expected: 107 passed
+
+**3. Run ORCA integration tests** (~20-30 seconds):
+```bash
+# Optional: set explicit ORCA binary path
+export QMATSUITE_ORCA_BIN=/Users/hh7465/QMatSuite/.qmatsuite/engines/orca/orca_6_1_1_macosx_arm64_openmpi411/orca
+
+# Run integration tests
+pytest tests/integration/orca/ -v -m integration --tb=short
+```
+
+Expected: 18 passed
+
+**4. Verify PySCF not broken** (~15 seconds):
+```bash
+pytest tests/integration/test_pyscf_phase3c.py -v --tb=short
+```
+
+Expected: 5 passed
+
+**5. Test token semantics**:
+```bash
+pytest tests/unit/orca/test_qc_chain_tokens.py -v
+```
+
+Expected: 32 passed
+
+### Common Workflows
+
+**Adding a new ORCA test**:
+1. Add test to `tests/unit/orca/` or `tests/integration/orca/`
+2. Run focused test: `pytest tests/unit/orca/test_mytest.py -v`
+3. Run full ORCA unit suite: `pytest tests/unit/orca/ -v`
+
+**Debugging ORCA execution**:
+1. Run single test with verbose output: `pytest tests/integration/orca/test_orca_execution.py::TestORCAExecution::test_scf_execution -vv`
+2. Inspect temp directory artifacts: test creates files in `tmp_path` (pytest manages cleanup)
+3. Check ORCA output files: `<tmp_path>/chain01_scf.out`
+
+**Modifying token mapping** (DON'T DO THIS without review):
+1. Tokens are **immutable**—changing them breaks filesystem contract
+2. Adding new tokens is OK, see "Adding New Public Step Types Safely"
+3. Any token change requires migration plan and backward compatibility
+
+---
+
+## Appendix: Key Implementation Files
+
+### Core Engine
+
+- `src/quantumvitas/engine/orca_engine.py` - ORCA engine implementation
+- `src/quantumvitas/engines/orca/input_compiler.py` - Input file generation
+- `src/quantumvitas/engines/orca/property_parser.py` - Property file parsing
+- `src/quantumvitas/core/engines/orca_resolver.py` - ORCA binary resolution
+
+### Chain Infrastructure
+
+- `src/quantumvitas/engine/qc_engine_base.py` - QCChain dataclass, chain detection
+- `src/quantumvitas/workflow/registry.py` - Step type registry, token mapping
+
+### Configuration
+
+- `pytest.ini` - Test markers (`integration`, `orca`)
+- `.qmatsuite/engines/orca/` - Bundled ORCA installation
+
+---
+
+## Document History
+
+- **2026-01-13 v2.0**: Complete rewrite after QC Chain Namespace + Stable Token Semantics implementation
+  - Added canonical terminology section
+  - Added filesystem contract with namespace folders
+  - Added stable token semantics (immutable)
+  - Added execution semantics (Run Calc vs Run Step)
+  - Added MORead + NoAutoStart documentation
+  - Added comprehensive testing strategy
+  - Added developer quickstart section
+- **2026-01-13 v1.0**: Initial version (MVP) - Basic ORCA integration
