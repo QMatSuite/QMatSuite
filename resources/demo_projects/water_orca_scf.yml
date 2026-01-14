@@ -1,0 +1,91 @@
+version: 1
+project:
+  meta:
+    id: 01KEX4RTDGTNKD67JT79WZXK0Z
+    name: Water ORCA SCF Single Point
+    slug: water-orca-scf
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    id: 01KEX4RTDGR5PNF8DAMGW678N2
+    name: H2O
+    slug: h2o
+    path: structures/h2o.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.1173
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.75695
+      - -0.4692
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - -0.75695
+      - -0.4692
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    id: 01KEX4RTDG5BVW9BW27PKTRNRY
+    name: H2O B3LYP Single Point
+    slug: h2o-b3lyp-single-point
+    path: calculations/h2o-b3lyp-single-point
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  structure_id: 01KEX4RTDGR5PNF8DAMGW678N2
+  structure_kind: molecule
+  engine_family: orca
+  steps:
+  - meta:
+      id: 01KEX4RTDGYZC6T290YQM9NDTF
+      name: scf
+      slug: scf
+      path: calculations/h2o-b3lyp-single-point/steps/scf.step.yaml
+      kind: step
+    step_type: scf
+    parameters:
+      functional: B3LYP
+      basis: def2-SVP
+      charge: 0
+      spin: 0
+meta:
+  id: water_orca_scf
+  title: Water ORCA SCF Single Point
+  subtitle: B3LYP/def2-SVP DFT calculation on water molecule
+  tags:
+  - orca
+  - molecular
+  - scf
+  - dft
+  - water
+  - tutorial
+  recommended_analysis: energy
+  difficulty: beginner
