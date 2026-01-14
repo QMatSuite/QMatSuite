@@ -5,6 +5,7 @@ This module provides:
 - Job: A single unit of execution (one engine invocation)
 - JobGraph: Runtime-only DAG of jobs for a calculation
 - Recipe implementations: QE, ORCA, PySCF materialization strategies
+- JobExecutor: Executes JobGraph with selection mode support
 
 Per engine_recipes_jobgraph_plan.md (Constitution §E):
 - JobGraph is runtime-only (NOT persisted, derived each run)
@@ -17,10 +18,20 @@ from quantumvitas.execution.job_graph import (
     SelectionMode,
     compute_job_fingerprint,
 )
+from quantumvitas.execution.executor import (
+    JobExecutor,
+    JobResult,
+    ExecutionResult,
+    create_executor_with_default_handlers,
+)
 
 __all__ = [
     "Job",
     "JobGraph",
     "SelectionMode",
     "compute_job_fingerprint",
+    "JobExecutor",
+    "JobResult",
+    "ExecutionResult",
+    "create_executor_with_default_handlers",
 ]
