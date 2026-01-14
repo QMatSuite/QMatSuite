@@ -1,0 +1,160 @@
+# ORCA Demo Definitions
+# 
+# This file defines ORCA demo projects that will be generated.
+# Each demo includes:
+# - Molecule geometry (XYZ format)
+# - Calculation steps (using public step types)
+# - Method/basis/keywords
+# - Expected outputs
+# - Documentation references
+
+demos:
+  - id: water_orca_scf
+    title: Water ORCA SCF Single Point
+    subtitle: B3LYP/def2-SVP DFT calculation on water molecule
+    tags:
+      - orca
+      - molecular
+      - scf
+      - dft
+      - water
+      - tutorial
+    difficulty: beginner
+    recommended_analysis: energy
+    doc_source: "manual/quickstartguide/hellowater.html"
+    
+    molecule:
+      name: H2O
+      charge: 0
+      spin: 0
+      atoms:
+        - element: O
+          coords: [0.000000, 0.000000, 0.117300]
+        - element: H
+          coords: [0.000000, 0.756950, -0.469200]
+        - element: H
+          coords: [0.000000, -0.756950, -0.469200]
+      unit: Angstrom
+    
+    calculation:
+      name: H2O B3LYP Single Point
+      steps:
+        - step_type: scf
+          name: scf
+          parameters:
+            functional: B3LYP
+            basis: def2-SVP
+            charge: 0
+            spin: 0
+    
+    expected_outputs:
+      - s.inp
+      - s.out
+      - s.property.txt
+      - scf.gbw
+    runtime_estimate: "10-30 seconds"
+
+  - id: formaldehyde_orca_tddft
+    title: Formaldehyde ORCA TDDFT
+    subtitle: SCF + TDDFT excited states calculation
+    tags:
+      - orca
+      - molecular
+      - scf
+      - tddft
+      - excited_states
+      - formaldehyde
+      - tutorial
+    difficulty: intermediate
+    recommended_analysis: excited_states
+    doc_source: "tutorials/tddft.html"
+    
+    molecule:
+      name: CH2O
+      charge: 0
+      spin: 0
+      atoms:
+        - element: C
+          coords: [0.000000, 0.000000, 0.000000]
+        - element: O
+          coords: [1.200000, 0.000000, 0.000000]
+        - element: H
+          coords: [-0.600000, 0.923800, 0.000000]
+        - element: H
+          coords: [-0.600000, -0.923800, 0.000000]
+      unit: Angstrom
+    
+    calculation:
+      name: CH2O SCF + TDDFT
+      steps:
+        - step_type: scf
+          name: scf
+          parameters:
+            functional: B3LYP
+            basis: def2-SVP
+            charge: 0
+            spin: 0
+        - step_type: td
+          name: td
+          parameters:
+            nroots: 5
+            tda: true
+    
+    expected_outputs:
+      - s_t.inp
+      - s_t.out
+      - s_t.property.txt
+      - scf.gbw
+    runtime_estimate: "1-3 minutes"
+
+  - id: methane_orca_freq
+    title: Methane ORCA Frequency
+    subtitle: SCF + numerical frequency calculation
+    tags:
+      - orca
+      - molecular
+      - scf
+      - frequency
+      - vibrational
+      - methane
+      - tutorial
+    difficulty: intermediate
+    recommended_analysis: frequencies
+    doc_source: "tutorials/frequencies.html"
+    
+    molecule:
+      name: CH4
+      charge: 0
+      spin: 0
+      atoms:
+        - element: C
+          coords: [0.000000, 0.000000, 0.000000]
+        - element: H
+          coords: [0.629118, 0.629118, 0.629118]
+        - element: H
+          coords: [-0.629118, -0.629118, 0.629118]
+        - element: H
+          coords: [-0.629118, 0.629118, -0.629118]
+        - element: H
+          coords: [0.629118, -0.629118, -0.629118]
+      unit: Angstrom
+    
+    calculation:
+      name: CH4 SCF + Frequency
+      steps:
+        - step_type: scf
+          name: scf
+          parameters:
+            functional: B3LYP
+            basis: def2-TZVP
+            charge: 0
+            spin: 0
+    
+    expected_outputs:
+      - s_f.inp
+      - s_f.out
+      - s_f.property.txt
+      - s_f.hess
+      - scf.gbw
+    runtime_estimate: "2-5 minutes"
+
