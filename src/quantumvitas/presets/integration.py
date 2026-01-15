@@ -420,7 +420,7 @@ def apply_presets_to_step(
     ]
     dependent_dimensions = [
         d for d in applied_dimensions 
-        if d == DIMENSION_PRECISION
+        if d in (DIMENSION_PRECISION, DIMENSION_CONVERGENCE)
     ]
     
     # Build unified patch for apply_patch (uses None for deletions)
@@ -472,17 +472,28 @@ def apply_presets_to_step(
         all_deletions.update(deletions)
     
     # Apply Phase 1 patches to step_yaml (for oracle to read latest state in Phase 2)
-    step_yaml["SYSTEM"].update(unified_patch["parameters"]["SYSTEM"])
-    step_yaml["ELECTRONS"].update(unified_patch["parameters"]["ELECTRONS"])
+    if "SYSTEM" not in step_yaml:
+        step_yaml["SYSTEM"] = {}
+    if "ELECTRONS" not in step_yaml:
+        step_yaml["ELECTRONS"] = {}
     if "cards" not in step_yaml:
         step_yaml["cards"] = {}
-    step_yaml["cards"].update(unified_patch["cards"])
     
-    # Phase 2: Dependent dimensions (precision)
+    if "parameters" in unified_patch:
+        if "SYSTEM" in unified_patch["parameters"]:
+            step_yaml["SYSTEM"].update(unified_patch["parameters"]["SYSTEM"])
+        if "ELECTRONS" in unified_patch["parameters"]:
+            step_yaml["ELECTRONS"].update(unified_patch["parameters"]["ELECTRONS"])
+    if "cards" in unified_patch:
+        step_yaml["cards"].update(unified_patch["cards"])
+    
+    # Phase 2: Dependent dimensions (precision, convergence)
     for dimension in dependent_dimensions:
         # Normalize option
         if dimension == DIMENSION_PRECISION:
             option_enum = _normalize_option(filtered_options[dimension], PrecisionOption, PrecisionOption.MED)
+        elif dimension == DIMENSION_CONVERGENCE:
+            option_enum = _normalize_option(filtered_options[dimension], ConvergenceOption, ConvergenceOption.NORMAL)
         else:
             continue
         
@@ -552,15 +563,7 @@ def apply_presets_to_step(
             precision_context=precision_context,
         )
         
-        # Merge patch
-        if "SYSTEM" in patch:
-            compiled_patches["SYSTEM"].update(patch["SYSTEM"])
-        if "ELECTRONS" in patch:
-            compiled_patches["ELECTRONS"].update(patch["ELECTRONS"])
-        if "cards" in patch:
-            compiled_patches["cards"].update(patch["cards"])
-        
-        # Merge patch into unified patch
+        # Merge patch into unified_patch
         if "SYSTEM" in patch:
             unified_patch["parameters"]["SYSTEM"].update(patch["SYSTEM"])
         if "ELECTRONS" in patch:
@@ -596,21 +599,25 @@ def apply_presets_to_step(
         current_yaml_state["cards"] = dict(doc.export_copy(["cards"]))
     
     # Apply unified_patch to current_yaml_state (for oracle to read final state)
-    for key, value in unified_patch["parameters"]["SYSTEM"].items():
-        if value is None:
-            current_yaml_state["SYSTEM"].pop(key, None)
-        else:
-            current_yaml_state["SYSTEM"][key] = value
-    for key, value in unified_patch["parameters"]["ELECTRONS"].items():
-        if value is None:
-            current_yaml_state["ELECTRONS"].pop(key, None)
-        else:
-            current_yaml_state["ELECTRONS"][key] = value
-    for key, value in unified_patch["cards"].items():
-        if value is None:
-            current_yaml_state["cards"].pop(key, None)
-        else:
-            current_yaml_state["cards"][key] = value
+    if "parameters" in unified_patch:
+        if "SYSTEM" in unified_patch["parameters"]:
+            for key, value in unified_patch["parameters"]["SYSTEM"].items():
+                if value is None:
+                    current_yaml_state["SYSTEM"].pop(key, None)
+                else:
+                    current_yaml_state["SYSTEM"][key] = value
+        if "ELECTRONS" in unified_patch["parameters"]:
+            for key, value in unified_patch["parameters"]["ELECTRONS"].items():
+                if value is None:
+                    current_yaml_state["ELECTRONS"].pop(key, None)
+                else:
+                    current_yaml_state["ELECTRONS"][key] = value
+    if "cards" in unified_patch:
+        for key, value in unified_patch["cards"].items():
+            if value is None:
+                current_yaml_state["cards"].pop(key, None)
+            else:
+                current_yaml_state["cards"][key] = value
     
     oracle = Oracle(current_yaml_state)
     
@@ -634,15 +641,48 @@ def apply_presets_to_step(
         original_cards = doc.export_copy(["cards"])
     
     # Update unified_patch with invariant-enforced values
-    for key, value in current_yaml_state["SYSTEM"].items():
-        if key not in original_system or original_system[key] != value:
-            unified_patch["parameters"]["SYSTEM"][key] = value
-    for key, value in current_yaml_state["ELECTRONS"].items():
-        if key not in original_electrons or original_electrons[key] != value:
-            unified_patch["parameters"]["ELECTRONS"][key] = value
-    for key, value in current_yaml_state["cards"].items():
-        if key not in original_cards or original_cards[key] != value:
-            unified_patch["cards"][key] = value
+    # Ensure sections exist in unified_patch
+    if "parameters" not in unified_patch:
+        unified_patch["parameters"] = {}
+    if "SYSTEM" not in unified_patch["parameters"]:
+        unified_patch["parameters"]["SYSTEM"] = {}
+    if "ELECTRONS" not in unified_patch["parameters"]:
+        unified_patch["parameters"]["ELECTRONS"] = {}
+    if "cards" not in unified_patch:
+        unified_patch["cards"] = {}
+    
+    # Update SYSTEM: add new/modified values, mark deleted values as None
+    for key in set(list(original_system.keys()) + list(current_yaml_state["SYSTEM"].keys())):
+        if key in current_yaml_state["SYSTEM"]:
+            # Key exists in current state
+            if key not in original_system or original_system[key] != current_yaml_state["SYSTEM"][key]:
+                unified_patch["parameters"]["SYSTEM"][key] = current_yaml_state["SYSTEM"][key]
+        else:
+            # Key was deleted (exists in original but not in current)
+            if key in original_system:
+                unified_patch["parameters"]["SYSTEM"][key] = None
+    
+    # Update ELECTRONS: add new/modified values, mark deleted values as None
+    for key in set(list(original_electrons.keys()) + list(current_yaml_state["ELECTRONS"].keys())):
+        if key in current_yaml_state["ELECTRONS"]:
+            # Key exists in current state
+            if key not in original_electrons or original_electrons[key] != current_yaml_state["ELECTRONS"][key]:
+                unified_patch["parameters"]["ELECTRONS"][key] = current_yaml_state["ELECTRONS"][key]
+        else:
+            # Key was deleted (exists in original but not in current)
+            if key in original_electrons:
+                unified_patch["parameters"]["ELECTRONS"][key] = None
+    
+    # Update cards: add new/modified values, mark deleted values as None
+    for key in set(list(original_cards.keys()) + list(current_yaml_state["cards"].keys())):
+        if key in current_yaml_state["cards"]:
+            # Key exists in current state
+            if key not in original_cards or original_cards[key] != current_yaml_state["cards"][key]:
+                unified_patch["cards"][key] = current_yaml_state["cards"][key]
+        else:
+            # Key was deleted (exists in original but not in current)
+            if key in original_cards:
+                unified_patch["cards"][key] = None
     
     # Physics validation before applying
     if validate_physics:
@@ -669,7 +709,15 @@ def apply_presets_to_step(
         del unified_patch["cards"]
     
     if unified_patch:
-        doc.apply_patch(unified_patch)
+        # Serialize IR patch to engine format before writing to step.yaml
+        # step.yaml is spec step, parameters must be engine-specific format (QE: .true./.false.)
+        # Get original step_type (before public_type mapping) to determine engine
+        original_step_type = doc.get(["step_type"], default="scf")
+        # In v0, all steps are QE, but we check for future extensibility
+        # For now, assume QE backend
+        from quantumvitas.ir.backends.qe.mapping import ir_params_to_qe_params
+        qe_patch = ir_params_to_qe_params(unified_patch)
+        doc.apply_patch(qe_patch)
     
     # Save via StepDoc (single commit point)
     doc.save(step_path)
