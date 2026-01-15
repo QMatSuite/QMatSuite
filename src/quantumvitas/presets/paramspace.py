@@ -61,20 +61,22 @@ class ParamKey:
     """
     Definition of a parameter key in a ParamSpace.
     
+    ParamSpace operates on IR keys (IR is SSOT). In v0, IR keys == QE keys due to 1:1 mapping,
+    but conceptually ParamSpace only knows about IR keys. QE writer converts IR to QE input.
+    
     Attributes:
-        section: YAML section name (e.g., "SYSTEM", "ELECTRONS", "cards")
+        section: IR YAML section name (e.g., "SYSTEM", "ELECTRONS", "cards")
             In v0, IR sections == QE sections (because IR is QE-equivalent).
-        key: IR parameter key name (conceptually IR, but values same as QE in v0)
-            ParamSpace operates on IR keys internally.
-            IR↔QE translation happens at YAML I/O boundaries (in spaces_registry/variants_registry).
+        key: IR parameter key name (IR is SSOT; in v0, IR keys == QE keys due to 1:1 mapping)
+            ParamSpace operates on IR keys internally. QE writer converts IR to QE input.
         parser: Function to parse raw YAML value (str -> Any)
         canonicalizer: Function to canonicalize value for comparison (Any -> Any)
         tolerance: Optional absolute tolerance for numeric comparison (float)
         aliases: Optional frozenset of (alias, canonical) tuples for hashability
         default: Optional default value if key is missing
     """
-    section: str
-    key: str  # IR key (conceptually; same as QE key in v0)
+    section: str  # IR section (IR is SSOT; in v0, IR sections == QE sections)
+    key: str  # IR key (IR is SSOT; in v0, IR keys == QE keys due to 1:1 mapping)
     parser: Callable[[Any], Any]
     canonicalizer: Callable[[Any], Any]
     tolerance: Optional[float] = None
@@ -595,6 +597,12 @@ def compile_profile_patch(
                     if canonical_value == canonical_default:
                         # Skip writing (will be missing, using default)
                         continue
+                
+                # Convert boolean values to IR canonical format (.true./.false.)
+                # IR contract: boolean values must be canonical strings, not Python bool
+                if isinstance(value, bool):
+                    from quantumvitas.ir.backends.qe.mapping import ir_bool
+                    value = ir_bool(value)
                 
                 # Write the value
                 if key.section not in patch:
