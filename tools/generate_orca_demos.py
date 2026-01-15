@@ -90,20 +90,23 @@ def generate_step_meta(step_name: str, step_type: str, calc_slug: str) -> dict:
 
 
 def generate_step_spec(step_def: dict, structure_id: str) -> dict:
-    """Generate step specification from step definition."""
-    step_type = step_def["step_type"]
+    """Generate step specification from step definition.
+
+    Constitution §B: Persisted truth must be SPEC format (machine type).
+    GEN types from definitions are converted to SPEC types for persistence.
+    """
+    # Convert GEN type to SPEC type for ORCA
+    gen_type = step_def["step_type"]
+    spec_type = f"orca_{gen_type}"  # e.g., "scf" -> "orca_scf"
+
     params = step_def["parameters"].copy()
-    
-    # Add atoms from structure (will be resolved from structure_id at runtime)
-    # For demo, we include atoms inline for clarity
-    # In actual execution, structure is resolved from structure_id
-    
-    # Build step spec
+
+    # Build step spec with SPEC type (machine type)
     spec = {
-        "step_type": step_type,  # Public type (will be materialized to orca_scf, etc.)
+        "step_type": spec_type,  # SPEC type (machine type) for persistence
         "parameters": params,
     }
-    
+
     return spec
 
 
@@ -207,13 +210,15 @@ This demo demonstrates a {calculation['name']} calculation using ORCA.
 
 """
     
-    if "scf" in [s["step_type"] for s in calculation["steps"]]:
+    # Check step types (definitions use GEN types like "scf")
+    step_types = [s["step_type"] for s in calculation["steps"]]
+    if "scf" in step_types:
         readme += "- Single-point energy calculation\n"
-    
-    if "td" in [s["step_type"] for s in calculation["steps"]]:
+
+    if "td" in step_types:
         readme += "- Excited states via TDDFT\n"
-    
-    if "freq" in [s["step_type"] for s in calculation["steps"]]:
+
+    if "freq" in step_types:
         readme += "- Vibrational frequencies and normal modes\n"
     
     readme += f"""

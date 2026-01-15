@@ -24,6 +24,12 @@ from quantumvitas.execution.executor import (
     ExecutionResult,
     create_executor_with_default_handlers,
 )
+from quantumvitas.execution.handlers import (
+    qe_step_handler,
+    pyscf_chain_handler,
+    orca_chain_handler,
+    create_handler_map,
+)
 
 __all__ = [
     "Job",
@@ -34,4 +40,8 @@ __all__ = [
     "JobResult",
     "ExecutionResult",
     "create_executor_with_default_handlers",
+    "qe_step_handler",
+    "pyscf_chain_handler",
+    "orca_chain_handler",
+    "create_handler_map",
 ]

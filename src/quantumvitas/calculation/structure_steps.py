@@ -99,11 +99,10 @@ class StructureStepSpec:
         # Legacy structure_id/structure fields are accepted for backwards compatibility only.
         # If present, they are kept in memory but not written to YAML.
         
-        step_type = data.get("step_type", "scf")
-        # Normalize step_type to public format for backward compatibility
-        # step.yaml stores machine types (qe_scf), but StructureStepSpec uses public types (scf)
-        from quantumvitas.workflow.registry import normalize_step_type_to_public
-        step_type = normalize_step_type_to_public(str(step_type))
+        # Step.yaml stores machine types (SPEC, e.g., "qe_scf").
+        # Constitution §B: Persisted truth = SPEC. In-memory model MUST use SPEC types.
+        # No normalization to GEN - use registry mapping for display/filenames when needed.
+        step_type = str(data.get("step_type", "scf"))
         
         parameters = data.get("parameters") or {}
         if not isinstance(parameters, dict):
@@ -278,6 +277,62 @@ STEP_TYPE_MODULE_MAP = {
 }
 
 
+def detect_runtime_control_keys(parameters: Dict[str, Dict[str, Any]]) -> list[str]:
+    """
+    Detect runtime-managed CONTROL keys (prefix, outdir, pseudo_dir) in step parameters.
+    
+    Pure keyword matching - no engine detection, no step_type inspection.
+    
+    Args:
+        parameters: Step parameters dict (section -> {param: value})
+        
+    Returns:
+        List of found runtime keys (e.g., ["prefix", "outdir"])
+    """
+    RUNTIME_KEYS = {"prefix", "outdir", "pseudo_dir"}
+    found_keys = []
+    
+    # Check CONTROL section (case-insensitive)
+    control_section = None
+    for section_name, section_params in parameters.items():
+        if section_name.upper() == "CONTROL":
+            control_section = section_params
+            break
+    
+    if control_section and isinstance(control_section, dict):
+        for key, value in control_section.items():
+            if str(key).lower() in RUNTIME_KEYS:
+                found_keys.append(str(key).lower())
+    
+    return found_keys
+
+
+def stable_short_calc_prefix(ulid: str) -> str:
+    """
+    Generate a stable, short prefix for QE CONTROL.prefix from calculation ULID.
+    
+    Stable prefix derived from calc ULID; slug changes do not affect it.
+    This ensures QE file reuse works correctly even if user changes calculation slug.
+    
+    Args:
+        ulid: Calculation ULID string (e.g., "01KEZRANCNA0E0C40Y5EPTB4B2")
+        
+    Returns:
+        Short prefix string: "qv" + last 6 characters of ULID (lowercase)
+        Example: "qv5epb4b2" for ULID "01KEZRANCNA0E0C40Y5EPTB4B2"
+    """
+    if not ulid or len(ulid) < 6:
+        raise ValueError(f"ULID must be at least 6 characters, got: {ulid}")
+    
+    # Extract last 6 characters and convert to lowercase
+    suffix = ulid[-6:].lower()
+    
+    # Ensure QE-safe characters (alphanumeric only)
+    # ULID uses base32 encoding (0-9, A-Z), so lowercase is safe
+    # Prefix with "qv" to make it clearly a QuantumVITAS-generated prefix
+    return "qv" + suffix
+
+
 def _inject_calculation_prefix_outdir(
     qe_input: QEInput,
     step_type: str,
@@ -290,7 +345,7 @@ def _inject_calculation_prefix_outdir(
     R2-R4: Inject calculation-level prefix/outdir into QE input if schema supports it.
     
     This implements the calculation-level prefix/outdir propagation rule:
-    - R1: Canonical prefix = calculation.meta.slug (passed as calculation_prefix)
+    - R1: Canonical prefix = stable id-derived prefix (from calculation.meta.id ULID)
     - R2: Only inject if the step's QE module schema defines prefix/outdir parameters
     - R3: Step-level prefix/outdir in spec_params are ignored (overridden by calculation-level)
     - R4: Outdir defaults to "./outdir" if not provided
@@ -298,7 +353,7 @@ def _inject_calculation_prefix_outdir(
     Args:
         qe_input: QEInput object to modify
         step_type: Step type (e.g., "scf", "pw2wannier90")
-        calculation_prefix: Calculation-level prefix (from calculation.meta.slug)
+        calculation_prefix: Calculation-level prefix (stable id-derived prefix from calc ULID)
         calculation_outdir: Calculation-level outdir (defaults to "./outdir")
         spec_params: Step spec parameters (to detect ignored step-level prefix/outdir)
         logger: Logger instance for diagnostic messages
@@ -338,7 +393,7 @@ def _inject_calculation_prefix_outdir(
         ignored_step_prefix = flat_spec_params["prefix"]
         logger.info(
             f"[PREFIX_INJECTION] Step-level prefix '{ignored_step_prefix}' will be ignored, "
-            f"calculation prefix '{calculation_prefix}' takes precedence"
+            f"stable id-derived prefix '{calculation_prefix}' takes precedence"
         )
     
     if "outdir" in flat_spec_params and calculation_outdir:
@@ -362,7 +417,7 @@ def _inject_calculation_prefix_outdir(
             # R3: Override any existing prefix (step-level is ignored)
             namelist.parameters["prefix"] = calculation_prefix
             logger.info(
-                f"[PREFIX_INJECTION] Injected calculation prefix '{calculation_prefix}' "
+                f"[PREFIX_INJECTION] Injected stable id-derived prefix '{calculation_prefix}' "
                 f"into {target_section}.prefix (step_type={step_type}, module={module.value})"
             )
     
@@ -688,7 +743,11 @@ def materialize_step_spec(
     
     PYSCF_STEP_TYPES = {"pyscf_scf", "pyscf_mp2", "pyscf_td", "pyscf_analysis", "pyscf_freq"}
     is_pyscf_step = step_type_lower in PYSCF_STEP_TYPES or calculation_engine_family == "pyscf"
-    
+
+    # Phase 3C: ORCA step types - ORCA engine builds input dynamically (not QE input)
+    ORCA_STEP_TYPES = {"orca_scf", "orca_hf", "orca_td", "orca_mp2", "orca_opt", "orca_freq"}
+    is_orca_step = step_type_lower in ORCA_STEP_TYPES or calculation_engine_family == "orca"
+
     import logging
     logger = logging.getLogger(__name__)
     
@@ -889,7 +948,8 @@ def materialize_step_spec(
                         config = load_project_config(project_root_path)
                         resolver = make_structure_selector_resolver(project_root_path, config=config)
                         calc_model = load_calculation(calc_yaml_path, project_root=project_root_path, resolve_structure_selector=resolver)
-                        calc_prefix = calc_model.meta.slug if calc_model.meta else None
+                        # Stable prefix derived from calc ULID; slug changes do not affect it
+                        calc_prefix = stable_short_calc_prefix(calc_model.meta.id) if calc_model.meta and calc_model.meta.id else None
                 except Exception:
                     pass
             
@@ -901,7 +961,7 @@ def materialize_step_spec(
                 if "prefix" in flat_params and flat_params["prefix"] != calc_prefix:
                     logger.info(
                         f"[PREFIX_INJECTION] Step-level prefix '{flat_params['prefix']}' ignored, "
-                        f"using calculation prefix '{calc_prefix}' for pw2wannier90"
+                        f"using stable id-derived prefix '{calc_prefix}' for pw2wannier90"
                     )
             else:
                 pw2wan_input.prefix = flat_params.get("prefix", "pwscf")
@@ -975,7 +1035,29 @@ def materialize_step_spec(
         generated_input.parent.mkdir(parents=True, exist_ok=True)
         # Don't write a file - PySCF engine builds input dynamically
         return generated_input, spec_obj
-    
+
+    # Phase 3C: ORCA steps - no QE input file generation (ORCA engine builds input dynamically)
+    # ORCA uses molecular systems (Molecule), not periodic structures - cannot use qe_input_from_structure()
+    if is_orca_step:
+        logger.info(
+            f"[MATERIALIZE_STEP_SPEC] ORCA step detected: step_type={step_type_lower}, "
+            f"engine_family={calculation_engine_family}, skipping QE input generation. "
+            f"ORCA engine will build input dynamically from structure + parameters."
+        )
+        # Generate a dummy input file path (ORCA engine doesn't use it, but Step.input_file requires a path)
+        from quantumvitas.calculation.naming import CalculationFileNaming
+        if input_name:
+            filename = input_name
+        else:
+            ext = CalculationFileNaming.input_extension(step_type_lower)
+            filename = f"{step_type_lower}{ext}"
+
+        generated_input = Path(output_dir) / filename
+        generated_input = generated_input.resolve()
+        generated_input.parent.mkdir(parents=True, exist_ok=True)
+        # Don't write a file - ORCA engine builds input dynamically
+        return generated_input, spec_obj
+
     # QE PATH: Standard QE input generation (existing logic)
     structure = _resolve_structure_for_spec(
         spec_obj,
@@ -1006,8 +1088,9 @@ def materialize_step_spec(
                 if calculation_engine_family is None:
                     calculation_engine_family = calc_model.engine_family
                 calculation_species_map = calc_model.species_map
-                # R1: Canonical prefix = calculation.meta.slug
-                calculation_prefix = calc_model.meta.slug if calc_model.meta else None
+                # R1: Canonical prefix = stable id-derived prefix (from calc ULID)
+                # Stable prefix derived from calc ULID; slug changes do not affect it
+                calculation_prefix = stable_short_calc_prefix(calc_model.meta.id) if calc_model.meta and calc_model.meta.id else None
                 calculation_context["calculation_path"] = str(calc_yaml_path)
                 calculation_context["species_map"] = calc_model.species_map
                 calculation_context["prefix"] = calculation_prefix

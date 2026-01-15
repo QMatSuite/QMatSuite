@@ -189,9 +189,12 @@ def parse_structure_from_scf(scf_content: str) -> Dict[str, Any]:
 
 def create_step_spec(step_type: str, index: int, seedname: str, params: Optional[Dict] = None, cards: Optional[Dict] = None, calc_name: str = "") -> Dict[str, Any]:
     """Create a step specification dictionary.
-    
+
+    Constitution §B: Persisted truth must be SPEC format (machine type).
+    GEN types are converted to SPEC types for persistence.
+
     Args:
-        step_type: Step type (scf, nscf, w90_preproc, etc.)
+        step_type: Step type (scf, nscf, w90_preproc, etc.) - may be GEN or SPEC
         index: Step index in calculation
         seedname: Seedname for input files
         params: Step parameters (namelist sections) - NO prefix/outdir, NO pseudo mapping
@@ -199,8 +202,17 @@ def create_step_spec(step_type: str, index: int, seedname: str, params: Optional
         calc_name: Calculation slug for path generation
     """
     step_id = generate_ulid()
-    
-    # Determine input file name based on step type
+
+    # Convert GEN types to SPEC types for persistence (Constitution §B)
+    gen_to_spec = {
+        "scf": "qe_scf",
+        "nscf": "qe_nscf",
+        "pw2wannier90": "qe_pw2wannier90",
+        # w90_preproc and w90_run are already SPEC format
+    }
+    machine_type = gen_to_spec.get(step_type, step_type)
+
+    # Determine input file name based on step type (use original name for paths)
     if step_type == "scf":
         input_name = f"{seedname}.scf"
     elif step_type == "nscf":
@@ -213,18 +225,18 @@ def create_step_spec(step_type: str, index: int, seedname: str, params: Optional
         input_name = f"{seedname}.win"
     else:
         input_name = f"{seedname}.{step_type}"
-    
+
     calc_slug = calc_name if calc_name else f"{seedname}-mlwfs"
-    
+
     spec = {
         "meta": {
             "id": step_id,
-            "name": step_type,  # Use step_type as name (simpler)
+            "name": step_type,  # Keep original name for display
             "slug": step_type,
             "path": f"calculations/{calc_slug}/steps/{step_type}.step.yaml",
             "kind": "step",
         },
-        "step_type": step_type,
+        "step_type": machine_type,  # SPEC type (machine type) for persistence
         "index": index,
     }
     

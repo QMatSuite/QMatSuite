@@ -48,12 +48,77 @@ def compute_io_dir_from_calculation_model(calculation_dir: Path, working_dir_nam
 
 
 def _coerce_step_type(value) -> StepType:
+    """
+    Coerce a step type string to StepType enum.
+
+    Handles both GEN types (e.g., "scf") and SPEC types (e.g., "qe_scf")
+    by using registry lookup to convert SPEC to GEN when needed.
+    """
     if isinstance(value, StepType):
         return value
+
+    # Try direct conversion (works for GEN types like "scf")
     try:
         return StepType(value)
+    except (ValueError, KeyError):
+        pass
+
+    # If direct conversion failed, try registry lookup for SPEC types
+    # SPEC type like "qe_scf" -> public_type "scf" -> StepType.SCF
+    try:
+        from quantumvitas.workflow.registry import get_registry
+        reg = get_registry()
+        spec = reg.get(str(value))
+        if spec and spec.public_type:
+            return StepType(spec.public_type)
     except Exception:
-        return StepType.CUSTOM
+        pass
+
+    return StepType.CUSTOM
+
+
+def _get_engine_family_from_step(step) -> Optional[str]:
+    """
+    Determine engine family from a step using registry lookup.
+
+    Constitution §C: Must use explicit registry mapping, NOT prefix inference.
+    Uses StepTypeSpec.engine to determine family.
+
+    Args:
+        step: A Step object with step_type attribute
+
+    Returns:
+        Engine family string ("qe", "pyscf", "orca") or None if unknown
+    """
+    if not step or not step.step_type:
+        return None
+
+    # Get the step type string (may be StepType enum or string)
+    step_type_str = str(step.step_type.value) if hasattr(step.step_type, 'value') else str(step.step_type)
+
+    # Look up in registry to get the engine
+    try:
+        from quantumvitas.workflow.registry import get_registry
+        reg = get_registry()
+        spec = reg.get(step_type_str)
+        if spec and spec.engine:
+            # Map engine member to engine family
+            engine = spec.engine.lower()
+            # QE family: qe, w90
+            if engine in ("qe", "w90"):
+                return "qe"
+            # PySCF family
+            elif engine == "pyscf":
+                return "pyscf"
+            # ORCA family
+            elif engine == "orca":
+                return "orca"
+            # Unknown engine - return as-is
+            return engine
+    except Exception:
+        pass
+
+    return None
 
 
 class CalculationRunner:
@@ -71,12 +136,13 @@ class CalculationRunner:
         skip_history: bool = False,
         run_id: Optional[str] = None,
         run_mode: str = "incremental",  # "incremental" or "full"
+        target_step_id: Optional[str] = None,  # For Run Step mode (TARGET selection)
     ) -> CalculationResult:
         """
         Execute all steps in a calculation.
-        
-        Supports incremental and full run modes.
-        
+
+        Supports incremental and full run modes, and TARGET selection mode for Run Step.
+
         Args:
             calculation: The calculation to execute
             skip_history: If True, skip history recording (for testing)
@@ -86,7 +152,9 @@ class CalculationRunner:
             run_mode: Run mode ("incremental" or "full"). Default "incremental".
                      Incremental skips steps that are already done and unchanged.
                      Full reruns all steps from step0.
-            
+            target_step_id: If provided, only run steps up to and including this target
+                           (Run Step mode with TARGET selection). Target step always runs.
+
         Returns:
             CalculationResult with status and step summaries
         """
@@ -118,6 +186,7 @@ class CalculationRunner:
                 refresh_calc_pseudo_records_after_step0,
             )
             
+            report = None
             try:
                 selections = species_map_to_selections(
                     calculation.project.root,
@@ -130,22 +199,59 @@ class CalculationRunner:
                         calculation.project.root,
                         selections,
                     )
-                    
-                    # Refresh calc records with actual file info
-                    refresh_calc_pseudo_records_after_step0(
-                        calculation.project.root,
-                        calculation.dir,
-                        calculation.species_map or {},
-                    )
-                    
-                    # Log warnings if any
-                    if report.warnings:
-                        # TODO: Consider logging these warnings somewhere visible
-                        pass
+                else:
+                    # No selections to prepare, but still need to refresh records
+                    report = None
             except Exception as e:
-                # Step0 failure: mark calculation as failed
+                # Step0 preparation failed, but still refresh records from existing files
+                # This allows updating pseudo_set_sha even if pseudo preparation fails
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Step0 pseudo preparation failed (non-blocking): {e}")
+                report = None
+            
+            # Refresh calc records with actual file info and update pseudo_set_sha
+            # (refresh_calc_pseudo_records_after_step0 now handles pseudo_set_sha update)
+            # This runs even if selections is empty or preparation failed (to update SHA from existing files)
+            try:
+                refresh_calc_pseudo_records_after_step0(
+                    calculation.project.root,
+                    calculation.dir,
+                    calculation.species_map or {},
+                )
+            except Exception as e:
+                # Refresh failure: mark calculation as failed
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Step0 refresh failed: {e}")
                 calculation_failed = True
                 status = StepStatus.FAILED
+                step_summaries.append(StepResultSummary(
+                    step_id="step0",
+                    step_type=StepType.CUSTOM,
+                    status=StepStatus.FAILED,
+                    working_dir=calculation.raw_dir,
+                    input_file=Path(),
+                    output_file=Path(),
+                    reference_file=None,
+                    message=f"Step0 pseudo refresh failed: {e}",
+                    metrics={},
+                ))
+                # Don't proceed to QE steps if Step0 refresh failed
+                return CalculationResult(
+                    calculation_id=calculation.id,
+                    status=status,
+                    started=started,
+                    finished=datetime.now(timezone.utc),
+                    step_summaries=step_summaries,
+                    io_dir=calculation.raw_dir.resolve() if calculation.raw_dir else None,
+                    run_id=actual_run_id,
+                )
+            
+            # Log warnings if any
+            if report and report.warnings:
+                # TODO: Consider logging these warnings somewhere visible
+                pass
                 step_summaries.append(StepResultSummary(
                     step_id="step0",
                     step_type=StepType.CUSTOM,
@@ -263,117 +369,20 @@ class CalculationRunner:
             except Exception as e:
                 logger.warning(f"[CALCULATION_RUNNER] Full run manifest reconciliation failed: {e}, proceeding anyway")
                 start_idx = 0
-        
-        # Execute steps from start_idx
-        for step_idx, step in enumerate(calculation.steps):
-            # Skip steps before start_idx (already done in incremental mode)
-            if step_idx < start_idx:
-                # Check if step should be skipped based on manifest
-                # Per spec: skip if kind + three SHAs + done==true all match
-                # Note: reconcile_manifest already verified SHAs and set done=true only if they matched,
-                # so we can trust entry.done=true means SHAs match. But we still verify to be safe.
-                if manifest and step_idx < len(manifest.steps):
-                    entry = manifest.steps[step_idx]
-                    step_kind = str(step.step_type.value) if step.step_type else "unknown"
-                    
-                    # Quick check: if done=false, don't skip
-                    if not entry.done:
-                        # Shouldn't happen if reconcile worked, but continue to execute
-                        continue
-                    
-                    # Verify kind matches (must match for skip)
-                    if entry.kind != step_kind:
-                        # Kind mismatch - shouldn't happen if reconcile worked, but continue to execute
-                        logger.warning(
-                            f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) manifest kind mismatch: "
-                            f"expected={step_kind}, manifest={entry.kind}, executing anyway"
-                        )
-                        continue
-                    
-                    # Verify SHAs match (reconcile should have done this, but double-check)
-                    # Only check if we're in incremental mode and have the manifest values
-                    from quantumvitas.calculation.hash_utils import compute_step_sha
-                    from quantumvitas.core.yamldoc import StepDoc
-                    from quantumvitas.core.resolution import require_step
-                    
-                    step_sha_current = ""
-                    try:
-                        from quantumvitas.core.project_utils import load_project_config
-                        config = load_project_config(calculation.project.root)
-                        step_resolved = require_step(
-                            calculation.project.root,
-                            calculation.id,
-                            step.meta.id,
-                            config=config,
-                            index=None,
-                        )
-                        step_doc_dict = StepDoc.load(step_resolved.absolute_path).to_dict()
-                        step_sha_current = compute_step_sha(step_doc_dict)
-                    except Exception as e:
-                        logger.debug(f"Failed to compute step_sha for skip check: {e}")
-                    
-                    # Verify SHAs match (should match since reconcile set done=true, but verify)
-                    shas_match = (
-                        entry.step_sha == step_sha_current
-                    )  # pseudo_set_sha and structure_sha are same for all steps, checked in reconcile
-                    
-                    if shas_match and entry.done:
-                        # All conditions met: skip this step
-                        step_type = _coerce_step_type(step.step_type) if step.step_type else StepType.CUSTOM
-                        logger.info(f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}, type={step_type}) SKIPPED (already done, inputs unchanged)")
-                        summary = StepResultSummary(
-                            step_id=step.meta.id,
-                            step_type=step_type,
-                            status=StepStatus.SUCCESS,  # Mark as success (already done)
-                            working_dir=calculation.raw_dir,
-                            input_file=step.input_file if hasattr(step, 'input_file') else Path(),
-                            output_file=Path(),  # Output file exists but we don't track it here
-                            reference_file=step.reference_output,
-                            message="Step skipped: already completed with unchanged inputs (incremental run)",
-                            metrics={},
-                        )
-                        step_summaries.append(summary)
-                        continue
-                    else:
-                        # SHAs don't match or not done - shouldn't happen if reconcile worked
-                        if entry.done:
-                            logger.warning(
-                                f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) manifest says done=true but step_sha mismatch "
-                                f"(manifest={entry.step_sha[:16]}..., current={step_sha_current[:16] if step_sha_current else 'N/A'}...), "
-                                f"executing anyway"
-                            )
-                        # Continue to execute this step
-            # If a previous step failed in strict mode, mark remaining steps as SKIPPED
-            if calculation_failed:
-                step_type = _coerce_step_type(step.step_type) if step.step_type else StepType.CUSTOM
-                logger.warning(
-                    f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}, type={step_type}) SKIPPED because calculation_failed=True"
-                )
-                summary = StepResultSummary(
-                    step_id=step.meta.id,
-                    step_type=step_type,
-                    status=StepStatus.SKIPPED,
-                    working_dir=calculation.raw_dir,
-                    input_file=step.input_file if hasattr(step, 'input_file') else Path(),
-                    output_file=Path(),
-                    reference_file=step.reference_output,
-                    message="Step skipped because a previous step failed",
-                    metrics={},
-                )
-                step_summaries.append(summary)
-                continue
 
-            # E. Logging: Only essential info at INFO level
-            step_type_str = str(step.step_type.value) if step.step_type else "unknown"
-            logger.info(f"[CALCULATION_RUNNER] Entering step: {step.meta.slug} (ulid={step.meta.id}, type={step_type_str})")
-            
-            # Update manifest BEFORE execution (set started_at, done=false, run_id)
-            # This happens for all steps >= start_idx (incremental or full mode)
-            from quantumvitas.calculation.manifest import (
-                update_manifest_step,
-                now_iso8601,
-                load_manifest,
-            )
+        # =====================================================================
+        # NEW JOBGRAPH EXECUTION PATH
+        # =====================================================================
+        # Use the new JobGraph-based execution for all engine families.
+        # This provides unified Run Calc / Run Step with selection mode.
+        # =====================================================================
+
+        # Compute step SHAs for all steps (needed for JobGraph fingerprinting)
+        step_shas: Dict[str, str] = {}
+        structure_sha_computed = ""
+        pseudo_sha_computed = ""
+
+        try:
             from quantumvitas.calculation.hash_utils import (
                 compute_step_sha,
                 compute_structure_sha,
@@ -381,13 +390,14 @@ class CalculationRunner:
             )
             from quantumvitas.core.yamldoc import StepDoc
             from quantumvitas.core.resolution import require_step, require_structure
-            
-            # Recompute SHAs for this step (should match what was used in reconciliation)
+            from quantumvitas.core.project_utils import load_project_config
+
+            # Compute pseudo_set_sha
             project_pseudo_dir = calculation.project.root / "pseudo"
             species_map = calculation.species_map or {}
-            current_pseudo_sha = compute_pseudo_set_sha(project_pseudo_dir, species_map) if species_map else ""
-            
-            structure_sha = ""
+            pseudo_sha_computed = compute_pseudo_set_sha(project_pseudo_dir, species_map) if species_map else ""
+
+            # Compute structure_sha
             if calculation.structure_id:
                 try:
                     structure_resolved = require_structure(
@@ -396,291 +406,266 @@ class CalculationRunner:
                         config=None,
                         index=None,
                     )
-                    structure_sha = compute_structure_sha(structure_resolved.absolute_path)
+                    structure_sha_computed = compute_structure_sha(structure_resolved.absolute_path)
                 except Exception as e:
-                    logger.warning(f"Failed to compute structure_sha: {e}")
-            
-            step_sha = ""
-            try:
-                from quantumvitas.core.project_utils import load_project_config
-                config = load_project_config(calculation.project.root)
-                step_resolved = require_step(
-                    calculation.project.root,
-                    calculation.id,
-                    step.meta.id,
-                    config=config,
-                    index=None,
-                )
-                step_doc_dict = StepDoc.load(step_resolved.absolute_path).to_dict()
-                step_sha = compute_step_sha(step_doc_dict)
-            except Exception as e:
-                logger.warning(f"Failed to compute step_sha for step {step.meta.slug} (ulid={step.meta.id}): {e}")
-            
-            # Update manifest entry: set started_at, done=false, run_id
-            update_manifest_step(
-                calc_dir=calculation.dir,
-                step_index=step_idx,
-                kind=step_type_str,
-                step_ulid=step.meta.id,
-                pseudo_set_sha=current_pseudo_sha,
-                structure_sha=structure_sha,
-                step_sha=step_sha,
-                run_id=run_id,
-                done=False,
-                started_at=now_iso8601(),
-                done_at=None,
-            )
-            
-            # CLARIFIED CONTRACT: Execution routing uses step.yaml machine step_type, NOT calculation.engine_family
-            # engine_family is ONLY for materialization-time selection
-            from quantumvitas.workflow.registry import resolve_engine_for_step
-            from pathlib import Path
-            
-            # Resolve engine from step.yaml machine step_type
-            # step.meta.path is relative to project root, so construct absolute path
-            step_yaml_path = calculation.project.root / step.meta.path if step.meta.path else None
-            if not step_yaml_path or not step_yaml_path.exists():
-                # Fallback: use step.engine (for backwards compatibility with legacy steps)
-                engine_name = step.engine
-                logger.warning(
-                    f"[CALCULATION_RUNNER] Step YAML not found at {step_yaml_path}, "
-                    f"using step.engine='{engine_name}' as fallback"
-                )
-            else:
+                    logger.warning(f"[CALCULATION_RUNNER] Failed to compute structure_sha: {e}")
+
+            # Compute step SHAs for all steps
+            config = load_project_config(calculation.project.root)
+            for step in calculation.steps:
                 try:
-                    engine_name = resolve_engine_for_step(step_yaml_path=step_yaml_path)
-                    logger.debug(
-                        f"[CALCULATION_RUNNER] Resolved engine='{engine_name}' from step.yaml machine step_type"
+                    step_resolved = require_step(
+                        calculation.project.root,
+                        calculation.id,
+                        step.meta.id,
+                        config=config,
+                        index=None,
                     )
-                except ValueError as e:
-                    # Unknown machine step type - raise error (no "custom" fallback per contract)
-                    raise ValueError(
-                        f"Failed to resolve engine for step {step.meta.id}: {e}. "
-                        f"This step type is not supported."
-                    ) from e
-            
-            engine = self.engine_registry.get(engine_name)
-            # Use compute_io_dir_from_calculation_model to ensure consistency with server-side planned_io_dir
-            # calculation.raw_dir uses the same logic (calculation_dir / working_dir, default "raw")
-            raw_dir = calculation.raw_dir
-            raw_dir.mkdir(parents=True, exist_ok=True)
+                    step_doc_dict = StepDoc.load(step_resolved.absolute_path).to_dict()
+                    step_shas[step.meta.id] = compute_step_sha(step_doc_dict)
+                except Exception as e:
+                    logger.debug(f"[CALCULATION_RUNNER] Failed to compute SHA for step {step.meta.id}: {e}")
+                    step_shas[step.meta.id] = ""
 
-            # Phase 3C: Create per-step artifact directory
-            step_artifacts_dir = raw_dir / "step_artifacts" / step.meta.id
-            step_artifacts_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Phase 3C: Clear step artifacts directory before execution (keep only newest results)
-            import shutil
-            if step_artifacts_dir.exists():
-                for item in step_artifacts_dir.iterdir():
-                    if item.is_file():
-                        item.unlink()
-                    elif item.is_dir():
-                        shutil.rmtree(item)
+        except Exception as e:
+            logger.warning(f"[CALCULATION_RUNNER] Failed to compute SHAs for JobGraph: {e}")
 
-            # Phase 3C: Inject run_mode into step.options for engine access
-            if not hasattr(step, 'options'):
-                step.options = {}
-            step.options['run_mode'] = run_mode
-            step.options['step_artifacts_dir'] = str(step_artifacts_dir)  # Pass artifacts dir to engine
-            
-            # Phase 3C: Pass structure_id and project_root to PySCF engine (for canonical structure resolution)
-            if engine_name == "pyscf" and calculation.structure_id:
-                step.options['structure_id'] = calculation.structure_id
-                step.options['project_root'] = str(calculation.project.root)
-
-            # Execute step with exception handling
-            try:
-                result = step.run(
-                    engine=engine,
-                    calculation_raw_dir=raw_dir,
-                    project_root=calculation.project.root,
-                    species_map=calculation.species_map,
-                )
-                # E. Logging: Essential info only
-                logger.debug(
-                    f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) run() completed: "
-                    f"success={result.success}, returncode={getattr(result, 'return_code', 'N/A')}, "
-                    f"output_file={result.output_file.name if result.output_file else None}"
-                )
-            except Exception as e:
-                import traceback
-                tb_str = traceback.format_exc()
-                logger.exception(
-                    f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) run() raised exception: {type(e).__name__}: {e}"
-                )
-                # Create a failed StepResult from the exception
-                from quantumvitas.engine.base import StepResult
-                result = StepResult(
-                    step_type=step_type_str,
-                    input_file=getattr(step, 'input_file', Path()),
-                    success=False,
-                    error=f"{type(e).__name__}: {str(e)}\n\nTraceback:\n{tb_str[:500]}",  # First 500 chars of traceback
-                    return_code=-1,
-                )
-            
-            # E. Evaluation must not fail if output_file doesn't exist
-            # For Wannier90 steps, output_file is the artifact (<seed>.wout), not stdout
-            # For QE steps, we can use output_file if available, or fall back to stdout
-            output_text = ""
-            wannier90_step_types = {"w90_preproc", "w90_run", "pw2wannier90"}
-            is_wannier90_step = result.step_type and str(result.step_type).lower() in wannier90_step_types
-            
-            if is_wannier90_step:
-                # For Wannier90 steps, use stdout field (from capture file) for evaluation
-                # output_file points to artifact (<seed>.wout), not stdout
-                output_text = result.stdout if result.stdout else ""
-                logger.debug(f"[CALCULATION_RUNNER] Wannier90 step: using stdout field ({len(output_text)} chars) for evaluation")
-                if result.output_file:
-                    logger.debug(f"[CALCULATION_RUNNER] Primary artifact: {result.output_file} (exists={result.output_file.exists()})")
-            else:
-                # For QE steps, try to read from output_file
-                if result.output_file and result.output_file.exists():
-                    try:
-                        output_text = result.output_file.read_text()
-                        logger.debug(f"[CALCULATION_RUNNER] Read {len(output_text)} chars from output_file: {result.output_file}")
-                    except Exception as e:
-                        logger.warning(f"[CALCULATION_RUNNER] Failed to read output_file {result.output_file}: {e}")
-                        # Fall back to stdout field
-                        output_text = result.stdout if result.stdout else ""
-                else:
-                    # Fall back to stdout field if output_file doesn't exist
-                    output_text = result.stdout if result.stdout else ""
-                    logger.debug(
-                        f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) output_file not available, using stdout field: "
-                        f"output_file={result.output_file}, stdout_length={len(output_text)}"
-                    )
-            
-            step_mode = StepMode.STRICT if calculation.mode == StepMode.STRICT else step.mode
-
-            step_type = _coerce_step_type(result.step_type)
-            
-            # E. Wrap evaluation in try/except to prevent silent abort
-            try:
-                step_status, message, metrics = evaluate_step_result(
-                    mode=step_mode,
-                    step_type=step_type,
-                    output_text=output_text,
-                    reference_file=step.reference_output,
-                    step_result_return_code=getattr(result, 'return_code', None),
-                    step_result_success=getattr(result, 'success', None),
-                )
-                logger.debug(f"[CALCULATION_RUNNER] Evaluation completed: step_status={step_status}, message={message[:100]}")
-            except Exception as e:
-                import traceback
-                tb_str = traceback.format_exc()
-                logger.exception(f"[CALCULATION_RUNNER] Evaluation raised exception: {type(e).__name__}: {e}")
-                # On evaluation failure, use result.success as primary indicator
-                if result.success:
-                    step_status = StepStatus.SUCCESS
-                    message = f"Step completed successfully (evaluation exception: {type(e).__name__})"
-                else:
-                    step_status = StepStatus.FAILED
-                    message = f"Step failed (evaluation exception: {type(e).__name__}: {str(e)})\n\nTraceback:\n{tb_str[:500]}"
-                metrics = {}
-            
-            # E. Logging: Evaluation results at DEBUG level
-            logger.debug(
-                f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}) evaluation: step_status={step_status}, "
-                f"message_length={len(message) if message else 0}"
+        # Execute using JobGraph pipeline
+        try:
+            step_summaries = self._execute_with_jobgraph(
+                calculation,
+                run_id=run_id,
+                run_mode=run_mode,
+                target_step_id=target_step_id,
+                manifest=manifest,
+                step_shas=step_shas,
+                structure_sha=structure_sha_computed,
+                pseudo_set_sha=pseudo_sha_computed,
             )
-            
-            # E. Logging: Failure messages concise at INFO level
-            if step_status != StepStatus.SUCCESS:
-                # Enhance message with return code and stderr reference
-                enhanced_message = message
-                if hasattr(result, 'return_code') and result.return_code is not None:
-                    enhanced_message += f" [return_code={result.return_code}]"
-                # Reference stderr file instead of embedding content at INFO level
-                if hasattr(result, 'stderr_file') and result.stderr_file:
-                    enhanced_message += f" (see {result.stderr_file.name})"
-                elif hasattr(result, 'stderr') and result.stderr:
-                    # Fallback: include last 50 lines if stderr_file not available
-                    stderr_preview = result.stderr[-500:] if len(result.stderr) > 500 else result.stderr
-                    enhanced_message += f"\n\nStderr preview:\n{stderr_preview}"
-                if result.error:
-                    enhanced_message += f"\n\nError: {result.error}"
-                message = enhanced_message
-                logger.warning(f"[CALCULATION_RUNNER] Step {step.meta.slug} (ulid={step.meta.id}, type={step_type_str}) failed: {message[:150]}")
-            
-            combined_metrics = dict(getattr(result, "parsed_output", {}) or {})
-            for key, value in (metrics or {}).items():
-                if value is not None:
-                    combined_metrics[key] = value
-            summary = StepResultSummary(
-                step_id=step.meta.id,
-                step_type=step_type,
-                status=step_status,
-                working_dir=raw_dir,
-                input_file=result.input_file,
-                output_file=result.output_file,
-                reference_file=step.reference_output,
-                message=message,
-                metrics=combined_metrics,
-            )
-            step_summaries.append(summary)
-            
-            # Update manifest after step execution: set done flag and done_at
-            if step_status == StepStatus.SUCCESS:
-                # Reload manifest to get current started_at
-                manifest = load_manifest(calculation.dir)
-                started_at_value = None
-                if manifest and step_idx < len(manifest.steps):
-                    started_at_value = manifest.steps[step_idx].started_at
-                if not started_at_value:
-                    started_at_value = now_iso8601()
-                
-                update_manifest_step(
-                    calc_dir=calculation.dir,
-                    step_index=step_idx,
-                    kind=step_type_str,
-                    step_ulid=step.meta.id,
-                    pseudo_set_sha=current_pseudo_sha,
-                    structure_sha=structure_sha,
-                    step_sha=step_sha,
-                    run_id=run_id,
-                    done=True,
-                    started_at=started_at_value,
-                    done_at=now_iso8601(),
-                )
-            # On failure: done=false is already set, no need to update again
 
-            if step_status != StepStatus.SUCCESS:
-                prev_failed = calculation_failed
-                status = StepStatus.FAILED
-                calculation_failed = True
-                logger.debug(f"[CALCULATION_RUNNER] calculation_failed: {prev_failed} -> {calculation_failed}")
-                # On failure: done=false is already set in manifest, but abort run
-                if calculation.mode == StepMode.STRICT:
-                    logger.info(f"[CALCULATION_RUNNER] Strict mode: stopping after step {step.meta.slug} (ulid={step.meta.id}) failure")
-                    # In strict mode, stop execution and mark remaining steps as SKIPPED
+            # Determine overall status
+            status = StepStatus.SUCCESS
+            for summary in step_summaries:
+                if summary.status == StepStatus.FAILED:
+                    status = StepStatus.FAILED
                     break
 
-        finished = datetime.now(timezone.utc)
-        # Get the actual I/O directory used by the runner (source of truth)
-        io_dir = calculation.raw_dir.resolve() if calculation.raw_dir else None
-        
-        # History: Complete run revision and record run_finished event
-        if not skip_history and actual_run_id:
-            self._complete_history_recording(
-                calculation=calculation,
-                run_id=actual_run_id,
+            finished = datetime.now(timezone.utc)
+            io_dir = calculation.raw_dir.resolve() if calculation.raw_dir else None
+
+            # History: Complete run revision
+            if not skip_history and actual_run_id:
+                self._complete_history_recording(
+                    calculation=calculation,
+                    run_id=actual_run_id,
+                    status=status,
+                    step_summaries=step_summaries,
+                    working_dir=io_dir,
+                )
+
+            return CalculationResult(
+                calculation_id=calculation.id,
+                mode=calculation.mode,
+                steps=step_summaries,
                 status=status,
-                step_summaries=step_summaries,
-                working_dir=io_dir,
+                started_at=started,
+                finished_at=finished,
+                io_dir=io_dir,
+                run_id=actual_run_id,
             )
-        
-        return CalculationResult(
-            calculation_id=calculation.id,
-            mode=calculation.mode,
-            steps=step_summaries,
-            status=status,
-            started_at=started,
-            finished_at=finished,
-            io_dir=io_dir,  # The actual I/O directory used by the runner
-            run_id=actual_run_id,  # Include run_id for history reference (== job_id when provided)
+
+        except Exception as e:
+            # No fallback to legacy loop - JobGraph execution is the only path
+            # Constitution §C mandates unified pipeline via JobGraph
+            logger.exception(f"[CALCULATION_RUNNER] JobGraph execution failed: {e}")
+            raise
+
+    def _execute_with_jobgraph(
+        self,
+        calculation: Calculation,
+        *,
+        run_id: str,
+        run_mode: str,
+        target_step_id: Optional[str],
+        manifest: Optional[Any],
+        step_shas: Dict[str, str],
+        structure_sha: str,
+        pseudo_set_sha: str,
+    ) -> List[StepResultSummary]:
+        """
+        Execute calculation using JobGraph and JobExecutor pipeline.
+
+        This is the new unified execution path for Run Calc and Run Step.
+
+        Args:
+            calculation: Calculation to execute
+            run_id: Run ID for manifest tracking
+            run_mode: "incremental" or "full"
+            target_step_id: If provided, TARGET selection mode
+            manifest: Current manifest (for incremental skip logic)
+            step_shas: Dict of step_ulid -> SHA for fingerprinting
+            structure_sha: Structure SHA for manifest
+            pseudo_set_sha: Pseudo set SHA for manifest
+
+        Returns:
+            List of StepResultSummary for each executed/skipped step
+        """
+        from quantumvitas.execution import (
+            SelectionMode,
+            JobExecutor,
         )
-    
+        from quantumvitas.execution.recipes import get_recipe_for_engine
+        from quantumvitas.execution.handlers import create_handler_map
+        from quantumvitas.calculation.manifest import (
+            update_manifest_step,
+            now_iso8601,
+        )
+
+        step_summaries: List[StepResultSummary] = []
+
+        # Determine engine family
+        # Constitution §C: Must use explicit registry lookup, NOT prefix inference
+        engine_family = calculation.engine_family
+        if not engine_family:
+            # Infer from first step using registry lookup (NOT string prefix)
+            if calculation.steps:
+                first_step = calculation.steps[0]
+                engine_family = _get_engine_family_from_step(first_step)
+            if not engine_family:
+                engine_family = "qe"  # Default
+
+        logger.info(f"[CALCULATION_RUNNER] Using JobGraph pipeline with engine_family={engine_family}")
+
+        # Get recipe and materialize JobGraph
+        recipe = get_recipe_for_engine(engine_family)
+        raw_dir = calculation.raw_dir
+        job_graph = recipe.materialize(calculation.steps, raw_dir, step_shas)
+
+        logger.info(f"[CALCULATION_RUNNER] Materialized JobGraph with {len(job_graph)} jobs")
+
+        # Determine selection mode
+        selection = SelectionMode.TARGET if target_step_id else SelectionMode.ALL
+
+        # Create execution context
+        context = {
+            "run_id": run_id,
+            "run_mode": run_mode,
+        }
+
+        # Create handlers
+        handler_map = create_handler_map(self.engine_registry, context)
+
+        # Create executor and execute
+        executor = JobExecutor(engine_handlers=handler_map)
+
+        # For incremental mode, convert manifest to format executor expects
+        manifest_for_executor = manifest
+
+        # Execute
+        result = executor.execute(
+            job_graph=job_graph,
+            calculation=calculation,
+            selection=selection,
+            target_step_id=target_step_id,
+            manifest=manifest_for_executor,
+            step_shas=step_shas,
+        )
+
+        # Convert JobResults to StepResultSummary and update manifest
+        for job_result in result.job_results:
+            job = job_graph.get_job(job_result.job_id)
+            if job is None:
+                continue
+
+            # For each step in this job, create a summary and update manifest
+            for step_idx, step_ulid in enumerate(job.step_ids):
+                step = self._find_step_by_ulid(calculation, step_ulid)
+                if step is None:
+                    continue
+
+                # Find step index in calculation
+                calc_step_idx = self._find_step_index(calculation, step_ulid)
+
+                step_type = _coerce_step_type(step.step_type) if step.step_type else StepType.CUSTOM
+                step_type_str = str(step.step_type.value) if step.step_type else "unknown"
+
+                # Extract input/output from Job (source of truth for GEN filenames)
+                job_input_file = job.input_files[0] if job.input_files else Path()
+                job_output_file = job.expected_outputs[0] if job.expected_outputs else Path()
+
+                if job_result.skipped:
+                    # Step was skipped - use Job fields (expected paths)
+                    summary = StepResultSummary(
+                        step_id=step_ulid,
+                        step_type=step_type,
+                        status=StepStatus.SUCCESS,
+                        working_dir=job.working_dir,
+                        input_file=job_input_file,
+                        output_file=job_output_file,
+                        reference_file=step.reference_output if hasattr(step, 'reference_output') else None,
+                        message="Step skipped: already completed with unchanged inputs (incremental run)",
+                        metrics={},
+                    )
+                else:
+                    # Step was executed
+                    step_success = job_result.success
+                    step_error = job_result.error
+
+                    # For executed steps, prefer actual output from handler if available
+                    if job_result.step_results:
+                        step_result_data = job_result.step_results.get(step_ulid, {})
+                        handler_output_file = step_result_data.get("output_file")
+                        if handler_output_file:
+                            job_output_file = Path(handler_output_file)
+
+                    # Update manifest BEFORE marking as done
+                    if calc_step_idx is not None:
+                        step_sha = step_shas.get(step_ulid, "")
+                        update_manifest_step(
+                            calc_dir=calculation.dir,
+                            step_index=calc_step_idx,
+                            kind=step_type_str,
+                            step_ulid=step_ulid,
+                            pseudo_set_sha=pseudo_set_sha,
+                            structure_sha=structure_sha,
+                            step_sha=step_sha,
+                            run_id=run_id,
+                            done=step_success,
+                            started_at=now_iso8601() if not job_result.started_at else job_result.started_at.isoformat(),
+                            done_at=now_iso8601() if step_success else None,
+                        )
+
+                    summary = StepResultSummary(
+                        step_id=step_ulid,
+                        step_type=step_type,
+                        status=StepStatus.SUCCESS if step_success else StepStatus.FAILED,
+                        working_dir=job.working_dir,
+                        input_file=job_input_file,
+                        output_file=job_output_file,
+                        reference_file=step.reference_output if hasattr(step, 'reference_output') else None,
+                        message=step_error if step_error else "Step completed successfully",
+                        metrics={},
+                    )
+
+                step_summaries.append(summary)
+
+        logger.info(f"[CALCULATION_RUNNER] JobGraph execution complete: success={result.success}, summaries={len(step_summaries)}")
+        return step_summaries
+
+    def _find_step_by_ulid(self, calculation: Calculation, step_ulid: str):
+        """Find a step in calculation by its ULID."""
+        for step in calculation.steps:
+            if step.meta.id == step_ulid:
+                return step
+        return None
+
+    def _find_step_index(self, calculation: Calculation, step_ulid: str) -> Optional[int]:
+        """Find the index of a step in calculation by its ULID."""
+        for idx, step in enumerate(calculation.steps):
+            if step.meta.id == step_ulid:
+                return idx
+        return None
+
     def _start_history_recording(
         self,
         calculation: Calculation,
