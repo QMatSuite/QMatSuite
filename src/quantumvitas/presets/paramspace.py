@@ -11,14 +11,16 @@ This module provides:
 - ParamSpace dataclass with full matrix profiles
 - Generic match_profile() and compile_profile_patch() functions
 - YAML accessors with present vs effective_value distinction
+- Key-access enforcement for lifecycle-wide isolation
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional, Union, Dict
+from typing import Any, Callable, Optional, Union, Dict, Set, Tuple
 import math
+from contextvars import ContextVar
 
 
 class CellType(str, Enum):
@@ -59,20 +61,22 @@ class ParamKey:
     """
     Definition of a parameter key in a ParamSpace.
     
+    ParamSpace operates on IR keys (IR is SSOT). In v0, IR keys == QE keys due to 1:1 mapping,
+    but conceptually ParamSpace only knows about IR keys. QE writer converts IR to QE input.
+    
     Attributes:
-        section: YAML section name (e.g., "SYSTEM", "ELECTRONS", "cards")
+        section: IR YAML section name (e.g., "SYSTEM", "ELECTRONS", "cards")
             In v0, IR sections == QE sections (because IR is QE-equivalent).
-        key: IR parameter key name (conceptually IR, but values same as QE in v0)
-            ParamSpace operates on IR keys internally.
-            IR↔QE translation happens at YAML I/O boundaries (in spaces_registry/variants_registry).
+        key: IR parameter key name (IR is SSOT; in v0, IR keys == QE keys due to 1:1 mapping)
+            ParamSpace operates on IR keys internally. QE writer converts IR to QE input.
         parser: Function to parse raw YAML value (str -> Any)
         canonicalizer: Function to canonicalize value for comparison (Any -> Any)
         tolerance: Optional absolute tolerance for numeric comparison (float)
         aliases: Optional frozenset of (alias, canonical) tuples for hashability
         default: Optional default value if key is missing
     """
-    section: str
-    key: str  # IR key (conceptually; same as QE key in v0)
+    section: str  # IR section (IR is SSOT; in v0, IR sections == QE sections)
+    key: str  # IR key (IR is SSOT; in v0, IR keys == QE keys due to 1:1 mapping)
     parser: Callable[[Any], Any]
     canonicalizer: Callable[[Any], Any]
     tolerance: Optional[float] = None
@@ -117,6 +121,163 @@ class ParamKey:
         return canonical_actual == canonical_expected
 
 
+# ============================================================================
+# Key Access Enforcement (Constitution 10.8.9)
+# ============================================================================
+
+# Context variable for tracking current ParamSpace during operations
+_current_paramspace: ContextVar[Optional["ParamSpace"]] = ContextVar("_current_paramspace", default=None)
+
+
+class KeyAccessError(RuntimeError):
+    """Raised when a ParamSpace attempts to access a key it does not own."""
+    
+    def __init__(
+        self,
+        paramspace_name: str,
+        section: str,
+        key: str,
+        owner_name: Optional[str] = None,
+    ):
+        self.paramspace_name = paramspace_name
+        self.section = section
+        self.key = key
+        self.owner_name = owner_name
+        
+        if owner_name:
+            msg = (
+                f"ParamSpace '{paramspace_name}' attempted to access key '{section}.{key}' "
+                f"which is owned by ParamSpace '{owner_name}'. "
+                f"This violates Constitution 10.8.9.1 (key-access rules)."
+            )
+        else:
+            msg = (
+                f"ParamSpace '{paramspace_name}' attempted to access key '{section}.{key}' "
+                f"which is not owned by any ParamSpace. "
+                f"This violates Constitution 10.8.9.1 (key-access rules)."
+            )
+        super().__init__(msg)
+
+
+# Global registry of all ParamSpaces and their owned keys
+_PARAMSPACE_REGISTRY: Dict[str, Set[Tuple[str, str]]] = {}
+_KEY_OWNERSHIP: Dict[Tuple[str, str], str] = {}  # (section, key) -> paramspace_name
+_REGISTERED_PARAMSPACES: Set[str] = set()  # Track which ParamSpaces have been registered
+
+
+def register_paramspace(paramspace: "ParamSpace", *, allow_variants: bool = False) -> None:
+    """
+    Register a ParamSpace and its owned keys.
+    
+    Per Constitution 10.8.9.2: Key ownership must be unique.
+    Raises RuntimeError if duplicate ownership is detected.
+    
+    Args:
+        paramspace: ParamSpace to register
+        allow_variants: If True, allows variants of the same dimension to share keys.
+            Only canonical ParamSpaces (from get_*_paramspace()) should register.
+            Variants should not register themselves.
+    """
+    # Skip registration if already registered (idempotent)
+    if paramspace.name in _REGISTERED_PARAMSPACES:
+        return
+    
+    owned_keys = paramspace.owned_keys()
+    
+    # Check for duplicate ownership
+    for section, key in owned_keys:
+        if (section, key) in _KEY_OWNERSHIP:
+            existing_owner = _KEY_OWNERSHIP[(section, key)]
+            # Allow if both are variants of the same dimension (they share keys by design)
+            if allow_variants:
+                # Extract dimension from name (e.g., "precision_pw_default" -> "precision")
+                # This is a heuristic - variants should not register themselves
+                continue
+            raise RuntimeError(
+                f"Key ownership conflict: '{section}.{key}' is owned by both "
+                f"'{existing_owner}' and '{paramspace.name}'. "
+                f"This violates Constitution 10.8.9.2 (key ownership uniqueness)."
+            )
+        _KEY_OWNERSHIP[(section, key)] = paramspace.name
+    
+    _PARAMSPACE_REGISTRY[paramspace.name] = owned_keys
+    _REGISTERED_PARAMSPACES.add(paramspace.name)
+
+
+def check_key_access(section: str, key: str, allow_oracle: bool = False) -> None:
+    """
+    Check if current ParamSpace is allowed to access the given key.
+    
+    Per Constitution 10.8.9.1:
+    - ParamSpace can only access its owned keys
+    - Or keys exposed via Oracle (semantic prerequisites)
+    - Variants can access keys owned by their dimension's canonical ParamSpace
+    
+    Args:
+        section: YAML section name
+        key: Parameter key name
+        allow_oracle: If True, allows access even if not owned (for Oracle-mediated access)
+    
+    Raises:
+        KeyAccessError: If access is not allowed
+    """
+    current = _current_paramspace.get()
+    if current is None:
+        # No enforcement context - allow access (for backward compatibility during migration)
+        return
+    
+    # Check if key is owned by current ParamSpace
+    owned = current.owned_keys()
+    if (section, key) in owned:
+        return  # Access allowed
+    
+    # Check if current ParamSpace is a variant that shares keys with canonical space
+    # Variants of the same dimension share keys (e.g., precision_pw_default shares with precision)
+    canonical_dimensions = {"magnetism", "occupations_scheme", "precision"}
+    if current.name not in canonical_dimensions:
+        # This might be a variant - check if canonical space for this dimension owns the key
+        # Extract dimension from variant name (e.g., "precision_pw_default" -> "precision")
+        for canonical_name in canonical_dimensions:
+            if current.name.startswith(canonical_name):
+                # Check if canonical space owns this key
+                canonical_owned = _PARAMSPACE_REGISTRY.get(canonical_name, set())
+                if (section, key) in canonical_owned:
+                    return  # Variant can access keys owned by canonical space
+                break
+    
+    # Check if access is via Oracle
+    if allow_oracle:
+        return  # Oracle-mediated access is allowed
+    
+    # Access denied - find owner for error message
+    owner = _KEY_OWNERSHIP.get((section, key))
+    raise KeyAccessError(current.name, section, key, owner)
+
+
+class ParamSpaceContext:
+    """
+    Context manager for setting the current ParamSpace during operations.
+    
+    Usage:
+        with ParamSpaceContext(paramspace):
+            # Operations that access YAML keys
+            value = get_yaml_value(yaml_tree, "SYSTEM", "key")
+    """
+    
+    def __init__(self, paramspace: Optional["ParamSpace"]):
+        self.paramspace = paramspace
+        self.token = None
+    
+    def __enter__(self):
+        self.token = _current_paramspace.set(self.paramspace)
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.token is not None:
+            _current_paramspace.reset(self.token)
+        return False
+
+
 @dataclass
 class ParamSpace:
     """
@@ -131,13 +292,50 @@ class ParamSpace:
     
     Profiles must be a "full matrix" - all keys must have a cell.
     Missing cells are auto-filled with WILDCARD (but discouraged).
+    
+    Per ParamSpace Constitution v1:
+    - Each ParamSpace must enforce invariants even when CUSTOM
+    - apply_invariants() is called unconditionally during apply
+    
+    Per Constitution 10.8.9:
+    - Each ParamSpace must declare its owned keys explicitly
+    - Key ownership must be unique across all ParamSpaces
     """
     name: str
     keys: list[ParamKey] = field(default_factory=list)
     profiles: dict[str, dict[ParamKey, Cell]] = field(default_factory=dict)
     
+    def owned_keys(self) -> Set[Tuple[str, str]]:
+        """
+        Return the set of (section, key) tuples owned by this ParamSpace.
+        
+        Per Constitution 10.8.9.2: Each key must be owned by exactly one ParamSpace.
+        
+        Returns:
+            Set of (section, key) tuples
+        """
+        return {(key.section, key.key) for key in self.keys}
+    
+    def apply_invariants(self, yaml_state: dict[str, dict[str, Any]], oracle: Any) -> None:
+        """
+        Enforce invariants for keys owned by this ParamSpace.
+        
+        This method is called unconditionally during apply, even when:
+        - detect result is CUSTOM
+        - user has not modified this ParamSpace
+        - no preset is being applied
+        
+        Default implementation is no-op (pass).
+        Subclasses should override to enforce their invariants.
+        
+        Args:
+            yaml_state: Current YAML state dict (section -> {key: value})
+            oracle: Oracle instance for semantic prerequisite queries
+        """
+        pass  # default no-op
+    
     def __post_init__(self):
-        """Validate that profiles form a full matrix."""
+        """Validate that profiles form a full matrix and register ownership."""
         # Auto-fill missing cells with WILDCARD
         for profile_name, profile_cells in self.profiles.items():
             for key in self.keys:
@@ -160,6 +358,17 @@ class ParamSpace:
                     f"Profile '{profile_name}' has unknown keys: "
                     f"{[k.key for k in unknown_keys]}"
                 )
+        
+        # Register this ParamSpace and its owned keys
+        # Only canonical ParamSpaces should register (not variants)
+        # Variants share keys with canonical space and should not register
+        # Check if this is a canonical space (name matches dimension name)
+        canonical_dimensions = {"magnetism", "occupations_scheme", "precision"}
+        if self.name in canonical_dimensions:
+            # This is a canonical ParamSpace - register it
+            register_paramspace(self)
+        # Variants (e.g., "precision_pw_default") should not register
+        # They share keys with the canonical "precision" space
 
 
 # ============================================================================
@@ -170,20 +379,31 @@ def get_yaml_value(
     yaml_tree: dict[str, dict[str, Any]],
     section: str,
     key: str,
+    *,
+    allow_oracle: bool = False,
 ) -> tuple[bool, Any]:
     """
     Get a value from YAML tree with present vs raw_value distinction.
+    
+    Per Constitution 10.8.9.1: Enforces key-access rules.
     
     Args:
         yaml_tree: Nested dict structure (section -> key -> value)
         section: Section name (case-insensitive)
         key: Key name (case-insensitive)
+        allow_oracle: If True, allows access even if not owned (for Oracle-mediated access)
         
     Returns:
         Tuple of (present: bool, raw_value: Any)
         - present: True if key exists in YAML, False otherwise
         - raw_value: The actual YAML value if present, None otherwise
+    
+    Raises:
+        KeyAccessError: If current ParamSpace is not allowed to access this key
     """
+    # Enforce key-access rules
+    check_key_access(section, key, allow_oracle=allow_oracle)
+    
     # Case-insensitive section lookup
     section_lower = section.lower()
     section_dict = None
@@ -250,6 +470,8 @@ def match_profile(
     - NOT_APPLICABLE: Require present == False
     - WILDCARD: Ignore (no checks)
     
+    Per Constitution 10.8.9.1: Enforces key-access rules during matching.
+    
     Args:
         paramspace: ParamSpace definition
         yaml_tree: YAML tree to match
@@ -259,43 +481,46 @@ def match_profile(
         
     Raises:
         ValueError: If multiple profiles match (design bug)
+        KeyAccessError: If paramspace attempts to access keys it doesn't own
     """
     matching_profiles = []
     
-    for profile_name, profile_cells in paramspace.profiles.items():
-        matches = True
-        
-        for key in paramspace.keys:
-            cell = profile_cells[key]
+    # Set context for key-access enforcement
+    with ParamSpaceContext(paramspace):
+        for profile_name, profile_cells in paramspace.profiles.items():
+            matches = True
             
-            if cell.cell_type == CellType.WILDCARD:
-                # Ignore this key
-                continue
-            
-            # Get present and raw_value from YAML
-            present, raw_value = get_yaml_value(yaml_tree, key.section, key.key)
-            
-            if cell.cell_type == CellType.NOT_APPLICABLE:
-                # NOT_APPLICABLE: require present == False
-                if present:
-                    matches = False
-                    break
-                # If not present, this key matches
-                continue
-            
-            elif cell.cell_type == CellType.VALUE:
-                # VALUE: compare effective_value
-                effective_value = compute_effective_value(
-                    present, raw_value, key.default, key.canonicalizer
-                )
-                expected_value = cell.value
+            for key in paramspace.keys:
+                cell = profile_cells[key]
                 
-                if not key.matches(effective_value, expected_value):
-                    matches = False
-                    break
-        
-        if matches:
-            matching_profiles.append(profile_name)
+                if cell.cell_type == CellType.WILDCARD:
+                    # Ignore this key
+                    continue
+                
+                # Get present and raw_value from YAML (enforces key-access rules)
+                present, raw_value = get_yaml_value(yaml_tree, key.section, key.key)
+                
+                if cell.cell_type == CellType.NOT_APPLICABLE:
+                    # NOT_APPLICABLE: require present == False
+                    if present:
+                        matches = False
+                        break
+                    # If not present, this key matches
+                    continue
+                
+                elif cell.cell_type == CellType.VALUE:
+                    # VALUE: compare effective_value
+                    effective_value = compute_effective_value(
+                        present, raw_value, key.default, key.canonicalizer
+                    )
+                    expected_value = cell.value
+                    
+                    if not key.matches(effective_value, expected_value):
+                        matches = False
+                        break
+            
+            if matches:
+                matching_profiles.append(profile_name)
     
     if len(matching_profiles) > 1:
         raise ValueError(
@@ -327,6 +552,8 @@ def compile_profile_patch(
     - NOT_APPLICABLE: Always delete
     - WILDCARD: Do nothing
     
+    Per Constitution 10.8.9.1: Enforces key-access rules during compilation.
+    
     Args:
         paramspace: ParamSpace definition
         profile_name: Profile to compile
@@ -345,34 +572,42 @@ def compile_profile_patch(
     patch: dict[str, dict[str, Any]] = {}
     deletions: set[tuple[str, str]] = set()
     
-    for key in paramspace.keys:
-        cell = profile_cells[key]
-        
-        if cell.cell_type == CellType.WILDCARD:
-            # Do nothing
-            continue
-        
-        elif cell.cell_type == CellType.NOT_APPLICABLE:
-            # Always delete
-            deletions.add((key.section, key.key))
-            continue
-        
-        elif cell.cell_type == CellType.VALUE:
-            # VALUE: write based on explicit_defaults
-            value = cell.value
+    # Set context for key-access enforcement
+    with ParamSpaceContext(paramspace):
+        for key in paramspace.keys:
+            cell = profile_cells[key]
             
-            # Check if we should skip writing (if explicit_defaults=False and value == default)
-            if not explicit_defaults and key.default is not None:
-                canonical_value = key.canonicalize(value)
-                canonical_default = key.canonicalize(key.default)
-                if canonical_value == canonical_default:
-                    # Skip writing (will be missing, using default)
-                    continue
+            if cell.cell_type == CellType.WILDCARD:
+                # Do nothing
+                continue
             
-            # Write the value
-            if key.section not in patch:
-                patch[key.section] = {}
-            patch[key.section][key.key] = value
+            elif cell.cell_type == CellType.NOT_APPLICABLE:
+                # Always delete
+                deletions.add((key.section, key.key))
+                continue
+            
+            elif cell.cell_type == CellType.VALUE:
+                # VALUE: write based on explicit_defaults
+                value = cell.value
+                
+                # Check if we should skip writing (if explicit_defaults=False and value == default)
+                if not explicit_defaults and key.default is not None:
+                    canonical_value = key.canonicalize(value)
+                    canonical_default = key.canonicalize(key.default)
+                    if canonical_value == canonical_default:
+                        # Skip writing (will be missing, using default)
+                        continue
+                
+                # Convert boolean values to IR canonical format (.true./.false.)
+                # IR contract: boolean values must be canonical strings, not Python bool
+                if isinstance(value, bool):
+                    from quantumvitas.ir.backends.qe.mapping import ir_bool
+                    value = ir_bool(value)
+                
+                # Write the value
+                if key.section not in patch:
+                    patch[key.section] = {}
+                patch[key.section][key.key] = value
     
     return (patch, deletions)
 
@@ -467,14 +702,17 @@ def build_occupations_scheme_paramspace() -> ParamSpace:
     Keys:
     - SYSTEM.occupations (string, default="fixed")
     - SYSTEM.smearing (string, no default, aliases: "gauss" -> "gaussian")
-    - SYSTEM.degauss (float, no default, tolerance=1e-12)
+    
+    Note: SYSTEM.degauss is owned by Precision ParamSpace per Constitution 10.8.6.
+    Occupation detection does NOT read degauss - it only checks occupations and smearing.
     
     Profiles:
-    - FIXED: occupations=VALUE("fixed"), smearing=NOT_APPLICABLE, degauss=NOT_APPLICABLE
-    - TETRAHEDRA: occupations=VALUE("tetrahedra"), smearing=NOT_APPLICABLE, degauss=NOT_APPLICABLE
-    - SMEARING_GAUSSIAN_0.02: occupations=VALUE("smearing"), smearing=VALUE("gaussian"), degauss=VALUE(0.02)
+    - FIXED: occupations=VALUE("fixed"), smearing=NOT_APPLICABLE
+    - TETRAHEDRA: occupations=VALUE("tetrahedra"), smearing=NOT_APPLICABLE
+    - SMEARING_GAUSSIAN: occupations=VALUE("smearing"), smearing=VALUE("gaussian")
+      (degauss value is not part of occupation detection - it's managed by Precision)
     """
-    # Define keys
+    # Define keys (degauss removed - owned by Precision)
     key_occupations = ParamKey(
         section="SYSTEM",
         key="occupations",
@@ -492,33 +730,21 @@ def build_occupations_scheme_paramspace() -> ParamSpace:
         default=None,  # No default - if missing, detection fails for smearing profile
     )
     
-    key_degauss = ParamKey(
-        section="SYSTEM",
-        key="degauss",
-        parser=parse_float,
-        canonicalizer=canonicalize_float,
-        tolerance=1e-12,  # Absolute tolerance for degauss comparison
-        default=None,  # No default - if missing, detection fails for smearing profile
-    )
+    keys = [key_occupations, key_smearing]
     
-    keys = [key_occupations, key_smearing, key_degauss]
-    
-    # Define profiles
+    # Define profiles (degauss removed from all profiles)
     profiles = {
         "FIXED": {
             key_occupations: Cell.VALUE("fixed"),
             key_smearing: Cell.NOT_APPLICABLE(),
-            key_degauss: Cell.NOT_APPLICABLE(),
         },
         "TETRAHEDRA": {
             key_occupations: Cell.VALUE("tetrahedra"),
             key_smearing: Cell.NOT_APPLICABLE(),
-            key_degauss: Cell.NOT_APPLICABLE(),
         },
-        "SMEARING_GAUSSIAN_0.02": {
+        "SMEARING_GAUSSIAN": {
             key_occupations: Cell.VALUE("smearing"),
             key_smearing: Cell.VALUE("gaussian"),
-            key_degauss: Cell.VALUE(0.02),
         },
     }
     
@@ -661,9 +887,12 @@ def build_precision_paramspace() -> ParamSpace:
     - SYSTEM.ecutrho (int, no default, exact match)
     - ELECTRONS.conv_thr (float, no default, tolerance=1e-11)
     - cards.K_POINTS (automatic mesh, no default, exact match)
+    - SYSTEM.degauss (float, no default, tolerance=1e-12)
     
     Note: Precision values are computed from structure + pseudos, so profiles
     are not hardcoded. Instead, matching uses computed canonical values.
+    
+    Per Constitution 10.8.6: SYSTEM.degauss is owned by Precision ParamSpace.
     
     Profiles are defined as functions that compute values on demand.
     """
@@ -702,7 +931,17 @@ def build_precision_paramspace() -> ParamSpace:
         default=None,  # No default - missing => no match
     )
     
-    keys = [key_ecutwfc, key_ecutrho, key_conv_thr, key_kpoints]
+    # degauss is owned by Precision ParamSpace per Constitution 10.8.6
+    key_degauss = ParamKey(
+        section="SYSTEM",
+        key="degauss",
+        parser=parse_float,
+        canonicalizer=canonicalize_float,
+        tolerance=1e-12,  # Absolute tolerance for degauss comparison
+        default=None,  # No default - precision writes degauss only when applicable
+    )
+    
+    keys = [key_ecutwfc, key_ecutrho, key_conv_thr, key_kpoints, key_degauss]
     
     # Profiles are not hardcoded - they're computed from structure + pseudos
     # We define empty profiles here; matching uses computed canonical values
@@ -712,11 +951,40 @@ def build_precision_paramspace() -> ParamSpace:
         "HIGH": {},
     }
     
-    return ParamSpace(
+    precision_space = ParamSpace(
         name="precision",
         keys=keys,
         profiles=profiles,
     )
+    
+    # Per ParamSpace Constitution v1: Override apply_invariants for degauss enforcement
+    # SYSTEM.degauss is owned by Precision ParamSpace (writer)
+    # Even though degauss is semantically related to occupations, Precision enforces its invariants
+    original_apply_invariants = precision_space.apply_invariants
+    
+    def precision_apply_invariants(yaml_state: dict[str, dict[str, Any]], oracle: Any) -> None:
+        """
+        Enforce degauss invariants for Precision ParamSpace.
+        
+        Per Constitution v1 §7:
+        - SYSTEM.degauss is owned by Precision ParamSpace
+        - If degauss_applicability == false, must delete degauss
+        - Only write degauss when user explicitly sets precision preset (handled in compile)
+        - Strategy A: smearing without degauss does not auto-fill
+        """
+        if not oracle.degauss_applicability():
+            # degauss is not applicable (not using smearing) - must be absent
+            system = yaml_state.get("SYSTEM", {})
+            if "degauss" in system:
+                # Delete degauss if present
+                del system["degauss"]
+        # If applicable, do nothing (Strategy A: don't auto-fill)
+        # Writing degauss values is handled by preset compilation, not invariant enforcement
+    
+    # Override the method
+    precision_space.apply_invariants = precision_apply_invariants
+    
+    return precision_space
 
 
 _PRECISION_PARAMSPACE: Optional[ParamSpace] = None
@@ -740,6 +1008,8 @@ def match_precision_profile(
     This is a special matching function for precision because canonical values
     are computed from structure + pseudos, not hardcoded in profiles.
     
+    Per Constitution 10.8.9.1: Enforces key-access rules during matching.
+    
     Args:
         yaml_tree: YAML tree to match
         canonical_values: Dict with computed canonical values:
@@ -755,74 +1025,76 @@ def match_precision_profile(
     
     paramspace = get_precision_paramspace()
     
-    # Extract actual values from YAML
-    ecutwfc_present, ecutwfc_raw = get_yaml_value(yaml_tree, "SYSTEM", "ecutwfc")
-    ecutrho_present, ecutrho_raw = get_yaml_value(yaml_tree, "SYSTEM", "ecutrho")
-    conv_thr_present, conv_thr_raw = get_yaml_value(yaml_tree, "ELECTRONS", "conv_thr")
-    kpoints_present, kpoints_raw = get_yaml_value(yaml_tree, "cards", "K_POINTS")
-    
-    # All essential params must be present
-    if not (ecutwfc_present and ecutrho_present and conv_thr_present and kpoints_present):
-        return None
-    
-    # Parse actual values
-    key_ecutwfc = paramspace.keys[0]
-    key_ecutrho = paramspace.keys[1]
-    key_conv_thr = paramspace.keys[2]
-    key_kpoints = paramspace.keys[3]
-    
-    actual_ecutwfc = key_ecutwfc.parser(ecutwfc_raw)
-    actual_ecutrho = key_ecutrho.parser(ecutrho_raw)
-    actual_conv_thr = key_conv_thr.parser(conv_thr_raw)
-    
-    # Parse K_POINTS card
-    if not isinstance(kpoints_raw, dict):
-        return None
-    
-    kpoints_option = kpoints_raw.get("option", "").lower()
-    if kpoints_option != "automatic":
-        return None
-    
-    kpoints_data = kpoints_raw.get("data", [])
-    if not kpoints_data or not isinstance(kpoints_data, list) or len(kpoints_data) == 0:
-        return None
-    
-    mesh_row = kpoints_data[0]
-    if not isinstance(mesh_row, (list, tuple)) or len(mesh_row) < 3:
-        return None
-    
-    actual_nk1 = int(mesh_row[0])
-    actual_nk2 = int(mesh_row[1])
-    actual_nk3 = int(mesh_row[2])
-    actual_sk1 = int(mesh_row[3]) if len(mesh_row) > 3 else 0
-    actual_sk2 = int(mesh_row[4]) if len(mesh_row) > 4 else 0
-    actual_sk3 = int(mesh_row[5]) if len(mesh_row) > 5 else 0
-    
-    # Compare with canonical values
-    canonical_ecutwfc = canonical_values["ecutwfc"]
-    canonical_ecutrho = canonical_values["ecutrho"]
-    canonical_conv_thr = canonical_values["conv_thr"]
-    canonical_kmesh = canonical_values["kmesh"]
-    canonical_nk1, canonical_nk2, canonical_nk3, canonical_sk1, canonical_sk2, canonical_sk3 = canonical_kmesh
-    
-    # Check cutoffs (exact integer match)
-    if actual_ecutwfc != canonical_ecutwfc:
-        return None
-    if actual_ecutrho != canonical_ecutrho:
-        return None
-    
-    # Check conv_thr (with tolerance)
-    if not key_conv_thr.matches(actual_conv_thr, canonical_conv_thr):
-        return None
-    
-    # Check k-mesh (exact match)
-    if (actual_nk1, actual_nk2, actual_nk3) != (canonical_nk1, canonical_nk2, canonical_nk3):
-        return None
-    if (actual_sk1, actual_sk2, actual_sk3) != (canonical_sk1, canonical_sk2, canonical_sk3):
-        return None
-    
-    # All checks passed - return the profile name from canonical_values
-    return canonical_values.get("profile_name")
+    # Set context for key-access enforcement
+    with ParamSpaceContext(paramspace):
+        # Extract actual values from YAML (enforces key-access rules)
+        ecutwfc_present, ecutwfc_raw = get_yaml_value(yaml_tree, "SYSTEM", "ecutwfc")
+        ecutrho_present, ecutrho_raw = get_yaml_value(yaml_tree, "SYSTEM", "ecutrho")
+        conv_thr_present, conv_thr_raw = get_yaml_value(yaml_tree, "ELECTRONS", "conv_thr")
+        kpoints_present, kpoints_raw = get_yaml_value(yaml_tree, "cards", "K_POINTS")
+        
+        # All essential params must be present
+        if not (ecutwfc_present and ecutrho_present and conv_thr_present and kpoints_present):
+            return None
+        
+        # Parse actual values
+        key_ecutwfc = paramspace.keys[0]
+        key_ecutrho = paramspace.keys[1]
+        key_conv_thr = paramspace.keys[2]
+        key_kpoints = paramspace.keys[3]
+        
+        actual_ecutwfc = key_ecutwfc.parser(ecutwfc_raw)
+        actual_ecutrho = key_ecutrho.parser(ecutrho_raw)
+        actual_conv_thr = key_conv_thr.parser(conv_thr_raw)
+        
+        # Parse K_POINTS card
+        if not isinstance(kpoints_raw, dict):
+            return None
+        
+        kpoints_option = kpoints_raw.get("option", "").lower()
+        if kpoints_option != "automatic":
+            return None
+        
+        kpoints_data = kpoints_raw.get("data", [])
+        if not kpoints_data or not isinstance(kpoints_data, list) or len(kpoints_data) == 0:
+            return None
+        
+        mesh_row = kpoints_data[0]
+        if not isinstance(mesh_row, (list, tuple)) or len(mesh_row) < 3:
+            return None
+        
+        actual_nk1 = int(mesh_row[0])
+        actual_nk2 = int(mesh_row[1])
+        actual_nk3 = int(mesh_row[2])
+        actual_sk1 = int(mesh_row[3]) if len(mesh_row) > 3 else 0
+        actual_sk2 = int(mesh_row[4]) if len(mesh_row) > 4 else 0
+        actual_sk3 = int(mesh_row[5]) if len(mesh_row) > 5 else 0
+        
+        # Compare with canonical values
+        canonical_ecutwfc = canonical_values["ecutwfc"]
+        canonical_ecutrho = canonical_values["ecutrho"]
+        canonical_conv_thr = canonical_values["conv_thr"]
+        canonical_kmesh = canonical_values["kmesh"]
+        canonical_nk1, canonical_nk2, canonical_nk3, canonical_sk1, canonical_sk2, canonical_sk3 = canonical_kmesh
+        
+        # Check cutoffs (exact integer match)
+        if actual_ecutwfc != canonical_ecutwfc:
+            return None
+        if actual_ecutrho != canonical_ecutrho:
+            return None
+        
+        # Check conv_thr (with tolerance)
+        if not key_conv_thr.matches(actual_conv_thr, canonical_conv_thr):
+            return None
+        
+        # Check k-mesh (exact match)
+        if (actual_nk1, actual_nk2, actual_nk3) != (canonical_nk1, canonical_nk2, canonical_nk3):
+            return None
+        if (actual_sk1, actual_sk2, actual_sk3) != (canonical_sk1, canonical_sk2, canonical_sk3):
+            return None
+        
+        # All checks passed - return the profile name from canonical_values
+        return canonical_values.get("profile_name")
 
 
 # ============================================================================

@@ -150,6 +150,7 @@ class TestApplyPresetsToStep:
             "parameters": {}
         }))
         
+        # Apply magnetism and occupations_scheme (degauss is NOT written by OccupationsScheme)
         result = apply_presets_to_step(step_file, {
             "magnetism": "collinear_lsda",
             "occupations_scheme": "smearing_gaussian",
@@ -159,12 +160,13 @@ class TestApplyPresetsToStep:
         assert "magnetism" in result["filtered_options"]
         assert "occupations_scheme" in result["filtered_options"]
         
-        # Verify file was updated with both
+        # Verify file was updated with both dimensions
         updated = yaml.safe_load(step_file.read_text())
         assert updated["parameters"]["SYSTEM"]["nspin"] == 2
         assert updated["parameters"]["SYSTEM"]["occupations"] == "smearing"  # YAML parsed value (no outer quotes)
         assert updated["parameters"]["SYSTEM"]["smearing"] == "gaussian"  # YAML parsed value (no outer quotes)
-        assert updated["parameters"]["SYSTEM"]["degauss"] == 0.02
+        # degauss is NOT written by OccupationsScheme (owned by Precision)
+        assert "degauss" not in updated["parameters"]["SYSTEM"]
 
 
 class TestBroadcastApply:
@@ -262,19 +264,23 @@ class TestBroadcastApply:
         assert after["magnetism"] == "collinear_lsda"
     
     def test_broadcast_apply_occupations_scheme_preset(self, calc_with_mixed_steps):
-        """BROADCAST apply occupations_scheme preset (smearing_gaussian)."""
+        """BROADCAST apply occupations_scheme preset (smearing_gaussian) + precision (for degauss)."""
         calc_dir = calc_with_mixed_steps
         steps_dir = calc_dir / "steps"
         
         # Apply occupations_scheme=smearing_gaussian to all steps
+        # (degauss is NOT written by OccupationsScheme, owned by Precision)
         for step_file in sorted(steps_dir.glob("*.step.yaml")):
-            apply_presets_to_step(step_file, {"occupations_scheme": "smearing_gaussian"})
+            apply_presets_to_step(step_file, {
+                "occupations_scheme": "smearing_gaussian",
+            })
         
-        # Verify receiver steps have smearing
+        # Verify receiver steps have smearing but NOT degauss
         scf_content = yaml.safe_load((steps_dir / "1_scf.step.yaml").read_text())
         assert scf_content["parameters"]["SYSTEM"]["occupations"] == "smearing"  # YAML parsed value (no outer quotes)
         assert scf_content["parameters"]["SYSTEM"]["smearing"] == "gaussian"  # YAML parsed value (no outer quotes)
-        assert scf_content["parameters"]["SYSTEM"]["degauss"] == 0.02
+        # degauss is NOT written by OccupationsScheme (owned by Precision)
+        assert "degauss" not in scf_content["parameters"]["SYSTEM"]
         
         # Verify detection
         detected = detect_presets_from_calculation(calc_dir)
