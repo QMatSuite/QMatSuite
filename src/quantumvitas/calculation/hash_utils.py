@@ -181,11 +181,9 @@ def compute_step_sha(step_doc: Union[Dict[str, Any], Path]) -> str:
     # Strip meta fields
     step_data = strip_resource_meta(data)
     
-    # Normalize step_type to public format for backward compatibility
-    # This ensures hashes match between machine types (qe_scf) and public types (scf)
-    if "step_type" in step_data:
-        from quantumvitas.workflow.registry import normalize_step_type_to_public
-        step_data["step_type"] = normalize_step_type_to_public(step_data["step_type"])
+    # Constitution §B: SHA MUST be computed on SPEC types (matching persisted YAML truth).
+    # No normalization - step_type stays as-is (SPEC format, e.g., "qe_scf").
+    # This ensures fingerprints match the actual persisted content.
     
     # Canonicalize and serialize
     serialized = stable_serialize(step_data)
@@ -199,43 +197,53 @@ def compute_pseudo_set_sha(
     species_map: Dict[str, Dict[str, Any]],
 ) -> str:
     """
-    Compute SHA256 hash of pseudopotential set.
+    Compute SHA256 hash of pseudopotential set from calc.yaml atomic records.
     
-    Creates canonical token per element: "ElementSymbol:file_sha"
-    Sorts by element symbol and joins with '|', then computes SHA256.
+    This is the canonical function for computing pseudo_set_sha. It derives the hash
+    from the atomic pseudo records in species_map (element -> {pseudo_sha256, ...}).
+    
+    Algorithm:
+    - Extract (element, pseudo_sha256) pairs from species_map
+    - Sort by element symbol
+    - Create tokens: "element:sha256" (exclude filename and sha_family)
+    - Join with '|' and compute SHA256
     
     Args:
-        project_pseudo_dir: Directory containing pseudopotential files
-        species_map: Calculation species_map (element -> {pseudopot, mass, ...})
+        project_pseudo_dir: Directory containing pseudopotential files (unused, kept for API compatibility)
+        species_map: Calculation species_map (element -> {pseudo_sha256, ...})
+                   Must contain pseudo_sha256 for each element (atomic record from calc.yaml)
         
     Returns:
         SHA256 hash as hex string (without "sha256:" prefix)
+        
+    Note:
+        This function does NOT read files from disk. It uses pseudo_sha256 from species_map
+        (the atomic record stored in calc.yaml). This ensures SSOT: calc.yaml stores atomic
+        records; pseudo_set_sha is derived and stored only in manifest.
     """
-    if not project_pseudo_dir.exists():
-        # No pseudo dir, return hash of empty string
-        return hashlib.sha256(b"").hexdigest()
-    
     tokens = []
     
-    # Extract elements and pseudo filenames from species_map
+    # Extract (element, pseudo_sha256) pairs from species_map
+    # Sort by element symbol for canonical ordering
     for element, info in sorted(species_map.items()):
-        pseudo_filename = info.get("pseudopot") or info.get("pseudo_basename")
-        if not pseudo_filename:
-            # Element has no pseudo, skip
+        if not isinstance(info, dict):
             continue
         
-        # Find pseudo file
-        pseudo_path = project_pseudo_dir / pseudo_filename
-        if not pseudo_path.exists():
-            # Pseudo file missing, include element but with empty hash
-            tokens.append(f"{element}:")
+        # Get pseudo_sha256 from atomic record (SSOT: stored in calc.yaml)
+        pseudo_sha256 = info.get("pseudo_sha256")
+        
+        if not pseudo_sha256:
+            # Element has no pseudo_sha256 record, skip
             continue
         
-        # Compute file SHA256
-        file_sha = compute_sha256_file(pseudo_path)
-        tokens.append(f"{element}:{file_sha}")
+        # Create token: "element:sha256" (exclude filename and sha_family)
+        tokens.append(f"{element}:{pseudo_sha256}")
     
     # Join tokens and hash
+    if not tokens:
+        # No pseudo records, return hash of empty string
+        return hashlib.sha256(b"").hexdigest()
+    
     joined = "|".join(tokens)
     return hashlib.sha256(joined.encode('utf-8')).hexdigest()
 

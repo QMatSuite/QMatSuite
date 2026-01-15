@@ -176,3 +176,176 @@ class TestStepTypeTokensCompleteness:
                 )
 
             engine_token_map[engine][token] = key
+
+
+class TestLegacyCodeRemoval:
+    """Test that legacy execution paths have been removed (Constitution §C audit fix)."""
+
+    def test_no_run_step_legacy_in_api(self):
+        """Verify run_step_legacy() has been deleted from api.py."""
+        from quantumvitas import api
+
+        # run_step_legacy should not exist
+        assert not hasattr(api.QVService, 'run_step_legacy'), (
+            "run_step_legacy() still exists in QVService. "
+            "Constitution §C requires removing legacy execution paths."
+        )
+
+    def test_no_legacy_fallback_in_runner(self):
+        """Verify legacy execution loop fallback has been removed from runner.py."""
+        import inspect
+        from quantumvitas.calculation.runner import CalculationRunner
+
+        # Get the source code of the run() method
+        source = inspect.getsource(CalculationRunner.run)
+
+        # Check that the legacy fallback comment is not present
+        assert "LEGACY EXECUTION LOOP" not in source, (
+            "Legacy execution loop fallback still present in runner.py. "
+            "Constitution §C requires removing legacy execution paths."
+        )
+
+        # Check that fallback to legacy is not present
+        assert "falling back to legacy" not in source.lower(), (
+            "Legacy fallback logic still present in runner.py."
+        )
+
+
+class TestSpecTruthPreservation:
+    """Test that SPEC step types are preserved in production paths (Constitution §B)."""
+
+    def test_structure_step_spec_preserves_spec_type(self, tmp_path):
+        """Loading step.yaml must preserve SPEC step_type without normalization to GEN."""
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+
+        # Create a step.yaml with SPEC step_type
+        step_yaml = tmp_path / "test_step.yaml"
+        step_yaml.write_text("""
+meta:
+  id: test123
+  name: test-step
+  path: test_step.yaml
+step_type: qe_scf
+parameters:
+  ecutwfc: 50
+""")
+
+        # Load the step spec
+        spec = StructureStepSpec.from_yaml(step_yaml, resolve_structure_selector=None)
+
+        # CRITICAL: step_type MUST be SPEC format, not GEN
+        assert spec.step_type == "qe_scf", (
+            f"StructureStepSpec.step_type was normalized to '{spec.step_type}' but "
+            f"Constitution §B requires persisted SPEC truth. Expected 'qe_scf'."
+        )
+
+    def test_structure_step_spec_preserves_orca_spec_type(self, tmp_path):
+        """Loading ORCA step.yaml must preserve SPEC step_type."""
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+
+        step_yaml = tmp_path / "orca_step.yaml"
+        step_yaml.write_text("""
+meta:
+  id: orca123
+  name: orca-scf
+  path: orca_step.yaml
+step_type: orca_scf
+parameters:
+  basis: def2-SVP
+""")
+
+        spec = StructureStepSpec.from_yaml(step_yaml, resolve_structure_selector=None)
+        assert spec.step_type == "orca_scf", (
+            f"ORCA step_type was normalized to '{spec.step_type}'. Expected 'orca_scf'."
+        )
+
+    def test_sha_computation_uses_spec_type(self, tmp_path):
+        """SHA computation must use SPEC step_type (matching YAML content)."""
+        from quantumvitas.calculation.hash_utils import compute_step_sha
+
+        # Create step.yaml with SPEC type
+        step_yaml = tmp_path / "step.yaml"
+        step_yaml.write_text("""
+step_type: qe_scf
+parameters:
+  ecutwfc: 50
+""")
+
+        sha1 = compute_step_sha(step_yaml)
+
+        # If we modify step_type to GEN, SHA should change
+        step_yaml.write_text("""
+step_type: scf
+parameters:
+  ecutwfc: 50
+""")
+
+        sha2 = compute_step_sha(step_yaml)
+
+        # SHA must differ because step_type is different (qe_scf vs scf)
+        assert sha1 != sha2, (
+            "SHA computation normalized step_type before hashing. "
+            "Constitution §B requires SHA to be computed on SPEC types (matching YAML truth)."
+        )
+
+    def test_coerce_step_type_handles_spec(self):
+        """_coerce_step_type must handle both GEN and SPEC types."""
+        from quantumvitas.calculation.runner import _coerce_step_type
+        from quantumvitas.calculation.types import StepType
+
+        # GEN type should work directly
+        result = _coerce_step_type("scf")
+        assert result == StepType.SCF, f"Failed to coerce GEN type 'scf': got {result}"
+
+        # SPEC type should also work via registry lookup
+        result = _coerce_step_type("qe_scf")
+        assert result == StepType.SCF, (
+            f"Failed to coerce SPEC type 'qe_scf' via registry: got {result}. "
+            f"Expected StepType.SCF."
+        )
+
+    def test_engine_family_from_step_uses_registry_not_prefix(self):
+        """Engine family detection must use registry lookup, NOT prefix inference.
+
+        Constitution §C requires explicit dispatch mapping. This test ensures
+        that _get_engine_family_from_step uses registry lookup.
+        """
+        from quantumvitas.calculation.runner import _get_engine_family_from_step
+        from unittest.mock import MagicMock
+
+        # Create a mock step with a step_type that has GEN value (no prefix)
+        mock_step = MagicMock()
+        mock_step.step_type.value = "scf"  # GEN type, no prefix
+
+        # The registry has "scf" mapped to "qe" engine
+        result = _get_engine_family_from_step(mock_step)
+
+        # Should return "qe" from registry lookup, NOT None (which would happen
+        # if we only looked at the string prefix)
+        assert result == "qe", (
+            f"Engine family detection returned '{result}' for step_type 'scf'. "
+            f"Expected 'qe' from registry lookup. This suggests prefix inference "
+            f"is being used instead of registry lookup."
+        )
+
+    def test_engine_family_for_pyscf_step(self):
+        """Verify PySCF steps are correctly identified via registry."""
+        from quantumvitas.calculation.runner import _get_engine_family_from_step
+        from unittest.mock import MagicMock
+
+        mock_step = MagicMock()
+        mock_step.step_type.value = "pyscf_scf"
+
+        result = _get_engine_family_from_step(mock_step)
+        assert result == "pyscf", f"Expected 'pyscf', got '{result}'"
+
+    def test_engine_family_for_orca_step(self):
+        """Verify ORCA steps are correctly identified via registry."""
+        from quantumvitas.calculation.runner import _get_engine_family_from_step
+        from unittest.mock import MagicMock
+
+        mock_step = MagicMock()
+        mock_step.step_type.value = "orca_scf"
+
+        result = _get_engine_family_from_step(mock_step)
+        assert result == "orca", f"Expected 'orca', got '{result}'"

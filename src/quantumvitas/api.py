@@ -950,6 +950,7 @@ class QVService:
         """Configure a step's parameters."""
         from quantumvitas.core.yamldoc import StepDoc
         from quantumvitas.workflow.step_factory import save_step_doc
+        import logging
         
         step = require_step(project_root, calculation_selector, step_selector)
         step_path = step.absolute_path
@@ -966,8 +967,12 @@ class QVService:
                 else:
                     step_doc.set([key], value)
         
-        # Save via factory (journaled)
-        save_step_doc(step_doc, step_path)
+        # Save via factory (journaled) - warnings are logged
+        warnings = save_step_doc(step_doc, step_path)
+        if warnings:
+            logger = logging.getLogger(__name__)
+            for warning in warnings:
+                logger.warning(warning)
     
     @staticmethod
     def delete_step(
@@ -1243,27 +1248,7 @@ class QVService:
                             f"Pseudo set SHA mismatch for calculation {calculation_selector}: "
                             f"stored={stored_pseudo_sha[:16] if stored_pseudo_sha else 'None'}..., fresh={fresh_pseudo_sha[:16]}..."
                         )
-                        # Update calc.yaml with fresh values (non-blocking)
-                        # Note: save_yaml_doc handles edit lock internally, so we don't need to acquire it here
-                        try:
-                            # Reload YAML to get latest state
-                            calc_data = yaml.safe_load(calc_yaml_path.read_text()) or {}
-                            # Update pseudo_set_sha at top level (new format)
-                            calc_data["pseudo_set_sha"] = fresh_pseudo_sha
-                            # Save using save_yaml_doc (proper write path, handles lock internally)
-                            calc_doc = CalcDoc(calc_data)
-                            save_yaml_doc(calc_doc, calc_yaml_path)
-                        except (OSError, PermissionError) as e:
-                            # Non-blocking: log warning but continue run
-                            logger.warning(
-                                f"Failed to update calc.yaml with pseudo_set_sha (non-blocking): {e}. "
-                                f"Run will continue with fresh SHA={fresh_pseudo_sha[:16]}..."
-                            )
-                        except Exception as e:
-                            # Log other errors but also non-blocking
-                            logger.warning(
-                                f"Unexpected error updating calc.yaml pseudo_set_sha (non-blocking): {e}"
-                            )
+                        # Note: pseudo_set_sha will be updated after Step0 in runner (authoritative source)
                 
                 # Clear analysis artifacts before running (cache invalidation)
                 # This ensures fresh analysis is generated after the run completes
@@ -1328,12 +1313,15 @@ class QVService:
     ) -> Dict[str, Any]:
         """
         Run a single step in project mode.
-        
-        This method uses registry-based resolution and respects the DAG + ID-only model:
-        - Structure comes from calculation.structure_id (canonical)
-        - Step is resolved via registry using step_id
-        - No bare step file execution in project mode
-        
+
+        This method uses the unified execution pipeline (same as run_calculation)
+        with TARGET selection mode. Steps before the target may be skipped if
+        already done (incremental), but the target step always runs.
+
+        Per Constitution §D: Run Step and Run Calc share ONE PIPELINE.
+        - Run Step: selection = TARGET_STEP
+        - Target step MUST run even if upstream may be skipped.
+
         Args:
             project_root: Project root path
             calculation_selector: Calculation selector (name, slug, path, or ULID)
@@ -1342,335 +1330,126 @@ class QVService:
             run_id: External run ID to use (e.g., job_id from JobManager).
                     If provided, this ID will be used for history recording
                     to ensure job_id == run_id identity.
-            
+
         Returns:
             Dict with run results
         """
         from quantumvitas.project.model import Project
         from quantumvitas.calculation.calculation import Calculation
-        from quantumvitas.calculation.input_runner import run_input_step
-        from quantumvitas.core.engines.base import EngineConfig
-        from quantumvitas.core.engines.qe import QuantumEspressoEngine
-        from quantumvitas.io import read_structure
-        
+        from quantumvitas.engine.registry import create_default_registry
+        from quantumvitas.calculation.runner import CalculationRunner
+        from quantumvitas.calculation.types import StepStatus
+        from datetime import datetime, timezone
+        import logging
+
+        logger = logging.getLogger(__name__)
         project_root = Path(project_root).resolve()
-        
+
         # Use registry-based resolution
         from quantumvitas.core.resolution import build_resource_index, require_calculation, require_step
         from quantumvitas.core.project_utils import load_project_config
-        
+
         if config is None:
             config = load_project_config(project_root)
-        # If index is None, build it (project load scenario)
         if index is None:
             index = build_resource_index(project_root)
-        
+
         # Resolve calculation and step via registry
         calculation_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
         step_resolved = require_step(project_root, calculation_selector, step_selector, config=config, index=index)
-        
-        # Load calculation to get structure_id and engine_family (canonical source)
+
+        # Load calculation with materialized steps
         project = Project.open(project_root)
-        # Phase 3C: Load calculation with materialized steps for both engine detection and chain execution
-        # We need materialized steps to build the dependency chain, so load once with materialize_steps=True
         calculation = Calculation.from_yaml(calculation_resolved.absolute_path, project, materialize_steps=True)
-        
+
         # Structure comes from calculation.structure_id (DAG model)
         if not calculation.structure_id:
             raise QVServiceError(
                 f"Calculation '{calculation_selector}' has no structure. Please set a structure for the calculation first."
             )
-        
-        # CLARIFIED CONTRACT: Execution routing uses step.yaml machine step_type, NOT calculation.engine_family
-        # engine_family is ONLY for materialization-time selection
-        from quantumvitas.workflow.registry import resolve_engine_for_step
-        
-        # Resolve engine from step.yaml machine step_type
-        step_yaml_path = step_resolved.absolute_path
+
+        # Get step type for response (from step.yaml)
+        step_type = "unknown"
         try:
-            engine_id = resolve_engine_for_step(step_yaml_path=step_yaml_path)
-        except ValueError as e:
-            raise QVServiceError(
-                f"Failed to resolve engine for step '{step_selector}': {e}. "
-                f"This step type is not supported."
-            ) from e
-        
-        # Debug trace (env-var gated)
-        import os
-        import logging
-        logger = logging.getLogger(__name__)
-        debug_trace = os.getenv("QV_DEBUG_RUNSTEP") == "1"
-        if debug_trace:
-            logger.warning(f"[QV_DEBUG_RUNSTEP] calculation_id={calculation.id}, engine_id={repr(engine_id)} (resolved from step.yaml)")
-        
-        # Debug file for detailed tracing (optional, for debugging)
-        debug_file = None
-        if debug_trace:
-            import tempfile
-            debug_file = Path(tempfile.gettempdir()) / f"qv_debug_runstep_{calculation.id}.log"
-        
-        # Load step spec (for step_type and other step-local config) - only needed for QE path
-        from quantumvitas.calculation.structure_steps import StructureStepSpec
-        from quantumvitas.core.resolution import make_structure_selector_resolver, require_structure
-        from quantumvitas.io import read_structure
-        resolver = make_structure_selector_resolver(project_root, config=config)
-        spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=resolver)
-        
-        if engine_id == "pyscf":
-            if debug_trace and debug_file:
-                debug_file.parent.mkdir(parents=True, exist_ok=True)
-                with open(debug_file, "a") as f:
-                    f.write(f"[QV_DEBUG_RUNSTEP] Routing to PySCF branch\n")
-                    f.flush()
-            # Phase 3C: PySCF chain execution path
-            from quantumvitas.engines.pyscf.chain import resolve_dependency_chain
-            from quantumvitas.engine.registry import create_default_registry
-            from quantumvitas.workflow.registry import get_registry
-            
-            # Reload calculation with materialized steps for chain execution
-            calculation = Calculation.from_yaml(calculation_resolved.absolute_path, project, materialize_steps=True)
-            
-            # Build step list for dependency resolution (need machine types, not public types)
-            # step.yaml stores machine types directly, so read from step.yaml
-            registry = get_registry()
-            calculation_steps = []
-            for step in calculation.steps:
-                step_ulid = step.meta.id
-                # Get machine step_type from step.yaml directly (step.yaml stores machine type)
-                machine_type = "unknown"
-                if hasattr(step.meta, 'path') and step.meta.path:
-                    # step.meta.path is relative to project root, resolve it
-                    step_yaml_path = project_root / step.meta.path
-                    if step_yaml_path.exists():
-                        import yaml
-                        step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
-                        machine_type = step_data.get("step_type") or "unknown"
-                if machine_type == "unknown":
-                    raise QVServiceError(
-                        f"Failed to read machine step_type from step.yaml for step {step_ulid}. "
-                        f"This indicates a corrupted step file."
-                    )
-                if debug_trace:
-                    logger.warning(f"[QV_DEBUG_RUNSTEP] Step {step_ulid}: machine_type={machine_type}")
-                calculation_steps.append((step_ulid, machine_type))
-            
-            # Resolve dependency chain
-            if debug_trace:
-                with open(debug_file, "a") as f:
-                    f.write(f"[QV_DEBUG_RUNSTEP] Calling resolve_dependency_chain: target={step_resolved.meta.id}, calculation_steps={calculation_steps}\n")
-                    f.flush()
-            chain_indices, error = resolve_dependency_chain(
-                target_step_ulid=step_resolved.meta.id,
-                calculation_steps=calculation_steps,
-                step_type_registry=registry,
-            )
-            
-            if debug_trace:
-                with open(debug_file, "a") as f:
-                    f.write(f"[QV_DEBUG_RUNSTEP] resolve_dependency_chain result: chain_indices={chain_indices}, error={repr(error)}\n")
-                    f.flush()
-            
-            if error:
-                # Phase 3C: Hard error if dependency chain cannot be resolved
-                if debug_trace:
-                    with open(debug_file, "a") as f:
-                        f.write(f"[QV_DEBUG_RUNSTEP] Raising QVServiceError: {error}\n")
-                        f.flush()
-                raise QVServiceError(f"Failed to resolve dependency chain: {error}")
-            
-            # Get chain steps
-            chain_step_objects = [calculation.steps[idx] for idx in chain_indices]
-            target_step = chain_step_objects[-1]  # Last step is the target
-            
-            # Create engine and execute chain
-            engine_registry = create_default_registry()
-            engine = engine_registry.get("pyscf")
-            
-            # Execute chain in one session
-            # Pass structure_id and project_root for structure resolution in chain steps
-            result = engine.run_step_with_chain(
-                target_step=target_step,
-                chain_steps=chain_step_objects,
-                calculation_raw_dir=calculation.raw_dir,
-                structure_id=calculation.structure_id,
-                project_root=project_root,
-            )
-            
-            # Convert StepResult to dict format (similar to QE path)
-            from datetime import datetime, timezone
-            finished = datetime.now(timezone.utc)
-            
-            return {
-                "calculation_id": calculation.id,
-                "step_id": step_resolved.meta.id,
-                "step_type": spec.step_type or "unknown",
-                "success": result.success,
-                "error": result.error,
-                "output_file": str(result.output_file) if result.output_file else None,
-                "execution_time": result.execution_time,
-                "finished": finished.isoformat(),
-            }
-        
-        # QE/W90 path: use existing execution (unchanged)
-        if debug_trace:
-            with open(debug_file, "a") as f:
-                f.write(f"[QV_DEBUG_RUNSTEP] Routing to QE/W90 branch (engine_family={repr(engine_family)})\n")
-                f.flush()
-        # Generate QE input from structure + step spec
-        # Use calc-level species_map if available (authoritative source for pseudopot mapping)
-        from quantumvitas.calculation.structure_steps import generate_qe_input_from_spec
-        from quantumvitas.io.generator import QEInputGenerator
-        from quantumvitas.io import read_structure
-        
-        # Resolve structure from calculation.structure_id (DAG model)
-        structure_resolved = require_structure(project_root, calculation.structure_id, config=config)
-        structure = read_structure(structure_resolved.absolute_path)
-        
-        qe_input, _ = generate_qe_input_from_spec(
-            structure, spec, species_map=calculation.species_map
-        )
-        
-        # Write input file to calculation's raw directory
-        workdir = calculation_resolved.absolute_path / "raw"
-        workdir.mkdir(parents=True, exist_ok=True)
-        
-        # Use human-readable naming based on step_type (not ULID)
-        # If multiple steps of same type exist, they will be numbered (e.g., "scf-1.in", "scf-2.in")
-        from quantumvitas.calculation.naming import CalculationFileNaming
-        input_name = spec.input_name or CalculationFileNaming.input_filename(
-            spec.step_type or "scf",
-            working_dir=workdir,
-        )
-        input_path = workdir / input_name
-        QEInputGenerator.write_file(qe_input, input_path)
-        
-        # Create engine - use the core engine directly (not the wrapper)
-        engine_config = EngineConfig(name="qe")
-        engine = QuantumEspressoEngine(engine_config)
-        
-        # Run the step
-        from datetime import datetime, timezone
-        started = datetime.now(timezone.utc)
-        
-        result, prepared = run_input_step(
-            engine=engine,
-            input_file=input_path,
-            working_dir=workdir,
-            project_root=project_root,
-            step_type=spec.step_type,
-            keep_original=False,
-        )
-        
-        finished = datetime.now(timezone.utc)
-        
-        # The runner uses workdir as the I/O directory (source of truth)
-        io_dir = str(workdir.resolve())
-        
-        # Record history (single-step run also creates a history record)
-        actual_run_id = run_id
+            import yaml
+            step_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
+            step_type = step_data.get("step_type", "unknown")
+        except Exception:
+            pass
+
+        # Create engine registry and runner
+        engine_registry = create_default_registry()
+        runner = CalculationRunner(engine_registry)
+
+        # Execute using unified pipeline with TARGET selection mode
+        # target_step_id ensures only steps up to and including target run,
+        # and target step always runs (never skipped)
+        target_step_id = step_resolved.meta.id
+
+        logger.info(f"[RUN_STEP] Running step {step_selector} (id={target_step_id}) via unified pipeline")
+
         try:
-            from quantumvitas.history.run_revision import create_run_revision, complete_run_revision
-            from quantumvitas.history.storage import ProjectHistory
-            from quantumvitas.history.events import RunStartedEvent, RunFinishedEvent
-            
-            # Create run revision at start (records run_started event)
-            run_revision = create_run_revision(
-                project_root=project_root,
-                calc_id=calculation.id,
-                calc_name=calculation.name if hasattr(calculation, "name") else None,
-                step_ids=[step_resolved.meta.id],
-                step_types=[spec.step_type or "scf"],
-                structure_id=calculation.structure_id,
-                structure_name=getattr(calculation, "structure_name", None),
-                engine="qe",
-                working_dir=workdir,
-                create_snapshot=False,  # Skip snapshot for single-step runs
-                run_id=run_id,  # Use external run_id (job_id) if provided
+            result = runner.run(
+                calculation,
+                skip_history=False,
+                run_id=run_id,
+                run_mode="incremental",  # Allow skipping upstream steps
+                target_step_id=target_step_id,
             )
-            actual_run_id = run_revision.id
-            
-            # Record run_started event
-            history = ProjectHistory(project_root)
-            event = RunStartedEvent.create(
-                project_id=run_revision.project_id,
-                calc_id=calculation.id,
-                run_id=actual_run_id,
-                calc_name=calculation.name if hasattr(calculation, "name") else None,
-                step_ids=[step_resolved.meta.id],
-                step_types=[spec.step_type or "scf"],
-                engine="qe",
-                structure_id=calculation.structure_id,
-                snapshot_path=None,
-            )
-            history.append_event(event)
-            
-            # Complete run revision (records run_finished event)
-            status = "success" if result.error is None else "failed"
-            step_results = [{
-                "step_id": step_resolved.meta.id,
-                "step_type": spec.step_type or "scf",
-                "step_name": step_selector,
-                "status": status,
-                "message": result.error if result.error else None,
-            }]
-            
-            run_revision = complete_run_revision(
-                project_root=project_root,
-                run_id=actual_run_id,
-                status=status,
-                step_results=step_results,
-                working_dir=workdir,
-                error_summary=result.error[:200] if result.error else None,
-            )
-            
-            # Record run_finished event
-            duration_s = (finished - started).total_seconds()
-            finished_event = RunFinishedEvent.create(
-                project_id=run_revision.project_id,
-                calc_id=calculation.id,
-                run_id=actual_run_id,
-                status=status,
-                duration_seconds=duration_s,
-                step_count=1,
-                success_count=1 if status == "success" else 0,
-                failure_count=0 if status == "success" else 1,
-                error_summary=result.error[:200] if result.error else None,
-            )
-            history.append_event(finished_event)
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"[HISTORY] Failed to record history for single-step run: {e}")
-        
-        # Build response with output file paths
-        # Priority: output_file (primary artifact) -> stdout_file -> None
-        # Always return the expected path, even if file doesn't exist (execution may have failed)
-        output_file_str = None
-        if result.output_file:
-            output_file_str = str(result.output_file.resolve())
-        elif result.stdout_file:
-            # Fallback to stdout_file if output_file not set (e.g., for Wannier90 if .wout doesn't exist)
-            output_file_str = str(result.stdout_file.resolve())
-        
-        stdout_file_str = str(result.stdout_file.resolve()) if result.stdout_file else None
-        stderr_file_str = str(result.stderr_file.resolve()) if result.stderr_file else None
-        
+            logger.exception(f"[RUN_STEP] Execution failed: {e}")
+            return {
+                "step": step_selector,
+                "step_id": target_step_id,
+                "step_type": step_type,
+                "success": False,
+                "error": str(e),
+                "output_file": None,
+                "io_dir": str(calculation.raw_dir.resolve()) if calculation.raw_dir else None,
+                "run_id": run_id,
+            }
+
+        # Find the target step's result in the summaries
+        target_summary = None
+        for summary in result.steps:
+            if summary.step_id == target_step_id:
+                target_summary = summary
+                break
+
+        # Build response
+        success = result.status == StepStatus.SUCCESS
+        error_msg = None
+        if target_summary and target_summary.status == StepStatus.FAILED:
+            success = False
+            error_msg = target_summary.message
+
+        io_dir = str(result.io_dir.resolve()) if result.io_dir else str(calculation.raw_dir.resolve())
+
+        # Extract input_file and output_file from StepResultSummary
+        input_file = None
+        output_file = None
+        if target_summary:
+            if target_summary.input_file and target_summary.input_file != Path():
+                input_file = str(target_summary.input_file)
+            if target_summary.output_file and target_summary.output_file != Path():
+                output_file = str(target_summary.output_file)
+
         return {
             "step": step_selector,
-            "step_id": step_resolved.meta.id,
-            "step_type": result.step_type.value if hasattr(result.step_type, 'value') else str(result.step_type),
-            "output_file": output_file_str,  # Primary artifact (may not exist if execution failed)
-            "stdout_file": stdout_file_str,  # Stdout capture file path
-            "stderr_file": stderr_file_str,  # Stderr capture file path
-            "success": result.error is None,
-            "error": result.error,
-            "input_file": str(input_path),
-            "io_dir": io_dir,  # I/O directory from runner (source of truth)
-            # Keep working_dir for backward compatibility during migration
-            "working_dir": io_dir,
-            "run_id": actual_run_id,  # History run_id (== job_id when provided)
+            "step_id": target_step_id,
+            "step_type": step_type,
+            "success": success,
+            "error": error_msg,
+            "input_file": input_file,
+            "output_file": output_file,
+            "io_dir": io_dir,
+            "working_dir": io_dir,  # Backward compat
+            "run_id": result.run_id,
         }
-    
+
+    # REMOVED: run_step_legacy() was deleted per Constitution §C audit fix.
+    # Legacy execution paths are no longer supported. Use run_step() instead.
+
     @staticmethod
     def run_single_step(
         project_root: Path,
@@ -1684,21 +1463,24 @@ class QVService:
     ) -> Dict[str, Any]:
         """
         Run a single step in a calculation (advanced feature, always runs, never skips).
-        
+
+        NOTE: run_step_legacy() was deleted per Constitution §C audit fix.
+        Legacy execution paths are no longer supported. Use run_step() instead.
+
         This is different from run_step() which is for standalone execution.
         This method:
         - Always executes the step (no skip)
         - Runs within calculation context
         - Updates manifest: marks this step done on success, invalidates subsequent steps
         - Acquires run lock for the duration
-        
+
         Args:
             project_root: Project root path
             calculation_selector: Calculation selector
             step_ulid: Step ULID (must match a step in calculation.yaml)
             verbose: If True, print detailed output
             run_id: External run ID to use (e.g., job_id from JobManager)
-            
+
         Returns:
             Dict with run results
         """
@@ -1708,10 +1490,10 @@ class QVService:
         from quantumvitas.engine.registry import create_default_registry
         from quantumvitas.calculation.runner import CalculationRunner
         import yaml
-        
+
         # Use registry-based resolution
         from quantumvitas.core.resolution import build_resource_index, require_calculation, require_step
-        
+
         if config is None:
             from quantumvitas.core.project_utils import load_project_config
             config = load_project_config(project_root)
@@ -1767,29 +1549,8 @@ class QVService:
                             f"Pseudo set SHA mismatch for calculation {calculation_selector}: "
                             f"stored={stored_pseudo_sha[:16] if stored_pseudo_sha else 'None'}..., fresh={fresh_pseudo_sha[:16]}..."
                         )
-                        # Update calc.yaml with fresh values (non-blocking)
-                        # Note: save_yaml_doc handles edit lock internally, so we don't need to acquire it here
-                        try:
-                            from quantumvitas.core.yaml_io import save_yaml_doc
-                            from quantumvitas.core.yamldoc import CalcDoc
-                            # Reload YAML to get latest state
-                            calc_data = yaml.safe_load(calc_yaml_path.read_text()) or {}
-                            # Update pseudo_set_sha at top level (new format)
-                            calc_data["pseudo_set_sha"] = fresh_pseudo_sha
-                            # Save using save_yaml_doc (proper write path, handles lock internally)
-                            calc_doc = CalcDoc(calc_data)
-                            save_yaml_doc(calc_doc, calc_yaml_path)
-                        except (OSError, PermissionError) as e:
-                            # Non-blocking: log warning but continue run
-                            logger.warning(
-                                f"Failed to update calc.yaml with pseudo_set_sha (non-blocking): {e}. "
-                                f"Run will continue with fresh SHA={fresh_pseudo_sha[:16]}..."
-                            )
-                        except Exception as e:
-                            # Log other errors but also non-blocking
-                            logger.warning(
-                                f"Unexpected error updating calc.yaml pseudo_set_sha (non-blocking): {e}"
-                            )
+                        # Note: pseudo_set_sha is derived and stored only in manifest, not in calc.yaml.
+                        # The manifest will be updated with fresh_pseudo_sha during the run.
                 
                 # Manifest handling
                 from quantumvitas.calculation.manifest import (
@@ -3672,15 +3433,20 @@ class QVService:
                 "artifacts": [],
             }
         
-        # Get expected output extension for this step type
-        output_ext = CalculationFileNaming.output_extension(step_type)
-        step_type_lower = step_type.lower()
-        
+        # Constitution §B: Step files use GEN (public) type for filenames, not SPEC (machine) type
+        # step.yaml stores machine_type (e.g., "qe_scf"), but output files are named with public_type (e.g., "scf")
+        from quantumvitas.workflow.registry import normalize_step_type_to_public
+        public_step_type = normalize_step_type_to_public(step_type)
+
+        # Get expected output extension for this step type (use public type)
+        output_ext = CalculationFileNaming.output_extension(public_step_type)
+        step_type_lower = public_step_type.lower()
+
         # Use step artifacts rules to identify expected artifacts
         from quantumvitas.calculation.step_artifacts import get_step_artifacts, get_default_artifact
         
-        # Get step-specific artifacts (e.g., <seed>.wout, <seed>.nnkp, etc.)
-        step_artifacts = get_step_artifacts(step_type, step_params, raw_dir)
+        # Get step-specific artifacts (e.g., <seed>.wout, <seed>.nnkp, etc.) - use public type
+        step_artifacts = get_step_artifacts(step_type_lower, step_params, raw_dir)
         
         # Collect all artifacts (both step-specific and stdout/stderr)
         artifacts_dict = {}  # filename -> artifact dict
@@ -3705,18 +3471,18 @@ class QVService:
             # Check if file is a step-specific artifact
             is_step_artifact = file_name in step_artifacts
             
-            # Check if file matches step_type stdout/stderr pattern
-            stdout_file = f"{step_type}.out"
-            stderr_file = f"{step_type}.err"
-            is_stdout = file_name == stdout_file or (file_name.startswith(f"{step_type}-") and file_name.endswith(".out"))
-            is_stderr = file_name == stderr_file or (file_name.startswith(f"{step_type}-") and file_name.endswith(".err"))
-            
+            # Check if file matches step_type stdout/stderr pattern (use public type for filename matching)
+            stdout_file = f"{step_type_lower}.out"
+            stderr_file = f"{step_type_lower}.err"
+            is_stdout = file_name == stdout_file or (file_name.startswith(f"{step_type_lower}-") and file_name.endswith(".out"))
+            is_stderr = file_name == stderr_file or (file_name.startswith(f"{step_type_lower}-") and file_name.endswith(".err"))
+
             # Also check legacy patterns for backwards compatibility
             is_legacy_match = False
-            if file_name == f"{step_type}{output_ext}":
+            if file_name == f"{step_type_lower}{output_ext}":
                 is_legacy_match = True
-            elif file_name.startswith(f"{step_type}-") and file_name.endswith(output_ext):
-                middle = file_name[len(f"{step_type}-"):-len(output_ext)]
+            elif file_name.startswith(f"{step_type_lower}-") and file_name.endswith(output_ext):
+                middle = file_name[len(f"{step_type_lower}-"):-len(output_ext)]
                 try:
                     int(middle)  # Valid number
                     is_legacy_match = True
@@ -3770,16 +3536,16 @@ class QVService:
         
         # Determine default candidate using step artifacts rules
         artifact_names = [a["path_relative_to_raw"] for a in artifacts]
-        default_artifact_name = get_default_artifact(step_type, step_params, raw_dir, artifact_names)
-        
+        default_artifact_name = get_default_artifact(step_type_lower, step_params, raw_dir, artifact_names)
+
         # Mark default candidate
         for artifact in artifacts:
             if artifact["path_relative_to_raw"] == default_artifact_name:
                 artifact["is_default_candidate"] = True
                 break
         else:
-            # Fallback: if no default from rules, use legacy logic
-            exact_name = f"{step_type}{output_ext}"
+            # Fallback: if no default from rules, use legacy logic (use public type for filename)
+            exact_name = f"{step_type_lower}{output_ext}"
             for artifact in artifacts:
                 if artifact["path_relative_to_raw"] == exact_name:
                     artifact["is_default_candidate"] = True
@@ -4480,8 +4246,10 @@ class QVService:
             # Step doesn't support prefix/outdir - no injection
             return None
         
-        # Get calculation-level prefix (canonical = calculation.meta.slug)
-        calculation_prefix = calculation_model.meta.slug if calculation_model.meta else None
+        # Get calculation-level prefix (canonical = stable id-derived prefix from calc ULID)
+        from quantumvitas.calculation.structure_steps import stable_short_calc_prefix
+        # Stable prefix derived from calc ULID; slug changes do not affect it
+        calculation_prefix = stable_short_calc_prefix(calculation_model.meta.id) if calculation_model.meta and calculation_model.meta.id else None
         calculation_outdir = "./outdir"  # Default outdir
         
         # Check step-level spec for conflicts
@@ -4789,16 +4557,23 @@ class QVService:
             step_doc.apply_patch({"cards": card_patch})
         
         # Save via factory (journaled)
-        save_step_doc(step_doc, step.absolute_path)
+        # Warnings are computed and attached by save_step_doc via return value
+        warnings = save_step_doc(step_doc, step.absolute_path)
         
         # Return the updated step detail (pass cached index/config to avoid rebuilding)
-        return QVService.get_step_detail(
+        result = QVService.get_step_detail(
             project_root=project_root,
             calculation_ulid=calculation_ulid,
             step_selector=step_selector,
             index=index,
             config=config,
         )
+        
+        # Add warnings to result if any
+        if warnings:
+            result["warnings"] = warnings
+        
+        return result
     
     @staticmethod
     def get_common_cards(

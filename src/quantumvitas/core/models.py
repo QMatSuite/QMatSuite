@@ -524,7 +524,10 @@ def save_calculation(model: CalculationModel, path: Path) -> None:
                 )
     
     # Use CalcDoc + yaml_io (journaled)
-    calc_doc = CalcDoc(model.to_dict())
+    # Note: pseudo_set_sha is derived and stored only in manifest, not in calc.yaml
+    model_dict = model.to_dict()
+    
+    calc_doc = CalcDoc(model_dict)
     save_yaml_doc(calc_doc, path)
 
 

@@ -2742,6 +2742,7 @@ def configure_step_command(
         modified = True
 
     if modified:
+        # Warnings are computed and printed by _write_step_spec
         _write_step_spec(step_file, spec)
 
 
@@ -3296,9 +3297,15 @@ def run_calculation_command(
             if step.message:
                 line += f" [{step.message}]"
             typer.echo(line)
+            # Print step_type for each step (contract requirement)
+            typer.echo(f"step_type: {step.step_type.value}")
             if step.metrics:
                 for key, value in step.metrics.items():
                     typer.echo(f"    {key}: {value}")
+    else:
+        # Even when not verbose, print step_type for each step (contract requirement)
+        for step in result.steps:
+            typer.echo(f"step_type: {step.step_type.value}")
 
 
 @app.command("run-calculation")
@@ -4198,6 +4205,26 @@ def _write_step_spec(
     else:
         relative_path = path.name
     spec.meta = spec.meta.with_updates(path=relative_path)
+
+    # Compute warnings before writing (pure keyword matching, no engine detection)
+    warnings: list[str] = []
+    from quantumvitas.calculation.structure_steps import detect_runtime_control_keys
+    
+    parameters = spec.parameters or {}
+    runtime_keys = detect_runtime_control_keys(parameters)
+    if runtime_keys:
+        for key in runtime_keys:
+            warnings.append(
+                f"CONTROL.{key} looks like a runtime-managed key. "
+                f"For QE it is protected and will be overridden at run time "
+                f"(default outdir=./outdir, pseudo_dir=project/pseudo, prefix is engine-managed). "
+                f"If you are not using QE, you can ignore this warning."
+            )
+    
+    # Print warnings to stderr (non-blocking)
+    if warnings:
+        for warning in warnings:
+            typer.secho(f"⚠️  WARNING: {warning}", fg=typer.colors.YELLOW, err=True)
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))

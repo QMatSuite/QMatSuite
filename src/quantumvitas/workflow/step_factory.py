@@ -103,19 +103,45 @@ def create_step_doc(
     return step_doc
 
 
-def save_step_doc(step_doc: StepDoc, path: Path) -> None:
+def save_step_doc(step_doc: StepDoc, path: Path) -> list[str]:
     """
     Save step document to disk (journaled via yaml_io).
     
     Args:
         step_doc: StepDoc to save
         path: Path to save to
+        
+    Returns:
+        List of warning messages (empty if none)
     """
+    # Compute warnings before saving (pure keyword matching, no engine detection)
+    warnings: list[str] = []
+    from quantumvitas.calculation.structure_steps import detect_runtime_control_keys
+    
+    # Get parameters from step_doc
+    try:
+        # Use export_copy to get parameters dict (StepDoc.get() would raise BranchAccessError)
+        parameters = step_doc.export_copy(["parameters"]) or {}
+        runtime_keys = detect_runtime_control_keys(parameters)
+        if runtime_keys:
+            for key in runtime_keys:
+                warnings.append(
+                    f"CONTROL.{key} looks like a runtime-managed key. "
+                    f"For QE it is protected and will be overridden at run time "
+                    f"(default outdir=./outdir, pseudo_dir=project/pseudo, prefix is engine-managed). "
+                    f"If you are not using QE, you can ignore this warning."
+                )
+    except Exception:
+        # If we can't read parameters, skip warnings (non-blocking)
+        pass
+    
     # Update path in meta
     path = Path(path).resolve()
     
     # Save through yaml_io (journal hook)
     save_yaml_doc(step_doc, path)
+    
+    return warnings
 
 
 def create_and_save_step(

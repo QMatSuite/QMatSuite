@@ -766,12 +766,33 @@ def _build_step_from_spec(
 
 
 def _coerce_step_type(raw: Optional[str]) -> Optional[StepType]:
+    """
+    Coerce a step type string to StepType enum.
+
+    Handles both GEN types (e.g., "scf") and SPEC types (e.g., "qe_scf")
+    by using registry lookup to convert SPEC to GEN when needed.
+    """
     if not raw:
         return None
+
+    # Try direct conversion (works for GEN types like "scf")
     try:
         return StepType(raw)
     except ValueError:
-        return StepType.CUSTOM
+        pass
+
+    # If direct conversion failed, try registry lookup for SPEC types
+    # SPEC type like "qe_scf" -> public_type "scf" -> StepType.SCF
+    try:
+        from quantumvitas.workflow.registry import get_registry
+        reg = get_registry()
+        spec = reg.get(str(raw))
+        if spec and spec.public_type:
+            return StepType(spec.public_type)
+    except Exception:
+        pass
+
+    return StepType.CUSTOM
 
 
 def _resolve_reference_path(reference: Optional[str], calculation_dir: Path) -> Optional[Path]:
