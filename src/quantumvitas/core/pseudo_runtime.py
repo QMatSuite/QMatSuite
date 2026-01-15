@@ -733,6 +733,7 @@ def refresh_calc_pseudo_records_after_step0(
             )
             # Keep existing values in calc_entry (no mutation)
     
-    # Save updated calculation
+    # Save updated species_map (atomic records only)
+    # Note: pseudo_set_sha is derived and stored only in manifest, not in calc.yaml
     save_calculation(wf_model, calculation_yaml)
 

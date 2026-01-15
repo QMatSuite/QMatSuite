@@ -175,9 +175,22 @@ def generate_demo_snapshot() -> Dict[str, Any]:
     
     # Helper to create step specs
     def create_step_spec(step_type: str, index: int, seedname: str, params: Optional[Dict] = None, cards: Optional[Dict] = None) -> Dict[str, Any]:
-        """Create a step specification dictionary."""
+        """Create a step specification dictionary.
+
+        Constitution §B: Persisted truth must be SPEC format (machine type).
+        """
         step_id = generate_ulid()
         calc_slug = "diamond-mlwfs"
+
+        # Convert GEN types to SPEC types for persistence (Constitution §B)
+        gen_to_spec = {
+            "scf": "qe_scf",
+            "nscf": "qe_nscf",
+            "pw2wannier90": "qe_pw2wannier90",
+            # w90_preproc and w90_run are already SPEC format
+        }
+        machine_type = gen_to_spec.get(step_type, step_type)
+
         spec = {
             "meta": {
                 "id": step_id,
@@ -186,7 +199,7 @@ def generate_demo_snapshot() -> Dict[str, Any]:
                 "path": f"calculations/{calc_slug}/steps/{step_type}.step.yaml",
                 "kind": "step",
             },
-            "step_type": step_type,
+            "step_type": machine_type,  # SPEC type (machine type) for persistence
             "index": index,
         }
         if params:

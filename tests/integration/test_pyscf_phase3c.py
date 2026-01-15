@@ -377,15 +377,18 @@ class TestPySCFPhase3CIntegration:
             },
         )
         
-        # Run Step(MP2): should error because no SCF provider exists
-        with pytest.raises(Exception) as exc_info:
-            QVService.run_step(
-                project_root=temp_project,
-                calculation_selector=calc_id,
-                step_selector=mp2_step_id,
-            )
-        
+        # Run Step(MP2): should fail because no SCF provider exists
+        # Note: The unified pipeline returns errors in the result dict rather than raising exceptions
+        result = QVService.run_step(
+            project_root=temp_project,
+            calculation_selector=calc_id,
+            step_selector=mp2_step_id,
+        )
+
+        # Verify execution failed
+        assert result.get("success") is False, "RunStep(mp2) without SCF should fail"
+
         # Verify error message mentions missing dependency
-        error_msg = str(exc_info.value)
-        assert "dependency" in error_msg.lower() or "provider" in error_msg.lower() or "mf" in error_msg.lower(), \
+        error_msg = result.get("error", "")
+        assert "dependency" in error_msg.lower() or "provider" in error_msg.lower() or "mf" in error_msg.lower() or "scf" in error_msg.lower(), \
             f"Error should mention missing dependency, got: {error_msg}"
