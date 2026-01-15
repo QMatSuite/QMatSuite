@@ -5,8 +5,11 @@ Per ParamSpace Constitution:
 - Oracle is read-only
 - Oracle only returns small discrete values (bool / small enum)
 - Oracle does NOT return preset IDs or parameter values
-- Oracle only reads YAML truth (current in-memory state)
+- Oracle only reads IR YAML truth (current in-memory IR state; IR is SSOT)
 - Oracle does NOT access preset intention or detect results
+
+Oracle operates on IR YAML (IR is SSOT). In v0, IR keys == QE keys due to 1:1 mapping,
+but conceptually Oracle only knows about IR keys.
 """
 
 from typing import Any, Dict
@@ -22,10 +25,11 @@ class Oracle:
     
     def __init__(self, yaml_state: Dict[str, Dict[str, Any]]):
         """
-        Initialize Oracle with current YAML state.
+        Initialize Oracle with current IR YAML state.
         
         Args:
-            yaml_state: Current YAML state dict (section -> {key: value})
+            yaml_state: Current IR YAML state dict (section -> {key: value})
+                IR is SSOT; in v0, IR keys == QE keys due to 1:1 mapping.
         """
         self.yaml_state = yaml_state
     
