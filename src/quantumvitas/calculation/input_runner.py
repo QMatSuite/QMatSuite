@@ -537,11 +537,80 @@ def _normalize_section_name(section: str) -> str:
     return normalized
 
 
+def _resolve_override_key(
+    param_name: str,
+    section_hint: Optional[str],
+    param_to_sections: Dict[str, list[str]],
+    module_key: str,
+) -> tuple[str, bool, Optional[str]]:
+    """
+    Resolve override key to target section following new rules:
+    - Unqualified (no section hint): Must use JSON to infer, fail if not found or ambiguous
+    - Qualified (has section hint): Always allow, warn if unknown or mismatch
+    
+    Args:
+        param_name: Parameter name (e.g., "ecutwfc")
+        section_hint: Optional section prefix (e.g., "SYSTEM" or None)
+        param_to_sections: Mapping from param.lower() -> list of canonical sections
+        module_key: QE module name (for error messages)
+    
+    Returns:
+        Tuple of (target_section, is_known, warning_message)
+        - target_section: Canonical section name (e.g., "&SYSTEM")
+        - is_known: Whether parameter is known in JSON schema
+        - warning_message: Optional warning message (None if no warning)
+    
+    Raises:
+        ValueError: For unqualified unknown parameters or ambiguous parameters
+    """
+    canonical_param = param_name.lower()
+    available_sections = param_to_sections.get(canonical_param, [])
+    is_known = len(available_sections) > 0
+    
+    if section_hint:
+        # Qualified parameter: always allow
+        target_section = _normalize_section_name(section_hint)
+        warning = None
+        
+        if not is_known:
+            warning = (
+                f"Parameter '{param_name}' is not defined in QE schema for module '{module_key}'. "
+                f"Writing to section '{target_section}' anyway (qualified override)."
+            )
+        elif target_section not in available_sections:
+            warning = (
+                f"Parameter '{param_name}' belongs to {available_sections} according to QE schema, "
+                f"but writing to '{target_section}' as specified (qualified override)."
+            )
+        
+        return (target_section, is_known, warning)
+    else:
+        # Unqualified parameter: must infer from JSON
+        if not is_known:
+            raise ValueError(
+                f"Parameter '{param_name}' is not defined for module '{module_key}'. "
+                f"Provide the section explicitly via SECTION.{param_name}=value."
+            )
+        if len(available_sections) > 1:
+            raise ValueError(
+                f"Parameter '{param_name}' exists in multiple sections {available_sections}. "
+                f"Specify the section explicitly via SECTION.{param_name}=value."
+            )
+        # Unique match: use canonical section
+        target_section = available_sections[0]
+        return (target_section, True, None)
+
+
 def _apply_parameter_overrides(
     qe_input: QEInput, overrides: Sequence[ParameterOverride]
 ) -> None:
     """
     Apply CLI-specified overrides to the parsed QE input.
+    
+    New rules:
+    - Unqualified parameters (no section): Must use JSON to infer canonical section
+    - Qualified parameters (has section): Always allow, warn if unknown or mismatch
+    - Unknown unqualified parameters: Fail with error
     """
 
     if not overrides:
@@ -559,47 +628,47 @@ def _apply_parameter_overrides(
     
     section_lookup = {name.upper(): params for name, params in sections.items()}
 
+    # Build param -> sections mapping for inference
     param_to_sections: Dict[str, list[str]] = {}
     for section_name, params in sections.items():
         canonical_section = section_name.upper()
         for param in params:
             param_to_sections.setdefault(param.lower(), []).append(canonical_section)
 
+    import warnings
+    
     for override in overrides:
         param_name = override.name.strip()
         if not param_name:
             continue
-        canonical_param = param_name.lower()
-        available_sections = param_to_sections.get(canonical_param, [])
-
-        target_section: Optional[str] = None
-        if override.section:
-            candidate = _normalize_section_name(override.section)
-            if not candidate or candidate not in section_lookup:
-                raise ValueError(
-                    f"Section '{override.section}' is not valid for module '{module_key}'."
+        
+        # Resolve target section using new rules
+        target_section, is_known, warning = _resolve_override_key(
+            param_name=param_name,
+            section_hint=override.section,
+            param_to_sections=param_to_sections,
+            module_key=module_key,
+        )
+        
+        # Emit warning if needed (for qualified overrides)
+        if warning:
+            warnings.warn(warning, UserWarning, stacklevel=2)
+        
+        # Validate section exists (for qualified overrides)
+        if target_section not in section_lookup:
+            # For qualified overrides, allow unknown sections (just warn)
+            if override.section:
+                warnings.warn(
+                    f"Section '{target_section}' is not a known section for module '{module_key}'. "
+                    f"Writing parameter '{param_name}' anyway (qualified override).",
+                    UserWarning,
+                    stacklevel=2,
                 )
-            if available_sections and candidate not in available_sections:
+            else:
+                # This should not happen for unqualified (caught in _resolve_override_key)
                 raise ValueError(
-                    f"Parameter '{param_name}' does not belong to section '{override.section}' "
-                    f"for module '{module_key}'."
+                    f"Resolved section '{target_section}' is not valid for module '{module_key}'."
                 )
-            target_section = candidate
-        else:
-            if not available_sections:
-                raise ValueError(
-                    f"Parameter '{param_name}' is not defined for module '{module_key}'. "
-                    "Provide the section explicitly via --SECTION.parameter=value."
-                )
-            if len(available_sections) > 1:
-                raise ValueError(
-                    f"Parameter '{param_name}' exists in multiple sections {available_sections}. "
-                    "Specify the section explicitly via --SECTION.parameter=value."
-                )
-            target_section = available_sections[0]
-
-        if not target_section:
-            continue
 
         namelist_name = target_section.lstrip("&")
         target_namelist = qe_input.get_namelist(namelist_name)

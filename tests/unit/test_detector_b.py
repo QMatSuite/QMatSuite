@@ -109,9 +109,10 @@ class TestOccupationsSchemeDetection:
         assert detect_occupations_scheme(params) == OccupationsSchemeOption.SMEARING_GAUSSIAN
     
     def test_smearing_wrong_degauss(self):
-        """occupations='smearing' + degauss != 0.02 → CUSTOM."""
+        """occupations='smearing' + degauss != 0.02 → SMEARING_GAUSSIAN (degauss owned by Precision)."""
         params = {"SYSTEM": {"occupations": "smearing", "smearing": "gaussian", "degauss": 0.01}}
-        assert detect_occupations_scheme(params) == CUSTOM
+        # OccupationsScheme detect does NOT read degauss (owned by Precision)
+        assert detect_occupations_scheme(params) == OccupationsSchemeOption.SMEARING_GAUSSIAN
     
     def test_smearing_non_gaussian(self):
         """occupations='smearing' + smearing != gaussian/gauss → CUSTOM."""
@@ -533,7 +534,7 @@ class TestCompilerCanonicalEncoding:
         # smearing and degauss should NOT be in result (will be removed by integration layer)
     
     def test_compile_occupations_scheme_smearing_gaussian_explicit(self):
-        """compile_occupations_scheme(SMEARING_GAUSSIAN) must explicitly write all params."""
+        """compile_occupations_scheme(SMEARING_GAUSSIAN) must explicitly write all params (no degauss)."""
         result = compile_occupations_scheme(OccupationsSchemeOption.SMEARING_GAUSSIAN)
         
         assert "SYSTEM" in result
@@ -542,8 +543,8 @@ class TestCompilerCanonicalEncoding:
         assert system["occupations"] == "smearing"
         assert "smearing" in system
         assert system["smearing"] == "gaussian"
-        assert "degauss" in system
-        assert system["degauss"] == 0.02
+        # degauss is NOT written by OccupationsScheme (owned by Precision)
+        assert "degauss" not in system
     
     def test_compile_occupations_scheme_tetrahedra_explicit(self):
         """compile_occupations_scheme(TETRAHEDRA) must explicitly write occupations='tetrahedra'."""

@@ -11,6 +11,36 @@ Units are recorded explicitly in the mapping to keep the boundary clear.
 from typing import Any, Dict, Optional, Tuple
 
 
+def ir_bool(v: bool | str) -> str:
+    """
+    IR canonical boolean encoder (QE backend).
+    
+    Converts Python bool or IR canonical string to IR canonical boolean string.
+    This is part of IR contract (not engine serialization).
+    
+    Args:
+        v: Python bool (True/False) or IR canonical string (".true."/".false.")
+        
+    Returns:
+        IR canonical boolean string: ".true." or ".false."
+        
+    Raises:
+        ValueError: If input is not bool or canonical string
+    """
+    if isinstance(v, bool):
+        return ".true." if v else ".false."
+    if isinstance(v, str):
+        if v == ".true." or v == ".false.":
+            return v
+        raise ValueError(
+            f"Invalid IR boolean string: {v!r}. "
+            f"Must be '.true.' or '.false.' (IR canonical format)"
+        )
+    raise TypeError(
+        f"ir_bool() expects bool or str, got {type(v).__name__}: {v!r}"
+    )
+
+
 # IR → QE Mapping (for compilation)
 # Maps: ir_key → (qe_module, qe_section, qe_key)
 IR_TO_QE_MAPPING: Dict[str, Tuple[str, str, str]] = {
@@ -183,6 +213,102 @@ def ir_patch_to_qe_patch(ir_patch: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[
                 continue
     
     return qe_patch
+
+
+def ir_params_to_qe_params(ir_params: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """
+    Convert IR parameters dict to QE parameters dict (with value serialization).
+    
+    This function handles the structure used by apply_presets_to_step:
+    {
+        "parameters": {
+            "SYSTEM": {ir_key: ir_value, ...},
+            "ELECTRONS": {ir_key: ir_value, ...}
+        },
+        "cards": {ir_key: ir_value, ...}
+    }
+    
+    Converts to QE format:
+    {
+        "parameters": {
+            "SYSTEM": {qe_key: qe_value, ...},  # qe_value serialized (bool -> ".true."/".false.")
+            "ELECTRONS": {qe_key: qe_value, ...}
+        },
+        "cards": {qe_key: qe_value, ...}
+    }
+    
+    Args:
+        ir_params: IR parameters dict with "parameters" and/or "cards" keys
+        
+    Returns:
+        QE parameters dict with serialized values (bool -> ".true."/".false.")
+    """
+    qe_params: Dict[str, Dict[str, Any]] = {}
+    
+    # Process "parameters" section (contains SYSTEM, ELECTRONS, etc.)
+    if "parameters" in ir_params:
+        qe_params["parameters"] = {}
+        for section_name, section_params in ir_params["parameters"].items():
+            if not isinstance(section_params, dict):
+                continue
+            
+            qe_section_params = {}
+            for ir_key, ir_value in section_params.items():
+                # Handle None (deletion marker)
+                if ir_value is None:
+                    # For deletions, try to convert key but keep None
+                    try:
+                        qe_module, qe_section, qe_key, _ = ir_to_qe_param(ir_key, None)
+                        # Verify section matches
+                        if qe_section == section_name:
+                            qe_section_params[qe_key] = None
+                        else:
+                            # Section mismatch - keep original key (should not happen in v0)
+                            qe_section_params[ir_key] = None
+                    except KeyError:
+                        # IR key not in mapping - keep as-is
+                        qe_section_params[ir_key] = None
+                else:
+                    # Convert IR key/value to QE key/value
+                    try:
+                        qe_module, qe_section, qe_key, qe_value = ir_to_qe_param(ir_key, ir_value)
+                        # Verify section matches
+                        if qe_section == section_name:
+                            qe_section_params[qe_key] = qe_value
+                        else:
+                            # Section mismatch - use original key (should not happen in v0)
+                            qe_section_params[ir_key] = qe_value
+                    except KeyError:
+                        # IR key not in mapping - keep as-is (non-IR parameters)
+                        qe_section_params[ir_key] = ir_value
+            
+            if qe_section_params:
+                qe_params["parameters"][section_name] = qe_section_params
+    
+    # Process "cards" section
+    if "cards" in ir_params:
+        qe_params["cards"] = {}
+        cards_params = ir_params["cards"]
+        if isinstance(cards_params, dict):
+            for ir_key, ir_value in cards_params.items():
+                # Handle None (deletion marker)
+                if ir_value is None:
+                    qe_params["cards"][ir_key] = None
+                else:
+                    # For cards, try to convert via mapping
+                    try:
+                        qe_module, qe_section, qe_key, qe_value = ir_to_qe_param(ir_key, ir_value)
+                        # Cards should map to "cards" section
+                        if qe_section == "cards":
+                            qe_params["cards"][qe_key] = qe_value
+                        else:
+                            # Section mismatch - keep original key
+                            qe_params["cards"][ir_key] = ir_value
+                    except KeyError:
+                        # IR key not in mapping - keep as-is (non-IR cards like K_POINTS)
+                        qe_params["cards"][ir_key] = ir_value
+    
+    return qe_params
 
 
 def qe_yaml_to_ir_yaml(qe_yaml: Dict[str, Dict[str, Any]], qe_module: str = "pw") -> Dict[str, Dict[str, Any]]:
