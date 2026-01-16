@@ -4,9 +4,10 @@ Step definitions used by calculations.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from quantumvitas.core.resources import ResourceMeta
 from quantumvitas.engine.base import Engine, StepResult
@@ -63,7 +64,7 @@ class Step:
         self,
         engine: Engine,
         calculation_raw_dir: Path,
-        project_root: Path,
+        project_root: Optional[Path] = None,
         species_map: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> StepResult:
         """
@@ -72,7 +73,7 @@ class Step:
         Args:
             engine: Engine to use for execution
             calculation_raw_dir: Working directory for this calculation (e.g., raw_dir)
-            project_root: Project root path
+            project_root: Project root path (can be None for standalone mode)
             species_map: Optional species mapping from calculation (for pseudo materialization)
         """
         if engine.name != "qe":
@@ -96,14 +97,21 @@ class Step:
                 f"[Step.run] Executing step: slug={self.meta.slug}, ulid={self.meta.id}, type={step_type_value}"
             )
             
-            result, _ = run_input_step(
-                engine=engine.backend,
+            # Production run contract: never parse .in files during execution.
+            # The .in file was already generated from step.yaml by materialize_step_spec()
+            # with all cards, parameters, and runtime overrides (outdir, pseudo_dir) applied.
+            # We simply call the engine directly with the generated input file.
+            # See docs/dev/exec-pipeline-ssot-contract.md for details.
+            
+            # Resolve pseudo_dir for engine (already set in .in by materialize_step_spec during materialization)
+            # In standalone mode, pseudo_dir is set relative to workdir during materialization
+            
+            # Call engine directly - no re-parsing of .in file
+            result = engine.backend.run_step(
                 input_file=input_path,
                 working_dir=calculation_raw_dir,
-                project_root=project_root,
                 step_type=step_type_value,
                 timeout=timeout,
-                species_map=species_map,
             )
             
             logger.debug(

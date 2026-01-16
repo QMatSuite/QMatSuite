@@ -137,6 +137,7 @@ class CalculationRunner:
         run_id: Optional[str] = None,
         run_mode: str = "incremental",  # "incremental" or "full"
         target_step_id: Optional[str] = None,  # For Run Step mode (TARGET selection)
+        compat_input_playback: bool = False,  # For tutorial playback tests: use existing .in files
     ) -> CalculationResult:
         """
         Execute all steps in a calculation.
@@ -441,6 +442,7 @@ class CalculationRunner:
                 step_shas=step_shas,
                 structure_sha=structure_sha_computed,
                 pseudo_set_sha=pseudo_sha_computed,
+                compat_input_playback=compat_input_playback,
             )
 
             # Determine overall status
@@ -491,6 +493,7 @@ class CalculationRunner:
         step_shas: Dict[str, str],
         structure_sha: str,
         pseudo_set_sha: str,
+        compat_input_playback: bool = False,
     ) -> List[StepResultSummary]:
         """
         Execute calculation using JobGraph and JobExecutor pipeline.

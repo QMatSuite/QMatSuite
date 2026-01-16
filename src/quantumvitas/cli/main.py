@@ -1641,17 +1641,24 @@ def _run_standalone_step(
     """
     Run a step in standalone mode.
     
-    Standalone mode always performs a full roundtrip: parse original input,
-    generate normalized input, and run QE on the generated input.
+    Standalone mode performs roundtrip: import .in to YAML, then run from YAML.
+    This ensures standalone uses the same production run pipeline (YAML SSOT → clean rewrite .in).
+    See docs/dev/exec-pipeline-ssot-contract.md for details.
     
     Args:
         input_file: Path to QE input file
         workdir: Working directory (defaults to current directory)
         engine_name: Engine name (defaults to "qe")
     """
-    from quantumvitas.calculation.standalone import StandaloneStepContext, run_standalone_step
+    import tempfile
+    import shutil
+    from quantumvitas.calculation.importers import build_step_spec_from_qe_input
+    from quantumvitas.calculation.structure_steps import StructureStepSpec, materialize_step_spec
     from quantumvitas.core.engines.base import EngineConfig
-    from quantumvitas.core.engines.qe import QuantumEspressoEngine
+    from quantumvitas.calculation.step import Step
+    from quantumvitas.calculation.types import StepType
+    from quantumvitas.io import read_structure
+    from quantumvitas.engine.qe_engine import QeEngine
     
     input_path = Path(input_file).resolve()
     if not input_path.exists():
@@ -1664,9 +1671,6 @@ def _run_standalone_step(
         workdir_path = Path.cwd()
     workdir_path.mkdir(parents=True, exist_ok=True)
     
-    # Default outdir: workdir / "outdir"
-    outdir_path = workdir_path / "outdir"
-    
     # Create engine (for now, only QE is supported)
     if engine_name and engine_name != "qe":
         raise typer.BadParameter(
@@ -1675,30 +1679,82 @@ def _run_standalone_step(
         )
     
     engine_config = EngineConfig(name="qe")
-    engine = QuantumEspressoEngine(engine_config)
     
-    # Create context and run
-    ctx = StandaloneStepContext(
-        input_file=input_path,
-        workdir=workdir_path,
-        outdir=outdir_path,
-        engine=engine,
-    )
-    
-    # Print standalone run info
-    typer.echo("Standalone QE run:")
+    # Step 1: Import .in to YAML (roundtrip: import→YAML→run)
+    typer.echo("Standalone QE run (import→YAML→run):")
     typer.echo(f"  workdir: {workdir_path}")
     typer.echo(f"  input:   {input_path}")
-    typer.echo(f"  outdir:  {outdir_path}")
     
-    result, prepared = run_standalone_step(ctx)
+    # Create temporary directory for import (we'll clean it up after)
+    temp_import_dir = workdir_path / ".qv_standalone_import"
+    temp_import_dir.mkdir(exist_ok=True)
+    temp_structure_dir = temp_import_dir / "structures"
+    temp_structure_dir.mkdir(exist_ok=True)
     
-    # Determine which input was actually used for the run
-    input_used = prepared.modified_input if hasattr(prepared, 'modified_input') else input_path
-    
-    typer.echo(
-        f"Step finished: {result.output_file} -> (input {input_used})"
-    )
+    try:
+        # Import .in to step.yaml
+        import_result = build_step_spec_from_qe_input(
+            input_file=input_path,
+            destination_dir=temp_import_dir,
+            structure_dir=temp_structure_dir,
+            step_id=None,  # Will generate ULID
+            structure_id=None,  # Will be auto-generated from input
+            reference_structure_by="id",
+            apply_defaults=False,  # Preserve original parameters
+        )
+        
+        spec = import_result.spec
+        spec_path = import_result.spec_path
+        
+        # Step 2: Materialize step from YAML (generates .in from step.yaml)
+        # Use a temporary calculation_dir (doesn't need to exist, just for naming)
+        temp_calc_dir = temp_import_dir / "calc"
+        temp_calc_dir.mkdir(exist_ok=True)
+        
+        # Resolve structure for materialization
+        structure = None
+        if import_result.structure_path and import_result.structure_path.exists():
+            structure = read_structure(import_result.structure_path)
+        
+        # Materialize step (generates .in from step.yaml)
+        # For standalone, use workdir as project_root for pseudo resolution (workdir/pseudo)
+        generated_input, materialized_spec = materialize_step_spec(
+            spec=spec,
+            output_dir=workdir_path,
+            calculation_dir=temp_calc_dir,
+            project=None,  # Standalone: no project context
+            spec_path=spec_path,
+            input_name=None,  # Use default naming
+            project_root=workdir_path,  # Standalone: use workdir as pseudo base (workdir/pseudo)
+        )
+        
+        # Step 3: Run step using production pipeline (Step.run() → engine directly)
+        # Create Step object
+        step = Step(
+            meta=spec.meta,
+            input_file=generated_input,
+            engine="qe",
+            step_type=StepType.from_string(spec.step_type) if spec.step_type else None,
+            options={},
+            reference_output=None,
+        )
+        
+        # Run using production pipeline (no prepare_input_step, no parsing .in)
+        # Use engine wrapper (QeEngine)
+        qe_engine = QeEngine(engine_config)
+        result = step.run(
+            engine=qe_engine,
+            calculation_raw_dir=workdir_path,
+            project_root=workdir_path,  # Standalone: use workdir as pseudo base (workdir/pseudo)
+            species_map=None,  # Species overrides already in step.yaml
+        )
+        
+        typer.echo(f"Step finished: {result.output_file}")
+        
+    finally:
+        # Clean up temporary import directory
+        if temp_import_dir.exists():
+            shutil.rmtree(temp_import_dir, ignore_errors=True)
 
 
 @run_app.command(
