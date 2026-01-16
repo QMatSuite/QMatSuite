@@ -553,6 +553,7 @@ class CalculationRunner:
         context = {
             "run_id": run_id,
             "run_mode": run_mode,
+            "compat_input_playback": compat_input_playback,
         }
 
         # Create handlers
