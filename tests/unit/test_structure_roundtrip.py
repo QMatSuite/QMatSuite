@@ -443,6 +443,7 @@ class TestStepSpecRoundtrip:
                 "SYSTEM": {"ecutwfc": 60, "ecutrho": 240},
                 "ELECTRONS": {"mixing_beta": 0.7},
             },
+            species_overrides={"Si": {"pseudopot": "Si.upf"}},  # Required for standalone mode
         )
 
         # Generate QE input from spec
@@ -485,6 +486,7 @@ class TestStepSpecRoundtrip:
             parameters={
                 "SYSTEM": {"ecutwfc": 60},
             },
+            species_overrides={"Si": {"pseudopot": "Si.upf"}},  # Required for standalone mode
         )
         spec_file = tmp_path / "step.yaml"
         spec_dict = spec.to_dict()

@@ -110,7 +110,25 @@ def sample_project(tmp_path: Path) -> Path:
             "steps": [{"step_id": step_id, "input": "raw/scf.in"}],  # Use step_id (ULID), not id (name)
         },
     )
-    (calculation_dir / "raw" / "scf.in").write_text("&control\n calculation='scf'\n/")
+    # Create minimal SCF input file (used for other test purposes, not just species config)
+    scf_in_path = calculation_dir / "raw" / "scf.in"
+    scf_in_path.write_text("&control\n calculation='scf'\n/")
+    
+    # Configure species_map using official CLI command (required for project runs)
+    # Use --set option instead of creating dummy .in file just for species config
+    from typer.testing import CliRunner
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "configure", "species",
+            "--set", "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+            "--calc", "wf",
+            "--project", str(project_root),
+        ],
+    )
+    assert result.exit_code == 0, f"Failed to configure species: {result.stdout}\n{result.stderr}"
+    
     return project_root
 
 
@@ -961,11 +979,25 @@ def test_cli_show_command_import_preserves_original_parameters(
 
         calculation_slug = slugify(calculation_name)
         calculation_dir = project_root / "calculations" / calculation_slug
+        
+        # Configure species_map using official CLI command (required for project runs)
+        # Use the original input file that was used to create the step
+        result = runner.invoke(
+            app,
+            [
+                "configure", "species", "--from-input", str(input_path),
+                "--calc", calculation_slug,
+                "--project", str(project_root),
+            ],
+        )
+        assert result.exit_code == 0, f"Failed to configure species: {result.stdout}\n{result.stderr}"
+        
         calculation_yaml = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())
         # Verify DAG + ID-only constitution: only structure_id is persisted
         assert "structure_id" in calculation_yaml, "calculation.yaml should contain structure_id"
         assert "structure_name" not in calculation_yaml, "calculation.yaml should NOT contain structure_name"
         assert "structure" not in calculation_yaml, "calculation.yaml should NOT contain structure selector"
+        
         last_step = calculation_yaml["steps"][-1]
         # With ID-only model, resolve step file via step_id
         from quantumvitas.core.resolution import resolve_step, build_resource_index

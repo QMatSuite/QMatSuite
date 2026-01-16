@@ -166,6 +166,20 @@ def test_cli_show_command_executes_against_references(
 
         calculation_slug = slugify(calculation_name)
         calculation_dir = project_root / "calculations" / calculation_slug
+        
+        # Configure species_map using official CLI command (required for project runs)
+        # Use the original input file that was used to create the step
+        result = runner.invoke(
+            app,
+            [
+                "configure", "species", "--from-input", str(input_path),
+                "--calc", calculation_slug,
+                "--project", str(project_root),
+            ],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, f"Failed to configure species: {result.stdout}\n{result.stderr}"
+        
         calculation_yaml = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())
         last_step = calculation_yaml["steps"][-1]
         # With ID-only model, resolve step file via step_id

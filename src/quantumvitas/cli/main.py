@@ -1187,6 +1187,15 @@ def init_step_command(
     species = dict(default_species)
     if bundle.species_overrides:
         species.update(bundle.species_overrides)
+        # Warn if step-level species_overrides are used in project runs
+        import warnings
+        warnings.warn(
+            "Step-level species_overrides detected (--SPECIES.* flags). "
+            "Project runs ignore step-level species_overrides and use calculation.yaml species_map instead. "
+            "Configure species via `qv configure species ...` to set calculation-level species_map.",
+            UserWarning,
+            stacklevel=2,
+        )
     
     # Resolve structure selector to structure_id
     # If calculation has structure_id, use that directly (canonical)
@@ -3064,6 +3073,117 @@ def configure_calculation_command(
         typer.secho(f"Calculation updated: {calculation_yaml}", fg=typer.colors.GREEN)
     else:
         typer.secho("No changes specified. Use --structure or --reorder.", fg=typer.colors.YELLOW)
+
+
+@configure_app.command("species")
+def configure_species_command(
+    from_input: Optional[Path] = typer.Option(
+        None, "--from-input", help="QE input file (.in) to extract ATOMIC_SPECIES from"
+    ),
+    set_value: Optional[List[str]] = typer.Option(
+        None, "--set", help="Explicit species triple: ELEMENT:MASS:PSEUDOPOT (repeatable)"
+    ),
+    calculation: Optional[str] = typer.Option(
+        None, "--calc", "--calculation", help="Calculation id/name/slug/path (auto-detects from pwd if omitted)"
+    ),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (auto-detects from pwd)"
+    ),
+) -> None:
+    """
+    Configure calculation.yaml species_map from ATOMIC_SPECIES in a QE input file or explicit triples.
+    
+    Either --from-input or --set (or both) must be provided.
+    If both are provided, --from-input is processed first, then --set overrides same elements.
+    
+    Examples:
+        qv configure species --from-input scf.in
+        qv configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+        qv configure species --set "Si:28.0855:Si...UPF" --set "O:15.999:O...UPF" --calc si_bands
+        qv configure species --from-input scf.in --set "Si:28.086:Si.new.UPF"  # --set overrides Si from input
+    """
+    from quantumvitas.calculation.species_config import configure_species_map
+    
+    # Find project root
+    if project:
+        project_root = Path(project).expanduser().resolve()
+    else:
+        try:
+            project_root = require_project_root()
+        except Exception as exc:
+            raise typer.BadParameter(str(exc)) from exc
+    
+    # Resolve calculation
+    if not calculation:
+        config = load_project_config(project_root)
+        calculation_entry = find_enclosing_calculation(project_root, config)
+        if not calculation_entry:
+            raise typer.BadParameter(
+                "No calculation specified and not inside a calculation directory. "
+                "Specify calculation id/name/slug/path or cd into a calculation folder."
+            )
+        calculation = extract_calculation_selector_from_entry(calculation_entry)
+    
+    # Parse --set entries into triples
+    set_entries = None
+    if set_value:
+        set_entries = []
+        for triple in set_value:
+            # Parse triple: ELEMENT:MASS:PSEUDOPOT
+            parts = triple.split(":", 2)  # Split into max 3 parts
+            if len(parts) != 3:
+                raise typer.BadParameter(
+                    f"Invalid --set format: '{triple}'. Expected format: ELEMENT:MASS:PSEUDOPOT\n"
+                    f"Example: --set \"Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF\""
+                )
+            
+            element = parts[0].strip()
+            mass_str = parts[1].strip()
+            pseudopot = parts[2].strip()
+            
+            if not element:
+                raise typer.BadParameter(f"Element cannot be empty in --set '{triple}'")
+            if not pseudopot:
+                raise typer.BadParameter(f"Pseudopotential filename cannot be empty in --set '{triple}'")
+            
+            # Parse mass as float
+            try:
+                mass = float(mass_str)
+            except ValueError as exc:
+                raise typer.BadParameter(f"Invalid mass '{mass_str}' in --set '{triple}': {exc}")
+            
+            set_entries.append((element, mass, pseudopot))
+    
+    # Call shared API
+    try:
+        updated_species_map = configure_species_map(
+            project_root=project_root,
+            calculation=calculation,
+            from_qe_input=from_input,
+            set_entries=set_entries,
+            merge=True,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    
+    # Print summary
+    elements = sorted(updated_species_map.keys())
+    typer.secho(f"Configured species_map for element(s): {', '.join(elements)}", fg=typer.colors.GREEN)
+    for element in elements:
+        entry = updated_species_map[element]
+        mass = entry.get("mass")
+        pseudo_filename = entry.get("pseudopot")
+        if mass is not None and pseudo_filename:
+            typer.secho(f"  {element}: mass={mass}, pseudopot={pseudo_filename}", fg=typer.colors.GREEN)
+        elif pseudo_filename:
+            typer.secho(f"  {element}: pseudopot={pseudo_filename}", fg=typer.colors.GREEN)
+    
+    # Get calculation_yaml path for summary
+    config = load_project_config(project_root)
+    calculation_entry = find_calculation_entry(config, calculation, project_root)
+    calculation_dir = calculation_directory(project_root, calculation_entry)
+    calculation_yaml = calculation_dir / "calculation.yaml"
+    typer.secho(f"Updated: {calculation_yaml}", fg=typer.colors.GREEN)
 
 
 @configure_app.command("structure")
