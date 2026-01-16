@@ -1132,6 +1132,18 @@ def materialize_step_spec(
     # Validate species_map for project runs
     # Project runs require calculation.yaml species_map with all required elements
     is_project_run = (calculation_dir and project_root and calc_model is not None)
+    
+    # Warn if step-level species_overrides detected in project runs
+    if is_project_run and spec_obj.species_overrides:
+        import warnings
+        warnings.warn(
+            "Step-level species_overrides detected in step.yaml. "
+            "Project runs ignore step species_overrides and use calculation.yaml species_map instead. "
+            "Configure species via `qv configure species ...`.",
+            UserWarning,
+            stacklevel=2,
+        )
+    
     if is_project_run:
         if not calculation_species_map:
             # Get required elements from structure

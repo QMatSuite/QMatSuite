@@ -174,6 +174,17 @@ class TestSiDosCalculation:
             "--DOS.prefix", "si",
         ], cwd=project_dir)
         
+        # Configure species_map using official CLI command (required for project runs)
+        # Use the SCF input file created in project_with_structure fixture
+        scf_in = project_dir.parent.parent / "si.0_scf.in"  # test_project_dir / si.0_scf.in
+        if not scf_in.exists():
+            # Fallback: create input file in project root if not in expected location
+            scf_in = project_dir.parent / "si.0_scf.in"
+        run_qv([
+            "configure", "species", "--from-input", str(scf_in),
+            "--calc", "si_dos",
+        ], cwd=project_dir)
+        
         return calculation_dir
     
     def test_run_calculation_and_analyze(

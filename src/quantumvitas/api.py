@@ -7979,6 +7979,55 @@ class QVService:
             "structure_ulid": meta.id,
             "already_exists": False,
         }
+    
+    @staticmethod
+    def configure_species_map(
+        project_root: Path,
+        calculation: str,
+        *,
+        from_qe_input: Optional[Path] = None,
+        set_entries: Optional[List[Tuple[str, float, str]]] = None,
+        merge: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Configure calculation-level species_map.
+        
+        Updates calculation.yaml species_map from a QE input file or explicit triples.
+        Shared implementation used by both CLI and QVService/daemon.
+        
+        Args:
+            project_root: Project root directory
+            calculation: Calculation selector (id/name/slug/path)
+            from_qe_input: Optional QE input file to extract ATOMIC_SPECIES from
+            set_entries: Optional list of explicit (element, mass, pseudopot) triples
+            merge: If True (default), merge with existing species_map. If False, replace.
+            
+        Returns:
+            Dict with updated species_map and success status
+            
+        Raises:
+            ValueError: If calculation not found or invalid arguments
+        """
+        from quantumvitas.calculation.species_config import configure_species_map
+        
+        project_root = Path(project_root).expanduser().resolve()
+        
+        try:
+            updated_species_map = configure_species_map(
+                project_root=project_root,
+                calculation=calculation,
+                from_qe_input=from_qe_input,
+                set_entries=set_entries,
+                merge=merge,
+            )
+            
+            return {
+                "success": True,
+                "species_map": updated_species_map,
+                "elements": sorted(updated_species_map.keys()),
+            }
+        except ValueError as exc:
+            raise QVServiceError(str(exc)) from exc
 
 
 # Export the service as a singleton-like module-level instance

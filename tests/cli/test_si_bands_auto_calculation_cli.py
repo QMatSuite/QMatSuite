@@ -208,6 +208,15 @@ class TestSiBandsCalculationAutoKpath:
             "--BANDS.filband", "si.bands.dat",
         ], cwd=project_dir)
         
+        # Configure species_map using official CLI command (required for project runs)
+        # The SCF input file was created in project_with_structure fixture at test_project_dir / "si.0_scf.in"
+        # Since project_dir = test_project_dir / "si_bands_auto", the input is at project_dir.parent / "si.0_scf.in"
+        scf_in = project_dir.parent / "si.0_scf.in"
+        run_qv([
+            "configure", "species", "--from-input", str(scf_in),
+            "--calc", "bands_auto",
+        ], cwd=project_dir)
+        
         return calculation_dir
     
     def test_run_calculation_and_analyze_auto(
