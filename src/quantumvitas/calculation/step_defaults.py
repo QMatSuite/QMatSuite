@@ -81,9 +81,8 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
             },
         },
         "cards": {
-            "K_POINTS": {
-                "option": "crystal_b",
-            },
+            # K_POINTS is not needed for bands.x post-processing step
+            # (bands.x reads from bands_pw output, not from input)
         },
         "species_overrides": {},
     },

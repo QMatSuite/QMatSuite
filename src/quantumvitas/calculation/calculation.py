@@ -373,8 +373,13 @@ def _build_step(
             f"This indicates a corrupted calculation or step file."
         )
 
-    # Build from spec file (step_file_path resolved via registry)
-    # Pass existing_input_file so pseudopotentials can be extracted from it
+    # Production run contract: never use existing_input_file for execution.
+    # The input: field in calculation.yaml is import-only (legacy).
+    # For production run, we always generate .in from step.yaml (YAML SSOT).
+    # See docs/dev/exec-pipeline-ssot-contract.md for details.
+    #
+    # If existing_input_file is provided (legacy calculation.yaml with input: field),
+    # ignore it for production run. This ensures production always uses YAML SSOT clean rewrite.
     step = _build_step_from_spec(
         step_id=step_id,  # Use ULID from calculation.yaml (must match step_meta.id)
         engine_name=engine_name,
@@ -385,7 +390,7 @@ def _build_step(
         options=options,
         reference=reference_path,
         step_meta=step_meta,
-        existing_input_file=existing_input_file,
+        existing_input_file=None,  # Ignore existing_input_file in production run (YAML SSOT)
     )
     
     return step, False  # No migration needed (legacy calculations raise errors)
@@ -589,8 +594,9 @@ def _build_step_from_spec(
         resolve_structure_selector=None,  # DAG + ULID model: structure_id is already in spec
     )
     
-    # If there's an existing input file, extract structure, parameters, cards, and pseudopotentials from it
-    # and merge them into the step spec (existing input takes precedence over step spec defaults)
+    # IMPORT-ONLY: If existing_input_file is provided, it's for import workflows only.
+    # Production run never uses existing_input_file (see contract in exec-pipeline-ssot-contract.md).
+    # This code path is kept for import workflows (e.g., build_step_spec_from_qe_input).
     if existing_input_file and existing_input_file.exists():
         try:
             from quantumvitas.io.parser.qe_parser import QEInputParser

@@ -34,6 +34,56 @@ logger = logging.getLogger(__name__)
 HandlerFunc = Callable[[Job, "Calculation", "EngineRegistry", Dict[str, Any]], JobResult]
 
 
+def _get_step_input_from_calculation_yaml(
+    calculation: "Calculation",
+    step_ulid: str,
+) -> Optional[Path]:
+    """
+    Get the input file path from calculation.yaml for a given step.
+    
+    Used by compat input playback mode to find existing .in files.
+    
+    Args:
+        calculation: Calculation instance
+        step_ulid: Step ULID to look up
+        
+    Returns:
+        Path to input file if found in calculation.yaml, None otherwise
+    """
+    import yaml
+    
+    calculation_yaml = calculation.dir / "calculation.yaml"
+    if not calculation_yaml.exists():
+        return None
+    
+    data = yaml.safe_load(calculation_yaml.read_text())
+    steps_data = data.get("steps", [])
+    
+    for step_data in steps_data:
+        if step_data.get("step_id") == step_ulid:
+            input_path_value = step_data.get("input") or step_data.get("file")
+            if input_path_value:
+                input_path = Path(input_path_value)
+                if not input_path.is_absolute():
+                    # Resolve relative to calculation working_dir (raw/)
+                    input_path = (calculation.working_dir / input_path).resolve()
+                    if not input_path.exists():
+                        # Try relative to calculation_dir
+                        input_path = (calculation.dir / input_path_value).resolve()
+                if input_path.exists():
+                    return input_path
+                else:
+                    # Log for debugging
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(
+                        f"[COMPAT] Input file not found: {input_path} "
+                        f"(working_dir={calculation.working_dir}, calc_dir={calculation.dir})"
+                    )
+    
+    return None
+
+
 def qe_step_handler(
     job: Job,
     calculation: "Calculation",
@@ -107,14 +157,48 @@ def qe_step_handler(
     step.options["run_mode"] = context.get("run_mode", "incremental")
     step.options["step_artifacts_dir"] = str(step_artifacts_dir)
 
+    # Check for compat input playback mode
+    compat_input_playback = context.get("compat_input_playback", False)
+    
     # Execute step
     try:
-        result = step.run(
-            engine=engine,
-            calculation_raw_dir=raw_dir,
-            project_root=calculation.project.root,
-            species_map=calculation.species_map,
-        )
+        if compat_input_playback:
+            # Try to get input path from calculation.yaml
+            existing_input_path = _get_step_input_from_calculation_yaml(
+                calculation=calculation,
+                step_ulid=step_ulid,
+            )
+            
+            if existing_input_path:
+                # Use compat executor
+                from quantumvitas.calculation.compat_executor import run_qe_step_from_existing_input_compat
+                
+                result = run_qe_step_from_existing_input_compat(
+                    existing_input_path=existing_input_path,
+                    working_dir=raw_dir,
+                    project_root=calculation.project.root,
+                    step_id=step_ulid,
+                    calculation_slug=calculation.id,
+                    engine=engine,
+                    step_type=step.step_type.value if step.step_type else None,
+                    timeout=step.options.get("timeout"),
+                )
+            else:
+                # No input field in calculation.yaml, fall back to normal path
+                result = step.run(
+                    engine=engine,
+                    calculation_raw_dir=raw_dir,
+                    project_root=calculation.project.root,
+                    species_map=calculation.species_map,
+                )
+        else:
+            # Normal SSOT path
+            result = step.run(
+                engine=engine,
+                calculation_raw_dir=raw_dir,
+                project_root=calculation.project.root,
+                species_map=calculation.species_map,
+            )
 
         success = result.success if hasattr(result, "success") else False
         error_msg = result.error if hasattr(result, "error") and not success else None
