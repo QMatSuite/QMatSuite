@@ -289,6 +289,33 @@ def test_yaml_boolean_parsing_behavior():
 - If `yaml.safe_dump()` produces quoted `".true."`, YAML parses it as string
 - **Need to verify actual behavior**
 
+#### A.5.1 Environment Verification
+
+**Interpreter used**: `/Users/hh7465/QMatSuite/.venv/bin/python`
+
+**PyYAML version**: PyYAML 6.0.3 (from `.venv`)
+
+**Note**: pytest uses the same `.venv/bin/python` interpreter, so this verification matches the pytest environment.
+
+#### A.5.2 YAML Parsing Result
+
+**Probe output** (verbatim):
+```
+explicit_unquoted_true -> str '.true.'
+explicit_unquoted_false -> str '.false.'
+explicit_quoted_true -> str '.true.'
+explicit_quoted_false -> str '.false.'
+plain_true -> bool True
+plain_false -> bool False
+```
+
+**Conclusion**: 
+- `.true.` and `.false.` (both quoted and unquoted) load as **strings** (`'.true.'` and `'.false.'`)
+- Quoting does **not** change the parsing behavior for `.true.`/`.false.` - both parse as strings
+- Plain `true`/`false` (without dots) load as Python **boolean** (`True`/`False`)
+
+**Implication**: When YAML contains `noncolin: .true.` (unquoted), PyYAML 6.0.3 parses it as the string `".true."`, not as a boolean. This confirms that the IR canonical format (`.true.`/`.false.` strings) is preserved through YAML round-trip.
+
 ### A.6 Final Conclusion: IR Canonical Format
 
 **Truth Statement**: **"IR canonical format is QE-style strings (`.true.`/`.false.`) stored as strings in YAML"**
@@ -788,4 +815,5 @@ rg -n "StepType\(|StepType\." -S src/quantumvitas
 ---
 
 **End of Final Audit Report**
+
 
