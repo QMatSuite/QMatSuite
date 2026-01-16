@@ -58,11 +58,8 @@ def create_calculation_project(
             f"Tests must use a temp directory, not the repo root."
         )
     
-    # Create project pseudo directory (empty initially)
-    # Required pseudopotentials will be copied by ensure_qe_pseudos() during materialization
-    # This ensures only required files are copied, not the entire internal library
     project_pseudo_dir = project_root / "pseudo"
-    project_pseudo_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(pseudo_src, project_pseudo_dir)
 
     # Extract structure from the first input file (SCF step typically has the structure)
     from quantumvitas.core.resources import generate_resource_id, meta_from_name

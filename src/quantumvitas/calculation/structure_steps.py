@@ -575,15 +575,6 @@ def generate_qe_input_from_spec(
     effective_species_overrides = species_map if species_map else spec.species_overrides
     apply_species_overrides_to_qe_input(qe_input, effective_species_overrides)
     
-    # Remove runtime-managed parameters from spec (pseudo_dir, outdir, prefix)
-    # These are set by materialize_step_spec based on project_root, not from spec
-    # This ensures project runs always use project/pseudo, not imported paths
-    runtime_keys = {"pseudo_dir", "outdir", "prefix"}
-    for namelist in qe_input.namelists:
-        for key in list(namelist.parameters.keys()):
-            if key.lower() in runtime_keys:
-                del namelist.parameters[key]
-    
     return qe_input, combined_overrides
 
 
@@ -1171,16 +1162,12 @@ def materialize_step_spec(
         
         # Resolve pseudopotentials
         # Pass calculation_species_map as PRIMARY source (calculation-level authority)
-        # If calculation_species_map is not available, fall back to step-level species_overrides
-        # This ensures step.yaml species_overrides are used when calculation.yaml lacks species_map
-        effective_species_map = calculation_species_map if calculation_species_map else (
-            spec_obj.species_overrides if spec_obj.species_overrides else None
-        )
+        # This ensures calculation.yaml species_map is honored even if temp QE input has placeholders
         pseudo_result = ensure_qe_pseudos(
             qe_input_file=temp_input,
             project_pseudo_dir=project_pseudo_dir,
             system_pseudo_dir=get_system_pseudo_dir(),
-            species_map=effective_species_map,
+            species_map=calculation_species_map,
         )
         
         # Clean up temp file
