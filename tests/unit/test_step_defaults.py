@@ -117,6 +117,11 @@ class TestStepDefaultsFromScratch:
         assert "conv_thr" in spec.parameters["ELECTRONS"]
         assert abs(spec.parameters["ELECTRONS"]["conv_thr"] - 1.0e-08) < 1e-12
         
+        # For standalone mode, add species_overrides if not present
+        # (in project runs, species_map from calculation.yaml would be used instead)
+        if not spec.species_overrides:
+            spec.species_overrides = {"Si": {"pseudopot": "Si.upf"}}
+        
         # Generate QE input from spec
         structure_obj = read_structure(project_root / "structures" / "si.json")
         qe_input, _ = generate_qe_input_from_spec(structure_obj, spec)

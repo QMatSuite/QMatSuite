@@ -30,6 +30,22 @@ def template_project(tmp_path, project_root_path):
     assert project_dir.exists()
     assert (project_dir / "project.qv.yml").exists()
     
+    # Configure species_map using official CLI command (required for project runs)
+    # Use the SCF input file from the example project's raw directory
+    scf_in = project_dir / "calculations" / "si-dos" / "raw" / "scf.in"
+    if scf_in.exists():
+        from typer.testing import CliRunner
+        runner = CliRunner()
+        result = runner.invoke(
+            app,
+            [
+                "configure", "species", "--from-input", str(scf_in),
+                "--calc", "si-dos",
+                "--project", str(project_dir),
+            ],
+        )
+        assert result.exit_code == 0, f"Failed to configure species: {result.stdout}\n{result.stderr}"
+    
     return project_dir
 
 

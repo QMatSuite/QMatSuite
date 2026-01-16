@@ -195,6 +195,14 @@ class TestDaemonCalculationExecution:
         
         calculation_dir = project_dir / "calculations" / "bands_daemon"
         
+        # Configure calculation-level species_map (required for project runs)
+        # Do NOT set species_overrides at step level; use calculation-level species_map instead
+        QVService.configure_species_map(
+            project_root=project_dir,
+            calculation="bands_daemon",
+            set_entries=[("Si", 28.0855, "Si.pbe-n-rrkjus_psl.1.0.0.UPF")],
+        )
+        
         # Create SCF step
         QVService.init_step(
             project_root=project_dir,
@@ -204,7 +212,7 @@ class TestDaemonCalculationExecution:
             structure_selector="si",
         )
         
-        # Configure SCF step
+        # Configure SCF step (no species_overrides - use calculation-level species_map)
         QVService.configure_step(
             project_root=project_dir,
             calculation_selector="bands_daemon",
@@ -229,9 +237,6 @@ class TestDaemonCalculationExecution:
                     "option": "automatic",
                     "data": [[8, 8, 8, 0, 0, 0]],
                 },
-            },
-            species_overrides={
-                "Si": {"pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"},
             },
         )
         
@@ -270,9 +275,6 @@ class TestDaemonCalculationExecution:
                     "option": "automatic",
                     "data": [[12, 12, 12, 0, 0, 0]],
                 },
-            },
-            species_overrides={
-                "Si": {"pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"},
             },
         )
         
@@ -319,9 +321,6 @@ class TestDaemonCalculationExecution:
                     "option": "crystal_b",
                     "data": kpoints_data,
                 },
-            },
-            species_overrides={
-                "Si": {"pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"},
             },
         )
         

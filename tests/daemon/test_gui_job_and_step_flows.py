@@ -644,6 +644,14 @@ class TestCalculationFailureHandling:
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) >= 3, "Calculation should have at least 3 steps"
         
+        # Configure calculation-level species_map (required for project runs)
+        # Use QVService.configure_species_map (shared API used by both CLI and daemon)
+        QVService.configure_species_map(
+            project_root=temp_project,
+            calculation=calculation_slug,
+            set_entries=[("Si", 28.0855, "Si.pbe-n-rrkjus_psl.1.0.0.UPF")],
+        )
+        
         # Get step IDs
         step_ids = [s.step_id for s in wf_model.steps]
         scf_step_id = step_ids[0]

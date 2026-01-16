@@ -54,6 +54,7 @@ def test_generate_qe_input_from_spec(sample_structure, tmp_path):
             "SYSTEM": {"ecutwfc": 50},
             "CONTROL": {"prefix": "si"},
         },
+        "species_overrides": {"Si": {"pseudopot": "Si.upf"}},  # Required for standalone mode
     }
     spec = StructureStepSpec.from_dict(spec_data)
     qe_input, overrides = generate_qe_input_from_spec(sample_structure, spec)
