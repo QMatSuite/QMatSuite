@@ -207,6 +207,24 @@ def create_calculation_project(
             step_entry["reference"] = f"reference/{step['reference']}"
         step_entries.append(step_entry)
     
+    # Build calculation-level species_map from all step species_overrides
+    # This is required for project runs (enforcement: no fallback to step-level)
+    calc_species_map = {}
+    for step in steps:
+        step_id = step["id"]
+        step_file = steps_dir / f"{step_id}.step.yaml"
+        if step_file.exists():
+            try:
+                step_data = yaml.safe_load(step_file.read_text())
+                step_species_overrides = step_data.get("species_overrides", {})
+                if step_species_overrides:
+                    # Merge into calc-level species_map (last step wins for conflicts)
+                    for element, override in step_species_overrides.items():
+                        calc_species_map[element] = dict(override)  # Copy to avoid mutation
+            except Exception:
+                # If parsing fails, skip this step's species_overrides
+                pass
+    
     calculation_config = {
         "meta": {
             "id": calculation_ulid,
@@ -220,6 +238,11 @@ def create_calculation_project(
         "structure_id": structure_id,  # Calculation-level structure reference (ULID)
         "steps": step_entries,
     }
+    
+    # Add species_map if we collected any mappings (required for project runs)
+    if calc_species_map:
+        calculation_config["species_map"] = calc_species_map
+    
     (calculation_dir / "calculation.yaml").write_text(
         yaml.safe_dump(calculation_config, sort_keys=False)
     )

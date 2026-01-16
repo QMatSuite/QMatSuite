@@ -490,6 +490,7 @@ def generate_qe_input_from_spec(
     extra_overrides: Sequence[ParameterOverride] | None = None,
     *,
     species_map: Optional[Dict[str, Dict[str, Any]]] = None,
+    allow_step_species_overrides: bool = True,
 ) -> tuple[QEInput, list[ParameterOverride]]:
     """
     Build a QE input from a structure step specification.
@@ -503,7 +504,8 @@ def generate_qe_input_from_spec(
         extra_overrides: Additional parameter overrides to apply.
         species_map: Calculation-level species mapping (element -> {pseudopot, mass}).
             Takes precedence over step-level spec.species_overrides.
-            Falls back to spec.species_overrides for backwards compatibility.
+        allow_step_species_overrides: If True, fall back to spec.species_overrides when
+            species_map is None. If False, raise error when species_map is None (project runs only).
     """
     step_type_lower = spec.step_type.lower() if spec.step_type else "scf"
     
@@ -570,9 +572,30 @@ def generate_qe_input_from_spec(
     
     apply_card_overrides_to_qe_input(qe_input, spec.cards)
     
-    # Apply species overrides: calc-level species_map takes precedence, fall back to step-level
-    # This supports backwards compatibility with old projects that have step-level species_overrides
-    effective_species_overrides = species_map if species_map else spec.species_overrides
+    # Apply species overrides: calc-level species_map takes precedence
+    # For project runs (allow_step_species_overrides=False), species_map is required
+    # For standalone runs (allow_step_species_overrides=True), fall back to step-level
+    if species_map:
+        effective_species_overrides = species_map
+    elif allow_step_species_overrides:
+        # Standalone mode: allow fallback to step-level species_overrides
+        # But check if species_overrides is actually present
+        if not spec.species_overrides:
+            # Get required elements for error message
+            required_elements = sorted(set(str(el) for el in structure.composition.elements))
+            elements_str = ", ".join(required_elements)
+            raise ValueError(
+                f"Missing species_overrides in step.yaml for element(s): {elements_str}. "
+                "This step.yaml looks like a normal project step; do not run it with standalone mode. "
+                "Standalone mode requires step.yaml to have species_overrides, or use project run mode instead."
+            )
+        effective_species_overrides = spec.species_overrides
+    else:
+        # Project run: species_map is required, no fallback
+        raise ValueError(
+            "species_map is required for project runs. "
+            "step.yaml species_overrides is not supported in project runs; it is standalone-only."
+        )
     apply_species_overrides_to_qe_input(qe_input, effective_species_overrides)
     
     return qe_input, combined_overrides
@@ -1106,10 +1129,62 @@ def materialize_step_spec(
         f"using QE input generation and validation"
     )
     
+    # Validate species_map for project runs
+    # Project runs require calculation.yaml species_map with all required elements
+    is_project_run = (calculation_dir and project_root and calc_model is not None)
+    if is_project_run:
+        if not calculation_species_map:
+            # Get required elements from structure
+            required_elements = sorted(set(str(el) for el in structure.composition.elements))
+            elements_str = ", ".join(required_elements)
+            raise ValueError(
+                f"Pseudopotential not configured for element(s): {elements_str}. "
+                "Project runs require calculation.yaml species_map. step.yaml species_overrides is standalone-only. "
+                "Configure using:\n"
+                "  - CLI: --SPECIES.<element>.pseudopot=<filename>\n"
+                "  - Or set calculation.yaml species_map"
+            )
+        
+        # Check that species_map has all required elements with pseudopot filenames
+        required_elements = set(str(el) for el in structure.composition.elements)
+        missing_elements = []
+        for element in required_elements:
+            element_entry = calculation_species_map.get(element)
+            if not element_entry or not isinstance(element_entry, dict):
+                missing_elements.append(element)
+                continue
+            
+            # Check that pseudopot filename is present (not placeholder)
+            pseudo_filename = element_entry.get("pseudo_basename") or element_entry.get("pseudopot")
+            if not pseudo_filename:
+                missing_elements.append(element)
+                continue
+            
+            # Check for placeholder names
+            from quantumvitas.core.pseudo import is_missing_pseudo_placeholder
+            if is_missing_pseudo_placeholder(pseudo_filename):
+                missing_elements.append(element)
+        
+        if missing_elements:
+            elements_str = ", ".join(sorted(missing_elements))
+            raise ValueError(
+                f"Pseudopotential not configured for element(s): {elements_str}. "
+                "Project runs require calculation.yaml species_map. step.yaml species_overrides is standalone-only. "
+                "Configure using:\n"
+                "  - CLI: --SPECIES.<element>.pseudopot=<filename>\n"
+                "  - Or set calculation.yaml species_map"
+            )
+    
     # Pass species_map to generate_qe_input_from_spec so it populates ATOMIC_SPECIES correctly
     # This ensures ATOMIC_SPECIES in the generated QE input has actual pseudo filenames
     # (not placeholders) when calculation-level species_map is available
-    qe_input, _ = generate_qe_input_from_spec(structure, spec_obj, species_map=calculation_species_map)
+    # For project runs, disallow fallback to step-level species_overrides
+    qe_input, _ = generate_qe_input_from_spec(
+        structure, 
+        spec_obj, 
+        species_map=calculation_species_map,
+        allow_step_species_overrides=not is_project_run,  # Project runs: False, standalone: True
+    )
     
     # R2-R4: Inject calculation-level prefix/outdir if schema supports it
     if calculation_prefix or calculation_outdir:
