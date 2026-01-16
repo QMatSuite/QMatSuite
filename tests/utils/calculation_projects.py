@@ -141,6 +141,7 @@ def create_calculation_project(
         input_file = raw_dir / step["input"]
         parameters = {}
         cards = {}
+        species_overrides = {}
         if input_file.exists():
             try:
                 qe_input = QEInputParser.parse_file(input_file)
@@ -148,6 +149,34 @@ def create_calculation_project(
                 parameters, cards = _build_step_spec_from_qe_input_data(
                     qe_input, step_id, apply_defaults=False
                 )
+                
+                # Extract species_overrides from ATOMIC_SPECIES card (if present)
+                # This ensures pseudopotential filenames from original .in files are preserved
+                # in step.yaml, so generation doesn't create placeholders
+                from quantumvitas.io.model import QECardType
+                from quantumvitas.core.pseudo import is_missing_pseudo_placeholder
+                atomic_species_card = qe_input.get_card(QECardType.ATOMIC_SPECIES)
+                if atomic_species_card and atomic_species_card.data:
+                    for row in atomic_species_card.data:
+                        if isinstance(row, list) and len(row) >= 3:
+                            element_symbol = str(row[0]).strip()
+                            mass = row[1] if len(row) > 1 else None
+                            pseudo_filename = str(row[2]).strip() if len(row) > 2 else None
+                            
+                            # Build species override
+                            override = {}
+                            if mass is not None:
+                                try:
+                                    override["mass"] = float(mass)
+                                except (TypeError, ValueError):
+                                    override["mass"] = mass
+                            if pseudo_filename:
+                                # Skip placeholder names (missing configuration)
+                                if not is_missing_pseudo_placeholder(pseudo_filename):
+                                    override["pseudopot"] = pseudo_filename
+                            
+                            if override:
+                                species_overrides[element_symbol] = override
             except Exception as e:
                 # If parsing fails, fall back to minimal spec
                 print(f"Warning: Failed to parse {input_file}: {e}")
@@ -163,6 +192,9 @@ def create_calculation_project(
             step_spec["parameters"] = parameters
         if cards:
             step_spec["cards"] = cards
+        # Add extracted species_overrides if available (preserves pseudopotential filenames)
+        if species_overrides:
+            step_spec["species_overrides"] = species_overrides
         
         step_file.write_text(yaml.safe_dump(step_spec, sort_keys=False))
         
