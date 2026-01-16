@@ -525,6 +525,53 @@ warnings.warn(
 
 ---
 
+## pw2wannier90 Test: Conditional Execution via QE Engine Discovery
+
+### Problem
+
+The test `tests/unit/test_pw2wannier90_stderr_output.py::test_pw2wannier90_actual_stderr_output` was hard-skipped with `@pytest.mark.skip(reason="Requires actual pw2wannier90 binary - integration test")`. However, `pw2wannier90.x` is part of QE and should be available whenever QE is installed.
+
+### Solution
+
+**Created reusable binary locator:** `src/quantumvitas/core/engines/qe_binary_locator.py`
+
+**Functions:**
+- `locate_qe_executable(executable_name: str) -> Optional[Path]`: Generic function to locate any QE executable
+- `locate_pw2wannier90() -> Optional[Path]`: Convenience function for pw2wannier90.x
+
+**Implementation:**
+- Uses existing `resolve_qe_bin_dir()` from `qe_resolver.py` (two-state model: external via settings, or internal from `.qmatsuite/engines/qe`)
+- Checks if executable exists and is executable (`os.access(path, os.X_OK)`)
+- Returns `None` instead of raising exceptions (allows conditional skipping in tests)
+- No hardcoded paths; uses same engine discovery as rest of codebase
+
+**Test Changes:**
+- Removed unconditional `@pytest.mark.skip(...)`
+- Added conditional skip using `pytest.skip()` inside test
+- Skip message explains: "pw2wannier90.x not found via QE engine discovery. pw2wannier90.x is part of QE and should be present when QE is installed. Install/configure QE engine or set qe.bin_dir in Settings."
+- Test runs `pw2wannier90.x` with minimal invalid input to trigger stderr quickly
+- Test logs discovered path for debugging (shows what locator found, not hardcoded)
+
+**Behavior:**
+- **When QE present:** Test runs and verifies pw2wannier90.x produces stderr output
+- **When QE absent:** Test cleanly skips with clear message
+- **CI-friendly:** Skips gracefully if QE not installed, doesn't fail
+
+**Test Execution:**
+- Minimal invocation: runs `pw2wannier90.x -i <invalid_input>` to trigger error quickly
+- Timeout: 10 seconds (safety)
+- Verifies executable exists and produces stderr/error output
+
+**Files Changed:**
+1. `src/quantumvitas/core/engines/qe_binary_locator.py` (new): Reusable binary locator
+2. `tests/unit/test_pw2wannier90_stderr_output.py`: Removed hard skip, added conditional execution
+
+**Test Results:**
+- `pytest tests/unit/test_pw2wannier90_stderr_output.py::test_pw2wannier90_actual_stderr_output` → **1 passed**
+- All tests in file: **3 passed** (2 existing mock tests + 1 new conditional test)
+
+---
+
 ## Stop Rule Enforcement
 
 For any failing test:
