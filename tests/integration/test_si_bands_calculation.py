@@ -54,7 +54,7 @@ class TestSiBandsCalculation:
 
         registry = create_default_registry()
         runner = CalculationRunner(registry)
-        result = runner.run(calculation)
+        result = runner.run(calculation, compat_input_playback=True)
 
         assert result.status == StepStatus.SUCCESS
         for summary in result.steps:
