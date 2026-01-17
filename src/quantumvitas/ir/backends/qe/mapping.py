@@ -11,36 +11,6 @@ Units are recorded explicitly in the mapping to keep the boundary clear.
 from typing import Any, Dict, Optional, Tuple
 
 
-def ir_bool(v: bool | str) -> str:
-    """
-    IR canonical boolean encoder (QE backend).
-    
-    Converts Python bool or IR canonical string to IR canonical boolean string.
-    This is part of IR contract (not engine serialization).
-    
-    Args:
-        v: Python bool (True/False) or IR canonical string (".true."/".false.")
-        
-    Returns:
-        IR canonical boolean string: ".true." or ".false."
-        
-    Raises:
-        ValueError: If input is not bool or canonical string
-    """
-    if isinstance(v, bool):
-        return ".true." if v else ".false."
-    if isinstance(v, str):
-        if v == ".true." or v == ".false.":
-            return v
-        raise ValueError(
-            f"Invalid IR boolean string: {v!r}. "
-            f"Must be '.true.' or '.false.' (IR canonical format)"
-        )
-    raise TypeError(
-        f"ir_bool() expects bool or str, got {type(v).__name__}: {v!r}"
-    )
-
-
 # IR → QE Mapping (for compilation)
 # Maps: ir_key → (qe_module, qe_section, qe_key)
 IR_TO_QE_MAPPING: Dict[str, Tuple[str, str, str]] = {
@@ -99,7 +69,7 @@ def ir_to_qe_param(ir_key: str, ir_value: Any) -> Tuple[str, str, str, Any]:
         
     Returns:
         Tuple of (qe_module, qe_section, qe_key, qe_value)
-        qe_value is converted from IR value (e.g., Python bool -> QE string for booleans)
+        qe_value remains as Python bool. QE writer converts to .true./.false. at output.
         
     Raises:
         KeyError: If ir_key not in mapping
@@ -111,15 +81,8 @@ def ir_to_qe_param(ir_key: str, ir_value: Any) -> Tuple[str, str, str, Any]:
     
     # Convert IR value to QE value
     # v0: No unit conversion (IR base units align with QE)
-    # But boolean parameters must use QE string format (.true./.false.)
+    # Boolean values remain as Python bool. QE writer converts at output.
     qe_value = ir_value
-    
-    # Convert Python bool to QE string format for boolean parameters
-    if isinstance(ir_value, bool):
-        # QE boolean parameters that must use string format
-        boolean_params = {"noncolin", "lspinorb", "nosym", "noinv"}
-        if qe_key in boolean_params:
-            qe_value = ".true." if ir_value else ".false."
     
     return (qe_module, qe_section, qe_key, qe_value)
 
