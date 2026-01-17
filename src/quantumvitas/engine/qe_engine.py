@@ -48,7 +48,7 @@ class QeEngine(Engine):
             input_path = step.resolve_input_path(working_dir)
             step_type = getattr(step, "step_type", None)
             if step_type:
-                step_type_value = step_type.value
+                step_type_value = step_type
             elif hasattr(step, "type"):
                 step_type_value = getattr(step, "type")
             options = getattr(step, "options", {})
@@ -64,7 +64,7 @@ class QeEngine(Engine):
                 input_path = working_dir / input_path
             timeout = params.get("timeout")
             if hasattr(step, "type"):
-                step_type_value = step.type.value
+                step_type_value = step.type  # Already a string
 
         if not input_path.exists():
             raise FileNotFoundError(f"Input file not found: {input_path}")

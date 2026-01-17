@@ -180,7 +180,7 @@ def qe_step_handler(
                     step_id=step_ulid,
                     calculation_slug=calculation.id,
                     engine=engine,
-                    step_type=step.step_type.value if step.step_type else None,
+                    step_type=step.step_type if step.step_type else None,
                     timeout=step.options.get("timeout"),
                 )
             else:

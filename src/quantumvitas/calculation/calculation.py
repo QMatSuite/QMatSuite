@@ -520,7 +520,7 @@ def _build_step_inspection(
                 path=f"calculations/{calculation_dir.name}/steps/{step_id}.step.yaml",
                 kind="step",
             )
-            step_type = StepType.CUSTOM
+            step_type = "custom"
     
     # Handle input path (if specified)
     input_path_value = step_data.get("input") or step_data.get("file")
