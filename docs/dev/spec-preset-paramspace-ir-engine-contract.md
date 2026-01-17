@@ -133,9 +133,12 @@ The contract ensures:
 
 **MUST**: Dialect names are NOT engine names. They represent computational paradigms (PW vs QC), not specific engines (QE vs ORCA vs PySCF).
 
-**MUST**: IR uses Python native types:
-- Bool MUST be Python `True/False` (NOT `.true.` strings in IR)
+**MUST**: IR uses Python native types, with dialect-specific bool representation:
+- **`ir.pw` dialect**: Bool uses `.true.`/`.false.` strings for backward compatibility (v0 freeze). This maintains compatibility with existing QE/PW code that stores `.true.`/`.false.` in `step.yaml`.
+- **`ir.qc` dialect**: Bool MUST be Python `True/False` (fresh start, no legacy burden). New QC keys use native Python types.
 - IR canonical string values MUST be lowercase (e.g., `gauss`, not `Gauss`)
+
+**Note**: This is a transitional state; `ir.pw` may migrate to Python `True/False` in a future milestone after careful roundtrip testing. For now, `ir.pw` maintains `.true.`/`.false.` strings to preserve v0 PW chain stability.
 
 **MUST**: Key naming uses shallow namespacing: at most one dot (one level), e.g., `scf.conv_tol`, `scf.max_cycle`, `dft.grid_level`. Avoid deep paths like `ir.qc.scf.conv_tol`.
 
@@ -357,7 +360,9 @@ for the same preset/profile + gen_step.
 - Case variants
 - `.in` text forms (QE `.true.`/`.false.` etc.)
 
-**MUST**: `.true.`/`.false.` textual forms SHOULD only exist in final `.in` files (text IO layer). YAML/IR should stay logical (Python `True`/`False`).
+**MUST**: `.true.`/`.false.` textual forms representation is dialect-specific:
+- **`ir.pw` dialect**: `.true.`/`.false.` strings appear in `step.yaml` for backward compatibility (v0 freeze)
+- **`ir.qc` dialect**: `.true.`/`.false.` textual forms SHOULD only exist in final `.in` files (text IO layer); YAML/IR should stay logical (Python `True`/`False`)
 
 **MUST**: Import `.in -> YAML` MUST canonicalize textual forms and synonyms into canonical IR values (bools, lowercase strings).
 
@@ -473,9 +478,11 @@ for the same preset/profile + gen_step.
 
 ### 10.4 IR Value Type Invariants
 
-7. **IR bool is True/False**: IR uses Python native types; bool MUST be `True`/`False`, not `.true.` strings.
-   - **Evidence**: Note: Current code uses `.true.`/`.false.` strings in IR; this is a future requirement
-   - **Test**: Verify IR patches contain Python `bool`, not strings
+7. **IR bool representation is dialect-specific**: 
+   - **`ir.pw` dialect**: Bool uses `.true.`/`.false.` strings for backward compatibility (v0 freeze)
+   - **`ir.qc` dialect**: Bool MUST be Python `True/False` (fresh start, no legacy burden)
+   - **Evidence**: `src/quantumvitas/presets/paramspace.py:compile_profile_patch()` (lines 601-605) uses `ir_bool()` for PW; QC will use Python native types
+   - **Test**: Verify `ir.pw` patches contain `.true.`/`.false.` strings; verify `ir.qc` patches contain Python `bool`
 
 8. **IR strings lowercase**: IR canonical string values MUST be lowercase (e.g., `gauss`, not `Gauss`).
    - **Evidence**: Note: This is a future requirement
@@ -501,9 +508,11 @@ for the same preset/profile + gen_step.
    - **Evidence**: `src/quantumvitas/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (line 46-74)
    - **Test**: Verify engine mapping defines canonical forms
 
-13. **`.true.` appears only in `.in`**: `.true.`/`.false.` textual forms MUST only appear in engine input files, not in IR or YAML.
-   - **Evidence**: Note: Current code stores `.true.`/`.false.` in `step.yaml`; this is a future requirement
-   - **Test**: Verify `.in` files contain `.true.`/`.false.`, but `step.yaml` contains Python `bool`
+13. **`.true.` representation is dialect-specific**: 
+   - **`ir.pw` dialect**: `.true.`/`.false.` strings appear in `step.yaml` for backward compatibility (v0 freeze)
+   - **`ir.qc` dialect**: `.true.`/`.false.` textual forms SHOULD only appear in final `.in` files (text IO layer); `step.yaml` contains Python `bool`
+   - **Evidence**: Current PW code stores `.true.`/`.false.` in `step.yaml`; QC will use Python `bool` in `step.yaml`
+   - **Test**: Verify `ir.pw` `step.yaml` contains `.true.`/`.false.` strings; verify `ir.qc` `step.yaml` contains Python `bool`
 
 ### 10.7 Specific Supersedes General Invariants
 
@@ -609,15 +618,19 @@ for the same preset/profile + gen_step.
 
 ## 12. Open Questions (minimal)
 
-### Q1: IR Value Type Discrepancy
+### Q1: IR Value Type Discrepancy (RESOLVED)
 
 **Question**: Current code stores `.true.`/`.false.` strings in `step.yaml` (per `final-audit-ir-step-ssot.md`), but this spec requires IR bool to be Python `True/False` and `.true.` to appear only in `.in` files. Which is correct?
 
-**Evidence**:
-- Current behavior: `src/quantumvitas/presets/paramspace.py:compile_profile_patch()` (lines 601-605) converts Python `bool` → `.true.`/`.false.` strings
-- Spec requirement: IR bool MUST be Python `True/False`; `.true.` only in `.in` files
+**Resolution**: Dialect-specific representation:
+- **`ir.pw` dialect**: Maintains `.true.`/`.false.` strings in `step.yaml` for backward compatibility (v0 freeze)
+- **`ir.qc` dialect**: Uses Python `True/False` in `step.yaml` (fresh start, no legacy burden)
 
-**Impact**: Affects IR value type contract and materialization boundary.
+**Evidence**:
+- Current behavior: `src/quantumvitas/presets/paramspace.py:compile_profile_patch()` (lines 601-605) converts Python `bool` → `.true.`/`.false.` strings for PW
+- Spec requirement: Dialect-specific bool representation as documented in section 3.3
+
+**Impact**: No impact; dialect split resolves the discrepancy. PW maintains v0 behavior; QC uses native types.
 
 ### Q2: IR Dialect Namespace Implementation
 
@@ -736,9 +749,13 @@ for the same preset/profile + gen_step.
 
 ### IR Value Types
 
-- **Bool**: Python `True/False` (NOT `.true.` strings in IR)
+- **Bool** (dialect-specific):
+  - **`ir.pw`**: `.true.`/`.false.` strings (backward compatibility, v0 freeze)
+  - **`ir.qc`**: Python `True/False` (fresh start, no legacy burden)
 - **Strings**: Lowercase canonical values
-- **`.true.`/`.false.`**: SHOULD only appear in final `.in` files (text IO layer)
+- **`.true.`/`.false.`**: 
+  - **`ir.pw`**: Appears in `step.yaml` (v0 freeze)
+  - **`ir.qc`**: SHOULD only appear in final `.in` files (text IO layer)
 
 ### Gen Step Scope
 
