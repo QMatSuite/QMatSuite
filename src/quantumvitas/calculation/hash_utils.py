@@ -23,6 +23,112 @@ from quantumvitas.core.pseudo_provenance import compute_sha256_file
 FLOAT_TOLERANCE = 1e-10
 
 
+def _set_nested(data: dict, path: str, value: Any) -> None:
+    """
+    Set value at dot-separated path in nested dict.
+    
+    Args:
+        data: Dict to modify
+        path: Dot-separated path (e.g., "parameters.SYSTEM.ecutwfc")
+        value: Value to set
+    """
+    parts = path.split(".")
+    current = data
+    for part in parts[:-1]:
+        if part not in current:
+            current[part] = {}
+        current = current[part]
+    current[parts[-1]] = value
+
+
+def _resolve_scan_refs_in_dict(
+    data: dict,
+    variant_assignments: Dict[str, Any],  # param_path -> value
+) -> dict:
+    """
+    Recursively resolve ScanRefs in a dict structure.
+    
+    Args:
+        data: Dict to process
+        variant_assignments: Mapping from param_path to concrete value
+        
+    Returns:
+        New dict with ScanRefs replaced by concrete values
+    """
+    from quantumvitas.calculation.scan_validation import is_scan_ref
+    
+    if isinstance(data, dict):
+        result = {}
+        for key, value in data.items():
+            if is_scan_ref(value):
+                # This should not happen if we're using variant_assignments correctly
+                # But handle it gracefully
+                param_path = key  # This is incomplete - we need full path
+                if param_path in variant_assignments:
+                    result[key] = variant_assignments[param_path]
+                else:
+                    # Keep ScanRef if no assignment (shouldn't happen)
+                    result[key] = value
+            elif isinstance(value, dict):
+                result[key] = _resolve_scan_refs_in_dict(value, variant_assignments)
+            elif isinstance(value, list):
+                result[key] = [
+                    _resolve_scan_refs_in_dict(item, variant_assignments)
+                    if isinstance(item, dict)
+                    else item
+                    for item in value
+                ]
+            else:
+                result[key] = value
+        return result
+    elif isinstance(data, list):
+        return [
+            _resolve_scan_refs_in_dict(item, variant_assignments)
+            if isinstance(item, dict)
+            else item
+            for item in data
+        ]
+    else:
+        return data
+
+
+def build_effective_engine_params_view(
+    step_doc: Dict[str, Any],
+    variant_assignments: Optional[Dict[str, Any]] = None,  # param_path -> value
+) -> Dict[str, Any]:
+    """
+    Build effective engine params view by resolving ScanRefs to concrete values.
+    
+    Returns a dict suitable for feeding into existing compute_step_sha().
+    - If variant_assignments provided: replaces {scan_ref: X} with concrete values
+    - Always removes parameter_scan section (not an engine parameter)
+    - Preserves all other fields (parameters, cards, species_overrides, step_type, etc.)
+    
+    Args:
+        step_doc: Step document dict
+        variant_assignments: Optional mapping from param_path to concrete value
+        
+    Returns:
+        Effective step document dict with ScanRefs resolved and parameter_scan removed
+    """
+    import copy
+    
+    # Deep copy to avoid mutating input
+    effective = copy.deepcopy(step_doc)
+    
+    # Remove parameter_scan section (not an engine parameter)
+    if "parameter_scan" in effective:
+        del effective["parameter_scan"]
+    
+    # If variant_assignments provided, resolve ScanRefs
+    if variant_assignments:
+        # Apply assignments to the effective dict
+        for param_path, value in variant_assignments.items():
+            _set_nested(effective, param_path, value)
+    
+    return effective
+
+
 def strip_resource_meta(obj: Dict[str, Any]) -> Dict[str, Any]:
     """
     Remove meta/metadata keys from a dictionary.
@@ -158,15 +264,21 @@ def compute_structure_sha(structure_path: Path) -> str:
     return hashlib.sha256(serialized).hexdigest()
 
 
-def compute_step_sha(step_doc: Union[Dict[str, Any], Path]) -> str:
+def compute_step_sha(
+    step_doc: Union[Dict[str, Any], Path],
+    variant_assignments: Optional[Dict[str, Any]] = None,  # param_path -> value
+) -> str:
     """
     Compute SHA256 hash of step YAML.
     
     Strips meta fields for physics equivalence.
-    Normalizes step_type to public format for backward compatibility.
+    For scan variants: resolves ScanRefs to concrete values before hashing.
+    Always removes parameter_scan section (not an engine parameter).
     
     Args:
         step_doc: Step YAML as dict or Path to step YAML file
+        variant_assignments: Optional mapping from param_path to concrete value
+                           (for scan variants)
         
     Returns:
         SHA256 hash as hex string (without "sha256:" prefix)
@@ -178,8 +290,15 @@ def compute_step_sha(step_doc: Union[Dict[str, Any], Path]) -> str:
     else:
         data = step_doc
     
+    # Build effective view (resolves ScanRefs, removes parameter_scan)
+    if variant_assignments is not None:
+        effective_data = build_effective_engine_params_view(data, variant_assignments)
+    else:
+        # For non-scan runs, still remove parameter_scan if present
+        effective_data = build_effective_engine_params_view(data, None)
+    
     # Strip meta fields
-    step_data = strip_resource_meta(data)
+    step_data = strip_resource_meta(effective_data)
     
     # Constitution §B: SHA MUST be computed on SPEC types (matching persisted YAML truth).
     # No normalization - step_type stays as-is (SPEC format, e.g., "qe_scf").
