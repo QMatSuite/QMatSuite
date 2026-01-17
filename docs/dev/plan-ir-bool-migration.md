@@ -138,10 +138,10 @@ pytest tests/unit/test_qc_precision_paramspace.py -v
 ---
 
 ### PR3: Update integration tests
-- [ ] Update `tests/integration/test_preset_broadcast.py`:
+- [x] Update `tests/integration/test_preset_broadcast.py`:
   - Change all `.true.`/`.false.` strings to Python `bool`
-- [ ] Update `tests/presets/test_integration_ir.py` (if needed)
-- [ ] Update any other integration tests with `.true.` strings
+- [x] Update `tests/presets/test_integration_ir.py` (if needed)
+- [x] Update any other integration tests with `.true.` strings
 
 **Files to modify**:
 - `tests/integration/test_preset_broadcast.py`
@@ -193,7 +193,7 @@ _Auto will update this section as PRs are implemented._
 PR0: [x] Remove bool→string conversion in ParamSpace
 PR1: [x] Remove bool→string conversion in IR mapping
 PR2: [x] Update unit tests to expect Python bool
-PR3: [ ] Update integration tests
+PR3: [x] Update integration tests
 PR4: [ ] Add guard tests
 PR5: [ ] Final verification and cleanup
 ```

@@ -326,7 +326,7 @@ class TestBroadcastApplyEdgeCases:
         # This creates a contradiction: SOC requires noncollinear
         step_file.write_text(yaml.safe_dump({
             "step_type": "scf",
-            "parameters": {"SYSTEM": {"noncolin": ".false.", "lspinorb": ".true."}}
+            "parameters": {"SYSTEM": {"noncolin": False, "lspinorb": True}}
         }))
         
         from quantumvitas.presets.compiler import PresetCompilationError
@@ -369,7 +369,7 @@ class TestBroadcastApplyEdgeCases:
         # then apply something that doesn't fix it
         step_file.write_text(yaml.safe_dump({
             "step_type": "scf",
-            "parameters": {"SYSTEM": {"noncolin": ".true.", "nspin": 2}}
+            "parameters": {"SYSTEM": {"noncolin": True, "nspin": 2}}
         }))
         
         # Applying any magnetism option should trigger validation on the final state
@@ -388,7 +388,7 @@ class TestBroadcastApplyEdgeCases:
         from quantumvitas.presets.integration import _validate_magnetism_physics
         
         with pytest.raises(PresetCompilationError) as exc_info:
-            _validate_magnetism_physics({"noncolin": ".true.", "nspin": 2})
+            _validate_magnetism_physics({"noncolin": True, "nspin": 2})
         
         assert "noncolin=true" in str(exc_info.value).lower() or "nspin=2" in str(exc_info.value).lower()
     
