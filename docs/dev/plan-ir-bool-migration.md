@@ -173,10 +173,10 @@ pytest tests/unit/test_no_qe_bool_strings.py -v
 ---
 
 ### PR5: Final verification and cleanup
-- [ ] Run full test suite
-- [ ] Remove deprecated `parse_bool()` from `paramspace.py` or mark as internal
-- [ ] Update `integration.py` comment at line 813
-- [ ] Verify all step.yaml files in test data use YAML booleans
+- [x] Run full test suite
+- [x] Remove deprecated `parse_bool()` from `paramspace.py` or mark as internal
+- [x] Update `integration.py` comment at line 813
+- [x] Verify all step.yaml files in test data use YAML booleans
 
 **Tests to run**:
 ```bash
@@ -195,18 +195,18 @@ PR1: [x] Remove bool→string conversion in IR mapping
 PR2: [x] Update unit tests to expect Python bool
 PR3: [x] Update integration tests
 PR4: [x] Add guard tests
-PR5: [ ] Final verification and cleanup
+PR5: [x] Final verification and cleanup
 ```
 
 ---
 
 ## 5. Acceptance Criteria
 
-- [ ] No `.true.`/`.false.` strings in IR patches (verified by guard test)
-- [ ] step.yaml stores YAML native `true`/`false` (verified by guard test)
-- [ ] QE `.in` output contains `.true.`/`.false.` (verified by guard test)
-- [ ] All existing tests pass after migration
-- [ ] New guard tests prevent regression
+- [x] No `.true.`/`.false.` strings in IR patches (verified by guard test)
+- [x] step.yaml stores YAML native `true`/`false` (verified by guard test)
+- [x] QE `.in` output contains `.true.`/`.false.` (verified by guard test)
+- [x] All existing tests pass after migration
+- [x] New guard tests prevent regression
 
 ---
 

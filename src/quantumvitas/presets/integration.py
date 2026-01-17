@@ -810,7 +810,7 @@ def apply_presets_to_step(
     
     if unified_patch:
         # Serialize IR patch to engine format before writing to step.yaml
-        # step.yaml is spec step, parameters must be engine-specific format (QE: .true./.false.)
+        # step.yaml stores YAML native booleans (true/false), not QE strings
         # Get original step_type (before public_type mapping) to determine engine
         original_step_type = doc.get(["step_type"], default="scf")
         # In v0, all steps are QE, but we check for future extensibility
