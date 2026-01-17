@@ -16,7 +16,6 @@ from quantumvitas.workflow.registry import (
     StepTypeRegistry,
     get_registry,
     reset_registry,
-    PW_DIMENSIONS,
 )
 from quantumvitas.workflow.templates import (
     WorkflowTemplate,
@@ -98,19 +97,6 @@ class TestStepTypeRegistry:
         for step_type in qe_types:
             spec = registry.get(step_type)
             assert spec.engine == "qe"
-    
-    def test_list_accepting_presets(self, registry):
-        """list_accepting_presets returns correct step types."""
-        preset_types = registry.list_accepting_presets()
-        
-        # PW steps accept presets
-        assert "scf" in preset_types
-        assert "nscf" in preset_types
-        assert "relax" in preset_types
-        
-        # Post-processing steps don't
-        assert "dos" not in preset_types
-        assert "bands" not in preset_types
     
     def test_get_defaults_scf(self, registry):
         """get_defaults returns proper structure for SCF."""
