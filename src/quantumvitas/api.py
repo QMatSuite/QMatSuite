@@ -4531,6 +4531,13 @@ class QVService:
         step_doc = StepDoc.load(step.absolute_path)
         
         # Build patch for parameters
+        from quantumvitas.ir.backends.qe.mapping import is_class_a_key, get_class_a_type
+        from quantumvitas.core.param_validation import (
+            validate_and_parse,
+            normalize_class_b_value,
+            ValidationError,
+        )
+        
         param_patch = {}
         for namelist, params in parameters.items():
             namelist_upper = namelist.upper()
@@ -4541,8 +4548,25 @@ class QVService:
                 if value is None:
                     param_patch[namelist_upper][key] = None  # None means delete in apply_patch
                 else:
-                    # STRING-ONLY: Convert all values to strings for YAML storage
-                    param_patch[namelist_upper][key] = str(value)
+                    raw_value = str(value)  # Ensure string for parsing
+                    
+                    if is_class_a_key(namelist_upper, key):
+                        # Class A: Validate and store typed
+                        expected_type = get_class_a_type(namelist_upper, key)
+                        if expected_type:
+                            try:
+                                typed_value = validate_and_parse(
+                                    namelist_upper, key, raw_value, expected_type
+                                )
+                                param_patch[namelist_upper][key] = typed_value
+                            except ValidationError as e:
+                                raise QVServiceError(str(e))
+                        else:
+                            # Class A but no type info - store as trimmed string
+                            param_patch[namelist_upper][key] = raw_value.strip()
+                    else:
+                        # Class B: Store as trimmed string only
+                        param_patch[namelist_upper][key] = normalize_class_b_value(raw_value)
             
         # Apply parameter patch
         if param_patch:
