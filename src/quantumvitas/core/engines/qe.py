@@ -365,8 +365,8 @@ class QuantumEspressoEngine(Engine):
             FileNotFoundError: If executable is not found
         """
         # Convert machine_type (e.g., 'qe_bands') to public_type (e.g., 'bands') for lookup
-        from quantumvitas.core.engines.qe_calculation import _normalize_step_type_to_public
-        step_type_public = _normalize_step_type_to_public(step_type)
+        from quantumvitas.workflow.registry import normalize_step_type_to_public
+        step_type_public = normalize_step_type_to_public(step_type)
         
         executable = self.EXECUTABLE_MAP.get(step_type_public, "pw.x")
         
