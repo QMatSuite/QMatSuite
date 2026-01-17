@@ -325,8 +325,8 @@ class TestApplyPresetsToStep:
         
         # Parameters written
         system = result["content"]["parameters"]["SYSTEM"]
-        assert system["lspinorb"] == ".true."
-        assert system["noncolin"] == ".true."
+        assert system["lspinorb"] == True
+        assert system["noncolin"] == True
     
     def test_apply_nonexistent_file_raises(self, tmp_path):
         """Applying to nonexistent file raises FileNotFoundError."""

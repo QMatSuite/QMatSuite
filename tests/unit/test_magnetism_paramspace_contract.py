@@ -208,8 +208,8 @@ class TestMagnetismApplyCanonicalization:
         system = compiled["SYSTEM"]
         # nspin should not be in the output (NOT_APPLICABLE)
         assert "nspin" not in system, "NONCOLLINEAR apply must delete nspin"
-        assert system.get("noncolin") == ".true."
-        assert system.get("lspinorb") == ".false."
+        assert system.get("noncolin") == True
+        assert system.get("lspinorb") == False
     
     def test_apply_noncollinear_soc_deletes_nspin(self):
         """Apply NONCOLLINEAR_SOC: output must NOT contain SYSTEM.nspin."""
@@ -221,6 +221,6 @@ class TestMagnetismApplyCanonicalization:
         system = compiled["SYSTEM"]
         # nspin should not be in the output (NOT_APPLICABLE)
         assert "nspin" not in system, "NONCOLLINEAR_SOC apply must delete nspin"
-        assert system.get("noncolin") == ".true."
-        assert system.get("lspinorb") == ".true."
+        assert system.get("noncolin") == True
+        assert system.get("lspinorb") == True
 
