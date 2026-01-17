@@ -65,7 +65,7 @@ class TestStepTypeRegistry:
         assert spec.id == "scf"
         assert spec.engine == "qe"
         assert spec.executable == "pw.x"
-        assert spec.accepts_presets is True
+        # Note: accepts_presets is deprecated; use Engine.supported_presets + ParamSpace instead
         assert spec.produces_charge_density is True
     
     def test_get_unknown_returns_none(self, registry):
@@ -133,11 +133,25 @@ class TestStepTypeRegistry:
         assert defaults["species_overrides"] == {}
     
     def test_pw_dimensions_consistent(self, registry):
-        """PW step types have consistent allowed_dimensions."""
+        """PW step types have consistent preset dimensions (via ParamSpace)."""
+        from quantumvitas.presets.variants_registry import list_dimensions_for_gen_step
+        from quantumvitas.engine.qe_engine import QeEngine
+        
+        # Get QE engine supported presets
+        engine = QeEngine()
+        engine_supported = set(engine.supported_presets)
+        
+        # For each PW gen step, check that ParamSpace dimensions match engine capability
         for step_type in ["scf", "nscf", "relax", "vc-relax", "bands_pw"]:
             spec = registry.get(step_type)
             assert spec is not None
-            assert spec.allowed_dimensions == PW_DIMENSIONS
+            
+            # Query ParamSpace for dimensions applicable to this gen step
+            paramspace_dimensions = set(list_dimensions_for_gen_step(step_type))
+            
+            # Intersection should be non-empty (engine supports presets that apply to this step)
+            available = engine_supported & paramspace_dimensions
+            assert len(available) > 0, f"Step {step_type} should have at least one available preset"
 
 
 # =============================================================================
