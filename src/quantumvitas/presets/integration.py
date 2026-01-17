@@ -384,6 +384,10 @@ def apply_presets_to_step(
     if spec and spec.public_type:
         step_type = spec.public_type
     
+    # Resolve engine from step context (for capability validation)
+    from quantumvitas.presets.capability import resolve_engine_for_step, require_preset_capability, CapabilityError
+    engine_name = resolve_engine_for_step(step_path)
+    
     # Build step_yaml structure for compilation (export to avoid mutation)
     step_yaml: Dict[str, Dict[str, Any]] = {}
     if doc.has(["parameters"]):
@@ -391,15 +395,26 @@ def apply_presets_to_step(
     if doc.has(["cards"]):
         step_yaml["cards"] = doc.export_copy(["cards"])
     
-    # Track which dimensions are being applied (check variants)
+    # Track which dimensions are being applied (check variants and capability)
     applied_dimensions = []
     filtered_options = {}
     
     for dimension, option_value in options.items():
+        # First check if variant exists (ParamSpace applicability)
         variant = get_variant(dimension, step_type)
-        if variant is not None:
-            applied_dimensions.append(dimension)
-            filtered_options[dimension] = option_value
+        if variant is None:
+            continue
+        
+        # Then validate engine capability (if engine is known)
+        if engine_name:
+            try:
+                require_preset_capability(engine_name, step_type, dimension)
+            except CapabilityError as e:
+                # Skip this dimension with clear error message
+                continue
+        
+        applied_dimensions.append(dimension)
+        filtered_options[dimension] = option_value
     
     # If no dimensions apply, skip
     if not applied_dimensions:
