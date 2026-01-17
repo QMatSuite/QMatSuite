@@ -8,6 +8,8 @@ Contract:
 - Engine.supported_presets is SSOT for engine capability declaration
 - ParamSpace variants determine applicability by gen step
 - Capability = intersection of engine support and ParamSpace applicability
+
+See: docs/dev/plan-capability-resolver-ssot.md for implementation plan and rationale.
 """
 
 from __future__ import annotations

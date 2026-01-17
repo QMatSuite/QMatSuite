@@ -236,10 +236,10 @@ pytest tests/unit/test_no_deprecated_preset_fields.py -v
 ---
 
 ### PR5: Cleanup and documentation
-- [ ] Remove duplicate `list_presets_for_engine` from `catalog.py` (keep only re-export)
-- [ ] Update existing tests to use capability module
-- [ ] Add docstrings referencing this plan
-- [ ] Update spec document with capability resolver SSOT
+- [x] Remove duplicate `list_presets_for_engine` from `catalog.py` (keep only re-export)
+- [x] Update existing tests to use capability module
+- [x] Add docstrings referencing this plan
+- [x] Update spec document with capability resolver SSOT
 
 **Files to modify**:
 - `src/quantumvitas/presets/catalog.py`
@@ -285,7 +285,7 @@ PR1: [x] Add engine context resolution to apply
 PR2: [x] Add detection filtering by engine
 PR3: [x] Add contract enforcement tests
 PR4: [x] Add grep-based guard tests
-PR5: [ ] Cleanup and documentation
+PR5: [x] Cleanup and documentation
 ```
 
 ---
