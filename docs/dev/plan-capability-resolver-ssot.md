@@ -114,12 +114,12 @@ def require_preset_capability(engine_name: str, gen_step: str, preset_id: str) -
 ## 3. Implementation Plan
 
 ### PR0: Create capability resolver module
-- [ ] Create `src/quantumvitas/presets/capability.py`
-- [ ] Move `list_presets_for_engine()` from `catalog.py` (keep re-export for backwards compat)
-- [ ] Add `list_profiles_for_preset()` 
-- [ ] Add `validate_preset_capability()`
-- [ ] Add `require_preset_capability()` with `CapabilityError` exception
-- [ ] Add engine lookup helper that determines engine from step context
+- [x] Create `src/quantumvitas/presets/capability.py`
+- [x] Move `list_presets_for_engine()` from `catalog.py` (keep re-export for backwards compat)
+- [x] Add `list_profiles_for_preset()` 
+- [x] Add `validate_preset_capability()`
+- [x] Add `require_preset_capability()` with `CapabilityError` exception
+- [x] Add engine lookup helper that determines engine from step context
 
 **Files to modify**:
 - Create: `src/quantumvitas/presets/capability.py`
@@ -280,7 +280,7 @@ pytest tests/presets/ -v
 _Auto will update this section as PRs are implemented._
 
 ```
-PR0: [ ] Create capability resolver module
+PR0: [x] Create capability resolver module
 PR1: [ ] Add engine context resolution to apply
 PR2: [ ] Add detection filtering by engine
 PR3: [ ] Add contract enforcement tests

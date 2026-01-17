@@ -208,43 +208,6 @@ def get_preset_catalog() -> Dict[str, Any]:
     }
 
 
-def list_presets_for_engine(engine_name: str, gen_step: str) -> List[str]:
-    """
-    List preset dimensions available for a given engine and gen step.
-    
-    This implements Contract C: returns the intersection of:
-    - Engine.supported_presets (engine capability declaration)
-    - ParamSpace applicability for the gen step (Contract A)
-    
-    Args:
-        engine_name: Engine identifier (e.g., "qe", "pyscf", "orca")
-        gen_step: Gen/public step type (e.g., "scf", "nscf", "td")
-        
-    Returns:
-        Sorted list of dimension names that are both:
-        1. Supported by the engine (from engine.supported_presets)
-        2. Applicable to the gen step (from ParamSpace variants)
-        
-    Raises:
-        KeyError: If engine_name is not found in engine registry
-    """
-    from quantumvitas.engine.registry import create_default_registry
-    
-    # Get engine instance
-    engine_registry = create_default_registry()
-    if not engine_registry.has(engine_name):
-        raise KeyError(f"Engine '{engine_name}' not found in registry")
-    
-    engine = engine_registry.get(engine_name)
-    
-    # Get engine-supported presets
-    engine_supported = set(engine.supported_presets)
-    
-    # Get ParamSpace-applicable dimensions for this gen step
-    paramspace_applicable = set(list_dimensions_for_gen_step(gen_step))
-    
-    # Return intersection (both conditions must be true)
-    available = engine_supported & paramspace_applicable
-    
-    return sorted(available)
+# Re-export from capability module (SSOT)
+from quantumvitas.presets.capability import list_presets_for_engine
 
