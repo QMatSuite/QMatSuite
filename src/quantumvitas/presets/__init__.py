@@ -39,6 +39,14 @@ from quantumvitas.presets.integration import (
     apply_presets_to_step,
     detect_workflow_type,
 )
+from quantumvitas.presets.capability import (
+    list_presets_for_engine,
+    list_profiles_for_preset,
+    validate_preset_capability,
+    require_preset_capability,
+    resolve_engine_for_step,
+    CapabilityError,
+)
 
 __all__ = [
     # Dimension enums
@@ -61,5 +69,12 @@ __all__ = [
     "detect_presets_from_calculation_typed",
     "apply_presets_to_step",
     "detect_workflow_type",
+    # Capability resolver (SSOT)
+    "list_presets_for_engine",
+    "list_profiles_for_preset",
+    "validate_preset_capability",
+    "require_preset_capability",
+    "resolve_engine_for_step",
+    "CapabilityError",
 ]
 
