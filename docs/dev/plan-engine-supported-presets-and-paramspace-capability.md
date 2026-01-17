@@ -229,17 +229,17 @@ Use this section to track progress. Tick checkboxes as tasks complete.
 - [x] All PR1 tests pass
 
 ### PR2 Progress
-- [ ] Migrated `test_pyscf_scf_accepts_presets`
-- [ ] Migrated `test_orca_scf_accepts_presets`
-- [ ] Migrated `test_pyscf_mp2_does_not_accept_presets`
-- [ ] Migrated `test_pyscf_td_does_not_accept_presets`
-- [ ] Migrated `test_orca_td_does_not_accept_presets`
-- [ ] Migrated `test_pw_step_types_unchanged`
-- [ ] Migrated `test_pyscf_scf_allowed_dimensions_only_qc_precision`
-- [ ] Migrated `test_orca_scf_allowed_dimensions_only_qc_precision`
-- [ ] Migrated `test_list_accepting_presets_includes_qc_steps`
-- [ ] Kept 3 ParamSpace tests unchanged (already correct)
-- [ ] All PR2 tests pass
+- [x] Migrated `test_pyscf_scf_accepts_presets`
+- [x] Migrated `test_orca_scf_accepts_presets`
+- [x] Migrated `test_pyscf_mp2_does_not_accept_presets`
+- [x] Migrated `test_pyscf_td_does_not_accept_presets`
+- [x] Migrated `test_orca_td_does_not_accept_presets`
+- [x] Migrated `test_pw_step_types_unchanged`
+- [x] Migrated `test_pyscf_scf_allowed_dimensions_only_qc_precision`
+- [x] Migrated `test_orca_scf_allowed_dimensions_only_qc_precision`
+- [x] Migrated `test_list_accepting_presets_includes_qc_steps`
+- [x] Kept 3 ParamSpace tests unchanged (already correct)
+- [x] All PR2 tests pass
 
 ### PR3 Progress
 - [ ] Updated `test_workflow.py::test_get_step_type_spec`
