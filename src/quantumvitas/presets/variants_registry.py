@@ -33,6 +33,7 @@ from quantumvitas.presets.precision_variants import (
     get_precision_policy,
     PrecisionPolicy,
 )
+from quantumvitas.presets.qc_precision import get_qc_precision_paramspace
 
 
 # ============================================================================
@@ -100,6 +101,15 @@ CONVERGENCE_VARIANT = ParamSpaceVariant(
     }),
 )
 
+# QC Precision: single variant for QC SCF steps
+QC_PRECISION_SPACE = get_qc_precision_paramspace()
+QC_PRECISION_VARIANT = ParamSpaceVariant(
+    name="QC_PRECISION_SCF",
+    dimension="qc_precision",
+    space=QC_PRECISION_SPACE,
+    applies_to_step_types=frozenset({"scf"}),  # Only applies to gen step "scf"
+)
+
 # All variants (authoritative list)
 VARIANTS: tuple[ParamSpaceVariant, ...] = (
     OCCUPATIONS_SCHEME_VARIANT,
@@ -108,6 +118,7 @@ VARIANTS: tuple[ParamSpaceVariant, ...] = (
     PRECISION_PW_NSCF_VARIANT,
     PRECISION_PW_BANDS_PW_VARIANT,
     CONVERGENCE_VARIANT,
+    QC_PRECISION_VARIANT,
 )
 
 
@@ -222,18 +233,40 @@ CONVERGENCE_ENUM_TO_PROFILE = {
     ConvergenceOption.VERY_ROBUST: "VERY_ROBUST",
 }
 
+# QC Precision: profile_name -> enum (reuses PrecisionOption)
+QC_PRECISION_PROFILE_TO_ENUM = {
+    "LOW": PrecisionOption.LOW,
+    "MED": PrecisionOption.MED,
+    "HIGH": PrecisionOption.HIGH,
+}
+
 # Combined mappings per dimension
 PROFILE_TO_ENUM: Dict[str, Dict[str, Any]] = {
     "occupations_scheme": OCCUPATIONS_SCHEME_PROFILE_TO_ENUM,
     "magnetism": MAGNETISM_PROFILE_TO_ENUM,
     "precision": PRECISION_PROFILE_TO_ENUM,
+    "qc_precision": QC_PRECISION_PROFILE_TO_ENUM,
     "convergence": CONVERGENCE_PROFILE_TO_ENUM,
+}
+
+# QC Precision: profile_name -> enum (reuses PrecisionOption)
+QC_PRECISION_PROFILE_TO_ENUM = {
+    "LOW": PrecisionOption.LOW,
+    "MED": PrecisionOption.MED,
+    "HIGH": PrecisionOption.HIGH,
+}
+
+QC_PRECISION_ENUM_TO_PROFILE = {
+    PrecisionOption.LOW: "LOW",
+    PrecisionOption.MED: "MED",
+    PrecisionOption.HIGH: "HIGH",
 }
 
 ENUM_TO_PROFILE: Dict[str, Dict[Any, str]] = {
     "occupations_scheme": OCCUPATIONS_SCHEME_ENUM_TO_PROFILE,
     "magnetism": MAGNETISM_ENUM_TO_PROFILE,
     "precision": PRECISION_ENUM_TO_PROFILE,
+    "qc_precision": QC_PRECISION_ENUM_TO_PROFILE,
     "convergence": CONVERGENCE_ENUM_TO_PROFILE,
 }
 
@@ -331,8 +364,39 @@ def compile_dimension_patch_for_step(
             variant.space, profile_name, step_yaml, explicit_defaults=explicit_defaults
         )
 
-    # Return IR patch directly (IR is SSOT; QE writer will convert IR to QE input later)
-    return (ir_patch, deletions)
+    # Check for engine-specific patches (dual-path materialization)
+    # If engine-specific patch exists, return ONLY that (suppress general IR patch)
+    engine_specific_patches = {}
+    general_ir_patches = {}
+    engine_names = set()
+    
+    for section_name, section_data in ir_patch.items():
+        if section_name.startswith("engine."):
+            # Extract engine name (e.g., "engine.orca.scf" -> "orca")
+            parts = section_name.split(".")
+            if len(parts) >= 2:
+                engine_name = parts[1]
+                engine_names.add(engine_name)
+                engine_specific_patches[section_name] = section_data
+        else:
+            # General IR patch (not engine-specific)
+            general_ir_patches[section_name] = section_data
+    
+    # If multiple engine-specific patches exist, raise hard error
+    if len(engine_names) > 1:
+        from quantumvitas.presets.compiler import PresetCompilationError
+        raise PresetCompilationError(
+            f"Multiple engine-specific patches found for dimension '{dimension}', "
+            f"profile '{profile_name}', step_type '{step_type}': {sorted(engine_names)}. "
+            f"This is not allowed - only one engine-specific patch may apply."
+        )
+    
+    # If engine-specific patch exists, return ONLY that (suppress general IR patch)
+    if engine_specific_patches:
+        return (engine_specific_patches, deletions)
+    
+    # Otherwise, return general IR patch (without engine-specific sections)
+    return (general_ir_patches, deletions)
 
 
 def _compile_precision_patch_for_step(
