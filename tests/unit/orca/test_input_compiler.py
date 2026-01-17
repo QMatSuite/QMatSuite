@@ -102,7 +102,7 @@ class TestORCAInputCompiler:
         assert "* xyz 0 1" in input_text
 
     def test_tightscf_added(self):
-        """TightSCF should be added for reliable convergence."""
+        """TightSCF should be added when macro is 'tightscf'."""
         from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
         from quantumvitas.engine.qc_engine_base import QCChain
 
@@ -110,7 +110,17 @@ class TestORCAInputCompiler:
             id="s1",
             public_type="scf",
             step_type="orca_scf",
-            parameters={"functional": "B3LYP", "basis": "def2-SVP"},
+            parameters={
+                "functional": "B3LYP",
+                "basis": "def2-SVP",
+                "engine": {
+                    "orca": {
+                        "scf": {
+                            "macro": "tightscf"
+                        }
+                    }
+                }
+            },
         )
         chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
 
