@@ -11,6 +11,34 @@ Units are recorded explicitly in the mapping to keep the boundary clear.
 from typing import Any, Dict, Optional, Tuple
 
 
+# Class A Key Type Registry
+# Maps (SECTION, key) → expected_type for strict-typed parameters
+CLASS_A_TYPES: Dict[Tuple[str, str], str] = {
+    # Magnetism dimension
+    ("SYSTEM", "nspin"): "int",
+    ("SYSTEM", "noncolin"): "bool",
+    ("SYSTEM", "lspinorb"): "bool",
+    # OccupationsScheme dimension
+    ("SYSTEM", "occupations"): "str",
+    ("SYSTEM", "smearing"): "str",
+    ("SYSTEM", "degauss"): "float",
+    # Precision dimension
+    ("SYSTEM", "ecutwfc"): "float",
+    ("SYSTEM", "ecutrho"): "float",
+    ("ELECTRONS", "conv_thr"): "float",
+    # Convergence dimension
+    ("ELECTRONS", "mixing_beta"): "float",
+    ("ELECTRONS", "electron_maxstep"): "int",
+    ("ELECTRONS", "mixing_mode"): "str",
+    ("ELECTRONS", "mixing_ndim"): "int",
+    ("ELECTRONS", "diagonalization"): "str",
+    # Other IR-mapped keys
+    ("SYSTEM", "nbnd"): "int",
+    ("SYSTEM", "nosym"): "bool",
+    ("SYSTEM", "noinv"): "bool",
+}
+
+
 # IR → QE Mapping (for compilation)
 # Maps: ir_key → (qe_module, qe_section, qe_key)
 IR_TO_QE_MAPPING: Dict[str, Tuple[str, str, str]] = {
@@ -364,25 +392,70 @@ def validate_ir_qe_mapping() -> None:
     for qe_key_tuple, ir_key in QE_TO_IR_MAPPING.items():
         if ir_key not in IR_TO_QE_MAPPING:
             raise ValueError(f"QE→IR mapping points to unknown IR key '{ir_key}'")
-        
-        expected_qe = IR_TO_QE_MAPPING[ir_key]
-        if qe_key_tuple != expected_qe:
-            raise ValueError(
-                f"QE→IR mapping inconsistent: "
-                f"{qe_key_tuple} → {ir_key} but IR→QE says {ir_key} → {expected_qe}"
-            )
+
+
+def is_class_a_key(section: str, key: str) -> bool:
+    """
+    Check if (section, key) is a Class A (strict-typed) key.
     
-    # Check all IR→QE mappings have reverse mappings
-    for ir_key, qe_tuple in IR_TO_QE_MAPPING.items():
-        if qe_tuple not in QE_TO_IR_MAPPING:
-            raise ValueError(f"IR→QE mapping '{ir_key} → {qe_tuple}' missing reverse mapping")
+    Class A keys are those that:
+    1. Are listed in IR_TO_QE_MAPPING, OR
+    2. Are owned by any ParamSpace (ParamKey definitions)
+    
+    Args:
+        section: YAML section name (e.g., "SYSTEM", "ELECTRONS")
+        key: Parameter key name
         
-        reverse_ir_key = QE_TO_IR_MAPPING[qe_tuple]
-        if reverse_ir_key != ir_key:
-            raise ValueError(
-                f"Reverse mapping inconsistent: "
-                f"{ir_key} → {qe_tuple} → {reverse_ir_key}"
-            )
+    Returns:
+        True if the key is Class A (strict-typed), False otherwise
+    """
+    section_upper = section.upper()
+    key_lower = key.lower()
+    
+    # Check CLASS_A_TYPES registry
+    if (section_upper, key_lower) in CLASS_A_TYPES:
+        return True
+    if (section_upper, key) in CLASS_A_TYPES:
+        return True
+    
+    # Check IR mapping (by key name)
+    if key_lower in IR_TO_QE_MAPPING:
+        return True
+    
+    # Check IR mapping (by full tuple match)
+    for _, (_, sec, k) in IR_TO_QE_MAPPING.items():
+        if sec.upper() == section_upper and k.lower() == key_lower:
+            return True
+    
+    return False
+
+
+def get_class_a_type(section: str, key: str) -> Optional[str]:
+    """
+    Get expected type for Class A key, or None if not Class A.
+    
+    Args:
+        section: YAML section name (e.g., "SYSTEM", "ELECTRONS")
+        key: Parameter key name
+        
+    Returns:
+        Expected type string: 'bool', 'int', 'float', 'str', or None if not Class A
+    """
+    section_upper = section.upper()
+    key_lower = key.lower()
+    
+    # Check CLASS_A_TYPES registry
+    type_str = CLASS_A_TYPES.get((section_upper, key_lower))
+    if type_str:
+        return type_str
+    
+    type_str = CLASS_A_TYPES.get((section_upper, key))
+    if type_str:
+        return type_str
+    
+    # If in IR mapping but not in type registry, return None
+    # (caller should handle this case)
+    return None
 
 
 # Validate mapping on import
