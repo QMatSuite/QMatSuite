@@ -53,7 +53,7 @@ The contract ensures:
 
 **Profile**: Named set of cells in a ParamSpace (e.g., `"LOW"`, `"MED"`, `"HIGH"`). Defined in `paramspace.profiles` dict.
 
-**IR Dialect**: Namespace for IR keys/values. Currently two dialects: `ir.qe` (PBC+PW) and `ir.orca` (MOL+AO). Dialects are disjoint namespaces.
+**IR Dialect**: Namespace for IR keys/values. Currently two dialects: `ir.pw` (PW implies PBC; no mol) and `ir.qc` (Quantum chemistry; AO/MOL world). Dialects are disjoint namespaces. **Note**: Dialect names are NOT engine names; they represent computational paradigms (PW vs QC).
 
 **Engine Parameters**: Engine-specific parameter keys stored in `step.yaml` (e.g., QE namelist keys). SSOT for execution.
 
@@ -126,23 +126,27 @@ The contract ensures:
 ### 3.3 IR Dialects (logical patch, non-persisted)
 
 **Definition**: IR is NOT a single flattened vocabulary. We use exactly TWO IR dialect namespaces initially:
-- `ir.qe` (represents PBC+PW; canonical keys/values modeled after QE semantics)
-- `ir.orca` (represents MOL+AO; canonical keys/values modeled after ORCA/QC semantics)
+- `ir.pw` (PW implies PBC; no mol; canonical keys/values modeled after QE/PW semantics)
+- `ir.qc` (Quantum chemistry; AO/MOL world; canonical keys/values modeled after PySCF-like names for QC atomic knobs)
 
-**MUST**: Dialects are disjoint namespaces; do not mix qe and orca IR keys.
+**MUST**: Dialects are disjoint namespaces; do not mix `ir.pw` and `ir.qc` IR keys.
+
+**MUST**: Dialect names are NOT engine names. They represent computational paradigms (PW vs QC), not specific engines (QE vs ORCA vs PySCF).
 
 **MUST**: IR uses Python native types:
 - Bool MUST be Python `True/False` (NOT `.true.` strings in IR)
 - IR canonical string values MUST be lowercase (e.g., `gauss`, not `Gauss`)
 
+**MUST**: Key naming uses shallow namespacing: at most one dot (one level), e.g., `scf.conv_tol`, `scf.max_cycle`, `dft.grid_level`. Avoid deep paths like `ir.qc.scf.conv_tol`.
+
 **Storage**: IR patches are runtime-only (not persisted). Only engine params in `step.yaml` are persisted.
 
-**Future 2x2 generalization** (PBC/MOL × PW/AO) is out of scope; this spec documents only the chosen qe/orca dialect split.
+**Future 2x2 generalization** (PBC/MOL × PW/AO) is out of scope; this spec documents only the chosen `ir.pw`/`ir.qc` dialect split.
 
 **Evidence**:
 - IR parameter registry: `src/quantumvitas/ir/parameters.py:IRParameter` (lines 14-27)
 - IR→QE mapping: `src/quantumvitas/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (line 46-74)
-- Note: IR dialect split (`ir.qe`/`ir.orca`) is a future design decision; current code uses single IR namespace
+- Note: IR dialect split (`ir.pw`/`ir.qc`) is a future design decision; current code uses single IR namespace
 
 ### 3.4 Engine params (step.yaml persisted spec)
 
@@ -307,15 +311,15 @@ If match: return preset (ENUM_TO_PROFILE reverse lookup)
 ## 7. Specific Supersedes General (dual-path rules)
 
 **MUST**: ParamSpace may define both:
-- General IR patch (`ir.<dialect>.*`)
-- Engine-specific patch (`engine.<engine>.*`)
+- General IR patch (`ir.<dialect>.*`, e.g., `ir.pw.*` or `ir.qc.*`)
+- Engine-specific patch (`engine.<engine>.*`, e.g., `engine.orca.*`)
 
 for the same preset/profile + gen_step.
 
 **MUST**: If engine-specific patch is non-empty for the target engine, backend MUST materialize ONLY the engine-specific patch. General IR patch MUST NOT be materialized to YAML in that case.
 
 **MUST**: Engine-specific patch for a given preset/profile+gen_step MUST be unique:
-- A preset/profile MUST NOT yield more than one engine-specific patch target (e.g., not both `engine.orca.*` and `engine.pyscf.*` in the same compilation). If it does, that is a hard error (no tie-breakers).
+- A preset/profile MUST NOT yield more than one engine-specific patch target (e.g., not both `engine.orca.*` and `engine.pyscf.*` in the same compilation). If it does, that is a **HARD ERROR** (no tie-breakers).
 
 **Rationale**: Allows presets to have engine-specific overrides while maintaining a general fallback. Prevents ambiguity when multiple engine-specific patches exist.
 
@@ -328,10 +332,10 @@ for the same preset/profile + gen_step.
 
 ### 8.1 ParamSpace Robustness Normalization (Match Robustness Only)
 
-**MUST**: ParamSpace MUST perform lightweight, lossless normalization for matching robustness:
-- Trim leading/trailing whitespace on strings
-- Lowercase strings before comparing
-- Best-effort parse legacy bool strings ONLY (e.g., `.true.`/`.false.` and common variants) into Python bool, for backwards compatibility
+**MUST**: ParamSpace MUST perform lightweight, lossless normalization for matching robustness on **strings**:
+- `strip()` leading/trailing whitespace before comparison (applied to both reference and observed values)
+- `lower()` before comparison (applied to both reference and observed values)
+- Best-effort parse legacy bool strings ONLY (e.g., `.true.`/`.false.` and common variants) into Python bool, for backwards compatibility only
 
 **MUST NOT**: ParamSpace MUST NOT implement domain synonym mapping (e.g., `gaussian` vs `gauss`) beyond the lowercase/trim normalization.
 
@@ -348,7 +352,12 @@ for the same preset/profile + gen_step.
 
 **MUST**: Engine MUST provide a single canonicalization entry point (one module/function per engine) used anywhere canonicalization is needed.
 
-**MUST**: `.true.`/`.false.` textual forms MUST only appear in engine input files (`.in`) (text IO layer), not as required IR canonical values.
+**MUST**: Engine canonicalization is SSOT for:
+- Synonyms (e.g., `gauss`/`gaussian`)
+- Case variants
+- `.in` text forms (QE `.true.`/`.false.` etc.)
+
+**MUST**: `.true.`/`.false.` textual forms SHOULD only exist in final `.in` files (text IO layer). YAML/IR should stay logical (Python `True`/`False`).
 
 **MUST**: Import `.in -> YAML` MUST canonicalize textual forms and synonyms into canonical IR values (bools, lowercase strings).
 
@@ -390,6 +399,43 @@ for the same preset/profile + gen_step.
 **Evidence**:
 - Profile display: `src/quantumvitas/presets/catalog.py:get_preset_catalog()` (line 90)
 - Note: Per-engine profile lists are a future design requirement; current code may not fully implement this
+
+---
+
+## 9.1 QC Precision Preset Contract (v0)
+
+**MUST**: QC precision preset applies only to **gen step `scf`**. Other gen steps are not applicable and yield empty patch.
+
+**IR Keys** (belong to `ir.qc` dialect library):
+- `scf.conv_tol` (float): SCF convergence tolerance
+- `scf.max_cycle` (int): Maximum SCF iterations
+- `dft.grid_level` (int, optional): DFT grid level (DFT only)
+
+**MUST NOT**: Do NOT include `conv_tol_grad` (use engine default).
+
+**Key Naming**: Uses shallow namespacing (one dot level): `scf.conv_tol`, `scf.max_cycle`, `dft.grid_level`.
+
+**Engine-Specific Macro Path** (ORCA example):
+- `engine.orca.scf.macro` (string, canonical lower-case): ORCA-specific SCF macro (e.g., `"tightscf"`, `"normal"`)
+- Profiles for this macro are ORCA-specific and independent from IR profiles (no implied mapping)
+- ParamSpace produces this path; engine writer converts to ORCA input format
+
+**Evidence**:
+- Note: QC precision preset contract is a future design requirement; current code does not implement this yet
+
+---
+
+## 9.2 Minimal Touch to Existing QE/PW
+
+**MUST NOT**: Do not rename existing PW IR keys or existing ParamSpace semantics.
+
+**MUST**: Only document the dialect split and bool canonicalization; leave PW naming as-is.
+
+**Rationale**: Maintains backward compatibility with existing QE/PW code. Only minimal changes required to introduce dialect split and clarify bool canonicalization.
+
+**Evidence**:
+- Current PW IR keys: `src/quantumvitas/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (line 46-74)
+- Note: Minimal-change principle ensures existing QE/PW code remains stable
 
 ---
 
@@ -520,7 +566,7 @@ for the same preset/profile + gen_step.
 ### 11.4 Enforcement of Specific>General Materialization
 
 **Test**: Verify engine-specific patch takes precedence over general IR patch
-- Define preset with both `ir.qe.*` and `engine.qe.*` patches
+- Define preset with both `ir.pw.*` and `engine.qe.*` patches
 - Materialize for QE engine
 - Verify only `engine.qe.*` patch is materialized
 
@@ -575,13 +621,13 @@ for the same preset/profile + gen_step.
 
 ### Q2: IR Dialect Namespace Implementation
 
-**Question**: Current code uses single IR namespace (QE-equivalent). Spec requires `ir.qe` and `ir.orca` dialects. When will dialect split be implemented?
+**Question**: Current code uses single IR namespace (QE-equivalent). Spec requires `ir.pw` and `ir.qc` dialects. When will dialect split be implemented?
 
 **Evidence**:
 - Current: `src/quantumvitas/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (single namespace)
-- Spec requirement: Two dialects (`ir.qe`, `ir.orca`)
+- Spec requirement: Two dialects (`ir.pw`, `ir.qc`)
 
-**Impact**: Affects ORCA onboarding strategy.
+**Impact**: Affects ORCA/PySCF onboarding strategy.
 
 ### Q3: supported_presets Implementation
 
@@ -651,6 +697,57 @@ for the same preset/profile + gen_step.
 - `tests/unit/test_paramspace_invariants.py` - Invariant enforcement
 - `tests/unit/test_paramspace_contract.py` - Reversibility tests
 - `tests/unit/test_preset_integration.py` - Integration tests
+
+---
+
+## Appendix: Contract Summary
+
+### SSOT vs Non-SSOT
+
+- **SSOT (persisted)**: `calculation.yaml` + `step.yaml` only
+- **Non-SSOT (runtime-only)**: Preset, IR, ParamSpace, Workflow output
+
+### Dialect Naming
+
+- **Dialects**: `ir.pw` (PW/PBC) and `ir.qc` (QC/AO/MOL)
+- **NOT engines**: Dialect names represent computational paradigms, not specific engines
+- **Disjoint**: Do not mix `ir.pw` and `ir.qc` keys
+
+### Robust Match Rules
+
+- **ParamSpace normalization** (match robustness only):
+  - `strip()` and `lower()` strings before comparison
+  - Best-effort parse legacy bool strings (`.true.`/`.false.`) to Python bool
+  - NO domain synonym mapping (e.g., `gaussian` vs `gauss`)
+- **Engine canonicalization** (SSOT):
+  - Synonyms, case variants, `.in` text forms
+  - Single entry point per engine
+
+### Specific>General Rule
+
+- Preset MAY define both general IR patch (`ir.<dialect>.*`) and engine-specific patch (`engine.<engine>.*`)
+- If engine-specific patch exists, MUST use it (general IR patch NOT materialized)
+- Multiple engine-specific patches = HARD ERROR (no tie-breakers)
+
+### Shallow Key Namespace Rule for QC
+
+- **MUST**: Use at most one dot (one level), e.g., `scf.conv_tol`, `scf.max_cycle`, `dft.grid_level`
+- **MUST NOT**: Avoid deep paths like `ir.qc.scf.conv_tol`
+
+### IR Value Types
+
+- **Bool**: Python `True/False` (NOT `.true.` strings in IR)
+- **Strings**: Lowercase canonical values
+- **`.true.`/`.false.`**: SHOULD only appear in final `.in` files (text IO layer)
+
+### Gen Step Scope
+
+- **QC precision preset**: Applies only to gen step `scf`; other gen steps yield empty patch
+
+### Minimal-Change Principle
+
+- **MUST NOT**: Rename existing PW IR keys or ParamSpace semantics
+- **MUST**: Only document dialect split and bool canonicalization
 
 ---
 
