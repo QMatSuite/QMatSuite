@@ -24,7 +24,6 @@ def test_pw_dialect_imports():
     assert hasattr(pw, "mapping")
     assert hasattr(pw, "IR_TO_QE_MAPPING")
     assert hasattr(pw, "QE_TO_IR_MAPPING")
-    assert hasattr(pw, "ir_bool")
     assert hasattr(pw, "ir_params_to_qe_params")
     assert hasattr(pw, "ir_to_qe_param")
     assert hasattr(pw, "qe_to_ir_param")
@@ -33,11 +32,9 @@ def test_pw_dialect_imports():
     # Verify these are the same as backends/qe
     from quantumvitas.ir.backends.qe.mapping import (
         IR_TO_QE_MAPPING as QE_IR_TO_QE_MAPPING,
-        ir_bool as qe_ir_bool,
     )
     
     assert pw.IR_TO_QE_MAPPING is QE_IR_TO_QE_MAPPING
-    assert pw.ir_bool is qe_ir_bool
 
 
 def test_qc_dialect_imports():
@@ -82,13 +79,14 @@ def test_dialect_import_from_top_level():
 
 def test_pw_dialect_functionality():
     """Test that pw dialect functions work correctly."""
-    from quantumvitas.ir.dialects.pw import ir_bool
+    from quantumvitas.ir.dialects.pw import ir_to_qe_param
     
-    # Test ir_bool function
-    assert ir_bool(True) == ".true."
-    assert ir_bool(False) == ".false."
-    assert ir_bool(".true.") == ".true."
-    assert ir_bool(".false.") == ".false."
+    # Test ir_to_qe_param function (booleans stay as bool)
+    qe_module, qe_section, qe_key, qe_value = ir_to_qe_param("noncolin", True)
+    assert qe_module == "pw"
+    assert qe_section == "SYSTEM"
+    assert qe_key == "noncolin"
+    assert qe_value is True  # Boolean stays as bool, not converted to string
 
 
 def test_dialect_separation():

@@ -506,7 +506,7 @@ class TestCompilerCanonicalEncoding:
         assert "SYSTEM" in result
         system = result["SYSTEM"]
         assert "noncolin" in system
-        assert system["noncolin"] == ".true."
+        assert system["noncolin"] == True
         # Should NOT write nspin per QE docs (NOT_APPLICABLE)
         assert "nspin" not in system
     
@@ -517,9 +517,9 @@ class TestCompilerCanonicalEncoding:
         assert "SYSTEM" in result
         system = result["SYSTEM"]
         assert "noncolin" in system
-        assert system["noncolin"] == ".true."
+        assert system["noncolin"] == True
         assert "lspinorb" in system
-        assert system["lspinorb"] == ".true."
+        assert system["lspinorb"] == True
         # Should NOT write nspin per QE docs (NOT_APPLICABLE)
         assert "nspin" not in system
     
@@ -604,8 +604,8 @@ class TestCompilerStringOptions:
         }
         result = compile_presets(options)
         
-        assert result["SYSTEM"]["noncolin"] == ".true."
-        assert result["SYSTEM"]["lspinorb"] == ".true."
+        assert result["SYSTEM"]["noncolin"] == True
+        assert result["SYSTEM"]["lspinorb"] == True
 
 
 class TestCompilerPostProcessing:

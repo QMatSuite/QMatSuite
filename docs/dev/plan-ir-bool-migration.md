@@ -106,17 +106,17 @@ pytest tests/ir/ -v -x
 ---
 
 ### PR2: Update unit tests to expect Python bool
-- [ ] Update `tests/unit/test_magnetism_paramspace_contract.py`:
+- [x] Update `tests/unit/test_magnetism_paramspace_contract.py`:
   - Change all `.true.`/`.false.` strings in test dicts to Python `True`/`False`
   - Update assertions to expect `bool` instead of strings
-- [ ] Update `tests/unit/test_detector_b.py`:
+- [x] Update `tests/unit/test_detector_b.py`:
   - Input dicts can still use `.true.` (testing robustness)
   - Output assertions must expect `bool`
-- [ ] Update `tests/unit/test_preset_integration.py`:
+- [x] Update `tests/unit/test_preset_integration.py`:
   - Change assertions to expect `bool`
-- [ ] Update `tests/unit/test_ir_dialect_structure.py`:
+- [x] Update `tests/unit/test_ir_dialect_structure.py`:
   - Check for `.true.` strings and update
-- [ ] Update `tests/unit/test_qc_precision_paramspace.py`:
+- [x] Update `tests/unit/test_qc_precision_paramspace.py`:
   - Check for `.true.` strings and update
 
 **Files to modify**:
@@ -192,7 +192,7 @@ _Auto will update this section as PRs are implemented._
 ```
 PR0: [x] Remove bool→string conversion in ParamSpace
 PR1: [x] Remove bool→string conversion in IR mapping
-PR2: [ ] Update unit tests to expect Python bool
+PR2: [x] Update unit tests to expect Python bool
 PR3: [ ] Update integration tests
 PR4: [ ] Add guard tests
 PR5: [ ] Final verification and cleanup
