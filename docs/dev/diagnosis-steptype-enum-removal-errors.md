@@ -238,7 +238,7 @@ step_type=step.step_type if step.step_type else None,
 
 #### Error 2.7: QE Engine (`engine/qe_engine.py`)
 
-**Location**: `src/quantumvitas/engine/qe_engine.py:51`
+**Location**: `src/quantumvitas/engine/qe_engine.py:51, 67`
 
 **Error**:
 ```python
@@ -250,20 +250,27 @@ step_type_value = step_type.value
 
 **Evidence**:
 - Line 51: `step_type_value = step_type.value`
+- Line 67: `step_type_value = step.type.value` (legacy `step.type` attribute)
 
 **Fix Proposal**:
 ```python
-# Before:
+# Before (line 51):
 if step_type:
     step_type_value = step_type.value
 
 # After:
 if step_type:
     step_type_value = step_type  # Already a string
+
+# Before (line 67):
+step_type_value = step.type.value
+
+# After:
+step_type_value = step.type  # If step.type exists, it should also be a string
 ```
 
 **Files to Modify**:
-- `src/quantumvitas/engine/qe_engine.py` (line 51)
+- `src/quantumvitas/engine/qe_engine.py` (lines 51, 67)
 
 ---
 
@@ -296,7 +303,39 @@ step_type = "custom"
 
 ---
 
-#### Error 2.9: API Response (`api.py`)
+#### Error 2.9: History Run Revision (`history/run_revision.py`)
+
+**Location**: `src/quantumvitas/history/run_revision.py:415`
+
+**Error**:
+```python
+step_type = step_type.value
+# AttributeError: 'str' object has no attribute 'value'
+```
+
+**Root Cause**: `step_type` from `step_result` dict is now `str`, not enum.
+
+**Evidence**:
+- Line 415: `step_type = step_type.value` (inside `hasattr` check, but still wrong)
+
+**Fix Proposal**:
+```python
+# Before:
+step_type = step_result.get("step_type", "")
+if hasattr(step_type, "value"):
+    step_type = step_type.value
+
+# After:
+step_type = step_result.get("step_type", "")
+# step_type is already a string, no conversion needed
+```
+
+**Files to Modify**:
+- `src/quantumvitas/history/run_revision.py` (line 415)
+
+---
+
+#### Error 2.10: API Response (`api.py`)
 
 **Location**: `src/quantumvitas/api.py:1292, 2376`
 
@@ -413,11 +452,11 @@ rg "step_type.*\.value|\.value.*step_type" src/quantumvitas --type py
 
 ## Summary
 
-**Total Files to Fix**: 10 files
+**Total Files to Fix**: 11 files
 - 1 test file (import error)
-- 9 production files (attribute errors)
+- 10 production files (attribute errors)
 
-**Total Lines to Change**: ~15 lines
+**Total Lines to Change**: ~18 lines
 
 **Estimated Fix Time**: 15-30 minutes
 
