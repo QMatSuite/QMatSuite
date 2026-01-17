@@ -79,9 +79,9 @@ class TestParamSpaceReversibility:
         
         assert "SYSTEM" in patch
         assert patch["SYSTEM"]["nspin"] == 2
-        # Compiler output uses QE string format for booleans (per Fix #1: canonical encoding)
-        assert patch["SYSTEM"]["noncolin"] == ".false."
-        assert patch["SYSTEM"]["lspinorb"] == ".false."
+        # IR patches use Python bool (YAML canonical)
+        assert patch["SYSTEM"]["noncolin"] == False
+        assert patch["SYSTEM"]["lspinorb"] == False
     
     def test_occupations_scheme_round_trip(self):
         """Test occupations_scheme compile→detect round-trip."""

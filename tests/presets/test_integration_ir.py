@@ -172,9 +172,8 @@ class TestRoundTripBehavior:
         # Read back and verify values preserved
         result_content = yaml.safe_load(step_path.read_text())
         assert result_content["parameters"]["SYSTEM"]["nspin"] == 2
-        # Compiler output uses QE string format for booleans (per Fix #1: canonical encoding)
-        # step.yaml stores QE strings, not Python bools
-        assert result_content["parameters"]["SYSTEM"]["noncolin"] == ".false."
+        # step.yaml stores YAML native booleans (true/false), not QE strings
+        assert result_content["parameters"]["SYSTEM"]["noncolin"] == False
 
 
 class TestBackwardCompatibility:
