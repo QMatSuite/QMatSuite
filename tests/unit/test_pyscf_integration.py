@@ -24,13 +24,6 @@ def _pyscf_importable() -> bool:
 class TestPySCFStepTypeRegistration:
     """Tests for PySCF step type registration in registry."""
     
-    def test_pyscf_scf_in_step_type_enum(self):
-        """PYSCF_SCF exists in StepType enum."""
-        from quantumvitas.calculation.types import StepType
-        
-        assert hasattr(StepType, "PYSCF_SCF")
-        assert StepType.PYSCF_SCF.value == "pyscf_scf"
-    
     def test_pyscf_scf_in_registry(self):
         """PYSCF_SCF step type is registered in StepTypeRegistry."""
         from quantumvitas.workflow.registry import get_registry

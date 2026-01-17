@@ -9,7 +9,6 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 
-from quantumvitas.calculation.types import StepType
 from quantumvitas.workflow.registry import StepTypeRegistry
 from quantumvitas.io.wannier90_input import (
     Wannier90Input,
@@ -20,21 +19,6 @@ from quantumvitas.io.wannier90_input import (
 
 class TestStepTypeRegistration:
     """Test that Wannier90 step types are properly registered."""
-    
-    def test_w90_preproc_in_step_type_enum(self):
-        """W90_PREPROC should be in StepType enum."""
-        assert hasattr(StepType, "W90_PREPROC")
-        assert StepType.W90_PREPROC.value == "w90_preproc"
-    
-    def test_pw2wannier90_in_step_type_enum(self):
-        """PW2WANNIER90 should be in StepType enum."""
-        assert hasattr(StepType, "PW2WANNIER90")
-        assert StepType.PW2WANNIER90.value == "pw2wannier90"
-    
-    def test_w90_run_in_step_type_enum(self):
-        """W90_RUN should be in StepType enum."""
-        assert hasattr(StepType, "W90_RUN")
-        assert StepType.W90_RUN.value == "w90_run"
     
     def test_w90_preproc_in_registry(self):
         """w90_preproc should be in step type registry."""

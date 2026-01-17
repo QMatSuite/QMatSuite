@@ -1665,7 +1665,6 @@ def _run_standalone_step(
     from quantumvitas.calculation.structure_steps import StructureStepSpec, materialize_step_spec
     from quantumvitas.core.engines.base import EngineConfig
     from quantumvitas.calculation.step import Step
-    from quantumvitas.calculation.types import StepType
     from quantumvitas.io import read_structure
     from quantumvitas.engine.qe_engine import QeEngine
     
@@ -1743,7 +1742,7 @@ def _run_standalone_step(
             meta=spec.meta,
             input_file=generated_input,
             engine="qe",
-            step_type=StepType.from_string(spec.step_type) if spec.step_type else None,
+            step_type=spec.step_type,  # Already a string from spec
             options={},
             reference_output=None,
         )

@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from .calculation import Calculation
 from .results import CalculationResult, StepResultSummary
-from .types import StepMode, StepStatus, StepType
+from .types import StepMode, StepStatus
 from .verification import evaluate_step_result
 from quantumvitas.engine.registry import EngineRegistry
 
@@ -47,36 +47,6 @@ def compute_io_dir_from_calculation_model(calculation_dir: Path, working_dir_nam
     return io_dir
 
 
-def _coerce_step_type(value) -> StepType:
-    """
-    Coerce a step type string to StepType enum.
-
-    Handles both GEN types (e.g., "scf") and SPEC types (e.g., "qe_scf")
-    by using registry lookup to convert SPEC to GEN when needed.
-    """
-    if isinstance(value, StepType):
-        return value
-
-    # Try direct conversion (works for GEN types like "scf")
-    try:
-        return StepType(value)
-    except (ValueError, KeyError):
-        pass
-
-    # If direct conversion failed, try registry lookup for SPEC types
-    # SPEC type like "qe_scf" -> public_type "scf" -> StepType.SCF
-    try:
-        from quantumvitas.workflow.registry import get_registry
-        reg = get_registry()
-        spec = reg.get(str(value))
-        if spec and spec.public_type:
-            return StepType(spec.public_type)
-    except Exception:
-        pass
-
-    return StepType.CUSTOM
-
-
 def _get_engine_family_from_step(step) -> Optional[str]:
     """
     Determine engine family from a step using registry lookup.
@@ -93,8 +63,8 @@ def _get_engine_family_from_step(step) -> Optional[str]:
     if not step or not step.step_type:
         return None
 
-    # Get the step type string (may be StepType enum or string)
-    step_type_str = str(step.step_type.value) if hasattr(step.step_type, 'value') else str(step.step_type)
+    # Get the step type string
+    step_type_str = str(step.step_type) if step.step_type else "unknown"
 
     # Look up in registry to get the engine
     try:
@@ -229,7 +199,7 @@ class CalculationRunner:
                 status = StepStatus.FAILED
                 step_summaries.append(StepResultSummary(
                     step_id="step0",
-                    step_type=StepType.CUSTOM,
+                    step_type="custom",
                     status=StepStatus.FAILED,
                     working_dir=calculation.raw_dir,
                     input_file=Path(),
@@ -255,7 +225,7 @@ class CalculationRunner:
                 pass
                 step_summaries.append(StepResultSummary(
                     step_id="step0",
-                    step_type=StepType.CUSTOM,
+                    step_type="custom",
                     status=StepStatus.FAILED,
                     working_dir=calculation.raw_dir,
                     input_file=Path(),
@@ -590,8 +560,8 @@ class CalculationRunner:
                 # Find step index in calculation
                 calc_step_idx = self._find_step_index(calculation, step_ulid)
 
-                step_type = _coerce_step_type(step.step_type) if step.step_type else StepType.CUSTOM
-                step_type_str = str(step.step_type.value) if step.step_type else "unknown"
+                step_type = step.step_type or "custom"
+                step_type_str = step.step_type or "unknown"
 
                 # Extract input/output from Job (source of truth for GEN filenames)
                 job_input_file = job.input_files[0] if job.input_files else Path()
@@ -697,7 +667,7 @@ class CalculationRunner:
             # Gather step info
             step_ids = [s.meta.id for s in calculation.steps]
             step_types = [
-                s.step_type.value if hasattr(s.step_type, "value") else str(s.step_type)
+                str(s.step_type) if s.step_type else "unknown"
                 for s in calculation.steps
             ]
             

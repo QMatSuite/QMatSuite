@@ -2,7 +2,7 @@
 Calculation abstractions (steps, runner, verification, results).
 """
 
-from .types import StepMode, StepStatus, StepType
+from .types import StepMode, StepStatus
 from .step import Step
 from .calculation import Calculation
 from .runner import CalculationRunner
@@ -33,7 +33,6 @@ from .geometry import (
 __all__ = [
     "StepMode",
     "StepStatus",
-    "StepType",
     "Step",
     "Calculation",
     "CalculationRunner",
