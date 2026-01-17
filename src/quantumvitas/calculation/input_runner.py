@@ -147,7 +147,12 @@ def set_pseudo_dir_in_input(qe_input: QEInput, pseudo_dir: Path, working_dir: Pa
         pseudo_dir_str = str(pseudo_dir.resolve())
     
     module = qe_input.module or qe_input.detect_module()
-    no_control_modules = [QEModule.PH, QEModule.Q2R, QEModule.MATDYN, QEModule.DYNMAT]
+    # Post-processing modules that don't have &CONTROL namelist
+    # bands.x, dos.x, projwfc.x, pp.x only have their own namelists (&BANDS, &DOS, &PROJWFC, &INPUTPP)
+    no_control_modules = [
+        QEModule.PH, QEModule.Q2R, QEModule.MATDYN, QEModule.DYNMAT,
+        QEModule.BANDS, QEModule.DOS, QEModule.PROJWFC, QEModule.PP,
+    ]
 
     found_pseudo = False
     for namelist in qe_input.namelists:
