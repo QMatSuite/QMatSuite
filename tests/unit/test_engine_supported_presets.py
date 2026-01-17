@@ -47,7 +47,8 @@ def test_pyscf_engine_supported_presets():
 
 def test_orca_engine_supported_presets():
     """Test that ORCA engine declares QC preset dimensions."""
-    engine = ORCAEngine()
+    # Use defer_binary_resolution=True for capability queries (binary not required)
+    engine = ORCAEngine(defer_binary_resolution=True)
     
     presets = engine.supported_presets
     
@@ -78,7 +79,7 @@ def test_all_engines_implement_supported_presets():
     engines = [
         QeEngine(),
         PySCFEngine(),
-        ORCAEngine(),
+        ORCAEngine(defer_binary_resolution=True),  # Binary not required for capability queries
     ]
     
     for engine in engines:
