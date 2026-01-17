@@ -91,7 +91,7 @@ def summarize_calculation_energies(
     for step in result.steps:
         entry = {
             "step_id": step.step_id,
-            "step_type": step.step_type.value,
+            "step_type": step.step_type,
             "status": step.status.value,
             "total_energy_ry": step.metrics.get("total_energy_ry"),
             "fermi_energy_ev": step.metrics.get("fermi_energy_ev"),

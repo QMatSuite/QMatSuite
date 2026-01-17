@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
 from quantumvitas.calculation.verification import evaluate_step_result
-from quantumvitas.calculation.types import StepMode, StepStatus, StepType
+from quantumvitas.calculation.types import StepMode, StepStatus
 from quantumvitas.analysis.parsers import parse_scf_output_text, parse_scf_output_path
 
 
@@ -35,7 +35,7 @@ class TestWannier90StepsDoNotParseEnergy:
         # Test w90_preproc
         step_status, message, metrics = evaluate_step_result(
             mode=StepMode.NORMAL,
-            step_type=StepType.W90_PREPROC,
+            step_type="w90_preproc",
             output_text="",  # Empty output (typical for Wannier90)
             reference_file=None,
             step_result_return_code=0,
@@ -50,7 +50,7 @@ class TestWannier90StepsDoNotParseEnergy:
         call_count["count"] = 0
         step_status, message, metrics = evaluate_step_result(
             mode=StepMode.NORMAL,
-            step_type=StepType.W90_RUN,
+            step_type="w90_run",
             output_text="",
             reference_file=None,
             step_result_return_code=0,
@@ -64,7 +64,7 @@ class TestWannier90StepsDoNotParseEnergy:
         call_count["count"] = 0
         step_status, message, metrics = evaluate_step_result(
             mode=StepMode.NORMAL,
-            step_type=StepType.PW2WANNIER90,
+            step_type="pw2wannier90",
             output_text="",
             reference_file=None,
             step_result_return_code=0,
@@ -78,7 +78,7 @@ class TestWannier90StepsDoNotParseEnergy:
         call_count["count"] = 0
         step_status, message, metrics = evaluate_step_result(
             mode=StepMode.NORMAL,
-            step_type=StepType.SCF,
+            step_type="scf",
             output_text="JOB DONE",
             reference_file=None,
             step_result_return_code=0,
