@@ -1289,7 +1289,7 @@ class QVService:
             "steps": [
                 {
                     "step_id": s.step_id,
-                    "step_type": s.step_type.value if hasattr(s.step_type, 'value') else str(s.step_type),
+                    "step_type": s.step_type,
                     "status": s.status.value,
                     "message": s.message,
                     "metrics": s.metrics,
@@ -2373,7 +2373,7 @@ class QVService:
                         {
                             "step_id": step.meta.id,  # ULID (canonical reference)
                             "id": step.meta.id,  # Also include as 'id' for backwards compatibility in API response
-                            "type": step.step_type.value if hasattr(step.step_type, 'value') else str(step.step_type),
+                            "type": step.step_type,
                             # step_file is NOT included - step location resolved via registry
                         }
                         for step in calculation.steps

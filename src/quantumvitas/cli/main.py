@@ -3473,14 +3473,14 @@ def run_calculation_command(
                 line += f" [{step.message}]"
             typer.echo(line)
             # Print step_type for each step (contract requirement)
-            typer.echo(f"step_type: {step.step_type.value}")
+            typer.echo(f"step_type: {step.step_type}")
             if step.metrics:
                 for key, value in step.metrics.items():
                     typer.echo(f"    {key}: {value}")
     else:
         # Even when not verbose, print step_type for each step (contract requirement)
         for step in result.steps:
-            typer.echo(f"step_type: {step.step_type.value}")
+            typer.echo(f"step_type: {step.step_type}")
 
 
 @app.command("run-calculation")
