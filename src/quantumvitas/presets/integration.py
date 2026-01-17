@@ -103,8 +103,37 @@ def _validate_magnetism_physics(system_params: Dict[str, Any]) -> None:
         )
 
 
+def _detect_engine_for_calculation(calculation_dir: Path) -> Optional[str]:
+    """
+    Detect engine from calculation's steps.
+    
+    Reads step.yaml files and determines the engine from step_type.
+    Returns the first engine found, or None if no engine can be determined.
+    
+    Args:
+        calculation_dir: Path to calculation directory
+        
+    Returns:
+        Engine name (e.g., "qe", "pyscf", "orca") or None
+    """
+    from quantumvitas.presets.capability import resolve_engine_for_step
+    
+    steps_dir = calculation_dir / "steps"
+    if not steps_dir.exists():
+        return None
+    
+    # Try to find engine from any step.yaml file
+    for step_file in steps_dir.glob("*.step.yaml"):
+        engine = resolve_engine_for_step(step_file)
+        if engine:
+            return engine
+    
+    return None
+
+
 def detect_presets_from_calculation(
     calculation_dir: Path,
+    engine_filter: Optional[str] = None,
 ) -> Dict[str, Union[str, _CustomType]]:
     """
     Detect preset values from a calculation's steps.
@@ -116,6 +145,8 @@ def detect_presets_from_calculation(
     Args:
         calculation_dir: Path to calculation directory containing
             calculation.yaml and steps/*.step.yaml
+        engine_filter: Optional engine name to filter detection.
+            If provided, only detect presets in engine.supported_presets.
             
     Returns:
         Dict mapping dimension name to detected value (string) or "Custom"
@@ -155,6 +186,20 @@ def detect_presets_from_calculation(
         calculation_dir=calculation_dir if enable_precision else None,
     )
     
+    # Filter by engine capability if engine_filter is provided
+    if engine_filter:
+        from quantumvitas.engine.registry import create_default_registry
+        engine_registry = create_default_registry()
+        if engine_registry.has(engine_filter):
+            engine = engine_registry.get(engine_filter)
+            supported_presets = set(engine.supported_presets)
+            # Only keep dimensions that are supported by the engine
+            detected = {
+                dimension: value
+                for dimension, value in detected.items()
+                if dimension in supported_presets
+            }
+    
     # Convert to string representation for JSON serialization
     result = {}
     for dimension, value in detected.items():
@@ -171,6 +216,7 @@ def detect_presets_from_calculation(
 
 def detect_presets_from_calculation_typed(
     calculation_dir: Path,
+    engine_filter: Optional[str] = None,
 ) -> Dict[str, Union[MagnetismOption, OccupationsSchemeOption, _CustomType]]:
     """
     Detect preset values from a calculation's steps (typed version).
@@ -180,12 +226,51 @@ def detect_presets_from_calculation_typed(
     
     Args:
         calculation_dir: Path to calculation directory
+        engine_filter: Optional engine name to filter detection.
+            If provided, only detect presets in engine.supported_presets.
         
     Returns:
         Dict mapping dimension name to detected enum value or CUSTOM
     """
-    step_params_list = _load_step_parameters(calculation_dir)
-    return detect_all_presets(step_params_list)
+    # Use string version and convert back to typed
+    string_result = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
+    
+    # Convert string values back to typed enums
+    from quantumvitas.presets.dimensions import (
+        MagnetismOption,
+        OccupationsSchemeOption,
+        PrecisionOption,
+        ConvergenceOption,
+    )
+    
+    typed_result = {}
+    for dimension, value_str in string_result.items():
+        if value_str == "Custom":
+            typed_result[dimension] = CUSTOM
+        elif dimension == "magnetism":
+            try:
+                typed_result[dimension] = MagnetismOption(value_str)
+            except (ValueError, KeyError):
+                typed_result[dimension] = CUSTOM
+        elif dimension == "occupations_scheme":
+            try:
+                typed_result[dimension] = OccupationsSchemeOption(value_str)
+            except (ValueError, KeyError):
+                typed_result[dimension] = CUSTOM
+        elif dimension == "precision":
+            try:
+                typed_result[dimension] = PrecisionOption(value_str)
+            except (ValueError, KeyError):
+                typed_result[dimension] = CUSTOM
+        elif dimension == "convergence":
+            try:
+                typed_result[dimension] = ConvergenceOption(value_str)
+            except (ValueError, KeyError):
+                typed_result[dimension] = CUSTOM
+        else:
+            typed_result[dimension] = CUSTOM
+    
+    return typed_result
 
 
 def _load_step_parameters(
