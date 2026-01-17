@@ -51,6 +51,47 @@
         "type": "number",
         "description": "Convergence threshold for self-consistency",
         "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "nspin",
+        "label": "Spin Polarization",
+        "type": "select",
+        "options": ["1", "2", "4"],
+        "description": "1=non-magnetic, 2=collinear, 4=noncollinear",
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "noncolin",
+        "label": "Noncollinear",
+        "type": "bool",
+        "description": "Enable noncollinear magnetism",
+        "importance": "advanced"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "lspinorb",
+        "label": "Spin-Orbit Coupling",
+        "type": "bool",
+        "description": "Enable spin-orbit coupling",
+        "importance": "advanced"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "nosym",
+        "label": "Disable Symmetry",
+        "type": "bool",
+        "description": "Disable symmetry operations",
+        "importance": "advanced"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "noinv",
+        "label": "Disable Inversion",
+        "type": "bool",
+        "description": "Disable inversion symmetry",
+        "importance": "advanced"
       }
     ],
     "nscf": [
