@@ -86,13 +86,13 @@ pytest tests/presets/test_paramspace_ir.py -v -x
 ---
 
 ### PR1: Remove bool→string conversion in IR mapping
-- [ ] Delete `ir_bool()` function from `src/quantumvitas/ir/backends/qe/mapping.py`
-- [ ] Modify `ir_to_qe_param()`:
+- [x] Delete `ir_bool()` function from `src/quantumvitas/ir/backends/qe/mapping.py`
+- [x] Modify `ir_to_qe_param()`:
   - Remove lines 118-122 that convert bool to `.true.`/`.false.`
   - Return Python `bool` as-is
-- [ ] Update `ir_params_to_qe_params()` to NOT convert booleans
-- [ ] Update comment about serialization to clarify QE writer handles it
-- [ ] Remove `ir_bool` import from `src/quantumvitas/ir/dialects/pw/__init__.py`
+- [x] Update `ir_params_to_qe_params()` to NOT convert booleans
+- [x] Update comment about serialization to clarify QE writer handles it
+- [x] Remove `ir_bool` import from `src/quantumvitas/ir/dialects/pw/__init__.py`
 
 **Files to modify**:
 - `src/quantumvitas/ir/backends/qe/mapping.py`
@@ -191,7 +191,7 @@ _Auto will update this section as PRs are implemented._
 
 ```
 PR0: [x] Remove bool→string conversion in ParamSpace
-PR1: [ ] Remove bool→string conversion in IR mapping
+PR1: [x] Remove bool→string conversion in IR mapping
 PR2: [ ] Update unit tests to expect Python bool
 PR3: [ ] Update integration tests
 PR4: [ ] Add guard tests
