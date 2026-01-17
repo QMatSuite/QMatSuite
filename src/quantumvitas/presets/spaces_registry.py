@@ -28,6 +28,7 @@ from quantumvitas.presets.paramspace import (
     compile_profile_patch,
     match_precision_profile,
 )
+from quantumvitas.presets.qc_precision import get_qc_precision_paramspace
 from quantumvitas.presets.dimensions import (
     MagnetismOption,
     OccupationsSchemeOption,
@@ -45,6 +46,7 @@ from quantumvitas.presets.dimensions import (
 OCCUPATIONS_SCHEME_SPACE = get_occupations_scheme_paramspace()
 MAGNETISM_SPACE = get_magnetism_paramspace()
 PRECISION_SPACE = get_precision_paramspace()
+QC_PRECISION_SPACE = get_qc_precision_paramspace()
 CONVERGENCE_SPACE = get_convergence_paramspace()
 
 # Registry: dimension name -> ParamSpace
@@ -52,6 +54,7 @@ SPACES: Dict[str, ParamSpace] = {
     "occupations_scheme": OCCUPATIONS_SCHEME_SPACE,
     "magnetism": MAGNETISM_SPACE,
     "precision": PRECISION_SPACE,
+    "qc_precision": QC_PRECISION_SPACE,
     "convergence": CONVERGENCE_SPACE,
 }
 
@@ -105,6 +108,19 @@ PRECISION_ENUM_TO_PROFILE = {
     PrecisionOption.HIGH: "HIGH",
 }
 
+# QC Precision: profile_name -> enum (reuses PrecisionOption)
+QC_PRECISION_PROFILE_TO_ENUM = {
+    "LOW": PrecisionOption.LOW,
+    "MED": PrecisionOption.MED,
+    "HIGH": PrecisionOption.HIGH,
+}
+
+QC_PRECISION_ENUM_TO_PROFILE = {
+    PrecisionOption.LOW: "LOW",
+    PrecisionOption.MED: "MED",
+    PrecisionOption.HIGH: "HIGH",
+}
+
 # Convergence: profile_name -> enum
 CONVERGENCE_PROFILE_TO_ENUM = {
     "FAST": ConvergenceOption.FAST,
@@ -125,6 +141,7 @@ PROFILE_TO_ENUM: Dict[str, Dict[str, Any]] = {
     "occupations_scheme": OCCUPATIONS_SCHEME_PROFILE_TO_ENUM,
     "magnetism": MAGNETISM_PROFILE_TO_ENUM,
     "precision": PRECISION_PROFILE_TO_ENUM,
+    "qc_precision": QC_PRECISION_PROFILE_TO_ENUM,
     "convergence": CONVERGENCE_PROFILE_TO_ENUM,
 }
 
@@ -132,6 +149,7 @@ ENUM_TO_PROFILE: Dict[str, Dict[Any, str]] = {
     "occupations_scheme": OCCUPATIONS_SCHEME_ENUM_TO_PROFILE,
     "magnetism": MAGNETISM_ENUM_TO_PROFILE,
     "precision": PRECISION_ENUM_TO_PROFILE,
+    "qc_precision": QC_PRECISION_ENUM_TO_PROFILE,
     "convergence": CONVERGENCE_ENUM_TO_PROFILE,
 }
 
