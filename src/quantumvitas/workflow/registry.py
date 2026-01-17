@@ -555,26 +555,6 @@ class StepTypeRegistry:
         """Check if step type exists in registry (supports both public and machine types)."""
         return self.get(step_type) is not None
     
-    def normalize_to_public(self, step_type: str) -> str:
-        """
-        Convert any step_type (machine or public) to public_type.
-        
-        This is the SSOT for machine_type → public_type normalization.
-        All code that needs to normalize step types should use this method.
-        
-        Args:
-            step_type: Step type identifier (e.g., "qe_bands" or "bands")
-            
-        Returns:
-            Public type string (e.g., "bands"). Returns original value lowercase
-            if step_type is not found in registry.
-        """
-        step_type_lower = step_type.lower()
-        spec = self.get(step_type_lower)
-        if spec and spec.public_type:
-            return spec.public_type.lower()
-        return step_type_lower
-    
     def list_all(self) -> List[str]:
         """List all registered step types (returns public types)."""
         return sorted(set(spec.id for spec in self._types.values()))
