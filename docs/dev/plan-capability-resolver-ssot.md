@@ -187,9 +187,9 @@ pytest tests/unit/test_preset_capability_contract.py -v
 ---
 
 ### PR4: Add grep-based guard tests
-- [ ] Test: No `StepTypeSpec` gating fields in production code
-- [ ] Test: No bypass of capability resolver (direct ParamSpace apply without validation)
-- [ ] Test: All apply paths call `require_preset_capability`
+- [x] Test: No `StepTypeSpec` gating fields in production code
+- [x] Test: No bypass of capability resolver (direct ParamSpace apply without validation)
+- [x] Test: All apply paths call `require_preset_capability`
 
 **Files to create**:
 - `tests/unit/test_no_capability_bypass.py`
@@ -284,7 +284,7 @@ PR0: [x] Create capability resolver module
 PR1: [x] Add engine context resolution to apply
 PR2: [x] Add detection filtering by engine
 PR3: [x] Add contract enforcement tests
-PR4: [ ] Add grep-based guard tests
+PR4: [x] Add grep-based guard tests
 PR5: [ ] Cleanup and documentation
 ```
 
