@@ -215,3 +215,4 @@ def test_multiple_elements_canonical_format():
     
     assert sha == expected_sha
 
+
