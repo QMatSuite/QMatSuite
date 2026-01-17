@@ -348,6 +348,10 @@ class ParamSpaceVariant:
 | Guard: no deprecated fields | `tests/unit/test_no_deprecated_preset_fields.py` |
 | Guard: no capability bypass | `tests/unit/test_no_capability_bypass.py` |
 | Guard: no StepType enum | `tests/unit/test_no_steptype_enum.py` |
+| **Constitution-grade roundtrip invariants** | `tests/unit/test_paramspace_roundtrip_invariants.py` |
+| **Constitution-grade negative invariants** | `tests/unit/test_paramspace_negative_invariants.py` |
+| **Key ownership uniqueness** | `tests/unit/test_key_ownership_uniqueness.py` |
+| **Capability resolver invariants** | `tests/unit/test_capability_resolver_invariants.py` |
 
 ---
 
