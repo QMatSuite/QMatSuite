@@ -4213,12 +4213,14 @@ class QVService:
         
         Returns injection metadata dict if step supports prefix/outdir, None otherwise.
         """
-        from quantumvitas.calculation.structure_steps import STEP_TYPE_MODULE_MAP
+        from quantumvitas.calculation.structure_steps import STEP_TYPE_MODULE_MAP, _normalize_step_type_to_public
         from quantumvitas.data import get_module_param_sections
         
         # Determine QE module for this step type
         step_type_lower = (step_type or "scf").lower()
-        module = STEP_TYPE_MODULE_MAP.get(step_type_lower)
+        # Convert machine_type (e.g., 'qe_scf') to public_type (e.g., 'scf') for lookup
+        step_type_public = _normalize_step_type_to_public(step_type_lower)
+        module = STEP_TYPE_MODULE_MAP.get(step_type_public)
         if not module:
             # Unknown step type - no injection
             return None
