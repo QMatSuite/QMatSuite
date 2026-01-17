@@ -598,11 +598,8 @@ def compile_profile_patch(
                         # Skip writing (will be missing, using default)
                         continue
                 
-                # Convert boolean values to IR canonical format (.true./.false.)
-                # IR contract: boolean values must be canonical strings, not Python bool
-                if isinstance(value, bool):
-                    from quantumvitas.ir.backends.qe.mapping import ir_bool
-                    value = ir_bool(value)
+                # Boolean values stay as Python bool (YAML canonical)
+                # QE writer converts to .true./.false. at output boundary
                 
                 # Write the value
                 if key.section not in patch:
