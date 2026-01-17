@@ -41,18 +41,32 @@ def test_pw_dialect_imports():
 
 
 def test_qc_dialect_imports():
-    """Test that qc dialect can be imported."""
+    """Test that qc dialect can be imported and has expected parameters."""
     from quantumvitas.ir.dialects import qc
     
     assert qc is not None
     assert hasattr(qc, "parameters")
     
-    # Verify QC_IR_PARAMETERS exists and is empty (for now)
+    # Verify QC_IR_PARAMETERS exists and has expected keys
     from quantumvitas.ir.dialects.qc.parameters import QC_IR_PARAMETERS
     
     assert QC_IR_PARAMETERS is not None
     assert isinstance(QC_IR_PARAMETERS, dict)
-    assert len(QC_IR_PARAMETERS) == 0  # Empty initially, will be populated in PR2
+    
+    # Expected QC precision keys
+    expected_keys = ["scf.conv_tol", "scf.max_cycle", "dft.grid_level"]
+    for key in expected_keys:
+        assert key in QC_IR_PARAMETERS, f"Expected key '{key}' not found in QC_IR_PARAMETERS"
+        
+        # Verify schema: type, description, default should be present
+        param_def = QC_IR_PARAMETERS[key]
+        assert "type" in param_def, f"Key '{key}' missing 'type' field"
+        assert "description" in param_def, f"Key '{key}' missing 'description' field"
+        assert "default" in param_def, f"Key '{key}' missing 'default' field"
+        
+        # Verify type is a Python type
+        assert isinstance(param_def["type"], type), f"Key '{key}' 'type' should be a Python type"
+        assert isinstance(param_def["description"], str), f"Key '{key}' 'description' should be a string"
 
 
 def test_dialect_import_from_top_level():
