@@ -316,14 +316,14 @@ print('All SSOT API checks passed!')
 
 After all PRs complete:
 
-1. [ ] `StepTypeSpec` dataclass has no `accepts_presets` or `allowed_dimensions` fields
-2. [ ] `StepTypeRegistry` has no `list_accepting_presets()` method
-3. [ ] No production code references `.accepts_presets` or `.allowed_dimensions`
-4. [ ] No production code references `PW_DIMENSIONS`
-5. [ ] Guard tests in `test_no_deprecated_preset_fields.py` all pass
-6. [ ] `list_presets_for_engine()` is the SSOT API for capability queries
-7. [ ] `list_accepting_presets_for_engine()` works correctly
-8. [ ] All unit tests pass
+1. [x] `StepTypeSpec` dataclass has no `accepts_presets` or `allowed_dimensions` fields
+2. [x] `StepTypeRegistry` has no `list_accepting_presets()` method
+3. [x] No production code references `.accepts_presets` or `.allowed_dimensions`
+4. [x] No production code references `PW_DIMENSIONS`
+5. [x] Guard tests in `test_no_deprecated_preset_fields.py` all pass
+6. [x] `list_presets_for_engine()` is the SSOT API for capability queries
+7. [x] `list_accepting_presets_for_engine()` works correctly
+8. [x] All unit tests pass
 
 ---
 
