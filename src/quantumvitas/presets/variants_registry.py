@@ -172,6 +172,32 @@ VARIANTS_BY_DIMENSION, VARIANT_BY_STEP_AND_DIMENSION = _build_indexes()
 
 
 # ============================================================================
+# Capability Contract Functions
+# ============================================================================
+
+def list_dimensions_for_gen_step(gen_step: str) -> List[str]:
+    """
+    List all preset dimensions that apply to a given gen/public step type.
+    
+    This queries ParamSpace variants to determine which dimensions are applicable
+    to the specified gen step. This is part of the capability contract (Contract A).
+    
+    Args:
+        gen_step: Gen/public step type (e.g., "scf", "nscf", "td")
+        
+    Returns:
+        Sorted list of dimension names that have variants applying to this gen step
+    """
+    dimensions = set()
+    
+    for variant in VARIANTS:
+        if gen_step in variant.applies_to_step_types:
+            dimensions.add(variant.dimension)
+    
+    return sorted(dimensions)
+
+
+# ============================================================================
 # Profile <-> Enum Mappings (Centralized)
 # ============================================================================
 

@@ -222,11 +222,11 @@ Use this section to track progress. Tick checkboxes as tasks complete.
 - [x] All PR0 tests pass
 
 ### PR1 Progress
-- [ ] Added `list_dimensions_for_gen_step()` to variants_registry.py
-- [ ] Added `list_presets_for_engine()` to catalog.py
-- [ ] Added `list_accepting_presets_for_engine()` to registry.py
-- [ ] Created `test_preset_capability_contract.py`
-- [ ] All PR1 tests pass
+- [x] Added `list_dimensions_for_gen_step()` to variants_registry.py
+- [x] Added `list_presets_for_engine()` to catalog.py
+- [x] Added `list_accepting_presets_for_engine()` to registry.py
+- [x] Created `test_preset_capability_contract.py`
+- [x] All PR1 tests pass
 
 ### PR2 Progress
 - [ ] Migrated `test_pyscf_scf_accepts_presets`
