@@ -37,8 +37,9 @@ class TestIRPatchHasNoBoolStrings:
             compile_profile_patch,
         )
         space = get_magnetism_paramspace()
+        yaml_tree = {}  # Empty YAML tree for compilation
         for profile_name in space.profiles:
-            patch, _ = compile_profile_patch(space, profile_name)
+            patch, _ = compile_profile_patch(space, profile_name, yaml_tree)
             errors = _scan_for_qe_bool_strings(patch)
             assert not errors, f"Profile {profile_name}: {errors}"
     
@@ -46,8 +47,9 @@ class TestIRPatchHasNoBoolStrings:
         from quantumvitas.presets.precision_variants import build_precision_pw_default_space
         from quantumvitas.presets.paramspace import compile_profile_patch
         space = build_precision_pw_default_space()
+        yaml_tree = {}  # Empty YAML tree for compilation
         for profile_name in space.profiles:
-            patch, _ = compile_profile_patch(space, profile_name)
+            patch, _ = compile_profile_patch(space, profile_name, yaml_tree)
             errors = _scan_for_qe_bool_strings(patch)
             assert not errors, f"Profile {profile_name}: {errors}"
     
@@ -57,8 +59,9 @@ class TestIRPatchHasNoBoolStrings:
             compile_profile_patch,
         )
         space = get_occupations_scheme_paramspace()
+        yaml_tree = {}  # Empty YAML tree for compilation
         for profile_name in space.profiles:
-            patch, _ = compile_profile_patch(space, profile_name)
+            patch, _ = compile_profile_patch(space, profile_name, yaml_tree)
             errors = _scan_for_qe_bool_strings(patch)
             assert not errors, f"Profile {profile_name}: {errors}"
     
@@ -68,8 +71,9 @@ class TestIRPatchHasNoBoolStrings:
             compile_profile_patch,
         )
         space = get_convergence_paramspace()
+        yaml_tree = {}  # Empty YAML tree for compilation
         for profile_name in space.profiles:
-            patch, _ = compile_profile_patch(space, profile_name)
+            patch, _ = compile_profile_patch(space, profile_name, yaml_tree)
             errors = _scan_for_qe_bool_strings(patch)
             assert not errors, f"Profile {profile_name}: {errors}"
 
