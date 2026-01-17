@@ -129,6 +129,7 @@ CUSTOM: Final[_CustomType] = _CustomType()
 DIMENSION_MAGNETISM: Final[str] = "magnetism"
 DIMENSION_OCCUPATIONS_SCHEME: Final[str] = "occupations_scheme"
 DIMENSION_PRECISION: Final[str] = "precision"
+DIMENSION_QC_PRECISION: Final[str] = "qc_precision"
 DIMENSION_CONVERGENCE: Final[str] = "convergence"
 
 # v0 dimensions (magnetism, occupations_scheme)
