@@ -68,10 +68,10 @@ Fix: Keep booleans as Python `bool` until the very last moment (QE `.in` generat
 ## 3. Implementation Plan
 
 ### PR0: Remove bool→string conversion in ParamSpace
-- [ ] Modify `src/quantumvitas/presets/paramspace.py:compile_profile_patch()`:
+- [x] Modify `src/quantumvitas/presets/paramspace.py:compile_profile_patch()`:
   - Remove lines 601-605 that call `ir_bool()`
   - Boolean values stay as Python `bool`
-- [ ] Update comment at line 601 to reflect new contract
+- [x] Update comment at line 601 to reflect new contract
 
 **Files to modify**:
 - `src/quantumvitas/presets/paramspace.py`
@@ -190,7 +190,7 @@ pytest tests/unit/ tests/presets/ tests/integration/ -v --tb=short
 _Auto will update this section as PRs are implemented._
 
 ```
-PR0: [ ] Remove bool→string conversion in ParamSpace
+PR0: [x] Remove bool→string conversion in ParamSpace
 PR1: [ ] Remove bool→string conversion in IR mapping
 PR2: [ ] Update unit tests to expect Python bool
 PR3: [ ] Update integration tests
