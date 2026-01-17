@@ -17,7 +17,6 @@ from quantumvitas.execution.recipes import (
     PySCFRecipe,
     get_recipe_for_engine,
 )
-from quantumvitas.calculation.types import StepType
 
 
 @dataclass
@@ -36,10 +35,10 @@ class MockStep:
     """Mock Step for testing recipes."""
 
     meta: MockMeta
-    step_type: Optional[StepType]
+    step_type: Optional[str]
 
 
-def create_mock_step(ulid: str, step_type: StepType) -> MockStep:
+def create_mock_step(ulid: str, step_type: str) -> MockStep:
     """Create a mock step with given ULID and type."""
     return MockStep(
         meta=MockMeta(id=ulid),
@@ -53,7 +52,7 @@ class TestQERecipe:
     def test_materialize_single_step(self):
         """QE recipe creates one job for one step."""
         recipe = QERecipe()
-        steps = [create_mock_step("01ABCDEF", StepType.SCF)]
+        steps = [create_mock_step("01ABCDEF", "scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -70,9 +69,9 @@ class TestQERecipe:
         """QE recipe creates one job per step."""
         recipe = QERecipe()
         steps = [
-            create_mock_step("ulid_scf", StepType.SCF),
-            create_mock_step("ulid_nscf", StepType.NSCF),
-            create_mock_step("ulid_bands", StepType.BANDS),
+            create_mock_step("ulid_scf", "scf"),
+            create_mock_step("ulid_nscf", "nscf"),
+            create_mock_step("ulid_bands", "bands"),
         ]
         calc_raw_dir = Path("/calc/raw")
 
@@ -93,8 +92,8 @@ class TestQERecipe:
         """QE recipe uses provided SHAs for fingerprints."""
         recipe = QERecipe()
         steps = [
-            create_mock_step("ulid_scf", StepType.SCF),
-            create_mock_step("ulid_nscf", StepType.NSCF),
+            create_mock_step("ulid_scf", "scf"),
+            create_mock_step("ulid_nscf", "nscf"),
         ]
         step_shas = {
             "ulid_scf": "sha_scf_123",
@@ -119,7 +118,7 @@ class TestQERecipe:
     def test_materialize_expected_outputs(self):
         """QE recipe sets expected output files."""
         recipe = QERecipe()
-        steps = [create_mock_step("ulid_scf", StepType.SCF)]
+        steps = [create_mock_step("ulid_scf", "scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -130,7 +129,7 @@ class TestQERecipe:
     def test_materialize_scratch_dir_in_metadata(self):
         """QE recipe sets scratch_dir in metadata."""
         recipe = QERecipe()
-        steps = [create_mock_step("ulid_scf", StepType.SCF)]
+        steps = [create_mock_step("ulid_scf", "scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -141,8 +140,8 @@ class TestQERecipe:
         """QE recipe creates jobs with no explicit deps (conservative selection)."""
         recipe = QERecipe()
         steps = [
-            create_mock_step("ulid_scf", StepType.SCF),
-            create_mock_step("ulid_nscf", StepType.NSCF),
+            create_mock_step("ulid_scf", "scf"),
+            create_mock_step("ulid_nscf", "nscf"),
         ]
         calc_raw_dir = Path("/calc/raw")
 
@@ -158,7 +157,7 @@ class TestORCARecipe:
     def test_materialize_single_scf(self):
         """ORCA recipe creates single job for SCF only."""
         recipe = ORCARecipe()
-        steps = [create_mock_step("01ABCDEF", StepType.PYSCF_SCF)]
+        steps = [create_mock_step("01ABCDEF", "pyscf_scf")]
         # Note: Using PYSCF_SCF since we don't have ORCA_SCF in StepType enum
         # The recipe will use registry lookup
         calc_raw_dir = Path("/calc/raw")
@@ -178,7 +177,7 @@ class TestORCARecipe:
         recipe = ORCARecipe()
         # SCF then something else
         steps = [
-            create_mock_step("ulid_scf_123456", StepType.PYSCF_SCF),  # Will be s
+            create_mock_step("ulid_scf_123456", "pyscf_scf"),  # Will be s
             # Can't easily test MP2 without proper ORCA step types
         ]
         calc_raw_dir = Path("/calc/raw")
@@ -194,7 +193,7 @@ class TestORCARecipe:
         recipe = ORCARecipe()
         # ULID with known suffix
         scf_ulid = "01HY2Q9W8A123456"  # Last 6 chars: "123456"
-        steps = [create_mock_step(scf_ulid, StepType.PYSCF_SCF)]
+        steps = [create_mock_step(scf_ulid, "pyscf_scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -205,7 +204,7 @@ class TestORCARecipe:
     def test_materialize_gbw_in_expected_outputs(self):
         """ORCA recipe includes scf.gbw in expected outputs."""
         recipe = ORCARecipe()
-        steps = [create_mock_step("ulid_scf_ABCDEF", StepType.PYSCF_SCF)]
+        steps = [create_mock_step("ulid_scf_ABCDEF", "pyscf_scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -217,7 +216,7 @@ class TestORCARecipe:
     def test_materialize_no_inter_job_deps(self):
         """ORCA jobs have no inter-job deps (self-contained)."""
         recipe = ORCARecipe()
-        steps = [create_mock_step("ulid_scf", StepType.PYSCF_SCF)]
+        steps = [create_mock_step("ulid_scf", "pyscf_scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -228,7 +227,7 @@ class TestORCARecipe:
     def test_materialize_command_format(self):
         """ORCA recipe creates correct command format."""
         recipe = ORCARecipe()
-        steps = [create_mock_step("ulid_scf_ABCDEF", StepType.PYSCF_SCF)]
+        steps = [create_mock_step("ulid_scf_ABCDEF", "pyscf_scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -242,7 +241,7 @@ class TestPySCFRecipe:
     def test_materialize_single_scf(self):
         """PySCF recipe creates single internal job for SCF."""
         recipe = PySCFRecipe()
-        steps = [create_mock_step("01ABCDEF", StepType.PYSCF_SCF)]
+        steps = [create_mock_step("01ABCDEF", "pyscf_scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -257,7 +256,7 @@ class TestPySCFRecipe:
         """PySCF recipe expects results.json in step_artifacts."""
         recipe = PySCFRecipe()
         step_ulid = "ulid_scf_ABCDEF"
-        steps = [create_mock_step(step_ulid, StepType.PYSCF_SCF)]
+        steps = [create_mock_step(step_ulid, "pyscf_scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -270,7 +269,7 @@ class TestPySCFRecipe:
     def test_materialize_expected_outputs_checkpoint(self):
         """PySCF recipe expects checkpoint.chk."""
         recipe = PySCFRecipe()
-        steps = [create_mock_step("ulid_scf_ABCDEF", StepType.PYSCF_SCF)]
+        steps = [create_mock_step("ulid_scf_ABCDEF", "pyscf_scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -283,7 +282,7 @@ class TestPySCFRecipe:
         """PySCF recipe uses SCF ULID for namespace folder."""
         recipe = PySCFRecipe()
         scf_ulid = "01HY2Q9W8A654321"  # Last 6 chars: "654321"
-        steps = [create_mock_step(scf_ulid, StepType.PYSCF_SCF)]
+        steps = [create_mock_step(scf_ulid, "pyscf_scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -294,7 +293,7 @@ class TestPySCFRecipe:
         """PySCF recipe includes target step ULID in metadata."""
         recipe = PySCFRecipe()
         step_ulid = "ulid_target"
-        steps = [create_mock_step(step_ulid, StepType.PYSCF_SCF)]
+        steps = [create_mock_step(step_ulid, "pyscf_scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -332,7 +331,7 @@ class TestRecipeFingerprinting:
     def test_qe_recipe_fingerprint_single_step(self):
         """QE recipe fingerprint is just the step SHA."""
         recipe = QERecipe()
-        steps = [create_mock_step("ulid_scf", StepType.SCF)]
+        steps = [create_mock_step("ulid_scf", "scf")]
         step_shas = {"ulid_scf": "sha_scf_abc123"}
         calc_raw_dir = Path("/calc/raw")
 
@@ -344,7 +343,7 @@ class TestRecipeFingerprinting:
         """ORCA recipe fingerprint combines multiple step SHAs."""
         recipe = ORCARecipe()
         # With single step, fingerprint is just that SHA
-        steps = [create_mock_step("ulid_scf_ABCDEF", StepType.PYSCF_SCF)]
+        steps = [create_mock_step("ulid_scf_ABCDEF", "pyscf_scf")]
         step_shas = {"ulid_scf_ABCDEF": "sha_scf_123"}
         calc_raw_dir = Path("/calc/raw")
 
@@ -355,7 +354,7 @@ class TestRecipeFingerprinting:
     def test_recipe_missing_sha_no_fingerprint(self):
         """Recipe handles missing SHA gracefully."""
         recipe = QERecipe()
-        steps = [create_mock_step("ulid_scf", StepType.SCF)]
+        steps = [create_mock_step("ulid_scf", "scf")]
         step_shas = {}  # Empty - no SHAs provided
         calc_raw_dir = Path("/calc/raw")
 
@@ -370,7 +369,7 @@ class TestRecipeInputFiles:
     def test_qe_recipe_input_files(self):
         """QE recipe sets correct input file paths."""
         recipe = QERecipe()
-        steps = [create_mock_step("ulid_scf", StepType.SCF)]
+        steps = [create_mock_step("ulid_scf", "scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -381,7 +380,7 @@ class TestRecipeInputFiles:
     def test_orca_recipe_input_files(self):
         """ORCA recipe sets correct input file paths."""
         recipe = ORCARecipe()
-        steps = [create_mock_step("ulid_scf_ABCDEF", StepType.PYSCF_SCF)]
+        steps = [create_mock_step("ulid_scf_ABCDEF", "pyscf_scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)
@@ -393,7 +392,7 @@ class TestRecipeInputFiles:
     def test_pyscf_recipe_no_input_files(self):
         """PySCF recipe has no input files (internal execution)."""
         recipe = PySCFRecipe()
-        steps = [create_mock_step("ulid_scf_ABCDEF", StepType.PYSCF_SCF)]
+        steps = [create_mock_step("ulid_scf_ABCDEF", "pyscf_scf")]
         calc_raw_dir = Path("/calc/raw")
 
         graph = recipe.materialize(steps, calc_raw_dir)

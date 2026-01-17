@@ -660,7 +660,7 @@ class TestCalculationFailureHandling:
         
         # Mock the calculation runner to simulate nscf failure
         from quantumvitas.calculation.runner import CalculationRunner
-        from quantumvitas.calculation.types import StepStatus, StepType
+        from quantumvitas.calculation.types import StepStatus
         from quantumvitas.calculation.results import CalculationResult, StepResultSummary
         from datetime import datetime, timezone
         
@@ -684,7 +684,7 @@ class TestCalculationFailureHandling:
             for i, step in enumerate(calculation.steps):
                 # Use ULID from calculation.yaml, not step.meta.slug (slug is for display only)
                 step_id = step_ulids[i] if i < len(step_ulids) else step.meta.id
-                step_type = step.step_type or StepType.CUSTOM
+                step_type = step.step_type or "custom"
                 
                 # If a previous step failed, mark remaining steps as SKIPPED
                 if calculation_failed:
