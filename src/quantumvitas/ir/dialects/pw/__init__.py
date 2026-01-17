@@ -13,7 +13,6 @@ from quantumvitas.ir.backends.qe import mapping
 from quantumvitas.ir.backends.qe.mapping import (
     IR_TO_QE_MAPPING,
     QE_TO_IR_MAPPING,
-    ir_bool,
     ir_params_to_qe_params,
     ir_to_qe_param,
     qe_to_ir_param,
@@ -24,7 +23,6 @@ __all__ = [
     "mapping",
     "IR_TO_QE_MAPPING",
     "QE_TO_IR_MAPPING",
-    "ir_bool",
     "ir_params_to_qe_params",
     "ir_to_qe_param",
     "qe_to_ir_param",
