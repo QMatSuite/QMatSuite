@@ -185,8 +185,8 @@ class TestIRQEMapping:
         assert "SYSTEM" in qe_patch
         assert qe_patch["SYSTEM"]["ecutwfc"] == 50.0
         assert qe_patch["SYSTEM"]["nspin"] == 2
-        # IR→QE conversion outputs QE string format for booleans (per Fix #1: canonical encoding)
-        assert qe_patch["SYSTEM"]["noncolin"] == ".false."
+        # IR→QE conversion preserves Python bool; QE generator handles .true./.false. at output
+        assert qe_patch["SYSTEM"]["noncolin"] == False
         assert "ELECTRONS" in qe_patch
         assert qe_patch["ELECTRONS"]["conv_thr"] == 1e-6
         assert qe_patch["ELECTRONS"]["mixing_beta"] == 0.7
