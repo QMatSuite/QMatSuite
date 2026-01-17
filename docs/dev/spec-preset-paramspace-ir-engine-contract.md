@@ -632,7 +632,29 @@ for the same preset/profile + gen_step.
 
 ---
 
-## 12. Open Questions (minimal)
+## 12. Class A vs Class B Parameters
+
+### Class A (Strict Typing)
+Parameters participating in IR/Preset system:
+- Listed in `IR_TO_QE_MAPPING`
+- Owned by any ParamSpace (ParamKey definitions)
+
+**Rules**:
+- UI enforces type-appropriate controls (toggle for bool, numeric input for numbers)
+- On submit: validate and parse to canonical Python type
+- YAML stores native types (bool as true/false, int as integer, etc.)
+- Invalid input shows error and blocks save
+
+### Class B (Flexible)
+All other engine-specific parameters.
+
+**Rules**:
+- UI allows freeform text input
+- On submit: only trim leading/trailing whitespace
+- YAML stores as string (preserving case)
+- QE writer outputs verbatim (quoted)
+
+## 13. Open Questions (minimal)
 
 ### Q1: IR Value Type Discrepancy (RESOLVED)
 

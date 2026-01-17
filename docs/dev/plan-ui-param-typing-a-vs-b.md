@@ -582,7 +582,7 @@ PR1: [x] Backend Validation Helpers
 PR2: [x] Fix YAML Patching for Class A/B
 PR3: [x] Add Class A Keys to qe_ui_parameters.json
 PR4: [x] QE Writer Regression Tests
-PR5: [ ] Integration Tests and Documentation
+PR5: [x] Integration Tests and Documentation
 ```
 
 ---
