@@ -156,11 +156,11 @@ pytest tests/presets/ -v
 ---
 
 ### PR4: Add guard tests
-- [ ] Create `tests/unit/test_no_qe_bool_strings.py` with:
+- [x] Create `tests/unit/test_no_qe_bool_strings.py` with:
   - `test_ir_patch_has_no_qe_bool_strings`: Compile each ParamSpace profile, scan output for `.true.`/`.false.` strings
   - `test_yaml_loader_rejects_qe_bool_strings`: Loading YAML with `.true.` string should work but guard should catch it
   - `test_qe_output_has_fortran_bools`: QE generator outputs `.true.`/`.false.` correctly
-- [ ] Add scanner helper function to recursively check dicts for forbidden strings
+- [x] Add scanner helper function to recursively check dicts for forbidden strings
 
 **Files to create**:
 - `tests/unit/test_no_qe_bool_strings.py`
@@ -194,7 +194,7 @@ PR0: [x] Remove bool→string conversion in ParamSpace
 PR1: [x] Remove bool→string conversion in IR mapping
 PR2: [x] Update unit tests to expect Python bool
 PR3: [x] Update integration tests
-PR4: [ ] Add guard tests
+PR4: [x] Add guard tests
 PR5: [ ] Final verification and cleanup
 ```
 
