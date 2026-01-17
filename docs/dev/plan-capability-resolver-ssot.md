@@ -169,11 +169,11 @@ pytest tests/daemon/ -v
 ---
 
 ### PR3: Add contract enforcement tests
-- [ ] Test: engine not declared → not listed
-- [ ] Test: declared but missing wiring → hard error on apply
-- [ ] Test: apply with unsupported preset raises CapabilityError
-- [ ] Test: ORCA capability queries without binary
-- [ ] Test: engine-specific supersedes IR (if applicable)
+- [x] Test: engine not declared → not listed
+- [x] Test: declared but missing wiring → hard error on apply
+- [x] Test: apply with unsupported preset raises CapabilityError
+- [x] Test: ORCA capability queries without binary
+- [x] Test: engine-specific supersedes IR (if applicable)
 
 **Files to create**:
 - `tests/unit/test_capability_enforcement.py`
@@ -283,7 +283,7 @@ _Auto will update this section as PRs are implemented._
 PR0: [x] Create capability resolver module
 PR1: [x] Add engine context resolution to apply
 PR2: [x] Add detection filtering by engine
-PR3: [ ] Add contract enforcement tests
+PR3: [x] Add contract enforcement tests
 PR4: [ ] Add grep-based guard tests
 PR5: [ ] Cleanup and documentation
 ```
