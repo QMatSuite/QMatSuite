@@ -247,30 +247,8 @@ POST_PROCESSING_STEP_TYPES = {
 }
 
 
-def _normalize_step_type_to_public(step_type: str) -> str:
-    """
-    Convert machine_type (e.g., 'qe_bands') to public_type (e.g., 'bands').
-    
-    Uses the StepTypeRegistry to look up the public_type for a given step_type.
-    If the step_type is not found in the registry, returns the original value.
-    
-    This is needed because:
-    - POST_PROCESSING_STEP_TYPES, STEP_TYPE_MODULE_MAP, STEP_TYPE_NAMELIST_MAP use public_type
-    - Step YAML stores machine_type (e.g., 'qe_bands' not 'bands')
-    """
-    from quantumvitas.workflow.registry import get_registry
-    
-    step_type_lower = step_type.lower()
-    
-    try:
-        registry = get_registry()
-        spec = registry.get(step_type_lower)
-        if spec and spec.public_type:
-            return spec.public_type.lower()
-    except Exception:
-        pass
-    
-    return step_type_lower
+# Import normalize_step_type_to_public from registry (SSOT for machine→public conversion)
+from quantumvitas.workflow.registry import normalize_step_type_to_public as _normalize_step_type_to_public
 
 # Mapping of step type to primary namelist name
 STEP_TYPE_NAMELIST_MAP = {
