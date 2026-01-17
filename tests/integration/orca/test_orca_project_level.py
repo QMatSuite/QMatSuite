@@ -206,7 +206,7 @@ class TestORCARegistryLookup:
 
         # Create mock step with SPEC type
         mock_step = MagicMock()
-        mock_step.step_type.value = "orca_scf"
+        mock_step.step_type = "orca_scf"
 
         result = _get_engine_family_from_step(mock_step)
         assert result == "orca", f"Expected 'orca', got '{result}'"
