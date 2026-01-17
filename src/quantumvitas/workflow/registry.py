@@ -32,8 +32,6 @@ class StepTypeSpec:
         engine: Engine identifier (e.g., "qe", "w90", "pyscf")
         executable: QE executable name (e.g., "pw.x", "dos.x")
         description: Human-readable description
-        accepts_presets: Whether preset dimensions apply to this step
-        allowed_dimensions: Which preset dimensions are allowed
         requires_structure: Whether step needs structure data
         requires_charge_density: Whether step needs prior SCF charge density
         produces_charge_density: Whether step produces charge density for later steps
@@ -47,11 +45,6 @@ class StepTypeSpec:
     engine: str
     executable: str
     description: str
-    # DEPRECATED: Step-type applicability is now SSOT in ParamSpace (via ParamSpaceVariant.applies_to_step_types).
-    # Engine capability is declared via Engine.supported_presets.
-    # These fields are kept for backward compatibility only and must not be used for new logic.
-    accepts_presets: bool = False  # DEPRECATED: Use ParamSpace + Engine.supported_presets instead
-    allowed_dimensions: FrozenSet[str] = field(default_factory=frozenset)  # DEPRECATED: Use ParamSpace + Engine.supported_presets instead
     requires_structure: bool = True
     requires_charge_density: bool = False
     produces_charge_density: bool = False
@@ -59,18 +52,6 @@ class StepTypeSpec:
     consumes_state: Optional[str] = None  # Phase 3C: State type consumed by this step (e.g., "mf" for MP2)
     produces_state: Optional[str] = None  # Phase 3C: State type produced by this step (e.g., "mf" for SCF)
     token: Optional[str] = None  # Stable token for subchain basenames (immutable once published)
-
-
-# =============================================================================
-# Preset Dimension Constants
-# =============================================================================
-
-DIMENSION_MAGNETISM = "magnetism"
-DIMENSION_OCCUPATIONS = "occupations_scheme"
-DIMENSION_PRECISION = "precision"
-
-# Standard preset dimensions for pw.x-based calculations
-PW_DIMENSIONS = frozenset({DIMENSION_MAGNETISM, DIMENSION_OCCUPATIONS, DIMENSION_PRECISION})
 
 
 # =============================================================================
@@ -192,8 +173,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="pw.x",
         description="Self-consistent field calculation (ground state)",
-        accepts_presets=True,
-        allowed_dimensions=PW_DIMENSIONS,
         requires_structure=True,
         requires_charge_density=False,
         produces_charge_density=True,
@@ -205,8 +184,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="pw.x",
         description="Non-self-consistent field calculation (fixed density)",
-        accepts_presets=True,
-        allowed_dimensions=PW_DIMENSIONS,
         requires_structure=True,
         requires_charge_density=True,
         produces_charge_density=False,
@@ -218,8 +195,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="pw.x",
         description="Atomic relaxation (optimize positions, fixed cell)",
-        accepts_presets=True,
-        allowed_dimensions=PW_DIMENSIONS,
         requires_structure=True,
         requires_charge_density=False,
         produces_charge_density=True,
@@ -231,8 +206,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="pw.x",
         description="Variable-cell relaxation (optimize positions and cell)",
-        accepts_presets=True,
-        allowed_dimensions=PW_DIMENSIONS,
         requires_structure=True,
         requires_charge_density=False,
         produces_charge_density=True,
@@ -244,8 +217,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="pw.x",
         description="Band structure calculation along k-path (pw.x)",
-        accepts_presets=True,
-        allowed_dimensions=PW_DIMENSIONS,
         requires_structure=True,
         requires_charge_density=True,
         produces_charge_density=False,
@@ -257,8 +228,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="pw.x",
         description="Molecular dynamics (Born-Oppenheimer)",
-        accepts_presets=True,
-        allowed_dimensions=PW_DIMENSIONS,
         requires_structure=True,
         requires_charge_density=False,
         produces_charge_density=False,
@@ -270,8 +239,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="pw.x",
         description="Variable-cell molecular dynamics",
-        accepts_presets=True,
-        allowed_dimensions=PW_DIMENSIONS,
         requires_structure=True,
         requires_charge_density=False,
         produces_charge_density=False,
@@ -287,8 +254,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="dos.x",
         description="Density of states calculation",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=False,
         requires_charge_density=True,
         produces_charge_density=False,
@@ -300,8 +265,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="bands.x",
         description="Band structure post-processing",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=False,
         requires_charge_density=True,
         produces_charge_density=False,
@@ -313,8 +276,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="projwfc.x",
         description="Projected density of states (atomic orbitals)",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=False,
         requires_charge_density=True,
         produces_charge_density=False,
@@ -326,8 +287,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="pp.x",
         description="Post-processing (charge density, potentials, etc.)",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=False,
         requires_charge_density=True,
         produces_charge_density=False,
@@ -343,8 +302,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="ph.x",
         description="Phonon calculation (DFPT)",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=False,
         requires_charge_density=True,
         produces_charge_density=False,
@@ -356,8 +313,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="q2r.x",
         description="Interatomic force constants from dynamical matrices",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=False,
         requires_charge_density=False,
         produces_charge_density=False,
@@ -369,8 +324,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="matdyn.x",
         description="Phonon frequencies and eigenvectors",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=False,
         requires_charge_density=False,
         produces_charge_density=False,
@@ -382,8 +335,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="dynmat.x",
         description="Dynamical matrix analysis",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=False,
         requires_charge_density=False,
         produces_charge_density=False,
@@ -399,8 +350,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",  # Legacy: tests expect "qe" for backward compatibility
         executable="wannier90.x",
         description="Wannier90 preprocessing (generate .nnkp)",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=True,
         requires_charge_density=False,  # Needs .win file, not charge density
         produces_charge_density=False,
@@ -412,8 +361,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="pw2wannier90.x",
         description="QE to Wannier90 interface (compute overlaps)",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=False,  # Uses .nnkp + QE save files
         requires_charge_density=True,  # Needs NSCF wavefunctions
         produces_charge_density=False,
@@ -425,8 +372,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",  # Legacy: tests expect "qe" for backward compatibility
         executable="wannier90.x",
         description="Wannier90 MLWF optimization",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=True,
         requires_charge_density=False,  # Needs .mmn/.amn/.eig files
         produces_charge_density=False,
@@ -442,8 +387,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="pyscf",
         executable="python",  # Python-native, no external binary
         description="PySCF single-point calculation (HF/DFT)",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=True,
         requires_charge_density=False,
         produces_charge_density=False,
@@ -459,8 +402,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="pyscf",
         executable="python",  # Python-native, no external binary
         description="PySCF MP2 correlation energy calculation",
-        accepts_presets=False,  # MVP: no presets yet
-        allowed_dimensions=frozenset(),
         requires_structure=False,  # Phase 3C: MP2 does NOT require structure; consumes mf from state
         requires_charge_density=False,  # Phase 3C: MP2 does NOT require charge density; consumes mf from state
         produces_charge_density=False,
@@ -476,8 +417,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="pyscf",
         executable="python",
         description="PySCF TDDFT / TDHF excited states",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=False,  # Phase 3C: TD does NOT require structure; consumes mf from state
         requires_charge_density=False,  # Phase 3C: TD does NOT require charge density; consumes mf from state
         produces_charge_density=False,
@@ -497,8 +436,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="orca",
         executable="orca",  # External ORCA binary
         description="ORCA DFT/HF single-point calculation",
-        accepts_presets=True,
-        allowed_dimensions=frozenset({"qc_precision"}),
         requires_structure=True,
         requires_charge_density=False,
         produces_charge_density=False,
@@ -514,8 +451,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="orca",
         executable="orca",
         description="ORCA Hartree-Fock calculation",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=True,
         requires_charge_density=False,
         produces_charge_density=False,
@@ -531,8 +466,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="orca",
         executable="orca",
         description="ORCA TDDFT/CIS excited states",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=False,  # Fused into chain with SCF
         requires_charge_density=False,
         produces_charge_density=False,
@@ -552,8 +485,6 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         engine="qe",
         executable="pw.x",
         description="Custom step type (escape hatch)",
-        accepts_presets=False,
-        allowed_dimensions=frozenset(),
         requires_structure=True,
         requires_charge_density=False,
         produces_charge_density=False,
@@ -644,18 +575,6 @@ class StepTypeRegistry:
         return sorted(
             spec.machine_type for spec in self._types.values()
             if spec.engine == engine
-        )
-    
-    def list_accepting_presets(self) -> List[str]:
-        """
-        List step types that accept presets (returns public types).
-        
-        DEPRECATED: This method uses StepTypeSpec.accepts_presets which is deprecated.
-        Use list_accepting_presets_for_engine() instead for new code.
-        """
-        return sorted(
-            spec.id for spec in self._types.values()
-            if spec.accepts_presets
         )
     
     def list_accepting_presets_for_engine(self, engine_name: str) -> Dict[str, List[str]]:
