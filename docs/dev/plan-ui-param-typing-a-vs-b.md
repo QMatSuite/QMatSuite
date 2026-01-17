@@ -578,7 +578,7 @@ pytest tests/unit/ tests/presets/ -v --tb=short
 
 ```
 PR0: [x] Export Class A Key Registry
-PR1: [ ] Backend Validation Helpers
+PR1: [x] Backend Validation Helpers
 PR2: [ ] Fix YAML Patching for Class A/B
 PR3: [ ] Add Class A Keys to qe_ui_parameters.json
 PR4: [ ] QE Writer Regression Tests
