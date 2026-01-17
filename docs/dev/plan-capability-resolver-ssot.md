@@ -134,10 +134,10 @@ python -c "from quantumvitas.presets.capability import list_presets_for_engine, 
 ---
 
 ### PR1: Add engine context resolution to apply
-- [ ] Add `_resolve_engine_for_step(step_path)` helper that reads step.yaml and determines engine
-- [ ] Modify `apply_presets_to_step()` to call this helper
-- [ ] Call `require_preset_capability()` before applying each dimension
-- [ ] Add clear error message: "Preset '{preset_id}' is not available for engine '{engine}' on gen step '{gen_step}'"
+- [x] Add `_resolve_engine_for_step(step_path)` helper that reads step.yaml and determines engine
+- [x] Modify `apply_presets_to_step()` to call this helper
+- [x] Call `require_preset_capability()` before applying each dimension
+- [x] Add clear error message: "Preset '{preset_id}' is not available for engine '{engine}' on gen step '{gen_step}'"
 
 **Files to modify**:
 - `src/quantumvitas/presets/integration.py`
@@ -281,7 +281,7 @@ _Auto will update this section as PRs are implemented._
 
 ```
 PR0: [x] Create capability resolver module
-PR1: [ ] Add engine context resolution to apply
+PR1: [x] Add engine context resolution to apply
 PR2: [ ] Add detection filtering by engine
 PR3: [ ] Add contract enforcement tests
 PR4: [ ] Add grep-based guard tests
