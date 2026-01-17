@@ -581,7 +581,7 @@ PR0: [x] Export Class A Key Registry
 PR1: [x] Backend Validation Helpers
 PR2: [x] Fix YAML Patching for Class A/B
 PR3: [x] Add Class A Keys to qe_ui_parameters.json
-PR4: [ ] QE Writer Regression Tests
+PR4: [x] QE Writer Regression Tests
 PR5: [ ] Integration Tests and Documentation
 ```
 
