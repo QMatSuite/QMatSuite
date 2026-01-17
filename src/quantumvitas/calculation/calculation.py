@@ -12,7 +12,7 @@ import yaml
 
 from quantumvitas.core.resources import ResourceMeta, ensure_relative_path
 from quantumvitas.project.model import Project, StructureRef
-from .types import StepMode, StepType
+from .types import StepMode
 from .step import Step
 from .io import CalculationIO
 from .structure_steps import StructureStepSpec, materialize_step_spec
@@ -426,7 +426,7 @@ def _build_step_inspection(
     engine_name = step_data.get("engine", "qe")
     migrated = False
     step_meta: Optional[ResourceMeta] = None
-    step_type: Optional[StepType] = None
+    step_type: Optional[str] = None
     input_path: Optional[Path] = None
     new_step_id = step_id  # Will be updated if legacy path is used
     
@@ -464,7 +464,7 @@ def _build_step_inspection(
                 step_file_path,
                 resolve_structure_selector=resolver,
             )
-            step_type = _coerce_step_type(spec.step_type)
+            step_type = spec.step_type
         except ResourceNotFoundError:
             # ULID not found in registry - treat as legacy
             is_ulid = False
@@ -498,7 +498,7 @@ def _build_step_inspection(
                     resolve_structure_selector=resolver,
                 )
                 step_meta = spec.meta  # This contains the ULID from the step file
-                step_type = _coerce_step_type(spec.step_type)
+                step_type = spec.step_type
                 # Store the real ULID for migration
                 new_step_id = step_meta.id
             else:
@@ -510,7 +510,7 @@ def _build_step_inspection(
                     path=f"calculations/{calculation_dir.name}/steps/{step_id}.step.yaml",
                     kind="step",
                 )
-                step_type = StepType.CUSTOM
+                step_type = "custom"
         else:
             # Create minimal meta if no file found
             step_meta = ResourceMeta(
@@ -554,7 +554,7 @@ def _build_step_inspection(
         meta=step_meta,
         input_file=dummy_input,
         engine=engine_name,
-        step_type=step_type or StepType.CUSTOM,
+        step_type=step_type or "custom",
         options={},
         reference_output=reference_path,
     ), False  # No migration needed (legacy calculations raise errors)
@@ -739,7 +739,7 @@ def _build_step_from_spec(
         project_root=project.root if project else None,
     )
 
-    step_type = _coerce_step_type(spec.step_type)
+    step_type = spec.step_type
 
     # Ensure generated_input is a valid file path (not directory, not '.')
     if generated_input.exists() and generated_input.is_dir():
@@ -769,36 +769,6 @@ def _build_step_from_spec(
         options=options,
         reference_output=reference,
     )
-
-
-def _coerce_step_type(raw: Optional[str]) -> Optional[StepType]:
-    """
-    Coerce a step type string to StepType enum.
-
-    Handles both GEN types (e.g., "scf") and SPEC types (e.g., "qe_scf")
-    by using registry lookup to convert SPEC to GEN when needed.
-    """
-    if not raw:
-        return None
-
-    # Try direct conversion (works for GEN types like "scf")
-    try:
-        return StepType(raw)
-    except ValueError:
-        pass
-
-    # If direct conversion failed, try registry lookup for SPEC types
-    # SPEC type like "qe_scf" -> public_type "scf" -> StepType.SCF
-    try:
-        from quantumvitas.workflow.registry import get_registry
-        reg = get_registry()
-        spec = reg.get(str(raw))
-        if spec and spec.public_type:
-            return StepType(spec.public_type)
-    except Exception:
-        pass
-
-    return StepType.CUSTOM
 
 
 def _resolve_reference_path(reference: Optional[str], calculation_dir: Path) -> Optional[Path]:

@@ -8,22 +8,13 @@ from pathlib import Path
 from typing import Dict, Tuple, Optional
 
 from quantumvitas.analysis.energy import extract_energy_metrics_from_text
-from .types import StepMode, StepStatus, StepType
+from .types import StepMode, StepStatus
 
 ENERGY_TOLERANCE = 1e-5  # Rydberg
 FERMI_TOLERANCE = 1e-2  # eV (QE reports Fermi in eV)
 
-ENERGY_STEP_TYPES = {
-    StepType.SCF,
-    StepType.NSCF,
-    StepType.DOS,
-    StepType.BANDS_PW,
-}
-FERMI_STEP_TYPES = {
-    StepType.NSCF,
-    StepType.DOS,
-    StepType.BANDS_PW,
-}
+ENERGY_STEP_TYPES = {"scf", "nscf", "dos", "bands_pw"}
+FERMI_STEP_TYPES = {"nscf", "dos", "bands_pw"}
 
 
 def basic_job_done_check(output_text: str) -> Tuple[bool, str]:
@@ -33,7 +24,7 @@ def basic_job_done_check(output_text: str) -> Tuple[bool, str]:
 
 
 def strict_verify(
-    step_type: StepType,
+    step_type: str,
     metrics: Dict[str, float | None],
     output_text: str,
     reference_file: Path,
@@ -82,7 +73,7 @@ def strict_verify(
 
 def evaluate_step_result(
     mode: StepMode,
-    step_type: StepType,
+    step_type: str,
     output_text: str,
     reference_file: Path | None,
     step_result_return_code: Optional[int] = None,
@@ -104,7 +95,7 @@ def evaluate_step_result(
     """
     # A. Wannier90 steps should NOT extract energy metrics (no QE output format)
     wannier90_step_types = {"w90_preproc", "w90_run", "pw2wannier90", "wannier90", "postw90"}
-    step_type_str = str(step_type.value).lower() if step_type else ""
+    step_type_str = step_type.lower() if step_type else ""
     
     if step_type_str in wannier90_step_types:
         # For Wannier90 steps, don't extract energy metrics

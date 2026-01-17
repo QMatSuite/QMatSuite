@@ -114,7 +114,7 @@ class QERecipe(BaseRecipe):
 
             # Get step type info from registry
             step_type = step.step_type
-            spec = registry.get(str(step_type.value)) if step_type else None
+            spec = registry.get(str(step_type)) if step_type else None
 
             # Determine executable and input file
             if spec:
@@ -122,7 +122,7 @@ class QERecipe(BaseRecipe):
                 public_type = spec.public_type
             else:
                 executable = "pw.x"
-                public_type = str(step_type.value) if step_type else "custom"
+                public_type = str(step_type) if step_type else "custom"
 
             # Input file uses GEN naming (per Constitution §F)
             input_file = f"{public_type}.in"
@@ -215,7 +215,7 @@ class ORCARecipe(BaseRecipe):
 
             for s in subchain_steps:
                 spec = (
-                    registry.get(str(s.step_type.value))
+                    registry.get(str(s.step_type))
                     if s.step_type
                     else None
                 )
@@ -322,7 +322,7 @@ class PySCFRecipe(BaseRecipe):
 
             for s in subchain_steps:
                 spec = (
-                    registry.get(str(s.step_type.value))
+                    registry.get(str(s.step_type))
                     if s.step_type
                     else None
                 )

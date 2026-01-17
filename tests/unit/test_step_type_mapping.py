@@ -288,22 +288,6 @@ parameters:
             "Constitution §B requires SHA to be computed on SPEC types (matching YAML truth)."
         )
 
-    def test_coerce_step_type_handles_spec(self):
-        """_coerce_step_type must handle both GEN and SPEC types."""
-        from quantumvitas.calculation.runner import _coerce_step_type
-        from quantumvitas.calculation.types import StepType
-
-        # GEN type should work directly
-        result = _coerce_step_type("scf")
-        assert result == StepType.SCF, f"Failed to coerce GEN type 'scf': got {result}"
-
-        # SPEC type should also work via registry lookup
-        result = _coerce_step_type("qe_scf")
-        assert result == StepType.SCF, (
-            f"Failed to coerce SPEC type 'qe_scf' via registry: got {result}. "
-            f"Expected StepType.SCF."
-        )
-
     def test_engine_family_from_step_uses_registry_not_prefix(self):
         """Engine family detection must use registry lookup, NOT prefix inference.
 

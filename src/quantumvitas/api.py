@@ -7753,8 +7753,7 @@ class QVService:
         step_type = spec.step_type
         
         # Validate step type
-        from quantumvitas.calculation.types import StepType
-        if step_type not in (StepType.RELAX.value, StepType.VC_RELAX.value):
+        if step_type not in ("relax", "vc-relax"):
             raise QVServiceError(
                 f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type})"
             )
@@ -7863,8 +7862,7 @@ class QVService:
         step_type = spec.step_type
         
         # Validate step type
-        from quantumvitas.calculation.types import StepType
-        if step_type not in (StepType.RELAX.value, StepType.VC_RELAX.value):
+        if step_type not in ("relax", "vc-relax"):
             raise QVServiceError(
                 f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type})"
             )

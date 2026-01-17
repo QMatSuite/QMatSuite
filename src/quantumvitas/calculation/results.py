@@ -9,13 +9,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .types import StepMode, StepStatus, StepType
+from .types import StepMode, StepStatus
 
 
 @dataclass(slots=True)
 class StepResultSummary:
     step_id: str
-    step_type: StepType
+    step_type: str
     status: StepStatus
     working_dir: Path
     input_file: Path
@@ -47,7 +47,7 @@ class CalculationResult:
             "steps": [
                 {
                     "step_id": step.step_id,
-                    "step_type": step.step_type.value,
+                    "step_type": step.step_type,
                     "status": step.status.value,
                     "working_dir": str(step.working_dir),  # Keep for backward compat in step summaries
                     "input_file": str(step.input_file),
