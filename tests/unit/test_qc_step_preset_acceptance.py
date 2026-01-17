@@ -30,7 +30,8 @@ def test_pyscf_scf_accepts_presets():
 
 def test_orca_scf_accepts_presets():
     """Test that ORCA engine supports qc_precision preset."""
-    engine = ORCAEngine()
+    # Use defer_binary_resolution=True for capability queries (binary not required)
+    engine = ORCAEngine(defer_binary_resolution=True)
     
     # Engine must declare qc_precision in supported_presets
     assert "qc_precision" in engine.supported_presets
@@ -110,7 +111,8 @@ def test_pyscf_scf_allowed_dimensions_only_qc_precision():
 
 def test_orca_scf_allowed_dimensions_only_qc_precision():
     """Test that ORCA engine only supports qc_precision (via supported_presets)."""
-    engine = ORCAEngine()
+    # Use defer_binary_resolution=True for capability queries (binary not required)
+    engine = ORCAEngine(defer_binary_resolution=True)
     
     # ORCA engine should only support qc_precision
     assert engine.supported_presets == ["qc_precision"]

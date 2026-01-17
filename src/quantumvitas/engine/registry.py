@@ -43,23 +43,22 @@ def create_default_registry(
 
     Args:
         config: Optional engine configuration (used for QE engine)
-        include_orca: If True (default), attempt to register ORCA if available
+        include_orca: If True (default), register ORCA engine (even if binary not available).
+            Binary availability is checked only at execution time, not during registration.
 
     Returns:
-        EngineRegistry with qe, pyscf, and optionally orca engines
+        EngineRegistry with qe, pyscf, and optionally orca engines.
+        ORCA is always registered if include_orca=True, even if binary is not found.
+        Binary resolution is deferred until execution (probe/run_chain).
     """
     registry = EngineRegistry()
     registry.register(QeEngine(config))
     registry.register(PySCFEngine())
 
-    # Register ORCA if available
+    # Always register ORCA if requested (binary resolution is deferred)
     if include_orca:
-        try:
-            from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
-            orca_bin = resolve_orca_bin()
-            registry.register(ORCAEngine(orca_bin=orca_bin))
-        except RuntimeError:
-            pass  # ORCA not available, skip
+        # Use defer_binary_resolution=True so capability queries work without binary
+        registry.register(ORCAEngine(defer_binary_resolution=True))
 
     return registry
 
