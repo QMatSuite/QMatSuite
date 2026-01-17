@@ -6,20 +6,17 @@ This test fails if any production code references:
 - StepTypeSpec.allowed_dimensions
 - list_accepting_presets() method
 - PW_DIMENSIONS constant
+
+Note: Uses pure-Python repo scanner instead of ripgrep (rg) for CI portability.
 """
 
 import pytest
-import subprocess
+from tests.utils.repo_scan import scan_for_pattern_list_files
 
 
 def test_no_accepts_presets_in_production_code():
     """Production code must not reference accepts_presets field."""
-    result = subprocess.run(
-        ["rg", "-l", r"\.accepts_presets", "src/quantumvitas"],
-        capture_output=True,
-        text=True,
-    )
-    matching_files = result.stdout.strip()
+    matching_files = scan_for_pattern_list_files(r"\.accepts_presets")
     assert not matching_files, (
         f"Found accepts_presets field reference in production code:\n{matching_files}"
     )
@@ -27,12 +24,7 @@ def test_no_accepts_presets_in_production_code():
 
 def test_no_allowed_dimensions_in_production_code():
     """Production code must not reference allowed_dimensions field."""
-    result = subprocess.run(
-        ["rg", "-l", r"\.allowed_dimensions", "src/quantumvitas"],
-        capture_output=True,
-        text=True,
-    )
-    matching_files = result.stdout.strip()
+    matching_files = scan_for_pattern_list_files(r"\.allowed_dimensions")
     assert not matching_files, (
         f"Found allowed_dimensions field reference in production code:\n{matching_files}"
     )
@@ -40,12 +32,7 @@ def test_no_allowed_dimensions_in_production_code():
 
 def test_no_pw_dimensions_in_production_code():
     """Production code must not reference PW_DIMENSIONS constant."""
-    result = subprocess.run(
-        ["rg", "-l", r"PW_DIMENSIONS", "src/quantumvitas"],
-        capture_output=True,
-        text=True,
-    )
-    matching_files = result.stdout.strip()
+    matching_files = scan_for_pattern_list_files(r"PW_DIMENSIONS")
     assert not matching_files, (
         f"Found PW_DIMENSIONS constant reference in production code:\n{matching_files}"
     )
@@ -53,12 +40,7 @@ def test_no_pw_dimensions_in_production_code():
 
 def test_no_deprecated_list_accepting_presets():
     """Production code must not have deprecated list_accepting_presets() method."""
-    result = subprocess.run(
-        ["rg", "-l", r"def list_accepting_presets\(self\)", "src/quantumvitas"],
-        capture_output=True,
-        text=True,
-    )
-    matching_files = result.stdout.strip()
+    matching_files = scan_for_pattern_list_files(r"def list_accepting_presets\(self\)")
     assert not matching_files, (
         f"Found deprecated list_accepting_presets() method:\n{matching_files}"
     )

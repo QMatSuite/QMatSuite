@@ -1,28 +1,24 @@
 """
 Guard tests to prevent reintroduction of old gating logic.
 
-These tests use grep/ripgrep to ensure production code does not:
+These tests use pure-Python repo scanner to ensure production code does not:
 - Reference deprecated StepTypeSpec fields (accepts_presets, allowed_dimensions)
 - Bypass capability resolver (direct ParamSpace apply without validation)
 - Miss require_preset_capability calls in apply paths
+
+Note: Uses pure-Python repo scanner instead of ripgrep (rg) for CI portability.
 """
 
-import subprocess
 import pytest
+from tests.utils.repo_scan import scan_for_pattern
 
 
 def test_no_accepts_presets_field():
     """Production code must not reference StepTypeSpec.accepts_presets."""
-    result = subprocess.run(
-        ["rg", "accepts_presets", "src/quantumvitas", "--type", "py", "-l"],
-        capture_output=True,
-        text=True,
-    )
-    # Filter out test files
+    matching_files = scan_for_pattern("accepts_presets", return_lines=False)
+    # Filter out test files (already excluded by collect_production_files, but double-check)
     production_files = [
-        line.strip()
-        for line in result.stdout.splitlines()
-        if line.strip() and "test" not in line.lower()
+        str(f) for f in matching_files if "test" not in str(f).lower()
     ]
     assert len(production_files) == 0, (
         f"Found accepts_presets in production code: {production_files}"
@@ -31,16 +27,10 @@ def test_no_accepts_presets_field():
 
 def test_no_allowed_dimensions_field():
     """Production code must not reference StepTypeSpec.allowed_dimensions."""
-    result = subprocess.run(
-        ["rg", "allowed_dimensions", "src/quantumvitas", "--type", "py", "-l"],
-        capture_output=True,
-        text=True,
-    )
-    # Filter out test files
+    matching_files = scan_for_pattern("allowed_dimensions", return_lines=False)
+    # Filter out test files (already excluded by collect_production_files, but double-check)
     production_files = [
-        line.strip()
-        for line in result.stdout.splitlines()
-        if line.strip() and "test" not in line.lower()
+        str(f) for f in matching_files if "test" not in str(f).lower()
     ]
     assert len(production_files) == 0, (
         f"Found allowed_dimensions in production code: {production_files}"
