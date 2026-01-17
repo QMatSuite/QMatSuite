@@ -647,11 +647,61 @@ class StepTypeRegistry:
         )
     
     def list_accepting_presets(self) -> List[str]:
-        """List step types that accept presets (returns public types)."""
+        """
+        List step types that accept presets (returns public types).
+        
+        DEPRECATED: This method uses StepTypeSpec.accepts_presets which is deprecated.
+        Use list_accepting_presets_for_engine() instead for new code.
+        """
         return sorted(
             spec.id for spec in self._types.values()
             if spec.accepts_presets
         )
+    
+    def list_accepting_presets_for_engine(self, engine_name: str) -> Dict[str, List[str]]:
+        """
+        List preset dimensions available for each gen step for a given engine.
+        
+        This implements the new capability contract (Contract C):
+        - Engine.supported_presets (engine capability declaration)
+        - ParamSpace gen-step applicability (Contract A)
+        
+        Returns the intersection for each gen step that the engine supports.
+        
+        Args:
+            engine_name: Engine identifier (e.g., "qe", "pyscf", "orca")
+            
+        Returns:
+            Dict mapping gen_step -> sorted list of available dimension names
+            Example: {"scf": ["precision", "magnetism"], "nscf": ["precision"]}
+            
+        Raises:
+            KeyError: If engine_name is not found in engine registry
+        """
+        from quantumvitas.engine.registry import create_default_registry
+        from quantumvitas.presets.catalog import list_presets_for_engine
+        
+        # Get engine instance
+        engine_registry = create_default_registry()
+        if not engine_registry.has(engine_name):
+            raise KeyError(f"Engine '{engine_name}' not found in registry")
+        
+        engine = engine_registry.get(engine_name)
+        
+        # Get all gen steps that this engine supports (via machine types)
+        engine_gen_steps = set()
+        for spec in self._types.values():
+            if spec.engine == engine_name:
+                engine_gen_steps.add(spec.public_type)
+        
+        # For each gen step, compute available presets
+        result: Dict[str, List[str]] = {}
+        for gen_step in sorted(engine_gen_steps):
+            available = list_presets_for_engine(engine_name, gen_step)
+            if available:  # Only include gen steps that have at least one available preset
+                result[gen_step] = available
+        
+        return result
     
     def get_defaults(self, step_type: str) -> Dict[str, Any]:
         """
