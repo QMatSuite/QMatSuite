@@ -63,7 +63,7 @@ class ORCAInputCompiler:
             # Future: freq, nmr, mp2, opt, etc.
 
         # Add common keywords
-        keywords.add("TightSCF")
+        # SCF macro is handled in _process_scf_step
         if fresh:
             keywords.add("NoAutoStart")
 
@@ -123,6 +123,73 @@ class ORCAInputCompiler:
         dispersion = params.get("dispersion")
         if dispersion:
             keywords.add(dispersion)
+
+        # ORCA SCF macro (from engine-specific preset patch)
+        # Read from engine.orca.scf.macro in step parameters
+        orca_macro = self._get_orca_scf_macro(params)
+        if orca_macro:
+            orca_keyword = self._map_macro_to_keyword(orca_macro)
+            if orca_keyword:
+                keywords.add(orca_keyword)
+
+    def _get_orca_scf_macro(self, params: Dict[str, Any]) -> Optional[str]:
+        """
+        Extract ORCA SCF macro from step parameters.
+        
+        Looks for engine.orca.scf.macro in nested structure:
+        params["engine"]["orca"]["scf"]["macro"]
+        
+        Args:
+            params: Step parameters dict
+            
+        Returns:
+            Macro value (lower-case string) or None if not found
+        """
+        # Try nested structure first
+        if "engine" in params:
+            engine = params["engine"]
+            if isinstance(engine, dict) and "orca" in engine:
+                orca = engine["orca"]
+                if isinstance(orca, dict) and "scf" in orca:
+                    scf = orca["scf"]
+                    if isinstance(scf, dict) and "macro" in scf:
+                        macro = scf["macro"]
+                        if isinstance(macro, str):
+                            # Validate lower-case
+                            if macro != macro.lower():
+                                raise ValueError(
+                                    f"ORCA SCF macro must be lower-case, got: {macro}"
+                                )
+                            return macro.lower()
+        return None
+
+    def _map_macro_to_keyword(self, macro: str) -> Optional[str]:
+        """
+        Map ORCA SCF macro value to ORCA keyword.
+        
+        Mapping:
+        - "tightscf" → "TightSCF"
+        - "normal" → None (no extra keyword)
+        - "loose" → "LooseSCF"
+        
+        Args:
+            macro: Lower-case macro value
+            
+        Returns:
+            ORCA keyword string or None if no keyword should be added
+        """
+        macro_lower = macro.lower()
+        if macro_lower == "tightscf":
+            return "TightSCF"
+        elif macro_lower == "loose":
+            return "LooseSCF"
+        elif macro_lower == "normal":
+            return None  # No extra keyword for normal
+        else:
+            raise ValueError(
+                f"Unknown ORCA SCF macro: {macro}. "
+                f"Supported values: 'tightscf', 'normal', 'loose'"
+            )
 
     def _process_td_step(
         self,
