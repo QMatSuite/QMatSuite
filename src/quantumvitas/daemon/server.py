@@ -3772,11 +3772,15 @@ class QVDaemon:
         else:
             calculation_dir = resolved.absolute_path
         
+        # Detect engine from calculation (for filtering)
+        from quantumvitas.presets.integration import _detect_engine_for_calculation
+        engine_filter = _detect_engine_for_calculation(calculation_dir)
+        
         # Detect presets from calculation steps
         # If precision context resolution fails, PrecisionContextError will be raised
         # and converted to a structured error response
         try:
-            dimension_states = detect_presets_from_calculation(calculation_dir)
+            dimension_states = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
         except Exception as e:
             # Check if it's a PrecisionContextError
             from quantumvitas.presets.precision_context import PrecisionContextError
@@ -3882,7 +3886,9 @@ class QVDaemon:
         
         # Return updated dimension states for the calculation
         calculation_dir = step_path.parent.parent  # steps/foo.step.yaml -> calculation_dir
-        updated_dimension_states = detect_presets_from_calculation(calculation_dir)
+        from quantumvitas.presets.integration import _detect_engine_for_calculation
+        engine_filter = _detect_engine_for_calculation(calculation_dir)
+        updated_dimension_states = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
         
         return {
             "status": "applied",
@@ -4046,7 +4052,9 @@ class QVDaemon:
                 })
         
         # Return updated dimension states for the calculation
-        updated_dimension_states = detect_presets_from_calculation(calculation_dir)
+        from quantumvitas.presets.integration import _detect_engine_for_calculation
+        engine_filter = _detect_engine_for_calculation(calculation_dir)
+        updated_dimension_states = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
         
         return {
             "status": "applied",

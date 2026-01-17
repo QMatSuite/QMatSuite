@@ -151,10 +151,10 @@ pytest tests/presets/ -v
 ---
 
 ### PR2: Add detection filtering by engine
-- [ ] Modify `detect_presets_from_calculation()` to accept optional `engine_filter` param
-- [ ] When engine_filter is provided, only attempt detection for supported presets
-- [ ] Add `_detect_engine_for_calculation()` helper
-- [ ] Update daemon handlers to pass engine filter
+- [x] Modify `detect_presets_from_calculation()` to accept optional `engine_filter` param
+- [x] When engine_filter is provided, only attempt detection for supported presets
+- [x] Add `_detect_engine_for_calculation()` helper
+- [x] Update daemon handlers to pass engine filter
 
 **Files to modify**:
 - `src/quantumvitas/presets/integration.py`
@@ -282,7 +282,7 @@ _Auto will update this section as PRs are implemented._
 ```
 PR0: [x] Create capability resolver module
 PR1: [x] Add engine context resolution to apply
-PR2: [ ] Add detection filtering by engine
+PR2: [x] Add detection filtering by engine
 PR3: [ ] Add contract enforcement tests
 PR4: [ ] Add grep-based guard tests
 PR5: [ ] Cleanup and documentation
