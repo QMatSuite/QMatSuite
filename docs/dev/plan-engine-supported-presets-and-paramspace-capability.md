@@ -242,10 +242,10 @@ Use this section to track progress. Tick checkboxes as tasks complete.
 - [x] All PR2 tests pass
 
 ### PR3 Progress
-- [ ] Updated `test_workflow.py::test_get_step_type_spec`
-- [ ] Updated `test_workflow.py::test_pw_dimensions_consistent`
-- [ ] Updated `test_pyscf_integration.py::test_pyscf_scf_spec_properties`
-- [ ] All PR3 tests pass
+- [x] Updated `test_workflow.py::test_get_step_type_spec`
+- [x] Updated `test_workflow.py::test_pw_dimensions_consistent`
+- [x] Updated `test_pyscf_integration.py::test_pyscf_scf_spec_properties`
+- [x] All PR3 tests pass
 - [ ] Full unit test suite passes
 
 ### PR4 Progress (Optional)

@@ -50,7 +50,7 @@ class TestPySCFStepTypeRegistration:
         assert spec.engine == "pyscf"
         assert spec.executable == "python"
         assert spec.requires_structure is True
-        assert spec.accepts_presets is False  # MVP: no presets yet
+        # Note: accepts_presets is deprecated; use Engine.supported_presets + ParamSpace instead
     
     def test_pyscf_scf_in_known_step_types(self):
         """PYSCF_SCF is in CLI KNOWN_STEP_TYPES."""
