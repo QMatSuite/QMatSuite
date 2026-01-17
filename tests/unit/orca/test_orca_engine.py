@@ -62,9 +62,11 @@ class TestORCAEngine:
         with patch.object(Path, 'exists', return_value=False):
             with patch.object(Path, 'is_file', return_value=False):
                 engine = ORCAEngine.__new__(ORCAEngine)
-                engine.orca_binary = Path("/nonexistent/orca")
-                engine.orca_dir = Path("/nonexistent")
+                # Set private attributes directly (bypassing property accessor)
+                engine._orca_binary = Path("/nonexistent/orca")
+                engine._orca_dir = Path("/nonexistent")
                 engine.config = Mock()
+                engine._defer_binary_resolution = False  # Already resolved
 
                 available, msg = engine.probe()
                 assert available is False

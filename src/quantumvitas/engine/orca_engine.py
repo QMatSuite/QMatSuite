@@ -47,6 +47,7 @@ class ORCAEngine(Engine):
         self,
         orca_bin: Optional[Path] = None,
         config: Optional[ORCAEngineConfig] = None,
+        defer_binary_resolution: bool = False,
     ):
         """
         Initialize ORCA engine.
@@ -54,30 +55,61 @@ class ORCAEngine(Engine):
         Args:
             orca_bin: Path to ORCA binary (optional, auto-resolved)
             config: Engine configuration
+            defer_binary_resolution: If True, do not resolve binary in __init__.
+                Binary will be resolved on first use (probe/run_chain).
+                Use this for capability queries when binary may not be available.
         """
         self.config = config or ORCAEngineConfig()
+        self._defer_binary_resolution = defer_binary_resolution
+        self._orca_binary: Optional[Path] = None
+        self._orca_dir: Optional[Path] = None
 
         if orca_bin:
             # Use provided path
             if orca_bin.is_dir():
-                self.orca_dir = orca_bin
-                self.orca_binary = orca_bin / "orca"
+                self._orca_dir = orca_bin
+                self._orca_binary = orca_bin / "orca"
             else:
-                self.orca_binary = orca_bin
-                self.orca_dir = orca_bin.parent
+                self._orca_binary = orca_bin
+                self._orca_dir = orca_bin.parent
         elif self.config.orca_bin:
             # Use config path
             if self.config.orca_bin.is_dir():
-                self.orca_dir = self.config.orca_bin
-                self.orca_binary = self.config.orca_bin / "orca"
+                self._orca_dir = self.config.orca_bin
+                self._orca_binary = self.config.orca_bin / "orca"
             else:
-                self.orca_binary = self.config.orca_bin
-                self.orca_dir = self.config.orca_bin.parent
-        else:
-            # Auto-resolve
+                self._orca_binary = self.config.orca_bin
+                self._orca_dir = self.config.orca_bin.parent
+        elif not defer_binary_resolution:
+            # Auto-resolve (only if not deferred)
             from quantumvitas.core.engines.orca_resolver import resolve_orca_bin_dir
-            self.orca_dir = resolve_orca_bin_dir()
-            self.orca_binary = self.orca_dir / "orca"
+            self._orca_dir = resolve_orca_bin_dir()
+            self._orca_binary = self._orca_dir / "orca"
+    
+    def _ensure_binary_resolved(self) -> None:
+        """Ensure ORCA binary is resolved. Raises RuntimeError if not found."""
+        if self._orca_binary is not None and self._orca_dir is not None:
+            return  # Already resolved
+        
+        if self._defer_binary_resolution:
+            # Now we need to resolve
+            from quantumvitas.core.engines.orca_resolver import resolve_orca_bin_dir
+            self._orca_dir = resolve_orca_bin_dir()
+            self._orca_binary = self._orca_dir / "orca"
+    
+    @property
+    def orca_binary(self) -> Path:
+        """Get ORCA binary path. Resolves if deferred."""
+        self._ensure_binary_resolved()
+        assert self._orca_binary is not None
+        return self._orca_binary
+    
+    @property
+    def orca_dir(self) -> Path:
+        """Get ORCA directory. Resolves if deferred."""
+        self._ensure_binary_resolved()
+        assert self._orca_dir is not None
+        return self._orca_dir
 
     @property
     def supported_presets(self) -> List[str]:
@@ -96,6 +128,11 @@ class ORCAEngine(Engine):
         Returns:
             Tuple of (available, version_or_error_message)
         """
+        try:
+            self._ensure_binary_resolved()
+        except RuntimeError as e:
+            return False, str(e)
+        
         if not self.orca_binary.exists():
             return False, f"ORCA binary not found at {self.orca_binary}"
 
@@ -156,7 +193,12 @@ class ORCAEngine(Engine):
 
         Returns:
             List of ORCAStepResult for each step in chain
+            
+        Raises:
+            RuntimeError: If ORCA binary is not found (only checked at execution time)
         """
+        # Ensure binary is resolved before execution
+        self._ensure_binary_resolved()
         from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
         from quantumvitas.engines.orca.property_parser import (
             parse_orca_property_txt,
