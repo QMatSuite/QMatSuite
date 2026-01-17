@@ -324,10 +324,11 @@ def test_manifest_trim_on_removing_last_step(tmp_project, minimal_calculation, m
         step_shas.append(step_sha)
     
     # Create initial manifest with 3 steps, all done, using actual SHAs
+    # Use machine_type (qe_scf, qe_nscf, qe_bands) to match what reconcile produces
     manifest = Manifest()
     for i, step_id in enumerate(step_ids):
         manifest.steps.append(ManifestStepEntry(
-            kind=["scf", "nscf", "bands"][i],
+            kind=["qe_scf", "qe_nscf", "qe_bands"][i],
             step_ulid=step_id,
             pseudo_set_sha=pseudo_sha,
             structure_sha=structure_sha,
@@ -432,10 +433,11 @@ def test_reorder_forces_rerun_from_divergence(tmp_project, minimal_calculation, 
         step_shas.append(step_sha)
     
     # Create initial manifest with [A, B, C], all done, using actual SHAs
+    # Use machine_type (qe_scf, qe_nscf, qe_bands) to match what reconcile produces
     manifest = Manifest()
     for i, step_id in enumerate(step_ids):
         manifest.steps.append(ManifestStepEntry(
-            kind=["scf", "nscf", "bands"][i],
+            kind=["qe_scf", "qe_nscf", "qe_bands"][i],
             step_ulid=step_id,
             pseudo_set_sha=pseudo_sha,
             structure_sha=structure_sha,
@@ -564,8 +566,9 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     
     manifest = Manifest()
     # Add entries for all steps, using actual SHAs
+    # Use machine_type (qe_scf, qe_nscf, qe_bands) to match what reconcile produces
     for i, step_id in enumerate(step_ids):
-        kind_val = ["scf", "nscf", "bands"][i]
+        kind_val = ["qe_scf", "qe_nscf", "qe_bands"][i]
         manifest.steps.append(ManifestStepEntry(
             kind=kind_val,
             step_ulid=step_id,
