@@ -231,7 +231,7 @@ class TestCapabilityResolverInvariants:
 pytest tests/unit/conftest.py -v  # Verify no import errors
 ```
 
-**DONE**: [ ]
+**DONE**: [x]
 
 ---
 
@@ -254,7 +254,7 @@ pytest tests/unit/conftest.py -v  # Verify no import errors
 pytest tests/unit/test_paramspace_roundtrip_invariants.py -v
 ```
 
-**DONE**: [ ]
+**DONE**: [x]
 
 ---
 
@@ -277,7 +277,7 @@ pytest tests/unit/test_paramspace_roundtrip_invariants.py -v
 pytest tests/unit/test_paramspace_negative_invariants.py -v
 ```
 
-**DONE**: [ ]
+**DONE**: [x]
 
 ---
 
@@ -301,7 +301,7 @@ pytest tests/unit/test_paramspace_roundtrip_invariants.py::*qc* -v
 pytest tests/unit/test_paramspace_negative_invariants.py::*qc* -v
 ```
 
-**DONE**: [ ]
+**DONE**: [x]
 
 ---
 
@@ -323,7 +323,7 @@ pytest tests/unit/test_paramspace_negative_invariants.py::*qc* -v
 pytest tests/unit/test_key_ownership_uniqueness.py -v
 ```
 
-**DONE**: [ ]
+**DONE**: [x]
 
 ---
 
@@ -347,7 +347,7 @@ pytest tests/unit/test_key_ownership_uniqueness.py -v
 pytest tests/unit/test_capability_resolver_invariants.py -v
 ```
 
-**DONE**: [ ]
+**DONE**: [x]
 
 ---
 
@@ -367,7 +367,7 @@ pytest tests/unit/ -v
 pytest tests/integration/test_precision_roundtrip.py -v
 ```
 
-**DONE**: [ ]
+**DONE**: [x]
 
 ---
 
