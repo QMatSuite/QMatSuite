@@ -58,6 +58,16 @@ class PySCFEngine(Engine):
         """
         super().__init__(config or EngineConfig(name="pyscf"))
         self._probe_cache: Optional[Dict[str, Any]] = None
+
+    @property
+    def supported_presets(self) -> List[str]:
+        """
+        PySCF engine supports QC-based preset dimensions.
+        
+        Returns:
+            List of supported preset dimensions: qc_precision
+        """
+        return ["qc_precision"]
     
     def probe(self) -> Dict[str, Any]:
         """

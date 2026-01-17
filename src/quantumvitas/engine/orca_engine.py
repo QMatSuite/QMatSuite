@@ -79,6 +79,16 @@ class ORCAEngine(Engine):
             self.orca_dir = resolve_orca_bin_dir()
             self.orca_binary = self.orca_dir / "orca"
 
+    @property
+    def supported_presets(self) -> List[str]:
+        """
+        ORCA engine supports QC-based preset dimensions.
+        
+        Returns:
+            List of supported preset dimensions: qc_precision
+        """
+        return ["qc_precision"]
+
     def probe(self) -> Tuple[bool, str]:
         """
         Check if ORCA is available.

@@ -47,8 +47,11 @@ class StepTypeSpec:
     engine: str
     executable: str
     description: str
-    accepts_presets: bool = False
-    allowed_dimensions: FrozenSet[str] = field(default_factory=frozenset)
+    # DEPRECATED: Step-type applicability is now SSOT in ParamSpace (via ParamSpaceVariant.applies_to_step_types).
+    # Engine capability is declared via Engine.supported_presets.
+    # These fields are kept for backward compatibility only and must not be used for new logic.
+    accepts_presets: bool = False  # DEPRECATED: Use ParamSpace + Engine.supported_presets instead
+    allowed_dimensions: FrozenSet[str] = field(default_factory=frozenset)  # DEPRECATED: Use ParamSpace + Engine.supported_presets instead
     requires_structure: bool = True
     requires_charge_density: bool = False
     produces_charge_density: bool = False
