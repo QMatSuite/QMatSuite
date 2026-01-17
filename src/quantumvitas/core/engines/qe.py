@@ -364,25 +364,29 @@ class QuantumEspressoEngine(Engine):
         Raises:
             FileNotFoundError: If executable is not found
         """
-        executable = self.EXECUTABLE_MAP.get(step_type, "pw.x")
+        # Convert machine_type (e.g., 'qe_bands') to public_type (e.g., 'bands') for lookup
+        from quantumvitas.core.engines.qe_calculation import _normalize_step_type_to_public
+        step_type_public = _normalize_step_type_to_public(step_type)
+        
+        executable = self.EXECUTABLE_MAP.get(step_type_public, "pw.x")
         
         # Get executable path (handles platform-specific names and search)
         exe_path = self.get_executable_path(executable)
         
         command = [str(exe_path)]
         
-        # Wannier90-specific command building
-        if step_type == "w90_preproc":
+        # Wannier90-specific command building (use public_type for comparisons)
+        if step_type_public == "w90_preproc":
             # wannier90.x -pp seedname
             # Extract seedname from input file (e.g., diamond.win -> diamond)
             seedname = input_file.stem
             command.append("-pp")
             command.append(seedname)
-        elif step_type == "w90_run":
+        elif step_type_public == "w90_run":
             # wannier90.x seedname
             seedname = input_file.stem
             command.append(seedname)
-        elif step_type == "pw2wannier90":
+        elif step_type_public == "pw2wannier90":
             # pw2wannier90.x -i input.in (use -i flag, NOT stdin)
             # IMPORTANT: Use relative path from working_dir to avoid path issues
             # Always use relative path from working_dir (pw2wannier90.x runs with cwd=working_dir)

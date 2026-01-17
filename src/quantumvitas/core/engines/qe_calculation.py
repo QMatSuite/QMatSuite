@@ -20,6 +20,32 @@ if TYPE_CHECKING:
     from .qe import QuantumEspressoEngine
 
 
+def _normalize_step_type_to_public(step_type: str) -> str:
+    """
+    Convert machine_type (e.g., 'qe_bands') to public_type (e.g., 'bands').
+    
+    Uses the StepTypeRegistry to look up the public_type for a given step_type.
+    If the step_type is not found in the registry, returns the original value.
+    
+    This is needed because:
+    - EXECUTABLE_MAP uses public_type keys (e.g., 'bands', 'dos')
+    - Step YAML stores machine_type (e.g., 'qe_bands' not 'bands')
+    """
+    from quantumvitas.workflow.registry import get_registry
+    
+    step_type_lower = step_type.lower()
+    
+    try:
+        registry = get_registry()
+        spec = registry.get(step_type_lower)
+        if spec and spec.public_type:
+            return spec.public_type.lower()
+    except Exception:
+        pass
+    
+    return step_type_lower
+
+
 @dataclass
 class StepResult:
     """Result of executing a single QE calculation step."""
@@ -222,8 +248,12 @@ class QECalculationRunner:
             step_type = self.detect_step_type(input_file)
             logger.info(f"[RUN_STEP] Auto-detected step_type: {step_type}")
         
-        # Get executable for this step type
-        executable = self.engine.EXECUTABLE_MAP.get(step_type, "pw.x")
+        # Convert machine_type (e.g., 'qe_bands') to public_type (e.g., 'bands') for lookup
+        step_type_public = _normalize_step_type_to_public(step_type)
+        logger.debug(f"[RUN_STEP] step_type_public: {step_type_public} (from {step_type})")
+        
+        # Get executable for this step type (using public_type)
+        executable = self.engine.EXECUTABLE_MAP.get(step_type_public, "pw.x")
         logger.debug(f"[RUN_STEP] Executable: {executable}")
         
         # Resolve input_file to absolute path for logging and validation
