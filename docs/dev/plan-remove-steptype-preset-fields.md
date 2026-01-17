@@ -94,12 +94,12 @@ rg "spec\.accepts_presets|spec\.allowed_dimensions" src/quantumvitas
 
 **Changes**:
 
-- [ ] A) Remove docstring lines 35-36 (accepts_presets/allowed_dimensions descriptions)
-- [ ] B) Remove field definitions lines 53-54 (with deprecation comments)
-- [ ] C) Remove constant block lines 68-73 (DIMENSION_* and PW_DIMENSIONS)
-- [ ] D) Remove `accepts_presets=...` from all 22 StepTypeSpec instantiations
-- [ ] E) Remove `allowed_dimensions=...` from all 22 StepTypeSpec instantiations
-- [ ] F) Remove `list_accepting_presets()` method (lines 649-659)
+- [x] A) Remove docstring lines 35-36 (accepts_presets/allowed_dimensions descriptions)
+- [x] B) Remove field definitions lines 53-54 (with deprecation comments)
+- [x] C) Remove constant block lines 68-73 (DIMENSION_* and PW_DIMENSIONS)
+- [x] D) Remove `accepts_presets=...` from all 22 StepTypeSpec instantiations
+- [x] E) Remove `allowed_dimensions=...` from all 22 StepTypeSpec instantiations
+- [x] F) Remove `list_accepting_presets()` method (lines 649-659)
 
 **Verification commands (must all pass)**:
 
