@@ -205,8 +205,19 @@ The contract ensures:
 
 **Rationale**: Prevents UI from showing presets that cannot be materialized by the target engine. Ensures detection only matches presets that the engine can actually apply.
 
+**Capability Resolver SSOT**: The capability resolver (`src/quantumvitas/presets/capability.py`) is the single source of truth for all capability queries. All callers must use:
+- `list_presets_for_engine(engine_name, gen_step)` - Returns intersection of engine.supported_presets and ParamSpace applicability
+- `validate_preset_capability(engine_name, gen_step, preset_id)` - Validates if preset is available
+- `require_preset_capability(engine_name, gen_step, preset_id)` - Raises CapabilityError if not available
+
 **Evidence**:
-- Note: `supported_presets` is a future design requirement; current code does not implement this yet
+- Engine declaration: `src/quantumvitas/engine/base.py:supported_presets` (abstract property, line 28)
+- QE implementation: `src/quantumvitas/engine/qe_engine.py:supported_presets` (line 29-36)
+- PySCF implementation: `src/quantumvitas/engine/pyscf_engine.py:supported_presets` (line 63-70)
+- ORCA implementation: `src/quantumvitas/engine/orca_engine.py:supported_presets` (line 115-122)
+- Capability resolver: `src/quantumvitas/presets/capability.py` (SSOT for capability queries)
+- Apply validation: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (line 496) calls `require_preset_capability()`
+- Detection filtering: `src/quantumvitas/presets/integration.py:detect_presets_from_calculation()` (line 189-201) filters by engine.supported_presets
 
 ---
 
@@ -473,8 +484,11 @@ for the same preset/profile + gen_step.
 ### 10.3 Engine Declaration Invariants
 
 6. **Only supported_presets are detected/shown/applied**: UI shows only presets in `supported_presets`; detection only matches within `supported_presets`; apply fails if preset not in `supported_presets`.
-   - **Evidence**: Note: `supported_presets` is a future requirement
-   - **Test**: Verify UI filtering, detection gating, apply validation
+   - **Evidence**: 
+     - Capability resolver: `src/quantumvitas/presets/capability.py:list_presets_for_engine()` (line 29-62)
+     - Apply validation: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (line 496)
+     - Detection filtering: `src/quantumvitas/presets/integration.py:detect_presets_from_calculation()` (line 189-201)
+   - **Test**: `tests/unit/test_capability_enforcement.py` verifies contract enforcement
 
 ### 10.4 IR Value Type Invariants
 
@@ -598,7 +612,9 @@ for the same preset/profile + gen_step.
 - Verify detection only matches `"high"` and `"medium"`
 - Verify apply fails for `"low"` (not in `supported_presets`)
 
-**Evidence**: Note: `supported_presets` is a future requirement
+**Evidence**: 
+- Tests: `tests/unit/test_capability_enforcement.py` verifies contract enforcement
+- Guard tests: `tests/unit/test_no_capability_bypass.py` prevents reintroduction of old gating logic
 
 ### 11.7 Guardian Tests
 
@@ -644,13 +660,16 @@ for the same preset/profile + gen_step.
 
 ### Q3: supported_presets Implementation
 
-**Question**: `supported_presets` is not implemented yet. When will engine declaration be added?
+**Question**: `supported_presets` implementation status.
+
+**Answer**: ✅ **Implemented** (see `docs/dev/plan-capability-resolver-ssot.md`)
 
 **Evidence**:
-- Current: No `supported_presets` declaration found in codebase
-- Spec requirement: Engine MUST declare `supported_presets`
-
-**Impact**: Affects UI filtering and detection gating.
+- Engine declaration: `src/quantumvitas/engine/base.py:supported_presets` (abstract property)
+- Capability resolver: `src/quantumvitas/presets/capability.py` (SSOT for capability queries)
+- Apply validation: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` validates capability
+- Detection filtering: `src/quantumvitas/presets/integration.py:detect_presets_from_calculation()` filters by engine
+- Tests: `tests/unit/test_capability_enforcement.py` verifies contract enforcement
 
 ### Q4: Dual-Path Rules Implementation
 
