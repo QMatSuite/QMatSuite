@@ -136,7 +136,7 @@ python -c "from quantumvitas.workflow.registry import get_registry; r = get_regi
 
 **Changes**:
 
-- [ ] A) Remove `test_list_accepting_presets` method (lines 102-113)
+- [x] A) Remove `test_list_accepting_presets` method (lines 102-113)
 
 **Verification commands**:
 
