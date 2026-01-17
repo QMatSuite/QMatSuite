@@ -26,6 +26,16 @@ class QeEngine(Engine):
         self._engine = _LegacyQeEngine(self.config)
 
     @property
+    def supported_presets(self) -> list[str]:
+        """
+        QE engine supports PW-based preset dimensions.
+        
+        Returns:
+            List of supported preset dimensions: precision, magnetism, occupations_scheme, convergence
+        """
+        return ["precision", "magnetism", "occupations_scheme", "convergence"]
+
+    @property
     def backend(self) -> _LegacyQeEngine:
         return self._engine
 
