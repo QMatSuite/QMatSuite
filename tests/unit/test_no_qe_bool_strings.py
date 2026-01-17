@@ -80,10 +80,37 @@ class TestIRPatchHasNoBoolStrings:
 
 class TestQEOutputHasFortranBools:
     """QE .in output must use .true./.false. for booleans."""
-    
+
     def test_qe_generator_converts_bool_to_fortran(self):
         from quantumvitas.io.generator.qe_generator import QEInputGenerator
-        
+
         assert QEInputGenerator.format_value(True) == ".true."
         assert QEInputGenerator.format_value(False) == ".false."
+    
+    def test_string_preserved_verbatim(self):
+        """String values are quoted but preserved."""
+        from quantumvitas.io.generator.qe_generator import QEInputGenerator
+        
+        assert QEInputGenerator.format_value("gaussian") == "'gaussian'"
+        assert QEInputGenerator.format_value("Gaussian") == "'Gaussian'"  # Case preserved
+    
+    def test_string_dot_true_preserved(self):
+        """String '.true.' is quoted as string, not converted."""
+        from quantumvitas.io.generator.qe_generator import QEInputGenerator
+        
+        # This is for Class B keys where user explicitly types .true.
+        result = QEInputGenerator.format_value(".true.")
+        assert result == "'.true.'"
+    
+    def test_int_not_quoted(self):
+        """Integer values are not quoted."""
+        from quantumvitas.io.generator.qe_generator import QEInputGenerator
+        
+        assert QEInputGenerator.format_value(50) == "50"
+    
+    def test_float_not_quoted(self):
+        """Float values are not quoted."""
+        from quantumvitas.io.generator.qe_generator import QEInputGenerator
+        
+        assert QEInputGenerator.format_value(1.0e-6) == "1e-06"
 
