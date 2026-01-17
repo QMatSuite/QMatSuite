@@ -299,7 +299,7 @@ parameters:
 
         # Create a mock step with a step_type that has GEN value (no prefix)
         mock_step = MagicMock()
-        mock_step.step_type.value = "scf"  # GEN type, no prefix
+        mock_step.step_type = "scf"  # GEN type, no prefix
 
         # The registry has "scf" mapped to "qe" engine
         result = _get_engine_family_from_step(mock_step)
@@ -318,7 +318,7 @@ parameters:
         from unittest.mock import MagicMock
 
         mock_step = MagicMock()
-        mock_step.step_type.value = "pyscf_scf"
+        mock_step.step_type = "pyscf_scf"
 
         result = _get_engine_family_from_step(mock_step)
         assert result == "pyscf", f"Expected 'pyscf', got '{result}'"
@@ -329,7 +329,7 @@ parameters:
         from unittest.mock import MagicMock
 
         mock_step = MagicMock()
-        mock_step.step_type.value = "orca_scf"
+        mock_step.step_type = "orca_scf"
 
         result = _get_engine_family_from_step(mock_step)
         assert result == "orca", f"Expected 'orca', got '{result}'"
