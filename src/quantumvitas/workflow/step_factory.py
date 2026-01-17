@@ -113,6 +113,10 @@ def save_step_doc(step_doc: StepDoc, path: Path) -> list[str]:
         
     Returns:
         List of warning messages (empty if none)
+        
+    Raises:
+        ScanRefNotFoundError: If dangling ScanRef found
+        ScanRefValidationError: If ScanRef format or location invalid
     """
     # Compute warnings before saving (pure keyword matching, no engine detection)
     warnings: list[str] = []
@@ -134,6 +138,41 @@ def save_step_doc(step_doc: StepDoc, path: Path) -> list[str]:
     except Exception:
         # If we can't read parameters, skip warnings (non-blocking)
         pass
+    
+    # Validate scan refs (mandatory at save)
+    try:
+        step_doc_dict = step_doc.to_dict()
+        from quantumvitas.calculation.scan_validation import (
+            validate_step_scan_refs,
+            ScanRefNotFoundError,
+            ScanRefValidationError,
+        )
+        import logging
+        scan_logger = logging.getLogger(__name__)
+        
+        scan_errors, scan_warnings = validate_step_scan_refs(step_doc_dict)
+        
+        # Add scan warnings to warnings list
+        warnings.extend(scan_warnings)
+        
+        # Log scan warnings
+        for warning in scan_warnings:
+            scan_logger.warning(f"[SCAN_VALIDATION] {warning}")
+        
+        # Raise on scan errors
+        if scan_errors:
+            error_msg = "Scan validation errors:\n" + "\n".join(f"  - {e}" for e in scan_errors)
+            raise ScanRefValidationError(error_msg)
+            
+    except (ScanRefNotFoundError, ScanRefValidationError):
+        # Re-raise validation errors
+        raise
+    except Exception as e:
+        # If validation fails for other reasons, log but don't block save
+        # (for backwards compat with steps that don't have scans)
+        import logging
+        scan_logger = logging.getLogger(__name__)
+        scan_logger.debug(f"Scan validation skipped due to error: {e}")
     
     # Update path in meta
     path = Path(path).resolve()
