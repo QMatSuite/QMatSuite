@@ -30,3 +30,13 @@ class LegacyProjectError(Exception):
                 f"See docs or run: python -m quantumvitas.legacy.migrate <project_root>"
             )
         super().__init__(message)
+
+
+class MissingArtifactError(Exception):
+    """
+    Raised when a required generated artifact (e.g., relax output structure) is missing.
+    
+    This is a hard error - the system will not automatically re-run relax steps.
+    The user must explicitly run the calculation from the beginning or run the relax step first.
+    """
+    pass
