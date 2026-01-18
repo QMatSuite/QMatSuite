@@ -163,8 +163,8 @@ class ORCAEngine(Engine):
             "orca_scf",
             "orca_hf",
             "orca_td",
+            "orca_relax",
             "orca_mp2",  # Future
-            "orca_opt",  # Future
             "orca_freq",  # Future
         ]
 
