@@ -587,14 +587,15 @@ export function CalculationDetailPanel({
       
       for (const step of steps) {
         try {
-          const response = await qv.call<import('../../types/qv').StepDetail>('get_step_detail', {
+          const response = await qv.call('get_step_detail', {
             project_root: projectRoot,
             calculation: calculationForSteps.slug,
             step: step.id,
           });
           if (response.ok && response.data) {
+            const stepDetail = response.data as import('../../types/qv').StepDetail;
             detailsMap.set(step.id, {
-              parameter_scan: response.data.parameter_scan,
+              parameter_scan: stepDetail.parameter_scan,
             });
           }
         } catch (e) {
