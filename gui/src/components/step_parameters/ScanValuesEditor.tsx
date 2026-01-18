@@ -4,7 +4,7 @@
  * Supports explicit enumeration only (scalar or simple list values).
  */
 
-import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import './ScanValuesEditor.css';
 
 interface ScanValuesEditorProps {
