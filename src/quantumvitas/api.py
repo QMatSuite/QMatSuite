@@ -396,14 +396,12 @@ class QVService:
         # Only when dedup_by_fingerprint=True (opt-in for demo tooling)
         if dedup_by_fingerprint:
             # Compute fingerprint for content-based deduplication
-            from quantumvitas.core.structure_fingerprint import structure_fingerprint
-            from pymatgen.core import Molecule
-            # structure_fingerprint only works for Structure, not Molecule
-            # For Molecule, we skip fingerprint-based dedup (or implement molecule_fingerprint later)
-            if isinstance(structure, Molecule):
-                fingerprint = None  # Skip fingerprint for molecules
-            else:
-                fingerprint = structure_fingerprint(structure)
+            from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
+            from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+            
+            # Canonicalize first, then fingerprint
+            canonicalize_structure_like_in_place(structure)
+            fingerprint = structure_like_fingerprint(structure, tol_ang=1e-3)
             
             structures_dir = project_root / "structures"
             if structures_dir.exists():
@@ -417,9 +415,19 @@ class QVService:
                             existing_fingerprint_id = struct_meta.get("id")
                             if existing_fingerprint_id:
                                 # Verify with semantic equality as belt-and-suspenders
+                                # Note: structures_semantically_equal only supports Structure (not Molecule)
                                 from quantumvitas.core.structure_fingerprint import structures_semantically_equal
+                                from pymatgen.core import Structure as PMGStructure
+                                
                                 existing_structure = read_structure(struct_file)
-                                if structures_semantically_equal(structure, existing_structure):
+                                
+                                # Only apply semantic check for Structure (not Molecule)
+                                # For Molecule, fingerprint match after canonicalization is sufficient
+                                is_semantic_match = True
+                                if isinstance(structure, PMGStructure) and isinstance(existing_structure, PMGStructure):
+                                    is_semantic_match = structures_semantically_equal(structure, existing_structure)
+                                
+                                if is_semantic_match:
                                     # Reuse existing structure
                                     from quantumvitas.core.resolution import require_structure
                                     resolved = require_structure(
@@ -430,20 +438,15 @@ class QVService:
                         pass  # Skip invalid files
         
         # Compute fingerprint for storage (even if not using for dedup)
-        from quantumvitas.core.structure_fingerprint import structure_fingerprint
-        from pymatgen.core import Molecule
-        # structure_fingerprint only works for Structure, not Molecule
-        # For Molecule, we use a simple hash of the structure dict
-        if isinstance(structure, Molecule):
-            # For molecules, use a simple hash of the structure dict
-            import hashlib
-            structure_dict = structure.as_dict()
-            # Remove metadata if present
-            structure_dict.pop("__qv_meta__", None)
-            structure_str = json.dumps(structure_dict, sort_keys=True)
-            fingerprint = hashlib.sha256(structure_str.encode('utf-8')).hexdigest()
-        else:
-            fingerprint = structure_fingerprint(structure)
+        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
+        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+
+        # Canonicalize if not already done in dedup path
+        if not dedup_by_fingerprint:
+            canonicalize_structure_like_in_place(structure)
+
+        # Unified fingerprint for both Structure and Molecule
+        fingerprint = structure_like_fingerprint(structure, tol_ang=1e-3)
         
         # Write to structures directory
         dest_path = project_root / "structures" / f"{final_slug}.json"
