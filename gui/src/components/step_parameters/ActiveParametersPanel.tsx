@@ -366,20 +366,20 @@ export function ActiveParametersPanel({
                             </div>
                           ) : (
                             <div className="active-parameters-panel__value-editor-wrapper">
-                              <ParameterValueEditor
-                                parameter={param.metadata || {
-                                  name: param.name,
-                                  type: null,
-                                  default: null,
-                                  enum: null,
-                                  description: null,
-                                  section: namelist,
-                                  module: module || '',
-                                }}
-                                value={param.value}
-                                onChange={(value) => onParameterChange(namelist, param.name, value)}
-                                disabled={false}
-                              />
+                    <ParameterValueEditor
+                      parameter={param.metadata || {
+                        name: param.name,
+                        type: null,
+                        default: null,
+                        enum: null,
+                        description: null,
+                        section: namelist,
+                        module: module || '',
+                      }}
+                      value={param.value}
+                      onChange={(value) => onParameterChange(namelist, param.name, value)}
+                      disabled={false}
+                    />
                             </div>
                           )}
                         </div>
@@ -389,7 +389,7 @@ export function ActiveParametersPanel({
                     // Non-editing mode: show value display
                     if (!isEditing) {
                       return (
-                        <code className="active-parameters-panel__parameter-value-display">
+                    <code className="active-parameters-panel__parameter-value-display">
                           {(() => {
                             if (isScanned) {
                               const scanDef = stepDetail.parameter_scan?.[scanId || ''];
@@ -398,7 +398,7 @@ export function ActiveParametersPanel({
                             }
                             return param.value === null || param.value === undefined ? '—' : String(param.value);
                           })()}
-                        </code>
+                    </code>
                       );
                     }
                     

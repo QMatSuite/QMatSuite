@@ -3258,6 +3258,11 @@ class QVDaemon:
         
         logger = logging.getLogger(__name__)
         
+        # INSTRUMENTATION: Log RPC handler invocation
+        logger.info(f"[RPC] update_step_params invoked: step={step}, calculation={calculation}, "
+                    f"parameters_keys={list(parameters.keys())}, "
+                    f"parameter_scan={parameter_scan is not None and parameter_scan or 'None'}")
+        
         if _is_ulid_like(calculation):
             calculation_ulid = calculation
         else:

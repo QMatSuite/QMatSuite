@@ -475,7 +475,7 @@ class JobExecutor:
             if hasattr(step, 'meta') and step.meta.id == step_ulid:
                 return step
         return None
-    
+
     def _execute_job(self, job: Job, calculation: "Calculation") -> JobResult:
         """
         Execute a single job.
