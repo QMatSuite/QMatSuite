@@ -333,3 +333,32 @@ parameters:
 
         result = _get_engine_family_from_step(mock_step)
         assert result == "orca", f"Expected 'orca', got '{result}'"
+
+
+class TestRelaxStepTypeConfiguration:
+    """Test that relax step types have correct configuration for structure transforms."""
+
+    def test_relax_step_types_have_is_structure_transform_true(self):
+        """All relax/vc-relax step types must have is_structure_transform=True."""
+        relax_step_types = ["qe_relax", "qe_vc_relax"]
+        
+        for step_type in relax_step_types:
+            spec = _STEP_TYPES.get(step_type)
+            assert spec is not None, f"Missing expected relax step type: {step_type}"
+            assert getattr(spec, 'is_structure_transform', False) is True, (
+                f"Relax step type '{step_type}' must have is_structure_transform=True. "
+                f"Current value: {getattr(spec, 'is_structure_transform', 'missing')}"
+            )
+
+    def test_relax_step_types_do_not_produce_charge_density(self):
+        """All relax/vc-relax step types must have produces_charge_density=False."""
+        relax_step_types = ["qe_relax", "qe_vc_relax"]
+        
+        for step_type in relax_step_types:
+            spec = _STEP_TYPES.get(step_type)
+            assert spec is not None, f"Missing expected relax step type: {step_type}"
+            assert spec.produces_charge_density is False, (
+                f"Relax step type '{step_type}' must have produces_charge_density=False. "
+                f"Relax steps do NOT produce reusable electronic state. "
+                f"Current value: {spec.produces_charge_density}"
+            )

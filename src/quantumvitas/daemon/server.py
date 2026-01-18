@@ -287,6 +287,7 @@ class QVDaemon:
             "update_step_params": self._handle_update_step_params,
             "reset_step_params": self._handle_reset_step_params,
             "get_common_cards": self._handle_get_common_cards,
+            "promote_relax_structure": self._handle_promote_relax_structure,
             "set_common_card": self._handle_set_common_card,
             "get_pseudo_mapping": self._handle_get_pseudo_mapping,
             "set_pseudo_mapping": self._handle_set_pseudo_mapping,
@@ -3285,6 +3286,43 @@ class QVDaemon:
         # Parameter updates don't change registry (only change step file contents)
         
         return result
+    
+    def _handle_promote_relax_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Promote a relax step's generated structure to a project resource.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            step: str - Step selector (ULID)
+            name: Optional[str] - Name for the new structure
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step = self._require_str(payload, "step")
+        name = payload.get("name")
+        
+        # Pass cached index and config to avoid rebuilding ResourceIndex
+        cache = self.state.get_cache(project_root)
+        result = QVService.promote_relax_structure(
+            project_root=project_root,
+            calculation_selector=calculation,
+            step_selector=step,
+            name=name,
+            index=cache.index,
+            config=cache.config,
+        )
+        
+        # Invalidate cache since we added a new structure
+        self.state.invalidate_cache(project_root)
+        
+        return {
+            "success": True,
+            "structure": {
+                "id": result.meta.id,
+                "name": result.meta.name,
+                "path": str(result.absolute_path.relative_to(project_root)),
+            },
+        }
     
     def _handle_get_common_cards(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

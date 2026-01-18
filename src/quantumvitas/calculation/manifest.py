@@ -32,8 +32,9 @@ class ManifestStepEntry:
     kind: str  # Step type (e.g., "scf", "nscf")
     step_ulid: str  # ULID for traceability (updated on reconcile but not used for skip logic)
     pseudo_set_sha: str  # SHA256 of pseudo set (computed fresh each run)
-    structure_sha: str  # SHA256 of structure JSON (meta stripped)
+    structure_sha: str  # SHA256 of structure JSON (meta stripped) - init structure SHA
     step_sha: str  # SHA256 of step YAML (meta stripped)
+    effective_structure_sha: Optional[str] = None  # NEW: SHA256 of effective structure at execution time (for relax-aware skip logic)
     run_id: Optional[str] = None  # Last attempted run ID (ULID)
     done: bool = False  # Whether step is completed
     started_at: Optional[str] = None  # ISO8601 timestamp
@@ -52,6 +53,7 @@ class ManifestStepEntry:
             pseudo_set_sha=data["pseudo_set_sha"],
             structure_sha=data["structure_sha"],
             step_sha=data["step_sha"],
+            effective_structure_sha=data.get("effective_structure_sha"),  # Optional, backward compatible
             run_id=data.get("run_id"),
             done=data.get("done", False),
             started_at=data.get("started_at"),

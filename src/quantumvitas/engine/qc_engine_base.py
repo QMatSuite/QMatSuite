@@ -20,6 +20,10 @@ class StepLike(Protocol):
 # These are steps that produce a wavefunction from scratch
 SCF_ROOT_TYPES = {"scf", "hf", "dft", "rhf", "uhf", "rks", "uks"}
 
+# Step types that are structure transforms (relax/opt)
+# These steps produce structure artifacts but do NOT produce reusable electronic state
+RELAX_STEP_TYPES = {"relax", "vc-relax", "opt", "geomopt"}
+
 
 @dataclass
 class QCChain:
