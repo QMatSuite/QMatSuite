@@ -414,26 +414,12 @@ class QVService:
                             # Found matching structure by fingerprint
                             existing_fingerprint_id = struct_meta.get("id")
                             if existing_fingerprint_id:
-                                # Verify with semantic equality as belt-and-suspenders
-                                # Note: structures_semantically_equal only supports Structure (not Molecule)
-                                from quantumvitas.core.structure_fingerprint import structures_semantically_equal
-                                from pymatgen.core import Structure as PMGStructure
-                                
-                                existing_structure = read_structure(struct_file)
-                                
-                                # Only apply semantic check for Structure (not Molecule)
-                                # For Molecule, fingerprint match after canonicalization is sufficient
-                                is_semantic_match = True
-                                if isinstance(structure, PMGStructure) and isinstance(existing_structure, PMGStructure):
-                                    is_semantic_match = structures_semantically_equal(structure, existing_structure)
-                                
-                                if is_semantic_match:
-                                    # Reuse existing structure
-                                    from quantumvitas.core.resolution import require_structure
-                                    resolved = require_structure(
-                                        project_root, existing_fingerprint_id, config=config, index=index
-                                    )
-                                    return resolved
+                                # Fingerprint match is sufficient for dedup (no secondary check)
+                                from quantumvitas.core.resolution import require_structure
+                                resolved = require_structure(
+                                    project_root, existing_fingerprint_id, config=config, index=index
+                                )
+                                return resolved
                     except Exception:
                         pass  # Skip invalid files
         
@@ -5865,7 +5851,7 @@ class QVService:
         structure = read_structure(structure_path)
         
         # Compute fingerprint for content-based deduplication
-        from quantumvitas.core.structure_fingerprint import structure_fingerprint, structures_semantically_equal
+        from quantumvitas.core.structure_fingerprint import structure_fingerprint
         fingerprint = structure_fingerprint(structure)
         
         # Check existing structures for same fingerprint (content-based dedup)
@@ -5885,11 +5871,9 @@ class QVService:
                         # Found matching structure by fingerprint
                         existing_id = struct_meta.get("id")
                         if existing_id:
-                            # Verify with semantic equality as belt-and-suspenders
-                            existing_structure = read_structure(struct_file)
-                            if structures_semantically_equal(structure, existing_structure):
-                                structure_id_value = existing_id
-                                break
+                            # Fingerprint match is sufficient for dedup
+                            structure_id_value = existing_id
+                            break
                 except Exception:
                     pass  # Skip invalid files
         

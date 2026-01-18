@@ -11,10 +11,8 @@ import shutil
 from pymatgen.core import Structure, Lattice, Molecule
 
 from quantumvitas.core.structure_fingerprint import (
-    canonicalize_structure_for_identity,
     structure_fingerprint,
     structure_like_fingerprint,
-    structures_semantically_equal,
     quantize_scalar,
     quantize_array,
     DEFAULT_FINGERPRINT_TOL_ANG,
@@ -82,53 +80,6 @@ class TestStructureFingerprint:
         assert isinstance(fp, str), "Fingerprint should be a string"
         assert len(fp) == 64, "SHA256 hex digest should be 64 characters"
         assert all(c in '0123456789abcdef' for c in fp), "Fingerprint should be hex"
-    
-    def test_canonicalize_structure_for_identity(self, si_structure):
-        """Test that canonicalization produces structure with coords in [0, 1)."""
-        canon = canonicalize_structure_for_identity(si_structure)
-        
-        for site in canon:
-            frac = site.frac_coords
-            assert all(0 <= f < 1.0 for f in frac), "Fractional coords should be in [0, 1)"
-    
-    def test_canonicalize_preserves_structure(self, si_structure):
-        """Test that canonicalization preserves structure (same composition, similar lattice)."""
-        canon = canonicalize_structure_for_identity(si_structure)
-        
-        assert canon.composition == si_structure.composition, "Composition should be preserved"
-        # Lattice should be similar (within numerical precision)
-        lattice_diff = np.abs(canon.lattice.matrix - si_structure.lattice.matrix)
-        assert np.max(lattice_diff) < 1e-10, "Lattice should be preserved (within numerical precision)"
-
-
-class TestStructuresSemanticallyEqual:
-    """Test semantic equality checking."""
-    
-    def test_semantically_equal_identical(self, si_structure):
-        """Test that identical structures are semantically equal."""
-        assert structures_semantically_equal(si_structure, si_structure), \
-            "Identical structures should be semantically equal"
-    
-    def test_semantically_equal_tiny_perturbations(self, si_structure, si_structure_perturbed):
-        """Test that tiny perturbations are considered semantically equal."""
-        assert structures_semantically_equal(si_structure, si_structure_perturbed, tol=1e-5), \
-            "Tiny perturbations should be semantically equal"
-    
-    def test_semantically_equal_different(self, si_structure, si_structure_different):
-        """Test that significantly different structures are not semantically equal."""
-        assert not structures_semantically_equal(si_structure, si_structure_different, tol=1e-5), \
-            "Significantly different structures should not be semantically equal"
-    
-    def test_semantically_equal_different_composition(self, si_structure):
-        """Test that different compositions are not semantically equal."""
-        # Create structure with different composition
-        lattice = Lattice.cubic(5.43)
-        species = ["Si", "Ge"]  # Different composition
-        coords = [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]
-        different_comp = Structure(lattice, species, coords)
-        
-        assert not structures_semantically_equal(si_structure, different_comp), \
-            "Different compositions should not be semantically equal"
 
 
 class TestUnitRepresentationStability:

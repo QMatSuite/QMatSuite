@@ -343,8 +343,12 @@ src/quantumvitas/core/structure_fingerprint.py
 ├── _build_pbc_payload()              # Payload builder
 ├── _build_molecule_payload()         # Payload builder
 ├── structure_fingerprint()           # Backward compat wrapper
-├── structures_semantically_equal()   # LEGACY: belt-and-suspenders verification only (uses np.mod)
-└── canonicalize_structure_for_identity()  # LEGACY: only used by structures_semantically_equal (uses np.mod)
+│
+│   # DELETED (2026-01-18): The following functions were removed:
+│   # - structures_semantically_equal()
+│   # - canonicalize_structure_for_identity()
+│   # Reason: They used np.mod() and violated the two-phase contract.
+│   # Dedup now uses fingerprint identity only. No secondary verification.
 
 src/quantumvitas/core/structure_canonicalize.py  (NEW or extend existing)
 ├── canonicalize_structure_like_in_place()  # Unified canonicalization entry

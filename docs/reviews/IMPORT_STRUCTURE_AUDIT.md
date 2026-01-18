@@ -43,8 +43,8 @@ else:
 | File | Function | Line Range | Purpose |
 |------|----------|------------|---------|
 | `src/quantumvitas/core/structure_fingerprint.py` | `structure_fingerprint()` | 73-137 | Canonical PBC fingerprint |
-| `src/quantumvitas/core/structure_fingerprint.py` | `canonicalize_structure_for_identity()` | 30-70 | PBC canonicalization for fingerprint |
-| `src/quantumvitas/core/structure_fingerprint.py` | `structures_semantically_equal()` | 140-194 | Semantic equality check |
+| `src/quantumvitas/core/structure_fingerprint.py` | `canonicalize_structure_for_identity()` | **DELETED (2026-01-18)** | Was: PBC canonicalization for fingerprint |
+| `src/quantumvitas/core/structure_fingerprint.py` | `structures_semantically_equal()` | **DELETED (2026-01-18)** | Was: Semantic equality check |
 | `src/quantumvitas/io/structure_io.py` | `structure_fingerprint()` | 433-498 | **DUPLICATE** - demo fingerprint (should be removed) |
 
 ### 2.2 Molecule Hash Fork
@@ -167,7 +167,7 @@ No other locations bypass the canonical fingerprint entrypoint.
 |----------|----------|---------|
 | `canonicalize_structure_in_place()` | `structure_viz.py:208-253` | Entry point for visualization |
 | `canonicalize_frac_coords()` | `structure_viz.py:256-280` | Core wrap logic |
-| `canonicalize_structure_for_identity()` | `structure_fingerprint.py:30-70` | For fingerprint (uses mod 1.0) |
+| `canonicalize_structure_for_identity()` | **DELETED (2026-01-18)** | Was: For fingerprint (uses mod 1.0) |
 
 **Observation**: Two different canonicalization approaches:
 1. `structure_viz.py`: Wraps to `[-WRAP_TOL, 1-WRAP_TOL)`
