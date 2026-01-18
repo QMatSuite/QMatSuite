@@ -519,7 +519,11 @@ def handle_qe_relax_output(
     # 3. Convert to pymatgen Structure (with canonicalization)
     structure = structure_from_qe_geometry_snapshot(snapshot, species)
     
-    # 4. Write current.json
+    # 4. Canonicalize before writing (ensure consistent canonicalization)
+    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+    canonicalize_structure_like_in_place(structure)
+    
+    # 5. Write current.json
     artifact_path = write_generated_structure(
         structure=structure,
         calc_dir=calc_dir,

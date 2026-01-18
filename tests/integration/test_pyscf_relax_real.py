@@ -20,7 +20,23 @@ from quantumvitas.execution.relax_artifacts import (
 from pymatgen.core import Molecule
 
 
-pytestmark = [pytest.mark.integration]  # PySCF is always available
+pytestmark = [pytest.mark.integration]
+
+
+def is_pyscf_available() -> bool:
+    """Check if PySCF can be imported."""
+    try:
+        import pyscf
+        return True
+    except ImportError:
+        return False
+
+
+@pytest.fixture(scope="module", autouse=True)
+def skip_if_pyscf_unavailable():
+    """Skip all tests in this module if PySCF is not available."""
+    if not is_pyscf_available():
+        pytest.skip("PySCF not installed. Install with: pip install pyscf")
 
 
 @pytest.fixture

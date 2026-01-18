@@ -20,6 +20,8 @@ from typing import List, Tuple
 
 import numpy as np
 from pymatgen.core import Structure as PMGStructure
+from pymatgen.core import Molecule as PMGMolecule
+from typing import Union
 
 from quantumvitas.analysis.structure_viz import (
     WRAP_TOL,
@@ -70,9 +72,15 @@ def canonicalize_structure_for_identity(structure: PMGStructure) -> PMGStructure
     return canon
 
 
-def structure_fingerprint(structure: PMGStructure, tol: float = 1e-5) -> str:
+def structure_fingerprint(
+    structure: Union[PMGStructure, PMGMolecule],
+    tol: float = 1e-5,
+) -> str:
     """
     Generate a stable content-based fingerprint for a structure.
+    
+    This function now supports both Structure and Molecule.
+    For new code, prefer structure_like_fingerprint() with tol_ang parameter.
     
     The fingerprint is robust to:
     - Tiny float noise (< tol)
@@ -82,59 +90,178 @@ def structure_fingerprint(structure: PMGStructure, tol: float = 1e-5) -> str:
     - Structural differences > tol
     - Symmetry/basis-change equivalence (by design, for high precision)
     
-    Algorithm:
-    1. Canonicalize structure (wrap + snap to [0,1))
-    2. Quantize lattice vectors and fractional coordinates by tol
-    3. Sort sites deterministically by (element_symbol, fx_q, fy_q, fz_q)
-    4. Hash the quantized data with SHA256
-    
     Args:
-        structure: pymatgen Structure to fingerprint
-        tol: Quantization tolerance for both lattice (Å) and fractional coords (default 1e-5)
+        structure: pymatgen Structure or Molecule
+        tol: Quantization tolerance (in Angstrom, default 1e-5)
         
     Returns:
-        Hex digest string of the fingerprint (SHA256)
+        SHA256 hex digest (64 characters)
     """
-    # Canonicalize for identity
-    canon = canonicalize_structure_for_identity(structure)
+    # Delegate to unified function
+    return structure_like_fingerprint(structure, tol_ang=tol)
+
+
+# =============================================================================
+# Unified Fingerprint Entrypoint (NEW)
+# =============================================================================
+
+DEFAULT_TOL_ANG = 1e-3  # Default tolerance in Angstrom
+
+
+def structure_like_fingerprint(
+    obj: Union[PMGStructure, PMGMolecule],
+    tol_ang: float = DEFAULT_TOL_ANG,
+) -> str:
+    """
+    Unified fingerprint for Structure or Molecule.
     
-    # Quantize lattice matrix (3x3, in Angstrom)
-    lattice_matrix = canon.lattice.matrix
-    lattice_q = np.round(lattice_matrix / tol).astype(np.int64)
+    This is the SINGLE entrypoint for all fingerprint computation.
+    All other code MUST call this function.
     
-    # Quantize fractional coordinates
-    frac_coords = np.array([site.frac_coords for site in canon])
-    frac_q = np.round(frac_coords / tol).astype(np.int64)
+    CRITICAL: This function does NO geometry transforms.
+    It assumes the input is already canonicalized.
     
-    # Get element symbols
-    element_symbols = [site.specie.symbol for site in canon]
+    For PBC structures:
+    - Quantizes lattice vectors and fractional coords (AS-IS, no wrap/mod)
+    - Sorts sites deterministically
     
-    # Create deterministic site ordering: sort by (element_symbol, fx_q, fy_q, fz_q)
+    For molecules:
+    - Quantizes Cartesian coordinates in Angstrom (AS-IS, no COG shift)
+    - Sorts sites deterministically
+    
+    Args:
+        obj: pymatgen Structure or Molecule (must be already canonicalized)
+        tol_ang: Tolerance in Angstrom (default 1e-3)
+        
+    Returns:
+        SHA256 hex digest (64 characters)
+        
+    Raises:
+        TypeError: If obj is neither Structure nor Molecule
+    """
+    if isinstance(obj, PMGMolecule):
+        return _fingerprint_molecule(obj, tol_ang)
+    elif isinstance(obj, PMGStructure):
+        return _fingerprint_pbc_structure(obj, tol_ang)
+    else:
+        raise TypeError(
+            f"Expected pymatgen Structure or Molecule, got {type(obj).__name__}"
+        )
+
+
+def _fingerprint_pbc_structure(structure: PMGStructure, tol_ang: float) -> str:
+    """
+    Fingerprint for PBC Structure.
+    
+    CRITICAL: This function does NO geometry transforms.
+    It assumes the structure is already canonicalized.
+    
+    Algorithm:
+    1. Compute fractional tolerance from tol_ang and min lattice vector length
+    2. Quantize lattice matrix (NO transforms)
+    3. Quantize fractional coords AS-IS (NO mod, NO wrap)
+    4. Sort sites by (element, fx_q, fy_q, fz_q)
+    5. Build payload and hash
+    
+    Args:
+        structure: pymatgen Structure (must be already canonicalized)
+        tol_ang: Tolerance in Angstrom
+        
+    Returns:
+        SHA256 hex digest
+    """
+    # 1. Compute fractional tolerance
+    a, b, c = structure.lattice.abc  # lattice vector lengths in Angstrom
+    min_length = min(a, b, c)
+    if min_length < 1e-10:
+        raise ValueError(f"Lattice vector too small: min={min_length}")
+    frac_tol = tol_ang / min_length
+    
+    # 2. Quantize lattice matrix (in Angstrom) - NO transforms
+    lattice_matrix = structure.lattice.matrix
+    lattice_q = np.round(lattice_matrix / tol_ang).astype(np.int64)
+    
+    # 3. Quantize fractional coordinates AS-IS - NO mod, NO wrap
+    # Structure is assumed to be already canonicalized
+    frac_coords = structure.frac_coords  # Use directly
+    frac_q = np.round(frac_coords / frac_tol).astype(np.int64)
+    
+    # 4. Get species symbols
+    species = [site.specie.symbol for site in structure]
+    
+    # 5. Sort sites deterministically: (element, fx_q, fy_q, fz_q)
     site_data = [
-        (elem, fx, fy, fz)
-        for elem, (fx, fy, fz) in zip(element_symbols, frac_q)
+        (elem, int(fx), int(fy), int(fz))
+        for elem, (fx, fy, fz) in zip(species, frac_q)
     ]
     site_data_sorted = sorted(site_data, key=lambda x: (x[0], x[1], x[2], x[3]))
     
-    # Build fingerprint payload
-    # Format: lattice (9 ints) + sorted sites (element, fx, fy, fz for each)
-    payload_parts = []
+    # 6. Build payload
+    payload_parts = ["PBC"]
     
     # Lattice matrix (flattened, row-major)
-    payload_parts.append("lattice:")
+    payload_parts.append("lat")
     for row in lattice_q:
-        payload_parts.extend([str(x) for x in row])
+        for val in row:
+            payload_parts.append(str(int(val)))
     
     # Sorted sites
-    payload_parts.append("sites:")
+    payload_parts.append("sites")
     for elem, fx, fy, fz in site_data_sorted:
         payload_parts.append(f"{elem}:{fx}:{fy}:{fz}")
     
-    # Join and hash
+    # Hash
     payload = "|".join(payload_parts)
-    fingerprint = hashlib.sha256(payload.encode('utf-8')).hexdigest()
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()
+
+
+def _fingerprint_molecule(molecule: PMGMolecule, tol_ang: float) -> str:
+    """
+    Fingerprint for Molecule.
     
-    return fingerprint
+    CRITICAL: This function does NO geometry transforms.
+    It assumes the molecule is already canonicalized (centered at origin).
+    
+    Algorithm:
+    1. Get Cartesian coordinates AS-IS (already centered)
+    2. Quantize coordinates (NO COG shift here)
+    3. Sort sites deterministically
+    4. Build payload and hash
+    
+    Args:
+        molecule: pymatgen Molecule (must be already canonicalized)
+        tol_ang: Tolerance in Angstrom
+        
+    Returns:
+        SHA256 hex digest
+    """
+    # 1. Get Cartesian coordinates AS-IS - already canonicalized
+    coords = np.array([site.coords for site in molecule])
+    
+    # 2. Quantize coordinates - NO COG shift, NO transform
+    if len(coords) > 0:
+        coords_q = np.round(coords / tol_ang).astype(np.int64)
+    else:
+        coords_q = np.array([], dtype=np.int64).reshape(0, 3)
+    
+    # 4. Get species symbols
+    species = [site.specie.symbol for site in molecule]
+    
+    # 5. Sort sites deterministically: (element, x_q, y_q, z_q)
+    site_data = [
+        (elem, int(x), int(y), int(z))
+        for elem, (x, y, z) in zip(species, coords_q)
+    ]
+    site_data_sorted = sorted(site_data, key=lambda x: (x[0], x[1], x[2], x[3]))
+    
+    # 6. Build payload
+    payload_parts = ["MOL", "sites"]
+    for elem, x, y, z in site_data_sorted:
+        payload_parts.append(f"{elem}:{x}:{y}:{z}")
+    
+    # Hash
+    payload = "|".join(payload_parts)
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
 
 def structures_semantically_equal(
