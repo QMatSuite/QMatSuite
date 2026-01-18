@@ -781,9 +781,12 @@ export function StepDetailPanel({
       
       // Include parameter_scan updates (send empty {} if no scans to clear orphans, undefined if never had scans)
       // Backend will do full replace, so we must send the complete pruned map
-      const parameterScanPayload = Object.keys(prunedParameterScan).length > 0 
-        ? prunedParameterScan 
-        : (Object.keys(stepDetail.parameter_scan || {}).length > 0 ? {} : undefined);
+      // IMPORTANT: If user removed all scan refs, send {} explicitly so backend deletes old scans
+      const hasReferencedScans = referencedScanIds.size > 0;
+      const stepHadScans = stepDetail.parameter_scan && Object.keys(stepDetail.parameter_scan).length > 0;
+      const parameterScanPayload = hasReferencedScans
+        ? prunedParameterScan
+        : (stepHadScans ? {} : undefined);
       
       const response = await window.qv.request<StepDetail>('update_step_params', {
         project_root: normalizedProjectRoot,
