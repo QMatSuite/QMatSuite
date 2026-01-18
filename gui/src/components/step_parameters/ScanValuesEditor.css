@@ -1,0 +1,37 @@
+.scan-values-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scan-values-editor__input {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.scan-values-editor__input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.scan-values-editor__input--error {
+  border-color: #dc3545;
+}
+
+.scan-values-editor__error {
+  color: #dc3545;
+  font-size: 11px;
+  margin-top: -2px;
+}
+
+.scan-values-editor__hint {
+  color: #666;
+  font-size: 11px;
+  font-style: italic;
+}
+

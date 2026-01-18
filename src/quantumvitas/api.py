@@ -4433,7 +4433,12 @@ class QVService:
             raise error
         
         # Load step spec (DAG + ULID model: structure_id is already in spec)
+        # Also load parameter_scan directly from YAML (not in StructureStepSpec)
+        import yaml
+        step_yaml_content = None
         try:
+            with open(step.absolute_path, 'r') as f:
+                step_yaml_content = yaml.safe_load(f) or {}
             spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=None)
         except FileNotFoundError:
             # Step file was deleted or never created (ghost step)
@@ -4475,6 +4480,10 @@ class QVService:
             "species_overrides": spec.species_overrides,
         }
         
+        # Add parameter_scan if present in YAML (not in StructureStepSpec)
+        if step_yaml_content and "parameter_scan" in step_yaml_content:
+            result["parameter_scan"] = step_yaml_content["parameter_scan"]
+        
         # Add injection/conflict metadata if available
         if injection_info:
             result["prefix_outdir_injection"] = injection_info
@@ -4488,6 +4497,7 @@ class QVService:
         step_selector: str,
         parameters: Dict[str, Dict[str, Any]],
         cards: Optional[Dict[str, Dict[str, Any]]] = None,
+        parameter_scan: Optional[Dict[str, Dict[str, Any]]] = None,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> Dict[str, Any]:
@@ -4547,6 +4557,9 @@ class QVService:
                 # Set or remove the parameter
                 if value is None:
                     param_patch[namelist_upper][key] = None  # None means delete in apply_patch
+                elif isinstance(value, dict) and "scan_ref" in value:
+                    # ScanRef dict: store as-is (no validation/parsing)
+                    param_patch[namelist_upper][key] = value
                 else:
                     raw_value = str(value)  # Ensure string for parsing
                     
@@ -4582,6 +4595,10 @@ class QVService:
                 else:
                     card_patch[card_upper] = card_data
             step_doc.apply_patch({"cards": card_patch})
+        
+        # Update parameter_scan if provided
+        if parameter_scan is not None:
+            step_doc.apply_patch({"parameter_scan": parameter_scan})
         
         # Save via factory (journaled)
         # Warnings are computed and attached by save_step_doc via return value

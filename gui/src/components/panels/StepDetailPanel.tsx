@@ -13,6 +13,7 @@ import { useQEParameterMetadata, type QEParameterMeta } from '../../hooks/useQEP
 import { ActiveParametersPanel } from '../step_parameters/ActiveParametersPanel';
 import { AddParameterPalette } from '../step_parameters/AddParameterPalette';
 import { CommonCardKPoints, type CommonCardKPointsRef } from '../common_cards/CommonCardKPoints';
+import { isScanRef, getScanId, generateScanId, findReferencedScanIds } from '../../utils/scanUtils';
 import './StepDetailPanel.css';
 
 interface StepDetailPanelProps {
@@ -171,6 +172,7 @@ export function StepDetailPanel({
   // Editing state
   const [isEditing, setIsEditing] = useState(false);
   const [editedParams, setEditedParams] = useState<Record<string, Record<string, unknown>>>({});
+  const [editedParameterScan, setEditedParameterScan] = useState<Record<string, { values: unknown[] }>>({});
   const [hasChanges, setHasChanges] = useState(false);
   
   // Common cards view model state
@@ -367,6 +369,8 @@ export function StepDetailPanel({
           setError(null);
           // Initialize edited params from current values (include ALL parameters, not just editable ones)
           setEditedParams(JSON.parse(JSON.stringify(response.data.parameters)));
+          // Initialize edited parameter_scan
+          setEditedParameterScan(JSON.parse(JSON.stringify(response.data.parameter_scan || {})));
           setHasChanges(false);
           
           // Load common cards view model
@@ -745,17 +749,23 @@ export function StepDetailPanel({
         }
       }
       
+      // Include parameter_scan updates if any
+      // NOTE: Backend API needs to be extended to accept parameter_scan in payload
+      // For now, we'll send it and the backend will need to handle it
       const response = await window.qv.request<StepDetail>('update_step_params', {
         project_root: normalizedProjectRoot,
         calculation: calculationSelector,
         step: stepSelector,
         parameters: paramUpdates,
+        parameter_scan: Object.keys(editedParameterScan).length > 0 ? editedParameterScan : undefined,
       });
       
       if (response.ok && response.data) {
         setStepDetail(response.data);
         // Initialize edited params from current values (include ALL parameters, not just editable ones)
         setEditedParams(JSON.parse(JSON.stringify(response.data.parameters)));
+        // Initialize edited parameter_scan
+        setEditedParameterScan(JSON.parse(JSON.stringify(response.data.parameter_scan || {})));
         setHasChanges(false);
         setIsEditing(false);
         onParametersUpdated?.();
@@ -792,6 +802,7 @@ export function StepDetailPanel({
       if (response.ok && response.data) {
         setStepDetail(response.data);
         setEditedParams(JSON.parse(JSON.stringify(response.data.parameters)));
+        setEditedParameterScan(JSON.parse(JSON.stringify(response.data.parameter_scan || {})));
         setHasChanges(false);
         onParametersUpdated?.();
       } else {
@@ -808,10 +819,106 @@ export function StepDetailPanel({
   const handleCancelEdit = useCallback(() => {
     if (stepDetail) {
       setEditedParams(JSON.parse(JSON.stringify(stepDetail.parameters)));
+      setEditedParameterScan(JSON.parse(JSON.stringify(stepDetail.parameter_scan || {})));
     }
     setHasChanges(false);
     setIsEditing(false);
   }, [stepDetail]);
+  
+  // Handle scan toggle
+  const handleScanToggle = useCallback((namelist: string, paramName: string, enabled: boolean) => {
+    if (!stepDetail) return;
+    
+    const currentValue = stepDetail.parameters[namelist]?.[paramName];
+    const currentScanId = isScanRef(currentValue) ? getScanId(currentValue) : null;
+    
+    if (enabled) {
+      // Turn scan ON: convert value to scan_ref
+      // Reuse existing scan_id if already scanned, otherwise generate new one
+      const existingScanIds = Object.keys(editedParameterScan);
+      const scanId = currentScanId || generateScanId(existingScanIds);
+      
+      // Set parameter to scan_ref
+      setEditedParams(prev => {
+        const updated = JSON.parse(JSON.stringify(prev));
+        if (!updated[namelist]) {
+          updated[namelist] = {};
+        }
+        updated[namelist][paramName] = { scan_ref: scanId };
+        return updated;
+      });
+      
+      // Create or update scan definition
+      setEditedParameterScan(prev => {
+        const updated = JSON.parse(JSON.stringify(prev));
+        if (!updated[scanId]) {
+          // Initialize with current value if it exists and is a leaf value
+          const initialValue = currentValue;
+          const initialValues = (initialValue !== null && initialValue !== undefined && 
+            (typeof initialValue === 'string' || typeof initialValue === 'number' || typeof initialValue === 'boolean' || 
+             (Array.isArray(initialValue) && initialValue.every(item => 
+               item === null || typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean'
+             ))))
+            ? [initialValue]
+            : [];
+          updated[scanId] = { values: initialValues };
+        }
+        return updated;
+      });
+      
+      setHasChanges(true);
+    } else {
+      // Turn scan OFF: convert scan_ref back to concrete value
+      if (currentScanId) {
+        // Get first value from scan definition, or use null
+        const scanDef = editedParameterScan[currentScanId];
+        const firstValue = scanDef?.values?.[0] ?? null;
+        
+        // Set parameter to concrete value
+        setEditedParams(prev => {
+          const updated = JSON.parse(JSON.stringify(prev));
+          if (!updated[namelist]) {
+            updated[namelist] = {};
+          }
+          updated[namelist][paramName] = firstValue;
+          return updated;
+        });
+        
+        // Check if scan_id is still referenced by other parameters
+        // Build updated params with this param removed
+        const updatedParams = { ...editedParams };
+        if (updatedParams[namelist]) {
+          updatedParams[namelist] = { ...updatedParams[namelist] };
+          delete updatedParams[namelist][paramName];
+        }
+        const stillReferenced = findReferencedScanIds(
+          updatedParams,
+          stepDetail.cards
+        ).has(currentScanId);
+        
+        // Remove scan definition if not referenced
+        if (!stillReferenced) {
+          setEditedParameterScan(prev => {
+            const updated = JSON.parse(JSON.stringify(prev));
+            delete updated[currentScanId];
+            return updated;
+          });
+        }
+        
+        setHasChanges(true);
+      }
+    }
+  }, [stepDetail, editedParams, editedParameterScan]);
+  
+  // Handle scan values change
+  const handleScanValuesChange = useCallback((scanId: string, values: unknown[]) => {
+    setEditedParameterScan(prev => {
+      const updated = JSON.parse(JSON.stringify(prev));
+      updated[scanId] = { values };
+      return updated;
+    });
+    setHasChanges(true);
+  }, []);
   
   // Update hasChanges to include K_POINTS dirty state
   useEffect(() => {
@@ -1305,6 +1412,7 @@ export function StepDetailPanel({
               stepDetail={{
                 ...stepDetail,
                 parameters: isEditing ? editedParams : stepDetail.parameters,
+                parameter_scan: isEditing ? editedParameterScan : stepDetail.parameter_scan,
               }}
               module={module}
               metadata={{
@@ -1315,6 +1423,8 @@ export function StepDetailPanel({
               onParameterChange={handleParamChange}
               onParameterReset={handleParameterReset}
               onParameterRemove={handleParameterRemove}
+              onScanToggle={handleScanToggle}
+              onScanValuesChange={handleScanValuesChange}
             />
           )}
         </div>

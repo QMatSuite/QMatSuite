@@ -16,6 +16,9 @@ import { useCallback, useMemo } from 'react';
 import type { StepDetail } from '../../types/qv';
 import type { QEParameterMeta, QEModuleMeta } from '../../hooks/useQEParameterMetadata';
 import { ParameterValueEditor } from './ParameterValueEditor';
+import { ScanToggle } from './ScanToggle';
+import { ScanValuesEditor } from './ScanValuesEditor';
+import { isScanRef, getScanId, isLeafValue, generateScanId, findReferencedScanIds } from '../../utils/scanUtils';
 import './ActiveParametersPanel.css';
 
 interface ActiveParametersPanelProps {
@@ -29,6 +32,8 @@ interface ActiveParametersPanelProps {
   onParameterChange: (namelist: string, paramName: string, value: unknown) => void;
   onParameterReset: (namelist: string, paramName: string) => void;
   onParameterRemove: (namelist: string, paramName: string) => void;
+  onScanToggle?: (namelist: string, paramName: string, enabled: boolean) => void;
+  onScanValuesChange?: (scanId: string, values: unknown[]) => void;
 }
 
 interface ParameterWithMetadata {
@@ -46,6 +51,8 @@ export function ActiveParametersPanel({
   onParameterChange,
   onParameterReset,
   onParameterRemove,
+  onScanToggle,
+  onScanValuesChange,
 }: ActiveParametersPanelProps) {
   
   // Group active parameters by namelist
@@ -262,24 +269,99 @@ export function ActiveParametersPanel({
                 </div>
                 
                 <div className="active-parameters-panel__parameter-value">
-                  {isEditing ? (
-                    <ParameterValueEditor
-                      parameter={param.metadata || {
-                        name: param.name,
-                        type: null,
-                        default: null,
-                        enum: null,
-                        description: null,
-                        section: namelist,
-                        module: module || '',
-                      }}
-                      value={param.value}
-                      onChange={(value) => onParameterChange(namelist, param.name, value)}
-                      disabled={false}
-                    />
-                  ) : (
+                  {isEditing ? (() => {
+                    const isScanned = isScanRef(param.value);
+                    const scanId = isScanned ? getScanId(param.value) : null;
+                    const canScan = isLeafValue(param.value) || isScanned;
+                    
+                    // If scanned, show scan values editor
+                    if (isScanned && scanId && onScanValuesChange) {
+                      const scanDef = stepDetail.parameter_scan?.[scanId];
+                      const scanValues = scanDef?.values || [];
+                      
+                      return (
+                        <div className="active-parameters-panel__scan-editor">
+                          <ScanValuesEditor
+                            values={scanValues}
+                            onChange={(values) => onScanValuesChange(scanId, values)}
+                            disabled={false}
+                          />
+                        </div>
+                      );
+                    }
+                    
+                    // If not scanned but can be scanned, show value editor with scan toggle
+                    if (canScan && onScanToggle) {
+                      return (
+                        <div className="active-parameters-panel__value-editor-with-scan">
+                          <div className="active-parameters-panel__value-editor-wrapper">
+                            <ParameterValueEditor
+                              parameter={param.metadata || {
+                                name: param.name,
+                                type: null,
+                                default: null,
+                                enum: null,
+                                description: null,
+                                section: namelist,
+                                module: module || '',
+                              }}
+                              value={param.value}
+                              onChange={(value) => onParameterChange(namelist, param.name, value)}
+                              disabled={false}
+                            />
+                          </div>
+                          <ScanToggle
+                            isScanned={isScanned}
+                            onChange={(enabled) => onScanToggle(namelist, param.name, enabled)}
+                            disabled={false}
+                          />
+                        </div>
+                      );
+                    }
+                    
+                    // Fallback: show value editor only (no scan support)
+                    // This handles non-leaf values or when scan callbacks are not provided
+                    if (typeof param.value === 'object' && param.value !== null && !Array.isArray(param.value) && !isScanRef(param.value)) {
+                      // Unsupported object value - show read-only
+                      return (
+                        <div className="active-parameters-panel__unsupported-value">
+                          <code className="active-parameters-panel__parameter-value-display">
+                            Unsupported object value
+                          </code>
+                          <span className="active-parameters-panel__unsupported-warning">
+                            ⚠️ Complex objects cannot be scanned
+                          </span>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <ParameterValueEditor
+                        parameter={param.metadata || {
+                          name: param.name,
+                          type: null,
+                          default: null,
+                          enum: null,
+                          description: null,
+                          section: namelist,
+                          module: module || '',
+                        }}
+                        value={param.value}
+                        onChange={(value) => onParameterChange(namelist, param.name, value)}
+                        disabled={false}
+                      />
+                    );
+                  })() : (
                     <code className="active-parameters-panel__parameter-value-display">
-                      {param.value === null || param.value === undefined ? '—' : String(param.value)}
+                      {(() => {
+                        if (isScanRef(param.value)) {
+                          const scanId = getScanId(param.value);
+                          const scanDef = stepDetail.parameter_scan?.[scanId || ''];
+                          const count = scanDef?.values?.length || 0;
+                          return `{scan_ref: ${scanId}} (${count} values)`;
+                        }
+                        return param.value === null || param.value === undefined ? '—' : String(param.value);
+                      })()}
                     </code>
                   )}
                 </div>

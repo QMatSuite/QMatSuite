@@ -1,0 +1,37 @@
+.scan-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.scan-toggle:hover:not(:disabled) {
+  border-color: #007bff;
+  background: #f0f8ff;
+}
+
+.scan-toggle--active {
+  border-color: #007bff;
+  background: #e7f3ff;
+  color: #007bff;
+}
+
+.scan-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.scan-toggle__icon {
+  font-size: 14px;
+}
+
+.scan-toggle__label {
+  font-weight: 500;
+}
+
