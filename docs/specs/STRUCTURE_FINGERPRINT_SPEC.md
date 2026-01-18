@@ -10,6 +10,7 @@
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 2.2.0 | 2026-01-XX | **FIX**: Fingerprint quantization uses deterministic rounding (floor(x/tol+0.5+eps)), removing banker's rounding instability. |
 | 2.1.0 | 2026-01-18 | **BREAKING**: Fingerprint no longer wraps/mods coords. Canonicalization is import-time only. Molecule COG shift moved to canonicalization phase. |
 | 2.0.0 | 2026-01-18 | Initial unified fingerprint for Structure + Molecule |
 
@@ -161,11 +162,12 @@ def _fingerprint_pbc_structure(structure: Structure, tol_ang: float) -> str:
     frac_tol = tol_ang / min(a, b, c)
     
     # 2. Quantize lattice matrix (in Å) - NO transforms
-    lattice_q = np.round(structure.lattice.matrix / tol_ang).astype(np.int64)
+    # Uses deterministic quantization: q = floor(x / tol + 0.5 + eps)
+    lattice_q = quantize_array(structure.lattice.matrix / tol_ang).astype(np.int64)
     
     # 3. Quantize fractional coordinates AS-IS - NO mod, NO wrap
     frac_coords = structure.frac_coords  # Use directly, already canonicalized
-    frac_q = np.round(frac_coords / frac_tol).astype(np.int64)
+    frac_q = quantize_array(frac_coords / frac_tol).astype(np.int64)
     
     # 4. Get species symbols
     species = [site.specie.symbol for site in structure]
@@ -178,11 +180,23 @@ def _fingerprint_pbc_structure(structure: Structure, tol_ang: float) -> str:
     return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 ```
 
+**Quantization Rule** (CRITICAL):
+
+Quantize each numeric scalar `x` as:
+```
+q = floor(x / tol + 0.5 + eps)
+```
+where `eps = 1e-12` (dimensionless).
+
+**Rationale**: Banker's rounding (`round()` / `np.round()`) uses ties-to-even at half-integers, causing instability. For example, when `x / tol = N + 0.5` (exactly half-integer), tiny noise can flip between `N` and `N+1`. The deterministic rule `floor(x/tol + 0.5 + eps)` ensures ties always round up, eliminating this instability.
+
+**Knife-edge regression case**: For `tol_ang=1e-3 Å` and lattice min length `Lmin=5.43 Å`, `frac_tol = tol_ang/Lmin`, and `frac=0.25`, we get `0.25/frac_tol = 250*Lmin = 1357.5` (half-integer). This is not rare because many tests use common lattice constants and symmetric fractional coordinates. Deterministic tie-breaking is required.
+
 **Fields included**:
 | Field | Format | Quantization |
 |-------|--------|--------------|
-| Lattice vectors | 3×3 matrix in Å | `round(value / tol_ang)` → int64 |
-| Fractional coordinates | Nx3 matrix (as-is) | `round(frac / frac_tol)` → int64 |
+| Lattice vectors | 3×3 matrix in Å | `quantize_scalar(value / tol_ang)` → int64 |
+| Fractional coordinates | Nx3 matrix (as-is) | `quantize_scalar(frac / frac_tol)` → int64 |
 | Species symbols | List of strings | Exact |
 
 **Fields excluded**: `__qv_meta__`, provenance, ULIDs, charge, spin, properties.
@@ -198,7 +212,8 @@ def _fingerprint_molecule(molecule: Molecule, tol_ang: float) -> str:
     coords = np.array([site.coords for site in molecule])
     
     # 2. Quantize coordinates - NO COG shift here
-    coords_q = np.round(coords / tol_ang).astype(np.int64)
+    # Uses deterministic quantization: q = floor(x / tol + 0.5 + eps)
+    coords_q = quantize_array(coords / tol_ang).astype(np.int64)
     
     # 3. Get species symbols
     species = [site.specie.symbol for site in molecule]
@@ -211,10 +226,12 @@ def _fingerprint_molecule(molecule: Molecule, tol_ang: float) -> str:
     return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 ```
 
+**Quantization Rule**: Same as PBC - uses `quantize_scalar(x, tol)` = `floor(x / tol + 0.5 + eps)` where `eps = 1e-12`.
+
 **Fields included**:
 | Field | Format | Quantization |
 |-------|--------|--------------|
-| Cartesian coordinates | Nx3 matrix in Å (already centered) | `round(value / tol_ang)` → int64 |
+| Cartesian coordinates | Nx3 matrix in Å (already centered) | `quantize_scalar(value / tol_ang)` → int64 |
 | Species symbols | List of strings | Exact |
 
 **Fields excluded**: `__qv_meta__`, provenance, charge, spin_multiplicity, properties.
