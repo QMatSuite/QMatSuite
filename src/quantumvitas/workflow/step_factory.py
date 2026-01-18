@@ -177,8 +177,16 @@ def save_step_doc(step_doc: StepDoc, path: Path) -> list[str]:
     # Update path in meta
     path = Path(path).resolve()
     
+    # INSTRUMENTATION: Log before calling save_yaml_doc
+    import logging
+    save_logger = logging.getLogger(__name__)
+    save_logger.info(f"[save_step_doc] About to call save_yaml_doc for {path}")
+    
     # Save through yaml_io (journal hook)
     save_yaml_doc(step_doc, path)
+    
+    # INSTRUMENTATION: Log after save_yaml_doc
+    save_logger.info(f"[save_step_doc] save_yaml_doc completed for {path}")
     
     return warnings
 

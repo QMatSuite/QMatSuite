@@ -4618,21 +4618,16 @@ class QVService:
         # INSTRUMENTATION: Log before save
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"[update_step_params] About to save step.yaml: {step.absolute_path}")
-        logger.info(f"[update_step_params] Parameters patch keys: {list(param_patch.keys()) if param_patch else 'none'}")
-        logger.info(f"[update_step_params] Parameter_scan provided: {parameter_scan is not None}, keys: {list(parameter_scan.keys()) if parameter_scan else 'none'}")
+        logger.info(f"[API] update_step_params: About to save step_doc to {step.absolute_path}, "
+                    f"parameter_scan={parameter_scan is not None and list(parameter_scan.keys()) if parameter_scan else 'None'}, "
+                    f"param_patch_keys={list(param_patch.keys())}")
         
         # Save via factory (journaled)
         # Warnings are computed and attached by save_step_doc via return value
         warnings = save_step_doc(step_doc, step.absolute_path)
         
         # INSTRUMENTATION: Log after save
-        import os
-        if step.absolute_path.exists():
-            mtime = os.path.getmtime(step.absolute_path)
-            logger.info(f"[update_step_params] File saved successfully, mtime: {mtime}")
-        else:
-            logger.error(f"[update_step_params] File does not exist after save: {step.absolute_path}")
+        logger.info(f"[API] update_step_params: save_step_doc completed for {step.absolute_path}")
         
         # Return the updated step detail (pass cached index/config to avoid rebuilding)
         result = QVService.get_step_detail(

@@ -384,7 +384,7 @@ class TestYamlDocApplyPatch:
         doc.apply_patch({"a": 99})
         
         assert doc.get(["a"]) == 99
-    
+
     def test_apply_patch_scan_token_replaces_scalar(self):
         """Scan token string replaces scalar leaf (regression test for parameter scan)."""
         doc = YamlDoc({
