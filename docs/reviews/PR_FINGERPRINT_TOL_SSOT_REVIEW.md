@@ -112,7 +112,8 @@ All other occurrences of `1e-3` are in documentation or the SSOT definition itse
 
 ## 6. Remaining Risks / Follow-ups
 
-1. **Low**: `canonicalize_structure_for_identity()` (legacy function at line 33-73) still uses `np.mod`. This is only used in `structures_semantically_equal()` which is a secondary verification function, not the main fingerprint path. **No action required** unless that function is called in production paths.
+1. **RESOLVED**: `canonicalize_structure_for_identity()` and `structures_semantically_equal()` have been 
+   deleted from the codebase. Dedup uses fingerprint identity only.
 
 2. **Low**: Tests still use explicit `tol_ang=1e-3` in many places (44 occurrences in test file). These are test-specific and do not affect production code. **Cosmetic improvement only**.
 
