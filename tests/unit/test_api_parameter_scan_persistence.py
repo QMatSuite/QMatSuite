@@ -132,7 +132,7 @@ def test_update_step_params_parameter_scan_preserves_array_values(tmp_path):
     
     # Reload step and verify values array is preserved (length 3, not 0 or 1)
     step_doc = StepDoc.load(step_yaml)
-    parameter_scan = step_doc.get(["parameter_scan"]) or {}
+    parameter_scan = step_doc.export_copy(["parameter_scan"]) or {}
     
     assert "scan001" in parameter_scan
     values = parameter_scan["scan001"]["values"]
@@ -204,7 +204,7 @@ def test_update_step_params_parameter_scan_empty_clears_all(tmp_path):
     
     # Reload step and verify all scans are deleted
     step_doc = StepDoc.load(step_yaml)
-    parameter_scan = step_doc.get(["parameter_scan"]) or {}
+    parameter_scan = step_doc.export_copy(["parameter_scan"]) or {}
     
     # Should be empty or not present
     assert not parameter_scan or len(parameter_scan) == 0
@@ -258,7 +258,7 @@ def test_update_step_params_parameter_scan_multiple_scans(tmp_path):
     
     # Reload step and verify both scans persist
     step_doc = StepDoc.load(step_yaml)
-    parameter_scan = step_doc.get(["parameter_scan"]) or {}
+    parameter_scan = step_doc.export_copy(["parameter_scan"]) or {}
     
     assert "scan001" in parameter_scan
     assert parameter_scan["scan001"]["values"] == [40, 50, 60]
