@@ -4597,9 +4597,19 @@ class QVService:
             step_doc.apply_patch({"cards": card_patch})
         
         # Update parameter_scan if provided (full replace, not merge)
-        # This matches K_POINTS "full replace" pattern and ensures orphan scans are deleted
+        # YamlDoc.set() forbids dict values, so we must delete old keys first, then apply_patch new ones
         if parameter_scan is not None:
-            step_doc.set(["parameter_scan"], parameter_scan)
+            # Read existing parameter_scan map
+            old_parameter_scan = step_doc.get(["parameter_scan"]) or {}
+            
+            # Delete ALL old scan definitions (full replace semantics)
+            for scan_id in old_parameter_scan.keys():
+                step_doc.delete(["parameter_scan", scan_id])
+            
+            # Apply new parameter_scan (if non-empty)
+            if parameter_scan:
+                step_doc.apply_patch({"parameter_scan": parameter_scan})
+            # If parameter_scan is empty {}, we've already deleted all old keys above
         
         # Save via factory (journaled)
         # Warnings are computed and attached by save_step_doc via return value
