@@ -332,10 +332,13 @@ export function ActiveParametersPanel({
                           {currentMode === 'scan' && scanId && onScanValuesChange ? (
                             <div className="active-parameters-panel__scan-editor-inline">
                               {(() => {
-                                // Use editedParameterScan if editing, otherwise stepDetail.parameter_scan
-                                const effectiveParameterScan = isEditing && editedParameterScan 
-                                  ? editedParameterScan 
-                                  : stepDetail.parameter_scan;
+                                // Use editedParameterScan if editing and it has scan definitions, otherwise fall back to stepDetail.parameter_scan
+                                // Empty object {} is truthy, so we must check for actual keys
+                                const editedHasScan = editedParameterScan && Object.keys(editedParameterScan).length > 0;
+                                const effectiveParameterScan =
+                                  isEditing
+                                    ? (editedHasScan ? editedParameterScan : (stepDetail.parameter_scan || {}))
+                                    : (stepDetail.parameter_scan || {});
                                 const scanDef = effectiveParameterScan?.[scanId];
                                 const scanValues = scanDef?.values || [];
                                 const hasEmptyValues = scanValues.length === 0;
