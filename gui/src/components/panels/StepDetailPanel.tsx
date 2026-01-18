@@ -626,6 +626,10 @@ export function StepDetailPanel({
   
   // Handle parameter reset (remove user value, fallback to default)
   const handleParameterReset = useCallback((namelist: string, paramName: string) => {
+    // Check if parameter being reset is a scan token
+    const paramValue = (isEditing ? editedParams : stepDetail?.parameters)?.[namelist]?.[paramName];
+    const scanId = isScanRef(paramValue) ? getScanId(paramValue) : null;
+    
     setEditedParams(prev => {
       const updated = { ...prev };
       if (updated[namelist] && updated[namelist][paramName] !== undefined) {
@@ -637,8 +641,30 @@ export function StepDetailPanel({
       }
       return updated;
     });
+    
+    // Prune scan definition if this was the only reference
+    if (scanId) {
+      const updatedParams = { ...editedParams };
+      if (updatedParams[namelist]) {
+        updatedParams[namelist] = { ...updated[namelist] };
+        delete updatedParams[namelist][paramName];
+      }
+      const stillReferenced = findReferencedScanIds(
+        updatedParams,
+        stepDetail?.cards
+      ).has(scanId);
+      
+      if (!stillReferenced) {
+        setEditedParameterScan(prev => {
+          const updated = JSON.parse(JSON.stringify(prev));
+          delete updated[scanId];
+          return updated;
+        });
+      }
+    }
+    
     setHasChanges(true);
-  }, []);
+  }, [isEditing, editedParams, stepDetail]);
   
   // Handle parameter remove (delete from step)
   const handleParameterRemove = useCallback((namelist: string, paramName: string) => {
@@ -749,15 +775,22 @@ export function StepDetailPanel({
         }
       }
       
-      // Include parameter_scan updates if any
-      // NOTE: Backend API needs to be extended to accept parameter_scan in payload
-      // For now, we'll send it and the backend will need to handle it
+      // Prune parameter_scan to only referenced scan_ids before sending
+      const referencedScanIds = findReferencedScanIds(editedParams, stepDetail.cards);
+      const prunedParameterScan = pruneParameterScan(editedParameterScan, referencedScanIds);
+      
+      // Include parameter_scan updates (send empty {} if no scans to clear orphans, undefined if never had scans)
+      // Backend will do full replace, so we must send the complete pruned map
+      const parameterScanPayload = Object.keys(prunedParameterScan).length > 0 
+        ? prunedParameterScan 
+        : (Object.keys(stepDetail.parameter_scan || {}).length > 0 ? {} : undefined);
+      
       const response = await window.qv.request<StepDetail>('update_step_params', {
         project_root: normalizedProjectRoot,
         calculation: calculationSelector,
         step: stepSelector,
         parameters: paramUpdates,
-        parameter_scan: Object.keys(editedParameterScan).length > 0 ? editedParameterScan : undefined,
+        parameter_scan: parameterScanPayload,
       });
       
       if (response.ok && response.data) {
@@ -829,8 +862,10 @@ export function StepDetailPanel({
   const handleScanToggle = useCallback((namelist: string, paramName: string, enabled: boolean) => {
     if (!stepDetail) return;
     
+    // CRITICAL: Capture previous value BEFORE replacing it with token
     const currentValue = (isEditing ? editedParams : stepDetail.parameters)[namelist]?.[paramName];
     const currentScanId = isScanRef(currentValue) ? getScanId(currentValue) : null;
+    const prevValue = currentValue; // Capture for initialization
     
     if (enabled) {
       // Turn scan ON: convert value to scan_ref
@@ -851,21 +886,24 @@ export function StepDetailPanel({
         return updated;
       });
       
-      // Create or update scan definition
+      // Create scan definition ONLY if it does not exist (idempotent)
+      // Never overwrite existing arrays
       setEditedParameterScan(prev => {
         const updated = JSON.parse(JSON.stringify(prev));
         if (!updated[scanId]) {
-          // Initialize with current value if it exists and is a leaf value
-          const initialValue = currentValue;
-          const initialValues = (initialValue !== null && initialValue !== undefined && 
-            (typeof initialValue === 'string' || typeof initialValue === 'number' || typeof initialValue === 'boolean' || 
-             (Array.isArray(initialValue) && initialValue.every(item => 
+          // Initialize with previous value (captured before token replacement)
+          // Only initialize if prevValue is a scalar leaf
+          const initialValues = (prevValue !== null && prevValue !== undefined && 
+            !isScanRef(prevValue) && // Don't initialize from token
+            (typeof prevValue === 'string' || typeof prevValue === 'number' || typeof prevValue === 'boolean' || 
+             (Array.isArray(prevValue) && prevValue.every((item: any) => 
                item === null || typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean'
              ))))
-            ? [initialValue]
+            ? [prevValue]
             : [];
           updated[scanId] = { values: initialValues };
         }
+        // If scanId already exists, do NOT overwrite (preserve existing values array)
         return updated;
       });
       
