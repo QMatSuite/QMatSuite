@@ -77,7 +77,7 @@ class TestWriteGeneratedStructure:
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step_ulid,
-            step_type="qe_vc_relax",
+            step_type="qe_relax",
         )
         
         assert result_path.exists()
@@ -164,10 +164,6 @@ class TestIsRelaxStepType:
     def test_qe_relax_is_relax(self):
         """qe_relax is detected as relax."""
         assert is_relax_step_type("qe_relax") is True
-
-    def test_qe_vc_relax_is_relax(self):
-        """qe_vc_relax is detected as relax."""
-        assert is_relax_step_type("qe_vc_relax") is True
 
     def test_qe_scf_is_not_relax(self):
         """qe_scf is not a relax step."""

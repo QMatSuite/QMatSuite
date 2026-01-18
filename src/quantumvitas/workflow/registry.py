@@ -195,19 +195,7 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         public_type="relax",
         engine="qe",
         executable="pw.x",
-        description="Atomic relaxation (optimize positions, fixed cell)",
-        requires_structure=True,
-        requires_charge_density=False,
-        produces_charge_density=False,  # CHANGED: Relax doesn't produce reusable electronic state
-        is_structure_transform=True,     # NEW: Marks step as structure transform
-    ),
-    "qe_vc_relax": StepTypeSpec(
-        id="vc-relax",
-        machine_type="qe_vc_relax",
-        public_type="vc-relax",
-        engine="qe",
-        executable="pw.x",
-        description="Variable-cell relaxation (optimize positions and cell)",
+        description="Structure relaxation (positions and optionally cell)",
         requires_structure=True,
         requires_charge_density=False,
         produces_charge_density=False,  # CHANGED: Relax doesn't produce reusable electronic state
@@ -428,6 +416,18 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         produces_state=None,  # Phase 3C: TD produces no new persisted state (results to files)
         token="t",  # Stable token for subchain basenames
     ),
+    "pyscf_relax": StepTypeSpec(
+        id="relax",
+        machine_type="pyscf_relax",
+        public_type="relax",
+        engine="pyscf",
+        executable="python",
+        description="PySCF geometry optimization (geomopt)",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        is_structure_transform=True,
+    ),
 
     # -------------------------------------------------------------------------
     # ORCA step types (molecular quantum chemistry - external binary)
@@ -476,6 +476,18 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         consumes_state="gbw",  # Depends on SCF wavefunction
         produces_state=None,
         token="t",  # Stable token for subchain basenames
+    ),
+    "orca_relax": StepTypeSpec(
+        id="relax",
+        machine_type="orca_relax",
+        public_type="relax",
+        engine="orca",
+        executable="orca",
+        description="ORCA geometry optimization",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        is_structure_transform=True,
     ),
 
     # -------------------------------------------------------------------------
@@ -683,6 +695,44 @@ def reset_registry() -> None:
     _registry = None
 
 
+# Compatibility aliases for deprecated step types
+# These map old step types to the unified "relax" type
+STEP_TYPE_ALIASES = {
+    "vc-relax": "relax",
+    "qe_vc_relax": "qe_relax",
+    "opt": "relax",
+    "geomopt": "relax",
+}
+
+
+def normalize_step_type(step_type: str) -> str:
+    """
+    Normalize step type, applying compatibility aliases.
+    
+    Maps deprecated step types (vc-relax, opt, geomopt) to the unified "relax" type.
+    Issues a deprecation warning when an alias is used.
+    
+    Args:
+        step_type: Step type (may be deprecated alias)
+        
+    Returns:
+        Normalized step type (e.g., "relax" instead of "vc-relax")
+    """
+    if not step_type:
+        return step_type
+    
+    if step_type in STEP_TYPE_ALIASES:
+        import warnings
+        warnings.warn(
+            f"Step type '{step_type}' is deprecated. Use 'relax' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return STEP_TYPE_ALIASES[step_type]
+    
+    return step_type
+
+
 def normalize_step_type_to_public(step_type: str) -> str:
     """
     Normalize step_type to public (legacy) format for backward compatibility.
@@ -698,6 +748,9 @@ def normalize_step_type_to_public(step_type: str) -> str:
     """
     if not step_type:
         return step_type
+    
+    # First apply compatibility aliases
+    step_type = normalize_step_type(step_type)
     
     registry = get_registry()
     spec = registry.get(step_type)
