@@ -96,14 +96,16 @@ class TestMaterializationMap:
     
     def test_all_mappings_return_valid_step_type(self):
         """All mappings return either a valid step type string or None."""
-        from quantumvitas.workflow.registry import get_registry
+        from quantumvitas.workflow.registry import get_registry, normalize_step_type
         
         registry = get_registry()
         for (family, gen_step), specific_step in MATERIALIZATION_MAP.items():
             if specific_step is not None:
+                # Normalize deprecated types (qe_vc_relax maps to qe_relax)
+                normalized = normalize_step_type(specific_step)
                 # Should be a valid step type in registry (or backward compat mapped)
-                assert registry.has(specific_step), \
-                    f"Materialized step '{specific_step}' for ({family}, {gen_step}) not found in registry"
+                assert registry.has(normalized), \
+                    f"Materialized step '{specific_step}' (normalized: {normalized}) for ({family}, {gen_step}) not found in registry"
 
 
 class TestSupportedSteps:

@@ -131,11 +131,15 @@ def is_relax_step_type(step_type: str) -> bool:
     Check if a step type is a relax type.
     
     Uses registry lookup to check is_structure_transform flag.
+    Normalizes deprecated step types (vc-relax, qe_vc_relax, opt, geomopt) first.
     """
-    from quantumvitas.workflow.registry import get_registry
+    from quantumvitas.workflow.registry import get_registry, normalize_step_type
+    
+    # Normalize deprecated types (vc-relax, qe_vc_relax, opt, geomopt) to unified types
+    normalized = normalize_step_type(step_type)
     
     registry = get_registry()
-    spec = registry.get(step_type)
+    spec = registry.get(normalized)
     if spec is None:
         return False
     return getattr(spec, 'is_structure_transform', False)

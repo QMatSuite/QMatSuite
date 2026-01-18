@@ -51,10 +51,14 @@ class TestStepTypeRegistry:
     
     def test_registry_has_required_step_types(self, registry):
         """Registry has all v0 required step types."""
+        from quantumvitas.workflow.registry import normalize_step_type
+        
         required = ["scf", "nscf", "relax", "vc-relax", "bands_pw", "dos", "bands"]
         
         for step_type in required:
-            assert registry.has(step_type), f"Missing step type: {step_type}"
+            # Normalize deprecated types (vc-relax maps to relax)
+            normalized = normalize_step_type(step_type)
+            assert registry.has(normalized), f"Missing step type: {step_type} (normalized: {normalized})"
     
     def test_get_step_type_spec(self, registry):
         """Get returns StepTypeSpec with correct fields."""
@@ -128,8 +132,12 @@ class TestStepTypeRegistry:
         engine_supported = set(engine.supported_presets)
         
         # For each PW gen step, check that ParamSpace dimensions match engine capability
+        from quantumvitas.workflow.registry import normalize_step_type
+        
         for step_type in ["scf", "nscf", "relax", "vc-relax", "bands_pw"]:
-            spec = registry.get(step_type)
+            # Normalize deprecated types (vc-relax maps to relax)
+            normalized = normalize_step_type(step_type)
+            spec = registry.get(normalized)
             assert spec is not None
             
             # Query ParamSpace for dimensions applicable to this gen step

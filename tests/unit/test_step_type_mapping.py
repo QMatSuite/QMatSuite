@@ -339,8 +339,8 @@ class TestRelaxStepTypeConfiguration:
     """Test that relax step types have correct configuration for structure transforms."""
 
     def test_relax_step_types_have_is_structure_transform_true(self):
-        """All relax/vc-relax step types must have is_structure_transform=True."""
-        relax_step_types = ["qe_relax", "qe_vc_relax"]
+        """All relax step types must have is_structure_transform=True."""
+        relax_step_types = ["qe_relax"]
         
         for step_type in relax_step_types:
             spec = _STEP_TYPES.get(step_type)
@@ -351,8 +351,8 @@ class TestRelaxStepTypeConfiguration:
             )
 
     def test_relax_step_types_do_not_produce_charge_density(self):
-        """All relax/vc-relax step types must have produces_charge_density=False."""
-        relax_step_types = ["qe_relax", "qe_vc_relax"]
+        """All relax step types must have produces_charge_density=False."""
+        relax_step_types = ["qe_relax"]
         
         for step_type in relax_step_types:
             spec = _STEP_TYPES.get(step_type)
@@ -362,3 +362,45 @@ class TestRelaxStepTypeConfiguration:
                 f"Relax steps do NOT produce reusable electronic state. "
                 f"Current value: {spec.produces_charge_density}"
             )
+
+    def test_only_relax_is_gen_public_type(self):
+        """Only 'relax' should be the GEN step public type for structure transforms."""
+        registry = get_registry()
+        gen_public_types = set()
+        for spec in _STEP_TYPES.values():
+            if getattr(spec, 'is_structure_transform', False):
+                gen_public_types.add(spec.public_type)
+        
+        # Should only contain "relax"
+        assert gen_public_types == {"relax"}, (
+            f"Expected only 'relax' as GEN public type for structure transforms, "
+            f"but found: {gen_public_types}. "
+            f"vc-relax, opt, geomopt should not exist as separate public types."
+        )
+
+    def test_qe_vc_relax_does_not_exist(self):
+        """qe_vc_relax should not exist as a separate step type."""
+        registry = get_registry()
+        assert registry.get("qe_vc_relax") is None, (
+            "qe_vc_relax should not exist. VC-relax should be controlled via "
+            "qe_relax with parameters.CONTROL.calculation='vc-relax' option."
+        )
+        assert registry.get("vc-relax") is None, (
+            "vc-relax should not exist as a public type. Use 'relax' instead."
+        )
+
+    def test_orca_relax_exists(self):
+        """orca_relax should be registered."""
+        registry = get_registry()
+        spec = registry.get("orca_relax")
+        assert spec is not None, "orca_relax should be registered"
+        assert spec.public_type == "relax", f"Expected public_type='relax', got '{spec.public_type}'"
+        assert spec.is_structure_transform is True, "orca_relax should have is_structure_transform=True"
+
+    def test_pyscf_relax_exists(self):
+        """pyscf_relax should be registered."""
+        registry = get_registry()
+        spec = registry.get("pyscf_relax")
+        assert spec is not None, "pyscf_relax should be registered"
+        assert spec.public_type == "relax", f"Expected public_type='relax', got '{spec.public_type}'"
+        assert spec.is_structure_transform is True, "pyscf_relax should have is_structure_transform=True"

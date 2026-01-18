@@ -63,7 +63,7 @@ MATERIALIZATION_MAP: Dict[Tuple[str, str], Optional[str]] = {
     ("qe", "SCF"): "qe_scf",
     ("qe", "NSCF"): "qe_nscf",
     ("qe", "RELAX"): "qe_relax",
-    ("qe", "VC_RELAX"): "qe_vc_relax",
+    ("qe", "VC_RELAX"): "qe_relax",  # VC_RELAX now maps to unified qe_relax
     ("qe", "BANDS"): "qe_bands_pw",  # pw.x calculation='bands'
     ("qe", "BANDS_POST"): "qe_bands",  # bands.x post-processing
     ("qe", "DOS"): "qe_dos",

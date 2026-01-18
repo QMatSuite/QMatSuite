@@ -29,7 +29,8 @@ class TestRelaxE2E:
     def test_relax_step_type_detection(self):
         """Verify relax step types are correctly identified."""
         assert is_relax_step_type("qe_relax") is True
-        assert is_relax_step_type("qe_vc_relax") is True
+        # qe_vc_relax is deprecated and normalizes to qe_relax
+        assert is_relax_step_type("qe_vc_relax") is True  # Should normalize and return True
         assert is_relax_step_type("qe_scf") is False
         
         # Verify registry configuration
@@ -218,7 +219,7 @@ class TestRelaxE2E:
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step_ulid,
-            step_type="qe_vc_relax",
+            step_type="qe_relax",  # Use unified type instead of deprecated qe_vc_relax
             run_id=run_id,
             calculation_ulid=calc_ulid,
             input_structure_ulid=input_ulid,
@@ -231,7 +232,7 @@ class TestRelaxE2E:
         assert meta["type"] == "generated_structure"
         assert meta["source_step_ulid"] == step_ulid
         assert meta["source_run_id"] == run_id
-        assert meta["provenance"]["method"] == "qe_vc_relax"
+        assert meta["provenance"]["method"] == "qe_relax"
         assert meta["provenance"]["calculation_ulid"] == calc_ulid
         assert meta["provenance"]["input_structure_ulid"] == input_ulid
         assert "generated_at" in meta
