@@ -32,7 +32,13 @@ from quantumvitas.analysis.structure_viz import (
 
 def canonicalize_structure_for_identity(structure: PMGStructure) -> PMGStructure:
     """
-    Canonicalize a structure for identity comparison.
+    LEGACY: Canonicalize a structure for identity comparison.
+    
+    ⚠️ WARNING: This function uses `np.mod()` which violates the two-phase contract.
+    It is ONLY used by `structures_semantically_equal()` for belt-and-suspenders verification.
+    
+    DO NOT use this function for fingerprint computation. Use `canonicalize_structure_like_in_place()`
+    followed by `structure_like_fingerprint()` instead.
     
     This function:
     1. Converts to fractional coordinates if needed
@@ -48,6 +54,9 @@ def canonicalize_structure_for_identity(structure: PMGStructure) -> PMGStructure
         
     Returns:
         A new canonicalized Structure suitable for stable identity/hashing
+        
+    Deprecated:
+        Use `canonicalize_structure_like_in_place()` + `structure_like_fingerprint()` for new code.
     """
     # Create a copy to avoid modifying the original
     canon = structure.copy()
@@ -143,12 +152,13 @@ def quantize_array(arr: np.ndarray, tol: float = 1.0) -> np.ndarray:
 # Unified Fingerprint Entrypoint (NEW)
 # =============================================================================
 
-DEFAULT_TOL_ANG = 1e-3  # Default tolerance in Angstrom
+# SSOT: Single source of truth for fingerprint tolerance
+DEFAULT_FINGERPRINT_TOL_ANG = 1e-3  # Default tolerance in Angstrom
 
 
 def structure_like_fingerprint(
     obj: Union[PMGStructure, PMGMolecule],
-    tol_ang: float = DEFAULT_TOL_ANG,
+    tol_ang: float = DEFAULT_FINGERPRINT_TOL_ANG,
 ) -> str:
     """
     Unified fingerprint for Structure or Molecule.
@@ -311,7 +321,13 @@ def structures_semantically_equal(
     tol: float = 1e-5,
 ) -> bool:
     """
-    Check if two structures are semantically equal after canonicalization.
+    LEGACY: Check if two structures are semantically equal after canonicalization.
+    
+    ⚠️ WARNING: This function uses `canonicalize_structure_for_identity()` which uses `np.mod()`.
+    It is ONLY for belt-and-suspenders verification after fingerprint matching.
+    
+    DO NOT use this function in fingerprint/relax production paths. Fingerprint matching
+    should use `structure_like_fingerprint()` directly.
     
     This is a secondary verification step that can be used after fingerprint
     matching for belt-and-suspenders validation.
@@ -323,6 +339,10 @@ def structures_semantically_equal(
         
     Returns:
         True if structures are semantically equal (same elements, lattice, coords within tol)
+        
+    Note:
+        This function is kept for backward compatibility in `api.py` deduplication logic.
+        New code should rely on fingerprint matching only.
     """
     # Canonicalize both
     canon_a = canonicalize_structure_for_identity(a)

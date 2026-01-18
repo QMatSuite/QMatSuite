@@ -343,8 +343,8 @@ src/quantumvitas/core/structure_fingerprint.py
 ├── _build_pbc_payload()              # Payload builder
 ├── _build_molecule_payload()         # Payload builder
 ├── structure_fingerprint()           # Backward compat wrapper
-├── structures_semantically_equal()   # KEEP unchanged
-└── canonicalize_structure_for_identity()  # KEEP for legacy (may deprecate)
+├── structures_semantically_equal()   # LEGACY: belt-and-suspenders verification only (uses np.mod)
+└── canonicalize_structure_for_identity()  # LEGACY: only used by structures_semantically_equal (uses np.mod)
 
 src/quantumvitas/core/structure_canonicalize.py  (NEW or extend existing)
 ├── canonicalize_structure_like_in_place()  # Unified canonicalization entry

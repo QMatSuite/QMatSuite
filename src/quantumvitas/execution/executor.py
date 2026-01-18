@@ -44,7 +44,7 @@ from quantumvitas.execution.relax_artifacts import (
     read_generated_structure,
     is_relax_step_type,
 )
-from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
+from quantumvitas.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
 
 
 logger = logging.getLogger(__name__)
@@ -748,7 +748,7 @@ class JobExecutor:
                     )
                 
                 # Compute SHA
-                effective_structure_sha = structure_like_fingerprint(structure, tol_ang=1e-3)
+                effective_structure_sha = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
                 
                 return (structure, effective_structure_sha)
         
