@@ -4599,8 +4599,9 @@ class QVService:
         # Update parameter_scan if provided (full replace, not merge)
         # YamlDoc.set() forbids dict values, so we must delete old keys first, then apply_patch new ones
         if parameter_scan is not None:
-            # Read existing parameter_scan map
-            old_parameter_scan = step_doc.get(["parameter_scan"]) or {}
+            # Read existing parameter_scan map (use export_copy for branch dict)
+            # export_copy returns None if path doesn't exist, or empty dict if branch is empty
+            old_parameter_scan = step_doc.export_copy(["parameter_scan"]) or {}
             
             # Delete ALL old scan definitions (full replace semantics)
             for scan_id in old_parameter_scan.keys():
