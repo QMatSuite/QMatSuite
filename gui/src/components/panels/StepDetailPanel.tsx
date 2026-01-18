@@ -646,7 +646,7 @@ export function StepDetailPanel({
     if (scanId) {
       const updatedParams = { ...editedParams };
       if (updatedParams[namelist]) {
-        updatedParams[namelist] = { ...updated[namelist] };
+        updatedParams[namelist] = { ...updatedParams[namelist] };
         delete updatedParams[namelist][paramName];
       }
       const stillReferenced = findReferencedScanIds(
@@ -777,7 +777,14 @@ export function StepDetailPanel({
       
       // Prune parameter_scan to only referenced scan_ids before sending
       const referencedScanIds = findReferencedScanIds(editedParams, stepDetail.cards);
-      const prunedParameterScan = pruneParameterScan(editedParameterScan, referencedScanIds);
+      const prunedParameterScan: Record<string, { values: unknown[] }> = {};
+      for (const scanId of referencedScanIds) {
+        if (editedParameterScan[scanId]) {
+          prunedParameterScan[scanId] = editedParameterScan[scanId];
+        } else if (stepDetail.parameter_scan?.[scanId]) {
+          prunedParameterScan[scanId] = stepDetail.parameter_scan[scanId];
+        }
+      }
       
       // Include parameter_scan updates (send empty {} if no scans to clear orphans, undefined if never had scans)
       // Backend will do full replace, so we must send the complete pruned map

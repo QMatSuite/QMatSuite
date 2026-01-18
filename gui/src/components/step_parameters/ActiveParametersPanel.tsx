@@ -519,7 +519,6 @@ function ManagedParametersSection({
       {isExpanded && (
         <div className="active-parameters-panel__managed-content">
           {managedParameters.map((param) => {
-            const meta = param.metadata as any;
             const reasonText = getManagedReasonText(param);
             // Get effective value from injection info if available
             const injectionInfo = stepDetail.prefix_outdir_injection;
