@@ -12,14 +12,20 @@
 | PR1 | Registry Updates + Type Foundation | ✅ 完成 | `pytest tests/unit/test_step_type_mapping.py -v` |
 | PR2 | QC Topology Verification | ✅ 完成 | `pytest tests/unit/execution/test_qc_topology.py -v` |
 | PR3 | Generated Structures Helper Functions | ✅ 完成 | `pytest tests/unit/execution/test_relax_artifacts.py -v` |
-| PR3b | Executor Integration | ⏸️ 延后 | (PR6 一起做) |
+| PR3b | Executor Integration | ✅ 完成 | `pytest tests/integration/test_relax_execution.py -v` |
 | PR4 | Missing Artifact Hard Error + Manifest | ✅ 完成 | `pytest tests/unit/test_manifest_effective_structure.py -v` |
 | PR5 | Promote API + Daemon RPC | ✅ 完成 | `pytest tests/daemon/test_promote_relax_structure.py -v` |
 | PR6 | Integration Tests + Documentation | ✅ 完成 | `pytest tests/integration/test_relax_e2e.py -v` |
+| PR7 | ORCA Relax Parser | ✅ 完成 | `pytest tests/unit/execution/test_orca_relax_parser.py -v` |
+| PR8 | PySCF Relax Handler | ✅ 完成 | `pytest tests/unit/execution/test_pyscf_relax_handler.py -v` |
+| PR9 | Real QE Relax Test | ✅ 完成 | `pytest tests/integration/test_qe_relax_real.py -v` |
+| **PR10** | **Real ORCA Relax Test** | ⏳ 待做 | `pytest tests/integration/test_orca_relax_real.py -v` |
+| **PR11** | **Real PySCF Relax Test** | ⏳ 待做 | `pytest tests/integration/test_pyscf_relax_real.py -v` |
+| PR12 | Promote E2E Test | ⏳ 待做 | `pytest tests/integration/test_relax_promote_e2e.py -v` |
 
-**执行顺序**: PR1 → PR2 → PR3 → PR4 → PR5 → PR6 (PR3b 包含在 PR6 中)
+**执行顺序**: PR1 → ... → PR9 → PR10 → PR11 → PR12
 
-**当前进度**: 所有 PR 已完成！✅
+**当前进度**: PR1-PR9 完成，PR10-PR12 待做
 
 ---
 
@@ -511,51 +517,41 @@ class TestIsRelaxStepType:
 
 ---
 
-## PR 3b: Executor Integration (Optional - 可延后)
+## PR 3b: Executor Integration ✅ 完成
 
 **目的**: 将 relax_artifacts 集成到 executor 的执行流程中
-
-**前置条件**: PR3 完成且测试通过
-
-**注意**: 此 PR 涉及真实执行流程，建议在有实际 QE relax 测试环境后再实现。
-可以先实现 PR4 和 PR5，它们不依赖此 PR。
 
 **改动文件**:
 - `src/quantumvitas/execution/executor.py` - 在 job 循环中调用 relax_artifacts 函数
 - `tests/integration/test_relax_execution.py` (新建)
 
-**关键修改点** (executor.py 第 136-170 行附近):
+**关键实现**:
 
-```python
-# 在 for job in jobs_to_execute: 循环内部
+已在 `executor.py` 中实现：
 
-# Step 1: Pre-clean (在执行前)
-from quantumvitas.execution.relax_artifacts import (
-    clean_generated_structure,
-    write_generated_structure,
-    is_relax_step_type,
-)
+1. **Pre-clean**: `_pre_clean_relax_steps()` 方法
+   - 在 job 执行前调用
+   - 删除本 job 覆盖的所有 relax steps 的 `current.json`
+   - 确保 `current.json` 存在意味着本次运行成功
 
-for step_id in job.step_ids:
-    step = self._find_step_by_id(calculation, step_id)
-    if step and is_relax_step_type(step.step_type):
-        calc_dir = calculation.dir if hasattr(calculation, 'dir') else calculation.path.parent
-        clean_generated_structure(calc_dir, step_id)
+2. **Post-process**: `_post_process_relax_steps()` 方法
+   - 在 job 成功后调用
+   - 支持 QE, ORCA, PySCF 三种引擎
+   - 解析输出文件并写入 `current.json`
 
-# Step 2: Execute job (现有代码)
-result = self._execute_single_job(job, calculation, ...)
+3. **集成点**:
+   - 在 `execute()` 方法的 job 循环中：
+     - 执行前：`self._pre_clean_relax_steps(job, calculation)`
+     - 执行后（成功时）：`self._post_process_relax_steps(job, job_result, calculation, context)`
 
-# Step 3: Post-process (在执行后，成功时)
-if result.success:
-    for step_id in job.step_ids:
-        step = self._find_step_by_id(calculation, step_id)
-        if step and is_relax_step_type(step.step_type):
-            # Parse and write generated structure
-            # 这需要从 handler 返回 parsed structure，暂时跳过
-            pass
-```
+**测试**:
+- `tests/integration/test_relax_execution.py` 包含 4 个测试：
+  - `test_executor_pre_clean_before_job_execution`: 验证 pre-clean 功能
+  - `test_executor_post_process_after_successful_job`: 验证 post-process 功能
+  - `test_executor_post_process_only_on_success`: 验证失败时不 post-process
+  - `test_executor_pre_clean_only_affects_job_steps`: 验证 pre-clean 只影响当前 job 的 steps
 
-**由于此 PR 需要真实 QE 执行环境，建议延后到 PR6 集成测试阶段一起做。**
+**测试命令**: `pytest tests/integration/test_relax_execution.py -v`
 
 ---
 
@@ -777,6 +773,768 @@ def _handle_promote_relax_structure(self, payload: Dict[str, Any]) -> Dict[str, 
 - 完整端到端流程验证
 
 **测试命令**: `pytest tests/integration/test_relax_e2e.py -v`
+
+---
+
+---
+
+## PR 10: Real ORCA Relax Test (启发式编程方法)
+
+**目的**: 创建真实 ORCA geometry optimization 集成测试，验证完整执行流程
+
+**重要**: 本地已安装 ORCA，所有测试必须实际运行，**不允许 skip**。
+
+### 启发式编程方法 (Critical!)
+
+**步骤 1**: 先运行一次 ORCA relax，保存输出文件
+
+```bash
+# 激活虚拟环境
+cd <HOME>/QMatSuite && source .venv/bin/activate
+
+# 创建一个最小的 ORCA geometry optimization 任务并运行
+python3 << 'PYEOF'
+from pathlib import Path
+from quantumvitas.core.paths import tmp_runs_dir
+from quantumvitas.api import QVService
+from pymatgen.core import Molecule
+import shutil
+
+# 1. 创建测试项目
+test_dir = tmp_runs_dir() / "orca_relax_analysis"
+test_dir.mkdir(parents=True, exist_ok=True)
+project_root = QVService.init_project(test_dir / "orca_relax_project")
+
+# 2. 创建 H2 分子 (最简单的 geometry optimization)
+h2 = Molecule(["H", "H"], [[0, 0, 0], [0.8, 0, 0]])  # 初始距离故意设远一点
+h2_file = test_dir / "h2.xyz"
+h2.to(filename=h2_file, fmt="xyz")
+
+# 3. 导入结构
+struct_result = QVService.import_structure(project_root, h2_file, name="H2")
+
+# 4. 创建 calculation (engine_family=orca, structure_kind=molecule)
+calc = QVService.init_calculation(
+    project_root, "h2_relax",
+    structure_selector=struct_result.meta.id,
+    engine_family="orca",
+    structure_kind="molecule",
+)
+
+# 5. 创建 relax step
+step = QVService.init_step(project_root, calc.id, "orca_relax", name="relax")
+
+# 6. 配置 step (最小参数)
+QVService.configure_step(
+    project_root, calc.id, step.id,
+    parameters={
+        "method": "HF",
+        "basis": "STO-3G",  # 最小基组，速度快
+        "geom": {"MaxIter": 50},
+    },
+)
+
+# 7. 运行
+print(f"Project: {project_root}")
+print(f"Calculation: {calc.id}")
+print(f"Step: {step.id}")
+result = QVService.run_step(project_root, calc.id, step.id, verbose=True)
+
+print(f"\nResult: {result}")
+
+# 8. 保存输出文件用于分析
+if result.get("success"):
+    print("\n=== SUCCESS ===")
+    # 查找输出文件
+    calc_dir = project_root / "calculations" / "h2_relax"
+    raw_dir = calc_dir / "raw"
+    if raw_dir.exists():
+        # ORCA 输出文件通常是 *.out 或 *.xyz
+        for f in raw_dir.rglob("*"):
+            if f.is_file():
+                print(f"Found: {f}")
+                if f.suffix in [".out", ".xyz", ".log"]:
+                    # 复制到分析目录
+                    dest = Path("/tmp") / f"orca_relax_output_{f.name}"
+                    shutil.copy2(f, dest)
+                    print(f"  -> Saved to: {dest}")
+else:
+    print(f"\n=== FAILED ===")
+    print(result.get("error"))
+PYEOF
+```
+
+**步骤 2**: 分析输出文件格式
+
+```bash
+cd <HOME>/QMatSuite && source .venv/bin/activate
+
+# 查看 ORCA 输出文件结构
+echo "=== ORCA Output Files ==="
+ls -la /tmp/orca_relax_output_* 2>/dev/null || echo "No output files found yet"
+
+# 分析 .out 文件 (ORCA 主输出)
+if [ -f /tmp/orca_relax_output_*.out ]; then
+    echo ""
+    echo "=== Searching for final geometry in .out file ==="
+    grep -A 20 "FINAL SINGLE POINT ENERGY\|FINAL ENERGY EVALUATION\|OPTIMIZATION HAS CONVERGED\|CARTESIAN COORDINATES (ANGSTROEM)" /tmp/orca_relax_output_*.out | head -50
+fi
+
+# 分析 .xyz 文件 (ORCA 通常会生成优化后的 xyz)
+if [ -f /tmp/orca_relax_output_*.xyz ]; then
+    echo ""
+    echo "=== Content of .xyz file ==="
+    cat /tmp/orca_relax_output_*.xyz
+fi
+
+# 分析 *_trj.xyz (trajectory file)
+if [ -f /tmp/orca_relax_output_*_trj.xyz ]; then
+    echo ""
+    echo "=== Content of trajectory xyz file ==="
+    tail -20 /tmp/orca_relax_output_*_trj.xyz
+fi
+```
+
+**步骤 3**: 基于输出格式编写/修复解析器
+
+根据步骤 2 的输出，确定：
+1. ORCA 优化后的结构在哪个文件？通常是 `{basename}.xyz` 或 `{basename}_trj.xyz` 的最后一帧
+2. 坐标格式是什么？通常是 Angstrom 的笛卡尔坐标
+3. 需要解析哪些关键字？例如 `CARTESIAN COORDINATES (ANGSTROEM)`
+
+**步骤 4**: 测试解析器
+
+```python
+# 直接测试解析函数
+from quantumvitas.execution.orca_relax_parser import parse_orca_optimized_xyz
+
+xyz_file = Path("/tmp/orca_relax_output_chain_*.xyz")  # 根据实际文件名调整
+molecule = parse_orca_optimized_xyz(xyz_file)
+print(f"Parsed molecule: {len(molecule)} atoms")
+print(f"Bond distance: {molecule.get_distance(0, 1):.4f} Angstrom")
+```
+
+**步骤 5**: 运行完整集成测试
+
+```bash
+cd <HOME>/QMatSuite && source .venv/bin/activate
+pytest tests/integration/test_orca_relax_real.py -v --tb=short
+```
+
+### 改动文件
+
+- `tests/integration/test_orca_relax_real.py` (新建)
+- `src/quantumvitas/execution/orca_relax_parser.py` (可能需要修复)
+
+### 测试文件模板
+
+```python
+"""
+Real ORCA relax integration test.
+
+This test actually runs ORCA to perform a geometry optimization
+and verifies that the output is correctly parsed and written to current.json.
+"""
+
+import json
+import pytest
+import time
+import uuid
+from pathlib import Path
+
+from quantumvitas.api import QVService
+from quantumvitas.core.paths import tmp_runs_dir
+from quantumvitas.execution.relax_artifacts import (
+    get_generated_structure_path,
+    read_generated_structure,
+)
+from pymatgen.core import Molecule
+
+
+pytestmark = [pytest.mark.integration, pytest.mark.requires_orca]
+
+
+@pytest.fixture(scope="module")
+def orca_engine():
+    """Create an ORCA engine instance and validate required executables."""
+    from quantumvitas.engine.orca_engine import ORCAEngine
+    from quantumvitas.core.engines.base import EngineConfig
+    
+    config = EngineConfig(name="orca")
+    try:
+        engine = ORCAEngine(config)
+        
+        if not engine.is_available():
+            raise RuntimeError(
+                "ORCA installation not found. ORCA is required for these tests."
+            )
+        
+        return engine
+    except Exception as e:
+        raise RuntimeError(f"ORCA engine initialization failed: {e}") from e
+
+
+@pytest.fixture
+def orca_project_with_h2():
+    """Create a project with H2 molecule for ORCA relax test."""
+    # Use .tmp/runs/ directory with unique name
+    unique_id = f"orca_relax_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+    test_dir = tmp_runs_dir() / unique_id
+    test_dir.mkdir(parents=True, exist_ok=True)
+    
+    project_root = QVService.init_project(test_dir / "orca_relax_project")
+    
+    # Create H2 molecule (simple case for quick test)
+    h2_molecule = Molecule(["H", "H"], [[0, 0, 0], [0.8, 0, 0]])
+    
+    # Save molecule to file
+    h2_file = test_dir / "h2.xyz"
+    h2_molecule.to(filename=h2_file, fmt="xyz")
+    
+    # Import structure
+    struct_result = QVService.import_structure(project_root, h2_file, name="H2")
+    
+    return {
+        "project_root": project_root,
+        "structure_id": struct_result.meta.id,
+        "structure_path": struct_result.absolute_path,
+        "test_dir": test_dir,
+    }
+
+
+@pytest.fixture
+def orca_calculation_with_relax(orca_project_with_h2):
+    """Create a calculation with a relax step, configured for ORCA."""
+    project_root = orca_project_with_h2["project_root"]
+    structure_id = orca_project_with_h2["structure_id"]
+    
+    # Create calculation with molecule/orca settings
+    calc_result = QVService.init_calculation(
+        project_root=project_root,
+        name="h2_relax",
+        structure_selector=structure_id,
+        engine_family="orca",
+        structure_kind="molecule",
+    )
+    calc_ulid = calc_result.id
+    if calc_result.absolute_path.is_dir():
+        calc_dir = calc_result.absolute_path
+    else:
+        calc_dir = calc_result.absolute_path.parent
+    
+    # Create relax step
+    relax_step_result = QVService.init_step(
+        project_root=project_root,
+        calculation_selector=calc_ulid,
+        step_type="orca_relax",
+        name="relax",
+    )
+    relax_step_ulid = relax_step_result.id
+    
+    # Configure relax step with minimal parameters for quick test
+    QVService.configure_step(
+        project_root=project_root,
+        calculation_selector=calc_ulid,
+        step_selector=relax_step_ulid,
+        parameters={
+            "method": "HF",
+            "basis": "STO-3G",  # Minimal basis for speed
+            "geom": {"MaxIter": 50},
+        },
+    )
+    
+    return {
+        "project_root": project_root,
+        "calc_ulid": calc_ulid,
+        "calc_dir": calc_dir,
+        "relax_step_ulid": relax_step_ulid,
+        "structure_id": structure_id,
+    }
+
+
+class TestORCARelaxReal:
+    """Real ORCA relax integration tests."""
+    
+    def test_orca_relax_execution_creates_current_json(
+        self,
+        orca_calculation_with_relax,
+        orca_engine,
+    ):
+        """
+        Test that running an ORCA relax step actually executes ORCA,
+        and the output is parsed and written to current.json.
+        """
+        
+        calc_ulid = orca_calculation_with_relax["calc_ulid"]
+        relax_step_ulid = orca_calculation_with_relax["relax_step_ulid"]
+        calc_dir = orca_calculation_with_relax["calc_dir"]
+        project_root = orca_calculation_with_relax["project_root"]
+        
+        # Run the relax step
+        result = QVService.run_step(
+            project_root=project_root,
+            calculation_selector=calc_ulid,
+            step_selector=relax_step_ulid,
+            verbose=False,
+        )
+        
+        # Verify step completed
+        assert result.get("success") is True, f"Step failed: {result.get('error')}"
+        
+        # Verify current.json was created
+        artifact_path = get_generated_structure_path(calc_dir, relax_step_ulid)
+        assert artifact_path.exists(), (
+            f"current.json not found at {artifact_path}. "
+            "Check executor logs for post-processing errors."
+        )
+        
+        # Verify structure can be read
+        relaxed_structure = read_generated_structure(calc_dir, relax_step_ulid)
+        assert relaxed_structure is not None, "Failed to read generated structure"
+        assert len(relaxed_structure) == 2, "Expected 2 H atoms"
+        
+        # Verify H-H bond distance is reasonable (around 0.74 Angstrom for HF/STO-3G)
+        bond_distance = relaxed_structure.get_distance(0, 1)
+        assert 0.6 < bond_distance < 1.0, f"H-H bond distance {bond_distance} seems wrong"
+        
+        # Verify metadata
+        data = json.loads(artifact_path.read_text())
+        assert "__qv_meta__" in data
+        assert data["__qv_meta__"]["source_step_ulid"] == relax_step_ulid
+        assert data["__qv_meta__"]["provenance"]["method"] == "orca_relax"
+```
+
+### 关键约束
+
+1. **不允许 skip**: 本地已安装 ORCA，测试必须实际运行
+2. **使用 `.tmp/runs/`**: 所有测试目录在 `.tmp/runs/` 下
+3. **最小测试 case**: 使用 H2 + HF/STO-3G，几秒钟完成
+4. **解析器**:  `parse_orca_optimized_xyz()` 必须能正确解析 ORCA 的 `.xyz` 输出
+
+### 测试命令
+
+```bash
+cd <HOME>/QMatSuite && source .venv/bin/activate
+pytest tests/integration/test_orca_relax_real.py -v
+```
+
+---
+
+## PR 11: Real PySCF Relax Test (启发式编程方法)
+
+**目的**: 创建真实 PySCF geometry optimization 集成测试，验证完整执行流程
+
+**重要**: 本地已安装 PySCF，所有测试必须实际运行，**不允许 skip**。
+
+### 启发式编程方法 (Critical!)
+
+**步骤 1**: 先运行一次 PySCF relax，保存输出文件
+
+```bash
+# 激活虚拟环境
+cd <HOME>/QMatSuite && source .venv/bin/activate
+
+# 创建一个最小的 PySCF geometry optimization 任务并运行
+python3 << 'PYEOF'
+from pathlib import Path
+from quantumvitas.core.paths import tmp_runs_dir
+from quantumvitas.api import QVService
+from pymatgen.core import Molecule
+import shutil
+import json
+
+# 1. 创建测试项目
+test_dir = tmp_runs_dir() / "pyscf_relax_analysis"
+test_dir.mkdir(parents=True, exist_ok=True)
+project_root = QVService.init_project(test_dir / "pyscf_relax_project")
+
+# 2. 创建 H2 分子 (最简单的 geometry optimization)
+h2 = Molecule(["H", "H"], [[0, 0, 0], [0.8, 0, 0]])  # 初始距离故意设远一点
+h2_file = test_dir / "h2.xyz"
+h2.to(filename=h2_file, fmt="xyz")
+
+# 3. 导入结构
+struct_result = QVService.import_structure(project_root, h2_file, name="H2")
+
+# 4. 创建 calculation (engine_family=pyscf, structure_kind=molecule)
+calc = QVService.init_calculation(
+    project_root, "h2_relax",
+    structure_selector=struct_result.meta.id,
+    engine_family="pyscf",
+    structure_kind="molecule",
+)
+
+# 5. 创建 relax step
+step = QVService.init_step(project_root, calc.id, "pyscf_relax", name="relax")
+
+# 6. 配置 step (最小参数)
+QVService.configure_step(
+    project_root, calc.id, step.id,
+    parameters={
+        "method": "rhf",  # 或 "rks" for DFT
+        "basis": "sto-3g",  # 最小基组，速度快
+        "maxsteps": 50,
+    },
+)
+
+# 7. 运行
+print(f"Project: {project_root}")
+print(f"Calculation: {calc.id}")
+print(f"Step: {step.id}")
+result = QVService.run_step(project_root, calc.id, step.id, verbose=True)
+
+print(f"\nResult: {result}")
+
+# 8. 保存输出文件用于分析
+if result.get("success"):
+    print("\n=== SUCCESS ===")
+    # 查找输出文件
+    calc_dir = project_root / "calculations" / "h2_relax"
+    raw_dir = calc_dir / "raw"
+    if raw_dir.exists():
+        # PySCF 输出文件通常是 results.json, pyscf.log, checkpoint.chk
+        for f in raw_dir.rglob("*"):
+            if f.is_file():
+                print(f"Found: {f}")
+                if f.suffix in [".json", ".log", ".chk"]:
+                    # 复制到分析目录
+                    dest = Path("/tmp") / f"pyscf_relax_output_{f.name}"
+                    shutil.copy2(f, dest)
+                    print(f"  -> Saved to: {dest}")
+                    # 如果是 json，打印内容
+                    if f.suffix == ".json":
+                        print(f"  Content: {json.loads(f.read_text())}")
+else:
+    print(f"\n=== FAILED ===")
+    print(result.get("error"))
+PYEOF
+```
+
+**步骤 2**: 分析输出文件格式
+
+```bash
+cd <HOME>/QMatSuite && source .venv/bin/activate
+
+# 查看 PySCF 输出文件结构
+echo "=== PySCF Output Files ==="
+ls -la /tmp/pyscf_relax_output_* 2>/dev/null || echo "No output files found yet"
+
+# 分析 results.json 文件 (PySCF runner 的输出)
+if [ -f /tmp/pyscf_relax_output_results.json ]; then
+    echo ""
+    echo "=== Content of results.json ==="
+    cat /tmp/pyscf_relax_output_results.json | python3 -m json.tool
+fi
+
+# 分析 pyscf.log 文件
+if [ -f /tmp/pyscf_relax_output_pyscf.log ]; then
+    echo ""
+    echo "=== Last 50 lines of pyscf.log ==="
+    tail -50 /tmp/pyscf_relax_output_pyscf.log
+fi
+```
+
+**步骤 3**: 确认 `results.json` 格式
+
+PySCF runner (`src/quantumvitas/engines/pyscf/runner.py`) 的 `run_pyscf_relax()` 函数应该输出：
+
+```json
+{
+  "success": true,
+  "optimized_atoms": [
+    {"element": "H", "xyz": [0.0, 0.0, 0.0]},
+    {"element": "H", "xyz": [0.74, 0.0, 0.0]}
+  ],
+  "final_energy": -1.1336,
+  "charge": 0,
+  "spin_multiplicity": 1,
+  "solver": "geometric",
+  "method": "rhf",
+  "basis": "sto-3g"
+}
+```
+
+**步骤 4**: 测试 handler
+
+```python
+# 直接测试 handler 函数
+from pathlib import Path
+from quantumvitas.execution.pyscf_relax_handler import handle_pyscf_relax_output
+
+# 模拟 results 数据
+results = {
+    "success": True,
+    "optimized_atoms": [
+        {"element": "H", "xyz": [0.0, 0.0, 0.0]},
+        {"element": "H", "xyz": [0.74, 0.0, 0.0]},
+    ],
+}
+
+calc_dir = Path("/tmp/test_calc")
+artifact_path = handle_pyscf_relax_output(
+    step_ulid="01TEST",
+    step_type="pyscf_relax",
+    calc_dir=calc_dir,
+    results=results,
+    calculation_ulid="calc001",
+    input_structure_ulid="struct001",
+    run_id="test_run",
+)
+print(f"Wrote: {artifact_path}")
+print(f"Exists: {artifact_path.exists()}")
+```
+
+**步骤 5**: 运行完整集成测试
+
+```bash
+cd <HOME>/QMatSuite && source .venv/bin/activate
+pytest tests/integration/test_pyscf_relax_real.py -v --tb=short
+```
+
+### 改动文件
+
+- `tests/integration/test_pyscf_relax_real.py` (新建)
+- `src/quantumvitas/execution/pyscf_relax_handler.py` (可能需要修复)
+- `src/quantumvitas/engines/pyscf/runner.py` (确认 `run_pyscf_relax()` 输出格式)
+
+### 测试文件模板
+
+```python
+"""
+Real PySCF relax integration test.
+
+This test actually runs PySCF to perform a geometry optimization
+and verifies that the output is correctly parsed and written to current.json.
+"""
+
+import json
+import pytest
+import time
+import uuid
+from pathlib import Path
+
+from quantumvitas.api import QVService
+from quantumvitas.core.paths import tmp_runs_dir
+from quantumvitas.execution.relax_artifacts import (
+    get_generated_structure_path,
+    read_generated_structure,
+)
+from pymatgen.core import Molecule
+
+
+pytestmark = [pytest.mark.integration]  # PySCF is always available
+
+
+@pytest.fixture
+def pyscf_project_with_h2():
+    """Create a project with H2 molecule for PySCF relax test."""
+    # Use .tmp/runs/ directory with unique name
+    unique_id = f"pyscf_relax_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+    test_dir = tmp_runs_dir() / unique_id
+    test_dir.mkdir(parents=True, exist_ok=True)
+    
+    project_root = QVService.init_project(test_dir / "pyscf_relax_project")
+    
+    # Create H2 molecule (simple case for quick test)
+    h2_molecule = Molecule(["H", "H"], [[0, 0, 0], [0.8, 0, 0]])
+    
+    # Save molecule to file
+    h2_file = test_dir / "h2.xyz"
+    h2_molecule.to(filename=h2_file, fmt="xyz")
+    
+    # Import structure
+    struct_result = QVService.import_structure(project_root, h2_file, name="H2")
+    
+    return {
+        "project_root": project_root,
+        "structure_id": struct_result.meta.id,
+        "structure_path": struct_result.absolute_path,
+        "test_dir": test_dir,
+    }
+
+
+@pytest.fixture
+def pyscf_calculation_with_relax(pyscf_project_with_h2):
+    """Create a calculation with a relax step, configured for PySCF."""
+    project_root = pyscf_project_with_h2["project_root"]
+    structure_id = pyscf_project_with_h2["structure_id"]
+    
+    # Create calculation with molecule/pyscf settings
+    calc_result = QVService.init_calculation(
+        project_root=project_root,
+        name="h2_relax",
+        structure_selector=structure_id,
+        engine_family="pyscf",
+        structure_kind="molecule",
+    )
+    calc_ulid = calc_result.id
+    if calc_result.absolute_path.is_dir():
+        calc_dir = calc_result.absolute_path
+    else:
+        calc_dir = calc_result.absolute_path.parent
+    
+    # Create relax step
+    relax_step_result = QVService.init_step(
+        project_root=project_root,
+        calculation_selector=calc_ulid,
+        step_type="pyscf_relax",
+        name="relax",
+    )
+    relax_step_ulid = relax_step_result.id
+    
+    # Configure relax step with minimal parameters for quick test
+    QVService.configure_step(
+        project_root=project_root,
+        calculation_selector=calc_ulid,
+        step_selector=relax_step_ulid,
+        parameters={
+            "method": "rhf",
+            "basis": "sto-3g",  # Minimal basis for speed
+            "maxsteps": 50,
+        },
+    )
+    
+    return {
+        "project_root": project_root,
+        "calc_ulid": calc_ulid,
+        "calc_dir": calc_dir,
+        "relax_step_ulid": relax_step_ulid,
+        "structure_id": structure_id,
+    }
+
+
+class TestPySCFRelaxReal:
+    """Real PySCF relax integration tests."""
+    
+    def test_pyscf_relax_execution_creates_current_json(
+        self,
+        pyscf_calculation_with_relax,
+    ):
+        """
+        Test that running a PySCF relax step actually executes PySCF,
+        and the output is parsed and written to current.json.
+        """
+        
+        calc_ulid = pyscf_calculation_with_relax["calc_ulid"]
+        relax_step_ulid = pyscf_calculation_with_relax["relax_step_ulid"]
+        calc_dir = pyscf_calculation_with_relax["calc_dir"]
+        project_root = pyscf_calculation_with_relax["project_root"]
+        
+        # Run the relax step
+        result = QVService.run_step(
+            project_root=project_root,
+            calculation_selector=calc_ulid,
+            step_selector=relax_step_ulid,
+            verbose=False,
+        )
+        
+        # Verify step completed
+        assert result.get("success") is True, f"Step failed: {result.get('error')}"
+        
+        # Verify current.json was created
+        artifact_path = get_generated_structure_path(calc_dir, relax_step_ulid)
+        assert artifact_path.exists(), (
+            f"current.json not found at {artifact_path}. "
+            "Check executor logs for post-processing errors."
+        )
+        
+        # Verify structure can be read
+        relaxed_structure = read_generated_structure(calc_dir, relax_step_ulid)
+        assert relaxed_structure is not None, "Failed to read generated structure"
+        assert len(relaxed_structure) == 2, "Expected 2 H atoms"
+        
+        # Verify H-H bond distance is reasonable (around 0.74 Angstrom for RHF/STO-3G)
+        bond_distance = relaxed_structure.get_distance(0, 1)
+        assert 0.6 < bond_distance < 1.0, f"H-H bond distance {bond_distance} seems wrong"
+        
+        # Verify metadata
+        data = json.loads(artifact_path.read_text())
+        assert "__qv_meta__" in data
+        assert data["__qv_meta__"]["source_step_ulid"] == relax_step_ulid
+        assert data["__qv_meta__"]["provenance"]["method"] == "pyscf_relax"
+    
+    def test_pyscf_relax_structure_changes(
+        self,
+        pyscf_calculation_with_relax,
+        pyscf_project_with_h2,
+    ):
+        """
+        Test that the relaxed structure has a reasonable H-H bond distance.
+        """
+        
+        calc_ulid = pyscf_calculation_with_relax["calc_ulid"]
+        relax_step_ulid = pyscf_calculation_with_relax["relax_step_ulid"]
+        calc_dir = pyscf_calculation_with_relax["calc_dir"]
+        project_root = pyscf_calculation_with_relax["project_root"]
+        
+        # Load initial structure
+        from quantumvitas.io import read_structure
+        initial_structure = read_structure(pyscf_project_with_h2["structure_path"])
+        initial_distance = initial_structure.get_distance(0, 1)
+        
+        # Run the relax step
+        result = QVService.run_step(
+            project_root=project_root,
+            calculation_selector=calc_ulid,
+            step_selector=relax_step_ulid,
+            verbose=False,
+        )
+        
+        assert result.get("success") is True, f"Step failed: {result.get('error')}"
+        
+        # Load relaxed structure
+        relaxed_structure = read_generated_structure(calc_dir, relax_step_ulid)
+        assert relaxed_structure is not None
+        
+        relaxed_distance = relaxed_structure.get_distance(0, 1)
+        
+        # Verify structure changed
+        assert relaxed_distance != pytest.approx(initial_distance, abs=0.01), (
+            f"Structure should have changed. "
+            f"Initial: {initial_distance:.4f}, Relaxed: {relaxed_distance:.4f}"
+        )
+        
+        # Verify relaxed distance is closer to equilibrium (~0.74 A for H2)
+        assert 0.70 < relaxed_distance < 0.80, (
+            f"H-H bond distance {relaxed_distance:.4f} A is not near equilibrium (~0.74 A)"
+        )
+```
+
+### 关键约束
+
+1. **不允许 skip**: PySCF 是 Python 库，总是可用
+2. **使用 `.tmp/runs/`**: 所有测试目录在 `.tmp/runs/` 下
+3. **最小测试 case**: 使用 H2 + RHF/STO-3G，几秒钟完成
+4. **Handler**:  `handle_pyscf_relax_output()` 从 `results.json` 的 `optimized_atoms` 构建 Molecule
+
+### 测试命令
+
+```bash
+cd <HOME>/QMatSuite && source .venv/bin/activate
+pytest tests/integration/test_pyscf_relax_real.py -v
+```
+
+---
+
+## PR 12: Promote E2E Test (1 day)
+
+**目的**: 完整的 promote 功能端到端测试
+
+**改动文件**:
+- `tests/integration/test_relax_promote_e2e.py` (新建)
+
+**测试流程**:
+1. 创建项目 → 导入结构 → 创建 calculation → 创建 relax step
+2. 运行 relax step (QE/ORCA/PySCF 任选)
+3. 调用 `promote_relax_structure`
+4. 验证新结构资源创建成功
+5. 验证新结构可用于创建新 calculation
+
+**测试命令**:
+```bash
+cd <HOME>/QMatSuite && source .venv/bin/activate
+pytest tests/integration/test_relax_promote_e2e.py -v
+```
 
 ---
 
