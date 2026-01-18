@@ -1,0 +1,53 @@
+.parameter-mode-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.parameter-mode-selector__segmented {
+  display: inline-flex;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-secondary, #f5f5f5);
+  overflow: hidden;
+}
+
+.parameter-mode-selector__option {
+  padding: 4px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #666);
+  font-size: var(--text-xs, 12px);
+  font-weight: var(--font-medium, 500);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.2s);
+  white-space: nowrap;
+  border-right: 1px solid var(--border-color, #ccc);
+}
+
+.parameter-mode-selector__option:last-child {
+  border-right: none;
+}
+
+.parameter-mode-selector__option:hover:not(:disabled) {
+  background: var(--bg-hover, #e8e8e8);
+  color: var(--text-primary, #333);
+}
+
+.parameter-mode-selector__option--active {
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #333);
+  font-weight: var(--font-semibold, 600);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.parameter-mode-selector__option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.parameter-mode-selector__badge {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
