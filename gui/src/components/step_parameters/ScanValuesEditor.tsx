@@ -14,12 +14,16 @@ interface ScanValuesEditorProps {
   placeholder?: string;
 }
 
-export function ScanValuesEditor({
+export interface ScanValuesEditorRef {
+  flush: () => void;
+}
+
+export const ScanValuesEditor = forwardRef<ScanValuesEditorRef, ScanValuesEditorProps>(({
   values,
   onChange,
   disabled = false,
   placeholder = 'Enter values (JSON array, e.g., [30, 40, 50])',
-}: ScanValuesEditorProps) {
+}, ref) => {
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -101,6 +105,8 @@ export function ScanValuesEditor({
           return;
         }
         
+        // CRITICAL: Immediately commit parsed value to parent state on every valid keystroke
+        // This ensures Apply will have the latest values, not empty/old state
         onChange(parsed);
         setIsDirty(false); // Clear dirty after successful onChange
       }
@@ -109,6 +115,25 @@ export function ScanValuesEditor({
       setError('Invalid JSON');
     }
   }, [onChange]);
+  
+  // Expose a flush method for parent to call before Apply
+  // This ensures any pending input is committed
+  const flush = useCallback(() => {
+    if (isDirty && !error && inputValue.trim()) {
+      try {
+        const parsed = JSON.parse(inputValue);
+        if (Array.isArray(parsed) || parsed === null || typeof parsed === 'string' || typeof parsed === 'number' || typeof parsed === 'boolean') {
+          onChange(parsed);
+          setIsDirty(false);
+        }
+      } catch (e) {
+        // Invalid - cannot flush
+      }
+    }
+  }, [isDirty, error, inputValue, onChange]);
+  
+  // Expose flush via ref (parent can call it)
+  React.useImperativeHandle(React.forwardRef(() => null), () => ({ flush }), [flush]);
   
   return (
     <div className="scan-values-editor">

@@ -86,7 +86,10 @@ def test_update_step_params_parameter_scan_full_replace(tmp_path):
 
 
 def test_update_step_params_parameter_scan_preserves_array_values(tmp_path):
-    """Test that scan values arrays persist correctly (not truncated to single value)."""
+    """Test that scan values arrays persist correctly (not truncated to single value).
+    
+    This is an end-to-end test: update with array of length 3, reload, verify length is 3.
+    """
     # Create project using QVService
     project_root = QVService.init_project(tmp_path / "project")
     
@@ -127,13 +130,13 @@ def test_update_step_params_parameter_scan_preserves_array_values(tmp_path):
     
     assert result is not None
     
-    # Reload step and verify values array is preserved
+    # Reload step and verify values array is preserved (length 3, not 0 or 1)
     step_doc = StepDoc.load(step_yaml)
     parameter_scan = step_doc.get(["parameter_scan"]) or {}
     
     assert "scan001" in parameter_scan
     values = parameter_scan["scan001"]["values"]
-    assert len(values) == 3
+    assert len(values) == 3, f"Expected 3 values, got {len(values)}: {values}"
     assert values == [330, 340, 350]
     
     # Verify round-trip: get_step_detail returns same values
