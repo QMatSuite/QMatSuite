@@ -171,6 +171,7 @@ def update_manifest_step(
     done: bool = False,
     started_at: Optional[str] = None,
     done_at: Optional[str] = None,
+    effective_structure_sha: Optional[str] = None,
 ) -> None:
     """
     Update a single step entry in manifest.
@@ -189,6 +190,7 @@ def update_manifest_step(
         done: Whether step is done
         started_at: Optional started timestamp (ISO8601)
         done_at: Optional done timestamp (ISO8601)
+        effective_structure_sha: Optional effective structure SHA (for relax-aware skip logic)
     """
     manifest = load_manifest(calc_dir) or Manifest()
     
@@ -211,6 +213,7 @@ def update_manifest_step(
         pseudo_set_sha=pseudo_set_sha,
         structure_sha=structure_sha,
         step_sha=step_sha,
+        effective_structure_sha=effective_structure_sha,
         run_id=run_id,
         done=done,
         started_at=started_at,

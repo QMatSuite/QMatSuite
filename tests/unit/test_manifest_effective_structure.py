@@ -119,3 +119,173 @@ class TestMissingArtifactError:
         assert "MISSING_ARTIFACT_ERROR" in str(exc_info.value)
         assert "current.json is missing" in str(exc_info.value)
 
+
+class TestLoadEffectiveStructure:
+    """Test _load_effective_structure_for_step method in executor."""
+    
+    def test_load_effective_structure_no_relax_before(self, tmp_path):
+        """If no relax step before current step, returns (None, None)."""
+        from quantumvitas.execution.executor import JobExecutor
+        from quantumvitas.calculation.calculation import Calculation
+        from quantumvitas.core.resources import ResourceMeta
+        from unittest.mock import MagicMock
+        
+        executor = JobExecutor()
+        
+        # Create a mock calculation with one SCF step
+        calc = MagicMock(spec=Calculation)
+        calc.dir = tmp_path / "calc"
+        calc.dir.mkdir(parents=True)
+        
+        step = MagicMock()
+        step.meta = ResourceMeta(id="01SCF", name="scf", slug="scf", path="steps/scf.step.yaml", kind="step")
+        step.step_type = "qe_scf"
+        calc.steps = [step]
+        
+        # Try to load effective structure for step 0 (first step)
+        structure, sha = executor._load_effective_structure_for_step(0, calc)
+        
+        assert structure is None
+        assert sha is None
+    
+    def test_load_effective_structure_missing_artifact_raises(self, tmp_path):
+        """If relax step exists but current.json is missing, raises MissingArtifactError."""
+        from quantumvitas.execution.executor import JobExecutor
+        from quantumvitas.calculation.calculation import Calculation
+        from quantumvitas.core.resources import ResourceMeta
+        from unittest.mock import MagicMock
+        
+        executor = JobExecutor()
+        
+        # Create a mock calculation with relax step followed by SCF step
+        calc = MagicMock(spec=Calculation)
+        calc.dir = tmp_path / "calc"
+        calc.dir.mkdir(parents=True)
+        
+        relax_step = MagicMock()
+        relax_step.meta = ResourceMeta(id="01RELAX", name="relax", slug="relax", path="steps/relax.step.yaml", kind="step")
+        relax_step.step_type = "qe_relax"
+        
+        scf_step = MagicMock()
+        scf_step.meta = ResourceMeta(id="01SCF", name="scf", slug="scf", path="steps/scf.step.yaml", kind="step")
+        scf_step.step_type = "qe_scf"
+        
+        calc.steps = [relax_step, scf_step]
+        
+        # Try to load effective structure for step 1 (SCF step)
+        # Should raise MissingArtifactError because current.json doesn't exist
+        with pytest.raises(MissingArtifactError) as exc_info:
+            executor._load_effective_structure_for_step(1, calc)
+        
+        assert "MISSING_ARTIFACT_ERROR" in str(exc_info.value)
+        assert "current.json is missing" in str(exc_info.value)
+        assert "01RELAX" in str(exc_info.value)
+    
+    def test_load_effective_structure_success(self, tmp_path):
+        """If relax step exists and current.json exists, loads structure and returns SHA."""
+        from quantumvitas.execution.executor import JobExecutor
+        from quantumvitas.calculation.calculation import Calculation
+        from quantumvitas.core.resources import ResourceMeta
+        from quantumvitas.execution.relax_artifacts import write_generated_structure
+        from pymatgen.core import Structure, Lattice
+        from unittest.mock import MagicMock
+        
+        executor = JobExecutor()
+        
+        # Create a mock calculation with relax step followed by SCF step
+        calc = MagicMock(spec=Calculation)
+        calc.dir = tmp_path / "calc"
+        calc.dir.mkdir(parents=True)
+        
+        relax_step = MagicMock()
+        relax_step.meta = ResourceMeta(id="01RELAX", name="relax", slug="relax", path="steps/relax.step.yaml", kind="step")
+        relax_step.step_type = "qe_relax"
+        
+        scf_step = MagicMock()
+        scf_step.meta = ResourceMeta(id="01SCF", name="scf", slug="scf", path="steps/scf.step.yaml", kind="step")
+        scf_step.step_type = "qe_scf"
+        
+        calc.steps = [relax_step, scf_step]
+        
+        # Write a generated structure for the relax step
+        lattice = Lattice.cubic(5.5)
+        structure = Structure(lattice, ["Si"], [[0, 0, 0]])
+        write_generated_structure(
+            structure=structure,
+            calc_dir=calc.dir,
+            step_ulid="01RELAX",
+            step_type="qe_relax",
+        )
+        
+        # Load effective structure for step 1 (SCF step)
+        loaded_structure, sha = executor._load_effective_structure_for_step(1, calc)
+        
+        assert loaded_structure is not None
+        assert len(loaded_structure) == 1
+        assert loaded_structure.lattice.a == pytest.approx(5.5)
+        assert sha is not None
+        assert isinstance(sha, str)
+        assert len(sha) > 0
+
+
+class TestUpdateManifestStepWithEffectiveStructureSha:
+    """Test update_manifest_step with effective_structure_sha parameter."""
+    
+    def test_update_manifest_step_with_effective_structure_sha(self, tmp_path):
+        """update_manifest_step accepts and stores effective_structure_sha."""
+        from quantumvitas.calculation.manifest import (
+            update_manifest_step,
+            load_manifest,
+            get_manifest_path,
+        )
+        
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir(parents=True)
+        
+        # Update manifest step with effective_structure_sha
+        update_manifest_step(
+            calc_dir=calc_dir,
+            step_index=0,
+            kind="scf",
+            step_ulid="01SCF",
+            pseudo_set_sha="abc123",
+            structure_sha="def456",
+            step_sha="ghi789",
+            effective_structure_sha="jkl012",
+            done=True,
+        )
+        
+        # Load and verify
+        manifest = load_manifest(calc_dir)
+        assert manifest is not None
+        assert len(manifest.steps) == 1
+        assert manifest.steps[0].effective_structure_sha == "jkl012"
+    
+    def test_update_manifest_step_without_effective_structure_sha(self, tmp_path):
+        """update_manifest_step works without effective_structure_sha (backward compatible)."""
+        from quantumvitas.calculation.manifest import (
+            update_manifest_step,
+            load_manifest,
+        )
+        
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir(parents=True)
+        
+        # Update manifest step without effective_structure_sha
+        update_manifest_step(
+            calc_dir=calc_dir,
+            step_index=0,
+            kind="scf",
+            step_ulid="01SCF",
+            pseudo_set_sha="abc123",
+            structure_sha="def456",
+            step_sha="ghi789",
+            done=True,
+        )
+        
+        # Load and verify
+        manifest = load_manifest(calc_dir)
+        assert manifest is not None
+        assert len(manifest.steps) == 1
+        assert manifest.steps[0].effective_structure_sha is None
+

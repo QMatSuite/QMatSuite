@@ -449,6 +449,64 @@ def _find_step_by_ulid(calculation: "Calculation", step_ulid: str) -> Optional["
     return None
 
 
+def handle_qe_relax_output(
+    step_ulid: str,
+    step_type: str,
+    calc_dir: Path,
+    output_path: Path,
+    calculation_ulid: str,
+    input_structure_ulid: str,
+    run_id: Optional[str] = None,
+) -> Path:
+    """
+    Handle QE relax step output: parse and write current.json.
+    
+    Args:
+        step_ulid: ULID of the relax step
+        step_type: Machine step type (e.g., "qe_relax")
+        calc_dir: Path to calculation directory
+        output_path: Path to QE output file (.out)
+        calculation_ulid: ULID of the calculation
+        input_structure_ulid: ULID of the input structure
+        run_id: Optional run ID for provenance
+        
+    Returns:
+        Path to written current.json
+        
+    Raises:
+        ValueError: If output parsing fails
+    """
+    from quantumvitas.calculation.geometry import (
+        read_final_geometry_from_output_text,
+        structure_from_qe_geometry_snapshot,
+    )
+    from quantumvitas.execution.relax_artifacts import write_generated_structure
+    
+    # 1. Read output
+    output_text = output_path.read_text()
+    
+    # 2. Parse final geometry
+    snapshot, species = read_final_geometry_from_output_text(output_text)
+    
+    # 3. Convert to pymatgen Structure (with canonicalization)
+    structure = structure_from_qe_geometry_snapshot(snapshot, species)
+    
+    # 4. Write current.json
+    artifact_path = write_generated_structure(
+        structure=structure,
+        calc_dir=calc_dir,
+        step_ulid=step_ulid,
+        step_type=step_type,
+        run_id=run_id,
+        calculation_ulid=calculation_ulid,
+        input_structure_ulid=input_structure_ulid,
+    )
+    
+    logger.info(f"[RELAX_HANDLER] Wrote generated structure for step {step_ulid} to {artifact_path}")
+    
+    return artifact_path
+
+
 def create_handler_map(
     engine_registry: "EngineRegistry",
     context: Dict[str, Any],
