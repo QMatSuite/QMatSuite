@@ -40,7 +40,7 @@ def test_match_profile_with_scan_ref_naturally_mismatches():
     # YAML with ScanRef (should naturally mismatch)
     yaml_tree = {
         "SYSTEM": {
-            "ecutwfc": {"scan_ref": "scan001"},  # ScanRef dict
+            "ecutwfc": "@scan:scan001",  # ScanRef dict
         }
     }
     
@@ -95,7 +95,7 @@ def test_match_profile_with_scan_ref_does_not_crash():
     # YAML with ScanRef in one key (should naturally mismatch, not crash)
     yaml_tree = {
         "SYSTEM": {
-            "ecutwfc": {"scan_ref": "scan001"},  # ScanRef
+            "ecutwfc": "@scan:scan001",  # ScanRef
             "ecutrho": 400.0,  # Concrete value
         }
     }

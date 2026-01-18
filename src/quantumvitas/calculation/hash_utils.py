@@ -56,6 +56,7 @@ def _resolve_scan_refs_in_dict(
         New dict with ScanRefs replaced by concrete values
     """
     from quantumvitas.calculation.scan_validation import is_scan_ref
+    from quantumvitas.calculation.scan_tokens import parse_scan_id
     
     if isinstance(data, dict):
         result = {}
@@ -100,7 +101,7 @@ def build_effective_engine_params_view(
     Build effective engine params view by resolving ScanRefs to concrete values.
     
     Returns a dict suitable for feeding into existing compute_step_sha().
-    - If variant_assignments provided: replaces {scan_ref: X} with concrete values
+    - If variant_assignments provided: replaces @scan:X tokens with concrete values
     - Always removes parameter_scan section (not an engine parameter)
     - Preserves all other fields (parameters, cards, species_overrides, step_type, etc.)
     

@@ -245,18 +245,13 @@ class YamlDoc:
             return default
         
         # Prevent branch access via get()
-        # Exception: ScanRef dicts ({scan_ref: "id"}) are allowed as leaf values
-        if isinstance(value, dict) and not self._is_scanref_leaf_dict(value):
+        if isinstance(value, dict):
             raise BranchAccessError(
                 f"Path '{'.'.join(path)}' is a branch (dict). Use export_copy() instead."
             )
         
         # Deep copy containers to prevent reference leakage
         if isinstance(value, list):
-            return _deep_copy(value)
-        
-        # Deep copy ScanRef dicts to prevent reference leakage
-        if isinstance(value, dict) and self._is_scanref_leaf_dict(value):
             return _deep_copy(value)
         
         # Scalars returned directly
@@ -324,8 +319,7 @@ class YamlDoc:
             raise YamlDocError("Cannot set root. Use apply_patch() for bulk updates.")
         
         # Reject dict values - use apply_patch for subtree updates
-        # Exception: ScanRef dicts ({scan_ref: "id"}) are allowed as leaf replacements
-        if isinstance(value, dict) and not self._is_scanref_leaf_dict(value):
+        if isinstance(value, dict):
             raise YamlDocError(
                 f"Cannot set() a dict at path '{'.'.join(path)}'. "
                 "Use apply_patch() for subtree updates."
@@ -394,26 +388,12 @@ class YamlDoc:
             if value is None:
                 # Delete Semantics A: None means delete
                 self.delete(path)
-            elif isinstance(value, dict) and self._is_scanref_leaf_dict(value):
-                # ScanRef dict: treat as leaf replacement (do not recurse)
-                # This allows replacing a scalar with {scan_ref: "id"} and vice versa
-                self.set(path, value)
             elif isinstance(value, dict):
                 # Recurse into nested dict
                 self._apply_patch_recursive(value, path)
             else:
                 # Set leaf value
                 self.set(path, value)
-    
-    @staticmethod
-    def _is_scanref_leaf_dict(value: Any) -> bool:
-        """
-        Check if a value is a ScanRef leaf dict: {scan_ref: "<id>"}.
-        
-        ScanRef dicts must be treated as leaf replacements, not nested dicts to recurse into.
-        This allows replacing a scalar parameter with {scan_ref: "id"} and vice versa.
-        """
-        return isinstance(value, dict) and set(value.keys()) == {"scan_ref"}
     
     # =========================================================================
     # Journal Readiness
