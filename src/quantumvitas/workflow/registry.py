@@ -51,6 +51,7 @@ class StepTypeSpec:
     supports_incremental_skip: bool = True  # Phase 3C: Whether step can be skipped in incremental runs
     consumes_state: Optional[str] = None  # Phase 3C: State type consumed by this step (e.g., "mf" for MP2)
     produces_state: Optional[str] = None  # Phase 3C: State type produced by this step (e.g., "mf" for SCF)
+    is_structure_transform: bool = False  # NEW: True for relax/vc-relax steps that produce structure artifacts
     token: Optional[str] = None  # Stable token for subchain basenames (immutable once published)
 
 
@@ -197,7 +198,8 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         description="Atomic relaxation (optimize positions, fixed cell)",
         requires_structure=True,
         requires_charge_density=False,
-        produces_charge_density=True,
+        produces_charge_density=False,  # CHANGED: Relax doesn't produce reusable electronic state
+        is_structure_transform=True,     # NEW: Marks step as structure transform
     ),
     "qe_vc_relax": StepTypeSpec(
         id="vc-relax",
@@ -208,7 +210,8 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         description="Variable-cell relaxation (optimize positions and cell)",
         requires_structure=True,
         requires_charge_density=False,
-        produces_charge_density=True,
+        produces_charge_density=False,  # CHANGED: Relax doesn't produce reusable electronic state
+        is_structure_transform=True,     # NEW: Marks step as structure transform
     ),
     "qe_bands_pw": StepTypeSpec(
         id="bands_pw",

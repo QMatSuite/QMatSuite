@@ -4645,6 +4645,101 @@ class QVService:
         return result
     
     @staticmethod
+    def promote_relax_structure(
+        project_root: Path,
+        calculation_selector: str,
+        step_selector: str,
+        name: Optional[str] = None,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> "ResolvedResource":
+        """
+        Promote a relax step's generated structure to a project resource.
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector (ULID, slug, or name)
+            step_selector: Step selector (ULID, slug, or name)
+            name: Optional name for the new structure (defaults to calc_step_relaxed)
+            index: Optional ResourceIndex
+            config: Optional project config
+            
+        Returns:
+            ResolvedResource for the newly created structure
+            
+        Raises:
+            QVServiceError: If step not found, not a relax step, or no current.json
+        """
+        import json
+        import tempfile
+        from quantumvitas.core.resolution import resolve_calculation, resolve_step
+        from quantumvitas.workflow.registry import get_registry
+        from quantumvitas.execution.relax_artifacts import get_generated_structure_path
+        
+        project_root = Path(project_root).resolve()
+        
+        # Resolve calculation and step
+        calc_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        step_resolved = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
+        
+        # Verify step is a relax step
+        # Load step YAML to get step_type
+        from quantumvitas.core.yamldoc import StepDoc
+        step_doc = StepDoc.load(step_resolved.absolute_path)
+        step_type = step_doc.get(["step_type"])
+        
+        registry = get_registry()
+        step_spec = registry.get(step_type)
+        if not step_spec or not getattr(step_spec, 'is_structure_transform', False):
+            raise QVServiceError(
+                f"Step '{step_selector}' is not a relax step (step_type: {step_type}). "
+                "Only relax/vc-relax steps can be promoted."
+            )
+        
+        # Check for current.json
+        calc_dir = calc_resolved.absolute_path
+        if calc_dir.name == "calculation.yaml":
+            calc_dir = calc_dir.parent
+        
+        artifact_path = get_generated_structure_path(calc_dir, step_resolved.meta.id)
+        if not artifact_path.exists():
+            raise QVServiceError(
+                f"No generated structure found for step '{step_selector}'. "
+                f"Expected file: {artifact_path}\n"
+                "The relax step may not have been executed or may have failed."
+            )
+        
+        # Load structure
+        structure_dict = json.loads(artifact_path.read_text())
+        provenance_meta = structure_dict.pop("__qv_meta__", {})
+        
+        # Write to temp file for import
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(structure_dict, f)
+            temp_path = Path(f.name)
+        
+        try:
+            # Generate name if not provided
+            if name is None:
+                calc_name = calc_resolved.meta.name or calc_resolved.meta.slug or "calc"
+                step_name = step_resolved.meta.name or "relax"
+                name = f"{calc_name}_{step_name}_relaxed"
+            
+            # Import as new structure
+            # Note: import_structure will rebuild index if index is None, but we pass it to avoid rebuilding
+            # However, import_structure may not update the provided index, so we need to rebuild it
+            result = QVService.import_structure(
+                project_root=project_root,
+                source=temp_path,
+                name=name,
+                index=None,  # Let import_structure rebuild index to ensure consistency
+            )
+            
+            return result
+        finally:
+            temp_path.unlink()
+    
+    @staticmethod
     def get_common_cards(
         project_root: Path,
         calculation_ulid: str,

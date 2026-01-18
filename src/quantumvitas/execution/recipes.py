@@ -24,9 +24,83 @@ from quantumvitas.workflow.registry import (
     generate_subchain_basename,
     get_chain_namespace_folder,
 )
+from quantumvitas.engine.qc_engine_base import SCF_ROOT_TYPES, RELAX_STEP_TYPES
 
 if TYPE_CHECKING:
     from quantumvitas.calculation.step import Step
+
+
+class TopologyError(Exception):
+    """Raised when step topology violates QC chain rules."""
+    pass
+
+
+def verify_qc_topology(steps: List["Step"], registry) -> None:
+    """
+    Verify QC topology before execution.
+    
+    Rules:
+    - Relax steps are standalone (length=1 chains)
+    - Non-relax, non-SCF steps must trace to SCF root without crossing relax
+    
+    Args:
+        steps: List of Step objects to verify
+        registry: StepTypeRegistry instance
+        
+    Raises:
+        TopologyError: If topology is invalid
+    """
+    for i, step in enumerate(steps):
+        # Get step type (try public_type first, fallback to step_type)
+        step_type = getattr(step, 'public_type', None) or getattr(step, 'step_type', None)
+        if not step_type:
+            continue
+        
+        # Look up spec to get public_type
+        spec = registry.get(step_type)
+        if spec:
+            step_public_type = spec.public_type
+        else:
+            # Fallback: assume step_type is already public_type
+            step_public_type = step_type
+        
+        if step_public_type in RELAX_STEP_TYPES:
+            continue  # Relax is standalone, always valid
+        
+        if step_public_type in SCF_ROOT_TYPES:
+            continue  # SCF root starts new chain, always valid
+        
+        # Non-relax, non-SCF: must find SCF ancestor without intervening relax
+        found_scf = False
+        for j in range(i - 1, -1, -1):
+            ancestor_step = steps[j]
+            ancestor_type = getattr(ancestor_step, 'public_type', None) or getattr(ancestor_step, 'step_type', None)
+            if not ancestor_type:
+                continue
+            
+            ancestor_spec = registry.get(ancestor_type)
+            if ancestor_spec:
+                ancestor_public_type = ancestor_spec.public_type
+            else:
+                ancestor_public_type = ancestor_type
+            
+            if ancestor_public_type in RELAX_STEP_TYPES:
+                step_name = getattr(step, 'name', f'step_{i}') or f'step_{i}'
+                raise TopologyError(
+                    f"TOPOLOGY_ERROR: Step '{step_name}' (index {i}) cannot trace to SCF root. "
+                    f"A relax step at index {j} blocks the dependency chain. "
+                    "Relax steps are not electronic state providers; they must be in standalone chains."
+                )
+            if ancestor_public_type in SCF_ROOT_TYPES:
+                found_scf = True
+                break
+        
+        if not found_scf:
+            step_name = getattr(step, 'name', f'step_{i}') or f'step_{i}'
+            raise TopologyError(
+                f"TOPOLOGY_ERROR: Step '{step_name}' (index {i}) requires SCF root but none found. "
+                "Add an SCF step before this step."
+            )
 
 
 @runtime_checkable
@@ -199,6 +273,9 @@ class ORCARecipe(BaseRecipe):
             return JobGraph(jobs=[])
 
         registry = get_registry()
+        
+        # Verify topology before materialization
+        verify_qc_topology(steps, registry)
         jobs: List[Job] = []
 
         # Get SCF root info for namespace folder
@@ -306,6 +383,9 @@ class PySCFRecipe(BaseRecipe):
             return JobGraph(jobs=[])
 
         registry = get_registry()
+        
+        # Verify topology before materialization
+        verify_qc_topology(steps, registry)
         jobs: List[Job] = []
 
         # Get SCF root info for namespace folder
