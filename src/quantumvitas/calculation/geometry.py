@@ -375,54 +375,144 @@ def read_final_geometry_from_output_text(text: str) -> Tuple[QEGeometrySnapshot,
         cell_pattern_alt = r"CELL_PARAMETERS\s*\(alat\)"
         cell_match_alt = re.search(cell_pattern_alt, block_text, re.IGNORECASE)
         if not cell_match_alt:
-            raise ValueError("CELL_PARAMETERS not found in final coordinates block")
-        # Extract alat from elsewhere in the block or use default
-        alat_match = re.search(r"lattice parameter \(alat\)\s*=\s*([-\d\.Ee+]+)", block_text, re.IGNORECASE)
-        if alat_match:
-            alat_bohr = float(alat_match.group(1))
-        else:
-            # Try to extract from earlier in output
-            alat_match_global = re.search(r"celldm\(1\)\s*=\s*([-\d\.Ee+]+)", text[:last_block_start])
+            # CELL_PARAMETERS not found - this can happen for ibrav=0 relax (not vc-relax)
+            # In this case, QE only outputs ATOMIC_POSITIONS (crystal) and we need to
+            # extract the cell from the beginning of the output
+            # Extract alat from earlier in output
+            alat_match_global = re.search(r"celldm\(1\)\s*=\s*([-\d\.Ee+]+)", text[:last_block_start], re.IGNORECASE)
             if not alat_match_global:
-                raise ValueError("Cannot determine alat value")
+                # Try alternative pattern
+                alat_match_global = re.search(r"lattice parameter \(alat\)\s*=\s*([-\d\.Ee+]+)", text[:last_block_start], re.IGNORECASE)
+            if not alat_match_global:
+                raise ValueError(
+                    "CELL_PARAMETERS not found in final coordinates block and cannot determine alat. "
+                    "This may indicate the QE output format is not supported."
+                )
             alat_bohr = float(alat_match_global.group(1))
-        cell_start_pos = cell_match_alt.end()
+            
+            # Extract crystal axes from beginning of output (in units of alat)
+            # Pattern: "crystal axes: (cart. coord. in units of alat)"
+            #          "a(1) = (   x   y   z  )"
+            crystal_axes_pattern = r"crystal axes:\s*\(cart\.\s*coord\.\s*in\s*units\s*of\s*alat\)"
+            axes_match = re.search(crystal_axes_pattern, text[:last_block_start], re.IGNORECASE)
+            if not axes_match:
+                raise ValueError(
+                    "CELL_PARAMETERS not found and cannot extract crystal axes from output. "
+                    "This may indicate the QE output format is not supported."
+                )
+            
+            # Extract the 3 crystal axis vectors after the match
+            axes_start = axes_match.end()
+            axes_section = text[axes_start:last_block_start]
+            cell_lines = []
+            for line in axes_section.split('\n')[:10]:
+                # Pattern: "a(1) = (   x   y   z  )"
+                axis_match = re.search(r"a\(\d+\)\s*=\s*\(\s*([-\d\.Ee+]+)\s+([-\d\.Ee+]+)\s+([-\d\.Ee+]+)\s*\)", line)
+                if axis_match:
+                    row = [float(axis_match.group(i)) for i in range(1, 4)]
+                    cell_lines.append(row)
+                    if len(cell_lines) == 3:
+                        break
+            
+            if len(cell_lines) != 3:
+                raise ValueError(
+                    f"CELL_PARAMETERS not found and could not extract 3 crystal axes from output. "
+                    f"Found {len(cell_lines)} axes."
+                )
+            
+            cell_matrix = cell_lines  # Already dimensionless (multiples of alat)
+            alat_angstrom = alat_bohr * BOHR_TO_ANGSTROM
+            # Skip to ATOMIC_POSITIONS parsing (cell_matrix and alat_angstrom already set)
+        else:
+            # CELL_PARAMETERS (alat) without explicit value
+            # Extract alat from elsewhere in the block or use default
+            alat_match = re.search(r"lattice parameter \(alat\)\s*=\s*([-\d\.Ee+]+)", block_text, re.IGNORECASE)
+            if alat_match:
+                alat_bohr = float(alat_match.group(1))
+            else:
+                # Try to extract from earlier in output
+                alat_match_global = re.search(r"celldm\(1\)\s*=\s*([-\d\.Ee+]+)", text[:last_block_start], re.IGNORECASE)
+                if not alat_match_global:
+                    raise ValueError("Cannot determine alat value")
+                alat_bohr = float(alat_match_global.group(1))
+            cell_start_pos = cell_match_alt.end()
+            
+            alat_angstrom = alat_bohr * BOHR_TO_ANGSTROM
+            
+            # Extract cell matrix (3 lines after CELL_PARAMETERS)
+            cell_lines = []
+            cell_section = block_text[cell_start_pos:].split('\n')
+            for line in cell_section[:10]:  # Look at first 10 lines
+                line = line.strip()
+                if not line:
+                    continue
+                if line.startswith('ATOMIC_POSITIONS'):
+                    break
+                # Try to parse as 3 floats
+                parts = line.split()
+                if len(parts) >= 3:
+                    try:
+                        row = [float(x) for x in parts[:3]]
+                        cell_lines.append(row)
+                        if len(cell_lines) == 3:
+                            break
+                    except ValueError:
+                        continue
+            
+            if len(cell_lines) != 3:
+                raise ValueError(f"Expected 3 cell parameter lines, found {len(cell_lines)}")
+            
+            cell_matrix = cell_lines  # Already dimensionless (multiples of alat)
     else:
         alat_bohr = float(cell_match.group(1))
         cell_start_pos = cell_match.end()
-    
-    alat_angstrom = alat_bohr * BOHR_TO_ANGSTROM
-    
-    # Extract cell matrix (3 lines after CELL_PARAMETERS)
-    cell_lines = []
-    cell_section = block_text[cell_start_pos:].split('\n')
-    for line in cell_section[:10]:  # Look at first 10 lines
-        line = line.strip()
-        if not line:
-            continue
-        if line.startswith('ATOMIC_POSITIONS'):
-            break
-        # Try to parse as 3 floats
-        parts = line.split()
-        if len(parts) >= 3:
-            try:
-                row = [float(x) for x in parts[:3]]
-                cell_lines.append(row)
-                if len(cell_lines) == 3:
-                    break
-            except ValueError:
+        
+        alat_angstrom = alat_bohr * BOHR_TO_ANGSTROM
+        
+        # Extract cell matrix (3 lines after CELL_PARAMETERS)
+        cell_lines = []
+        cell_section = block_text[cell_start_pos:].split('\n')
+        for line in cell_section[:10]:  # Look at first 10 lines
+            line = line.strip()
+            if not line:
                 continue
-    
-    if len(cell_lines) != 3:
-        raise ValueError(f"Expected 3 cell parameter lines, found {len(cell_lines)}")
-    
-    cell_matrix = cell_lines  # Already dimensionless (multiples of alat)
+            if line.startswith('ATOMIC_POSITIONS'):
+                break
+            # Try to parse as 3 floats
+            parts = line.split()
+            if len(parts) >= 3:
+                try:
+                    row = [float(x) for x in parts[:3]]
+                    cell_lines.append(row)
+                    if len(cell_lines) == 3:
+                        break
+                except ValueError:
+                    continue
+        
+        if len(cell_lines) != 3:
+            raise ValueError(f"Expected 3 cell parameter lines, found {len(cell_lines)}")
+        
+        cell_matrix = cell_lines  # Already dimensionless (multiples of alat)
     
     # Parse ATOMIC_POSITIONS
-    pos_pattern = r"ATOMIC_POSITIONS\s*\(alat\)"
-    pos_match = re.search(pos_pattern, block_text, re.IGNORECASE)
+    # Can be in different formats: (alat), (crystal), (angstrom), etc.
+    pos_patterns = [
+        (r"ATOMIC_POSITIONS\s*\(alat\)", "alat"),
+        (r"ATOMIC_POSITIONS\s*\(crystal\)", "crystal"),
+        (r"ATOMIC_POSITIONS\s*\(angstrom\)", "angstrom"),
+        (r"ATOMIC_POSITIONS\s*\(bohr\)", "bohr"),
+    ]
+    
+    pos_match = None
+    pos_format = None
+    for pattern, fmt in pos_patterns:
+        pos_match = re.search(pattern, block_text, re.IGNORECASE)
+        if pos_match:
+            pos_format = fmt
+            break
+    
     if not pos_match:
-        raise ValueError("ATOMIC_POSITIONS (alat) not found in final coordinates block")
+        raise ValueError("ATOMIC_POSITIONS not found in final coordinates block")
     
     pos_lines = []
     pos_start = pos_match.end()
@@ -444,7 +534,27 @@ def read_final_geometry_from_output_text(text: str) -> Tuple[QEGeometrySnapshot,
                 label = parts[0]
                 coords = [float(parts[1]), float(parts[2]), float(parts[3])]
                 species.append(label)
-                pos_lines.append(QEAtomicPosition(label, tuple(coords)))
+                
+                # Convert coordinates to alat units if needed
+                if pos_format == "crystal":
+                    # Fractional coordinates: convert to Cartesian in alat units
+                    # coords_cart = cell_matrix @ coords_frac
+                    coords_cart = [
+                        sum(cell_matrix[i][j] * coords[j] for j in range(3))
+                        for i in range(3)
+                    ]
+                    pos_lines.append(QEAtomicPosition(label, tuple(coords_cart)))
+                elif pos_format == "angstrom":
+                    # Convert from Angstrom to alat units
+                    coords_alat = [c / alat_angstrom for c in coords]
+                    pos_lines.append(QEAtomicPosition(label, tuple(coords_alat)))
+                elif pos_format == "bohr":
+                    # Convert from Bohr to alat units
+                    coords_alat = [c / alat_bohr for c in coords]
+                    pos_lines.append(QEAtomicPosition(label, tuple(coords_alat)))
+                else:  # alat or default
+                    # Already in alat units
+                    pos_lines.append(QEAtomicPosition(label, tuple(coords)))
             except (ValueError, IndexError):
                 continue
     
