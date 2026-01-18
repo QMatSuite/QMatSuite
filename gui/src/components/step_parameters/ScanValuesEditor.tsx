@@ -116,24 +116,44 @@ export const ScanValuesEditor = forwardRef<ScanValuesEditorHandle, ScanValuesEdi
     }
   }, [onChange]);
   
-  // Expose a flush method for parent to call before Apply
-  // This ensures any pending input is committed
-  const flush = useCallback(() => {
-    if (isDirty && !error && inputValue.trim()) {
-      try {
-        const parsed = JSON.parse(inputValue);
-        if (Array.isArray(parsed) || parsed === null || typeof parsed === 'string' || typeof parsed === 'number' || typeof parsed === 'boolean') {
-          onChange(parsed);
-          setIsDirty(false);
-        }
-      } catch (e) {
-        // Invalid - cannot flush
-      }
+  // Expose flush method for parent to call before Apply
+  // This ensures any pending input is committed even if user didn't blur
+  const flush = useCallback((): { ok: boolean; values?: unknown[]; error?: string } => {
+    const currentInput = inputValue.trim();
+    
+    // If empty string: allow empty array (validator can hard-error if needed)
+    if (!currentInput) {
+      onChange([]);
+      setIsDirty(false);
+      return { ok: true, values: [] };
     }
-  }, [isDirty, error, inputValue, onChange]);
+    
+    try {
+      const parsed = JSON.parse(currentInput);
+      
+      // Handle scalar values: wrap in array
+      if (!Array.isArray(parsed)) {
+        if (parsed === null || typeof parsed === 'string' || typeof parsed === 'number' || typeof parsed === 'boolean') {
+          const wrapped = [parsed];
+          onChange(wrapped);
+          setIsDirty(false);
+          return { ok: true, values: wrapped };
+        } else {
+          return { ok: false, error: 'Must be an array or single value' };
+        }
+      }
+      
+      // Array: use as-is (no type checking in flush, just parse)
+      onChange(parsed);
+      setIsDirty(false);
+      return { ok: true, values: parsed };
+    } catch (e) {
+      return { ok: false, error: 'Invalid JSON' };
+    }
+  }, [inputValue, onChange]);
   
   // Expose flush via ref (parent can call it)
-  React.useImperativeHandle(React.forwardRef(() => null), () => ({ flush }), [flush]);
+  useImperativeHandle(ref, () => ({ flush }), [flush]);
   
   return (
     <div className="scan-values-editor">
@@ -167,5 +187,5 @@ export const ScanValuesEditor = forwardRef<ScanValuesEditorHandle, ScanValuesEdi
       </div>
     </div>
   );
-}
+});
 
