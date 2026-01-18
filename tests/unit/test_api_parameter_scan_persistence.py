@@ -71,7 +71,7 @@ def test_update_step_params_parameter_scan_full_replace(tmp_path):
     
     # Reload step and verify orphan scans are deleted
     step_doc = StepDoc.load(step_yaml)
-    parameter_scan = step_doc.get(["parameter_scan"]) or {}
+    parameter_scan = step_doc.export_copy(["parameter_scan"]) or {}
     
     # scan001 and scan002 should be deleted (full replace)
     assert "scan001" not in parameter_scan

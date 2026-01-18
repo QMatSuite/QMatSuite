@@ -4,7 +4,7 @@
  * Supports explicit enumeration only (scalar or simple list values).
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import './ScanValuesEditor.css';
 
 interface ScanValuesEditorProps {
@@ -14,11 +14,11 @@ interface ScanValuesEditorProps {
   placeholder?: string;
 }
 
-export interface ScanValuesEditorRef {
-  flush: () => void;
+export interface ScanValuesEditorHandle {
+  flush: () => { ok: boolean; values?: unknown[]; error?: string };
 }
 
-export const ScanValuesEditor = forwardRef<ScanValuesEditorRef, ScanValuesEditorProps>(({
+export const ScanValuesEditor = forwardRef<ScanValuesEditorHandle, ScanValuesEditorProps>(({
   values,
   onChange,
   disabled = false,
