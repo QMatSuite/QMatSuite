@@ -4557,8 +4557,8 @@ class QVService:
                 # Set or remove the parameter
                 if value is None:
                     param_patch[namelist_upper][key] = None  # None means delete in apply_patch
-                elif isinstance(value, dict) and "scan_ref" in value:
-                    # ScanRef dict: store as-is (no validation/parsing)
+                elif isinstance(value, str) and value.startswith("@scan:"):
+                    # Scan token: store as-is (no validation/parsing)
                     param_patch[namelist_upper][key] = value
                 else:
                     raw_value = str(value)  # Ensure string for parsing

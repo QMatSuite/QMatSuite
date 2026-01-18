@@ -391,7 +391,7 @@ export function ActiveParametersPanel({
                             if (isScanned) {
                               const scanDef = stepDetail.parameter_scan?.[scanId || ''];
                               const count = scanDef?.values?.length || 0;
-                              return `{scan_ref: ${scanId}} (${count} values)`;
+                              return `@scan:${scanId} (${count} values)`;
                             }
                             return param.value === null || param.value === undefined ? '—' : String(param.value);
                           })()}

@@ -1,7 +1,9 @@
 """
 Scan validation for parameter scan feature.
 
-Validates ScanRef syntax and parameter_scan definitions in step.yaml.
+Validates scan token syntax and parameter_scan definitions in step.yaml.
+
+ScanRef is represented as a token string: "@scan:<scan_id>"
 """
 
 from __future__ import annotations
@@ -9,6 +11,8 @@ from __future__ import annotations
 import logging
 import re
 from typing import Any, Dict, List, Tuple
+
+from quantumvitas.calculation.scan_tokens import is_scan_token, parse_scan_id, SCAN_TOKEN_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -25,39 +29,30 @@ class ScanRefValidationError(ValueError):
 
 def is_scan_ref(value: Any) -> bool:
     """
-    Check if a value is a ScanRef dict.
+    Check if a value is a scan token string.
     
-    A ScanRef is a dict with exactly one key: "scan_ref".
+    A scan token is a string starting with "@scan:".
+    This function is kept for backward compatibility with existing code.
     
     Args:
         value: Value to check
         
     Returns:
-        True if value is a ScanRef dict, False otherwise
+        True if value is a scan token string, False otherwise
     """
-    if not isinstance(value, dict):
-        return False
-    
-    # Must have exactly one key: "scan_ref"
-    if len(value) != 1:
-        return False
-    
-    if "scan_ref" not in value:
-        return False
-    
-    return True
+    return is_scan_token(value)
 
 
-def validate_scan_ref_format(value: dict) -> bool:
+def validate_scan_ref_format(value: Any) -> bool:
     """
-    Validate ScanRef format.
+    Validate scan token format.
     
     Checks:
-    - Has exactly one key: "scan_ref"
-    - scan_ref value is non-empty string matching ^[a-z0-9_]+$
+    - Is a string starting with "@scan:"
+    - scan_id (after "@scan:") is non-empty string matching ^[a-z0-9_]+$
     
     Args:
-        value: Dict to validate
+        value: Value to validate (should be a string)
         
     Returns:
         True if valid, False otherwise
@@ -65,33 +60,22 @@ def validate_scan_ref_format(value: dict) -> bool:
     Raises:
         ScanRefValidationError: If format is invalid
     """
-    if not isinstance(value, dict):
-        raise ScanRefValidationError(f"ScanRef must be a dict, got {type(value)}")
+    if not isinstance(value, str):
+        raise ScanRefValidationError(f"Scan token must be a string, got {type(value)}")
     
-    # Must have exactly one key
-    if len(value) != 1:
-        raise ScanRefValidationError(
-            f"ScanRef dict must have exactly one key 'scan_ref', got keys: {list(value.keys())}"
-        )
+    if not value.startswith(SCAN_TOKEN_PREFIX):
+        raise ScanRefValidationError(f"Scan token must start with '@scan:', got '{value}'")
     
-    if "scan_ref" not in value:
-        raise ScanRefValidationError(
-            f"ScanRef dict must have key 'scan_ref', got keys: {list(value.keys())}"
-        )
-    
-    scan_id = value["scan_ref"]
-    if not isinstance(scan_id, str):
-        raise ScanRefValidationError(
-            f"ScanRef 'scan_ref' value must be a string, got {type(scan_id)}"
-        )
+    # Extract scan_id manually (don't use parse_scan_id which requires non-empty)
+    scan_id = value[len(SCAN_TOKEN_PREFIX):]
     
     if not scan_id:
-        raise ScanRefValidationError("ScanRef 'scan_ref' value must be non-empty")
+        raise ScanRefValidationError("Scan token scan_id must be non-empty")
     
     # Must match ^[a-z0-9_]+$
     if not re.match(r"^[a-z0-9_]+$", scan_id):
         raise ScanRefValidationError(
-            f"ScanRef 'scan_ref' value must match ^[a-z0-9_]+$, got '{scan_id}'"
+            f"Scan token scan_id must match ^[a-z0-9_]+$, got '{scan_id}'"
         )
     
     return True
@@ -156,29 +140,29 @@ def find_all_scan_refs(
                 current_path = f"{path}.{key}" if path else key
                 
                 if is_scan_ref(value):
-                    # Found ScanRef
+                    # Found scan token
                     # Check if it's at a valid leaf position
                     # Valid: parameters.SECTION.param or cards.CARD.leaf
-                    # Invalid: parameters.SECTION (section itself is ScanRef)
+                    # Invalid: parameters.SECTION (section itself is scan token)
                     path_parts = current_path.split(".")
                     if len(path_parts) >= 2:
                         # We're inside parameters or cards
                         if path_parts[0] in ("parameters", "cards") and len(path_parts) == 2:
                             # This is like "parameters.SYSTEM" - invalid, SYSTEM should be a dict
                             raise ScanRefValidationError(
-                                f"ScanRef at non-leaf position: '{current_path}' is a section/card name, "
-                                f"not a leaf parameter. ScanRefs can only appear at leaf positions "
+                                f"Scan token at non-leaf position: '{current_path}' is a section/card name, "
+                                f"not a leaf parameter. Scan tokens can only appear at leaf positions "
                                 f"(e.g., 'parameters.SYSTEM.ecutwfc', not 'parameters.SYSTEM')."
                             )
                     
                     # Validate format and extract scan_id
                     try:
                         validate_scan_ref_format(value)
-                        scan_id = value["scan_ref"]
+                        scan_id = parse_scan_id(value)
                         results.append((current_path, scan_id))
                     except ScanRefValidationError as e:
                         raise ScanRefValidationError(
-                            f"Invalid ScanRef at path '{current_path}': {e}"
+                            f"Invalid scan token at path '{current_path}': {e}"
                         ) from e
                 elif isinstance(value, dict):
                     # Nested dict - recurse
@@ -228,7 +212,7 @@ def validate_step_scan_refs(step_doc: dict) -> Tuple[List[str], List[str]]:
         errors.append("parameter_scan must be a mapping (dict)")
         return errors, warnings
     
-    # Find all ScanRefs in parameters and cards
+    # Find all scan tokens in parameters and cards
     scan_refs: List[Tuple[str, str]] = []
     
     # Check parameters section
@@ -251,7 +235,7 @@ def validate_step_scan_refs(step_doc: dict) -> Tuple[List[str], List[str]]:
             errors.append(str(e))
             return errors, warnings
     
-    # Validate each ScanRef
+    # Validate each scan token
     defined_scan_ids = set(parameter_scan.keys())
     referenced_scan_ids = set()
     
@@ -261,7 +245,7 @@ def validate_step_scan_refs(step_doc: dict) -> Tuple[List[str], List[str]]:
         # Check if scan_id is defined
         if scan_id not in defined_scan_ids:
             errors.append(
-                f"ScanRef 'scan_ref: {scan_id}' references undefined scan_id '{scan_id}' "
+                f"Scan token '@scan:{scan_id}' references undefined scan_id '{scan_id}' "
                 f"at path '{param_path}'. Defined scan_ids: {sorted(defined_scan_ids)}"
             )
     

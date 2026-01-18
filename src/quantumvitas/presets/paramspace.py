@@ -510,10 +510,10 @@ def match_profile(
                 
                 elif cell.cell_type == CellType.VALUE:
                     # VALUE: compare effective_value
-                    # Check if raw_value is a ScanRef dict (parameter scan feature)
+                    # Check if raw_value is a scan token (parameter scan feature)
                     # If so, naturally mismatch -> custom (don't crash)
-                    if present and isinstance(raw_value, dict) and "scan_ref" in raw_value:
-                        # ScanRef encountered - naturally mismatch (preset inference cannot match scanned params)
+                    if present and isinstance(raw_value, str) and raw_value.startswith("@scan:"):
+                        # Scan token encountered - naturally mismatch (preset inference cannot match scanned params)
                         matches = False
                         break
                     
