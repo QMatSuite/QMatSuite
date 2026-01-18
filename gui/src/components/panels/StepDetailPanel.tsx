@@ -708,7 +708,18 @@ export function StepDetailPanel({
   
   // Save parameter changes
   const handleSaveParams = useCallback(async () => {
-    if (!window.qv || !stepDetail) return;
+    if (!window.qv || !stepDetail) {
+      console.warn('[StepDetailPanel] handleSaveParams early return: no qv or stepDetail');
+      return;
+    }
+    
+    // INSTRUMENTATION: Log entry
+    console.log('[StepDetailPanel] handleSaveParams called', {
+      hasChanges,
+      isEditing,
+      editedParamsKeys: Object.keys(editedParams),
+      editedParameterScanKeys: Object.keys(editedParameterScan),
+    });
     
     setIsSaving(true);
     setError(null);
@@ -795,12 +806,32 @@ export function StepDetailPanel({
         ? prunedParameterScan
         : (stepHadScans ? {} : undefined);
       
+      // INSTRUMENTATION: Log the exact payload being sent
+      console.log('[StepDetailPanel] Apply payload:', {
+        project_root: normalizedProjectRoot,
+        calculation: calculationSelector,
+        step: stepSelector,
+        parameters: paramUpdates,
+        parameter_scan: parameterScanPayload,
+        paramUpdatesKeys: Object.keys(paramUpdates),
+        parameterScanKeys: parameterScanPayload ? Object.keys(parameterScanPayload) : 'undefined',
+      });
+      
       const response = await window.qv.request<StepDetail>('update_step_params', {
         project_root: normalizedProjectRoot,
         calculation: calculationSelector,
         step: stepSelector,
         parameters: paramUpdates,
         parameter_scan: parameterScanPayload,
+      });
+      
+      // INSTRUMENTATION: Log the response
+      console.log('[StepDetailPanel] Apply response:', {
+        ok: response.ok,
+        hasData: !!response.data,
+        error: response.error?.message,
+        responseParameters: response.data?.parameters ? Object.keys(response.data.parameters) : 'none',
+        responseParameterScan: response.data?.parameter_scan ? Object.keys(response.data.parameter_scan) : 'none',
       });
       
       if (response.ok && response.data) {
