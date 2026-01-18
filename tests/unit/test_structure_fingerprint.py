@@ -15,6 +15,8 @@ from quantumvitas.core.structure_fingerprint import (
     structure_fingerprint,
     structure_like_fingerprint,
     structures_semantically_equal,
+    quantize_scalar,
+    quantize_array,
 )
 from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
 from quantumvitas.io.structure_io import write_structure, read_structure
@@ -371,6 +373,79 @@ def h2_molecule_translated():
     """H2 molecule translated by arbitrary vector."""
     # Same geometry, different origin
     return Molecule(["H", "H"], [[10.0, 5.0, 3.0], [10.74, 5.0, 3.0]])
+
+
+class TestDeterministicQuantization:
+    """Verify deterministic quantization (no banker's rounding)."""
+    
+    def test_quantize_scalar_ties_go_up(self):
+        """Half-integers must round up (ties go up, not banker's rounding)."""
+        # With tol=1.0, test half-integer cases
+        assert quantize_scalar(0.5, 1.0) == 1, "0.5 should round to 1 (ties up)"
+        assert quantize_scalar(1.5, 1.0) == 2, "1.5 should round to 2 (ties up)"
+        assert quantize_scalar(2.5, 1.0) == 3, "2.5 should round to 3 (ties up)"
+        assert quantize_scalar(-0.5, 1.0) == 0, "-0.5 should round to 0 (ties up)"
+        
+        # Verify NOT using banker's rounding (would give 0 for 0.5)
+        assert quantize_scalar(0.5, 1.0) != 0, "Must NOT use banker's rounding"
+    
+    def test_quantize_array_vectorized(self):
+        """quantize_array works on arrays."""
+        arr = np.array([0.5, 1.5, 2.5, -0.5])
+        result = quantize_array(arr, tol=1.0)
+        expected = np.array([1, 2, 3, 0], dtype=np.int64)
+        assert np.array_equal(result, expected), "Array quantization should match scalar behavior"
+    
+    def test_pbc_knife_edge_half_integer_case_stable(self):
+        """
+        PBC structure with frac=0.25 on lattice with min length 5.43 Å.
+        With tol_ang=1e-3, frac_tol = 1e-3/5.43 ≈ 1.84e-4.
+        0.25 / frac_tol = 1357.5 (half-integer).
+        Adding tiny noise (1e-6) should NOT change fingerprint.
+        """
+        # Use exact case: lattice min length 5.43 Å, frac=0.25
+        lattice = Lattice.cubic(5.43)
+        coords1 = [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]
+        struct1 = Structure(lattice, ["Si", "Si"], coords1)
+        
+        # Add tiny noise (1e-6) to frac coords
+        coords2 = [[1e-6, 1e-6, 1e-6], [0.250001, 0.250001, 0.250001]]
+        struct2 = Structure(lattice, ["Si", "Si"], coords2)
+        
+        # Canonicalize both (existing PBC canonicalization)
+        canonicalize_structure_like_in_place(struct1)
+        canonicalize_structure_like_in_place(struct2)
+        
+        # Fingerprints MUST be identical (deterministic quantization handles half-integer)
+        fp1 = structure_like_fingerprint(struct1, tol_ang=1e-3)
+        fp2 = structure_like_fingerprint(struct2, tol_ang=1e-3)
+        
+        assert fp1 == fp2, (
+            "Half-integer quantization case (0.25/frac_tol=1357.5) must be stable "
+            "with tiny noise due to deterministic tie-breaking"
+        )
+    
+    def test_molecule_tie_case_stable(self):
+        """
+        Molecule with coordinates near a tie boundary.
+        Pick x such that x/tol_ang is near N+0.5 (half-integer).
+        Add tiny noise < tol_ang.
+        Fingerprint MUST be identical due to deterministic quantization.
+        """
+        tol_ang = 1e-3
+        # Pick x such that x/tol_ang = 0.5 (half-integer)
+        x_base = 0.5 * tol_ang  # = 0.0005
+        
+        mol1 = Molecule(["H", "H"], [[0.0, 0.0, 0.0], [x_base, 0.0, 0.0]])
+        mol2 = Molecule(["H", "H"], [[0.0, 0.0, 0.0], [x_base + 1e-6, 0.0, 0.0]])
+        
+        canonicalize_structure_like_in_place(mol1)
+        canonicalize_structure_like_in_place(mol2)
+        
+        fp1 = structure_like_fingerprint(mol1, tol_ang=tol_ang)
+        fp2 = structure_like_fingerprint(mol2, tol_ang=tol_ang)
+        
+        assert fp1 == fp2, "Tie-case quantization must be stable with tiny noise"
 
 
 class TestKnifeEdgeRegression:
