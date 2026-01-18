@@ -4529,7 +4529,7 @@ class QVService:
             Updated step detail dict
         """
         from quantumvitas.core.resolution import validate_ulid
-        from quantumvitas.core.yamldoc import StepDoc
+        from quantumvitas.core.yamldoc import StepDoc, PathNotFoundError
         from quantumvitas.workflow.step_factory import save_step_doc
         
         # Validate ULID
