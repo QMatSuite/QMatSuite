@@ -547,6 +547,9 @@ export function CalculationDetailPanel({
   const [workflowDetection, setWorkflowDetection] = useState<DetectWorkflowForCalculationResult | null>(null);
   const [showWorkflowIssues, setShowWorkflowIssues] = useState(false);
   
+  // Load step details for scan summary (lazy, only when calculation is viewed)
+  const [stepDetailsForScan, setStepDetailsForScan] = useState<Map<string, { parameter_scan?: Record<string, { values: unknown[] }> }>>(new Map());
+  
   // Detect workflow when calculation changes
   useEffect(() => {
     if (!calculation || !projectRoot) {
@@ -569,6 +572,42 @@ export function CalculationDetailPanel({
         setWorkflowDetection(null);
       });
   }, [calculation?.id, projectRoot, qv]);
+  
+  // Load step details for scan summary (lazy, only when calculation is viewed in overview mode)
+  useEffect(() => {
+    if (!calculationForSteps || !projectRoot || isFocusMode) {
+      setStepDetailsForScan(new Map());
+      return;
+    }
+    
+    // Load step details for all steps to check for scans
+    const loadStepDetails = async () => {
+      const detailsMap = new Map<string, { parameter_scan?: Record<string, { values: unknown[] }> }>();
+      const steps = calculationForSteps.steps || [];
+      
+      for (const step of steps) {
+        try {
+          const response = await qv.call<import('../../types/qv').StepDetail>('get_step_detail', {
+            project_root: projectRoot,
+            calculation: calculationForSteps.slug,
+            step: step.id,
+          });
+          if (response.ok && response.data) {
+            detailsMap.set(step.id, {
+              parameter_scan: response.data.parameter_scan,
+            });
+          }
+        } catch (e) {
+          // Skip failed steps (non-blocking for scan summary)
+          console.debug(`[ScanSummary] Failed to load step detail for ${step.id}:`, e);
+        }
+      }
+      
+      setStepDetailsForScan(detailsMap);
+    };
+    
+    loadStepDetails();
+  }, [calculationForSteps?.id, projectRoot, isFocusMode, qv]);
   
   // Handle deleting a step
   const handleDeleteStep = useCallback(async (stepId: string, stepType: string) => {
