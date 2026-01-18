@@ -23,7 +23,7 @@ from quantumvitas.execution.relax_artifacts import (
 from pymatgen.core import Molecule
 
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.requires_orca]
 
 
 @pytest.fixture(scope="module")

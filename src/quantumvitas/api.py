@@ -396,12 +396,12 @@ class QVService:
         # Only when dedup_by_fingerprint=True (opt-in for demo tooling)
         if dedup_by_fingerprint:
             # Compute fingerprint for content-based deduplication
-            from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
+            from quantumvitas.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
             from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
             
             # Canonicalize first, then fingerprint
             canonicalize_structure_like_in_place(structure)
-            fingerprint = structure_like_fingerprint(structure, tol_ang=1e-3)
+            fingerprint = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
             
             structures_dir = project_root / "structures"
             if structures_dir.exists():
@@ -438,7 +438,7 @@ class QVService:
                         pass  # Skip invalid files
         
         # Compute fingerprint for storage (even if not using for dedup)
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
+        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
         from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
 
         # Canonicalize if not already done in dedup path
@@ -446,7 +446,7 @@ class QVService:
             canonicalize_structure_like_in_place(structure)
 
         # Unified fingerprint for both Structure and Molecule
-        fingerprint = structure_like_fingerprint(structure, tol_ang=1e-3)
+        fingerprint = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
         
         # Write to structures directory
         dest_path = project_root / "structures" / f"{final_slug}.json"

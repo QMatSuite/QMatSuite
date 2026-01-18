@@ -17,6 +17,7 @@ from quantumvitas.core.structure_fingerprint import (
     structures_semantically_equal,
     quantize_scalar,
     quantize_array,
+    DEFAULT_FINGERPRINT_TOL_ANG,
 )
 from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
 from quantumvitas.io.structure_io import write_structure, read_structure
@@ -257,10 +258,10 @@ class TestQVServiceDedup:
         
         assert "fingerprint" in meta, "Fingerprint should be stored in metadata"
         # Compute expected fingerprint: canonicalize first, then fingerprint
-        # api.py uses tol_ang=1e-3 for fingerprint
+        # api.py uses DEFAULT_FINGERPRINT_TOL_ANG for fingerprint
         si_copy = si_structure.copy()
         canonicalize_structure_like_in_place(si_copy)
-        expected_fp = structure_like_fingerprint(si_copy, tol_ang=1e-3)
+        expected_fp = structure_like_fingerprint(si_copy, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
         assert meta["fingerprint"] == expected_fp, \
             "Stored fingerprint should match computed fingerprint"
 
@@ -624,12 +625,16 @@ class TestMoleculeCanonicalization:
         
         canonicalize_structure_like_in_place(mol)
         coords_after_first = np.array([site.coords for site in mol]).copy()
+        fp_after_first = structure_like_fingerprint(mol, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
         
         canonicalize_structure_like_in_place(mol)
         coords_after_second = np.array([site.coords for site in mol])
+        fp_after_second = structure_like_fingerprint(mol, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
         
-        assert np.allclose(coords_after_first, coords_after_second), \
-            "Canonicalization should be idempotent"
+        assert np.allclose(coords_after_first, coords_after_second, atol=1e-12), \
+            "Canonicalization should be idempotent (coords unchanged after second call)"
+        assert fp_after_first == fp_after_second, \
+            "Fingerprint should remain identical after second canonicalization"
 
 
 class TestMoleculeFingerprint:
@@ -832,7 +837,7 @@ class TestImportStructureUnifiedFingerprint:
         # Compute expected: canonicalize then fingerprint
         h2_copy = Molecule(["H", "H"], [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]])
         canonicalize_structure_like_in_place(h2_copy)
-        expected_fingerprint = structure_like_fingerprint(h2_copy, tol_ang=1e-3)
+        expected_fingerprint = structure_like_fingerprint(h2_copy, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
         
         assert stored_fingerprint is not None, "Fingerprint should be stored"
         assert stored_fingerprint == expected_fingerprint, (
@@ -861,5 +866,62 @@ class TestImportStructureUnifiedFingerprint:
         # Should be same structure (deduped)
         assert resolved1.meta.id == resolved2.meta.id, (
             "Translated molecules should dedup to same structure_id"
+        )
+
+
+class TestFingerprintSSOTAndIdempotency:
+    """Test SSOT constant usage and idempotency guarantees."""
+    
+    def test_fingerprint_uses_default_constant_when_not_specified(self):
+        """Fingerprint should use DEFAULT_FINGERPRINT_TOL_ANG when tol_ang is not provided."""
+        from pymatgen.core import Structure, Lattice
+        
+        lattice = Lattice.cubic(5.43)
+        struct = Structure(lattice, ["Si", "Si"], [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]])
+        canonicalize_structure_like_in_place(struct)
+        
+        # Call without explicit tol_ang - should use default
+        fp_default = structure_like_fingerprint(struct)
+        
+        # Call with explicit default constant - should be identical
+        fp_explicit = structure_like_fingerprint(struct, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
+        
+        assert fp_default == fp_explicit, (
+            "Fingerprint without tol_ang should use DEFAULT_FINGERPRINT_TOL_ANG"
+        )
+    
+    def test_molecule_canonicalization_idempotency_with_fingerprint(self):
+        """
+        Molecule canonicalization idempotency test with fingerprint verification.
+        
+        Creates a Molecule with non-centered coords, applies canonicalization TWICE,
+        and verifies:
+        1. Coords after 1st == coords after 2nd (exact or very tight tolerance)
+        2. Fingerprint remains identical
+        """
+        from pymatgen.core import Molecule
+        import numpy as np
+        
+        # Create molecule NOT at origin
+        mol = Molecule(["H", "H", "O"], [[10.0, 5.0, 3.0], [10.74, 5.0, 3.0], [11.0, 5.5, 3.0]])
+        
+        # First canonicalization
+        canonicalize_structure_like_in_place(mol)
+        coords_after_first = np.array([site.coords for site in mol]).copy()
+        fp_after_first = structure_like_fingerprint(mol, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
+        
+        # Second canonicalization (should be idempotent)
+        canonicalize_structure_like_in_place(mol)
+        coords_after_second = np.array([site.coords for site in mol])
+        fp_after_second = structure_like_fingerprint(mol, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
+        
+        # Verify coords are identical (or very close due to floating point)
+        assert np.allclose(coords_after_first, coords_after_second, atol=1e-12), (
+            "Coords should be identical after second canonicalization (idempotency)"
+        )
+        
+        # Verify fingerprint remains identical
+        assert fp_after_first == fp_after_second, (
+            "Fingerprint should remain identical after second canonicalization"
         )
 

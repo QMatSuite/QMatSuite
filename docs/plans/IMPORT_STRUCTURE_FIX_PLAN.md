@@ -1,7 +1,7 @@
 # IMPORT_STRUCTURE Fix Plan
 
 **Date**: 2026-01-18  
-**Status**: READY FOR IMPLEMENTATION (v2.1 - Knife-Edge Fix)  
+**Status**: ✅ COMPLETED (v2.2 - Deterministic Quantization Fix)  
 **PR Title**: `fix: unify fingerprint for Structure and Molecule (single entrypoint, no re-wrap)`
 
 ---
@@ -58,23 +58,23 @@ This PR:
 
 ## 3. File Changes Summary
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/quantumvitas/core/structure_fingerprint.py` | MODIFY | Add pure fingerprint functions (NO transforms) |
-| `src/quantumvitas/core/structure_canonicalize.py` | CREATE | New module for unified canonicalization |
-| `src/quantumvitas/api.py` | MODIFY | Call canonicalize before fingerprint; remove hash fork |
-| `src/quantumvitas/execution/executor.py` | MODIFY | Use unified fingerprint |
-| `src/quantumvitas/execution/orca_relax_parser.py` | MODIFY | Canonicalize before writing current.json |
-| `src/quantumvitas/execution/pyscf_relax_handler.py` | MODIFY | Canonicalize before writing current.json |
-| `src/quantumvitas/execution/handlers.py` | MODIFY | Canonicalize QE relax output before writing |
-| `src/quantumvitas/io/structure_io.py` | MODIFY | Remove duplicate or wrap |
-| `tests/unit/test_structure_fingerprint.py` | MODIFY | Update tests per matrix |
+| File | Action | Description | Status |
+|------|--------|-------------|--------|
+| `src/quantumvitas/core/structure_fingerprint.py` | MODIFY | Add pure fingerprint functions (NO transforms) | ✅ DONE |
+| `src/quantumvitas/core/structure_canonicalize.py` | CREATE | New module for unified canonicalization | ✅ DONE |
+| `src/quantumvitas/api.py` | MODIFY | Call canonicalize before fingerprint; remove hash fork | ✅ DONE |
+| `src/quantumvitas/execution/executor.py` | MODIFY | Use unified fingerprint | ✅ DONE |
+| `src/quantumvitas/execution/orca_relax_parser.py` | MODIFY | Canonicalize before writing current.json | ✅ DONE |
+| `src/quantumvitas/execution/pyscf_relax_handler.py` | MODIFY | Canonicalize before writing current.json | ✅ DONE |
+| `src/quantumvitas/execution/handlers.py` | MODIFY | Canonicalize QE relax output before writing | ✅ DONE |
+| `src/quantumvitas/io/structure_io.py` | MODIFY | Remove duplicate or wrap | ✅ DONE |
+| `tests/unit/test_structure_fingerprint.py` | MODIFY | Update tests per matrix | ✅ DONE |
 
 ---
 
 ## 4. Implementation Steps
 
-### Step 1: Create Unified Canonicalization Module
+### ✅ Step 1: Create Unified Canonicalization Module
 
 **File**: `src/quantumvitas/core/structure_canonicalize.py` (NEW)
 
@@ -141,7 +141,7 @@ def _canonicalize_molecule_in_place(molecule: PMGMolecule) -> None:
 
 ---
 
-### Step 1.5: Add Quantization Helper (Single Entrypoint)
+### ✅ Step 1.5: Add Quantization Helper (Single Entrypoint)
 
 **File**: `src/quantumvitas/core/structure_fingerprint.py`
 
@@ -191,7 +191,7 @@ def quantize_array(arr: np.ndarray, tol: float) -> np.ndarray:
 
 ---
 
-### Step 2: Update Fingerprint Functions (Remove Transforms)
+### ✅ Step 2: Update Fingerprint Functions (Remove Transforms)
 
 **File**: `src/quantumvitas/core/structure_fingerprint.py`
 
@@ -310,7 +310,7 @@ def _fingerprint_molecule(molecule: PMGMolecule, tol_ang: float) -> str:
 
 ---
 
-### Step 3: Update api.py
+### ✅ Step 3: Update api.py
 
 **File**: `src/quantumvitas/api.py`
 
@@ -343,7 +343,7 @@ fingerprint = structure_like_fingerprint(structure, tol_ang=1e-3)
 
 ---
 
-### Step 4: Update Relax Handlers to Canonicalize Before Writing
+### ✅ Step 4: Update Relax Handlers to Canonicalize Before Writing
 
 **File**: `src/quantumvitas/execution/orca_relax_parser.py`
 
@@ -383,7 +383,7 @@ write_generated_structure(structure, calc_dir, step_ulid)
 
 ---
 
-### Step 5: Update executor.py
+### ✅ Step 5: Update executor.py
 
 **File**: `src/quantumvitas/execution/executor.py`
 
@@ -402,7 +402,7 @@ effective_structure_sha = structure_like_fingerprint(structure, tol_ang=1e-3)
 
 ---
 
-### Step 6: Handle Duplicate in structure_io.py
+### ✅ Step 6: Handle Duplicate in structure_io.py
 
 **File**: `src/quantumvitas/io/structure_io.py`
 
@@ -540,12 +540,12 @@ Cursor Auto must:
 
 ## 9. Review Checklist
 
-- [ ] `structure_canonicalize.py` created with dispatch function
-- [ ] `_canonicalize_molecule_in_place()` implements COG shift
-- [ ] `_fingerprint_pbc_structure()` has NO `mod` or wrap
-- [ ] `_fingerprint_molecule()` has NO COG shift
-- [ ] `import_structure()` calls canonicalize before fingerprint
-- [ ] Relax handlers canonicalize before writing `current.json`
-- [ ] No `json.dumps()` hashing anywhere
-- [ ] Knife-edge regression test passes
-- [ ] All existing tests pass
+- [x] `structure_canonicalize.py` created with dispatch function
+- [x] `_canonicalize_molecule_in_place()` implements COG shift
+- [x] `_fingerprint_pbc_structure()` has NO `mod` or wrap
+- [x] `_fingerprint_molecule()` has NO COG shift
+- [x] `import_structure()` calls canonicalize before fingerprint
+- [x] Relax handlers canonicalize before writing `current.json`
+- [x] No `json.dumps()` hashing anywhere
+- [x] Knife-edge regression test passes
+- [x] All existing tests pass
