@@ -305,15 +305,16 @@
 }
 
 /* Scan Editor Styles */
-.active-parameters-panel__scan-editor {
+.active-parameters-panel__value-editor-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   width: 100%;
 }
 
-.active-parameters-panel__value-editor-with-scan {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
+.active-parameters-panel__scan-editor-inline {
   width: 100%;
+  margin-top: var(--space-1);
 }
 
 .active-parameters-panel__value-editor-wrapper {
@@ -332,5 +333,15 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
   font-style: italic;
+}
+
+.active-parameters-panel__scan-warning {
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-warning-subtle, #fff8e1);
+  border: 1px solid var(--border-warning, #ffc107);
+  border-radius: var(--radius-sm, 3px);
+  font-size: var(--text-xs, 11px);
+  color: var(--text-primary, #333);
 }
 

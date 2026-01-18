@@ -829,14 +829,17 @@ export function StepDetailPanel({
   const handleScanToggle = useCallback((namelist: string, paramName: string, enabled: boolean) => {
     if (!stepDetail) return;
     
-    const currentValue = stepDetail.parameters[namelist]?.[paramName];
+    const currentValue = (isEditing ? editedParams : stepDetail.parameters)[namelist]?.[paramName];
     const currentScanId = isScanRef(currentValue) ? getScanId(currentValue) : null;
     
     if (enabled) {
       // Turn scan ON: convert value to scan_ref
       // Reuse existing scan_id if already scanned, otherwise generate new one
-      const existingScanIds = Object.keys(editedParameterScan);
-      const scanId = currentScanId || generateScanId(existingScanIds);
+      const existingScanIds = new Set([
+        ...Object.keys(editedParameterScan),
+        ...Object.keys(stepDetail.parameter_scan || {}),
+      ]);
+      const scanId = currentScanId || generateScanId(Array.from(existingScanIds));
       
       // Set parameter to scan_ref
       setEditedParams(prev => {
@@ -903,12 +906,15 @@ export function StepDetailPanel({
             delete updated[currentScanId];
             return updated;
           });
+        } else {
+          // Warn if other params still reference it (UI-level warning, non-blocking)
+          console.debug(`[ScanToggle] Scan ID '${currentScanId}' still referenced by other parameters, keeping definition`);
         }
         
         setHasChanges(true);
       }
     }
-  }, [stepDetail, editedParams, editedParameterScan]);
+  }, [stepDetail, editedParams, editedParameterScan, isEditing]);
   
   // Handle scan values change
   const handleScanValuesChange = useCallback((scanId: string, values: unknown[]) => {
@@ -1425,6 +1431,7 @@ export function StepDetailPanel({
               onParameterRemove={handleParameterRemove}
               onScanToggle={handleScanToggle}
               onScanValuesChange={handleScanValuesChange}
+              editedParameterScan={isEditing ? editedParameterScan : undefined}
             />
           )}
         </div>
