@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List
 
 from quantumvitas.calculation.scan_validation import find_all_scan_refs, is_scan_ref
+from quantumvitas.calculation.scan_tokens import parse_scan_id
 
 
 @dataclass
@@ -77,8 +78,8 @@ def _traverse_and_collect_scan_refs(
                 current_path = _build_param_path(path, key)
                 
                 if is_scan_ref(value):
-                    # Found ScanRef - extract scan_id and get values
-                    scan_id = value["scan_ref"]
+                    # Found scan token - extract scan_id and get values
+                    scan_id = parse_scan_id(value)
                     if scan_id in parameter_scan:
                         scan_def = parameter_scan[scan_id]
                         values = scan_def.get("values", [])

@@ -442,7 +442,7 @@ class JobExecutor:
         """
         # For now, we execute the job normally
         # In a full implementation, we would:
-        # 1. Build effective step docs with resolved ScanRefs
+        # 1. Build effective step docs with resolved scan tokens
         # 2. Materialize inputs with resolved values
         # 3. Execute
         # 4. Run post-job archive action

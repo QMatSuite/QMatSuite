@@ -385,8 +385,8 @@ class TestYamlDocApplyPatch:
         
         assert doc.get(["a"]) == 99
     
-    def test_apply_patch_scanref_replaces_scalar(self):
-        """ScanRef dict replaces scalar leaf (regression test for parameter scan)."""
+    def test_apply_patch_scan_token_replaces_scalar(self):
+        """Scan token string replaces scalar leaf (regression test for parameter scan)."""
         doc = YamlDoc({
             "parameters": {
                 "SYSTEM": {
@@ -395,30 +395,30 @@ class TestYamlDocApplyPatch:
             },
         })
         
-        # Apply patch: replace scalar with ScanRef dict
+        # Apply patch: replace scalar with scan token string
         doc.apply_patch({
             "parameters": {
                 "SYSTEM": {
-                    "ecutrho": {"scan_ref": "scan001"},
+                    "ecutrho": "@scan:scan001",
                 },
             },
         })
         
-        # Assert ScanRef dict is set correctly (not recursed into)
+        # Assert scan token is set correctly
         result = doc.get(["parameters", "SYSTEM", "ecutrho"])
-        assert result == {"scan_ref": "scan001"}
+        assert result == "@scan:scan001"
     
-    def test_apply_patch_scalar_replaces_scanref(self):
-        """Scalar replaces ScanRef dict leaf (reverse direction)."""
+    def test_apply_patch_scalar_replaces_scan_token(self):
+        """Scalar replaces scan token string (reverse direction)."""
         doc = YamlDoc({
             "parameters": {
                 "SYSTEM": {
-                    "ecutrho": {"scan_ref": "scan001"},
+                    "ecutrho": "@scan:scan001",
                 },
             },
         })
         
-        # Apply patch: replace ScanRef dict with scalar
+        # Apply patch: replace scan token with scalar
         doc.apply_patch({
             "parameters": {
                 "SYSTEM": {

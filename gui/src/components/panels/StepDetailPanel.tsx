@@ -13,7 +13,7 @@ import { useQEParameterMetadata, type QEParameterMeta } from '../../hooks/useQEP
 import { ActiveParametersPanel } from '../step_parameters/ActiveParametersPanel';
 import { AddParameterPalette } from '../step_parameters/AddParameterPalette';
 import { CommonCardKPoints, type CommonCardKPointsRef } from '../common_cards/CommonCardKPoints';
-import { isScanRef, getScanId, generateScanId, findReferencedScanIds } from '../../utils/scanUtils';
+import { isScanRef, getScanId, generateScanId, findReferencedScanIds, makeScanToken } from '../../utils/scanUtils';
 import './StepDetailPanel.css';
 
 interface StepDetailPanelProps {
@@ -847,7 +847,7 @@ export function StepDetailPanel({
         if (!updated[namelist]) {
           updated[namelist] = {};
         }
-        updated[namelist][paramName] = { scan_ref: scanId };
+        updated[namelist][paramName] = makeScanToken(scanId);
         return updated;
       });
       

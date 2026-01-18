@@ -50,7 +50,7 @@ class TestCollectScanDimensions:
             "step001": {
                 "parameters": {
                     "SYSTEM": {
-                        "ecutwfc": {"scan_ref": "scan001"},
+                        "ecutwfc": "@scan:scan001",
                         "ecutrho": 400,
                     }
                 },
@@ -78,7 +78,7 @@ class TestCollectScanDimensions:
             "step001": {
                 "parameters": {
                     "SYSTEM": {
-                        "ecutwfc": {"scan_ref": "scan001"},
+                        "ecutwfc": "@scan:scan001",
                     }
                 },
                 "parameter_scan": {
@@ -88,7 +88,7 @@ class TestCollectScanDimensions:
             "step002": {
                 "parameters": {
                     "SYSTEM": {
-                        "degauss": {"scan_ref": "scan002"},
+                        "degauss": "@scan:scan002",
                     }
                 },
                 "parameter_scan": {
@@ -113,8 +113,8 @@ class TestCollectScanDimensions:
             "step001": {
                 "parameters": {
                     "SYSTEM": {
-                        "ecutwfc": {"scan_ref": "scan001"},
-                        "degauss": {"scan_ref": "scan002"},
+                        "ecutwfc": "@scan:scan001",
+                        "degauss": "@scan:scan002",
                     }
                 },
                 "parameter_scan": {

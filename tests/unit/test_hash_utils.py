@@ -19,7 +19,7 @@ class TestBuildEffectiveEngineParamsView:
             "step_type": "qe_scf",
             "parameters": {
                 "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
+                    "ecutwfc": "@scan:scan001",
                     "ecutrho": 400,
                 }
             },
@@ -66,7 +66,7 @@ class TestBuildEffectiveEngineParamsView:
             "step_type": "qe_scf",
             "parameters": {
                 "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
+                    "ecutwfc": "@scan:scan001",
                 }
             },
             "parameter_scan": {
@@ -99,7 +99,7 @@ class TestComputeStepShaEffective:
             "step_type": "qe_scf",
             "parameters": {
                 "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
+                    "ecutwfc": "@scan:scan001",
                     "ecutrho": 400,
                 }
             },
@@ -165,7 +165,7 @@ class TestComputeStepShaEffective:
             "step_type": "qe_scf",
             "parameters": {
                 "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
+                    "ecutwfc": "@scan:scan001",
                     "ecutrho": 400,
                 }
             },
@@ -190,7 +190,7 @@ class TestComputeStepShaEffective:
             "step_type": "qe_scf",
             "parameters": {
                 "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
+                    "ecutwfc": "@scan:scan001",
                 }
             },
             "parameter_scan": {

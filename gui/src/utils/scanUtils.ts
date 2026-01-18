@@ -1,29 +1,35 @@
 /**
- * Utility functions for parameter scan feature.
+ * Scan token utilities for parameter scan feature.
  * 
- * Handles detection and manipulation of ScanRef values and parameter_scan definitions.
+ * Handles detection and manipulation of scan token strings and parameter_scan definitions.
+ * 
+ * ScanRef is represented as a token string: "@scan:<scan_id>"
  */
 
+const SCAN_TOKEN_PREFIX = '@scan:';
+
 /**
- * Check if a value is a ScanRef dict: {scan_ref: "<id>"}
+ * Check if a value is a scan token string: "@scan:<id>"
  */
-export function isScanRef(value: unknown): value is { scan_ref: string } {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const obj = value as Record<string, unknown>;
-  const keys = Object.keys(obj);
-  return keys.length === 1 && keys[0] === 'scan_ref' && typeof obj.scan_ref === 'string' && obj.scan_ref.length > 0;
+export function isScanRef(value: unknown): value is string {
+  return typeof value === 'string' && value.startsWith(SCAN_TOKEN_PREFIX) && value.length > SCAN_TOKEN_PREFIX.length;
 }
 
 /**
- * Extract scan_id from a ScanRef value.
+ * Extract scan_id from a scan token string.
  */
 export function getScanId(value: unknown): string | null {
   if (isScanRef(value)) {
-    return value.scan_ref;
+    return value.substring(SCAN_TOKEN_PREFIX.length);
   }
   return null;
+}
+
+/**
+ * Create a scan token string from a scan_id.
+ */
+export function makeScanToken(scanId: string): string {
+  return SCAN_TOKEN_PREFIX + scanId;
 }
 
 /**
@@ -62,7 +68,7 @@ export function generateScanId(existingIds: string[]): string {
 }
 
 /**
- * Find all ScanRefs in parameters and return their scan_ids.
+ * Find all scan tokens in parameters and return their scan_ids.
  */
 export function findReferencedScanIds(
   parameters: Record<string, Record<string, unknown>>,
@@ -115,4 +121,3 @@ export function countScanCombinations(
   
   return combinations;
 }
-

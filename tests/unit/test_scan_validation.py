@@ -18,19 +18,19 @@ class TestIsScanRef:
     """Test is_scan_ref() function."""
     
     def test_is_scan_ref_valid(self):
-        """Valid ScanRef dicts are detected."""
-        assert is_scan_ref({"scan_ref": "scan001"}) is True
-        assert is_scan_ref({"scan_ref": "abc123"}) is True
-        assert is_scan_ref({"scan_ref": "scan_001"}) is True
+        """Valid scan token strings are detected."""
+        assert is_scan_ref("@scan:scan001") is True
+        assert is_scan_ref("@scan:abc123") is True
+        assert is_scan_ref("@scan:scan_001") is True
     
     def test_is_scan_ref_invalid_format(self):
-        """Invalid formats are not ScanRefs."""
-        assert is_scan_ref(50) is False  # Not a dict
-        assert is_scan_ref("scan001") is False  # String, not dict
-        assert is_scan_ref({"scan_ref": "scan001", "extra": "field"}) is False  # Extra key
-        assert is_scan_ref({"not_scan_ref": "value"}) is False  # Wrong key
-        assert is_scan_ref({}) is False  # Empty dict
-        assert is_scan_ref({"key1": "val1", "key2": "val2"}) is False  # Multiple keys
+        """Invalid formats are not scan tokens."""
+        assert is_scan_ref(50) is False  # Not a string
+        assert is_scan_ref("scan001") is False  # String without prefix
+        assert is_scan_ref("@scan:") is False  # Empty scan_id
+        assert is_scan_ref("scan:scan001") is False  # Wrong prefix
+        assert is_scan_ref({"scan_ref": "scan001"}) is False  # Dict (old format, not supported)
+        assert is_scan_ref("") is False  # Empty string
 
 
 class TestValidateScanRefFormat:
@@ -38,118 +38,34 @@ class TestValidateScanRefFormat:
     
     def test_validate_scan_ref_format_valid(self):
         """Valid ScanRef formats pass validation."""
-        validate_scan_ref_format({"scan_ref": "scan001"})
-        validate_scan_ref_format({"scan_ref": "abc123"})
-        validate_scan_ref_format({"scan_ref": "scan_001"})
-        validate_scan_ref_format({"scan_ref": "a"})
+        validate_scan_ref_format("@scan:scan001")
+        validate_scan_ref_format("@scan:abc123")
+        validate_scan_ref_format("@scan:scan_001")
+        validate_scan_ref_format("@scan:a")
     
     def test_validate_scan_ref_format_invalid_type(self):
-        """Non-dict values raise error."""
-        with pytest.raises(ScanRefValidationError, match="must be a dict"):
+        """Non-string values raise error."""
+        with pytest.raises(ScanRefValidationError, match="must be a string"):
             validate_scan_ref_format(50)
-        with pytest.raises(ScanRefValidationError, match="must be a dict"):
+        with pytest.raises(ScanRefValidationError, match="must start with '@scan:'"):
             validate_scan_ref_format("scan001")
-    
-    def test_scan_ref_extra_fields_error(self):
-        """ScanRef dict with extra fields raises error."""
-        with pytest.raises(ScanRefValidationError, match="exactly one key"):
-            validate_scan_ref_format({"scan_ref": "scan001", "extra": "field"})
-        with pytest.raises(ScanRefValidationError, match="exactly one key"):
-            validate_scan_ref_format({"scan_ref": "scan001", "other": "value", "third": "key"})
-    
-    def test_validate_scan_ref_format_wrong_key(self):
-        """Dict with wrong key raises error."""
-        with pytest.raises(ScanRefValidationError, match="must have key 'scan_ref'"):
-            validate_scan_ref_format({"not_scan_ref": "value"})
     
     def test_validate_scan_ref_format_empty_scan_id(self):
         """Empty scan_id raises error."""
         with pytest.raises(ScanRefValidationError, match="must be non-empty"):
-            validate_scan_ref_format({"scan_ref": ""})
+            validate_scan_ref_format("@scan:")
     
     def test_validate_scan_ref_format_invalid_scan_id_chars(self):
         """Invalid characters in scan_id raise error."""
         with pytest.raises(ScanRefValidationError, match="must match"):
-            validate_scan_ref_format({"scan_ref": "scan-001"})  # Hyphen not allowed
+            validate_scan_ref_format("@scan:scan-001")  # Hyphen not allowed
         with pytest.raises(ScanRefValidationError, match="must match"):
-            validate_scan_ref_format({"scan_ref": "scan.001"})  # Dot not allowed
+            validate_scan_ref_format("@scan:scan.001")  # Dot not allowed
         with pytest.raises(ScanRefValidationError, match="must match"):
-            validate_scan_ref_format({"scan_ref": "SCAN001"})  # Uppercase not allowed
+            validate_scan_ref_format("@scan:SCAN001")  # Uppercase not allowed
         with pytest.raises(ScanRefValidationError, match="must match"):
-            validate_scan_ref_format({"scan_ref": "scan 001"})  # Space not allowed
-
-
-class TestFindAllScanRefs:
-    """Test find_all_scan_refs() function."""
+            validate_scan_ref_format("@scan:scan 001")  # Space not allowed
     
-    def test_find_all_scan_refs_scalar_leaf(self):
-        """Find ScanRefs at scalar leaf positions."""
-        data = {
-            "parameters": {
-                "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
-                    "ecutrho": 400,
-                }
-            }
-        }
-        refs = find_all_scan_refs(data)
-        assert len(refs) == 1
-        assert refs[0] == ("parameters.SYSTEM.ecutwfc", "scan001")
-    
-    def test_find_all_scan_refs_multiple(self):
-        """Find multiple ScanRefs."""
-        data = {
-            "parameters": {
-                "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
-                    "degauss": {"scan_ref": "scan002"},
-                }
-            }
-        }
-        refs = find_all_scan_refs(data)
-        assert len(refs) == 2
-        assert ("parameters.SYSTEM.ecutwfc", "scan001") in refs
-        assert ("parameters.SYSTEM.degauss", "scan002") in refs
-    
-    def test_find_all_scan_refs_in_cards(self):
-        """Find ScanRefs in cards section."""
-        data = {
-            "cards": {
-                "K_POINTS": {
-                    "kpoints": {"scan_ref": "scan003"},
-                }
-            }
-        }
-        refs = find_all_scan_refs(data)
-        assert len(refs) == 1
-        assert refs[0] == ("cards.K_POINTS.kpoints", "scan003")
-    
-    def test_find_all_scan_refs_non_leaf_error(self):
-        """ScanRef at non-leaf position raises error."""
-        # ScanRef as value for entire section
-        data = {
-            "parameters": {
-                "SYSTEM": {"scan_ref": "scan001"},  # Invalid: SYSTEM is not a leaf
-            }
-        }
-        with pytest.raises(ScanRefValidationError, match="non-leaf position"):
-            find_all_scan_refs(data)
-        
-        # ScanRef in nested dict (non-leaf)
-        data2 = {
-            "parameters": {
-                "SYSTEM": {
-                    "nested": {
-                        "deep": {"scan_ref": "scan001"}  # This is actually a leaf, so OK
-                    }
-                }
-            }
-        }
-        # This should work - deep.nested is a leaf
-        refs = find_all_scan_refs(data2)
-        assert len(refs) == 1
-
-
 class TestValidateStepScanRefs:
     """Test validate_step_scan_refs() function."""
     
@@ -159,7 +75,7 @@ class TestValidateStepScanRefs:
             "step_type": "qe_scf",
             "parameters": {
                 "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
+                    "ecutwfc": "@scan:scan001",
                 }
             },
             "parameter_scan": {
@@ -178,7 +94,7 @@ class TestValidateStepScanRefs:
             "step_type": "qe_scf",
             "parameters": {
                 "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
+                    "ecutwfc": "@scan:scan001",
                 }
             },
             "parameter_scan": {
@@ -196,7 +112,7 @@ class TestValidateStepScanRefs:
             "step_type": "qe_scf",
             "parameters": {
                 "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
+                    "ecutwfc": "@scan:scan001",
                 }
             },
             "parameter_scan": {
@@ -216,7 +132,7 @@ class TestValidateStepScanRefs:
         step_doc = {
             "step_type": "qe_scf",
             "parameters": {
-                "SYSTEM": {"scan_ref": "scan001"},  # Invalid: SYSTEM is not a leaf
+                "SYSTEM": "@scan:scan001",  # Invalid: SYSTEM is not a leaf
             },
             "parameter_scan": {
                 "scan001": {"values": [30, 40]}
@@ -233,7 +149,7 @@ class TestValidateStepScanRefs:
             "step_type": "qe_scf",
             "parameters": {
                 "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},  # Scalar leaf - OK
+                    "ecutwfc": "@scan:scan001",  # Scalar leaf - OK
                 }
             },
             "parameter_scan": {
@@ -267,8 +183,8 @@ class TestValidateStepScanRefs:
             },
             "parameters": {
                 "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
-                    "degauss": {"scan_ref": "scan002"},
+                    "ecutwfc": "@scan:scan001",
+                    "degauss": "@scan:scan002",
                 }
             },
             "cards": {},
@@ -291,8 +207,8 @@ class TestValidateStepScanRefs:
             "step_type": "qe_scf",
             "parameters": {
                 "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
-                    "ecutrho": {"scan_ref": "scan001"},  # Same scan_id - OK
+                    "ecutwfc": "@scan:scan001",
+                    "ecutrho": "@scan:scan001",  # Same scan_id - OK
                 }
             },
             "parameter_scan": {
@@ -308,7 +224,7 @@ class TestValidateStepScanRefs:
             "step_type": "qe_scf",
             "parameters": {
                 "SYSTEM": {
-                    "ecutwfc": {"scan_ref": "scan001"},
+                    "ecutwfc": "@scan:scan001",
                 }
             },
             "parameter_scan": "not a dict",  # Invalid
