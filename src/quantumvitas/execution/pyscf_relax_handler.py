@@ -61,6 +61,10 @@ def handle_pyscf_relax_output(
         spin_multiplicity=results.get("spin_multiplicity", 1),
     )
     
+    # Canonicalize before writing
+    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+    canonicalize_structure_like_in_place(mol)
+    
     artifact_path = write_generated_structure(
         structure=mol,
         calc_dir=calc_dir,

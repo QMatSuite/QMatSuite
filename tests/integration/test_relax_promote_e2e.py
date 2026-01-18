@@ -27,6 +27,22 @@ from pymatgen.core import Molecule
 pytestmark = [pytest.mark.integration]
 
 
+def is_pyscf_available() -> bool:
+    """Check if PySCF can be imported."""
+    try:
+        import pyscf
+        return True
+    except ImportError:
+        return False
+
+
+@pytest.fixture(scope="module", autouse=True)
+def skip_if_pyscf_unavailable():
+    """Skip all tests in this module if PySCF is not available."""
+    if not is_pyscf_available():
+        pytest.skip("PySCF not installed. Install with: pip install pyscf")
+
+
 @pytest.fixture
 def promote_test_project():
     """Create a project with H2 molecule for promote E2E test."""

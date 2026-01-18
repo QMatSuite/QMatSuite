@@ -434,62 +434,20 @@ def structure_fingerprint(structure: PMGStructure, tol: float = 1e-5) -> str:
     """
     Generate a deterministic fingerprint for a structure.
     
-    This is a "good enough" fingerprint for demo import splitting and diagnostics,
-    not perfect crystallography. It uses:
-    - Quantized lattice parameters (Å) by tol
-    - Quantized fractional coordinates by tol
-    - Deterministic ordering
-    - SHA256 hash of the quantized data
+    This function delegates to the canonical implementation in
+    quantumvitas.core.structure_fingerprint.
     
-    The fingerprint is stable for perturbations < tol and different for perturbations > tol.
-    It does NOT implement symmetry/basis-change equivalence.
-    
-    Uses the canonical wrapping convention (WRAP_TOL=1e-4) for consistency.
+    Deprecated: Use quantumvitas.core.structure_fingerprint.structure_like_fingerprint()
     
     Args:
         structure: pymatgen Structure to fingerprint
         tol: Quantization tolerance (default 1e-5)
         
     Returns:
-        Hex string of SHA256 hash (64 characters)
+        SHA256 hex digest (64 characters)
     """
-    import numpy as np
-    
-    # Quantize lattice matrix (3x3, in Angstrom)
-    lattice_matrix = structure.lattice.matrix
-    quantized_lattice = np.round(lattice_matrix / tol) * tol
-    
-    # Get fractional coordinates and wrap to [0, 1) using canonical wrapping
-    frac_coords = structure.frac_coords
-    # Wrap using canonical tolerance
-    wrapped_coords = frac_coords % 1.0
-    # Further quantize by tol
-    quantized_coords = np.round(wrapped_coords / tol) * tol
-    
-    # Get species symbols in deterministic order (by site index)
-    species = [str(site.specie.symbol) for site in structure.sites]
-    
-    # Build deterministic payload: lattice + coords + species
-    # Format: lattice rows, then coords rows, then species
-    payload_parts = []
-    
-    # Lattice (9 values: 3x3 matrix flattened row-wise)
-    for row in quantized_lattice:
-        payload_parts.append(f"{row[0]:.10f},{row[1]:.10f},{row[2]:.10f}")
-    
-    # Coordinates (N values: fractional coords)
-    for coord in quantized_coords:
-        payload_parts.append(f"{coord[0]:.10f},{coord[1]:.10f},{coord[2]:.10f}")
-    
-    # Species (N symbols)
-    payload_parts.extend(species)
-    
-    # Create deterministic string representation
-    payload = "\n".join(payload_parts)
-    
-    # Hash with SHA256
-    hash_obj = hashlib.sha256(payload.encode('utf-8'))
-    return hash_obj.hexdigest()
+    from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
+    return structure_like_fingerprint(structure, tol_ang=tol)
 
 
 def _get_system_namelist(qe_input: QEInput) -> Optional[Dict[str, Any]]:
