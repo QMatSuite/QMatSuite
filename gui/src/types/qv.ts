@@ -426,6 +426,7 @@ export interface StepDetail {
   parameters: Record<string, Record<string, unknown>>;
   cards: Record<string, Record<string, unknown>>;
   species_overrides: Record<string, Record<string, unknown>>;
+  parameter_scan?: Record<string, { values: unknown[] }>;  // scan_id -> { values: [...] }
   prefix_outdir_injection?: {
     effective_prefix?: string;
     effective_outdir?: string;
@@ -1331,6 +1332,7 @@ export interface QVCommandMap {
       step: string;
       parameters: Record<string, Record<string, unknown>>;
       cards?: Record<string, Record<string, unknown>>;
+      parameter_scan?: Record<string, { values: unknown[] }>;
     };
     result: StepDetail;
   };

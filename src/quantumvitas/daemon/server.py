@@ -3232,6 +3232,7 @@ class QVDaemon:
         step = self._require_str(payload, "step")
         parameters = payload.get("parameters", {})
         cards = payload.get("cards")
+        parameter_scan = payload.get("parameter_scan")
         
         # Resolve calculation selector to ULID at boundary
         import logging
@@ -3253,6 +3254,7 @@ class QVDaemon:
             step_selector=step,
             parameters=parameters,
             cards=cards,
+            parameter_scan=parameter_scan,
             index=cache.index,
             config=cache.config,
         )
