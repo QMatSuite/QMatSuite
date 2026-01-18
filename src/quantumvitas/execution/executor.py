@@ -627,8 +627,38 @@ class JobExecutor:
                         run_id=run_id,
                     )
                     logger.info(f"[EXECUTOR] Successfully processed PySCF relax output for step {step_ulid}: {artifact_path}")
+                elif job.engine == "orca":
+                    # ORCA: parse .xyz file from chain working directory
+                    step_result = job_result.step_results.get(step_ulid, {})
+                    working_dir_str = step_result.get("working_dir")
+                    chain_key = step_result.get("chain_key")
+                    
+                    if not working_dir_str:
+                        logger.warning(f"[EXECUTOR] No working_dir found for ORCA relax step {step_ulid}, skipping post-process")
+                        continue
+                    if not chain_key:
+                        logger.warning(f"[EXECUTOR] No chain_key found for ORCA relax step {step_ulid}, skipping post-process")
+                        continue
+                    
+                    working_dir = Path(working_dir_str)
+                    
+                    # Import ORCA relax handler
+                    from quantumvitas.execution.orca_relax_parser import handle_orca_relax_output
+                    
+                    artifact_path = handle_orca_relax_output(
+                        step_ulid=step_ulid,
+                        step_type=str(step_type),
+                        calc_dir=calc_dir,
+                        working_dir=working_dir,
+                        chain_key=chain_key,
+                        calculation_ulid=calculation_ulid or "",
+                        input_structure_ulid=input_structure_ulid or "",
+                        run_id=run_id,
+                    )
+                    logger.info(f"[EXECUTOR] Successfully processed ORCA relax output for step {step_ulid}: {artifact_path}")
                 else:
-                    # Other engines (ORCA) handled separately
+                    # Unknown engine
+                    logger.warning(f"[EXECUTOR] Unknown engine '{job.engine}' for relax step {step_ulid}, skipping post-process")
                     continue
                     
             except Exception as e:

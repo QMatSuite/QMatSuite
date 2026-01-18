@@ -778,21 +778,402 @@ def _handle_promote_relax_structure(self, payload: Dict[str, Any]) -> Dict[str, 
 
 ---
 
-## PR 10: Real ORCA Relax Test (启发式编程方法)
+## PR 10: Real ORCA Relax Test (完整实现)
 
-**目的**: 创建真实 ORCA geometry optimization 集成测试，验证完整执行流程
+**目的**: 修复 ORCA Relax 执行流程并创建真实 ORCA geometry optimization 集成测试
 
 **重要**: 本地已安装 ORCA，所有测试必须实际运行，**不允许 skip**。
 
-### 启发式编程方法 (Critical!)
+### 问题分析 (Code Review 结果)
 
-**步骤 1**: 先运行一次 ORCA relax，保存输出文件
+PR10 存在三个相互关联的问题，必须全部解决：
+
+#### 问题 1: ORCA Engine 的 `run_step` 方法抛出 NotImplementedError
+
+**位置**: `src/quantumvitas/engine/orca_engine.py:175-202`
+
+```python
+def run_step(self, step, working_dir: Path) -> StepResult:
+    # ...
+    raise NotImplementedError(
+        "ORCA steps must be executed through chain handler. "
+        "Use orca_chain_handler in execution/handlers.py instead of calling run_step directly."
+    )
+```
+
+**问题**: 当 `orca_chain_handler` 调用 `target_step.run(engine=engine, ...)` 时，会触发此错误。
+
+#### 问题 2: ORCA Handler 使用错误的调用路径
+
+**位置**: `src/quantumvitas/execution/handlers.py:409-415`
+
+```python
+# 当前代码 (错误)
+result = target_step.run(  # ❌ 调用 step.run() → engine.run_step() → NotImplementedError
+    engine=engine,
+    calculation_raw_dir=raw_dir,
+    ...
+)
+```
+
+**对比 PySCF Handler (正确)**:
+```python
+# PySCF handler (handlers.py:307-313)
+result = engine.run_step_with_chain(  # ✅ 直接调用 engine 的 chain 方法
+    target_step=target_step,
+    chain_steps=steps,
+    ...
+)
+```
+
+#### 问题 3: Executor Post-Process 未实现 ORCA Relax
+
+**位置**: `src/quantumvitas/execution/executor.py:630-632`
+
+```python
+else:
+    # Other engines (ORCA) handled separately
+    continue  # ❌ 直接跳过，没有实现
+```
+
+**需要的信息** (来自 `orca_relax_parser.py:47-56`):
+- `working_dir`: ORCA 工作目录（包含 `.xyz` 文件）
+- `chain_key`: Chain key（如 `"chain01_scf"`）
+
+---
+
+### 解决方案: 类似 PySCF，为 ORCA 实现 `run_step_with_chain()`
+
+#### 改动文件 (按顺序)
+
+1. `src/quantumvitas/engine/orca_engine.py` - 添加 `run_step_with_chain()` 方法
+2. `src/quantumvitas/execution/handlers.py` - 修改 `orca_chain_handler` 调用 `run_step_with_chain()`
+3. `src/quantumvitas/execution/executor.py` - 实现 ORCA relax post-process
+4. `tests/integration/test_orca_relax_real.py` - 集成测试
+
+---
+
+### 阶段 1: 修改 ORCAEngine，添加 `run_step_with_chain()` 方法
+
+**文件**: `src/quantumvitas/engine/orca_engine.py`
+
+**在 `run_step` 方法后添加新方法**:
+
+```python
+def run_step_with_chain(
+    self,
+    target_step,
+    chain_steps: List[Any],
+    calculation_raw_dir: Path,
+    structure_id: Optional[str] = None,
+    project_root: Optional[Path] = None,
+) -> "StepResult":
+    """
+    Run an ORCA dependency chain.
+    
+    This method adapts the ORCA chain execution model to match the
+    pyscf_engine.run_step_with_chain() interface used by handlers.
+    
+    Args:
+        target_step: Target Step object
+        chain_steps: List of Step objects in dependency order (from root to target)
+        calculation_raw_dir: Base working directory (calc/raw/)
+        structure_id: Structure resource ID (for Molecule loading)
+        project_root: Project root path (for structure resolution)
+        
+    Returns:
+        StepResult for the target step
+    """
+    import time
+    from quantumvitas.engine.base import StepResult
+    from quantumvitas.engine.qc_engine_base import QCChain, detect_chains
+    from quantumvitas.io.structure_io import read_structure
+    from quantumvitas.core.resolution import require_structure
+    from pymatgen.core import Molecule as PMGMolecule
+    
+    start_time = time.time()
+    calculation_raw_dir = Path(calculation_raw_dir)
+    
+    # 1. Validate inputs
+    if not structure_id:
+        return StepResult(
+            step_type="orca_relax",
+            input_file=calculation_raw_dir / "chain.inp",
+            success=False,
+            error="Structure ID is required for ORCA chain execution",
+            execution_time=time.time() - start_time,
+        )
+    if not project_root:
+        return StepResult(
+            step_type="orca_relax",
+            input_file=calculation_raw_dir / "chain.inp",
+            success=False,
+            error="Project root is required for structure resolution",
+            execution_time=time.time() - start_time,
+        )
+    
+    # 2. Load Molecule
+    try:
+        structure_resolved = require_structure(project_root, structure_id)
+        structure_path = structure_resolved.absolute_path
+        molecule = read_structure(structure_path)
+        
+        if not isinstance(molecule, PMGMolecule):
+            return StepResult(
+                step_type="orca_relax",
+                input_file=calculation_raw_dir / "chain.inp",
+                success=False,
+                error=f"Expected Molecule for ORCA, got {type(molecule)}",
+                execution_time=time.time() - start_time,
+            )
+    except Exception as e:
+        return StepResult(
+            step_type="orca_relax",
+            input_file=calculation_raw_dir / "chain.inp",
+            success=False,
+            error=f"Failed to load molecule: {e}",
+            execution_time=time.time() - start_time,
+        )
+    
+    # 3. Build QCChain from chain_steps
+    # For ORCA, we detect chains from steps (SCF root + downstream)
+    chains = detect_chains(chain_steps)
+    if not chains:
+        return StepResult(
+            step_type="orca_relax",
+            input_file=calculation_raw_dir / "chain.inp",
+            success=False,
+            error="No valid QCChain detected from steps",
+            execution_time=time.time() - start_time,
+        )
+    
+    # Use the first (and usually only) chain
+    chain = chains[0]
+    
+    # 4. Set up working directory
+    # ORCA chains run in: calc/raw/chains/{chain_key}/
+    from quantumvitas.engine.qc_engine_base import get_chain_working_dir_name
+    chain_dir_name = get_chain_working_dir_name(chain)
+    working_dir = calculation_raw_dir / "chains" / chain_dir_name
+    working_dir.mkdir(parents=True, exist_ok=True)
+    
+    # 5. Execute chain
+    try:
+        orca_results = self.run_chain(
+            chain=chain,
+            working_dir=working_dir,
+            molecule=molecule,
+            fresh=True,  # Always fresh for explicit runs
+        )
+    except Exception as e:
+        return StepResult(
+            step_type="orca_relax",
+            input_file=working_dir / f"{chain.key}.inp",
+            success=False,
+            error=f"ORCA chain execution failed: {e}",
+            execution_time=time.time() - start_time,
+        )
+    
+    # 6. Convert ORCAStepResult to StepResult
+    # Find result for target step
+    target_result = None
+    for orca_result in orca_results:
+        if orca_result.step_id == target_step.meta.id:
+            target_result = orca_result
+            break
+    
+    if target_result is None and orca_results:
+        # Use last result if target not found explicitly
+        target_result = orca_results[-1]
+    
+    if target_result is None:
+        return StepResult(
+            step_type="orca_relax",
+            input_file=working_dir / f"{chain.key}.inp",
+            success=False,
+            error="No result found for target step",
+            execution_time=time.time() - start_time,
+        )
+    
+    # Store chain_key and working_dir in parsed_output for post-processing
+    parsed_output = {
+        "chain_key": chain.key,
+        "working_dir": str(working_dir),
+        "metrics": target_result.metrics,
+        "artifacts": target_result.artifacts,
+    }
+    
+    return StepResult(
+        step_type=target_step.step_type or "orca_relax",
+        input_file=Path(target_result.artifacts.get("input", working_dir / f"{chain.key}.inp")),
+        output_file=Path(target_result.artifacts.get("output", working_dir / f"{chain.key}.out")),
+        success=target_result.success,
+        error=target_result.error,
+        execution_time=time.time() - start_time,
+        parsed_output=parsed_output,
+    )
+```
+
+**同时删除 `run_step` 中的 `NotImplementedError`，改为调用 `run_step_with_chain`**:
+
+```python
+def run_step(self, step, working_dir: Path) -> StepResult:
+    """
+    Execute a single ORCA step.
+    
+    For ORCA, single steps are executed as chains of length 1.
+    This method delegates to run_step_with_chain with a single-step chain.
+    """
+    # Extract structure_id and project_root from step.options (set by handler)
+    structure_id = None
+    project_root = None
+    
+    if hasattr(step, 'options'):
+        structure_id = step.options.get('structure_id')
+        project_root_str = step.options.get('project_root')
+        if project_root_str:
+            project_root = Path(project_root_str)
+    
+    return self.run_step_with_chain(
+        target_step=step,
+        chain_steps=[step],  # Chain of length 1
+        calculation_raw_dir=working_dir,
+        structure_id=structure_id,
+        project_root=project_root,
+    )
+```
+
+---
+
+### 阶段 2: 修改 orca_chain_handler 调用 run_step_with_chain
+
+**文件**: `src/quantumvitas/execution/handlers.py`
+
+**找到 `orca_chain_handler` 函数 (约第 346 行)**
+
+**将**:
+```python
+# Execute the chain using existing ORCA engine
+target_step = steps[-1]  # Last step is the target
+
+try:
+    result = target_step.run(
+        engine=engine,
+        calculation_raw_dir=raw_dir,
+        project_root=calculation.project.root,
+        species_map=calculation.species_map,
+    )
+
+    success = result.success if hasattr(result, "success") else False
+
+    # Record results for all steps in the chain
+    for step in steps:
+        if step is None:
+            continue
+        step_results[step.meta.id] = {
+            "success": success,
+            "executed_in_chain": True,
+        }
+```
+
+**替换为**:
+```python
+# Execute the chain using ORCA engine's run_step_with_chain
+# (matches PySCF handler pattern)
+target_step = steps[-1]  # Last step is the target
+
+try:
+    # Call run_step_with_chain directly (like PySCF handler)
+    result = engine.run_step_with_chain(
+        target_step=target_step,
+        chain_steps=steps,
+        calculation_raw_dir=raw_dir,
+        structure_id=calculation.structure_id if hasattr(calculation, 'structure_id') else None,
+        project_root=calculation.project.root,
+    )
+
+    success = result.success if hasattr(result, "success") else False
+    
+    # Extract chain_key and working_dir from parsed_output for post-processing
+    chain_key = None
+    chain_working_dir = None
+    if hasattr(result, 'parsed_output') and result.parsed_output:
+        chain_key = result.parsed_output.get('chain_key')
+        chain_working_dir = result.parsed_output.get('working_dir')
+
+    # Record results for all steps in the chain
+    for step in steps:
+        if step is None:
+            continue
+        step_results[step.meta.id] = {
+            "success": success,
+            "executed_in_chain": True,
+            "working_dir": chain_working_dir,  # For post-processing relax steps
+            "chain_key": chain_key,  # For finding .xyz file
+        }
+```
+
+---
+
+### 阶段 3: 实现 Executor ORCA Relax Post-Process
+
+**文件**: `src/quantumvitas/execution/executor.py`
+
+**找到 `_post_process_relax_steps` 方法中的**:
+```python
+else:
+    # Other engines (ORCA) handled separately
+    continue
+```
+
+**替换为**:
+```python
+elif job.engine == "orca":
+    # ORCA: parse .xyz file from chain working directory
+    step_result = job_result.step_results.get(step_ulid, {})
+    working_dir_str = step_result.get("working_dir")
+    chain_key = step_result.get("chain_key")
+    
+    if not working_dir_str:
+        logger.warning(f"[EXECUTOR] No working_dir found for ORCA relax step {step_ulid}, skipping post-process")
+        continue
+    if not chain_key:
+        logger.warning(f"[EXECUTOR] No chain_key found for ORCA relax step {step_ulid}, skipping post-process")
+        continue
+    
+    working_dir = Path(working_dir_str)
+    
+    # Import ORCA relax handler
+    from quantumvitas.execution.orca_relax_parser import handle_orca_relax_output
+    
+    artifact_path = handle_orca_relax_output(
+        step_ulid=step_ulid,
+        step_type=str(step_type),
+        calc_dir=calc_dir,
+        working_dir=working_dir,
+        chain_key=chain_key,
+        calculation_ulid=calculation_ulid or "",
+        input_structure_ulid=input_structure_ulid or "",
+        run_id=run_id,
+    )
+    logger.info(f"[EXECUTOR] Successfully processed ORCA relax output for step {step_ulid}: {artifact_path}")
+else:
+    # Unknown engine
+    logger.warning(f"[EXECUTOR] Unknown engine '{job.engine}' for relax step {step_ulid}, skipping post-process")
+    continue
+```
+
+---
+
+### 阶段 4: 验证并创建集成测试
+
+**启发式编程步骤 (必须按顺序执行)**:
+
+#### 步骤 1: 运行单次 ORCA relax 验证修复
 
 ```bash
-# 激活虚拟环境
 cd <HOME>/QMatSuite && source .venv/bin/activate
 
-# 创建一个最小的 ORCA geometry optimization 任务并运行
 python3 << 'PYEOF'
 from pathlib import Path
 from quantumvitas.core.paths import tmp_runs_dir
@@ -801,132 +1182,286 @@ from pymatgen.core import Molecule
 import shutil
 
 # 1. 创建测试项目
-test_dir = tmp_runs_dir() / "orca_relax_analysis"
+test_dir = tmp_runs_dir() / "orca_relax_pr10_test"
+if test_dir.exists():
+    shutil.rmtree(test_dir)
 test_dir.mkdir(parents=True, exist_ok=True)
-project_root = QVService.init_project(test_dir / "orca_relax_project")
 
-# 2. 创建 H2 分子 (最简单的 geometry optimization)
-h2 = Molecule(["H", "H"], [[0, 0, 0], [0.8, 0, 0]])  # 初始距离故意设远一点
+project_root = QVService.init_project(test_dir / "orca_project")
+
+# 2. 创建 H2 分子
+h2 = Molecule(["H", "H"], [[0, 0, 0], [0.8, 0, 0]])
 h2_file = test_dir / "h2.xyz"
 h2.to(filename=h2_file, fmt="xyz")
 
 # 3. 导入结构
 struct_result = QVService.import_structure(project_root, h2_file, name="H2")
+print(f"Structure ID: {struct_result.meta.id}")
 
-# 4. 创建 calculation (engine_family=orca, structure_kind=molecule)
+# 4. 创建 calculation
 calc = QVService.init_calculation(
     project_root, "h2_relax",
     structure_selector=struct_result.meta.id,
     engine_family="orca",
     structure_kind="molecule",
 )
+print(f"Calculation ID: {calc.id}")
 
 # 5. 创建 relax step
 step = QVService.init_step(project_root, calc.id, "orca_relax", name="relax")
+print(f"Step ID: {step.id}")
 
-# 6. 配置 step (最小参数)
+# 6. 配置 step
 QVService.configure_step(
     project_root, calc.id, step.id,
     parameters={
         "method": "HF",
-        "basis": "STO-3G",  # 最小基组，速度快
+        "basis": "STO-3G",
         "geom": {"MaxIter": 50},
     },
 )
 
 # 7. 运行
-print(f"Project: {project_root}")
-print(f"Calculation: {calc.id}")
-print(f"Step: {step.id}")
+print("\n=== Running ORCA relax ===")
 result = QVService.run_step(project_root, calc.id, step.id, verbose=True)
-
 print(f"\nResult: {result}")
 
-# 8. 保存输出文件用于分析
-if result.get("success"):
+# 8. 检查 current.json
+from quantumvitas.execution.relax_artifacts import get_generated_structure_path, read_generated_structure
+calc_dir = project_root / "calculations" / "h2_relax"
+artifact_path = get_generated_structure_path(calc_dir, step.id)
+print(f"\nArtifact path: {artifact_path}")
+print(f"Exists: {artifact_path.exists()}")
+
+if artifact_path.exists():
+    mol = read_generated_structure(calc_dir, step.id)
+    print(f"Relaxed molecule: {len(mol)} atoms")
+    print(f"H-H distance: {mol.get_distance(0, 1):.4f} Angstrom")
     print("\n=== SUCCESS ===")
-    # 查找输出文件
-    calc_dir = project_root / "calculations" / "h2_relax"
-    raw_dir = calc_dir / "raw"
-    if raw_dir.exists():
-        # ORCA 输出文件通常是 *.out 或 *.xyz
-        for f in raw_dir.rglob("*"):
-            if f.is_file():
-                print(f"Found: {f}")
-                if f.suffix in [".out", ".xyz", ".log"]:
-                    # 复制到分析目录
-                    dest = Path("/tmp") / f"orca_relax_output_{f.name}"
-                    shutil.copy2(f, dest)
-                    print(f"  -> Saved to: {dest}")
 else:
-    print(f"\n=== FAILED ===")
-    print(result.get("error"))
+    print("\n=== FAILED: current.json not created ===")
 PYEOF
 ```
 
-**步骤 2**: 分析输出文件格式
+#### 步骤 2: 如果步骤 1 失败，检查日志定位问题
 
 ```bash
-cd <HOME>/QMatSuite && source .venv/bin/activate
+# 检查 ORCA 输出文件
+find .tmp/runs/orca_relax_pr10_test -name "*.out" -o -name "*.xyz" | head -20
 
-# 查看 ORCA 输出文件结构
-echo "=== ORCA Output Files ==="
-ls -la /tmp/orca_relax_output_* 2>/dev/null || echo "No output files found yet"
-
-# 分析 .out 文件 (ORCA 主输出)
-if [ -f /tmp/orca_relax_output_*.out ]; then
-    echo ""
-    echo "=== Searching for final geometry in .out file ==="
-    grep -A 20 "FINAL SINGLE POINT ENERGY\|FINAL ENERGY EVALUATION\|OPTIMIZATION HAS CONVERGED\|CARTESIAN COORDINATES (ANGSTROEM)" /tmp/orca_relax_output_*.out | head -50
-fi
-
-# 分析 .xyz 文件 (ORCA 通常会生成优化后的 xyz)
-if [ -f /tmp/orca_relax_output_*.xyz ]; then
-    echo ""
-    echo "=== Content of .xyz file ==="
-    cat /tmp/orca_relax_output_*.xyz
-fi
-
-# 分析 *_trj.xyz (trajectory file)
-if [ -f /tmp/orca_relax_output_*_trj.xyz ]; then
-    echo ""
-    echo "=== Content of trajectory xyz file ==="
-    tail -20 /tmp/orca_relax_output_*_trj.xyz
-fi
+# 检查 handler 日志
+grep -r "ORCA\|orca" .tmp/runs/orca_relax_pr10_test/ 2>/dev/null | head -20
 ```
 
-**步骤 3**: 基于输出格式编写/修复解析器
+#### 步骤 3: 创建集成测试文件
 
-根据步骤 2 的输出，确定：
-1. ORCA 优化后的结构在哪个文件？通常是 `{basename}.xyz` 或 `{basename}_trj.xyz` 的最后一帧
-2. 坐标格式是什么？通常是 Angstrom 的笛卡尔坐标
-3. 需要解析哪些关键字？例如 `CARTESIAN COORDINATES (ANGSTROEM)`
-
-**步骤 4**: 测试解析器
+**文件**: `tests/integration/test_orca_relax_real.py`
 
 ```python
-# 直接测试解析函数
-from quantumvitas.execution.orca_relax_parser import parse_orca_optimized_xyz
+"""
+Real ORCA relax integration test.
 
-xyz_file = Path("/tmp/orca_relax_output_chain_*.xyz")  # 根据实际文件名调整
-molecule = parse_orca_optimized_xyz(xyz_file)
-print(f"Parsed molecule: {len(molecule)} atoms")
-print(f"Bond distance: {molecule.get_distance(0, 1):.4f} Angstrom")
+This test actually runs ORCA to perform a geometry optimization
+and verifies that the output is correctly parsed and written to current.json.
+
+IMPORTANT: ORCA is REQUIRED for these tests. They will NOT be skipped.
+"""
+
+import json
+import pytest
+import time
+import uuid
+import shutil
+from pathlib import Path
+
+from quantumvitas.api import QVService
+from quantumvitas.core.paths import tmp_runs_dir
+from quantumvitas.execution.relax_artifacts import (
+    get_generated_structure_path,
+    read_generated_structure,
+)
+from pymatgen.core import Molecule
+
+
+pytestmark = [pytest.mark.integration]
+
+
+@pytest.fixture(scope="module")
+def orca_available():
+    """Verify ORCA is available. This fixture will FAIL if ORCA is not installed."""
+    from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
+    
+    orca_bin = resolve_orca_bin()
+    assert orca_bin is not None, (
+        "ORCA binary not found. ORCA is REQUIRED for these tests. "
+        "Install ORCA or set ORCA_PATH environment variable."
+    )
+    assert Path(orca_bin).exists(), f"ORCA binary does not exist: {orca_bin}"
+    return orca_bin
+
+
+@pytest.fixture
+def orca_project_with_h2(orca_available):
+    """Create a project with H2 molecule for ORCA relax test."""
+    unique_id = f"orca_relax_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+    test_dir = tmp_runs_dir() / unique_id
+    test_dir.mkdir(parents=True, exist_ok=True)
+    
+    project_root = QVService.init_project(test_dir / "orca_project")
+    
+    # Create H2 molecule with non-equilibrium bond length
+    h2 = Molecule(["H", "H"], [[0, 0, 0], [0.8, 0, 0]])  # 0.8 Å (far from equilibrium ~0.74 Å)
+    h2_file = test_dir / "h2.xyz"
+    h2.to(filename=h2_file, fmt="xyz")
+    
+    # Import structure
+    struct_result = QVService.import_structure(project_root, h2_file, name="H2")
+    
+    # Create calculation
+    calc = QVService.init_calculation(
+        project_root, "h2_relax",
+        structure_selector=struct_result.meta.id,
+        engine_family="orca",
+        structure_kind="molecule",
+    )
+    
+    # Create relax step
+    step = QVService.init_step(project_root, calc.id, "orca_relax", name="relax")
+    
+    # Configure with minimal parameters
+    QVService.configure_step(
+        project_root, calc.id, step.id,
+        parameters={
+            "method": "HF",
+            "basis": "STO-3G",
+            "geom": {"MaxIter": 50},
+        },
+    )
+    
+    yield {
+        "project_root": project_root,
+        "calc_id": calc.id,
+        "step_id": step.id,
+        "structure_path": project_root / "structures" / f"{struct_result.meta.id}.json",
+        "initial_h2_distance": 0.8,
+    }
+    
+    # Cleanup
+    if test_dir.exists():
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+
+class TestORCARelaxReal:
+    """Real ORCA relax integration tests."""
+    
+    def test_orca_relax_creates_current_json(self, orca_project_with_h2):
+        """Test that ORCA relax creates current.json with relaxed structure."""
+        project_root = orca_project_with_h2["project_root"]
+        calc_id = orca_project_with_h2["calc_id"]
+        step_id = orca_project_with_h2["step_id"]
+        
+        # Run relax
+        result = QVService.run_step(project_root, calc_id, step_id)
+        
+        # Verify success
+        assert result.get("success"), f"Step failed: {result.get('error')}"
+        
+        # Verify current.json exists
+        calc_dir = project_root / "calculations" / "h2_relax"
+        artifact_path = get_generated_structure_path(calc_dir, step_id)
+        
+        assert artifact_path.exists(), (
+            f"current.json not found at {artifact_path}. "
+            "Check executor logs for post-processing errors."
+        )
+    
+    def test_orca_relax_structure_changes(self, orca_project_with_h2):
+        """Test that relaxed structure has different geometry."""
+        project_root = orca_project_with_h2["project_root"]
+        calc_id = orca_project_with_h2["calc_id"]
+        step_id = orca_project_with_h2["step_id"]
+        initial_distance = orca_project_with_h2["initial_h2_distance"]
+        
+        # Run relax
+        result = QVService.run_step(project_root, calc_id, step_id)
+        assert result.get("success"), f"Step failed: {result.get('error')}"
+        
+        # Read relaxed structure
+        calc_dir = project_root / "calculations" / "h2_relax"
+        relaxed_mol = read_generated_structure(calc_dir, step_id)
+        
+        assert relaxed_mol is not None, "Failed to read relaxed structure"
+        assert len(relaxed_mol) == 2, f"Expected 2 atoms, got {len(relaxed_mol)}"
+        
+        # Check that geometry changed (relaxed H-H should be ~0.735 Å for HF/STO-3G)
+        relaxed_distance = relaxed_mol.get_distance(0, 1)
+        
+        # The relaxed distance should be different from initial
+        assert abs(relaxed_distance - initial_distance) > 0.01, (
+            f"Geometry did not change significantly. "
+            f"Initial: {initial_distance:.4f} Å, Relaxed: {relaxed_distance:.4f} Å"
+        )
+        
+        # HF/STO-3G equilibrium H-H distance is approximately 0.735 Å
+        assert 0.7 < relaxed_distance < 0.8, (
+            f"Relaxed H-H distance {relaxed_distance:.4f} Å is outside expected range [0.7, 0.8] Å"
+        )
+    
+    def test_orca_relax_molecule_composition(self, orca_project_with_h2):
+        """Test that relaxed molecule has same composition as input."""
+        project_root = orca_project_with_h2["project_root"]
+        calc_id = orca_project_with_h2["calc_id"]
+        step_id = orca_project_with_h2["step_id"]
+        
+        # Run relax
+        result = QVService.run_step(project_root, calc_id, step_id)
+        assert result.get("success"), f"Step failed: {result.get('error')}"
+        
+        # Read relaxed structure
+        calc_dir = project_root / "calculations" / "h2_relax"
+        relaxed_mol = read_generated_structure(calc_dir, step_id)
+        
+        # Composition should be H2
+        from pymatgen.core import Composition
+        expected = Composition("H2")
+        assert relaxed_mol.composition == expected, (
+            f"Expected composition {expected}, got {relaxed_mol.composition}"
+        )
 ```
 
-**步骤 5**: 运行完整集成测试
+#### 步骤 4: 运行集成测试
 
 ```bash
 cd <HOME>/QMatSuite && source .venv/bin/activate
 pytest tests/integration/test_orca_relax_real.py -v --tb=short
 ```
 
-### 改动文件
+---
 
-- `tests/integration/test_orca_relax_real.py` (新建)
-- `src/quantumvitas/execution/orca_relax_parser.py` (可能需要修复)
+### 完成检查清单
 
-### 测试文件模板
+- [x] `orca_engine.py`: 添加 `run_step_with_chain()` 方法
+- [x] `orca_engine.py`: 修改 `run_step()` 调用 `run_step_with_chain()`
+- [x] `handlers.py`: 修改 `orca_chain_handler` 调用 `engine.run_step_with_chain()`
+- [x] `handlers.py`: 在 `step_results` 中添加 `working_dir` 和 `chain_key` (优先使用 parsed_output 中的 chain_key)
+- [x] `executor.py`: 实现 ORCA relax post-process，调用 `handle_orca_relax_output()`
+- [x] `orca_relax_parser.py`: 实现从 `.out` 文件解析最终结构（ORCA 不生成 `.xyz` 文件）
+- [x] `orca_engine.py`: 添加 pymatgen Molecule 到 MoleculeLike 适配器
+- [x] 创建 `test_orca_relax_real.py`
+- [x] 所有测试通过 (3/3)
+
+**实现说明**:
+- `run_step_with_chain()` 使用传入的 `calculation_raw_dir` (即 `job.working_dir`) 作为工作目录
+- Handler 优先使用 `parsed_output.chain_key` (如 "chain01_relax")，fallback 到 `job.metadata.subchain_basename`
+- Post-process 使用 `chain_key` 查找 `.xyz` 文件，如果不存在则从 `.out` 文件解析最终结构
+- ORCA 不生成 `.xyz` 文件，需要从 `.out` 文件的 "CARTESIAN COORDINATES" 部分解析
+- 添加了 pymatgen Molecule 到 MoleculeLike 适配器（处理 `spin_multiplicity` vs `multiplicity`）
+
+**测试命令**: `pytest tests/integration/test_orca_relax_real.py -v --tb=short`
+
+---
+
+### 测试文件模板 (DEPRECATED - 使用上面的新版本)
 
 ```python
 """

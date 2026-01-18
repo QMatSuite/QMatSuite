@@ -118,6 +118,24 @@ def run_chain_session(
                 
                 results = step_result  # Last step's result is the final result
                 
+            elif step_type == "pyscf_relax":
+                # Relax step: geometry optimization
+                # Relax steps are standalone (no dependencies on mf from state)
+                # They require structure_path in params
+                from quantumvitas.engines.pyscf.runner import run_pyscf_relax
+                
+                step_result = run_pyscf_relax(
+                    params=params,
+                    working_dir=step_artifacts_dir,
+                )
+                
+                if not step_result["success"]:
+                    results["error"] = f"Relax step ({step_ulid}) failed: {step_result.get('error', 'Unknown error')}"
+                    results["execution_time"] = time.time() - start_time
+                    return results
+                
+                results = step_result  # Last step's result is the final result
+                
             else:
                 results["error"] = f"Unknown step type in chain: {step_type}"
                 results["execution_time"] = time.time() - start_time
