@@ -4600,8 +4600,11 @@ class QVService:
         # YamlDoc.set() forbids dict values, so we must delete old keys first, then apply_patch new ones
         if parameter_scan is not None:
             # Read existing parameter_scan map (use export_copy for branch dict)
-            # export_copy returns None if path doesn't exist, or empty dict if branch is empty
-            old_parameter_scan = step_doc.export_copy(["parameter_scan"]) or {}
+            # export_copy raises PathNotFoundError if path doesn't exist, so catch it
+            try:
+                old_parameter_scan = step_doc.export_copy(["parameter_scan"]) or {}
+            except PathNotFoundError:
+                old_parameter_scan = {}
             
             # Delete ALL old scan definitions (full replace semantics)
             for scan_id in old_parameter_scan.keys():
