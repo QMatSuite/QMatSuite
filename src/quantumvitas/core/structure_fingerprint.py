@@ -16,6 +16,7 @@ Design principles:
 from __future__ import annotations
 
 import hashlib
+import math
 from typing import List, Tuple
 
 import numpy as np
@@ -102,6 +103,43 @@ def structure_fingerprint(
 
 
 # =============================================================================
+# Deterministic Quantization Helper
+# =============================================================================
+
+def quantize_scalar(x: float, tol: float) -> int:
+    """
+    Deterministic quantization: q = floor(x / tol + 0.5 + eps).
+    
+    This replaces np.round() to avoid banker's rounding instability.
+    Banker's rounding (ties-to-even) causes half-integers to flip with tiny noise.
+    
+    Args:
+        x: Value to quantize
+        tol: Tolerance (same units as x)
+        
+    Returns:
+        Quantized integer value
+    """
+    eps = 1e-12  # Dimensionless, ensures ties round up
+    return int(math.floor(x / tol + 0.5 + eps))
+
+
+def quantize_array(arr: np.ndarray, tol: float = 1.0) -> np.ndarray:
+    """
+    Vectorized deterministic quantization.
+    
+    Args:
+        arr: Array of values to quantize
+        tol: Tolerance (same units as arr). Default 1.0 means arr is already normalized.
+        
+    Returns:
+        Array of quantized integers (int64)
+    """
+    eps = 1e-12
+    return np.floor(arr / tol + 0.5 + eps).astype(np.int64)
+
+
+# =============================================================================
 # Unified Fingerprint Entrypoint (NEW)
 # =============================================================================
 
@@ -178,13 +216,15 @@ def _fingerprint_pbc_structure(structure: PMGStructure, tol_ang: float) -> str:
     frac_tol = tol_ang / min_length
     
     # 2. Quantize lattice matrix (in Angstrom) - NO transforms
+    # Use deterministic quantization (NOT np.round)
     lattice_matrix = structure.lattice.matrix
-    lattice_q = np.round(lattice_matrix / tol_ang).astype(np.int64)
+    lattice_q = quantize_array(lattice_matrix / tol_ang, tol=1.0)
     
     # 3. Quantize fractional coordinates AS-IS - NO mod, NO wrap
     # Structure is assumed to be already canonicalized
+    # Use deterministic quantization (NOT np.round)
     frac_coords = structure.frac_coords  # Use directly
-    frac_q = np.round(frac_coords / frac_tol).astype(np.int64)
+    frac_q = quantize_array(frac_coords / frac_tol, tol=1.0)
     
     # 4. Get species symbols
     species = [site.specie.symbol for site in structure]
@@ -239,8 +279,9 @@ def _fingerprint_molecule(molecule: PMGMolecule, tol_ang: float) -> str:
     coords = np.array([site.coords for site in molecule])
     
     # 2. Quantize coordinates - NO COG shift, NO transform
+    # Use deterministic quantization (NOT np.round)
     if len(coords) > 0:
-        coords_q = np.round(coords / tol_ang).astype(np.int64)
+        coords_q = quantize_array(coords / tol_ang, tol=1.0)
     else:
         coords_q = np.array([], dtype=np.int64).reshape(0, 3)
     
