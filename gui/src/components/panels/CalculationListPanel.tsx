@@ -327,6 +327,7 @@ import { useQVClient } from '../../hooks/useQVClient';
 import { CommonCardPseudo } from '../common_cards/CommonCardPseudo';
 import { PresetSection } from '../presets/PresetSection';
 import { usePresets } from '../../hooks/usePresets';
+import { ScanSummary } from './ScanSummary';
 
 /**
  * FootprintChips - Displays preset-related params as chips (Phase 8C)
@@ -1071,6 +1072,14 @@ export function CalculationDetailPanel({
             <span>{error}</span>
             <button className="error-dismiss" onClick={() => setError(null)}>×</button>
           </div>
+        )}
+        
+        {/* Parameter Scan Summary */}
+        {!isFocusMode && calculationDetail && (
+          <ScanSummary
+            calculationDetail={calculationDetail}
+            stepDetails={stepDetailsForScan}
+          />
         )}
         
         {/* Workflow detection badge */}
