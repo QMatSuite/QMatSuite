@@ -1815,8 +1815,9 @@ class QVDaemon:
                         
                         # Match section
                         if param_section == section_with_prefix or param_namelist.upper() == section_normalized:
+                            param_name = param.get("name")
                             param_dict = {
-                                "name": param.get("name"),
+                                "name": param_name,
                                 "type": param.get("type"),
                                 "default": param.get("default"),
                                 "enum": param.get("enum"),
@@ -1830,10 +1831,27 @@ class QVDaemon:
                             if schema_version in (1, 2, 3):
                                 parameters_map = module_entry.get("parameters", {})
                                 # Find the parameter in the map (key format: "&SECTION.paramname")
-                                param_key = f"{section_with_prefix}.{param.get('name')}"
+                                param_key = f"{section_with_prefix}.{param_name}"
                                 param_meta = parameters_map.get(param_key)
                                 if param_meta and "indexing" in param_meta:
                                     param_dict["indexing"] = param_meta["indexing"]
+                            
+                            # Add managed/protected parameter metadata
+                            # QE managed params: CONTROL.prefix, CONTROL.outdir, CONTROL.pseudo_dir (runtime_overridden)
+                            # CONTROL.calculation (step_type_owned)
+                            is_managed = False
+                            managed_reason = None
+                            if section_normalized == "CONTROL":
+                                if param_name and param_name.lower() in ("prefix", "outdir", "pseudo_dir"):
+                                    is_managed = True
+                                    managed_reason = "runtime_overridden"
+                                elif param_name and param_name.lower() == "calculation":
+                                    is_managed = True
+                                    managed_reason = "step_type_owned"
+                            
+                            param_dict["is_managed"] = is_managed
+                            if managed_reason:
+                                param_dict["managed_reason"] = managed_reason
                             
                             result.append(param_dict)
                 else:
