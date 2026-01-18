@@ -38,6 +38,13 @@ from quantumvitas.execution.post_job import (
     snapshot_raw_dir,
 )
 from quantumvitas.calculation.hash_utils import compute_step_sha
+from quantumvitas.core.exceptions import MissingArtifactError
+from quantumvitas.execution.relax_artifacts import (
+    get_generated_structure_path,
+    read_generated_structure,
+    is_relax_step_type,
+)
+from quantumvitas.core.structure_fingerprint import structure_fingerprint
 
 
 logger = logging.getLogger(__name__)
@@ -134,6 +141,9 @@ class JobExecutor:
                 target_job_id = target_job.id
 
         for job in jobs_to_execute:
+            # Pre-clean: Remove current.json for relax steps covered by this job
+            self._pre_clean_relax_steps(job, calculation)
+            
             # Check for scan dimensions in this job
             scan_dimensions = self._collect_scan_dimensions_for_job(job, calculation)
             
@@ -158,6 +168,13 @@ class JobExecutor:
                 # Execute the job
                 logger.info(f"[EXECUTOR] Executing job {job.id} (engine={job.engine})")
                 job_result = self._execute_job(job, calculation)
+                
+                # Post-process: handle relax output if job succeeded
+                if job_result.success:
+                    # Generate run_id from timestamp if not available
+                    run_id = datetime.now(timezone.utc).isoformat()
+                    self._post_process_relax_steps(job, job_result, calculation, {"run_id": run_id})
+                
                 results.append(job_result)
 
                 if not job_result.success:
@@ -469,12 +486,244 @@ class JobExecutor:
         
         return job_result
     
+    def _pre_clean_relax_steps(
+        self,
+        job: Job,
+        calculation: "Calculation",
+    ) -> None:
+        """
+        Pre-clean: Remove current.json for relax steps covered by this job.
+        
+        This ensures that current.json existence implies success in THIS run.
+        Only cleans relax steps that are part of this job.
+        
+        Args:
+            job: The job about to be executed
+            calculation: Calculation context
+        """
+        from quantumvitas.execution.relax_artifacts import clean_generated_structure
+        
+        calc_dir = calculation.dir
+        
+        # Clean current.json for each relax step in this job
+        for step_ulid in job.step_ids:
+            step = self._find_step_by_ulid(calculation, step_ulid)
+            if step is None:
+                continue
+            
+            # Check if this is a relax step
+            step_type = getattr(step, 'step_type', None)
+            if step_type and is_relax_step_type(step_type):
+                cleaned = clean_generated_structure(calc_dir, step_ulid)
+                if cleaned:
+                    logger.info(f"[EXECUTOR] Pre-cleaned generated structure for relax step {step_ulid} in job {job.id}")
+    
     def _find_step_by_ulid(self, calculation: "Calculation", step_ulid: str) -> Optional["Step"]:
         """Find step in calculation by ULID."""
         for step in calculation.steps:
             if hasattr(step, 'meta') and step.meta.id == step_ulid:
                 return step
         return None
+    
+    def _post_process_relax_steps(
+        self,
+        job: Job,
+        job_result: JobResult,
+        calculation: "Calculation",
+        context: Dict[str, Any],
+    ) -> None:
+        """
+        Post-process relax steps after successful job execution.
+        
+        For QE relax steps, this parses the output and writes current.json.
+        For PySCF relax steps, this reads results.json and writes current.json.
+        
+        Args:
+            job: The executed job
+            job_result: Result from job execution
+            calculation: Calculation context
+            context: Execution context (run_id, etc.)
+        """
+        from quantumvitas.execution.handlers import handle_qe_relax_output
+        from quantumvitas.execution.pyscf_relax_handler import handle_pyscf_relax_output
+        import json
+        
+        # Get run_id from context
+        run_id = context.get("run_id")
+        
+        # Get calculation directory and ULIDs
+        calc_dir = calculation.dir
+        calculation_ulid = calculation.meta.id if hasattr(calculation, 'meta') else None
+        input_structure_ulid = calculation.structure_id if hasattr(calculation, 'structure_id') else None
+        
+        # Process each step in the job
+        for step_ulid in job.step_ids:
+            step = self._find_step_by_ulid(calculation, step_ulid)
+            if step is None:
+                continue
+            
+            # Check if this is a relax step
+            step_type = getattr(step, 'step_type', None)
+            if not step_type or not is_relax_step_type(step_type):
+                continue
+            
+            try:
+                if job.engine == "qe":
+                    # QE: parse output file
+                    step_result = job_result.step_results.get(step_ulid, {})
+                    output_file_str = step_result.get("output_file")
+                    if not output_file_str:
+                        logger.warning(f"[EXECUTOR] No output_file found for relax step {step_ulid}, skipping post-process")
+                        continue
+                    
+                    output_path = Path(output_file_str)
+                    if not output_path.exists():
+                        logger.warning(f"[EXECUTOR] Output file does not exist: {output_path}, skipping post-process")
+                        continue
+                    
+                    artifact_path = handle_qe_relax_output(
+                        step_ulid=step_ulid,
+                        step_type=str(step_type),
+                        calc_dir=calc_dir,
+                        output_path=output_path,
+                        calculation_ulid=calculation_ulid or "",
+                        input_structure_ulid=input_structure_ulid or "",
+                        run_id=run_id,
+                    )
+                    logger.info(f"[EXECUTOR] Successfully processed QE relax output for step {step_ulid}: {artifact_path}")
+                    
+                elif job.engine == "pyscf":
+                    # PySCF: read results.json
+                    step_result = job_result.step_results.get(step_ulid, {})
+                    working_dir_str = step_result.get("working_dir")
+                    if not working_dir_str:
+                        logger.warning(f"[EXECUTOR] No working_dir found for relax step {step_ulid}, skipping post-process")
+                        continue
+                    
+                    working_dir = Path(working_dir_str)
+                    results_file = working_dir / "results.json"
+                    if not results_file.exists():
+                        logger.warning(f"[EXECUTOR] Results file does not exist: {results_file}, skipping post-process")
+                        continue
+                    
+                    # Read results.json
+                    try:
+                        results = json.loads(results_file.read_text())
+                    except Exception as e:
+                        logger.warning(f"[EXECUTOR] Failed to parse results.json for step {step_ulid}: {e}")
+                        continue
+                    
+                    if not results.get("success", False):
+                        logger.warning(f"[EXECUTOR] PySCF relax step {step_ulid} did not succeed, skipping post-process")
+                        continue
+                    
+                    artifact_path = handle_pyscf_relax_output(
+                        step_ulid=step_ulid,
+                        step_type=str(step_type),
+                        calc_dir=calc_dir,
+                        results=results,
+                        calculation_ulid=calculation_ulid or "",
+                        input_structure_ulid=input_structure_ulid or "",
+                        run_id=run_id,
+                    )
+                    logger.info(f"[EXECUTOR] Successfully processed PySCF relax output for step {step_ulid}: {artifact_path}")
+                else:
+                    # Other engines (ORCA) handled separately
+                    continue
+                    
+            except Exception as e:
+                logger.error(f"[EXECUTOR] Failed to process relax output for step {step_ulid}: {e}", exc_info=True)
+                # Don't fail the job, but log the error
+    
+    def _load_effective_structure_for_step(
+        self,
+        step_idx: int,
+        calculation: "Calculation",
+    ) -> tuple[Optional[Any], Optional[str]]:
+        """
+        Load effective structure for step, considering prior relax steps.
+        
+        This method:
+        1. Finds all relax steps before this one
+        2. Checks for current.json from the most recent relax step
+        3. If missing, raises MissingArtifactError
+        4. If found, loads and returns the structure and its SHA
+        
+        Args:
+            step_idx: Index of the current step in calculation.steps
+            calculation: Calculation context
+            
+        Returns:
+            Tuple of (effective_structure, effective_structure_sha)
+            - If no relax step before this one, returns (None, None)
+            - If relax step found and current.json exists, returns (Structure, SHA)
+            
+        Raises:
+            MissingArtifactError: If relax step exists but current.json is missing
+        """
+        # Find all relax steps before this one
+        for j in range(step_idx - 1, -1, -1):
+            if j >= len(calculation.steps):
+                continue
+            step = calculation.steps[j]
+            
+            # Check if this step is a relax step
+            step_type = getattr(step, 'step_type', None) or getattr(step, 'public_type', None)
+            if not step_type:
+                # Try to get from step doc if available
+                try:
+                    calc_dir = calculation.dir
+                    steps_dir = calc_dir / "steps"
+                    if steps_dir.exists():
+                        for candidate in steps_dir.glob("*.step.yaml"):
+                            try:
+                                from quantumvitas.core.yamldoc import StepDoc
+                                step_doc = StepDoc.load(candidate)
+                                if step_doc.get(["meta", "id"]) == step.meta.id:
+                                    step_type = step_doc.get(["step_type"])
+                                    break
+                            except Exception:
+                                continue
+                except Exception:
+                    pass
+            
+            if step_type and is_relax_step_type(step_type):
+                # Check for current.json
+                calc_dir = calculation.dir
+                artifact_path = get_generated_structure_path(calc_dir, step.meta.id)
+                
+                if not artifact_path.exists():
+                    current_step = calculation.steps[step_idx] if step_idx < len(calculation.steps) else None
+                    current_step_name = getattr(current_step, 'name', 'unknown') if current_step else 'unknown'
+                    relax_step_name = getattr(step, 'name', 'unknown')
+                    
+                    raise MissingArtifactError(
+                        f"MISSING_ARTIFACT_ERROR: Step '{current_step_name}' requires "
+                        f"the relaxed structure from step '{relax_step_name}' (ULID: {step.meta.id}), but "
+                        f"generated_structures/step_{step.meta.id}/current.json is missing.\n\n"
+                        "This typically means:\n"
+                        "- The relax step has not been executed yet\n"
+                        "- The relax step failed before producing output\n"
+                        "- The generated_structures directory was deleted\n\n"
+                        "To fix: Run the calculation from the beginning, or run the relax step first.\n"
+                        "DO NOT manually create this file."
+                    )
+                
+                # Load and return structure
+                structure = read_generated_structure(calc_dir, step.meta.id)
+                if structure is None:
+                    # File exists but couldn't be parsed
+                    raise MissingArtifactError(
+                        f"MISSING_ARTIFACT_ERROR: Generated structure file exists but could not be parsed: {artifact_path}"
+                    )
+                
+                # Compute SHA
+                effective_structure_sha = structure_fingerprint(structure, tol=1e-5)
+                
+                return (structure, effective_structure_sha)
+        
+        # No relax step before this one
+        return (None, None)
 
     def _execute_job(self, job: Job, calculation: "Calculation") -> JobResult:
         """

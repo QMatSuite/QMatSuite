@@ -60,7 +60,12 @@ class ORCAInputCompiler:
         for step in chain.downstream:
             if step.public_type == "td":
                 self._process_td_step(step, blocks)
-            # Future: freq, nmr, mp2, opt, etc.
+            elif step.public_type == "relax":
+                # Add Opt keyword for geometry optimization
+                keywords.add("Opt")
+                # Process relax-specific parameters (e.g., MaxIter, convergence)
+                self._process_relax_step(step, blocks)
+            # Future: freq, nmr, mp2, etc.
 
         # Add common keywords
         # SCF macro is handled in _process_scf_step
@@ -219,6 +224,46 @@ class ORCAInputCompiler:
             lines.append(f"  RTol {params['rtol']}")
 
         blocks["tddft"] = "\n".join(lines)
+
+    def _process_relax_step(
+        self,
+        step: Any,
+        blocks: Dict[str, str],
+    ) -> None:
+        """Process relax step parameters into %geom block."""
+        params = step.parameters
+        
+        # Build %geom block
+        lines: List[str] = []
+        
+        # MaxIter (default: 100)
+        max_iter = params.get("max_iter", params.get("MaxIter", 100))
+        lines.append(f"  MaxIter {max_iter}")
+        
+        # Convergence criteria (optional)
+        if "convergence" in params:
+            conv = params["convergence"]
+            if conv == "tight":
+                lines.append("  TightOpt")
+            elif conv == "verytight":
+                lines.append("  VeryTightOpt")
+        
+        # Coordinate system (optional, default: redundant)
+        coordsys = params.get("coordsys", params.get("coordinate_system"))
+        if coordsys:
+            lines.append(f"  coordsys {coordsys}")
+        
+        # Constraints (optional)
+        if "constraints" in params:
+            constraints = params["constraints"]
+            if constraints:
+                lines.append("  Constraints")
+                for constraint in constraints:
+                    lines.append(f"    {constraint}")
+                lines.append("  end")
+        
+        if lines:
+            blocks["geom"] = "\n".join(lines)
 
     def _format_input(
         self,

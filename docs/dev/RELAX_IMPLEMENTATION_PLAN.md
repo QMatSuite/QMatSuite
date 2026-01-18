@@ -11,15 +11,15 @@
 |----|------|------|----------|
 | PR1 | Registry Updates + Type Foundation | ✅ 完成 | `pytest tests/unit/test_step_type_mapping.py -v` |
 | PR2 | QC Topology Verification | ✅ 完成 | `pytest tests/unit/execution/test_qc_topology.py -v` |
-| PR3 | Generated Structures Helper Functions | 🔄 待做 | `pytest tests/unit/execution/test_relax_artifacts.py -v` |
+| PR3 | Generated Structures Helper Functions | ✅ 完成 | `pytest tests/unit/execution/test_relax_artifacts.py -v` |
 | PR3b | Executor Integration | ⏸️ 延后 | (PR6 一起做) |
-| PR4 | Missing Artifact Hard Error + Manifest | 🔄 待做 | `pytest tests/unit/test_manifest_effective_structure.py -v` |
-| PR5 | Promote API + Daemon RPC | 🔄 待做 | `pytest tests/daemon/test_promote_relax_structure.py -v` |
-| PR6 | Integration Tests + Documentation | 🔄 待做 | `pytest tests/integration/test_relax_e2e.py -v` |
+| PR4 | Missing Artifact Hard Error + Manifest | ✅ 完成 | `pytest tests/unit/test_manifest_effective_structure.py -v` |
+| PR5 | Promote API + Daemon RPC | ✅ 完成 | `pytest tests/daemon/test_promote_relax_structure.py -v` |
+| PR6 | Integration Tests + Documentation | ✅ 完成 | `pytest tests/integration/test_relax_e2e.py -v` |
 
 **执行顺序**: PR1 → PR2 → PR3 → PR4 → PR5 → PR6 (PR3b 包含在 PR6 中)
 
-**当前进度**: PR1 和 PR2 已完成，继续执行 PR3。
+**当前进度**: 所有 PR 已完成！✅
 
 ---
 

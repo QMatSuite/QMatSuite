@@ -634,6 +634,140 @@ def run_mp2(params: Dict[str, Any], working_dir: Path) -> Dict[str, Any]:
     return results
 
 
+def run_pyscf_relax(params: Dict[str, Any], working_dir: Path) -> Dict[str, Any]:
+    """
+    Run PySCF geometry optimization.
+    
+    Args:
+        params: Calculation parameters
+        working_dir: Working directory for output
+        
+    Returns:
+        Dictionary with results including optimized_atoms
+    """
+    import numpy as np
+    from pyscf import gto, scf, dft
+    
+    start_time = time.time()
+    results: Dict[str, Any] = {
+        "success": False,
+        "error": None,
+        "execution_time": 0.0,
+    }
+    
+    # Build molecule
+    try:
+        mol = build_mole(params)
+    except Exception as e:
+        results["error"] = f"Failed to build molecule: {e}"
+        results["execution_time"] = time.time() - start_time
+        return results
+    
+    # Setup SCF/DFT method
+    method = params.get("method", "rhf").lower()
+    xc = params.get("xc", "pbe")
+    
+    try:
+        if method in ("rhf", "hf"):
+            mf = scf.RHF(mol)
+        elif method == "uhf":
+            mf = scf.UHF(mol)
+        elif method == "rohf":
+            mf = scf.ROHF(mol)
+        elif method in ("rks", "dft"):
+            mf = dft.RKS(mol)
+            mf.xc = xc
+        elif method == "uks":
+            mf = dft.UKS(mol)
+            mf.xc = xc
+        elif method == "roks":
+            mf = dft.ROKS(mol)
+            mf.xc = xc
+        else:
+            results["error"] = f"Unknown method: {method}. Supported: rhf, uhf, rohf, rks, uks, roks"
+            results["execution_time"] = time.time() - start_time
+            return results
+    except Exception as e:
+        results["error"] = f"Failed to setup SCF: {e}"
+        results["execution_time"] = time.time() - start_time
+        return results
+    
+    # Convergence settings
+    mf.max_cycle = params.get("max_cycle", 50)
+    mf.conv_tol = params.get("conv_tol", 1e-9)
+    
+    # Checkpoint file
+    checkpoint_file = working_dir / "checkpoint.chk"
+    mf.chkfile = str(checkpoint_file)
+    
+    # Log file
+    log_file = working_dir / "pyscf.log"
+    mf.verbose = params.get("verbose", 4)
+    log_handle = open(log_file, 'w')
+    mf.stdout = log_handle
+    
+    # Run SCF first
+    try:
+        energy = mf.kernel()
+        converged = mf.converged
+        if not converged:
+            log_handle.close()
+            results["error"] = "SCF did not converge"
+            results["execution_time"] = time.time() - start_time
+            return results
+    except Exception as e:
+        log_handle.close()
+        results["error"] = f"SCF calculation failed: {e}"
+        results["execution_time"] = time.time() - start_time
+        return results
+    
+    # Geometry optimization
+    try:
+        try:
+            from pyscf.geomopt.geometric_solver import optimize
+            solver_name = "geometric"
+        except ImportError:
+            from pyscf.geomopt.berny_solver import optimize
+            solver_name = "berny"
+        
+        maxsteps = params.get("maxsteps", params.get("max_iter", 50))
+        mol_eq = optimize(mf, maxsteps=maxsteps)
+        
+        # Extract final structure
+        BOHR_TO_ANG = 0.52917721092
+        coords_bohr = mol_eq.atom_coords()
+        coords_ang = coords_bohr * BOHR_TO_ANG
+        
+        atoms = []
+        for i in range(mol_eq.natm):
+            atoms.append({
+                "element": mol_eq.atom_symbol(i),
+                "xyz": coords_ang[i].tolist(),
+            })
+        
+        log_handle.close()
+        
+        results["success"] = True
+        results["optimized_atoms"] = atoms
+        results["charge"] = int(mol_eq.charge)
+        results["spin_multiplicity"] = int(mol_eq.spin + 1)
+        results["final_energy"] = float(mf.e_tot)
+        results["solver"] = solver_name
+        results["method"] = method
+        results["basis"] = params.get("basis", "sto-3g")
+        results["energy"] = float(mf.e_tot)
+        results["energy_unit"] = "Hartree"
+        results["converged"] = True
+        results["execution_time"] = time.time() - start_time
+        
+        return results
+    except Exception as e:
+        log_handle.close()
+        results["error"] = f"Geometry optimization failed: {e}"
+        results["execution_time"] = time.time() - start_time
+        return results
+
+
 def run_job_chain(job_chain_path: Path) -> int:
     """
     Main entry point for chain execution: run a PySCF dependency chain from job_chain.json.
@@ -794,11 +928,13 @@ def run_job(job_path: Path) -> int:
     # Determine step type
     step_type = job.get("step_type", "pyscf_scf")
     
-    # Run calculation (Phase 3C: support pyscf_mp2)
+    # Run calculation (Phase 3C: support pyscf_mp2, pyscf_relax)
     if step_type in ("pyscf_scf", "pyscf_rhf", "pyscf_uhf", "pyscf_rks", "pyscf_uks"):
         results = run_scf(params, working_dir)
     elif step_type == "pyscf_mp2":
         results = run_mp2(params, working_dir)
+    elif step_type == "pyscf_relax":
+        results = run_pyscf_relax(params, working_dir)
     else:
         results = {
             "success": False,
