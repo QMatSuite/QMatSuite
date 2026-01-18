@@ -4596,9 +4596,10 @@ class QVService:
                     card_patch[card_upper] = card_data
             step_doc.apply_patch({"cards": card_patch})
         
-        # Update parameter_scan if provided
+        # Update parameter_scan if provided (full replace, not merge)
+        # This matches K_POINTS "full replace" pattern and ensures orphan scans are deleted
         if parameter_scan is not None:
-            step_doc.apply_patch({"parameter_scan": parameter_scan})
+            step_doc.set(["parameter_scan"], parameter_scan)
         
         # Save via factory (journaled)
         # Warnings are computed and attached by save_step_doc via return value
