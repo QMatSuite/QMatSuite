@@ -708,18 +708,7 @@ export function StepDetailPanel({
   
   // Save parameter changes
   const handleSaveParams = useCallback(async () => {
-    if (!window.qv || !stepDetail) {
-      console.warn('[StepDetailPanel] handleSaveParams early return: no qv or stepDetail');
-      return;
-    }
-    
-    // INSTRUMENTATION: Log entry
-    console.log('[StepDetailPanel] handleSaveParams called', {
-      hasChanges,
-      isEditing,
-      editedParamsKeys: Object.keys(editedParams),
-      editedParameterScanKeys: Object.keys(editedParameterScan),
-    });
+    if (!window.qv || !stepDetail) return;
     
     setIsSaving(true);
     setError(null);
@@ -763,6 +752,7 @@ export function StepDetailPanel({
             paramUpdates[namelist][paramName] = null;
           }
           // If value changed, include the update
+          // CRITICAL: Use deep equality check for arrays/objects, but for scan tokens and scalars, !== is sufficient
           else if (editedValue !== currentValue) {
             if (!paramUpdates[namelist]) {
               paramUpdates[namelist] = {};
@@ -771,6 +761,14 @@ export function StepDetailPanel({
           }
         }
       }
+      
+      // INSTRUMENTATION: Log paramUpdates construction
+      console.log('[StepDetailPanel] handleSaveParams paramUpdates', {
+        paramUpdates_keys: Object.keys(paramUpdates),
+        paramUpdates,
+        editedParams_keys: Object.keys(editedParams),
+        stepDetail_parameters_keys: Object.keys(stepDetail.parameters || {}),
+      });
       
       // Also check for removed parameters (present in stepDetail but not in editedParams)
       for (const [namelist, params] of Object.entries(stepDetail.parameters)) {
@@ -790,6 +788,9 @@ export function StepDetailPanel({
       const referencedScanIds = findReferencedScanIds(editedParams, stepDetail.cards);
       const prunedParameterScan: Record<string, { values: unknown[] }> = {};
       for (const scanId of referencedScanIds) {
+        // CRITICAL: Prefer editedParameterScan (user's changes) over stepDetail.parameter_scan (original)
+        // If editedParameterScan has the scanId, use it (even if values are the same - backend does full replace)
+        // Otherwise, fall back to stepDetail.parameter_scan to preserve existing values
         if (editedParameterScan[scanId]) {
           prunedParameterScan[scanId] = editedParameterScan[scanId];
         } else if (stepDetail.parameter_scan?.[scanId]) {
@@ -800,21 +801,26 @@ export function StepDetailPanel({
       // Include parameter_scan updates (send empty {} if no scans to clear orphans, undefined if never had scans)
       // Backend will do full replace, so we must send the complete pruned map
       // IMPORTANT: If user removed all scan refs, send {} explicitly so backend deletes old scans
+      // CRITICAL: Always send parameter_scan if there are referenced scans, even if paramUpdates is empty
+      // This ensures scan value changes are persisted even when no parameter values changed
       const hasReferencedScans = referencedScanIds.size > 0;
       const stepHadScans = stepDetail.parameter_scan && Object.keys(stepDetail.parameter_scan).length > 0;
       const parameterScanPayload = hasReferencedScans
         ? prunedParameterScan
         : (stepHadScans ? {} : undefined);
       
-      // INSTRUMENTATION: Log the exact payload being sent
-      console.log('[StepDetailPanel] Apply payload:', {
-        project_root: normalizedProjectRoot,
-        calculation: calculationSelector,
-        step: stepSelector,
-        parameters: paramUpdates,
+      // INSTRUMENTATION: Log the exact RPC payload being sent
+      console.log('[StepDetailPanel] handleSaveParams RPC payload', {
+        step_selector: stepSelector,
+        calculation_selector: calculationSelector,
+        param_patch: paramUpdates,
         parameter_scan: parameterScanPayload,
-        paramUpdatesKeys: Object.keys(paramUpdates),
-        parameterScanKeys: parameterScanPayload ? Object.keys(parameterScanPayload) : 'undefined',
+        editedParams_keys: Object.keys(editedParams),
+        editedParameterScan_keys: Object.keys(editedParameterScan),
+        referencedScanIds: Array.from(referencedScanIds),
+        prunedParameterScan_keys: Object.keys(prunedParameterScan),
+        hasReferencedScans,
+        stepHadScans,
       });
       
       const response = await window.qv.request<StepDetail>('update_step_params', {
@@ -826,12 +832,11 @@ export function StepDetailPanel({
       });
       
       // INSTRUMENTATION: Log the response
-      console.log('[StepDetailPanel] Apply response:', {
+      console.log('[StepDetailPanel] handleSaveParams RPC response', {
         ok: response.ok,
-        hasData: !!response.data,
-        error: response.error?.message,
-        responseParameters: response.data?.parameters ? Object.keys(response.data.parameters) : 'none',
-        responseParameterScan: response.data?.parameter_scan ? Object.keys(response.data.parameter_scan) : 'none',
+        error: response.error,
+        data_id: response.data?.id,
+        data_parameter_scan_keys: response.data ? Object.keys(response.data.parameter_scan || {}) : null,
       });
       
       if (response.ok && response.data) {
@@ -851,7 +856,7 @@ export function StepDetailPanel({
     } finally {
       setIsSaving(false);
     }
-  }, [projectRoot, calculationSelector, stepSelector, stepDetail, editedParams, onParametersUpdated]);
+  }, [projectRoot, calculationSelector, stepSelector, stepDetail, editedParams, editedParameterScan, onParametersUpdated]);
   
   // Reset parameters
   const handleResetParams = useCallback(async () => {
