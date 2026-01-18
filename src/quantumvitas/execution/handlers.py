@@ -318,9 +318,11 @@ def pyscf_chain_handler(
         for step in steps:
             if step is None:
                 continue
+            step_artifacts_dir = raw_dir / "step_artifacts" / step.meta.id
             step_results[step.meta.id] = {
                 "success": success,
                 "executed_in_chain": True,
+                "working_dir": str(step_artifacts_dir),  # For post-processing relax steps
             }
 
         return JobResult(
@@ -380,7 +382,7 @@ def orca_chain_handler(
             error=f"Steps not found: {missing}",
         )
 
-    # Set up working directory
+    # Set up working directory (from job, set by recipe)
     working_dir = job.working_dir
     working_dir.mkdir(parents=True, exist_ok=True)
 
@@ -401,18 +403,42 @@ def orca_chain_handler(
         step.options["step_artifacts_dir"] = str(step_artifacts_dir)
         step.options["chain_working_dir"] = str(working_dir)
 
-    # Execute the chain using existing ORCA engine
+    # Execute the chain using ORCA engine's run_step_with_chain
+    # (matches PySCF handler pattern)
     target_step = steps[-1]  # Last step is the target
 
     try:
-        result = target_step.run(
-            engine=engine,
-            calculation_raw_dir=raw_dir,
+        # Call run_step_with_chain directly (like PySCF handler)
+        # ORCA recipe sets job.working_dir to calc_raw_dir / namespace_folder (e.g., calc/raw/scf_ABCDEF/)
+        # Pass the actual working_dir to run_step_with_chain
+        result = engine.run_step_with_chain(
+            target_step=target_step,
+            chain_steps=steps,
+            calculation_raw_dir=working_dir,  # Use job.working_dir directly
+            structure_id=calculation.structure_id if hasattr(calculation, 'structure_id') else None,
             project_root=calculation.project.root,
-            species_map=calculation.species_map,
         )
 
         success = result.success if hasattr(result, "success") else False
+        
+        # Extract working_dir from parsed_output for post-processing
+        # chain_key (basename) comes from job.metadata, not from parsed_output
+        chain_working_dir = None
+        if hasattr(result, 'parsed_output') and result.parsed_output:
+            chain_working_dir = result.parsed_output.get('working_dir')
+        
+        # Get basename from job.metadata (set by ORCA recipe)
+        # This is the actual filename prefix for ORCA output files (e.g., "s", "s_t", "relax")
+        basename = job.metadata.get("subchain_basename") if hasattr(job, 'metadata') and job.metadata else None
+        
+        # Also get chain.key from parsed_output if available (e.g., "chain01_relax")
+        # This is the full chain key that matches actual file names
+        chain_key_from_result = None
+        if hasattr(result, 'parsed_output') and result.parsed_output:
+            chain_key_from_result = result.parsed_output.get('chain_key')
+        
+        # Prefer chain_key from result (matches actual file names), fallback to basename
+        effective_chain_key = chain_key_from_result or basename
 
         # Record results for all steps in the chain
         for step in steps:
@@ -421,6 +447,8 @@ def orca_chain_handler(
             step_results[step.meta.id] = {
                 "success": success,
                 "executed_in_chain": True,
+                "working_dir": chain_working_dir or str(working_dir),  # For post-processing relax steps
+                "chain_key": effective_chain_key,  # Use chain key for finding .xyz file (e.g., "chain01_relax.xyz")
             }
 
         return JobResult(

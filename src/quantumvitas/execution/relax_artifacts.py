@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from pymatgen.core import Structure as PMGStructure
+    from pymatgen.core import Molecule as PMGMolecule
 
 logger = logging.getLogger(__name__)
 
@@ -84,16 +85,18 @@ def write_generated_structure(
 def read_generated_structure(
     calc_dir: Path,
     step_ulid: str,
-) -> Optional["PMGStructure"]:
+) -> Optional["PMGStructure"] | Optional["PMGMolecule"]:
     """
     Read a generated structure from current.json.
+    
+    Supports both Structure (for periodic systems) and Molecule (for molecular systems).
     
     Args:
         calc_dir: Path to calculation directory
         step_ulid: ULID of the relax step
         
     Returns:
-        pymatgen Structure, or None if file doesn't exist
+        pymatgen Structure or Molecule, or None if file doesn't exist
     """
     artifact_path = get_generated_structure_path(calc_dir, step_ulid)
     if not artifact_path.exists():
@@ -103,8 +106,14 @@ def read_generated_structure(
     # Remove our metadata before parsing
     structure_dict.pop("__qv_meta__", None)
     
-    from pymatgen.core import Structure
-    return Structure.from_dict(structure_dict)
+    # Try to determine if it's a Structure or Molecule
+    # Structure has "lattice" key, Molecule doesn't
+    if "lattice" in structure_dict:
+        from pymatgen.core import Structure
+        return Structure.from_dict(structure_dict)
+    else:
+        from pymatgen.core import Molecule
+        return Molecule.from_dict(structure_dict)
 
 
 def clean_generated_structure(calc_dir: Path, step_ulid: str) -> bool:

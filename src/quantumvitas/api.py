@@ -375,7 +375,6 @@ class QVService:
         if structures_dir.exists():
             for struct_file in structures_dir.glob("*.json"):
                 try:
-                    import json
                     struct_data = json.loads(struct_file.read_text())
                     struct_meta = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
                     if struct_meta.get("slug"):
@@ -398,13 +397,18 @@ class QVService:
         if dedup_by_fingerprint:
             # Compute fingerprint for content-based deduplication
             from quantumvitas.core.structure_fingerprint import structure_fingerprint
-            fingerprint = structure_fingerprint(structure)
+            from pymatgen.core import Molecule
+            # structure_fingerprint only works for Structure, not Molecule
+            # For Molecule, we skip fingerprint-based dedup (or implement molecule_fingerprint later)
+            if isinstance(structure, Molecule):
+                fingerprint = None  # Skip fingerprint for molecules
+            else:
+                fingerprint = structure_fingerprint(structure)
             
             structures_dir = project_root / "structures"
             if structures_dir.exists():
                 for struct_file in structures_dir.glob("*.json"):
                     try:
-                        import json
                         struct_data = json.loads(struct_file.read_text())
                         struct_meta = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
                         existing_fingerprint = struct_meta.get("fingerprint")
@@ -427,7 +431,19 @@ class QVService:
         
         # Compute fingerprint for storage (even if not using for dedup)
         from quantumvitas.core.structure_fingerprint import structure_fingerprint
-        fingerprint = structure_fingerprint(structure)
+        from pymatgen.core import Molecule
+        # structure_fingerprint only works for Structure, not Molecule
+        # For Molecule, we use a simple hash of the structure dict
+        if isinstance(structure, Molecule):
+            # For molecules, use a simple hash of the structure dict
+            import hashlib
+            structure_dict = structure.as_dict()
+            # Remove metadata if present
+            structure_dict.pop("__qv_meta__", None)
+            structure_str = json.dumps(structure_dict, sort_keys=True)
+            fingerprint = hashlib.sha256(structure_str.encode('utf-8')).hexdigest()
+        else:
+            fingerprint = structure_fingerprint(structure)
         
         # Write to structures directory
         dest_path = project_root / "structures" / f"{final_slug}.json"

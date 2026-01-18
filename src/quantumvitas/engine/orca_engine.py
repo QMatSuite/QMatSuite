@@ -172,6 +172,38 @@ class ORCAEngine(Engine):
         """Build ORCA command line."""
         return [str(self.orca_binary), str(input_file)]
 
+    def run_step(self, step, working_dir: Path) -> StepResult:
+        """
+        Execute a single ORCA step.
+        
+        For ORCA, single steps are executed as chains of length 1.
+        This method delegates to run_step_with_chain with a single-step chain.
+        
+        Args:
+            step: Step object to execute
+            working_dir: Working directory for execution
+            
+        Returns:
+            StepResult with execution status
+        """
+        # Extract structure_id and project_root from step.options (set by handler)
+        structure_id = None
+        project_root = None
+        
+        if hasattr(step, 'options'):
+            structure_id = step.options.get('structure_id')
+            project_root_str = step.options.get('project_root')
+            if project_root_str:
+                project_root = Path(project_root_str)
+        
+        return self.run_step_with_chain(
+            target_step=step,
+            chain_steps=[step],  # Chain of length 1
+            calculation_raw_dir=working_dir,
+            structure_id=structure_id,
+            project_root=project_root,
+        )
+
     def run_chain(
         self,
         chain: Any,  # QCChain
@@ -206,17 +238,40 @@ class ORCAEngine(Engine):
             get_tddft_excitations,
             is_converged,
         )
+        from pymatgen.core import Molecule as PMGMolecule
 
         start_time = time.time()
 
         # Ensure working directory exists
         working_dir.mkdir(parents=True, exist_ok=True)
 
+        # Convert pymatgen Molecule to MoleculeLike adapter
+        # MoleculeLike expects: atoms (str), charge (int), multiplicity (int)
+        # pymatgen Molecule has: spin_multiplicity (not multiplicity)
+        if isinstance(molecule, PMGMolecule):
+            # Create adapter object
+            class MoleculeAdapter:
+                def __init__(self, mol: PMGMolecule):
+                    # Convert to XYZ string format
+                    xyz_lines = []
+                    for site in mol:
+                        symbol = site.specie.symbol
+                        coords = site.coords
+                        xyz_lines.append(f"{symbol:4s} {coords[0]:15.10f} {coords[1]:15.10f} {coords[2]:15.10f}")
+                    self.atoms = "\n".join(xyz_lines)
+                    self.charge = mol.charge
+                    self.multiplicity = mol.spin_multiplicity  # pymatgen uses spin_multiplicity
+            
+            molecule_adapter = MoleculeAdapter(molecule)
+        else:
+            # Assume it's already MoleculeLike
+            molecule_adapter = molecule
+
         # 1. Compile chain to input file
         compiler = ORCAInputCompiler()
         input_content = compiler.compile(
             chain,
-            molecule,
+            molecule_adapter,
             fresh=fresh,
             nprocs=self.config.nprocs,
         )
@@ -360,6 +415,222 @@ class ORCAEngine(Engine):
             metrics=metrics,
             artifacts=artifacts,
             error=error_msg,
+        )
+
+    def run_step_with_chain(
+        self,
+        target_step,
+        chain_steps: List[Any],
+        calculation_raw_dir: Path,
+        structure_id: Optional[str] = None,
+        project_root: Optional[Path] = None,
+    ) -> "StepResult":
+        """
+        Run an ORCA dependency chain.
+        
+        This method adapts the ORCA chain execution model to match the
+        pyscf_engine.run_step_with_chain() interface used by handlers.
+        
+        Args:
+            target_step: Target Step object
+            chain_steps: List of Step objects in dependency order (from root to target)
+            calculation_raw_dir: Base working directory (calc/raw/)
+            structure_id: Structure resource ID (for Molecule loading)
+            project_root: Project root path (for structure resolution)
+            
+        Returns:
+            StepResult for the target step
+        """
+        import time
+        from quantumvitas.engine.base import StepResult
+        from quantumvitas.engine.qc_engine_base import QCChain, detect_chains
+        from quantumvitas.io.structure_io import read_structure
+        from quantumvitas.core.resolution import require_structure
+        from pymatgen.core import Molecule as PMGMolecule
+        
+        start_time = time.time()
+        calculation_raw_dir = Path(calculation_raw_dir)
+        
+        # 1. Validate inputs
+        if not structure_id:
+            return StepResult(
+                step_type="orca_relax",
+                input_file=calculation_raw_dir / "chain.inp",
+                success=False,
+                error="Structure ID is required for ORCA chain execution",
+                execution_time=time.time() - start_time,
+            )
+        if not project_root:
+            return StepResult(
+                step_type="orca_relax",
+                input_file=calculation_raw_dir / "chain.inp",
+                success=False,
+                error="Project root is required for structure resolution",
+                execution_time=time.time() - start_time,
+            )
+        
+        # 2. Load Molecule
+        try:
+            structure_resolved = require_structure(project_root, structure_id)
+            structure_path = structure_resolved.absolute_path
+            molecule = read_structure(structure_path)
+            
+            if not isinstance(molecule, PMGMolecule):
+                return StepResult(
+                    step_type="orca_relax",
+                    input_file=calculation_raw_dir / "chain.inp",
+                    success=False,
+                    error=f"Expected Molecule for ORCA, got {type(molecule)}",
+                    execution_time=time.time() - start_time,
+                )
+        except Exception as e:
+            return StepResult(
+                step_type="orca_relax",
+                input_file=calculation_raw_dir / "chain.inp",
+                success=False,
+                error=f"Failed to load molecule: {e}",
+                execution_time=time.time() - start_time,
+            )
+        
+        # 3. Build QCChain from chain_steps
+        # For ORCA, we detect chains from steps (SCF root + downstream)
+        # detect_chains expects steps to have public_type attribute
+        # We need to add it from registry based on step_type
+        from quantumvitas.workflow.registry import get_registry
+        registry = get_registry()
+        
+        # Add public_type to steps for detect_chains
+        # Also load parameters from step.yaml if not already in step object
+        steps_with_public_type = []
+        for step in chain_steps:
+            # Get public_type from registry
+            step_type = getattr(step, 'step_type', None)
+            if not step_type:
+                # Try to read from step.yaml
+                if hasattr(step, 'meta') and hasattr(step.meta, 'path') and step.meta.path:
+                    step_yaml_path = project_root / step.meta.path
+                    if step_yaml_path.exists():
+                        import yaml
+                        step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
+                        step_type = step_data.get("step_type")
+            
+            if step_type:
+                spec = registry.get(step_type)
+                public_type = spec.public_type if spec else step_type
+                
+                # Load parameters from step.yaml if not in step object
+                parameters = {}
+                if hasattr(step, 'parameters'):
+                    parameters = step.parameters.copy() if isinstance(step.parameters, dict) else step.parameters
+                elif hasattr(step, 'meta') and hasattr(step.meta, 'path') and step.meta.path:
+                    step_yaml_path = project_root / step.meta.path
+                    if step_yaml_path.exists():
+                        import yaml
+                        step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
+                        parameters = step_data.get("parameters", {})
+                
+                # Create a wrapper object with public_type and parameters
+                class StepWrapper:
+                    def __init__(self, step, public_type, step_type, parameters):
+                        self.step = step
+                        self.id = step.meta.id
+                        self.public_type = public_type
+                        self.step_type = step_type
+                        self.parameters = parameters
+                        # Forward other attributes
+                        if hasattr(step, 'options'):
+                            self.options = step.options
+                
+                steps_with_public_type.append(StepWrapper(step, public_type, step_type, parameters))
+            else:
+                # No step_type, skip this step
+                continue
+        
+        chains = detect_chains(steps_with_public_type)
+        
+        # If no chains detected (e.g., relax step without SCF root),
+        # create a single-step chain with the first step as root
+        if not chains:
+            if not steps_with_public_type:
+                return StepResult(
+                    step_type="orca_relax",
+                    input_file=calculation_raw_dir / "chain.inp",
+                    success=False,
+                    error="No valid steps provided",
+                    execution_time=time.time() - start_time,
+                )
+            # Create a single-step chain for relax (or other non-SCF steps)
+            from quantumvitas.engine.qc_engine_base import QCChain, derive_chain_key
+            single_step = steps_with_public_type[0]
+            chain = QCChain(scf_root=single_step, downstream=[], key="")
+            chain.key = derive_chain_key(chain, chain_index=1)
+        else:
+            chain = chains[0]
+        
+        # Use wrapped steps directly - they have public_type and parameters
+        # run_chain will use these wrapped steps which have all needed attributes
+        
+        # 4. Set up working directory
+        # ORCA recipe sets job.working_dir to calc_raw_dir / namespace_folder (e.g., calc/raw/scf_ABCDEF/)
+        # Handler passes this as calculation_raw_dir, so we use it directly
+        working_dir = Path(calculation_raw_dir)
+        working_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 5. Execute chain
+        try:
+            orca_results = self.run_chain(
+                chain=chain,  # Use chain with wrapped steps (has public_type and parameters)
+                working_dir=working_dir,
+                molecule=molecule,
+                fresh=True,  # Always fresh for explicit runs
+            )
+        except Exception as e:
+            return StepResult(
+                step_type="orca_relax",
+                input_file=working_dir / f"{chain.key}.inp",
+                success=False,
+                error=f"ORCA chain execution failed: {e}",
+                execution_time=time.time() - start_time,
+            )
+        
+        # 6. Convert ORCAStepResult to StepResult
+        # Find result for target step
+        target_result = None
+        for orca_result in orca_results:
+            if orca_result.step_id == target_step.meta.id:
+                target_result = orca_result
+                break
+        
+        if target_result is None and orca_results:
+            # Use last result if target not found explicitly
+            target_result = orca_results[-1]
+        
+        if target_result is None:
+            return StepResult(
+                step_type="orca_relax",
+                input_file=working_dir / f"{chain.key}.inp",
+                success=False,
+                error="No result found for target step",
+                execution_time=time.time() - start_time,
+            )
+        
+        # Store working_dir and chain_key in parsed_output for post-processing
+        # chain_key is the full chain key (e.g., "chain01_relax") that matches actual file names
+        parsed_output = {
+            "working_dir": str(working_dir),
+            "chain_key": chain.key,  # Full chain key (e.g., "chain01_relax")
+            "metrics": target_result.metrics,
+            "artifacts": target_result.artifacts,
+        }
+        
+        return StepResult(
+            step_type=target_step.step_type or "orca_relax",
+            input_file=Path(target_result.artifacts.get("input", working_dir / f"{chain.key}.inp")),
+            output_file=Path(target_result.artifacts.get("output", working_dir / f"{chain.key}.out")),
+            success=target_result.success,
+            error=target_result.error,
+            execution_time=time.time() - start_time,
+            parsed_output=parsed_output,
         )
 
 
