@@ -12,7 +12,7 @@
  * - Info tooltip: description + type + default + enum/range + module/section
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { StepDetail } from '../../types/qv';
 import type { QEParameterMeta, QEModuleMeta } from '../../hooks/useQEParameterMetadata';
 import { ParameterValueEditor } from './ParameterValueEditor';
@@ -57,12 +57,13 @@ export function ActiveParametersPanel({
   editedParameterScan,
 }: ActiveParametersPanelProps) {
   
-  // Group active parameters by namelist
+  // Group active parameters by namelist, separating managed from editable
   // Handles both:
   // 1. QE-style nested: { SYSTEM: { ecutwfc: 40 }, CONTROL: { ... } }
   // 2. W90-style flat: { seedname: "diamond", num_wann: 4 }
-  const parametersByNamelist = useMemo(() => {
+  const { parametersByNamelist, managedParameters } = useMemo(() => {
     const grouped: Record<string, ParameterWithMetadata[]> = {};
+    const managed: ParameterWithMetadata[] = [];
     
     // Detect if parameters are flat (non-namelist) or nested (namelist-wrapped)
     // Flat parameters have primitive values at the top level
@@ -112,12 +113,20 @@ export function ActiveParametersPanel({
         const metadataKey = module ? `${module}::${sectionKey}::${paramName}` : null;
         const paramMeta = metadataKey ? metadata.parameters.get(metadataKey) : null;
         
-        namelistParams.push({
+        const param: ParameterWithMetadata = {
           namelist,
           name: paramName,
           value,
           metadata: paramMeta || null,
-        });
+        };
+        
+        // Check if parameter is managed
+        const isManaged = paramMeta && (paramMeta as any).is_managed === true;
+        if (isManaged) {
+          managed.push(param);
+        } else {
+          namelistParams.push(param);
+        }
       }
       
       if (namelistParams.length > 0) {
@@ -127,7 +136,14 @@ export function ActiveParametersPanel({
       }
     }
     
-    return grouped;
+    // Sort managed parameters
+    managed.sort((a, b) => {
+      const namelistCompare = a.namelist.localeCompare(b.namelist);
+      if (namelistCompare !== 0) return namelistCompare;
+      return a.name.localeCompare(b.name);
+    });
+    
+    return { parametersByNamelist: grouped, managedParameters: managed };
   }, [stepDetail.parameters, module, metadata]);
   
   // Process cards (if any)
@@ -291,8 +307,11 @@ export function ActiveParametersPanel({
                       );
                     }
                     
-                    // Show mode selector + editor
-                    if (isEditing && canScan && onScanToggle) {
+                    // Check if parameter is managed (skip scan toggle for managed params)
+                    const isManaged = param.metadata && (param.metadata as any).is_managed === true;
+                    
+                    // Show mode selector + editor (skip if managed)
+                    if (isEditing && canScan && onScanToggle && !isManaged) {
                       return (
                         <div className="active-parameters-panel__value-editor-container">
                           {/* Mode selector: Value/Scan */}
@@ -439,6 +458,95 @@ export function ActiveParametersPanel({
               </code>
             </div>
           ))}
+        </div>
+      )}
+      
+      {/* Managed / Injected Parameters (read-only) */}
+      {managedParameters.length > 0 && (
+        <ManagedParametersSection
+          managedParameters={managedParameters}
+          stepDetail={stepDetail}
+        />
+      )}
+    </div>
+  );
+}
+
+// Managed Parameters Section Component
+interface ManagedParametersSectionProps {
+  managedParameters: ParameterWithMetadata[];
+  stepDetail: StepDetail;
+}
+
+function ManagedParametersSection({
+  managedParameters,
+  stepDetail,
+}: ManagedParametersSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const getManagedReasonText = (param: ParameterWithMetadata): string => {
+    const meta = param.metadata as any;
+    const reason = meta?.managed_reason;
+    if (reason === 'runtime_overridden') {
+      return 'Overridden at run time';
+    } else if (reason === 'step_type_owned') {
+      return 'Owned by step type';
+    }
+    return 'Managed parameter';
+  };
+  
+  return (
+    <div className="active-parameters-panel__managed-section">
+      <button
+        className="active-parameters-panel__managed-header"
+        onClick={() => setIsExpanded(!isExpanded)}
+        type="button"
+      >
+        <span className="active-parameters-panel__managed-title">
+          Managed / Injected Parameters (read-only)
+        </span>
+        <span className="active-parameters-panel__managed-count">
+          {managedParameters.length}
+        </span>
+        <span className="active-parameters-panel__managed-toggle">
+          {isExpanded ? '▼' : '▶'}
+        </span>
+      </button>
+      
+      {isExpanded && (
+        <div className="active-parameters-panel__managed-content">
+          {managedParameters.map((param) => {
+            const meta = param.metadata as any;
+            const reasonText = getManagedReasonText(param);
+            // Get effective value from injection info if available
+            const injectionInfo = stepDetail.prefix_outdir_injection;
+            let effectiveValue = param.value;
+            if (param.name === 'prefix' && injectionInfo?.effective_prefix) {
+              effectiveValue = injectionInfo.effective_prefix;
+            } else if (param.name === 'outdir' && injectionInfo?.effective_outdir) {
+              effectiveValue = injectionInfo.effective_outdir;
+            }
+            
+            return (
+              <div key={`${param.namelist}:${param.name}`} className="active-parameters-panel__managed-param">
+                <div className="active-parameters-panel__managed-param-info">
+                  <span className="active-parameters-panel__managed-param-name">
+                    {param.namelist}.{param.name}
+                  </span>
+                  <span className="active-parameters-panel__managed-param-reason">
+                    {reasonText}
+                  </span>
+                </div>
+                <div className="active-parameters-panel__managed-param-value">
+                  <code className="active-parameters-panel__parameter-value-display">
+                    {effectiveValue === null || effectiveValue === undefined 
+                      ? '(not set)' 
+                      : String(effectiveValue)}
+                  </code>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

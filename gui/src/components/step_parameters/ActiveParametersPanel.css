@@ -345,3 +345,91 @@
   color: var(--text-primary, #333);
 }
 
+/* Managed Parameters Section */
+.active-parameters-panel__managed-section {
+  margin-top: var(--space-4);
+  border: 1px solid var(--border-subtle, #ddd);
+  border-radius: var(--radius-md, 4px);
+  background: var(--bg-secondary, #f5f5f5);
+}
+
+.active-parameters-panel__managed-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--text-sm, 14px);
+  color: var(--text-secondary, #666);
+  transition: background var(--transition-fast, 0.2s);
+}
+
+.active-parameters-panel__managed-header:hover {
+  background: var(--bg-hover, #e8e8e8);
+}
+
+.active-parameters-panel__managed-title {
+  font-weight: var(--font-medium, 500);
+  color: var(--text-primary, #333);
+}
+
+.active-parameters-panel__managed-count {
+  font-size: var(--text-xs, 12px);
+  color: var(--text-muted, #999);
+}
+
+.active-parameters-panel__managed-toggle {
+  margin-left: auto;
+  font-size: var(--text-xs, 12px);
+  color: var(--text-muted, #999);
+}
+
+.active-parameters-panel__managed-content {
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border-subtle, #ddd);
+}
+
+.active-parameters-panel__managed-param {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm, 3px);
+  background: var(--bg-primary, #fff);
+  margin-bottom: var(--space-1);
+}
+
+.active-parameters-panel__managed-param:last-child {
+  margin-bottom: 0;
+}
+
+.active-parameters-panel__managed-param-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 0 0 200px;
+}
+
+.active-parameters-panel__managed-param-name {
+  font-size: var(--text-sm, 14px);
+  font-weight: var(--font-medium, 500);
+  color: var(--text-primary, #333);
+  font-family: var(--font-mono, monospace);
+}
+
+.active-parameters-panel__managed-param-reason {
+  font-size: var(--text-xs, 12px);
+  color: var(--text-muted, #999);
+  font-style: italic;
+}
+
+.active-parameters-panel__managed-param-value {
+  flex: 1;
+  min-width: 0;
+}
+
