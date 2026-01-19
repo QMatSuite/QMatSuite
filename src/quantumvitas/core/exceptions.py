@@ -40,3 +40,13 @@ class MissingArtifactError(Exception):
     The user must explicitly run the calculation from the beginning or run the relax step first.
     """
     pass
+
+
+class UnsupportedStepError(Exception):
+    """
+    Raised when a generalized step is not supported by the engine family (0-mapping).
+    
+    Per VASP integration plan v2.0 Section 3.2: When run_step is called with a GEN step
+    that maps to 0 for the calculation's engine family, this error is raised with a clear message.
+    """
+    pass

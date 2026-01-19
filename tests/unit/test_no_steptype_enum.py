@@ -12,7 +12,9 @@ from tests.utils.repo_scan import scan_for_pattern_list_files
 
 def test_no_steptype_import_in_production():
     """Production code must not import StepType."""
-    matching_files = scan_for_pattern_list_files(r"from.*StepType|import.*StepType")
+    # Match import statements only, not comments
+    # Pattern: "from ... import StepType" or "import StepType" but not StepTypeRegistry/Spec
+    matching_files = scan_for_pattern_list_files(r"(?:from|import).*\bStepType\b(?!Registry|Spec)")
     # Filter out types.py where StepMode/StepStatus are defined
     if matching_files:
         files = [f for f in matching_files.split('\n') if f.strip() and 'types.py' not in f]

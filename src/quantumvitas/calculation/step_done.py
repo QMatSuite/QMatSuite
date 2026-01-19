@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Step types that don't have "JOB DONE" markers but have other success indicators
 WANNIER90_STEP_TYPES = {"w90_preproc", "w90_run", "pw2wannier90", "wannier90", "postw90"}
+VASP_STEP_TYPES = {"vasp_scf", "vasp_bands", "vasp_dos", "vasp_nscf", "vasp_relax"}
 
 
 def primary_output_path(calc_raw_dir: Path, step_kind: str, step_doc: Optional[dict] = None) -> Optional[Path]:
@@ -110,6 +111,51 @@ def is_step_done(calc_dir: Path, step_kind: str, calc_raw_dir: Optional[Path] = 
         return False
     
     step_kind_lower = step_kind.lower()
+    
+    # VASP steps: check for OUTCAR and OSZICAR
+    if step_kind_lower in VASP_STEP_TYPES:
+        # VASP: check for OUTCAR (primary output) and OSZICAR (iteration log)
+        # VASP steps use step-specific workdirs: calc_raw_dir / step_ulid / OUTCAR
+        
+        # Try to get step_ulid from step_doc
+        step_ulid = None
+        if step_doc:
+            # Check meta.id or step_id
+            meta = step_doc.get("meta", {})
+            step_ulid = meta.get("id") or step_doc.get("step_id")
+        
+        # If we have step_ulid, check in specific workdir
+        if step_ulid:
+            step_workdir = calc_raw_dir / step_ulid
+            outcar_path = step_workdir / "OUTCAR"
+            oszicar_path = step_workdir / "OSZICAR"
+        else:
+            # Fallback: check in calc_raw_dir root or find in subdirectories
+            outcar_path = calc_raw_dir / "OUTCAR"
+            oszicar_path = calc_raw_dir / "OSZICAR"
+            
+            if not outcar_path.exists():
+                # Look for OUTCAR in step workdirs (calc_raw_dir / step_ulid / OUTCAR)
+                for subdir in calc_raw_dir.iterdir():
+                    if subdir.is_dir():
+                        step_outcar = subdir / "OUTCAR"
+                        if step_outcar.exists():
+                            outcar_path = step_outcar
+                            oszicar_path = subdir / "OSZICAR"
+                            break
+        
+        if outcar_path.exists() and oszicar_path.exists():
+            # Check if OUTCAR has energy (indicates successful completion)
+            try:
+                outcar_text = outcar_path.read_text()
+                if "free  energy   TOTEN" in outcar_text:
+                    logger.debug(f"Step {step_kind}: VASP output files exist and contain energy")
+                    return True
+            except Exception as e:
+                logger.warning(f"Step {step_kind}: Error reading OUTCAR: {e}")
+        
+        logger.debug(f"Step {step_kind}: VASP output files not found or incomplete")
+        return False
     
     # Determine primary output file
     output_path = primary_output_path(calc_raw_dir, step_kind, step_doc)

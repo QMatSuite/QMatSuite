@@ -85,6 +85,16 @@ MATERIALIZATION_MAP: Dict[Tuple[str, str], Optional[str]] = {
     ("orca", "HF"): "orca_hf",
     ("orca", "TD"): "orca_td",  # ORCA TDDFT/CIS
 
+    # VASP family mappings
+    ("vasp", "SCF"): "vasp_scf",
+    ("vasp", "NSCF"): "vasp_nscf",
+    ("vasp", "RELAX"): "vasp_relax",
+    ("vasp", "BANDS"): "vasp_bands",
+    ("vasp", "BANDS_POST"): None,  # 0-mapping: VASP doesn't need post-processing
+    ("vasp", "BANDSPP"): None,     # 0-mapping: VASP doesn't need post-processing (PUBLIC key alias)
+    ("vasp", "DOS"): None,          # 0-mapping: VASP DOS integrated in nscf output
+    ("vasp", "DOSPP"): None,       # 0-mapping: VASP DOS integrated in nscf output (PUBLIC key alias)
+
     # Wannier90 standalone (if needed in future)
     # ("w90", "WANNIER"): "w90_run",
 
@@ -118,6 +128,24 @@ def materialize_step(
     return MATERIALIZATION_MAP.get(key)
 
 
+def _is_zero_mapping(gen_step: str, engine_family: str) -> bool:
+    """
+    Check if (engine_family, gen_step) is explicitly mapped to None.
+    
+    Returns True only if the key exists in MATERIALIZATION_MAP with value None.
+    Returns False if the key is not in the map at all.
+    
+    Args:
+        gen_step: Generalized step identifier (e.g., "BANDS_POST", "DOS")
+        engine_family: Engine family identifier (e.g., "vasp")
+    
+    Returns:
+        True if this is an explicit 0-mapping, False otherwise
+    """
+    key = (engine_family.lower(), gen_step.upper())
+    return key in MATERIALIZATION_MAP and MATERIALIZATION_MAP[key] is None
+
+
 def materialize_workflow(
     generalized_steps: list[str],
     engine_family: str,
@@ -128,33 +156,50 @@ def materialize_workflow(
     Phase 3B: Accepts PUBLIC step keys (like "scf", "bands_pw") from workflow templates.
     Also supports GeneralizedStep enum values (uppercase like "SCF") for backward compatibility.
     
+    Per VASP integration plan v2.0:
+    - 0-mapping steps (explicit None in MATERIALIZATION_MAP) are silently omitted (no error)
+    - Unsupported family/step combinations raise ValueError
+    
     Args:
         generalized_steps: List of step identifiers (PUBLIC keys like "scf" or enum values like "SCF")
-        engine_family: Engine family identifier (e.g., "qe", "pyscf")
+        engine_family: Engine family identifier (e.g., "qe", "pyscf", "vasp")
     
     Returns:
         List of engine-specific step type identifiers (MACHINE types like "qe_scf")
+        Steps with 0-mapping are silently omitted.
     
     Raises:
-        ValueError: If a generalized step is unsupported by the engine family
+        ValueError: If any step is not supported by the engine family (not a 0-mapping)
     
     Example:
         >>> materialize_workflow(["scf", "nscf", "dos"], "qe")  # PUBLIC keys (preferred)
         ["qe_scf", "qe_nscf", "qe_dos"]
-        >>> materialize_workflow(["SCF", "NSCF", "DOS"], "qe")  # Enum values (backward compat)
-        ["qe_scf", "qe_nscf", "qe_dos"]
-        >>> materialize_workflow(["scf"], "vasp")
-        ValueError: Generalized step 'scf' is not supported by engine family 'vasp'
+        >>> materialize_workflow(["scf", "nscf", "bands_post"], "vasp")  # bands_post has 0-mapping
+        ["vasp_scf", "vasp_nscf"]  # bands_post silently omitted
     """
     result = []
+    unsupported_steps = []
+    
     for gen_step in generalized_steps:
         # Use materialize_public_step_key which handles both PUBLIC keys and enum values
         specific_step = materialize_public_step_key(gen_step, engine_family)
+        
         if specific_step is None:
-            raise ValueError(
-                f"Generalized step '{gen_step}' is not supported by engine family '{engine_family}'"
-            )
-        result.append(specific_step)
+            # Distinguish 0-mapping from unsupported
+            if _is_zero_mapping(gen_step, engine_family):
+                # Explicit 0-mapping: silently omit (per v2.0 spec)
+                continue
+            else:
+                # Truly unsupported: collect for error
+                unsupported_steps.append(gen_step)
+        else:
+            result.append(specific_step)
+    
+    if unsupported_steps:
+        raise ValueError(
+            f"Steps {unsupported_steps} are not supported by engine family '{engine_family}'"
+        )
+    
     return result
 
 
