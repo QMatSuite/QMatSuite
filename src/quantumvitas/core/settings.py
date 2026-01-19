@@ -38,6 +38,7 @@ class QMatSuiteSettings:
     qe: QEConfig = field(default_factory=QEConfig)
     debug_resolution: bool = False  # Enable detailed resolution/addressing debug logs
     max_concurrent_calcs: int = 2  # Maximum concurrent calculation runs (default 2)
+    analysis_cache_enabled: bool = True  # Enable analysis object caching (default: enabled)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -46,6 +47,7 @@ class QMatSuiteSettings:
             "qe": asdict(self.qe),
             "debug_resolution": self.debug_resolution,
             "max_concurrent_calcs": self.max_concurrent_calcs,
+            "analysis_cache_enabled": self.analysis_cache_enabled,
         }
     
     @classmethod
@@ -92,6 +94,7 @@ class QMatSuiteSettings:
             qe=qe,
             debug_resolution=data.get("debug_resolution", False),  # Default: OFF
             max_concurrent_calcs=data.get("max_concurrent_calcs", 2),  # Default: 2
+            analysis_cache_enabled=data.get("analysis_cache_enabled", True),  # Default: enabled
         )
 
 

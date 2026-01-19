@@ -16,6 +16,7 @@ from .results import CalculationResult, StepResultSummary
 from .types import StepMode, StepStatus
 from .verification import evaluate_step_result
 from quantumvitas.engine.registry import EngineRegistry
+from quantumvitas.core.provenance import update_provenance_after_step
 
 logger = logging.getLogger(__name__)
 
@@ -608,6 +609,19 @@ class CalculationRunner:
                             started_at=now_iso8601() if not job_result.started_at else job_result.started_at.isoformat(),
                             done_at=now_iso8601() if step_success else None,
                         )
+                    
+                    # Update provenance (after staging is complete, if any)
+                    if step_success:
+                        try:
+                            engine_name = job.engine or "qe"
+                            update_provenance_after_step(
+                                calc_dir=calculation.dir,
+                                run_id=run_id,
+                                step_ulid=step_ulid,
+                                engine=engine_name,
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to update provenance: {e}")
 
                     summary = StepResultSummary(
                         step_id=step_ulid,

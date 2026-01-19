@@ -66,6 +66,10 @@ def get_analysis_dir(calculation_dir: Path) -> Path:
     
     Convention: <calculation_dir>/analysis/
     
+    NOTE: The new Analysis Objects Framework uses .analysis/ (hidden).
+    This function maintains backward compatibility with the existing
+    analysis/ directory. New code should use quantumvitas.core.analysis.cache.get_cache_dir().
+    
     Args:
         calculation_dir: Path to calculation directory
         
