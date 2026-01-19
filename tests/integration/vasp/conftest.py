@@ -31,10 +31,53 @@ FAKE_VASP_BIN = get_fake_vasp_path()
 
 
 @pytest.fixture
-def use_fake_vasp(monkeypatch):
-    """Fixture to use fake_vasp instead of real VASP."""
+def use_fake_vasp(monkeypatch, tmp_path):
+    """Fixture to use fake_vasp instead of real VASP and mock POTCAR directory."""
     fake_vasp = str(FAKE_VASP_BIN)
     monkeypatch.setenv("QMATS_VASP_STD_BIN", fake_vasp)
+    
+    # Mock get_potcar_dir to return a fake POTCAR directory
+    fake_potcar_dir = tmp_path / "fake_potcar" / "potpaw_PBE.64"
+    fake_potcar_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create fake POTCAR files for common elements
+    for element in ["Si", "H", "O", "C", "N"]:
+        element_dir = fake_potcar_dir / element
+        element_dir.mkdir(exist_ok=True)
+        (element_dir / "POTCAR").write_text(f"FAKE POTCAR for {element}\n")
+    
+    # Mock get_potcar_dir function in both resolver and writer modules
+    def mock_get_potcar_dir(potcar_type: str = "PBE") -> Path:
+        # Return the appropriate directory based on potcar_type
+        if potcar_type == "LDA":
+            potcar_dir = tmp_path / "fake_potcar" / "potpaw_LDA.64"
+        else:  # PBE or default
+            potcar_dir = tmp_path / "fake_potcar" / "potpaw_PBE.64"
+        potcar_dir.mkdir(parents=True, exist_ok=True)
+        # Create element directories if they don't exist
+        for element in ["Si", "H", "O", "C", "N"]:
+            element_dir = potcar_dir / element
+            element_dir.mkdir(exist_ok=True)
+            if not (element_dir / "POTCAR").exists():
+                (element_dir / "POTCAR").write_text(f"FAKE POTCAR for {element}\n")
+        return potcar_dir
+    
+    # Mock in resolver module (source of truth)
+    import quantumvitas.core.engines.vasp_resolver
+    monkeypatch.setattr(
+        quantumvitas.core.engines.vasp_resolver,
+        "get_potcar_dir",
+        mock_get_potcar_dir
+    )
+    
+    # Mock in writer module (where it's imported)
+    import quantumvitas.engine.vasp_writer
+    monkeypatch.setattr(
+        quantumvitas.engine.vasp_writer,
+        "get_potcar_dir",
+        mock_get_potcar_dir
+    )
+    
     yield fake_vasp
     # Cleanup: remove env var
     monkeypatch.delenv("QMATS_VASP_STD_BIN", raising=False)

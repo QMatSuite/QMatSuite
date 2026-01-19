@@ -118,47 +118,74 @@ class TestVASPGenToSpecMapping:
 
 
 class TestVASPResolver:
-    """Test VASP binary and POTCAR resolution."""
+    """Test VASP binary and POTCAR resolution - MOCK TESTS (CI 必跑)."""
     
-    def test_resolve_vasp_bin_finds_binary(self):
-        """Test that resolve_vasp_bin finds VASP in project root."""
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+    def test_resolve_vasp_bin_finds_binary_from_env(self, monkeypatch, tmp_path):
+        """Test resolver finds VASP via environment variable."""
+        # Create fake binary
+        fake_bin = tmp_path / "fake_vasp_std"
+        fake_bin.write_text("#!/bin/bash\necho fake")
+        fake_bin.chmod(0o755)
         
-        # Should find .qmatsuite/engines/vasp/vasp.6.5.0/bin/vasp_std
-        bin_path = resolve_vasp_bin("std")
-        assert bin_path.exists()
-        assert bin_path.name == "vasp_std"
+        monkeypatch.setenv("QMATS_VASP_STD_BIN", str(fake_bin))
+        
+        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+        result = resolve_vasp_bin("std")
+        assert result == fake_bin
     
-    def test_resolve_vasp_bin_raises_when_not_found(self, monkeypatch):
-        """Test that resolve_vasp_bin raises when VASP not found."""
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
-        import os
+    def test_resolve_vasp_bin_finds_binary_from_repo_root(self, monkeypatch, tmp_path):
+        """Test resolver finds VASP in .qmatsuite/ directory."""
+        # Create fake repo structure
+        vasp_dir = tmp_path / ".qmatsuite" / "engines" / "vasp" / "vasp.6.5.0" / "bin"
+        vasp_dir.mkdir(parents=True)
+        fake_bin = vasp_dir / "vasp_std"
+        fake_bin.write_text("#!/bin/bash\necho fake")
+        fake_bin.chmod(0o755)
         
-        # Clear environment variable
+        # Clear env var and mock repo root
         monkeypatch.delenv("QMATS_VASP_STD_BIN", raising=False)
         
-        # Mock the repo root to point to non-existent location
-        import quantumvitas
-        from pathlib import Path
-        _pkg_path = Path(quantumvitas.__file__).parent
-        _repo_root = _pkg_path.parent.parent
+        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
         
-        # Temporarily rename .qmatsuite to break resolution
-        vasp_dir = _repo_root / ".qmatsuite" / "engines" / "vasp"
-        if not vasp_dir.exists():
-            # If it doesn't exist, we expect the error
-            with pytest.raises(RuntimeError, match="VASP.*not found"):
-                resolve_vasp_bin("std")
+        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+        result = resolve_vasp_bin("std")
+        assert result == fake_bin
     
-    def test_get_potcar_dir_finds_directory(self):
-        """Test that get_potcar_dir finds POTCAR library."""
+    def test_resolve_vasp_bin_raises_when_not_found(self, monkeypatch, tmp_path):
+        """Test resolver raises RuntimeError when VASP not found."""
+        monkeypatch.delenv("QMATS_VASP_STD_BIN", raising=False)
+        
+        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
+        
+        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+        with pytest.raises(RuntimeError, match="VASP.*not found"):
+            resolve_vasp_bin("std")
+    
+    def test_get_potcar_dir_finds_directory(self, monkeypatch, tmp_path):
+        """Test get_potcar_dir finds POTCAR library."""
+        # Create fake POTCAR structure
+        potcar_dir = tmp_path / ".qmatsuite" / "engines" / "vasp" / "potpaw_PBE.64"
+        potcar_dir.mkdir(parents=True)
+        si_dir = potcar_dir / "Si"
+        si_dir.mkdir()
+        (si_dir / "POTCAR").write_text("FAKE POTCAR")
+        
+        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
+        
         from quantumvitas.core.engines.vasp_resolver import get_potcar_dir
+        result = get_potcar_dir("PBE")
+        assert result == potcar_dir
+        assert (result / "Si" / "POTCAR").exists()
+    
+    def test_get_potcar_dir_raises_when_not_found(self, monkeypatch, tmp_path):
+        """Test get_potcar_dir raises RuntimeError when not found."""
+        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
         
-        potcar_dir = get_potcar_dir("PBE")
-        assert potcar_dir.exists()
-        assert potcar_dir.name == "potpaw_PBE.64"
-        
-        # Check that Si POTCAR exists
-        si_potcar = potcar_dir / "Si" / "POTCAR"
-        assert si_potcar.exists()
+        from quantumvitas.core.engines.vasp_resolver import get_potcar_dir
+        with pytest.raises(RuntimeError, match="POTCAR directory not found"):
+            get_potcar_dir("PBE")
 

@@ -216,3 +216,231 @@ def parse_vasp_output(workdir: Path) -> Dict[str, Any]:
         "outcar": outcar_data,
     }
 
+
+def parse_eigenval(eigenval_path: Path) -> Dict[str, Any]:
+    """
+    Parse EIGENVAL to extract band structure data.
+    
+    EIGENVAL format:
+    - Header: n_ions, n_atoms, p00, n_kpoints, n_bands
+    - For each k-point: k-point coordinates, weight, then eigenvalues
+    
+    Args:
+        eigenval_path: Path to EIGENVAL file
+    
+    Returns:
+        Dictionary with:
+        - kpoints: List of k-point coordinates (3D vectors)
+        - bands: List of band eigenvalues (shape: [n_kpoints, n_bands])
+        - efermi: Fermi energy (if available)
+        - n_kpoints: Number of k-points
+        - n_bands: Number of bands
+    """
+    if not eigenval_path.exists():
+        return {
+            "kpoints": [],
+            "bands": [],
+            "efermi": None,
+            "n_kpoints": 0,
+            "n_bands": 0,
+        }
+    
+    content = eigenval_path.read_text()
+    lines = content.strip().split("\n")
+    
+    # Parse header (line 5)
+    # Format: "      n_ions   n_atoms   p00   n_kpoints   n_bands" (5 numbers)
+    # OR: "      n_ions   n_atoms   p00" (3 numbers, then n_kpoints and n_bands on next line)
+    # OR: "      n_ions   n_kpoints   n_bands" (3 numbers, simplified format)
+    if len(lines) < 6:
+        return {
+            "kpoints": [],
+            "bands": [],
+            "efermi": None,
+            "n_kpoints": 0,
+            "n_bands": 0,
+        }
+    
+    try:
+        header_parts = lines[5].split()
+        if len(header_parts) >= 5:
+            # Full format: n_ions, n_atoms, p00, n_kpoints, n_bands
+            n_kpoints = int(header_parts[3])
+            n_bands = int(header_parts[4])
+        elif len(header_parts) >= 3:
+            # Simplified format: n_ions, n_kpoints, n_bands (or n_ions, n_atoms, p00)
+            # Try to interpret: if second number is large (>10), it's likely n_kpoints
+            if int(header_parts[1]) > 10:
+                n_kpoints = int(header_parts[1])
+                n_bands = int(header_parts[2])
+            else:
+                # Need to check next line or use defaults
+                # For now, assume format: n_ions, n_atoms, p00, and n_kpoints/n_bands are elsewhere
+                # Check line 6 for continuation
+                if len(lines) > 6 and lines[6].strip():
+                    next_parts = lines[6].split()
+                    if len(next_parts) >= 2:
+                        n_kpoints = int(next_parts[0])
+                        n_bands = int(next_parts[1])
+                    else:
+                        raise ValueError("Cannot determine n_kpoints and n_bands")
+                else:
+                    raise ValueError("Cannot determine n_kpoints and n_bands")
+        else:
+            raise ValueError("Invalid header format")
+    except (IndexError, ValueError) as e:
+        logger.warning(f"Failed to parse EIGENVAL header: {e}")
+        return {
+            "kpoints": [],
+            "bands": [],
+            "efermi": None,
+            "n_kpoints": 0,
+            "n_bands": 0,
+        }
+    
+    # Parse k-points and eigenvalues
+    kpoints = []
+    bands = []
+    line_idx = 6  # Start after header (skip empty line if present)
+    
+    while line_idx < len(lines) and len(kpoints) < n_kpoints:
+        # Skip empty lines
+        if not lines[line_idx].strip():
+            line_idx += 1
+            continue
+        
+        # K-point line: "   0.00000000   0.00000000   0.00000000     1.00000000"
+        k_line = lines[line_idx].strip()
+        k_parts = k_line.split()
+        if len(k_parts) >= 3:
+            try:
+                k_coords = [float(k_parts[0]), float(k_parts[1]), float(k_parts[2])]
+                kpoints.append(k_coords)
+                
+                # Next n_bands lines are eigenvalues
+                eigenvalues = []
+                for i in range(n_bands):
+                    line_idx += 1
+                    if line_idx >= len(lines):
+                        break
+                    band_line = lines[line_idx].strip()
+                    # Format: "     1     -10.12345678"
+                    band_parts = band_line.split()
+                    if len(band_parts) >= 2:
+                        try:
+                            eigenvalue = float(band_parts[1])
+                            eigenvalues.append(eigenvalue)
+                        except (ValueError, IndexError):
+                            break
+                
+                if len(eigenvalues) == n_bands:
+                    bands.append(eigenvalues)
+                
+                line_idx += 1
+            except (ValueError, IndexError):
+                line_idx += 1
+                continue
+        else:
+            line_idx += 1
+    
+    # Try to find Fermi energy (may be in a comment or separate line)
+    efermi = None
+    efermi_pattern = re.compile(r"E-fermi\s*[:=]\s*(-?\d+\.\d+)", re.IGNORECASE)
+    for line in lines:
+        match = efermi_pattern.search(line)
+        if match:
+            efermi = float(match.group(1))
+            break
+    
+    return {
+        "kpoints": kpoints,
+        "bands": bands,
+        "efermi": efermi,
+        "n_kpoints": len(kpoints),
+        "n_bands": n_bands,
+    }
+
+
+def parse_doscar(doscar_path: Path) -> Dict[str, Any]:
+    """
+    Parse DOSCAR to extract density of states data.
+    
+    DOSCAR format:
+    - Line 1: n_ions, volume, lattice_vectors
+    - Line 2-6: Header info
+    - Line 7+: DOS data (energy, total_dos, integrated_dos, [projected_dos...])
+    
+    Args:
+        doscar_path: Path to DOSCAR file
+    
+    Returns:
+        Dictionary with:
+        - energies: List of energy values (eV)
+        - dos: List of total DOS values
+        - integrated_dos: List of integrated DOS values
+        - efermi: Fermi energy
+        - n_dos_points: Number of DOS points
+    """
+    if not doscar_path.exists():
+        return {
+            "energies": [],
+            "dos": [],
+            "integrated_dos": [],
+            "efermi": None,
+            "n_dos_points": 0,
+        }
+    
+    content = doscar_path.read_text()
+    lines = content.strip().split("\n")
+    
+    if len(lines) < 6:
+        return {
+            "energies": [],
+            "dos": [],
+            "integrated_dos": [],
+            "efermi": None,
+            "n_dos_points": 0,
+        }
+    
+    # Parse header (line 5): "   n_dos_points   efermi   e_max   e_min"
+    try:
+        header_parts = lines[5].split()
+        n_dos_points = int(header_parts[2])
+        efermi = float(header_parts[3])
+    except (IndexError, ValueError):
+        return {
+            "energies": [],
+            "dos": [],
+            "integrated_dos": [],
+            "efermi": None,
+            "n_dos_points": 0,
+        }
+    
+    # Parse DOS data (starting from line 6)
+    energies = []
+    dos = []
+    integrated_dos = []
+    
+    for i in range(6, min(6 + n_dos_points, len(lines))):
+        line = lines[i].strip()
+        parts = line.split()
+        if len(parts) >= 3:
+            try:
+                energy = float(parts[0])
+                total_dos = float(parts[1])
+                int_dos = float(parts[2])
+                
+                energies.append(energy)
+                dos.append(total_dos)
+                integrated_dos.append(int_dos)
+            except (ValueError, IndexError):
+                continue
+    
+    return {
+        "energies": energies,
+        "dos": dos,
+        "integrated_dos": integrated_dos,
+        "efermi": efermi,
+        "n_dos_points": len(energies),
+    }
+
