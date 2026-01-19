@@ -1140,6 +1140,64 @@ class QVService:
         return list_steps(project_root, calculation_selector)
     
     @staticmethod
+    def list_available_gen_steps(
+        project_root: Path,
+        calculation_selector: str,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> List[str]:
+        """
+        List available GEN steps for a calculation's engine family.
+        
+        Filters out 0-mapped GEN steps (steps that map to None for the current engine).
+        This is used by UI to show only steps that can actually be created.
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            index: Optional ResourceIndex
+            config: Optional project config
+        
+        Returns:
+            List of available GEN step names (e.g., ["scf", "nscf", "bands", "relax"])
+        """
+        from quantumvitas.core.resolution import resolve_calculation
+        from quantumvitas.workflow.generalized_steps import materialize_step
+        
+        if config is None:
+            from quantumvitas.core.project_utils import load_project_config
+            config = load_project_config(project_root)
+        
+        # Resolve calculation to get engine_family
+        calculation = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        
+        # Get engine_family from calculation
+        calc_path = calculation.absolute_path / "calculation.yaml"
+        if not calc_path.exists():
+            return []
+        
+        import yaml
+        with open(calc_path, "r") as f:
+            calc_data = yaml.safe_load(f) or {}
+        
+        engine_family = calc_data.get("engine_family")
+        if not engine_family:
+            return []
+        
+        # All possible GEN steps
+        all_gen_steps = ["scf", "nscf", "bands", "bandspp", "dos", "dospp", "relax"]
+        
+        # Filter out 0-mapped steps
+        available = []
+        for gen_step in all_gen_steps:
+            spec_step = materialize_step(gen_step.upper(), engine_family)
+            if spec_step is not None:  # Not 0-mapped
+                available.append(gen_step)
+        
+        return available
+    
+    @staticmethod
     def get_step(
         project_root: Path,
         calculation_selector: str,

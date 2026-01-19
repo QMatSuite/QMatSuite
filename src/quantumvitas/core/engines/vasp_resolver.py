@@ -13,6 +13,13 @@ from typing import Optional
 from shutil import which
 
 
+def _get_repo_root() -> Path:
+    """Get repository root directory. Can be mocked for testing."""
+    import quantumvitas
+    _pkg_path = Path(quantumvitas.__file__).parent
+    return _pkg_path.parent.parent
+
+
 def resolve_vasp_bin(variant: str = "std") -> Path:
     """
     Resolve VASP binary path.
@@ -43,10 +50,7 @@ def resolve_vasp_bin(variant: str = "std") -> Path:
     # 2. Check project root (repo-relative)
     checked_locations = []
     try:
-        import quantumvitas
-        _pkg_path = Path(quantumvitas.__file__).parent
-        # Go up from src/quantumvitas to repo root
-        _repo_root = _pkg_path.parent.parent
+        _repo_root = _get_repo_root()
         _repo_vasp = _repo_root / ".qmatsuite" / "engines" / "vasp"
         checked_locations.append(str(_repo_vasp))
         
@@ -90,9 +94,7 @@ def get_potcar_dir(potcar_type: str = "PBE") -> Path:
     """
     # Check project root (repo-relative)
     try:
-        import quantumvitas
-        _pkg_path = Path(quantumvitas.__file__).parent
-        _repo_root = _pkg_path.parent.parent
+        _repo_root = _get_repo_root()
         _potcar_dir = _repo_root / ".qmatsuite" / "engines" / "vasp" / f"potpaw_{potcar_type}.64"
         
         if _potcar_dir.exists() and _potcar_dir.is_dir():

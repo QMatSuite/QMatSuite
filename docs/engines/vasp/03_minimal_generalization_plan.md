@@ -783,3 +783,490 @@ def require_vasp():
 | PR7-8: Integration | 2 days | 8 days |
 
 **Total**: ~8 working days for full implementation with tests.
+
+---
+
+## 9. V2.2 测试体系清理与下一阶段推进 (2026-01-19)
+
+**Version**: 2.2  
+**Purpose**: 清理 VASP 测试体系（mock vs real 分层）并推进真实 VASP smoke/parser/digest/UI 工作
+
+---
+
+### 9.1 当前测试体系问题诊断
+
+Cursor auto 在修复 CI 时引入了以下不一致的模式：
+
+#### 问题 A：`@skipif` 用于纯 mock 单测（违反规则）
+
+**文件**: `tests/unit/test_vasp_registry.py`
+
+```python
+# 问题代码 - 这些测试不应该 skip，应该自己创建 fake 资源
+@pytest.mark.skipif(not is_vasp_available(), reason="VASP binary not available")
+def test_resolve_vasp_bin_finds_binary(self):
+    ...
+
+@pytest.mark.skipif(not is_potcar_available(), reason="POTCAR directory not available")
+def test_get_potcar_dir_finds_directory(self):
+    ...
+```
+
+**问题**：
+- 这些是"resolver 能找到资源"的单测，应该**自己创建 fake 资源**然后测试 resolver 能找到
+- 如果依赖真实资源，那这不是单测而是集成测试
+- CI 必须能跑这些测试，不能 skip
+
+#### 问题 B：半真半假的 POTCAR mock
+
+**文件**: `tests/integration/vasp/conftest.py`
+
+```python
+# 当前实现 - mock 了 get_potcar_dir 但没有 mock repo root 发现逻辑
+def mock_get_potcar_dir(potcar_type: str = "PBE") -> Path:
+    potcar_dir = tmp_path / "fake_potcar" / "potpaw_PBE.64"
+    ...
+```
+
+**问题**：
+- 这个 mock 是正确的，但**只在 use_fake_vasp fixture 被使用时生效**
+- `test_vasp_registry.py` 中的 resolver 测试没有使用这个 fixture
+
+#### 问题 C：缺少真实 VASP 测试分层
+
+当前没有专门的"需要真实 VASP"的测试文件，导致：
+- 无法验证与真实 VASP 的兼容性
+- 无法收集真实输出 fixtures
+
+---
+
+### 9.2 测试体系硬规则（v2.2 宪法）
+
+#### Rule 1: Mock Tests 必须 CI 必跑、不可 skip
+
+| 测试类型 | 外部依赖 | CI 行为 | 实现方式 |
+|---------|---------|--------|---------|
+| Registry/Mapping 单测 | 无 | 必跑 | 纯逻辑测试 |
+| Resolver "找到资源" 单测 | 无 | 必跑 | **自己创建 fake 文件系统结构** |
+| Resolver "资源不存在" 单测 | 无 | 必跑 | monkeypatch 清除 env + mock 空目录 |
+| fake_vasp E2E 测试 | 无 | 必跑 | fixture 自己创建 fake `.qmatsuite/` 树 |
+
+#### Rule 2: Real VASP Tests 必须 CI skip、本地 fail
+
+| 测试类型 | 外部依赖 | CI 行为 | 本地行为 |
+|---------|---------|--------|---------|
+| 真实 VASP smoke | binary + potpaw | **skip** (CI=true) | **fail** if missing |
+| Parser fixture 创建 | binary + potpaw | skip | fail if missing |
+
+**资源路径规范**（相对 repo root）：
+```
+./.qmatsuite/engines/vasp/vasp.6.5.0/bin/vasp_std     # binary
+./.qmatsuite/engines/vasp/potpaw_PBE.64/              # PBE POTCARs
+./.qmatsuite/engines/vasp/potpaw_LDA.64/              # LDA POTCARs (optional)
+```
+
+**Skip 规则实现**：
+```python
+import os
+
+def skip_in_ci_require_locally(resource_check_fn, resource_desc: str):
+    """CI 中 skip，本地缺资源则 fail 并给出可行动错误。"""
+    is_ci = os.environ.get("CI", "").lower() in ("true", "1", "yes")
+    
+    if is_ci:
+        pytest.skip(f"{resource_desc} - skipped in CI")
+    
+    if not resource_check_fn():
+        pytest.fail(
+            f"{resource_desc} not found.\n"
+            f"Expected location relative to repo root:\n"
+            f"  ./.qmatsuite/engines/vasp/...\n"
+            f"Install VASP and POTCARs at the above location to run this test."
+        )
+```
+
+---
+
+### 9.3 测试体系清理计划（Phase T1-T3）
+
+#### Phase T1: 修复 Resolver 单测（去掉 @skipif，改用 fake 文件系统）
+
+**目标**: `TestVASPResolver` 类中的测试必须 CI 必跑
+
+**文件修改**:
+- `tests/unit/test_vasp_registry.py`
+
+**重写策略**:
+
+```python
+class TestVASPResolver:
+    """Test VASP binary and POTCAR resolution - MOCK TESTS (CI 必跑)."""
+    
+    def test_resolve_vasp_bin_finds_binary_from_env(self, monkeypatch, tmp_path):
+        """Test resolver finds VASP via environment variable."""
+        # Create fake binary
+        fake_bin = tmp_path / "fake_vasp_std"
+        fake_bin.write_text("#!/bin/bash\necho fake")
+        fake_bin.chmod(0o755)
+        
+        monkeypatch.setenv("QMATS_VASP_STD_BIN", str(fake_bin))
+        
+        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+        result = resolve_vasp_bin("std")
+        assert result == fake_bin
+    
+    def test_resolve_vasp_bin_finds_binary_from_repo_root(self, monkeypatch, tmp_path):
+        """Test resolver finds VASP in .qmatsuite/ directory."""
+        # Create fake repo structure
+        vasp_dir = tmp_path / ".qmatsuite" / "engines" / "vasp" / "vasp.6.5.0" / "bin"
+        vasp_dir.mkdir(parents=True)
+        fake_bin = vasp_dir / "vasp_std"
+        fake_bin.write_text("#!/bin/bash\necho fake")
+        fake_bin.chmod(0o755)
+        
+        # Mock quantumvitas package location to point to tmp_path
+        monkeypatch.delenv("QMATS_VASP_STD_BIN", raising=False)
+        
+        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        original_repo_root = getattr(resolver_mod, '_get_repo_root', None)
+        monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
+        
+        result = resolve_vasp_bin("std")
+        assert result == fake_bin
+    
+    def test_resolve_vasp_bin_raises_when_not_found(self, monkeypatch, tmp_path):
+        """Test resolver raises RuntimeError when VASP not found."""
+        monkeypatch.delenv("QMATS_VASP_STD_BIN", raising=False)
+        
+        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
+        
+        with pytest.raises(RuntimeError, match="VASP.*not found"):
+            resolve_vasp_bin("std")
+    
+    def test_get_potcar_dir_finds_directory(self, monkeypatch, tmp_path):
+        """Test get_potcar_dir finds POTCAR library."""
+        # Create fake POTCAR structure
+        potcar_dir = tmp_path / ".qmatsuite" / "engines" / "vasp" / "potpaw_PBE.64"
+        potcar_dir.mkdir(parents=True)
+        si_dir = potcar_dir / "Si"
+        si_dir.mkdir()
+        (si_dir / "POTCAR").write_text("FAKE POTCAR")
+        
+        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
+        
+        result = get_potcar_dir("PBE")
+        assert result == potcar_dir
+        assert (result / "Si" / "POTCAR").exists()
+```
+
+**注意**: 这要求 `vasp_resolver.py` 有一个可 mock 的 `_get_repo_root()` 函数。如果没有，需要添加。
+
+**验收命令**:
+```bash
+# 子集验证
+pytest tests/unit/test_vasp_registry.py::TestVASPResolver -v --tb=short
+
+# 确认无 skipif
+grep -n "skipif" tests/unit/test_vasp_registry.py
+# 应该返回空
+```
+
+---
+
+#### Phase T2: 确保 E2E mock 测试完全自给
+
+**目标**: `tests/integration/vasp/` 中的所有测试使用 `use_fake_vasp` fixture 后完全自给
+
+**当前状态**: ✅ 已基本正确，`use_fake_vasp` fixture 创建 fake POTCAR 并 mock 两个模块
+
+**需要确认**:
+1. 所有 E2E 测试都依赖 `use_fake_vasp` fixture
+2. `use_fake_vasp` 不依赖任何真实资源
+
+**验收命令**:
+```bash
+# 确认所有 E2E 测试在 CI 环境中通过
+CI=true pytest tests/integration/vasp/ -v --tb=short
+
+# 确认无真实资源依赖
+pytest tests/integration/vasp/ -v --tb=short --collect-only
+```
+
+---
+
+#### Phase T3: 新增真实 VASP 测试文件
+
+**目标**: 创建专门的 "需要真实 VASP" 测试文件
+
+**新建文件**: `tests/integration/vasp/test_vasp_real.py`
+
+**内容模板**:
+```python
+"""Real VASP integration tests.
+
+These tests require:
+- Real VASP binary at ./.qmatsuite/engines/vasp/vasp.6.5.0/bin/vasp_std
+- Real POTCAR at ./.qmatsuite/engines/vasp/potpaw_PBE.64/
+
+CI behavior: SKIP (CI=true)
+Local behavior: FAIL with actionable error if resources missing
+"""
+
+import os
+import pytest
+from pathlib import Path
+
+
+def is_ci() -> bool:
+    return os.environ.get("CI", "").lower() in ("true", "1", "yes")
+
+
+def require_real_vasp():
+    """Check for real VASP binary."""
+    from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+    try:
+        bin_path = resolve_vasp_bin("std")
+        if not bin_path.exists():
+            return False
+        # Verify it's the real binary, not fake_vasp.py
+        return bin_path.name == "vasp_std" and bin_path.suffix != ".py"
+    except RuntimeError:
+        return False
+
+
+def require_real_potcar():
+    """Check for real POTCAR directory."""
+    from quantumvitas.core.engines.vasp_resolver import get_potcar_dir
+    try:
+        potcar_dir = get_potcar_dir("PBE")
+        si_potcar = potcar_dir / "Si" / "POTCAR"
+        if not si_potcar.exists():
+            return False
+        # Verify it's a real POTCAR (>1KB)
+        return si_potcar.stat().st_size > 1000
+    except RuntimeError:
+        return False
+
+
+@pytest.fixture(scope="module")
+def real_vasp_required():
+    """Fixture: skip in CI, fail locally if resources missing."""
+    if is_ci():
+        pytest.skip("Real VASP tests skipped in CI")
+    
+    if not require_real_vasp():
+        pytest.fail(
+            "Real VASP binary not found.\n"
+            "Expected: ./.qmatsuite/engines/vasp/vasp.6.5.0/bin/vasp_std\n"
+            "Install VASP or set QMATS_VASP_STD_BIN environment variable."
+        )
+    
+    if not require_real_potcar():
+        pytest.fail(
+            "Real POTCAR directory not found.\n"
+            "Expected: ./.qmatsuite/engines/vasp/potpaw_PBE.64/\n"
+            "Install VASP POTCARs at the above location."
+        )
+
+
+pytestmark = [pytest.mark.integration, pytest.mark.vasp_real]
+
+
+class TestRealVASPSmoke:
+    """Smoke tests with real VASP binary."""
+    
+    def test_scf_smoke(self, real_vasp_required, tmp_path):
+        """Run real SCF and verify basic outputs."""
+        # Implementation in Phase N2
+        pass
+    
+    def test_bands_smoke(self, real_vasp_required, tmp_path):
+        """Run real Bands and verify EIGENVAL."""
+        pass
+    
+    def test_dos_smoke(self, real_vasp_required, tmp_path):
+        """Run real DOS and verify DOSCAR."""
+        pass
+```
+
+**验收命令**:
+```bash
+# 本地有真实 VASP：测试应该运行
+pytest tests/integration/vasp/test_vasp_real.py -v --tb=short
+
+# CI 环境：测试应该 skip
+CI=true pytest tests/integration/vasp/test_vasp_real.py -v --tb=short
+```
+
+---
+
+### 9.4 下一阶段推进计划（Phase N1-N3）
+
+#### Phase N1: 本地真实 VASP Smoke
+
+**目标**: 在 `.tmp/vasp_real_smoke/` 中运行 SCF/Bands/DOS，收集 evidence
+
+**Prerequisites**:
+- Phase T1-T3 完成
+- 真实 VASP binary + POTCAR 已安装
+
+**实现内容**:
+1. `test_vasp_real.py` 中实现 `TestRealVASPSmoke` 测试
+2. 使用 QVService API 或直接调用 VaspEngine
+3. 验证关键输出文件存在且格式正确
+4. **不提交 CHGCAR/WAVECAR/POTCAR 内容**
+
+**Evidence 收集**:
+```
+.tmp/vasp_real_smoke/
+├── scf/
+│   ├── OSZICAR          # 可提交摘要
+│   ├── OUTCAR           # 可提交 header/footer
+│   └── ...
+├── bands/
+│   └── EIGENVAL         # 可提交 header
+└── dos/
+    └── DOSCAR           # 可提交 header
+```
+
+**验收命令**:
+```bash
+# 运行 smoke 测试
+pytest tests/integration/vasp/test_vasp_real.py -v --tb=short -k smoke
+
+# 验证 evidence
+ls -la .tmp/vasp_real_smoke/*/
+```
+
+---
+
+#### Phase N2: Parser + Digest 落地
+
+**目标**: 完善 SCF/Bands/DOS 解析器，接入 digest/history
+
+**文件修改/创建**:
+```
+src/quantumvitas/engine/vasp_parser.py        # 扩展现有解析器
+src/quantumvitas/history/digests.py           # 添加 VASP digest 支持
+tests/unit/test_vasp_parser.py                # 扩展测试
+tests/fixtures/vasp/                          # 新增 fixture 文件
+```
+
+**Parser Priority**（per v2.0 spec）:
+
+| Step | Primary | Fallback |
+|------|---------|----------|
+| SCF | `OSZICAR` | `OUTCAR` |
+| Bands | `EIGENVAL` | `vasprun.xml` |
+| DOS | `DOSCAR` | `vasprun.xml` |
+
+**Digest Integration**:
+```python
+# 示例 digest 结构
+{
+    "engine": "vasp",
+    "step_type": "vasp_scf",
+    "energy": {"total": -10.123, "unit": "eV"},
+    "timing": {"wall": 123.45, "unit": "s"},
+    "convergence": {"converged": True, "n_iterations": 15},
+}
+```
+
+**验收命令**:
+```bash
+# Parser 单测
+pytest tests/unit/test_vasp_parser.py -v --tb=short
+
+# Digest 集成测试
+pytest tests/unit/test_*digest*.py -v --tb=short -k vasp
+```
+
+---
+
+#### Phase N3: UI 隐藏 0-Mapping GEN Steps
+
+**目标**: 在 step 列表 API 中过滤掉 0-mapped GEN steps
+
+**约束**:
+- 基于 `materialize_step(gen_step, engine_family) is None` 判断
+- **不硬编码** step 名称
+- 显式 `run_step` 仍返回 hard error（已在 Phase 3.2 实现）
+
+**实现位置**: `src/quantumvitas/api.py` 或相关 listing 函数
+
+**逻辑伪码**:
+```python
+def list_available_steps(project_root, calculation_selector):
+    """List GEN steps available for current engine family."""
+    engine_family = get_engine_family(project_root, calculation_selector)
+    
+    all_gen_steps = ["scf", "nscf", "bands", "bandspp", "dos", "dospp", "relax"]
+    
+    available = []
+    for gen_step in all_gen_steps:
+        spec_step = materialize_step(gen_step.upper(), engine_family)
+        if spec_step is not None:  # Not 0-mapped
+            available.append(gen_step)
+    
+    return available
+```
+
+**验收命令**:
+```bash
+# 如果有 CLI 命令
+qmats list-steps --calculation <calc_id>
+# 应不显示 dospp/bandspp for VASP
+```
+
+---
+
+### 9.5 Phase 依赖关系
+
+```
+                    ┌─────────┐
+                    │  T1     │ 修复 Resolver 单测
+                    │(mock fs)│
+                    └────┬────┘
+                         │
+        ┌────────────────┼────────────────┐
+        ▼                ▼                ▼
+   ┌─────────┐      ┌─────────┐      ┌─────────┐
+   │   T2    │      │   T3    │      │   N3    │
+   │(E2E确认)│      │(Real新增)│      │(UI过滤) │
+   └────┬────┘      └────┬────┘      └─────────┘
+        │                │                
+        └───────┬────────┘                
+                ▼                         
+           ┌─────────┐                    
+           │   N1    │ 真实 VASP Smoke    
+           │ (smoke) │                    
+           └────┬────┘                    
+                ▼                         
+           ┌─────────┐                    
+           │   N2    │ Parser + Digest    
+           │(parser) │                    
+           └─────────┘                    
+```
+
+**执行顺序**: T1 → T2 → T3 → N1 → N2 （N3 可并行）
+
+---
+
+### 9.6 风险与回滚点
+
+| Phase | 风险 | 回滚策略 |
+|-------|------|---------|
+| T1 | `vasp_resolver.py` 可能需要添加 `_get_repo_root()` | 改为直接 mock 模块级变量 |
+| T2 | E2E 测试可能有遗漏的真实依赖 | 检查 CI 日志，逐个 fixture 审查 |
+| T3 | 真实 VASP 测试可能因版本差异失败 | 使用宽松断言，专注于文件存在性 |
+| N1 | VASP 输出格式可能与预期不符 | 收集 evidence，调整 parser |
+| N2 | Digest schema 可能与现有不兼容 | 新增 VASP-specific digest 而非修改通用结构 |
+| N3 | UI 调用路径可能复杂 | 先在 API 层实现，GUI 调用 API |
+
+---
+
+### 9.7 Cursor Auto 执行入口
+
+详细的可执行 prompt 见：`docs/engines/vasp/06_auto_prompt_tests_and_next_phase.md`
