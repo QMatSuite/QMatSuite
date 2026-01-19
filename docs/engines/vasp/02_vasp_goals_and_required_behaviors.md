@@ -254,18 +254,19 @@ Rationale: Provenance and topology consistency
 
 ```
 1. Environment variable: QMATS_VASP_STD_BIN (explicit path)
-2. Managed install: ~/.qmatsuite/engines/vasp/*/bin/vasp_std
+2. Project root: .qmatsuite/engines/vasp/*/bin/vasp_std
 3. System PATH: vasp_std in PATH
 ```
 
 ### 4.2 POTCAR Library Location
 
 ```
-Primary:  ~/.qmatsuite/engines/vasp/potpaw_PBE/
-          ~/.qmatsuite/engines/vasp/potpaw_LDA/
+Project root:
+          .qmatsuite/engines/vasp/potpaw_PBE.64/
+          .qmatsuite/engines/vasp/potpaw_LDA.64/
 
 Structure:
-~/.qmatsuite/engines/vasp/potpaw_PBE/
+.qmatsuite/engines/vasp/potpaw_PBE.64/
 ├── H/POTCAR
 ├── H_s/POTCAR
 ├── Si/POTCAR

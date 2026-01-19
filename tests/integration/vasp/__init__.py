@@ -1,0 +1,2 @@
+"""VASP integration tests."""
+
