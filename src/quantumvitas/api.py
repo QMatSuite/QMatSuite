@@ -1361,10 +1361,52 @@ class QVService:
 
         # Resolve calculation and step via registry
         calculation_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
-        step_resolved = require_step(project_root, calculation_selector, step_selector, config=config, index=index)
+        
+        # Phase 3.2: Check for 0-mapping GEN steps
+        # Try to resolve step first; if it fails, check if step_selector is a 0-mapping GEN step
+        try:
+            step_resolved = require_step(project_root, calculation_selector, step_selector, config=config, index=index)
+        except Exception as step_resolve_error:
+            # Step resolution failed - check if this is a 0-mapping GEN step
+            try:
+                # Load calculation to get engine_family
+                project = Project.open(project_root)
+                calculation = Calculation.from_yaml(calculation_resolved.absolute_path, project, materialize_steps=False)
+                engine_family = getattr(calculation, 'engine_family', None)
+                
+                if engine_family:
+                    from quantumvitas.workflow.generalized_steps import materialize_public_step_key, materialize_step
+                    from quantumvitas.core.resolution import _is_ulid_like
+                    # Check if step_selector is a GEN step that maps to 0
+                    # Try both PUBLIC key (lowercase) and enum value (uppercase)
+                    materialized_type = materialize_public_step_key(step_selector, engine_family)
+                    if materialized_type is None:
+                        enum_materialized = materialize_step(step_selector.upper(), engine_family)
+                        if enum_materialized is None:
+                            # Check if step_selector looks like a GEN step name (not ULID, not numeric)
+                            # GEN step names are typically lowercase words or uppercase enum values
+                            is_likely_gen_step = (
+                                not _is_ulid_like(step_selector) and
+                                not step_selector.isdigit() and
+                                (step_selector.islower() or step_selector.isupper())
+                            )
+                            if is_likely_gen_step:
+                                # This is likely a 0-mapping GEN step - raise UnsupportedStepError
+                                from quantumvitas.core.exceptions import UnsupportedStepError
+                                raise UnsupportedStepError(
+                                    f"Step '{step_selector}' is not supported by engine '{engine_family}'. "
+                                    f"This engine does not implement a SPEC step for this GEN step."
+                                ) from step_resolve_error
+            except UnsupportedStepError:
+                raise
+            except Exception:
+                # If we can't check 0-mapping, re-raise the original step resolution error
+                raise step_resolve_error from step_resolve_error
 
         # Load calculation with materialized steps
-        project = Project.open(project_root)
+        # Project may have been created in the 0-mapping check, or we need to create it now
+        if 'project' not in locals():
+            project = Project.open(project_root)
         calculation = Calculation.from_yaml(calculation_resolved.absolute_path, project, materialize_steps=True)
 
         # Structure comes from calculation.structure_id (DAG model)

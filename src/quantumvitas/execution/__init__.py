@@ -28,6 +28,7 @@ from quantumvitas.execution.handlers import (
     qe_step_handler,
     pyscf_chain_handler,
     orca_chain_handler,
+    vasp_step_handler,
     create_handler_map,
 )
 
@@ -43,5 +44,6 @@ __all__ = [
     "qe_step_handler",
     "pyscf_chain_handler",
     "orca_chain_handler",
+    "vasp_step_handler",
     "create_handler_map",
 ]

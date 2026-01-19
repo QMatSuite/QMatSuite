@@ -1,0 +1,23 @@
+total 3968
+drwxr-xr-x@ 22 hh7465  staff     704 Jan 18 23:32 .
+drwxr-xr-x@  6 hh7465  staff     192 Jan 18 23:32 ..
+-rw-r--r--@  1 hh7465  staff       0 Jan 18 23:32 CHG
+-rw-r--r--@  1 hh7465  staff  146386 Jan 18 23:32 CHGCAR
+-rw-r--r--@  1 hh7465  staff     421 Jan 18 23:32 CONTCAR
+-rw-r--r--@  1 hh7465  staff   47265 Jan 18 23:32 DOSCAR
+-rw-r--r--@  1 hh7465  staff   45635 Jan 18 23:32 EIGENVAL
+-rw-r--r--@  1 hh7465  staff     361 Jan 18 23:32 INCAR
+-rw-r--r--@  1 hh7465  staff     206 Jan 18 23:32 KPOINTS
+-rw-r--r--@  1 hh7465  staff     473 Jan 18 23:32 OSZICAR
+-rw-r--r--@  1 hh7465  staff  122251 Jan 18 23:32 OUTCAR
+-rw-r--r--@  1 hh7465  staff     234 Jan 18 23:32 PCDAT
+-rw-r--r--@  1 hh7465  staff     159 Jan 18 23:32 POSCAR
+-r--r--r--@  1 hh7465  staff  196046 Jan 18 23:32 POTCAR
+-rw-r--r--@  1 hh7465  staff  209530 Jan 18 23:32 PROCAR
+-rw-r--r--@  1 hh7465  staff       0 Jan 18 23:32 REPORT
+-rw-r--r--@  1 hh7465  staff  434976 Jan 18 23:32 WAVECAR
+-rw-r--r--@  1 hh7465  staff     247 Jan 18 23:32 XDATCAR
+-rw-r--r--@  1 hh7465  staff       0 Jan 18 23:32 stderr.log
+-rw-r--r--@  1 hh7465  staff    1347 Jan 18 23:32 stdout.log
+-rw-r--r--@  1 hh7465  staff  467582 Jan 18 23:32 vaspout.h5
+-rw-r--r--@  1 hh7465  staff  310901 Jan 18 23:32 vasprun.xml

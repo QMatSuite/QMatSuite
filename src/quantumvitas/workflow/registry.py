@@ -491,6 +491,55 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
 
     # -------------------------------------------------------------------------
+    # VASP step types (Periodic Boundary Conditions - PBC)
+    # -------------------------------------------------------------------------
+    "vasp_scf": StepTypeSpec(
+        id="scf",  # Public type (shared with qe_scf, pyscf_scf, orca_scf)
+        machine_type="vasp_scf",
+        public_type="scf",
+        engine="vasp",
+        executable="vasp_std",
+        description="VASP self-consistent field calculation (ground state)",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=True,
+    ),
+    "vasp_nscf": StepTypeSpec(
+        id="nscf",
+        machine_type="vasp_nscf",
+        public_type="nscf",
+        engine="vasp",
+        executable="vasp_std",
+        description="VASP non-self-consistent field calculation (fixed density)",
+        requires_structure=True,
+        requires_charge_density=True,
+        produces_charge_density=False,
+    ),
+    "vasp_bands": StepTypeSpec(
+        id="bands",
+        machine_type="vasp_bands",
+        public_type="bands",
+        engine="vasp",
+        executable="vasp_std",
+        description="VASP band structure calculation along k-path",
+        requires_structure=True,
+        requires_charge_density=True,
+        produces_charge_density=False,
+    ),
+    "vasp_relax": StepTypeSpec(
+        id="relax",
+        machine_type="vasp_relax",
+        public_type="relax",
+        engine="vasp",
+        executable="vasp_std",
+        description="VASP structure relaxation (positions and optionally cell)",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        is_structure_transform=True,
+    ),
+
+    # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
     "qe_custom": StepTypeSpec(

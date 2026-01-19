@@ -88,18 +88,18 @@ class TestUnsupportedFamilyMaterialization:
     
     def test_unsupported_family_returns_none(self):
         """Unsupported family returns None (not an error, but materialization will fail)."""
-        result = materialize_public_step_key("scf", "vasp")
+        result = materialize_public_step_key("scf", "abinit")
         assert result is None
     
     def test_unsupported_family_workflow_raises_error(self):
         """Materialization of unsupported family raises ValueError (no crash)."""
         with pytest.raises(ValueError, match="not supported"):
-            materialize_workflow(["scf"], "vasp")
+            materialize_workflow(["scf"], "abinit")
     
     def test_mixed_supported_unsupported_workflow_raises_error(self):
         """Materialization fails if any step is unsupported (no partial materialization)."""
         with pytest.raises(ValueError, match="not supported"):
-            materialize_workflow(["scf", "nscf"], "vasp")
+            materialize_workflow(["scf", "nscf"], "abinit")
     
     def test_pyscf_only_scf_supported(self):
         """PySCF family only supports SCF currently."""

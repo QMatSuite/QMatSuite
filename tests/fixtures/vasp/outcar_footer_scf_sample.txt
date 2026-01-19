@@ -1,0 +1,50 @@
+
+
+
+  FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)
+  ---------------------------------------------------
+  free  energy   TOTEN  =        -4.87741443 eV
+
+  energy  without entropy=       -4.87435271  energy(sigma->0) =       -4.87588357
+
+
+
+--------------------------------------------------------------------------------------------------------
+
+
+    POTLOK:  cpu time      0.0014: real time      0.0014
+
+
+--------------------------------------------------------------------------------------------------------
+
+
+ writing wavefunctions
+     LOOP+:  cpu time      0.4002: real time      0.3699
+    4ORBIT:  cpu time      0.0000: real time      0.0000
+
+ total amount of memory used by VASP MPI-rank0    32022. kBytes
+=======================================================================
+
+   base                                    :      30000. kBytes
+   nonl-proj                               :        493. kBytes
+   fftplans                                :        296. kBytes
+   grid                                    :        451. kBytes
+   one-center                              :          3. kBytes
+   wavefun                                 :        779. kBytes
+
+  
+  
+ General timing and accounting informations for this job:
+ ========================================================
+  
+                  Total CPU time used (sec):        0.530
+                            User time (sec):        0.441
+                          System time (sec):        0.089
+                         Elapsed time (sec):        0.470
+  
+                   Maximum memory used (kb):    41697280.
+                   Average memory used (kb):          N/A
+  
+                          Minor page faults:         3967
+                          Major page faults:          128
+                 Voluntary context switches:           61
