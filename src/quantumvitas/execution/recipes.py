@@ -333,6 +333,107 @@ class VASPRecipe(BaseRecipe):
         return JobGraph(jobs=jobs)
 
 
+class LAMMPSRecipe(BaseRecipe):
+    """
+    LAMMPS-Recipe: Isolated workdir per step, classical MD model.
+    
+    Creates one job per step. Each step runs in its own isolated workdir:
+    `calc/raw/<step_ulid>/`
+    
+    File layout:
+    - Input: in.lammps, structure.data, *.eam/*.tersoff (potentials)
+    - Output: log.lammps, *.lammpstrj, final.data (for relax)
+    
+    Used by: LAMMPS
+    """
+    
+    def materialize(
+        self,
+        steps: List["Step"],
+        calc_raw_dir: Path,
+        step_shas: Optional[Dict[str, str]] = None,
+    ) -> JobGraph:
+        """
+        Materialize jobs for LAMMPS steps.
+        
+        Each step gets its own isolated workdir: calc_raw_dir / step_ulid
+        
+        Args:
+            steps: List of LAMMPS steps
+            calc_raw_dir: Path to calc/raw/
+            step_shas: Optional dict for fingerprinting
+        
+        Returns:
+            JobGraph with one job per step
+        """
+        if not steps:
+            return JobGraph(jobs=[])
+        
+        registry = get_registry()
+        jobs: List[Job] = []
+        
+        for step in steps:
+            # Get step type info
+            step_type = step.step_type
+            spec = registry.get(step_type) if step_type else None
+            public_type = spec.public_type if spec else "unknown"
+            
+            # Job ID = step ULID
+            job_id = step.meta.id
+            
+            # Working directory: isolated per step
+            working_dir = calc_raw_dir / step.meta.id
+            
+            # LAMMPS executable (placeholder; actual path resolved by LammpsEngine at runtime)
+            executable = spec.executable if spec else "lmp"
+            
+            # Command: lmp -in in.lammps -log log.lammps
+            command = [executable, "-in", "in.lammps", "-log", "log.lammps"]
+            
+            # Input files (will be materialized into working_dir by LammpsEngine)
+            input_files = [
+                working_dir / "in.lammps",
+                working_dir / "structure.data",
+            ]
+            
+            # Expected outputs
+            expected_outputs = [
+                working_dir / "log.lammps",
+            ]
+            # Add final.data for relax steps
+            if public_type == "relax":
+                expected_outputs.append(working_dir / "final.data")
+            
+            # Fingerprint
+            step_sha = self._get_step_sha(step, step_shas)
+            fingerprint = step_sha if step_sha else None
+            
+            # Dependencies: linear (each step depends on previous)
+            deps = []
+            if len(jobs) > 0:
+                deps = [jobs[-1].id]
+            
+            # Create job
+            job = Job(
+                id=job_id,
+                step_ids=[step.meta.id],
+                working_dir=working_dir,
+                command=command,
+                input_files=input_files,
+                expected_outputs=expected_outputs,
+                deps=deps,
+                fingerprint=fingerprint,
+                metadata={
+                    "engine": "lammps",
+                    "spec_step_type": spec.machine_type if spec else None,
+                    "public_type": public_type,
+                },
+            )
+            jobs.append(job)
+        
+        return JobGraph(jobs=jobs)
+
+
 class ORCARecipe(BaseRecipe):
     """
     ORCA-Recipe: QC strong-chain model.
@@ -574,6 +675,7 @@ def get_recipe_for_engine(engine_family: str) -> BaseRecipe:
         "orca": ORCARecipe,
         "pyscf": PySCFRecipe,
         "vasp": VASPRecipe,
+        "lammps": LAMMPSRecipe,
     }
 
     recipe_class = recipes.get(engine_family)
