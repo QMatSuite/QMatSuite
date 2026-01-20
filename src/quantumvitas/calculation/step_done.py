@@ -157,6 +157,47 @@ def is_step_done(calc_dir: Path, step_kind: str, calc_raw_dir: Optional[Path] = 
         logger.debug(f"Step {step_kind}: VASP output files not found or incomplete")
         return False
     
+    # LAMMPS steps: check for log.lammps and step-specific outputs
+    LAMMPS_STEP_TYPES = {"lammps_relax", "lammps_md", "lammps_restart"}
+    if step_kind_lower in LAMMPS_STEP_TYPES:
+        # LAMMPS uses isolated workdirs: calc_raw_dir / step_ulid / log.lammps
+        step_ulid = None
+        if step_doc:
+            meta = step_doc.get("meta", {})
+            step_ulid = meta.get("id") or step_doc.get("step_id")
+        
+        if step_ulid:
+            step_workdir = calc_raw_dir / step_ulid
+            log_path = step_workdir / "log.lammps"
+        else:
+            # Fallback: look in calc_raw_dir root
+            log_path = calc_raw_dir / "log.lammps"
+            step_workdir = calc_raw_dir
+        
+        if not log_path.exists():
+            logger.debug(f"Step {step_kind}: LAMMPS log file not found at {log_path}")
+            return False
+        
+        # Check log for completion markers
+        try:
+            log_content = log_path.read_text()
+            # LAMMPS prints timing info at end of successful run
+            if "Total wall time" in log_content or "Loop time" in log_content:
+                # For relax, also check final.data exists
+                if step_kind_lower == "lammps_relax":
+                    final_data = step_workdir / "final.data"
+                    if not final_data.exists():
+                        logger.debug(f"Step {step_kind}: final.data not found")
+                        return False
+                logger.debug(f"Step {step_kind}: LAMMPS completed successfully")
+                return True
+            else:
+                logger.debug(f"Step {step_kind}: LAMMPS log incomplete (no timing info)")
+                return False
+        except Exception as e:
+            logger.warning(f"Step {step_kind}: Error reading log: {e}")
+            return False
+    
     # Determine primary output file
     output_path = primary_output_path(calc_raw_dir, step_kind, step_doc)
     

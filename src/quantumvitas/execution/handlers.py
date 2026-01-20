@@ -532,6 +532,37 @@ def lammps_step_handler(
         success = result.success if hasattr(result, "success") else False
         error_msg = result.error if hasattr(result, "error") and not success else None
         
+        # Verify expected output artifacts exist (fixes Ubuntu CI race condition)
+        if success:
+            public_type = job.metadata.get("public_type")
+            
+            # Relax steps must produce final.data
+            if public_type == "relax":
+                final_data_path = working_dir / "final.data"
+                if not final_data_path.exists():
+                    success = False
+                    error_msg = (
+                        f"Relax step completed but final.data not found in {working_dir}. "
+                        f"Contents: {list(working_dir.iterdir()) if working_dir.exists() else 'dir missing'}"
+                    )
+                    logger.error(f"[LAMMPS_HANDLER] {error_msg}")
+            
+            # MD steps should produce restart.bin (or restart.*.bin)
+            elif public_type == "md":
+                restart_patterns = list(working_dir.glob("restart*.bin"))
+                log_file = working_dir / "log.lammps"
+                # Only fail if no restart file AND log indicates completion
+                if not restart_patterns and log_file.exists():
+                    # Check if LAMMPS completed normally (log should have timing info)
+                    log_content = log_file.read_text()
+                    if "Total wall time" in log_content or "Loop time" in log_content:
+                        # LAMMPS completed but no restart file - this is OK for short runs
+                        # but log it for debugging
+                        logger.warning(
+                            f"[LAMMPS_HANDLER] MD step completed but no restart.bin found in {working_dir}. "
+                            f"This may affect downstream restart_from steps."
+                        )
+        
         # Build step result with capability-based relax artifact spec
         step_result_data = {
             "success": success,
