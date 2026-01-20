@@ -922,8 +922,11 @@ class QVService:
         )
         
         # Override meta.id and slug to match what was generated above
+        # CRITICAL: Use base_name (unique filename stem) as slug, NOT step_slug
+        # This ensures each step has a unique slug even when same step_type is used multiple times
+        # Bug fix: Previously used step_slug which caused require_step to return the wrong step
         step_doc.set(["meta", "id"], step_id)
-        step_doc.set(["meta", "slug"], step_slug)
+        step_doc.set(["meta", "slug"], base_name)  # base_name is unique (e.g., "md", "md-1", "md-2")
         
         # Calculate relative path for meta.path
         step_yaml_path = step_yaml_path.resolve()
@@ -943,7 +946,9 @@ class QVService:
             step_type=step_type,
         )
         
-        return require_step(project_root, calculation_selector, step_slug)
+        # Return using step_id (ULID) which is guaranteed unique
+        # This avoids any slug-based ambiguity when multiple steps have similar names
+        return require_step(project_root, calculation_selector, step_id_from_doc)
     
     @staticmethod
     def configure_step(
