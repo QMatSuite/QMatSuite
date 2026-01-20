@@ -132,9 +132,9 @@ After fix, the test should pass because:
 - Second `init_step("md")` → returns step with id=`01XYZ...`, slug=`md-1`
 - Assertion `md1_step_id != md2_step_id` passes ✅
 
-## 8. Fix Applied
+## 8. Fixes Applied
 
-### Changes to `src/quantumvitas/api.py` (line 924-949)
+### Fix 1: `src/quantumvitas/api.py` (line 924-951)
 
 ```python
 # BEFORE (BUG):
@@ -148,13 +148,38 @@ step_doc.set(["meta", "slug"], base_name)  # Unique: "md", "md-1", "md-2"
 return require_step(project_root, calculation_selector, step_id_from_doc)  # Uses unique ULID
 ```
 
+### Fix 2: `src/quantumvitas/core/resolution.py` (line 1466-1490)
+
+**Root Cause**: `_step_path_to_resolved()` was re-computing slug from name instead of reading from YAML.
+
+```python
+# BEFORE (BUG):
+slug=slugify(step_name),  # Re-computed from name, ignores YAML meta.slug
+
+# AFTER (FIX):
+step_slug = meta_dict.get("slug") or slugify(step_name)  # YAML-first (authoritative)
+slug=step_slug,
+```
+
+This ensures that meta.slug in returned ResolvedResource matches the YAML file exactly.
+
+### New Regression Tests
+
+Added `tests/integration/test_step_slug_consistency.py` with 5 tests:
+- `test_step_slug_uniqueness_and_consistency`
+- `test_require_step_by_ulid_returns_correct_slug`
+- `test_require_step_by_slug_returns_correct_step`
+- `test_resource_index_matches_yaml`
+- `test_three_steps_same_type`
+
 ### Test Results
 
 ```
-================ 2245 passed, 143 warnings in 78.67s =================
+================ 2250 passed, 148 warnings in 81.88s =================
 ```
 
-All tests pass, including the previously failing:
+All tests pass, including:
 - `test_workflow_d_restart`: ✅ PASS
 - `test_chain_workflow`: ✅ PASS
+- All 5 new slug consistency tests: ✅ PASS
 
