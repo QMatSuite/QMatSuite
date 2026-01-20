@@ -12,6 +12,7 @@ from .pyscf_engine import PySCFEngine
 from .orca_engine import ORCAEngine, ORCAEngineConfig
 from .vasp_engine import VaspEngine
 from .lammps_engine import LammpsEngine
+from .cp2k_engine import Cp2kEngine
 
 
 class EngineRegistry:
@@ -75,6 +76,9 @@ def create_default_registry(
     # Always register LAMMPS if requested (binary resolution is deferred)
     if include_lammps:
         registry.register(LammpsEngine())
+    
+    # Always register CP2K if requested (binary resolution is deferred)
+    registry.register(Cp2kEngine())
 
     return registry
 

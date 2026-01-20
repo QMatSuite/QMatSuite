@@ -157,3 +157,6 @@ def write_potcar(
     path.write_bytes(b"".join(potcar_parts))
 
 
+
+
+

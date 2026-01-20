@@ -273,11 +273,70 @@ def _handle_lammps_data(
 # RELAX_ARTIFACT_HANDLERS: Registry of artifact type -> handler
 # ============================================================================
 
+def _handle_cp2k_trajectory_artifact(
+    spec: RelaxArtifactSpec,
+    calc_dir: Path,
+    run_context: Dict[str, Any],
+) -> Path:
+    """
+    Handle CP2K trajectory artifact -> current.json.
+
+    Args:
+        spec: RelaxArtifactSpec with artifact_path and optional cell_path in extra
+        calc_dir: Calculation directory
+        run_context: Context with initial_structure, run_id, etc.
+
+    Returns:
+        Path to current.json
+    """
+    from quantumvitas.engine.cp2k_parser import extract_final_structure
+    from quantumvitas.execution.latest_selector import find_latest_by_mtime
+    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+
+    artifact_path = spec.artifact_path
+    if not artifact_path.exists():
+        raise FileNotFoundError(f"CP2K trajectory file not found: {artifact_path}")
+
+    # Find cell file in same directory (from extra or by searching)
+    workdir = artifact_path.parent
+    cell_path = None
+    if spec.extra and "cell_path" in spec.extra:
+        cell_path = Path(spec.extra["cell_path"])
+    else:
+        # Fallback: search for cell file
+        cell_path = find_latest_by_mtime(workdir, "cp2k_calc-*.cell")
+
+    # Get initial structure for fallback cell
+    initial_structure = run_context.get("initial_structure")
+
+    # Extract final structure from trajectory with cell
+    structure = extract_final_structure(
+        xyz_path=artifact_path,
+        cell_path=cell_path,
+        initial_structure=initial_structure,
+    )
+
+    # Canonicalize
+    canonicalize_structure_like_in_place(structure)
+
+    # Write current.json
+    return write_generated_structure(
+        structure=structure,
+        calc_dir=calc_dir,
+        step_ulid=spec.step_ulid,
+        step_type=spec.step_type,
+        run_id=run_context.get("run_id"),
+        calculation_ulid=run_context.get("calculation_ulid", ""),
+        input_structure_ulid=run_context.get("input_structure_ulid", ""),
+    )
+
+
 RELAX_ARTIFACT_HANDLERS: Dict[str, RelaxArtifactHandler] = {
     "qe_output": _handle_qe_output,
     "pyscf_results": _handle_pyscf_results,
     "orca_xyz": _handle_orca_xyz,
     "lammps_data": _handle_lammps_data,
+    "cp2k_trajectory": _handle_cp2k_trajectory_artifact,
 }
 
 

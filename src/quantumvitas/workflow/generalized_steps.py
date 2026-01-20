@@ -98,6 +98,13 @@ MATERIALIZATION_MAP: Dict[Tuple[str, str], Optional[str]] = {
     # LAMMPS family mappings (Classical MD)
     ("lammps", "RELAX"): "lammps_relax",
     ("lammps", "MD"): "lammps_md",
+    
+    # CP2K family mappings
+    ("cp2k", "SCF"): "cp2k_scf",
+    ("cp2k", "RELAX"): "cp2k_relax",
+    ("cp2k", "VC_RELAX"): "cp2k_relax",
+    ("cp2k", "MD"): "cp2k_md",
+    ("cp2k", "VC_MD"): "cp2k_md",
 
     # Wannier90 standalone (if needed in future)
     # ("w90", "WANNIER"): "w90_run",

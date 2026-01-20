@@ -786,6 +786,10 @@ def materialize_step_spec(
     LAMMPS_STEP_TYPES = {"lammps_relax", "lammps_md"}
     is_lammps_step = step_type_lower in LAMMPS_STEP_TYPES or calculation_engine_family == "lammps"
 
+    # CP2K step types - CP2K engine builds input dynamically (not QE input)
+    CP2K_STEP_TYPES = {"cp2k_scf", "cp2k_relax", "cp2k_md"}
+    is_cp2k_step = step_type_lower in CP2K_STEP_TYPES or calculation_engine_family == "cp2k"
+
     import logging
     logger = logging.getLogger(__name__)
     
@@ -1115,6 +1119,22 @@ def materialize_step_spec(
         generated_input = generated_input.resolve()
         generated_input.parent.mkdir(parents=True, exist_ok=True)
         # Don't write a file - LAMMPS engine builds input dynamically
+        return generated_input, spec_obj
+
+    # CP2K steps - no QE input file generation (CP2K engine builds input dynamically)
+    if is_cp2k_step:
+        logger.info(
+            f"[MATERIALIZE_STEP_SPEC] CP2K step detected: step_type={step_type_lower}, "
+            f"engine_family={calculation_engine_family}, skipping QE input generation. "
+            f"CP2K engine will build input dynamically from structure + parameters."
+        )
+        # Generate a dummy input file path (CP2K engine doesn't use it, but Step.input_file requires a path)
+        # CP2K uses cp2k.inp as the input filename
+        generated_input = Path(output_dir) / "cp2k.inp"
+        generated_input = generated_input.resolve()
+        generated_input.parent.mkdir(parents=True, exist_ok=True)
+        # Create empty file if needed (Step model may require file to exist)
+        generated_input.touch(exist_ok=True)
         return generated_input, spec_obj
 
     # QE PATH: Standard QE input generation (existing logic)

@@ -20,7 +20,7 @@ class TestStepTypeMappingCompleteness:
     def test_all_keys_are_spec_step_types(self):
         """Every key in _STEP_TYPES must be a SPEC step type (engine-prefixed)."""
         # Define valid prefixes for SPEC step types
-        valid_prefixes = ("qe_", "w90_", "pyscf_", "orca_", "vasp_", "lammps_")
+        valid_prefixes = ("qe_", "w90_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_")
 
         for key in _STEP_TYPES.keys():
             # Each key should start with an engine prefix
@@ -77,7 +77,7 @@ class TestStepTypeMappingCompleteness:
         engines_with_steps = set(spec.engine for spec in _STEP_TYPES.values())
 
         # Known engines that should have step types
-        expected_engines = {"qe", "pyscf", "orca"}
+        expected_engines = {"qe", "pyscf", "orca", "vasp", "lammps", "cp2k"}
 
         for engine in expected_engines:
             assert engine in engines_with_steps, (
@@ -125,7 +125,7 @@ class TestStepTypeRegistryLookup:
         machine_types = registry.list_all_machine()
 
         # All machine types should be SPEC format
-        valid_prefixes = ("qe_", "w90_", "pyscf_", "orca_", "vasp_", "lammps_")
+        valid_prefixes = ("qe_", "w90_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_")
         for mt in machine_types:
             assert any(mt.startswith(prefix) for prefix in valid_prefixes), (
                 f"Machine type '{mt}' is not in SPEC format. "
