@@ -1352,10 +1352,10 @@ def test_cp2k_md_incremental_skip_disabled():
 - **Manual**: Full calculation workflow tests
 
 **Acceptance criteria**:
-- [ ] Unit tests pass in CI
-- [ ] Integration tests pass locally
-- [ ] Relax produces current.json artifact **with correct cell**
-- [ ] **MD skip disabled is tested**
+- [x] Unit tests pass in CI
+- [x] Integration tests pass locally
+- [x] Relax produces current.json artifact **with correct cell**
+- [x] **MD skip disabled is tested**
 
 ---
 
@@ -1458,14 +1458,14 @@ RELAX_ARTIFACT_HANDLERS["cp2k_trajectory"] = _handle_cp2k_trajectory_artifact
 
 ## Implementation Checklist
 
-- [ ] Phase 0: Smoke tests completed with **cell output verified**
-- [ ] Phase 1: Engine skeleton with binary discovery + **mtime selector**
-- [ ] Phase 2: Input writer generates valid CP2K input **with CELL print**
-- [ ] Phase 3: Parser extracts energy, structure, trajectory **with cell data**
-- [ ] Phase 4: Recipe, handler, **preflight checker** integrated
-- [ ] Phase 5: Registry entries added, **MD skip disabled**
-- [ ] Phase 6: Tests pass (mock in CI, real locally)
-- [ ] Phase 7: Relax artifact handler works **with cell extraction**
+- [x] Phase 0: Smoke tests completed with **cell output verified**
+- [x] Phase 1: Engine skeleton with binary discovery + **mtime selector**
+- [x] Phase 2: Input writer generates valid CP2K input **with CELL print**
+- [x] Phase 3: Parser extracts energy, structure, trajectory **with cell data**
+- [x] Phase 4: Recipe, handler, **preflight checker** integrated
+- [x] Phase 5: Registry entries added, **MD skip disabled**
+- [x] Phase 6: Tests pass (mock in CI, real locally)
+- [x] Phase 7: Relax artifact handler works **with cell extraction**
 
 ---
 

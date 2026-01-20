@@ -565,6 +565,49 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=False,
         produces_charge_density=False,
     ),
+    
+    # -------------------------------------------------------------------------
+    # CP2K step types
+    # -------------------------------------------------------------------------
+    "cp2k_scf": StepTypeSpec(
+        id="scf",
+        machine_type="cp2k_scf",
+        public_type="scf",
+        engine="cp2k",
+        executable="cp2k.ssmp",
+        description="CP2K single-point energy/force calculation",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=True,
+        is_structure_transform=False,
+    ),
+    "cp2k_relax": StepTypeSpec(
+        id="relax",
+        machine_type="cp2k_relax",
+        public_type="relax",
+        engine="cp2k",
+        executable="cp2k.ssmp",
+        description="CP2K geometry optimization",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=True,
+        is_structure_transform=True,
+    ),
+    "cp2k_md": StepTypeSpec(
+        id="md",
+        machine_type="cp2k_md",
+        public_type="md",
+        engine="cp2k",
+        executable="cp2k.ssmp",
+        description="CP2K molecular dynamics",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=False,  # CRITICAL: MD skip disabled
+        is_structure_transform=False,
+    ),
 
     # -------------------------------------------------------------------------
     # Custom escape hatch

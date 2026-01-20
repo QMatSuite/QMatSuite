@@ -691,6 +691,110 @@ class PySCFRecipe(BaseRecipe):
         return JobGraph(jobs=jobs)
 
 
+class CP2KRecipe(BaseRecipe):
+    """
+    CP2K-Recipe: Isolated workdir per step, directory-state model.
+
+    Creates one job per step. Each step runs in:
+    `calc/raw/<step_ulid>/`  (Runtime SSOT)
+
+    NO workdir cleanup (accumulates artifacts).
+
+    File layout:
+    - Input: input.inp
+    - Output: output.log, cp2k_calc-* artifacts
+    """
+
+    def get_preflight_requirements(self, step) -> List["PreflightRequirement"]:
+        """
+        Get preflight requirements based on step parameters.
+
+        CP2K declares requirements based on restart_policy.
+        """
+        from quantumvitas.execution.preflight import PreflightRequirement
+
+        reqs = []
+        params = getattr(step, "parameters", None) or {}
+        restart_policy = params.get("restart_policy", {})
+
+        if restart_policy.get("use_restart"):
+            reqs.append(PreflightRequirement(
+                artifact_type="restart",
+                pattern="cp2k_calc-*.restart",
+                source_step="predecessor",
+                required=True,
+                message="Restart file required but not found in {source_dir}",
+            ))
+
+        if restart_policy.get("use_wfn_guess"):
+            reqs.append(PreflightRequirement(
+                artifact_type="wfn",
+                pattern="cp2k_calc-RESTART.wfn",
+                source_step="predecessor",
+                required=True,
+                message="WFN file required but not found in {source_dir}",
+            ))
+
+        return reqs
+
+    def materialize(
+        self,
+        steps: List["Step"],
+        calc_raw_dir: Path,
+        step_shas: Optional[Dict[str, str]] = None,
+    ) -> JobGraph:
+        """Materialize jobs for CP2K steps."""
+        if not steps:
+            return JobGraph(jobs=[])
+
+        registry = get_registry()
+        jobs: List[Job] = []
+
+        for step in steps:
+            step_type = step.step_type
+            spec = registry.get(step_type) if step_type else None
+            public_type = spec.public_type if spec else "unknown"
+
+            job_id = step.meta.id
+            working_dir = calc_raw_dir / step.meta.id
+
+            # CP2K command
+            command = ["cp2k.ssmp", "-i", "input.inp", "-o", "output.log"]
+
+            input_files = [working_dir / "input.inp"]
+            expected_outputs = [working_dir / "output.log"]
+
+            # Add trajectory and cell for relax/md
+            if public_type in ("relax", "md"):
+                expected_outputs.append(working_dir / "cp2k_calc-pos-1.xyz")
+                expected_outputs.append(working_dir / "cp2k_calc-1.cell")  # NEW
+
+            step_sha = self._get_step_sha(step, step_shas)
+
+            deps = []
+            if len(jobs) > 0:
+                deps = [jobs[-1].id]
+
+            job = Job(
+                id=job_id,
+                step_ids=[step.meta.id],
+                working_dir=working_dir,
+                command=command,
+                input_files=input_files,
+                expected_outputs=expected_outputs,
+                deps=deps,
+                fingerprint=step_sha,
+                metadata={
+                    "engine": "cp2k",
+                    "spec_step_type": spec.machine_type if spec else None,
+                    "public_type": public_type,
+                },
+            )
+            jobs.append(job)
+
+        return JobGraph(jobs=jobs)
+
+
 def get_recipe_for_engine(engine_family: str) -> BaseRecipe:
     """
     Get the appropriate recipe for an engine family.
@@ -710,6 +814,7 @@ def get_recipe_for_engine(engine_family: str) -> BaseRecipe:
         "pyscf": PySCFRecipe,
         "vasp": VASPRecipe,
         "lammps": LAMMPSRecipe,
+        "cp2k": CP2KRecipe,
     }
 
     recipe_class = recipes.get(engine_family)
