@@ -1464,7 +1464,12 @@ def _resolve_step_by_path(calculation_dir: Path, selector: str) -> Optional[Path
 
 
 def _step_path_to_resolved(step_path: Path, project_root: Path) -> ResolvedResource:
-    """Convert a step file path to ResolvedResource."""
+    """Convert a step file path to ResolvedResource.
+    
+    CRITICAL: meta.slug MUST come from the YAML file (authoritative source),
+    not re-computed from name. This ensures consistency between YAML and
+    in-memory Step objects (constitution requirement).
+    """
     try:
         data = yaml.safe_load(step_path.read_text()) or {}
     except Exception:
@@ -1473,13 +1478,17 @@ def _step_path_to_resolved(step_path: Path, project_root: Path) -> ResolvedResou
     meta_dict = data.get("meta") or {}
     step_id = meta_dict.get("id") or data.get("id") or step_path.stem.replace(".step", "")
     step_name = meta_dict.get("name") or data.get("step_type") or step_id
+    # CRITICAL FIX: Use meta.slug from YAML (authoritative), fallback to slugify(name)
+    # Previously: slug=slugify(step_name) - this caused inconsistency when step_name="md"
+    # but YAML meta.slug="md-1"
+    step_slug = meta_dict.get("slug") or slugify(step_name)
     
     from quantumvitas.core.resources import generate_resource_id
     
     resource_meta = ResourceMeta(
         id=meta_dict.get("id") or generate_resource_id(),
         name=step_name,
-        slug=slugify(step_name),
+        slug=step_slug,  # Use YAML-sourced slug (authoritative)
         path=ensure_relative_path(step_path, base=project_root),
         kind="step",
     )
