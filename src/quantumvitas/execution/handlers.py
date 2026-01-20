@@ -9,6 +9,12 @@ Per engine_recipes_jobgraph_plan.md (Constitution):
 - QE: raw/outdir unchanged
 - Wannier: raw in-place unchanged
 - QC: raw/scf_<suffix>/ unchanged
+
+Architecture: Capability-based artifact production
+=================================================
+Handlers produce step_results with optional "relax_artifact_spec" dict
+that describes how to post-process outputs into current.json.
+Executor uses RELAX_ARTIFACT_HANDLERS registry to process, not engine branching.
 """
 
 from __future__ import annotations
@@ -20,6 +26,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 from quantumvitas.execution.job_graph import Job
 from quantumvitas.execution.executor import JobResult
+from quantumvitas.execution.relax_artifacts import RelaxArtifactSpec, is_relax_step_type
 
 if TYPE_CHECKING:
     from quantumvitas.calculation.calculation import Calculation
@@ -203,17 +210,28 @@ def qe_step_handler(
         success = result.success if hasattr(result, "success") else False
         error_msg = result.error if hasattr(result, "error") and not success else None
 
+        # Build step result with capability-based relax artifact spec
+        step_result_data = {
+            "success": success,
+            "output_file": str(result.output_file) if result.output_file else None,
+            "return_code": getattr(result, "return_code", None),
+        }
+        
+        # If this is a relax step and succeeded, add artifact spec for post-processing
+        step_type = step.step_type if hasattr(step, "step_type") else None
+        if success and step_type and is_relax_step_type(step_type) and result.output_file:
+            step_result_data["relax_artifact_spec"] = RelaxArtifactSpec(
+                artifact_type="qe_output",
+                artifact_path=Path(result.output_file),
+                step_ulid=step_ulid,
+                step_type=str(step_type),
+            ).to_dict()
+
         return JobResult(
             job_id=job.id,
             success=success,
             error=error_msg,
-            step_results={
-                step_ulid: {
-                    "success": success,
-                    "output_file": str(result.output_file) if result.output_file else None,
-                    "return_code": getattr(result, "return_code", None),
-                }
-            },
+            step_results={step_ulid: step_result_data},
         )
 
     except Exception as e:
@@ -514,19 +532,32 @@ def lammps_step_handler(
         success = result.success if hasattr(result, "success") else False
         error_msg = result.error if hasattr(result, "error") and not success else None
         
+        # Build step result with capability-based relax artifact spec
+        step_result_data = {
+            "success": success,
+            "working_dir": str(working_dir),
+            "return_code": getattr(result, "return_code", None),
+        }
+        
+        # If this is a relax step and succeeded, add artifact spec for post-processing
+        step_type = step_spec.step_type if hasattr(step_spec, "step_type") else None
+        if success and step_type and is_relax_step_type(step_type):
+            final_data_path = working_dir / "final.data"
+            if final_data_path.exists():
+                step_result_data["relax_artifact_spec"] = RelaxArtifactSpec(
+                    artifact_type="lammps_data",
+                    artifact_path=final_data_path,
+                    step_ulid=step_ulid,
+                    step_type=str(step_type),
+                ).to_dict()
+        
         return JobResult(
             job_id=job.id,
             success=success,
             error=error_msg,
             started_at=started,
             finished_at=datetime.now(timezone.utc),
-            step_results={
-                step_ulid: {
-                    "success": success,
-                    "working_dir": str(working_dir),
-                    "return_code": getattr(result, "return_code", None),
-                }
-            },
+            step_results={step_ulid: step_result_data},
         )
     
     except Exception as e:
@@ -634,11 +665,25 @@ def pyscf_chain_handler(
             if step is None:
                 continue
             step_artifacts_dir = raw_dir / "step_artifacts" / step.meta.id
-            step_results[step.meta.id] = {
+            step_result_data = {
                 "success": success,
                 "executed_in_chain": True,
-                "working_dir": str(step_artifacts_dir),  # For post-processing relax steps
+                "working_dir": str(step_artifacts_dir),
             }
+            
+            # If this is a relax step and succeeded, add artifact spec
+            step_type = step.step_type if hasattr(step, "step_type") else None
+            if success and step_type and is_relax_step_type(step_type):
+                results_file = step_artifacts_dir / "results.json"
+                if results_file.exists():
+                    step_result_data["relax_artifact_spec"] = RelaxArtifactSpec(
+                        artifact_type="pyscf_results",
+                        artifact_path=results_file,
+                        step_ulid=step.meta.id,
+                        step_type=str(step_type),
+                    ).to_dict()
+            
+            step_results[step.meta.id] = step_result_data
 
         return JobResult(
             job_id=job.id,
@@ -759,12 +804,26 @@ def orca_chain_handler(
         for step in steps:
             if step is None:
                 continue
-            step_results[step.meta.id] = {
+            effective_working_dir = chain_working_dir or str(working_dir)
+            step_result_data = {
                 "success": success,
                 "executed_in_chain": True,
-                "working_dir": chain_working_dir or str(working_dir),  # For post-processing relax steps
-                "chain_key": effective_chain_key,  # Use chain key for finding .xyz file (e.g., "chain01_relax.xyz")
+                "working_dir": effective_working_dir,
+                "chain_key": effective_chain_key,
             }
+            
+            # If this is a relax step and succeeded, add artifact spec
+            step_type = step.step_type if hasattr(step, "step_type") else None
+            if success and step_type and is_relax_step_type(step_type):
+                step_result_data["relax_artifact_spec"] = RelaxArtifactSpec(
+                    artifact_type="orca_xyz",
+                    artifact_path=Path(effective_working_dir),
+                    step_ulid=step.meta.id,
+                    step_type=str(step_type),
+                    extra={"chain_key": effective_chain_key or ""},
+                ).to_dict()
+            
+            step_results[step.meta.id] = step_result_data
 
         return JobResult(
             job_id=job.id,

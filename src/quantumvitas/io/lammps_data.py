@@ -257,52 +257,137 @@ def read_lammps_data(data_path: Path) -> Structure:
             [0.0, 0.0, zhi - zlo],
         ])
     
+    # Known sections that can appear in LAMMPS data files
+    # We only care about Masses and Atoms; skip all others
+    SKIP_SECTIONS = {
+        "Pair Coeffs", "Bond Coeffs", "Angle Coeffs", "Dihedral Coeffs", 
+        "Improper Coeffs", "Bonds", "Angles", "Dihedrals", "Impropers",
+        "Velocities", "PairIJ Coeffs", "BondBond Coeffs", "BondAngle Coeffs",
+        "MiddleBondTorsion Coeffs", "EndBondTorsion Coeffs", "AngleTorsion Coeffs",
+        "AngleAngleTorsion Coeffs", "BondBond13 Coeffs", "AngleAngle Coeffs",
+    }
+    
     # Parse masses (type -> element mapping)
     type_to_element = {}
+    in_masses_section = False
+    
     while i < len(lines):
         line = lines[i].strip()
+        
+        # Check for section headers (skip known non-essential sections)
+        section_match = False
+        for section_name in SKIP_SECTIONS:
+            if line.startswith(section_name):
+                # Skip this section
+                i += 1
+                while i < len(lines):
+                    next_line = lines[i].strip()
+                    # Empty line or new section header signals end of this section
+                    if not next_line:
+                        i += 1
+                        break
+                    # Check if this is a new section header
+                    is_new_section = False
+                    for check_section in SKIP_SECTIONS | {"Masses", "Atoms"}:
+                        if next_line.startswith(check_section):
+                            is_new_section = True
+                            break
+                    if is_new_section:
+                        break
+                    i += 1
+                section_match = True
+                break
+        
+        if section_match:
+            continue
+            
         if line.startswith("Masses"):
+            in_masses_section = True
             i += 1
             continue
         if line.startswith("Atoms"):
             break
-        if line and not line.startswith("#"):
+        
+        if in_masses_section and line and not line.startswith("#"):
             parts = line.split()
             if len(parts) >= 2:
-                type_id = int(parts[0])
-                mass = float(parts[1])
-                # Map mass to element (approximate)
-                from pymatgen.core import Element
-                # Find closest element by mass
-                closest_element = min(
-                    Element,
-                    key=lambda e: abs(e.atomic_mass - mass)
-                )
-                type_to_element[type_id] = str(closest_element)
+                try:
+                    type_id = int(parts[0])
+                    mass = float(parts[1])
+                    # Map mass to element (approximate)
+                    from pymatgen.core import Element
+                    # Find closest element by mass
+                    closest_element = min(
+                        Element,
+                        key=lambda e: abs(e.atomic_mass - mass)
+                    )
+                    type_to_element[type_id] = str(closest_element)
+                except (ValueError, IndexError):
+                    # Skip lines that don't match expected format
+                    pass
         i += 1
     
     # Parse atoms
     positions = []
     species = []
+    in_atoms_section = False
     
     while i < len(lines):
         line = lines[i].strip()
+        
         if line.startswith("Atoms"):
+            in_atoms_section = True
             i += 1
             continue
+        
+        # Check if we've reached another section (end of Atoms)
+        if in_atoms_section:
+            section_end = False
+            for section_name in SKIP_SECTIONS | {"Velocities", "Bonds", "Angles"}:
+                if line.startswith(section_name):
+                    section_end = True
+                    break
+            if section_end:
+                break
+        
         if not line or line.startswith("#"):
             i += 1
             continue
         
-        parts = line.split()
-        if len(parts) >= 4:
-            atom_id = int(parts[0])
-            atom_type = int(parts[1])
-            x, y, z = float(parts[-3]), float(parts[-2]), float(parts[-1])
-            
-            element = type_to_element.get(atom_type, "X")
-            species.append(element)
-            positions.append([x, y, z])
+        if in_atoms_section:
+            parts = line.split()
+            if len(parts) >= 4:
+                try:
+                    atom_id = int(parts[0])
+                    atom_type = int(parts[1])
+                    # Handle different atom styles: coords are always last 3 values (or 3 before image flags)
+                    # Common format: id type x y z [ix iy iz]
+                    # For atomic: id type x y z
+                    # For charge: id type q x y z
+                    # Robust approach: use parts[-3:] if no image flags, otherwise parts[-6:-3]
+                    # Detect image flags: if last 3 values are small integers, they might be image flags
+                    
+                    # Simple approach: assume coordinates are at positions 2,3,4 (0-indexed) for atomic style
+                    # or -3,-2,-1 if there are image flags
+                    try:
+                        # Try last 3 as coords
+                        x, y, z = float(parts[-3]), float(parts[-2]), float(parts[-1])
+                        # Check if these could be image flags (small integers)
+                        if all(abs(v) < 10 and v == int(v) for v in [x, y, z]):
+                            # Likely image flags, use parts[-6:-3]
+                            if len(parts) >= 6:
+                                x, y, z = float(parts[-6]), float(parts[-5]), float(parts[-4])
+                    except (ValueError, IndexError):
+                        # Skip malformed lines
+                        i += 1
+                        continue
+                    
+                    element = type_to_element.get(atom_type, "X")
+                    species.append(element)
+                    positions.append([x, y, z])
+                except (ValueError, IndexError):
+                    # Skip lines that don't match expected format
+                    pass
         
         i += 1
     

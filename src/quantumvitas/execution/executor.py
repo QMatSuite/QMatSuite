@@ -43,6 +43,7 @@ from quantumvitas.execution.relax_artifacts import (
     get_generated_structure_path,
     read_generated_structure,
     is_relax_step_type,
+    process_relax_artifact,
 )
 from quantumvitas.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
 
@@ -535,8 +536,8 @@ class JobExecutor:
         """
         Post-process relax steps after successful job execution.
         
-        For QE relax steps, this parses the output and writes current.json.
-        For PySCF relax steps, this reads results.json and writes current.json.
+        Uses capability-based approach: looks for 'relax_artifact_spec' in step_results
+        and delegates to RELAX_ARTIFACT_HANDLERS registry. No engine-specific branching.
         
         Args:
             job: The executed job
@@ -544,10 +545,6 @@ class JobExecutor:
             calculation: Calculation context
             context: Execution context (run_id, etc.)
         """
-        from quantumvitas.execution.handlers import handle_qe_relax_output
-        from quantumvitas.execution.pyscf_relax_handler import handle_pyscf_relax_output
-        import json
-        
         # Get run_id from context
         run_id = context.get("run_id")
         
@@ -556,137 +553,33 @@ class JobExecutor:
         calculation_ulid = calculation.meta.id if hasattr(calculation, 'meta') else None
         input_structure_ulid = calculation.structure_id if hasattr(calculation, 'structure_id') else None
         
-        # Process each step in the job
+        # Build run context for artifact processing
+        run_context = {
+            "run_id": run_id,
+            "calculation_ulid": calculation_ulid or "",
+            "input_structure_ulid": input_structure_ulid or "",
+        }
+        
+        # Process each step in the job using capability-based approach
         for step_ulid in job.step_ids:
-            step = self._find_step_by_ulid(calculation, step_ulid)
-            if step is None:
-                continue
+            step_result = job_result.step_results.get(step_ulid, {})
             
-            # Check if this is a relax step
-            step_type = getattr(step, 'step_type', None)
-            if not step_type or not is_relax_step_type(step_type):
+            # Check for relax_artifact_spec (capability-based)
+            artifact_spec = step_result.get("relax_artifact_spec")
+            if artifact_spec is None:
+                # No artifact to process for this step
                 continue
             
             try:
-                if job.engine == "qe":
-                    # QE: parse output file
-                    step_result = job_result.step_results.get(step_ulid, {})
-                    output_file_str = step_result.get("output_file")
-                    if not output_file_str:
-                        logger.warning(f"[EXECUTOR] No output_file found for relax step {step_ulid}, skipping post-process")
-                        continue
-                    
-                    output_path = Path(output_file_str)
-                    if not output_path.exists():
-                        logger.warning(f"[EXECUTOR] Output file does not exist: {output_path}, skipping post-process")
-                        continue
-                    
-                    artifact_path = handle_qe_relax_output(
-                        step_ulid=step_ulid,
-                        step_type=str(step_type),
-                        calc_dir=calc_dir,
-                        output_path=output_path,
-                        calculation_ulid=calculation_ulid or "",
-                        input_structure_ulid=input_structure_ulid or "",
-                        run_id=run_id,
-                    )
-                    logger.info(f"[EXECUTOR] Successfully processed QE relax output for step {step_ulid}: {artifact_path}")
-                    
-                elif job.engine == "pyscf":
-                    # PySCF: read results.json
-                    step_result = job_result.step_results.get(step_ulid, {})
-                    working_dir_str = step_result.get("working_dir")
-                    if not working_dir_str:
-                        logger.warning(f"[EXECUTOR] No working_dir found for relax step {step_ulid}, skipping post-process")
-                        continue
-                    
-                    working_dir = Path(working_dir_str)
-                    results_file = working_dir / "results.json"
-                    if not results_file.exists():
-                        logger.warning(f"[EXECUTOR] Results file does not exist: {results_file}, skipping post-process")
-                        continue
-                    
-                    # Read results.json
-                    try:
-                        results = json.loads(results_file.read_text())
-                    except Exception as e:
-                        logger.warning(f"[EXECUTOR] Failed to parse results.json for step {step_ulid}: {e}")
-                        continue
-                    
-                    if not results.get("success", False):
-                        logger.warning(f"[EXECUTOR] PySCF relax step {step_ulid} did not succeed, skipping post-process")
-                        continue
-                    
-                    artifact_path = handle_pyscf_relax_output(
-                        step_ulid=step_ulid,
-                        step_type=str(step_type),
-                        calc_dir=calc_dir,
-                        results=results,
-                        calculation_ulid=calculation_ulid or "",
-                        input_structure_ulid=input_structure_ulid or "",
-                        run_id=run_id,
-                    )
-                    logger.info(f"[EXECUTOR] Successfully processed PySCF relax output for step {step_ulid}: {artifact_path}")
-                elif job.engine == "orca":
-                    # ORCA: parse .xyz file from chain working directory
-                    step_result = job_result.step_results.get(step_ulid, {})
-                    working_dir_str = step_result.get("working_dir")
-                    chain_key = step_result.get("chain_key")
-                    
-                    if not working_dir_str:
-                        logger.warning(f"[EXECUTOR] No working_dir found for ORCA relax step {step_ulid}, skipping post-process")
-                        continue
-                    if not chain_key:
-                        logger.warning(f"[EXECUTOR] No chain_key found for ORCA relax step {step_ulid}, skipping post-process")
-                        continue
-                    
-                    working_dir = Path(working_dir_str)
-                    
-                    # Import ORCA relax handler
-                    from quantumvitas.execution.orca_relax_parser import handle_orca_relax_output
-                    
-                    artifact_path = handle_orca_relax_output(
-                        step_ulid=step_ulid,
-                        step_type=str(step_type),
-                        calc_dir=calc_dir,
-                        working_dir=working_dir,
-                        chain_key=chain_key,
-                        calculation_ulid=calculation_ulid or "",
-                        input_structure_ulid=input_structure_ulid or "",
-                        run_id=run_id,
-                    )
-                    logger.info(f"[EXECUTOR] Successfully processed ORCA relax output for step {step_ulid}: {artifact_path}")
-                elif job.engine == "lammps":
-                    # LAMMPS: parse final.data from step working directory
-                    step_result = job_result.step_results.get(step_ulid, {})
-                    working_dir_str = step_result.get("working_dir")
-                    
-                    if not working_dir_str:
-                        logger.warning(f"[EXECUTOR] No working_dir found for LAMMPS relax step {step_ulid}, skipping post-process")
-                        continue
-                    
-                    working_dir = Path(working_dir_str)
-                    
-                    # Import LAMMPS relax handler
-                    from quantumvitas.execution.lammps_relax_handler import handle_lammps_relax_output
-                    
-                    artifact_path = handle_lammps_relax_output(
-                        step_ulid=step_ulid,
-                        step_type=str(step_type),
-                        calc_dir=calc_dir,
-                        working_dir=working_dir,
-                        calculation_ulid=calculation_ulid or "",
-                        input_structure_ulid=input_structure_ulid or "",
-                        run_id=run_id,
-                    )
-                    logger.info(f"[EXECUTOR] Successfully processed LAMMPS relax output for step {step_ulid}: {artifact_path}")
-                else:
-                    # Unknown engine
-                    logger.warning(f"[EXECUTOR] Unknown engine '{job.engine}' for relax step {step_ulid}, skipping post-process")
-                    continue
-                    
+                artifact_path = process_relax_artifact(
+                    spec=artifact_spec,
+                    calc_dir=calc_dir,
+                    run_context=run_context,
+                )
+                if artifact_path:
+                    logger.info(f"[EXECUTOR] Processed relax artifact for step {step_ulid}: {artifact_path}")
             except Exception as e:
-                logger.error(f"[EXECUTOR] Failed to process relax output for step {step_ulid}: {e}", exc_info=True)
+                logger.error(f"[EXECUTOR] Failed to process relax artifact for step {step_ulid}: {e}", exc_info=True)
                 # Don't fail the job, but log the error
     
     def _load_effective_structure_for_step(
