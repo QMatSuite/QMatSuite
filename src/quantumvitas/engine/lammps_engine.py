@@ -339,6 +339,20 @@ class LammpsEngine(Engine):
         if not restart_from:
             raise ValueError("restart_from not specified")
         
+        # FAIL-FAST: Detect self-reference (restart_from == current step ULID)
+        # This is the root cause of Ubuntu CI failures where downstream step 
+        # references itself instead of upstream step
+        current_step_ulid = step.meta.id if hasattr(step, "meta") and hasattr(step.meta, "id") else None
+        if current_step_ulid and restart_from == current_step_ulid:
+            raise ValueError(
+                f"[LAMMPS-SELF-REFERENCE-ERROR] restart_from cannot reference the current step itself. "
+                f"step_ulid={current_step_ulid}, restart_from={restart_from}, "
+                f"step_type={getattr(step, 'step_type', 'unknown')}, "
+                f"calc_dir={calculation.dir}. "
+                f"This indicates a bug in step creation or configuration - restart_from should reference "
+                f"an UPSTREAM step (e.g., a previous relax or MD step)."
+            )
+        
         # Find referenced step in calculation
         # restart_from can be step ULID, slug, or index
         ref_step = None

@@ -573,7 +573,7 @@ class JobExecutor:
             try:
                 artifact_path = process_relax_artifact(
                     spec=artifact_spec,
-                    calc_dir=calc_dir,
+                        calc_dir=calc_dir,
                     run_context=run_context,
                 )
                 if artifact_path:

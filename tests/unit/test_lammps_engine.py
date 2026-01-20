@@ -8,6 +8,7 @@ from quantumvitas.engine.lammps_engine import LammpsEngine
 from quantumvitas.engine.registry import create_default_registry, EngineRegistry
 from quantumvitas.engine.base import EngineConfig
 from quantumvitas.workflow.registry import get_registry
+from quantumvitas.core.resources import generate_resource_id
 
 
 class TestLammpsEngine:
@@ -95,6 +96,78 @@ class TestLammpsStepTypes:
         assert "lammps_relax" in lammps_types
         assert "lammps_md" in lammps_types
         # lammps_restart should NOT exist (restart_from is a parameter, not a step type)
+
+
+class TestUlidUniqueness:
+    """Test ULID generation uniqueness (Ubuntu CI regression prevention)."""
+    
+    def test_ulid_uniqueness_1000_rapid(self):
+        """Test that 1000 rapidly generated ULIDs are all unique."""
+        # This tests the root cause hypothesis: ULID collision under rapid generation
+        ids = [generate_resource_id() for _ in range(1000)]
+        unique_ids = set(ids)
+        
+        assert len(unique_ids) == 1000, (
+            f"ULID COLLISION: generated 1000 IDs but only {len(unique_ids)} unique. "
+            f"First collision example: {[id for id in ids if ids.count(id) > 1][:5]}"
+        )
+    
+    def test_ulid_consecutive_different(self):
+        """Test that consecutive ULIDs are different."""
+        id1 = generate_resource_id()
+        id2 = generate_resource_id()
+        id3 = generate_resource_id()
+        
+        assert id1 != id2, f"Consecutive ULID collision: id1 == id2 ({id1})"
+        assert id2 != id3, f"Consecutive ULID collision: id2 == id3 ({id2})"
+        assert id1 != id3, f"ULID collision: id1 == id3 ({id1})"
+
+
+class TestLammpsRestartFromValidation:
+    """Test restart_from validation (Ubuntu CI root cause fix)."""
+    
+    def test_self_reference_raises_error(self):
+        """Test that restart_from == current step ULID raises clear error."""
+        engine = LammpsEngine()
+        
+        # Create mock step with restart_from pointing to itself
+        mock_step = MagicMock()
+        mock_step.meta.id = "01ABCD1234567890123456"
+        mock_step.parameters = {"restart_from": "01ABCD1234567890123456"}  # Self-reference!
+        mock_step.step_type = "lammps_md"
+        
+        # Create mock calculation
+        mock_calculation = MagicMock()
+        mock_calculation.dir = Path("/fake/calc")
+        mock_calculation.steps = [mock_step]
+        
+        # _resolve_restart_artifact should raise ValueError with clear message
+        with pytest.raises(ValueError, match="SELF-REFERENCE-ERROR"):
+            engine._resolve_restart_artifact(mock_step, mock_calculation)
+    
+    def test_valid_restart_from_accepted(self):
+        """Test that valid restart_from (different step) is accepted."""
+        engine = LammpsEngine()
+        
+        # Create mock upstream step
+        mock_upstream = MagicMock()
+        mock_upstream.meta.id = "01UPSTREAM000000000000"
+        mock_upstream.meta.slug = "upstream"
+        
+        # Create mock current step with restart_from pointing to upstream
+        mock_step = MagicMock()
+        mock_step.meta.id = "01CURRENT0000000000000"
+        mock_step.parameters = {"restart_from": "01UPSTREAM000000000000"}
+        
+        # Create mock calculation
+        mock_calculation = MagicMock()
+        mock_calculation.steps = [mock_upstream, mock_step]
+        mock_calculation.io.raw_dir = Path("/fake/raw")
+        
+        # Should NOT raise self-reference error (but will raise FileNotFoundError 
+        # because the mock directory doesn't exist - that's expected)
+        with pytest.raises(FileNotFoundError, match="restart artifact"):
+            engine._resolve_restart_artifact(mock_step, mock_calculation)
 
 
 class TestLammpsBinaryResolver:
