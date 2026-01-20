@@ -242,6 +242,11 @@ class CalculationModel:
     # Step0 refreshes these fields after preparing project/pseudo.
     species_map: Optional[Dict[str, Dict[str, Any]]] = None
     
+    # LAMMPS potential mapping: potential_key -> {style, file/files, elements, sha256}
+    # This is the authoritative source of truth for LAMMPS potential assets.
+    # Similar to species_map, but for classical potentials (EAM, Tersoff, etc.)
+    potential_map: Optional[Dict[str, Dict[str, Any]]] = None
+    
     @property
     def id(self) -> str:
         return self.meta.id
@@ -282,6 +287,9 @@ class CalculationModel:
         # Write species_map (calculation-level pseudo mapping)
         if self.species_map:
             result["species_map"] = self.species_map
+        # Write potential_map (LAMMPS potential mapping)
+        if self.potential_map:
+            result["potential_map"] = self.potential_map
         return result
     
     @classmethod
@@ -349,6 +357,9 @@ class CalculationModel:
         # Load species_map (calculation-level pseudo mapping)
         species_map = data.get("species_map") or calculation_section.get("species_map")
         
+        # Load potential_map (LAMMPS potential mapping)
+        potential_map = data.get("potential_map") or calculation_section.get("potential_map")
+        
         # Phase 3A: Load structure_kind and engine_family with best-effort recovery
         structure_kind = data.get("structure_kind")
         engine_family = data.get("engine_family")
@@ -401,6 +412,7 @@ class CalculationModel:
             structure_kind=structure_kind,
             engine_family=engine_family,
             species_map=species_map,
+            potential_map=potential_map,
         )
     
     # Legacy resolve_step_ids method removed - all steps must have step_id (ULID) at load time

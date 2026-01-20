@@ -95,6 +95,10 @@ MATERIALIZATION_MAP: Dict[Tuple[str, str], Optional[str]] = {
     ("vasp", "DOS"): None,          # 0-mapping: VASP DOS integrated in nscf output
     ("vasp", "DOSPP"): None,       # 0-mapping: VASP DOS integrated in nscf output (PUBLIC key alias)
 
+    # LAMMPS family mappings (Classical MD)
+    ("lammps", "RELAX"): "lammps_relax",
+    ("lammps", "MD"): "lammps_md",
+
     # Wannier90 standalone (if needed in future)
     # ("w90", "WANNIER"): "w90_run",
 

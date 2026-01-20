@@ -1,0 +1,684 @@
+{
+  "@module": "pymatgen.core.structure",
+  "@class": "Structure",
+  "charge": 0,
+  "lattice": {
+    "matrix": [
+      [
+        3.6,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        3.6,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        3.6
+      ]
+    ],
+    "pbc": [
+      true,
+      true,
+      true
+    ],
+    "a": 3.6,
+    "b": 3.6,
+    "c": 3.6,
+    "alpha": 90.0,
+    "beta": 90.0,
+    "gamma": 90.0,
+    "volume": 46.656000000000006
+  },
+  "properties": {},
+  "sites": [
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        1.8,
+        1.8,
+        0.0
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        6.48,
+        6.48,
+        0.0
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        0.0,
+        1.8,
+        1.8
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        0.0,
+        6.48,
+        6.48
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        1.8,
+        0.0,
+        1.8
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        6.48,
+        0.0,
+        6.48
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        0.0,
+        0.0,
+        3.6
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        0.0,
+        0.0,
+        12.96
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        1.8,
+        1.8,
+        3.6
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        6.48,
+        6.48,
+        12.96
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        0.0,
+        1.8,
+        5.4
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        0.0,
+        6.48,
+        19.44
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        1.8,
+        0.0,
+        5.4
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        6.48,
+        0.0,
+        19.44
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        0.0,
+        3.6,
+        0.0
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        0.0,
+        12.96,
+        0.0
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        1.8,
+        5.4,
+        0.0
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        6.48,
+        19.44,
+        0.0
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        0.0,
+        5.4,
+        1.8
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        0.0,
+        19.44,
+        6.48
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        1.8,
+        3.6,
+        1.8
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        6.48,
+        12.96,
+        6.48
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        0.0,
+        3.6,
+        3.6
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        0.0,
+        12.96,
+        12.96
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        1.8,
+        5.4,
+        3.6
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        6.48,
+        19.44,
+        12.96
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        0.0,
+        5.4,
+        5.4
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        0.0,
+        19.44,
+        19.44
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        1.8,
+        3.6,
+        5.4
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        6.48,
+        12.96,
+        19.44
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        3.6,
+        0.0,
+        0.0
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        12.96,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        5.4,
+        1.8,
+        0.0
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        19.44,
+        6.48,
+        0.0
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        3.6,
+        1.8,
+        1.8
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        12.96,
+        6.48,
+        6.48
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        5.4,
+        0.0,
+        1.8
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        19.44,
+        0.0,
+        6.48
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        3.6,
+        0.0,
+        3.6
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        12.96,
+        0.0,
+        12.96
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        5.4,
+        1.8,
+        3.6
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        19.44,
+        6.48,
+        12.96
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        3.6,
+        1.8,
+        5.4
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        12.96,
+        6.48,
+        19.44
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        5.4,
+        0.0,
+        5.4
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        19.44,
+        0.0,
+        19.44
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        3.6,
+        3.6,
+        0.0
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        12.96,
+        12.96,
+        0.0
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        5.4,
+        5.4,
+        0.0
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        19.44,
+        19.44,
+        0.0
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        3.6,
+        5.4,
+        1.8
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        12.96,
+        19.44,
+        6.48
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        5.4,
+        3.6,
+        1.8
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        19.44,
+        12.96,
+        6.48
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        3.6,
+        3.6,
+        3.6
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        12.96,
+        12.96,
+        12.96
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        5.4,
+        5.4,
+        3.6
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        19.44,
+        19.44,
+        12.96
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        3.6,
+        5.4,
+        5.4
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        12.96,
+        19.44,
+        19.44
+      ]
+    },
+    {
+      "species": [
+        {
+          "element": "Cu",
+          "occu": 1
+        }
+      ],
+      "abc": [
+        5.4,
+        3.6,
+        5.4
+      ],
+      "properties": {},
+      "label": "Cu",
+      "xyz": [
+        19.44,
+        12.96,
+        19.44
+      ]
+    }
+  ],
+  "__qv_meta__": {
+    "id": "01KFCH7N4GWCCPS4K1NRS77QDW",
+    "name": "cu_fcc_32",
+    "slug": "cu_fcc_32"
+  }
+}

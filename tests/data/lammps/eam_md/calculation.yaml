@@ -1,0 +1,22 @@
+engine: lammps
+structure_id: 01KFCH7N4GWCCPS4K1NRS77QDW
+potential_map:
+  eam_cu:
+    style: eam
+    file: potentials/Cu_u3.eam
+    elements:
+    - Cu
+    sha256: placeholder
+steps:
+- type: md
+  parameters:
+    potential: eam_cu
+    units: metal
+    atom_style: atomic
+    ensemble: nvt
+    temperature: 300
+    timestep_fs: 1.0
+    n_steps: 1000
+    thermo_frequency: 100
+    dump_frequency: 100
+    dump_trajectory: true

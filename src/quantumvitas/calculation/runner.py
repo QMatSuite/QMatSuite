@@ -359,15 +359,29 @@ class CalculationRunner:
                 compute_step_sha,
                 compute_structure_sha,
                 compute_pseudo_set_sha,
+                compute_potential_assets_sha,
             )
             from quantumvitas.core.yamldoc import StepDoc
             from quantumvitas.core.resolution import require_step, require_structure
             from quantumvitas.core.project_utils import load_project_config
 
-            # Compute pseudo_set_sha
-            project_pseudo_dir = calculation.project.root / "pseudo"
-            species_map = calculation.species_map or {}
-            pseudo_sha_computed = compute_pseudo_set_sha(project_pseudo_dir, species_map) if species_map else ""
+            # Compute pseudo_set_sha (or potential_assets_sha for LAMMPS)
+            # Determine engine family to decide which SHA to compute
+            engine_family = calculation.engine_family
+            if not engine_family and calculation.steps:
+                engine_family = _get_engine_family_from_step(calculation.steps[0])
+            if not engine_family:
+                engine_family = "qe"  # Default
+            
+            if engine_family == "lammps":
+                # For LAMMPS, compute potential_assets_sha from potential_map
+                potential_map = getattr(calculation, "potential_map", None) or {}
+                pseudo_sha_computed = compute_potential_assets_sha(potential_map) if potential_map else ""
+            else:
+                # For QE/VASP/etc., compute pseudo_set_sha from species_map
+                project_pseudo_dir = calculation.project.root / "pseudo"
+                species_map = calculation.species_map or {}
+                pseudo_sha_computed = compute_pseudo_set_sha(project_pseudo_dir, species_map) if species_map else ""
 
             # Compute structure_sha
             if calculation.structure_id:
