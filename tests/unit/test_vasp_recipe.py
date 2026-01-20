@@ -117,3 +117,4 @@ class TestVASPRecipe:
         }
         assert output_files == expected
 
+

@@ -146,3 +146,4 @@ DAV:   1    -0.307508816106E+01   -0.30751E+01   -0.12475E+03   732   0.285E+02
         assert result["energy"] is None
         assert result["converged"] is False
 
+

@@ -96,3 +96,4 @@ class TestReferenceSCFResolver:
         gen_type = get_gen_type(step, registry)
         assert gen_type == "bands"
 
+
