@@ -91,10 +91,11 @@ class TestRelaxExecutorIntegration:
         Test that executor post-processes relax output after successful job.
         
         This verifies that _post_process_relax_steps is called and handles
-        the output correctly.
+        the output correctly using capability-based relax_artifact_spec.
         """
         from quantumvitas.execution.executor import JobExecutor, JobResult
         from quantumvitas.execution.job_graph import Job
+        from quantumvitas.execution.relax_artifacts import RelaxArtifactSpec
         from unittest.mock import MagicMock
         
         # Create calc directory
@@ -142,13 +143,20 @@ class TestRelaxExecutorIntegration:
         )
         job.metadata = {"engine": "qe"}
         
-        # Create successful job result
+        # Create successful job result with capability-based relax_artifact_spec
+        # This is what handlers produce after our architectural refactor
         job_result = JobResult(
             job_id=job.id,
             success=True,
             step_results={
                 step_ulid: {
                     "output_file": str(output_path),
+                    "relax_artifact_spec": RelaxArtifactSpec(
+                        artifact_type="qe_output",
+                        artifact_path=output_path,
+                        step_ulid=step_ulid,
+                        step_type="qe_relax",
+                    ).to_dict(),
                 },
             },
         )
