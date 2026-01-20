@@ -37,6 +37,52 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _format_dir_listing_for_debug(dir_path: Path, max_items: int = 200) -> str:
+    """
+    Format directory listing with file sizes and mtimes for debug output.
+    
+    Args:
+        dir_path: Directory to list
+        max_items: Maximum number of items to list
+        
+    Returns:
+        Formatted string with file info
+    """
+    if not dir_path.exists():
+        return f"<directory does not exist: {dir_path}>"
+    
+    if not dir_path.is_dir():
+        return f"<not a directory: {dir_path}>"
+    
+    try:
+        items = sorted(dir_path.iterdir())
+        if len(items) > max_items:
+            items = items[:max_items]
+            truncated = True
+        else:
+            truncated = False
+        
+        lines = []
+        for item in items:
+            try:
+                stat = item.stat()
+                size = stat.st_size
+                mtime = stat.st_mtime
+                item_type = "DIR" if item.is_dir() else "FILE"
+                lines.append(f"  {item_type:4s} {item.name:50s} size={size:10d} mtime={mtime:.3f}")
+            except Exception as e:
+                lines.append(f"  ERR  {item.name:50s} (stat failed: {e})")
+        
+        result = "\n".join(lines)
+        if truncated:
+            total_count = len(list(dir_path.iterdir()))
+            result += f"\n  ... (truncated, showing first {max_items} of {total_count} items)"
+        
+        return result
+    except Exception as e:
+        return f"<listing failed: {e}>"
+
+
 # Handler type signature
 HandlerFunc = Callable[[Job, "Calculation", "EngineRegistry", Dict[str, Any]], JobResult]
 
@@ -474,6 +520,14 @@ def lammps_step_handler(
         working_dir = job.working_dir
         working_dir.mkdir(parents=True, exist_ok=True)
         
+        # Debug: Log step context before materialize
+        step_type = job.metadata.get("spec_step_type", "unknown")
+        public_type = job.metadata.get("public_type", "unknown")
+        print(f"[LAMMPS-DEBUG] lammps_step_handler: step_ulid={step_ulid}, step_type={step_type}, "
+              f"public_type={public_type}")
+        print(f"[LAMMPS-DEBUG] lammps_step_handler: calc_dir={calculation.dir}, "
+              f"raw_dir={calculation.raw_dir}, working_dir={working_dir}")
+        
         # Load step spec to get parameters (Step dataclass doesn't have parameters)
         from quantumvitas.calculation.structure_steps import StructureStepSpec
         from quantumvitas.core.resolution import require_step
@@ -499,6 +553,22 @@ def lammps_step_handler(
                 finished_at=datetime.now(timezone.utc),
             )
         
+        # Debug: Check for restart_from before materialize
+        step_params = step_spec.parameters if hasattr(step_spec, "parameters") else {}
+        restart_from = step_params.get("restart_from") if isinstance(step_params, dict) else None
+        if restart_from:
+            print(f"[LAMMPS-DEBUG] lammps_step_handler: step has restart_from={restart_from}")
+            upstream_workdir = calculation.raw_dir / restart_from
+            print(f"[LAMMPS-DEBUG] lammps_step_handler: upstream workdir={upstream_workdir}, exists={upstream_workdir.exists()}")
+            if upstream_workdir.exists():
+                print(f"[LAMMPS-DEBUG] lammps_step_handler: upstream workdir contents (before materialize):")
+                print(_format_dir_listing_for_debug(upstream_workdir, max_items=50))
+        
+        # Debug: Check current workdir before materialize
+        if working_dir.exists():
+            print(f"[LAMMPS-DEBUG] lammps_step_handler: current workdir contents (before materialize):")
+            print(_format_dir_listing_for_debug(working_dir, max_items=50))
+        
         # Materialize inputs using step_spec (which has parameters)
         try:
             engine.materialize_inputs(step_spec, working_dir, calculation)
@@ -506,6 +576,9 @@ def lammps_step_handler(
             import traceback
             tb = traceback.format_exc()
             logger.error(f"[LAMMPS_HANDLER] Failed to materialize inputs for step {step_ulid}: {e}")
+            print(f"[LAMMPS-DEBUG] lammps_step_handler: materialize FAILED, workdir contents:")
+            if working_dir.exists():
+                print(_format_dir_listing_for_debug(working_dir, max_items=50))
             return JobResult(
                 job_id=job.id,
                 success=False,
@@ -514,6 +587,23 @@ def lammps_step_handler(
                 finished_at=datetime.now(timezone.utc),
             )
         
+        # Debug: Log after materialize
+        print(f"[LAMMPS-DEBUG] lammps_step_handler: materialize completed, workdir contents:")
+        if working_dir.exists():
+            print(_format_dir_listing_for_debug(working_dir, max_items=100))
+        
+        # Check key files
+        in_lammps = working_dir / "in.lammps"
+        structure_data = working_dir / "structure.data"
+        print(f"[LAMMPS-DEBUG] lammps_step_handler: in.lammps exists={in_lammps.exists()}, "
+              f"structure.data exists={structure_data.exists()}")
+        
+        # Check potential staging
+        potentials_dir = working_dir / "potentials"
+        if potentials_dir.exists():
+            print(f"[LAMMPS-DEBUG] lammps_step_handler: potentials directory contents:")
+            print(_format_dir_listing_for_debug(potentials_dir, max_items=20))
+        
         # Execute LAMMPS
         try:
             result = engine.run_step(step_spec, working_dir, calculation)
@@ -521,6 +611,10 @@ def lammps_step_handler(
             import traceback
             tb = traceback.format_exc()
             logger.exception(f"[LAMMPS_HANDLER] Step {step_ulid} execution failed")
+            print(f"[LAMMPS-DEBUG] lammps_step_handler: run_step raised exception: {type(e).__name__}: {e}")
+            print(f"[LAMMPS-DEBUG] lammps_step_handler: workdir contents after exception:")
+            if working_dir.exists():
+                print(_format_dir_listing_for_debug(working_dir, max_items=100))
             return JobResult(
                 job_id=job.id,
                 success=False,
@@ -531,6 +625,62 @@ def lammps_step_handler(
         
         success = result.success if hasattr(result, "success") else False
         error_msg = result.error if hasattr(result, "error") and not success else None
+        
+        # Debug: Log after LAMMPS run
+        return_code = getattr(result, "return_code", None)
+        print(f"[LAMMPS-DEBUG] lammps_step_handler: run_step completed, return_code={return_code}, success={success}")
+        
+        log_file = working_dir / "log.lammps"
+        log_exists = log_file.exists()
+        if log_exists:
+            try:
+                log_size = log_file.stat().st_size
+                print(f"[LAMMPS-DEBUG] lammps_step_handler: log.lammps exists, size={log_size}")
+                # Print last 20 lines if failed or restart_from step
+                if not success or restart_from:
+                    try:
+                        log_lines = log_file.read_text().splitlines()
+                        last_lines = log_lines[-20:] if len(log_lines) > 20 else log_lines
+                        print(f"[LAMMPS-DEBUG] lammps_step_handler: log.lammps last {len(last_lines)} lines:")
+                        for line in last_lines:
+                            print(f"  {line}")
+                    except Exception as e:
+                        print(f"[LAMMPS-DEBUG] lammps_step_handler: failed to read log.lammps: {e}")
+            except Exception as e:
+                print(f"[LAMMPS-DEBUG] lammps_step_handler: failed to stat log.lammps: {e}")
+        else:
+            print(f"[LAMMPS-DEBUG] lammps_step_handler: log.lammps does NOT exist")
+        
+        # Debug: Check for expected output files
+        final_data = working_dir / "final.data"
+        restart_bin = working_dir / "restart.bin"
+        restart_patterns = list(working_dir.glob("restart*.bin"))
+        all_data_files = list(working_dir.glob("*.data"))
+        
+        print(f"[LAMMPS-DEBUG] lammps_step_handler: output files check:")
+        print(f"  final.data exists={final_data.exists()}")
+        print(f"  restart.bin exists={restart_bin.exists()}")
+        print(f"  restart*.bin glob: found {len(restart_patterns)} files")
+        if restart_patterns:
+            for p in restart_patterns[:10]:  # Limit to 10
+                try:
+                    stat = p.stat()
+                    print(f"    - {p.name} size={stat.st_size} mtime={stat.st_mtime:.3f}")
+                except Exception:
+                    print(f"    - {p.name} (stat failed)")
+        print(f"  *.data glob: found {len(all_data_files)} files")
+        if all_data_files:
+            for p in all_data_files[:10]:  # Limit to 10
+                try:
+                    stat = p.stat()
+                    print(f"    - {p.name} size={stat.st_size} mtime={stat.st_mtime:.3f}")
+                except Exception:
+                    print(f"    - {p.name} (stat failed)")
+        
+        # Debug: Full workdir listing after run
+        print(f"[LAMMPS-DEBUG] lammps_step_handler: workdir contents after run:")
+        if working_dir.exists():
+            print(_format_dir_listing_for_debug(working_dir, max_items=100))
         
         # Verify expected output artifacts exist (fixes Ubuntu CI race condition)
         if success:

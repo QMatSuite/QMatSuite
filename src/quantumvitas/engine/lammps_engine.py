@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
@@ -29,6 +30,52 @@ if TYPE_CHECKING:
     from quantumvitas.calculation.step import Step
 
 logger = logging.getLogger(__name__)
+
+
+def _format_dir_listing(dir_path: Path, max_items: int = 200) -> str:
+    """
+    Format directory listing with file sizes and mtimes for debug output.
+    
+    Args:
+        dir_path: Directory to list
+        max_items: Maximum number of items to list
+        
+    Returns:
+        Formatted string with file info
+    """
+    if not dir_path.exists():
+        return f"<directory does not exist: {dir_path}>"
+    
+    if not dir_path.is_dir():
+        return f"<not a directory: {dir_path}>"
+    
+    try:
+        items = sorted(dir_path.iterdir())
+        if len(items) > max_items:
+            items = items[:max_items]
+            truncated = True
+        else:
+            truncated = False
+        
+        lines = []
+        for item in items:
+            try:
+                stat = item.stat()
+                size = stat.st_size
+                mtime = stat.st_mtime
+                item_type = "DIR" if item.is_dir() else "FILE"
+                lines.append(f"  {item_type:4s} {item.name:50s} size={size:10d} mtime={mtime:.3f}")
+            except Exception as e:
+                lines.append(f"  ERR  {item.name:50s} (stat failed: {e})")
+        
+        result = "\n".join(lines)
+        if truncated:
+            total_count = len(list(dir_path.iterdir()))
+            result += f"\n  ... (truncated, showing first {max_items} of {total_count} items)"
+        
+        return result
+    except Exception as e:
+        return f"<listing failed: {e}>"
 
 
 class LammpsEngine(Engine):
@@ -314,21 +361,62 @@ class LammpsEngine(Engine):
         
         ref_workdir = calculation.io.raw_dir / ref_step_ulid
         
+        # Debug: Log search context
+        print(f"[LAMMPS-DEBUG] resolve_restart_artifact: step_ulid={step.meta.id if hasattr(step, 'meta') else 'unknown'}, "
+              f"restart_from={restart_from}, upstream_step_ulid={ref_step_ulid}")
+        print(f"[LAMMPS-DEBUG] resolve_restart_artifact: calculation.raw_dir={calculation.io.raw_dir}, "
+              f"ref_workdir={ref_workdir}")
+        print(f"[LAMMPS-DEBUG] resolve_restart_artifact: looking for restart.bin|restart.*.bin|final.data in {ref_workdir}")
+        
         # Search for restart.bin first
         restart_bin = ref_workdir / "restart.bin"
         if restart_bin.exists():
+            print(f"[LAMMPS-DEBUG] resolve_restart_artifact: found restart.bin at {restart_bin}")
             return restart_bin
         
         # Try restart.*.bin pattern
         restart_patterns = list(ref_workdir.glob("restart.*.bin"))
         if restart_patterns:
             # Use the most recent one
-            return max(restart_patterns, key=lambda p: p.stat().st_mtime)
+            selected = max(restart_patterns, key=lambda p: p.stat().st_mtime)
+            print(f"[LAMMPS-DEBUG] resolve_restart_artifact: found restart.*.bin pattern, selected {selected} "
+                  f"(from {len(restart_patterns)} matches)")
+            return selected
         
         # Fallback to final.data
         final_data = ref_workdir / "final.data"
         if final_data.exists():
+            print(f"[LAMMPS-DEBUG] resolve_restart_artifact: found final.data at {final_data}")
             return final_data
+        
+        # Artifact not found - print detailed diagnostics
+        print(f"[LAMMPS-DEBUG] resolve_restart_artifact: FAILED - no artifact found")
+        print(f"[LAMMPS-DEBUG] resolve_restart_artifact: expected files: restart.bin, restart.*.bin, final.data")
+        print(f"[LAMMPS-DEBUG] resolve_restart_artifact: search path (absolute): {ref_workdir.resolve()}")
+        print(f"[LAMMPS-DEBUG] resolve_restart_artifact: directory exists: {ref_workdir.exists()}")
+        
+        if ref_workdir.exists():
+            print(f"[LAMMPS-DEBUG] resolve_restart_artifact: contents of {ref_workdir}:")
+            print(_format_dir_listing(ref_workdir, max_items=200))
+            
+            # Also check for any .bin or .data files
+            all_bin_files = list(ref_workdir.glob("*.bin"))
+            all_data_files = list(ref_workdir.glob("*.data"))
+            if all_bin_files:
+                print(f"[LAMMPS-DEBUG] resolve_restart_artifact: found {len(all_bin_files)} .bin files (not matching restart*):")
+                for f in all_bin_files[:10]:  # Limit to 10
+                    print(f"  - {f.name}")
+            if all_data_files:
+                print(f"[LAMMPS-DEBUG] resolve_restart_artifact: found {len(all_data_files)} .data files:")
+                for f in all_data_files[:10]:  # Limit to 10
+                    print(f"  - {f.name}")
+        else:
+            # Directory doesn't exist - check parent
+            parent_dir = ref_workdir.parent
+            print(f"[LAMMPS-DEBUG] resolve_restart_artifact: ref_workdir does not exist, checking parent: {parent_dir}")
+            if parent_dir.exists():
+                print(f"[LAMMPS-DEBUG] resolve_restart_artifact: parent directory contents:")
+                print(_format_dir_listing(parent_dir, max_items=50))
         
         raise FileNotFoundError(
             f"No restart artifact found for step {restart_from}. "
