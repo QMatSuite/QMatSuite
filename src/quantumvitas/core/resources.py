@@ -5,7 +5,10 @@ Shared resource metadata helpers used by projects, calculations, steps, and stru
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 import re
+import threading
+import time
 from pathlib import Path
 from typing import Literal, Optional, Sequence
 
@@ -37,9 +40,113 @@ _DEFAULT_NAMES: dict[ResourceKind, str] = {
 }
 
 
+# ==============================================================================
+# ULID Generation with Monotonic Counter
+# ==============================================================================
+# 
+# ulid-py has a known issue: it generates random bits independently for each
+# call, which can cause collisions when multiple ULIDs are generated within
+# the same millisecond. This is observed in Ubuntu CI environments.
+#
+# Fix: Implement a custom ULID generator with monotonically incrementing
+# random portion within the same millisecond to guarantee uniqueness.
+#
+# ULID format: 10 chars timestamp (48-bit ms) + 16 chars randomness (80-bit)
+# Crockford's Base32 encoding
+# ==============================================================================
+
+# Crockford's Base32 alphabet (excludes I, L, O, U to avoid confusion)
+_CROCKFORD_BASE32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+
+
+class _MonotonicUlidGenerator:
+    """
+    Thread-safe ULID generator with monotonic counter to prevent collisions.
+    
+    The standard ulid-py library generates random bits for each ULID independently.
+    When generating multiple ULIDs within the same millisecond (common in fast loops
+    or CI environments), there's a small but non-zero probability of collision.
+    
+    This generator implements the ULID spec with a monotonically incrementing
+    random portion within the same millisecond, guaranteeing strict uniqueness.
+    """
+    
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._last_timestamp_ms: int = 0
+        # 80-bit random value (0 to 2^80 - 1)
+        self._random_value: int = int.from_bytes(os.urandom(10), 'big')
+    
+    def generate(self) -> str:
+        """
+        Generate a new ULID string, guaranteed unique within this process.
+        
+        Within the same millisecond, the random portion is incremented
+        monotonically to ensure strict ordering and uniqueness.
+        
+        Returns:
+            26-character ULID string (uppercase)
+        """
+        with self._lock:
+            # Get current timestamp in milliseconds
+            current_ms = int(time.time() * 1000)
+            
+            if current_ms <= self._last_timestamp_ms:
+                # Same or earlier millisecond (clock drift): increment random
+                self._random_value += 1
+                # Check for overflow (very unlikely with 80-bit space)
+                if self._random_value >= (1 << 80):
+                    # Wait for next millisecond
+                    while int(time.time() * 1000) <= self._last_timestamp_ms:
+                        time.sleep(0.0001)
+                    current_ms = int(time.time() * 1000)
+                    self._random_value = int.from_bytes(os.urandom(10), 'big')
+                else:
+                    # Use the incremented value with the previous timestamp
+                    # to maintain monotonicity
+                    current_ms = self._last_timestamp_ms
+            else:
+                # New millisecond: generate fresh random value
+                self._random_value = int.from_bytes(os.urandom(10), 'big')
+            
+            self._last_timestamp_ms = current_ms
+            
+            # Encode timestamp (48-bit = 6 bytes -> 10 base32 chars)
+            timestamp_chars = self._encode_base32(current_ms, 10)
+            
+            # Encode randomness (80-bit = 10 bytes -> 16 base32 chars)
+            random_chars = self._encode_base32(self._random_value, 16)
+            
+            return timestamp_chars + random_chars
+    
+    @staticmethod
+    def _encode_base32(value: int, length: int) -> str:
+        """Encode integer to Crockford's Base32 with fixed length."""
+        result = []
+        for _ in range(length):
+            result.append(_CROCKFORD_BASE32[value & 0x1F])
+            value >>= 5
+        return ''.join(reversed(result))
+
+
+# Global monotonic generator instance
+_monotonic_generator = _MonotonicUlidGenerator()
+
+
 def generate_resource_id() -> str:
-    """Create a new ULID string."""
-    return str(ulid.new())
+    """
+    Create a new ULID string, guaranteed unique within this process.
+    
+    Uses a monotonic counter to prevent collisions when generating
+    multiple ULIDs within the same millisecond (common in CI environments).
+    
+    The generated ULID is compatible with the ULID specification and
+    can be parsed by the ulid-py library.
+    
+    Returns:
+        26-character ULID string (uppercase)
+    """
+    return _monotonic_generator.generate()
 
 
 def slugify(value: str, fallback: str = "resource") -> str:
