@@ -258,10 +258,10 @@ def qe_step_handler(
 
         # Build step result with capability-based relax artifact spec
         step_result_data = {
-            "success": success,
-            "output_file": str(result.output_file) if result.output_file else None,
-            "return_code": getattr(result, "return_code", None),
-        }
+                    "success": success,
+                    "output_file": str(result.output_file) if result.output_file else None,
+                    "return_code": getattr(result, "return_code", None),
+                }
         
         # If this is a relax step and succeeded, add artifact spec for post-processing
         step_type = step.step_type if hasattr(step, "step_type") else None

@@ -152,6 +152,22 @@ def chain_project(tmp_path: Path):
     )
     continue_md_id = continue_md.meta.id
     
+    # ========== ULID UNIQUENESS ASSERTIONS (detect Ubuntu CI root cause) ==========
+    # These assertions fail-fast if ULID collision occurs or if restart_from is misconfigured
+    assert relax_step_id != md_step_id, (
+        f"ULID COLLISION: relax_step_id == md_step_id ({relax_step_id}). "
+        f"This indicates ULID generator malfunction."
+    )
+    assert md_step_id != continue_md_id, (
+        f"ULID COLLISION: md_step_id == continue_md_id ({md_step_id}). "
+        f"This indicates ULID generator malfunction."
+    )
+    assert relax_step_id != continue_md_id, (
+        f"ULID COLLISION: relax_step_id == continue_md_id ({relax_step_id}). "
+        f"This indicates ULID generator malfunction."
+    )
+    # ========== END ULID ASSERTIONS ==========
+    
     QVService.configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
@@ -170,9 +186,33 @@ def chain_project(tmp_path: Path):
         },
     )
     
+    # ========== RESTART_FROM VERIFICATION ==========
+    # Verify restart_from was correctly set to upstream step (not self-reference)
+    import yaml
+    continue_md_step_path = continue_md.absolute_path
+    with open(continue_md_step_path) as f:
+        continue_md_data = yaml.safe_load(f)
+    continue_md_restart_from = continue_md_data.get("parameters", {}).get("restart_from")
+    
+    assert continue_md_restart_from is not None, (
+        f"restart_from not set in step.yaml after configure_step"
+    )
+    assert continue_md_restart_from != continue_md_id, (
+        f"[SELF-REFERENCE BUG] restart_from == continue_md_id ({continue_md_id}). "
+        f"This is the root cause of 'No restart artifact found' errors. "
+        f"Expected restart_from={md_step_id}"
+    )
+    assert continue_md_restart_from == md_step_id, (
+        f"restart_from MISMATCH: got {continue_md_restart_from}, expected {md_step_id}"
+    )
+    # ========== END RESTART_FROM VERIFICATION ==========
+    
     return {
         "project_root": project_root,
         "calc_dir": calc_dir,
+        "relax_step_id": relax_step_id,
+        "md_step_id": md_step_id,
+        "continue_md_id": continue_md_id,
     }
 
 

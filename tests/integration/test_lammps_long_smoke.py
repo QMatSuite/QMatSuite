@@ -658,6 +658,18 @@ def restart_project(tmp_path: Path, lammps_binary):
     )
     md2_step_id = md2_step.meta.id
     
+    # ========== ULID UNIQUENESS ASSERTIONS (detect Ubuntu CI root cause) ==========
+    assert relax_step_id != md1_step_id, (
+        f"ULID COLLISION: relax_step_id == md1_step_id ({relax_step_id})"
+    )
+    assert md1_step_id != md2_step_id, (
+        f"ULID COLLISION: md1_step_id == md2_step_id ({md1_step_id})"
+    )
+    assert relax_step_id != md2_step_id, (
+        f"ULID COLLISION: relax_step_id == md2_step_id ({relax_step_id})"
+    )
+    # ========== END ULID ASSERTIONS ==========
+    
     QVService.configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
@@ -675,6 +687,36 @@ def restart_project(tmp_path: Path, lammps_binary):
             "dump_trajectory": True,
         },
     )
+    
+    # ========== RESTART_FROM VERIFICATION ==========
+    # Verify restart_from was correctly set (not self-reference)
+    import yaml
+    md1_step_path = md1_step.absolute_path
+    with open(md1_step_path) as f:
+        md1_data = yaml.safe_load(f)
+    md1_restart_from = md1_data.get("parameters", {}).get("restart_from")
+    
+    md2_step_path = md2_step.absolute_path
+    with open(md2_step_path) as f:
+        md2_data = yaml.safe_load(f)
+    md2_restart_from = md2_data.get("parameters", {}).get("restart_from")
+    
+    # MD1 should restart from relax
+    assert md1_restart_from == relax_step_id, (
+        f"md1.restart_from MISMATCH: got {md1_restart_from}, expected {relax_step_id}"
+    )
+    assert md1_restart_from != md1_step_id, (
+        f"[SELF-REFERENCE BUG] md1.restart_from == md1_step_id ({md1_step_id})"
+    )
+    
+    # MD2 should restart from MD1
+    assert md2_restart_from == md1_step_id, (
+        f"md2.restart_from MISMATCH: got {md2_restart_from}, expected {md1_step_id}"
+    )
+    assert md2_restart_from != md2_step_id, (
+        f"[SELF-REFERENCE BUG] md2.restart_from == md2_step_id ({md2_step_id})"
+    )
+    # ========== END RESTART_FROM VERIFICATION ==========
     
     return {
         "project_root": project_root,
