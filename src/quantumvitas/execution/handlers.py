@@ -392,6 +392,156 @@ def vasp_step_handler(
         )
 
 
+def lammps_step_handler(
+    job: Job,
+    calculation: "Calculation",
+    engine_registry: "EngineRegistry",
+    context: Dict[str, Any],
+) -> JobResult:
+    """
+    Execute a single LAMMPS step job.
+    
+    This handler:
+    1. Creates workdir (isolated per step)
+    2. Materializes inputs (in.lammps, structure.data, potentials)
+    3. Executes LAMMPS
+    
+    Args:
+        job: The Job to execute (single step)
+        calculation: Calculation context
+        engine_registry: Engine registry
+        context: Additional context (manifest, etc.)
+    
+    Returns:
+        JobResult with execution status
+    """
+    from datetime import datetime, timezone
+    
+    started = datetime.now(timezone.utc)
+    
+    try:
+        # Get step
+        if len(job.step_ids) != 1:
+            return JobResult(
+                job_id=job.id,
+                success=False,
+                error=f"LAMMPS handler expects exactly one step, got {len(job.step_ids)}",
+                started_at=started,
+                finished_at=datetime.now(timezone.utc),
+            )
+        
+        step_ulid = job.step_ids[0]
+        step = _find_step_by_ulid(calculation, step_ulid)
+        if step is None:
+            return JobResult(
+                job_id=job.id,
+                success=False,
+                error=f"Step {step_ulid} not found",
+                started_at=started,
+                finished_at=datetime.now(timezone.utc),
+            )
+        
+        # Get engine
+        engine = engine_registry.get("lammps")
+        if engine is None:
+            return JobResult(
+                job_id=job.id,
+                success=False,
+                error="LAMMPS engine not found in registry",
+                started_at=started,
+                finished_at=datetime.now(timezone.utc),
+            )
+        
+        # Create workdir (LAMMPS uses isolated workdir per step)
+        working_dir = job.working_dir
+        working_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Load step spec to get parameters (Step dataclass doesn't have parameters)
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from quantumvitas.core.resolution import require_step
+        
+        try:
+            # Get step file path from registry
+            calc_ref = None
+            for wf_ref in calculation.project.calculations.values():
+                if wf_ref.absolute_path == calculation.dir:
+                    calc_ref = wf_ref
+                    break
+            
+            calc_selector = calc_ref.meta.slug if calc_ref else calculation.dir.name
+            step_resolved = require_step(calculation.project.root, calc_selector, step_ulid)
+            step_spec = StructureStepSpec.from_yaml(step_resolved.absolute_path)
+        except Exception as e:
+            logger.error(f"[LAMMPS_HANDLER] Failed to load step spec for {step_ulid}: {e}")
+            return JobResult(
+                job_id=job.id,
+                success=False,
+                error=f"Failed to load step spec: {e}",
+                started_at=started,
+                finished_at=datetime.now(timezone.utc),
+            )
+        
+        # Materialize inputs using step_spec (which has parameters)
+        try:
+            engine.materialize_inputs(step_spec, working_dir, calculation)
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            logger.error(f"[LAMMPS_HANDLER] Failed to materialize inputs for step {step_ulid}: {e}")
+            return JobResult(
+                job_id=job.id,
+                success=False,
+                error=f"Failed to materialize inputs: {e}\n{tb[:500]}",
+                started_at=started,
+                finished_at=datetime.now(timezone.utc),
+            )
+        
+        # Execute LAMMPS
+        try:
+            result = engine.run_step(step_spec, working_dir, calculation)
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            logger.exception(f"[LAMMPS_HANDLER] Step {step_ulid} execution failed")
+            return JobResult(
+                job_id=job.id,
+                success=False,
+                error=f"{type(e).__name__}: {e}\n{tb[:500]}",
+                started_at=started,
+                finished_at=datetime.now(timezone.utc),
+            )
+        
+        success = result.success if hasattr(result, "success") else False
+        error_msg = result.error if hasattr(result, "error") and not success else None
+        
+        return JobResult(
+            job_id=job.id,
+            success=success,
+            error=error_msg,
+            started_at=started,
+            finished_at=datetime.now(timezone.utc),
+            step_results={
+                step_ulid: {
+                    "success": success,
+                    "working_dir": str(working_dir),
+                    "return_code": getattr(result, "return_code", None),
+                }
+            },
+        )
+    
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        logger.exception(f"[LAMMPS_HANDLER] Step execution failed")
+        return JobResult(
+            job_id=job.id,
+            success=False,
+            error=f"{type(e).__name__}: {e}\n{tb[:500]}",
+            started_at=started,
+            finished_at=datetime.now(timezone.utc),
+        )
+
+
 def pyscf_chain_handler(
     job: Job,
     calculation: "Calculation",
@@ -732,4 +882,5 @@ def create_handler_map(
         "pyscf": make_handler(pyscf_chain_handler),
         "orca": make_handler(orca_chain_handler),
         "vasp": make_handler(vasp_step_handler),
+        "lammps": make_handler(lammps_step_handler),
     }

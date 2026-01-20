@@ -540,6 +540,33 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
 
     # -------------------------------------------------------------------------
+    # LAMMPS step types (Classical Molecular Dynamics)
+    # -------------------------------------------------------------------------
+    "lammps_relax": StepTypeSpec(
+        id="relax",  # Public type (shared with qe_relax, pyscf_relax, etc.)
+        machine_type="lammps_relax",
+        public_type="relax",
+        engine="lammps",
+        executable="lmp",
+        description="LAMMPS classical energy minimization (structure relaxation)",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        is_structure_transform=True,  # Produces relaxed structure artifact
+    ),
+    "lammps_md": StepTypeSpec(
+        id="md",  # Public type (shared with qe_md)
+        machine_type="lammps_md",
+        public_type="md",
+        engine="lammps",
+        executable="lmp",
+        description="LAMMPS molecular dynamics simulation (NVE/NVT/NPT)",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+
+    # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
     "qe_custom": StepTypeSpec(

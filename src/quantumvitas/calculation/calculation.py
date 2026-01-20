@@ -31,6 +31,7 @@ class Calculation:
     working_dir: Path = field(default_factory=Path)
     _structure_id: Optional[str] = field(default=None, init=False, repr=False)  # Cached structure_id from model
     _species_map: Optional[Dict[str, Dict[str, Any]]] = field(default=None, init=False, repr=False)  # Cached species_map
+    _potential_map: Optional[Dict[str, Dict[str, Any]]] = field(default=None, init=False, repr=False)  # Cached potential_map (LAMMPS)
     _engine_family: Optional[str] = field(default=None, init=False, repr=False)  # Cached engine_family from model
 
     @property
@@ -101,6 +102,34 @@ class Calculation:
                 wf_model = load_calculation(calculation_yaml, self.project.root)
                 self._species_map = wf_model.species_map
                 return self._species_map
+            except Exception:
+                pass
+        
+        return None
+
+    @property
+    def potential_map(self) -> Optional[Dict[str, Dict[str, Any]]]:
+        """
+        Get potential_map from the calculation.
+        
+        LAMMPS-specific: Maps potential key to definition.
+        - potential_key -> {style: str, file: str, elements: list, sha256: str}
+        
+        This property reads from the underlying calculation.yaml model.
+        Falls back to None if not set (for backwards compatibility with non-LAMMPS calcs).
+        """
+        # If cached, return it
+        if self._potential_map is not None:
+            return self._potential_map
+        
+        # Otherwise, load from calculation.yaml
+        calculation_yaml = self.dir / "calculation.yaml"
+        if calculation_yaml.exists():
+            try:
+                from quantumvitas.core.models import load_calculation
+                wf_model = load_calculation(calculation_yaml, self.project.root)
+                self._potential_map = getattr(wf_model, "potential_map", None)
+                return self._potential_map
             except Exception:
                 pass
         

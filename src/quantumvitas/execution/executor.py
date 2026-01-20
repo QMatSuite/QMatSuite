@@ -656,6 +656,30 @@ class JobExecutor:
                         run_id=run_id,
                     )
                     logger.info(f"[EXECUTOR] Successfully processed ORCA relax output for step {step_ulid}: {artifact_path}")
+                elif job.engine == "lammps":
+                    # LAMMPS: parse final.data from step working directory
+                    step_result = job_result.step_results.get(step_ulid, {})
+                    working_dir_str = step_result.get("working_dir")
+                    
+                    if not working_dir_str:
+                        logger.warning(f"[EXECUTOR] No working_dir found for LAMMPS relax step {step_ulid}, skipping post-process")
+                        continue
+                    
+                    working_dir = Path(working_dir_str)
+                    
+                    # Import LAMMPS relax handler
+                    from quantumvitas.execution.lammps_relax_handler import handle_lammps_relax_output
+                    
+                    artifact_path = handle_lammps_relax_output(
+                        step_ulid=step_ulid,
+                        step_type=str(step_type),
+                        calc_dir=calc_dir,
+                        working_dir=working_dir,
+                        calculation_ulid=calculation_ulid or "",
+                        input_structure_ulid=input_structure_ulid or "",
+                        run_id=run_id,
+                    )
+                    logger.info(f"[EXECUTOR] Successfully processed LAMMPS relax output for step {step_ulid}: {artifact_path}")
                 else:
                     # Unknown engine
                     logger.warning(f"[EXECUTOR] Unknown engine '{job.engine}' for relax step {step_ulid}, skipping post-process")

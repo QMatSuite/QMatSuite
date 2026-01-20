@@ -1,0 +1,27 @@
+LAMMPS (22 Jul 2025 - Update 2)
+units metal
+atom_style atomic
+dimension 3
+boundary p p p
+lattice fcc 3.6
+Lattice spacing in x,y,z = 3.6 3.6 3.6
+region box block 0 4 0 4 0 4
+create_box 1 box
+Created orthogonal box = (0 0 0) to (14.4 14.4 14.4)
+  1 by 1 by 1 MPI processor grid
+create_atoms 1 box
+Created 256 atoms
+  using lattice units in orthogonal box = (0 0 0) to (14.4 14.4 14.4)
+  create_atoms CPU = 0.000 seconds
+mass 1 63.546
+pair_style lj/cut 5.0
+pair_coeff 1 1 0.2 2.4 5.0
+neighbor 2.0 bin
+neigh_modify delay 0 every 1 check yes
+velocity all create 300.0 12345 mom yes rot yes
+fix nvt all nvt temp 300.0 300.0 0.1
+thermo 10
+thermo_style custom step time temp pe ke etotal press vol
+dump traj all custom 10 $FIXTURE_DIR/dump_md.lammpstrj id type x y z vx vy vz fx fy fz
+ERROR on proc 0: Substitution for illegal variable F
+For more information see https://docs.lammps.org/err0013 (src/input.cpp:665)

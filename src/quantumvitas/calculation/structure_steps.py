@@ -782,6 +782,10 @@ def materialize_step_spec(
     ORCA_STEP_TYPES = {"orca_scf", "orca_hf", "orca_td", "orca_mp2", "orca_opt", "orca_freq"}
     is_orca_step = step_type_lower in ORCA_STEP_TYPES or calculation_engine_family == "orca"
 
+    # LAMMPS step types - LAMMPS engine builds input dynamically (not QE input)
+    LAMMPS_STEP_TYPES = {"lammps_relax", "lammps_md"}
+    is_lammps_step = step_type_lower in LAMMPS_STEP_TYPES or calculation_engine_family == "lammps"
+
     import logging
     logger = logging.getLogger(__name__)
     
@@ -1092,6 +1096,27 @@ def materialize_step_spec(
         # Don't write a file - ORCA engine builds input dynamically
         return generated_input, spec_obj
 
+    # LAMMPS steps - no QE input file generation (LAMMPS engine builds input dynamically)
+    if is_lammps_step:
+        logger.info(
+            f"[MATERIALIZE_STEP_SPEC] LAMMPS step detected: step_type={step_type_lower}, "
+            f"engine_family={calculation_engine_family}, skipping QE input generation. "
+            f"LAMMPS engine will build input dynamically from structure + parameters."
+        )
+        # Generate a dummy input file path (LAMMPS engine doesn't use it, but Step.input_file requires a path)
+        from quantumvitas.calculation.naming import CalculationFileNaming
+        if input_name:
+            filename = input_name
+        else:
+            ext = CalculationFileNaming.input_extension(step_type_lower)
+            filename = f"{step_type_lower}{ext}"
+
+        generated_input = Path(output_dir) / filename
+        generated_input = generated_input.resolve()
+        generated_input.parent.mkdir(parents=True, exist_ok=True)
+        # Don't write a file - LAMMPS engine builds input dynamically
+        return generated_input, spec_obj
+
     # QE PATH: Standard QE input generation (existing logic)
     structure = _resolve_structure_for_spec(
         spec_obj,
@@ -1144,6 +1169,15 @@ def materialize_step_spec(
     # Project runs require calculation.yaml species_map with all required elements
     is_project_run = (calculation_dir and project_root and calc_model is not None)
     
+    # Determine if this engine requires pseudopotentials
+    # Only QE and VASP require species_map; LAMMPS and other engines don't
+    requires_pseudopotentials = False
+    if calculation_engine_family:
+        requires_pseudopotentials = calculation_engine_family in ("qe", "vasp")
+    elif step_type_lower:
+        # Fallback: check step_type prefix for engines that require pseudo
+        requires_pseudopotentials = step_type_lower.startswith(("qe_", "vasp_"))
+    
     # Warn if step-level species_overrides detected in project runs
     if is_project_run and spec_obj.species_overrides:
         import warnings
@@ -1155,7 +1189,8 @@ def materialize_step_spec(
             stacklevel=2,
         )
     
-    if is_project_run:
+    # Only enforce species_map validation for engines that require pseudopotentials
+    if is_project_run and requires_pseudopotentials:
         if not calculation_species_map:
             # Get required elements from structure
             required_elements = sorted(set(str(el) for el in structure.composition.elements))

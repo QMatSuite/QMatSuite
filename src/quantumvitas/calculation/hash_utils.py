@@ -368,6 +368,62 @@ def compute_pseudo_set_sha(
     return hashlib.sha256(joined.encode('utf-8')).hexdigest()
 
 
+def compute_potential_assets_sha(
+    potential_map: Dict[str, Dict[str, Any]],
+) -> str:
+    """
+    Compute SHA256 hash of potential assets from potential_map.
+    
+    For LAMMPS, this is analogous to compute_pseudo_set_sha for QE.
+    The pseudo_set_sha field in manifest is reused for potential_assets_sha.
+    
+    Algorithm:
+    - Extract (potential_key, potential_sha256) pairs from potential_map
+    - Sort by potential_key
+    - Create tokens: "key:sha256"
+    - Join with '|' and compute SHA256
+    
+    Args:
+        potential_map: Calculation potential_map (key -> {style, file, sha256, ...})
+                      Must contain sha256 for each potential (atomic record from calc.yaml)
+    
+    Returns:
+        SHA256 hash as hex string (without "sha256:" prefix)
+    
+    Note:
+        This function does NOT read files from disk. It uses sha256 from potential_map
+        (the atomic record stored in calc.yaml). This ensures SSOT: calc.yaml stores atomic
+        records; potential_assets_sha is derived and stored only in manifest.
+    """
+    import hashlib
+    
+    tokens = []
+    
+    # Extract (potential_key, sha256) pairs from potential_map
+    # Sort by key for canonical ordering
+    for key, info in sorted(potential_map.items()):
+        if not isinstance(info, dict):
+            continue
+        
+        # Get sha256 from atomic record (SSOT: stored in calc.yaml)
+        sha256 = info.get("sha256")
+        
+        if not sha256:
+            # Potential has no sha256 record, skip
+            continue
+        
+        # Create token: "key:sha256"
+        tokens.append(f"{key}:{sha256}")
+    
+    # Join tokens and hash
+    if not tokens:
+        # No potential records, return hash of empty string
+        return hashlib.sha256(b"").hexdigest()
+    
+    joined = "|".join(tokens)
+    return hashlib.sha256(joined.encode('utf-8')).hexdigest()
+
+
 def get_pseudo_refs_from_calc(calculation_dir: Path) -> Dict[str, Dict[str, Any]]:
     """
     Extract pseudo references from calculation.yaml.

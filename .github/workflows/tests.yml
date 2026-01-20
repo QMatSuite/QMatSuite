@@ -57,13 +57,14 @@ jobs:
           libmpich-dev \
           wget \
           make \
-          ccache
+          ccache \
+          lammps
     
     - name: Install system dependencies and setup compilers (macOS)
       if: matrix.os == 'macos-14'
       run: |
         brew update
-        brew install gcc gfortran openmpi fftw wget make ccache
+        brew install gcc gfortran openmpi fftw wget make ccache lammps
         
         # Get gcc prefix and detect versioned gcc
         GCC_PREFIX=$(brew --prefix gcc)
@@ -305,6 +306,7 @@ jobs:
         export QMATSUITE_TEST_QE_ENGINE_ID="${{ env.ENGINE_ID }}"
         # Exclude ORCA and PySCF real integration tests (they require external binaries)
         # QE tests (requires_qe) MUST run and will FAIL if QE is not available
+        # LAMMPS tests are included (lammps installed in system dependencies step)
         python -m pytest tests/ -v --tb=short -n auto --dist=loadfile --cov=src/quantumvitas --cov-report=xml --cov-report=term -m "not requires_orca and not requires_pyscf"
       env:
         QE_HOME: ${{ env.QMATSUITE_ENGINE_DIR }}
