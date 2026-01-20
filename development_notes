@@ -146,3 +146,15 @@ npx playwright test tests/e2e/*_cdp.spec.ts
 
 # Debug E2E tests (see Electron output):
 DEBUG_ELECTRON=1 npm run test:e2e:fast -- tests/e2e/welcome_cdp.spec.ts
+
+
+source .venv/bin/activate
+pip install -e. 
+
+brew install cp2k
+cp2k.ssmp --version
+which cp2k.ssmp
+
+brew install lammps
+lammps_serial -h | head
+brew --prefix lammps
