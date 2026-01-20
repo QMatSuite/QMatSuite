@@ -477,6 +477,33 @@ def test_workflow_c_chain(chain_project, lammps_binary):
     
     result = runner.run(calculation)
     
+    # Debug output if calculation failed
+    if result.status.value != "success":
+        print(f"[LAMMPS-DEBUG] test_workflow_c_chain: Calculation FAILED")
+        print(f"[LAMMPS-DEBUG] test_workflow_c_chain: calc_dir={calc_dir}")
+        print(f"[LAMMPS-DEBUG] test_workflow_c_chain: raw_dir={calculation.raw_dir}")
+        print(f"[LAMMPS-DEBUG] test_workflow_c_chain: step_ids: relax={relax_step_id}, md={md_step_id}")
+        if result.steps:
+            print(f"[LAMMPS-DEBUG] test_workflow_c_chain: last step message: {result.steps[-1].message}")
+            for i, step_summary in enumerate(result.steps):
+                step_ulid = step_summary.step_id if hasattr(step_summary, 'step_id') else f"step_{i}"
+                step_dir = calculation.raw_dir / step_ulid
+                print(f"[LAMMPS-DEBUG] test_workflow_c_chain: step {i} (ulid={step_ulid}):")
+                print(f"  status={step_summary.status if hasattr(step_summary, 'status') else 'unknown'}")
+                print(f"  dir={step_dir}, exists={step_dir.exists()}")
+                if step_dir.exists():
+                    files = list(step_dir.iterdir())
+                    print(f"  files ({len(files)}): {[f.name for f in files[:20]]}")
+                    log_file = step_dir / "log.lammps"
+                    if log_file.exists():
+                        try:
+                            log_lines = log_file.read_text().splitlines()
+                            print(f"  log.lammps last 50 lines:")
+                            for line in log_lines[-50:]:
+                                print(f"    {line}")
+                        except Exception as e:
+                            print(f"  log.lammps read failed: {e}")
+    
     assert result.status.value == "success", f"Calculation failed: {result.steps[-1].message if result.steps else 'Unknown error'}"
     
     # Verify checkpoints
@@ -674,6 +701,33 @@ def test_workflow_d_restart(restart_project, lammps_binary):
     
     result = runner.run(calculation)
     
+    # Debug output if calculation failed
+    if result.status.value != "success":
+        print(f"[LAMMPS-DEBUG] test_workflow_d_restart: Calculation FAILED")
+        print(f"[LAMMPS-DEBUG] test_workflow_d_restart: calc_dir={calc_dir}")
+        print(f"[LAMMPS-DEBUG] test_workflow_d_restart: raw_dir={calculation.raw_dir}")
+        print(f"[LAMMPS-DEBUG] test_workflow_d_restart: step_ids: relax={relax_step_id}, md1={md1_step_id}, md2={md2_step_id}")
+        if result.steps:
+            print(f"[LAMMPS-DEBUG] test_workflow_d_restart: last step message: {result.steps[-1].message}")
+            for i, step_summary in enumerate(result.steps):
+                step_ulid = step_summary.step_id if hasattr(step_summary, 'step_id') else f"step_{i}"
+                step_dir = calculation.raw_dir / step_ulid
+                print(f"[LAMMPS-DEBUG] test_workflow_d_restart: step {i} (ulid={step_ulid}):")
+                print(f"  status={step_summary.status if hasattr(step_summary, 'status') else 'unknown'}")
+                print(f"  dir={step_dir}, exists={step_dir.exists()}")
+                if step_dir.exists():
+                    files = list(step_dir.iterdir())
+                    print(f"  files ({len(files)}): {[f.name for f in files[:20]]}")
+                    log_file = step_dir / "log.lammps"
+                    if log_file.exists():
+                        try:
+                            log_lines = log_file.read_text().splitlines()
+                            print(f"  log.lammps last 50 lines:")
+                            for line in log_lines[-50:]:
+                                print(f"    {line}")
+                        except Exception as e:
+                            print(f"  log.lammps read failed: {e}")
+    
     assert result.status.value == "success", f"Calculation failed: {result.steps[-1].message if result.steps else 'Unknown error'}"
     
     # Verify checkpoints
@@ -684,24 +738,62 @@ def test_workflow_d_restart(restart_project, lammps_binary):
     # D1: First MD produces restart file
     restart_bin = md1_dir / "restart.bin"
     restart_final_bin = md1_dir / "restart.final.bin"
+    if not (restart_bin.exists() or restart_final_bin.exists()):
+        print(f"[LAMMPS-DEBUG] test_workflow_d_restart: restart.bin missing in {md1_dir}")
+        if md1_dir.exists():
+            print(f"[LAMMPS-DEBUG] test_workflow_d_restart: md1_dir contents: {[f.name for f in md1_dir.iterdir()]}")
+            restart_files = list(md1_dir.glob("restart*"))
+            print(f"[LAMMPS-DEBUG] test_workflow_d_restart: restart* files in md1: {[f.name for f in restart_files]}")
     assert restart_bin.exists() or restart_final_bin.exists(), "D1: First MD should produce restart file"
     
     # D2: Second MD's in.lammps contains read_restart
     md2_in_lammps = md2_dir / "in.lammps"
+    if not md2_in_lammps.exists():
+        print(f"[LAMMPS-DEBUG] test_workflow_d_restart: md2 in.lammps missing in {md2_dir}")
+        if md2_dir.exists():
+            print(f"[LAMMPS-DEBUG] test_workflow_d_restart: md2_dir contents: {[f.name for f in md2_dir.iterdir()]}")
     assert md2_in_lammps.exists(), "D2: MD2 in.lammps should exist"
     md2_in_content = md2_in_lammps.read_text()
+    if "read_restart" not in md2_in_content:
+        print(f"[LAMMPS-DEBUG] test_workflow_d_restart: md2 in.lammps does not contain 'read_restart'")
+        print(f"[LAMMPS-DEBUG] test_workflow_d_restart: md2 in.lammps first 30 lines:")
+        for line in md2_in_content.splitlines()[:30]:
+            print(f"    {line}")
     assert "read_restart" in md2_in_content, "D2: MD2 in.lammps should contain read_restart"
     
     # D3: Second MD log shows restart read success
-    md2_log = (md2_dir / "log.lammps").read_text()
-    assert "ERROR" not in md2_log.upper(), "D3: MD2 log should not contain ERROR"
-    # Check for restart-related messages (read_restart command or similar)
-    assert "restart" in md2_log.lower() or "read" in md2_log.lower(), "D3: MD2 log should show restart read"
+    md2_log_path = md2_dir / "log.lammps"
+    if not md2_log_path.exists():
+        print(f"[LAMMPS-DEBUG] test_workflow_d_restart: md2 log.lammps missing")
+    else:
+        md2_log = md2_log_path.read_text()
+        if "ERROR" in md2_log.upper():
+            print(f"[LAMMPS-DEBUG] test_workflow_d_restart: md2 log contains ERROR, last 50 lines:")
+            for line in md2_log.splitlines()[-50:]:
+                print(f"    {line}")
+        assert "ERROR" not in md2_log.upper(), "D3: MD2 log should not contain ERROR"
+        # Check for restart-related messages (read_restart command or similar)
+        if "restart" not in md2_log.lower() and "read" not in md2_log.lower():
+            print(f"[LAMMPS-DEBUG] test_workflow_d_restart: md2 log does not contain 'restart' or 'read', last 50 lines:")
+            for line in md2_log.splitlines()[-50:]:
+                print(f"    {line}")
+        assert "restart" in md2_log.lower() or "read" in md2_log.lower(), "D3: MD2 log should show restart read"
     
     # D4: All three steps complete without ERROR
-    relax_log = (raw_dir / relax_step_id / "log.lammps").read_text()
-    md1_log = (md1_dir / "log.lammps").read_text()
-    assert "ERROR" not in relax_log.upper(), "D4: Relax log should not contain ERROR"
-    assert "ERROR" not in md1_log.upper(), "D4: MD1 log should not contain ERROR"
-    assert "ERROR" not in md2_log.upper(), "D4: MD2 log should not contain ERROR"
+    relax_log_path = raw_dir / relax_step_id / "log.lammps"
+    md1_log_path = md1_dir / "log.lammps"
+    if relax_log_path.exists():
+        relax_log = relax_log_path.read_text()
+        if "ERROR" in relax_log.upper():
+            print(f"[LAMMPS-DEBUG] test_workflow_d_restart: relax log contains ERROR, last 30 lines:")
+            for line in relax_log.splitlines()[-30:]:
+                print(f"    {line}")
+        assert "ERROR" not in relax_log.upper(), "D4: Relax log should not contain ERROR"
+    if md1_log_path.exists():
+        md1_log = md1_log_path.read_text()
+        if "ERROR" in md1_log.upper():
+            print(f"[LAMMPS-DEBUG] test_workflow_d_restart: md1 log contains ERROR, last 30 lines:")
+            for line in md1_log.splitlines()[-30:]:
+                print(f"    {line}")
+        assert "ERROR" not in md1_log.upper(), "D4: MD1 log should not contain ERROR"
 

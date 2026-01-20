@@ -191,6 +191,32 @@ def test_chain_workflow(chain_project):
     
     result = runner.run(calculation)
     
+    # Debug output if calculation failed
+    if result.status.value != "success":
+        print(f"[LAMMPS-DEBUG] test_chain_workflow: Calculation FAILED")
+        print(f"[LAMMPS-DEBUG] test_chain_workflow: calc_dir={calc_dir}")
+        print(f"[LAMMPS-DEBUG] test_chain_workflow: raw_dir={calculation.raw_dir}")
+        if result.steps:
+            print(f"[LAMMPS-DEBUG] test_chain_workflow: last step message: {result.steps[-1].message}")
+            for i, step_summary in enumerate(result.steps):
+                step_ulid = step_summary.step_id if hasattr(step_summary, 'step_id') else f"step_{i}"
+                step_dir = calculation.raw_dir / step_ulid
+                print(f"[LAMMPS-DEBUG] test_chain_workflow: step {i} (ulid={step_ulid}):")
+                print(f"  status={step_summary.status if hasattr(step_summary, 'status') else 'unknown'}")
+                print(f"  dir={step_dir}, exists={step_dir.exists()}")
+                if step_dir.exists():
+                    files = list(step_dir.iterdir())
+                    print(f"  files ({len(files)}): {[f.name for f in files[:20]]}")
+                    log_file = step_dir / "log.lammps"
+                    if log_file.exists():
+                        try:
+                            log_lines = log_file.read_text().splitlines()
+                            print(f"  log.lammps last 50 lines:")
+                            for line in log_lines[-50:]:
+                                print(f"    {line}")
+                        except Exception as e:
+                            print(f"  log.lammps read failed: {e}")
+    
     assert result.status.value == "success", f"Calculation failed: {result.steps[-1].message if result.steps else 'Unknown error'}"
     
     # Verify all steps completed
@@ -200,7 +226,18 @@ def test_chain_workflow(chain_project):
     relax_dir = calculation.raw_dir / calculation.steps[0].meta.id
     md_dir = calculation.raw_dir / calculation.steps[1].meta.id
     
+    if not (relax_dir / "final.data").exists():
+        print(f"[LAMMPS-DEBUG] test_chain_workflow: final.data missing in {relax_dir}")
+        if relax_dir.exists():
+            print(f"[LAMMPS-DEBUG] test_chain_workflow: relax_dir contents: {[f.name for f in relax_dir.iterdir()]}")
     assert (relax_dir / "final.data").exists(), "Relax should produce final.data"
+    
+    if not ((md_dir / "restart.bin").exists() or (md_dir / "restart.final.bin").exists()):
+        print(f"[LAMMPS-DEBUG] test_chain_workflow: restart.bin missing in {md_dir}")
+        if md_dir.exists():
+            print(f"[LAMMPS-DEBUG] test_chain_workflow: md_dir contents: {[f.name for f in md_dir.iterdir()]}")
+            restart_files = list(md_dir.glob("restart*"))
+            print(f"[LAMMPS-DEBUG] test_chain_workflow: restart* files: {[f.name for f in restart_files]}")
     assert (md_dir / "restart.bin").exists() or (md_dir / "restart.final.bin").exists(), "MD should produce restart file"
     
     print("✓ Chain workflow completed successfully")
