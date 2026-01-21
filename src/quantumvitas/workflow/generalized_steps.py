@@ -278,13 +278,12 @@ def materialize_public_step_key(
     spec = registry.get(public_step_key)  # Lookup by PUBLIC key (also accepts machine types)
     if spec:
         # Check if the spec's engine matches the requested engine_family
-        # For w90 steps, they're part of qe family toolchain
         spec_engine_family = spec.engine
         if spec_engine_family == engine_family:
             return spec.machine_type
-        # Special case: w90 steps are part of qe family
-        if spec_engine_family == "qe" and engine_family == "qe" and spec.machine_type.startswith("w90_"):
-            return spec.machine_type
+
+    # No special cases - each driver is responsible for its own step types
+    # W90 is a separate driver; its step types are registered with engine="w90"
     
     # Fallback: Try MATERIALIZATION_MAP (for GeneralizedStep enum values like "SCF", "TD")
     # This handles backward compatibility with enum values
@@ -367,54 +366,20 @@ def dematerialize_step(
     for (family, gen_step), specific_step in MATERIALIZATION_MAP.items():
         if specific_step == engine_specific_step:
             return (family, gen_step)
-    
-    # Try to infer from prefix
-    if engine_specific_step.startswith("qe_"):
-        engine_family = "qe"
-        step_name = engine_specific_step[3:]  # Remove "qe_" prefix
-        # Map common step names to generalized steps
-        step_to_generalized = {
-            "scf": "SCF",
-            "nscf": "NSCF",
-            "relax": "RELAX",
-            "vc_relax": "VC_RELAX",
-            "bands_pw": "BANDS",  # pw.x calculation='bands'
-            "dos": "DOS",
-            "bands": "BANDS_POST",  # bands.x post-processing
-            "ph": "PHONON",
-            "md": "MD",
-            "vc_md": "VC_MD",
-            "pw2wannier90": "WANNIER_CONVERT",
-        }
-        gen_step = step_to_generalized.get(step_name)
-        if gen_step:
-            return (engine_family, gen_step)
-    elif engine_specific_step.startswith("w90_"):
-        engine_family = "qe"  # w90 is part of qe family
-        if engine_specific_step == "w90_run":
-            return (engine_family, "WANNIER")
-    elif engine_specific_step.startswith("pyscf_"):
-        engine_family = "pyscf"
-        step_name = engine_specific_step[6:]  # Remove "pyscf_" prefix
-        step_to_generalized = {
-            "scf": "SCF",
-            "mp2": "MP2",
-            "td": "TD",
-        }
-        gen_step = step_to_generalized.get(step_name)
-        if gen_step:
-            return (engine_family, gen_step)
-    elif engine_specific_step.startswith("orca_"):
-        engine_family = "orca"
-        step_name = engine_specific_step[5:]  # Remove "orca_" prefix
-        step_to_generalized = {
-            "scf": "SCF",
-            "hf": "HF",
-            "td": "TD",
-        }
-        gen_step = step_to_generalized.get(step_name)
-        if gen_step:
-            return (engine_family, gen_step)
+
+    # Use registry to get engine family for this step type
+    from quantumvitas.core.driver_registry import DriverRegistry
+    import quantumvitas.drivers  # Ensure loaded
+
+    if DriverRegistry.is_step_type_registered(engine_specific_step):
+        engine = DriverRegistry.get_engine_for_step_type(engine_specific_step)
+        # Check all materialization maps to find the generalized step
+        driver = DriverRegistry.get_driver(engine)
+        mat_map = driver.get_materialization_map()
+        # Reverse lookup in this engine's materialization map
+        for gen_type, spec_type in mat_map.items():
+            if spec_type == engine_specific_step:
+                return (engine, gen_type)
 
     return None
 
