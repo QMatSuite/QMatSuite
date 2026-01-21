@@ -100,11 +100,6 @@ def _infer_engine_family_from_machine_types(machine_types: List[str]) -> Optiona
     for step_type in machine_types:
         if DriverRegistry.is_step_type_registered(step_type):
             engine = DriverRegistry.get_engine_for_step_type(step_type)
-            # Special case: Wannier90 steps (w90_run, w90_preproc) are part of QE family toolchain
-            # They are registered with engine="w90" for driver isolation, but for engine family
-            # detection purposes, they should be treated as part of the QE family.
-            if engine == "w90" or step_type in ("w90_run", "w90_preproc"):
-                engine = "qe"
             families.add(engine)
         # Unknown step types are ignored - will fail at handler dispatch
     

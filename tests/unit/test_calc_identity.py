@@ -30,11 +30,11 @@ def test_infer_engine_family_from_machine_types_pyscf():
     assert result == "pyscf"
 
 
-def test_infer_engine_family_from_machine_types_w90_part_of_qe():
-    """Test that w90 steps are part of qe family."""
+def test_infer_engine_family_from_machine_types_w90_separate_family():
+    """Test that w90 steps are treated as separate family (no longer mapped to qe)."""
     machine_types = ["qe_scf", "w90_run"]
     result = _infer_engine_family_from_machine_types(machine_types)
-    assert result == "qe"  # w90 is part of qe family toolchain
+    assert result is None  # Mixed families: qe and w90 are separate engines
 
 
 def test_infer_engine_family_from_machine_types_mixed_returns_none():

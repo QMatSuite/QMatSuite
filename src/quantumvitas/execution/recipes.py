@@ -258,23 +258,23 @@ def get_recipe_for_engine(engine_family: str) -> BaseRecipe:
 # These recipes were moved to driver bundles but are re-exported here
 # to maintain compatibility with existing test code and handlers.
 # The DriverRegistry is the primary mechanism; these are compat shims.
-def __getattr__(name: str):
-    """Lazy import for backward-compatibility re-exports."""
-    import importlib
-    
-    recipe_map = {
-        "QERecipe": ("quantumvitas.drivers.qe.recipe", "QERecipe"),
-        "ORCARecipe": ("quantumvitas.drivers.orca.recipe", "ORCARecipe"),
-        "VASPRecipe": ("quantumvitas.drivers.vasp.recipe", "VASPRecipe"),
-        "PySCFRecipe": ("quantumvitas.drivers.pyscf.recipe", "PySCFRecipe"),
-        "CP2KRecipe": ("quantumvitas.drivers.cp2k.recipe", "CP2KRecipe"),
-        "LAMMPSRecipe": ("quantumvitas.drivers.lammps.recipe", "LAMMPSRecipe"),
-        "W90Recipe": ("quantumvitas.drivers.w90.recipe", "W90Recipe"),
-    }
-    
-    if name in recipe_map:
-        module_path, class_name = recipe_map[name]
-        module = importlib.import_module(module_path)
-        return getattr(module, class_name)
-    
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+# Import at module level to ensure isinstance() checks work correctly
+from quantumvitas.drivers.qe.recipe import QERecipe
+from quantumvitas.drivers.orca.recipe import ORCARecipe
+from quantumvitas.drivers.vasp.recipe import VASPRecipe
+from quantumvitas.drivers.pyscf.recipe import PySCFRecipe
+from quantumvitas.drivers.cp2k.recipe import CP2KRecipe
+from quantumvitas.drivers.lammps.recipe import LAMMPSRecipe
+from quantumvitas.drivers.w90.recipe import W90Recipe
+
+__all__ = [
+    "BaseRecipe",
+    "get_recipe_for_engine",
+    "QERecipe",
+    "ORCARecipe",
+    "VASPRecipe",
+    "PySCFRecipe",
+    "CP2KRecipe",
+    "LAMMPSRecipe",
+    "W90Recipe",
+]

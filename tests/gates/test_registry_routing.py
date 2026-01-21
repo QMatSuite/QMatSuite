@@ -21,8 +21,8 @@ class TestRegistryBasics:
         r2 = DriverRegistry.get_instance()
         assert r1 is r2
 
-    def test_qe_shim_registered(self):
-        """QE shim should be auto-registered."""
+    def test_qe_driver_registered(self):
+        """QE driver should be auto-registered."""
         # Import drivers to trigger registration
         import quantumvitas.drivers
 
@@ -153,7 +153,7 @@ class TestDriverValidation:
         # Remove driver modules from sys.modules so they can be re-imported fresh
         modules_to_remove = [
             'quantumvitas.drivers',
-            'quantumvitas.drivers.qe_shim',
+            'quantumvitas.drivers.qe',
             'quantumvitas.drivers.vasp',
             'quantumvitas.drivers.lammps',
             'quantumvitas.drivers.cp2k',
@@ -170,13 +170,13 @@ class TestDriverValidation:
 
     def test_duplicate_engine_rejected(self):
         """Duplicate engine registration should raise."""
-        # QE is already registered
-        from quantumvitas.drivers.qe_shim import QELegacyDriver
+        # QE is already registered via drivers/qe/__init__.py
+        from quantumvitas.drivers.qe.driver import QEDriver
         from quantumvitas.core.driver_registry import DriverRegistry
         from quantumvitas.core.driver_exceptions import DuplicateEngineError
 
         with pytest.raises(DuplicateEngineError):
-            DriverRegistry.register(QELegacyDriver())
+            DriverRegistry.register(QEDriver())
 
     def test_empty_engine_family_rejected(self):
         """Empty engine family should be rejected."""

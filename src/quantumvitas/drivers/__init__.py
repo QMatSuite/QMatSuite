@@ -7,7 +7,7 @@ To ensure all drivers are registered, import this package:
     import quantumvitas.drivers
 
 Or import specific drivers:
-    from quantumvitas.drivers import qe_shim
+    from quantumvitas.drivers import qe
 """
 
 import logging
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 # Import all driver packages to trigger registration
 # Each driver's __init__.py calls DriverRegistry.register()
 
-# QE shim (legacy compatibility until QE is properly migrated)
-from quantumvitas.drivers import qe_shim
+# QE driver (migrated)
+from quantumvitas.drivers import qe
 
 # VASP driver (migrated)
 from quantumvitas.drivers import vasp
