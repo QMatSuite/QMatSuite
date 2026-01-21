@@ -321,7 +321,8 @@ class TestGetRecipeForEngine:
 
     def test_unknown_engine_raises(self):
         """get_recipe_for_engine raises for unknown engine."""
-        with pytest.raises(ValueError, match="Unknown engine family"):
+        from quantumvitas.core.driver_exceptions import UnknownEngineError
+        with pytest.raises(UnknownEngineError):
             get_recipe_for_engine("unknown")
 
 

@@ -336,9 +336,7 @@ def _build_step(
         )
         raise LegacyProjectError(project.root, error_msg)
     
-    engine_name = step_data.get("engine", "qe")
-    
-    # Resolve step via registry using ULID
+    # Resolve step via registry using ULID (needed to get step_type from step file)
     try:
         # Try to get calculation from project by matching directory
         calculation_ref = None
@@ -361,6 +359,57 @@ def _build_step(
             f"Please run the migration script to upgrade this calculation."
         )
         raise LegacyProjectError(project.root, error_msg) from e
+    
+    # Load step file to extract step_type if not in step_data
+    step_file_data = {}
+    if step_file_path.exists():
+        try:
+            import yaml
+            step_file_data = yaml.safe_load(step_file_path.read_text()) or {}
+        except Exception:
+            pass
+    
+    # Engine must be specified or inferred from step type
+    engine_name = step_data.get("engine")
+    if engine_name is None:
+        # Try to infer from step type (from step_data or step file)
+        step_type = step_data.get("type") or step_data.get("step_type") or step_file_data.get("step_type") or step_file_data.get("type")
+        if step_type:
+            # First try workflow registry lookup
+            from quantumvitas.workflow.registry import get_registry
+            registry = get_registry()
+            spec = registry.get(step_type)
+            if spec:
+                engine_name = spec.engine
+            
+            # If registry lookup fails, try DriverRegistry materialization
+            if engine_name is None:
+                import quantumvitas.drivers
+                from quantumvitas.core.driver_registry import DriverRegistry
+                
+                # Check if step_type is already a machine type
+                if DriverRegistry.is_step_type_registered(step_type):
+                    engine_name = DriverRegistry.get_engine_for_step_type(step_type)
+                else:
+                    # Try materializing public types (e.g., "scf" -> "qe_scf")
+                    # Try common engine families (qe is most common for legacy imports)
+                    for engine_family in ["qe", "vasp", "orca", "pyscf", "cp2k", "lammps", "w90"]:
+                        try:
+                            materialized = DriverRegistry.materialize_step_type(
+                                engine_family,
+                                f"GEN_{step_type.upper()}" if not step_type.upper().startswith("GEN_") else step_type.upper()
+                            )
+                            if materialized:
+                                engine_name = engine_family
+                                break
+                        except Exception:
+                            continue
+        
+        if engine_name is None:
+            raise ValueError(
+                f"Cannot determine engine for step '{step_id}'. "
+                f"Specify 'engine' field in calculation.yaml or use a known step type."
+            )
     
     input_path_value = step_data.get("input") or step_data.get("file")
     input_path: Optional[Path] = None
@@ -452,7 +501,74 @@ def _build_step_inspection(
     if not step_id:
         raise ValueError(f"Step entry missing both 'step_id' and 'id': {step_data}")
     
-    engine_name = step_data.get("engine", "qe")
+    # Resolve step file early to extract step_type if not in step_data
+    step_file_data = {}
+    try:
+        calculation_ref = None
+        for wf_ref in project.calculations.values():
+            if wf_ref.absolute_path == calculation_dir:
+                calculation_ref = wf_ref
+                break
+        
+        if calculation_ref:
+            calculation_selector = calculation_ref.meta.slug or calculation_ref.meta.name
+        else:
+            calculation_selector = calculation_dir.name
+        
+        step_resolved = require_step(project.root, calculation_selector, step_id)
+        step_file_path = step_resolved.absolute_path
+        
+        # Load step file to extract step_type
+        if step_file_path.exists():
+            try:
+                import yaml
+                step_file_data = yaml.safe_load(step_file_path.read_text()) or {}
+            except Exception:
+                pass
+    except Exception:
+        pass  # Fall through - will try to infer from step_data only
+    
+    # Engine must be specified or inferred from step type
+    engine_name = step_data.get("engine")
+    if engine_name is None:
+        # Try to infer from step type (from step_data or step file)
+        step_type = step_data.get("type") or step_data.get("step_type") or step_file_data.get("step_type") or step_file_data.get("type")
+        if step_type:
+            # First try workflow registry lookup
+            from quantumvitas.workflow.registry import get_registry
+            registry = get_registry()
+            spec = registry.get(step_type)
+            if spec:
+                engine_name = spec.engine
+            
+            # If registry lookup fails, try DriverRegistry materialization
+            if engine_name is None:
+                import quantumvitas.drivers
+                from quantumvitas.core.driver_registry import DriverRegistry
+                
+                # Check if step_type is already a machine type
+                if DriverRegistry.is_step_type_registered(step_type):
+                    engine_name = DriverRegistry.get_engine_for_step_type(step_type)
+                else:
+                    # Try materializing public types (e.g., "scf" -> "qe_scf")
+                    # Try common engine families (qe is most common for legacy imports)
+                    for engine_family in ["qe", "vasp", "orca", "pyscf", "cp2k", "lammps", "w90"]:
+                        try:
+                            materialized = DriverRegistry.materialize_step_type(
+                                engine_family,
+                                f"GEN_{step_type.upper()}" if not step_type.upper().startswith("GEN_") else step_type.upper()
+                            )
+                            if materialized:
+                                engine_name = engine_family
+                                break
+                        except Exception:
+                            continue
+        
+        if engine_name is None:
+            raise ValueError(
+                f"Cannot determine engine for step '{step_id}'. "
+                f"Specify 'engine' field in calculation.yaml or use a known step type."
+            )
     migrated = False
     step_meta: Optional[ResourceMeta] = None
     step_type: Optional[str] = None

@@ -1,0 +1,180 @@
+"""Wannier90 engine driver.
+
+This driver handles Wannier90 calculations for constructing
+maximally localized Wannier functions (MLWFs) from DFT output.
+
+Note: The preprocessing step (w90_preproc) is registered with
+the DFT engine (QE, VASP) that produces it. This driver handles
+only the main Wannier90 execution (w90_run).
+"""
+
+from pathlib import Path
+from typing import Any
+
+from quantumvitas.core.driver_protocol import (
+    BaseEngineDriver,
+    StepTypeSpec,
+    WorkdirPolicy,
+    PreflightRequirement,
+    ErrorClass,
+)
+
+
+class W90Driver(BaseEngineDriver):
+    """Wannier90 driver bundle implementing the EngineDriver protocol.
+
+    This driver handles:
+    - w90_run: Main Wannier90 execution using wannier90.x
+
+    The w90_preproc step is handled by the DFT engine driver because
+    it uses the DFT engine's executable (pw2wannier90.x for QE).
+    """
+
+    # ─────────────────────────────────────────────────────────────────────
+    # MUST: Required properties
+    # ─────────────────────────────────────────────────────────────────────
+
+    @property
+    def engine_family(self) -> str:
+        return "w90"
+
+    @property
+    def display_name(self) -> str:
+        return "Wannier90"
+
+    @property
+    def driver_api_version(self) -> str:
+        return "1.0.0"
+
+    # ─────────────────────────────────────────────────────────────────────
+    # MUST: Required methods
+    # ─────────────────────────────────────────────────────────────────────
+
+    def get_step_type_specs(self) -> list[StepTypeSpec]:
+        """Return Wannier90 step type specifications.
+
+        Note: w90_preproc is NOT included here - it's registered
+        with the DFT engine (QE) that executes it.
+        """
+        return [
+            StepTypeSpec(
+                id="w90_run",
+                engine="w90",
+                executable="wannier90.x",
+                description="Wannier90 MLWF construction",
+                category="postprocess",
+                mpi_aware=False,  # wannier90.x is typically serial
+            ),
+        ]
+
+    def get_handler(self):
+        """Return Wannier90 step handler."""
+        from .handler import w90_run_handler
+        return w90_run_handler
+
+    def get_recipe_class(self):
+        """Return Wannier90 recipe class."""
+        from .recipe import W90Recipe
+        return W90Recipe
+
+    def get_materialization_map(self) -> dict[str, str]:
+        """Return W90 GEN→SPEC mappings.
+
+        Wannier90 doesn't have standard generalized steps,
+        so this map is empty.
+        """
+        return {}
+
+    # ─────────────────────────────────────────────────────────────────────
+    # SHOULD: Override defaults where W90 differs
+    # ─────────────────────────────────────────────────────────────────────
+
+    def get_workdir_policy(self) -> WorkdirPolicy:
+        """W90 uses isolated workdir."""
+        return WorkdirPolicy.ISOLATED
+
+    def get_capabilities(self) -> set[str]:
+        """Wannier90 capabilities."""
+        return {
+            "wannier",
+            "mlwf",  # Maximally localized Wannier functions
+            "interpolation",  # Band interpolation
+            "postprocess",
+            "cross_engine",  # Requires DFT output
+        }
+
+    def supports_incremental_skip(self, step_type: str) -> bool:
+        """All W90 steps can be skipped if done."""
+        return True
+
+    def get_preflight_requirements(self, step) -> list[PreflightRequirement]:
+        """Wannier90 preflight requirements.
+
+        w90_run requires output from w90_preproc step.
+        """
+        if step.step_type == "w90_run":
+            return [
+                PreflightRequirement(
+                    artifact_type="w90_amn",
+                    source_step=None,  # Auto-resolve from w90_preproc
+                    required=True,
+                    description="Wannier90 .amn file from preprocessing",
+                ),
+                PreflightRequirement(
+                    artifact_type="w90_mmn",
+                    source_step=None,
+                    required=True,
+                    description="Wannier90 .mmn file from preprocessing",
+                ),
+                PreflightRequirement(
+                    artifact_type="w90_eig",
+                    source_step=None,
+                    required=True,
+                    description="Wannier90 .eig file from preprocessing",
+                ),
+            ]
+        return []
+
+    def classify_error(self, stderr: str, exit_code: int) -> ErrorClass:
+        """Classify Wannier90 errors from stderr/exit code."""
+        stderr_lower = stderr.lower()
+
+        if "kmesh" in stderr_lower and "error" in stderr_lower:
+            return ErrorClass.INPUT_ERROR
+        if "disentanglement not converged" in stderr_lower:
+            return ErrorClass.CONVERGENCE
+        if "wannierisation not converged" in stderr_lower:
+            return ErrorClass.CONVERGENCE
+        if "file not found" in stderr_lower or ".amn" in stderr_lower:
+            return ErrorClass.MISSING_FILE
+        if "wannier90" in stderr_lower and "not found" in stderr_lower:
+            return ErrorClass.EXECUTABLE_NOT_FOUND
+
+        return ErrorClass.UNKNOWN
+
+    # ─────────────────────────────────────────────────────────────────────
+    # PLUGIN: Optional extension points
+    # ─────────────────────────────────────────────────────────────────────
+
+    def get_artifact_patterns(self) -> dict[str, str]:
+        """Wannier90 artifact patterns for discovery."""
+        return {
+            "w90_amn": "*.amn",
+            "w90_mmn": "*.mmn",
+            "w90_eig": "*.eig",
+            "w90_win": "*.win",
+            "w90_wout": "*.wout",
+            "w90_hr": "*_hr.dat",
+            "w90_tb": "*_tb.dat",
+            "w90_centres": "*_centres.xyz",
+        }
+
+    def find_latest_artifact(self, workdir: Path, artifact_type: str) -> Path | None:
+        """Find Wannier90 artifact in workdir."""
+        pattern = self.get_artifact_patterns().get(artifact_type)
+        if not pattern:
+            return None
+
+        matches = list(workdir.glob(pattern))
+        return matches[0] if matches else None
+
