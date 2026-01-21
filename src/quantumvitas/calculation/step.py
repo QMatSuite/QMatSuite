@@ -25,12 +25,17 @@ class Step:
 
     meta: ResourceMeta
     input_file: Path
-    engine: str = "qe"
+    engine: Optional[str] = None
     step_type: Optional[str] = None
     options: Dict[str, object] = field(default_factory=dict)
     mode: StepMode = StepMode.NORMAL
     reference_output: Optional[Path] = None
     structure: Optional[StructureRef] = None
+
+    def __post_init__(self):
+        """Validate that engine field is set."""
+        if self.engine is None:
+            raise ValueError("Step requires explicit 'engine' field")
 
     def resolve_input_path(self, calculation_raw_dir: Path) -> Path:
         """

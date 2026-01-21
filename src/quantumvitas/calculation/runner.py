@@ -371,7 +371,7 @@ class CalculationRunner:
             if not engine_family and calculation.steps:
                 engine_family = _get_engine_family_from_step(calculation.steps[0])
             if not engine_family:
-                engine_family = "qe"  # Default
+                raise ValueError("Calculation requires explicit engine_family")
             
             if engine_family == "lammps":
                 # For LAMMPS, compute potential_assets_sha from potential_map
@@ -520,7 +520,7 @@ class CalculationRunner:
                 first_step = calculation.steps[0]
                 engine_family = _get_engine_family_from_step(first_step)
             if not engine_family:
-                engine_family = "qe"  # Default
+                raise ValueError("Calculation requires explicit engine_family")
 
         logger.info(f"[CALCULATION_RUNNER] Using JobGraph pipeline with engine_family={engine_family}")
 
@@ -627,7 +627,9 @@ class CalculationRunner:
                     # Update provenance (after staging is complete, if any)
                     if step_success:
                         try:
-                            engine_name = job.engine or "qe"
+                            engine_name = step.engine
+                            if not engine_name:
+                                raise ValueError(f"Step {step_ulid} missing engine field")
                             update_provenance_after_step(
                                 calc_dir=calculation.dir,
                                 run_id=run_id,
@@ -716,12 +718,22 @@ class CalculationRunner:
             # Get engine info
             engine_version = None
             engine_path = None
-            if self.engine_registry and calculation.steps:
+            engine_family = None
+            if calculation.steps:
                 first_step = calculation.steps[0]
-                engine = self.engine_registry.get(first_step.engine)
-                if engine:
-                    engine_version = getattr(engine, "version", None)
-                    engine_path = str(getattr(engine, "executable_path", ""))
+                engine_family = first_step.engine
+                if not engine_family:
+                    raise ValueError("Step requires explicit 'engine' field")
+                if self.engine_registry:
+                    engine = self.engine_registry.get(engine_family)
+                    if engine:
+                        engine_version = getattr(engine, "version", None)
+                        engine_path = str(getattr(engine, "executable_path", ""))
+            else:
+                # Fallback to calculation.engine_family if no steps
+                engine_family = calculation.engine_family
+                if not engine_family:
+                    raise ValueError("Calculation requires explicit engine_family")
             
             # Create run revision (use external run_id if provided)
             run_revision = create_run_revision(
@@ -732,7 +744,7 @@ class CalculationRunner:
                 step_types=step_types,
                 structure_id=getattr(calculation, "structure_id", None),
                 structure_name=getattr(calculation, "structure_name", None),
-                engine="qe",
+                engine=engine_family,
                 engine_version=engine_version,
                 engine_path=engine_path,
                 preset_options=preset_options,
@@ -755,7 +767,7 @@ class CalculationRunner:
                 calc_name=calculation.name if hasattr(calculation, "name") else None,
                 step_ids=step_ids,
                 step_types=step_types,
-                engine="qe",
+                engine=engine_family,
                 structure_id=getattr(calculation, "structure_id", None),
                 snapshot_path=run_revision.snapshot_path,
             )

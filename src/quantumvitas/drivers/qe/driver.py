@@ -1,10 +1,10 @@
-"""QE Driver (stub for migration)."""
+"""QE Driver."""
 
 from quantumvitas.core.driver_protocol import BaseEngineDriver, StepTypeSpec, WorkdirPolicy
 
 
 class QEDriver(BaseEngineDriver):
-    """QE driver stub - delegates to qe_shim during migration."""
+    """QE driver bundle implementing the EngineDriver protocol."""
 
     @property
     def engine_family(self) -> str:
@@ -16,7 +16,7 @@ class QEDriver(BaseEngineDriver):
 
     @property
     def driver_api_version(self) -> str:
-        return "2.0.0-alpha"
+        return "1.0.0"
 
     def get_step_type_specs(self) -> list[StepTypeSpec]:
         from .step_types import QE_STEP_TYPE_SPECS
@@ -31,8 +31,16 @@ class QEDriver(BaseEngineDriver):
         return QERecipe
 
     def get_materialization_map(self) -> dict[str, str]:
-        from quantumvitas.drivers.qe_shim import QELegacyDriver
-        return QELegacyDriver().get_materialization_map()
+        """Return QE materialization mappings.
+
+        Maps generalized types (GEN_*) to QE-specific types.
+        """
+        return {
+            "GEN_SCF": "qe_scf",
+            "GEN_RELAX": "qe_relax",
+            "GEN_BANDS": "qe_bands_pw",
+            "GEN_DOS": "qe_dos",
+        }
 
     def get_workdir_policy(self) -> WorkdirPolicy:
         return WorkdirPolicy.SHARED
