@@ -263,6 +263,7 @@ def __getattr__(name: str):
     import importlib
     
     recipe_map = {
+        "QERecipe": ("quantumvitas.drivers.qe.recipe", "QERecipe"),
         "ORCARecipe": ("quantumvitas.drivers.orca.recipe", "ORCARecipe"),
         "VASPRecipe": ("quantumvitas.drivers.vasp.recipe", "VASPRecipe"),
         "PySCFRecipe": ("quantumvitas.drivers.pyscf.recipe", "PySCFRecipe"),

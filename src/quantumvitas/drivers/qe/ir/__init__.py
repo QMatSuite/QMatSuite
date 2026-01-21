@@ -1,4 +1,4 @@
-"""Backward-compatibility re-export for QE IR mapping (moved to drivers/qe/ir/)."""
+"""QE IR backend: IR ↔ QE parameter mapping."""
 
 from quantumvitas.drivers.qe.ir.mapping import (
     IR_TO_QE_MAPPING,
@@ -15,6 +15,9 @@ from quantumvitas.drivers.qe.ir.mapping import (
     get_class_a_type,
 )
 
+# Re-export mapping module for backward compatibility
+from quantumvitas.drivers.qe.ir import mapping
+
 __all__ = [
     "IR_TO_QE_MAPPING",
     "QE_TO_IR_MAPPING",
@@ -28,5 +31,5 @@ __all__ = [
     "validate_ir_qe_mapping",
     "is_class_a_key",
     "get_class_a_type",
+    "mapping",
 ]
-

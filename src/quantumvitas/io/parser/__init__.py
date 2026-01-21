@@ -1,8 +1,3 @@
-"""
-Parsers for QE input/output files.
-"""
+"""Backward-compatibility re-export for QE parser (moved to drivers/qe/io/)."""
 
-from .qe_parser import QEInputParser
-
-__all__ = ["QEInputParser"]
-
+# Empty __init__.py - qe_parser.py is re-exported below
