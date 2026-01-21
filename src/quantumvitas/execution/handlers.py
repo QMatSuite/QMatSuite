@@ -145,159 +145,12 @@ def qe_step_handler(
     context: Dict[str, Any],
 ) -> JobResult:
     """
-    Execute a single QE/Wannier step job.
-
-    This handler wraps the existing step.run() logic for QE-family engines.
-    One job = one step for QE-Recipe.
-
-    Args:
-        job: The Job to execute (single step)
-        calculation: Calculation context
-        engine_registry: Engine registry for engine lookup
-        context: Additional context (run_id, run_mode, etc.)
-
-    Returns:
-        JobResult with execution status
-    """
-    if len(job.step_ids) != 1:
-        return JobResult(
-            job_id=job.id,
-            success=False,
-            error=f"QE handler expects single-step job, got {len(job.step_ids)} steps",
-        )
-
-    step_ulid = job.step_ids[0]
-
-    # Find the step in calculation
-    step = _find_step_by_ulid(calculation, step_ulid)
-    if step is None:
-        return JobResult(
-            job_id=job.id,
-            success=False,
-            error=f"Step {step_ulid} not found in calculation",
-        )
-
-    # Get engine
-    engine_name = job.engine or "qe"
-    try:
-        engine = engine_registry.get(engine_name)
-    except Exception as e:
-        return JobResult(
-            job_id=job.id,
-            success=False,
-            error=f"Failed to get engine '{engine_name}': {e}",
-        )
-
-    # Prepare execution context
-    raw_dir = job.working_dir
-    raw_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create per-step artifact directory (Phase 3C contract)
-    step_artifacts_dir = raw_dir / "step_artifacts" / step_ulid
-    step_artifacts_dir.mkdir(parents=True, exist_ok=True)
-
-    # Clear step artifacts (keep only newest results)
-    import shutil
-    if step_artifacts_dir.exists():
-        for item in step_artifacts_dir.iterdir():
-            if item.is_file():
-                item.unlink()
-            elif item.is_dir():
-                shutil.rmtree(item)
-
-    # Inject options
-    if not hasattr(step, "options") or step.options is None:
-        step.options = {}
-    step.options["run_mode"] = context.get("run_mode", "incremental")
-    step.options["step_artifacts_dir"] = str(step_artifacts_dir)
-
-    # Check for compat input playback mode
-    compat_input_playback = context.get("compat_input_playback", False)
+    DEPRECATED: Use quantumvitas.drivers.qe.handler.qe_step_handler
     
-    # Execute step
-    try:
-        if compat_input_playback:
-            # Try to get input path from calculation.yaml
-            existing_input_path = _get_step_input_from_calculation_yaml(
-                calculation=calculation,
-                step_ulid=step_ulid,
-            )
-            
-            if existing_input_path:
-                # Use compat executor
-                from quantumvitas.calculation.compat_executor import run_qe_step_from_existing_input_compat
-                
-                result = run_qe_step_from_existing_input_compat(
-                    existing_input_path=existing_input_path,
-                    working_dir=raw_dir,
-                    project_root=calculation.project.root,
-                    step_id=step_ulid,
-                    calculation_slug=calculation.id,
-                    engine=engine,
-                    step_type=step.step_type if step.step_type else None,
-                    timeout=step.options.get("timeout"),
-                )
-            else:
-                # No input field in calculation.yaml, fall back to normal path
-                result = step.run(
-                    engine=engine,
-                    calculation_raw_dir=raw_dir,
-                    project_root=calculation.project.root,
-                    species_map=calculation.species_map,
-                )
-        else:
-            # Normal SSOT path
-            result = step.run(
-                engine=engine,
-                calculation_raw_dir=raw_dir,
-                project_root=calculation.project.root,
-                species_map=calculation.species_map,
-            )
-
-        success = result.success if hasattr(result, "success") else False
-        error_msg = result.error if hasattr(result, "error") and not success else None
-
-        # Build step result with capability-based relax artifact spec
-        step_result_data = {
-                    "success": success,
-                    "output_file": str(result.output_file) if result.output_file else None,
-                    "return_code": getattr(result, "return_code", None),
-                }
-        
-        # If this is a relax step and succeeded, add artifact spec for post-processing
-        step_type = step.step_type if hasattr(step, "step_type") else None
-        if success and step_type and is_relax_step_type(step_type) and result.output_file:
-            step_result_data["relax_artifact_spec"] = RelaxArtifactSpec(
-                artifact_type="qe_output",
-                artifact_path=Path(result.output_file),
-                step_ulid=step_ulid,
-                step_type=str(step_type),
-            ).to_dict()
-
-        return JobResult(
-            job_id=job.id,
-            success=success,
-            error=error_msg,
-            step_results={step_ulid: step_result_data},
-        )
-
-    except Exception as e:
-        import traceback
-        tb = traceback.format_exc()
-        logger.exception(f"[QE_HANDLER] Step {step_ulid} execution failed")
-        return JobResult(
-            job_id=job.id,
-            success=False,
-            error=f"{type(e).__name__}: {e}\n{tb[:500]}",
-        )
-
-
-def _find_step_by_ulid(calculation: "Calculation", step_ulid: str) -> Optional["Step"]:
-    """Find a step in calculation by its ULID."""
-    for step in calculation.steps:
-        if step.meta.id == step_ulid:
-            return step
-    return None
+    This is a backward-compatibility wrapper that delegates to the new handler.
+    """
+    from quantumvitas.drivers.qe.handler import qe_step_handler as _qe_handler
+    return _qe_handler(job, calculation, engine_registry, context)
 
 
 def handle_qe_relax_output(
@@ -310,56 +163,20 @@ def handle_qe_relax_output(
     run_id: Optional[str] = None,
 ) -> Path:
     """
-    Handle QE relax step output: parse and write current.json.
+    DEPRECATED: Use quantumvitas.drivers.qe.handler.handle_qe_relax_output
     
-    Args:
-        step_ulid: ULID of the relax step
-        step_type: Machine step type (e.g., "qe_relax")
-        calc_dir: Path to calculation directory
-        output_path: Path to QE output file (.out)
-        calculation_ulid: ULID of the calculation
-        input_structure_ulid: ULID of the input structure
-        run_id: Optional run ID for provenance
-        
-    Returns:
-        Path to written current.json
-        
-    Raises:
-        ValueError: If output parsing fails
+    This is a backward-compatibility wrapper that delegates to the new handler.
     """
-    from quantumvitas.calculation.geometry import (
-        read_final_geometry_from_output_text,
-        structure_from_qe_geometry_snapshot,
-    )
-    from quantumvitas.execution.relax_artifacts import write_generated_structure
-    
-    # 1. Read output
-    output_text = output_path.read_text()
-    
-    # 2. Parse final geometry
-    snapshot, species = read_final_geometry_from_output_text(output_text)
-    
-    # 3. Convert to pymatgen Structure (with canonicalization)
-    structure = structure_from_qe_geometry_snapshot(snapshot, species)
-    
-    # 4. Canonicalize before writing (ensure consistent canonicalization)
-    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
-    canonicalize_structure_like_in_place(structure)
-    
-    # 5. Write current.json
-    artifact_path = write_generated_structure(
-        structure=structure,
-        calc_dir=calc_dir,
+    from quantumvitas.drivers.qe.handler import handle_qe_relax_output as _handle_relax
+    return _handle_relax(
         step_ulid=step_ulid,
         step_type=step_type,
-        run_id=run_id,
+        calc_dir=calc_dir,
+        output_path=output_path,
         calculation_ulid=calculation_ulid,
         input_structure_ulid=input_structure_ulid,
+        run_id=run_id,
     )
-    
-    logger.info(f"[RELAX_HANDLER] Wrote generated structure for step {step_ulid} to {artifact_path}")
-    
-    return artifact_path
 
 
 def create_handler_map(

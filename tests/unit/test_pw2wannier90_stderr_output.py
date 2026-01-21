@@ -13,7 +13,8 @@ import tempfile
 import subprocess
 
 from quantumvitas.core.engines.qe_calculation import QECalculationRunner
-from quantumvitas.core.engines.qe import QuantumEspressoEngine, EngineConfig
+from quantumvitas.core.engines.qe import QuantumEspressoEngine
+from quantumvitas.core.engines.base import EngineConfig
 
 
 def test_pw2wannier90_stderr_file_creation(tmp_path):

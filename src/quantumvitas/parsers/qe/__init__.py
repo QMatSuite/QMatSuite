@@ -1,7 +1,3 @@
-"""QE parsers."""
+"""Backward-compatibility re-export for QE parsers (moved to drivers/qe/parsers/)."""
 
-# Import to register parsers
-from quantumvitas.parsers.qe.trajectory import QETrajectoryParser
-
-__all__ = ["QETrajectoryParser"]
-
+# Empty - parsers are registered via decorator, no explicit exports needed

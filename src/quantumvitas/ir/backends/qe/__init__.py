@@ -1,7 +1,7 @@
-"""
-IR ↔ QE adapter.
+"""Backward-compatibility re-export for QE IR backend (moved to drivers/qe/ir/)."""
 
-Mechanical mapping between IR parameter names and QE parameter names (module/section/key).
-This layer is explicitly QE-specific and separate from IR definitions.
-"""
+# Re-export mapping module
+from quantumvitas.drivers.qe.ir import mapping
+
+__all__ = ["mapping"]
 

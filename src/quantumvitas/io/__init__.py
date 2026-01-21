@@ -2,14 +2,17 @@
 I/O layer: QE models, parsers, generators, pseudo management.
 """
 
-from .model import QEModule, QECardType, QENamelist, QECard, QEInput
-from .parser.qe_parser import QEInputParser
-from .generator.qe_generator import QEInputGenerator
+# Backward-compatibility re-exports for QE I/O (moved to drivers/qe/io/)
+from quantumvitas.drivers.qe.io.model import QEModule, QECardType, QENamelist, QECard, QEInput
+from quantumvitas.drivers.qe.io.parser import QEInputParser
+from quantumvitas.drivers.qe.io.generator import QEInputGenerator
+from quantumvitas.drivers.qe.io.structure_io import structure_from_qe_input
+
+# Non-QE I/O functions (still in io/structure_io.py)
 from .structure_io import (
     read_structure,
     write_structure,
     detect_format,
-    structure_from_qe_input,
 )
 
 __all__ = [
