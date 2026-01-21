@@ -17,6 +17,9 @@ from __future__ import annotations
 from enum import Enum
 from typing import Dict, Optional, Tuple
 
+from quantumvitas.core.driver_registry import DriverRegistry
+from quantumvitas.core.driver_exceptions import UnknownMaterializationError, UnknownEngineError
+
 
 class GeneralizedStep(str, Enum):
     """Generalized step identifiers (engine-agnostic physical operations)."""
@@ -120,8 +123,11 @@ def materialize_step(
     """
     Materialize a generalized step to an engine-specific step type.
     
+    This now delegates to DriverRegistry for registered engines.
+    Falls back to legacy MATERIALIZATION_MAP for backward compatibility.
+    
     Args:
-        generalized_step: Generalized step identifier (e.g., "SCF", "NSCF")
+        generalized_step: Generalized step identifier (e.g., "SCF", "NSCF", "GEN_SCF")
         engine_family: Engine family identifier (e.g., "qe", "pyscf")
     
     Returns:
@@ -130,12 +136,34 @@ def materialize_step(
     Example:
         >>> materialize_step("SCF", "qe")
         "qe_scf"
+        >>> materialize_step("GEN_SCF", "qe")
+        "qe_scf"
         >>> materialize_step("SCF", "pyscf")
         "pyscf_scf"
         >>> materialize_step("SCF", "vasp")
         None
     """
-    key = (engine_family.lower(), generalized_step.upper())
+    # Ensure drivers are loaded
+    import quantumvitas.drivers
+    
+    # Try registry first (supports "GEN_SCF" format)
+    gen_type_upper = generalized_step.upper()
+    if gen_type_upper.startswith("GEN_"):
+        try:
+            return DriverRegistry.materialize_step_type(engine_family, gen_type_upper)
+        except (UnknownMaterializationError, UnknownEngineError):
+            pass
+    
+    # Try with "GEN_" prefix if not already present
+    if not gen_type_upper.startswith("GEN_"):
+        try:
+            gen_type_with_prefix = f"GEN_{gen_type_upper}"
+            return DriverRegistry.materialize_step_type(engine_family, gen_type_with_prefix)
+        except (UnknownMaterializationError, UnknownEngineError):
+            pass
+    
+    # Fallback to legacy MATERIALIZATION_MAP (for backward compatibility)
+    key = (engine_family.lower(), gen_type_upper)
     return MATERIALIZATION_MAP.get(key)
 
 

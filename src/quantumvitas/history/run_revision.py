@@ -30,6 +30,41 @@ from quantumvitas.history.digests import StepDigest, compute_step_digest, comput
 logger = logging.getLogger(__name__)
 
 
+def _infer_engine_from_data(data: Dict[str, Any]) -> str:
+    """
+    Infer engine from run revision data.
+    
+    Tries:
+    1. Explicit engine field
+    2. Infer from step_types via registry
+    3. Raise error if cannot determine
+    """
+    engine = data.get("engine")
+    if engine:
+        return engine
+    
+    # Try to infer from step_types
+    step_types = data.get("step_types", [])
+    if step_types:
+        try:
+            from quantumvitas.workflow.registry import get_registry
+            registry = get_registry()
+            # Try first step type
+            first_step_type = step_types[0]
+            spec = registry.get(first_step_type)
+            if spec and spec.engine:
+                return spec.engine
+        except Exception:
+            # If inference fails, continue to error
+            pass
+    
+    # Cannot determine engine - raise error
+    raise ValueError(
+        f"Cannot determine engine for run revision. "
+        f"Specify 'engine' field or ensure step_types are registered."
+    )
+
+
 class RunStatus:
     """Run status constants."""
     SUCCESS = "success"
@@ -129,7 +164,7 @@ class RunRevision:
             finished_at=data.get("finished_at"),
             status=data.get("status", RunStatus.RUNNING),
             error_summary=data.get("error_summary"),
-            engine=data.get("engine", "qe"),
+            engine=_infer_engine_from_data(data),
             engine_version=data.get("engine_version"),
             engine_path=data.get("engine_path"),
             step_ids=data.get("step_ids", []),

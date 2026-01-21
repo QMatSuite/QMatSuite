@@ -775,20 +775,32 @@ def materialize_step_spec(
         except Exception:
             pass
     
-    PYSCF_STEP_TYPES = {"pyscf_scf", "pyscf_mp2", "pyscf_td", "pyscf_analysis", "pyscf_freq"}
-    is_pyscf_step = step_type_lower in PYSCF_STEP_TYPES or calculation_engine_family == "pyscf"
-
-    # Phase 3C: ORCA step types - ORCA engine builds input dynamically (not QE input)
-    ORCA_STEP_TYPES = {"orca_scf", "orca_hf", "orca_td", "orca_mp2", "orca_opt", "orca_freq"}
-    is_orca_step = step_type_lower in ORCA_STEP_TYPES or calculation_engine_family == "orca"
-
-    # LAMMPS step types - LAMMPS engine builds input dynamically (not QE input)
-    LAMMPS_STEP_TYPES = {"lammps_relax", "lammps_md"}
-    is_lammps_step = step_type_lower in LAMMPS_STEP_TYPES or calculation_engine_family == "lammps"
-
-    # CP2K step types - CP2K engine builds input dynamically (not QE input)
-    CP2K_STEP_TYPES = {"cp2k_scf", "cp2k_relax", "cp2k_md"}
-    is_cp2k_step = step_type_lower in CP2K_STEP_TYPES or calculation_engine_family == "cp2k"
+    # Use registry to determine engine for step type
+    import quantumvitas.drivers
+    from quantumvitas.core.driver_registry import DriverRegistry
+    
+    is_pyscf_step = False
+    is_orca_step = False
+    is_lammps_step = False
+    is_cp2k_step = False
+    
+    if DriverRegistry.is_step_type_registered(step_type_lower):
+        engine = DriverRegistry.get_engine_for_step_type(step_type_lower)
+        is_pyscf_step = engine == "pyscf"
+        is_orca_step = engine == "orca"
+        is_lammps_step = engine == "lammps"
+        is_cp2k_step = engine == "cp2k"
+    
+    # Also check calculation engine family as fallback
+    if calculation_engine_family:
+        if calculation_engine_family == "pyscf":
+            is_pyscf_step = True
+        elif calculation_engine_family == "orca":
+            is_orca_step = True
+        elif calculation_engine_family == "lammps":
+            is_lammps_step = True
+        elif calculation_engine_family == "cp2k":
+            is_cp2k_step = True
 
     import logging
     logger = logging.getLogger(__name__)

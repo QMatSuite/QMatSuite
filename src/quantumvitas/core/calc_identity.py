@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from quantumvitas.core.models import CalculationStepEntry
+from quantumvitas.core.driver_registry import DriverRegistry
 
 
 def ensure_calculation_identity(calc_dir: Path, project_root: Optional[Path] = None) -> None:
@@ -77,10 +78,10 @@ def ensure_calculation_identity(calc_dir: Path, project_root: Optional[Path] = N
 
 def _infer_engine_family_from_machine_types(machine_types: List[str]) -> Optional[str]:
     """
-    Infer engine_family from machine step type prefixes.
+    Infer engine_family from machine step types using registry.
     
-    Analyzes step type prefixes (qe_, pyscf_, w90_) to determine engine family.
-    Returns a single family if all steps share one prefix, None if mixed/unknown.
+    Uses DriverRegistry to look up engine for each step type.
+    Returns a single family if all steps belong to one engine, None if mixed/unknown.
     
     Args:
         machine_types: List of machine step type identifiers (e.g., ["qe_scf", "qe_nscf"])
@@ -92,26 +93,26 @@ def _infer_engine_family_from_machine_types(machine_types: List[str]) -> Optiona
     if not machine_types:
         return None
     
+    # Ensure drivers are loaded
+    import quantumvitas.drivers
+    
     families = set()
-    for machine_type in machine_types:
-        if machine_type.startswith("qe_") or machine_type in ("w90_preproc", "w90_run"):
-            # w90 steps are part of qe family toolchain
-            families.add("qe")
-        elif machine_type.startswith("pyscf_"):
-            families.add("pyscf")
-        elif machine_type.startswith("w90_"):
-            # Standalone w90 (if exists in future)
-            families.add("w90")
-        else:
-            # Unknown prefix - could be legacy step type
-            # Assume QE for backward compatibility
-            families.add("qe")
+    for step_type in machine_types:
+        if DriverRegistry.is_step_type_registered(step_type):
+            engine = DriverRegistry.get_engine_for_step_type(step_type)
+            # Special case: Wannier90 steps (w90_run, w90_preproc) are part of QE family toolchain
+            # They are registered with engine="w90" for driver isolation, but for engine family
+            # detection purposes, they should be treated as part of the QE family.
+            if engine == "w90" or step_type in ("w90_run", "w90_preproc"):
+                engine = "qe"
+            families.add(engine)
+        # Unknown step types are ignored - will fail at handler dispatch
     
     # Return single family if all steps belong to one family
     if len(families) == 1:
         return families.pop()
     
-    # Mixed families - return None (caller will use default)
+    # Mixed engines or no recognized step types
     return None
 
 
@@ -151,15 +152,38 @@ def _infer_identity_from_step_types(
     from quantumvitas.workflow.registry import get_registry
     
     # Strategy 1: Use step types from calculation.yaml (public types)
-    # Convert public types to machine types via registry
+    # Convert public types to machine types via registry or DriverRegistry materialization
     machine_types = []
     if step_types:
         registry = get_registry()
+        # Ensure drivers are loaded for materialization
+        import quantumvitas.drivers
+        from quantumvitas.core.driver_registry import DriverRegistry
+        
         for step_type in step_types:
-            # Look up spec to get machine type (accepts both public and machine types)
+            # First try workflow registry lookup
             spec = registry.get(step_type)
             if spec:
                 machine_types.append(spec.machine_type)
+                continue
+            
+            # If registry lookup fails, try DriverRegistry materialization
+            # Try common engine families (qe is most common for legacy imports)
+            for engine_family in ["qe", "vasp", "orca", "pyscf", "cp2k", "lammps", "w90"]:
+                try:
+                    materialized = DriverRegistry.materialize_step_type(
+                        engine_family, 
+                        f"GEN_{step_type.upper()}" if not step_type.upper().startswith("GEN_") else step_type.upper()
+                    )
+                    if materialized:
+                        machine_types.append(materialized)
+                        break
+                except Exception:
+                    continue
+            
+            # If still no match, check if step_type is already a machine type
+            if DriverRegistry.is_step_type_registered(step_type):
+                machine_types.append(step_type)
     
     # Strategy 2: Fallback to step.yaml files if calculation.yaml steps empty
     if not machine_types:
