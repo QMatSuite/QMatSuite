@@ -392,13 +392,11 @@ def _build_step(
                     engine_name = DriverRegistry.get_engine_for_step_type(step_type)
                 else:
                     # Try materializing public types (e.g., "scf" -> "qe_scf")
-                    # Try common engine families (qe is most common for legacy imports)
-                    for engine_family in ["qe", "vasp", "orca", "pyscf", "cp2k", "lammps", "w90"]:
+                    # Try all registered engine families
+                    gen_type = f"GEN_{step_type.upper()}" if not step_type.upper().startswith("GEN_") else step_type.upper()
+                    for engine_family in DriverRegistry.get_all_engines():
                         try:
-                            materialized = DriverRegistry.materialize_step_type(
-                                engine_family,
-                                f"GEN_{step_type.upper()}" if not step_type.upper().startswith("GEN_") else step_type.upper()
-                            )
+                            materialized = DriverRegistry.materialize_step_type(engine_family, gen_type)
                             if materialized:
                                 engine_name = engine_family
                                 break
@@ -551,13 +549,11 @@ def _build_step_inspection(
                     engine_name = DriverRegistry.get_engine_for_step_type(step_type)
                 else:
                     # Try materializing public types (e.g., "scf" -> "qe_scf")
-                    # Try common engine families (qe is most common for legacy imports)
-                    for engine_family in ["qe", "vasp", "orca", "pyscf", "cp2k", "lammps", "w90"]:
+                    # Try all registered engine families
+                    gen_type = f"GEN_{step_type.upper()}" if not step_type.upper().startswith("GEN_") else step_type.upper()
+                    for engine_family in DriverRegistry.get_all_engines():
                         try:
-                            materialized = DriverRegistry.materialize_step_type(
-                                engine_family,
-                                f"GEN_{step_type.upper()}" if not step_type.upper().startswith("GEN_") else step_type.upper()
-                            )
+                            materialized = DriverRegistry.materialize_step_type(engine_family, gen_type)
                             if materialized:
                                 engine_name = engine_family
                                 break

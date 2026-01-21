@@ -34,64 +34,37 @@ from quantumvitas.core.resources import (
 
 def _infer_engine_family_from_steps(steps: List["CalculationStepEntry"]) -> Optional[str]:
     """
-    Infer engine_family from step types (backward compatibility recovery).
-    
-    This is best-effort only; no guarantees required.
-    
+    Infer engine_family from step types using DriverRegistry.
+
+    Uses DriverRegistry to look up engine for each step type.
+    Returns a single family if all steps belong to one engine, None if mixed/unknown.
+
     Args:
         steps: List of CalculationStepEntry objects
-    
+
     Returns:
         Engine family identifier if all steps belong to one family, None otherwise
     """
     if not steps:
         return None
-    
-    # Map step types to engine families
-    # Old step types (without prefix) are assumed to be QE
-    step_type_to_family: Dict[str, str] = {}
-    
-    # QE step types (prefixed and legacy)
-    qe_types = {"scf", "nscf", "relax", "vc-relax", "dos", "bands", "bands_pw", "ph", "q2r", "matdyn", "dynmat", 
-                "pp", "projwfc", "md", "vc-md", "pw2wannier90", "custom"}
-    for step_type in qe_types:
-        step_type_to_family[step_type] = "qe"
-        step_type_to_family[f"qe_{step_type}"] = "qe"
-        # Handle legacy names
-        if step_type == "vc-relax":
-            step_type_to_family["qe_vc_relax"] = "qe"
-        elif step_type == "bands_pw":
-            step_type_to_family["qe_bands_pw"] = "qe"
-        elif step_type == "vc-md":
-            step_type_to_family["qe_vc_md"] = "qe"
-    
-    # Wannier90 step types
-    w90_types = {"w90_preproc", "w90_run"}
-    for step_type in w90_types:
-        step_type_to_family[step_type] = "qe"  # w90 is part of qe family toolchain
-    
-    # PySCF step types
-    pyscf_types = {"pyscf_scf"}
-    for step_type in pyscf_types:
-        step_type_to_family[step_type] = "pyscf"
-    
-    # Collect families from all steps
+
+    # Ensure drivers are loaded
+    import quantumvitas.drivers
+    from quantumvitas.core.driver_registry import DriverRegistry
+
     families = set()
     for step in steps:
-        step_type = step.step_type
-        if step_type:
-            family = step_type_to_family.get(step_type)
-            if family:
-                families.add(family)
-            elif not step_type.startswith(("qe_", "w90_", "pyscf_")):
-                # Legacy step type without prefix - assume QE
-                families.add("qe")
-    
+        step_type = step.type  # Use .type which stores public_type
+        if step_type and DriverRegistry.is_step_type_registered(step_type):
+            engine = DriverRegistry.get_engine_for_step_type(step_type)
+            families.add(engine)
+        # Unknown step types are ignored - will fail at handler dispatch
+
     # Return single family if all steps belong to one family
     if len(families) == 1:
         return families.pop()
-    
-    # Mixed families or unknown - return None (will use default)
+
+    # Mixed engines or no recognized step types
     return None
 
 

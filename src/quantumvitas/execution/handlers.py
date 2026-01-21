@@ -207,28 +207,13 @@ def create_handler_map(
 
     # Build handler map from registry
     handler_map = {}
-    
-    # Try to get handlers from registry for registered engines
+
+    # Get handlers from registry for all registered engines
     for engine in DriverRegistry.get_all_engines():
-        try:
-            driver = DriverRegistry.get_driver(engine)
-            base_handler = driver.get_handler()
-            handler_map[engine] = make_handler(base_handler)
-        except Exception as e:
-            logger.warning(f"Could not register handler for {engine}: {e}")
-            # Fallback to legacy handlers for engines not yet migrated
-            if engine == "qe":
-                handler_map["qe"] = make_handler(qe_step_handler)
-            # VASP is now migrated - no fallback needed
-            # LAMMPS is now migrated - no fallback needed
-            # CP2K is now migrated - no fallback needed
-            # PySCF is now migrated - no fallback needed
-            # ORCA is now migrated - no fallback needed
-    
-    # Legacy fallback: ensure QE is always available (until QE is fully migrated)
-    if "qe" not in handler_map:
-        handler_map["qe"] = make_handler(qe_step_handler)
-    
+        driver = DriverRegistry.get_driver(engine)
+        base_handler = driver.get_handler()
+        handler_map[engine] = make_handler(base_handler)
+
     return handler_map
 
 
