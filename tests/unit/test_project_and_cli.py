@@ -404,33 +404,30 @@ def test_cli_delete_calculation(tmp_path: Path):
 def test_cli_run_calculation_strict_option(sample_project: Path, monkeypatch):
     """Test that --strict flag sets calculation mode to STRICT."""
     runner = CliRunner()
-    captured = {}
 
-    class DummyStatus:
-        def __init__(self, value: str):
-            self.value = value
-            self.name = value.upper()
+    def fake_run_calculation(*args, **kwargs):
+        # Return dict matching QVService.run_calculation return format
+        calculation_selector = kwargs.get("calculation_selector") or (args[1] if len(args) > 1 else "wf")
+        return {
+            "calculation": calculation_selector,
+            "status": "success",
+            "n_steps": 1,
+            "steps": [
+                {
+                    "step_id": "scf",
+                    "step_type": "scf",
+                    "status": "success",
+                    "message": None,
+                    "metrics": {},
+                    "reference_file": None,
+                }
+            ],
+            "io_dir": None,
+            "run_id": None,
+        }
 
-    class DummyStep:
-        def __init__(self):
-            self.step_id = "scf"
-            self.status = DummyStatus("success")
-            self.reference_file = None
-            self.message = None
-            self.metrics = {}
-            self.step_type = DummyStatus("scf")  # Add step_type for CLI output
-
-    class DummyResult:
-        def __init__(self):
-            self.status = DummyStatus("success")
-            self.steps = [DummyStep()]
-
-    def fake_run(self, calculation):
-        captured["mode"] = calculation.mode
-        return DummyResult()
-
-    # Mock CalculationRunner.run to avoid actual QE execution
-    monkeypatch.setattr("quantumvitas.calculation.runner.CalculationRunner.run", fake_run)
+    # Mock QVService.run_calculation to avoid actual QE execution
+    monkeypatch.setattr("quantumvitas.api.QVService.run_calculation", fake_run_calculation)
     
     # Mock pseudopotential resolution to avoid pseudo requirements
     def fake_ensure_qe_pseudos(*args, **kwargs):
@@ -460,8 +457,13 @@ def test_cli_run_calculation_strict_option(sample_project: Path, monkeypatch):
     )
 
     assert result.exit_code == 0, result.stdout
-    assert captured["mode"] == StepMode.STRICT
     assert "Calculation wf status" in result.stdout
+    
+    # Verify that the calculation.yaml file has mode="strict" after CLI runs
+    import yaml
+    from quantumvitas.core.models import load_calculation
+    calc_model = load_calculation(sample_project / "calculations" / "wf", project_root=sample_project)
+    assert calc_model.mode == "strict", f"Expected mode='strict', got mode='{calc_model.mode}'"
 def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     runner = CliRunner()
     project_root = tmp_path / "proj"

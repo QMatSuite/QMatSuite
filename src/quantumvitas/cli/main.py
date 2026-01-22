@@ -50,9 +50,10 @@ from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.core.engines.qe_installation import get_qe_home
 from quantumvitas.engine.registry import create_default_registry
 from quantumvitas.project.model import Project
-from quantumvitas.calculation.runner import CalculationRunner
+# CalculationRunner now accessed via QVService.run_calculation()
 from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.types import StepMode, StepStatus
+# StepMode and StepStatus now imported from quantumvitas.api
+from quantumvitas.api import StepMode, StepStatus
 from quantumvitas.calculation.input_runner import (
     ParameterOverride,
     apply_card_overrides_to_qe_input,
@@ -3452,16 +3453,23 @@ def run_calculation_command(
     # Resolve calculation via registry (for consistent resolution)
     registry = svc.build_resource_index()
     
-    # Resolve calculation
+    # Resolve calculation selector (for use with QVService.run_calculation static method)
     if calculation:
         # Accept either calculation id or direct path
         calculation_path = Path(calculation)
         if calculation_path.exists():
+            # For direct path, load calculation to get ID and handle mode setting
             wf = Calculation.from_yaml(calculation_path, proj)
+            calc_selector = wf.id
+            calc_dir = calculation_path.parent
         else:
-            # Use registry-based resolution
+            # Use the provided selector directly
+            calc_selector = calculation
+            # Resolve to get calc_dir for mode setting
             calculation_resolved = svc.require_calculation_ref(calculation, config=config, index=registry)
-            wf = Calculation.from_yaml(calculation_resolved.absolute_path, proj)
+            # absolute_path points to the calculation directory
+            calc_dir = calculation_resolved.absolute_path
+            wf = Calculation.from_yaml(calc_dir, proj)
     else:
         # Auto-detect enclosing calculation from pwd
         wf_entry = svc.find_enclosing_calculation(config=config)
@@ -3471,45 +3479,73 @@ def run_calculation_command(
                 "Specify calculation name/slug/path or cd into a calculation folder."
             )
         # Use centralized selector extraction - single selector, single resolution pattern
-        wf_id = QVService.extract_calculation_selector_from_entry(wf_entry)
-        if not wf_id:
+        calc_selector = QVService.extract_calculation_selector_from_entry(wf_entry)
+        if not calc_selector:
             raise typer.BadParameter(
                 "Calculation entry found but no valid identifier. "
                 "This may indicate a corrupted project.qv.yml."
             )
-        calculation_resolved = svc.require_calculation_ref(wf_id, config=config, index=registry)
-        wf = Calculation.from_yaml(calculation_resolved.absolute_path, proj)
+        calculation_resolved = svc.require_calculation_ref(calc_selector, config=config, index=registry)
+        # absolute_path points to the calculation directory
+        calc_dir = calculation_resolved.absolute_path
+        wf = Calculation.from_yaml(calc_dir, proj)
 
-    if strict:
-        wf.mode = StepMode.STRICT
-    elif mode:
-        try:
+    # Set mode if needed (must be done before calling run_calculation)
+    if strict or mode:
+        from quantumvitas.core.models import load_calculation, save_calculation
+        
+        # Load the model, update mode, and save
+        calc_model = load_calculation(calc_dir, project_root)
+        if strict:
+            calc_model.mode = "strict"
+        elif mode:
+            try:
+                calc_model.mode = mode.lower()
+            except ValueError as exc:
+                raise typer.BadParameter("Mode must be 'normal' or 'strict'.") from exc
+        
+        save_calculation(calc_model, calc_dir)
+        
+        # Also update the Calculation object for consistency
+        if strict:
+            wf.mode = StepMode.STRICT
+        elif mode:
             wf.mode = StepMode(mode.lower())
-        except ValueError as exc:
-            raise typer.BadParameter("Mode must be 'normal' or 'strict'.") from exc
 
-    registry = create_default_registry()
-    runner = CalculationRunner(registry)
-    result = runner.run(wf)
+    # Use QVService static method which wraps CalculationRunner internally
+    result_dict = QVService.run_calculation(
+        project_root=project_root,
+        calculation_selector=calc_selector,
+        strict=strict,
+        verbose=verbose,
+        config=config,
+        index=registry,
+    )
+    
+    # The static method returns a dict with status and steps
+    # Work with the dict directly instead of converting back to CalculationResult
+    status_str = result_dict.get("status", "SUCCESS")
+    steps_list = result_dict.get("steps", [])
 
-    typer.echo(f"Calculation {wf.id} status: StepStatus.{result.status.name}")
+    typer.echo(f"Calculation {wf.id} status: StepStatus.{status_str.upper()}")
     if verbose:
-        for step in result.steps:
-            line = f"- {step.step_id}: {step.status.value}"
-            if step.reference_file:
-                line += f" (ref: {step.reference_file.name})"
-            if step.message:
-                line += f" [{step.message}]"
+        for step_dict in steps_list:
+            line = f"- {step_dict.get('step_id', 'unknown')}: {step_dict.get('status', 'unknown')}"
+            if step_dict.get("reference_file"):
+                ref_path = Path(step_dict["reference_file"])
+                line += f" (ref: {ref_path.name})"
+            if step_dict.get("message"):
+                line += f" [{step_dict['message']}]"
             typer.echo(line)
             # Print step_type for each step (contract requirement)
-            typer.echo(f"step_type: {step.step_type}")
-            if step.metrics:
-                for key, value in step.metrics.items():
-                    typer.echo(f"    {key}: {value}")
+            typer.echo(f"step_type: {step_dict.get('step_type', 'unknown')}")
+            if step_dict.get("metrics"):
+                for key, value in step_dict["metrics"].items():
+                    typer.echo(f"  {key}: {value}")
     else:
         # Even when not verbose, print step_type for each step (contract requirement)
-        for step in result.steps:
-            typer.echo(f"step_type: {step.step_type}")
+        for step_dict in steps_list:
+            typer.echo(f"step_type: {step_dict.get('step_type', 'unknown')}")
 
 
 @app.command("run-calculation")

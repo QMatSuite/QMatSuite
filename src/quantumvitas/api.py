@@ -157,6 +157,8 @@ __all__ = [
     "ResourceContext",
     "ProjectConfigError",
     "ResourceMeta",
+    "StepMode",
+    "StepStatus",
 ]
 
 # Re-export VolumeParserError for daemon use
@@ -164,6 +166,9 @@ from quantumvitas.io.parser.volume_parsers import VolumeParserError  # noqa: E40
 
 # Re-export DisplayModeParams for daemon use
 from quantumvitas.analysis.structure_viz import DisplayModeParams  # noqa: E402
+
+# Re-export calculation types for CLI use
+from quantumvitas.calculation.types import StepMode, StepStatus  # noqa: E402
 
 
 class QVServiceError(Exception):
