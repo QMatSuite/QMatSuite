@@ -56,6 +56,7 @@ from quantumvitas.core.selectors import (
 from quantumvitas.core.context import detect_enclosing_project
 from quantumvitas.core.project_utils import (
     ProjectConfigError,
+    ResourceContext,
     ResourceNotFoundError as ProjectResourceNotFoundError,  # Legacy error from project_utils
     load_project_config,
     save_project_config,
@@ -153,6 +154,8 @@ __all__ = [
     "ContextNotFoundError",
     "VolumeParserError",
     "DisplayModeParams",
+    "ResourceContext",
+    "ProjectConfigError",
 ]
 
 # Re-export VolumeParserError for daemon use
@@ -749,9 +752,201 @@ class QVService:
         """
         return collect_slugs(entries, exclude=exclude, project_root=self.project_root)
     
+    def find_enclosing_calculation(
+        self,
+        config: Optional[Dict[str, Any]] = None,
+        start: Optional[Path] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Find calculation entry that encloses the current directory.
+        
+        Args:
+            config: Optional project config (avoids reloading if provided)
+            start: Starting directory (defaults to cwd)
+            
+        Returns:
+            Calculation entry dict if found, None otherwise
+        """
+        if config is None:
+            config = self.load_project_config()
+        
+        from quantumvitas.core.project_utils import find_enclosing_calculation as _find_enclosing_calculation
+        return _find_enclosing_calculation(self.project_root, config, start=start)
+    
+    def apply_structure_rename(
+        self,
+        entry: Dict[str, Any],
+        new_name: Optional[str] = None,
+        new_slug: Optional[str] = None,
+        new_path: Optional[Path] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Apply a rename operation to a structure entry.
+        
+        Args:
+            entry: Structure entry dict
+            new_name: Optional new name
+            new_slug: Optional new slug
+            new_path: Optional new path
+            config: Optional project config (avoids reloading if provided)
+        """
+        if config is None:
+            config = self.load_project_config()
+        
+        from quantumvitas.core.project_utils import apply_structure_rename as _apply_structure_rename
+        _apply_structure_rename(
+            project_root=self.project_root,
+            config=config,
+            entry=entry,
+            new_name=new_name,
+            new_slug=new_slug,
+            new_path=new_path,
+        )
+    
+    def apply_calculation_rename(
+        self,
+        entry: Dict[str, Any],
+        new_name: Optional[str] = None,
+        new_slug: Optional[str] = None,
+        new_path: Optional[Path] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Apply a rename operation to a calculation entry.
+        
+        Args:
+            entry: Calculation entry dict
+            new_name: Optional new name
+            new_slug: Optional new slug
+            new_path: Optional new path
+            config: Optional project config (avoids reloading if provided)
+        """
+        if config is None:
+            config = self.load_project_config()
+        
+        from quantumvitas.core.project_utils import apply_calculation_rename as _apply_calculation_rename
+        _apply_calculation_rename(
+            project_root=self.project_root,
+            config=config,
+            entry=entry,
+            new_name=new_name,
+            new_slug=new_slug,
+            new_path=new_path,
+        )
+    
+    def delete_calculation_entry(
+        self,
+        entry: Dict[str, Any],
+        force: bool = False,
+        cascade: bool = False,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Delete a calculation entry, moving its directory to trash.
+        
+        Args:
+            entry: Calculation entry dict
+            force: If True, delete even if other calculations depend on this one
+            cascade: If True, also delete calculations that depend on this one
+            config: Optional project config (avoids reloading if provided)
+        """
+        if config is None:
+            config = self.load_project_config()
+        
+        trash_dir = self.project_root / "trash"
+        from quantumvitas.core.project_utils import delete_calculation_entry as _delete_calculation_entry
+        _delete_calculation_entry(
+            project_root=self.project_root,
+            config=config,
+            entry=entry,
+            trash_dir=trash_dir,
+            force=force,
+            cascade=cascade,
+        )
+    
+    def resolve_resource(
+        self,
+        resource_type: str,
+        identifier: Optional[str] = None,
+        parent_identifier: Optional[str] = None,
+        cwd: Optional[Path] = None,
+    ) -> "ResourceContext":
+        """
+        Universal resource resolver with auto-detection from current directory.
+        
+        Args:
+            resource_type: "project", "structure", "calculation", or "step"
+            identifier: Resource id/name/slug/path (optional for calculation/step if inside one)
+            parent_identifier: Parent resource id/name/slug/path (for step: the calculation)
+            cwd: Starting directory for auto-detection (defaults to Path.cwd())
+            
+        Returns:
+            ResourceContext with project_root, config, entry, parent_entry, resource_path
+        """
+        from quantumvitas.core.project_utils import resolve_resource as _resolve_resource
+        
+        return _resolve_resource(
+            resource_type=resource_type,
+            identifier=identifier,
+            parent_identifier=parent_identifier,
+            project_path=self.project_root,
+            cwd=cwd,
+        )
+    
     # -------------------------------------------------------------------------
     # Project operations (static methods - backward compatibility)
     # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def require_project_root(start: Optional[Path] = None, *, stop_at: Optional[Path] = None, max_levels: int = 100) -> Path:
+        """
+        Require a project root to be found (raises if not found).
+        
+        Args:
+            start: Starting directory (defaults to cwd)
+            stop_at: Optional boundary directory
+            max_levels: Maximum number of parent directories to traverse (default: 100)
+            
+        Returns:
+            Path to project root (directory containing project.qv.yml)
+            
+        Raises:
+            ResourceNotFoundError: If no project.qv.yml found
+        """
+        from quantumvitas.core.project_utils import require_project_root as _require_project_root
+        return _require_project_root(start, stop_at=stop_at, max_levels=max_levels)
+    
+    @staticmethod
+    def find_project_root(start: Optional[Path] = None, *, stop_at: Optional[Path] = None, max_levels: int = 100) -> Optional[Path]:
+        """
+        Find project root by walking up from start directory.
+        
+        Args:
+            start: Starting directory (defaults to cwd)
+            stop_at: Optional boundary directory
+            max_levels: Maximum number of parent directories to traverse (default: 100)
+            
+        Returns:
+            Path to project root if found, None otherwise
+        """
+        from quantumvitas.core.project_utils import find_project_root as _find_project_root
+        return _find_project_root(start, stop_at=stop_at, max_levels=max_levels)
+    
+    @staticmethod
+    def move_to_trash(target: Path, trash_dir: Path) -> Path:
+        """
+        Move a file or directory to the trash folder with a timestamp.
+        
+        Args:
+            target: File or directory to move
+            trash_dir: Trash directory
+            
+        Returns:
+            Path to the moved item in trash
+        """
+        from quantumvitas.core.project_utils import move_to_trash as _move_to_trash
+        return _move_to_trash(target, trash_dir)
     
     @staticmethod
     def init_project(
