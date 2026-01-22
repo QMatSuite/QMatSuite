@@ -1295,4 +1295,151 @@ K_POINTS
         non_project.mkdir()
         detected = QVService.detect_project_root(start=non_project)
         assert detected is None
+    
+    def test_engine_config_re_export(self):
+        """Test that EngineConfig is re-exported from api."""
+        from quantumvitas.api import EngineConfig
+        from quantumvitas.core.engines.base import EngineConfig as OriginalEngineConfig
+        
+        assert EngineConfig is OriginalEngineConfig
+    
+    def test_calculation_step_entry_re_export(self):
+        """Test that CalculationStepEntry is re-exported from api."""
+        from quantumvitas.api import CalculationStepEntry
+        from quantumvitas.core.models import CalculationStepEntry as OriginalCalculationStepEntry
+        
+        assert CalculationStepEntry is OriginalCalculationStepEntry
+    
+    def test_qe_engine_re_export(self):
+        """Test that QeEngine is re-exported from api."""
+        from quantumvitas.api import QeEngine
+        from quantumvitas.engine.qe_engine import QeEngine as OriginalQeEngine
+        
+        assert QeEngine is OriginalQeEngine
+    
+    def test_project_context_re_export(self):
+        """Test that ProjectContext is re-exported from api."""
+        from quantumvitas.api import ProjectContext
+        from quantumvitas.core.project_context import ProjectContext as OriginalProjectContext
+        
+        assert ProjectContext is OriginalProjectContext
+    
+    def test_get_qe_home_wrapper(self, monkeypatch):
+        """Test that get_qe_home wrapper works by mocking underlying call."""
+        from quantumvitas.api import QVService
+        import quantumvitas.core.engines.qe_installation as qe_installation_module
+        from pathlib import Path
+        
+        called = {}
+        fake_qe_home = Path("/fake/qe/home")
+        
+        def fake_get_qe_home():
+            called["called"] = True
+            return fake_qe_home
+        
+        monkeypatch.setattr(qe_installation_module, "get_qe_home", fake_get_qe_home)
+        
+        result = QVService.get_qe_home()
+        
+        assert result == fake_qe_home
+        assert called["called"] is True
+    
+    def test_create_default_registry_wrapper(self, monkeypatch):
+        """Test that create_default_registry wrapper works by mocking underlying call."""
+        from quantumvitas.api import QVService, EngineConfig
+        import quantumvitas.engine.registry as registry_module
+        
+        called = {}
+        fake_registry = type("FakeRegistry", (), {})()
+        
+        def fake_create_default_registry(config=None, include_orca=True, include_vasp=True, include_lammps=True):
+            called["config"] = config
+            called["include_orca"] = include_orca
+            called["include_vasp"] = include_vasp
+            called["include_lammps"] = include_lammps
+            return fake_registry
+        
+        monkeypatch.setattr(registry_module, "create_default_registry", fake_create_default_registry)
+        
+        fake_config = EngineConfig(name="qe")
+        result = QVService.create_default_registry(config=fake_config, include_orca=False)
+        
+        assert result == fake_registry
+        assert called["config"] == fake_config
+        assert called["include_orca"] is False
+        assert called["include_vasp"] is True
+        assert called["include_lammps"] is True
+    
+    def test_copy_structure_template_wrapper(self, monkeypatch, tmp_path):
+        """Test that copy_structure_template wrapper works by mocking underlying call."""
+        from quantumvitas.api import QVService
+        import quantumvitas.core.templates as templates_module
+        from pathlib import Path
+        
+        called = {}
+        fake_output_path = tmp_path / "output.json"
+        fake_output_path.write_text("{}")
+        
+        def fake_copy_structure_template(template_name, dest_dir, new_name=None):
+            called["template_name"] = template_name
+            called["dest_dir"] = dest_dir
+            called["new_name"] = new_name
+            return fake_output_path
+        
+        monkeypatch.setattr(templates_module, "copy_structure_template", fake_copy_structure_template)
+        
+        result = QVService.copy_structure_template("test_template", tmp_path, new_name="new_name")
+        
+        assert result == fake_output_path
+        assert called["template_name"] == "test_template"
+        assert called["dest_dir"] == tmp_path
+        assert called["new_name"] == "new_name"
+    
+    def test_load_calculation_wrapper(self, monkeypatch, tmp_path):
+        """Test that load_calculation wrapper works by mocking underlying call."""
+        from quantumvitas.api import QVService
+        import quantumvitas.core.models as models_module
+        from pathlib import Path
+        
+        called = {}
+        fake_calc_model = type("FakeCalculationModel", (), {"id": "test_calc"})()
+        
+        def fake_load_calculation(path, project_root=None, resolve_structure_selector=None):
+            called["path"] = path
+            called["project_root"] = project_root
+            return fake_calc_model
+        
+        monkeypatch.setattr(models_module, "load_calculation", fake_load_calculation)
+        
+        calc_path = tmp_path / "calculation.yaml"
+        calc_path.write_text("id: test")
+        project_root = tmp_path
+        
+        result = QVService.load_calculation(calc_path, project_root)
+        
+        assert result == fake_calc_model
+        assert called["path"] == calc_path
+        assert called["project_root"] == project_root
+    
+    def test_save_calculation_wrapper(self, monkeypatch, tmp_path):
+        """Test that save_calculation wrapper works by mocking underlying call."""
+        from quantumvitas.api import QVService
+        import quantumvitas.core.models as models_module
+        from pathlib import Path
+        
+        called = {}
+        
+        def fake_save_calculation(model, path):
+            called["model"] = model
+            called["path"] = path
+        
+        monkeypatch.setattr(models_module, "save_calculation", fake_save_calculation)
+        
+        fake_model = type("FakeCalculationModel", (), {"id": "test_calc"})()
+        calc_path = tmp_path / "calculation.yaml"
+        
+        QVService.save_calculation(fake_model, calc_path)
+        
+        assert called["model"] == fake_model
+        assert called["path"] == calc_path
 

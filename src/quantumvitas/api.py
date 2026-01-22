@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Literal, Optional, Sequence, Set, Tuple, TYPE_CHECKING
 
 import numpy as np
 import yaml
@@ -76,7 +76,9 @@ from quantumvitas.core.project_utils import (
 
 if TYPE_CHECKING:
     from quantumvitas.calculation.structure_steps import StructureStepSpec
-    from quantumvitas.core.resolution import ResourceIndex
+    from quantumvitas.core.resolution import ResourceIndex, ResolvedResource
+    from quantumvitas.core.models import CalculationModel
+    from quantumvitas.engine.registry import EngineRegistry
 
 
 # =============================================================================
@@ -163,6 +165,10 @@ __all__ = [
     "BandAnalysisFiles",
     "Step",
     "Calculation",
+    "EngineConfig",
+    "CalculationStepEntry",
+    "QeEngine",
+    "ProjectContext",
 ]
 
 # Re-export VolumeParserError for daemon use
@@ -194,6 +200,16 @@ from quantumvitas.calculation.step import Step  # noqa: E402
 
 # Re-export calculation Calculation class for CLI use
 from quantumvitas.calculation.calculation import Calculation  # noqa: E402
+
+# Re-export engine types for CLI use
+from quantumvitas.core.engines.base import EngineConfig  # noqa: E402
+from quantumvitas.engine.qe_engine import QeEngine  # noqa: E402
+
+# Re-export model types for CLI use
+from quantumvitas.core.models import CalculationStepEntry  # noqa: E402
+
+# Re-export project context for CLI use
+from quantumvitas.core.project_context import ProjectContext  # noqa: E402
 
 
 class QVServiceError(Exception):
@@ -10772,6 +10788,220 @@ class QVService:
         """
         from quantumvitas.calculation.step_defaults import get_default_step_params as _get_default_step_params
         return _get_default_step_params(step_type)
+    
+    # -------------------------------------------------------------------------
+    # Engine and Installation Utilities
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def get_qe_home() -> Optional[Path]:
+        """
+        Get the currently configured QE home directory.
+        
+        Returns the internal registry value (not os.environ["QE_HOME"]).
+        If not yet initialized, triggers auto-detection.
+        
+        Returns:
+            Path to QE home directory, or None if not found/configured.
+        """
+        from quantumvitas.core.engines.qe_installation import get_qe_home as _get_qe_home
+        return _get_qe_home()
+    
+    @staticmethod
+    def create_default_registry(
+        config: Optional["EngineConfig"] = None,
+        include_orca: bool = True,
+        include_vasp: bool = True,
+        include_lammps: bool = True,
+    ) -> "EngineRegistry":
+        """
+        Create a default engine registry with QE, PySCF, and optionally other engines.
+        
+        Args:
+            config: Optional engine configuration (used for QE engine)
+            include_orca: Whether to include ORCA engine
+            include_vasp: Whether to include VASP engine
+            include_lammps: Whether to include LAMMPS engine
+            
+        Returns:
+            EngineRegistry instance
+        """
+        from quantumvitas.engine.registry import create_default_registry as _create_default_registry
+        return _create_default_registry(
+            config=config,
+            include_orca=include_orca,
+            include_vasp=include_vasp,
+            include_lammps=include_lammps,
+        )
+    
+    # -------------------------------------------------------------------------
+    # Template Utilities
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def copy_calculation_template(
+        template_name: str,
+        dest_dir: Path,
+        project_root: Path,
+        new_name: Optional[str] = None,
+        structure: Optional[str] = None,
+        calculation_ulid: Optional[str] = None,
+    ) -> Tuple[Path, Set[str], str]:
+        """
+        Copy a calculation template to destination, including step files.
+        
+        Args:
+            template_name: Template name or path to template directory
+            dest_dir: Destination directory
+            project_root: Project root path
+            new_name: Optional new name for the calculation
+            structure: Optional structure selector
+            calculation_ulid: Optional calculation ULID
+            
+        Returns:
+            Tuple of (calculation_path, structures_needed, calculation_id)
+        """
+        from quantumvitas.core.templates import copy_calculation_template as _copy_calculation_template
+        return _copy_calculation_template(
+            template_name=template_name,
+            dest_dir=dest_dir,
+            project_root=project_root,
+            new_name=new_name,
+            structure=structure,
+            calculation_ulid=calculation_ulid,
+        )
+    
+    @staticmethod
+    def copy_structure_template(
+        template_name: str,
+        dest_dir: Path,
+        new_name: Optional[str] = None,
+    ) -> Path:
+        """
+        Copy a structure template to destination.
+        
+        Args:
+            template_name: Template name or path to .json file
+            dest_dir: Destination directory
+            new_name: Optional new name for the structure
+            
+        Returns:
+            Path to the copied structure file
+        """
+        from quantumvitas.core.templates import copy_structure_template as _copy_structure_template
+        return _copy_structure_template(
+            template_name=template_name,
+            dest_dir=dest_dir,
+            new_name=new_name,
+        )
+    
+    @staticmethod
+    def list_calculation_templates() -> List[Dict[str, Any]]:
+        """
+        List available calculation templates with metadata.
+        
+        Returns:
+            List of dictionaries with template metadata
+        """
+        from quantumvitas.core.templates import list_calculation_templates as _list_calculation_templates
+        return _list_calculation_templates()
+    
+    # -------------------------------------------------------------------------
+    # Model I/O Utilities
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def load_calculation(
+        path: Path,
+        project_root: Optional[Path] = None,
+    ) -> "CalculationModel":
+        """
+        Load a CalculationModel from a calculation.yaml file.
+        
+        Args:
+            path: Path to calculation.yaml file
+            project_root: Optional project root (for legacy compatibility)
+            
+        Returns:
+            CalculationModel instance
+        """
+        from quantumvitas.core.models import load_calculation as _load_calculation
+        return _load_calculation(path=path, project_root=project_root)
+    
+    @staticmethod
+    def save_calculation(
+        model: "CalculationModel",
+        path: Path,
+    ) -> None:
+        """
+        Save a CalculationModel to a calculation.yaml file.
+        
+        Args:
+            model: CalculationModel to save
+            path: Path to calculation.yaml file
+        """
+        from quantumvitas.core.models import save_calculation as _save_calculation
+        _save_calculation(model=model, path=path)
+    
+    # -------------------------------------------------------------------------
+    # Project Context Utilities
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def load_project_context(
+        cwd: Path,
+        project: Optional[Path] = None,
+    ) -> "ProjectContext":
+        """
+        Load a ProjectContext from a directory.
+        
+        Args:
+            cwd: Current working directory
+            project: Optional explicit project root
+            
+        Returns:
+            ProjectContext instance
+        """
+        from quantumvitas.core.project_context import ProjectContext
+        return ProjectContext.load(cwd, project)
+    
+    @staticmethod
+    def resolve_calculation_for_cli(
+        ctx: "ProjectContext",
+        calculation_option: Optional[str] = None,
+    ) -> "ResolvedResource":
+        """
+        Resolve calculation for CLI command.
+        
+        Args:
+            ctx: ProjectContext instance
+            calculation_option: Optional calculation selector
+            
+        Returns:
+            ResolvedResource for the calculation
+        """
+        from quantumvitas.core.project_context import resolve_calculation_for_cli as _resolve_calculation_for_cli
+        return _resolve_calculation_for_cli(ctx, calculation_option)
+    
+    @staticmethod
+    def resolve_step_for_cli(
+        ctx: "ProjectContext",
+        calculation_resolved: "ResolvedResource",
+        step_option: Optional[str] = None,
+    ) -> "ResolvedResource":
+        """
+        Resolve step for CLI command.
+        
+        Args:
+            ctx: ProjectContext instance
+            calculation_resolved: ResolvedResource for the calculation
+            step_option: Optional step selector
+            
+        Returns:
+            ResolvedResource for the step
+        """
+        from quantumvitas.core.project_context import resolve_step_for_cli as _resolve_step_for_cli
+        return _resolve_step_for_cli(ctx, calculation_resolved, step_option)
     
     # -------------------------------------------------------------------------
     # Analysis Utilities
