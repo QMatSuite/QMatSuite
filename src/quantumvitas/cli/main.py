@@ -99,6 +99,33 @@ app.add_typer(run_app, name="run")
 app.add_typer(analyze_app, name="analyze")
 
 
+def _svc_from_cwd(cwd: Optional[Path] = None) -> "QVService":
+    """
+    Get a QVService instance from the current working directory.
+    
+    Detects project root from cwd (or current working directory) and returns
+    a QVService instance for that project.
+    
+    Args:
+        cwd: Working directory (defaults to current working directory)
+        
+    Returns:
+        QVService instance for the detected project
+        
+    Raises:
+        typer.BadParameter: If no project root is found
+    """
+    from quantumvitas.api import QVService
+    start_path = Path(cwd or Path.cwd()).resolve()
+    project_root = QVService.detect_project_root(start=start_path)
+    if project_root is None:
+        raise typer.BadParameter(
+            f"No project found. Current directory: {start_path}. "
+            "Run 'qv init' to create a project, or run from within a project directory."
+        )
+    return QVService(project_root)
+
+
 def _resolve_project_root(start: Optional[Path] = None) -> Path:
     start_path = Path(start or Path.cwd()).resolve()
     current = start_path
@@ -952,6 +979,15 @@ def init_step_command(
             project_root = None
 
     # Determine calculation: explicit --calculation, or auto-detect from cwd using PathContext
+    # Ensure svc is defined when project_root exists
+    from quantumvitas.api import QVService
+    if project_root:
+        svc = QVService(project_root)
+        config = svc.load_project_config()
+    else:
+        svc = None
+        config = {"structures": [], "calculations": []}
+    
     calculation_entry = None
     calculation_dir: Optional[Path] = None
     calculation_steps: list[dict] | None = None
@@ -963,21 +999,14 @@ def init_step_command(
     if calculation:
         if not project_root:
             raise typer.BadParameter("Specify --project when using --calculation.")
-        from quantumvitas.api import QVService
-        svc = QVService(project_root)
-        config = svc.load_project_config()
         calculation_entry = svc.find_calculation_entry(calculation, config=config)
     elif project_root:
         # Try to detect enclosing calculation from cwd using find_enclosing_calculation
         # This is more reliable than PathContext.calculation_selector (which reads from calculation.yaml)
-        from quantumvitas.api import QVService
-        svc = QVService(project_root)
         try:
-            config = svc.load_project_config()
             calculation_entry = svc.find_enclosing_calculation(config=config)
         except Exception:
             # Fall back to old method if find_enclosing_calculation fails
-            config = svc.load_project_config()
             detected = _detect_enclosing_calculation(
                 project_root, Path.cwd().resolve(), config.get("calculations", [])
             )
@@ -992,7 +1021,6 @@ def init_step_command(
         is_at_project_root = False
         
         try:
-            from quantumvitas.api import QVService
             ctx = QVService.find_path_context_ref()
             # Compare resolved paths to handle symlinks and path differences
             if cwd_resolved == project_root_resolved and not ctx["is_inside_calculation"]:
@@ -1012,20 +1040,8 @@ def init_step_command(
             # The test inspects stdout, so we must echo to stdout, not stderr,
             # and then exit with a non-zero code.
             raise typer.Exit(code=1)
-    
-    if not project_root:
-        config = {"structures": [], "calculations": []}
-        svc = None
-    elif not calculation_entry:
-        if 'svc' not in locals():
-            from quantumvitas.api import QVService
-            svc = QVService(project_root)
-        config = svc.load_project_config()
 
     if calculation_entry and project_root:
-        if 'svc' not in locals():
-            from quantumvitas.api import QVService
-            svc = QVService(project_root)
         calculation_dir = svc.calculation_directory(calculation_entry)
         calculation_yaml = calculation_dir / "calculation.yaml"
         if not calculation_yaml.exists():
@@ -1058,8 +1074,6 @@ def init_step_command(
     elif calculation_structure_id:
         # Calculation has structure_id - resolve it to get the selector for display
         try:
-            from quantumvitas.api import QVService
-            svc = QVService(project_root)
             resolved = svc.require_structure_ref(calculation_structure_id, config=config if project_root else None)
             structure_value = resolved.meta.slug or resolved.meta.name
             typer.echo(f"Using structure '{structure_value}' from calculation")
@@ -1179,8 +1193,6 @@ def init_step_command(
     elif structure_value and project_root:
         # Resolve structure selector to structure_id
         try:
-            from quantumvitas.api import QVService
-            svc = QVService(project_root)
             resolved_structure = svc.require_structure_ref(structure_value, config=config if project_root else None)
             structure_id = resolved_structure.meta.id
         except ResourceNotFoundError as e:
@@ -1710,6 +1722,8 @@ def _run_standalone_step(
         
         # Materialize step (generates .in from step.yaml)
         # For standalone, use workdir as project_root for pseudo resolution (workdir/pseudo)
+        # Create QVService instance for materialize_step_spec
+        svc = QVService(workdir_path)  # Standalone: use workdir as project root
         generated_input, materialized_spec = svc.materialize_step_spec(
             spec=spec,
             output_dir=workdir_path,
@@ -1796,12 +1810,13 @@ def run_structure_command(
     if bundle.has_any():
         typer.echo(f"Applying overrides: {_render_override_summary(bundle)}")
 
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
     qe_input = svc.generate_qe_input_from_structure(
         structure=struct,
         step_type=step_type,
         parameter_overrides=bundle.parameters,
     )
-    from quantumvitas.api import QVService
     QVService.apply_card_overrides_to_qe_input(qe_input, bundle.card_overrides)
     QVService.apply_species_overrides_to_qe_input(qe_input, bundle.species_overrides)
 
@@ -4447,9 +4462,8 @@ def _suggest_structure_name(structure: "PMGStructure", source_path: Path) -> str
 def _write_step_spec(
     path: Path, spec: Any, *, project_root: Optional[Path] = None
 ) -> None:
-    from quantumvitas.api import StructureStepSpec
+    from quantumvitas.api import StructureStepSpec, QVService
     if project_root:
-        from quantumvitas.api import QVService
         relative_path = QVService.ensure_relative_path(path, base=project_root)
     else:
         relative_path = path.name
@@ -4459,7 +4473,7 @@ def _write_step_spec(
     warnings: list[str] = []
     
     parameters = spec.parameters or {}
-    runtime_keys = svc.detect_runtime_control_keys(parameters)
+    runtime_keys = QVService.detect_runtime_control_keys(parameters)
     if runtime_keys:
         for key in runtime_keys:
             warnings.append(
