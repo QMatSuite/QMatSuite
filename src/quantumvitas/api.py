@@ -10158,6 +10158,65 @@ class QVService:
         return _generate_resource_id()
     
     # -------------------------------------------------------------------------
+    # I/O Operations
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def read_structure(filepath: Path, format: Optional[str] = None):
+        """
+        Read atomic structure from file using pymatgen.
+        
+        Supports both periodic structures (Structure) and molecules (Molecule).
+        
+        Args:
+            filepath: Path to structure file
+            format: Optional format hint (e.g., "cif", "qe")
+                    If None, format is inferred from file extension
+            
+        Returns:
+            pymatgen Structure or Molecule object
+        """
+        from quantumvitas.io import read_structure as _read_structure
+        return _read_structure(filepath, format=format)
+    
+    @staticmethod
+    def write_structure(
+        structure,
+        filepath: Path,
+        format: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Write atomic structure to file using pymatgen.
+        
+        Args:
+            structure: pymatgen Structure or Molecule
+            filepath: Path to output file
+            format: Optional format hint (e.g., "cif", "poscar")
+            metadata: Optional metadata dict or ResourceMeta
+        """
+        from quantumvitas.io import write_structure as _write_structure
+        from quantumvitas.core.resources import ResourceMeta
+        
+        # Convert ResourceMeta if needed
+        if metadata is not None and not isinstance(metadata, (dict, ResourceMeta)):
+            raise QVServiceError(f"metadata must be dict or ResourceMeta, got {type(metadata)}")
+        
+        return _write_structure(structure, filepath, format=format, metadata=metadata)
+    
+    @staticmethod
+    def write_qe_input_file(qe_input, filepath: Path) -> None:
+        """
+        Write a Quantum ESPRESSO input file.
+        
+        Args:
+            qe_input: QEInput object
+            filepath: Path to output file
+        """
+        from quantumvitas.drivers.qe.io.generator import QEInputGenerator
+        QEInputGenerator.write_file(qe_input, filepath)
+    
+    # -------------------------------------------------------------------------
     # Models
     # -------------------------------------------------------------------------
     
@@ -10466,19 +10525,6 @@ class QVService:
     # -------------------------------------------------------------------------
     # Structure I/O and analysis
     # -------------------------------------------------------------------------
-    
-    @staticmethod
-    def write_structure(structure_path: Path, structure: Any) -> None:
-        """
-        Write structure to file.
-        
-        Args:
-            structure_path: Path to write structure file
-            structure: Structure object (from quantumvitas.io.read_structure)
-        """
-        from quantumvitas.io.structure_io import write_structure as _write_structure
-        
-        _write_structure(structure, structure_path)
     
     @staticmethod
     def canonicalize_structure(structure: Any) -> None:
