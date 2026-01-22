@@ -331,4 +331,62 @@ steps: []
         assert name2 != "test" or slug2 != "test"  # Should be unique
         assert isinstance(name2, str)
         assert isinstance(slug2, str)
+    
+    def test_read_structure(self, tmp_path):
+        """read_structure reads structure files."""
+        from pymatgen.core import Structure, Lattice
+        
+        # Create a simple structure file (CIF format)
+        structure = Structure(Lattice.cubic(4.0), ["Si"], [[0, 0, 0]])
+        cif_file = tmp_path / "test.cif"
+        structure.to(filename=str(cif_file), fmt="cif")
+        
+        # Test static method
+        read_struct = QVService.read_structure(cif_file)
+        assert isinstance(read_struct, Structure)
+        assert len(read_struct) == 1
+        
+        # Test instance method (should also work)
+        svc = QVService.generate_resource_id()  # Just need a valid call
+        # Actually, read_structure doesn't need project_root, so static is fine
+    
+    def test_write_structure(self, tmp_path):
+        """write_structure writes structure files."""
+        from pymatgen.core import Structure, Lattice
+        
+        structure = Structure(Lattice.cubic(4.0), ["Si"], [[0, 0, 0]])
+        output_file = tmp_path / "output.cif"
+        
+        # Test static method
+        QVService.write_structure(structure, output_file)
+        
+        assert output_file.exists()
+        # Verify we can read it back
+        read_struct = QVService.read_structure(output_file)
+        assert isinstance(read_struct, Structure)
+        assert len(read_struct) == 1
+    
+    def test_write_qe_input_file(self, tmp_path):
+        """write_qe_input_file writes QE input files."""
+        from quantumvitas.drivers.qe.io.model import QEInput, QENamelist, QECard, QECardType
+        
+        # Create minimal QE input
+        control = QENamelist(name="CONTROL", parameters={"calculation": "scf"})
+        system = QENamelist(name="SYSTEM", parameters={"ibrav": 0, "nat": 1, "ntyp": 1})
+        atomic_species = QECard(
+            card_type=QECardType.ATOMIC_SPECIES,
+            option=None,
+            data=[["Si", 28.085, "Si.pbe-n-rrkjus_psl.1.0.0.UPF"]]
+        )
+        qe_input = QEInput(namelists=[control, system], cards=[atomic_species])
+        
+        output_file = tmp_path / "test.pw.in"
+        
+        # Test static method
+        QVService.write_qe_input_file(qe_input, output_file)
+        
+        assert output_file.exists()
+        content = output_file.read_text()
+        assert "CONTROL" in content
+        assert "calculation" in content
 

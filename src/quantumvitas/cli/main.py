@@ -66,7 +66,7 @@ from quantumvitas.calculation.structure_steps import (
     generate_qe_input_from_spec,
     generate_qe_input_from_structure,
 )
-from quantumvitas.io import QEInputGenerator, read_structure, write_structure
+# I/O operations now via QVService
 from quantumvitas.io.model import QECardType
 from quantumvitas.io.parser.qe_parser import QEInputParser
 
@@ -559,7 +559,8 @@ def _resolve_structure_input(
     candidate = Path(identifier)
     # Check if it's a file (not a directory)
     if candidate.exists() and candidate.is_file():
-        structure = read_structure(candidate)
+        from quantumvitas.api import QVService
+        structure = QVService.read_structure(candidate)
         return structure, candidate.stem
 
     # Try to resolve via registry-based resolution (ID-only model)
@@ -567,7 +568,7 @@ def _resolve_structure_input(
         from quantumvitas.api import QVService
         svc = QVService(project_root)
         resolved = svc.require_structure_ref(identifier)
-        structure = read_structure(resolved.absolute_path)
+        structure = QVService.read_structure(resolved.absolute_path)
         return structure, resolved.meta.name or resolved.meta.slug or identifier
     except Exception as e:
         # Fallback to legacy Project.get_structure for backwards compatibility
@@ -577,7 +578,8 @@ def _resolve_structure_input(
             except LegacyProjectError as e:
                 _handle_legacy_project_error(e)
             ref = project.get_structure(identifier)
-            structure = read_structure(ref.path)
+            from quantumvitas.api import QVService
+            structure = QVService.read_structure(ref.path)
             return structure, identifier
         except Exception:
             raise ValueError(f"Could not resolve structure '{identifier}': {e}") from e
@@ -1338,8 +1340,8 @@ def import_structure_command(
             project_root = _resolve_project_root(start=structure_file_resolved.parent)
     project_root = project_root.resolve()
 
-    struct = read_structure(structure_file)
     from quantumvitas.api import QVService
+    struct = QVService.read_structure(structure_file)
     svc = QVService(project_root)
     config = svc.load_project_config()
     structures_section = config.setdefault("structures", [])
@@ -1370,7 +1372,7 @@ def import_structure_command(
 
     metadata_dict = QVService.meta_from_name("structure", name=structure_name, path=write_rel)
     metadata = ResourceMeta(**metadata_dict)
-    write_structure(struct, out_path, format=output_format, metadata=metadata)
+    QVService.write_structure(struct, out_path, format=output_format, metadata=metadata)
 
     # DAG + ID-only: only structure_id, no meta duplication
     structures_section.append({
@@ -1656,7 +1658,7 @@ def _run_standalone_step(
     from quantumvitas.calculation.structure_steps import StructureStepSpec, materialize_step_spec
     from quantumvitas.core.engines.base import EngineConfig
     from quantumvitas.calculation.step import Step
-    from quantumvitas.io import read_structure
+    from quantumvitas.api import QVService
     from quantumvitas.engine.qe_engine import QeEngine
     
     input_path = Path(input_file).resolve()
@@ -1713,7 +1715,7 @@ def _run_standalone_step(
         # Resolve structure for materialization
         structure = None
         if import_result.structure_path and import_result.structure_path.exists():
-            structure = read_structure(import_result.structure_path)
+            structure = QVService.read_structure(import_result.structure_path)
         
         # Materialize step (generates .in from step.yaml)
         # For standalone, use workdir as project_root for pseudo resolution (workdir/pseudo)
@@ -1813,7 +1815,8 @@ def run_structure_command(
 
     generated_name = input_name or f"{struct_name}_{step_type}.pw.in"
     generated_input = workdir / generated_name
-    QEInputGenerator.write_file(qe_input, generated_input)
+    from quantumvitas.api import QVService
+    QVService.write_qe_input_file(qe_input, generated_input)
 
     result, prepared = run_input_step(
         engine=engine.backend,
@@ -3289,7 +3292,8 @@ def configure_structure_command(
             
             # Update structure metadata inside the JSON file
             try:
-                struct = read_structure(old_path)
+                from quantumvitas.api import QVService
+                struct = QVService.read_structure(old_path)
                 # Update the meta stored in the structure
                 struct_dict = struct.as_dict()
                 if "_meta" in struct_dict:
@@ -4316,7 +4320,7 @@ def analyze_structure_command(
         qv analyze structure si --supercell "2 2 2" --repeat-boundary
         qv analyze structure si --show
     """
-    from quantumvitas.io import read_structure
+    from quantumvitas.api import QVService
     from quantumvitas.analysis.structure_viz import visualize_structure
     
     # Resolve project root
@@ -4326,7 +4330,7 @@ def analyze_structure_command(
         # Not in a project - try to load structure directly as file
         structure_path = Path(structure_selector)
         if structure_path.exists():
-            structure = read_structure(structure_path)
+            structure = QVService.read_structure(structure_path)
             struct_name = structure_path.stem
             project_root = None
         else:
@@ -4866,7 +4870,8 @@ def _execute_step_spec(
 
     input_name = spec_copy.input_name or f"{struct_name}_{spec_copy.step_type}.pw.in"
     generated_input = workdir / input_name
-    QEInputGenerator.write_file(qe_input, generated_input)
+    from quantumvitas.api import QVService
+    QVService.write_qe_input_file(qe_input, generated_input)
 
     result, prepared = run_input_step(
         engine=engine_backend,
