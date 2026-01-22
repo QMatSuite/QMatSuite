@@ -4593,15 +4593,15 @@ def _strip_structural_system_params(
     parameter_dict: dict[str, dict[str, Any]],
     qe_input: Optional[QEInput] = None,
 ) -> None:
-    from quantumvitas.calculation.importers import _needs_alat_preservation, _extract_alat_bohr
+    from quantumvitas.api import QVService
     
     system = parameter_dict.get("SYSTEM")
     if not system:
         return
     
     # Check if we need to preserve alat for k-point compatibility
-    preserve_alat = _needs_alat_preservation(qe_input) if qe_input else False
-    alat_bohr = _extract_alat_bohr(qe_input) if preserve_alat and qe_input else None
+    preserve_alat = QVService.needs_alat_preservation(qe_input) if qe_input else False
+    alat_bohr = QVService.extract_alat_bohr(qe_input) if preserve_alat and qe_input else None
     
     for key in list(system.keys()):
         lower = str(key).lower()
