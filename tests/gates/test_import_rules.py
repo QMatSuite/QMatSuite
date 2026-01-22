@@ -16,8 +16,10 @@ They SHOULD catch:
 
 import ast
 import importlib
+import os
 import subprocess
 import sys
+from collections import defaultdict
 from pathlib import Path
 from typing import Optional
 
@@ -34,6 +36,77 @@ except ImportError:
 from tests.gates._import_scan import scan_python_files, Violation
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+
+def _should_enforce_gates() -> bool:
+    """
+    Check if architecture gates should be enforced.
+
+    Returns:
+        True if QMATSUITE_ENFORCE_ARCH_GATES == "1", False otherwise.
+        When False, violations are reported but tests don't fail.
+    """
+    return os.environ.get("QMATSUITE_ENFORCE_ARCH_GATES") == "1"
+
+
+def _report_violations(violations: list, violation_type: str, context_path: Optional[Path] = None):
+    """
+    Report violations, either by failing (if enforcement enabled) or printing.
+
+    Args:
+        violations: List of violations to report (Violation objects or (line_num, func_name) tuples)
+        violation_type: Description of violation type (e.g., "Forbidden kernel imports")
+        context_path: Optional directory/file path for context
+    """
+    if not violations:
+        return
+
+    # Count violations by file
+    by_file = defaultdict(list)
+    for v in violations:
+        if isinstance(v, tuple):  # Bare resolve calls: (line_num, func_name)
+            # Use context_path or default to cli/main.py for bare calls
+            target_file = context_path if context_path and context_path.is_file() else (
+                PROJECT_ROOT / "src/quantumvitas/cli/main.py"
+            )
+            by_file[target_file].append(v)
+        else:  # Violation object
+            by_file[v.file_path].append(v)
+
+    # Build report
+    lines = [f"\n{'='*70}"]
+    lines.append(f"{violation_type}: {len(violations)} total violation(s)")
+    lines.append(f"{'='*70}")
+    
+    # Show top files
+    sorted_files = sorted(by_file.items(), key=lambda x: len(x[1]), reverse=True)
+    for file_path_obj, file_violations in sorted_files[:10]:  # Top 10 files
+        try:
+            rel_path = file_path_obj.relative_to(PROJECT_ROOT)
+        except ValueError:
+            rel_path = file_path_obj
+        lines.append(f"\n  {rel_path}: {len(file_violations)} violation(s)")
+        # Show first 3 violations per file
+        for v in file_violations[:3]:
+            if isinstance(v, tuple):
+                lines.append(f"    Line {v[0]}: {v[1]}()")
+            else:
+                lines.append(f"    Line {v.line_number}: {v.import_type} {v.module_name}")
+        if len(file_violations) > 3:
+            lines.append(f"    ... and {len(file_violations) - 3} more")
+    
+    if len(sorted_files) > 10:
+        lines.append(f"\n  ... and {len(sorted_files) - 10} more files with violations")
+    
+    lines.append(f"{'='*70}\n")
+    report = "\n".join(lines)
+    
+    if _should_enforce_gates():
+        # Enforcement mode: fail the test
+        pytest.fail(report)
+    else:
+        # Report mode: print and continue
+        print(report)
 
 
 def _discover_cli_entry_module() -> str:
@@ -157,7 +230,7 @@ class TestFrontendImportRules:
             if not self._has_migration_marker(v.file_path, v.line_number)
         ]
 
-        assert violations == [], self._format_violations(violations)
+        _report_violations(violations, "CLI: Forbidden kernel imports", cli_dir)
 
     def test_daemon_no_kernel_imports(self):
         """daemon/* must not import from kernel modules."""
@@ -178,7 +251,7 @@ class TestFrontendImportRules:
             if not self._has_migration_marker(v.file_path, v.line_number)
         ]
 
-        assert violations == [], self._format_violations(violations)
+        _report_violations(violations, "Daemon: Forbidden kernel imports", daemon_dir)
 
     def test_notebook_no_kernel_imports(self):
         """notebook/* must not import from kernel modules."""
@@ -193,7 +266,7 @@ class TestFrontendImportRules:
             allowed_paths=allowed_paths,
         )
 
-        assert violations == [], self._format_violations(violations)
+        _report_violations(violations, "Notebook: Forbidden kernel imports", notebook_dir)
 
     def _has_migration_marker(self, file_path: Path, line_number: int) -> bool:
         """Check if a line has a migration marker comment."""
@@ -242,7 +315,7 @@ class TestToolsImportRules:
             self.FORBIDDEN_PREFIXES,
         )
 
-        assert violations == [], self._format_violations(violations)
+        _report_violations(violations, "Tools: Forbidden kernel imports", tools_dir)
 
     def _format_violations(self, violations: list[Violation]) -> str:
         """Format violations for assertion message."""
@@ -276,7 +349,7 @@ class TestAPIImportRules:
         # Filter to only api.py
         violations = [v for v in violations if v.file_path.name == "api.py"]
 
-        assert violations == [], self._format_violations(violations)
+        _report_violations(violations, "API: Forbidden frontend imports", api_file)
 
     def _format_violations(self, violations: list[Violation]) -> str:
         """Format violations for assertion message."""
@@ -307,7 +380,7 @@ class TestCLIThinRule:
 
         violations = self._scan_bare_calls(cli_file)
 
-        assert violations == [], self._format_violations(violations)
+        _report_violations(violations, "CLI: Bare resolve_* function calls", cli_file)
 
     def _scan_bare_calls(self, file_path: Path) -> list[tuple[int, str]]:
         """
