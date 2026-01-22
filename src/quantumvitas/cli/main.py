@@ -1124,10 +1124,10 @@ def init_step_command(
                 f"--auto-kpath requires a valid structure. Error loading '{structure_value}': {exc}"
             ) from exc
         
-        from quantumvitas.analysis.kpath import generate_kpath
+        from quantumvitas.api import QVService
         
         try:
-            kpath_result = generate_kpath(pmg_struct, points_per_segment=kpath_points)
+            kpath_result = QVService.generate_kpath(pmg_struct, points_per_segment=kpath_points)
             kpath_card = kpath_result.to_qe_kpoints_crystal_b()
             kpath_card_overrides["K_POINTS"] = kpath_card
             
@@ -1135,7 +1135,7 @@ def init_step_command(
             typer.echo(f"  Lattice type: {kpath_result.lattice_type}")
             typer.echo(f"  Spacegroup: {kpath_result.spacegroup_symbol} (#{kpath_result.spacegroup_number})")
             typer.echo(f"  {len(kpath_result.segments)} segments, {kpath_points} points each")
-        except Exception as exc:
+        except QVServiceError as exc:
             raise typer.BadParameter(
                 f"Failed to generate k-path for structure: {exc}"
             ) from exc
