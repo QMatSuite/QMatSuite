@@ -173,12 +173,29 @@ def audit_cli_imports(cli_dir: Path) -> Dict[str, Any]:
     by_module: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"count": 0, "lines": [], "functions": set(), "files": set()})
     by_symbol: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"count": 0, "lines": [], "functions": set(), "files": set()})
     
+    # Track occurrences (import statements) and symbols per module
+    by_module_occurrences: Dict[str, int] = defaultdict(int)
+    by_module_symbols: Dict[str, int] = defaultdict(int)
+    
+    # Track which import statements we've seen (to count occurrences)
+    seen_import_statements: Dict[str, set] = defaultdict(set)  # module -> set of (file, line) tuples
+    
     for violation in all_violations:
         module = violation["module"]
         symbol = violation["symbol"]
         line = violation["line"]
         func = violation["function"]
         file_path = violation.get("file", "unknown")
+        
+        # Count occurrences: each unique (file, line) import statement counts as 1
+        import_key = (file_path, line)
+        if import_key not in seen_import_statements[module]:
+            by_module_occurrences[module] += 1
+            seen_import_statements[module].add(import_key)
+        
+        # Count symbols: each imported symbol counts
+        if symbol and symbol != "*":
+            by_module_symbols[module] += 1
         
         # By module
         by_module[module]["count"] += 1
@@ -228,6 +245,10 @@ def audit_cli_imports(cli_dir: Path) -> Dict[str, Any]:
     
     by_bare_function_sorted = dict(sorted(by_bare_function.items(), key=lambda x: x[1]["count"], reverse=True))
     
+    # Sort occurrence and symbol counts
+    by_module_occurrences_sorted = dict(sorted(by_module_occurrences.items(), key=lambda x: x[1], reverse=True))
+    by_module_symbols_sorted = dict(sorted(by_module_symbols.items(), key=lambda x: x[1], reverse=True))
+    
     return {
         "cli_directory": str(cli_dir),
         "total_violations": len(all_violations),
@@ -236,6 +257,8 @@ def audit_cli_imports(cli_dir: Path) -> Dict[str, Any]:
         "by_module": by_module_sorted,
         "by_symbol": by_symbol_sorted,
         "by_bare_function": by_bare_function_sorted,
+        "by_module_occurrences": by_module_occurrences_sorted,
+        "by_module_symbols": by_module_symbols_sorted,
     }
 
 
