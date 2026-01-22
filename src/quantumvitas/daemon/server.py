@@ -29,17 +29,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, TextIO
 
 from quantumvitas.api import QVService, QVServiceError
-from quantumvitas.core.exceptions import LegacyProjectError
-from quantumvitas.core.resolution import (
-    ResourceNotFoundError,
-    RegistryOutOfSyncError,
-    SelectorNotFoundError,
-    build_resource_index,
-    resolve_calculation,
-    resolve_step,
-    ResourceIndex,
-)
-from quantumvitas.core.project_utils import load_project_config
 from quantumvitas.daemon.jobs import JobManager, JobStatus
 from quantumvitas.data import qe_metadata
 from quantumvitas.data.qe_metadata import (
@@ -90,8 +79,9 @@ class ProjectCache:
     mutations occur (rename, delete, import, etc.).
     """
     project_root: Path
-    index: ResourceIndex
+    index: Any  # ResourceIndex type - using Any to avoid importing kernel types
     config: dict
+    svc: QVService  # QVService instance for this project
 
 
 @dataclass
@@ -116,13 +106,15 @@ class DaemonState:
         """
         project_root = project_root.resolve()
         if project_root not in self._caches:
-            # Build fresh cache
-            index = build_resource_index(project_root)
-            config = load_project_config(project_root)
+            # Build fresh cache using QVService
+            svc = QVService(project_root)
+            config = svc.load_project_config()
+            index = svc.build_resource_index()
             self._caches[project_root] = ProjectCache(
                 project_root=project_root,
                 index=index,
                 config=config,
+                svc=svc,
             )
         return self._caches[project_root]
     
@@ -137,12 +129,14 @@ class DaemonState:
             Fresh ProjectCache for the project
         """
         project_root = project_root.resolve()
-        index = build_resource_index(project_root)
-        config = load_project_config(project_root)
+        svc = QVService(project_root)
+        config = svc.load_project_config()
+        index = svc.build_resource_index()
         self._caches[project_root] = ProjectCache(
             project_root=project_root,
             index=index,
             config=config,
+            svc=svc,
         )
         return self._caches[project_root]
     
@@ -552,6 +546,9 @@ class QVDaemon:
         Returns:
             RPCResponse object
         """
+        from quantumvitas.core.exceptions import LegacyProjectError
+        from quantumvitas.core.resolution import ResourceNotFoundError
+        
         import time
         start_time = time.time()
         
@@ -2702,7 +2699,8 @@ class QVDaemon:
         canonicalize_structure_in_place(structure)
         
         # Generate unique name and slug
-        config = load_project_config(project_root)
+        cache = self.state.get_cache(project_root)
+        config = cache.config
         structures = config.setdefault("structures", [])
         existing_slugs = collect_slugs(structures, project_root=project_root)
         
@@ -2755,8 +2753,8 @@ class QVDaemon:
         
         # Update registry
         cache_state = self.state.get_cache(project_root)
-        from quantumvitas.core.resolution import require_structure, update_registry_add_structure
-        resolved = require_structure(project_root, final_slug, config=config, index=cache_state.index)
+        from quantumvitas.core.resolution import update_registry_add_structure
+        resolved = cache_state.svc.resolve_structure_ref(final_slug, config=config, index=cache_state.index)
         if cache_state.index is not None:
             update_registry_add_structure(cache_state.index, resolved.meta, dest_path)
         
@@ -4700,8 +4698,8 @@ class QVDaemon:
         structure_id = calc_detail.get("structure_id")
         if structure_id:
             try:
-                struct_resolved = resolve_structure(
-                    project_root, structure_id, config=cache.config, index=cache.index
+                struct_resolved = cache.svc.resolve_structure_ref(
+                    structure_id, config=cache.config, index=cache.index
                 )
                 if struct_resolved.absolute_path.exists():
                     structure = read_structure(struct_resolved.absolute_path)
@@ -5746,6 +5744,24 @@ class QVDaemon:
         return {"job_id": job_id, "cancelled": cancelled}
     
     # -------------------------------------------------------------------------
+    # Helpers
+    # -------------------------------------------------------------------------
+    
+    def _get_svc(self, project_root: Path) -> QVService:
+        """
+        Get or create QVService instance for a project.
+        
+        Args:
+            project_root: Path to project root
+            
+        Returns:
+            QVService instance for the project
+        """
+        project_root = project_root.resolve()
+        cache = self.state.get_cache(project_root)
+        return cache.svc
+    
+    # -------------------------------------------------------------------------
     # Resolution helpers with cache fallback
     # -------------------------------------------------------------------------
     
@@ -5775,8 +5791,7 @@ class QVDaemon:
         """
         # Use cached index (no auto-rebuild on miss)
         cache = self.state.get_cache(project_root)
-        return resolve_calculation(
-            project_root,
+        return cache.svc.resolve_calculation_ref(
             selector,
             index=cache.index,
             config=cache.config,
@@ -5814,8 +5829,7 @@ class QVDaemon:
         """
         # Use cached index (no auto-rebuild on miss)
         cache = self.state.get_cache(project_root)
-        return resolve_step(
-            project_root,
+        return cache.svc.resolve_step_ref(
             calculation_selector,
             step_selector,
             index=cache.index,
@@ -5861,7 +5875,8 @@ class QVDaemon:
         
         # Get project name for logging
         try:
-            config = load_project_config(project_root)
+            svc = QVService(project_root)
+            config = svc.load_project_config()
             project_name = config.get("meta", {}).get("name") or project_root.name
         except Exception:
             project_name = project_root.name
@@ -5873,12 +5888,14 @@ class QVDaemon:
         # Rebuild the registry
         t0 = time.perf_counter()
         try:
-            index = build_resource_index(project_root)
-            config = load_project_config(project_root)
+            svc = QVService(project_root)
+            config = svc.load_project_config()
+            index = svc.build_resource_index()
             self.state._caches[project_root] = ProjectCache(
                 project_root=project_root,
                 index=index,
                 config=config,
+                svc=svc,
             )
         except Exception as e:
             self.logger.error(f"Failed to rebuild registry: {e}", exc_info=True)
@@ -5931,7 +5948,8 @@ class QVDaemon:
         
         # Get project name for logging
         try:
-            config = load_project_config(project_root)
+            svc = QVService(project_root)
+            config = svc.load_project_config()
             project_name = config.get("meta", {}).get("name") or project_root.name
         except Exception:
             project_name = project_root.name
@@ -5939,12 +5957,14 @@ class QVDaemon:
         # Rebuild the registry
         t0 = time.perf_counter()
         try:
-            index = build_resource_index(project_root)
-            config = load_project_config(project_root)
+            svc = QVService(project_root)
+            config = svc.load_project_config()
+            index = svc.build_resource_index()
             self.state._caches[project_root] = ProjectCache(
                 project_root=project_root,
                 index=index,
                 config=config,
+                svc=svc,
             )
         except Exception as e:
             self.logger.error(f"Failed to rebuild registry after {reason}: {e}", exc_info=True)
