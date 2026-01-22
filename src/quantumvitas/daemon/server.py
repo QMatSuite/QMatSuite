@@ -755,24 +755,7 @@ class QVDaemon:
             default_store_dir: str - Default store directory
             default_seed_dir: str - Default seed directory
         """
-        from quantumvitas.core.pseudo_config import (
-            load_pseudo_config,
-            PseudoConfig,
-            _find_quantumvitas_root,
-        )
-        
-        config = load_pseudo_config()
-        repo_root = _find_quantumvitas_root()
-        repo_pseudo_dir = str(repo_root / "resources" / "pseudo") if repo_root else ""
-        
-        return {
-            "store_dir": config.store_dir,
-            "seed_dir": config.seed_dir,
-            "allow_download": config.allow_download,
-            "repo_pseudo_dir": repo_pseudo_dir,
-            "default_store_dir": PseudoConfig.get_default_store_dir(),
-            "default_seed_dir": PseudoConfig.get_default_seed_dir(),
-        }
+        return QVService.get_pseudo_config()
     
     def _handle_set_pseudo_config(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -786,36 +769,7 @@ class QVDaemon:
         Returns:
             Updated config (same format as get_pseudo_config)
         """
-        from quantumvitas.core.pseudo_config import (
-            load_pseudo_config,
-            save_pseudo_config,
-            PseudoConfig,
-            _find_quantumvitas_root,
-        )
-        
-        config = load_pseudo_config()
-        
-        # Update fields if provided
-        if "store_dir" in payload:
-            config.store_dir = payload["store_dir"] or PseudoConfig.get_default_store_dir()
-        if "seed_dir" in payload:
-            config.seed_dir = payload["seed_dir"] or PseudoConfig.get_default_seed_dir()
-        if "allow_download" in payload:
-            config.allow_download = bool(payload["allow_download"])
-        
-        save_pseudo_config(config)
-        
-        repo_root = _find_quantumvitas_root()
-        repo_pseudo_dir = str(repo_root / "resources" / "pseudo") if repo_root else ""
-        
-        return {
-            "store_dir": config.store_dir,
-            "seed_dir": config.seed_dir,
-            "allow_download": config.allow_download,
-            "repo_pseudo_dir": repo_pseudo_dir,
-            "default_store_dir": PseudoConfig.get_default_store_dir(),
-            "default_seed_dir": PseudoConfig.get_default_seed_dir(),
-        }
+        return QVService.set_pseudo_config(payload)
     
     def _handle_validate_pseudo_config(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -834,14 +788,7 @@ class QVDaemon:
             warnings: List[str]
             errors: List[str]
         """
-        from quantumvitas.core.pseudo_config import (
-            load_pseudo_config,
-            validate_pseudo_config,
-        )
-        
-        config = load_pseudo_config()
-        result = validate_pseudo_config(config)
-        return result.to_dict()
+        return QVService.validate_pseudo_config()
     
     def _handle_init_pseudo_dirs(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -855,13 +802,7 @@ class QVDaemon:
             messages: List[str]
             errors: List[str]
         """
-        from quantumvitas.core.pseudo_config import (
-            load_pseudo_config,
-            init_pseudo_dirs,
-        )
-        
-        config = load_pseudo_config()
-        return init_pseudo_dirs(config)
+        return QVService.init_pseudo_dirs()
     
     def _handle_install_seed_to_store(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -924,22 +865,9 @@ class QVDaemon:
         Returns:
             libraries: List of SSSPLibraryInfo dicts
         """
-        from quantumvitas.core.pseudo_config import (
-            load_pseudo_config,
-            list_installed_sssp,
-        )
-        from pathlib import Path
-        
-        config = load_pseudo_config()
-        
-        if not config.store_dir:
-            return {"libraries": []}
-        
-        store_dir = Path(config.store_dir)
-        libraries = list_installed_sssp(store_dir)
-        
+        libraries = QVService.list_installed_sssp()
         return {
-            "libraries": [lib.to_dict() for lib in libraries],
+            "libraries": libraries,
         }
     
     def _handle_list_seed_archives(self, payload: Dict[str, Any]) -> Dict[str, Any]:
