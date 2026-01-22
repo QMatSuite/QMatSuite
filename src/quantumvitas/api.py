@@ -8488,6 +8488,794 @@ class QVService:
             raise QVServiceError(str(exc)) from exc
 
 
+    # -------------------------------------------------------------------------
+    # Settings management (global, not project-specific)
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def get_settings() -> Dict[str, Any]:
+        """
+        Get global QMatSuite settings.
+        
+        Returns:
+            Dict with settings (qe, debug_resolution, max_concurrent_calcs, etc.)
+        """
+        from quantumvitas.core.settings import load_settings
+        
+        settings = load_settings()
+        return {
+            "version": settings.version,
+            "qe": {
+                "bin_dir": settings.qe.bin_dir,
+            },
+            "debug_resolution": settings.debug_resolution,
+            "max_concurrent_calcs": settings.max_concurrent_calcs,
+            "analysis_cache_enabled": settings.analysis_cache_enabled,
+        }
+    
+    @staticmethod
+    def set_settings(patch: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update global QMatSuite settings.
+        
+        Args:
+            patch: Dict with settings to update (partial update supported)
+            
+        Returns:
+            Updated settings dict
+        """
+        from quantumvitas.core.settings import load_settings, save_settings, QEConfig, QMatSuiteSettings
+        
+        # Load current settings
+        current = load_settings()
+        
+        # Apply patch
+        if "qe" in patch:
+            qe_patch = patch["qe"]
+            if isinstance(qe_patch, dict):
+                current.qe.bin_dir = qe_patch.get("bin_dir", current.qe.bin_dir)
+            else:
+                current.qe = qe_patch
+        
+        if "debug_resolution" in patch:
+            current.debug_resolution = patch["debug_resolution"]
+        
+        if "max_concurrent_calcs" in patch:
+            current.max_concurrent_calcs = patch["max_concurrent_calcs"]
+        
+        if "analysis_cache_enabled" in patch:
+            current.analysis_cache_enabled = patch["analysis_cache_enabled"]
+        
+        # Save
+        save_settings(current)
+        
+        # Return updated dict
+        return {
+            "version": current.version,
+            "qe": {
+                "bin_dir": current.qe.bin_dir,
+            },
+            "debug_resolution": current.debug_resolution,
+            "max_concurrent_calcs": current.max_concurrent_calcs,
+            "analysis_cache_enabled": current.analysis_cache_enabled,
+        }
+    
+    # -------------------------------------------------------------------------
+    # Pseudopotential configuration
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def get_pseudo_config() -> Dict[str, Any]:
+        """
+        Get pseudopotential configuration.
+        
+        Returns:
+            Dict with pseudo config (libraries, store_path, etc.)
+        """
+        from quantumvitas.core.pseudo_config import load_pseudo_config
+        
+        config = load_pseudo_config()
+        return config.to_dict()
+    
+    @staticmethod
+    def set_pseudo_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update pseudopotential configuration.
+        
+        Args:
+            cfg: Dict with config to update
+            
+        Returns:
+            Updated config dict
+        """
+        from quantumvitas.core.pseudo_config import load_pseudo_config, save_pseudo_config, PseudoConfig
+        
+        # Load current config
+        current = load_pseudo_config()
+        
+        # Update from dict
+        updated = PseudoConfig.from_dict(cfg)
+        
+        # Save
+        save_pseudo_config(updated)
+        
+        return updated.to_dict()
+    
+    @staticmethod
+    def validate_pseudo_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validate pseudopotential configuration.
+        
+        Args:
+            cfg: Config dict to validate
+            
+        Returns:
+            Dict with validation result (valid: bool, errors: List[str])
+        """
+        from quantumvitas.core.pseudo_config import PseudoConfig
+        
+        try:
+            PseudoConfig.from_dict(cfg)
+            return {"valid": True, "errors": []}
+        except Exception as e:
+            return {"valid": False, "errors": [str(e)]}
+    
+    @staticmethod
+    def init_pseudo_dirs() -> Dict[str, str]:
+        """
+        Initialize pseudopotential directories.
+        
+        Returns:
+            Dict with paths (store_path, etc.)
+        """
+        from quantumvitas.core.pseudo_config import init_pseudo_dirs as _init_pseudo_dirs
+        
+        paths = _init_pseudo_dirs()
+        return {k: str(v) for k, v in paths.items()}
+    
+    @staticmethod
+    def list_installed_sssp() -> List[Dict[str, Any]]:
+        """
+        List installed SSSP libraries.
+        
+        Returns:
+            List of library dicts
+        """
+        from quantumvitas.core.pseudo_config import list_installed_sssp as _list_installed_sssp
+        
+        libraries = _list_installed_sssp()
+        return [lib.to_dict() if hasattr(lib, 'to_dict') else lib for lib in libraries]
+    
+    @staticmethod
+    def load_manifest_archives() -> List[Dict[str, Any]]:
+        """
+        Load manifest archives from MANIFEST_PSEUDO_SEED.json.
+        
+        Returns:
+            List of archive dicts
+        """
+        from quantumvitas.core.pseudo_installs import load_manifest_archives as _load_manifest_archives
+        
+        archives = _load_manifest_archives()
+        return [arch.to_dict() if hasattr(arch, 'to_dict') else arch for arch in archives]
+    
+    @staticmethod
+    def check_archives_status(archives: List[Dict[str, Any]], config: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        Check installation status of archives.
+        
+        Args:
+            archives: List of archive dicts (must have asset_name and sha256)
+            config: Optional pseudo config dict
+            
+        Returns:
+            List of status dicts
+        """
+        from quantumvitas.core.pseudo_installs import check_archives_status as _check_archives_status
+        from quantumvitas.core.pseudo_config import PseudoConfig, load_pseudo_config
+        
+        if config is None:
+            pseudo_config = load_pseudo_config()
+        else:
+            pseudo_config = PseudoConfig.from_dict(config)
+        
+        # Convert archive dicts to objects if needed
+        from quantumvitas.core.pseudo_installs import ManifestArchive
+        archive_objs = []
+        for arch_dict in archives:
+            if isinstance(arch_dict, dict):
+                # Create ManifestArchive from dict
+                archive_objs.append(ManifestArchive(
+                    asset_name=arch_dict["asset_name"],
+                    asset_url=arch_dict.get("asset_url", ""),
+                    sha256=arch_dict["sha256"],
+                    size=arch_dict.get("size", 0),
+                ))
+            else:
+                archive_objs.append(arch_dict)
+        
+        statuses = _check_archives_status(archives=archive_objs, config=pseudo_config)
+        return [status.to_dict() if hasattr(status, 'to_dict') else status for status in statuses]
+    
+    @staticmethod
+    def install_pseudo_archive(
+        asset_url: str,
+        asset_name: str,
+        expected_sha256: str,
+        expected_size: Optional[int] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Install a pseudopotential archive.
+        
+        Args:
+            asset_url: URL to download archive from
+            asset_name: Archive filename
+            expected_sha256: Expected SHA256 hash
+            expected_size: Optional expected file size
+            config: Optional pseudo config dict
+            
+        Returns:
+            Dict with success, messages, errors
+        """
+        from quantumvitas.core.pseudo_installs import install_archive as _install_archive
+        from quantumvitas.core.pseudo_config import PseudoConfig, load_pseudo_config
+        
+        if config is None:
+            pseudo_config = load_pseudo_config()
+        else:
+            pseudo_config = PseudoConfig.from_dict(config)
+        
+        return _install_archive(
+            asset_url=asset_url,
+            asset_name=asset_name,
+            expected_sha256=expected_sha256,
+            expected_size=expected_size,
+            config=pseudo_config,
+        )
+    
+    @staticmethod
+    def is_pseudo_archive_installed(
+        asset_name: str,
+        expected_sha256: str,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """
+        Check if a pseudopotential archive is installed.
+        
+        Args:
+            asset_name: Archive filename
+            expected_sha256: Expected SHA256 hash
+            config: Optional pseudo config dict
+            
+        Returns:
+            True if archive is installed and matches
+        """
+        from quantumvitas.core.pseudo_installs import is_archive_installed as _is_archive_installed
+        from quantumvitas.core.pseudo_config import PseudoConfig, load_pseudo_config
+        
+        if config is None:
+            pseudo_config = load_pseudo_config()
+        else:
+            pseudo_config = PseudoConfig.from_dict(config)
+        
+        return _is_archive_installed(
+            asset_name=asset_name,
+            expected_sha256=expected_sha256,
+            config=pseudo_config,
+        )
+    
+    # -------------------------------------------------------------------------
+    # Library management
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def list_pseudo_libraries() -> List[Dict[str, Any]]:
+        """
+        List available pseudopotential libraries.
+        
+        Returns:
+            List of library dicts
+        """
+        from quantumvitas.core.library_manager import get_supported_libraries
+        
+        libraries = get_supported_libraries()
+        return [lib.to_dict() if hasattr(lib, 'to_dict') else lib for lib in libraries]
+    
+    @staticmethod
+    def get_library_status(library_id: str) -> Dict[str, Any]:
+        """
+        Get status of a pseudopotential library.
+        
+        Args:
+            library_id: Library identifier (e.g., "sssp_precision_1.3")
+            
+        Returns:
+            Dict with library status
+        """
+        from quantumvitas.core.library_manager import get_library_status as _get_library_status
+        
+        status = _get_library_status(library_id)
+        return status.to_dict() if hasattr(status, 'to_dict') else status
+    
+    @staticmethod
+    def install_pseudo_library(library_id: str) -> Dict[str, Any]:
+        """
+        Install a pseudopotential library.
+        
+        Args:
+            library_id: Library identifier
+            
+        Returns:
+            Dict with installation result
+        """
+        from quantumvitas.core.library_manager import install_library as _install_library
+        
+        result = _install_library(library_id)
+        return result.to_dict() if hasattr(result, 'to_dict') else result
+    
+    @staticmethod
+    def remove_pseudo_library(library_id: str) -> Dict[str, Any]:
+        """
+        Remove a pseudopotential library.
+        
+        Args:
+            library_id: Library identifier
+            
+        Returns:
+            Dict with removal result
+        """
+        from quantumvitas.core.library_manager import remove_library as _remove_library
+        
+        result = _remove_library(library_id)
+        return result.to_dict() if hasattr(result, 'to_dict') else result
+    
+    @staticmethod
+    def repair_pseudo_library(library_id: str) -> Dict[str, Any]:
+        """
+        Repair a pseudopotential library.
+        
+        Args:
+            library_id: Library identifier
+            
+        Returns:
+            Dict with repair result
+        """
+        from quantumvitas.core.library_manager import repair_library as _repair_library
+        
+        result = _repair_library(library_id)
+        return result.to_dict() if hasattr(result, 'to_dict') else result
+    
+    @staticmethod
+    def compute_store_size() -> Dict[str, Any]:
+        """
+        Compute pseudopotential store size.
+        
+        Returns:
+            Dict with size information
+        """
+        from quantumvitas.core.library_manager import compute_store_size as _compute_store_size
+        
+        size_info = _compute_store_size()
+        return size_info.to_dict() if hasattr(size_info, 'to_dict') else size_info
+    
+    # -------------------------------------------------------------------------
+    # Resolution utilities
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def is_ulid_like(value: str) -> bool:
+        """
+        Check if a string looks like a ULID.
+        
+        Args:
+            value: String to check
+            
+        Returns:
+            True if value looks like a ULID
+        """
+        from quantumvitas.core.resolution import _is_ulid_like
+        
+        return _is_ulid_like(value)
+    
+    @staticmethod
+    def validate_ulid(value: str, kind: Optional[str] = None) -> str:
+        """
+        Validate a ULID string.
+        
+        Args:
+            value: ULID string to validate
+            kind: Optional resource kind for validation
+            
+        Returns:
+            Validated ULID string
+            
+        Raises:
+            QVServiceError: If ULID is invalid
+        """
+        from quantumvitas.core.resolution import validate_ulid as _validate_ulid
+        
+        try:
+            return _validate_ulid(value, kind=kind)
+        except Exception as e:
+            raise QVServiceError(f"Invalid ULID '{value}': {e}") from e
+    
+    @staticmethod
+    def is_resolution_debug_enabled() -> bool:
+        """
+        Check if resolution debug logging is enabled.
+        
+        Returns:
+            True if debug resolution is enabled
+        """
+        from quantumvitas.core.debug import is_resolution_debug_enabled
+        
+        return is_resolution_debug_enabled()
+    
+    # -------------------------------------------------------------------------
+    # Templates
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def list_calculation_templates() -> List[Dict[str, Any]]:
+        """
+        List available calculation templates.
+        
+        Returns:
+            List of template dicts (name, path, description, n_steps, step_types)
+        """
+        from quantumvitas.core.templates import list_calculation_templates as _list_calculation_templates
+        
+        return _list_calculation_templates()
+    
+    # -------------------------------------------------------------------------
+    # Resources utilities
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def generate_unique_name_and_slug(
+        kind: str,
+        preferred_name: str,
+        existing_slugs: List[str],
+    ) -> Tuple[str, str]:
+        """
+        Generate unique name and slug for a resource.
+        
+        Args:
+            kind: Resource kind ("structure", "calculation", etc.)
+            preferred_name: Preferred name
+            existing_slugs: List of existing slugs to avoid
+            
+        Returns:
+            Tuple of (unique_name, unique_slug)
+        """
+        from quantumvitas.core.resources import generate_unique_name_and_slug as _generate_unique_name_and_slug
+        
+        return _generate_unique_name_and_slug(
+            kind=kind,
+            preferred_name=preferred_name,
+            existing_slugs=existing_slugs,
+        )
+    
+    @staticmethod
+    def meta_from_name(name: str, kind: str, path: str) -> Dict[str, Any]:
+        """
+        Generate resource metadata from name.
+        
+        Args:
+            name: Resource name
+            kind: Resource kind
+            path: Resource path
+            
+        Returns:
+            Metadata dict
+        """
+        from quantumvitas.core.resources import meta_from_name as _meta_from_name
+        
+        meta = _meta_from_name(name, kind, path)
+        return meta.to_dict() if hasattr(meta, 'to_dict') else meta
+    
+    @staticmethod
+    def ensure_relative_path(path: Path, base: Path) -> str:
+        """
+        Ensure a path is relative to base.
+        
+        Args:
+            path: Path to make relative
+            base: Base path
+            
+        Returns:
+            Relative path string
+        """
+        from quantumvitas.core.resources import ensure_relative_path as _ensure_relative_path
+        
+        return _ensure_relative_path(path, base)
+    
+    # -------------------------------------------------------------------------
+    # Models
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def load_calculation_model(calculation_path: Path, project_root: Path) -> Dict[str, Any]:
+        """
+        Load calculation model from YAML.
+        
+        Args:
+            calculation_path: Path to calculation.yaml
+            project_root: Project root path
+            
+        Returns:
+            Calculation model dict
+        """
+        from quantumvitas.core.models import load_calculation as _load_calculation
+        
+        model = _load_calculation(calculation_path, project_root=project_root)
+        return model.to_dict() if hasattr(model, 'to_dict') else model
+    
+    # -------------------------------------------------------------------------
+    # Structure I/O and analysis
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def write_structure(structure_path: Path, structure: Any) -> None:
+        """
+        Write structure to file.
+        
+        Args:
+            structure_path: Path to write structure file
+            structure: Structure object (from quantumvitas.io.read_structure)
+        """
+        from quantumvitas.io.structure_io import write_structure as _write_structure
+        
+        _write_structure(structure_path, structure)
+    
+    @staticmethod
+    def canonicalize_structure(structure: Any) -> None:
+        """
+        Canonicalize structure in place (wrap coords, stable species ordering).
+        
+        Args:
+            structure: Structure object (modified in place)
+        """
+        from quantumvitas.analysis.structure_viz import canonicalize_structure_in_place
+        
+        canonicalize_structure_in_place(structure)
+    
+    # -------------------------------------------------------------------------
+    # Online structure search
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def search_online_structures(query: str, max_results: int = 10) -> Dict[str, Any]:
+        """
+        Search online structures (OPTIMADE + COD).
+        
+        Args:
+            query: Chemical formula (e.g., "Si", "MoS2")
+            max_results: Maximum number of results
+            
+        Returns:
+            Dict with source_summary, candidates, structures, optimade_base
+        """
+        from quantumvitas.io.online_search import search_online_structures as _search_online_structures
+        
+        return _search_online_structures(query, max_results=max_results)
+    
+    @staticmethod
+    def fetch_structure_from_optimade(
+        optimade_base: str,
+        candidate_id: str,
+    ) -> Any:
+        """
+        Fetch structure from OPTIMADE API.
+        
+        Args:
+            optimade_base: OPTIMADE base URL
+            candidate_id: Candidate ID
+            
+        Returns:
+            Structure object
+        """
+        from quantumvitas.io.online_search import fetch_structure_from_optimade as _fetch_structure_from_optimade
+        
+        return _fetch_structure_from_optimade(optimade_base, candidate_id)
+    
+    @staticmethod
+    def score_candidate(candidate: Dict[str, Any], query: str) -> float:
+        """
+        Score a candidate structure for relevance to query.
+        
+        Args:
+            candidate: Candidate dict
+            query: Query string
+            
+        Returns:
+            Score (higher is better)
+        """
+        from quantumvitas.io.online_search import score_candidate as _score_candidate
+        
+        return _score_candidate(candidate, query)
+    
+    @staticmethod
+    def reduce_formula(formula: str) -> str:
+        """
+        Reduce chemical formula to canonical form.
+        
+        Args:
+            formula: Chemical formula string
+            
+        Returns:
+            Reduced formula string
+        """
+        from quantumvitas.io.online_search import reduce_formula as _reduce_formula
+        
+        return _reduce_formula(formula)
+    
+    @staticmethod
+    def extract_provenance(structure: Any) -> Dict[str, Any]:
+        """
+        Extract provenance information from structure.
+        
+        Args:
+            structure: Structure object
+            
+        Returns:
+            Provenance dict
+        """
+        from quantumvitas.io.online_search import extract_provenance as _extract_provenance
+        
+        return _extract_provenance(structure)
+    
+    # -------------------------------------------------------------------------
+    # Online structure cache
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def create_online_structure_cache(cache_dir: Path) -> Any:
+        """
+        Create online structure cache instance.
+        
+        Args:
+            cache_dir: Cache directory path
+            
+        Returns:
+            OnlineStructureCache instance
+        """
+        from quantumvitas.io.online_cache import OnlineStructureCache
+        
+        return OnlineStructureCache(cache_dir)
+    
+    # -------------------------------------------------------------------------
+    # Blob store and volume parsers
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def create_blob_store(calc_dir: Path) -> Any:
+        """
+        Create blob store instance.
+        
+        Args:
+            calc_dir: Calculation directory
+            
+        Returns:
+            BlobStore instance
+        """
+        from quantumvitas.analysis.blob_store import BlobStore
+        
+        return BlobStore(calc_dir)
+    
+    @staticmethod
+    def parse_xsf_datagrid_3d(
+        file_path: Path,
+        calc_dir: Path,
+        blob_store: Any,
+    ) -> Dict[str, Any]:
+        """
+        Parse XSF datagrid 3D file.
+        
+        Args:
+            file_path: Path to XSF file
+            calc_dir: Calculation directory
+            blob_store: BlobStore instance
+            
+        Returns:
+            Metadata dict
+        """
+        from quantumvitas.io.parser.volume_parsers import parse_xsf_datagrid_3d as _parse_xsf_datagrid_3d
+        
+        metadata = _parse_xsf_datagrid_3d(file_path, calc_dir, blob_store)
+        return metadata.to_dict() if hasattr(metadata, 'to_dict') else metadata
+    
+    @staticmethod
+    def parse_bxsf_bandgrid_3d(
+        file_path: Path,
+        calc_dir: Path,
+        blob_store: Any,
+        band_index: int = 1,
+    ) -> Dict[str, Any]:
+        """
+        Parse BXSF bandgrid 3D file.
+        
+        Args:
+            file_path: Path to BXSF file
+            calc_dir: Calculation directory
+            blob_store: BlobStore instance
+            band_index: Band index (1-based)
+            
+        Returns:
+            Result dict with artifact_id, kind, metadata, blob_id, etc.
+        """
+        from quantumvitas.io.parser.volume_parsers import parse_bxsf_bandgrid_3d as _parse_bxsf_bandgrid_3d
+        
+        return _parse_bxsf_bandgrid_3d(file_path, calc_dir, blob_store, band_index=band_index)
+    
+    # -------------------------------------------------------------------------
+    # Pseudo options and runtime
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def get_pseudo_options_for_elements(
+        project_root: Path,
+        elements: List[str],
+        config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Get pseudopotential options for elements.
+        
+        Args:
+            project_root: Project root path
+            elements: List of element symbols
+            config: Optional pseudo config dict
+            
+        Returns:
+            Dict mapping element -> List[PseudoVariant dict]
+        """
+        from quantumvitas.core.pseudo_options import get_pseudo_options_for_elements as _get_pseudo_options_for_elements
+        from quantumvitas.core.pseudo_config import PseudoConfig, load_pseudo_config
+        
+        if config is None:
+            pseudo_config = load_pseudo_config()
+        else:
+            pseudo_config = PseudoConfig.from_dict(config)
+        
+        return _get_pseudo_options_for_elements(
+            project_root=project_root,
+            elements=elements,
+            config=pseudo_config,
+        )
+    
+    @staticmethod
+    def materialize_pseudo_file(
+        project_root: Path,
+        working_dir: Path,
+        species: str,
+        pseudo_filename: str,
+        pseudo_sha256: Optional[str] = None,
+    ) -> Path:
+        """
+        Materialize a pseudopotential file to working directory.
+        
+        Args:
+            project_root: Project root path
+            working_dir: Working directory (e.g., raw_dir)
+            species: Element symbol
+            pseudo_filename: Pseudopotential filename
+            pseudo_sha256: Optional SHA256 hash for verification
+            
+        Returns:
+            Path to materialized pseudo file
+        """
+        from quantumvitas.core.pseudo_options import materialize_pseudo_file as _materialize_pseudo_file
+        
+        return _materialize_pseudo_file(
+            project_root=project_root,
+            working_dir=working_dir,
+            species=species,
+            pseudo_filename=pseudo_filename,
+            pseudo_sha256=pseudo_sha256,
+        )
+
+
 # Note: QVService now requires project_root for instance-based usage.
 # Use QVService(project_root) to create an instance, or use static methods.
 # The module-level 'service' singleton is removed - frontends should create
