@@ -1145,6 +1145,74 @@ steps: []
         assert called["reference_structure_by"] == "id"
         assert called["apply_defaults"] is True
     
+    def test_visualize_structure_direct_wrapper(self, monkeypatch):
+        """Test that visualize_structure_direct wrapper works by mocking underlying call."""
+        from pathlib import Path
+        from quantumvitas.api import QVService
+        import quantumvitas.analysis.structure_viz as structure_viz_module
+        from pymatgen.core import Structure, Lattice
+        
+        # Track calls to the underlying function
+        called = {}
+        
+        # Create a fake StructureVisualizationResult-like object
+        class FakeStructureVisualizationResult:
+            def __init__(self):
+                self.output_path = Path("/fake/output.png")
+                self.n_atoms = 8
+                self.n_bonds = 12
+                self.supercell = (2, 2, 2)
+                self.repeat_boundary = True
+        
+        fake_result = FakeStructureVisualizationResult()
+        
+        def fake_visualize_structure(
+            structure,
+            output_path=None,
+            supercell=(1, 1, 1),
+            repeat_boundary=False,
+            show=False,
+            plot_format="png",
+            **kwargs,
+        ):
+            called["structure"] = structure
+            called["output_path"] = output_path
+            called["supercell"] = supercell
+            called["repeat_boundary"] = repeat_boundary
+            called["show"] = show
+            called["plot_format"] = plot_format
+            called["kwargs"] = kwargs
+            return fake_result
+        
+        # Mock the underlying function
+        monkeypatch.setattr(structure_viz_module, "visualize_structure", fake_visualize_structure)
+        
+        # Create a minimal fake structure
+        fake_structure = Structure(Lattice.cubic(4), ["Si"], [[0, 0, 0]])
+        fake_output_path = Path("/fake/output.png")
+        fake_supercell = (2, 2, 2)
+        
+        # Call wrapper
+        result = QVService.visualize_structure_direct(
+            structure=fake_structure,
+            output_path=fake_output_path,
+            supercell=fake_supercell,
+            repeat_boundary=True,
+            show=False,
+            plot_format="svg",
+            extra_option="test",
+        )
+        
+        # Assertions
+        assert result == fake_result
+        assert called["structure"] == fake_structure
+        assert called["output_path"] == fake_output_path
+        assert called["supercell"] == fake_supercell
+        assert called["repeat_boundary"] is True
+        assert called["show"] is False
+        assert called["plot_format"] == "svg"
+        assert called["kwargs"]["extra_option"] == "test"
+    
     def test_apply_card_overrides_to_qe_input_wrapper(self):
         """Test that apply_card_overrides_to_qe_input wrapper works."""
         from quantumvitas.api import QVService
