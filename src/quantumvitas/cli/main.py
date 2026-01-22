@@ -52,9 +52,9 @@ from quantumvitas.core.engines.qe_installation import get_qe_home
 from quantumvitas.engine.registry import create_default_registry
 from quantumvitas.project.model import Project
 # CalculationRunner now accessed via QVService.run_calculation()
-from quantumvitas.calculation.calculation import Calculation
+# Calculation class now imported from quantumvitas.api
 # StepMode and StepStatus now imported from quantumvitas.api
-from quantumvitas.api import StepMode, StepStatus
+from quantumvitas.api import Calculation, StepMode, StepStatus
 # input_runner functions now via QVService wrappers
 from quantumvitas.api import ParameterOverride
 # Structure step specs now via QVService

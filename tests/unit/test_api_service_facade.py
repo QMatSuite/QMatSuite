@@ -948,6 +948,18 @@ steps: []
         assert step.engine == "qe"
         assert step.step_type == "scf"
     
+    def test_calculation_re_export(self):
+        """Test that Calculation class is re-exported from api."""
+        from quantumvitas.api import Calculation
+        from quantumvitas.calculation.calculation import Calculation as OriginalCalculation
+        
+        # Test that it's the same class
+        assert Calculation is OriginalCalculation
+        
+        # Test that it has the from_yaml classmethod
+        assert hasattr(Calculation, "from_yaml")
+        assert callable(Calculation.from_yaml)
+    
     def test_generate_kpath_wrapper(self, monkeypatch):
         """Test that generate_kpath wrapper works by mocking underlying call."""
         from quantumvitas.api import QVService
