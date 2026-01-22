@@ -265,3 +265,70 @@ steps: []
         with pytest.raises(Exception):  # May be ResourceNotFoundError or QVServiceError
             resolver("nonexistent")
 
+    def test_generate_resource_id(self, demo_project):
+        """generate_resource_id generates unique IDs."""
+        # Test static method
+        id1 = QVService.generate_resource_id()
+        id2 = QVService.generate_resource_id()
+        
+        assert isinstance(id1, str)
+        assert isinstance(id2, str)
+        assert len(id1) > 0
+        assert len(id2) > 0
+        # IDs should be unique
+        assert id1 != id2
+        
+        # Test instance method (should also work)
+        svc = QVService(demo_project)
+        id3 = svc.generate_resource_id()
+        assert isinstance(id3, str)
+        assert len(id3) > 0
+        # Should also be unique
+        assert id3 != id1
+        assert id3 != id2
+
+    def test_ensure_relative_path(self, demo_project):
+        """ensure_relative_path converts absolute paths to relative."""
+        # Test static method
+        abs_path = demo_project / "structures" / "test.json"
+        rel_path = QVService.ensure_relative_path(abs_path, base=demo_project)
+        
+        assert isinstance(rel_path, str)
+        assert not Path(rel_path).is_absolute()
+        assert "structures" in rel_path
+        
+        # Test with already relative path
+        rel_path2 = QVService.ensure_relative_path("structures/test.json", base=demo_project)
+        assert isinstance(rel_path2, str)
+        
+        # Test instance method
+        svc = QVService(demo_project)
+        rel_path3 = svc.ensure_relative_path(abs_path, base=demo_project)
+        assert isinstance(rel_path3, str)
+        assert not Path(rel_path3).is_absolute()
+
+    def test_generate_unique_name_and_slug(self):
+        """generate_unique_name_and_slug generates unique names and slugs."""
+        # Test static method
+        name1, slug1 = QVService.generate_unique_name_and_slug(
+            kind="structure",
+            preferred_name="test",
+            existing_slugs=[]
+        )
+        
+        assert isinstance(name1, str)
+        assert isinstance(slug1, str)
+        assert name1 == "test"
+        assert slug1 == "test"
+        
+        # Test with existing slug (should generate unique)
+        name2, slug2 = QVService.generate_unique_name_and_slug(
+            kind="structure",
+            preferred_name="test",
+            existing_slugs=["test"]
+        )
+        
+        assert name2 != "test" or slug2 != "test"  # Should be unique
+        assert isinstance(name2, str)
+        assert isinstance(slug2, str)
+

@@ -23,11 +23,6 @@ from pymatgen.core import Structure as PMGStructure
 from quantumvitas.analysis import bands as bands_analysis
 from quantumvitas.analysis import dos as dos_analysis
 from quantumvitas.analysis import energy as energy_analysis
-from quantumvitas.core.resources import (
-    ensure_relative_path,
-    generate_resource_id,
-    generate_unique_name_and_slug,
-)
 # ResourceMeta is imported from quantumvitas.api for type hints and usage
 from quantumvitas.api import ResourceMeta
 # Context functions now imported from quantumvitas.api

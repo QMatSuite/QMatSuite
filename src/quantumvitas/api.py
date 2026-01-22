@@ -10140,6 +10140,18 @@ class QVService:
         
         return _ensure_relative_path(path, base=base)
     
+    @staticmethod
+    def generate_resource_id() -> str:
+        """
+        Generate a unique resource ID.
+        
+        Returns:
+            Unique resource ID string (ULID)
+        """
+        from quantumvitas.core.resources import generate_resource_id as _generate_resource_id
+        
+        return _generate_resource_id()
+    
     # -------------------------------------------------------------------------
     # Models
     # -------------------------------------------------------------------------
