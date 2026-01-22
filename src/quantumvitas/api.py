@@ -174,6 +174,8 @@ from quantumvitas.calculation.types import StepMode, StepStatus  # noqa: E402
 from quantumvitas.io.model import QECardType, QEModule  # noqa: E402
 # Re-export QE parser class for CLI use
 from quantumvitas.io.parser.qe_parser import QEInputParser  # noqa: E402
+# Re-export analysis parser dataclass for CLI use
+from quantumvitas.analysis.parsers import DOSData  # noqa: E402
 
 
 class QVServiceError(Exception):
@@ -10220,6 +10222,68 @@ class QVService:
         """
         from quantumvitas.drivers.qe.io.generator import QEInputGenerator
         QEInputGenerator.write_file(qe_input, filepath)
+    
+    # -------------------------------------------------------------------------
+    # Analysis Parsers
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def parse_scf_output(path_or_text: Path | str):
+        """
+        Parse QE pw.x output file or text.
+        
+        Args:
+            path_or_text: Path to output file or output text content
+            
+        Returns:
+            SCFResult with parsed data
+        """
+        from quantumvitas.analysis.parsers import parse_scf_output as _parse_scf_output
+        return _parse_scf_output(path_or_text)
+    
+    @staticmethod
+    def parse_dos_data(path: Path | str):
+        """
+        Parse QE DOS output file (.dat format).
+        
+        Args:
+            path: Path to DOS output file
+            
+        Returns:
+            DOSData with parsed values
+        """
+        from quantumvitas.analysis.parsers import parse_dos_data as _parse_dos_data
+        return _parse_dos_data(path)
+    
+    @staticmethod
+    def parse_bands_gnu(
+        bands_file: Path | str,
+        symmetry_file: Optional[Path | str] = None,
+        fermi_energy: Optional[float] = None,
+        pw_output_file: Optional[Path | str] = None,
+        structure_file: Optional[Path | str] = None,
+    ):
+        """
+        Parse QE bands.dat.gnu file and optionally bands.x output for symmetry points.
+        
+        Args:
+            bands_file: Path to bands.dat.gnu file
+            symmetry_file: Optional path to bands.x output (for high-symmetry points)
+            fermi_energy: Optional Fermi energy in eV
+            pw_output_file: Optional path to pw.x output for reciprocal lattice vectors
+            structure_file: Optional path to structure file for pymatgen k-point labeling
+            
+        Returns:
+            BandStructureData with parsed values
+        """
+        from quantumvitas.analysis.parsers import parse_bands_gnu as _parse_bands_gnu
+        return _parse_bands_gnu(
+            bands_file,
+            symmetry_file=symmetry_file,
+            fermi_energy=fermi_energy,
+            pw_output_file=pw_output_file,
+            structure_file=structure_file,
+        )
     
     # -------------------------------------------------------------------------
     # Models

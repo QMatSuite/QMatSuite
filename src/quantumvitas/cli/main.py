@@ -3723,15 +3723,19 @@ def analyze_output_command(
         fg=typer.colors.YELLOW,
         err=True,
     )
-    from quantumvitas.analysis.parsers import (
-        parse_scf_output, parse_dos_data, parse_bands_gnu
-    )
+    # Analysis parsers now via QVService
     from quantumvitas.analysis.plotting import (
         plot_dos as plot_dos_fn, plot_bands as plot_bands_fn,
         plot_scf_convergence, save_figure
     )
     from quantumvitas.api import QVService, QVServiceError
     from quantumvitas.calculation.naming import find_band_analysis_files, find_calculation_raw_dir, find_calculation_results_dir
+    
+    # Instantiate QVService for parser wrappers
+    project_root = project or _resolve_project_root()
+    svc = QVService(project_root) if project_root else QVService.require_project_root()
+    if isinstance(svc, Path):
+        svc = QVService(svc)
     
     normalized = kind.lower()
     e_range = None
@@ -3831,7 +3835,7 @@ def analyze_output_command(
     # Determine Fermi energy
     fermi_energy = fermi
     if fermi_energy is None and scf_file:
-        scf_result = parse_scf_output(scf_file)
+        scf_result = svc.parse_scf_output(scf_file)
         fermi_energy = scf_result.fermi_energy
     
     # Determine output directory: explicit > calculation results > None
@@ -3867,7 +3871,7 @@ def analyze_output_command(
     
     if normalized in ("energy", "scf"):
         # Full SCF analysis
-        result = parse_scf_output(input_file)
+        result = svc.parse_scf_output(input_file)
         data = result.to_dict()
         
         if plot and result.iterations:
@@ -3885,7 +3889,7 @@ def analyze_output_command(
         # Band structure analysis
         # Use scf_file for both Fermi energy AND reciprocal lattice vectors
         # (needed for proper k-point coordinate conversion from Cartesian to crystal)
-        band_data = parse_bands_gnu(
+        band_data = svc.parse_bands_gnu(
             input_file,
             symmetry_file=symmetry_file,
             fermi_energy=fermi_energy,
@@ -3922,11 +3926,11 @@ def analyze_output_command(
         
     elif normalized == "dos":
         # DOS analysis
-        dos_data = parse_dos_data(input_file)
+        dos_data = svc.parse_dos_data(input_file)
         
         # Override Fermi if provided
         if fermi_energy is not None:
-            from quantumvitas.analysis.parsers import DOSData
+            from quantumvitas.api import DOSData
             dos_data = DOSData(
                 energies=dos_data.energies,
                 dos=dos_data.dos,

@@ -448,4 +448,71 @@ steps: []
         content = output_file.read_text()
         assert "CONTROL" in content
         assert "calculation" in content
+    
+    def test_parse_scf_output_wrapper(self, tmp_path):
+        """Test that parse_scf_output wrapper works."""
+        from quantumvitas.analysis.parsers import SCFResult
+        
+        # Create a minimal SCF output file
+        scf_file = tmp_path / "scf.out"
+        scf_file.write_text("""
+!    total energy              =     -100.12345678 Ry
+     Fermi energy is    5.6789 ev
+""")
+        
+        result = QVService.parse_scf_output(scf_file)
+        assert isinstance(result, SCFResult)
+        assert result.total_energy is not None
+    
+    def test_parse_dos_data_wrapper(self, tmp_path):
+        """Test that parse_dos_data wrapper works."""
+        from quantumvitas.analysis.parsers import DOSData
+        
+        # Create a minimal DOS file
+        dos_file = tmp_path / "dos.dat"
+        dos_file.write_text("""
+#  E (eV)   dos(E)     Int dos(E) EFermi =    5.6789 eV
+  0.0  1.0  0.0
+  1.0  2.0  1.0
+""")
+        
+        result = QVService.parse_dos_data(dos_file)
+        assert isinstance(result, DOSData)
+        assert len(result.energies) > 0
+    
+    def test_parse_bands_gnu_wrapper(self, tmp_path):
+        """Test that parse_bands_gnu wrapper works."""
+        from quantumvitas.analysis.parsers import BandStructureData
+        
+        # Create a minimal bands.dat.gnu file
+        bands_file = tmp_path / "bands.dat.gnu"
+        bands_file.write_text("""
+0.0  0.0
+0.1  0.1
+
+0.0  0.2
+0.1  0.3
+""")
+        
+        result = QVService.parse_bands_gnu(bands_file)
+        assert isinstance(result, BandStructureData)
+        assert result.n_bands > 0
+    
+    def test_dos_data_re_exported(self):
+        """Test that DOSData is re-exported from quantumvitas.api."""
+        from quantumvitas.api import DOSData
+        
+        # Verify it is the same class as from the original module
+        from quantumvitas.analysis.parsers import DOSData as OriginalDOSData
+        
+        assert DOSData is OriginalDOSData
+        
+        # Verify it can be instantiated
+        dos_data = DOSData(
+            energies=[0.0, 1.0],
+            dos=[1.0, 2.0],
+            idos=[0.0, 1.0],
+            fermi_energy=0.5
+        )
+        assert dos_data.fermi_energy == 0.5
 
