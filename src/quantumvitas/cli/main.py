@@ -20,13 +20,12 @@ import yaml
 import typer
 from pymatgen.core import Structure as PMGStructure
 
-from quantumvitas.analysis import bands as bands_analysis
-from quantumvitas.analysis import dos as dos_analysis
-from quantumvitas.analysis import energy as energy_analysis
+# Analysis modules no longer imported directly (migrated to QVService/api)
 # ResourceMeta is imported from quantumvitas.api for type hints and usage
 from quantumvitas.api import ResourceMeta
 # Context functions now imported from quantumvitas.api
-from quantumvitas.core.exceptions import LegacyProjectError
+# LegacyProjectError now imported from quantumvitas.api
+from quantumvitas.api import LegacyProjectError
 # Resolution exceptions now imported from quantumvitas.api
 from quantumvitas.api import (
     ResourceNotFoundError,
@@ -47,9 +46,9 @@ from quantumvitas.data import (
     get_module_param_sections,
     list_supported_modules,
 )
-from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe_installation import get_qe_home
-from quantumvitas.engine.registry import create_default_registry
+# Engine types and functions now imported from quantumvitas.api
+# Engine types and functions now via QVService
+from quantumvitas.api import EngineConfig, QVService
 from quantumvitas.project.model import Project
 # CalculationRunner now accessed via QVService.run_calculation()
 # Calculation class now imported from quantumvitas.api
@@ -723,11 +722,8 @@ def init_calculation_command(
     Use --template to copy from a predefined calculation template with example steps.
     If using a template, --structure is optional (template's structure is used).
     """
-    from quantumvitas.core.templates import (
-        copy_calculation_template,
-        copy_structure_template,
-        list_calculation_templates,
-    )
+    # Template functions now via QVService
+    from quantumvitas.api import QVService
 
     project_root = (project or _resolve_project_root()).resolve()
     from quantumvitas.api import QVService
@@ -752,7 +748,7 @@ def init_calculation_command(
         )
 
     if template:
-        available_templates = list_calculation_templates()
+        available_templates = QVService.list_calculation_templates()
         available = [t["name"] for t in available_templates]
         if template not in available:
             raise typer.BadParameter(
@@ -767,7 +763,7 @@ def init_calculation_command(
         calculation_meta = ResourceMeta(**calculation_meta_dict)
         
         # Pass the ULID to template copier so steps get the correct parent_calculation_id
-        _, structures_needed, _ = copy_calculation_template(
+        _, structures_needed, _ = QVService.copy_calculation_template(
             template_name=template,
             dest_dir=calculation_dir,
             project_root=project_root,
@@ -787,7 +783,7 @@ def init_calculation_command(
         for struct_name in structures_needed:
             if struct_name not in existing_struct_slugs:
                 try:
-                    struct_path = copy_structure_template(struct_name, structures_dir)
+                    struct_path = QVService.copy_structure_template(struct_name, structures_dir)
                     struct_rel_path = QVService.ensure_relative_path(struct_path, base=project_root)
                     struct_meta_dict = QVService.meta_from_name("structure", name=struct_name, path=struct_rel_path)
                     struct_meta = ResourceMeta(**struct_meta_dict)
@@ -1225,7 +1221,8 @@ def init_step_command(
             else len(calculation_steps)
         )
         # Use step_id (ULID) from step spec meta (canonical reference)
-        from quantumvitas.core.models import CalculationStepEntry
+        # CalculationStepEntry now imported from quantumvitas.api
+        from quantumvitas.api import CalculationStepEntry
         # rel_step_path is already a relative path string from ensure_relative_path
         # Create step entry with only step_id (ULID) - no step_file (resolved via registry)
         step_entry = CalculationStepEntry(
@@ -1407,7 +1404,7 @@ def detect_qe(
             config = EngineConfig(name="qe", qe_home=path)
         except ValueError as exc:
             raise typer.BadParameter(str(exc)) from exc
-    registry = create_default_registry(config)
+    registry = QVService.create_default_registry(config)
     engine = registry.get("qe")
     info = _collect_qe_detection_info(engine.backend)
 
@@ -1508,13 +1505,12 @@ def run_step_command(
     if bidirectional:
         typer.echo("Warning: --bidirectional is only meaningful in standalone mode (which always does roundtrip). Ignoring flag.")
     
-    # Load project context
-    from quantumvitas.core.project_context import ProjectContext, resolve_calculation_for_cli, resolve_step_for_cli
-    from quantumvitas.api import ResourceNotFoundError
+    # Project context functions now via QVService
+    from quantumvitas.api import ProjectContext, ResourceNotFoundError, QVService
     
     cwd = Path.cwd()
     try:
-        ctx_obj = ProjectContext.load(cwd, project)
+        ctx_obj = QVService.load_project_context(cwd, project)
     except ResourceNotFoundError as e:
         raise typer.BadParameter(
             f"Project not found: {e}. "
@@ -1543,10 +1539,10 @@ def run_step_command(
                     if calculations_idx + 1 < len(rel_path.parts):
                         calculation_slug = rel_path.parts[calculations_idx + 1]
                         # Resolve calculation from slug
-                        calculation_resolved = resolve_calculation_for_cli(ctx_obj, calculation_slug)
+                        calculation_resolved = QVService.resolve_calculation_for_cli(ctx_obj, calculation_slug)
                         # Extract step selector from filename
                         step_selector = step_path.stem.replace(".step", "")
-                        step_resolved = resolve_step_for_cli(ctx_obj, calculation_resolved, step_selector)
+                        step_resolved = QVService.resolve_step_for_cli(ctx_obj, calculation_resolved, step_selector)
                     else:
                         raise typer.BadParameter(
                             f"Step file {target} path is invalid. "
@@ -1569,8 +1565,8 @@ def run_step_command(
                                     calculations_idx = step_rel.parts.index("calculations")
                                     if calculations_idx + 1 < len(step_rel.parts):
                                         calculation_slug = step_rel.parts[calculations_idx + 1]
-                                        calculation_resolved = resolve_calculation_for_cli(ctx_obj, calculation_slug)
-                                        step_resolved = resolve_step_for_cli(ctx_obj, calculation_resolved, meta.slug or meta.name or meta.id)
+                                        calculation_resolved = QVService.resolve_calculation_for_cli(ctx_obj, calculation_slug)
+                                        step_resolved = QVService.resolve_step_for_cli(ctx_obj, calculation_resolved, meta.slug or meta.name or meta.id)
                                         step_found = True
                                         break
                     if not step_found:
@@ -1593,13 +1589,13 @@ def run_step_command(
     else:
         # No target - resolve calculation first, then step
         try:
-            calculation_resolved = resolve_calculation_for_cli(ctx_obj, calculation)
+            calculation_resolved = QVService.resolve_calculation_for_cli(ctx_obj, calculation)
         except ResourceNotFoundError as e:
             raise typer.BadParameter(str(e)) from e
         
         # Use --step option or auto-detect
         try:
-            step_resolved = resolve_step_for_cli(ctx_obj, calculation_resolved, step)
+            step_resolved = QVService.resolve_step_for_cli(ctx_obj, calculation_resolved, step)
         except ResourceNotFoundError as e:
             raise typer.BadParameter(str(e)) from e
     
@@ -1659,8 +1655,10 @@ def _run_standalone_step(
     import tempfile
     import shutil
     from quantumvitas.api import StructureStepSpec, Step, QVService
-    from quantumvitas.core.engines.base import EngineConfig
-    from quantumvitas.engine.qe_engine import QeEngine
+    # EngineConfig now imported from quantumvitas.api
+    from quantumvitas.api import EngineConfig
+    # QeEngine now imported from quantumvitas.api
+    from quantumvitas.api import QeEngine
     
     input_path = Path(input_file).resolve()
     if not input_path.exists():
@@ -1790,7 +1788,7 @@ def run_structure_command(
     """
     Generate a QE input from a stored structure + CLI parameters, then run it.
     """
-    registry = create_default_registry()
+    registry = QVService.create_default_registry()
     engine = registry.get("qe")
 
     if project:
@@ -3504,10 +3502,11 @@ def run_calculation_command(
 
     # Set mode if needed (must be done before calling run_calculation)
     if strict or mode:
-        from quantumvitas.core.models import load_calculation, save_calculation
+        # Model I/O functions now via QVService
+        from quantumvitas.api import QVService
         
         # Load the model, update mode, and save
-        calc_model = load_calculation(calc_dir, project_root)
+        calc_model = QVService.load_calculation(calc_dir, project_root)
         if strict:
             calc_model.mode = "strict"
         elif mode:
@@ -3516,7 +3515,7 @@ def run_calculation_command(
             except ValueError as exc:
                 raise typer.BadParameter("Mode must be 'normal' or 'strict'.") from exc
         
-        save_calculation(calc_model, calc_dir)
+        QVService.save_calculation(calc_model, calc_dir)
         
         # Also update the Calculation object for consistency
         if strict:
@@ -4693,7 +4692,7 @@ def _is_empty_card_value(value: Any) -> bool:
 def _collect_qe_detection_info(backend) -> dict[str, Any]:
     # Show env var for debugging (what user set), but use internal registry for resolution
     env_home = _safe_path(os.getenv("QE_HOME"))
-    registry_home = _safe_path(get_qe_home())  # Internal registry (preferred)
+    registry_home = _safe_path(QVService.get_qe_home())  # Internal registry (preferred)
     
     installation = getattr(backend, "installation", None) or getattr(
         backend, "_installation", None
