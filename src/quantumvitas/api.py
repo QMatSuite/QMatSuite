@@ -10767,6 +10767,42 @@ class QVService:
             raise QVServiceError(str(exc)) from exc
     
     # -------------------------------------------------------------------------
+    # Import Utilities
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def needs_alat_preservation(qe_input: "QEInput") -> bool:
+        """
+        Determine if we need to preserve alat (celldm(1) or A) for k-point compatibility.
+        
+        Returns True if:
+        - K_POINTS are in tpiba format (or variants like tpiba_b, tpiba_c)
+        - AND the input has an alat defined (via celldm(1), A, or ibrav != 0)
+        
+        Args:
+            qe_input: QE input object
+            
+        Returns:
+            True if alat preservation is needed, False otherwise
+        """
+        from quantumvitas.calculation.importers import _needs_alat_preservation as _impl
+        return _impl(qe_input)
+    
+    @staticmethod
+    def extract_alat_bohr(qe_input: "QEInput") -> Optional[float]:
+        """
+        Extract alat in Bohr from the input.
+        
+        Args:
+            qe_input: QE input object
+            
+        Returns:
+            alat in Bohr, or None if not determinable
+        """
+        from quantumvitas.calculation.importers import _extract_alat_bohr as _impl
+        return _impl(qe_input)
+    
+    # -------------------------------------------------------------------------
     # Models
     # -------------------------------------------------------------------------
     

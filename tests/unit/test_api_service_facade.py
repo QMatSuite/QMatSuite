@@ -1008,6 +1008,57 @@ steps: []
         with pytest.raises(QVServiceError, match="pymatgen not available"):
             QVService.generate_kpath(fake_structure)
     
+    def test_needs_alat_preservation_wrapper(self, monkeypatch):
+        """Test that needs_alat_preservation wrapper works by mocking underlying call."""
+        from quantumvitas.api import QVService
+        import quantumvitas.calculation.importers as importers_module
+        
+        # Track calls to the underlying function
+        called = {}
+        
+        def fake_needs_alat_preservation(qe_input):
+            called["qe_input"] = qe_input
+            return True
+        
+        # Mock the underlying function
+        monkeypatch.setattr(importers_module, "_needs_alat_preservation", fake_needs_alat_preservation)
+        
+        # Create a minimal fake QEInput (just needs to be an object)
+        fake_qe_input = type("FakeQEInput", (), {})()
+        
+        # Call wrapper
+        result = QVService.needs_alat_preservation(fake_qe_input)
+        
+        # Assertions
+        assert result is True
+        assert called["qe_input"] == fake_qe_input
+    
+    def test_extract_alat_bohr_wrapper(self, monkeypatch):
+        """Test that extract_alat_bohr wrapper works by mocking underlying call."""
+        from quantumvitas.api import QVService
+        import quantumvitas.calculation.importers as importers_module
+        
+        # Track calls to the underlying function
+        called = {}
+        fake_alat = 10.5
+        
+        def fake_extract_alat_bohr(qe_input):
+            called["qe_input"] = qe_input
+            return fake_alat
+        
+        # Mock the underlying function
+        monkeypatch.setattr(importers_module, "_extract_alat_bohr", fake_extract_alat_bohr)
+        
+        # Create a minimal fake QEInput (just needs to be an object)
+        fake_qe_input = type("FakeQEInput", (), {})()
+        
+        # Call wrapper
+        result = QVService.extract_alat_bohr(fake_qe_input)
+        
+        # Assertions
+        assert result == fake_alat
+        assert called["qe_input"] == fake_qe_input
+    
     def test_apply_card_overrides_to_qe_input_wrapper(self):
         """Test that apply_card_overrides_to_qe_input wrapper works."""
         from quantumvitas.api import QVService
