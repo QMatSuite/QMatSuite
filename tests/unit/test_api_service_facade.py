@@ -712,6 +712,85 @@ steps: []
         assert called["calculation_dir"] == calc_dir
         assert Path(called["project_root"]) == tmp_path
     
+    def test_find_calculation_raw_dir_wrapper(self, tmp_path):
+        """Test that find_calculation_raw_dir wrapper works."""
+        from pathlib import Path
+        from quantumvitas.api import QVService
+        
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir()
+        
+        # Call wrapper
+        raw_dir = QVService.find_calculation_raw_dir(calc_dir)
+        
+        # Verify it returns the expected path
+        assert raw_dir == calc_dir / "raw"
+        
+        # Test with custom working_dir_name
+        raw_dir_custom = QVService.find_calculation_raw_dir(calc_dir, working_dir_name="work")
+        assert raw_dir_custom == calc_dir / "work"
+    
+    def test_find_calculation_results_dir_wrapper(self, tmp_path):
+        """Test that find_calculation_results_dir wrapper works."""
+        from pathlib import Path
+        from quantumvitas.api import QVService
+        
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir()
+        
+        # Call wrapper
+        results_dir = QVService.find_calculation_results_dir(calc_dir)
+        
+        # Verify it returns the expected path
+        assert results_dir == calc_dir / "results"
+        
+        # Test with custom results_dir_name
+        results_dir_custom = QVService.find_calculation_results_dir(calc_dir, results_dir_name="output")
+        assert results_dir_custom == calc_dir / "output"
+    
+    def test_find_band_analysis_files_wrapper(self, monkeypatch, tmp_path):
+        """Test that find_band_analysis_files wrapper works."""
+        from pathlib import Path
+        from quantumvitas.api import QVService, BandAnalysisFiles
+        
+        # Track calls to the underlying function
+        called = {}
+        
+        def fake_find_band_analysis_files(directory, prefix=None):
+            """Fake implementation that records arguments and returns sentinel values."""
+            called["directory"] = directory
+            called["prefix"] = prefix
+            # Return a fake BandAnalysisFiles instance
+            result = BandAnalysisFiles()
+            result.bands_gnu = directory / "test.bands.dat.gnu"
+            return result
+        
+        # Mock the underlying function
+        import quantumvitas.calculation.naming as naming_module
+        monkeypatch.setattr(
+            naming_module,
+            "find_band_analysis_files",
+            fake_find_band_analysis_files,
+        )
+        
+        search_dir = tmp_path / "search"
+        search_dir.mkdir()
+        
+        # Call wrapper
+        found_files = QVService.find_band_analysis_files(search_dir)
+        
+        # Verify wrapper returned what underlying function returned
+        assert isinstance(found_files, BandAnalysisFiles)
+        assert found_files.bands_gnu == search_dir / "test.bands.dat.gnu"
+        
+        # Verify wrapper passed through arguments correctly
+        assert Path(called["directory"]) == search_dir
+        assert called["prefix"] is None
+        
+        # Test with prefix
+        found_files_with_prefix = QVService.find_band_analysis_files(search_dir, prefix="test")
+        assert called["prefix"] == "test"
+    
     def test_detect_runtime_control_keys_wrapper(self):
         """Test that detect_runtime_control_keys wrapper works."""
         parameters = {
