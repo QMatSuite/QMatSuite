@@ -3723,11 +3723,7 @@ def analyze_output_command(
         fg=typer.colors.YELLOW,
         err=True,
     )
-    # Analysis parsers now via QVService
-    from quantumvitas.analysis.plotting import (
-        plot_dos as plot_dos_fn, plot_bands as plot_bands_fn,
-        plot_scf_convergence, save_figure
-    )
+    # Analysis parsers and plotting now via QVService
     from quantumvitas.api import QVService, QVServiceError
     from quantumvitas.calculation.naming import find_band_analysis_files, find_calculation_raw_dir, find_calculation_results_dir
     
@@ -3875,9 +3871,9 @@ def analyze_output_command(
         data = result.to_dict()
         
         if plot and result.iterations:
-            fig, ax = plot_scf_convergence(result)
+            fig, ax = svc.plot_scf_convergence(result)
             if output_dir:
-                save_figure(fig, output_dir / f"scf_convergence.{plot_format}")
+                svc.save_figure(fig, output_dir / f"scf_convergence.{plot_format}")
                 typer.echo(f"Plot saved to {output_dir / f'scf_convergence.{plot_format}'}")
             else:
                 import matplotlib.pyplot as plt
@@ -3898,14 +3894,14 @@ def analyze_output_command(
         data = band_data.to_dict()
         
         if plot:
-            fig, ax = plot_bands_fn(
+            fig, ax = svc.plot_bands(
                 band_data,
                 shift_fermi=not no_shift,
                 energy_range=e_range,
             )
             if output_dir:
                 plot_path = output_dir / f"bands.{plot_format}"
-                save_figure(fig, plot_path)
+                svc.save_figure(fig, plot_path)
                 typer.echo(f"Plot saved to {plot_path}")
             else:
                 import matplotlib.pyplot as plt
@@ -3941,14 +3937,14 @@ def analyze_output_command(
         data = dos_data.to_dict()
         
         if plot:
-            fig, ax = plot_dos_fn(
+            fig, ax = svc.plot_dos(
                 dos_data,
                 shift_fermi=not no_shift,
                 energy_range=e_range,
             )
             if output_dir:
                 plot_path = output_dir / f"dos.{plot_format}"
-                save_figure(fig, plot_path)
+                svc.save_figure(fig, plot_path)
                 typer.echo(f"Plot saved to {plot_path}")
             else:
                 import matplotlib.pyplot as plt

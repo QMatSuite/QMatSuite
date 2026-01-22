@@ -10286,6 +10286,154 @@ class QVService:
         )
     
     # -------------------------------------------------------------------------
+    # Analysis Plotting
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def plot_dos(
+        dos_data: Any,
+        ax: Optional[Any] = None,
+        shift_fermi: bool = True,
+        show_fermi: bool = True,
+        energy_range: Optional[Tuple[float, float]] = None,
+        color: str = "C0",
+        fill: bool = True,
+        fill_alpha: float = 0.3,
+        label: Optional[str] = None,
+        **kwargs,
+    ) -> Tuple[Any, Any]:
+        """
+        Plot density of states.
+        
+        Args:
+            dos_data: Parsed DOS data (DOSData)
+            ax: Matplotlib axes (creates new figure if None)
+            shift_fermi: Shift energies so Fermi level is at 0
+            show_fermi: Show vertical line at Fermi energy
+            energy_range: (Emin, Emax) to display
+            color: Line color
+            fill: Fill area under curve
+            fill_alpha: Fill transparency
+            label: Legend label
+            **kwargs: Additional arguments passed to plot()
+            
+        Returns:
+            (Figure, Axes) tuple
+        """
+        from quantumvitas.analysis.plotting import plot_dos as _plot_dos
+        return _plot_dos(
+            dos_data,
+            ax=ax,
+            shift_fermi=shift_fermi,
+            show_fermi=show_fermi,
+            energy_range=energy_range,
+            color=color,
+            fill=fill,
+            fill_alpha=fill_alpha,
+            label=label,
+            **kwargs,
+        )
+    
+    @staticmethod
+    def plot_bands(
+        band_data: Any,
+        ax: Optional[Any] = None,
+        shift_fermi: bool = True,
+        show_fermi: bool = True,
+        energy_range: Optional[Tuple[float, float]] = None,
+        color: str = "C0",
+        show_symmetry_lines: bool = True,
+        symmetry_labels: Optional[List[str]] = None,
+        linewidth: float = 1.0,
+        **kwargs,
+    ) -> Tuple[Any, Any]:
+        """
+        Plot electronic band structure.
+        
+        Args:
+            band_data: Parsed band structure data (BandStructureData)
+            ax: Matplotlib axes (creates new figure if None)
+            shift_fermi: Shift energies so Fermi level is at 0
+            show_fermi: Show horizontal line at Fermi energy
+            energy_range: (Emin, Emax) to display
+            color: Line color
+            show_symmetry_lines: Show vertical lines at high-symmetry points
+            symmetry_labels: Labels for high-symmetry points
+            linewidth: Line width for bands
+            **kwargs: Additional arguments passed to plot()
+            
+        Returns:
+            (Figure, Axes) tuple
+        """
+        from quantumvitas.analysis.plotting import plot_bands as _plot_bands
+        return _plot_bands(
+            band_data,
+            ax=ax,
+            shift_fermi=shift_fermi,
+            show_fermi=show_fermi,
+            energy_range=energy_range,
+            color=color,
+            show_symmetry_lines=show_symmetry_lines,
+            symmetry_labels=symmetry_labels,
+            linewidth=linewidth,
+            **kwargs,
+        )
+    
+    @staticmethod
+    def plot_scf_convergence(
+        scf_result: Any,
+        ax: Optional[Any] = None,
+        show_energy: bool = True,
+        show_accuracy: bool = True,
+        log_accuracy: bool = True,
+    ) -> Tuple[Any, Any]:
+        """
+        Plot SCF convergence (energy and/or accuracy vs iteration).
+        
+        Args:
+            scf_result: Parsed SCF result (SCFResult)
+            ax: Matplotlib axes
+            show_energy: Plot total energy
+            show_accuracy: Plot SCF accuracy
+            log_accuracy: Use log scale for accuracy
+            
+        Returns:
+            (Figure, Axes) tuple
+        """
+        from quantumvitas.analysis.plotting import plot_scf_convergence as _plot_scf_convergence
+        return _plot_scf_convergence(
+            scf_result,
+            ax=ax,
+            show_energy=show_energy,
+            show_accuracy=show_accuracy,
+            log_accuracy=log_accuracy,
+        )
+    
+    @staticmethod
+    def save_figure(
+        fig: Any,
+        path: Path | str,
+        dpi: int = 150,
+        formats: Optional[List[str]] = None,
+        **kwargs,
+    ) -> List[Path]:
+        """
+        Save figure to file(s).
+        
+        Args:
+            fig: Matplotlib figure
+            path: Output path (extension determines format, or use formats list)
+            dpi: Resolution for raster formats
+            formats: List of formats to save (e.g., ['png', 'svg', 'pdf'])
+            **kwargs: Additional arguments to savefig
+            
+        Returns:
+            List of saved file paths
+        """
+        from quantumvitas.analysis.plotting import save_figure as _save_figure
+        return _save_figure(fig, path, dpi=dpi, formats=formats, **kwargs)
+    
+    # -------------------------------------------------------------------------
     # Models
     # -------------------------------------------------------------------------
     

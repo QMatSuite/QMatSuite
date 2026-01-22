@@ -515,4 +515,77 @@ steps: []
             fermi_energy=0.5
         )
         assert dos_data.fermi_energy == 0.5
+    
+    def test_plot_dos_wrapper(self, tmp_path, monkeypatch):
+        """Test that plot_dos wrapper works."""
+        from quantumvitas.analysis.parsers import DOSData
+        import numpy as np
+        
+        # Create minimal DOS data
+        dos_data = DOSData(
+            energies=np.array([0.0, 1.0, 2.0]),
+            dos=np.array([1.0, 2.0, 1.5]),
+            idos=np.array([0.0, 1.0, 2.0]),
+            fermi_energy=1.0
+        )
+        
+        # Call wrapper - should return (fig, ax) tuple
+        fig, ax = QVService.plot_dos(dos_data, shift_fermi=False)
+        assert fig is not None
+        assert ax is not None
+    
+    def test_plot_bands_wrapper(self, tmp_path, monkeypatch):
+        """Test that plot_bands wrapper works."""
+        from quantumvitas.analysis.parsers import BandStructureData
+        import numpy as np
+        
+        # Create minimal band data
+        band_data = BandStructureData(
+            k_distances=np.array([0.0, 1.0]),
+            energies=np.array([[0.0, 1.0], [0.5, 1.5]]),
+            fermi_energy=1.0,
+            high_symmetry_points=[]
+        )
+        
+        # Call wrapper - should return (fig, ax) tuple
+        fig, ax = QVService.plot_bands(band_data, shift_fermi=False)
+        assert fig is not None
+        assert ax is not None
+    
+    def test_plot_scf_convergence_wrapper(self, tmp_path, monkeypatch):
+        """Test that plot_scf_convergence wrapper works."""
+        from quantumvitas.analysis.parsers import SCFResult, SCFIteration
+        
+        # Create minimal SCF result
+        scf_result = SCFResult(
+            iterations=[
+                SCFIteration(iteration=1, total_energy=-100.0, scf_accuracy=1e-3),
+                SCFIteration(iteration=2, total_energy=-100.1, scf_accuracy=1e-5),
+            ],
+            converged=True,
+            total_energy=-100.1,
+            fermi_energy=5.0
+        )
+        
+        # Call wrapper - should return (fig, ax) tuple
+        fig, ax = QVService.plot_scf_convergence(scf_result)
+        assert fig is not None
+        assert ax is not None
+    
+    def test_save_figure_wrapper(self, tmp_path):
+        """Test that save_figure wrapper works."""
+        import matplotlib.pyplot as plt
+        
+        # Create a minimal figure
+        fig, ax = plt.subplots()
+        ax.plot([0, 1, 2], [0, 1, 2])
+        
+        # Save using wrapper
+        output_file = tmp_path / "test_plot.png"
+        saved_paths = QVService.save_figure(fig, output_file)
+        
+        assert len(saved_paths) > 0
+        assert output_file.exists()
+        
+        plt.close(fig)
 
