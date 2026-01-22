@@ -1111,16 +1111,27 @@ def resolve_calculation(
             raise SelectorNotFoundError(f"Resource '{selector}' is not a calculation (kind: {meta.kind})")
         
         # Find absolute path (calculation directory)
+        # Note: absolute_path points to the calculation directory, not the calculation.yaml file.
+        # This matches the contract expected by most code which uses absolute_path directly as a directory.
         abs_path = None
         for path, path_id in index.by_path.items():
             if path_id == resource_id:
-                # calculation.yaml path -> calculation directory
+                # index.by_path stores the calculation.yaml file path, so get parent directory
                 abs_path = path.parent
                 break
         
         if abs_path is None:
-            # Fallback: construct from meta.path
+            # Fallback: construct from meta.path (which is a directory path like "calculations/wf")
+            # CRITICAL: meta.path must be the correct directory path, not just "calculations"
             abs_path = (project_root / meta.path).resolve()
+            # Verify the path is correct - it should be a directory, not a file
+            if not abs_path.is_dir():
+                # If meta.path is wrong, try to find the correct path from the index
+                # This should not happen if the index was built correctly, but defensive check
+                raise SelectorNotFoundError(
+                    f"Calculation '{selector}' resolved but path construction failed. "
+                    f"meta.path={meta.path}, constructed_path={abs_path}"
+                )
         
         # Build entry dict for backwards compatibility (minimal, ID-only)
         entry = {"id": resource_id, "meta": meta.to_dict()}
