@@ -67,7 +67,7 @@ from quantumvitas.calculation.structure_steps import (
     generate_qe_input_from_structure,
 )
 # I/O operations now via QVService
-from quantumvitas.io.model import QECardType
+from quantumvitas.api import QECardType
 from quantumvitas.io.parser.qe_parser import QEInputParser
 
 if TYPE_CHECKING:
@@ -3322,7 +3322,7 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
     Automatically detects the QE module type (pw.x, bands.x, dos.x, etc.) and suggests
     the appropriate step type.
     """
-    from quantumvitas.io.model import QEModule
+    from quantumvitas.api import QEModule
 
     if not input_file.exists():
         raise typer.BadParameter(f"{input_file} does not exist.")
