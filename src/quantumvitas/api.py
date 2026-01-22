@@ -162,6 +162,7 @@ __all__ = [
     "ParameterOverride",
     "BandAnalysisFiles",
     "Step",
+    "Calculation",
 ]
 
 # Re-export VolumeParserError for daemon use
@@ -190,6 +191,9 @@ from quantumvitas.calculation.naming import BandAnalysisFiles  # noqa: E402
 
 # Re-export calculation Step class for CLI use
 from quantumvitas.calculation.step import Step  # noqa: E402
+
+# Re-export calculation Calculation class for CLI use
+from quantumvitas.calculation.calculation import Calculation  # noqa: E402
 
 
 class QVServiceError(Exception):
