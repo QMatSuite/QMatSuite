@@ -2484,7 +2484,7 @@ class QVDaemon:
         # Also return structure JSON for detail panel
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp:
             tmp_path = Path(tmp.name)
-            QVService.write_structure(tmp_path, structure)
+            QVService.write_structure(structure, tmp_path)
             structure_json = tmp_path.read_text()
             tmp_path.unlink()
         
