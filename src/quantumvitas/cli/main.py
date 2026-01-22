@@ -3737,7 +3737,6 @@ def analyze_output_command(
     )
     # Analysis parsers and plotting now via QVService
     from quantumvitas.api import QVService, QVServiceError
-    from quantumvitas.calculation.naming import find_band_analysis_files, find_calculation_raw_dir, find_calculation_results_dir
     
     # Instantiate QVService for parser wrappers
     project_root = project or _resolve_project_root()
@@ -3804,7 +3803,7 @@ def analyze_output_command(
         search_dir: Optional[Path] = None
         
         if calculation_dir:
-            search_dir = find_calculation_raw_dir(calculation_dir)
+            search_dir = QVService.find_calculation_raw_dir(calculation_dir)
         elif input_file:
             # Use input file's directory as search dir
             search_dir = Path(input_file).resolve().parent
@@ -3813,7 +3812,7 @@ def analyze_output_command(
             search_dir = Path.cwd()
         
         if search_dir and search_dir.exists():
-            found_files = find_band_analysis_files(search_dir)
+            found_files = QVService.find_band_analysis_files(search_dir)
             
             # Use found files if not explicitly provided
             if input_file is None:
@@ -3849,7 +3848,7 @@ def analyze_output_command(
     # Determine output directory: explicit > calculation results > None
     output_dir = Path(output) if output else None
     if output_dir is None and calculation_dir:
-        output_dir = find_calculation_results_dir(calculation_dir)
+        output_dir = QVService.find_calculation_results_dir(calculation_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         typer.echo(f"Output directory: {output_dir}")
     elif output_dir is None:

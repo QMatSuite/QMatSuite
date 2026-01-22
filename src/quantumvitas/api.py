@@ -160,6 +160,7 @@ __all__ = [
     "StepMode",
     "StepStatus",
     "ParameterOverride",
+    "BandAnalysisFiles",
 ]
 
 # Re-export VolumeParserError for daemon use
@@ -182,6 +183,9 @@ from quantumvitas.calculation.structure_steps import StructureStepSpec  # noqa: 
 
 # Re-export input_runner types and functions for CLI use
 from quantumvitas.calculation.input_runner import ParameterOverride  # noqa: E402
+
+# Re-export calculation naming types for CLI use
+from quantumvitas.calculation.naming import BandAnalysisFiles  # noqa: E402
 
 
 class QVServiceError(Exception):
@@ -10652,6 +10656,64 @@ class QVService:
         """
         from quantumvitas.calculation.structure_steps import detect_runtime_control_keys as _detect_runtime_control_keys
         return _detect_runtime_control_keys(parameters)
+    
+    # -------------------------------------------------------------------------
+    # Calculation Naming Utilities
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def find_band_analysis_files(
+        directory: Path | str,
+        prefix: Optional[str] = None,
+    ) -> Any:
+        """
+        Find band structure analysis files in a directory.
+        
+        Args:
+            directory: Directory to search (typically calculation/raw/)
+            prefix: Optional prefix to filter files (e.g., step id)
+            
+        Returns:
+            BandAnalysisFiles with found files
+        """
+        from quantumvitas.calculation.naming import find_band_analysis_files as _find_band_analysis_files
+        return _find_band_analysis_files(Path(directory), prefix=prefix)
+    
+    @staticmethod
+    def find_calculation_raw_dir(
+        calculation_dir: Path | str,
+        working_dir_name: str = "raw",
+    ) -> Path:
+        """
+        Get the raw/working directory for a calculation.
+        
+        Args:
+            calculation_dir: Path to calculation directory
+            working_dir_name: Name of working directory (default: "raw")
+            
+        Returns:
+            Path to raw directory (may not exist)
+        """
+        from quantumvitas.calculation.naming import find_calculation_raw_dir as _find_calculation_raw_dir
+        return _find_calculation_raw_dir(Path(calculation_dir), working_dir_name=working_dir_name)
+    
+    @staticmethod
+    def find_calculation_results_dir(
+        calculation_dir: Path | str,
+        results_dir_name: str = "results",
+    ) -> Path:
+        """
+        Get the results directory for a calculation.
+        
+        Args:
+            calculation_dir: Path to calculation directory
+            results_dir_name: Name of results directory (default: "results")
+            
+        Returns:
+            Path to results directory (may not exist)
+        """
+        from quantumvitas.calculation.naming import find_calculation_results_dir as _find_calculation_results_dir
+        return _find_calculation_results_dir(Path(calculation_dir), results_dir_name=results_dir_name)
     
     # -------------------------------------------------------------------------
     # Models
