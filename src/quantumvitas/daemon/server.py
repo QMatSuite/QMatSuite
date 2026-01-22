@@ -186,9 +186,8 @@ class QVDaemon:
         self.stdout = stdout
         self.stderr = stderr
         # Load max_workers from settings (default 2 for concurrent calc runs)
-        from quantumvitas.core.settings import load_settings
-        settings = load_settings()
-        max_workers = settings.max_concurrent_calcs
+        settings = QVService.get_settings()
+        max_workers = settings.get("max_concurrent_calcs", 2)
         self.job_manager = JobManager(max_workers=max_workers)
         self.state = DaemonState()
         self._running = False
@@ -1489,15 +1488,11 @@ class QVDaemon:
         Returns:
             {"ok": true, "enabled": bool}
         """
-        from quantumvitas.core.settings import load_settings, save_settings
-        
         enabled = payload.get("enabled", False)
         if not isinstance(enabled, bool):
             raise ValueError(f"Invalid enabled value: {enabled}. Must be boolean")
         
-        settings = load_settings()
-        settings.debug_resolution = enabled
-        save_settings(settings)
+        QVService.set_settings({"debug_resolution": enabled})
         
         return {"ok": True, "enabled": enabled}
     
@@ -1508,10 +1503,8 @@ class QVDaemon:
         Returns:
             {"ok": true, "enabled": bool}
         """
-        from quantumvitas.core.settings import load_settings
-        
-        settings = load_settings()
-        return {"ok": True, "enabled": settings.debug_resolution}
+        settings = QVService.get_settings()
+        return {"ok": True, "enabled": settings.get("debug_resolution", False)}
     
     def _update_logging_level(self, level: str):
         """
