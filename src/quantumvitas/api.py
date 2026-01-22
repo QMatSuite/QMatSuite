@@ -630,6 +630,42 @@ class QVService:
         from quantumvitas.core.project_utils import entry_display_name as _entry_display_name
         return _entry_display_name(entry, fallback=fallback)
     
+    @staticmethod
+    def entry_matches(entry: Dict[str, Any], identifier: str) -> bool:
+        """
+        Check if an entry matches the given identifier.
+        
+        Args:
+            entry: Resource entry dict
+            identifier: Identifier to match against
+            
+        Returns:
+            True if entry matches identifier
+        """
+        from quantumvitas.core.project_utils import entry_matches as _entry_matches
+        return _entry_matches(entry, identifier)
+    
+    def calculations_using_structure(
+        self,
+        entry: Dict[str, Any],
+        config: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Find all calculations that reference a given structure.
+        
+        Args:
+            entry: Structure entry dict
+            config: Optional project config (avoids reloading if provided)
+            
+        Returns:
+            List of calculation entry dicts
+        """
+        if config is None:
+            config = self.load_project_config()
+        
+        from quantumvitas.core.project_utils import calculations_using_structure as _calculations_using_structure
+        return _calculations_using_structure(self.project_root, config, entry)
+    
     def collect_slugs(self, entries: List[Dict[str, Any]], *, exclude: Optional[Dict[str, Any]] = None) -> List[str]:
         """
         Collect all slugs from a list of structure or calculation entries.
@@ -9790,7 +9826,6 @@ class QVService:
             existing_slugs=existing_slugs,
         )
     
-    @staticmethod
     @staticmethod
     def meta_from_name(kind: str, *, name: str, path: str) -> Dict[str, Any]:
         """
