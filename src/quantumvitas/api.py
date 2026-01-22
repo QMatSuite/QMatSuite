@@ -170,6 +170,9 @@ from quantumvitas.analysis.structure_viz import DisplayModeParams  # noqa: E402
 # Re-export calculation types for CLI use
 from quantumvitas.calculation.types import StepMode, StepStatus  # noqa: E402
 
+# Re-export QE I/O model enums for CLI use (Enum classes, re-exported directly)
+from quantumvitas.io.model import QECardType, QEModule  # noqa: E402
+
 
 class QVServiceError(Exception):
     """Base exception for QVService operations."""
