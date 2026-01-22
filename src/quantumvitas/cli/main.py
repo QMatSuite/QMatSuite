@@ -1140,12 +1140,12 @@ def init_step_command(
             ) from exc
 
     # Get default parameters for this step type (if not in --no-defaults mode)
-    from quantumvitas.calculation.step_defaults import get_default_step_params
+    from quantumvitas.api import QVService
     
     apply_defaults = not no_defaults
     
     if apply_defaults:
-        defaults = get_default_step_params(step_type)
+        defaults = QVService.get_default_step_params(step_type)
         default_params = defaults.get("parameters", {})
         default_cards = defaults.get("cards", {})
         default_species = defaults.get("species_overrides", {})
