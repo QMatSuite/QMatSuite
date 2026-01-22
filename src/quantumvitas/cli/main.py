@@ -31,12 +31,10 @@ from quantumvitas.core.resources import (
     meta_from_name,
     slugify,
 )
-from quantumvitas.core.context import (
-    find_path_context_from_pwd,
-    ContextNotFoundError,
-)
+# Context functions now imported from quantumvitas.api
 from quantumvitas.core.exceptions import LegacyProjectError
-from quantumvitas.core.resolution import (
+# Resolution exceptions now imported from quantumvitas.api
+from quantumvitas.api import (
     ResourceNotFoundError,
     RegistryOutOfSyncError,
     AmbiguousSelectorError,
@@ -216,7 +214,8 @@ def _determine_project_directory(
     else:
         resolved_path = None
 
-    slug = slugify(name_option) if name_option else None
+    from quantumvitas.api import QVService
+    slug = QVService.slugify(name_option) if name_option else None
     if path_option and name_option:
         if not slug:
             raise typer.BadParameter("Name must contain at least one alphanumeric character.")
@@ -231,14 +230,15 @@ def _determine_project_directory(
 
 
 def _derive_step_identity(base_name: str, existing_ids: Sequence[str]) -> tuple[str, str]:
+    from quantumvitas.api import QVService
     preferred = (base_name or "step").strip() or "step"
-    slug_candidate = slugify(preferred)
+    slug_candidate = QVService.slugify(preferred)
     display = preferred
     occupied = {value.lower() for value in existing_ids if value}
     suffix = 2
     while slug_candidate.lower() in occupied:
         display = f"{preferred}-{suffix}"
-        slug_candidate = slugify(display)
+        slug_candidate = QVService.slugify(display)
         suffix += 1
     return display, slug_candidate
 
@@ -248,7 +248,9 @@ def _resolve_structure_reference(
 ) -> str:
     if project_root and config is not None:
         try:
-            entry = find_structure_entry(config, identifier, project_root)
+            from quantumvitas.api import QVService
+            svc = QVService(project_root)
+            entry = svc.find_structure_entry(identifier, config=config)
             meta = entry.get("meta") or {}
             return meta.get("slug") or entry.get("name") or identifier
         except typer.BadParameter:
@@ -258,7 +260,8 @@ def _resolve_structure_reference(
     if candidate.exists():
         if project_root:
             try:
-                return ensure_relative_path(candidate, base=project_root)
+                from quantumvitas.api import QVService
+                return QVService.ensure_relative_path(candidate, base=project_root)
             except ValueError:
                 return candidate.as_posix()
         return candidate.as_posix()
@@ -743,14 +746,16 @@ def init_calculation_command(
     )
 
     project_root = (project or _resolve_project_root()).resolve()
-    config = load_project_config(project_root)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    config = svc.load_project_config()
     calculations_section = config.setdefault("calculations", [])
     existing_slugs = {
-        (entry.get("meta") or {}).get("slug") or slugify(entry.get("name") or "")
+        (entry.get("meta") or {}).get("slug") or QVService.slugify(entry.get("name") or "")
         for entry in calculations_section
     }
 
-    calculation_slug = slugify(calculation_id)
+    calculation_slug = QVService.slugify(calculation_id)
     if calculation_slug in existing_slugs:
         raise typer.BadParameter(
             f"Calculation '{calculation_id}' already exists. Use qv configure calculation to modify it."
@@ -773,8 +778,10 @@ def init_calculation_command(
         calculation_dir.mkdir(parents=True, exist_ok=True)
         
         # Generate calculation meta first so we have the ULID
-        rel_path = ensure_relative_path(calculation_dir, base=project_root)
-        calculation_meta = meta_from_name("calculation", name=calculation_id, path=rel_path)
+        rel_path = QVService.ensure_relative_path(calculation_dir, base=project_root)
+        calculation_meta_dict = QVService.meta_from_name("calculation", name=calculation_id, path=rel_path)
+        from quantumvitas.core.resources import ResourceMeta
+        calculation_meta = ResourceMeta(**calculation_meta_dict)
         
         # Pass the ULID to template copier so steps get the correct parent_calculation_id
         _, structures_needed, _ = copy_calculation_template(
@@ -798,8 +805,10 @@ def init_calculation_command(
             if struct_name not in existing_struct_slugs:
                 try:
                     struct_path = copy_structure_template(struct_name, structures_dir)
-                    struct_rel_path = ensure_relative_path(struct_path, base=project_root)
-                    struct_meta = meta_from_name("structure", name=struct_name, path=struct_rel_path)
+                    struct_rel_path = QVService.ensure_relative_path(struct_path, base=project_root)
+                    struct_meta_dict = QVService.meta_from_name("structure", name=struct_name, path=struct_rel_path)
+                    from quantumvitas.core.resources import ResourceMeta
+                    struct_meta = ResourceMeta(**struct_meta_dict)
                     # DAG + ID-only: only structure_id, no meta duplication
                     structures_section.append({
                         "structure_id": struct_meta.id,  # ID-only reference (ULID)
@@ -819,7 +828,7 @@ def init_calculation_command(
         calculations_section.append({
             "calculation_id": calculation_meta.id,  # ID-only reference (ULID)
         })
-        save_project_config(project_root, config)
+        svc.save_project_config(config)
         typer.secho(f"Calculation '{calculation_id}' created from template '{template}' at {calculation_dir}", fg=typer.colors.GREEN)
         return
 
@@ -830,8 +839,6 @@ def init_calculation_command(
         )
 
     # Resolve structure selector to structure_id (ULID)
-    from quantumvitas.api import QVService
-    svc = QVService(project_root)
     resolved_structure = svc.require_structure_ref(structure, config=config)
     structure_id = resolved_structure.meta.id
     structure_name = resolved_structure.meta.name
@@ -842,8 +849,10 @@ def init_calculation_command(
     steps_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate calculation meta with ULID
-    rel_path = ensure_relative_path(calculation_dir, base=project_root)
-    calculation_meta = meta_from_name("calculation", name=calculation_id, path=str(rel_path))
+    rel_path = QVService.ensure_relative_path(calculation_dir, base=project_root)
+    calculation_meta_dict = QVService.meta_from_name("calculation", name=calculation_id, path=str(rel_path))
+    from quantumvitas.core.resources import ResourceMeta
+    calculation_meta = ResourceMeta(**calculation_meta_dict)
     if parent:
         calculation_meta_dict = calculation_meta.to_dict()
         calculation_meta_dict["parents"] = parent
@@ -885,7 +894,7 @@ def init_calculation_command(
     calculations_section.append({
         "calculation_id": calculation_meta.id,  # ID-only reference (ULID)
     })
-    save_project_config(project_root, config)
+    svc.save_project_config(config)
 
     typer.secho(f"Calculation '{calculation_id}' created at {calculation_dir}", fg=typer.colors.GREEN)
 
@@ -1001,22 +1010,26 @@ def init_step_command(
     if calculation:
         if not project_root:
             raise typer.BadParameter("Specify --project when using --calculation.")
-        config = load_project_config(project_root)
-        calculation_entry = find_calculation_entry(config, calculation, project_root)
+        from quantumvitas.api import QVService
+        svc = QVService(project_root)
+        config = svc.load_project_config()
+        calculation_entry = svc.find_calculation_entry(calculation, config=config)
     elif project_root:
         # Try to detect enclosing calculation from cwd using find_enclosing_calculation
         # This is more reliable than PathContext.calculation_selector (which reads from calculation.yaml)
+        from quantumvitas.api import QVService
+        svc = QVService(project_root)
         try:
-            config = load_project_config(project_root)
+            config = svc.load_project_config()
             calculation_entry = find_enclosing_calculation(project_root, config)
         except Exception:
             # Fall back to old method if find_enclosing_calculation fails
-            config = load_project_config(project_root)
+            config = svc.load_project_config()
             detected = _detect_enclosing_calculation(
                 project_root, Path.cwd().resolve(), config.get("calculations", [])
             )
             if detected:
-                calculation_entry = find_calculation_entry(config, detected, project_root)
+                calculation_entry = svc.find_calculation_entry(detected, config=config)
     
     # If we still don't have a calculation and we're at project root, fail with clear error
     if not calculation_entry and project_root:
@@ -1026,11 +1039,12 @@ def init_step_command(
         is_at_project_root = False
         
         try:
-            ctx = find_path_context_from_pwd()
+            from quantumvitas.api import QVService
+            ctx = QVService.find_path_context_ref()
             # Compare resolved paths to handle symlinks and path differences
-            if cwd_resolved == project_root_resolved and not ctx.is_inside_calculation():
+            if cwd_resolved == project_root_resolved and not ctx["is_inside_calculation"]:
                 is_at_project_root = True
-        except ContextNotFoundError:
+        except QVServiceError:
             # If we can't determine context but we have project_root, check if cwd matches project_root
             if cwd_resolved == project_root_resolved:
                 is_at_project_root = True
@@ -1048,11 +1062,18 @@ def init_step_command(
     
     if not project_root:
         config = {"structures": [], "calculations": []}
+        svc = None
     elif not calculation_entry:
-        config = load_project_config(project_root)
+        if 'svc' not in locals():
+            from quantumvitas.api import QVService
+            svc = QVService(project_root)
+        config = svc.load_project_config()
 
     if calculation_entry and project_root:
-        calculation_dir = calculation_directory(project_root, calculation_entry)
+        if 'svc' not in locals():
+            from quantumvitas.api import QVService
+            svc = QVService(project_root)
+        calculation_dir = svc.calculation_directory(calculation_entry)
         calculation_yaml = calculation_dir / "calculation.yaml"
         if not calculation_yaml.exists():
             raise typer.BadParameter(f"calculation.yaml not found under {calculation_dir}")
@@ -1213,8 +1234,11 @@ def init_step_command(
             # Structure is required - fail clearly
             raise typer.BadParameter(f"Structure not found: {e}")
     
+    step_meta_dict = QVService.meta_from_name("step", name=step_display_name, path="")
+    from quantumvitas.core.resources import ResourceMeta
+    step_meta = ResourceMeta(**step_meta_dict)
     spec = StructureStepSpec(
-        meta=meta_from_name("step", name=step_display_name, path=""),
+        meta=step_meta,
         structure=structure_value,  # Keep for backwards compat
         structure_id=structure_id,  # Canonical reference (ULID)
         step_type=step_type,
@@ -1228,7 +1252,7 @@ def init_step_command(
 
     if calculation_entry and calculation_steps is not None and calculation_data is not None:
         assert calculation_dir is not None
-        rel_step_path = ensure_relative_path(spec_path, base=calculation_dir)
+        rel_step_path = QVService.ensure_relative_path(spec_path, base=calculation_dir)
         insertion_index = (
             max(0, min(len(calculation_steps), index))
             if index is not None
@@ -1255,8 +1279,9 @@ def init_step_command(
             calculation_data["calculation"].pop("structure", None)
         calculation_yaml = calculation_dir / "calculation.yaml"
         calculation_yaml.write_text(yaml.safe_dump(calculation_data, sort_keys=False))
+        from quantumvitas.api import QVService
         typer.echo(
-            f"Calculation '{entry_display_name(calculation_entry)}' updated with step id '{step_slug}'."
+            f"Calculation '{QVService.entry_display_name(calculation_entry)}' updated with step id '{step_slug}'."
         )
 
     typer.echo(f"Step spec created at {spec_path}")
@@ -1287,13 +1312,14 @@ def save_project_command(
         qv save-project snapshot.yml
         qv save-project my-project-snapshot.yml --overwrite
     """
-    from quantumvitas.core.context import find_path_context_from_pwd
+    from quantumvitas.api import QVService
     
     # Determine project root
     if project:
         project_root = Path(project).expanduser().resolve()
     else:
-        project_root = find_path_context_from_pwd().project_root
+        ctx = QVService.find_path_context_ref()
+        project_root = ctx["project_root"]
     
     if not (project_root / "project.qv.yml").exists():
         raise typer.BadParameter(f"Not a project: {project_root}")
@@ -1353,13 +1379,15 @@ def import_structure_command(
     project_root = project_root.resolve()
 
     struct = read_structure(structure_file)
-    config = load_project_config(project_root)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    config = svc.load_project_config()
     structures_section = config.setdefault("structures", [])
-    existing_slugs = collect_slugs(structures_section, project_root=project_root)
+    existing_slugs = svc.collect_slugs(structures_section)
 
     user_name = name.strip() if name else None
     if user_name:
-        candidate_slug = slugify(user_name)
+        candidate_slug = QVService.slugify(user_name)
         if candidate_slug in existing_slugs:
             raise typer.BadParameter(
                 f"Structure name '{user_name}' conflicts with an existing entry."
@@ -1368,7 +1396,7 @@ def import_structure_command(
         structure_slug = candidate_slug
     else:
         base_name = _suggest_structure_name(struct, structure_file)
-        structure_name, structure_slug = generate_unique_name_and_slug(
+        structure_name, structure_slug = QVService.generate_unique_name_and_slug(
             kind="structure",
             preferred_name=base_name,
             existing_slugs=existing_slugs,
@@ -1378,16 +1406,18 @@ def import_structure_command(
     structures_dir.mkdir(parents=True, exist_ok=True)
     ext = output_format.lower()
     out_path = (structures_dir / f"{structure_slug}.{ext}").resolve()
-    write_rel = ensure_relative_path(out_path, base=project_root)
+    write_rel = QVService.ensure_relative_path(out_path, base=project_root)
 
-    metadata = meta_from_name("structure", name=structure_name, path=write_rel)
+    metadata_dict = QVService.meta_from_name("structure", name=structure_name, path=write_rel)
+    from quantumvitas.core.resources import ResourceMeta
+    metadata = ResourceMeta(**metadata_dict)
     write_structure(struct, out_path, format=output_format, metadata=metadata)
 
     # DAG + ID-only: only structure_id, no meta duplication
     structures_section.append({
         "structure_id": metadata.id,  # ID-only reference (ULID)
     })
-    save_project_config(project_root, config)
+    svc.save_project_config(config)
 
     typer.secho(
         f"Imported structure '{structure_name}' -> {write_rel}", fg=typer.colors.GREEN
@@ -1515,7 +1545,7 @@ def run_step_command(
     
     # Load project context
     from quantumvitas.core.project_context import ProjectContext, resolve_calculation_for_cli, resolve_step_for_cli
-    from quantumvitas.core.resolution import ResourceNotFoundError
+    from quantumvitas.api import ResourceNotFoundError
     
     cwd = Path.cwd()
     try:
@@ -2093,8 +2123,10 @@ def rename_structure_command(
     )
 
     project_root = project or _resolve_project_root()
-    config = load_project_config(project_root)
-    entry = find_structure_entry(config, identifier, project_root)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    config = svc.load_project_config()
+    entry = svc.find_structure_entry(identifier, config=config)
 
     apply_structure_rename(
         project_root=project_root,
@@ -2104,7 +2136,7 @@ def rename_structure_command(
         new_slug=slug,
         new_path=path,
     )
-    save_project_config(project_root, config)
+    svc.save_project_config(config)
 
     typer.secho("Structure updated successfully.", fg=typer.colors.GREEN)
 
@@ -2134,8 +2166,10 @@ def rename_calculation_command(
     )
 
     project_root = project or _resolve_project_root()
-    config = load_project_config(project_root)
-    entry = find_calculation_entry(config, identifier, project_root)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    config = svc.load_project_config()
+    entry = svc.find_calculation_entry(identifier, config=config)
 
     apply_calculation_rename(
         project_root=project_root,
@@ -2145,7 +2179,7 @@ def rename_calculation_command(
         new_slug=slug,
         new_path=path,
     )
-    save_project_config(project_root, config)
+    svc.save_project_config(config)
 
     typer.secho("Calculation updated successfully.", fg=typer.colors.GREEN)
 
@@ -2166,7 +2200,9 @@ def rename_project_command(
     """
 
     project_root = (project or _resolve_project_root()).resolve()
-    config = load_project_config(project_root)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    config = svc.load_project_config()
 
     updated = False
     project_section = config.setdefault("project", {})
@@ -2179,7 +2215,7 @@ def rename_project_command(
         current_name = project_section.get("name") or meta.get("name") or "project"
         next_name = name or current_name
         slug_source = slug or next_name
-        next_slug = slugify(slug_source)
+        next_slug = QVService.slugify(slug_source)
         if not next_slug:
             raise typer.BadParameter("Slug cannot be empty.")
         project_section["name"] = next_name
@@ -2208,7 +2244,7 @@ def rename_project_command(
 
     if updated:
         meta.setdefault("path", ".")
-        save_project_config(project_root, config)
+        svc.save_project_config(config)
         typer.secho("Project metadata updated.", fg=typer.colors.GREEN)
         if path is not None:
             typer.secho(f"Project moved to {project_root}", fg=typer.colors.GREEN)
@@ -2237,13 +2273,11 @@ def rename_step_command(
     """
 
     project_root = (project or _resolve_project_root()).resolve()
-    config = load_project_config(project_root)
-    calculation_entry = find_calculation_entry(config, calculation, project_root)
-    calculation_path = calculation_entry.get("path") or (calculation_entry.get("meta") or {}).get("path")
-    if not calculation_path:
-        raise typer.BadParameter("Calculation entry is missing a path.")
-
-    calculation_dir = (project_root / calculation_path).resolve()
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    config = svc.load_project_config()
+    calculation_entry = svc.find_calculation_entry(calculation, config=config)
+    calculation_dir = svc.calculation_directory(calculation_entry)
     calculation_yaml = calculation_dir / "calculation.yaml"
     if not calculation_yaml.exists():
         raise typer.BadParameter(f"calculation.yaml not found at {calculation_yaml}")
@@ -2290,7 +2324,7 @@ def rename_step_command(
             destination_path = (calculation_dir / destination_path).resolve()
         destination_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(source_path), str(destination_path))
-        target_step["step_file"] = ensure_relative_path(destination_path, base=calculation_dir)
+        target_step["step_file"] = QVService.ensure_relative_path(destination_path, base=calculation_dir)
     elif new_id:
         rel_source = Path(source_rel)
         new_filename = rel_source.with_name(f"{new_id}.step.yaml")
@@ -2301,12 +2335,12 @@ def rename_step_command(
             )
         destination_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(source_path), str(destination_path))
-        target_step["step_file"] = ensure_relative_path(destination_path, base=calculation_dir)
+        target_step["step_file"] = QVService.ensure_relative_path(destination_path, base=calculation_dir)
 
     step_file_rel = target_step.get("step_file")
     if step_file_rel:
         spec_path = (calculation_dir / step_file_rel).resolve()
-        relative_project = ensure_relative_path(spec_path, base=project_root)
+        relative_project = QVService.ensure_relative_path(spec_path, base=project_root)
         spec.meta = spec.meta.with_updates(
             name=new_id or spec.meta.name,
             path=relative_project,
@@ -2345,8 +2379,10 @@ def delete_structure_command(
     """
 
     project_root = (project or _resolve_project_root()).resolve()
-    config = load_project_config(project_root)
-    entry = find_structure_entry(config, identifier, project_root)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    config = svc.load_project_config()
+    entry = svc.find_structure_entry(identifier, config=config)
     trash_dir = (project_root / "trash").resolve()
 
     referencing = calculations_using_structure(project_root, config, entry)
@@ -2362,9 +2398,10 @@ def delete_structure_command(
                     cascade=True,
                 )
         elif not force:
-            names = ", ".join(entry_display_name(wf) for wf in referencing)
+            from quantumvitas.api import QVService
+            names = ", ".join(QVService.entry_display_name(wf) for wf in referencing)
             raise typer.BadParameter(
-                f"Structure '{entry_display_name(entry)}' is used by calculations: {names}. "
+                f"Structure '{QVService.entry_display_name(entry)}' is used by calculations: {names}. "
                 "Use --force to remove anyway or --cascade to delete the calculations first."
             )
 
@@ -2388,8 +2425,9 @@ def delete_structure_command(
         e for e in structures
         if (e.get("structure_id") or e.get("id") or (e.get("meta") or {}).get("id")) != structure_id
     ]
-    save_project_config(project_root, config)
-    typer.secho(f"Structure '{entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
+    svc.save_project_config(config)
+    from quantumvitas.api import QVService
+    typer.secho(f"Structure '{QVService.entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
 
 
 @delete_app.command("calculation")
@@ -2448,8 +2486,10 @@ def delete_calculation_command(
         force=force,
         cascade=cascade,
     )
-    save_project_config(project_root, config)
-    typer.secho(f"Calculation '{entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    svc.save_project_config(config)
+    typer.secho(f"Calculation '{QVService.entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
 
 
 @delete_app.command("step")
@@ -2477,7 +2517,9 @@ def delete_step_command(
         except Exception as exc:
             raise typer.BadParameter(str(exc)) from exc
     
-    config = load_project_config(project_root)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    config = svc.load_project_config()
     
     # Determine calculation
     calculation_selector: Optional[str] = calculation
@@ -2504,15 +2546,13 @@ def delete_step_command(
     
     # Use require_step to find the step (handles ULID, filename, legacy slug)
     try:
-        from quantumvitas.api import QVService
-        svc = QVService(project_root)
         step_resolved = svc.require_step_ref(calculation_selector, step_id, config=config)
     except ResourceNotFoundError as e:
         raise typer.BadParameter(str(e)) from e
     
     # Get calculation entry for display
-    calculation_entry = find_calculation_entry(config, calculation_selector, project_root)
-    calculation_dir = calculation_directory(project_root, calculation_entry)
+    calculation_entry = svc.find_calculation_entry(calculation_selector, config=config)
+    calculation_dir = svc.calculation_directory(calculation_entry)
     calculation_yaml = calculation_dir / "calculation.yaml"
     
     if not calculation_yaml.exists():
@@ -2532,7 +2572,8 @@ def delete_step_command(
             break
     
     if not target_step:
-        wf_name = entry_display_name(calculation_entry)
+        from quantumvitas.api import QVService
+        wf_name = QVService.entry_display_name(calculation_entry)
         raise typer.BadParameter(f"Step '{step_id}' not found in calculation '{wf_name}'.")
 
     trash_dir = (project_root / "trash").resolve()
@@ -2551,7 +2592,7 @@ def delete_step_command(
         data["calculation"].pop("structure", None)
     calculation_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
     typer.secho(
-        f"Step '{step_id}' removed from calculation '{entry_display_name(calculation_entry)}'.",
+        f"Step '{step_id}' removed from calculation '{QVService.entry_display_name(calculation_entry)}'.",
         fg=typer.colors.GREEN,
     )
 
@@ -2726,7 +2767,9 @@ def configure_step_command(
             # Also get calculation directory for step renaming
             if ctx_res.parent_entry:
                 project_root_resolved = ctx_res.project_root
-                calculation_dir = calculation_directory(project_root_resolved, ctx_res.parent_entry)
+                from quantumvitas.api import QVService
+                svc_temp = QVService(project_root_resolved)
+                calculation_dir = svc_temp.calculation_directory(ctx_res.parent_entry)
                 calculation_yaml = calculation_dir / "calculation.yaml"
         except RegistryOutOfSyncError as exc:
             # Registry out of sync - provide clear user-facing message
@@ -2767,7 +2810,7 @@ def configure_step_command(
     # Handle name change (rename step)
     if name:
         old_name = spec.meta.name
-        new_slug = slugify(name)
+        new_slug = QVService.slugify(name)
         spec.meta = ResourceMeta(
             id=spec.meta.id,
             name=name,
@@ -2860,11 +2903,13 @@ def configure_calculation_command(
         except Exception as exc:
             raise typer.BadParameter(str(exc)) from exc
     
-    config = load_project_config(project_root)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    config = svc.load_project_config()
     
     # Resolve calculation
     if calculation_identifier:
-        calculation_entry = find_calculation_entry(config, calculation_identifier, project_root)
+        calculation_entry = svc.find_calculation_entry(calculation_identifier, config=config)
     else:
         calculation_entry = find_enclosing_calculation(project_root, config)
         if not calculation_entry:
@@ -2873,7 +2918,7 @@ def configure_calculation_command(
                 "Specify calculation id/name/slug/path or cd into a calculation folder."
             )
     
-    calculation_dir = calculation_directory(project_root, calculation_entry)
+    calculation_dir = svc.calculation_directory(calculation_entry)
     calculation_yaml = calculation_dir / "calculation.yaml"
     
     if not calculation_yaml.exists():
@@ -2896,16 +2941,14 @@ def configure_calculation_command(
             new_slug=None,
             new_path=None,
         )
-        save_project_config(project_root, config)
+        svc.save_project_config(config)
         
         # Re-resolve calculation directory in case it was moved
         # After rename, the entry might have updated path, so resolve via registry if needed
         try:
-            calculation_dir = calculation_directory(project_root, calculation_entry)
+            calculation_dir = svc.calculation_directory(calculation_entry)
         except ProjectConfigError:
             # Entry might not have path yet - try to resolve via registry
-            from quantumvitas.api import QVService
-            svc = QVService(project_root)
             calculation_id = extract_calculation_selector_from_entry(calculation_entry)
             if calculation_id:
                 resolved = svc.require_calculation_ref(calculation_id)
@@ -2941,7 +2984,7 @@ def configure_calculation_command(
         if "meta" in calculation_data:
             calculation_data["meta"]["name"] = name
             # Use the slug from the entry (which was updated by apply_calculation_rename)
-            new_slug = (calculation_entry.get("meta") or {}).get("slug") or slugify(name)
+            new_slug = (calculation_entry.get("meta") or {}).get("slug") or QVService.slugify(name)
             calculation_data["meta"]["slug"] = new_slug
         
         modified = True
@@ -2950,7 +2993,7 @@ def configure_calculation_command(
     # Handle structure change
     if structure:
         # Validate structure exists
-        find_structure_entry(config, structure, project_root)
+        svc.find_structure_entry(structure, config=config)
         
         # Update calculation.yaml
         calculation_section = calculation_data.setdefault("calculation", {})
@@ -2960,8 +3003,6 @@ def configure_calculation_command(
         
         # Update all step yaml files
         steps_updated = 0
-        from quantumvitas.api import QVService
-        svc = QVService(project_root)
         index = svc.build_resource_index()
         
         for step_entry in calculation_data.get("steps", []):
@@ -3122,7 +3163,9 @@ def configure_species_command(
     
     # Resolve calculation
     if not calculation:
-        config = load_project_config(project_root)
+        from quantumvitas.api import QVService
+        svc = QVService(project_root)
+        config = svc.load_project_config()
         calculation_entry = find_enclosing_calculation(project_root, config)
         if not calculation_entry:
             raise typer.BadParameter(
@@ -3186,9 +3229,11 @@ def configure_species_command(
             typer.secho(f"  {element}: pseudopot={pseudo_filename}", fg=typer.colors.GREEN)
     
     # Get calculation_yaml path for summary
-    config = load_project_config(project_root)
-    calculation_entry = find_calculation_entry(config, calculation, project_root)
-    calculation_dir = calculation_directory(project_root, calculation_entry)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    config = svc.load_project_config()
+    calculation_entry = svc.find_calculation_entry(calculation, config=config)
+    calculation_dir = svc.calculation_directory(calculation_entry)
     calculation_yaml = calculation_dir / "calculation.yaml"
     typer.secho(f"Updated: {calculation_yaml}", fg=typer.colors.GREEN)
 
@@ -3216,11 +3261,13 @@ def configure_structure_command(
         except Exception as exc:
             raise typer.BadParameter(str(exc)) from exc
     
-    config = load_project_config(project_root)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    config = svc.load_project_config()
     
     # Find structure entry
     try:
-        entry = find_structure_entry(config, identifier, project_root)
+        entry = svc.find_structure_entry(identifier, config=config)
     except RegistryOutOfSyncError as exc:
         # Registry out of sync - provide clear user-facing message
         typer.secho(
@@ -3249,7 +3296,7 @@ def configure_structure_command(
     old_name = meta.get("name") or entry.get("name") or identifier
     
     # Update metadata
-    new_slug = slugify(name)
+    new_slug = QVService.slugify(name)
     meta["name"] = name
     meta["slug"] = new_slug
     entry["meta"] = meta
@@ -3281,11 +3328,11 @@ def configure_structure_command(
                 # Fallback: just rename without updating internal metadata
                 old_path.rename(new_path)
             
-            new_rel = ensure_relative_path(new_path, base=project_root)
+            new_rel = QVService.ensure_relative_path(new_path, base=project_root)
             entry["file"] = new_rel
             meta["path"] = new_rel
     
-    save_project_config(project_root, config)
+    svc.save_project_config(config)
     typer.secho(f"Structure renamed from '{old_name}' to '{name}'", fg=typer.colors.GREEN)
 
 
@@ -3424,11 +3471,11 @@ def run_calculation_command(
             raise typer.BadParameter(str(exc)) from exc
     
     proj = Project.open(project_root)
-    config = load_project_config(project_root)
-    
-    # Resolve calculation via registry (for consistent resolution)
     from quantumvitas.api import QVService
     svc = QVService(project_root)
+    config = svc.load_project_config()
+    
+    # Resolve calculation via registry (for consistent resolution)
     registry = svc.build_resource_index()
     
     # Resolve calculation
@@ -3575,9 +3622,11 @@ def run_auto_dispatch(
     project_root = _maybe_project_root(project)
 
     if project_root:
-        config = load_project_config(project_root)
+        from quantumvitas.api import QVService
+        svc = QVService(project_root)
+        config = svc.load_project_config()
         try:
-            find_calculation_entry(config, target, project_root)
+            svc.find_calculation_entry(target, config=config)
             ctx.args = list(original_args)
             ctx.invoke(
                 run_calculation_command,
@@ -3591,7 +3640,7 @@ def run_auto_dispatch(
         except typer.BadParameter:
             pass
         try:
-            find_structure_entry(config, target, project_root)
+            svc.find_structure_entry(target, config=config)
             ctx.args = list(original_args)
             ctx.invoke(
                 run_structure_command,
@@ -3668,7 +3717,7 @@ def analyze_output_command(
         plot_dos as plot_dos_fn, plot_bands as plot_bands_fn,
         plot_scf_convergence, save_figure
     )
-    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+    from quantumvitas.api import QVService, QVServiceError
     from quantumvitas.calculation.naming import find_band_analysis_files, find_calculation_raw_dir, find_calculation_results_dir
     
     normalized = kind.lower()
@@ -3689,23 +3738,27 @@ def analyze_output_command(
         # Explicit --calculation option
         try:
             project_root = Path(project).resolve() if project else require_project_root()
-            config = load_project_config(project_root)
-            wf_entry = find_calculation_entry(config, calculation, project_root)
-            calculation_dir = calculation_directory(project_root, wf_entry)
+            from quantumvitas.api import QVService
+            svc = QVService(project_root)
+            config = svc.load_project_config()
+            wf_entry = svc.find_calculation_entry(calculation, config=config)
+            calculation_dir = svc.calculation_directory(wf_entry)
             typer.echo(f"Using calculation: {wf_entry.get('name', calculation)}")
         except (ResourceNotFoundError, FileNotFoundError) as e:
             raise typer.BadParameter(f"Calculation not found: {calculation}")
     elif input_file is None and normalized == "band":
         # Try to auto-detect calculation from pwd
         try:
-            ctx = find_path_context_from_pwd()
-            project_root = ctx.project_root
-            if ctx.is_inside_calculation():
+            ctx = QVService.find_path_context_ref()
+            project_root = ctx["project_root"]
+            if ctx["is_inside_calculation"]:
                 # Use find_enclosing_calculation for reliable detection (not PathContext.calculation_selector)
-                config = load_project_config(project_root)
+                from quantumvitas.api import QVService
+                svc = QVService(project_root)
+                config = svc.load_project_config()
                 wf_entry = find_enclosing_calculation(project_root, config)
                 if wf_entry:
-                    calculation_dir = ctx.calculation_directory
+                    calculation_dir = ctx["calculation_directory"]
                     # Use centralized selector extraction for consistency
                     calculation_selector = extract_calculation_selector_from_entry(wf_entry)
                     if calculation_selector:
@@ -3718,7 +3771,7 @@ def analyze_output_command(
                         except Exception:
                             calculation_name = calculation_selector
                         typer.echo(f"Detected calculation: {calculation_name}")
-        except ContextNotFoundError:
+        except QVServiceError:
             pass  # Not inside a project/calculation, will search pwd
     
     # For band analysis, auto-locate files if not all provided
@@ -3779,7 +3832,9 @@ def analyze_output_command(
         input_path = Path(input_file).resolve()
         try:
             proj_root = require_project_root(start=input_path.parent)
-            config = load_project_config(proj_root)
+            from quantumvitas.api import QVService
+            svc_temp = QVService(proj_root)
+            config = svc_temp.load_project_config()
             # Check if input is inside a calculation directory
             for wf_entry in config.get("calculations", []):
                 wf_path = wf_entry.get("path") or (wf_entry.get("meta") or {}).get("path")
@@ -3949,7 +4004,6 @@ def analyze_band_command(
         qv analyze band --plot  # auto-detect files from pwd or enclosing calculation
     """
     from quantumvitas.api import QVService, QVServiceError
-    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
     
     # Parse energy range
     e_range = None
@@ -3969,14 +4023,16 @@ def analyze_band_command(
     else:
         # Always try to detect project root from pwd
         try:
-            ctx = find_path_context_from_pwd()
-            project_root = ctx.project_root
+            ctx = QVService.find_path_context_ref()
+            project_root = ctx["project_root"]
             # Only auto-detect calculation if no input file provided
-            if input_file is None and ctx.is_inside_calculation():
+            if input_file is None and ctx["is_inside_calculation"]:
                 # Use find_enclosing_calculation to get the actual entry from project config
                 # This is more reliable than using the selector from calculation.yaml
                 # (which might be stale after a rename)
-                config = load_project_config(project_root)
+                from quantumvitas.api import QVService
+                svc = QVService(project_root)
+                config = svc.load_project_config()
                 wf_entry = find_enclosing_calculation(project_root, config)
                 if wf_entry:
                     # Use centralized selector extraction - single selector, single resolution pattern
@@ -3991,7 +4047,7 @@ def analyze_band_command(
                             typer.echo(f"Detected calculation: {display_name}")
                         except Exception:
                             typer.echo(f"Detected calculation: {calculation_selector}")
-        except ContextNotFoundError:
+        except QVServiceError:
             pass  # Not inside a project
     
     # If calculation specified but no project found, error
@@ -4066,7 +4122,6 @@ def analyze_dos_command(
         qv analyze dos si.dos.dat --scf si.nscf.out --plot --energy-range -5,5
     """
     from quantumvitas.api import QVService, QVServiceError
-    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
     
     # Parse energy range
     e_range = None
@@ -4083,9 +4138,9 @@ def analyze_dos_command(
         project_root = Path(project).resolve()
     else:
         try:
-            ctx = find_path_context_from_pwd()
-            project_root = ctx.project_root
-        except ContextNotFoundError:
+            ctx = QVService.find_path_context_ref()
+            project_root = ctx["project_root"]
+        except QVServiceError:
             pass
     
     # Call QVService
@@ -4140,7 +4195,6 @@ def analyze_energy_command(
         qv analyze energy si.scf.out --plot
     """
     from quantumvitas.api import QVService, QVServiceError
-    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
     
     # Determine project root (optional for SCF analysis, but helps with output dir)
     project_root: Optional[Path] = None
@@ -4148,9 +4202,9 @@ def analyze_energy_command(
         project_root = Path(project).resolve()
     else:
         try:
-            ctx = find_path_context_from_pwd()
-            project_root = ctx.project_root
-        except ContextNotFoundError:
+            ctx = QVService.find_path_context_ref()
+            project_root = ctx["project_root"]
+        except QVServiceError:
             pass
     
     # Call QVService
@@ -4384,7 +4438,8 @@ def _write_step_spec(
     path: Path, spec: StructureStepSpec, *, project_root: Optional[Path] = None
 ) -> None:
     if project_root:
-        relative_path = ensure_relative_path(path, base=project_root)
+        from quantumvitas.api import QVService
+        relative_path = QVService.ensure_relative_path(path, base=project_root)
     else:
         relative_path = path.name
     spec.meta = spec.meta.with_updates(path=relative_path)
@@ -4708,7 +4763,9 @@ def _validate_step_structure_consistency(
     Raises typer.BadParameter if there's a mismatch.
     """
     try:
-        config = load_project_config(project_root)
+        from quantumvitas.api import QVService
+        svc = QVService(project_root)
+        config = svc.load_project_config()
     except Exception:
         return  # Can't validate without project config
     
@@ -4720,12 +4777,12 @@ def _validate_step_structure_consistency(
     
     # Try to find the calculation entry
     try:
-        calculation_entry = find_calculation_entry(config, parent_calculation_id, project_root)
+        calculation_entry = svc.find_calculation_entry(parent_calculation_id, config=config)
     except ResourceNotFoundError:
         # Parent calculation not found in project, might be standalone
         return
     
-    calculation_dir = calculation_directory(project_root, calculation_entry)
+    calculation_dir = svc.calculation_directory(calculation_entry)
     calculation_yaml = calculation_dir / "calculation.yaml"
     
     if not calculation_yaml.exists():

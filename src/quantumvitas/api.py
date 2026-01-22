@@ -33,6 +33,7 @@ from quantumvitas.core.resources import (
 )
 from quantumvitas.core.resolution import (
     AmbiguousSelectorError,
+    RegistryOutOfSyncError,
     ResolvedResource,
     ResourceNotFoundError,
     SelectorNotFoundError,
@@ -140,6 +141,20 @@ from quantumvitas.core.exceptions import LegacyProjectError  # noqa: E402
 # Re-export ContextNotFoundError for daemon use
 from quantumvitas.core.context import ContextNotFoundError  # noqa: E402
 
+# Re-export resolution exceptions for CLI use (Chunk 1b)
+# These are re-exported so CLI can import from quantumvitas.api instead of core.resolution
+__all__ = [
+    "QVService",
+    "QVServiceError",
+    "ResourceNotFoundError",
+    "RegistryOutOfSyncError",
+    "AmbiguousSelectorError",
+    "SelectorNotFoundError",
+    "ContextNotFoundError",
+    "VolumeParserError",
+    "DisplayModeParams",
+]
+
 # Re-export VolumeParserError for daemon use
 from quantumvitas.io.parser.volume_parsers import VolumeParserError  # noqa: E402
 
@@ -227,6 +242,62 @@ class QVService:
                 "project_root": self.project_root,
                 "is_project": True,
             }
+    
+    @staticmethod
+    def find_path_context_ref(cwd: Optional[Path] = None, max_depth: int = 20) -> Dict[str, Any]:
+        """
+        Find path context from working directory (wrapper for find_path_context_from_pwd).
+        
+        This is a static method because it's used to FIND the project root,
+        so it doesn't require a QVService instance.
+        
+        Args:
+            cwd: Starting directory (defaults to current working directory)
+            max_depth: Maximum directories to scan upward
+            
+        Returns:
+            Dict with keys:
+            - project_root: Path to project root
+            - is_inside_calculation: bool
+            - calculation_directory: Optional[Path] if inside a calculation
+            - calculation_selector: Optional[str] if inside a calculation
+            - step_selector: Optional[str] if inside a step
+            
+        Raises:
+            QVServiceError: If no project context found (wraps ContextNotFoundError)
+        """
+        from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+        
+        if cwd is None:
+            cwd = Path.cwd()
+        else:
+            cwd = Path(cwd).resolve()
+        
+        try:
+            path_context = find_path_context_from_pwd(start=cwd, max_depth=max_depth)
+            result = {
+                "project_root": path_context.project_root,
+                "is_inside_calculation": path_context.is_inside_calculation(),
+                "calculation_directory": path_context.calculation_directory,
+            }
+            
+            # Extract calculation and step selectors from context nodes
+            calculation_selector = None
+            step_selector = None
+            for node in path_context.nodes:
+                if node.kind == "calculation" and node.selector:
+                    calculation_selector = node.selector
+                elif node.kind == "step" and node.selector:
+                    step_selector = node.selector
+            
+            if calculation_selector:
+                result["calculation_selector"] = calculation_selector
+            if step_selector:
+                result["step_selector"] = step_selector
+            
+            return result
+        except ContextNotFoundError as e:
+            raise QVServiceError(f"No project context found: {e}") from e
     
     def load_project_config(self) -> Dict[str, Any]:
         """
@@ -482,6 +553,82 @@ class QVService:
             config: Project configuration dict
         """
         save_project_config(self.project_root, config)
+    
+    def find_structure_entry(self, identifier: str, *, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Find a structure entry by identifier.
+        
+        Args:
+            identifier: Structure name, slug, or path
+            config: Optional project config (loads if not provided)
+            
+        Returns:
+            Structure entry dict
+            
+        Raises:
+            QVServiceError: If structure not found
+        """
+        from quantumvitas.core.project_utils import find_structure_entry as _find_structure_entry
+        
+        if config is None:
+            config = self.load_project_config()
+        
+        try:
+            return _find_structure_entry(config, identifier, project_root=self.project_root)
+        except Exception as e:
+            raise QVServiceError(f"Structure '{identifier}' not found: {e}") from e
+    
+    def find_calculation_entry(self, identifier: str, *, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Find a calculation entry by identifier.
+        
+        Args:
+            identifier: Calculation name, slug, or path
+            config: Optional project config (loads if not provided)
+            
+        Returns:
+            Calculation entry dict
+            
+        Raises:
+            QVServiceError: If calculation not found
+        """
+        from quantumvitas.core.project_utils import find_calculation_entry as _find_calculation_entry
+        
+        if config is None:
+            config = self.load_project_config()
+        
+        try:
+            return _find_calculation_entry(config, identifier, project_root=self.project_root)
+        except Exception as e:
+            raise QVServiceError(f"Calculation '{identifier}' not found: {e}") from e
+    
+    def calculation_directory(self, entry: Dict[str, Any]) -> Path:
+        """
+        Get the absolute path to a calculation directory.
+        
+        Args:
+            entry: Calculation entry dict
+            
+        Returns:
+            Path to calculation directory
+        """
+        from quantumvitas.core.project_utils import calculation_directory as _calculation_directory
+        return _calculation_directory(self.project_root, entry)
+    
+    @staticmethod
+    def entry_display_name(entry: Dict[str, Any], fallback: str = "resource") -> str:
+        """
+        Get a human-readable display name for an entry.
+        
+        Args:
+            entry: Resource entry dict
+            fallback: Fallback name if none found
+            
+        Returns:
+            Display name string
+        """
+        from quantumvitas.core.project_utils import entry_display_name as _entry_display_name
+        return _entry_display_name(entry, fallback=fallback)
     
     def collect_slugs(self, entries: List[Dict[str, Any]], *, exclude: Optional[Dict[str, Any]] = None) -> List[str]:
         """
@@ -9644,13 +9791,14 @@ class QVService:
         )
     
     @staticmethod
-    def meta_from_name(name: str, kind: str, path: str) -> Dict[str, Any]:
+    @staticmethod
+    def meta_from_name(kind: str, *, name: str, path: str) -> Dict[str, Any]:
         """
         Generate resource metadata from name.
         
         Args:
-            name: Resource name
             kind: Resource kind
+            name: Resource name
             path: Resource path
             
         Returns:
@@ -9658,8 +9806,22 @@ class QVService:
         """
         from quantumvitas.core.resources import meta_from_name as _meta_from_name
         
-        meta = _meta_from_name(name, kind, path)
+        meta = _meta_from_name(kind, name=name, path=path)
         return meta.to_dict() if hasattr(meta, 'to_dict') else meta
+    
+    @staticmethod
+    def slugify(text: str) -> str:
+        """
+        Convert text to a URL-friendly slug.
+        
+        Args:
+            text: Text to slugify
+            
+        Returns:
+            Slug string
+        """
+        from quantumvitas.core.resources import slugify as _slugify
+        return _slugify(text)
     
     @staticmethod
     def ensure_relative_path(path: Path, base: Path) -> str:
@@ -9675,7 +9837,7 @@ class QVService:
         """
         from quantumvitas.core.resources import ensure_relative_path as _ensure_relative_path
         
-        return _ensure_relative_path(path, base)
+        return _ensure_relative_path(path, base=base)
     
     # -------------------------------------------------------------------------
     # Models
