@@ -10802,6 +10802,49 @@ class QVService:
         from quantumvitas.calculation.importers import _extract_alat_bohr as _impl
         return _impl(qe_input)
     
+    @staticmethod
+    def build_step_spec_from_qe_input(
+        input_file: Path | str,
+        *,
+        destination_dir: Path | str,
+        structure_dir: Path | str | None = None,
+        step_id: Optional[str] = None,
+        structure_id: Optional[str] = None,
+        reference_structure_by: str = "path",
+        apply_defaults: bool = False,
+    ) -> "StepImportResult":
+        """
+        Convert a QE input file into a StructureStepSpec + structure JSON.
+        
+        Args:
+            input_file: QE input file to convert.
+            destination_dir: Where to place the generated step YAML.
+            structure_dir: Directory used to store the extracted structure JSON.
+                           Defaults to ``destination_dir / 'structures'``.
+            step_id: Optional explicit step id; defaults to ``input_file.stem``.
+            structure_id: Optional structure id; defaults to ``input_file.stem``.
+            reference_structure_by: Either ``'path'`` or ``'id'``. Controls how the
+                                    step spec references the structure. When ``id``
+                                    is used you are responsible for ensuring the
+                                    structure is registered in ``project.qv.yml``.
+            apply_defaults: If True, merge extracted parameters with in-code defaults.
+                           If False (default), preserve only what's in the input file.
+                           Use False for round-trip import scenarios, True for "from scratch" creation.
+        
+        Returns:
+            StepImportResult describing the generated assets.
+        """
+        from quantumvitas.calculation.importers import build_step_spec_from_qe_input as _impl
+        return _impl(
+            input_file=input_file,
+            destination_dir=destination_dir,
+            structure_dir=structure_dir,
+            step_id=step_id,
+            structure_id=structure_id,
+            reference_structure_by=reference_structure_by,
+            apply_defaults=apply_defaults,
+        )
+    
     # -------------------------------------------------------------------------
     # Models
     # -------------------------------------------------------------------------

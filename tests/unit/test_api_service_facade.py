@@ -1059,6 +1059,80 @@ steps: []
         assert result == fake_alat
         assert called["qe_input"] == fake_qe_input
     
+    def test_build_step_spec_from_qe_input_wrapper(self, monkeypatch, tmp_path):
+        """Test that build_step_spec_from_qe_input wrapper works by mocking underlying call."""
+        from pathlib import Path
+        from quantumvitas.api import QVService
+        import quantumvitas.calculation.importers as importers_module
+        
+        # Track calls to the underlying function
+        called = {}
+        
+        # Create a fake StepImportResult-like object
+        class FakeStepImportResult:
+            def __init__(self):
+                self.step_id = "test_step_123"
+                self.structure_id = "test_struct_456"
+                self.step_type = "scf"
+                self.parameters = {"SYSTEM": {"ecutwfc": 30.0}}
+                self.spec = None  # Would be StructureStepSpec in real usage
+                self.spec_path = Path("/fake/step.yaml")
+                self.structure_path = Path("/fake/structure.json")
+        
+        fake_result = FakeStepImportResult()
+        
+        def fake_build_step_spec_from_qe_input(
+            input_file,
+            *,
+            destination_dir,
+            structure_dir=None,
+            step_id=None,
+            structure_id=None,
+            reference_structure_by="path",
+            apply_defaults=False,
+        ):
+            called["input_file"] = input_file
+            called["destination_dir"] = destination_dir
+            called["structure_dir"] = structure_dir
+            called["step_id"] = step_id
+            called["structure_id"] = structure_id
+            called["reference_structure_by"] = reference_structure_by
+            called["apply_defaults"] = apply_defaults
+            return fake_result
+        
+        # Mock the underlying function
+        monkeypatch.setattr(importers_module, "build_step_spec_from_qe_input", fake_build_step_spec_from_qe_input)
+        
+        # Create test paths
+        input_file = tmp_path / "test.in"
+        input_file.write_text("&CONTROL\n  calculation = 'scf'\n/\n")
+        destination_dir = tmp_path / "dest"
+        destination_dir.mkdir()
+        structure_dir = tmp_path / "structures"
+        structure_dir.mkdir()
+        
+        # Call wrapper
+        result = QVService.build_step_spec_from_qe_input(
+            input_file=input_file,
+            destination_dir=destination_dir,
+            structure_dir=structure_dir,
+            step_id="custom_step",
+            structure_id="custom_struct",
+            reference_structure_by="id",
+            apply_defaults=True,
+        )
+        
+        # Assertions
+        assert result == fake_result
+        assert result.step_id == "test_step_123"
+        assert called["input_file"] == input_file
+        assert called["destination_dir"] == destination_dir
+        assert called["structure_dir"] == structure_dir
+        assert called["step_id"] == "custom_step"
+        assert called["structure_id"] == "custom_struct"
+        assert called["reference_structure_by"] == "id"
+        assert called["apply_defaults"] is True
+    
     def test_apply_card_overrides_to_qe_input_wrapper(self):
         """Test that apply_card_overrides_to_qe_input wrapper works."""
         from quantumvitas.api import QVService

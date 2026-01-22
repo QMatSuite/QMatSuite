@@ -1658,10 +1658,8 @@ def _run_standalone_step(
     """
     import tempfile
     import shutil
-    from quantumvitas.calculation.importers import build_step_spec_from_qe_input
-    from quantumvitas.api import StructureStepSpec, Step
+    from quantumvitas.api import StructureStepSpec, Step, QVService
     from quantumvitas.core.engines.base import EngineConfig
-    from quantumvitas.api import QVService
     from quantumvitas.engine.qe_engine import QeEngine
     
     input_path = Path(input_file).resolve()
@@ -1697,7 +1695,7 @@ def _run_standalone_step(
     
     try:
         # Import .in to step.yaml
-        import_result = build_step_spec_from_qe_input(
+        import_result = QVService.build_step_spec_from_qe_input(
             input_file=input_path,
             destination_dir=temp_import_dir,
             structure_dir=temp_structure_dir,
