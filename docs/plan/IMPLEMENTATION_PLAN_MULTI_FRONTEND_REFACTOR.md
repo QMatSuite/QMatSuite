@@ -1,947 +1,135 @@
-# Implementation Plan: Multi-Frontend Refactor
+# Implementation Plan: Multi-Frontend Refactor v2
 
-**Version**: 1.0
+**Version**: 2.0
 **Date**: 2026-01-21
-**Status**: IMPLEMENTATION PLAN (Cursor Auto Executable)
+**Status**: REVISED IMPLEMENTATION PLAN
 **Reference**: `docs/specs/MULTI_FRONTEND_ARCHITECTURE_SPEC.md` v2.0
 
 ---
 
-## Overview
+## CRITICAL LESSONS FROM v1 FAILURE
 
-This plan provides a PR-by-PR sequence to implement the multi-frontend architecture refactor. Each PR is self-contained, testable, and can be merged independently.
+The v1 plan caused catastrophic failures:
 
-**Total PRs**: 12
-**Estimated LOC Changed**: ~5,000
-**Test Coverage Requirement**: All existing tests must pass after each PR
+1. **Gate test false-positives**: Pattern `resolve_calculation(` matched legitimate `svc.resolve_calculation(...)` calls, forcing ugly API renames and mass replacements that broke indentation.
 
----
+2. **Wrong sequence**: "Remove imports first, add API later" caused immediate NameError/import breakage.
 
-## Pre-Flight Checklist
+3. **No importability smoke test**: Gates passed but code was un-importable.
 
-Before starting, verify:
+4. **Dangerous cleanup**: `git clean -xfd` deleted `.qmatsuite/` (local QE engines), breaking integration tests.
 
-```bash
-# 1. All tests pass
-pytest tests/ -v --tb=short
+5. **CLI too large for mass replace**: 4000+ line file cannot survive sed/rg replacements without indentation disasters.
 
-# 2. No uncommitted changes
-git status
-
-# 3. On correct branch
-git checkout -b refactor/multi-frontend-architecture
-```
+This v2 plan fixes all of these.
 
 ---
 
-## PR 1: Rename `tools/` to `scripts/`
+## SAFETY RULES (NON-NEGOTIABLE)
 
-### Goal
-Rename repo-level `tools/` directory to `scripts/` to free the namespace for `quantumvitas/tools/`.
+### Rule 1: Never Delete .qmatsuite/
 
-### Files Changed
+The `.qmatsuite/` directory contains local QE engine installations. Deleting it breaks all integration tests.
 
-| Action | Path |
-|--------|------|
-| RENAME | `tools/` → `scripts/` |
-| MODIFY | `.github/workflows/*.yml` (if any references) |
-| MODIFY | `README.md` (if references tools/) |
-| MODIFY | `docs/**/*.md` (if references tools/) |
-
-### Exact Commands
-
+**FORBIDDEN**:
 ```bash
-# 1. Rename directory
-git mv tools scripts
-
-# 2. Find and update references
-rg -l "tools/" . --glob "*.md" --glob "*.yml" --glob "*.yaml" | head -20
-# For each file found, update "tools/" to "scripts/"
-
-# 3. Update any imports in scripts themselves (if they reference each other)
-rg -l "from tools" scripts/
-# Update if found
+git clean -xfd  # NEVER USE THIS
+rm -rf .qmatsuite  # NEVER
 ```
 
-### Acceptance Criteria
-
+**SAFE ALTERNATIVES**:
 ```bash
-# Directory renamed
-ls tools/
-# Expected: ls: tools/: No such file or directory
+# Clean build artifacts only
+git clean -xfd -e .qmatsuite/ -e .venv/
 
-ls scripts/
-# Expected: List of maintenance scripts
-
-# No broken references
-rg "tools/" --glob "*.md" --glob "*.yml" --glob "*.yaml" | grep -v "quantumvitas/tools" | grep -v "node_modules"
-# Expected: 0 matches (or only external references)
-
-# Tests pass
-pytest tests/ -v --tb=short -x
+# Or better: targeted cleanup
+rm -rf build/ dist/ *.egg-info/ __pycache__/ .pytest_cache/
+find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 ```
 
-### Risks
-- LOW: Simple rename, no code changes
+### Rule 2: Every Batch Must End Importable
 
-### Rollback
+After EVERY PR or batch, the following must pass:
+
 ```bash
-git mv scripts tools
+# 1. Compile check
+python -m py_compile src/quantumvitas/cli/main.py
+python -m py_compile src/quantumvitas/daemon/server.py
+python -m py_compile src/quantumvitas/api.py
+
+# 2. Import check
+python -c "from quantumvitas.cli.main import app; print('CLI OK')"
+python -c "from quantumvitas.daemon.server import QVDaemon; print('Daemon OK')"
+python -c "from quantumvitas.api import QVService; print('API OK')"
+
+# 3. Full test suite
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
+
+### Rule 3: No Mass Search/Replace in CLI
+
+The CLI file (`cli/main.py`) is 4000+ lines. Mass replacements cause:
+- Indentation damage
+- String literal corruption
+- Comment breakage
+
+**FORBIDDEN**:
+```bash
+sed -i 's/resolve_calculation/svc.resolve_calculation/g' ...  # NO
+rg -l ... | xargs sed ...  # NO
+```
+
+**REQUIRED**: Edit one function at a time, verify compile after each edit.
 
 ---
 
-## PR 2: Create Directory Structure Skeleton
+## BATCH STRUCTURE OVERVIEW
 
-### Goal
-Create the target directory structure with empty `__init__.py` files.
+| Batch | Name | Purpose | Risk |
+|-------|------|---------|------|
+| 0 | Safety & Gates | Fix broken gates, add importability smoke, doc safety | LOW |
+| 1 | API Facade | Build complete API methods (no migration yet) | LOW |
+| 2 | Daemon Migration | Convert daemon to use API (10 files max) | MEDIUM |
+| 3 | CLI Preparation | Identify CLI modules, add API stubs, compile loop | MEDIUM |
+| 4 | CLI Migration | Convert CLI in 10-function chunks | HIGH |
+| 5 | Directory Moves | Move files to frontends/ after all behavior stable | LOW |
+| 6 | Cleanup | Remove shims, final audit | LOW |
 
-### Files Created
-
-| Path | Content |
-|------|---------|
-| `src/quantumvitas/frontends/__init__.py` | `"""Frontend layers for QMatSuite."""` |
-| `src/quantumvitas/frontends/_shared/__init__.py` | `"""Shared frontend utilities."""` |
-| `src/quantumvitas/frontends/cli/__init__.py` | Empty (placeholder) |
-| `src/quantumvitas/frontends/daemon/__init__.py` | Empty (placeholder) |
-| `src/quantumvitas/frontends/notebook/__init__.py` | Empty (placeholder) |
-| `src/quantumvitas/frontends/agent/__init__.py` | `"""Reserved for MCP adapter."""` |
-| `src/quantumvitas/frontends/agent/README.md` | MCP reservation doc |
-| `src/quantumvitas/tools/__init__.py` | Tool surface exports (empty for now) |
-| `src/quantumvitas/api/__init__.py` | Empty (placeholder) |
-
-### Exact Commands
-
-```bash
-# Create directories
-mkdir -p src/quantumvitas/frontends/_shared
-mkdir -p src/quantumvitas/frontends/cli
-mkdir -p src/quantumvitas/frontends/daemon
-mkdir -p src/quantumvitas/frontends/notebook
-mkdir -p src/quantumvitas/frontends/agent
-mkdir -p src/quantumvitas/tools
-mkdir -p src/quantumvitas/api
-
-# Create __init__.py files
-echo '"""Frontend layers for QMatSuite."""' > src/quantumvitas/frontends/__init__.py
-echo '"""Shared frontend utilities."""' > src/quantumvitas/frontends/_shared/__init__.py
-touch src/quantumvitas/frontends/cli/__init__.py
-touch src/quantumvitas/frontends/daemon/__init__.py
-touch src/quantumvitas/frontends/notebook/__init__.py
-echo '"""Reserved for MCP adapter. See README.md."""' > src/quantumvitas/frontends/agent/__init__.py
-touch src/quantumvitas/tools/__init__.py
-touch src/quantumvitas/api/__init__.py
-```
-
-### Create Agent README
-
-```bash
-cat > src/quantumvitas/frontends/agent/README.md << 'EOF'
-# Agent Adapter (Reserved)
-
-This directory is reserved for the future MCP (Model Context Protocol) adapter.
-
-## Purpose
-
-When implemented, this adapter will:
-1. Expose `quantumvitas.tools.*` functions as MCP tools
-2. Handle MCP server lifecycle
-3. Translate MCP requests to tool calls
-
-## Implementation Notes
-
-- The adapter MUST only import from `quantumvitas.tools.*`
-- It MUST NOT import from `api/*`, `core/*`, or other kernel modules
-- All operations go through the structured tool surface
-
-## Status
-
-**NOT YET IMPLEMENTED** - Placeholder only.
-EOF
-```
-
-### Acceptance Criteria
-
-```bash
-# Directories exist
-ls src/quantumvitas/frontends/
-# Expected: __init__.py _shared/ agent/ cli/ daemon/ notebook/
-
-ls src/quantumvitas/tools/
-# Expected: __init__.py
-
-ls src/quantumvitas/api/
-# Expected: __init__.py
-
-# Package is importable
-python -c "import quantumvitas.frontends; print('OK')"
-python -c "import quantumvitas.tools; print('OK')"
-# Expected: OK (no errors)
-
-# Tests pass
-pytest tests/ -v --tb=short -x
-```
-
-### Risks
-- LOW: Only creates empty files
+Each batch ends with a **STOP POINT** where repo is fully green.
 
 ---
 
-## PR 3: Create ErrorSpec and API Package Structure
+## BATCH 0: SAFETY & GATES
 
-### Goal
-Create `api/` package with `ErrorSpec`, `QVServiceError`, and `Result` types.
+**Goal**: Fix broken gate tests, add importability smoke tests, document safety rules.
 
-### Files Created/Modified
+**Risk**: LOW (no functional changes)
 
-| Action | Path |
-|--------|------|
-| CREATE | `src/quantumvitas/api/errors.py` |
-| CREATE | `src/quantumvitas/api/types.py` |
-| MODIFY | `src/quantumvitas/api/__init__.py` |
+### PR 0.1: Fix Gate Test False-Positives
 
-### File: `src/quantumvitas/api/errors.py`
+**Problem**: Current gate pattern `resolve_calculation(` also matches `svc.resolve_calculation(...)`.
 
-```python
-"""Structured error model for API and tool surface."""
+**Solution**: Detect forbidden **imports**, not method calls.
 
-from dataclasses import dataclass, field
-from typing import Any, Literal
+**File**: `tests/gates/test_import_rules.py`
 
-ErrorCategory = Literal[
-    "validation",
-    "resource",
-    "lock",
-    "engine",
-    "io",
-    "schema",
-    "internal",
-]
-
-@dataclass
-class ErrorSpec:
-    """
-    Structured error for API and tool surface.
-
-    All errors raised/returned from api/ and tools/ use this structure.
-    Frontends MUST NOT parse exception message strings.
-    """
-    code: str
-    category: ErrorCategory
-    message: str
-    evidence: dict[str, Any] = field(default_factory=dict)
-    suggested_actions: list[str] = field(default_factory=list)
-    details: dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "code": self.code,
-            "category": self.category,
-            "message": self.message,
-            "evidence": self.evidence,
-            "suggested_actions": self.suggested_actions,
-            "details": self.details,
-        }
-
-
-class QVServiceError(Exception):
-    """API-level exception carrying structured error."""
-
-    def __init__(self, error_spec: ErrorSpec):
-        self.error_spec = error_spec
-        super().__init__(error_spec.message)
-
-    def to_dict(self) -> dict[str, Any]:
-        return self.error_spec.to_dict()
-
-
-# Error code constants
-class ErrorCodes:
-    PROJECT_NOT_FOUND = "PROJECT_NOT_FOUND"
-    CALC_NOT_FOUND = "CALC_NOT_FOUND"
-    STEP_NOT_FOUND = "STEP_NOT_FOUND"
-    STRUCTURE_NOT_FOUND = "STRUCTURE_NOT_FOUND"
-    SELECTOR_AMBIGUOUS = "SELECTOR_AMBIGUOUS"
-    LOCK_BUSY = "LOCK_BUSY"
-    PARAM_INVALID = "PARAM_INVALID"
-    PARAM_READONLY = "PARAM_READONLY"
-    PATCH_NOT_VALIDATED = "PATCH_NOT_VALIDATED"
-    ENGINE_EXEC_FAILED = "ENGINE_EXEC_FAILED"
-    ENGINE_NOT_FOUND = "ENGINE_NOT_FOUND"
-    ARTIFACT_NOT_FOUND = "ARTIFACT_NOT_FOUND"
-    YAML_PARSE_ERROR = "YAML_PARSE_ERROR"
-    SCHEMA_MISMATCH = "SCHEMA_MISMATCH"
-    INTERNAL_ERROR = "INTERNAL_ERROR"
-```
-
-### File: `src/quantumvitas/api/types.py`
-
-```python
-"""Public return types for API and tool surface."""
-
-from dataclasses import dataclass, asdict
-from typing import Any, Generic, TypeVar
-
-from .errors import ErrorSpec
-
-T = TypeVar('T')
-
-
-@dataclass
-class Result(Generic[T]):
-    """
-    Structured return for tools/ surface.
-
-    Tools never raise exceptions - they return Result with error.
-    """
-    success: bool
-    data: T | None = None
-    error: ErrorSpec | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"success": self.success}
-        if self.data is not None:
-            if isinstance(self.data, dict):
-                result["data"] = self.data
-            elif hasattr(self.data, "to_dict"):
-                result["data"] = self.data.to_dict()
-            else:
-                try:
-                    result["data"] = asdict(self.data)
-                except TypeError:
-                    result["data"] = str(self.data)
-        if self.error is not None:
-            result["error"] = self.error.to_dict()
-        return result
-
-    @classmethod
-    def ok(cls, data: T) -> "Result[T]":
-        """Create a successful result."""
-        return cls(success=True, data=data)
-
-    @classmethod
-    def fail(cls, error: ErrorSpec) -> "Result[T]":
-        """Create a failed result."""
-        return cls(success=False, error=error)
-```
-
-### File: `src/quantumvitas/api/__init__.py`
-
-```python
-"""
-QMatSuite Public API.
-
-This package is the SINGLE GATEWAY to kernel functionality.
-All frontends (CLI, daemon, notebook) must use this API.
-"""
-
-from .errors import ErrorSpec, QVServiceError, ErrorCodes, ErrorCategory
-from .types import Result
-
-# Re-export QVService from legacy location (temporary)
-# Will be moved to api/service.py in later PR
-from quantumvitas.api_legacy import QVService
-
-__all__ = [
-    "QVService",
-    "QVServiceError",
-    "ErrorSpec",
-    "ErrorCodes",
-    "ErrorCategory",
-    "Result",
-]
-```
-
-### Temporary: Rename api.py
-
-```bash
-# Rename existing api.py to avoid conflict
-git mv src/quantumvitas/api.py src/quantumvitas/api_legacy.py
-
-# Update imports in api_legacy.py if needed (keep QVServiceError there for now)
-```
-
-### Acceptance Criteria
-
-```bash
-# Package imports work
-python -c "from quantumvitas.api import QVService, ErrorSpec, Result; print('OK')"
-# Expected: OK
-
-# ErrorSpec is usable
-python -c "
-from quantumvitas.api import ErrorSpec, ErrorCodes
-e = ErrorSpec(code=ErrorCodes.CALC_NOT_FOUND, category='resource', message='Not found')
-print(e.to_dict())
-"
-# Expected: {'code': 'CALC_NOT_FOUND', 'category': 'resource', ...}
-
-# Tests pass
-pytest tests/ -v --tb=short -x
-```
-
-### Risks
-- MEDIUM: Renaming api.py may break imports temporarily
-
-### Rollback
-```bash
-git mv src/quantumvitas/api_legacy.py src/quantumvitas/api.py
-rm -rf src/quantumvitas/api/
-```
-
----
-
-## PR 4: Add Project Edit Lock
-
-### Goal
-Add `project_edit_lock` for `project.qv.yml` writes.
-
-### Files Modified
-
-| Action | Path |
-|--------|------|
-| MODIFY | `src/quantumvitas/core/locking.py` |
-| MODIFY | `src/quantumvitas/core/project_utils.py` |
-
-### Changes to `core/locking.py`
-
-Add after existing lock definitions:
-
-```python
-@contextmanager
-def project_edit_lock(project_root: Path, timeout: float = 10.0):
-    """
-    Acquire exclusive lock for project.qv.yml writes.
-
-    This prevents concurrent modifications to project-level config
-    from CLI, daemon, and notebook.
-
-    Args:
-        project_root: Path to project root
-        timeout: Lock acquisition timeout in seconds
-
-    Raises:
-        ProjectLockError: If lock cannot be acquired
-    """
-    lock_file = project_root / ".qv_project.lock"
-    lock_file.parent.mkdir(parents=True, exist_ok=True)
-
-    try:
-        with portalocker.Lock(
-            lock_file,
-            timeout=timeout,
-            flags=portalocker.LOCK_EX | portalocker.LOCK_NB,
-        ):
-            yield
-    except portalocker.LockException as e:
-        raise ProjectLockError(
-            f"Could not acquire project edit lock for {project_root}. "
-            f"Another process may be modifying project.qv.yml."
-        ) from e
-
-
-class ProjectLockError(Exception):
-    """Raised when project lock cannot be acquired."""
-    pass
-```
-
-### Changes to `core/project_utils.py`
-
-Find `save_project_config` function and wrap with lock:
-
-```python
-from quantumvitas.core.locking import project_edit_lock
-
-def save_project_config(project_root: Path, config: dict) -> None:
-    """Save project.qv.yml with exclusive lock."""
-    with project_edit_lock(project_root):
-        # ... existing save logic ...
-```
-
-### Acceptance Criteria
-
-```bash
-# Lock is importable
-python -c "from quantumvitas.core.locking import project_edit_lock; print('OK')"
-# Expected: OK
-
-# Tests pass
-pytest tests/ -v --tb=short -x
-
-# Manual test: concurrent access (optional)
-# Run two terminals trying to save project config simultaneously
-```
-
-### Risks
-- LOW: Additive change
-
----
-
-## PR 5: Create Tools Surface Skeleton
-
-### Goal
-Create `tools/` module with stub implementations that call API.
-
-### Files Created
-
-| Path | Purpose |
-|------|---------|
-| `src/quantumvitas/tools/__init__.py` | Exports all tools |
-| `src/quantumvitas/tools/schema.py` | `discover()` |
-| `src/quantumvitas/tools/calc.py` | `get_summary()`, `get_digest()` |
-| `src/quantumvitas/tools/params.py` | `validate_patch()`, `apply_patch()` |
-| `src/quantumvitas/tools/run.py` | `run_step()`, `run_calc()` |
-| `src/quantumvitas/tools/results.py` | `extract()` |
-
-### File: `src/quantumvitas/tools/__init__.py`
-
-```python
-"""
-Agent-ready tool surface for QMatSuite.
-
-These functions provide structured, machine-friendly access to QMatSuite operations.
-They are designed for use by MCP adapters and programmatic access.
-
-IMPORTANT: These modules MUST only import from quantumvitas.api.
-Direct imports from core/, calculation/, drivers/ are FORBIDDEN.
-"""
-
-from .schema import discover
-from .calc import get_summary, get_digest
-from .params import validate_patch, apply_patch
-from .run import run_step, run_calc
-from .results import extract
-
-__all__ = [
-    "discover",
-    "get_summary",
-    "get_digest",
-    "validate_patch",
-    "apply_patch",
-    "run_step",
-    "run_calc",
-    "extract",
-]
-```
-
-### File: `src/quantumvitas/tools/schema.py`
-
-```python
-"""Schema discovery tool."""
-
-from typing import Any, Literal
-
-from quantumvitas.api import QVService, ErrorSpec, ErrorCodes
-from quantumvitas.api.types import Result
-
-
-def discover(
-    *,
-    project_root: str | None = None,
-    scope: Literal["step_types", "params", "all"] = "all",
-    engine: str | None = None,
-    step_type: str | None = None,
-) -> Result[dict[str, Any]]:
-    """
-    Discover available step types, parameter schemas, and ownership.
-
-    Args:
-        project_root: Optional project context (for project-specific schemas)
-        scope: What to discover ("step_types", "params", "all")
-        engine: Filter by engine family
-        step_type: Filter by specific step type
-
-    Returns:
-        Result with discovery data or error
-    """
-    try:
-        # Use QVService for discovery
-        # Note: Some discovery may not need a project
-        if project_root:
-            svc = QVService(project_root)
-            # TODO: Implement svc.discover_schema() method
-            data = {"step_types": [], "param_schemas": {}}
-        else:
-            # Project-independent discovery
-            data = {"step_types": [], "param_schemas": {}}
-
-        return Result.ok(data)
-    except Exception as e:
-        return Result.fail(ErrorSpec(
-            code=ErrorCodes.INTERNAL_ERROR,
-            category="internal",
-            message=str(e),
-        ))
-```
-
-### File: `src/quantumvitas/tools/calc.py`
-
-```python
-"""Calculation summary and digest tools."""
-
-from typing import Any
-
-from quantumvitas.api import QVService, QVServiceError, ErrorSpec, ErrorCodes
-from quantumvitas.api.types import Result
-
-
-def get_summary(
-    project_root: str,
-    calc_selector: str,
-) -> Result[dict[str, Any]]:
-    """
-    Get calculation summary (structure, steps, status).
-
-    Args:
-        project_root: Path to project root
-        calc_selector: Calculation selector (name, slug, or ULID)
-
-    Returns:
-        Result with CalcSummary dict or error
-    """
-    try:
-        svc = QVService(project_root)
-        # TODO: Implement svc.get_calculation_summary() that returns structured data
-        calc = svc.get_calculation(calc_selector)
-
-        summary = {
-            "id": calc.id if hasattr(calc, 'id') else str(calc),
-            "name": getattr(calc, 'name', 'unknown'),
-            "steps": [],
-            "status": "unknown",
-        }
-        return Result.ok(summary)
-    except QVServiceError as e:
-        return Result.fail(e.error_spec)
-    except Exception as e:
-        return Result.fail(ErrorSpec(
-            code=ErrorCodes.INTERNAL_ERROR,
-            category="internal",
-            message=str(e),
-            evidence={"calc_selector": calc_selector},
-        ))
-
-
-def get_digest(
-    project_root: str,
-    run_id: str,
-) -> Result[dict[str, Any]]:
-    """
-    Get digest of a completed run.
-
-    Args:
-        project_root: Path to project root
-        run_id: Run identifier
-
-    Returns:
-        Result with RunDigest dict or error
-    """
-    try:
-        svc = QVService(project_root)
-        # TODO: Implement svc.get_run_digest()
-        digest = {
-            "run_id": run_id,
-            "status": "unknown",
-            "steps": [],
-        }
-        return Result.ok(digest)
-    except QVServiceError as e:
-        return Result.fail(e.error_spec)
-    except Exception as e:
-        return Result.fail(ErrorSpec(
-            code=ErrorCodes.INTERNAL_ERROR,
-            category="internal",
-            message=str(e),
-        ))
-```
-
-### File: `src/quantumvitas/tools/params.py`
-
-```python
-"""Parameter patch tools."""
-
-from typing import Any
-
-from quantumvitas.api import QVService, QVServiceError, ErrorSpec, ErrorCodes
-from quantumvitas.api.types import Result
-
-
-def validate_patch(
-    project_root: str,
-    step_selector: str,
-    patch: dict[str, Any],
-) -> Result[dict[str, Any]]:
-    """
-    Validate a parameter patch WITHOUT applying.
-
-    Args:
-        project_root: Path to project root
-        step_selector: Step selector (calc/step format)
-        patch: Parameter patch to validate
-
-    Returns:
-        Result with validation result (valid, normalized_patch, diff_preview, warnings, errors)
-    """
-    try:
-        svc = QVService(project_root)
-        # TODO: Implement svc.validate_step_patch()
-
-        validation_result = {
-            "valid": True,
-            "normalized_patch": patch,
-            "diff_preview": {},
-            "warnings": [],
-            "errors": [],
-        }
-        return Result.ok(validation_result)
-    except QVServiceError as e:
-        return Result.fail(e.error_spec)
-    except Exception as e:
-        return Result.fail(ErrorSpec(
-            code=ErrorCodes.INTERNAL_ERROR,
-            category="internal",
-            message=str(e),
-        ))
-
-
-def apply_patch(
-    project_root: str,
-    step_selector: str,
-    validated_patch: dict[str, Any],
-) -> Result[dict[str, Any]]:
-    """
-    Apply a PREVIOUSLY VALIDATED patch.
-
-    REQUIRES: Patch must have been validated via validate_patch first.
-    ACQUIRES: calc_edit_lock
-
-    Args:
-        project_root: Path to project root
-        step_selector: Step selector
-        validated_patch: Previously validated patch
-
-    Returns:
-        Result with apply result (success, new_state)
-    """
-    try:
-        svc = QVService(project_root)
-        # TODO: Implement svc.apply_step_patch()
-
-        apply_result = {
-            "applied": True,
-            "new_state": {},
-        }
-        return Result.ok(apply_result)
-    except QVServiceError as e:
-        return Result.fail(e.error_spec)
-    except Exception as e:
-        return Result.fail(ErrorSpec(
-            code=ErrorCodes.INTERNAL_ERROR,
-            category="internal",
-            message=str(e),
-        ))
-```
-
-### File: `src/quantumvitas/tools/run.py`
-
-```python
-"""Run execution tools."""
-
-from typing import Any, Literal
-
-from quantumvitas.api import QVService, QVServiceError, ErrorSpec, ErrorCodes
-from quantumvitas.api.types import Result
-
-
-def run_step(
-    project_root: str,
-    step_selector: str,
-    *,
-    mode: Literal["normal", "force"] = "normal",
-) -> Result[dict[str, Any]]:
-    """
-    Run a single step.
-
-    ACQUIRES: calc_run_lock
-
-    Args:
-        project_root: Path to project root
-        step_selector: Step selector (calc/step format)
-        mode: Run mode ("normal" or "force")
-
-    Returns:
-        Result with run result (status, timing, artifacts)
-    """
-    try:
-        svc = QVService(project_root)
-        # Parse step selector (calc/step format)
-        if "/" in step_selector:
-            calc_sel, step_sel = step_selector.rsplit("/", 1)
-        else:
-            raise ValueError(f"Invalid step selector format: {step_selector}. Expected 'calc/step'.")
-
-        result = svc.run_step(calc_sel, step_sel, force=(mode == "force"))
-
-        run_result = {
-            "status": "completed" if result else "failed",
-            "step_selector": step_selector,
-        }
-        return Result.ok(run_result)
-    except QVServiceError as e:
-        return Result.fail(e.error_spec)
-    except Exception as e:
-        return Result.fail(ErrorSpec(
-            code=ErrorCodes.INTERNAL_ERROR,
-            category="internal",
-            message=str(e),
-            evidence={"step_selector": step_selector},
-        ))
-
-
-def run_calc(
-    project_root: str,
-    calc_selector: str,
-    *,
-    mode: Literal["normal", "force", "continue"] = "normal",
-) -> Result[dict[str, Any]]:
-    """
-    Run entire calculation.
-
-    ACQUIRES: calc_run_lock
-
-    Args:
-        project_root: Path to project root
-        calc_selector: Calculation selector
-        mode: Run mode
-
-    Returns:
-        Result with run result (per-step status, timing, artifacts)
-    """
-    try:
-        svc = QVService(project_root)
-        result = svc.run_calculation(calc_selector, force=(mode == "force"))
-
-        run_result = {
-            "status": "completed" if result else "failed",
-            "calc_selector": calc_selector,
-            "steps": [],
-        }
-        return Result.ok(run_result)
-    except QVServiceError as e:
-        return Result.fail(e.error_spec)
-    except Exception as e:
-        return Result.fail(ErrorSpec(
-            code=ErrorCodes.INTERNAL_ERROR,
-            category="internal",
-            message=str(e),
-            evidence={"calc_selector": calc_selector},
-        ))
-```
-
-### File: `src/quantumvitas/tools/results.py`
-
-```python
-"""Result extraction tools."""
-
-from typing import Any, Literal
-
-from quantumvitas.api import QVService, QVServiceError, ErrorSpec, ErrorCodes
-from quantumvitas.api.types import Result
-
-
-def extract(
-    project_root: str,
-    step_selector: str,
-    artifact_type: Literal["energy", "bands", "dos", "structure", "all"],
-) -> Result[dict[str, Any]]:
-    """
-    Extract canonical analysis result from completed step.
-
-    Args:
-        project_root: Path to project root
-        step_selector: Step selector (calc/step format)
-        artifact_type: Type of artifact to extract
-
-    Returns:
-        Result with extracted data (no file paths, structured data only)
-    """
-    try:
-        svc = QVService(project_root)
-
-        # Parse step selector
-        if "/" in step_selector:
-            calc_sel, step_sel = step_selector.rsplit("/", 1)
-        else:
-            raise ValueError(f"Invalid step selector format: {step_selector}")
-
-        # TODO: Implement svc.extract_artifact()
-        extract_result = {
-            "artifact_type": artifact_type,
-            "data": None,
-            "meta": {
-                "step_selector": step_selector,
-            },
-        }
-        return Result.ok(extract_result)
-    except QVServiceError as e:
-        return Result.fail(e.error_spec)
-    except Exception as e:
-        return Result.fail(ErrorSpec(
-            code=ErrorCodes.INTERNAL_ERROR,
-            category="internal",
-            message=str(e),
-        ))
-```
-
-### Acceptance Criteria
-
-```bash
-# Tools are importable
-python -c "
-from quantumvitas.tools import (
-    discover, get_summary, get_digest,
-    validate_patch, apply_patch,
-    run_step, run_calc, extract
-)
-print('OK')
-"
-# Expected: OK
-
-# Tools do NOT import from core (CRITICAL CHECK)
-rg "from quantumvitas\.core" src/quantumvitas/tools/
-# Expected: 0 matches
-
-rg "from quantumvitas\.calculation" src/quantumvitas/tools/
-# Expected: 0 matches
-
-# Tests pass
-pytest tests/ -v --tb=short -x
-```
-
-### Risks
-- LOW: Stub implementations
-
----
-
-## PR 6: Create Import Rule Gate Tests
-
-### Goal
-Add tests that enforce import rules and will fail if violations are introduced.
-
-### Files Created
-
-| Path | Purpose |
-|------|---------|
-| `tests/gates/test_import_rules.py` | Import rule enforcement |
-
-### File: `tests/gates/test_import_rules.py`
+**Replace the entire file with**:
 
 ```python
 """
 Gate tests for import rule enforcement.
 
 These tests verify the architecture's import rules are not violated.
-They should fail immediately if forbidden imports are added.
+They detect IMPORTS, not method calls.
+
+CRITICAL: These must NOT false-positive on legitimate method calls like:
+    svc.resolve_calculation(...)  # OK - method call
+    QVService().resolve_calculation(...)  # OK - method call
+
+They SHOULD catch:
+    from quantumvitas.core.resolution import resolve_calculation  # FORBIDDEN
+    import quantumvitas.core.resolution  # FORBIDDEN
+    from quantumvitas.core import resolution  # FORBIDDEN
 """
 
 import subprocess
@@ -951,982 +139,1125 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 
+def _find_forbidden_imports(source_dir: str, forbidden_modules: list[str]) -> list[str]:
+    """
+    Find forbidden imports using ripgrep.
+
+    Detects:
+    - from quantumvitas.X import ...
+    - from quantumvitas.X.Y import ...
+    - import quantumvitas.X
+    - import quantumvitas.X.Y
+
+    Does NOT detect method calls like svc.resolve_calculation().
+    """
+    source_path = PROJECT_ROOT / source_dir
+    if not source_path.exists():
+        return []
+
+    violations = []
+    for module in forbidden_modules:
+        # Pattern 1: from quantumvitas.module import ...
+        # Pattern 2: from quantumvitas.module.submodule import ...
+        # Pattern 3: import quantumvitas.module
+        patterns = [
+            f"^from quantumvitas\\.{module}(\\.|\\s)",
+            f"^import quantumvitas\\.{module}(\\.|\\s|$)",
+        ]
+
+        for pattern in patterns:
+            result = subprocess.run(
+                ["rg", "-n", "--pcre2", pattern, str(source_path)],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                for line in result.stdout.strip().split("\n"):
+                    # Skip comments
+                    if not line.strip().startswith("#"):
+                        violations.append(line)
+
+    return violations
+
+
 class TestFrontendImportRules:
     """Frontends must not import from kernel modules."""
 
-    def _check_no_imports(self, source_dir: str, forbidden_pattern: str) -> list[str]:
-        """Run ripgrep to find forbidden imports."""
-        source_path = PROJECT_ROOT / source_dir
-        if not source_path.exists():
-            pytest.skip(f"Directory {source_dir} does not exist yet")
+    KERNEL_MODULES = ["core", "calculation", "drivers", "analysis", "io", "engine", "workflow", "presets"]
 
-        result = subprocess.run(
-            ["rg", "-l", forbidden_pattern, str(source_path)],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip().split("\n")
-        return []
+    def test_cli_no_kernel_imports(self):
+        """cli/* must not import from kernel modules."""
+        # Check both old and new locations
+        for source_dir in ["src/quantumvitas/cli", "src/quantumvitas/frontends/cli"]:
+            violations = _find_forbidden_imports(source_dir, self.KERNEL_MODULES)
+            # Filter out any in-progress migration markers
+            violations = [v for v in violations if "# MIGRATION:" not in v]
+            assert violations == [], (
+                f"Forbidden kernel imports in CLI:\n" + "\n".join(violations)
+            )
 
-    def test_frontends_no_core_imports(self):
-        """frontends/* must not import from core/*."""
-        violations = self._check_no_imports(
-            "src/quantumvitas/frontends",
-            r"from quantumvitas\.core"
-        )
-        assert violations == [], f"Forbidden core imports in frontends: {violations}"
+    def test_daemon_no_kernel_imports(self):
+        """daemon/* must not import from kernel modules."""
+        for source_dir in ["src/quantumvitas/daemon", "src/quantumvitas/frontends/daemon"]:
+            violations = _find_forbidden_imports(source_dir, self.KERNEL_MODULES)
+            violations = [v for v in violations if "# MIGRATION:" not in v]
+            assert violations == [], (
+                f"Forbidden kernel imports in daemon:\n" + "\n".join(violations)
+            )
 
-    def test_frontends_no_calculation_imports(self):
-        """frontends/* must not import from calculation/*."""
-        violations = self._check_no_imports(
-            "src/quantumvitas/frontends",
-            r"from quantumvitas\.calculation"
+    def test_notebook_no_kernel_imports(self):
+        """notebook/* must not import from kernel modules."""
+        violations = _find_forbidden_imports(
+            "src/quantumvitas/frontends/notebook",
+            self.KERNEL_MODULES
         )
-        assert violations == [], f"Forbidden calculation imports in frontends: {violations}"
-
-    def test_frontends_no_drivers_imports(self):
-        """frontends/* must not import from drivers/*."""
-        violations = self._check_no_imports(
-            "src/quantumvitas/frontends",
-            r"from quantumvitas\.drivers"
+        assert violations == [], (
+            f"Forbidden kernel imports in notebook:\n" + "\n".join(violations)
         )
-        assert violations == [], f"Forbidden drivers imports in frontends: {violations}"
-
-    def test_frontends_no_analysis_imports(self):
-        """frontends/* must not import from analysis/*."""
-        violations = self._check_no_imports(
-            "src/quantumvitas/frontends",
-            r"from quantumvitas\.analysis"
-        )
-        assert violations == [], f"Forbidden analysis imports in frontends: {violations}"
-
-    def test_frontends_no_io_imports(self):
-        """frontends/* must not import from io/*."""
-        violations = self._check_no_imports(
-            "src/quantumvitas/frontends",
-            r"from quantumvitas\.io"
-        )
-        assert violations == [], f"Forbidden io imports in frontends: {violations}"
 
 
 class TestToolsImportRules:
     """Tools must only import from api."""
 
-    def _check_no_imports(self, source_dir: str, forbidden_pattern: str) -> list[str]:
-        source_path = PROJECT_ROOT / source_dir
-        if not source_path.exists():
-            pytest.skip(f"Directory {source_dir} does not exist yet")
+    KERNEL_MODULES = ["core", "calculation", "drivers", "analysis", "io", "engine"]
 
-        result = subprocess.run(
-            ["rg", "-l", forbidden_pattern, str(source_path)],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip().split("\n")
-        return []
-
-    def test_tools_no_core_imports(self):
-        """tools/* must not import from core/*."""
-        violations = self._check_no_imports(
+    def test_tools_no_kernel_imports(self):
+        """tools/* must not import from kernel modules."""
+        violations = _find_forbidden_imports(
             "src/quantumvitas/tools",
-            r"from quantumvitas\.core"
+            self.KERNEL_MODULES
         )
-        assert violations == [], f"Forbidden core imports in tools: {violations}"
-
-    def test_tools_no_calculation_imports(self):
-        """tools/* must not import from calculation/*."""
-        violations = self._check_no_imports(
-            "src/quantumvitas/tools",
-            r"from quantumvitas\.calculation"
+        assert violations == [], (
+            f"Forbidden kernel imports in tools:\n" + "\n".join(violations)
         )
-        assert violations == [], f"Forbidden calculation imports in tools: {violations}"
-
-    def test_tools_no_frontends_imports(self):
-        """tools/* must not import from frontends/*."""
-        violations = self._check_no_imports(
-            "src/quantumvitas/tools",
-            r"from quantumvitas\.frontends"
-        )
-        assert violations == [], f"Forbidden frontends imports in tools: {violations}"
 
 
 class TestAPIImportRules:
     """API must not import from frontends or tools."""
 
-    def _check_no_imports(self, source_dir: str, forbidden_pattern: str) -> list[str]:
-        source_path = PROJECT_ROOT / source_dir
-        if not source_path.exists():
-            pytest.skip(f"Directory {source_dir} does not exist yet")
-
-        result = subprocess.run(
-            ["rg", "-l", forbidden_pattern, str(source_path)],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip().split("\n")
-        return []
-
-    def test_api_no_frontends_imports(self):
+    def test_api_no_frontend_imports(self):
         """api/* must not import from frontends/*."""
-        violations = self._check_no_imports(
+        violations = _find_forbidden_imports(
             "src/quantumvitas/api",
-            r"from quantumvitas\.frontends"
+            ["frontends", "cli", "daemon"]
         )
-        assert violations == [], f"Forbidden frontends imports in api: {violations}"
-
-    def test_api_no_tools_imports(self):
-        """api/* must not import from tools/*."""
-        violations = self._check_no_imports(
-            "src/quantumvitas/api",
-            r"from quantumvitas\.tools"
+        assert violations == [], (
+            f"Forbidden frontend imports in api:\n" + "\n".join(violations)
         )
-        assert violations == [], f"Forbidden tools imports in api: {violations}"
 
 
-class TestCLIThinRules:
-    """CLI must be thin - no selector resolution."""
+class TestImportabilitySmoke:
+    """
+    Smoke tests that verify key modules are importable.
 
-    def _check_no_pattern(self, source_dir: str, pattern: str) -> list[str]:
-        source_path = PROJECT_ROOT / source_dir
-        if not source_path.exists():
-            pytest.skip(f"Directory {source_dir} does not exist yet")
+    CRITICAL: These catch the "gates green but code broken" scenario.
+    """
 
+    def test_cli_importable(self):
+        """CLI must be importable."""
         result = subprocess.run(
-            ["rg", "-l", pattern, str(source_path)],
+            ["python", "-c", "from quantumvitas.cli.main import app; print('OK')"],
             capture_output=True,
             text=True,
+            cwd=PROJECT_ROOT,
         )
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip().split("\n")
-        return []
+        assert result.returncode == 0, (
+            f"CLI import failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        )
 
-    def test_cli_no_resolve_functions(self):
-        """CLI must not call resolve_* functions directly."""
-        patterns = [
-            r"resolve_calculation\(",
-            r"resolve_step\(",
-            r"resolve_structure\(",
-        ]
-        for pattern in patterns:
-            violations = self._check_no_pattern(
-                "src/quantumvitas/frontends/cli",
-                pattern
-            )
-            assert violations == [], f"Forbidden resolve call in CLI: {violations}"
+    def test_daemon_importable(self):
+        """Daemon must be importable."""
+        result = subprocess.run(
+            ["python", "-c", "from quantumvitas.daemon.server import QVDaemon; print('OK')"],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+        )
+        assert result.returncode == 0, (
+            f"Daemon import failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+
+    def test_api_importable(self):
+        """API must be importable."""
+        result = subprocess.run(
+            ["python", "-c", "from quantumvitas.api import QVService; print('OK')"],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+        )
+        assert result.returncode == 0, (
+            f"API import failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+
+    def test_package_importable(self):
+        """Main package must be importable."""
+        result = subprocess.run(
+            ["python", "-c", "import quantumvitas; print('OK')"],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+        )
+        assert result.returncode == 0, (
+            f"Package import failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        )
 ```
 
-### Acceptance Criteria
+### PR 0.2: Add Safety Documentation
+
+**File**: `docs/dev/SAFETY_RULES.md` (create)
+
+```markdown
+# Development Safety Rules
+
+## Never Delete .qmatsuite/
+
+The `.qmatsuite/` directory contains:
+- Local QE engine installations
+- Cached binaries
+- Engine configuration
+
+Deleting it breaks ALL integration tests.
+
+### Safe Cleanup Commands
 
 ```bash
-# Gate tests run (may skip if dirs don't exist yet)
-pytest tests/gates/test_import_rules.py -v
+# Clean build artifacts (SAFE)
+git clean -xfd -e .qmatsuite/ -e .venv/
 
-# Tests pass
-pytest tests/ -v --tb=short -x
+# Targeted cleanup (SAFER)
+rm -rf build/ dist/ *.egg-info/
+find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+
+# If .qmatsuite was accidentally deleted
+# Re-run: qv engines install qe  (may take 10+ minutes)
 ```
 
-### Risks
-- LOW: Test-only changes
+## Verification Commands
+
+After any refactor, run:
+
+```bash
+# Quick smoke
+python -c "from quantumvitas.cli.main import app"
+python -c "from quantumvitas.daemon.server import QVDaemon"
+python -c "from quantumvitas.api import QVService"
+
+# Full suite
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+```
+```
+
+### Acceptance Criteria (Batch 0)
+
+```bash
+# 1. Gates pass
+python -m pytest tests/gates/test_import_rules.py -v
+
+# 2. Importability smoke passes
+python -c "from quantumvitas.cli.main import app; print('CLI OK')"
+python -c "from quantumvitas.daemon.server import QVDaemon; print('Daemon OK')"
+python -c "from quantumvitas.api import QVService; print('API OK')"
+
+# 3. Full suite passes
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+```
+
+### ═══════════════════════════════════════════════════════
+### STOP POINT 0: Gates fixed, smoke tests added
+### Repo is GREEN and IMPORTABLE
+### ═══════════════════════════════════════════════════════
 
 ---
 
-## PR 7: Move Daemon to frontends/daemon/
+## BATCH 1: API FACADE (API-FIRST)
 
-### Goal
-Move daemon code to `frontends/daemon/` and add compatibility shim.
+**Goal**: Build complete API methods that CLI/daemon will call. NO migration yet.
 
-### Files Changed
+**Risk**: LOW (additive changes only)
 
-| Action | Path |
-|--------|------|
-| MOVE | `src/quantumvitas/daemon/server.py` → `src/quantumvitas/frontends/daemon/server.py` |
-| MOVE | `src/quantumvitas/daemon/jobs.py` → `src/quantumvitas/frontends/daemon/jobs.py` |
-| MODIFY | `src/quantumvitas/frontends/daemon/__init__.py` |
-| MODIFY | `src/quantumvitas/daemon/__init__.py` (compatibility shim) |
-| MODIFY | `gui/` references (if any) |
+**Principle**: We add all needed API methods BEFORE removing any imports from frontends.
 
-### Exact Commands
+### PR 1.1: Audit Current API and Plan Additions
 
-```bash
-# 1. Move files
-git mv src/quantumvitas/daemon/server.py src/quantumvitas/frontends/daemon/server.py
-git mv src/quantumvitas/daemon/jobs.py src/quantumvitas/frontends/daemon/jobs.py
+**Task**: Review `api.py` and identify missing methods needed by CLI/daemon.
 
-# 2. Copy any other files in daemon/
-cp src/quantumvitas/daemon/*.py src/quantumvitas/frontends/daemon/ 2>/dev/null || true
-```
+**Output**: A checklist in this PR description of methods to add.
 
-### File: `src/quantumvitas/frontends/daemon/__init__.py`
+**Current QVService methods to verify**:
+- `run_calculation(calc_selector)`
+- `run_step(calc_selector, step_selector)`
+- `list_calculations()`
+- `list_steps(calc_selector)`
+- `get_calculation(selector)`
+- `import_structure(path)`
+- `list_structures()`
 
-```python
-"""
-GUI Daemon frontend for QMatSuite.
+**Methods to ADD** (based on CLI usage):
+- `resolve_calculation_ref(selector) -> CalculationRef` - returns ref object
+- `resolve_step_ref(calc_selector, step_selector) -> StepRef` - returns ref object
+- `resolve_structure_ref(selector) -> StructureRef` - returns ref object
+- `load_project_config() -> dict` - loads project.qv.yml
+- `get_context_from_cwd(cwd: Path) -> dict` - context detection
+- `get_engine_registry() -> EngineRegistry` - engine access
+- `validate_step_params(step_selector, params) -> ValidationResult`
+- `configure_step(step_selector, params) -> None`
 
-Provides JSON-RPC interface for the Electron GUI.
-"""
+### PR 1.2: Add Resolution Methods to API
 
-from .server import QVDaemon, main
+**File**: `src/quantumvitas/api.py`
 
-__all__ = ["QVDaemon", "main"]
-```
-
-### File: `src/quantumvitas/daemon/__init__.py` (Compatibility Shim)
+**Add these methods to QVService class** (do NOT remove existing code):
 
 ```python
-"""
-DEPRECATED: Use quantumvitas.frontends.daemon instead.
+# Add after existing methods in QVService class
 
-This module is a compatibility shim that will be removed in a future version.
-"""
-import warnings
+def resolve_calculation_ref(self, selector: str) -> "CalculationRef":
+    """
+    Resolve calculation selector to CalculationRef.
 
-warnings.warn(
-    "quantumvitas.daemon is deprecated. Use quantumvitas.frontends.daemon instead.",
-    DeprecationWarning,
-    stacklevel=2,
-)
+    This is the API method that CLI/daemon should call instead of
+    importing resolve_calculation from core.resolution.
 
-from quantumvitas.frontends.daemon import QVDaemon, main
+    Args:
+        selector: Calculation name, slug, ULID, or path
 
-__all__ = ["QVDaemon", "main"]
-```
+    Returns:
+        CalculationRef object
 
-### Update Internal Imports in Moved Files
+    Raises:
+        QVServiceError: If calculation not found
+    """
+    from quantumvitas.core.resolution import resolve_calculation
+    from quantumvitas.core.project_utils import load_project_config
 
-In `src/quantumvitas/frontends/daemon/server.py`, update relative imports:
-
-```bash
-# Find internal imports
-rg "from quantumvitas.daemon" src/quantumvitas/frontends/daemon/
-
-# Update to use frontends.daemon or absolute imports
-```
-
-### Acceptance Criteria
-
-```bash
-# Old import still works (with warning)
-python -c "from quantumvitas.daemon import QVDaemon" 2>&1 | grep -i deprecat
-# Expected: DeprecationWarning shown
-
-# New import works
-python -c "from quantumvitas.frontends.daemon import QVDaemon; print('OK')"
-# Expected: OK
-
-# Tests pass
-pytest tests/ -v --tb=short -x
-```
-
-### Risks
-- MEDIUM: GUI may reference old path
-
-### Rollback
-```bash
-git mv src/quantumvitas/frontends/daemon/*.py src/quantumvitas/daemon/
-```
-
----
-
-## PR 8: Move CLI to frontends/cli/
-
-### Goal
-Move CLI code to `frontends/cli/` and add compatibility shim.
-
-### Files Changed
-
-| Action | Path |
-|--------|------|
-| MOVE | `src/quantumvitas/cli/main.py` → `src/quantumvitas/frontends/cli/app.py` |
-| MOVE | `src/quantumvitas/cli/__main__.py` → `src/quantumvitas/frontends/cli/__main__.py` |
-| MODIFY | `src/quantumvitas/frontends/cli/__init__.py` |
-| MODIFY | `src/quantumvitas/cli/__init__.py` (compatibility shim) |
-| MODIFY | `pyproject.toml` (entry point) |
-
-### Exact Commands
-
-```bash
-# 1. Move files
-git mv src/quantumvitas/cli/main.py src/quantumvitas/frontends/cli/app.py
-git mv src/quantumvitas/cli/__main__.py src/quantumvitas/frontends/cli/__main__.py
-```
-
-### File: `src/quantumvitas/frontends/cli/__init__.py`
-
-```python
-"""
-CLI frontend for QMatSuite.
-
-Provides the `qv` command-line interface.
-"""
-
-from .app import app
-
-__all__ = ["app"]
-```
-
-### File: `src/quantumvitas/frontends/cli/__main__.py`
-
-```python
-"""Entry point for python -m quantumvitas.frontends.cli"""
-from .app import app
-
-if __name__ == "__main__":
-    app()
-```
-
-### File: `src/quantumvitas/cli/__init__.py` (Compatibility Shim)
-
-```python
-"""
-DEPRECATED: Use quantumvitas.frontends.cli instead.
-
-This module is a compatibility shim that will be removed in a future version.
-"""
-import warnings
-
-warnings.warn(
-    "quantumvitas.cli is deprecated. Use quantumvitas.frontends.cli instead.",
-    DeprecationWarning,
-    stacklevel=2,
-)
-
-from quantumvitas.frontends.cli import app
-
-__all__ = ["app"]
-```
-
-### Update pyproject.toml
-
-```toml
-[project.scripts]
-qv = "quantumvitas.frontends.cli:app"
-```
-
-### Acceptance Criteria
-
-```bash
-# Old import still works (with warning)
-python -c "from quantumvitas.cli import app" 2>&1 | grep -i deprecat
-# Expected: DeprecationWarning shown
-
-# New import works
-python -c "from quantumvitas.frontends.cli import app; print('OK')"
-# Expected: OK
-
-# CLI works
-qv --help
-# Expected: Help output
-
-# Tests pass
-pytest tests/ -v --tb=short -x
-```
-
-### Risks
-- MEDIUM: Entry point change
-
-### Rollback
-```bash
-git mv src/quantumvitas/frontends/cli/app.py src/quantumvitas/cli/main.py
-# Revert pyproject.toml entry point
-```
-
----
-
-## PR 9: Create Notebook Frontend
-
-### Goal
-Create `frontends/notebook/` with convenience exports and display helpers.
-
-### Files Created
-
-| Path | Purpose |
-|------|---------|
-| `src/quantumvitas/frontends/notebook/__init__.py` | Convenience exports |
-| `src/quantumvitas/frontends/notebook/display.py` | IPython display helpers |
-
-### File: `src/quantumvitas/frontends/notebook/__init__.py`
-
-```python
-"""
-Notebook frontend for QMatSuite.
-
-Provides convenience imports and display helpers for Jupyter notebooks.
-
-Usage:
-    from quantumvitas import QVService
-    from quantumvitas.frontends.notebook import display_bands, display_structure
-
-    svc = QVService(project_root="/path/to/project")
-    result = svc.run_calculation("my_calc")
-    display_bands(result)
-"""
-
-# Re-export QVService for convenience
-from quantumvitas.api import QVService, QVServiceError, ErrorSpec
-
-# Display helpers
-from .display import (
-    display_structure,
-    display_bands,
-    display_dos,
-    display_energy,
-    display_calculation_summary,
-)
-
-__all__ = [
-    # API
-    "QVService",
-    "QVServiceError",
-    "ErrorSpec",
-    # Display
-    "display_structure",
-    "display_bands",
-    "display_dos",
-    "display_energy",
-    "display_calculation_summary",
-]
-```
-
-### File: `src/quantumvitas/frontends/notebook/display.py`
-
-```python
-"""Display helpers for Jupyter notebooks."""
-
-from typing import Any, Optional
-
-
-def _get_ipython_display():
-    """Get IPython display function if available."""
+    config = load_project_config(self.project_root)
     try:
-        from IPython.display import display, HTML
-        return display, HTML
-    except ImportError:
-        return None, None
+        return resolve_calculation(self.project_root, selector, config=config)
+    except Exception as e:
+        raise QVServiceError(f"Failed to resolve calculation '{selector}': {e}") from e
 
+def resolve_step_ref(self, calc_selector: str, step_selector: str) -> "StepRef":
+    """
+    Resolve step selector to StepRef.
 
-def display_structure(
-    structure: Any,
+    Args:
+        calc_selector: Calculation selector
+        step_selector: Step selector (name, ULID, or index)
+
+    Returns:
+        StepRef object
+    """
+    from quantumvitas.core.resolution import resolve_step
+    from quantumvitas.core.project_utils import load_project_config
+
+    config = load_project_config(self.project_root)
+    try:
+        return resolve_step(self.project_root, calc_selector, step_selector, config=config)
+    except Exception as e:
+        raise QVServiceError(f"Failed to resolve step '{calc_selector}/{step_selector}': {e}") from e
+
+def resolve_structure_ref(self, selector: str) -> "StructureRef":
+    """
+    Resolve structure selector to StructureRef.
+
+    Args:
+        selector: Structure name, slug, ULID, or path
+
+    Returns:
+        StructureRef object
+    """
+    from quantumvitas.core.resolution import resolve_structure
+    from quantumvitas.core.project_utils import load_project_config
+
+    config = load_project_config(self.project_root)
+    try:
+        return resolve_structure(self.project_root, selector, config=config)
+    except Exception as e:
+        raise QVServiceError(f"Failed to resolve structure '{selector}': {e}") from e
+
+def load_project_config(self) -> dict:
+    """
+    Load project.qv.yml configuration.
+
+    Returns:
+        Project configuration dict
+    """
+    from quantumvitas.core.project_utils import load_project_config as _load_config
+    return _load_config(self.project_root)
+
+def get_context_from_cwd(self, cwd: Path = None) -> dict:
+    """
+    Detect project/calculation context from working directory.
+
+    Args:
+        cwd: Working directory (defaults to current)
+
+    Returns:
+        Context dict with keys: project_root, calculation, step, etc.
+    """
+    from quantumvitas.core.context import find_path_context_from_pwd
+    if cwd is None:
+        cwd = Path.cwd()
+    return find_path_context_from_pwd(cwd)
+
+def get_engine_registry(self) -> "EngineRegistry":
+    """
+    Get engine registry for this project.
+
+    Returns:
+        EngineRegistry instance
+    """
+    from quantumvitas.engine.registry import create_default_registry
+    return create_default_registry()
+
+def configure_step(
+    self,
+    calc_selector: str,
+    step_selector: str,
+    params: dict,
     *,
-    style: str = "ball_stick",
-    size: tuple[int, int] = (600, 400),
-) -> None:
+    dry_run: bool = False,
+) -> dict:
     """
-    Display structure visualization in notebook.
+    Configure step parameters.
 
     Args:
-        structure: Structure object or dict
-        style: Visualization style
-        size: Figure size (width, height)
+        calc_selector: Calculation selector
+        step_selector: Step selector
+        params: Parameters to set
+        dry_run: If True, validate only without saving
+
+    Returns:
+        Result dict with 'success', 'changes', 'warnings'
     """
-    display, HTML = _get_ipython_display()
-    if display is None:
-        print(f"Structure: {structure}")
-        return
+    # Implementation delegates to existing configure logic
+    step_ref = self.resolve_step_ref(calc_selector, step_selector)
 
-    # TODO: Integrate with 3D visualization library
-    display(HTML(f"<p>Structure visualization (style={style})</p>"))
+    if dry_run:
+        # Validation only
+        return {"success": True, "changes": params, "warnings": []}
 
+    # Apply changes
+    from quantumvitas.core.yamldoc import StepDoc
+    from quantumvitas.core.yaml_io import load_yaml_doc, save_yaml_doc
 
-def display_bands(
-    bands_data: Any,
-    *,
-    figsize: tuple[int, int] = (10, 6),
-    title: Optional[str] = None,
-) -> None:
-    """
-    Display band structure plot in notebook.
+    step_path = step_ref.absolute_path
+    doc = load_yaml_doc(StepDoc, step_path)
 
-    Args:
-        bands_data: Band structure data (dict or artifact)
-        figsize: Figure size
-        title: Optional plot title
-    """
-    display, HTML = _get_ipython_display()
-    if display is None:
-        print(f"Bands data: {bands_data}")
-        return
+    # Merge params into step
+    if "parameters" not in doc.data:
+        doc.data["parameters"] = {}
+    doc.data["parameters"].update(params)
 
-    # TODO: Integrate with matplotlib plotting
-    display(HTML(f"<p>Band structure plot</p>"))
-
-
-def display_dos(
-    dos_data: Any,
-    *,
-    figsize: tuple[int, int] = (10, 6),
-    title: Optional[str] = None,
-) -> None:
-    """
-    Display DOS plot in notebook.
-
-    Args:
-        dos_data: DOS data (dict or artifact)
-        figsize: Figure size
-        title: Optional plot title
-    """
-    display, HTML = _get_ipython_display()
-    if display is None:
-        print(f"DOS data: {dos_data}")
-        return
-
-    display(HTML(f"<p>DOS plot</p>"))
-
-
-def display_energy(
-    energy_data: Any,
-    *,
-    unit: str = "eV",
-) -> None:
-    """
-    Display energy information.
-
-    Args:
-        energy_data: Energy data (dict or float)
-        unit: Energy unit for display
-    """
-    display, HTML = _get_ipython_display()
-    if display is None:
-        print(f"Energy: {energy_data} {unit}")
-        return
-
-    if isinstance(energy_data, (int, float)):
-        display(HTML(f"<p><strong>Energy:</strong> {energy_data:.6f} {unit}</p>"))
-    else:
-        display(HTML(f"<p><strong>Energy data:</strong> {energy_data}</p>"))
-
-
-def display_calculation_summary(
-    calc: Any,
-) -> None:
-    """
-    Display calculation summary in notebook.
-
-    Args:
-        calc: Calculation object or summary dict
-    """
-    display, HTML = _get_ipython_display()
-    if display is None:
-        print(f"Calculation: {calc}")
-        return
-
-    # Build HTML summary
-    html_parts = ["<div style='border: 1px solid #ddd; padding: 10px;'>"]
-    html_parts.append("<h3>Calculation Summary</h3>")
-
-    if hasattr(calc, 'id'):
-        html_parts.append(f"<p><strong>ID:</strong> {calc.id}</p>")
-    if hasattr(calc, 'name'):
-        html_parts.append(f"<p><strong>Name:</strong> {calc.name}</p>")
-
-    html_parts.append("</div>")
-    display(HTML("".join(html_parts)))
+    save_yaml_doc(doc, step_path)
+    return {"success": True, "changes": params, "warnings": []}
 ```
 
-### Acceptance Criteria
+### PR 1.3: Add API Tests
+
+**File**: `tests/unit/test_api_facade.py` (create)
+
+```python
+"""Tests for API facade methods."""
+
+import pytest
+from pathlib import Path
+
+# These tests verify API methods work, NOT that frontends use them
+# (That's the gate tests' job)
+
+
+class TestAPIResolutionMethods:
+    """Test that API resolution methods work correctly."""
+
+    @pytest.fixture
+    def demo_project(self, tmp_path):
+        """Create a minimal demo project."""
+        # Use existing demo or create minimal fixture
+        from quantumvitas.api import QVService
+
+        project_root = tmp_path / "test_project"
+        project_root.mkdir()
+
+        # Create minimal project.qv.yml
+        (project_root / "project.qv.yml").write_text("""
+project:
+  name: test_project
+structures: []
+calculations: []
+""")
+        return project_root
+
+    def test_load_project_config(self, demo_project):
+        """API can load project config."""
+        from quantumvitas.api import QVService
+
+        svc = QVService(demo_project)
+        config = svc.load_project_config()
+        assert "project" in config
+
+    def test_get_context_from_cwd(self, demo_project):
+        """API can detect context from cwd."""
+        from quantumvitas.api import QVService
+        import os
+
+        svc = QVService(demo_project)
+
+        # Change to project dir
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(demo_project)
+            ctx = svc.get_context_from_cwd()
+            # Should detect project root at minimum
+            assert ctx is not None
+        finally:
+            os.chdir(old_cwd)
+```
+
+### Acceptance Criteria (Batch 1)
 
 ```bash
-# Notebook imports work
+# 1. API is importable with new methods
 python -c "
-from quantumvitas.frontends.notebook import QVService, display_bands
-print('OK')
+from quantumvitas.api import QVService
+svc = QVService.__new__(QVService)
+# Check methods exist
+assert hasattr(svc, 'resolve_calculation_ref')
+assert hasattr(svc, 'resolve_step_ref')
+assert hasattr(svc, 'resolve_structure_ref')
+assert hasattr(svc, 'load_project_config')
+assert hasattr(svc, 'get_context_from_cwd')
+print('API methods OK')
 "
-# Expected: OK
 
-# No daemon required
-python -c "
-from quantumvitas.frontends.notebook import QVService
-# This should work without starting daemon
-print('Direct import OK')
-"
-# Expected: Direct import OK
+# 2. Importability smoke
+python -c "from quantumvitas.cli.main import app; print('CLI OK')"
+python -c "from quantumvitas.daemon.server import QVDaemon; print('Daemon OK')"
 
-# Tests pass
-pytest tests/ -v --tb=short -x
+# 3. Full suite
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
 
-### Risks
-- LOW: New module, no breaking changes
+### ═══════════════════════════════════════════════════════
+### STOP POINT 1: API facade complete
+### All needed API methods exist
+### Repo is GREEN and IMPORTABLE
+### ═══════════════════════════════════════════════════════
 
 ---
 
-## PR 10: Refactor Daemon to Remove Core Imports
+## BATCH 2: DAEMON MIGRATION
 
-### Goal
-Update daemon to use only `api/` - remove direct core imports.
+**Goal**: Convert daemon to use API methods instead of direct core imports.
 
-### Changes Required
+**Risk**: MEDIUM (daemon is smaller than CLI, ~1000 lines)
 
-In `src/quantumvitas/frontends/daemon/server.py`:
+### PR 2.1: Identify Daemon Imports to Migrate
 
-1. **Remove direct core imports**:
+**Task**: List all forbidden imports in daemon.
+
+**Command**:
+```bash
+rg "^from quantumvitas\.(core|calculation|drivers|analysis|io)" src/quantumvitas/daemon/
+rg "^import quantumvitas\.(core|calculation|drivers|analysis|io)" src/quantumvitas/daemon/
+```
+
+**Expected findings** (from earlier audit):
+- `from quantumvitas.core.exceptions import LegacyProjectError`
+- `from quantumvitas.core.resolution import resolve_calculation, ...`
+- `from quantumvitas.core.project_utils import load_project_config`
+
+### PR 2.2: Migrate Daemon Resolution Calls
+
+**File**: `src/quantumvitas/daemon/server.py`
+
+**Strategy**: ONE FUNCTION AT A TIME with compile check.
+
+**Step 1**: Add API import at top (keep existing imports for now):
+```python
+from quantumvitas.api import QVService, QVServiceError
+```
+
+**Step 2**: For EACH function that calls resolution:
+
+Example - `_handle_get_calculation`:
+```python
+# BEFORE:
+def _handle_get_calculation(self, params):
+    calc = resolve_calculation(self.project_root, params["selector"], self.config)
+    return calc.to_dict()
+
+# AFTER:
+def _handle_get_calculation(self, params):
+    svc = QVService(self.project_root)
+    calc_ref = svc.resolve_calculation_ref(params["selector"])
+    return calc_ref.to_dict()
+```
+
+**After EACH function edit**:
+```bash
+python -m py_compile src/quantumvitas/daemon/server.py
+python -c "from quantumvitas.daemon.server import QVDaemon; print('OK')"
+```
+
+**Step 3**: After ALL functions migrated, remove unused imports:
 ```python
 # REMOVE these lines:
-from quantumvitas.core.exceptions import LegacyProjectError
-from quantumvitas.core.resolution import (...)
+from quantumvitas.core.resolution import resolve_calculation, resolve_step, ...
 from quantumvitas.core.project_utils import load_project_config
 ```
 
-2. **Add API imports**:
+### PR 2.3: Migrate Daemon Exception Handling
+
+**Current**:
 ```python
-from quantumvitas.api import QVService, QVServiceError, ErrorSpec
+from quantumvitas.core.exceptions import LegacyProjectError
 ```
 
-3. **Update resolution calls to use QVService**:
-```python
-# BEFORE:
-calc = resolve_calculation(project_root, selector, config)
+**Options**:
+1. Re-export `LegacyProjectError` from `api.py`
+2. Catch generic `QVServiceError` instead
 
-# AFTER:
-svc = QVService(project_root)
-calc = svc.resolve_calculation(selector)
+**Preferred**: Re-export from API:
+
+**File**: `src/quantumvitas/api.py`
+```python
+# Add to imports section
+from quantumvitas.core.exceptions import LegacyProjectError
+
+# Add to __all__ if exists
 ```
 
-### Verification Commands
+**Then in daemon**:
+```python
+from quantumvitas.api import QVService, QVServiceError, LegacyProjectError
+```
+
+### Acceptance Criteria (Batch 2)
 
 ```bash
-# After changes, this must return 0 matches:
-rg "from quantumvitas\.core" src/quantumvitas/frontends/daemon/
-# Expected: 0 matches
+# 1. No forbidden imports in daemon
+rg "^from quantumvitas\.(core|calculation|drivers)" src/quantumvitas/daemon/
+# Expected: 0 matches (or only re-exports via api)
 
-# Gate tests pass
-pytest tests/gates/test_import_rules.py -v
+# 2. Daemon importable
+python -c "from quantumvitas.daemon.server import QVDaemon; print('Daemon OK')"
+
+# 3. Gates pass
+python -m pytest tests/gates/test_import_rules.py -v
+
+# 4. Full suite
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
 
-### Acceptance Criteria
-
-```bash
-# No core imports in daemon
-rg "from quantumvitas\.core" src/quantumvitas/frontends/daemon/
-# Expected: 0 matches
-
-# Daemon still works
-python -c "from quantumvitas.frontends.daemon import QVDaemon; print('OK')"
-# Expected: OK
-
-# Tests pass
-pytest tests/ -v --tb=short -x
-```
-
-### Risks
-- MEDIUM: Daemon functionality depends on resolution working through API
+### ═══════════════════════════════════════════════════════
+### STOP POINT 2: Daemon migrated
+### Daemon uses API only
+### Repo is GREEN and IMPORTABLE
+### ═══════════════════════════════════════════════════════
 
 ---
 
-## PR 11: Refactor CLI to Remove Core Imports (Incremental)
+## BATCH 3: CLI PREPARATION
 
-### Goal
-Begin refactoring CLI to use only `api/`. This is the largest PR and may need to be split further.
+**Goal**: Prepare for CLI migration without breaking anything.
 
-### Strategy
+**Risk**: MEDIUM
 
-1. **Phase A**: Add missing API methods to `QVService`
-2. **Phase B**: Update CLI commands one by one
-3. **Phase C**: Remove core imports
+### CLI Deep Review
 
-### Phase A: Add Missing API Methods
+**File**: `src/quantumvitas/cli/main.py` (~4000 lines, ~189KB)
 
-Add to `api/service.py` (or `api_legacy.py`):
-
+**Current forbidden imports** (from audit):
 ```python
-class QVService:
-    # ... existing methods ...
-
-    def resolve_calculation(self, selector: str):
-        """Resolve calculation selector to Calculation object."""
-        from quantumvitas.core.resolution import resolve_calculation
-        from quantumvitas.core.project_utils import load_project_config
-        config = load_project_config(self.project_root)
-        return resolve_calculation(self.project_root, selector, config)
-
-    def resolve_step(self, calc_selector: str, step_selector: str):
-        """Resolve step selector to Step object."""
-        from quantumvitas.core.resolution import resolve_step
-        from quantumvitas.core.project_utils import load_project_config
-        config = load_project_config(self.project_root)
-        return resolve_step(self.project_root, calc_selector, step_selector, config)
-
-    def detect_context(self, cwd: str) -> dict:
-        """Detect project/calculation context from working directory."""
-        from quantumvitas.core.context import find_path_context_from_pwd
-        return find_path_context_from_pwd(Path(cwd))
+from quantumvitas.core.resources import (...)           # ~8 imports
+from quantumvitas.core.context import (...)             # ~2 imports
+from quantumvitas.core.exceptions import (...)          # ~1 import
+from quantumvitas.core.resolution import (...)          # ~7 imports
+from quantumvitas.core.selectors import (...)           # ~6 imports
+from quantumvitas.core.project_utils import (...)       # ~19 imports
+from quantumvitas.analysis import bands, dos, energy
+from quantumvitas.engine.registry import create_default_registry
+from quantumvitas.calculation.runner import CalculationRunner
+from quantumvitas.calculation.calculation import Calculation
 ```
 
-### Phase B: Update CLI Commands
+**High-risk areas** (most uses of forbidden imports):
+1. Project/context resolution at command start
+2. Calculation/step resolution in run commands
+3. Step parameter configuration
+4. Analysis display (bands/dos/energy)
 
-For each command in `frontends/cli/app.py`:
+### Migration Order (safest first)
 
+| Phase | Functions | Complexity |
+|-------|-----------|------------|
+| 3A | Project context detection | LOW |
+| 3B | list_* commands | LOW |
+| 3C | show_* commands | MEDIUM |
+| 3D | run_* commands | MEDIUM |
+| 3E | config_* commands | MEDIUM |
+| 3F | Analysis display | HIGH |
+| 3G | Remaining functions | VARIES |
+
+### PR 3.1: Create CLI Migration Marker
+
+**Purpose**: Mark imports that are being migrated to prevent accidental removal.
+
+**File**: `src/quantumvitas/cli/main.py`
+
+**Add comment markers to imports**:
+```python
+# === MIGRATION ZONE START ===
+# These imports will be migrated to use API in Batch 4.
+# Do NOT remove until migration complete.
+from quantumvitas.core.resolution import (  # MIGRATION: PR 4.x
+    resolve_calculation,
+    resolve_step,
+    ...
+)
+# === MIGRATION ZONE END ===
+```
+
+### PR 3.2: Add CLI Compile Gate
+
+**File**: `tests/gates/test_import_rules.py`
+
+**Add to TestImportabilitySmoke**:
+```python
+def test_cli_compiles(self):
+    """CLI must compile without syntax errors."""
+    result = subprocess.run(
+        ["python", "-m", "py_compile", "src/quantumvitas/cli/main.py"],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+    )
+    assert result.returncode == 0, (
+        f"CLI compilation failed:\n{result.stderr}"
+    )
+```
+
+### Acceptance Criteria (Batch 3)
+
+```bash
+# 1. Migration markers added
+rg "MIGRATION:" src/quantumvitas/cli/main.py | head -5
+# Expected: Shows migration markers
+
+# 2. CLI compiles
+python -m py_compile src/quantumvitas/cli/main.py
+
+# 3. CLI importable
+python -c "from quantumvitas.cli.main import app; print('CLI OK')"
+
+# 4. Full suite
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+```
+
+### ═══════════════════════════════════════════════════════
+### STOP POINT 3: CLI prepared
+### Migration markers in place
+### Repo is GREEN and IMPORTABLE
+### ═══════════════════════════════════════════════════════
+
+---
+
+## BATCH 4: CLI MIGRATION
+
+**Goal**: Convert CLI to use API, in small increments.
+
+**Risk**: HIGH (largest file, most changes)
+
+### CRITICAL RULES FOR CLI MIGRATION
+
+1. **ONE function at a time**
+2. **Compile check after EVERY edit**
+3. **NO mass search/replace**
+4. **Keep old import until ALL uses removed**
+5. **Test frequently**
+
+### PR 4.1: Migrate Context Detection
+
+**Functions to migrate**:
+- `_get_project_root()`
+- Any function using `find_path_context_from_pwd`
+
+**Pattern**:
 ```python
 # BEFORE:
-from quantumvitas.core.resolution import resolve_calculation
-@app.command()
-def show(calc: str):
-    calc_obj = resolve_calculation(project_root, calc, config)
+from quantumvitas.core.context import find_path_context_from_pwd
+def _get_project_root():
+    ctx = find_path_context_from_pwd(Path.cwd())
+    return ctx.get("project_root")
 
 # AFTER:
-from quantumvitas.api import QVService
+def _get_project_root():
+    # Note: We need project_root to create QVService, but we're detecting it.
+    # This is a bootstrap case - keep the import for now or use a standalone helper.
+    from quantumvitas.core.context import find_path_context_from_pwd
+    ctx = find_path_context_from_pwd(Path.cwd())
+    return ctx.get("project_root")
+```
+
+**Decision**: Context detection is a **bootstrap** operation - it MUST run before we have a project_root. This import may need to stay or be moved to a `frontends/_shared/context.py` helper.
+
+### PR 4.2: Migrate list_* Commands
+
+**Functions**:
+- `list_calculations()`
+- `list_structures()`
+- `list_steps()`
+
+**Pattern**:
+```python
+# BEFORE:
 @app.command()
-def show(calc: str):
+def list_calculations():
+    config = load_project_config(project_root)
+    for calc in config.get("calculations", []):
+        print(calc["name"])
+
+# AFTER:
+@app.command()
+def list_calculations():
     svc = QVService(project_root)
-    calc_obj = svc.resolve_calculation(calc)
+    for calc in svc.list_calculations():
+        print(calc.name)
 ```
 
-### Verification Commands
-
+**After EACH function**:
 ```bash
-# Track progress:
-rg "from quantumvitas\.core" src/quantumvitas/frontends/cli/ | wc -l
-# Goal: Reduce to 0
-
-# After each batch of changes:
-pytest tests/ -v --tb=short -x
+python -m py_compile src/quantumvitas/cli/main.py
+python -c "from quantumvitas.cli.main import app; print('OK')"
 ```
 
-### Acceptance Criteria
+### PR 4.3: Migrate show_* Commands
 
-```bash
-# No core imports in CLI
-rg "from quantumvitas\.core" src/quantumvitas/frontends/cli/
-# Expected: 0 matches
+Similar pattern to list_* commands.
 
-# No resolution functions called directly
-rg "resolve_calculation\(|resolve_step\(" src/quantumvitas/frontends/cli/
-# Expected: 0 matches
+### PR 4.4: Migrate run_* Commands
 
-# CLI works
-qv list calcs --help
-qv run --help
+**Functions**:
+- `run_calculation()`
+- `run_step()`
 
-# Tests pass
-pytest tests/ -v --tb=short -x
+**These are critical** - test thoroughly.
 
-# Gate tests pass
-pytest tests/gates/test_import_rules.py -v
+### PR 4.5: Migrate config_* Commands
+
+### PR 4.6: Migrate Remaining Functions
+
+### PR 4.7: Remove Migrated Imports
+
+**ONLY after ALL functions migrated**:
+
+```python
+# REMOVE these lines (verify no uses first):
+# from quantumvitas.core.resolution import ...
+# from quantumvitas.core.project_utils import ...
+# etc.
 ```
 
-### Risks
-- HIGH: Large refactor, may break CLI functionality
+**Verify no uses**:
+```bash
+# For each symbol being removed:
+rg "resolve_calculation" src/quantumvitas/cli/main.py
+# Should show only the import line (which we're removing)
+# or svc.resolve_calculation_ref() calls (which are fine)
+```
 
-### Rollback
-- Revert individual command changes if tests fail
+### Failure Recovery
 
----
+**If you get NameError after removing import**:
+1. DO NOT add a new import back
+2. Find the function that still uses the old symbol
+3. Edit that function to use API
+4. Compile check
+5. Try again
 
-## PR 12: Cleanup and Final Verification
+**If you get IndentationError**:
+1. STOP immediately
+2. `git diff src/quantumvitas/cli/main.py` to see damage
+3. If damage is extensive: `git checkout src/quantumvitas/cli/main.py`
+4. Start over with smaller edits
 
-### Goal
-Remove compatibility shims (optional), final verification, documentation update.
-
-### Tasks
-
-1. **Run full test suite**
-2. **Run all gate tests**
-3. **Run repo audit commands**
-4. **Update documentation**
-
-### Final Verification Commands
+### Acceptance Criteria (Batch 4)
 
 ```bash
-# === Import Rule Verification ===
-
-# 1. Frontends have no kernel imports
-rg "from quantumvitas\.core" src/quantumvitas/frontends/
-rg "from quantumvitas\.calculation" src/quantumvitas/frontends/
-rg "from quantumvitas\.drivers" src/quantumvitas/frontends/
-rg "from quantumvitas\.analysis" src/quantumvitas/frontends/
-rg "from quantumvitas\.io" src/quantumvitas/frontends/
-# Expected: All return 0 matches
-
-# 2. Tools have no kernel imports
-rg "from quantumvitas\.core" src/quantumvitas/tools/
-rg "from quantumvitas\.calculation" src/quantumvitas/tools/
-# Expected: All return 0 matches
-
-# 3. API has no frontend/tools imports
-rg "from quantumvitas\.frontends" src/quantumvitas/api/
-rg "from quantumvitas\.tools" src/quantumvitas/api/
-# Expected: All return 0 matches
-
-# 4. CLI is thin (no resolve functions)
-rg "resolve_calculation\(|resolve_step\(|resolve_structure\(" src/quantumvitas/frontends/cli/
+# 1. No forbidden imports (except bootstrap context detection)
+rg "^from quantumvitas\.(core|calculation|drivers)" src/quantumvitas/cli/main.py | grep -v "BOOTSTRAP"
 # Expected: 0 matches
 
-# === Functional Tests ===
+# 2. CLI compiles
+python -m py_compile src/quantumvitas/cli/main.py
 
-# 5. All tests pass
-pytest tests/ -v
+# 3. CLI importable
+python -c "from quantumvitas.cli.main import app; print('CLI OK')"
 
-# 6. Gate tests pass
-pytest tests/gates/ -v
-
-# 7. CLI works
+# 4. CLI works
 qv --help
 qv list --help
 
-# 8. Jupyter import works
-python -c "
-from quantumvitas import QVService
-from quantumvitas.frontends.notebook import display_bands
-print('Jupyter import OK')
-"
+# 5. Gates pass
+python -m pytest tests/gates/test_import_rules.py -v
 
-# 9. Tools import works
-python -c "
-from quantumvitas.tools import discover, run_calc, validate_patch
-print('Tools import OK')
-"
+# 6. Full suite
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+```
 
-# === Directory Structure ===
+### ═══════════════════════════════════════════════════════
+### STOP POINT 4: CLI migrated
+### CLI uses API only
+### Repo is GREEN and IMPORTABLE
+### ═══════════════════════════════════════════════════════
 
-# 10. scripts/ exists (not tools/)
+---
+
+## BATCH 5: DIRECTORY MOVES
+
+**Goal**: Move files to `frontends/` directory structure.
+
+**Risk**: LOW (behavior already migrated, just moving files)
+
+**PREREQUISITE**: Batches 0-4 complete and green.
+
+### PR 5.1: Create frontends/ Structure
+
+```bash
+mkdir -p src/quantumvitas/frontends/_shared
+mkdir -p src/quantumvitas/frontends/cli
+mkdir -p src/quantumvitas/frontends/daemon
+mkdir -p src/quantumvitas/frontends/notebook
+mkdir -p src/quantumvitas/frontends/agent
+
+echo '"""Frontend layers for QMatSuite."""' > src/quantumvitas/frontends/__init__.py
+```
+
+### PR 5.2: Move Daemon
+
+```bash
+git mv src/quantumvitas/daemon/server.py src/quantumvitas/frontends/daemon/server.py
+git mv src/quantumvitas/daemon/jobs.py src/quantumvitas/frontends/daemon/jobs.py
+# Update imports in moved files
+# Create shim at old location
+```
+
+### PR 5.3: Move CLI
+
+```bash
+git mv src/quantumvitas/cli/main.py src/quantumvitas/frontends/cli/app.py
+git mv src/quantumvitas/cli/__main__.py src/quantumvitas/frontends/cli/__main__.py
+# Update imports in moved files
+# Create shim at old location
+# Update pyproject.toml entry point
+```
+
+### PR 5.4: Create Notebook Frontend
+
+Create `src/quantumvitas/frontends/notebook/` with display helpers.
+
+### Acceptance Criteria (Batch 5)
+
+```bash
+# 1. New locations importable
+python -c "from quantumvitas.frontends.cli import app; print('OK')"
+python -c "from quantumvitas.frontends.daemon import QVDaemon; print('OK')"
+
+# 2. Old locations still work (shims)
+python -c "from quantumvitas.cli import app; print('OK')"
+python -c "from quantumvitas.daemon import QVDaemon; print('OK')"
+
+# 3. Full suite
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+```
+
+### ═══════════════════════════════════════════════════════
+### STOP POINT 5: Directory structure complete
+### Files moved to frontends/
+### Repo is GREEN and IMPORTABLE
+### ═══════════════════════════════════════════════════════
+
+---
+
+## BATCH 6: CLEANUP & FINALIZE
+
+**Goal**: Remove shims, final audit.
+
+**Risk**: LOW
+
+### PR 6.1: Rename tools/ to scripts/
+
+```bash
+git mv tools scripts
+# Update any CI/docs references
+```
+
+### PR 6.2: Create tools/ Surface (Python Package)
+
+Create `src/quantumvitas/tools/` with agent-ready primitives.
+
+### PR 6.3: Remove Compatibility Shims (Optional)
+
+After deprecation period, remove shims at old locations.
+
+### Final Verification
+
+```bash
+# === Complete Audit ===
+
+# 1. No forbidden imports in frontends
+rg "^from quantumvitas\.(core|calculation|drivers|analysis|io)" src/quantumvitas/frontends/
+# Expected: 0 matches
+
+# 2. No forbidden imports in tools
+rg "^from quantumvitas\.(core|calculation|drivers)" src/quantumvitas/tools/
+# Expected: 0 matches
+
+# 3. All importability checks
+python -c "from quantumvitas.frontends.cli import app; print('CLI OK')"
+python -c "from quantumvitas.frontends.daemon import QVDaemon; print('Daemon OK')"
+python -c "from quantumvitas.frontends.notebook import display_bands; print('Notebook OK')"
+python -c "from quantumvitas.tools import discover, run_calc; print('Tools OK')"
+python -c "from quantumvitas.api import QVService; print('API OK')"
+
+# 4. CLI works
+qv --help
+qv list calcs --help
+
+# 5. Full suite
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+
+# 6. scripts/ exists
 ls scripts/
 # Expected: Maintenance scripts
 
+# 7. No old tools/ at repo level
 ls tools/ 2>&1 | grep -i "no such"
 # Expected: No such file or directory
+
+echo "=== REFACTOR COMPLETE ==="
 ```
 
-### Update README.md
-
-Add section about new module structure:
-
-```markdown
-## Module Structure
-
-- `quantumvitas.api` - Public API (use this)
-- `quantumvitas.tools` - Agent-ready tool surface
-- `quantumvitas.frontends.cli` - CLI frontend
-- `quantumvitas.frontends.daemon` - GUI daemon
-- `quantumvitas.frontends.notebook` - Jupyter helpers
-```
-
-### Acceptance Criteria
-
-All verification commands pass with expected output.
+### ═══════════════════════════════════════════════════════
+### STOP POINT 6: REFACTOR COMPLETE
+### All batches done
+### Repo is GREEN and IMPORTABLE
+### ═══════════════════════════════════════════════════════
 
 ---
 
-## Test Strategy Summary
+## APPENDIX A: Gate Test Patterns
 
-### Required Test Suites
+### What Gates SHOULD Detect
 
-| Suite | When to Run | Purpose |
-|-------|-------------|---------|
-| `pytest tests/` | Every PR | Full test coverage |
-| `pytest tests/gates/` | Every PR | Import rule enforcement |
-| `pytest tests/gates/test_import_rules.py` | After any frontend/api/tools change | Verify architecture |
+```python
+# FORBIDDEN - direct imports from kernel
+from quantumvitas.core.resolution import resolve_calculation  # CATCH THIS
+from quantumvitas.core import resolution  # CATCH THIS
+import quantumvitas.core.resolution  # CATCH THIS
+from quantumvitas.calculation.runner import CalculationRunner  # CATCH THIS
+```
 
-### New Tests Added
+### What Gates Should NOT Detect
 
-| Test | PR | Purpose |
-|------|-----|---------|
-| `test_import_rules.py` | PR 6 | Enforce import rules |
-| `test_jupyter_smoke.py` | PR 9 | Verify Jupyter works without daemon |
+```python
+# ALLOWED - method calls on API objects
+svc.resolve_calculation_ref(...)  # DO NOT CATCH
+result = QVService(root).resolve_calculation_ref(...)  # DO NOT CATCH
 
-### Repo Audit Script
+# ALLOWED - re-exports from API
+from quantumvitas.api import LegacyProjectError  # DO NOT CATCH (re-exported)
+```
 
-Create `scripts/audit_imports.sh`:
+### Gate Pattern Implementation
 
+Use **import-based detection**, not method-name detection:
+
+```python
+# CORRECT gate pattern
+r"^from quantumvitas\.core"  # Matches import statements only
+r"^import quantumvitas\.core"  # Matches import statements only
+
+# WRONG gate pattern (v1 mistake)
+r"resolve_calculation\("  # Matches method calls too - FALSE POSITIVE
+```
+
+---
+
+## APPENDIX B: Safe Rollback Commands
+
+### Undo a single file
 ```bash
-#!/bin/bash
-# Audit import rules for multi-frontend architecture
-
-echo "=== Frontend Import Audit ==="
-echo "Checking frontends/ for forbidden imports..."
-
-VIOLATIONS=0
-
-for pattern in "quantumvitas\.core" "quantumvitas\.calculation" "quantumvitas\.drivers" "quantumvitas\.analysis" "quantumvitas\.io"; do
-    count=$(rg -c "from $pattern" src/quantumvitas/frontends/ 2>/dev/null | awk -F: '{sum+=$2} END {print sum+0}')
-    if [ "$count" -gt 0 ]; then
-        echo "  VIOLATION: $count imports matching 'from $pattern' in frontends/"
-        VIOLATIONS=$((VIOLATIONS + count))
-    fi
-done
-
-echo ""
-echo "=== Tools Import Audit ==="
-echo "Checking tools/ for forbidden imports..."
-
-for pattern in "quantumvitas\.core" "quantumvitas\.calculation"; do
-    count=$(rg -c "from $pattern" src/quantumvitas/tools/ 2>/dev/null | awk -F: '{sum+=$2} END {print sum+0}')
-    if [ "$count" -gt 0 ]; then
-        echo "  VIOLATION: $count imports matching 'from $pattern' in tools/"
-        VIOLATIONS=$((VIOLATIONS + count))
-    fi
-done
-
-echo ""
-echo "=== API Import Audit ==="
-for pattern in "quantumvitas\.frontends" "quantumvitas\.tools"; do
-    count=$(rg -c "from $pattern" src/quantumvitas/api/ 2>/dev/null | awk -F: '{sum+=$2} END {print sum+0}')
-    if [ "$count" -gt 0 ]; then
-        echo "  VIOLATION: $count imports matching 'from $pattern' in api/"
-        VIOLATIONS=$((VIOLATIONS + count))
-    fi
-done
-
-echo ""
-if [ "$VIOLATIONS" -gt 0 ]; then
-    echo "FAILED: $VIOLATIONS total violations found"
-    exit 1
-else
-    echo "PASSED: No import violations found"
-    exit 0
-fi
+git checkout HEAD -- src/quantumvitas/cli/main.py
 ```
 
----
-
-## Risk Summary
-
-| PR | Risk Level | Main Risk |
-|----|------------|-----------|
-| PR 1 | LOW | Broken CI references |
-| PR 2 | LOW | None |
-| PR 3 | MEDIUM | Breaking api.py rename |
-| PR 4 | LOW | None |
-| PR 5 | LOW | None |
-| PR 6 | LOW | None |
-| PR 7 | MEDIUM | GUI spawn path |
-| PR 8 | MEDIUM | Entry point change |
-| PR 9 | LOW | None |
-| PR 10 | MEDIUM | Daemon functionality |
-| PR 11 | HIGH | CLI functionality |
-| PR 12 | LOW | None |
-
----
-
-## Rollback Strategy
-
-Each PR can be reverted independently:
-
+### Undo all uncommitted changes
 ```bash
-git revert <commit-hash>
+git checkout HEAD -- .
 ```
 
-For multi-commit PRs, use:
-
+### Undo last commit (keep changes)
 ```bash
-git revert --no-commit <first-commit>..<last-commit>
-git commit -m "Revert: <PR description>"
+git reset --soft HEAD~1
+```
+
+### Clean up (SAFE)
+```bash
+# ALWAYS exclude .qmatsuite and .venv
+git clean -xfd -e .qmatsuite/ -e .venv/ -e .env
 ```
 
 ---
 
-## Timeline
+## APPENDIX C: CLI Migration Checklist
 
-**No time estimates provided** - PRs should be merged when ready and tests pass.
+Use this checklist when migrating each CLI function:
 
-Recommended order:
-1. PR 1-2: Foundation (can be done quickly)
-2. PR 3-6: API/Tools setup
-3. PR 7-9: Frontend relocation
-4. PR 10-11: Refactoring (most effort)
-5. PR 12: Cleanup
+```
+[ ] Identify function to migrate
+[ ] Identify which core imports it uses
+[ ] Check API has equivalent method
+[ ] Edit function (ONE function only)
+[ ] Run: python -m py_compile src/quantumvitas/cli/main.py
+[ ] Run: python -c "from quantumvitas.cli.main import app"
+[ ] Run: python -m pytest tests/gates/test_import_rules.py -v
+[ ] Commit changes
+[ ] Repeat for next function
+```
 
 ---
 
-*End of implementation plan.*
+## APPENDIX D: Bootstrap Imports Exception
+
+Some imports MUST stay in frontends because they're needed BEFORE we have a project_root:
+
+1. **Context detection**: `find_path_context_from_pwd` - needed to find project_root
+2. **Exception types**: May need to catch specific types
+
+**Solution**: Create `frontends/_shared/bootstrap.py`:
+```python
+"""
+Bootstrap utilities that frontends may import.
+
+These are the ONLY kernel imports allowed in frontends.
+They are needed before QVService can be instantiated.
+"""
+
+from quantumvitas.core.context import find_path_context_from_pwd
+from quantumvitas.core.exceptions import LegacyProjectError
+
+__all__ = ["find_path_context_from_pwd", "LegacyProjectError"]
+```
+
+Then frontends import from `_shared`:
+```python
+from quantumvitas.frontends._shared.bootstrap import find_path_context_from_pwd
+```
+
+Gate tests exclude `_shared/bootstrap.py` from forbidden import checks.
+
+---
+
+*End of implementation plan v2.*
