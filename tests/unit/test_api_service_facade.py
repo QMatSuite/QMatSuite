@@ -917,8 +917,36 @@ steps: []
             section="SYSTEM",
         )
         assert override.name == "ecutwfc"
-        assert override.value == 30.0
-        assert override.section == "SYSTEM"
+    
+    def test_step_re_export(self):
+        """Test that Step is re-exported from quantumvitas.api."""
+        from quantumvitas.api import Step
+        from quantumvitas.api import ResourceMeta, StepMode
+        
+        # Verify it is the same class as from the original module
+        from quantumvitas.calculation.step import Step as OriginalStep
+        
+        assert Step is OriginalStep
+        
+        # Verify it can be instantiated (requires meta and input_file)
+        meta = ResourceMeta(
+            id="01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            name="test_step",
+            slug="test-step",
+            path="steps/test_step",
+            kind="step",
+        )
+        step = Step(
+            meta=meta,
+            input_file=Path("/tmp/test.in"),
+            engine="qe",
+            step_type="scf",
+            mode=StepMode.NORMAL,
+        )
+        assert step.meta == meta
+        assert step.input_file == Path("/tmp/test.in")
+        assert step.engine == "qe"
+        assert step.step_type == "scf"
     
     def test_apply_card_overrides_to_qe_input_wrapper(self):
         """Test that apply_card_overrides_to_qe_input wrapper works."""

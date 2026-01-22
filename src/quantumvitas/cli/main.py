@@ -1659,9 +1659,8 @@ def _run_standalone_step(
     import tempfile
     import shutil
     from quantumvitas.calculation.importers import build_step_spec_from_qe_input
-    from quantumvitas.api import StructureStepSpec
+    from quantumvitas.api import StructureStepSpec, Step
     from quantumvitas.core.engines.base import EngineConfig
-    from quantumvitas.calculation.step import Step
     from quantumvitas.api import QVService
     from quantumvitas.engine.qe_engine import QeEngine
     
