@@ -2780,6 +2780,45 @@ class QVService:
         }
     
     @staticmethod
+    def visualize_structure_direct(
+        structure: "PMGStructure",
+        output_path: Optional[Path] = None,
+        supercell: Union[int, Tuple[int, int, int]] = (1, 1, 1),
+        repeat_boundary: bool = False,
+        show: bool = False,
+        plot_format: str = "png",
+        **kwargs,
+    ) -> "StructureVisualizationResult":
+        """
+        Visualize a crystal structure as a 3D ball-and-stick plot (direct pass-through).
+        
+        This is a pass-through wrapper for the underlying visualize_structure function.
+        Use this when you already have a structure object and don't need resolution.
+        
+        Args:
+            structure: pymatgen Structure object
+            output_path: Path to save the plot (None to not save)
+            supercell: Tuple of (a, b, c) supercell scaling factors or int
+            repeat_boundary: If True, show periodic images at cell boundaries
+            show: If True, attempt to display interactively (may not work headless)
+            plot_format: Output format (png, svg, pdf)
+            **kwargs: Additional options passed to StructurePlotOptions
+            
+        Returns:
+            StructureVisualizationResult with metadata
+        """
+        from quantumvitas.analysis.structure_viz import visualize_structure as _visualize_structure
+        return _visualize_structure(
+            structure=structure,
+            output_path=output_path,
+            supercell=supercell,
+            repeat_boundary=repeat_boundary,
+            show=show,
+            plot_format=plot_format,
+            **kwargs,
+        )
+    
+    @staticmethod
     def analyze_scf(
         project_root: Optional[Path],
         scf_file: Path,

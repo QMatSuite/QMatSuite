@@ -4328,7 +4328,6 @@ def analyze_structure_command(
         qv analyze structure si --show
     """
     from quantumvitas.api import QVService
-    from quantumvitas.analysis.structure_viz import visualize_structure
     
     # Resolve project root
     try:
@@ -4374,7 +4373,7 @@ def analyze_structure_command(
         output_path = Path.cwd() / f"{struct_name}_structure.{plot_format}"
     
     # Visualize
-    result = visualize_structure(
+    result = QVService.visualize_structure_direct(
         structure=structure,
         output_path=output_path,
         supercell=supercell_tuple,
