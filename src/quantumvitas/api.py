@@ -631,6 +631,76 @@ class QVService:
         return _entry_display_name(entry, fallback=fallback)
     
     @staticmethod
+    def extract_calculation_selector_from_entry(entry: Dict[str, Any]) -> Optional[str]:
+        """
+        Extract a calculation selector from a project.qv.yml entry.
+        
+        Args:
+            entry: Calculation entry dict
+            
+        Returns:
+            Selector string (ULID, slug, or name) or None
+        """
+        from quantumvitas.core.selectors import extract_calculation_selector_from_entry as _extract
+        return _extract(entry)
+    
+    @staticmethod
+    def extract_step_selector_from_entry(entry: Dict[str, Any]) -> Optional[str]:
+        """
+        Extract a step selector from a calculation.yaml steps entry.
+        
+        Args:
+            entry: Step entry dict
+            
+        Returns:
+            Selector string (ULID or name) or None
+        """
+        from quantumvitas.core.selectors import extract_step_selector_from_entry as _extract
+        return _extract(entry)
+    
+    def match_step_selector(
+        self,
+        calculation_dir: Path,
+        steps: List[Dict[str, Any]],
+        selector: str,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Match a human-friendly step selector to a step entry.
+        
+        Args:
+            calculation_dir: Calculation directory path
+            steps: List of step entry dicts from calculation.yaml
+            selector: Human selector (ULID, slug, name, step_type, or index)
+            index: Optional ResourceIndex (built if None)
+            config: Optional project config (loaded if None)
+            
+        Returns:
+            Step entry dict from steps list
+            
+        Raises:
+            QVServiceError: If selector doesn't match any step or is ambiguous
+        """
+        if config is None:
+            config = self.load_project_config()
+        
+        from quantumvitas.core.selectors import match_step_selector as _match_step_selector
+        from quantumvitas.core.resolution import SelectorNotFoundError, AmbiguousSelectorError
+        
+        try:
+            return _match_step_selector(
+                project_root=self.project_root,
+                calculation_dir=calculation_dir,
+                steps=steps,
+                selector=selector,
+                index=index,
+                config=config,
+            )
+        except (SelectorNotFoundError, AmbiguousSelectorError) as e:
+            raise QVServiceError(str(e)) from e
+    
+    @staticmethod
     def entry_matches(entry: Dict[str, Any], identifier: str) -> bool:
         """
         Check if an entry matches the given identifier.

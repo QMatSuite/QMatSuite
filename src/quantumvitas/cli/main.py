@@ -40,15 +40,6 @@ from quantumvitas.api import (
     AmbiguousSelectorError,
     SelectorNotFoundError,
 )
-from quantumvitas.core.selectors import (
-    extract_calculation_selector_from_entry,
-    extract_structure_selector_from_entry,
-    extract_step_selector_from_entry,
-    match_step_selector,
-    get_calculation_selector_from_entry_or_raise,
-    get_structure_selector_from_entry_or_raise,
-    get_step_selector_from_entry_or_raise,
-)
 from quantumvitas.core.project_utils import (
     ProjectConfigError,
     ResourceNotFoundError as ProjectResourceNotFoundError,  # Legacy error
@@ -1077,13 +1068,13 @@ def init_step_command(
         calculation_data = yaml.safe_load(calculation_yaml.read_text()) or {}
         calculation_steps = calculation_data.setdefault("steps", [])
         existing_step_ids = [
-            extract_step_selector_from_entry(step) 
+            QVService.extract_step_selector_from_entry(step) 
             for step in calculation_steps 
-            if extract_step_selector_from_entry(step)
+            if QVService.extract_step_selector_from_entry(step)
         ]
         
         # Get parent calculation id and structure
-        parent_calculation_id = extract_calculation_selector_from_entry(calculation_entry)
+        parent_calculation_id = QVService.extract_calculation_selector_from_entry(calculation_entry)
         if not parent_calculation_id:
             # Fallback to calculation.yaml meta.id
             parent_calculation_id = calculation_data.get("meta", {}).get("id") or calculation_data.get("id")
@@ -2042,7 +2033,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
         step_display_name = "(unnamed)"
         
         # New DAG model: step_id (ULID) is the canonical reference
-        step_id_ulid = extract_step_selector_from_entry(step_entry)
+        step_id_ulid = QVService.extract_step_selector_from_entry(step_entry)
         
         # Legacy: step_file (for backwards compatibility)
         legacy_step_file = step_entry.get("step_file")
@@ -2089,7 +2080,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
             # Have ULID but couldn't resolve - mark as missing
             step_display_name = f"(missing: {step_id_ulid[:8]}...)"
         else:
-            # Legacy: try old id field (already handled by extract_step_selector_from_entry)
+            # Legacy: try old id field (already handled by QVService.extract_step_selector_from_entry)
             # If we got here, step_id_ulid is None, so no valid selector found
             step_display_name = "(invalid entry)"
         
@@ -2287,7 +2278,7 @@ def rename_step_command(
     # Find step by matching selector (ID-only model uses step_id)
     target_step = None
     for step in steps:
-        step_selector = extract_step_selector_from_entry(step)
+        step_selector = QVService.extract_step_selector_from_entry(step)
         if step_selector == step_id:
             target_step = step
             break
@@ -2299,7 +2290,7 @@ def rename_step_command(
 
     if new_id:
         # Check for duplicate step_id
-        if any(extract_step_selector_from_entry(step) == new_id for step in steps if step is not target_step):
+        if any(QVService.extract_step_selector_from_entry(step) == new_id for step in steps if step is not target_step):
             raise typer.BadParameter(
                 f"Step id '{new_id}' already exists in calculation '{calculation_entry.get('name')}'."
             )
@@ -2528,7 +2519,7 @@ def delete_step_command(
             wf_entry = find_enclosing_calculation(project_root, config)
             if wf_entry:
                 # Use centralized selector extraction - single selector, single resolution pattern
-                calculation_selector = extract_calculation_selector_from_entry(wf_entry)
+                calculation_selector = QVService.extract_calculation_selector_from_entry(wf_entry)
                 if not calculation_selector:
                     raise typer.BadParameter(
                         "Calculation entry found but no valid identifier. "
@@ -2565,7 +2556,7 @@ def delete_step_command(
     target_step = None
     for step in steps:
         # Use centralized selector extraction to get step_id
-        step_id = extract_step_selector_from_entry(step)
+        step_id = QVService.extract_step_selector_from_entry(step)
         if step_id == step_id_to_find:
             target_step = step
             break
@@ -2948,7 +2939,7 @@ def configure_calculation_command(
             calculation_dir = svc.calculation_directory(calculation_entry)
         except ProjectConfigError:
             # Entry might not have path yet - try to resolve via registry
-            calculation_id = extract_calculation_selector_from_entry(calculation_entry)
+            calculation_id = QVService.extract_calculation_selector_from_entry(calculation_entry)
             if calculation_id:
                 resolved = svc.require_calculation_ref(calculation_id)
                 calculation_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "calculation.yaml" else resolved.absolute_path
@@ -3006,14 +2997,14 @@ def configure_calculation_command(
         
         for step_entry in calculation_data.get("steps", []):
             # With ID-only model, resolve step file via step_id
-            step_id = extract_step_selector_from_entry(step_entry)
+            step_id = QVService.extract_step_selector_from_entry(step_entry)
             if not step_id:
                 continue
             
             try:
                 # Resolve step file path via step_id
                 # Use centralized selector extraction for calculation selector
-                calculation_selector = extract_calculation_selector_from_entry(calculation_entry)
+                calculation_selector = QVService.extract_calculation_selector_from_entry(calculation_entry)
                 if not calculation_selector:
                     continue  # Skip if no valid selector
                 step_resolved = svc.require_step_ref(calculation_selector, step_id, config=config, index=index)
@@ -3060,15 +3051,14 @@ def configure_calculation_command(
         
         for selector in step_selectors:
             try:
-                step_entry = match_step_selector(
-                    project_root=project_root,
+                step_entry = svc.match_step_selector(
                     calculation_dir=calculation_dir,
                     steps=current_steps,
                     selector=selector,
                     index=index,
                     config=config,
                 )
-                step_ulid = extract_step_selector_from_entry(step_entry)
+                step_ulid = QVService.extract_step_selector_from_entry(step_entry)
                 if step_ulid and step_ulid not in seen_ulids:
                     reordered_entries.append(step_entry)
                     seen_ulids.add(step_ulid)
@@ -3082,9 +3072,9 @@ def configure_calculation_command(
         
         # Check if all current steps are accounted for
         current_ulids = {
-            extract_step_selector_from_entry(step) 
+            QVService.extract_step_selector_from_entry(step) 
             for step in current_steps 
-            if extract_step_selector_from_entry(step)
+            if QVService.extract_step_selector_from_entry(step)
         }
         if seen_ulids != current_ulids:
             missing_ulids = current_ulids - seen_ulids
@@ -3171,7 +3161,7 @@ def configure_species_command(
                 "No calculation specified and not inside a calculation directory. "
                 "Specify calculation id/name/slug/path or cd into a calculation folder."
             )
-        calculation = extract_calculation_selector_from_entry(calculation_entry)
+        calculation = QVService.extract_calculation_selector_from_entry(calculation_entry)
     
     # Parse --set entries into triples
     set_entries = None
@@ -3496,7 +3486,7 @@ def run_calculation_command(
                 "Specify calculation name/slug/path or cd into a calculation folder."
             )
         # Use centralized selector extraction - single selector, single resolution pattern
-        wf_id = extract_calculation_selector_from_entry(wf_entry)
+        wf_id = QVService.extract_calculation_selector_from_entry(wf_entry)
         if not wf_id:
             raise typer.BadParameter(
                 "Calculation entry found but no valid identifier. "
@@ -3759,7 +3749,7 @@ def analyze_output_command(
                 if wf_entry:
                     calculation_dir = ctx["calculation_directory"]
                     # Use centralized selector extraction for consistency
-                    calculation_selector = extract_calculation_selector_from_entry(wf_entry)
+                    calculation_selector = QVService.extract_calculation_selector_from_entry(wf_entry)
                     if calculation_selector:
                         # For display, resolve to get user-friendly name
                         try:
@@ -4035,7 +4025,7 @@ def analyze_band_command(
                 wf_entry = find_enclosing_calculation(project_root, config)
                 if wf_entry:
                     # Use centralized selector extraction - single selector, single resolution pattern
-                    calculation_selector = extract_calculation_selector_from_entry(wf_entry)
+                    calculation_selector = QVService.extract_calculation_selector_from_entry(wf_entry)
                     if calculation_selector:
                         # For display, resolve to get user-friendly name
                         try:
