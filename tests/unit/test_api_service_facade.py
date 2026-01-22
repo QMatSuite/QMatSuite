@@ -948,6 +948,66 @@ steps: []
         assert step.engine == "qe"
         assert step.step_type == "scf"
     
+    def test_generate_kpath_wrapper(self, monkeypatch):
+        """Test that generate_kpath wrapper works by mocking underlying call."""
+        from quantumvitas.api import QVService
+        import quantumvitas.analysis.kpath as kpath_module
+        
+        # Track calls to the underlying function
+        called = {}
+        
+        # Create a fake KPathResult-like object
+        class FakeKPathResult:
+            def __init__(self):
+                self.segments = []
+                self.labels = ["Γ", "X"]
+                self.coords = [(0, 0, 0), (0.5, 0, 0)]
+                self.lattice_type = "cubic"
+                self.spacegroup_symbol = "Fm-3m"
+                self.spacegroup_number = 225
+        
+        fake_result = FakeKPathResult()
+        
+        def fake_generate_kpath(structure, points_per_segment=20, path_type="hinuma"):
+            called["structure"] = structure
+            called["points_per_segment"] = points_per_segment
+            called["path_type"] = path_type
+            return fake_result
+        
+        # Mock the underlying function
+        monkeypatch.setattr(kpath_module, "generate_kpath", fake_generate_kpath)
+        
+        # Create a minimal fake structure (just needs to be an object)
+        fake_structure = type("FakeStructure", (), {})()
+        
+        # Call wrapper
+        result = QVService.generate_kpath(
+            structure=fake_structure,
+            points_per_segment=30,
+            path_type="seekpath",
+        )
+        
+        # Assertions
+        assert result == fake_result
+        assert called["structure"] == fake_structure
+        assert called["points_per_segment"] == 30
+        assert called["path_type"] == "seekpath"
+    
+    def test_generate_kpath_wrapper_raises_qvservice_error(self, monkeypatch):
+        """Test that generate_kpath wrapper converts exceptions to QVServiceError."""
+        from quantumvitas.api import QVService, QVServiceError
+        import quantumvitas.analysis.kpath as kpath_module
+        
+        def fake_generate_kpath(*args, **kwargs):
+            raise RuntimeError("pymatgen not available")
+        
+        monkeypatch.setattr(kpath_module, "generate_kpath", fake_generate_kpath)
+        
+        fake_structure = type("FakeStructure", (), {})()
+        
+        with pytest.raises(QVServiceError, match="pymatgen not available"):
+            QVService.generate_kpath(fake_structure)
+    
     def test_apply_card_overrides_to_qe_input_wrapper(self):
         """Test that apply_card_overrides_to_qe_input wrapper works."""
         from quantumvitas.api import QVService

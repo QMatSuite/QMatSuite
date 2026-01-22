@@ -10731,6 +10731,42 @@ class QVService:
         return _get_default_step_params(step_type)
     
     # -------------------------------------------------------------------------
+    # Analysis Utilities
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def generate_kpath(
+        structure: "PMGStructure",
+        points_per_segment: int = 20,
+        path_type: str = "hinuma",
+    ) -> "KPathResult":
+        """
+        Generate high-symmetry k-path for a structure.
+        
+        Args:
+            structure: pymatgen Structure object
+            points_per_segment: Number of k-points per path segment
+            path_type: Path type - "hinuma" (pymatgen's HighSymmKpath, default),
+                       "seekpath", or "latimer_munro"
+            
+        Returns:
+            KPathResult with k-path information
+            
+        Raises:
+            QVServiceError: If pymatgen is not available or k-path generation fails
+        """
+        from quantumvitas.analysis.kpath import generate_kpath as _generate_kpath
+        
+        try:
+            return _generate_kpath(
+                structure=structure,
+                points_per_segment=points_per_segment,
+                path_type=path_type,
+            )
+        except (RuntimeError, ValueError) as exc:
+            raise QVServiceError(str(exc)) from exc
+    
+    # -------------------------------------------------------------------------
     # Models
     # -------------------------------------------------------------------------
     
