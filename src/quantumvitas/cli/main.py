@@ -2485,6 +2485,8 @@ def delete_step_command(
     The calculation is auto-detected from pwd if not specified with --calculation.
     Step can be identified by ULID (step_id), step filename, or legacy slug.
     """
+    from quantumvitas.api import QVService
+    
     # Determine project root
     if project:
         project_root = Path(project).expanduser().resolve()
@@ -2494,7 +2496,6 @@ def delete_step_command(
         except Exception as exc:
             raise typer.BadParameter(str(exc)) from exc
     
-    from quantumvitas.api import QVService
     svc = QVService(project_root)
     config = svc.load_project_config()
     
@@ -2588,6 +2589,8 @@ def delete_project_command(
     
     Can specify project by name, slug, or path. If omitted, uses current directory.
     """
+    from quantumvitas.api import QVService
+    
     # Resolve project path from identifier or --project option
     if identifier:
         # Could be a path or name/slug
@@ -2875,6 +2878,8 @@ def configure_calculation_command(
         qv configure calculation --structure si
         qv configure calculation --reorder scf,nscf,dos
     """
+    from quantumvitas.api import QVService
+    
     # Find project root
     if project:
         project_root = Path(project).expanduser().resolve()
@@ -2884,7 +2889,6 @@ def configure_calculation_command(
         except Exception as exc:
             raise typer.BadParameter(str(exc)) from exc
     
-    from quantumvitas.api import QVService
     svc = QVService(project_root)
     config = svc.load_project_config()
     
@@ -3129,6 +3133,7 @@ def configure_species_command(
         qv configure species --set "Si:28.0855:Si...UPF" --set "O:15.999:O...UPF" --calc si_bands
         qv configure species --from-input scf.in --set "Si:28.086:Si.new.UPF"  # --set overrides Si from input
     """
+    from quantumvitas.api import QVService
     from quantumvitas.calculation.species_config import configure_species_map
     
     # Find project root
@@ -3142,7 +3147,6 @@ def configure_species_command(
     
     # Resolve calculation
     if not calculation:
-        from quantumvitas.api import QVService
         svc = QVService(project_root)
         config = svc.load_project_config()
         calculation_entry = svc.find_enclosing_calculation(config=config)
@@ -3208,7 +3212,6 @@ def configure_species_command(
             typer.secho(f"  {element}: pseudopot={pseudo_filename}", fg=typer.colors.GREEN)
     
     # Get calculation_yaml path for summary
-    from quantumvitas.api import QVService
     svc = QVService(project_root)
     config = svc.load_project_config()
     calculation_entry = svc.find_calculation_entry(calculation, config=config)
@@ -3232,6 +3235,8 @@ def configure_structure_command(
     
     For more complex structure modifications, use pymatgen directly or re-import.
     """
+    from quantumvitas.api import QVService
+    
     if project:
         project_root = Path(project).expanduser().resolve()
     else:
@@ -3240,7 +3245,6 @@ def configure_structure_command(
         except Exception as exc:
             raise typer.BadParameter(str(exc)) from exc
     
-    from quantumvitas.api import QVService
     svc = QVService(project_root)
     config = svc.load_project_config()
     
@@ -3440,6 +3444,8 @@ def run_calculation_command(
     If no calculation is specified, auto-detects from current directory
     (must be inside a calculation folder).
     """
+    from quantumvitas.api import QVService
+    
     # Find project root
     if project:
         project_root = Path(project).expanduser().resolve()
@@ -3450,7 +3456,6 @@ def run_calculation_command(
             raise typer.BadParameter(str(exc)) from exc
     
     proj = Project.open(project_root)
-    from quantumvitas.api import QVService
     svc = QVService(project_root)
     config = svc.load_project_config()
     
@@ -3713,11 +3718,11 @@ def analyze_output_command(
     project_root: Optional[Path] = None
     
     # Resolve calculation context
+    from quantumvitas.api import QVService
     if calculation:
         # Explicit --calculation option
         try:
             project_root = Path(project).resolve() if project else QVService.require_project_root()
-            from quantumvitas.api import QVService
             svc = QVService(project_root)
             config = svc.load_project_config()
             wf_entry = svc.find_calculation_entry(calculation, config=config)
