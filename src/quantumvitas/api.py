@@ -10715,6 +10715,24 @@ class QVService:
         from quantumvitas.calculation.naming import find_calculation_results_dir as _find_calculation_results_dir
         return _find_calculation_results_dir(Path(calculation_dir), results_dir_name=results_dir_name)
     
+    @staticmethod
+    def get_default_step_params(step_type: str) -> Dict[str, Any]:
+        """
+        Get default parameters for a step type.
+        
+        Supports Phase 2 engine-prefixed step types (e.g., "qe_scf", "qe_nscf")
+        with backward compatibility for legacy step types (e.g., "scf", "nscf").
+        
+        Args:
+            step_type: Step type (e.g., "qe_scf", "qe_nscf", "scf", "nscf")
+            
+        Returns:
+            Dict with "parameters", "cards", and "species_overrides" keys.
+            Returns empty dicts if step_type is not recognized.
+        """
+        from quantumvitas.calculation.step_defaults import get_default_step_params as _get_default_step_params
+        return _get_default_step_params(step_type)
+    
     # -------------------------------------------------------------------------
     # Models
     # -------------------------------------------------------------------------

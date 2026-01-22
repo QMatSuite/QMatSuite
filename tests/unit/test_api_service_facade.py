@@ -791,6 +791,30 @@ steps: []
         found_files_with_prefix = QVService.find_band_analysis_files(search_dir, prefix="test")
         assert called["prefix"] == "test"
     
+    def test_get_default_step_params_wrapper(self):
+        """Test that get_default_step_params wrapper works."""
+        from quantumvitas.api import QVService
+        
+        # Test with a known step type
+        defaults = QVService.get_default_step_params("scf")
+        
+        # Verify it returns a dict with expected keys
+        assert isinstance(defaults, dict)
+        assert "parameters" in defaults
+        assert "cards" in defaults
+        assert "species_overrides" in defaults
+        
+        # Verify it has some expected content for scf
+        assert "CONTROL" in defaults["parameters"]
+        assert defaults["parameters"]["CONTROL"]["calculation"] == "scf"
+        
+        # Test with unknown step type (should return empty dicts)
+        unknown_defaults = QVService.get_default_step_params("unknown_step_type")
+        assert isinstance(unknown_defaults, dict)
+        assert "parameters" in unknown_defaults
+        assert "cards" in unknown_defaults
+        assert "species_overrides" in unknown_defaults
+    
     def test_detect_runtime_control_keys_wrapper(self):
         """Test that detect_runtime_control_keys wrapper works."""
         parameters = {
