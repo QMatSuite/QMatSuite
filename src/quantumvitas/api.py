@@ -142,10 +142,192 @@ class QVService:
     
     Provides clean methods for managing projects, calculations, steps, and structures.
     All methods receive project_root explicitly and use selectors for resources.
+    
+    Can be used as instance (with project_root) or via static methods.
+    Instance methods are preferred for frontend code (CLI/daemon/notebook).
     """
     
+    def __init__(self, project_root: Path):
+        """
+        Initialize QVService with a project root.
+        
+        Args:
+            project_root: Path to project root (directory containing project.qv.yml)
+        """
+        self.project_root = Path(project_root).resolve()
+        if not (self.project_root / "project.qv.yml").exists():
+            raise QVServiceError(f"Not a project: {self.project_root}")
+    
     # -------------------------------------------------------------------------
-    # Project operations
+    # Instance-based API methods (for frontends)
+    # -------------------------------------------------------------------------
+    
+    def detect_context(self, cwd: Optional[Path] = None) -> Dict[str, Any]:
+        """
+        Detect project/calculation context from working directory.
+        
+        Args:
+            cwd: Working directory (defaults to current working directory)
+            
+        Returns:
+            Dict with keys:
+            - project_root: Path to project root
+            - is_project: bool (always True for instance-based API)
+            - calculation: Optional calculation selector if inside a calculation
+            - step: Optional step selector if inside a step
+        """
+        from quantumvitas.core.context import find_path_context_from_pwd
+        
+        if cwd is None:
+            cwd = Path.cwd()
+        else:
+            cwd = Path(cwd).resolve()
+        
+        try:
+            path_context = find_path_context_from_pwd(cwd)
+            result = {
+                "project_root": path_context.project_root,
+                "is_project": True,
+            }
+            
+            # Extract calculation and step from context nodes
+            calculation_selector = None
+            step_selector = None
+            for node in path_context.nodes:
+                if node.kind == "calculation" and node.selector:
+                    calculation_selector = node.selector
+                elif node.kind == "step" and node.selector:
+                    step_selector = node.selector
+            
+            if calculation_selector:
+                result["calculation"] = calculation_selector
+            if step_selector:
+                result["step"] = step_selector
+            
+            return result
+        except Exception as e:
+            # If context detection fails, return minimal context
+            return {
+                "project_root": self.project_root,
+                "is_project": True,
+            }
+    
+    def load_project_config(self) -> Dict[str, Any]:
+        """
+        Load project.qv.yml configuration.
+        
+        Returns:
+            Project configuration dict
+        """
+        return load_project_config(self.project_root)
+    
+    def build_resource_index(self) -> "ResourceIndex":
+        """
+        Build resource index for the project (cacheable).
+        
+        Returns:
+            ResourceIndex object
+        """
+        from quantumvitas.core.resolution import build_resource_index
+        return build_resource_index(self.project_root)
+    
+    def resolve_calculation_ref(
+        self,
+        selector: str,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> ResolvedResource:
+        """
+        Resolve calculation selector to ResolvedResource.
+        
+        Args:
+            selector: Calculation name, slug, ULID, or path
+            index: Optional ResourceIndex (avoids rebuilding if provided)
+            config: Optional project config (avoids reloading if provided)
+            
+        Returns:
+            ResolvedResource for the calculation
+            
+        Raises:
+            QVServiceError: If calculation not found
+        """
+        if config is None:
+            config = self.load_project_config()
+        if index is None:
+            index = self.build_resource_index()
+        
+        try:
+            return resolve_calculation(self.project_root, selector, config=config, index=index)
+        except Exception as e:
+            raise QVServiceError(f"Failed to resolve calculation '{selector}': {e}") from e
+    
+    def resolve_step_ref(
+        self,
+        calc_selector: str,
+        step_selector: str,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> ResolvedResource:
+        """
+        Resolve step selector to ResolvedResource.
+        
+        Args:
+            calc_selector: Calculation selector
+            step_selector: Step selector (name, ULID, or index)
+            index: Optional ResourceIndex (avoids rebuilding if provided)
+            config: Optional project config (avoids reloading if provided)
+            
+        Returns:
+            ResolvedResource for the step
+            
+        Raises:
+            QVServiceError: If step not found
+        """
+        if config is None:
+            config = self.load_project_config()
+        if index is None:
+            index = self.build_resource_index()
+        
+        try:
+            return require_step(self.project_root, calc_selector, step_selector, config=config, index=index)
+        except Exception as e:
+            raise QVServiceError(f"Failed to resolve step '{calc_selector}/{step_selector}': {e}") from e
+    
+    def resolve_structure_ref(
+        self,
+        selector: str,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> ResolvedResource:
+        """
+        Resolve structure selector to ResolvedResource.
+        
+        Args:
+            selector: Structure name, slug, ULID, or path
+            index: Optional ResourceIndex (avoids rebuilding if provided)
+            config: Optional project config (avoids reloading if provided)
+            
+        Returns:
+            ResolvedResource for the structure
+            
+        Raises:
+            QVServiceError: If structure not found
+        """
+        if config is None:
+            config = self.load_project_config()
+        if index is None:
+            index = self.build_resource_index()
+        
+        try:
+            return require_structure(self.project_root, selector, config=config, index=index)
+        except Exception as e:
+            raise QVServiceError(f"Failed to resolve structure '{selector}': {e}") from e
+    
+    # -------------------------------------------------------------------------
+    # Project operations (static methods - backward compatibility)
     # -------------------------------------------------------------------------
     
     @staticmethod
@@ -1143,6 +1325,12 @@ class QVService:
     def list_steps(project_root: Path, calculation_selector: str) -> List[ResolvedResource]:
         """List all steps in a calculation."""
         return list_steps(project_root, calculation_selector)
+    
+    # -------------------------------------------------------------------------
+    # Instance-based API methods (for frontends)
+    # -------------------------------------------------------------------------
+    # Note: list_calculations and list_steps are available as static methods.
+    # Instance methods are provided for resolve_*_ref methods below.
     
     @staticmethod
     def list_available_gen_steps(
@@ -8300,6 +8488,8 @@ class QVService:
             raise QVServiceError(str(exc)) from exc
 
 
-# Export the service as a singleton-like module-level instance
-service = QVService()
+# Note: QVService now requires project_root for instance-based usage.
+# Use QVService(project_root) to create an instance, or use static methods.
+# The module-level 'service' singleton is removed - frontends should create
+# instances with their project_root.
 
