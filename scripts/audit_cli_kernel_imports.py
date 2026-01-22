@@ -241,6 +241,12 @@ def audit_cli_imports(cli_dir: Path) -> Dict[str, Any]:
 
 def main():
     """Main entry point."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Audit CLI kernel imports")
+    parser.add_argument("--json", type=str, help="Output JSON to file")
+    args = parser.parse_args()
+    
     repo_root = Path(__file__).parent.parent
     cli_dir = repo_root / "src" / "quantumvitas" / "cli"
     
@@ -251,12 +257,13 @@ def main():
     manifest = audit_cli_imports(cli_dir)
     
     # Output JSON to stdout
-    print(json.dumps(manifest, indent=2))
+    json_output = json.dumps(manifest, indent=2)
+    print(json_output)
     
     # Optionally save to file
-    if len(sys.argv) > 1:
-        output_file = Path(sys.argv[1])
-        output_file.write_text(json.dumps(manifest, indent=2))
+    if args.json:
+        output_file = Path(args.json)
+        output_file.write_text(json_output, encoding="utf-8")
         print(f"\nManifest also saved to: {output_file}", file=sys.stderr)
 
 
