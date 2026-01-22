@@ -44,7 +44,7 @@ _make_dataclass_compat()
 from .project.model import Project, ProjectSettings, StructureRef, CalculationRef
 from .calculation.calculation import Calculation
 from .calculation.runner import CalculationRunner
-from .api import QVService, service
+from .api import QVService
 
 __all__ = [
     "Project",
@@ -54,6 +54,5 @@ __all__ = [
     "Calculation",
     "CalculationRunner",
     "QVService",
-    "service",
 ]
 
