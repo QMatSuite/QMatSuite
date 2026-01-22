@@ -644,41 +644,73 @@ steps: []
         assert qe_input is not None
         assert isinstance(overrides, list)
     
-    def test_materialize_step_spec_wrapper(self, tmp_path):
-        """Test that materialize_step_spec wrapper works."""
-        import yaml
-        from quantumvitas.api import StructureStepSpec
-        from quantumvitas.core.resources import ResourceMeta, generate_resource_id
+    def test_materialize_step_spec_wrapper(self, monkeypatch, tmp_path):
+        """Test that materialize_step_spec wrapper passes through to underlying function."""
+        from pathlib import Path
+        from quantumvitas.api import QVService
         
-        # Create a minimal step spec YAML
+        # Track calls to the underlying function
+        called = {}
+        
+        def fake_materialize_step_spec(
+            spec,
+            *,
+            output_dir,
+            spec_path=None,
+            calculation_dir=None,
+            project=None,
+            input_name=None,
+            project_root=None,
+        ):
+            """Fake implementation that records arguments and returns sentinel values."""
+            called["spec"] = spec
+            called["output_dir"] = output_dir
+            called["spec_path"] = spec_path
+            called["calculation_dir"] = calculation_dir
+            called["project"] = project
+            called["input_name"] = input_name
+            called["project_root"] = project_root
+            # Return sentinel values to verify wrapper returns them
+            fake_input_path = Path(output_dir) / "fake_input.in"
+            fake_spec = {"sentinel": True, "meta": {"id": "test"}}
+            return fake_input_path, fake_spec
+        
+        # Mock the underlying function
+        import quantumvitas.calculation.structure_steps as structure_steps_module
+        monkeypatch.setattr(
+            structure_steps_module,
+            "materialize_step_spec",
+            fake_materialize_step_spec,
+        )
+        
+        # Create minimal test files
         step_dir = tmp_path / "steps" / "test_step"
         step_dir.mkdir(parents=True)
         step_yaml = step_dir / "step.yaml"
+        step_yaml.write_text("meta: {}\n")  # Minimal content, won't be parsed by fake
         
-        spec_dict = {
-            "meta": {
-                "id": generate_resource_id(),
-                "name": "test_step",
-                "slug": "test-step",
-                "path": "steps/test-step",
-                "kind": "step",
-            },
-            "structure": "test",
-            "step_type": "scf",
-        }
-        step_yaml.write_text(yaml.safe_dump(spec_dict))
-        
-        # Call wrapper
         output_dir = tmp_path / "output"
         output_dir.mkdir()
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir()
         
+        # Call wrapper
         generated_input, materialized_spec = QVService.materialize_step_spec(
             spec=str(step_yaml),
             output_dir=output_dir,
+            calculation_dir=calc_dir,
+            project_root=tmp_path,
         )
         
-        assert generated_input.exists()
-        assert materialized_spec is not None
+        # Verify wrapper returned what underlying function returned
+        assert generated_input == output_dir / "fake_input.in"
+        assert materialized_spec == {"sentinel": True, "meta": {"id": "test"}}
+        
+        # Verify wrapper passed through arguments correctly
+        assert called["spec"] == str(step_yaml)
+        assert Path(called["output_dir"]) == output_dir
+        assert called["calculation_dir"] == calc_dir
+        assert Path(called["project_root"]) == tmp_path
     
     def test_detect_runtime_control_keys_wrapper(self):
         """Test that detect_runtime_control_keys wrapper works."""
