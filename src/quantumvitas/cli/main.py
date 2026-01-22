@@ -24,13 +24,12 @@ from quantumvitas.analysis import bands as bands_analysis
 from quantumvitas.analysis import dos as dos_analysis
 from quantumvitas.analysis import energy as energy_analysis
 from quantumvitas.core.resources import (
-    ResourceMeta,
     ensure_relative_path,
     generate_resource_id,
     generate_unique_name_and_slug,
-    meta_from_name,
-    slugify,
 )
+# ResourceMeta is imported from quantumvitas.api for type hints and usage
+from quantumvitas.api import ResourceMeta
 # Context functions now imported from quantumvitas.api
 from quantumvitas.core.exceptions import LegacyProjectError
 # Resolution exceptions now imported from quantumvitas.api
@@ -650,7 +649,8 @@ def init_project_command(
 
     project_dir.mkdir(parents=True, exist_ok=True)
     project_name = name or project_dir.name
-    project_meta = meta_from_name("project", name=project_name, path=".")
+    project_meta_dict = QVService.meta_from_name("project", name=project_name, path=".")
+    project_meta = ResourceMeta(**project_meta_dict)
 
     project_config = {
         "project": {
@@ -748,7 +748,6 @@ def init_calculation_command(
         # Generate calculation meta first so we have the ULID
         rel_path = QVService.ensure_relative_path(calculation_dir, base=project_root)
         calculation_meta_dict = QVService.meta_from_name("calculation", name=calculation_id, path=rel_path)
-        from quantumvitas.core.resources import ResourceMeta
         calculation_meta = ResourceMeta(**calculation_meta_dict)
         
         # Pass the ULID to template copier so steps get the correct parent_calculation_id
@@ -765,7 +764,7 @@ def init_calculation_command(
         structures_dir = project_root / "structures"
         structures_section = config.setdefault("structures", [])
         existing_struct_slugs = {
-            (entry.get("meta") or {}).get("slug") or slugify(entry.get("name") or "")
+            (entry.get("meta") or {}).get("slug") or QVService.slugify(entry.get("name") or "")
             for entry in structures_section
         }
         
@@ -775,7 +774,6 @@ def init_calculation_command(
                     struct_path = copy_structure_template(struct_name, structures_dir)
                     struct_rel_path = QVService.ensure_relative_path(struct_path, base=project_root)
                     struct_meta_dict = QVService.meta_from_name("structure", name=struct_name, path=struct_rel_path)
-                    from quantumvitas.core.resources import ResourceMeta
                     struct_meta = ResourceMeta(**struct_meta_dict)
                     # DAG + ID-only: only structure_id, no meta duplication
                     structures_section.append({
@@ -819,7 +817,6 @@ def init_calculation_command(
     # Generate calculation meta with ULID
     rel_path = QVService.ensure_relative_path(calculation_dir, base=project_root)
     calculation_meta_dict = QVService.meta_from_name("calculation", name=calculation_id, path=str(rel_path))
-    from quantumvitas.core.resources import ResourceMeta
     calculation_meta = ResourceMeta(**calculation_meta_dict)
     if parent:
         calculation_meta_dict = calculation_meta.to_dict()
@@ -1203,7 +1200,6 @@ def init_step_command(
             raise typer.BadParameter(f"Structure not found: {e}")
     
     step_meta_dict = QVService.meta_from_name("step", name=step_display_name, path="")
-    from quantumvitas.core.resources import ResourceMeta
     step_meta = ResourceMeta(**step_meta_dict)
     spec = StructureStepSpec(
         meta=step_meta,
@@ -1377,7 +1373,6 @@ def import_structure_command(
     write_rel = QVService.ensure_relative_path(out_path, base=project_root)
 
     metadata_dict = QVService.meta_from_name("structure", name=structure_name, path=write_rel)
-    from quantumvitas.core.resources import ResourceMeta
     metadata = ResourceMeta(**metadata_dict)
     write_structure(struct, out_path, format=output_format, metadata=metadata)
 

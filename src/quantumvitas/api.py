@@ -156,6 +156,7 @@ __all__ = [
     "DisplayModeParams",
     "ResourceContext",
     "ProjectConfigError",
+    "ResourceMeta",
 ]
 
 # Re-export VolumeParserError for daemon use
