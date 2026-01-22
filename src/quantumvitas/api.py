@@ -159,6 +159,7 @@ __all__ = [
     "ResourceMeta",
     "StepMode",
     "StepStatus",
+    "ParameterOverride",
 ]
 
 # Re-export VolumeParserError for daemon use
@@ -176,6 +177,11 @@ from quantumvitas.io.model import QECardType, QEModule  # noqa: E402
 from quantumvitas.io.parser.qe_parser import QEInputParser  # noqa: E402
 # Re-export analysis parser dataclass for CLI use
 from quantumvitas.analysis.parsers import DOSData  # noqa: E402
+# Re-export calculation structure step spec for CLI use
+from quantumvitas.calculation.structure_steps import StructureStepSpec  # noqa: E402
+
+# Re-export input_runner types and functions for CLI use
+from quantumvitas.calculation.input_runner import ParameterOverride  # noqa: E402
 
 
 class QVServiceError(Exception):
@@ -10432,6 +10438,220 @@ class QVService:
         """
         from quantumvitas.analysis.plotting import save_figure as _save_figure
         return _save_figure(fig, path, dpi=dpi, formats=formats, **kwargs)
+    
+    # -------------------------------------------------------------------------
+    # Calculation Structure Steps
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def generate_qe_input_from_structure(
+        structure: Any,
+        step_type: str,
+        parameter_overrides: Optional[Sequence[Any]] = None,
+    ) -> Any:
+        """
+        Build a QE input from a structure plus step metadata.
+        
+        Args:
+            structure: pymatgen Structure or Molecule
+            step_type: Step type (e.g., "scf", "bands", "dos")
+            parameter_overrides: Optional sequence of ParameterOverride objects
+            
+        Returns:
+            QEInput object
+        """
+        from quantumvitas.calculation.structure_steps import generate_qe_input_from_structure as _generate_qe_input_from_structure
+        return _generate_qe_input_from_structure(
+            structure=structure,
+            step_type=step_type,
+            parameter_overrides=parameter_overrides,
+        )
+    
+    @staticmethod
+    def generate_qe_input_from_spec(
+        structure: Any,
+        spec: Any,
+        extra_overrides: Optional[Sequence[Any]] = None,
+        *,
+        species_map: Optional[Dict[str, Dict[str, Any]]] = None,
+        allow_step_species_overrides: bool = True,
+    ) -> tuple[Any, list[Any]]:
+        """
+        Build a QE input from a structure step specification.
+        
+        Args:
+            structure: pymatgen Structure or Molecule
+            spec: StructureStepSpec object
+            extra_overrides: Optional additional parameter overrides
+            species_map: Optional calculation-level species mapping
+            allow_step_species_overrides: Whether to allow step-level species overrides
+            
+        Returns:
+            Tuple of (QEInput, list of ParameterOverride)
+        """
+        from quantumvitas.calculation.structure_steps import generate_qe_input_from_spec as _generate_qe_input_from_spec
+        return _generate_qe_input_from_spec(
+            structure=structure,
+            spec=spec,
+            extra_overrides=extra_overrides,
+            species_map=species_map,
+            allow_step_species_overrides=allow_step_species_overrides,
+        )
+    
+    # -------------------------------------------------------------------------
+    # Input Runner Utilities
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def apply_card_overrides_to_qe_input(
+        qe_input: Any,
+        overrides: Optional[Dict[str, Dict[str, Any]]],
+    ) -> None:
+        """
+        Apply card overrides to a QE input object.
+        
+        Args:
+            qe_input: QEInput object to modify
+            overrides: Optional dict mapping card names to override payloads
+        """
+        from quantumvitas.calculation.input_runner import apply_card_overrides_to_qe_input as _apply_card_overrides_to_qe_input
+        _apply_card_overrides_to_qe_input(qe_input, overrides)
+    
+    @staticmethod
+    def apply_species_overrides_to_qe_input(
+        qe_input: Any,
+        overrides: Optional[Dict[str, Dict[str, Any]]],
+    ) -> None:
+        """
+        Apply species overrides to a QE input object.
+        
+        Args:
+            qe_input: QEInput object to modify
+            overrides: Optional dict mapping element symbols to override payloads
+        """
+        from quantumvitas.calculation.input_runner import apply_species_overrides_to_qe_input as _apply_species_overrides_to_qe_input
+        _apply_species_overrides_to_qe_input(qe_input, overrides)
+    
+    @staticmethod
+    def detect_project_root(
+        start: Optional[Path] = None,
+        *,
+        stop_at: Optional[Path] = None,
+    ) -> Optional[Path]:
+        """
+        Detect project root directory by looking for project.yaml.
+        
+        Args:
+            start: Starting directory (default: current working directory)
+            stop_at: Optional directory to stop searching at
+        
+        Returns:
+            Path to project root, or None if not found
+        """
+        from quantumvitas.calculation.input_runner import detect_project_root as _detect_project_root
+        return _detect_project_root(start, stop_at=stop_at)
+    
+    @staticmethod
+    def run_input_step(
+        engine: Any,
+        input_file: Path,
+        working_dir: Path,
+        project_root: Optional[Path] = None,
+        step_type: Optional[str] = None,
+        timeout: Optional[float] = None,
+        parameter_overrides: Optional[Sequence[Any]] = None,
+        card_overrides: Optional[Dict[str, Dict[str, Any]]] = None,
+        species_overrides: Optional[Dict[str, Dict[str, Any]]] = None,
+        keep_original: bool = True,
+        output_name: Optional[str] = None,
+        species_map: Optional[Dict[str, Dict[str, Any]]] = None,
+    ) -> tuple[Any, Any]:
+        """
+        Run a QE input step (prepare + execute).
+        
+        Args:
+            engine: QuantumEspressoEngine instance
+            input_file: Path to QE input file
+            working_dir: Working directory for execution
+            project_root: Optional project root for pseudo_dir resolution
+            step_type: Optional step type override
+            timeout: Optional execution timeout
+            parameter_overrides: Optional parameter overrides
+            card_overrides: Optional card overrides
+            species_overrides: Optional species overrides
+            keep_original: If True, save original input as <name>_original.in
+            output_name: Optional name for generated input file
+            species_map: Optional calculation-level species_map
+        
+        Returns:
+            Tuple of (StepResult, PreparedInputStep)
+        """
+        from quantumvitas.calculation.input_runner import run_input_step as _run_input_step
+        return _run_input_step(
+            engine=engine,
+            input_file=input_file,
+            working_dir=working_dir,
+            project_root=project_root,
+            step_type=step_type,
+            timeout=timeout,
+            parameter_overrides=parameter_overrides,
+            card_overrides=card_overrides,
+            species_overrides=species_overrides,
+            keep_original=keep_original,
+            output_name=output_name,
+            species_map=species_map,
+        )
+    
+    @staticmethod
+    def materialize_step_spec(
+        spec: Any,
+        *,
+        output_dir: Path | str,
+        spec_path: Optional[Path | str] = None,
+        calculation_dir: Optional[Path | str] = None,
+        project: Optional[Any] = None,
+        input_name: Optional[str] = None,
+        project_root: Optional[Path | str] = None,
+    ) -> tuple[Path, Any]:
+        """
+        Convert a step YAML (or StructureStepSpec) into a QE input file.
+        
+        Args:
+            spec: Step spec (YAML path, StructureStepSpec, or path string)
+            output_dir: Directory where the generated input file will be written
+            spec_path: Optional path to step YAML file
+            calculation_dir: Optional calculation directory
+            project: Optional Project instance
+            input_name: Optional input file name
+            project_root: Optional project root path
+            
+        Returns:
+            Tuple of (generated_input_path, materialized_spec)
+        """
+        from quantumvitas.calculation.structure_steps import materialize_step_spec as _materialize_step_spec
+        return _materialize_step_spec(
+            spec=spec,
+            output_dir=output_dir,
+            spec_path=spec_path,
+            calculation_dir=calculation_dir,
+            project=project,
+            input_name=input_name,
+            project_root=project_root,
+        )
+    
+    @staticmethod
+    def detect_runtime_control_keys(parameters: Dict[str, Dict[str, Any]]) -> List[str]:
+        """
+        Detect runtime-managed CONTROL keys (prefix, outdir, pseudo_dir) in step parameters.
+        
+        Args:
+            parameters: Step parameters dict (section -> {param: value})
+            
+        Returns:
+            List of found runtime keys (e.g., ["prefix", "outdir"])
+        """
+        from quantumvitas.calculation.structure_steps import detect_runtime_control_keys as _detect_runtime_control_keys
+        return _detect_runtime_control_keys(parameters)
     
     # -------------------------------------------------------------------------
     # Models
