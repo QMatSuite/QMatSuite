@@ -412,6 +412,19 @@ steps: []
         assert QEModule.PW.value == "pw"
         assert QEModule.BANDS.value == "bands"
     
+    def test_qe_parser_re_exported(self):
+        """Test that QEInputParser is re-exported from quantumvitas.api."""
+        from quantumvitas.api import QEInputParser
+        
+        # Verify it is the same class as from the original module
+        from quantumvitas.io.parser.qe_parser import QEInputParser as OriginalQEInputParser
+        
+        assert QEInputParser is OriginalQEInputParser
+        
+        # Verify it has the expected class method
+        assert hasattr(QEInputParser, 'parse_file')
+        assert hasattr(QEInputParser, 'parse_string')
+    
     def test_write_qe_input_file(self, tmp_path):
         """write_qe_input_file writes QE input files."""
         from quantumvitas.drivers.qe.io.model import QEInput, QENamelist, QECard, QECardType

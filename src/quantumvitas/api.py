@@ -172,6 +172,8 @@ from quantumvitas.calculation.types import StepMode, StepStatus  # noqa: E402
 
 # Re-export QE I/O model enums for CLI use (Enum classes, re-exported directly)
 from quantumvitas.io.model import QECardType, QEModule  # noqa: E402
+# Re-export QE parser class for CLI use
+from quantumvitas.io.parser.qe_parser import QEInputParser  # noqa: E402
 
 
 class QVServiceError(Exception):

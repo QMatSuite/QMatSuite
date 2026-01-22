@@ -67,8 +67,7 @@ from quantumvitas.calculation.structure_steps import (
     generate_qe_input_from_structure,
 )
 # I/O operations now via QVService
-from quantumvitas.api import QECardType
-from quantumvitas.io.parser.qe_parser import QEInputParser
+from quantumvitas.api import QECardType, QEInputParser
 
 if TYPE_CHECKING:
     from pymatgen.core import Structure as PMGStructure
