@@ -366,6 +366,37 @@ steps: []
         assert isinstance(read_struct, Structure)
         assert len(read_struct) == 1
     
+    def test_write_structure_argument_order(self, tmp_path, monkeypatch):
+        """Regression test: write_structure must be called with (structure, filepath) order.
+        
+        This test ensures the wrapper calls the underlying function with correct argument order.
+        It would catch bugs where arguments are swapped (e.g., write_structure(filepath, structure)).
+        """
+        from pymatgen.core import Structure, Lattice
+        from unittest.mock import patch, MagicMock
+        
+        structure = Structure(Lattice.cubic(4.0), ["Si"], [[0, 0, 0]])
+        output_file = tmp_path / "output.cif"
+        
+        # Mock the underlying function to verify argument order
+        mock_write = MagicMock()
+        
+        # Patch the underlying function
+        with patch('quantumvitas.io.write_structure', mock_write):
+            QVService.write_structure(structure, output_file)
+        
+        # Verify the wrapper called the underlying function with correct order: (structure, filepath)
+        assert mock_write.call_count == 1
+        call_args = mock_write.call_args
+        args = call_args[0]
+        kwargs = call_args[1]
+        
+        # First arg should be the structure object (has .sites attribute)
+        assert hasattr(args[0], 'sites'), f"First arg should be Structure, got {type(args[0])}"
+        # Second arg should be the filepath (Path object)
+        assert isinstance(args[1], Path), f"Second arg should be Path, got {type(args[1])}"
+        assert args[1] == output_file
+    
     def test_write_qe_input_file(self, tmp_path):
         """write_qe_input_file writes QE input files."""
         from quantumvitas.drivers.qe.io.model import QEInput, QENamelist, QECard, QECardType
