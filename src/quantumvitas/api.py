@@ -8570,12 +8570,19 @@ class QVService:
         Get pseudopotential configuration.
         
         Returns:
-            Dict with pseudo config (libraries, store_path, etc.)
+            Dict with pseudo config (store_dir, seed_dir, allow_download, etc.)
         """
-        from quantumvitas.core.pseudo_config import load_pseudo_config
+        from quantumvitas.core.pseudo_config import load_pseudo_config, _find_quantumvitas_root, PseudoConfig
         
         config = load_pseudo_config()
-        return config.to_dict()
+        repo_root = _find_quantumvitas_root()
+        repo_pseudo_dir = str(repo_root / "resources" / "pseudo") if repo_root else ""
+        
+        cfg_dict = config.to_dict()
+        cfg_dict["repo_pseudo_dir"] = repo_pseudo_dir
+        cfg_dict["default_store_dir"] = PseudoConfig.get_default_store_dir()
+        cfg_dict["default_seed_dir"] = PseudoConfig.get_default_seed_dir()
+        return cfg_dict
     
     @staticmethod
     def set_pseudo_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
@@ -8583,42 +8590,89 @@ class QVService:
         Update pseudopotential configuration.
         
         Args:
-            cfg: Dict with config to update
+            cfg: Dict with config to update (partial update supported)
             
         Returns:
-            Updated config dict
+            Updated config dict (same format as get_pseudo_config)
         """
-        from quantumvitas.core.pseudo_config import load_pseudo_config, save_pseudo_config, PseudoConfig
+        from quantumvitas.core.pseudo_config import load_pseudo_config, save_pseudo_config, PseudoConfig, _find_quantumvitas_root
         
         # Load current config
         current = load_pseudo_config()
         
-        # Update from dict
-        updated = PseudoConfig.from_dict(cfg)
+        # Update fields if provided
+        if "store_dir" in cfg:
+            current.store_dir = cfg["store_dir"] or PseudoConfig.get_default_store_dir()
+        if "seed_dir" in cfg:
+            current.seed_dir = cfg["seed_dir"] or PseudoConfig.get_default_seed_dir()
+        if "allow_download" in cfg:
+            current.allow_download = bool(cfg["allow_download"])
+        if "network_pseudo_base_url" in cfg:
+            current.network_pseudo_base_url = cfg["network_pseudo_base_url"]
+        if "legacy_tables_base_url" in cfg:
+            current.legacy_tables_base_url = cfg["legacy_tables_base_url"]
         
         # Save
-        save_pseudo_config(updated)
+        save_pseudo_config(current)
         
-        return updated.to_dict()
+        # Return in same format as get_pseudo_config
+        repo_root = _find_quantumvitas_root()
+        repo_pseudo_dir = str(repo_root / "resources" / "pseudo") if repo_root else ""
+        
+        result = current.to_dict()
+        result["repo_pseudo_dir"] = repo_pseudo_dir
+        result["default_store_dir"] = PseudoConfig.get_default_store_dir()
+        result["default_seed_dir"] = PseudoConfig.get_default_seed_dir()
+        return result
     
     @staticmethod
-    def validate_pseudo_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_pseudo_config(cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Validate pseudopotential configuration.
         
         Args:
-            cfg: Config dict to validate
+            cfg: Optional config dict to validate (uses saved config if None)
             
         Returns:
-            Dict with validation result (valid: bool, errors: List[str])
+            Dict with validation result (repo_pseudo_exists, store_dir_exists, etc.)
+        """
+        from quantumvitas.core.pseudo_config import load_pseudo_config, validate_pseudo_config as _validate_pseudo_config, PseudoConfig
+        
+        if cfg is None:
+            config = load_pseudo_config()
+        else:
+            config = PseudoConfig.from_dict(cfg)
+        
+        result = _validate_pseudo_config(config)
+        return result.to_dict() if hasattr(result, 'to_dict') else result
+    
+    @staticmethod
+    def get_pseudo_default_paths() -> Dict[str, str]:
+        """
+        Get default pseudo directory paths.
+        
+        Returns:
+            Dict with default_store_dir, default_seed_dir
         """
         from quantumvitas.core.pseudo_config import PseudoConfig
         
-        try:
-            PseudoConfig.from_dict(cfg)
-            return {"valid": True, "errors": []}
-        except Exception as e:
-            return {"valid": False, "errors": [str(e)]}
+        return {
+            "default_store_dir": PseudoConfig.get_default_store_dir(),
+            "default_seed_dir": PseudoConfig.get_default_seed_dir(),
+        }
+    
+    @staticmethod
+    def find_quantumvitas_root() -> Optional[str]:
+        """
+        Find the quantumvitas root directory (containing src/quantumvitas).
+        
+        Returns:
+            Path to repo root as string, or None if not found
+        """
+        from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+        
+        root = _find_quantumvitas_root()
+        return str(root) if root else None
     
     @staticmethod
     def init_pseudo_dirs() -> Dict[str, str]:
