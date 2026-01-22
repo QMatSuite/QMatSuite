@@ -588,4 +588,209 @@ steps: []
         assert output_file.exists()
         
         plt.close(fig)
+    
+    def test_structure_step_spec_re_exported(self):
+        """Test that StructureStepSpec is re-exported from quantumvitas.api."""
+        from quantumvitas.api import StructureStepSpec
+        
+        # Verify it is the same class as from the original module
+        from quantumvitas.calculation.structure_steps import StructureStepSpec as OriginalStructureStepSpec
+        
+        assert StructureStepSpec is OriginalStructureStepSpec
+        
+        # Verify it has the expected class method
+        assert hasattr(StructureStepSpec, 'from_yaml')
+    
+    def test_generate_qe_input_from_structure_wrapper(self, tmp_path):
+        """Test that generate_qe_input_from_structure wrapper works."""
+        from pymatgen.core import Structure, Lattice
+        
+        # Create a minimal structure
+        structure = Structure(Lattice.cubic(4.0), ["Si"], [[0, 0, 0]])
+        
+        # Call wrapper
+        qe_input = QVService.generate_qe_input_from_structure(structure, "scf")
+        assert qe_input is not None
+        assert hasattr(qe_input, 'get_namelist')
+    
+    def test_generate_qe_input_from_spec_wrapper(self, tmp_path):
+        """Test that generate_qe_input_from_spec wrapper works."""
+        from pymatgen.core import Structure, Lattice
+        from quantumvitas.api import StructureStepSpec
+        from quantumvitas.core.resources import ResourceMeta, generate_resource_id
+        
+        # Create a minimal structure
+        structure = Structure(Lattice.cubic(4.0), ["Si"], [[0, 0, 0]])
+        
+        # Create a minimal spec with species_overrides
+        spec = StructureStepSpec(
+            meta=ResourceMeta(
+                id=generate_resource_id(),
+                name="test_step",
+                slug="test-step",
+                path="steps/test-step",
+                kind="step",
+            ),
+            structure="test",
+            step_type="scf",
+            species_overrides={"Si": {"pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF", "mass": 28.085}},
+        )
+        
+        # Call wrapper with species_map
+        species_map = {"Si": {"pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF", "mass": 28.085}}
+        qe_input, overrides = QVService.generate_qe_input_from_spec(
+            structure, spec, species_map=species_map
+        )
+        assert qe_input is not None
+        assert isinstance(overrides, list)
+    
+    def test_materialize_step_spec_wrapper(self, tmp_path):
+        """Test that materialize_step_spec wrapper works."""
+        import yaml
+        from quantumvitas.api import StructureStepSpec
+        from quantumvitas.core.resources import ResourceMeta, generate_resource_id
+        
+        # Create a minimal step spec YAML
+        step_dir = tmp_path / "steps" / "test_step"
+        step_dir.mkdir(parents=True)
+        step_yaml = step_dir / "step.yaml"
+        
+        spec_dict = {
+            "meta": {
+                "id": generate_resource_id(),
+                "name": "test_step",
+                "slug": "test-step",
+                "path": "steps/test-step",
+                "kind": "step",
+            },
+            "structure": "test",
+            "step_type": "scf",
+        }
+        step_yaml.write_text(yaml.safe_dump(spec_dict))
+        
+        # Call wrapper
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        
+        generated_input, materialized_spec = QVService.materialize_step_spec(
+            spec=str(step_yaml),
+            output_dir=output_dir,
+        )
+        
+        assert generated_input.exists()
+        assert materialized_spec is not None
+    
+    def test_detect_runtime_control_keys_wrapper(self):
+        """Test that detect_runtime_control_keys wrapper works."""
+        parameters = {
+            "CONTROL": {
+                "prefix": "test",
+                "outdir": "/tmp",
+            },
+            "SYSTEM": {
+                "ecutwfc": 30.0,
+            },
+        }
+        
+        keys = QVService.detect_runtime_control_keys(parameters)
+        assert isinstance(keys, list)
+        assert "prefix" in keys
+        assert "outdir" in keys
+    
+    def test_parameter_override_re_export(self):
+        """Test that ParameterOverride is re-exported from api."""
+        from quantumvitas.api import ParameterOverride
+        
+        # Test that we can create a ParameterOverride
+        override = ParameterOverride(
+            name="ecutwfc",
+            value=30.0,
+            section="SYSTEM",
+        )
+        assert override.name == "ecutwfc"
+        assert override.value == 30.0
+        assert override.section == "SYSTEM"
+    
+    def test_apply_card_overrides_to_qe_input_wrapper(self):
+        """Test that apply_card_overrides_to_qe_input wrapper works."""
+        from quantumvitas.api import QVService
+        from quantumvitas.io.parser.qe_parser import QEInputParser
+        
+        # Create a minimal QE input
+        input_text = """&CONTROL
+  calculation = 'scf'
+/
+&SYSTEM
+  ecutwfc = 30.0
+/
+ATOMIC_SPECIES
+ Si  28.085  Si.UPF
+ATOMIC_POSITIONS
+ Si  0.0  0.0  0.0
+K_POINTS
+ 1 1
+ 0.0 0.0 0.0 1.0
+"""
+        qe_input = QEInputParser.parse_string(input_text)
+        
+        # Apply card overrides
+        overrides = {
+            "K_POINTS": {
+                "option": "automatic",
+                "kpoints": [[4, 4, 4, 0, 0, 0]],
+            }
+        }
+        
+        # Should not raise
+        QVService.apply_card_overrides_to_qe_input(qe_input, overrides)
+        
+        # Verify override was applied (check that K_POINTS card exists)
+        k_points_cards = [c for c in qe_input.cards if c.card_type.name == "K_POINTS"]
+        assert len(k_points_cards) > 0
+    
+    def test_apply_species_overrides_to_qe_input_wrapper(self):
+        """Test that apply_species_overrides_to_qe_input wrapper works."""
+        from quantumvitas.api import QVService
+        from quantumvitas.io.parser.qe_parser import QEInputParser
+        
+        # Create a minimal QE input
+        input_text = """&CONTROL
+  calculation = 'scf'
+/
+&SYSTEM
+  ecutwfc = 30.0
+/
+ATOMIC_SPECIES
+ Si  28.085  Si.UPF
+ATOMIC_POSITIONS
+ Si  0.0  0.0  0.0
+K_POINTS
+ 1 1
+ 0.0 0.0 0.0 1.0
+"""
+        qe_input = QEInputParser.parse_string(input_text)
+        
+        # Apply species overrides
+        overrides = {
+            "Si": {
+                "pseudo": "Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+            }
+        }
+        
+        # Should not raise
+        QVService.apply_species_overrides_to_qe_input(qe_input, overrides)
+    
+    def test_detect_project_root_wrapper(self, demo_project):
+        """Test that detect_project_root wrapper works."""
+        from quantumvitas.api import QVService
+        
+        # Should detect project root
+        detected = QVService.detect_project_root(start=demo_project)
+        assert detected == demo_project.resolve()
+        
+        # Should return None for non-project directory
+        non_project = demo_project.parent / "non_project"
+        non_project.mkdir()
+        detected = QVService.detect_project_root(start=non_project)
+        assert detected is None
 

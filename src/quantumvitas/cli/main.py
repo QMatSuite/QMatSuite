@@ -54,18 +54,9 @@ from quantumvitas.project.model import Project
 from quantumvitas.calculation.calculation import Calculation
 # StepMode and StepStatus now imported from quantumvitas.api
 from quantumvitas.api import StepMode, StepStatus
-from quantumvitas.calculation.input_runner import (
-    ParameterOverride,
-    apply_card_overrides_to_qe_input,
-    apply_species_overrides_to_qe_input,
-    detect_project_root,
-    run_input_step,
-)
-from quantumvitas.calculation.structure_steps import (
-    StructureStepSpec,
-    generate_qe_input_from_spec,
-    generate_qe_input_from_structure,
-)
+# input_runner functions now via QVService wrappers
+from quantumvitas.api import ParameterOverride
+# Structure step specs now via QVService
 # I/O operations now via QVService
 from quantumvitas.api import QECardType, QEInputParser
 
@@ -1198,6 +1189,7 @@ def init_step_command(
     
     step_meta_dict = QVService.meta_from_name("step", name=step_display_name, path="")
     step_meta = ResourceMeta(**step_meta_dict)
+    from quantumvitas.api import StructureStepSpec
     spec = StructureStepSpec(
         meta=step_meta,
         structure=structure_value,  # Keep for backwards compat
@@ -1654,7 +1646,7 @@ def _run_standalone_step(
     import tempfile
     import shutil
     from quantumvitas.calculation.importers import build_step_spec_from_qe_input
-    from quantumvitas.calculation.structure_steps import StructureStepSpec, materialize_step_spec
+    from quantumvitas.api import StructureStepSpec
     from quantumvitas.core.engines.base import EngineConfig
     from quantumvitas.calculation.step import Step
     from quantumvitas.api import QVService
@@ -1718,7 +1710,7 @@ def _run_standalone_step(
         
         # Materialize step (generates .in from step.yaml)
         # For standalone, use workdir as project_root for pseudo resolution (workdir/pseudo)
-        generated_input, materialized_spec = materialize_step_spec(
+        generated_input, materialized_spec = svc.materialize_step_spec(
             spec=spec,
             output_dir=workdir_path,
             calculation_dir=temp_calc_dir,
@@ -1804,20 +1796,20 @@ def run_structure_command(
     if bundle.has_any():
         typer.echo(f"Applying overrides: {_render_override_summary(bundle)}")
 
-    qe_input = generate_qe_input_from_structure(
+    qe_input = svc.generate_qe_input_from_structure(
         structure=struct,
         step_type=step_type,
         parameter_overrides=bundle.parameters,
     )
-    apply_card_overrides_to_qe_input(qe_input, bundle.card_overrides)
-    apply_species_overrides_to_qe_input(qe_input, bundle.species_overrides)
+    from quantumvitas.api import QVService
+    QVService.apply_card_overrides_to_qe_input(qe_input, bundle.card_overrides)
+    QVService.apply_species_overrides_to_qe_input(qe_input, bundle.species_overrides)
 
     generated_name = input_name or f"{struct_name}_{step_type}.pw.in"
     generated_input = workdir / generated_name
-    from quantumvitas.api import QVService
     QVService.write_qe_input_file(qe_input, generated_input)
 
-    result, prepared = run_input_step(
+    result, prepared = QVService.run_input_step(
         engine=engine.backend,
         input_file=generated_input,
         working_dir=workdir,
@@ -2028,6 +2020,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
                     
                     # Load step spec to get meta
                     try:
+                        from quantumvitas.api import StructureStepSpec
                         spec = StructureStepSpec.from_yaml(step_resolved.absolute_path)
                         step_meta = spec.meta
                         step_display_name = step_meta.name or spec.step_type or "(unnamed)"
@@ -2042,6 +2035,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
             spec_path = (calculation_dir / legacy_step_file).resolve()
             if spec_path.exists():
                 try:
+                    from quantumvitas.api import StructureStepSpec
                     spec = StructureStepSpec.from_yaml(spec_path)
                     step_meta = spec.meta
                     step_display_name = step_meta.name or spec.step_type or "(unnamed)"
@@ -2276,6 +2270,7 @@ def rename_step_command(
     source_path = (calculation_dir / source_rel).resolve()
     if not source_path.exists():
         raise typer.BadParameter(f"Step file '{source_rel}' does not exist.")
+    from quantumvitas.api import StructureStepSpec
     spec = StructureStepSpec.from_yaml(source_path)
 
     destination_path = source_path
@@ -2778,6 +2773,7 @@ def configure_step_command(
             pass
     
     try:
+        from quantumvitas.api import StructureStepSpec
         spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolve_structure_selector)
     except FileNotFoundError as exc:
         raise typer.BadParameter(f"Step file not found: {step_file}") from exc
@@ -3002,6 +2998,7 @@ def configure_calculation_command(
                 
                 # Load step spec with resolver to normalize legacy structure selectors
                 resolve_structure_selector = svc.make_structure_selector_resolver_ref()
+                from quantumvitas.api import StructureStepSpec
                 spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolve_structure_selector)
                 
                 # Update structure_id (canonical reference) - structure selector is not written
@@ -4448,8 +4445,9 @@ def _suggest_structure_name(structure: "PMGStructure", source_path: Path) -> str
 
 
 def _write_step_spec(
-    path: Path, spec: StructureStepSpec, *, project_root: Optional[Path] = None
+    path: Path, spec: Any, *, project_root: Optional[Path] = None
 ) -> None:
+    from quantumvitas.api import StructureStepSpec
     if project_root:
         from quantumvitas.api import QVService
         relative_path = QVService.ensure_relative_path(path, base=project_root)
@@ -4459,10 +4457,9 @@ def _write_step_spec(
 
     # Compute warnings before writing (pure keyword matching, no engine detection)
     warnings: list[str] = []
-    from quantumvitas.calculation.structure_steps import detect_runtime_control_keys
     
     parameters = spec.parameters or {}
-    runtime_keys = detect_runtime_control_keys(parameters)
+    runtime_keys = svc.detect_runtime_control_keys(parameters)
     if runtime_keys:
         for key in runtime_keys:
             warnings.append(
@@ -4749,6 +4746,7 @@ def _execute_step_spec_path(
     working_dir: Optional[Path],
     engine_backend,
 ):
+    from quantumvitas.api import StructureStepSpec
     spec = StructureStepSpec.from_yaml(spec_path)
     
     # Validate structure consistency with parent calculation if present
@@ -4766,10 +4764,11 @@ def _execute_step_spec_path(
 
 
 def _validate_step_structure_consistency(
-    spec: StructureStepSpec,
+    spec: Any,
     spec_path: Path,
     project_root: Path,
 ) -> None:
+    from quantumvitas.api import StructureStepSpec
     """
     Validate that the step's structure matches its parent calculation's structure.
     
@@ -4818,13 +4817,14 @@ def _validate_step_structure_consistency(
 
 
 def _execute_step_spec(
-    spec: StructureStepSpec,
+    spec: Any,
     spec_path: Path,
     bundle: ParsedOverrides,
     project_root: Path,
     working_dir: Optional[Path],
     engine_backend,
 ):
+    from quantumvitas.api import StructureStepSpec
     spec_copy = copy.deepcopy(spec)
     if bundle.card_overrides:
         spec_copy.cards = _merge_card_updates(
@@ -4857,7 +4857,7 @@ def _execute_step_spec(
         )
     
     structure, struct_name = _resolve_structure_input(project_root, structure_identifier)
-    qe_input, _ = generate_qe_input_from_spec(
+    qe_input, _ = svc.generate_qe_input_from_spec(
         structure=structure,
         spec=spec_copy,
         extra_overrides=bundle.parameters,
@@ -4872,7 +4872,8 @@ def _execute_step_spec(
     from quantumvitas.api import QVService
     QVService.write_qe_input_file(qe_input, generated_input)
 
-    result, prepared = run_input_step(
+    from quantumvitas.api import QVService
+    result, prepared = QVService.run_input_step(
         engine=engine_backend,
         input_file=generated_input,
         working_dir=workdir,
