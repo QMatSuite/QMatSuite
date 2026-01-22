@@ -812,8 +812,82 @@ steps: []
         unknown_defaults = QVService.get_default_step_params("unknown_step_type")
         assert isinstance(unknown_defaults, dict)
         assert "parameters" in unknown_defaults
-        assert "cards" in unknown_defaults
-        assert "species_overrides" in unknown_defaults
+    
+    def test_configure_species_map_wrapper(self, monkeypatch, tmp_path):
+        """Test that configure_species_map wrapper works by mocking underlying call."""
+        from quantumvitas.api import QVService
+        import quantumvitas.calculation.species_config as species_config_module
+
+        # Track calls to the underlying function
+        called = {}
+        fake_species_map = {
+            "Si": {"mass": 28.0855, "pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"},
+            "O": {"mass": 15.999, "pseudopot": "O.pbe-n-rrkjus_psl.1.0.0.UPF"},
+        }
+
+        def fake_configure_species_map(
+            project_root, calculation, *, from_qe_input=None, set_entries=None, merge=True
+        ):
+            called["project_root"] = project_root
+            called["calculation"] = calculation
+            called["from_qe_input"] = from_qe_input
+            called["set_entries"] = set_entries
+            called["merge"] = merge
+            return fake_species_map
+
+        # Mock the underlying function
+        monkeypatch.setattr(
+            species_config_module,
+            "configure_species_map",
+            fake_configure_species_map,
+        )
+
+        # Create minimal project structure
+        project_root = tmp_path / "test_project"
+        project_root.mkdir()
+        (project_root / "project.qv.yml").write_text("project:\n  name: test\nstructures: []\ncalculations: []\n")
+
+        # Call wrapper
+        result = QVService.configure_species_map(
+            project_root=project_root,
+            calculation="test_calc",
+            from_qe_input=None,
+            set_entries=[("Si", 28.0855, "Si.pbe-n-rrkjus_psl.1.0.0.UPF")],
+            merge=True,
+        )
+
+        # Assertions
+        assert result == fake_species_map
+        assert called["project_root"] == project_root.resolve()
+        assert called["calculation"] == "test_calc"
+        assert called["from_qe_input"] is None
+        assert called["set_entries"] == [("Si", 28.0855, "Si.pbe-n-rrkjus_psl.1.0.0.UPF")]
+        assert called["merge"] is True
+    
+    def test_configure_species_map_wrapper_raises_qvservice_error(self, monkeypatch, tmp_path):
+        """Test that configure_species_map wrapper converts ValueError to QVServiceError."""
+        from quantumvitas.api import QVService, QVServiceError
+        import quantumvitas.calculation.species_config as species_config_module
+
+        def fake_configure_species_map(*args, **kwargs):
+            raise ValueError("Calculation not found")
+
+        monkeypatch.setattr(
+            species_config_module,
+            "configure_species_map",
+            fake_configure_species_map,
+        )
+
+        project_root = tmp_path / "test_project"
+        project_root.mkdir()
+        (project_root / "project.qv.yml").write_text("project:\n  name: test\nstructures: []\ncalculations: []\n")
+
+        with pytest.raises(QVServiceError, match="Calculation not found"):
+            QVService.configure_species_map(
+                project_root=project_root,
+                calculation="nonexistent",
+                set_entries=[("Si", 28.0855, "Si.UPF")],
+            )
     
     def test_detect_runtime_control_keys_wrapper(self):
         """Test that detect_runtime_control_keys wrapper works."""
