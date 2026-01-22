@@ -39,6 +39,7 @@ from quantumvitas.api import (
 from quantumvitas.api import (
     ProjectConfigError,
     QVService,
+    QVServiceError,
     ResourceContext,
 )
 from quantumvitas.data import (
@@ -3139,7 +3140,6 @@ def configure_species_command(
         qv configure species --from-input scf.in --set "Si:28.086:Si.new.UPF"  # --set overrides Si from input
     """
     from quantumvitas.api import QVService
-    from quantumvitas.calculation.species_config import configure_species_map
     
     # Find project root
     if project:
@@ -3194,14 +3194,14 @@ def configure_species_command(
     
     # Call shared API
     try:
-        updated_species_map = configure_species_map(
+        updated_species_map = QVService.configure_species_map(
             project_root=project_root,
             calculation=calculation,
             from_qe_input=from_input,
             set_entries=set_entries,
             merge=True,
         )
-    except ValueError as exc:
+    except QVServiceError as exc:
         raise typer.BadParameter(str(exc)) from exc
     
     # Print summary

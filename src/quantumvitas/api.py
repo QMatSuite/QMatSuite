@@ -9087,12 +9087,11 @@ class QVService:
         from_qe_input: Optional[Path] = None,
         set_entries: Optional[List[Tuple[str, float, str]]] = None,
         merge: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, Dict[str, Any]]:
         """
         Configure calculation-level species_map.
         
         Updates calculation.yaml species_map from a QE input file or explicit triples.
-        Shared implementation used by both CLI and QVService/daemon.
         
         Args:
             project_root: Project root directory
@@ -9102,29 +9101,23 @@ class QVService:
             merge: If True (default), merge with existing species_map. If False, replace.
             
         Returns:
-            Dict with updated species_map and success status
+            Updated species_map dictionary (element -> {mass, pseudopot, ...})
             
         Raises:
-            ValueError: If calculation not found or invalid arguments
+            QVServiceError: If calculation not found or invalid arguments
         """
-        from quantumvitas.calculation.species_config import configure_species_map
+        from quantumvitas.calculation.species_config import configure_species_map as _configure_species_map
         
         project_root = Path(project_root).expanduser().resolve()
         
         try:
-            updated_species_map = configure_species_map(
+            return _configure_species_map(
                 project_root=project_root,
                 calculation=calculation,
                 from_qe_input=from_qe_input,
                 set_entries=set_entries,
                 merge=merge,
             )
-            
-            return {
-                "success": True,
-                "species_map": updated_species_map,
-                "elements": sorted(updated_species_map.keys()),
-            }
         except ValueError as exc:
             raise QVServiceError(str(exc)) from exc
 
