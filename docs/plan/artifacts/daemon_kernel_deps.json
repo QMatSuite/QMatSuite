@@ -1,0 +1,1049 @@
+{
+  "file": "<HOME>/QMatSuite/src/quantumvitas/daemon/server.py",
+  "total_violations": 125,
+  "by_module": {
+    "quantumvitas.core.pseudo_config": {
+      "count": 30,
+      "lines": [
+        759,
+        790,
+        838,
+        859,
+        882,
+        928,
+        955,
+        991,
+        1046,
+        1088,
+        1177,
+        1328,
+        1374
+      ],
+      "functions": [
+        "_handle_download_all_sssp",
+        "_handle_download_sssp_library",
+        "_handle_get_pseudo_config",
+        "_handle_import_seed_archives",
+        "_handle_init_pseudo_dirs",
+        "_handle_install_library",
+        "_handle_install_pseudo_archive",
+        "_handle_install_seed_to_store",
+        "_handle_list_installed_sssp",
+        "_handle_list_pseudo_archives_status",
+        "_handle_list_seed_archives",
+        "_handle_set_pseudo_config",
+        "_handle_validate_pseudo_config"
+      ]
+    },
+    "quantumvitas.core.resolution": {
+      "count": 29,
+      "lines": [
+        550,
+        2756,
+        2954,
+        3025,
+        3087,
+        3172,
+        3256,
+        3335,
+        3375,
+        3419,
+        3459,
+        3622,
+        4145,
+        4192,
+        4308,
+        4350,
+        4463,
+        4645,
+        4669,
+        6684
+      ],
+      "functions": [
+        "_handle_can_delete_calculation",
+        "_handle_change_calculation_structure",
+        "_handle_delete_calculation",
+        "_handle_detect_workflow_for_calculation",
+        "_handle_get_calculation_detail",
+        "_handle_get_calculation_pseudo_mapping",
+        "_handle_get_common_cards",
+        "_handle_get_pseudo_mapping",
+        "_handle_get_pseudo_options_for_calculation",
+        "_handle_get_step_detail",
+        "_handle_get_step_preset_footprints",
+        "_handle_import_step_from_qe_input",
+        "_handle_reset_step_params",
+        "_handle_set_common_card",
+        "_handle_set_pseudo_mapping",
+        "_handle_structure_import_online_candidate",
+        "_handle_update_step_params",
+        "handle_request"
+      ]
+    },
+    "quantumvitas.core.library_manager": {
+      "count": 6,
+      "lines": [
+        1124,
+        1141,
+        1176,
+        1225,
+        1250,
+        1273
+      ],
+      "functions": [
+        "_handle_compute_store_size",
+        "_handle_get_library_status",
+        "_handle_install_library",
+        "_handle_list_libraries",
+        "_handle_remove_library",
+        "_handle_repair_library"
+      ]
+    },
+    "quantumvitas.core.pseudo_installs": {
+      "count": 6,
+      "lines": [
+        1324,
+        1369,
+        1417
+      ],
+      "functions": [
+        "_handle_install_pseudo_archive",
+        "_handle_list_pseudo_archives_status"
+      ]
+    },
+    "quantumvitas.io.online_search": {
+      "count": 6,
+      "lines": [
+        2229,
+        2299,
+        2372,
+        2478
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate",
+        "_handle_structure_search_online"
+      ]
+    },
+    "quantumvitas.analysis.structure_viz": {
+      "count": 6,
+      "lines": [
+        2300,
+        2698
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate",
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.io.parser.volume_parsers": {
+      "count": 5,
+      "lines": [
+        5070,
+        5307
+      ],
+      "functions": [
+        "_handle_compile_fixture_volume"
+      ]
+    },
+    "quantumvitas.core.settings": {
+      "count": 4,
+      "lines": [
+        189,
+        1492,
+        1511
+      ],
+      "functions": [
+        "__init__",
+        "_handle_get_debug_resolution",
+        "_handle_set_debug_resolution"
+      ]
+    },
+    "quantumvitas.io.online_cache": {
+      "count": 4,
+      "lines": [
+        2228,
+        2298,
+        2673
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate",
+        "_handle_structure_import_online_candidate",
+        "_handle_structure_search_online"
+      ]
+    },
+    "quantumvitas.core.resources": {
+      "count": 3,
+      "lines": [
+        2675
+      ],
+      "functions": [
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.core.project_utils": {
+      "count": 3,
+      "lines": [
+        2676
+      ],
+      "functions": [
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.core.debug": {
+      "count": 3,
+      "lines": [
+        3173,
+        4193,
+        4464
+      ],
+      "functions": [
+        "_handle_get_calculation_detail",
+        "_handle_get_calculation_pseudo_mapping",
+        "_handle_get_step_detail"
+      ]
+    },
+    "quantumvitas.core.models": {
+      "count": 3,
+      "lines": [
+        5462,
+        5548,
+        6003
+      ],
+      "functions": [
+        "_handle_run_calculation",
+        "_handle_run_step",
+        "_snapshot_dag"
+      ]
+    },
+    "quantumvitas.core.context": {
+      "count": 2,
+      "lines": [
+        2129
+      ],
+      "functions": [
+        "_handle_find_project_root"
+      ]
+    },
+    "quantumvitas.io.structure_io": {
+      "count": 2,
+      "lines": [
+        2307,
+        2674
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate",
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.core.pseudo_runtime": {
+      "count": 2,
+      "lines": [
+        4563
+      ],
+      "functions": [
+        "_handle_analyze_project_pseudo_effects"
+      ]
+    },
+    "quantumvitas.core.pseudo_options": {
+      "count": 2,
+      "lines": [
+        4615,
+        4716
+      ],
+      "functions": [
+        "_handle_get_pseudo_options_for_calculation",
+        "_handle_materialize_pseudo_file"
+      ]
+    },
+    "quantumvitas.analysis.blob_store": {
+      "count": 2,
+      "lines": [
+        5069,
+        5306
+      ],
+      "functions": [
+        "_handle_compile_fixture_volume"
+      ]
+    },
+    "quantumvitas.calculation.runner": {
+      "count": 2,
+      "lines": [
+        5463,
+        5549
+      ],
+      "functions": [
+        "_handle_run_calculation",
+        "_handle_run_step"
+      ]
+    },
+    "quantumvitas.core.journal": {
+      "count": 2,
+      "lines": [
+        6172,
+        6200
+      ],
+      "functions": [
+        "_handle_get_journal_entry",
+        "_handle_list_journal_entries"
+      ]
+    },
+    "quantumvitas.core.exceptions": {
+      "count": 1,
+      "lines": [
+        549
+      ],
+      "functions": [
+        "handle_request"
+      ]
+    },
+    "quantumvitas.core.templates": {
+      "count": 1,
+      "lines": [
+        2852
+      ],
+      "functions": [
+        "_handle_list_calculation_templates"
+      ]
+    },
+    "quantumvitas.io": {
+      "count": 1,
+      "lines": [
+        4646
+      ],
+      "functions": [
+        "_handle_get_pseudo_options_for_calculation"
+      ]
+    }
+  },
+  "by_symbol": {
+    "quantumvitas.core.resolution:_is_ulid_like": {
+      "count": 16,
+      "lines": [
+        2954,
+        3025,
+        3172,
+        3256,
+        3335,
+        3375,
+        3419,
+        3459,
+        3622,
+        4145,
+        4192,
+        4308,
+        4350,
+        4463,
+        4669,
+        6684
+      ],
+      "functions": [
+        "_handle_can_delete_calculation",
+        "_handle_change_calculation_structure",
+        "_handle_delete_calculation",
+        "_handle_detect_workflow_for_calculation",
+        "_handle_get_calculation_detail",
+        "_handle_get_calculation_pseudo_mapping",
+        "_handle_get_common_cards",
+        "_handle_get_pseudo_mapping",
+        "_handle_get_pseudo_options_for_calculation",
+        "_handle_get_step_detail",
+        "_handle_get_step_preset_footprints",
+        "_handle_import_step_from_qe_input",
+        "_handle_reset_step_params",
+        "_handle_set_common_card",
+        "_handle_set_pseudo_mapping",
+        "_handle_update_step_params"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:load_pseudo_config": {
+      "count": 13,
+      "lines": [
+        759,
+        790,
+        838,
+        859,
+        882,
+        928,
+        955,
+        991,
+        1046,
+        1088,
+        1177,
+        1328,
+        1374
+      ],
+      "functions": [
+        "_handle_download_all_sssp",
+        "_handle_download_sssp_library",
+        "_handle_get_pseudo_config",
+        "_handle_import_seed_archives",
+        "_handle_init_pseudo_dirs",
+        "_handle_install_library",
+        "_handle_install_pseudo_archive",
+        "_handle_install_seed_to_store",
+        "_handle_list_installed_sssp",
+        "_handle_list_pseudo_archives_status",
+        "_handle_list_seed_archives",
+        "_handle_set_pseudo_config",
+        "_handle_validate_pseudo_config"
+      ]
+    },
+    "quantumvitas.core.resolution:validate_ulid": {
+      "count": 5,
+      "lines": [
+        3087,
+        3172,
+        4192,
+        4463,
+        4669
+      ],
+      "functions": [
+        "_handle_delete_calculation",
+        "_handle_get_calculation_detail",
+        "_handle_get_calculation_pseudo_mapping",
+        "_handle_get_pseudo_options_for_calculation",
+        "_handle_get_step_detail"
+      ]
+    },
+    "quantumvitas.core.settings:load_settings": {
+      "count": 3,
+      "lines": [
+        189,
+        1492,
+        1511
+      ],
+      "functions": [
+        "__init__",
+        "_handle_get_debug_resolution",
+        "_handle_set_debug_resolution"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:list_installed_sssp": {
+      "count": 3,
+      "lines": [
+        928,
+        991,
+        1046
+      ],
+      "functions": [
+        "_handle_download_all_sssp",
+        "_handle_download_sssp_library",
+        "_handle_list_installed_sssp"
+      ]
+    },
+    "quantumvitas.io.online_cache:OnlineStructureCache": {
+      "count": 3,
+      "lines": [
+        2228,
+        2298,
+        2673
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate",
+        "_handle_structure_import_online_candidate",
+        "_handle_structure_search_online"
+      ]
+    },
+    "quantumvitas.core.resolution:resolve_calculation": {
+      "count": 3,
+      "lines": [
+        3172,
+        4192,
+        4463
+      ],
+      "functions": [
+        "_handle_get_calculation_detail",
+        "_handle_get_calculation_pseudo_mapping",
+        "_handle_get_step_detail"
+      ]
+    },
+    "quantumvitas.core.debug:is_resolution_debug_enabled": {
+      "count": 3,
+      "lines": [
+        3173,
+        4193,
+        4464
+      ],
+      "functions": [
+        "_handle_get_calculation_detail",
+        "_handle_get_calculation_pseudo_mapping",
+        "_handle_get_step_detail"
+      ]
+    },
+    "quantumvitas.core.models:load_calculation": {
+      "count": 3,
+      "lines": [
+        5462,
+        5548,
+        6003
+      ],
+      "functions": [
+        "_handle_run_calculation",
+        "_handle_run_step",
+        "_snapshot_dag"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:PseudoConfig": {
+      "count": 2,
+      "lines": [
+        759,
+        790
+      ],
+      "functions": [
+        "_handle_get_pseudo_config",
+        "_handle_set_pseudo_config"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:_find_quantumvitas_root": {
+      "count": 2,
+      "lines": [
+        759,
+        790
+      ],
+      "functions": [
+        "_handle_get_pseudo_config",
+        "_handle_set_pseudo_config"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:save_pseudo_config": {
+      "count": 2,
+      "lines": [
+        790,
+        1177
+      ],
+      "functions": [
+        "_handle_install_library",
+        "_handle_set_pseudo_config"
+      ]
+    },
+    "quantumvitas.core.pseudo_installs:load_manifest_archives": {
+      "count": 2,
+      "lines": [
+        1324,
+        1369
+      ],
+      "functions": [
+        "_handle_install_pseudo_archive",
+        "_handle_list_pseudo_archives_status"
+      ]
+    },
+    "quantumvitas.core.pseudo_installs:check_archives_status": {
+      "count": 2,
+      "lines": [
+        1324,
+        1369
+      ],
+      "functions": [
+        "_handle_install_pseudo_archive",
+        "_handle_list_pseudo_archives_status"
+      ]
+    },
+    "quantumvitas.io.online_search:score_candidate": {
+      "count": 2,
+      "lines": [
+        2299,
+        2372
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate"
+      ]
+    },
+    "quantumvitas.io.structure_io:write_structure": {
+      "count": 2,
+      "lines": [
+        2307,
+        2674
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate",
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.core.resolution:resolve_structure": {
+      "count": 2,
+      "lines": [
+        4350,
+        4645
+      ],
+      "functions": [
+        "_handle_change_calculation_structure",
+        "_handle_get_pseudo_options_for_calculation"
+      ]
+    },
+    "quantumvitas.analysis.blob_store:BlobStore": {
+      "count": 2,
+      "lines": [
+        5069,
+        5306
+      ],
+      "functions": [
+        "_handle_compile_fixture_volume"
+      ]
+    },
+    "quantumvitas.io.parser.volume_parsers:parse_xsf_datagrid_3d": {
+      "count": 2,
+      "lines": [
+        5070,
+        5307
+      ],
+      "functions": [
+        "_handle_compile_fixture_volume"
+      ]
+    },
+    "quantumvitas.io.parser.volume_parsers:parse_bxsf_bandgrid_3d": {
+      "count": 2,
+      "lines": [
+        5070,
+        5307
+      ],
+      "functions": [
+        "_handle_compile_fixture_volume"
+      ]
+    },
+    "quantumvitas.calculation.runner:compute_io_dir_from_calculation_model": {
+      "count": 2,
+      "lines": [
+        5463,
+        5549
+      ],
+      "functions": [
+        "_handle_run_calculation",
+        "_handle_run_step"
+      ]
+    },
+    "quantumvitas.core.journal:get_journal": {
+      "count": 2,
+      "lines": [
+        6172,
+        6200
+      ],
+      "functions": [
+        "_handle_get_journal_entry",
+        "_handle_list_journal_entries"
+      ]
+    },
+    "quantumvitas.core.exceptions:LegacyProjectError": {
+      "count": 1,
+      "lines": [
+        549
+      ],
+      "functions": [
+        "handle_request"
+      ]
+    },
+    "quantumvitas.core.resolution:ResourceNotFoundError": {
+      "count": 1,
+      "lines": [
+        550
+      ],
+      "functions": [
+        "handle_request"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:validate_pseudo_config": {
+      "count": 1,
+      "lines": [
+        838
+      ],
+      "functions": [
+        "_handle_validate_pseudo_config"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:init_pseudo_dirs": {
+      "count": 1,
+      "lines": [
+        859
+      ],
+      "functions": [
+        "_handle_init_pseudo_dirs"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:install_sssp_from_seed": {
+      "count": 1,
+      "lines": [
+        882
+      ],
+      "functions": [
+        "_handle_install_seed_to_store"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:install_all_sssp_from_seed": {
+      "count": 1,
+      "lines": [
+        882
+      ],
+      "functions": [
+        "_handle_install_seed_to_store"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:list_seed_archives": {
+      "count": 1,
+      "lines": [
+        955
+      ],
+      "functions": [
+        "_handle_list_seed_archives"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:download_sssp_library": {
+      "count": 1,
+      "lines": [
+        991
+      ],
+      "functions": [
+        "_handle_download_sssp_library"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:download_all_sssp": {
+      "count": 1,
+      "lines": [
+        1046
+      ],
+      "functions": [
+        "_handle_download_all_sssp"
+      ]
+    },
+    "quantumvitas.core.pseudo_config:import_seed_archives": {
+      "count": 1,
+      "lines": [
+        1088
+      ],
+      "functions": [
+        "_handle_import_seed_archives"
+      ]
+    },
+    "quantumvitas.core.library_manager:get_supported_libraries": {
+      "count": 1,
+      "lines": [
+        1124
+      ],
+      "functions": [
+        "_handle_list_libraries"
+      ]
+    },
+    "quantumvitas.core.library_manager:get_library_status": {
+      "count": 1,
+      "lines": [
+        1141
+      ],
+      "functions": [
+        "_handle_get_library_status"
+      ]
+    },
+    "quantumvitas.core.library_manager:install_library": {
+      "count": 1,
+      "lines": [
+        1176
+      ],
+      "functions": [
+        "_handle_install_library"
+      ]
+    },
+    "quantumvitas.core.library_manager:remove_library": {
+      "count": 1,
+      "lines": [
+        1225
+      ],
+      "functions": [
+        "_handle_remove_library"
+      ]
+    },
+    "quantumvitas.core.library_manager:repair_library": {
+      "count": 1,
+      "lines": [
+        1250
+      ],
+      "functions": [
+        "_handle_repair_library"
+      ]
+    },
+    "quantumvitas.core.library_manager:compute_store_size": {
+      "count": 1,
+      "lines": [
+        1273
+      ],
+      "functions": [
+        "_handle_compute_store_size"
+      ]
+    },
+    "quantumvitas.core.pseudo_installs:install_archive": {
+      "count": 1,
+      "lines": [
+        1369
+      ],
+      "functions": [
+        "_handle_install_pseudo_archive"
+      ]
+    },
+    "quantumvitas.core.pseudo_installs:is_archive_installed": {
+      "count": 1,
+      "lines": [
+        1417
+      ],
+      "functions": [
+        "_handle_install_pseudo_archive"
+      ]
+    },
+    "quantumvitas.core.settings:save_settings": {
+      "count": 1,
+      "lines": [
+        1492
+      ],
+      "functions": [
+        "_handle_set_debug_resolution"
+      ]
+    },
+    "quantumvitas.core.context:find_path_context_from_pwd": {
+      "count": 1,
+      "lines": [
+        2129
+      ],
+      "functions": [
+        "_handle_find_project_root"
+      ]
+    },
+    "quantumvitas.core.context:ContextNotFoundError": {
+      "count": 1,
+      "lines": [
+        2129
+      ],
+      "functions": [
+        "_handle_find_project_root"
+      ]
+    },
+    "quantumvitas.io.online_cache:CandidateSummary": {
+      "count": 1,
+      "lines": [
+        2228
+      ],
+      "functions": [
+        "_handle_structure_search_online"
+      ]
+    },
+    "quantumvitas.io.online_search:search_online_structures": {
+      "count": 1,
+      "lines": [
+        2229
+      ],
+      "functions": [
+        "_handle_structure_search_online"
+      ]
+    },
+    "quantumvitas.io.online_search:fetch_structure_from_optimade": {
+      "count": 1,
+      "lines": [
+        2299
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate"
+      ]
+    },
+    "quantumvitas.analysis.structure_viz:build_display_atoms": {
+      "count": 1,
+      "lines": [
+        2300
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate"
+      ]
+    },
+    "quantumvitas.analysis.structure_viz:build_bonds": {
+      "count": 1,
+      "lines": [
+        2300
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate"
+      ]
+    },
+    "quantumvitas.analysis.structure_viz:get_element_color": {
+      "count": 1,
+      "lines": [
+        2300
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate"
+      ]
+    },
+    "quantumvitas.analysis.structure_viz:get_element_radius": {
+      "count": 1,
+      "lines": [
+        2300
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate"
+      ]
+    },
+    "quantumvitas.analysis.structure_viz:DisplayModeParams": {
+      "count": 1,
+      "lines": [
+        2300
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate"
+      ]
+    },
+    "quantumvitas.io.online_search:reduce_formula": {
+      "count": 1,
+      "lines": [
+        2372
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate"
+      ]
+    },
+    "quantumvitas.io.online_search:extract_provenance": {
+      "count": 1,
+      "lines": [
+        2478
+      ],
+      "functions": [
+        "_handle_structure_get_online_candidate"
+      ]
+    },
+    "quantumvitas.core.resources:meta_from_name": {
+      "count": 1,
+      "lines": [
+        2675
+      ],
+      "functions": [
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.core.resources:ensure_relative_path": {
+      "count": 1,
+      "lines": [
+        2675
+      ],
+      "functions": [
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.core.resources:generate_unique_name_and_slug": {
+      "count": 1,
+      "lines": [
+        2675
+      ],
+      "functions": [
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.core.project_utils:load_project_config": {
+      "count": 1,
+      "lines": [
+        2676
+      ],
+      "functions": [
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.core.project_utils:save_project_config": {
+      "count": 1,
+      "lines": [
+        2676
+      ],
+      "functions": [
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.core.project_utils:collect_slugs": {
+      "count": 1,
+      "lines": [
+        2676
+      ],
+      "functions": [
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.analysis.structure_viz:canonicalize_structure_in_place": {
+      "count": 1,
+      "lines": [
+        2698
+      ],
+      "functions": [
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.core.resolution:update_registry_add_structure": {
+      "count": 1,
+      "lines": [
+        2756
+      ],
+      "functions": [
+        "_handle_structure_import_online_candidate"
+      ]
+    },
+    "quantumvitas.core.templates:list_calculation_templates": {
+      "count": 1,
+      "lines": [
+        2852
+      ],
+      "functions": [
+        "_handle_list_calculation_templates"
+      ]
+    },
+    "quantumvitas.core.resolution:_is_path_like": {
+      "count": 1,
+      "lines": [
+        4350
+      ],
+      "functions": [
+        "_handle_change_calculation_structure"
+      ]
+    },
+    "quantumvitas.core.pseudo_runtime:analyze_project_pseudo_effects": {
+      "count": 1,
+      "lines": [
+        4563
+      ],
+      "functions": [
+        "_handle_analyze_project_pseudo_effects"
+      ]
+    },
+    "quantumvitas.core.pseudo_runtime:PseudoSelection": {
+      "count": 1,
+      "lines": [
+        4563
+      ],
+      "functions": [
+        "_handle_analyze_project_pseudo_effects"
+      ]
+    },
+    "quantumvitas.core.pseudo_options:materialize_pseudo_file": {
+      "count": 1,
+      "lines": [
+        4615
+      ],
+      "functions": [
+        "_handle_materialize_pseudo_file"
+      ]
+    },
+    "quantumvitas.io:read_structure": {
+      "count": 1,
+      "lines": [
+        4646
+      ],
+      "functions": [
+        "_handle_get_pseudo_options_for_calculation"
+      ]
+    },
+    "quantumvitas.core.pseudo_options:get_pseudo_options_for_elements": {
+      "count": 1,
+      "lines": [
+        4716
+      ],
+      "functions": [
+        "_handle_get_pseudo_options_for_calculation"
+      ]
+    },
+    "quantumvitas.io.parser.volume_parsers:VolumeParserError": {
+      "count": 1,
+      "lines": [
+        5307
+      ],
+      "functions": [
+        "_handle_compile_fixture_volume"
+      ]
+    }
+  }
+}
