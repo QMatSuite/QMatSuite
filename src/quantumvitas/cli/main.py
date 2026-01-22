@@ -53,10 +53,8 @@ from quantumvitas.core.project_utils import (
     ProjectConfigError,
     ResourceNotFoundError as ProjectResourceNotFoundError,  # Legacy error
     ResourceContext,
-    load_project_config,
     save_project_config,
     collect_slugs,
-    entry_matches,
     entry_display_name,
     ensure_structure_entry_defaults,
     ensure_calculation_entry_defaults,
@@ -65,7 +63,6 @@ from quantumvitas.core.project_utils import (
     calculation_directory,
     structure_reference_tokens,
     spec_uses_structure,
-    calculations_using_structure,
     calculation_identifiers,
     calculations_depending_on,
     move_to_trash,
@@ -1895,7 +1892,9 @@ def list_resources(
     if verbose:
         typer.echo(f"  id: {proj.meta.id}")
     # Load config to check structure-calculation relationships
-    config = load_project_config(project_root)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    config = svc.load_project_config()
     
     typer.echo("\nStructures:")
     structures = sorted(proj.structures.values(), key=lambda r: r.name)
@@ -1905,13 +1904,13 @@ def list_resources(
         # Find calculations using this structure
         struct_entry = None
         for entry in config.get("structures", []):
-            if entry_matches(entry, ref.meta.slug) or entry_matches(entry, ref.name):
+            if QVService.entry_matches(entry, ref.meta.slug) or QVService.entry_matches(entry, ref.name):
                 struct_entry = entry
                 break
         
         using_calculations = []
         if struct_entry:
-            using_wfs = calculations_using_structure(project_root, config, struct_entry)
+            using_wfs = svc.calculations_using_structure(struct_entry, config=config)
             using_calculations = [
                 (wf.get("meta") or {}).get("slug") or wf.get("name") 
                 for wf in using_wfs
@@ -2028,7 +2027,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
             from quantumvitas.api import QVService
             svc = QVService(project_root)
             index = svc.build_resource_index()
-            config = load_project_config(project_root)
+            config = svc.load_project_config()
         except Exception:
             pass
     
@@ -2385,7 +2384,7 @@ def delete_structure_command(
     entry = svc.find_structure_entry(identifier, config=config)
     trash_dir = (project_root / "trash").resolve()
 
-    referencing = calculations_using_structure(project_root, config, entry)
+    referencing = svc.calculations_using_structure(entry, config=config)
     if referencing:
         if cascade:
             for wf_entry in list(referencing):
