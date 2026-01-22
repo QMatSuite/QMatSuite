@@ -39,9 +39,6 @@ from quantumvitas.core.exceptions import LegacyProjectError
 from quantumvitas.core.resolution import (
     ResourceNotFoundError,
     RegistryOutOfSyncError,
-    require_calculation,
-    require_structure,
-    require_step,
     AmbiguousSelectorError,
     SelectorNotFoundError,
 )
@@ -601,10 +598,9 @@ def _resolve_structure_input(
 
     # Try to resolve via registry-based resolution (ID-only model)
     try:
-        from quantumvitas.core.resolution import build_resource_index, require_structure
-        config = load_project_config(project_root)
-        index = build_resource_index(project_root)
-        resolved = require_structure(project_root, identifier, config=config, index=index)
+        from quantumvitas.api import QVService
+        svc = QVService(project_root)
+        resolved = svc.require_structure_ref(identifier)
         structure = read_structure(resolved.absolute_path)
         return structure, resolved.meta.name or resolved.meta.slug or identifier
     except Exception as e:
@@ -834,8 +830,9 @@ def init_calculation_command(
         )
 
     # Resolve structure selector to structure_id (ULID)
-    from quantumvitas.core.resolution import require_structure
-    resolved_structure = require_structure(project_root, structure, config)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    resolved_structure = svc.require_structure_ref(structure, config=config)
     structure_id = resolved_structure.meta.id
     structure_name = resolved_structure.meta.name
 
@@ -1087,7 +1084,9 @@ def init_step_command(
     elif calculation_structure_id:
         # Calculation has structure_id - resolve it to get the selector for display
         try:
-            resolved = require_structure(project_root, calculation_structure_id, config if project_root else None)
+            from quantumvitas.api import QVService
+            svc = QVService(project_root)
+            resolved = svc.require_structure_ref(calculation_structure_id, config=config if project_root else None)
             structure_value = resolved.meta.slug or resolved.meta.name
             typer.echo(f"Using structure '{structure_value}' from calculation")
         except ResourceNotFoundError as e:
@@ -1206,7 +1205,9 @@ def init_step_command(
     elif structure_value and project_root:
         # Resolve structure selector to structure_id
         try:
-            resolved_structure = require_structure(project_root, structure_value, config if project_root else None)
+            from quantumvitas.api import QVService
+            svc = QVService(project_root)
+            resolved_structure = svc.require_structure_ref(structure_value, config=config if project_root else None)
             structure_id = resolved_structure.meta.id
         except ResourceNotFoundError as e:
             # Structure is required - fail clearly
@@ -1558,8 +1559,9 @@ def run_step_command(
                         )
                 else:
                     # Try to find step in registry by absolute path
-                    from quantumvitas.core.resolution import build_resource_index
-                    registry = build_resource_index(ctx_obj.project_root)
+                    from quantumvitas.api import QVService
+                    svc = QVService(ctx_obj.project_root)
+                    registry = svc.build_resource_index()
                     # Look for step by path in registry
                     step_found = None
                     for path, resource_id in registry.by_path.items():
@@ -1993,8 +1995,9 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
     config = None
     if project_root:
         try:
-            from quantumvitas.core.resolution import build_resource_index
-            index = build_resource_index(project_root)
+            from quantumvitas.api import QVService
+            svc = QVService(project_root)
+            index = svc.build_resource_index()
             config = load_project_config(project_root)
         except Exception:
             pass
@@ -2018,10 +2021,11 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
         # Try to resolve step file using ResourceIndex
         if step_id_ulid and index and project_root:
             try:
-                # Use resolve_step directly (it accepts index parameter)
-                from quantumvitas.core.resolution import resolve_step
-                step_resolved = resolve_step(project_root, calculation_slug, step_id_ulid, config=config, index=index)
-                if step_resolved and step_resolved.absolute_path:
+                # Use QVService to resolve step
+                from quantumvitas.api import QVService
+                svc = QVService(project_root)
+                step_resolved = svc.require_step_ref(calculation_slug, step_id_ulid, config=config, index=index)
+                if step_resolved.absolute_path:
                     # Calculate relative path from calculation_dir
                     try:
                         rel_path = str(step_resolved.absolute_path.relative_to(calculation_dir))
@@ -2366,9 +2370,9 @@ def delete_structure_command(
 
     # Resolve structure to get its ID before moving file to trash
     # (resolution might need the file to exist)
-    from quantumvitas.core.resolution import require_structure, build_resource_index
-    registry = build_resource_index(project_root)
-    resolved = require_structure(project_root, identifier, config=config, index=registry)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    resolved = svc.require_structure_ref(identifier, config=config)
     structure_id = resolved.meta.id
     
     # Move file to trash
@@ -2500,7 +2504,9 @@ def delete_step_command(
     
     # Use require_step to find the step (handles ULID, filename, legacy slug)
     try:
-        step_resolved = require_step(project_root, calculation_selector, step_id, config)
+        from quantumvitas.api import QVService
+        svc = QVService(project_root)
+        step_resolved = svc.require_step_ref(calculation_selector, step_id, config=config)
     except ResourceNotFoundError as e:
         raise typer.BadParameter(str(e)) from e
     
@@ -2745,10 +2751,9 @@ def configure_step_command(
     resolve_structure_selector = None
     if project_root_resolved:
         try:
-            from quantumvitas.core.resolution import make_structure_selector_resolver
-            from quantumvitas.core.project_utils import load_project_config
-            config = load_project_config(project_root_resolved)
-            resolve_structure_selector = make_structure_selector_resolver(project_root_resolved, config=config)
+            from quantumvitas.api import QVService
+            svc = QVService(project_root_resolved)
+            resolve_structure_selector = svc.make_structure_selector_resolver_ref()
         except Exception:
             pass
     
@@ -2899,11 +2904,11 @@ def configure_calculation_command(
             calculation_dir = calculation_directory(project_root, calculation_entry)
         except ProjectConfigError:
             # Entry might not have path yet - try to resolve via registry
-            from quantumvitas.core.resolution import build_resource_index, require_calculation
+            from quantumvitas.api import QVService
+            svc = QVService(project_root)
             calculation_id = extract_calculation_selector_from_entry(calculation_entry)
             if calculation_id:
-                index = build_resource_index(project_root)
-                resolved = require_calculation(project_root, calculation_id, index=index)
+                resolved = svc.require_calculation_ref(calculation_id)
                 calculation_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "calculation.yaml" else resolved.absolute_path
             else:
                 raise typer.BadParameter(f"Could not resolve calculation directory after rename")
@@ -2955,8 +2960,9 @@ def configure_calculation_command(
         
         # Update all step yaml files
         steps_updated = 0
-        from quantumvitas.core.resolution import resolve_structure, resolve_step, build_resource_index
-        index = build_resource_index(project_root)
+        from quantumvitas.api import QVService
+        svc = QVService(project_root)
+        index = svc.build_resource_index()
         
         for step_entry in calculation_data.get("steps", []):
             # With ID-only model, resolve step file via step_id
@@ -2970,19 +2976,18 @@ def configure_calculation_command(
                 calculation_selector = extract_calculation_selector_from_entry(calculation_entry)
                 if not calculation_selector:
                     continue  # Skip if no valid selector
-                step_resolved = resolve_step(project_root, calculation_selector, step_id, config=config, index=index)
+                step_resolved = svc.require_step_ref(calculation_selector, step_id, config=config, index=index)
                 step_path = step_resolved.absolute_path
                 
                 if not step_path.exists():
                     continue
                 
                 # Load step spec with resolver to normalize legacy structure selectors
-                from quantumvitas.core.resolution import make_structure_selector_resolver
-                resolve_structure_selector = make_structure_selector_resolver(project_root, config=config)
+                resolve_structure_selector = svc.make_structure_selector_resolver_ref()
                 spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolve_structure_selector)
                 
                 # Update structure_id (canonical reference) - structure selector is not written
-                resolved = resolve_structure(project_root, structure, config)
+                resolved = svc.require_structure_ref(structure, config=config)
                 spec.structure_id = resolved.meta.id
                 # Clear legacy structure field (not written to YAML)
                 spec.structure = ""
@@ -3005,8 +3010,9 @@ def configure_calculation_command(
         current_steps = calculation_data.get("steps", [])
         
         # Build index for step resolution
-        from quantumvitas.core.resolution import build_resource_index
-        index = build_resource_index(project_root)
+        from quantumvitas.api import QVService
+        svc = QVService(project_root)
+        index = svc.build_resource_index()
         
         # Match each selector to a step entry using centralized helper
         reordered_entries = []
@@ -3047,7 +3053,9 @@ def configure_calculation_command(
             for missing_ulid in missing_ulids:
                 # Try to get a friendly identifier for the missing step
                 try:
-                    step_resolved = require_step(project_root, calculation_slug, missing_ulid, config=config, index=index)
+                    from quantumvitas.api import QVService
+                    svc = QVService(project_root)
+                    step_resolved = svc.require_step_ref(calculation_slug, missing_ulid, config=config, index=index)
                     missing_identifiers.append(step_resolved.meta.slug or step_resolved.meta.name or missing_ulid[:8])
                 except Exception:
                     missing_identifiers.append(missing_ulid[:8])
@@ -3419,9 +3427,9 @@ def run_calculation_command(
     config = load_project_config(project_root)
     
     # Resolve calculation via registry (for consistent resolution)
-    from quantumvitas.core.resolution import build_resource_index, require_calculation
-    
-    registry = build_resource_index(project_root)
+    from quantumvitas.api import QVService
+    svc = QVService(project_root)
+    registry = svc.build_resource_index()
     
     # Resolve calculation
     if calculation:
@@ -3431,7 +3439,7 @@ def run_calculation_command(
             wf = Calculation.from_yaml(calculation_path, proj)
         else:
             # Use registry-based resolution
-            calculation_resolved = require_calculation(project_root, calculation, config=config, index=registry)
+            calculation_resolved = svc.require_calculation_ref(calculation, config=config, index=registry)
             wf = Calculation.from_yaml(calculation_resolved.absolute_path, proj)
     else:
         # Auto-detect enclosing calculation from pwd
@@ -3448,7 +3456,7 @@ def run_calculation_command(
                 "Calculation entry found but no valid identifier. "
                 "This may indicate a corrupted project.qv.yml."
             )
-        calculation_resolved = require_calculation(project_root, wf_id, config=config, index=registry)
+        calculation_resolved = svc.require_calculation_ref(wf_id, config=config, index=registry)
         wf = Calculation.from_yaml(calculation_resolved.absolute_path, proj)
 
     if strict:
@@ -3703,9 +3711,9 @@ def analyze_output_command(
                     if calculation_selector:
                         # For display, resolve to get user-friendly name
                         try:
-                            from quantumvitas.core.resolution import build_resource_index, require_calculation
-                            index = build_resource_index(project_root)
-                            resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
+                            from quantumvitas.api import QVService
+                            svc = QVService(project_root)
+                            resolved = svc.require_calculation_ref(calculation_selector, config=config)
                             calculation_name = resolved.meta.name or resolved.meta.slug or calculation_selector
                         except Exception:
                             calculation_name = calculation_selector
@@ -3976,9 +3984,9 @@ def analyze_band_command(
                     if calculation_selector:
                         # For display, resolve to get user-friendly name
                         try:
-                            from quantumvitas.core.resolution import build_resource_index, require_calculation
-                            index = build_resource_index(project_root)
-                            resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
+                            from quantumvitas.api import QVService
+                            svc = QVService(project_root)
+                            resolved = svc.require_calculation_ref(calculation_selector, config=config)
                             display_name = resolved.meta.name or resolved.meta.slug or calculation_selector
                             typer.echo(f"Detected calculation: {display_name}")
                         except Exception:
@@ -4762,7 +4770,9 @@ def _execute_step_spec(
     if spec_copy.structure_id:
         # Use structure_id to resolve structure
         try:
-            resolved = require_structure(project_root, spec_copy.structure_id)
+            from quantumvitas.api import QVService
+            svc = QVService(project_root)
+            resolved = svc.require_structure_ref(spec_copy.structure_id)
             structure_identifier = resolved.meta.slug or resolved.meta.name
         except ResourceNotFoundError:
             # Fall back to structure selector if structure_id resolution fails
