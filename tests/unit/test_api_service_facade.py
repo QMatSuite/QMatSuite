@@ -201,6 +201,67 @@ steps: []
         assert callable(svc.resolve_calculation_ref)
         assert callable(svc.resolve_step_ref)
         assert callable(svc.resolve_structure_ref)
+        # New Chunk 1 wrappers
+        assert hasattr(svc, "require_calculation_ref")
+        assert hasattr(svc, "require_structure_ref")
+        assert hasattr(svc, "require_step_ref")
+        assert hasattr(svc, "make_structure_selector_resolver_ref")
+        assert callable(svc.require_calculation_ref)
+        assert callable(svc.require_structure_ref)
+        assert callable(svc.require_step_ref)
+        assert callable(svc.make_structure_selector_resolver_ref)
         assert callable(QVService.list_calculations)
         assert callable(QVService.list_steps)
+
+    def test_require_calculation_ref_not_found(self, demo_project):
+        """require_calculation_ref raises QVServiceError for non-existent calculation."""
+        svc = QVService(demo_project)
+        
+        with pytest.raises(QVServiceError, match="Calculation.*not found"):
+            svc.require_calculation_ref("nonexistent")
+
+    def test_require_structure_ref_not_found(self, demo_project):
+        """require_structure_ref raises QVServiceError for non-existent structure."""
+        svc = QVService(demo_project)
+        
+        with pytest.raises(QVServiceError, match="Structure.*not found"):
+            svc.require_structure_ref("nonexistent")
+
+    def test_require_step_ref_not_found(self, demo_project):
+        """require_step_ref raises QVServiceError for non-existent step."""
+        svc = QVService(demo_project)
+        
+        # Create a minimal calculation first
+        calc_dir = demo_project / "calculations" / "test-calc"
+        calc_dir.mkdir()
+        (calc_dir / "calculation.yaml").write_text("""meta:
+  id: 01ARZ3NDEKTSV4RRFFQ69G5FAW
+  name: test-calc
+  slug: test-calc
+  path: calculations/test-calc/calculation.yaml
+  kind: calculation
+steps: []
+""")
+        
+        import yaml
+        config = svc.load_project_config()
+        config["calculations"] = [{
+            "id": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+        }]
+        from quantumvitas.core.project_utils import save_project_config
+        save_project_config(demo_project, config)
+        
+        with pytest.raises(QVServiceError, match="Step.*not found"):
+            svc.require_step_ref("test-calc", "nonexistent")
+
+    def test_make_structure_selector_resolver_ref(self, demo_project):
+        """make_structure_selector_resolver_ref returns a callable resolver."""
+        svc = QVService(demo_project)
+        
+        resolver = svc.make_structure_selector_resolver_ref()
+        assert callable(resolver)
+        
+        # Resolver should raise error for non-existent structure
+        with pytest.raises(Exception):  # May be ResourceNotFoundError or QVServiceError
+            resolver("nonexistent")
 
