@@ -99,6 +99,30 @@ Each batch ends with a **STOP POINT** where repo is fully green.
 
 ---
 
+## Architecture Gates Policy
+
+**Default Behavior**: Architecture gate tests are **enforced by default** (blocking mode). Violations cause test failures.
+
+**Opt-Out for Local Development**: Set `QMATSUITE_RELAX_ARCH_GATES=1` to enable report-only mode (non-blocking). This allows local development while still seeing violation reports.
+
+**Importability Smoke Tests**: Always enforced (never optional). These catch "gates green but code broken" scenarios.
+
+**Notebook/Tools Behavior**:
+- If notebook frontend does not exist → test is skipped (healthy)
+- If tools directory does not exist → test is skipped (healthy)
+- If they exist → enforce normally
+
+**Usage**:
+```bash
+# Default: enforced (blocking)
+python -m pytest tests/gates/test_import_rules.py -v -rs
+
+# Relax mode: report-only (non-blocking)
+QMATSUITE_RELAX_ARCH_GATES=1 python -m pytest tests/gates/test_import_rules.py -v -rs
+```
+
+---
+
 ## BATCH 0: SAFETY & GATES
 
 **Goal**: Fix broken gate tests, add importability smoke tests, document safety rules.
