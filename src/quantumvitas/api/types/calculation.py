@@ -13,6 +13,23 @@ from quantumvitas.api.types.common import MetaDTO
 
 
 @dataclass
+class CalculationRefDTO(BaseDTO):
+    """
+    Calculation reference DTO (lightweight, for resolution).
+    
+    Contains only identity and path - use svc.calculation.get(ref.calc_id) for full details.
+    """
+    # Identity (required)
+    calc_id: str              # ULID
+    
+    # Path (required)
+    path: str                 # Relative path from project root (e.g., "calculations/si-scf")
+    
+    # Metadata (optional, minimal)
+    meta: MetaDTO | None = None
+
+
+@dataclass
 class CalculationDTO(BaseDTO):
     """
     Calculation entity DTO.
