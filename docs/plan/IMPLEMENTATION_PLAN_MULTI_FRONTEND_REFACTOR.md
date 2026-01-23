@@ -1284,4 +1284,77 @@ Gate tests exclude `_shared/bootstrap.py` from forbidden import checks.
 
 ---
 
-*End of implementation plan v2.*
+## STATUS: COMPLETE / ARCHIVED
+
+**Completion Date**: 2026-01-21  
+**Final Commit**: D4 milestone commit
+
+### Final State
+
+- ✅ **CLI**: 0 violations (all kernel imports migrated to `quantumvitas.api`)
+- ✅ **Daemon**: 0 violations (all kernel imports migrated to `quantumvitas.api`)
+- ✅ **Gates**: Enforced by default (opt-out via `QMATSUITE_RELAX_ARCH_GATES=1`)
+- ✅ **Full test suite**: All tests pass (2458+ passed, 2 skipped)
+- ✅ **Audit scripts**: Deterministic outputs in `.audit/` directory
+- ✅ **Gate diagnostics**: Improved failure messages with suggested fixes
+
+### Architecture Contract (Finalized)
+
+**Frontends import only `quantumvitas.api`**:
+- Functions → `QVService.<wrapper>()` static methods
+- Types/Enums/Exceptions → re-exported from `quantumvitas.api`
+
+**Kernel modules** (forbidden in frontends):
+- `quantumvitas.core`, `quantumvitas.calculation`, `quantumvitas.drivers`
+- `quantumvitas.analysis`, `quantumvitas.io`, `quantumvitas.engine`
+- `quantumvitas.workflow`, `quantumvitas.presets`
+
+### Verification Commands
+
+```bash
+# Gates test (default enforced)
+python -m pytest tests/gates/test_import_rules.py -v -rs
+
+# Full test suite (parallel)
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+
+# Audit scripts (deterministic outputs)
+python scripts/audit_cli_kernel_imports.py
+python scripts/audit_daemon_kernel_imports.py
+ls -la .audit/
+
+# Manual verification
+rg -n "^from quantumvitas\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/quantumvitas/cli
+rg -n "^from quantumvitas\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/quantumvitas/daemon
+```
+
+### Milestone Documentation
+
+See `docs/plan/MULTI_FRONTEND_REFACTOR_MILESTONE.md` for:
+- Complete contract definition
+- Gates policy (default enforced, opt-out env var)
+- Testing philosophy for API facade
+- Milestone commits list
+- How to verify section
+
+### Final Checklist
+
+- [x] CLI has 0 forbidden imports
+- [x] Daemon has 0 forbidden imports
+- [x] Gates enforced by default
+- [x] Full test suite passes
+- [x] Audit scripts use deterministic outputs (`.audit/` directory)
+- [x] Gate diagnostics improved (show module, file, line, suggested fix)
+- [x] Milestone document created
+- [x] Plan marked COMPLETE/Archived
+
+### Next Steps (Future Work)
+
+- Batch 5: Move files to `frontends/` directory structure
+- Batch 6: Remove compatibility shims
+- Create notebook frontend
+- Create tools/ surface (Python package)
+
+---
+
+*End of implementation plan v2. Status: COMPLETE.*
