@@ -43,10 +43,11 @@ def _should_enforce_gates() -> bool:
     Check if architecture gates should be enforced.
 
     Returns:
-        True if QMATSUITE_ENFORCE_ARCH_GATES == "1", False otherwise.
+        True by default (enforced/blocking mode).
+        False if QMATSUITE_RELAX_ARCH_GATES == "1" (report-only mode for local dev).
         When False, violations are reported but tests don't fail.
     """
-    return os.environ.get("QMATSUITE_ENFORCE_ARCH_GATES") == "1"
+    return os.environ.get("QMATSUITE_RELAX_ARCH_GATES") != "1"
 
 
 def _report_violations(violations: list, violation_type: str, context_path: Optional[Path] = None):
