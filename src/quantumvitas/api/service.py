@@ -1621,3 +1621,182 @@ class QVService:
     def project(self) -> Project:
         """Access project capabilities."""
         return QVService.Project(self)
+    
+    # Engine domain (PR9)
+    class Engine:
+        """Engine discovery capabilities."""
+        
+        def __init__(self, service: QVService):
+            self._service = service
+        
+        def list(self) -> list[dict]:
+            """
+            List all available engines.
+            
+            Returns:
+                List of engine info dicts
+            """
+            try:
+                from quantumvitas.engine.registry import create_default_registry
+                
+                registry = create_default_registry()
+                engines = []
+                
+                for engine_name in registry.list_engines():
+                    engine = registry.get(engine_name)
+                    engines.append({
+                        "name": engine_name,
+                        "supported_presets": getattr(engine, "supported_presets", []),
+                    })
+                
+                return engines
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def get_info(self, engine_name: str) -> dict:
+            """
+            Get information about a specific engine.
+            
+            Args:
+                engine_name: Engine name (e.g., "qe", "pyscf")
+                
+            Returns:
+                Engine info dict
+                
+            Raises:
+                APIError: If engine not found
+            """
+            try:
+                from quantumvitas.engine.registry import create_default_registry
+                from quantumvitas.api.errors import NotFoundError
+                
+                registry = create_default_registry()
+                
+                if not registry.has(engine_name):
+                    raise NotFoundError(
+                        f"Engine not found: {engine_name}",
+                        context={"engine_name": engine_name}
+                    )
+                
+                engine = registry.get(engine_name)
+                
+                info = {
+                    "name": engine_name,
+                    "supported_presets": getattr(engine, "supported_presets", []),
+                }
+                
+                # Add version if available
+                if hasattr(engine, "version") and engine.version:
+                    info["version"] = engine.version
+                
+                # Add executable path if available
+                if hasattr(engine, "executable"):
+                    try:
+                        info["executable"] = str(engine.executable)
+                    except Exception:
+                        pass
+                
+                return info
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def list_step_types(self, engine_name: str | None = None) -> list[dict]:
+            """
+            List step types, optionally filtered by engine.
+            
+            Args:
+                engine_name: Optional engine name filter
+                
+            Returns:
+                List of step type info dicts
+            """
+            try:
+                from quantumvitas.workflow.generalized_steps import get_supported_generalized_steps
+                from quantumvitas.workflow.registry import get_registry
+                
+                if engine_name:
+                    # Get step types for specific engine
+                    step_types = get_supported_generalized_steps(engine_name)
+                    return [{"name": st, "engine": engine_name} for st in step_types]
+                else:
+                    # Get all step types from registry
+                    registry = get_registry()
+                    step_types = []
+                    for step_name in registry.list_step_types():
+                        # Get engines that support this step
+                        from quantumvitas.workflow.generalized_steps import get_engine_families_for_step
+                        engines = get_engine_families_for_step(step_name)
+                        step_types.append({
+                            "name": step_name,
+                            "engines": engines,
+                        })
+                    return step_types
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def validate_installation(self, engine_name: str) -> dict:
+            """
+            Validate engine installation.
+            
+            Args:
+                engine_name: Engine name
+                
+            Returns:
+                Validation result dict with available, executable, version, etc.
+                
+            Raises:
+                APIError: If engine not found
+            """
+            try:
+                from quantumvitas.engine.registry import create_default_registry
+                from quantumvitas.api.errors import NotFoundError
+                
+                registry = create_default_registry()
+                
+                if not registry.has(engine_name):
+                    raise NotFoundError(
+                        f"Engine not found: {engine_name}",
+                        context={"engine_name": engine_name}
+                    )
+                
+                engine = registry.get(engine_name)
+                
+                result = {
+                    "engine": engine_name,
+                    "available": False,
+                    "executable": None,
+                    "version": None,
+                }
+                
+                # Check if engine has probe method
+                if hasattr(engine, "probe"):
+                    result["available"] = engine.probe()
+                
+                # Get executable if available
+                if hasattr(engine, "executable"):
+                    try:
+                        result["executable"] = str(engine.executable)
+                        result["available"] = True
+                    except Exception:
+                        result["available"] = False
+                
+                # Get version if available
+                if hasattr(engine, "version") and engine.version:
+                    result["version"] = engine.version
+                
+                return result
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+    
+    @property
+    def engine(self) -> Engine:
+        """Access engine capabilities."""
+        return QVService.Engine(self)
