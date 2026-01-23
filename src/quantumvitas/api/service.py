@@ -20,6 +20,7 @@ from quantumvitas.api._mapping.exc_mapping import map_kernel_exception
 from quantumvitas.api.errors import APIError
 from quantumvitas.api.types.analysis import AnalysisRefDTO, AnalysisSummaryDTO
 from quantumvitas.api.types.calculation import CalculationDTO, StepDTO
+from quantumvitas.api.types.run import RunResultDTO
 from quantumvitas.api.types.structure import StructureDTO
 
 
@@ -1266,3 +1267,357 @@ class QVService:
     def calculation(self) -> Calculation:
         """Access calculation capabilities."""
         return QVService.Calculation(self)
+    
+    # Run domain (PR7)
+    class Run:
+        """Run/execution capabilities."""
+        
+        def __init__(self, service: QVService):
+            self._service = service
+        
+        def run_calculation(
+            self,
+            calc_selector: str,
+            steps: list[str] | None = None,
+        ) -> RunResultDTO:
+            """
+            Run a calculation.
+            
+            Args:
+                calc_selector: Calculation selector
+                steps: Optional list of step selectors to run (None = all steps)
+                
+            Returns:
+                RunResultDTO
+                
+            Raises:
+                APIError: If calculation not found or run fails
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                from quantumvitas.core.resolution import require_calculation
+                
+                # Resolve calculation to get calc_id
+                calc_resolved = require_calculation(self._service.project_root, calc_selector)
+                calc_id = calc_resolved.meta.id if calc_resolved.meta else ""
+                
+                # Use legacy run_calculation
+                result_dict = LegacyService.run_calculation(
+                    project_root=self._service.project_root,
+                    calculation_selector=calc_selector,
+                    strict=False,
+                    verbose=False,
+                    run_mode="incremental",
+                )
+                
+                # Map to RunResultDTO
+                return self._result_dict_to_dto(result_dict, calc_id)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def run_step(
+            self,
+            calc_selector: str,
+            step_selector: str,
+        ) -> RunResultDTO:
+            """
+            Run a single step.
+            
+            Args:
+                calc_selector: Calculation selector
+                step_selector: Step selector
+                
+            Returns:
+                RunResultDTO
+                
+            Raises:
+                APIError: If calculation or step not found or run fails
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                from quantumvitas.core.resolution import require_calculation
+                
+                # Resolve calculation to get calc_id
+                calc_resolved = require_calculation(self._service.project_root, calc_selector)
+                calc_id = calc_resolved.meta.id if calc_resolved.meta else ""
+                
+                # Use legacy run_step
+                result_dict = LegacyService.run_step(
+                    project_root=self._service.project_root,
+                    calculation_selector=calc_selector,
+                    step_selector=step_selector,
+                    verbose=False,
+                )
+                
+                # Map to RunResultDTO
+                return self._result_dict_to_dto(result_dict, calc_id)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def get_status(self, run_id: str) -> RunResultDTO:
+            """
+            Get run status by run_id.
+            
+            Note: This is a simplified implementation. In a full system,
+            this would query job history or a job manager.
+            
+            Args:
+                run_id: Run ID (ULID)
+                
+            Returns:
+                RunResultDTO
+                
+            Raises:
+                APIError: If run not found
+            """
+            try:
+                from quantumvitas.api.errors import NotFoundError
+                
+                # Simplified: For now, we can't easily get run status without JobManager
+                # This would need to query calculation history or job manager
+                # For now, raise not found
+                raise NotFoundError(
+                    f"Run status lookup not yet implemented for run_id: {run_id}",
+                    context={"run_id": run_id}
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def cancel(self, run_id: str) -> RunResultDTO:
+            """
+            Cancel a running job.
+            
+            Note: This is a simplified implementation. In a full system,
+            this would interact with a job manager.
+            
+            Args:
+                run_id: Run ID (ULID)
+                
+            Returns:
+                RunResultDTO with cancelled status
+                
+            Raises:
+                APIError: If run not found
+            """
+            try:
+                from quantumvitas.api.errors import NotFoundError
+                
+                # Simplified: For now, we can't easily cancel without JobManager
+                raise NotFoundError(
+                    f"Run cancellation not yet implemented for run_id: {run_id}",
+                    context={"run_id": run_id}
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def list_runs(
+            self,
+            calc_selector: str | None = None,
+            status: str | None = None,
+        ) -> list[RunResultDTO]:
+            """
+            List runs, optionally filtered.
+            
+            Note: This is a simplified implementation. In a full system,
+            this would query job history or a job manager.
+            
+            Args:
+                calc_selector: Optional calculation selector filter
+                status: Optional status filter
+                
+            Returns:
+                List of RunResultDTO
+            """
+            try:
+                # Simplified: For now, return empty list
+                # This would need to query calculation history or job manager
+                return []
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def _result_dict_to_dto(self, result_dict: dict, calc_id: str) -> RunResultDTO:
+            """Convert legacy result dict to RunResultDTO."""
+            from quantumvitas.api.types.error import ErrorDTO
+            
+            # Extract step IDs
+            step_ids = []
+            if "steps" in result_dict:
+                step_ids = [s.get("step_id", "") for s in result_dict["steps"] if s.get("step_id")]
+            
+            # Map status
+            status_map = {
+                "success": "completed",
+                "failed": "failed",
+                "pending": "submitted",
+                "running": "running",
+            }
+            status = status_map.get(result_dict.get("status", "").lower(), "submitted")
+            
+            # Extract timing (if available)
+            started_at = None
+            completed_at = None
+            duration_seconds = None
+            
+            # Extract error if failed
+            error = None
+            if status == "failed":
+                error_msg = result_dict.get("error") or "Run failed"
+                error = ErrorDTO(
+                    type="RunError",
+                    code="RUN_FAILED",
+                    message=error_msg,
+                    retryable=True,
+                )
+            
+            return RunResultDTO(
+                run_id=result_dict.get("run_id", ""),
+                calc_id=calc_id,
+                status=status,
+                step_ids=step_ids,
+                started_at=started_at,
+                completed_at=completed_at,
+                duration_seconds=duration_seconds,
+                exit_code=None,
+                log_path=result_dict.get("io_dir"),
+                error=error,
+            )
+    
+    @property
+    def run(self) -> Run:
+        """Access run capabilities."""
+        return QVService.Run(self)
+    
+    # Project domain (PR8)
+    class Project:
+        """Project capabilities."""
+        
+        def __init__(self, service: QVService):
+            self._service = service
+        
+        def get_config(self) -> dict:
+            """
+            Get project configuration.
+            
+            Returns:
+                Project configuration dict
+                
+            Raises:
+                APIError: If project invalid
+            """
+            try:
+                from quantumvitas.core.project_utils import load_project_config
+                return load_project_config(self._service.project_root)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def update_config(self, patch: dict) -> dict:
+            """
+            Update project configuration.
+            
+            Args:
+                patch: Dict with config updates (merged into existing config)
+                
+            Returns:
+                Updated project configuration dict
+                
+            Raises:
+                APIError: If project invalid or update fails
+            """
+            try:
+                from quantumvitas.core.project_utils import load_project_config, save_project_config
+                
+                # Load current config
+                config = load_project_config(self._service.project_root)
+                
+                # Merge patch into config
+                config.update(patch)
+                
+                # Save updated config
+                save_project_config(self._service.project_root, config)
+                
+                return config
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def get_species_map(self) -> dict:
+            """
+            Get project species mapping.
+            
+            Returns:
+                Species mapping dict (element -> pseudo info)
+                
+            Raises:
+                APIError: If project invalid
+            """
+            try:
+                from quantumvitas.core.project_utils import load_project_config
+                
+                config = load_project_config(self._service.project_root)
+                
+                # Extract species_map from config (if present)
+                # This is typically at the project level or in calculation.yaml
+                # For now, return empty dict if not found
+                return config.get("species_map", {})
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def get_potential_map(self) -> dict:
+            """
+            Get project potential mapping (for LAMMPS).
+            
+            Returns:
+                Potential mapping dict
+                
+            Raises:
+                APIError: If project invalid
+            """
+            try:
+                from quantumvitas.core.project_utils import load_project_config
+                
+                config = load_project_config(self._service.project_root)
+                
+                # Extract potential_map from config (if present)
+                return config.get("potential_map", {})
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def list_calculations(self) -> list[CalculationDTO]:
+            """
+            List all calculations in project.
+            
+            Returns:
+                List of CalculationDTO
+                
+            Raises:
+                APIError: If project invalid
+            """
+            try:
+                # Delegate to calculation.list()
+                return self._service.calculation.list()
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+    
+    @property
+    def project(self) -> Project:
+        """Access project capabilities."""
+        return QVService.Project(self)
