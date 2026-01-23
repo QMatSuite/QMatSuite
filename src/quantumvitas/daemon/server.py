@@ -3631,9 +3631,7 @@ class QVDaemon:
                 "schema_version": int
             }
         """
-        from quantumvitas.presets.catalog import get_preset_catalog
-        
-        catalog = get_preset_catalog()
+        catalog = QVService.get_preset_catalog()
         return catalog
     
     def _handle_detect_presets(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -3652,7 +3650,7 @@ class QVDaemon:
                 dimension_states: Dict mapping dimension name to detected value or "Custom"
                     Example: {"magnetism": "collinear_lsda", "occupations_scheme": "smearing_gaussian", "precision": "med"}
         """
-        from quantumvitas.presets.integration import detect_presets_from_calculation
+        from quantumvitas.api import PrecisionContextError
         
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
@@ -3666,17 +3664,15 @@ class QVDaemon:
             calculation_dir = resolved.absolute_path
         
         # Detect engine from calculation (for filtering)
-        from quantumvitas.presets.integration import _detect_engine_for_calculation
-        engine_filter = _detect_engine_for_calculation(calculation_dir)
+        engine_filter = QVService.detect_engine_for_calculation(calculation_dir)
         
         # Detect presets from calculation steps
         # If precision context resolution fails, PrecisionContextError will be raised
         # and converted to a structured error response
         try:
-            dimension_states = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
+            dimension_states = QVService.detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
         except Exception as e:
             # Check if it's a PrecisionContextError
-            from quantumvitas.presets.precision_context import PrecisionContextError
             if isinstance(e, PrecisionContextError):
                 return {
                     "ok": False,
@@ -3708,8 +3704,6 @@ class QVDaemon:
                 workflow: Detected workflow type string
                     ("SCF", "DOS", "BandStructure", "Relaxation", "Phonon", "MD", "Unknown")
         """
-        from quantumvitas.presets.integration import detect_workflow_type
-        
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
         
@@ -3722,7 +3716,7 @@ class QVDaemon:
             calculation_dir = resolved.absolute_path
         
         # Detect workflow type
-        workflow = detect_workflow_type(calculation_dir)
+        workflow = QVService.detect_workflow_type(calculation_dir)
         
         return {
             "workflow": workflow,
@@ -3748,11 +3742,7 @@ class QVDaemon:
                 status: "applied"
                 presets: Updated detected presets for the calculation
         """
-        from quantumvitas.presets.integration import (
-            apply_presets_to_step,
-            detect_presets_from_calculation,
-        )
-        from quantumvitas.presets.compiler import PresetCompilationError
+        from quantumvitas.api import PresetCompilationError
         
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
@@ -3767,7 +3757,7 @@ class QVDaemon:
         step_path = resolved_step.path
         
         try:
-            apply_presets_to_step(step_path, presets, validate_physics=validate_physics)
+            QVService.apply_presets_to_step(step_path, presets, validate_physics=validate_physics)
         except PresetCompilationError as e:
             return {
                 "ok": False,
@@ -3779,9 +3769,8 @@ class QVDaemon:
         
         # Return updated dimension states for the calculation
         calculation_dir = step_path.parent.parent  # steps/foo.step.yaml -> calculation_dir
-        from quantumvitas.presets.integration import _detect_engine_for_calculation
-        engine_filter = _detect_engine_for_calculation(calculation_dir)
-        updated_dimension_states = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
+        engine_filter = QVService.detect_engine_for_calculation(calculation_dir)
+        updated_dimension_states = QVService.detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
         
         return {
             "status": "applied",
@@ -3813,12 +3802,12 @@ class QVDaemon:
                 step_results: List of detailed results per step
                 dimension_states: Updated detected dimension states for the calculation
         """
-        from quantumvitas.presets.integration import (
-            apply_presets_to_step,
-            detect_presets_from_calculation,
+        from quantumvitas.api import (
+            PresetCompilationError,
+            PrecisionContextError,
+            DIMENSION_PRECISION,
+            PrecisionOption,
         )
-        from quantumvitas.presets.compiler import PresetCompilationError
-        from quantumvitas.presets.dimensions import DIMENSION_PRECISION, PrecisionOption
         
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
@@ -3839,19 +3828,13 @@ class QVDaemon:
         precision_option = presets.get(DIMENSION_PRECISION) or presets.get("precision")
         if precision_option:
             try:
-                from quantumvitas.presets.precision import PrecisionAdvisor
-                from quantumvitas.presets.precision_context import (
-                    resolve_precision_context,
-                    PrecisionContextError,
-                )
-                
                 # Use unified resolver (single source of truth)
                 try:
-                    context = resolve_precision_context(
+                    context = QVService.resolve_precision_context(
                         calculation_dir=calculation_dir,
                         project_root=project_root,
                     )
-                    precision_advisor = PrecisionAdvisor(
+                    precision_advisor = QVService.create_precision_advisor(
                         species_map=context.species_map,
                         lattice_matrix=context.lattice_matrix,
                         repo_root=project_root,
@@ -3893,7 +3876,7 @@ class QVDaemon:
                     except (ValueError, KeyError) as e:
                         self.logger.warning(f"Invalid precision level '{precision_option}': {e}")
                 
-                result = apply_presets_to_step(
+                result = QVService.apply_presets_to_step(
                     step_path, presets, 
                     validate_physics=validate_physics,
                     precision_advice=precision_advice,
@@ -3945,9 +3928,8 @@ class QVDaemon:
                 })
         
         # Return updated dimension states for the calculation
-        from quantumvitas.presets.integration import _detect_engine_for_calculation
-        engine_filter = _detect_engine_for_calculation(calculation_dir)
-        updated_dimension_states = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
+        engine_filter = QVService.detect_engine_for_calculation(calculation_dir)
+        updated_dimension_states = QVService.detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
         
         return {
             "status": "applied",
@@ -3974,7 +3956,6 @@ class QVDaemon:
                     {"1_scf.step.yaml": {"params": {}, "spin": "collinear", ...}}
         """
         import logging
-        from quantumvitas.presets.integration import get_step_preset_footprints
         
         logger = logging.getLogger(__name__)
         
@@ -4005,7 +3986,7 @@ class QVDaemon:
             calculation_dir = resolved.absolute_path
         
         # Get step footprints
-        footprints = get_step_preset_footprints(calculation_dir)
+        footprints = QVService.get_step_preset_footprints(calculation_dir)
         
         return {
             "footprints": footprints,
@@ -6384,9 +6365,7 @@ class QVDaemon:
         Returns:
             templates: List of workflow template dicts
         """
-        from quantumvitas.workflow.templates import get_workflow_service
-        
-        service = get_workflow_service()
+        service = QVService.get_workflow_service()
         templates = service.list_templates()
         
         return {
@@ -6411,11 +6390,9 @@ class QVDaemon:
         Returns:
             match: Workflow match result dict
         """
-        from quantumvitas.workflow.templates import get_workflow_service
-        
         calc_path = self._require_path(payload, "calculation_path")
         
-        service = get_workflow_service()
+        service = QVService.get_workflow_service()
         match = service.detect_workflow(calc_path)
         
         return {
@@ -6447,7 +6424,6 @@ class QVDaemon:
                 issues: list[dict] - List of issues with "code" and "message"
         """
         import logging
-        from quantumvitas.workflow.templates import get_workflow_service
         
         logger = logging.getLogger(__name__)
         
@@ -6499,7 +6475,7 @@ class QVDaemon:
             )
         
         # Detect workflow (uses calculation.yaml.steps[] as authoritative)
-        service = get_workflow_service()
+        service = QVService.get_workflow_service()
         match = service.detect_workflow(calculation_dir)
         
         # Validate workflow (get issues)
@@ -6562,14 +6538,12 @@ class QVDaemon:
         Returns:
             step_paths: List of created step file paths
         """
-        from quantumvitas.workflow.templates import get_workflow_service
-        
         workflow_id = self._require_str(payload, "workflow_id")
         calc_path = self._require_path(payload, "calculation_path")
         structure_id = self._require_str(payload, "structure_id")
         calculation_id = self._require_str(payload, "calculation_id")
         
-        service = get_workflow_service()
+        service = QVService.get_workflow_service()
         
         paths = service.instantiate_workflow(
             workflow_id=workflow_id,
