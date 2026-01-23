@@ -295,6 +295,44 @@ def _derive_calculation_status(calc_obj: Any) -> str:
         return "pending"
 
 
+def calculation_ref_to_dto(
+    calc_resolved: Any,  # ResolvedResource
+    rel_path: str,
+) -> CalculationRefDTO:
+    """
+    Map calculation ResolvedResource to CalculationRefDTO.
+    
+    Args:
+        calc_resolved: ResolvedResource for the calculation
+        rel_path: Relative path from project root
+        
+    Returns:
+        CalculationRefDTO
+    """
+    from quantumvitas.api.types.common import MetaDTO
+    
+    # Extract metadata (minimal)
+    meta = None
+    if calc_resolved.meta:
+        meta = MetaDTO(
+            slug=calc_resolved.meta.slug,
+            name=calc_resolved.meta.name,
+            description=getattr(calc_resolved.meta, 'description', None),
+            tags=list(calc_resolved.meta.tags) if hasattr(calc_resolved.meta, 'tags') and calc_resolved.meta.tags else None,
+            created_at=calc_resolved.meta.created_at.isoformat() if hasattr(calc_resolved.meta, 'created_at') and calc_resolved.meta.created_at else None,
+            updated_at=calc_resolved.meta.updated_at.isoformat() if hasattr(calc_resolved.meta, 'updated_at') and calc_resolved.meta.updated_at else None,
+        )
+    
+    # Get calculation ID
+    calc_id = calc_resolved.meta.id if calc_resolved.meta else ""
+    
+    return CalculationRefDTO(
+        calc_id=calc_id,
+        path=rel_path,
+        meta=meta,
+    )
+
+
 def calculation_to_dto(
     calc_resolved: Any,  # ResolvedResource
     calc_model: Any,  # CalculationModel
@@ -319,10 +357,10 @@ def calculation_to_dto(
         meta = MetaDTO(
             slug=calc_model.meta.slug,
             name=calc_model.meta.name,
-            description=calc_model.meta.description,
-            tags=list(calc_model.meta.tags) if calc_model.meta.tags else None,
-            created_at=calc_model.meta.created_at.isoformat() if calc_model.meta.created_at else None,
-            updated_at=calc_model.meta.updated_at.isoformat() if calc_model.meta.updated_at else None,
+            description=getattr(calc_model.meta, 'description', None),
+            tags=list(calc_model.meta.tags) if hasattr(calc_model.meta, 'tags') and calc_model.meta.tags else None,
+            created_at=calc_model.meta.created_at.isoformat() if hasattr(calc_model.meta, 'created_at') and calc_model.meta.created_at else None,
+            updated_at=calc_model.meta.updated_at.isoformat() if hasattr(calc_model.meta, 'updated_at') and calc_model.meta.updated_at else None,
         )
     
     # Get calculation ID

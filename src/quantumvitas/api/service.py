@@ -19,7 +19,7 @@ from quantumvitas.api._mapping.dto_mapping import (
 from quantumvitas.api._mapping.exc_mapping import map_kernel_exception
 from quantumvitas.api.errors import APIError
 from quantumvitas.api.types.analysis import AnalysisRefDTO, AnalysisSummaryDTO
-from quantumvitas.api.types.calculation import CalculationDTO, StepDTO
+from quantumvitas.api.types.calculation import CalculationDTO, CalculationRefDTO, StepDTO
 from quantumvitas.api.types.run import RunResultDTO
 from quantumvitas.api.types.structure import StructureDTO
 
@@ -441,6 +441,28 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
         
+        def require_ref(self, selector: str, config: dict | None = None) -> Any:
+            """
+            Resolve structure selector to ResolvedResource (for internal use).
+            
+            Args:
+                selector: Structure selector (ULID, slug, name, or path)
+                config: Optional project config (for backward compatibility)
+                
+            Returns:
+                ResolvedResource (kernel type, not DTO)
+                
+            Raises:
+                APIError: If structure not found
+            """
+            try:
+                from quantumvitas.core.resolution import require_structure
+                return require_structure(self._service.project_root, selector)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
         def visualize(self, selector: str, format: str = "json") -> dict:
             """
             Get structure visualization data.
@@ -496,6 +518,56 @@ class QVService:
                         "n_atoms": result.n_atoms if hasattr(result, "n_atoms") else len(pmg_structure),
                         "format": format,
                     }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def import_file(
+            self,
+            source: Path | str,
+            name: str | None = None,
+            format: str = "auto",
+        ) -> StructureDTO:
+            """
+            Import a structure file into the project.
+            
+            Args:
+                source: Path to source structure file
+                name: Optional name for the structure (defaults to filename stem)
+                format: File format hint ("auto" to detect)
+                
+            Returns:
+                StructureDTO for the imported structure
+                
+            Raises:
+                APIError: If import fails
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                from quantumvitas.core.resolution import ResolvedResource
+                
+                # Use legacy import_structure
+                source_path = Path(source).resolve()
+                struct_resolved = LegacyService.import_structure(
+                    project_root=self._service.project_root,
+                    source=source_path,
+                    name=name,
+                    format=format,
+                )
+                
+                # Build StructureDTO from resolved resource
+                from quantumvitas.core.models import load_structure_model
+                from quantumvitas.io.structure_io import read_structure
+                
+                struct_model = load_structure_model(struct_resolved.absolute_path, self._service.project_root)
+                pmg_structure = read_structure(struct_resolved.absolute_path)
+                
+                return structure_to_dto(
+                    struct_resolved=struct_resolved,
+                    struct_model=struct_model,
+                    pmg_structure=pmg_structure,
+                )
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -627,6 +699,129 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
+        
+        def require_ref(self, selector: str, config: dict | None = None) -> Any:
+            """
+            Resolve calculation selector to ResolvedResource (for internal use).
+            
+            Args:
+                selector: Calculation selector (ULID, slug, name, or path)
+                config: Optional project config (for backward compatibility)
+                
+            Returns:
+                ResolvedResource (kernel type, not DTO)
+                
+            Raises:
+                APIError: If calculation not found
+            """
+            try:
+                from quantumvitas.core.resolution import require_calculation
+                return require_calculation(self._service.project_root, selector)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def require_step_ref(
+            self,
+            calc_selector: str,
+            step_selector: str,
+            config: dict | None = None,
+        ) -> Any:
+            """
+            Resolve step selector to ResolvedResource (for internal use).
+            
+            Args:
+                calc_selector: Calculation selector
+                step_selector: Step selector (ULID, slug, name, or index)
+                config: Optional project config (for backward compatibility)
+                
+            Returns:
+                ResolvedResource (kernel type, not DTO)
+                
+            Raises:
+                APIError: If calculation or step not found
+            """
+            try:
+                from quantumvitas.core.resolution import require_step
+                return require_step(self._service.project_root, calc_selector, step_selector)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def resolve_enclosing_path(self, path: Path | None = None) -> CalculationRefDTO | None:
+            """
+            Resolve calculation that encloses the given path.
+            
+            Args:
+                path: Path to check (defaults to current working directory)
+                
+            Returns:
+                CalculationRefDTO if found, None otherwise
+            """
+            try:
+                from quantumvitas.core.project_utils import find_enclosing_calculation
+                from quantumvitas.api.utils import ensure_relative_path, extract_calculation_selector_from_entry
+                from quantumvitas.api._mapping.dto_mapping import calculation_ref_to_dto
+                
+                if path is None:
+                    path = Path.cwd()
+                path = Path(path).resolve()
+                
+                config = self._service.project.get_config()
+                entry = find_enclosing_calculation(self._service.project_root, config, start=path)
+                
+                if entry is None:
+                    return None
+                
+                # Extract selector from entry and resolve to get path
+                selector = extract_calculation_selector_from_entry(entry)
+                if not selector:
+                    return None
+                
+                # Resolve to get ResolvedResource with path
+                calc_resolved = self.require_ref(selector)
+                
+                # Get calculation directory path
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                else:
+                    calc_dir = calc_resolved.absolute_path
+                
+                # Get relative path
+                rel_path = ensure_relative_path(calc_dir, base=self._service.project_root)
+                
+                # Build CalculationRefDTO
+                return calculation_ref_to_dto(calc_resolved, rel_path)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                # Return None on any error (not found)
+                return None
+        
+        def require_enclosing(self, path: Path | None = None) -> CalculationRefDTO:
+            """
+            Require calculation that encloses the given path.
+            
+            Args:
+                path: Path to check (defaults to current working directory)
+                
+            Returns:
+                CalculationRefDTO
+                
+            Raises:
+                NotFoundError: If no calculation encloses the path
+            """
+            result = self.resolve_enclosing_path(path)
+            if result is None:
+                from quantumvitas.api.errors import NotFoundError
+                path_str = str(path) if path else "current directory"
+                raise NotFoundError(
+                    f"No calculation found enclosing {path_str}",
+                    context={"path": str(path) if path else None}
+                )
+            return result
         
         def get_step(self, calc_selector: str, step_selector: str) -> StepDTO:
             """
@@ -1599,6 +1794,24 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
         
+        def build_resource_index(self) -> Any:
+            """
+            Build resource index for project (for internal use).
+            
+            Returns:
+                ResourceIndex (kernel type)
+                
+            Raises:
+                APIError: If project invalid
+            """
+            try:
+                from quantumvitas.core.resolution import build_resource_index
+                return build_resource_index(self._service.project_root)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
         def list_calculations(self) -> list[CalculationDTO]:
             """
             List all calculations in project.
@@ -1616,6 +1829,87 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
+        
+        def collect_slugs(self, entries: list[dict], *, exclude: dict | None = None) -> list[str]:
+            """
+            Collect all slugs from a list of structure or calculation entries.
+            
+            Args:
+                entries: List of entry dicts
+                exclude: Optional entry to exclude from collection
+                
+            Returns:
+                List of slug strings
+            """
+            try:
+                from quantumvitas.core.project_utils import collect_slugs as _collect_slugs
+                return _collect_slugs(entries, exclude=exclude, project_root=self._service.project_root)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def apply_structure_rename(
+            self,
+            entry: dict,
+            new_name: str | None = None,
+            new_slug: str | None = None,
+            new_path: Path | None = None,
+            config: dict | None = None,
+        ) -> None:
+            """
+            Apply a rename operation to a structure entry.
+            
+            Args:
+                entry: Structure entry dict
+                new_name: Optional new name
+                new_slug: Optional new slug
+                new_path: Optional new path
+                config: Optional project config (avoids reloading if provided)
+            """
+            if config is None:
+                config = self.get_config()
+            
+            from quantumvitas.core.project_utils import apply_structure_rename as _apply_structure_rename
+            _apply_structure_rename(
+                project_root=self._service.project_root,
+                config=config,
+                entry=entry,
+                new_name=new_name,
+                new_slug=new_slug,
+                new_path=new_path,
+            )
+        
+        def apply_calculation_rename(
+            self,
+            entry: dict,
+            new_name: str | None = None,
+            new_slug: str | None = None,
+            new_path: Path | None = None,
+            config: dict | None = None,
+        ) -> None:
+            """
+            Apply a rename operation to a calculation entry.
+            
+            Args:
+                entry: Calculation entry dict
+                new_name: Optional new name
+                new_slug: Optional new slug
+                new_path: Optional new path
+                config: Optional project config (avoids reloading if provided)
+            """
+            if config is None:
+                config = self.get_config()
+            
+            from quantumvitas.core.project_utils import apply_calculation_rename as _apply_calculation_rename
+            _apply_calculation_rename(
+                project_root=self._service.project_root,
+                config=config,
+                entry=entry,
+                new_name=new_name,
+                new_slug=new_slug,
+                new_path=new_path,
+            )
     
     @property
     def project(self) -> Project:
