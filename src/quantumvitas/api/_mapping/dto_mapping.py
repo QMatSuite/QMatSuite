@@ -10,6 +10,9 @@ from __future__ import annotations
 from typing import Any
 
 from quantumvitas.api.types.analysis import AnalysisRefDTO, AnalysisSummaryDTO
+from quantumvitas.api.types.calculation import CalculationDTO, StepDTO
+from quantumvitas.api.types.common import MetaDTO
+from quantumvitas.api.types.structure import StructureDTO
 
 
 def kernel_to_dto(kernel_obj: Any) -> Any:
@@ -151,4 +154,292 @@ def analysis_ref_to_dto(
         artifact_size_bytes=artifact_size_bytes,
         summary=summary,
         preview=preview,
+    )
+
+
+def structure_to_dto(
+    struct_resolved: Any,  # ResolvedResource
+    struct_model: Any,  # StructureModel
+    pmg_structure: Any,  # PMGStructure
+) -> StructureDTO:
+    """
+    Map structure data to StructureDTO.
+    
+    Args:
+        struct_resolved: ResolvedResource for the structure
+        struct_model: StructureModel with metadata
+        pmg_structure: pymatgen Structure object
+        
+    Returns:
+        StructureDTO (no coordinate arrays)
+    """
+    from datetime import datetime
+    
+    # Extract metadata
+    meta = None
+    if struct_model and struct_model.meta:
+        meta = MetaDTO(
+            slug=struct_model.meta.slug,
+            name=struct_model.meta.name,
+            description=struct_model.meta.description,
+            tags=list(struct_model.meta.tags) if struct_model.meta.tags else None,
+            created_at=struct_model.meta.created_at.isoformat() if struct_model.meta.created_at else None,
+            updated_at=struct_model.meta.updated_at.isoformat() if struct_model.meta.updated_at else None,
+        )
+    
+    # Get structure ID
+    structure_id = struct_resolved.meta.id if struct_resolved.meta else ""
+    
+    # Extract crystallographic data (if periodic)
+    space_group = None
+    point_group = None
+    cell_volume_ang3 = None
+    lattice_abc = None
+    lattice_angles = None
+    
+    if hasattr(pmg_structure, "lattice"):
+        # Periodic structure
+        lattice = pmg_structure.lattice
+        cell_volume_ang3 = float(lattice.volume)
+        lattice_abc = list(lattice.abc)
+        lattice_angles = list(lattice.angles)
+        
+        # Try to get space group (may not always be available)
+        try:
+            from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+            analyzer = SpacegroupAnalyzer(pmg_structure)
+            space_group = analyzer.get_space_group_symbol()
+            point_group = analyzer.get_point_group_symbol()
+        except Exception:
+            # Space group analysis may fail, that's OK
+            pass
+    
+    return StructureDTO(
+        structure_id=structure_id,
+        formula=pmg_structure.formula,
+        num_atoms=len(pmg_structure),
+        meta=meta,
+        space_group=space_group,
+        point_group=point_group,
+        cell_volume_ang3=cell_volume_ang3,
+        lattice_abc=lattice_abc,
+        lattice_angles=lattice_angles,
+    )
+
+
+def _derive_step_status(step_obj: Any, calc_dir: Path) -> str:
+    """
+    Derive step status from step object and filesystem.
+    
+    Args:
+        step_obj: Step object
+        calc_dir: Calculation directory
+        
+    Returns:
+        Status string: "pending", "running", "completed", "failed"
+    """
+    from quantumvitas.calculation.step_done import is_step_done
+    from quantumvitas.calculation.types import StepStatus
+    
+    # Check if step is done
+    step_type = step_obj.step_type if hasattr(step_obj, 'step_type') else None
+    if step_type:
+        raw_dir = calc_dir / "raw"
+        if is_step_done(calc_dir, step_type, calc_raw_dir=raw_dir):
+            # Check if there's an error (simplified - could check exit codes)
+            return "completed"
+    
+    # Default to pending if we can't determine
+    return "pending"
+
+
+def _derive_calculation_status(calc_obj: Any) -> str:
+    """
+    Derive calculation status from steps.
+    
+    Args:
+        calc_obj: Calculation object
+        
+    Returns:
+        Status string: "pending", "running", "completed", "failed"
+    """
+    if not hasattr(calc_obj, 'steps') or not calc_obj.steps:
+        return "pending"
+    
+    # Check step statuses
+    has_running = False
+    has_failed = False
+    all_completed = True
+    
+    for step in calc_obj.steps:
+        # Simplified status check - in reality would check step results
+        # For now, assume pending if no results
+        step_status = getattr(step, 'status', None)
+        if step_status:
+            if step_status == "running":
+                has_running = True
+            elif step_status == "failed":
+                has_failed = True
+            elif step_status != "completed":
+                all_completed = False
+        else:
+            all_completed = False
+    
+    if has_failed:
+        return "failed"
+    elif has_running:
+        return "running"
+    elif all_completed:
+        return "completed"
+    else:
+        return "pending"
+
+
+def calculation_to_dto(
+    calc_resolved: Any,  # ResolvedResource
+    calc_model: Any,  # CalculationModel
+    calc_obj: Any,  # Calculation
+) -> CalculationDTO:
+    """
+    Map calculation data to CalculationDTO.
+    
+    Args:
+        calc_resolved: ResolvedResource for the calculation
+        calc_model: CalculationModel with metadata
+        calc_obj: Calculation object with steps
+        
+    Returns:
+        CalculationDTO
+    """
+    from datetime import datetime
+    
+    # Extract metadata
+    meta = None
+    if calc_model and calc_model.meta:
+        meta = MetaDTO(
+            slug=calc_model.meta.slug,
+            name=calc_model.meta.name,
+            description=calc_model.meta.description,
+            tags=list(calc_model.meta.tags) if calc_model.meta.tags else None,
+            created_at=calc_model.meta.created_at.isoformat() if calc_model.meta.created_at else None,
+            updated_at=calc_model.meta.updated_at.isoformat() if calc_model.meta.updated_at else None,
+        )
+    
+    # Get calculation ID
+    calc_id = calc_resolved.meta.id if calc_resolved.meta else ""
+    
+    # Get engine family
+    engine = calc_model.engine_family if calc_model else None
+    if not engine and hasattr(calc_obj, 'steps') and calc_obj.steps:
+        # Try to infer from first step
+        first_step = calc_obj.steps[0]
+        if hasattr(first_step, 'engine'):
+            engine = first_step.engine
+        elif hasattr(first_step, 'step_type'):
+            # Extract engine from step_type (e.g., "qe_scf" -> "qe")
+            step_type = first_step.step_type
+            if step_type and "_" in step_type:
+                engine = step_type.split("_")[0]
+    
+    # Derive status
+    status = _derive_calculation_status(calc_obj)
+    
+    # Get step IDs and counts
+    step_ids = []
+    step_count = 0
+    completed_step_count = 0
+    
+    if hasattr(calc_obj, 'steps'):
+        step_count = len(calc_obj.steps)
+        for step in calc_obj.steps:
+            step_id = step.id if hasattr(step, 'id') else None
+            if step_id:
+                step_ids.append(step_id)
+            
+            # Count completed steps (simplified)
+            step_status = getattr(step, 'status', None)
+            if step_status == "completed" or step_status == "success":
+                completed_step_count += 1
+    
+    # Get structure ID
+    structure_id = calc_model.structure_id if calc_model else None
+    
+    return CalculationDTO(
+        calc_id=calc_id,
+        engine=engine or "unknown",
+        status=status,
+        meta=meta,
+        structure_id=structure_id,
+        step_ids=step_ids if step_ids else None,
+        step_count=step_count if step_count > 0 else None,
+        completed_step_count=completed_step_count if completed_step_count > 0 else None,
+    )
+
+
+def step_to_dto(
+    step_resolved: Any,  # ResolvedResource
+    step_obj: Any,  # Step
+    calc_id: str,
+) -> StepDTO:
+    """
+    Map step data to StepDTO.
+    
+    Args:
+        step_resolved: ResolvedResource for the step
+        step_obj: Step object
+        calc_id: Parent calculation ULID
+        
+    Returns:
+        StepDTO
+    """
+    from datetime import datetime
+    
+    # Extract metadata
+    meta = None
+    if step_resolved.meta:
+        meta = MetaDTO(
+            slug=step_resolved.meta.slug,
+            name=step_resolved.meta.name,
+            description=step_resolved.meta.description,
+            tags=list(step_resolved.meta.tags) if step_resolved.meta.tags else None,
+            created_at=step_resolved.meta.created_at.isoformat() if step_resolved.meta.created_at else None,
+            updated_at=step_resolved.meta.updated_at.isoformat() if step_resolved.meta.updated_at else None,
+        )
+    
+    # Get step ID
+    step_id = step_resolved.meta.id if step_resolved.meta else ""
+    
+    # Get step type
+    step_type = step_obj.step_type if hasattr(step_obj, 'step_type') else "unknown"
+    
+    # Derive status (simplified - would check step results in full implementation)
+    status = "pending"
+    if hasattr(step_obj, 'status'):
+        status_val = step_obj.status
+        if isinstance(status_val, str):
+            status = status_val
+        elif hasattr(status_val, 'value'):
+            status = status_val.value
+    
+    # Get execution details (if available from step results)
+    started_at = None
+    completed_at = None
+    duration_seconds = None
+    exit_code = None
+    error_message = None
+    
+    # In a full implementation, we'd check step results/history for these
+    # For now, leave them as None
+    
+    return StepDTO(
+        step_id=step_id,
+        calc_id=calc_id,
+        step_type=step_type,
+        status=status,
+        meta=meta,
+        started_at=started_at,
+        completed_at=completed_at,
+        duration_seconds=duration_seconds,
+        exit_code=exit_code,
+        error_message=error_message,
     )
