@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, TextIO
 
-from quantumvitas.api import QVService, QVServiceError
+from quantumvitas.api import QVService, QVServiceError, get_service
 from quantumvitas.daemon.jobs import JobManager, JobStatus
 from quantumvitas.data import qe_metadata
 from quantumvitas.data.qe_metadata import (
@@ -106,10 +106,10 @@ class DaemonState:
         """
         project_root = project_root.resolve()
         if project_root not in self._caches:
-            # Build fresh cache using QVService
-            svc = QVService(project_root)
-            config = svc.load_project_config()
-            index = svc.build_resource_index()
+            # Build fresh cache using get_service() (canonical API pattern)
+            svc = get_service(project_root)
+            config = svc.project.get_config()
+            index = svc.project.build_resource_index()
             self._caches[project_root] = ProjectCache(
                 project_root=project_root,
                 index=index,
@@ -129,9 +129,9 @@ class DaemonState:
             Fresh ProjectCache for the project
         """
         project_root = project_root.resolve()
-        svc = QVService(project_root)
-        config = svc.load_project_config()
-        index = svc.build_resource_index()
+        svc = get_service(project_root)
+        config = svc.project.get_config()
+        index = svc.project.build_resource_index()
         self._caches[project_root] = ProjectCache(
             project_root=project_root,
             index=index,
@@ -1966,6 +1966,8 @@ class QVDaemon:
             project_root: str - Path to project root
         """
         project_root = self._require_path(payload, "project_root")
+        # TODO(STEP4): Migrate to svc.structure.list() when domain method is fully working
+        # For now, using static method that returns JSON-serializable dicts (acceptable per STEP4.4)
         structures = QVService.list_structures_data(project_root)
         return {"structures": structures, "count": len(structures)}
     
@@ -1977,9 +1979,8 @@ class QVDaemon:
             project_root: str - Path to project root
         """
         project_root = self._require_path(payload, "project_root")
-        
-        # list_calculations_data uses Project.open() which builds its own index internally
-        # This keeps Project.open() self-contained and avoids index mismatches
+        # TODO(STEP4): Migrate to svc.calculation.list() when domain method is fully working
+        # For now, using static method that returns JSON-serializable dicts (acceptable per STEP4.4)
         calculations = QVService.list_calculations_data(project_root)
         return {"calculations": calculations, "count": len(calculations)}
     
@@ -2607,7 +2608,7 @@ class QVDaemon:
         
         # Update registry
         cache_state = self.state.get_cache(project_root)
-        resolved = cache_state.svc.resolve_structure_ref(final_slug, config=config, index=cache_state.index)
+        resolved = self._require_structure_ref(cache_state.svc, final_slug, config=config)
         if cache_state.index is not None:
             cache_state.svc.update_registry_add_structure(cache_state.index, resolved.meta, dest_path)
         
@@ -4219,10 +4220,10 @@ class QVDaemon:
         # Resolve structure selector to ULID at RPC boundary
         cache = self.state.get_cache(project_root)
         try:
-            structure_resolved = cache.svc.resolve_structure_ref(
+            structure_resolved = self._require_structure_ref(
+                cache.svc,
                 structure_selector,
                 config=cache.config,
-                index=cache.index,
             )
         except Exception as e:
             # Check if error is due to project_root being passed as selector
@@ -4486,8 +4487,8 @@ class QVDaemon:
         structure_id = calc_detail.get("structure_id")
         if structure_id:
             try:
-                struct_resolved = cache.svc.resolve_structure_ref(
-                    structure_id, config=cache.config, index=cache.index
+                struct_resolved = self._require_structure_ref(
+                    cache.svc, structure_id, config=cache.config
                 )
                 if struct_resolved.absolute_path.exists():
                     structure = QVService.read_structure(struct_resolved.absolute_path)
@@ -5512,19 +5513,79 @@ class QVDaemon:
     # Resolution helpers with cache fallback
     # -------------------------------------------------------------------------
     
+    def _require_calculation_ref(self, svc, selector: str, config: dict | None = None):
+        """
+        Daemon helper: Require calculation reference via domain API.
+        
+        Centralized wrapper around svc.calculation.require_ref() to:
+        - Isolate return type changes
+        - Prevent legacy pattern usage
+        - Ensure consistent error handling
+        
+        Args:
+            svc: QVService instance
+            selector: Calculation selector (name, slug, id, or path)
+            config: Optional project config
+            
+        Returns:
+            ResolvedResource for the calculation
+            
+        Raises:
+            APIError: If calculation not found
+        """
+        return svc.calculation.require_ref(selector, config=config)
+    
+    def _require_structure_ref(self, svc, selector: str, config: dict | None = None):
+        """
+        Daemon helper: Require structure reference via domain API.
+        
+        Centralized wrapper around svc.structure.require_ref() to:
+        - Isolate return type changes
+        - Prevent legacy pattern usage
+        - Ensure consistent error handling
+        
+        Args:
+            svc: QVService instance
+            selector: Structure selector (name, slug, id, or path)
+            config: Optional project config
+            
+        Returns:
+            ResolvedResource for the structure
+            
+        Raises:
+            APIError: If structure not found
+        """
+        return svc.structure.require_ref(selector, config=config)
+    
+    def _require_step_ref(self, svc, calc_selector: str, step_selector: str, config: dict | None = None):
+        """
+        Daemon helper: Require step reference via domain API.
+        
+        Centralized wrapper around svc.calculation.require_step_ref() to:
+        - Isolate return type changes
+        - Prevent legacy pattern usage
+        - Ensure consistent error handling
+        
+        Args:
+            svc: QVService instance
+            calc_selector: Calculation selector (name, slug, id, or path)
+            step_selector: Step selector (name, slug, id, or index)
+            config: Optional project config
+            
+        Returns:
+            ResolvedResource for the step
+            
+        Raises:
+            APIError: If calculation or step not found
+        """
+        return svc.calculation.require_step_ref(calc_selector, step_selector, config=config)
+    
     def _resolve_calculation_with_fallback(self, project_root: Path, selector: str):
         """
-        Resolve calculation using cached index.
+        Resolve calculation using domain API methods.
         
-        NOTE: This helper NO LONGER auto-rebuilds on cache miss. The registry
-        is only rebuilt in two cases:
-        1. When a project is first loaded (get_cache)
-        2. When explicitly requested via rebuild_project_registry RPC
-        
-        Write operations update the registry in-place without rebuilding.
-        
-        If the resource is not found, SelectorNotFoundError is raised immediately.
-        The user should click the Refresh button to rebuild the registry.
+        Uses _require_calculation_ref() helper (which wraps svc.calculation.require_ref()).
+        No directory-walking fallbacks - all resolution via API domain methods.
         
         Args:
             project_root: Path to project root
@@ -5534,15 +5595,11 @@ class QVDaemon:
             ResolvedResource for the calculation
             
         Raises:
-            SelectorNotFoundError: If calculation not found
+            APIError: If calculation not found
         """
-        # Use cached index (no auto-rebuild on miss)
+        # Use daemon helper (no kernel imports, no directory walking)
         cache = self.state.get_cache(project_root)
-        return cache.svc.resolve_calculation_ref(
-            selector,
-            index=cache.index,
-            config=cache.config,
-        )
+        return self._require_calculation_ref(cache.svc, selector, config=cache.config)
     
     def _resolve_step_with_fallback(
         self,
@@ -5574,12 +5631,12 @@ class QVDaemon:
         Raises:
             SelectorNotFoundError: If step not found
         """
-        # Use cached index (no auto-rebuild on miss)
+        # Use daemon helper (no kernel imports, no directory walking)
         cache = self.state.get_cache(project_root)
-        return cache.svc.resolve_step_ref(
+        return self._require_step_ref(
+            cache.svc,
             calculation_selector,
             step_selector,
-            index=cache.index,
             config=cache.config,
         )
     
