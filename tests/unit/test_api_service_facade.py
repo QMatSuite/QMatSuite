@@ -1442,4 +1442,351 @@ K_POINTS
         
         assert called["model"] == fake_model
         assert called["path"] == calc_path
+    
+    # -------------------------------------------------------------------------
+    # Presets API tests (for daemon migration)
+    # -------------------------------------------------------------------------
+    
+    def test_presets_types_re_exported(self):
+        """Test that presets types are re-exported from quantumvitas.api."""
+        from quantumvitas.api import (
+            PresetCompilationError,
+            PrecisionContextError,
+            DIMENSION_PRECISION,
+            PrecisionOption,
+        )
+        
+        # Verify they are the same classes/constants as from the original modules
+        from quantumvitas.presets.compiler import PresetCompilationError as OriginalPresetCompilationError
+        from quantumvitas.presets.precision_context import PrecisionContextError as OriginalPrecisionContextError
+        from quantumvitas.presets.dimensions import DIMENSION_PRECISION as OriginalDIMENSION_PRECISION
+        from quantumvitas.presets.dimensions import PrecisionOption as OriginalPrecisionOption
+        
+        assert PresetCompilationError is OriginalPresetCompilationError
+        assert PrecisionContextError is OriginalPrecisionContextError
+        assert DIMENSION_PRECISION is OriginalDIMENSION_PRECISION
+        assert PrecisionOption is OriginalPrecisionOption
+        
+        # Verify constants work
+        assert DIMENSION_PRECISION == "precision"
+        assert PrecisionOption.LOW.value == "low"
+        assert PrecisionOption.MED.value == "med"
+        assert PrecisionOption.HIGH.value == "high"
+    
+    def test_get_preset_catalog_wrapper(self, monkeypatch):
+        """Test that get_preset_catalog wrapper works."""
+        from quantumvitas.api import QVService
+        import quantumvitas.presets.catalog as catalog_module
+        
+        called = {}
+        fake_catalog = {
+            "dimensions": [
+                {
+                    "dimension": "magnetism",
+                    "label": "Magnetism",
+                    "options": [{"value": "nonmagnetic", "label": "Non-magnetic"}],
+                }
+            ],
+            "schema_version": 1,
+        }
+        
+        def fake_get_preset_catalog():
+            called["called"] = True
+            return fake_catalog
+        
+        monkeypatch.setattr(catalog_module, "get_preset_catalog", fake_get_preset_catalog)
+        
+        result = QVService.get_preset_catalog()
+        
+        assert result == fake_catalog
+        assert called["called"] is True
+    
+    def test_detect_presets_from_calculation_wrapper(self, monkeypatch, tmp_path):
+        """Test that detect_presets_from_calculation wrapper works."""
+        from quantumvitas.api import QVService
+        import quantumvitas.presets.integration as integration_module
+        
+        called = {}
+        fake_dimension_states = {
+            "magnetism": "nonmagnetic",
+            "occupations_scheme": "fixed",
+            "precision": "med",
+        }
+        
+        def fake_detect_presets(calculation_dir, engine_filter=None):
+            called["calculation_dir"] = calculation_dir
+            called["engine_filter"] = engine_filter
+            return fake_dimension_states
+        
+        monkeypatch.setattr(integration_module, "detect_presets_from_calculation", fake_detect_presets)
+        
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir()
+        
+        result = QVService.detect_presets_from_calculation(calc_dir, engine_filter="qe")
+        
+        assert result == fake_dimension_states
+        assert Path(called["calculation_dir"]) == calc_dir
+        assert called["engine_filter"] == "qe"
+    
+    def test_detect_engine_for_calculation_wrapper(self, monkeypatch, tmp_path):
+        """Test that detect_engine_for_calculation wrapper works."""
+        from quantumvitas.api import QVService
+        import quantumvitas.presets.integration as integration_module
+        
+        called = {}
+        fake_engine = "qe"
+        
+        def fake_detect_engine(calculation_dir):
+            called["calculation_dir"] = calculation_dir
+            return fake_engine
+        
+        monkeypatch.setattr(integration_module, "_detect_engine_for_calculation", fake_detect_engine)
+        
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir()
+        
+        result = QVService.detect_engine_for_calculation(calc_dir)
+        
+        assert result == fake_engine
+        assert Path(called["calculation_dir"]) == calc_dir
+    
+    def test_detect_workflow_type_wrapper(self, monkeypatch, tmp_path):
+        """Test that detect_workflow_type wrapper works."""
+        from quantumvitas.api import QVService
+        import quantumvitas.presets.integration as integration_module
+        
+        called = {}
+        fake_workflow = "SCF"
+        
+        def fake_detect_workflow(calculation_dir):
+            called["calculation_dir"] = calculation_dir
+            return fake_workflow
+        
+        monkeypatch.setattr(integration_module, "detect_workflow_type", fake_detect_workflow)
+        
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir()
+        
+        result = QVService.detect_workflow_type(calc_dir)
+        
+        assert result == fake_workflow
+        assert Path(called["calculation_dir"]) == calc_dir
+    
+    def test_apply_presets_to_step_wrapper(self, monkeypatch, tmp_path):
+        """Test that apply_presets_to_step wrapper works."""
+        from quantumvitas.api import QVService, PresetCompilationError
+        import quantumvitas.presets.integration as integration_module
+        
+        called = {}
+        fake_result = {
+            "accepted": True,
+            "filtered_options": {"magnetism": "nonmagnetic"},
+            "updated_fields": ["SYSTEM.nspin"],
+        }
+        
+        def fake_apply_presets(step_path, options, *, validate_physics=True, precision_advice=None):
+            called["step_path"] = step_path
+            called["options"] = options
+            called["validate_physics"] = validate_physics
+            called["precision_advice"] = precision_advice
+            return fake_result
+        
+        monkeypatch.setattr(integration_module, "apply_presets_to_step", fake_apply_presets)
+        
+        step_path = tmp_path / "step.step.yaml"
+        step_path.write_text("meta: {}\n")
+        options = {"magnetism": "nonmagnetic"}
+        
+        result = QVService.apply_presets_to_step(step_path, options, validate_physics=False)
+        
+        assert result == fake_result
+        assert Path(called["step_path"]) == step_path
+        assert called["options"] == options
+        assert called["validate_physics"] is False
+    
+    def test_apply_presets_to_step_wrapper_raises_preset_compilation_error(self, monkeypatch, tmp_path):
+        """Test that apply_presets_to_step wrapper preserves PresetCompilationError."""
+        from quantumvitas.api import QVService, PresetCompilationError
+        import quantumvitas.presets.integration as integration_module
+        
+        def fake_apply_presets(*args, **kwargs):
+            raise PresetCompilationError("Invalid preset combination")
+        
+        monkeypatch.setattr(integration_module, "apply_presets_to_step", fake_apply_presets)
+        
+        step_path = tmp_path / "step.step.yaml"
+        step_path.write_text("meta: {}\n")
+        
+        with pytest.raises(PresetCompilationError, match="Invalid preset combination"):
+            QVService.apply_presets_to_step(step_path, {"invalid": "preset"})
+    
+    def test_apply_presets_to_step_wrapper_converts_other_errors(self, monkeypatch, tmp_path):
+        """Test that apply_presets_to_step wrapper converts other errors to QVServiceError."""
+        from quantumvitas.api import QVService, QVServiceError
+        import quantumvitas.presets.integration as integration_module
+        
+        def fake_apply_presets(*args, **kwargs):
+            raise RuntimeError("Unexpected error")
+        
+        monkeypatch.setattr(integration_module, "apply_presets_to_step", fake_apply_presets)
+        
+        step_path = tmp_path / "step.step.yaml"
+        step_path.write_text("meta: {}\n")
+        
+        with pytest.raises(QVServiceError, match="Failed to apply presets to step"):
+            QVService.apply_presets_to_step(step_path, {"magnetism": "nonmagnetic"})
+    
+    def test_get_step_preset_footprints_wrapper(self, monkeypatch, tmp_path):
+        """Test that get_step_preset_footprints wrapper works."""
+        from quantumvitas.api import QVService
+        import quantumvitas.presets.integration as integration_module
+        
+        called = {}
+        fake_footprints = {
+            "1_scf.step.yaml": {
+                "params": {},
+                "spin": "collinear",
+                "precision": "med",
+            }
+        }
+        
+        def fake_get_footprints(calculation_dir):
+            called["calculation_dir"] = calculation_dir
+            return fake_footprints
+        
+        monkeypatch.setattr(integration_module, "get_step_preset_footprints", fake_get_footprints)
+        
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir()
+        
+        result = QVService.get_step_preset_footprints(calc_dir)
+        
+        assert result == fake_footprints
+        assert Path(called["calculation_dir"]) == calc_dir
+    
+    def test_resolve_precision_context_wrapper(self, monkeypatch, tmp_path):
+        """Test that resolve_precision_context wrapper works."""
+        from quantumvitas.api import QVService, PrecisionContextError
+        import quantumvitas.presets.precision_context as precision_context_module
+        
+        called = {}
+        
+        class FakePrecisionContext:
+            def __init__(self):
+                self.species_map = {"Si": {"mass": 28.085}}
+                self.lattice_matrix = [[4.0, 0, 0], [0, 4.0, 0], [0, 0, 4.0]]
+        
+        fake_context = FakePrecisionContext()
+        
+        def fake_resolve_context(calculation_dir, project_root=None, calc_model=None):
+            called["calculation_dir"] = calculation_dir
+            called["project_root"] = project_root
+            called["calc_model"] = calc_model
+            return fake_context
+        
+        monkeypatch.setattr(precision_context_module, "resolve_precision_context", fake_resolve_context)
+        
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir()
+        project_root = tmp_path
+        
+        result = QVService.resolve_precision_context(calc_dir, project_root=project_root)
+        
+        assert result == fake_context
+        assert Path(called["calculation_dir"]) == calc_dir
+        assert Path(called["project_root"]) == project_root
+    
+    def test_resolve_precision_context_wrapper_raises_precision_context_error(self, monkeypatch, tmp_path):
+        """Test that resolve_precision_context wrapper preserves PrecisionContextError."""
+        from quantumvitas.api import QVService, PrecisionContextError
+        import quantumvitas.presets.precision_context as precision_context_module
+        
+        def fake_resolve_context(*args, **kwargs):
+            raise PrecisionContextError("Failed to resolve precision context")
+        
+        monkeypatch.setattr(precision_context_module, "resolve_precision_context", fake_resolve_context)
+        
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir()
+        
+        with pytest.raises(PrecisionContextError, match="Failed to resolve precision context"):
+            QVService.resolve_precision_context(calc_dir)
+    
+    def test_resolve_precision_context_wrapper_converts_other_errors(self, monkeypatch, tmp_path):
+        """Test that resolve_precision_context wrapper converts other errors to QVServiceError."""
+        from quantumvitas.api import QVService, QVServiceError
+        import quantumvitas.presets.precision_context as precision_context_module
+        
+        def fake_resolve_context(*args, **kwargs):
+            raise RuntimeError("Unexpected error")
+        
+        monkeypatch.setattr(precision_context_module, "resolve_precision_context", fake_resolve_context)
+        
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir()
+        
+        with pytest.raises(QVServiceError, match="Failed to resolve precision context"):
+            QVService.resolve_precision_context(calc_dir)
+    
+    def test_create_precision_advisor_wrapper(self, monkeypatch, tmp_path):
+        """Test that create_precision_advisor wrapper works."""
+        from quantumvitas.api import QVService
+        import quantumvitas.presets.precision as precision_module
+        from pathlib import Path
+        
+        called = {}
+        
+        class FakePrecisionAdvisor:
+            def __init__(self, species_map, lattice_matrix, repo_root):
+                called["species_map"] = species_map
+                called["lattice_matrix"] = lattice_matrix
+                called["repo_root"] = repo_root
+                self.species_map = species_map
+                self.lattice_matrix = lattice_matrix
+                self.repo_root = repo_root
+        
+        # Mock the PrecisionAdvisor class
+        monkeypatch.setattr(precision_module, "PrecisionAdvisor", FakePrecisionAdvisor)
+        
+        species_map = {"Si": {"mass": 28.085}}
+        lattice_matrix = [[4.0, 0, 0], [0, 4.0, 0], [0, 0, 4.0]]
+        repo_root = tmp_path
+        
+        result = QVService.create_precision_advisor(species_map, lattice_matrix, repo_root)
+        
+        assert result is not None
+        assert called["species_map"] == species_map
+        assert called["lattice_matrix"] == lattice_matrix
+        assert Path(called["repo_root"]) == repo_root
+    
+    # -------------------------------------------------------------------------
+    # Workflow API tests (for daemon migration)
+    # -------------------------------------------------------------------------
+    
+    def test_get_workflow_service_wrapper(self, monkeypatch):
+        """Test that get_workflow_service wrapper works."""
+        from quantumvitas.api import QVService
+        import quantumvitas.workflow.templates as templates_module
+        
+        called = {}
+        
+        class FakeWorkflowService:
+            def __init__(self):
+                self._called = called
+                called["initialized"] = True
+        
+        fake_service = FakeWorkflowService()
+        
+        def fake_get_workflow_service():
+            called["called"] = True
+            return fake_service
+        
+        monkeypatch.setattr(templates_module, "get_workflow_service", fake_get_workflow_service)
+        
+        result = QVService.get_workflow_service()
+        
+        assert result == fake_service
+        assert called["called"] is True
+        assert result is not None
 

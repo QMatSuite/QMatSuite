@@ -169,6 +169,10 @@ __all__ = [
     "CalculationStepEntry",
     "QeEngine",
     "ProjectContext",
+    "PresetCompilationError",
+    "PrecisionContextError",
+    "DIMENSION_PRECISION",
+    "PrecisionOption",
 ]
 
 # Re-export VolumeParserError for daemon use
@@ -210,6 +214,11 @@ from quantumvitas.core.models import CalculationStepEntry  # noqa: E402
 
 # Re-export project context for CLI use
 from quantumvitas.core.project_context import ProjectContext  # noqa: E402
+
+# Re-export presets types and exceptions for daemon use
+from quantumvitas.presets.compiler import PresetCompilationError  # noqa: E402
+from quantumvitas.presets.precision_context import PrecisionContextError  # noqa: E402
+from quantumvitas.presets.dimensions import DIMENSION_PRECISION, PrecisionOption  # noqa: E402
 
 
 class QVServiceError(Exception):
@@ -11423,6 +11432,202 @@ class QVService:
         """
         from quantumvitas.calculation.runner import compute_io_dir_from_calculation_model as _compute_io_dir
         return _compute_io_dir(calculation_dir, working_dir_name)
+    
+    # -------------------------------------------------------------------------
+    # Presets API (for daemon use)
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def get_preset_catalog() -> Dict[str, Any]:
+        """
+        Get preset catalog (UI's single source of truth).
+        
+        Returns:
+            Dict with catalog structure containing dimensions, options, labels, etc.
+        """
+        from quantumvitas.presets.catalog import get_preset_catalog as _get_preset_catalog
+        return _get_preset_catalog()
+    
+    @staticmethod
+    def detect_presets_from_calculation(
+        calculation_dir: Path,
+        engine_filter: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Detect preset values from a calculation's steps.
+        
+        Per Constitution §10.4.1: Detector B is the sole legitimate source
+        for preset/option state.
+        
+        Args:
+            calculation_dir: Path to calculation directory
+            engine_filter: Optional engine name to filter detection
+        
+        Returns:
+            Dict mapping dimension name to detected value or "Custom"
+        """
+        from quantumvitas.presets.integration import detect_presets_from_calculation as _detect_presets
+        return _detect_presets(calculation_dir, engine_filter=engine_filter)
+    
+    @staticmethod
+    def detect_engine_for_calculation(calculation_dir: Path) -> Optional[str]:
+        """
+        Detect engine from calculation's steps.
+        
+        Args:
+            calculation_dir: Path to calculation directory
+        
+        Returns:
+            Engine name (e.g., "qe", "pyscf", "orca") or None
+        """
+        from quantumvitas.presets.integration import _detect_engine_for_calculation as _detect_engine
+        return _detect_engine(calculation_dir)
+    
+    @staticmethod
+    def detect_workflow_type(calculation_dir: Path) -> str:
+        """
+        Detect workflow type from a calculation's step sequence.
+        
+        This is informational only - does NOT affect execution.
+        Per Constitution: workflow is runtime interpretation only.
+        
+        Args:
+            calculation_dir: Path to calculation directory
+        
+        Returns:
+            Workflow type string ("SCF", "DOS", "BandStructure", etc.)
+        """
+        from quantumvitas.presets.integration import detect_workflow_type as _detect_workflow
+        return _detect_workflow(calculation_dir)
+    
+    @staticmethod
+    def apply_presets_to_step(
+        step_path: Path,
+        options: Dict[str, Any],
+        *,
+        validate_physics: bool = True,
+        precision_advice: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """
+        Apply preset options to a step.
+        
+        Per Constitution §10.3.3: This OVERWRITES preset-related parameters,
+        it does NOT merge. Non-preset parameters are preserved.
+        
+        Args:
+            step_path: Path to step YAML file
+            options: Dict with preset options
+            validate_physics: If True, validate physics constraints
+            precision_advice: Optional precision advice object
+        
+        Returns:
+            Dict with 'accepted', 'filtered_options', 'updated_fields', etc.
+        
+        Raises:
+            PresetCompilationError: If preset compilation fails
+        """
+        from quantumvitas.presets.integration import apply_presets_to_step as _apply_presets
+        try:
+            return _apply_presets(
+                step_path,
+                options,
+                validate_physics=validate_physics,
+                precision_advice=precision_advice,
+            )
+        except PresetCompilationError:
+            raise
+        except Exception as e:
+            raise QVServiceError(f"Failed to apply presets to step: {e}") from e
+    
+    @staticmethod
+    def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any]]:
+        """
+        Get preset-related parameter footprints for all steps in a calculation.
+        
+        This enables the UI to show parameter summary on each step row
+        without fetching full step details for every step.
+        
+        Args:
+            calculation_dir: Path to calculation directory
+        
+        Returns:
+            Dict mapping step_file name to footprint data
+        """
+        from quantumvitas.presets.integration import get_step_preset_footprints as _get_footprints
+        return _get_footprints(calculation_dir)
+    
+    @staticmethod
+    def resolve_precision_context(
+        calculation_dir: Path,
+        project_root: Optional[Path] = None,
+        calc_model: Optional[Any] = None,
+    ) -> Any:
+        """
+        Resolve all context needed for precision preset apply/detect.
+        
+        This is the SINGLE SOURCE OF TRUTH for precision context resolution.
+        
+        Args:
+            calculation_dir: Path to calculation directory
+            project_root: Optional project root path
+            calc_model: Optional calculation model
+        
+        Returns:
+            PrecisionContext object
+        
+        Raises:
+            PrecisionContextError: If precision context cannot be resolved
+        """
+        from quantumvitas.presets.precision_context import resolve_precision_context as _resolve_context
+        try:
+            return _resolve_context(
+                calculation_dir=calculation_dir,
+                project_root=project_root,
+                calc_model=calc_model,
+            )
+        except PrecisionContextError:
+            raise
+        except Exception as e:
+            raise QVServiceError(f"Failed to resolve precision context: {e}") from e
+    
+    @staticmethod
+    def create_precision_advisor(
+        species_map: Dict[str, Dict[str, Any]],
+        lattice_matrix: Any,
+        repo_root: Path,
+    ) -> Any:
+        """
+        Create PrecisionAdvisor instance.
+        
+        Args:
+            species_map: Species mapping dict
+            lattice_matrix: Lattice matrix
+            repo_root: Repository root path
+        
+        Returns:
+            PrecisionAdvisor instance
+        """
+        from quantumvitas.presets.precision import PrecisionAdvisor
+        return PrecisionAdvisor(
+            species_map=species_map,
+            lattice_matrix=lattice_matrix,
+            repo_root=repo_root,
+        )
+    
+    # -------------------------------------------------------------------------
+    # Workflow API (for daemon use)
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def get_workflow_service() -> Any:
+        """
+        Get workflow service instance.
+        
+        Returns:
+            WorkflowService instance
+        """
+        from quantumvitas.workflow.templates import get_workflow_service as _get_workflow_service
+        return _get_workflow_service()
     
     # -------------------------------------------------------------------------
     # Structure I/O and analysis
