@@ -51,7 +51,17 @@ from quantumvitas.api.errors import (  # noqa: F401
     FilesystemError,
     InternalError,
 )
-from quantumvitas.api.types import BaseDTO, ErrorDTO  # noqa: F401
+from quantumvitas.api.types import (  # noqa: F401
+    BaseDTO,
+    ErrorDTO,
+    MetaDTO,
+    CalculationDTO,
+    StepDTO,
+    StructureDTO,
+    RunResultDTO,
+    AnalysisRefDTO,
+    AnalysisSummaryDTO,
+)
 
 # Export new structure + legacy exports
 # Note: __all__ from _api_legacy is also included via * import above
@@ -69,9 +79,16 @@ __all__ = [
     "ConfigError",
     "FilesystemError",
     "InternalError",
-    # DTOs (PR1: ErrorDTO complete)
+    # DTOs (PR2: Core DTOs complete)
     "BaseDTO",
     "ErrorDTO",
-    # Legacy exports (from _api_legacy) - will be removed in PR2-PR10
+    "MetaDTO",
+    "CalculationDTO",
+    "StepDTO",
+    "StructureDTO",
+    "RunResultDTO",
+    "AnalysisRefDTO",
+    "AnalysisSummaryDTO",
+    # Legacy exports (from _api_legacy) - will be removed in PR3-PR10
 ]
 
