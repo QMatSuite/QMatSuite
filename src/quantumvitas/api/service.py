@@ -819,6 +819,449 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
     
+        def create(
+            self,
+            engine: str,
+            name: str | None = None,
+            structure_selector: str | None = None,
+            **kwargs
+        ) -> CalculationDTO:
+            """
+            Create a new calculation.
+            
+            Args:
+                engine: Engine family (e.g., "qe", "pyscf")
+                name: Optional calculation name
+                structure_selector: Optional structure selector
+                **kwargs: Additional options (template, structure_kind, etc.)
+                
+            Returns:
+                CalculationDTO for the new calculation
+                
+            Raises:
+                APIError: If creation fails
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                from quantumvitas.core.resolution import require_calculation
+                from quantumvitas.core.models import load_calculation
+                from quantumvitas.project.model import Project
+                from quantumvitas.calculation.calculation import Calculation
+                
+                # Use legacy init_calculation for now
+                template = kwargs.get("template")
+                calc_resolved = LegacyService.init_calculation(
+                    project_root=self._service.project_root,
+                    name=name or f"{engine}_calculation",
+                    structure_selector=structure_selector,
+                    template=template,
+                )
+                
+                # Get calculation directory
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                else:
+                    calc_dir = calc_resolved.absolute_path
+                
+                # Load calculation model and object
+                calc_yaml = calc_dir / "calculation.yaml"
+                calc_model = load_calculation(calc_yaml, self._service.project_root)
+                project = Project.open(self._service.project_root)
+                calc_obj = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
+                
+                # Build CalculationDTO
+                return calculation_to_dto(
+                    calc_resolved=calc_resolved,
+                    calc_model=calc_model,
+                    calc_obj=calc_obj,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def update_meta(self, selector: str, **meta_kwargs) -> CalculationDTO:
+            """
+            Update calculation metadata.
+            
+            Args:
+                selector: Calculation selector
+                **meta_kwargs: Metadata fields to update (name, description, tags, etc.)
+                
+            Returns:
+                Updated CalculationDTO
+                
+            Raises:
+                APIError: If calculation not found or update fails
+            """
+            try:
+                from quantumvitas.core.resolution import require_calculation
+                from quantumvitas.core.models import load_calculation, save_calculation
+                from quantumvitas.project.model import Project
+                from quantumvitas.calculation.calculation import Calculation
+                
+                # Resolve calculation
+                calc_resolved = require_calculation(self._service.project_root, selector)
+                
+                # Get calculation directory
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                else:
+                    calc_dir = calc_resolved.absolute_path
+                
+                # Load calculation model
+                calc_yaml = calc_dir / "calculation.yaml"
+                calc_model = load_calculation(calc_yaml, self._service.project_root)
+                
+                # Update metadata
+                if "name" in meta_kwargs:
+                    calc_model.meta.name = meta_kwargs["name"]
+                if "description" in meta_kwargs:
+                    calc_model.meta.description = meta_kwargs["description"]
+                if "tags" in meta_kwargs:
+                    calc_model.meta.tags = set(meta_kwargs["tags"]) if meta_kwargs["tags"] else set()
+                
+                # Save updated model
+                save_calculation(calc_model, calc_dir)
+                
+                # Reload calculation object
+                project = Project.open(self._service.project_root)
+                calc_obj = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
+                
+                # Rebuild resolved resource with updated meta
+                from quantumvitas.core.resolution import ResolvedResource
+                calc_resolved = ResolvedResource(
+                    meta=calc_model.meta,
+                    entry=calc_resolved.entry,
+                    absolute_path=calc_dir,
+                )
+                
+                # Build CalculationDTO
+                return calculation_to_dto(
+                    calc_resolved=calc_resolved,
+                    calc_model=calc_model,
+                    calc_obj=calc_obj,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def update_step_params(
+            self,
+            calc_selector: str,
+            step_selector: str,
+            params: dict
+        ) -> StepDTO:
+            """
+            Update step parameters.
+            
+            Args:
+                calc_selector: Calculation selector
+                step_selector: Step selector
+                params: Parameters to update
+                
+            Returns:
+                Updated StepDTO
+                
+            Raises:
+                APIError: If calculation or step not found
+            """
+            try:
+                from quantumvitas.core.resolution import require_calculation, require_step
+                from quantumvitas.core.models import load_calculation, save_calculation
+                from quantumvitas.project.model import Project
+                from quantumvitas.calculation.calculation import Calculation
+                
+                # Resolve calculation and step
+                calc_resolved = require_calculation(self._service.project_root, calc_selector)
+                step_resolved = require_step(
+                    self._service.project_root,
+                    calc_selector,
+                    step_selector
+                )
+                
+                # Get calculation directory
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                else:
+                    calc_dir = calc_resolved.absolute_path
+                
+                # Load calculation model
+                calc_yaml = calc_dir / "calculation.yaml"
+                calc_model = load_calculation(calc_yaml, self._service.project_root)
+                
+                # Find and update step entry
+                step_id = step_resolved.meta.id if step_resolved.meta else None
+                step_entry = None
+                for entry in calc_model.steps:
+                    if entry.step_id == step_id:
+                        step_entry = entry
+                        break
+                
+                if step_entry is None:
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(
+                        f"Step not found in calculation",
+                        context={"calc_selector": calc_selector, "step_selector": step_selector}
+                    )
+                
+                # Update step parameters (simplified - would need to merge with existing params)
+                # For now, just update the step entry's options
+                if hasattr(step_entry, 'options'):
+                    step_entry.options.update(params)
+                
+                # Save updated model
+                save_calculation(calc_model, calc_dir)
+                
+                # Reload calculation object
+                project = Project.open(self._service.project_root)
+                calc_obj = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
+                
+                # Find matching step
+                step_obj = None
+                for step in calc_obj.steps:
+                    if step.id == step_id:
+                        step_obj = step
+                        break
+                
+                if step_obj is None:
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(
+                        f"Step not found after update",
+                        context={"calc_selector": calc_selector, "step_selector": step_selector}
+                    )
+                
+                # Build StepDTO
+                return step_to_dto(
+                    step_resolved=step_resolved,
+                    step_obj=step_obj,
+                    calc_id=calc_resolved.meta.id if calc_resolved.meta else "",
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def duplicate(self, selector: str, new_name: str | None = None) -> CalculationDTO:
+            """
+            Duplicate a calculation.
+            
+            Args:
+                selector: Calculation selector
+                new_name: Optional name for the duplicate
+                
+            Returns:
+                CalculationDTO for the duplicate
+                
+            Raises:
+                APIError: If calculation not found or duplication fails
+            """
+            try:
+                from quantumvitas.core.resolution import require_calculation
+                from quantumvitas.core.models import load_calculation, save_calculation
+                from quantumvitas.project.model import Project
+                from quantumvitas.calculation.calculation import Calculation
+                from quantumvitas.core.resources import generate_resource_id
+                from quantumvitas.core.project_utils import slugify
+                import shutil
+                import yaml
+                
+                # Resolve and load original calculation
+                calc_resolved = require_calculation(self._service.project_root, selector)
+                
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                else:
+                    calc_dir = calc_resolved.absolute_path
+                
+                calc_yaml = calc_dir / "calculation.yaml"
+                calc_model = load_calculation(calc_yaml, self._service.project_root)
+                
+                # Generate new ID and name
+                new_id = generate_resource_id()
+                new_name = new_name or f"{calc_model.meta.name}_copy"
+                new_slug = slugify(new_name)
+                new_path = f"calculations/{new_slug}"
+                new_dir = self._service.project_root / new_path
+                
+                # Copy calculation directory
+                if new_dir.exists():
+                    from quantumvitas.api.errors import ConflictError
+                    raise ConflictError(f"Calculation already exists: {new_slug}")
+                
+                shutil.copytree(calc_dir, new_dir)
+                
+                # Update calculation.yaml with new meta
+                new_calc_yaml = new_dir / "calculation.yaml"
+                calc_data = yaml.safe_load(new_calc_yaml.read_text())
+                calc_data["meta"]["id"] = new_id
+                calc_data["meta"]["name"] = new_name
+                calc_data["meta"]["slug"] = new_slug
+                calc_data["meta"]["path"] = new_path
+                new_calc_yaml.write_text(yaml.safe_dump(calc_data, sort_keys=False))
+                
+                # Reload model
+                new_calc_model = load_calculation(new_calc_yaml, self._service.project_root)
+                
+                # Add to project config
+                from quantumvitas.core.project_utils import load_project_config, save_project_config
+                config = load_project_config(self._service.project_root)
+                calculations = config.setdefault("calculations", [])
+                calculations.append({"calculation_id": new_id})
+                save_project_config(self._service.project_root, config)
+                
+                # Build ResolvedResource
+                from quantumvitas.core.resolution import ResolvedResource
+                new_calc_resolved = ResolvedResource(
+                    meta=new_calc_model.meta,
+                    entry={"calculation_id": new_id},
+                    absolute_path=new_dir,
+                )
+                
+                # Load calculation object
+                project = Project.open(self._service.project_root)
+                new_calc_obj = Calculation.from_yaml(new_dir, project, materialize_steps=False)
+                
+                # Build CalculationDTO
+                return calculation_to_dto(
+                    calc_resolved=new_calc_resolved,
+                    calc_model=new_calc_model,
+                    calc_obj=new_calc_obj,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def delete(self, selector: str) -> None:
+            """
+            Delete a calculation.
+            
+            Args:
+                selector: Calculation selector
+                
+            Raises:
+                APIError: If calculation not found or deletion fails
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                
+                # Use legacy delete_calculation
+                LegacyService.delete_calculation(
+                    project_root=self._service.project_root,
+                    calculation_ulid=selector,  # Assumes selector is ULID
+                    force=False,
+                    cascade=False,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def add_step(
+            self,
+            calc_selector: str,
+            step_type: str,
+            **params
+        ) -> StepDTO:
+            """
+            Add a step to a calculation.
+            
+            Args:
+                calc_selector: Calculation selector
+                step_type: Step type (e.g., "qe_scf", "qe_nscf")
+                **params: Step parameters
+                
+            Returns:
+                StepDTO for the new step
+                
+            Raises:
+                APIError: If calculation not found or step creation fails
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                from quantumvitas.core.resolution import require_calculation, require_step
+                from quantumvitas.core.models import load_calculation
+                from quantumvitas.project.model import Project
+                from quantumvitas.calculation.calculation import Calculation
+                
+                # Use legacy init_step
+                name = params.pop("name", None)
+                structure_selector = params.pop("structure_selector", None)
+                
+                step_resolved = LegacyService.init_step(
+                    project_root=self._service.project_root,
+                    calculation_selector=calc_selector,
+                    step_type=step_type,
+                    name=name,
+                    structure_selector=structure_selector,
+                )
+                
+                # Resolve calculation
+                calc_resolved = require_calculation(self._service.project_root, calc_selector)
+                
+                # Get calculation directory
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                else:
+                    calc_dir = calc_resolved.absolute_path
+                
+                # Load calculation object to find step
+                project = Project.open(self._service.project_root)
+                calc_obj = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
+                
+                # Find matching step
+                step_id = step_resolved.meta.id if step_resolved.meta else None
+                step_obj = None
+                for step in calc_obj.steps:
+                    if step.id == step_id:
+                        step_obj = step
+                        break
+                
+                if step_obj is None:
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(
+                        f"Step not found after creation",
+                        context={"calc_selector": calc_selector, "step_selector": step_id}
+                    )
+                
+                # Build StepDTO
+                return step_to_dto(
+                    step_resolved=step_resolved,
+                    step_obj=step_obj,
+                    calc_id=calc_resolved.meta.id if calc_resolved.meta else "",
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def remove_step(self, calc_selector: str, step_selector: str) -> None:
+            """
+            Remove a step from a calculation.
+            
+            Args:
+                calc_selector: Calculation selector
+                step_selector: Step selector
+                
+            Raises:
+                APIError: If calculation or step not found
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                
+                # Use legacy delete_step_from_calculation
+                LegacyService.delete_step_from_calculation(
+                    project_root=self._service.project_root,
+                    calculation_selector=calc_selector,
+                    step_selector=step_selector,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+    
     @property
     def calculation(self) -> Calculation:
         """Access calculation capabilities."""
