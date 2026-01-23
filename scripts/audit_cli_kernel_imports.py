@@ -267,7 +267,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="Audit CLI kernel imports")
-    parser.add_argument("--json", type=str, help="Output JSON to file")
+    parser.add_argument("--json", type=str, help="Output JSON to file (default: ./.audit/cli_kernel_deps.json)")
     args = parser.parse_args()
     
     repo_root = Path(__file__).parent.parent
@@ -279,15 +279,22 @@ def main():
     
     manifest = audit_cli_imports(cli_dir)
     
-    # Output JSON to stdout
-    json_output = json.dumps(manifest, indent=2)
-    print(json_output)
-    
-    # Optionally save to file
+    # Determine output file (default to .audit/ directory)
     if args.json:
         output_file = Path(args.json)
-        output_file.write_text(json_output, encoding="utf-8")
-        print(f"\nManifest also saved to: {output_file}", file=sys.stderr)
+    else:
+        # Default: ./.audit/cli_kernel_deps.json
+        audit_dir = repo_root / ".audit"
+        audit_dir.mkdir(exist_ok=True)
+        output_file = audit_dir / "cli_kernel_deps.json"
+    
+    # Save to file
+    json_output = json.dumps(manifest, indent=2)
+    output_file.write_text(json_output, encoding="utf-8")
+    print(f"Manifest saved to: {output_file}", file=sys.stderr)
+    
+    # Also output to stdout
+    print(json_output)
 
 
 if __name__ == "__main__":

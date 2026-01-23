@@ -74,31 +74,46 @@ def _report_violations(violations: list, violation_type: str, context_path: Opti
         else:  # Violation object
             by_file[v.file_path].append(v)
 
-    # Build report
+    # Build report with improved diagnostics
     lines = [f"\n{'='*70}"]
     lines.append(f"{violation_type}: {len(violations)} total violation(s)")
     lines.append(f"{'='*70}")
     
-    # Show top files
+    # Show top files with detailed information
     sorted_files = sorted(by_file.items(), key=lambda x: len(x[1]), reverse=True)
     for file_path_obj, file_violations in sorted_files[:10]:  # Top 10 files
         try:
             rel_path = file_path_obj.relative_to(PROJECT_ROOT)
         except ValueError:
             rel_path = file_path_obj
-        lines.append(f"\n  {rel_path}: {len(file_violations)} violation(s)")
-        # Show first 3 violations per file
-        for v in file_violations[:3]:
+        
+        lines.append(f"\n  File: {rel_path}")
+        lines.append(f"  Violations: {len(file_violations)}")
+        
+        # Show first 5 violations per file with full details
+        for v in file_violations[:5]:
             if isinstance(v, tuple):
-                lines.append(f"    Line {v[0]}: {v[1]}()")
+                # Bare resolve call
+                lines.append(f"    Line {v[0]}: bare call to {v[1]}()")
+                lines.append(f"      Suggested fix: use QVService.{v[1]}_ref() or svc.{v[1]}_ref()")
             else:
-                lines.append(f"    Line {v.line_number}: {v.import_type} {v.module_name}")
-        if len(file_violations) > 3:
-            lines.append(f"    ... and {len(file_violations) - 3} more")
+                # Import violation
+                import_stmt = f"{v.import_type} {v.module_name}"
+                if v.import_type == "from":
+                    import_stmt = f"from {v.module_name} import ..."
+                lines.append(f"    Line {v.line_number}: {import_stmt}")
+                lines.append(f"      Module: {v.module_name}")
+                lines.append(f"      Forbidden prefix: {v.forbidden_prefix}")
+                lines.append(f"      Suggested fix: use quantumvitas.api (QVService wrapper or re-export)")
+        
+        if len(file_violations) > 5:
+            lines.append(f"    ... and {len(file_violations) - 5} more violation(s)")
     
     if len(sorted_files) > 10:
         lines.append(f"\n  ... and {len(sorted_files) - 10} more files with violations")
     
+    lines.append(f"\n{'='*70}")
+    lines.append("For more information, see: docs/plan/MULTI_FRONTEND_REFACTOR_MILESTONE.md")
     lines.append(f"{'='*70}\n")
     report = "\n".join(lines)
     
