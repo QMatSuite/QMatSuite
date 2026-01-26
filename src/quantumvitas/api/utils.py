@@ -101,6 +101,17 @@ def write_structure(
     return _write_structure(structure, filepath, format=format, metadata=metadata)
 
 
+def generate_resource_id() -> str:
+    """
+    Generate a unique resource ID (ULID).
+    
+    Returns:
+        ULID string
+    """
+    from quantumvitas.core.resources import generate_resource_id as _generate_resource_id
+    return _generate_resource_id()
+
+
 def generate_unique_name_and_slug(
     kind: str,
     preferred_name: str,
