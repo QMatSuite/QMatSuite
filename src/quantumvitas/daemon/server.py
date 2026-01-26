@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, TextIO
 
-from quantumvitas.api import QVService, QVServiceError, get_service
+from quantumvitas.api import QVService, APIError, get_service
 from quantumvitas.daemon.jobs import JobManager, JobStatus
 from quantumvitas.data import qe_metadata
 from quantumvitas.data.qe_metadata import (
@@ -633,7 +633,7 @@ class QVDaemon:
                 ok=False,
                 error=error_dict,
             )
-        except QVServiceError as e:
+        except APIError as e:
             return RPCResponse(
                 id=request.id,
                 ok=False,
@@ -3842,15 +3842,15 @@ class QVDaemon:
                     )
                 except PrecisionContextError as e:
                     # Precision context resolution failed - this is an error, not a warning
-                    raise QVServiceError(
+                    raise APIError(
                         f"Failed to resolve precision context: {e}"
                     ) from e
-            except QVServiceError:
+            except APIError:
                 # Re-raise service errors
                 raise
             except Exception as e:
                 # Other errors should also be raised, not silently ignored
-                raise QVServiceError(
+                raise APIError(
                     f"Failed to create PrecisionAdvisor: {e}"
                 ) from e
         
@@ -4750,7 +4750,7 @@ class QVDaemon:
                 calculation_selector=calculation,
                 step_selector=step,
             )
-        except QVServiceError as e:
+        except APIError as e:
             # Log failure details at error boundary
             import logging
             logger = logging.getLogger(__name__)
@@ -6526,8 +6526,8 @@ class QVDaemon:
         
         # Validate kind (per Constitution: ULID-based resolution must validate kind)
         if resolved.meta.kind != "calculation":
-            from quantumvitas.api import QVServiceError
-            raise QVServiceError(
+            from quantumvitas.api import APIError
+            raise APIError(
                 f"Resource '{calculation_ulid}' is not a calculation (kind: {resolved.meta.kind})"
             )
         

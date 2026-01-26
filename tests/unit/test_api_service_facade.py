@@ -9,7 +9,7 @@ import os
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService, QVServiceError
+from quantumvitas.api import QVService, APIError
 
 
 class TestAPIServiceFacade:
@@ -52,7 +52,7 @@ calculations: []
         non_project = tmp_path / "not_a_project"
         non_project.mkdir()
         
-        with pytest.raises(QVServiceError, match="Not a project"):
+        with pytest.raises(APIError, match="Not a project"):
             QVService(non_project)
 
     def test_load_project_config(self, demo_project):
@@ -132,23 +132,23 @@ steps: []
         assert len(steps) == 0
 
     def test_resolve_calculation_ref_not_found(self, demo_project):
-        """API raises QVServiceError for non-existent calculation."""
+        """API raises APIError for non-existent calculation."""
         svc = QVService(demo_project)
         
         # Legacy API check: test that resolve_calculation_ref exists and works
-        with pytest.raises(QVServiceError, match="Failed to resolve calculation"):
+        with pytest.raises(APIError, match="Failed to resolve calculation"):
             svc.resolve_calculation_ref("nonexistent")
 
     def test_resolve_structure_ref_not_found(self, demo_project):
-        """API raises QVServiceError for non-existent structure."""
+        """API raises APIError for non-existent structure."""
         svc = QVService(demo_project)
         
         # Legacy API check: test that resolve_structure_ref exists and works
-        with pytest.raises(QVServiceError, match="Failed to resolve structure"):
+        with pytest.raises(APIError, match="Failed to resolve structure"):
             svc.resolve_structure_ref("nonexistent")
 
     def test_resolve_step_ref_not_found(self, demo_project):
-        """API raises QVServiceError for non-existent step."""
+        """API raises APIError for non-existent step."""
         svc = QVService(demo_project)
         
         # Create a minimal calculation first
@@ -173,14 +173,14 @@ steps: []
         # Legacy resolve_* methods - test that they exist and raise errors
         # Legacy API check: Prefer domain methods (svc.calculation.require_step_ref) in new code
         if hasattr(svc, "resolve_step_ref"):
-            with pytest.raises(QVServiceError, match="Failed to resolve step"):
+            with pytest.raises(APIError, match="Failed to resolve step"):
                 svc.resolve_step_ref("test-calc", "nonexistent")
 
     def test_api_importable(self):
         """API module is importable."""
-        from quantumvitas.api import QVService, QVServiceError
+        from quantumvitas.api import QVService, APIError
         assert QVService is not None
-        assert QVServiceError is not None
+        assert APIError is not None
 
     def test_instance_methods_exist(self, demo_project):
         """All required instance methods exist."""
@@ -223,21 +223,21 @@ steps: []
         assert callable(QVService.list_steps)
 
     def test_require_calculation_ref_not_found(self, demo_project):
-        """require_calculation_ref raises QVServiceError for non-existent calculation."""
+        """require_calculation_ref raises APIError for non-existent calculation."""
         svc = QVService(demo_project)
         
-        with pytest.raises(QVServiceError, match="Calculation.*not found"):
+        with pytest.raises(APIError, match="Calculation.*not found"):
             svc.require_calculation_ref("nonexistent")
 
     def test_require_structure_ref_not_found(self, demo_project):
-        """require_structure_ref raises QVServiceError for non-existent structure."""
+        """require_structure_ref raises APIError for non-existent structure."""
         svc = QVService(demo_project)
         
-        with pytest.raises(QVServiceError, match="Structure.*not found"):
+        with pytest.raises(APIError, match="Structure.*not found"):
             svc.require_structure_ref("nonexistent")
 
     def test_require_step_ref_not_found(self, demo_project):
-        """require_step_ref raises QVServiceError for non-existent step."""
+        """require_step_ref raises APIError for non-existent step."""
         svc = QVService(demo_project)
         
         # Create a minimal calculation first
@@ -259,7 +259,7 @@ steps: []
         }]
         svc.project.update_config(config)
         
-        with pytest.raises(QVServiceError, match="Step.*not found"):
+        with pytest.raises(APIError, match="Step.*not found"):
             svc.require_step_ref("test-calc", "nonexistent")
 
     def test_make_structure_selector_resolver_ref(self, demo_project):
@@ -270,7 +270,7 @@ steps: []
         assert callable(resolver)
         
         # Resolver should raise error for non-existent structure
-        with pytest.raises(Exception):  # May be ResourceNotFoundError or QVServiceError
+        with pytest.raises(Exception):  # May be ResourceNotFoundError or APIError
             resolver("nonexistent")
 
     def test_generate_resource_id(self, demo_project):
@@ -876,8 +876,8 @@ steps: []
         assert called["merge"] is True
     
     def test_configure_species_map_wrapper_raises_qvservice_error(self, monkeypatch, tmp_path):
-        """Test that configure_species_map wrapper converts ValueError to QVServiceError."""
-        from quantumvitas.api import QVService, QVServiceError
+        """Test that configure_species_map wrapper converts ValueError to APIError."""
+        from quantumvitas.api import QVService, APIError
         import quantumvitas.calculation.species_config as species_config_module
 
         def fake_configure_species_map(*args, **kwargs):
@@ -893,7 +893,7 @@ steps: []
         project_root.mkdir()
         (project_root / "project.qv.yml").write_text("project:\n  name: test\nstructures: []\ncalculations: []\n")
 
-        with pytest.raises(QVServiceError, match="Calculation not found"):
+        with pytest.raises(APIError, match="Calculation not found"):
             QVService.configure_species_map(
                 project_root=project_root,
                 calculation="nonexistent",
@@ -1020,8 +1020,8 @@ steps: []
         assert called["path_type"] == "seekpath"
     
     def test_generate_kpath_wrapper_raises_qvservice_error(self, monkeypatch):
-        """Test that generate_kpath wrapper converts exceptions to QVServiceError."""
-        from quantumvitas.api import QVService, QVServiceError
+        """Test that generate_kpath wrapper converts exceptions to APIError."""
+        from quantumvitas.api import QVService, APIError
         import quantumvitas.analysis.kpath as kpath_module
         
         def fake_generate_kpath(*args, **kwargs):
@@ -1031,7 +1031,7 @@ steps: []
         
         fake_structure = type("FakeStructure", (), {})()
         
-        with pytest.raises(QVServiceError, match="pymatgen not available"):
+        with pytest.raises(APIError, match="pymatgen not available"):
             QVService.generate_kpath(fake_structure)
     
     def test_needs_alat_preservation_wrapper(self, monkeypatch):
@@ -1641,8 +1641,8 @@ K_POINTS
             QVService.apply_presets_to_step(step_path, {"invalid": "preset"})
     
     def test_apply_presets_to_step_wrapper_converts_other_errors(self, monkeypatch, tmp_path):
-        """Test that apply_presets_to_step wrapper converts other errors to QVServiceError."""
-        from quantumvitas.api import QVService, QVServiceError
+        """Test that apply_presets_to_step wrapper converts other errors to APIError."""
+        from quantumvitas.api import QVService, APIError
         import quantumvitas.presets.integration as integration_module
         
         def fake_apply_presets(*args, **kwargs):
@@ -1653,7 +1653,7 @@ K_POINTS
         step_path = tmp_path / "step.step.yaml"
         step_path.write_text("meta: {}\n")
         
-        with pytest.raises(QVServiceError, match="Failed to apply presets to step"):
+        with pytest.raises(APIError, match="Failed to apply presets to step"):
             QVService.apply_presets_to_step(step_path, {"magnetism": "nonmagnetic"})
     
     def test_get_step_preset_footprints_wrapper(self, monkeypatch, tmp_path):
@@ -1733,8 +1733,8 @@ K_POINTS
             QVService.resolve_precision_context(calc_dir)
     
     def test_resolve_precision_context_wrapper_converts_other_errors(self, monkeypatch, tmp_path):
-        """Test that resolve_precision_context wrapper converts other errors to QVServiceError."""
-        from quantumvitas.api import QVService, QVServiceError
+        """Test that resolve_precision_context wrapper converts other errors to APIError."""
+        from quantumvitas.api import QVService, APIError
         import quantumvitas.presets.precision_context as precision_context_module
         
         def fake_resolve_context(*args, **kwargs):
@@ -1745,7 +1745,7 @@ K_POINTS
         calc_dir = tmp_path / "calc"
         calc_dir.mkdir()
         
-        with pytest.raises(QVServiceError, match="Failed to resolve precision context"):
+        with pytest.raises(APIError, match="Failed to resolve precision context"):
             QVService.resolve_precision_context(calc_dir)
     
     def test_create_precision_advisor_wrapper(self, monkeypatch, tmp_path):

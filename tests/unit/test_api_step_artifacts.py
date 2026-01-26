@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService, QVServiceError
+from quantumvitas.api import QVService, APIError
 
 
 @pytest.fixture
@@ -207,7 +207,7 @@ class TestReadStepArtifactText:
         outside_file.write_text("secret content")
         
         # Try to read with path traversal (should fail)
-        with pytest.raises(QVServiceError, match="Security violation|Invalid artifact path"):
+        with pytest.raises(APIError, match="Security violation|Invalid artifact path"):
             QVService.read_step_artifact_text(
                 project_root=project_dir,
                 calculation_selector=calc_slug,
@@ -216,7 +216,7 @@ class TestReadStepArtifactText:
             )
         
         # Try with absolute path (should also fail)
-        with pytest.raises(QVServiceError, match="Security violation|Invalid artifact path"):
+        with pytest.raises(APIError, match="Security violation|Invalid artifact path"):
             QVService.read_step_artifact_text(
                 project_root=project_dir,
                 calculation_selector=calc_slug,
@@ -235,7 +235,7 @@ class TestReadStepArtifactText:
         subdir.mkdir()
         
         # Try to read directory (should fail)
-        with pytest.raises(QVServiceError, match="directory"):
+        with pytest.raises(APIError, match="directory"):
             QVService.read_step_artifact_text(
                 project_root=project_dir,
                 calculation_selector=calc_slug,
@@ -252,7 +252,7 @@ class TestReadStepArtifactText:
         raw_dir.mkdir(exist_ok=True)
         
         # Try to read non-existent file (should fail)
-        with pytest.raises(QVServiceError, match="not found"):
+        with pytest.raises(APIError, match="not found"):
             QVService.read_step_artifact_text(
                 project_root=project_dir,
                 calculation_selector=calc_slug,

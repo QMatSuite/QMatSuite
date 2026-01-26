@@ -30,7 +30,7 @@ from quantumvitas.calculation.hash_utils import (
     compute_step_sha,
 )
 from quantumvitas.calculation.step_done import is_step_done
-from quantumvitas.api import QVService, QVServiceError
+from quantumvitas.api import QVService, APIError
 from typing import Dict, Any
 
 

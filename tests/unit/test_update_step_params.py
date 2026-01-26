@@ -6,7 +6,7 @@ import pytest
 import yaml
 from pathlib import Path
 
-from quantumvitas.api import QVService, QVServiceError
+from quantumvitas.api import QVService, APIError
 from quantumvitas.core.resources import generate_resource_id
 from quantumvitas.core.yamldoc import StepDoc
 

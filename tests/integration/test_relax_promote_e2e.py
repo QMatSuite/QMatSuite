@@ -15,7 +15,7 @@ import time
 import uuid
 from pathlib import Path
 
-from quantumvitas.api import QVService, QVServiceError
+from quantumvitas.api import QVService, APIError
 from quantumvitas.core.paths import tmp_runs_dir
 from quantumvitas.execution.relax_artifacts import (
     get_generated_structure_path,
@@ -211,7 +211,7 @@ class TestRelaxPromoteE2E:
         project_root = promote_test_calculation_with_relax["project_root"]
         
         # Try to promote without running relax step (no current.json)
-        with pytest.raises(QVServiceError) as exc_info:
+        with pytest.raises(APIError) as exc_info:
             QVService.promote_relax_structure(
                 project_root=project_root,
                 calculation_selector=calc_ulid,
@@ -257,7 +257,7 @@ class TestRelaxPromoteE2E:
         scf_step_ulid = scf_step_result.id
         
         # Try to promote non-relax step
-        with pytest.raises(QVServiceError) as exc_info:
+        with pytest.raises(APIError) as exc_info:
             QVService.promote_relax_structure(
                 project_root=project_root,
                 calculation_selector=calc_ulid,
