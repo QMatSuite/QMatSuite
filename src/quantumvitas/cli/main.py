@@ -21,8 +21,7 @@ import typer
 from pymatgen.core import Structure as PMGStructure
 
 # Analysis modules no longer imported directly (migrated to QVService/api)
-# ResourceMeta is imported from quantumvitas.api for type hints and usage
-from quantumvitas.api import ResourceMeta
+# ResourceMeta removed - use dict[str, Any] for type hints
 # Context functions now imported from quantumvitas.api
 # LegacyProjectError now imported from quantumvitas.api
 from quantumvitas.api import LegacyProjectError
@@ -46,18 +45,17 @@ from quantumvitas.data import (
     get_module_param_sections,
     list_supported_modules,
 )
-# Engine types and functions now imported from quantumvitas.api
 # Engine types and functions now via QVService
-from quantumvitas.api import EngineConfig, QVService, get_service
+from quantumvitas.api import QVService, get_service
+# EngineConfig removed - handled via API
 # CalculationRunner now accessed via QVService.run_calculation()
-# Calculation class now imported from quantumvitas.api
-# StepMode and StepStatus now imported from quantumvitas.api
-from quantumvitas.api import Calculation, StepMode, StepStatus
+# Calculation class removed - use API DTOs/dicts
+# StepMode and StepStatus removed - use API types or strings
 # input_runner functions now via QVService wrappers
 from quantumvitas.api import ParameterOverride
 # Structure step specs now via QVService
-# I/O operations now via QVService
-from quantumvitas.api import QECardType, QEInputParser
+# I/O operations via API submodule (not top-level re-export)
+from quantumvitas.api.qe_io import QECardType, QEInputParser
 
 if TYPE_CHECKING:
     from pymatgen.core import Structure as PMGStructure
@@ -246,6 +244,28 @@ def _resolve_structure_reference(
                 return candidate.as_posix()
         return candidate.as_posix()
     return identifier
+
+
+def _find_entry_by_structure_id(config: dict, structure_id: str) -> dict:
+    """
+    Find structure entry in config by structure_id (ULID).
+    
+    Args:
+        config: Project config dict
+        structure_id: Structure ULID
+        
+    Returns:
+        Structure entry dict
+        
+    Raises:
+        ValueError: If entry not found
+    """
+    from quantumvitas.api.utils import extract_structure_selector_from_entry
+    for entry in config.get("structures", []):
+        entry_id = extract_structure_selector_from_entry(entry)
+        if entry_id == structure_id:
+            return entry
+    raise ValueError(f"Structure entry with id '{structure_id}' not found in config")
 
 
 def _find_entry_by_calc_id(config: dict, calc_id: str) -> dict:
@@ -699,12 +719,12 @@ def init_project_command(
     project_name = name or project_dir.name
     from quantumvitas.api import meta_from_name
     project_meta_dict = meta_from_name("project", name=project_name, path=".")
-    project_meta = ResourceMeta(**project_meta_dict)
+    project_meta = project_meta_dict  # Use dict directly (no ResourceMeta dependency)
 
     project_config = {
         "project": {
-            "name": project_meta.name,
-            "meta": project_meta.to_dict(),
+            "name": project_meta["name"],
+            "meta": project_meta,
             "structures_dir": "structures",
             "calculations_dir": "calculations",
         },
@@ -797,7 +817,7 @@ def init_calculation_command(
         from quantumvitas.api import ensure_relative_path, meta_from_name
         rel_path = ensure_relative_path(calculation_dir, base=project_root)
         calculation_meta_dict = meta_from_name("calculation", name=calculation_id, path=rel_path)
-        calculation_meta = ResourceMeta(**calculation_meta_dict)
+        calculation_meta = calculation_meta_dict  # Use dict directly (no ResourceMeta dependency)
         
         # Pass the ULID to template copier so steps get the correct parent_calculation_id
         from quantumvitas.api import copy_calculation_template
@@ -807,7 +827,7 @@ def init_calculation_command(
             project_root=project_root,
             new_name=calculation_id,
             structure=structure,
-            calculation_ulid=calculation_meta.id,
+            calculation_ulid=calculation_meta["id"],
         )
         
         # Copy missing structures from templates
@@ -826,10 +846,9 @@ def init_calculation_command(
                     from quantumvitas.api import ensure_relative_path, meta_from_name
                     struct_rel_path = ensure_relative_path(struct_path, base=project_root)
                     struct_meta_dict = meta_from_name("structure", name=struct_name, path=struct_rel_path)
-                    struct_meta = ResourceMeta(**struct_meta_dict)
                     # DAG + ID-only: only structure_id, no meta duplication
                     structures_section.append({
-                        "structure_id": struct_meta.id,  # ID-only reference (ULID)
+                        "structure_id": struct_meta_dict.get("id"),  # ID-only reference (ULID)
                     })
                     typer.echo(f"Copied structure '{struct_name}' from template")
                 except ValueError:
@@ -838,13 +857,13 @@ def init_calculation_command(
                         fg=typer.colors.YELLOW
                     )
         
-        calculation_meta_dict = calculation_meta.to_dict()
+        calculation_meta_dict = calculation_meta
         if parent:
             calculation_meta_dict["parents"] = parent
 
         # DAG + ID-only: only calculation_id, no meta duplication
         calculations_section.append({
-            "calculation_id": calculation_meta.id,  # ID-only reference (ULID)
+            "calculation_id": calculation_meta["id"],  # ID-only reference (ULID)
         })
         svc.project.update_config(config)
         typer.secho(f"Calculation '{calculation_id}' created from template '{template}' at {calculation_dir}", fg=typer.colors.GREEN)
@@ -870,12 +889,8 @@ def init_calculation_command(
     from quantumvitas.api import ensure_relative_path, meta_from_name
     rel_path = ensure_relative_path(calculation_dir, base=project_root)
     calculation_meta_dict = meta_from_name("calculation", name=calculation_id, path=str(rel_path))
-    calculation_meta = ResourceMeta(**calculation_meta_dict)
     if parent:
-        calculation_meta_dict = calculation_meta.to_dict()
         calculation_meta_dict["parents"] = parent
-    else:
-        calculation_meta_dict = calculation_meta.to_dict()
 
     # Phase 2: Determine structure_kind and engine_family
     # Default structure_kind to periodic if not provided
@@ -910,7 +925,7 @@ def init_calculation_command(
 
     # Add to project.qv.yml (DAG + ID-only: only calculation_id, no meta duplication)
     calculations_section.append({
-        "calculation_id": calculation_meta.id,  # ID-only reference (ULID)
+        "calculation_id": calculation_meta["id"],  # ID-only reference (ULID)
     })
     svc.project.update_config(config)
 
@@ -1301,19 +1316,22 @@ def init_step_command(
     
     from quantumvitas.api import meta_from_name
     step_meta_dict = meta_from_name("step", name=step_display_name, path="")
-    step_meta = ResourceMeta(**step_meta_dict)
-    from quantumvitas.api import StructureStepSpec
-    spec = StructureStepSpec(
-        meta=step_meta,
-        structure=structure_value,  # Keep for backwards compat
-        structure_id=structure_id,  # Canonical reference (ULID)
-        step_type=step_type,
-        parameters=params,
-        cards=cards,
-        species_overrides=species,
-        parent_calculation_id=parent_calculation_id,
-        kpath_metadata=kpath_result.to_dict() if kpath_result else None,
-    )
+    # Build step spec as dict (no StructureStepSpec dependency)
+    spec: dict[str, Any] = {
+        "meta": step_meta_dict,
+        "step_type": step_type,
+        "parameters": params,
+        "cards": cards,
+        "species_overrides": species,
+    }
+    if structure_value:
+        spec["structure"] = structure_value  # Keep for backwards compat
+    if structure_id:
+        spec["structure_id"] = structure_id  # Canonical reference (ULID)
+    if parent_calculation_id:
+        spec["parent_calculation_id"] = parent_calculation_id
+    if kpath_result:
+        spec["kpath_metadata"] = kpath_result.to_dict()
     _write_step_spec(spec_path, spec, project_root=project_root)
 
     if calculation_entry and calculation_steps is not None and calculation_data is not None:
@@ -1331,7 +1349,7 @@ def init_step_command(
         # rel_step_path is already a relative path string from ensure_relative_path
         # Create step entry with only step_id (ULID) - no step_file (resolved via registry)
         step_entry = CalculationStepEntry(
-            step_id=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
+            step_id=spec.get("meta", {}).get("id"),  # Use ULID from step spec meta (canonical reference)
             type=step_type,
             # step_file is NOT stored - step location resolved via registry using step_id
         )
@@ -1480,12 +1498,11 @@ def import_structure_command(
     write_rel = ensure_relative_path(out_path, base=project_root)
 
     metadata_dict = meta_from_name("structure", name=structure_name, path=write_rel)
-    metadata = ResourceMeta(**metadata_dict)
-    write_structure(struct, out_path, format=output_format, metadata=metadata)
+    write_structure(struct, out_path, format=output_format, metadata=metadata_dict)
 
     # DAG + ID-only: only structure_id, no meta duplication
     structures_section.append({
-        "structure_id": metadata.id,  # ID-only reference (ULID)
+        "structure_id": metadata_dict.get("id"),  # ID-only reference (ULID)
     })
     svc.project.update_config(config)
 
@@ -1506,13 +1523,11 @@ def detect_qe(
     """
     Report QE installation details (qe_home, bin directory, test-suite, executables).
     """
-    config = None
+    # Engine config is handled via API, not direct EngineConfig
+    config_dict = None
     if path:
-        try:
-            config = EngineConfig(name="qe", qe_home=path)
-        except ValueError as exc:
-            raise typer.BadParameter(str(exc)) from exc
-    registry = QVService.create_default_registry(config)
+        config_dict = {"name": "qe", "qe_home": str(path)}
+    registry = QVService.create_default_registry(config_dict)
     engine = registry.get("qe")
     info = _collect_qe_detection_info(engine.backend)
 
@@ -1775,11 +1790,7 @@ def _run_standalone_step(
     """
     import tempfile
     import shutil
-    from quantumvitas.api import StructureStepSpec, Step, QVService
-    # EngineConfig now imported from quantumvitas.api
-    from quantumvitas.api import EngineConfig
-    # QeEngine now imported from quantumvitas.api
-    from quantumvitas.api import QeEngine
+    from quantumvitas.api import QVService
     
     input_path = Path(input_file).resolve()
     if not input_path.exists():
@@ -1799,7 +1810,7 @@ def _run_standalone_step(
             "Only 'qe' is currently supported."
         )
     
-    engine_config = EngineConfig(name="qe")
+    # Engine config handled via API (no EngineConfig dependency)
     
     # Step 1: Import .in to YAML (roundtrip: import→YAML→run)
     typer.echo("Standalone QE run (import→YAML→run):")
@@ -1853,23 +1864,25 @@ def _run_standalone_step(
         
         # Step 3: Run step using production pipeline (Step.run() → engine directly)
         # Create Step object
-        step = Step(
-            meta=spec.meta,
-            input_file=generated_input,
-            engine="qe",
-            step_type=spec.step_type,  # Already a string from spec
-            options={},
-            reference_output=None,
-        )
+        # Create step dict for execution (no Step object dependency)
+        step_meta = spec.get("meta", {})
+        step_dict = {
+            "meta": step_meta,
+            "input_file": str(generated_input),
+            "engine": "qe",
+            "step_type": spec.get("step_type"),
+            "options": {},
+        }
+        # Note: Step execution is handled via API, not direct Step object
         
-        # Run using production pipeline (no prepare_input_step, no parsing .in)
-        # Use engine wrapper (QeEngine)
-        qe_engine = QeEngine(engine_config)
-        result = step.run(
-            engine=qe_engine,
-            calculation_raw_dir=workdir_path,
+        # Run using production pipeline via API
+        result, prepared = QVService.run_input_step(
+            engine="qe",
+            input_file=generated_input,
+            working_dir=workdir_path,
             project_root=workdir_path,  # Standalone: use workdir as pseudo base (workdir/pseudo)
-            species_map=None,  # Species overrides already in step.yaml
+            step_type=spec.get("step_type"),
+            keep_original=False,
         )
         
         typer.echo(f"Step finished: {result.output_file}")
@@ -2099,13 +2112,13 @@ def _find_calculation_structures(calculation_dir: Path, project_root: Path, conf
     return sorted(structures)
 
 
-def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Optional[str], Optional[ResourceMeta]]]:
+def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Optional[str], Optional[dict[str, Any]]]]:
     """
     Get step summaries for a calculation.
     
     Returns list of (step_display_name, step_file, step_meta) tuples.
     step_display_name: from step's meta.name if available, otherwise step type or "(unnamed)"
-    step_meta: ResourceMeta from step file (contains ULID)
+    step_meta: dict[str, Any] from step file (contains ULID)
     
     In the new DAG + ID-only model:
     - Steps in calculation.yaml have step_id (ULID), not step_file
@@ -2143,10 +2156,10 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
     calculation_meta = data.get("meta", {})
     calculation_slug = calculation_meta.get("slug") or calculation_dir.name
     
-    summaries: list[tuple[str, Optional[str], Optional[ResourceMeta]]] = []
+    summaries: list[tuple[str, Optional[str], Optional[dict[str, Any]]]] = []
     for step_entry in data.get("steps", []):
         rel_path: Optional[str] = None
-        step_meta: Optional[ResourceMeta] = None
+        step_meta: Optional[dict[str, Any]] = None
         step_display_name = "(unnamed)"
         
         # New DAG model: step_id (ULID) is the canonical reference
@@ -2170,12 +2183,14 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
                         # If not relative, use absolute path
                         rel_path = str(step_resolved.absolute_path)
                     
-                    # Load step spec to get meta
+                    # Load step spec to get meta (dict-based, no StructureStepSpec)
                     try:
-                        from quantumvitas.api import StructureStepSpec
-                        spec = StructureStepSpec.from_yaml(step_resolved.absolute_path)
-                        step_meta = spec.meta
-                        step_display_name = step_meta.name or spec.step_type or "(unnamed)"
+                        spec_dict = yaml.safe_load(step_resolved.absolute_path.read_text())
+                        if spec_dict:
+                            meta = spec_dict.get("meta", {})
+                            step_display_name = meta.get("name") or spec_dict.get("step_type") or "(unnamed)"
+                        else:
+                            step_display_name = step_resolved.absolute_path.stem.replace(".step", "") or "(unnamed)"
                     except Exception:
                         # If we can't load, infer from filename
                         step_display_name = step_resolved.absolute_path.stem.replace(".step", "") or "(unnamed)"
@@ -2187,10 +2202,12 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
             spec_path = (calculation_dir / legacy_step_file).resolve()
             if spec_path.exists():
                 try:
-                    from quantumvitas.api import StructureStepSpec
-                    spec = StructureStepSpec.from_yaml(spec_path)
-                    step_meta = spec.meta
-                    step_display_name = step_meta.name or spec.step_type or "(unnamed)"
+                    spec_dict = yaml.safe_load(spec_path.read_text())
+                    if spec_dict:
+                        step_meta = spec_dict.get("meta", {})
+                        step_display_name = step_meta.get("name") or spec_dict.get("step_type") or "(unnamed)"
+                    else:
+                        step_display_name = spec_path.stem.replace(".step", "") or "(unnamed)"
                     rel_path = legacy_step_file
                 except Exception:
                     step_display_name = spec_path.stem.replace(".step", "") or "(unnamed)"
@@ -2233,19 +2250,57 @@ def rename_structure_command(
 
     project_root = project or _resolve_project_root()
     from quantumvitas.api import QVService
-    svc = get_service(project_root)
-    config = svc.project.get_config()
-    struct_dto = svc.structure.get(identifier)
-    entry = _find_entry_by_structure_id(config, struct_dto.meta.id if struct_dto.meta else "")
+    from quantumvitas.api.errors import ConfigError, NotFoundError
+    
+    try:
+        svc = get_service(project_root)
+        # Resolve structure via domain method (handles registry sync)
+        ref = svc.structure.require_ref(identifier)
+        structure_id = ref.meta.id if ref.meta else None
+        if not structure_id:
+            raise typer.BadParameter(f"Structure '{identifier}' has no ID")
+        
+        # Get config and find entry by structure_id
+        config = svc.project.get_config()
+        entry = _find_entry_by_structure_id(config, structure_id)
 
-    svc.project.apply_structure_rename(
-        entry=entry,
-        new_name=name,
-        new_slug=slug,
-        new_path=path,
-        config=config,
-    )
-    svc.project.update_config(config)
+        # Apply rename via domain method (guarantees index consistency)
+        svc.project.apply_structure_rename(
+            entry=entry,
+            new_name=name,
+            new_slug=slug,
+            new_path=path,
+            config=config,
+        )
+        svc.project.update_config(config)
+    except (ConfigError, NotFoundError) as e:
+        # Registry sync or not found errors - provide user-friendly message
+        if isinstance(e, ConfigError) and e.code == "REGISTRY_OUT_OF_SYNC":
+            typer.secho(
+                f"\n❌ Registry Out of Sync",
+                fg=typer.colors.RED,
+                bold=True,
+            )
+            typer.echo(f"\n{e.message}")
+            if e.context.get("expected_path"):
+                typer.echo(f"\nExpected path: {e.context['expected_path']}")
+            typer.echo(
+                "\n💡 To fix this, refresh the project registry:\n"
+                "   - In the GUI: Click the 'Refresh' button in the Structures panel\n"
+                "   - Or reopen the project in the GUI (registry rebuilds on project load)"
+            )
+            raise typer.Exit(1)
+        raise typer.BadParameter(str(e)) from e
+    except Exception as e:
+        if os.environ.get("QV_DEBUG_CLI") == "1":
+            import sys
+            print(f"DEBUG: rename_structure error: {type(e).__name__}: {e}", file=sys.stderr)
+            print(f"DEBUG: identifier={identifier}, project_root={project_root}", file=sys.stderr)
+            if hasattr(e, 'cause'):
+                print(f"DEBUG: cause={e.cause}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+        raise
 
     typer.secho("Structure updated successfully.", fg=typer.colors.GREEN)
 
@@ -2281,7 +2336,7 @@ def rename_calculation_command(
     calc_dto = svc.calculation.get(identifier)
     entry = _find_entry_by_calc_id(config, calc_dto.calc_id)
 
-    svc.apply_calculation_rename(
+    svc.project.apply_calculation_rename(
         entry=entry,
         new_name=name,
         new_slug=slug,
@@ -2432,8 +2487,11 @@ def rename_step_command(
     source_path = (calculation_dir / source_rel).resolve()
     if not source_path.exists():
         raise typer.BadParameter(f"Step file '{source_rel}' does not exist.")
-    from quantumvitas.api import StructureStepSpec
-    spec = StructureStepSpec.from_yaml(source_path)
+    # Load step spec as dict (no StructureStepSpec dependency)
+    spec_dict = yaml.safe_load(source_path.read_text())
+    if not spec_dict:
+        raise typer.BadParameter(f"Step file '{source_rel}' is empty or invalid.")
+    spec = spec_dict
 
     destination_path = source_path
     if path is not None:
@@ -2462,11 +2520,13 @@ def rename_step_command(
         spec_path = (calculation_dir / step_file_rel).resolve()
         from quantumvitas.api import ensure_relative_path
         relative_project = ensure_relative_path(spec_path, base=project_root)
-        spec.meta = spec.meta.with_updates(
-            name=new_id or spec.meta.name,
-            path=relative_project,
-        )
-        spec_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+        # Update meta in dict
+        if "meta" not in spec:
+            spec["meta"] = {}
+        if new_id:
+            spec["meta"]["name"] = new_id
+        spec["meta"]["path"] = relative_project
+        spec_path.write_text(yaml.safe_dump(spec, sort_keys=False))
 
     # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
     data.pop("structure_name", None)
@@ -2501,61 +2561,189 @@ def delete_structure_command(
 
     project_root = (project or _resolve_project_root()).resolve()
     from quantumvitas.api import QVService
-    svc = get_service(project_root)
-    config = svc.project.get_config()
-    struct_dto = svc.structure.get(identifier)
-    entry = _find_entry_by_structure_id(config, struct_dto.meta.id if struct_dto.meta else "")
-    trash_dir = (project_root / "trash").resolve()
-
-    referencing = svc.calculations_using_structure(entry, config=config)
-    if referencing:
-        if cascade:
-            for wf_entry in list(referencing):
-                svc.delete_calculation_entry(
-                    entry=wf_entry,
-                    config=config,
-                )
-                # Move directory to trash
-                # Get calculation directory from calc_id
-                calc_id = _get_calc_id_from_entry(wf_entry)
-                calc_resolved = svc.calculation.require_ref(calc_id)
-                if calc_resolved.absolute_path.name == "calculation.yaml":
-                    calc_dir = calc_resolved.absolute_path.parent
-                else:
-                    calc_dir = calc_resolved.absolute_path
-                if calc_dir.exists():
-                    QVService.move_to_trash(calc_dir, trash_dir)
-        elif not force:
-            from quantumvitas.api import QVService
-            names = ", ".join(QVService.entry_display_name(wf) for wf in referencing)
-            raise typer.BadParameter(
-                f"Structure '{QVService.entry_display_name(entry)}' is used by calculations: {names}. "
-                "Use --force to remove anyway or --cascade to delete the calculations first."
-            )
-
-    # Resolve structure to get its ID before moving file to trash
-    # (resolution might need the file to exist)
-    from quantumvitas.api import QVService
-    svc = get_service(project_root)
-    resolved = svc.structure.require_ref(identifier, config=config)
-    structure_id = resolved.meta.id
+    from quantumvitas.api.errors import InternalError
     
-    # Move file to trash
-    file_rel = entry.get("file") or (entry.get("meta") or {}).get("path") or resolved.meta.path
-    if file_rel:
-        file_path = (project_root / file_rel).resolve()
-        if file_path.exists():
-            QVService.move_to_trash(file_path, trash_dir)
+    from quantumvitas.api.errors import ConfigError, NotFoundError
+    
+    try:
+        svc = get_service(project_root)
+        # Resolve structure via domain method (handles registry sync)
+        ref = svc.structure.require_ref(identifier)
+        structure_id = ref.meta.id if ref.meta else None
+        if not structure_id:
+            raise typer.BadParameter(f"Structure '{identifier}' has no ID")
+        
+        # Get config and find entry by structure_id
+        config = svc.project.get_config()
+        entry = _find_entry_by_structure_id(config, structure_id)
+        trash_dir = (project_root / "trash").resolve()
 
-    # Remove from config by structure_id (ID-only model)
-    structures = config.setdefault("structures", [])
-    structures[:] = [
-        e for e in structures
-        if (e.get("structure_id") or e.get("id") or (e.get("meta") or {}).get("id")) != structure_id
-    ]
-    svc.project.update_config(config)
-    from quantumvitas.api import QVService
-    typer.secho(f"Structure '{QVService.entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
+        # Find calculations using this structure
+        # Schema-agnostic implementation (no kernel types)
+        import yaml
+        from pathlib import Path
+        
+        def _structure_reference_tokens(entry: dict, project_root: Path) -> tuple[set[str], Path | None]:
+            """Get all identifiers and resolved path for a structure entry."""
+            meta = entry.get("meta") or {}
+            aliases: set[str] = set()
+            for candidate in (
+                entry.get("name"),
+                meta.get("name"),
+                meta.get("slug"),
+                meta.get("id"),
+            ):
+                if candidate:
+                    aliases.add(str(candidate).strip().lower())
+            rel_path = entry.get("file") or meta.get("path")
+            resolved = None
+            if rel_path:
+                resolved = (project_root / rel_path).resolve()
+            return aliases, resolved
+        
+        def _spec_uses_structure(
+            spec: object,
+            spec_path: Path,
+            aliases: set[str],
+            resolved_path: Path | None,
+        ) -> bool:
+            """Check if a step spec (dict) references a structure by recursively scanning for matching tokens."""
+            def _scan_value(value: object) -> bool:
+                """Recursively scan a value for structure references."""
+                if isinstance(value, str):
+                    # Check if string equals any token or contains token as path segment
+                    value_lower = value.strip().lower()
+                    if value_lower in aliases:
+                        return True
+                    # Check if string is a path that matches resolved_path
+                    if resolved_path:
+                        try:
+                            candidate = Path(value)
+                            if not candidate.is_absolute():
+                                candidate = (spec_path.parent / candidate).resolve()
+                            else:
+                                candidate = candidate.resolve()
+                            if candidate == resolved_path:
+                                return True
+                        except (ValueError, OSError):
+                            pass
+                    # Check if string contains any token (conservative: only if token appears as whole word/path segment)
+                    for token in aliases:
+                        if token and (value_lower == token or f"/{token}" in value_lower or value_lower.endswith(f"/{token}")):
+                            return True
+                    return False
+                elif isinstance(value, dict):
+                    # Recursively check all values in dict
+                    return any(_scan_value(v) for v in value.values())
+                elif isinstance(value, (list, tuple)):
+                    # Recursively check all items in list/tuple
+                    return any(_scan_value(item) for item in value)
+                else:
+                    return False
+            
+            return _scan_value(spec)
+        
+        def _calculations_using_structure(
+            project_root: Path, config: dict, entry: dict
+        ) -> list[dict]:
+            """Find all calculations that reference a given structure."""
+            aliases, resolved_path = _structure_reference_tokens(entry, project_root)
+            matches: list[dict] = []
+            for calculation_entry in list(config.get("calculations", [])):
+                calculation_path = calculation_entry.get("path") or (calculation_entry.get("meta") or {}).get("path")
+                if not calculation_path:
+                    continue
+                calculation_dir = (project_root / calculation_path).resolve()
+                steps_dir = calculation_dir / "steps"
+                if not steps_dir.exists():
+                    continue
+                for spec_path in steps_dir.rglob("*.step.yaml"):
+                    try:
+                        # Load as plain dict (no StructureStepSpec dependency)
+                        spec_dict = yaml.safe_load(spec_path.read_text())
+                        if spec_dict is None:
+                            continue
+                    except Exception:
+                        continue
+                    if _spec_uses_structure(spec_dict, spec_path, aliases, resolved_path):
+                        matches.append(calculation_entry)
+                        break
+            return matches
+        
+        referencing = _calculations_using_structure(project_root, config, entry)
+        if referencing:
+            if cascade:
+                for wf_entry in list(referencing):
+                    calc_id = _get_calc_id_from_entry(wf_entry)
+                    # Delete calculation (moves to trash internally)
+                    svc.calculation.delete(calc_id)
+                    # Also move directory to trash explicitly
+                    calc_resolved = svc.calculation.require_ref(calc_id)
+                    if calc_resolved.absolute_path.name == "calculation.yaml":
+                        calc_dir = calc_resolved.absolute_path.parent
+                    else:
+                        calc_dir = calc_resolved.absolute_path
+                    if calc_dir.exists():
+                        QVService.move_to_trash(calc_dir, trash_dir)
+                    # Remove from config
+                    calculations = config.setdefault("calculations", [])
+                    calculations[:] = [
+                        e for e in calculations
+                        if _get_calc_id_from_entry(e) != calc_id
+                    ]
+            elif not force:
+                names = ", ".join(QVService.entry_display_name(wf) for wf in referencing)
+                raise typer.BadParameter(
+                    f"Structure '{QVService.entry_display_name(entry)}' is used by calculations: {names}. "
+                    "Use --force to remove anyway or --cascade to delete the calculations first."
+                )
+
+        # Resolve structure to get path before moving file to trash
+        resolved = svc.structure.require_ref(identifier)
+        
+        # Move file to trash
+        file_rel = entry.get("file") or (entry.get("meta") or {}).get("path") or (resolved.meta.path if resolved.meta else None)
+        if file_rel:
+            file_path = (project_root / file_rel).resolve()
+            if file_path.exists():
+                QVService.move_to_trash(file_path, trash_dir)
+
+        # Remove from config by structure_id (ID-only model)
+        structures = config.setdefault("structures", [])
+        structures[:] = [
+            e for e in structures
+            if (e.get("structure_id") or e.get("id") or (e.get("meta") or {}).get("id")) != structure_id
+        ]
+        svc.project.update_config(config)
+        typer.secho(f"Structure '{QVService.entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
+    except (ConfigError, NotFoundError) as e:
+        # Registry sync or not found errors - provide user-friendly message
+        if isinstance(e, ConfigError) and e.code == "REGISTRY_OUT_OF_SYNC":
+            typer.secho(
+                f"\n❌ Registry Out of Sync",
+                fg=typer.colors.RED,
+                bold=True,
+            )
+            typer.echo(f"\n{e.message}")
+            if e.context.get("expected_path"):
+                typer.echo(f"\nExpected path: {e.context['expected_path']}")
+            typer.echo(
+                "\n💡 To fix this, refresh the project registry:\n"
+                "   - In the GUI: Click the 'Refresh' button in the Structures panel\n"
+                "   - Or reopen the project in the GUI (registry rebuilds on project load)"
+            )
+            raise typer.Exit(1)
+        raise typer.BadParameter(str(e)) from e
+    except Exception as e:
+        if os.environ.get("QV_DEBUG_CLI") == "1":
+            import sys
+            print(f"DEBUG: delete_structure error: {type(e).__name__}: {e}", file=sys.stderr)
+            print(f"DEBUG: identifier={identifier}, project_root={project_root}", file=sys.stderr)
+            if hasattr(e, 'cause'):
+                print(f"DEBUG: cause={e.cause}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+        raise
 
 
 @delete_app.command("calculation")
@@ -2581,52 +2769,50 @@ def delete_calculation_command(
     If no identifier is given, auto-detects the enclosing calculation from pwd.
     """
     from quantumvitas.api import QVService
-    try:
-        # Resolve using QVService
-        if project:
-            project_root = Path(project).expanduser().resolve()
-        else:
-            project_root = _resolve_project_root()
-        svc_temp = get_service(project_root)
-        config_temp = svc_temp.load_project_config()
-        # Resolve calculation using QVService
-        from quantumvitas.api import ResourceContext
-        ctx = svc_temp.resolve_resource(
-            resource_type="calculation",
-            identifier=identifier,
-            cwd=None,
-        )
-    except RegistryOutOfSyncError as exc:
-        # Registry out of sync - provide clear user-facing message
-        typer.secho(
-            f"\n❌ Registry Out of Sync",
-            fg=typer.colors.RED,
-            bold=True,
-        )
-        typer.echo(f"\n{exc}")
-        if exc.expected_path:
-            typer.echo(f"\nExpected path: {exc.expected_path}")
-        typer.echo(
-            "\n💡 To fix this, refresh the project registry:\n"
-            "   - In the GUI: Click the 'Refresh' button in the Calculations or Structures panel\n"
-            "   - Or reopen the project in the GUI (registry rebuilds on project load)"
-        )
-        raise typer.Exit(1)
-    except ResourceNotFoundError as exc:
-        raise typer.BadParameter(str(exc)) from exc
+    from quantumvitas.api.errors import NotFoundError
     
-    project_root = ctx.project_root
-    config = ctx.config
-    entry = ctx.entry
+    # Resolve project root
+    if project:
+        project_root = Path(project).expanduser().resolve()
+    else:
+        project_root = _resolve_project_root()
+    
     svc = get_service(project_root)
-    svc.delete_calculation_entry(
-        entry=entry,
-        force=force,
-        cascade=cascade,
-        config=config,
-    )
+    config = svc.project.get_config()
+    
+    # Resolve calculation
+    if identifier:
+        calc_dto = svc.calculation.get(identifier)
+        calc_id = calc_dto.calc_id
+    else:
+        # Auto-detect from pwd
+        calc_ref = svc.calculation.resolve_enclosing_path()
+        if calc_ref:
+            calc_id = calc_ref.calc_id
+        else:
+            raise typer.BadParameter(
+                "No calculation specified and not inside a calculation directory. "
+                "Specify calculation id/name/slug/path or cd into a calculation folder."
+            )
+    
+    # Find entry for display name
+    entry = _find_entry_by_calc_id(config, calc_id)
+    
+    # Delete calculation (moves to trash internally)
+    # Note: calculation.delete() doesn't support force/cascade yet, so we use it as-is
+    # TODO: Add force/cascade support to calculation.delete() if needed
+    svc.calculation.delete(calc_id)
+    
+    # Update config to remove entry
+    calculations = config.setdefault("calculations", [])
+    calculations[:] = [
+        e for e in calculations
+        if _get_calc_id_from_entry(e) != calc_id
+    ]
     svc.project.update_config(config)
-    typer.secho(f"Calculation '{QVService.entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
+    
+    entry_name = QVService.entry_display_name(entry) if entry else calc_id
+    typer.secho(f"Calculation '{entry_name}' moved to trash.", fg=typer.colors.GREEN)
 
 
 @delete_app.command("step")
@@ -2962,8 +3148,13 @@ def configure_step_command(
             pass
     
     try:
-        from quantumvitas.api import StructureStepSpec
-        spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolve_structure_selector)
+        # Load step spec as dict (no StructureStepSpec dependency)
+        spec_dict = yaml.safe_load(step_file.read_text())
+        if not spec_dict:
+            raise typer.BadParameter(f"Step file '{step_file}' is empty or invalid.")
+        spec = spec_dict
+        # Note: resolve_structure_selector is not used with dict-based approach
+        # Structure selectors are resolved via API when needed
     except FileNotFoundError as exc:
         raise typer.BadParameter(f"Step file not found: {step_file}") from exc
 
@@ -2971,16 +3162,17 @@ def configure_step_command(
     
     # Handle name change (rename step)
     if name:
-        old_name = spec.meta.name
+        meta = spec.get("meta", {})
+        old_name = meta.get("name")
         from quantumvitas.api import slugify
         new_slug = slugify(name)
-        spec.meta = ResourceMeta(
-            id=spec.meta.id,
-            name=name,
-            slug=new_slug,
-            path=spec.meta.path,
-            kind="step",
-        )
+        spec["meta"] = {
+            "id": meta.get("id"),
+            "name": name,
+            "slug": new_slug,
+            "path": meta.get("path"),
+            "kind": "step",
+        }
         
         # Update calculation.yaml if we have it
         if calculation_yaml and calculation_yaml.exists():
@@ -3002,14 +3194,14 @@ def configure_step_command(
 
     # Handle parameter overrides
     if bundle.has_any():
-        parameters = spec.parameters or {}
+        parameters = spec.get("parameters") or {}
         updates = _overrides_to_parameter_dict(bundle.parameters)
         _merge_parameter_updates(parameters, updates, remove=remove)
-        spec.parameters = {k: v for k, v in parameters.items() if v}
+        spec["parameters"] = {k: v for k, v in parameters.items() if v}
 
-        spec.cards = _merge_card_updates(spec.cards or {}, bundle.card_overrides, remove=remove)
-        spec.species_overrides = _merge_species_updates(
-            spec.species_overrides or {}, bundle.species_overrides, remove=remove
+        spec["cards"] = _merge_card_updates(spec.get("cards") or {}, bundle.card_overrides, remove=remove)
+        spec["species_overrides"] = _merge_species_updates(
+            spec.get("species_overrides") or {}, bundle.species_overrides, remove=remove
         )
         
         action = "Removed" if remove else "Updated"
@@ -3257,17 +3449,19 @@ def configure_calculation_command(
                 if not step_path.exists():
                     continue
                 
-                # Load step spec with resolver to normalize legacy structure selectors
-                resolve_structure_selector = svc.make_structure_selector_resolver_ref()
-                from quantumvitas.api import StructureStepSpec
-                spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolve_structure_selector)
+                # Load step spec as dict (no StructureStepSpec dependency)
+                spec_dict = yaml.safe_load(step_path.read_text())
+                if not spec_dict:
+                    continue
+                spec = spec_dict
+                # Note: Structure selectors are resolved via API when needed
                 
                 # Update structure_id (canonical reference) - structure selector is not written
                 resolved = svc.structure.require_ref(structure, config=config)
-                spec.structure_id = resolved.meta.id
+                spec["structure_id"] = resolved.meta.id
                 # Clear legacy structure field (not written to YAML)
-                spec.structure = ""
-                step_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+                spec["structure"] = ""
+                step_path.write_text(yaml.safe_dump(spec, sort_keys=False))
                 steps_updated += 1
             except Exception as e:
                 typer.secho(f"  Warning: Could not update step {step_id}: {e}", fg=typer.colors.YELLOW)
@@ -3592,7 +3786,7 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
     Automatically detects the QE module type (pw.x, bands.x, dos.x, etc.) and suggests
     the appropriate step type.
     """
-    from quantumvitas.api import QEModule
+    from quantumvitas.api.qe_io import QEModule
 
     if not input_file.exists():
         raise typer.BadParameter(f"{input_file} does not exist.")
@@ -3749,7 +3943,7 @@ def run_calculation_command(
             # Use the provided selector directly
             calc_selector = calculation
             # Resolve to get calc_dir for mode setting
-            calculation_resolved = svc.calculation.require_ref(calc_selector, config=config)
+            calculation_resolved = svc.calculation.require_ref(calc_selector)
             # absolute_path points to the calculation directory
             calc_dir = calculation_resolved.absolute_path
             if calc_dir.name == "calculation.yaml":
@@ -3811,7 +4005,7 @@ def run_calculation_command(
     status_str = result_dict.get("status", "SUCCESS")
     steps_list = result_dict.get("steps", [])
 
-    typer.echo(f"Calculation {calc_selector} status: StepStatus.{status_str.upper()}")
+    typer.echo(f"Calculation {calc_selector} status: {status_str.upper()}")
     if verbose:
         for step_dict in steps_list:
             line = f"- {step_dict.get('step_id', 'unknown')}: {step_dict.get('status', 'unknown')}"
@@ -4736,20 +4930,25 @@ def _suggest_structure_name(structure: "PMGStructure", source_path: Path) -> str
 
 
 def _write_step_spec(
-    path: Path, spec: Any, *, project_root: Optional[Path] = None
+    path: Path, spec: dict[str, Any], *, project_root: Optional[Path] = None
 ) -> None:
-    from quantumvitas.api import StructureStepSpec, QVService
+    """Write a step spec dict to a YAML file."""
+    from quantumvitas.api import QVService
     if project_root:
         from quantumvitas.api import ensure_relative_path
         relative_path = ensure_relative_path(path, base=project_root)
     else:
         relative_path = path.name
-    spec.meta = spec.meta.with_updates(path=relative_path)
+    
+    # Update meta path in the dict
+    if "meta" not in spec:
+        spec["meta"] = {}
+    spec["meta"]["path"] = relative_path
 
     # Compute warnings before writing (pure keyword matching, no engine detection)
     warnings: list[str] = []
     
-    parameters = spec.parameters or {}
+    parameters = spec.get("parameters") or {}
     runtime_keys = QVService.detect_runtime_control_keys(parameters)
     if runtime_keys:
         for key in runtime_keys:
@@ -4766,7 +4965,7 @@ def _write_step_spec(
             typer.secho(f"⚠️  WARNING: {warning}", fg=typer.colors.YELLOW, err=True)
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+    path.write_text(yaml.safe_dump(spec, sort_keys=False))
 
 
 def _overrides_to_parameter_dict(
@@ -5037,11 +5236,12 @@ def _execute_step_spec_path(
     working_dir: Optional[Path],
     engine_backend,
 ):
-    from quantumvitas.api import StructureStepSpec
-    spec = StructureStepSpec.from_yaml(spec_path)
+    # Load step spec as dict (no StructureStepSpec dependency)
+    spec = yaml.safe_load(spec_path.read_text()) or {}
     
     # Validate structure consistency with parent calculation if present
-    if spec.parent_calculation_id and project_root:
+    parent_calculation_id = spec.get("parent_calculation_id")
+    if parent_calculation_id and project_root:
         _validate_step_structure_consistency(spec, spec_path, project_root)
     
     return _execute_step_spec(
@@ -5055,11 +5255,10 @@ def _execute_step_spec_path(
 
 
 def _validate_step_structure_consistency(
-    spec: Any,
+    spec: dict[str, Any],
     spec_path: Path,
     project_root: Path,
 ) -> None:
-    from quantumvitas.api import StructureStepSpec
     """
     Validate that the step's structure matches its parent calculation's structure.
     
@@ -5074,7 +5273,7 @@ def _validate_step_structure_consistency(
     
     # Find parent calculation by looking at the spec path (should be inside calculation dir)
     # or by using the parent_calculation_id
-    parent_calculation_id = spec.parent_calculation_id
+    parent_calculation_id = spec.get("parent_calculation_id")
     if not parent_calculation_id:
         return
     
@@ -5106,47 +5305,47 @@ def _validate_step_structure_consistency(
         return
     
     # Compare structures (by slug/name/id)
-    if spec.structure != calculation_structure:
+    step_structure = spec.get("structure") or spec.get("structure_id")
+    if step_structure and step_structure != calculation_structure:
         typer.secho(
-            f"Warning: Step structure '{spec.structure}' differs from parent calculation structure "
+            f"Warning: Step structure '{step_structure}' differs from parent calculation structure "
             f"'{calculation_structure}'. Using step's structure.",
             fg=typer.colors.YELLOW
         )
 
 
 def _execute_step_spec(
-    spec: Any,
+    spec: dict[str, Any],
     spec_path: Path,
     bundle: ParsedOverrides,
     project_root: Path,
     working_dir: Optional[Path],
     engine_backend,
 ):
-    from quantumvitas.api import StructureStepSpec
+    """Execute a step spec (dict-based, no StructureStepSpec dependency)."""
     spec_copy = copy.deepcopy(spec)
     if bundle.card_overrides:
-        spec_copy.cards = _merge_card_updates(
-            spec_copy.cards or {}, bundle.card_overrides, remove=False
+        spec_copy["cards"] = _merge_card_updates(
+            spec_copy.get("cards") or {}, bundle.card_overrides, remove=False
         )
     if bundle.species_overrides:
-        spec_copy.species_overrides = _merge_species_updates(
-            spec_copy.species_overrides or {}, bundle.species_overrides, remove=False
+        spec_copy["species_overrides"] = _merge_species_updates(
+            spec_copy.get("species_overrides") or {}, bundle.species_overrides, remove=False
         )
 
     # Resolve structure: prefer structure_id (canonical), fall back to structure selector (legacy)
     structure_identifier = None
-    if spec_copy.structure_id:
+    if spec_copy.get("structure_id"):
         # Use structure_id to resolve structure
         try:
-            from quantumvitas.api import QVService
             svc = get_service(project_root)
-            resolved = svc.structure.require_ref(spec_copy.structure_id)
+            resolved = svc.structure.require_ref(spec_copy["structure_id"])
             structure_identifier = resolved.meta.slug or resolved.meta.name
         except ResourceNotFoundError:
             # Fall back to structure selector if structure_id resolution fails
-            structure_identifier = spec_copy.structure
+            structure_identifier = spec_copy.get("structure")
     else:
-        structure_identifier = spec_copy.structure
+        structure_identifier = spec_copy.get("structure")
     
     if not structure_identifier:
         raise typer.BadParameter(
@@ -5165,12 +5364,11 @@ def _execute_step_spec(
     workdir = workdir.resolve()
     workdir.mkdir(parents=True, exist_ok=True)
 
-    input_name = spec_copy.input_name or f"{struct_name}_{spec_copy.step_type}.pw.in"
+    input_name = spec_copy.get("input_name") or f"{struct_name}_{spec_copy.get('step_type', 'scf')}.pw.in"
     generated_input = workdir / input_name
     from quantumvitas.api import QVService
     QVService.write_qe_input_file(qe_input, generated_input)
 
-    from quantumvitas.api import QVService
     result, prepared = QVService.run_input_step(
         engine=engine_backend,
         input_file=generated_input,

@@ -61,6 +61,18 @@ def map_kernel_exception(exc: Exception) -> APIError:
             cause=_make_cause(exc, trace_id),
         )
     
+    # Registry out of sync
+    if isinstance(exc, _get_kernel_class("RegistryOutOfSyncError")):
+        return ConfigError(
+            message=str(exc),
+            code="REGISTRY_OUT_OF_SYNC",
+            context={
+                "expected_path": getattr(exc, "expected_path", None),
+                "issue": getattr(exc, "issue", "registry_mismatch"),
+            },
+            cause=_make_cause(exc, trace_id),
+        )
+    
     # Ambiguous selector
     if isinstance(exc, _get_kernel_class("AmbiguousSelectorError")):
         # AmbiguousSelectorError is a ValueError, extract info from args if available
@@ -307,6 +319,7 @@ def _get_kernel_class(class_name: str) -> type:
         "SelectorNotFoundError": ("quantumvitas.core.resolution", "SelectorNotFoundError"),
         "AmbiguousSelectorError": ("quantumvitas.core.resolution", "AmbiguousSelectorError"),
         "InvalidSelectorError": ("quantumvitas.core.resolution", "InvalidSelectorError"),
+        "RegistryOutOfSyncError": ("quantumvitas.core.resolution", "RegistryOutOfSyncError"),
         "ValidationError": ("quantumvitas.core.param_validation", "ValidationError"),
         "CalculationLockError": ("quantumvitas.core.locking", "CalculationLockError"),
         "EngineExecutionError": ("quantumvitas.core.driver_exceptions", "DriverError"),  # Fallback

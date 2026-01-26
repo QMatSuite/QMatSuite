@@ -111,6 +111,7 @@ class TestQEDetection:
             json.dump(settings.to_dict(), f, indent=2)
         
         # Mock get_settings_json_path to return our test settings file
+        # Patch kernel module for this API test (verifies API method uses kernel function correctly)
         from quantumvitas.core import paths as paths_module
         monkeypatch.setattr(paths_module, "get_settings_json_path", lambda: settings_file)
         

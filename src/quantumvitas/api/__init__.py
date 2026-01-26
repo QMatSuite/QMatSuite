@@ -148,6 +148,7 @@ __all__ = [
     "ensure_relative_path",
     "read_structure",
     "write_structure",
+    "generate_resource_id",
     "generate_unique_name_and_slug",
     "list_calculation_templates",
     "copy_calculation_template",
