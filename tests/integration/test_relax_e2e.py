@@ -12,7 +12,7 @@ import json
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService, QVServiceError
+from quantumvitas.api import QVService, APIError
 from quantumvitas.core.exceptions import MissingArtifactError
 from quantumvitas.execution.relax_artifacts import (
     get_generated_structure_path,
@@ -165,7 +165,7 @@ class TestRelaxE2E:
         step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
         
         # Try to promote without current.json
-        with pytest.raises(QVServiceError) as exc_info:
+        with pytest.raises(APIError) as exc_info:
             QVService.promote_relax_structure(
                 project_root=project_root,
                 calculation_selector=calc_result.id,
@@ -193,7 +193,7 @@ class TestRelaxE2E:
         step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_scf", name="scf")
         
         # Try to promote non-relax step
-        with pytest.raises(QVServiceError) as exc_info:
+        with pytest.raises(APIError) as exc_info:
             QVService.promote_relax_structure(
                 project_root=project_root,
                 calculation_selector=calc_result.id,

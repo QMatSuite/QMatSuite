@@ -259,7 +259,7 @@ class TestSnapshotCLI:
         snapshot_path = temp_dir / "snapshot.yml"
         snapshot_path.write_text("existing content")
         
-        with pytest.raises(Exception):  # QVServiceError
+        with pytest.raises(Exception):  # APIError
             QVService.save_project_snapshot(
                 project_root=project1_path,
                 output_path=snapshot_path,

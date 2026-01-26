@@ -7,7 +7,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from quantumvitas.api import QVService, QVServiceError
+from quantumvitas.api import QVService, APIError
 from quantumvitas.daemon.server import QVDaemon, RPCRequest
 from quantumvitas.execution.relax_artifacts import write_generated_structure
 
@@ -107,7 +107,7 @@ class TestPromoteRelaxStructureAPI:
         step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
         
         # Try to promote without current.json
-        with pytest.raises(QVServiceError) as exc_info:
+        with pytest.raises(APIError) as exc_info:
             QVService.promote_relax_structure(
                 project_root=project_root,
                 calculation_selector=calc_result.id,
@@ -136,7 +136,7 @@ class TestPromoteRelaxStructureAPI:
         step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_scf", name="scf")
         
         # Try to promote non-relax step
-        with pytest.raises(QVServiceError) as exc_info:
+        with pytest.raises(APIError) as exc_info:
             QVService.promote_relax_structure(
                 project_root=project_root,
                 calculation_selector=calc_result.id,

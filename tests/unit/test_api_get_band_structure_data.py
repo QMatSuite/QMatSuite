@@ -240,10 +240,10 @@ def test_get_band_structure_data_missing_gnu(tmp_project_with_bands):
     if bands_gnu.exists():
         bands_gnu.unlink()
     
-    # Should raise QVServiceError
-    from quantumvitas.api import QVServiceError
+    # Should raise APIError
+    from quantumvitas.api import APIError
     
-    with pytest.raises(QVServiceError) as exc_info:
+    with pytest.raises(APIError) as exc_info:
         QVService.get_band_structure_data(
             project_root=project_root,
             calculation_selector=calc_slug,

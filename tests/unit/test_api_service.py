@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from quantumvitas.api import QVService, QVServiceError
+from quantumvitas.api import QVService, APIError
 from quantumvitas.core.resolution import SelectorNotFoundError, ResourceNotFoundError
 
 

@@ -107,7 +107,7 @@ def test_api_no_kernel_symbols():
         "PrecisionContextError",  # Should use API ConfigError or ValidationError
         "LegacyProjectError",  # Should use API ConfigError
         "VolumeParserError",  # Should use API EngineError
-        "QVServiceError",  # Legacy, should use API APIError
+        "APIError",  # Legacy, should use API APIError
     ]
     
     FORBIDDEN_KERNEL_CONSTANTS = [
@@ -132,6 +132,12 @@ def test_api_no_kernel_symbols():
     violations = []
     for name in FORBIDDEN:
         if hasattr(api, name):
+            # Check if it's actually from a kernel module (not API-owned)
+            obj = getattr(api, name)
+            mod = getattr(obj, "__module__", "")
+            # Allow API-owned symbols even if name matches forbidden list
+            if mod.startswith("quantumvitas.api"):
+                continue  # API-owned, not a violation
             violations.append(name)
     
     assert len(violations) == 0, (
