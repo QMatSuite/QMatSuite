@@ -926,8 +926,8 @@ def test_crash_recovery_incremental_rerun_from_failed_step(tmp_project, minimal_
             calculation_selector=calc_id,
             run_mode="incremental",
         )
-    except RuntimeError:
-        pass  # Expected crash
+    except (RuntimeError, Exception):
+        pass  # Expected crash - API layer wraps as InternalError
     
     # Verify step 1 is marked as started but not done
     manifest_after_crash = load_manifest(calc_dir)

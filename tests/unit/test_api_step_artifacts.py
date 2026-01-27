@@ -3,14 +3,14 @@
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService, APIError
+from quantumvitas.api import QVService, APIError, get_service
 
 
 @pytest.fixture
 def project_with_step(tmp_path):
     """Create a project with a calculation and step for testing."""
     project_dir = QVService.init_project(tmp_path / "test_project")
-    
+
     # Import structure (required for calculation)
     source = tmp_path / "si.json"
     source.write_text("""{
@@ -20,28 +20,18 @@ def project_with_step(tmp_path):
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
     QVService.import_structure(project_dir, source, name="Silicon")
-    
-    # Create calculation and step
+
+    # Create calculation and step using domain API
     calc_slug = "test-calc"
     QVService.init_calculation(project_dir, calc_slug, structure_selector="silicon")
-    QVService.init_step(project_dir, calc_slug, "scf", name="scf")
-    
-    # Get step ID
-    from quantumvitas.core.models import load_calculation
-    from quantumvitas.core.project_utils import load_project_config
-    from quantumvitas.core.resolution import make_structure_selector_resolver
-    
-    config = load_project_config(project_dir)
-    resolver = make_structure_selector_resolver(project_dir, config=config)
+
+    # Use domain API for add_step
+    svc = get_service(project_dir)
+    step_result = svc.calculation.add_step(calc_selector=calc_slug, step_type="scf", name="scf")
+    step_id = step_result.step_id
+
     calc_dir = project_dir / "calculations" / calc_slug
-    calc_yaml = calc_dir / "calculation.yaml"
-    calc_model = load_calculation(calc_yaml, project_root=project_dir, resolve_structure_selector=resolver)
-    
-    if not calc_model.steps:
-        pytest.skip("No steps in calculation")
-    
-    step_id = calc_model.steps[0].step_id
-    
+
     return project_dir, calc_slug, step_id, calc_dir
 
 
@@ -52,8 +42,7 @@ class TestListStepArtifacts:
         """Test listing artifacts when raw directory doesn't exist."""
         project_dir, calc_slug, step_id, calc_dir = project_with_step
         
-        result = QVService.list_step_artifacts(
-            project_root=project_dir,
+        result = get_service(project_dir).analysis.list_step_artifacts(
             calculation_selector=calc_slug,
             step_selector=step_id,
         )
@@ -78,8 +67,7 @@ class TestListStepArtifacts:
         scf1_out = raw_dir / "scf-1.out"
         scf1_out.write_text("Test output content 1")
         
-        result = QVService.list_step_artifacts(
-            project_root=project_dir,
+        result = get_service(project_dir).analysis.list_step_artifacts(
             calculation_selector=calc_slug,
             step_selector=step_id,
         )
@@ -108,8 +96,7 @@ class TestListStepArtifacts:
         scf1_out = raw_dir / "scf-1.out"
         scf1_out.write_text("Test output")
         
-        result = QVService.list_step_artifacts(
-            project_root=project_dir,
+        result = get_service(project_dir).analysis.list_step_artifacts(
             calculation_selector=calc_slug,
             step_selector=step_id,
         )
@@ -130,8 +117,7 @@ class TestListStepArtifacts:
         subdir = raw_dir / "scf.out"  # Directory with same name as file
         subdir.mkdir()
         
-        result = QVService.list_step_artifacts(
-            project_root=project_dir,
+        result = get_service(project_dir).analysis.list_step_artifacts(
             calculation_selector=calc_slug,
             step_selector=step_id,
         )
@@ -142,119 +128,118 @@ class TestListStepArtifacts:
 
 
 class TestReadStepArtifactText:
-    """Tests for QVService.read_step_artifact_text()."""
-    
+    """Tests for svc.analysis.read_step_artifact_text()."""
+
     def test_read_step_artifact_text_success(self, project_with_step):
         """Test reading artifact text successfully."""
         project_dir, calc_slug, step_id, calc_dir = project_with_step
-        
+
         # Create raw directory and file
         raw_dir = calc_dir / "raw"
         raw_dir.mkdir(exist_ok=True)
-        
+
         test_content = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5"
         scf_out = raw_dir / "scf.out"
         scf_out.write_text(test_content)
-        
-        result = QVService.read_step_artifact_text(
-            project_root=project_dir,
+
+        svc = get_service(project_dir)
+        result = svc.analysis.read_step_artifact_text(
             calculation_selector=calc_slug,
             step_selector=step_id,
             artifact_path="scf.out",
         )
-        
+
         assert "content" in result
         assert result["content"] == test_content
         assert result["truncated"] is False
         assert result["total_bytes"] == len(test_content.encode('utf-8'))
         assert "resolved_path" in result
-    
+
     def test_read_step_artifact_text_truncation(self, project_with_step):
         """Test reading artifact text with truncation."""
         project_dir, calc_slug, step_id, calc_dir = project_with_step
-        
+
         # Create raw directory and file with many lines
         raw_dir = calc_dir / "raw"
         raw_dir.mkdir(exist_ok=True)
-        
+
         lines = [f"Line {i}" for i in range(100)]
         test_content = "\n".join(lines)
         scf_out = raw_dir / "scf.out"
         scf_out.write_text(test_content)
-        
+
         # Read with truncation (head + tail)
-        result = QVService.read_step_artifact_text(
-            project_root=project_dir,
+        svc = get_service(project_dir)
+        result = svc.analysis.read_step_artifact_text(
             calculation_selector=calc_slug,
             step_selector=step_id,
             artifact_path="scf.out",
             head_lines=5,
             tail_lines=5,
         )
-        
+
         assert "content" in result
         assert result["truncated"] is True
         assert "truncated" in result["content"].lower()
         assert "Line 0" in result["content"]  # First line
         assert "Line 99" in result["content"]  # Last line
-    
+
     def test_read_step_artifact_text_path_traversal_blocked(self, project_with_step, tmp_path):
         """Test that path traversal is blocked (security)."""
         project_dir, calc_slug, step_id, calc_dir = project_with_step
-        
+
         # Create a file outside raw directory
         outside_file = tmp_path / "outside.txt"
         outside_file.write_text("secret content")
-        
+
+        svc = get_service(project_dir)
         # Try to read with path traversal (should fail)
         with pytest.raises(APIError, match="Security violation|Invalid artifact path"):
-            QVService.read_step_artifact_text(
-                project_root=project_dir,
+            svc.analysis.read_step_artifact_text(
                 calculation_selector=calc_slug,
                 step_selector=step_id,
                 artifact_path="../outside.txt",  # Path traversal attempt
             )
-        
+
         # Try with absolute path (should also fail)
         with pytest.raises(APIError, match="Security violation|Invalid artifact path"):
-            QVService.read_step_artifact_text(
-                project_root=project_dir,
+            svc.analysis.read_step_artifact_text(
                 calculation_selector=calc_slug,
                 step_selector=step_id,
                 artifact_path=str(outside_file),  # Absolute path
             )
-    
+
     def test_read_step_artifact_text_directory_rejected(self, project_with_step):
         """Test that directories are rejected (security)."""
         project_dir, calc_slug, step_id, calc_dir = project_with_step
-        
+
         # Create raw directory and a subdirectory
         raw_dir = calc_dir / "raw"
         raw_dir.mkdir(exist_ok=True)
         subdir = raw_dir / "subdir"
         subdir.mkdir()
-        
+
+        svc = get_service(project_dir)
         # Try to read directory (should fail)
         with pytest.raises(APIError, match="directory"):
-            QVService.read_step_artifact_text(
-                project_root=project_dir,
+            svc.analysis.read_step_artifact_text(
                 calculation_selector=calc_slug,
                 step_selector=step_id,
                 artifact_path="subdir",
             )
-    
+
     def test_read_step_artifact_text_nonexistent_file(self, project_with_step):
         """Test reading non-existent file raises error."""
         project_dir, calc_slug, step_id, calc_dir = project_with_step
-        
+
         # Create raw directory (but no file)
         raw_dir = calc_dir / "raw"
         raw_dir.mkdir(exist_ok=True)
-        
+
+        svc = get_service(project_dir)
         # Try to read non-existent file (should fail)
         with pytest.raises(APIError, match="not found"):
-            QVService.read_step_artifact_text(
-                project_root=project_dir,
+            svc.analysis.read_step_artifact_text(
                 calculation_selector=calc_slug,
                 step_selector=step_id,
                 artifact_path="nonexistent.out",

@@ -103,20 +103,23 @@ def eam_md_project(tmp_path: Path):
     step_id = step_dto.step_id
 
     # Configure step parameters using domain API
+    # Note: LAMMPS parameters go inside "parameters" dict
     svc.calculation.update_step_params(
         calc_selector=calc_id,
         step_selector=step_id,
         params={
-            "potential": "eam_cu",
-            "units": "metal",
-            "atom_style": "atomic",
-            "ensemble": "nvt",
-            "temperature": 300,
-            "timestep_fs": 1.0,
-            "n_steps": 1000,
-            "thermo_frequency": 100,
-            "dump_frequency": 100,
-            "dump_trajectory": True,
+            "parameters": {
+                "potential": "eam_cu",
+                "units": "metal",
+                "atom_style": "atomic",
+                "ensemble": "nvt",
+                "temperature": 300,
+                "timestep_fs": 1.0,
+                "n_steps": 1000,
+                "thermo_frequency": 100,
+                "dump_frequency": 100,
+                "dump_trajectory": True,
+            },
         },
     )
     

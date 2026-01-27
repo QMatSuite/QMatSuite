@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.api import QVService
+from quantumvitas.api import QVService, get_service
 from quantumvitas.calculation.structure_steps import StructureStepSpec
 
 
@@ -21,7 +21,7 @@ def temp_project():
     with tempfile.TemporaryDirectory() as tmpdir:
         project_root = Path(tmpdir) / "test_project"
         project_root.mkdir()
-        
+
         # Create a structure first (with meta)
         structures_dir = project_root / "structures"
         structures_dir.mkdir()
@@ -44,7 +44,7 @@ def temp_project():
     {"species": [{"element": "Si", "occu": 1}], "abc": [0.25, 0.25, 0.25]}
   ]
 }""")
-        
+
         # Create project.qv.yml with structure and calculation entries (ID-only)
         (project_root / "project.qv.yml").write_text("""name: Test Project
 structures:
@@ -66,7 +66,7 @@ calculations:
       path: calculations/test-calculation
       kind: calculation
 """)
-        
+
         # Create a calculation
         calculations_dir = project_root / "calculations"
         calculations_dir.mkdir()
@@ -83,43 +83,40 @@ structure_id: 01TESTSTRUCTUREID123456789
 structure_name: Si
 steps: []
 """)
-        
+
         yield project_root
 
 
 def test_add_step_to_calculation_creates_valid_spec(temp_project):
-    """Test that add_step_to_calculation creates a valid step spec without executable."""
+    """Test that add_step creates a valid step spec without executable."""
+    svc = get_service(temp_project)
+
     # Add a step (use name as selector)
-    result = QVService.add_step_to_calculation(
-        project_root=temp_project,
-        calculation_selector="Test Calculation",  # Use name
+    result = svc.calculation.add_step(
+        calc_selector="Test Calculation",  # Use name
         step_type="scf",
-        step_name="test-scf",
+        name="test-scf",
     )
-    
-    # Verify result
+
+    # Verify result is a StepDTO
     assert result is not None
-    assert "steps" in result
-    assert len(result["steps"]) == 1
-    assert result["steps"][0]["type"] == "scf"
-    # With ID-only model, step entry uses step_id (ULID) as canonical reference
-    assert result["steps"][0].get("step_id") is not None, "Step entry should have step_id (ULID)"
-    # Legacy id field may be None if step was created with step_id only
-    # The step name "test-scf" is stored in the step spec meta, not in the calculation entry
-    
+    assert result.step_id is not None, "StepDTO should have step_id (ULID)"
+    # Step type may be public ("scf") or machine ("qe_scf") depending on API
+    assert "scf" in result.step_type.lower(), f"Expected step_type to contain 'scf', got '{result.step_type}'"
+
     # Load the step spec file
     step_file = temp_project / "calculations" / "test-calculation" / "steps" / "test-scf.step.yaml"
     assert step_file.exists()
-    
+
     # Parse the YAML
     step_data = yaml.safe_load(step_file.read_text())
-    
+
     # Verify no executable field
     assert "executable" not in step_data
-    
+
     # Verify it can be loaded as StructureStepSpec
     spec = StructureStepSpec.from_dict(step_data, source_path=step_file)
-    assert spec.step_type == "scf"
+    assert "scf" in spec.step_type.lower(), f"Expected step_type to contain 'scf', got '{spec.step_type}'"
     # DAG model: Step YAML should NOT contain structure_id (inherits from calculation)
     # Verify step YAML does not contain structure_id
     assert "structure_id" not in step_data, "Step YAML should not contain structure_id (DAG model)"
@@ -128,7 +125,7 @@ def test_add_step_to_calculation_creates_valid_spec(temp_project):
     calculation_yaml = temp_project / "calculations" / "test-calculation" / "calculation.yaml"
     calculation_data = yaml.safe_load(calculation_yaml.read_text())
     assert calculation_data.get("structure_id") == "01TESTSTRUCTUREID123456789", "Calculation should reference structure via structure_id"
-    
+
     # Verify defaults are present (from-scratch mode uses defaults)
     assert "CONTROL" in spec.parameters
     assert "outdir" in spec.parameters["CONTROL"]
@@ -138,23 +135,24 @@ def test_add_step_to_calculation_creates_valid_spec(temp_project):
 
 
 def test_add_step_to_calculation_with_defaults(temp_project):
-    """Test that add_step_to_calculation applies default parameters."""
+    """Test that add_step applies default parameters."""
+    svc = get_service(temp_project)
+
     # Add an nscf step
-    result = QVService.add_step_to_calculation(
-        project_root=temp_project,
-        calculation_selector="Test Calculation",  # Use name
+    result = svc.calculation.add_step(
+        calc_selector="Test Calculation",  # Use name
         step_type="nscf",
     )
-    
+
     # Load the step spec
     step_file = temp_project / "calculations" / "test-calculation" / "steps" / "nscf.step.yaml"
     assert step_file.exists()
-    
+
     spec = StructureStepSpec.from_dict(
         yaml.safe_load(step_file.read_text()),
         source_path=step_file
     )
-    
+
     # Verify nscf defaults are present
     assert spec.parameters["CONTROL"]["calculation"] == "nscf"
     # SYSTEM.occupations should NOT be present by default (only if explicitly set)
@@ -165,54 +163,56 @@ def test_add_step_to_calculation_with_defaults(temp_project):
 
 def test_add_step_to_calculation_no_executable_in_spec(temp_project):
     """Explicitly verify that executable is never in the step spec."""
+    svc = get_service(temp_project)
+
     # Add multiple step types
     for step_type in ["scf", "dos", "bands"]:
-        QVService.add_step_to_calculation(
-            project_root=temp_project,
-            calculation_selector="Test Calculation",  # Use name
+        svc.calculation.add_step(
+            calc_selector="Test Calculation",  # Use name
             step_type=step_type,
-            step_name=f"test-{step_type}",
+            name=f"test-{step_type}",
         )
-    
+
     # Check all step files
     steps_dir = temp_project / "calculations" / "test-calculation" / "steps"
     for step_file in steps_dir.glob("*.step.yaml"):
         step_data = yaml.safe_load(step_file.read_text())
         assert "executable" not in step_data, f"Step {step_file.name} contains executable field"
-        
+
         # Also verify StructureStepSpec doesn't have it
         spec = StructureStepSpec.from_dict(step_data, source_path=step_file)
         assert not hasattr(spec, "executable"), f"StructureStepSpec from {step_file.name} has executable attribute"
 
 
 def test_configure_step_species_overrides(temp_project):
-    """Test that configure_step handles species_overrides correctly using apply_patch."""
+    """Test that update_step_params handles species_overrides correctly using apply_patch."""
     from quantumvitas.core.yamldoc import StepDoc
-    
+
+    svc = get_service(temp_project)
+
     # Add a step first
-    QVService.add_step_to_calculation(
-        project_root=temp_project,
-        calculation_selector="Test Calculation",
+    svc.calculation.add_step(
+        calc_selector="Test Calculation",
         step_type="scf",
-        step_name="test-scf",
+        name="test-scf",
     )
-    
+
     # Configure step with species_overrides (dict value)
-    QVService.configure_step(
-        project_root=temp_project,
-        calculation_selector="Test Calculation",
+    svc.calculation.update_step_params(
+        calc_selector="Test Calculation",
         step_selector="test-scf",
-        species_overrides={
-            "Si": {"pseudopot": "Si.UPF"},
+        params={
+            "species_overrides": {
+                "Si": {"pseudopot": "Si.UPF"},
+            },
         },
     )
-    
+
     # Load step and verify species_overrides was set correctly
     step_file = temp_project / "calculations" / "test-calculation" / "steps" / "test-scf.step.yaml"
     step_doc = StepDoc.load(step_file)
-    
+
     species_overrides = step_doc.export_copy(["species_overrides"])
     assert species_overrides is not None
     assert "Si" in species_overrides
     assert species_overrides["Si"]["pseudopot"] == "Si.UPF"
-

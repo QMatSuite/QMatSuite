@@ -78,28 +78,31 @@ def lj_project(tmp_path: Path):
     step_id = step_dto.step_id
 
     # Configure step parameters using domain API
+    # Note: LAMMPS parameters go inside "parameters" dict
     svc.calculation.update_step_params(
         calc_selector=calc_id,
         step_selector=step_id,
         params={
-            "units": "lj",
-            "atom_style": "atomic",
-            "lj_system": {
-                "masses": {1: 1.0},
-                "type_labels": {1: "Ar"},
+            "parameters": {
+                "units": "lj",
+                "atom_style": "atomic",
+                "lj_system": {
+                    "masses": {1: 1.0},
+                    "type_labels": {1: "Ar"},
+                },
+                "potential": {
+                    "style": "lj/cut",
+                    "cutoff": 2.5,
+                    "params": {"1 1": "1.0 1.0"},
+                },
+                "energy_tolerance": 1e-6,
+                "force_tolerance": 1e-8,
+                "max_iterations": 1000,
+                "max_evaluations": 10000,
+                "thermo_frequency": 100,
+                "dump_frequency": 1000,
+                "dump_trajectory": True,
             },
-            "potential": {
-                "style": "lj/cut",
-                "cutoff": 2.5,
-                "params": {"1 1": "1.0 1.0"},
-            },
-            "energy_tolerance": 1e-6,
-            "force_tolerance": 1e-8,
-            "max_iterations": 1000,
-            "max_evaluations": 10000,
-            "thermo_frequency": 100,
-            "dump_frequency": 1000,
-            "dump_trajectory": True,
         },
     )
     

@@ -7,6 +7,7 @@ PR3: Analysis mappings added.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from quantumvitas.api.types.analysis import AnalysisRefDTO, AnalysisSummaryDTO
@@ -181,10 +182,10 @@ def structure_to_dto(
         meta = MetaDTO(
             slug=struct_model.meta.slug,
             name=struct_model.meta.name,
-            description=struct_model.meta.description,
-            tags=list(struct_model.meta.tags) if struct_model.meta.tags else None,
-            created_at=struct_model.meta.created_at.isoformat() if struct_model.meta.created_at else None,
-            updated_at=struct_model.meta.updated_at.isoformat() if struct_model.meta.updated_at else None,
+            description=getattr(struct_model.meta, 'description', None),
+            tags=list(struct_model.meta.tags) if getattr(struct_model.meta, 'tags', None) else None,
+            created_at=struct_model.meta.created_at.isoformat() if getattr(struct_model.meta, 'created_at', None) else None,
+            updated_at=struct_model.meta.updated_at.isoformat() if getattr(struct_model.meta, 'updated_at', None) else None,
         )
     
     # Get structure ID
@@ -390,10 +391,15 @@ def calculation_to_dto(
     if hasattr(calc_obj, 'steps'):
         step_count = len(calc_obj.steps)
         for step in calc_obj.steps:
-            step_id = step.id if hasattr(step, 'id') else None
+            # Step stores ID in meta.id (ResourceMeta)
+            step_id = None
+            if hasattr(step, 'meta') and step.meta:
+                step_id = step.meta.id
+            elif hasattr(step, 'id'):
+                step_id = step.id
             if step_id:
                 step_ids.append(step_id)
-            
+
             # Count completed steps (simplified)
             step_status = getattr(step, 'status', None)
             if step_status == "completed" or step_status == "success":
@@ -483,3 +489,51 @@ def step_to_dto(
         exit_code=exit_code,
         error_message=error_message,
     )
+
+
+def step_to_dict(step_dto: StepDTO) -> dict[str, Any]:
+    """
+    Convert StepDTO to dictionary for daemon responses.
+
+    Args:
+        step_dto: StepDTO to convert
+
+    Returns:
+        Dictionary representation of the step
+    """
+    result = {
+        "id": step_dto.step_id,  # Backwards compat field for GUI
+        "step_id": step_dto.step_id,
+        "calc_id": step_dto.calc_id,
+        "step_type": step_dto.step_type,
+        "status": step_dto.status,
+    }
+
+    # Add optional metadata
+    if step_dto.meta:
+        result["meta"] = {
+            "slug": step_dto.meta.slug,
+            "name": step_dto.meta.name,
+        }
+        if step_dto.meta.description:
+            result["meta"]["description"] = step_dto.meta.description
+        if step_dto.meta.tags:
+            result["meta"]["tags"] = step_dto.meta.tags
+        if step_dto.meta.created_at:
+            result["meta"]["created_at"] = step_dto.meta.created_at
+        if step_dto.meta.updated_at:
+            result["meta"]["updated_at"] = step_dto.meta.updated_at
+
+    # Add optional execution details
+    if step_dto.started_at:
+        result["started_at"] = step_dto.started_at
+    if step_dto.completed_at:
+        result["completed_at"] = step_dto.completed_at
+    if step_dto.duration_seconds is not None:
+        result["duration_seconds"] = step_dto.duration_seconds
+    if step_dto.exit_code is not None:
+        result["exit_code"] = step_dto.exit_code
+    if step_dto.error_message:
+        result["error_message"] = step_dto.error_message
+
+    return result

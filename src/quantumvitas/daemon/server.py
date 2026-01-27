@@ -2151,7 +2151,7 @@ class QVDaemon:
             trace_id: str - Optional trace ID for performance logging
         """
         from quantumvitas.api import QVService
-        from quantumvitas.analysis.structure_viz import DisplayModeParams
+        from quantumvitas.api.compat import DisplayModeParams
         import tempfile
         import numpy as np
         
@@ -3056,10 +3056,46 @@ class QVDaemon:
         # Use domain accessor API
         svc = get_service(project_root)
         step_dto = svc.calculation.get_step(calculation_ulid, step)
-        
+
         # Serialize StepDTO to dict for daemon response
         from quantumvitas.api._mapping.dto_mapping import step_to_dict
-        return step_to_dict(step_dto)
+        result = step_to_dict(step_dto)
+
+        # Load step spec to get parameters for GUI
+        # Use calculation path + step slug to find step file (avoid kernel imports)
+        try:
+            import yaml
+            calc_dto = svc.calculation.get(calculation_ulid)
+            # Get calculation directory from project root + calc meta slug
+            calc_slug = calc_dto.meta.slug if calc_dto.meta else calculation_ulid
+            calc_dir = project_root / "calculations" / calc_slug
+            step_slug = result.get("meta", {}).get("slug") or step_dto.step_id
+            # Try common step file patterns
+            step_path = None
+            for pattern in [f"{step_slug}.step.yaml", f"{step_slug}.yaml"]:
+                candidate = calc_dir / "steps" / pattern
+                if candidate.exists():
+                    step_path = candidate
+                    break
+            if step_path and step_path.exists():
+                step_spec_data = yaml.safe_load(step_path.read_text())
+                result["parameters"] = step_spec_data.get("parameters", {})
+                result["cards"] = step_spec_data.get("cards", {})
+                # Also add name/slug from meta if available in spec
+                spec_meta = step_spec_data.get("meta", {})
+                if spec_meta.get("name"):
+                    result["name"] = spec_meta["name"]
+                if spec_meta.get("slug"):
+                    result["slug"] = spec_meta["slug"]
+            else:
+                result["parameters"] = {}
+                result["cards"] = {}
+        except Exception:
+            # If we can't load parameters, use empty defaults
+            result["parameters"] = {}
+            result["cards"] = {}
+
+        return result
     
     def _handle_update_step_params(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -3113,10 +3149,11 @@ class QVDaemon:
         else:
             # Use domain accessor API for parameters-only updates
             svc = get_service(project_root)
+            # Domain API expects params dict with "parameters" key
             step_dto = svc.calculation.update_step_params(
                 calc_selector=calculation_ulid,
                 step_selector=step,
-                params=parameters,
+                params={"parameters": parameters},
             )
             # Convert StepDTO to dict for daemon response
             return {
