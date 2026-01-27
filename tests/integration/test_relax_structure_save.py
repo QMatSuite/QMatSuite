@@ -11,7 +11,6 @@ from quantumvitas.calculation.structure_steps import StructureStepSpec
 from quantumvitas.core.resources import meta_from_name, generate_resource_id
 
 
-@pytest.mark.skip(reason="PR10: save_relax_final_structure not in domain API")
 def test_save_relax_structure_idempotency(tmp_path: Path):
     """Test that save_relax_final_structure is idempotent (returns same ULID on repeated calls)."""
     project_root = tmp_path / "test_project"

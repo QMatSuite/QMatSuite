@@ -12,8 +12,6 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.skip(reason="PR10: update_calculation_species_map not in domain API")
-
 from quantumvitas.api import QVService
 from quantumvitas.core.models import load_calculation
 from quantumvitas.core.pseudo_options import get_pseudo_options_for_elements
