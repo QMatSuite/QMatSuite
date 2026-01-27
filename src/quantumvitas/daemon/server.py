@@ -545,7 +545,9 @@ class QVDaemon:
         Returns:
             RPCResponse object
         """
-        from quantumvitas.api import ResourceNotFoundError, LegacyProjectError
+        from quantumvitas.api.errors import NotFoundError
+        # LegacyProjectError is a kernel exception that may still be raised by some code paths
+        # We'll catch it via a generic Exception handler and check the type dynamically
         
         import time
         start_time = time.time()
@@ -597,37 +599,24 @@ class QVDaemon:
                 ok=False,
                 error={"code": "invalid_argument", "message": str(e)},
             )
-        except LegacyProjectError as e:
-            # Convert LegacyProjectError to structured daemon error
-            # Provide clear, actionable message with migration command
-            migration_command = f"python tools/qv_migrate_legacy_project.py --project-root {e.project_root}"
-            return RPCResponse(
-                id=request.id,
-                ok=False,
-                error={
-                    "code": "legacy_project",
-                    "message": (
-                        f"This project uses a legacy calculation format (structure selector / step_file / non-ULID step IDs). "
-                        f"Please migrate it using: {migration_command}"
-                    ),
-                    "details": {
-                        "project_root": str(e.project_root),
-                        "hint": migration_command,
-                    },
-                },
-            )
-        except ResourceNotFoundError as e:
-            # Convert ResourceNotFoundError to structured daemon error
+        except NotFoundError as e:
+            # Convert NotFoundError (API error) to structured daemon error
+            # API errors use context dict instead of direct attributes
             error_dict = {
                 "code": "resource_not_found",
-                "kind": e.kind,
-                "selector": e.selector,
-                "id": e.id,
+                "kind": e.context.get("resource_type", "resource"),
+                "selector": e.context.get("selector", ""),
+                "id": e.context.get("id", ""),
                 "message": str(e),
             }
-            # Include details if present (calculation_path, expected_step_path, reason, etc.)
-            if hasattr(e, 'details') and e.details:
-                error_dict["details"] = e.details
+            # Include details from context if present
+            if e.context:
+                # Copy any additional context fields
+                for key in ["suggestions", "calculation_path", "expected_step_path", "reason"]:
+                    if key in e.context:
+                        if "details" not in error_dict:
+                            error_dict["details"] = {}
+                        error_dict["details"][key] = e.context[key]
             return RPCResponse(
                 id=request.id,
                 ok=False,
@@ -1997,7 +1986,8 @@ class QVDaemon:
             found: bool - Whether a project was found
             project_root: str | null - Path to project root if found
         """
-        from quantumvitas.api import QVService, ContextNotFoundError
+        from quantumvitas.api import QVService
+        from quantumvitas.api.errors import NotFoundError
         
         start_dir = Path(payload.get("start_dir", "")).resolve()
         if not start_dir.exists():
@@ -2006,7 +1996,11 @@ class QVDaemon:
         try:
             ctx = QVService.find_path_context_from_pwd(start_dir)
             return {"found": True, "project_root": str(ctx.project_root)}
-        except ContextNotFoundError:
+        except NotFoundError:
+            # ContextNotFoundError is mapped to NotFoundError by map_kernel_exception
+            return {"found": False, "project_root": None}
+        except ValueError:
+            # ContextNotFoundError may also be a ValueError in some cases
             return {"found": False, "project_root": None}
     
     # -------------------------------------------------------------------------
@@ -2131,20 +2125,9 @@ class QVDaemon:
                 # Store optimade_base in candidate metadata
                 cache.add_candidate_metadata_only(session_id, candidate, rank, optimade_base)
         
-        # Convert candidates to dict for JSON serialization
-        candidates_dict = [
-            {
-                "candidate_id": c.candidate_id,
-                "label": c.label,
-                "source": c.source,
-                "source_id": c.source_id,
-                "nsites": c.nsites,
-                "spacegroup": c.spacegroup,
-                "flags": c.flags,
-                "score": c.score,
-            }
-            for c in candidates
-        ]
+        # Convert candidates to dict using dataclasses.asdict (standard serialization)
+        from dataclasses import asdict
+        candidates_dict = [asdict(c) for c in candidates]
         
         return {
             "session_id": session_id,
@@ -3651,7 +3634,7 @@ class QVDaemon:
                 dimension_states: Dict mapping dimension name to detected value or "Custom"
                     Example: {"magnetism": "collinear_lsda", "occupations_scheme": "smearing_gaussian", "precision": "med"}
         """
-        from quantumvitas.api import PrecisionContextError
+        from quantumvitas.api.errors import ConfigError
         
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
@@ -3668,13 +3651,13 @@ class QVDaemon:
         engine_filter = QVService.detect_engine_for_calculation(calculation_dir)
         
         # Detect presets from calculation steps
-        # If precision context resolution fails, PrecisionContextError will be raised
-        # and converted to a structured error response
+        # If precision context resolution fails, it will be mapped to ConfigError by map_kernel_exception
         try:
             dimension_states = QVService.detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
-        except Exception as e:
-            # Check if it's a PrecisionContextError
-            if isinstance(e, PrecisionContextError):
+        except ConfigError as e:
+            # PrecisionContextError is mapped to ConfigError by map_kernel_exception
+            # Check if it's a precision context error by checking the error message or context
+            if "precision" in str(e).lower() or "context" in str(e).lower():
                 return {
                     "ok": False,
                     "error": {
@@ -3682,7 +3665,7 @@ class QVDaemon:
                         "message": f"Failed to resolve precision context: {e}",
                     },
                 }
-            # Re-raise other errors
+            # Re-raise other config errors
             raise
         
         return {
@@ -3743,7 +3726,7 @@ class QVDaemon:
                 status: "applied"
                 presets: Updated detected presets for the calculation
         """
-        from quantumvitas.api import PresetCompilationError
+        from quantumvitas.api.errors import ValidationError
         
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
@@ -3759,14 +3742,19 @@ class QVDaemon:
         
         try:
             QVService.apply_presets_to_step(step_path, presets, validate_physics=validate_physics)
-        except PresetCompilationError as e:
-            return {
-                "ok": False,
-                "error": {
-                    "code": "INVALID_PRESET",
-                    "message": str(e),
-                },
-            }
+        except ValidationError as e:
+            # PresetCompilationError is mapped to ValidationError by map_kernel_exception
+            # Check if it's a preset compilation error by checking the error message
+            if "preset" in str(e).lower() or "compilation" in str(e).lower():
+                return {
+                    "ok": False,
+                    "error": {
+                        "code": "INVALID_PRESET",
+                        "message": str(e),
+                    },
+                }
+            # Re-raise other validation errors
+            raise
         
         # Return updated dimension states for the calculation
         calculation_dir = step_path.parent.parent  # steps/foo.step.yaml -> calculation_dir
@@ -5067,7 +5055,8 @@ class QVDaemon:
         Returns:
             Dict with artifact_id, kind, metadata, blob_id, preview_blob_id
         """
-        from quantumvitas.api import QVService, VolumeParserError
+        from quantumvitas.api import QVService
+        from quantumvitas.api.errors import EngineError
         
         file_path = Path(self._require_str(payload, "file_path")).resolve()
         calc_dir = Path(self._require_str(payload, "calc_dir")).resolve()
@@ -5165,8 +5154,13 @@ class QVDaemon:
                         )
             
             return result
-        except VolumeParserError as e:
-            raise ValueError(f"Failed to parse volume file: {e}")
+        except EngineError as e:
+            # VolumeParserError is mapped to EngineError by map_kernel_exception
+            # Check if it's a volume parser error by checking the error code or message
+            if e.code == "ENGINE_OUTPUT_PARSE_FAILED" or "parse" in str(e).lower() or "volume" in str(e).lower():
+                raise ValueError(f"Failed to parse volume file: {e}")
+            # Re-raise other engine errors
+            raise
     
     # -------------------------------------------------------------------------
     # Job management handlers
