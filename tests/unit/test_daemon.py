@@ -414,6 +414,161 @@ class TestQVDaemonHandlers:
         assert status_response.data["job_type"] == "run_calculation"
         
         daemon.job_manager.shutdown()
+    
+    def test_list_workflow_templates_schema(self):
+        """Test list_workflow_templates handler returns correct schema (no widening)."""
+        stdin = StringIO("")
+        stdout = StringIO()
+        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        
+        response = daemon.handle_request(RPCRequest(
+            id="1",
+            type="list_workflow_templates",
+            payload={},
+        ))
+        
+        assert response.ok
+        assert "templates" in response.data
+        templates = response.data["templates"]
+        
+        # Must be a list
+        assert isinstance(templates, list)
+        assert len(templates) > 0  # Should have at least one template
+        
+        # Schema validation for each template
+        expected_keys = {"id", "name", "description", "step_sequence"}
+        for template in templates:
+            # Must be a dict
+            assert isinstance(template, dict)
+            
+            # Keys must be exactly the expected set (no extras, no missing)
+            actual_keys = set(template.keys())
+            assert actual_keys == expected_keys, f"Template keys mismatch: got {actual_keys}, expected {expected_keys}"
+            
+            # Type checks
+            assert isinstance(template["id"], str)
+            assert isinstance(template["name"], str)
+            assert template["description"] is None or isinstance(template["description"], str)
+            
+            # step_sequence must be a list (not tuple), and all elements must be strings
+            step_seq = template["step_sequence"]
+            assert isinstance(step_seq, list), f"step_sequence must be list, got {type(step_seq)}"
+            assert all(isinstance(step, str) for step in step_seq), "All step_sequence elements must be strings"
+    
+    def test_detect_workflow_schema(self, tmp_path):
+        """Test detect_workflow handler returns correct schema (JSON-serializable, no unexpected keys)."""
+        stdin = StringIO("")
+        stdout = StringIO()
+        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        
+        # Create a minimal calculation directory structure
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir()
+        (calc_dir / "calculation.yaml").write_text("steps: []\n")
+        
+        response = daemon.handle_request(RPCRequest(
+            id="1",
+            type="detect_workflow",
+            payload={"calculation_path": str(calc_dir)},
+        ))
+        
+        assert response.ok
+        assert "match" in response.data
+        
+        # Verify response is JSON-serializable
+        json_str = json.dumps(response.data)
+        assert isinstance(json_str, str)
+        
+        # Verify expected structure (match dict with known keys)
+        match = response.data["match"]
+        assert isinstance(match, dict)
+        
+        # Expected keys from handler (no extras from asdict() if used)
+        expected_match_keys = {
+            "workflow_id", "workflow_name", "coverage", "present_steps",
+            "missing_steps", "extra_steps", "ordering_valid"
+        }
+        actual_match_keys = set(match.keys())
+        assert actual_match_keys == expected_match_keys, \
+            f"Match keys mismatch: got {actual_match_keys}, expected {expected_match_keys}"
+    
+    def test_detect_workflow_for_calculation_schema(self, tmp_path):
+        """Test detect_workflow_for_calculation handler returns correct schema (JSON-serializable, no unexpected keys)."""
+        stdin = StringIO("")
+        stdout = StringIO()
+        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        
+        # Create minimal project structure
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        (project_dir / "project.qv.yml").write_text("name: test\n")
+        
+        # This handler may return error if calculation not found, but schema should still be valid
+        response = daemon.handle_request(RPCRequest(
+            id="1",
+            type="detect_workflow_for_calculation",
+            payload={
+                "project_root": str(project_dir),
+                "calculation_ulid": "01ARZ3NDEKTSV4RRFFQ69G5FAV",  # Valid ULID format
+            },
+        ))
+        
+        # Response may be ok or error, but must be JSON-serializable
+        json_str = json.dumps(response.data)
+        assert isinstance(json_str, str)
+        
+        # If ok, verify expected structure
+        if response.ok:
+            # Expected top-level keys from handler
+            expected_keys = {
+                "workflow_id", "workflow_name", "coverage", "missing_step_types", "issues"
+            }
+            actual_keys = set(response.data.keys())
+            # Allow extra keys only if they're explicitly documented (none expected)
+            unexpected = actual_keys - expected_keys
+            assert not unexpected, \
+                f"Unexpected keys in response: {unexpected}. Response: {response.data}"
+    
+    def test_instantiate_workflow_schema(self, tmp_path):
+        """Test instantiate_workflow handler returns correct schema (JSON-serializable, no unexpected keys)."""
+        stdin = StringIO("")
+        stdout = StringIO()
+        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        
+        # Create minimal calculation directory
+        calc_dir = tmp_path / "calc"
+        calc_dir.mkdir()
+        (calc_dir / "calculation.yaml").write_text("steps: []\n")
+        
+        # This handler may fail if workflow_id is invalid, but schema should still be valid
+        response = daemon.handle_request(RPCRequest(
+            id="1",
+            type="instantiate_workflow",
+            payload={
+                "workflow_id": "scf",  # Valid workflow ID
+                "calculation_path": str(calc_dir),
+                "structure_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+                "calculation_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            },
+        ))
+        
+        # Response must be JSON-serializable
+        json_str = json.dumps(response.data)
+        assert isinstance(json_str, str)
+        
+        # If ok, verify expected structure
+        if response.ok:
+            # Expected top-level keys from handler
+            expected_keys = {"step_paths"}
+            actual_keys = set(response.data.keys())
+            unexpected = actual_keys - expected_keys
+            assert not unexpected, \
+                f"Unexpected keys in response: {unexpected}. Response: {response.data}"
+            
+            # Verify step_paths is a list of strings
+            step_paths = response.data["step_paths"]
+            assert isinstance(step_paths, list)
+            assert all(isinstance(p, str) for p in step_paths)
 
 
 class TestQVDaemonMainLoop:
