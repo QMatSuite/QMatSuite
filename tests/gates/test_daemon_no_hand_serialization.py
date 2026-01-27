@@ -87,6 +87,34 @@ def _check_line_for_violations(file_path: Path, line_num: int, line: str, method
     if re.search(r'\bvars\s*\(', line) and not line.strip().startswith('#'):
         violations.append(f"vars() found (use DTO.to_dict() or dataclasses.asdict() instead)")
     
+    # Check for manual dict construction in comprehensions (narrow pattern)
+    # Pattern: list comprehension that builds dict literals with object attribute access
+    # e.g., [{"a": x.a, "b": x.b} for x in items]
+    # This is a conservative check - only flags list comprehensions with dict literals containing obj.attr
+    if not line.strip().startswith('#'):
+        # Check for list comprehension with dict literal containing object attribute access
+        # Pattern: [{"key": var.attr, ...} for var in ...]
+        # Must have: [ ... { ... var.attr ... } ... for var in ...]
+        # Handle both single-line and multi-line (where { might be on previous line)
+        if '[' in line and 'for' in line and 'in' in line:
+            # Get context lines to check for multi-line dict literals
+            full_context = ' '.join([line] + context_lines[:3])
+            # Check if there's a dict literal with object attribute access
+            # Look for pattern: [{...var.attr...} for var in ...] or [\n{...var.attr...}\n for var in ...]
+            if '{' in full_context:
+                # Extract the part before 'for'
+                for_match = re.search(r'for\s+\w+\s+in', full_context)
+                if for_match:
+                    before_for = full_context[:for_match.start()]
+                    # Check if before 'for' there's a dict literal with obj.attr
+                    # Pattern: [{...} ...] where {...} contains var.attr
+                    if re.search(r'\{[^}]*\w+\.\w+[^}]*\}', before_for):
+                        # Make sure it's inside a list comprehension (starts with [)
+                        if '[' in before_for:
+                            # Make sure it's not using to_dict() or asdict()
+                            if 'to_dict()' not in full_context and 'asdict(' not in full_context:
+                                violations.append(f"Manual dict construction in list comprehension (use DTO.to_dict() or dataclasses.asdict() instead)")
+    
     return violations
 
 
@@ -151,6 +179,35 @@ def test_daemon_no_hand_serialization():
                         f"{daemon_file}:{i+1} in {handler_name}(): {violation}\n"
                         f"  Line: {line.strip()}"
                     )
+        
+        # Also check for multi-line list comprehensions that might span across lines
+        # Look for patterns where [ starts on one line and { with obj.attr is on a later line
+        for i in range(start_line, min(start_line + 100, end_line)):  # Check first 100 lines
+            if i >= len(lines):
+                break
+            line = lines[i]
+            # If line starts a list comprehension with [
+            if '[' in line and 'for' not in line:
+                # Look ahead up to 10 lines for the completion
+                for j in range(i+1, min(i+11, end_line)):
+                    if j >= len(lines):
+                        break
+                    next_line = lines[j]
+                    # Check if we find 'for' and the pattern matches
+                    if 'for' in next_line and 'in' in next_line:
+                        # Combine lines from i to j
+                        combined = ' '.join(lines[i:j+1])
+                        # Check if there's a dict literal with obj.attr
+                        if '{' in combined and re.search(r'\w+\.\w+', combined):
+                            # Check if it's a list comprehension pattern
+                            if re.search(r'\[.*?\{[^}]*\w+\.\w+[^}]*\}.*?for\s+\w+\s+in', combined):
+                                # Make sure it's not using to_dict() or asdict()
+                                if 'to_dict()' not in combined and 'asdict(' not in combined:
+                                    all_violations.append(
+                                        f"{daemon_file}:{i+1} in {handler_name}(): Manual dict construction in list comprehension (use DTO.to_dict() or dataclasses.asdict() instead)\n"
+                                        f"  Lines {i+1}-{j+1}: {line.strip()[:80]} ... {next_line.strip()[:80]}"
+                                    )
+                        break  # Found the 'for', stop looking ahead
     
     # Also check for manual dict construction patterns in handlers
     # Look for dict comprehensions or dict literals that might be manual serialization
