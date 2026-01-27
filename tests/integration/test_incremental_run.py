@@ -31,7 +31,6 @@ from quantumvitas.calculation.hash_utils import (
 )
 from quantumvitas.calculation.step_done import is_step_done
 from quantumvitas.api import QVService, APIError
-from quantumvitas.api.compat import init_step
 from typing import Dict, Any
 
 
@@ -149,32 +148,29 @@ def minimal_calculation(tmp_project, minimal_structure):
         calc_doc = CalcDoc(calc_model.to_dict())
         save_yaml_doc(calc_doc, calc_data_path)
     
-    # Create steps using service API (via compat layer)
-    step1_resolved = init_step(
-        project_root=tmp_project,
-        calculation_selector=calc_id,
+    # Create steps using domain API
+    svc = QVService(tmp_project)
+    step1_dto = svc.calculation.add_step(
+        calc_selector=calc_id,
         step_type="scf",
     )
-    # compat.init_step returns StepDTO, which has .step_id attribute
-    step1_id = step1_resolved.step_id
-    
-    step2_resolved = init_step(
-        project_root=tmp_project,
-        calculation_selector=calc_id,
+    step1_id = step1_dto.step_id
+
+    step2_dto = svc.calculation.add_step(
+        calc_selector=calc_id,
         step_type="nscf",
     )
-    step2_id = step2_resolved.step_id
-    
-    step3_resolved = init_step(
-        project_root=tmp_project,
-        calculation_selector=calc_id,
+    step2_id = step2_dto.step_id
+
+    step3_dto = svc.calculation.add_step(
+        calc_selector=calc_id,
         step_type="bands",
     )
-    step3_id = step3_resolved.step_id
-    
+    step3_id = step3_dto.step_id
+
     # Fix invalid K_POINTS: bands step defaults to crystal_b without data
     # Add valid K_POINTS data to make the step valid for materialization
-    step3_spec_path = step3_resolved.absolute_path
+    step3_spec_path = calc_dir / "steps" / f"{step3_dto.meta.slug}.step.yaml"
     step3_data = yaml.safe_load(step3_spec_path.read_text())
     if "cards" in step3_data and "K_POINTS" in step3_data["cards"]:
         kpoints = step3_data["cards"]["K_POINTS"]
@@ -583,14 +579,14 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     
     # Create a new step u2b with identical content to step_ids[1]
     # This should have same step_sha but different ULID
-    step2b_resolved = init_step(
-        project_root=tmp_project,
-        calculation_selector=calc_id,
+    svc = QVService(tmp_project)
+    step2b_dto = svc.calculation.add_step(
+        calc_selector=calc_id,
         step_type=step_type,
         name="nscf-copy",
     )
-    step2b_id = step2b_resolved.step_id
-    step2b_path = step2b_resolved.absolute_path
+    step2b_id = step2b_dto.step_id
+    step2b_path = calc_dir / "steps" / f"{step2b_dto.meta.slug}.step.yaml"
     
     # Copy ALL content from step1 to step2b (excluding meta.id)
     step2b_doc = StepDoc.load(step2b_path)

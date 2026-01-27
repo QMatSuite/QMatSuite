@@ -13,7 +13,6 @@ import pytest
 from pathlib import Path
 
 from quantumvitas.api import QVService
-from quantumvitas.api.compat import init_step
 from quantumvitas.core.resolution import require_step, build_resource_index
 from quantumvitas.core.models import load_calculation
 from quantumvitas.core.yamldoc import CalcDoc
@@ -63,42 +62,43 @@ def test_step_slug_uniqueness_and_consistency(lammps_project):
     """
     Test that multiple steps with the same step_type get unique slugs,
     and that returned objects match YAML files exactly.
-    
+
     Constitutional requirement: meta.slug must match YAML.
     """
     project_root = lammps_project["project_root"]
     calc_id = lammps_project["calc_id"]
     calc_dir = lammps_project["calc_dir"]
     steps_dir = calc_dir / "steps"
-    
-    # Create two MD steps (same step_type)
-    s1 = init_step(project_root, calc_id, "md")
-    s2 = init_step(project_root, calc_id, "md")
-    
+
+    # Create two MD steps (same step_type) using domain API
+    svc = QVService(project_root)
+    s1 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
+    s2 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
+
     # === Assertion 1: IDs are unique ===
-    assert s1.meta.id != s2.meta.id, f"ULID collision: {s1.meta.id}"
-    
+    assert s1.step_id != s2.step_id, f"ULID collision: {s1.step_id}"
+
     # === Assertion 2: Slugs are unique ===
     assert s1.meta.slug != s2.meta.slug, (
         f"Slug collision: s1.slug={s1.meta.slug}, s2.slug={s2.meta.slug}"
     )
-    
+
     # === Assertion 3: Expected slug pattern ===
     assert s1.meta.slug == "md", f"Expected first slug 'md', got '{s1.meta.slug}'"
     assert s2.meta.slug == "md-1", f"Expected second slug 'md-1', got '{s2.meta.slug}'"
-    
+
     # === Assertion 4: Verify YAML files match returned objects ===
     yaml_file_1 = steps_dir / "md.step.yaml"
     yaml_file_2 = steps_dir / "md-1.step.yaml"
-    
+
     assert yaml_file_1.exists(), f"Expected {yaml_file_1} to exist"
     assert yaml_file_2.exists(), f"Expected {yaml_file_2} to exist"
-    
+
     with open(yaml_file_1) as f:
         data_1 = yaml.safe_load(f)
     with open(yaml_file_2) as f:
         data_2 = yaml.safe_load(f)
-    
+
     # YAML meta.slug must match returned object meta.slug (constitutional)
     assert data_1["meta"]["slug"] == s1.meta.slug, (
         f"YAML-object mismatch: YAML slug={data_1['meta']['slug']}, object slug={s1.meta.slug}"
@@ -106,10 +106,10 @@ def test_step_slug_uniqueness_and_consistency(lammps_project):
     assert data_2["meta"]["slug"] == s2.meta.slug, (
         f"YAML-object mismatch: YAML slug={data_2['meta']['slug']}, object slug={s2.meta.slug}"
     )
-    
-    # YAML meta.id must match returned object meta.id
-    assert data_1["meta"]["id"] == s1.meta.id
-    assert data_2["meta"]["id"] == s2.meta.id
+
+    # YAML meta.id must match returned object step_id
+    assert data_1["meta"]["id"] == s1.step_id
+    assert data_2["meta"]["id"] == s2.step_id
 
 
 def test_require_step_by_ulid_returns_correct_slug(lammps_project):
@@ -120,19 +120,20 @@ def test_require_step_by_ulid_returns_correct_slug(lammps_project):
     project_root = lammps_project["project_root"]
     calc_id = lammps_project["calc_id"]
     calc_dir = lammps_project["calc_dir"]
-    
-    # Create two MD steps
-    s1 = init_step(project_root, calc_id, "md")
-    s2 = init_step(project_root, calc_id, "md")
-    
+
+    # Create two MD steps using domain API
+    svc = QVService(project_root)
+    s1 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
+    s2 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
+
     # Look up s2 by its ULID
-    s2_by_id = require_step(project_root, calc_id, s2.meta.id)
-    
+    s2_by_id = require_step(project_root, calc_id, s2.step_id)
+
     # Slug must match YAML, not be re-computed as "md"
     assert s2_by_id.meta.slug == "md-1", (
         f"require_step(ULID) returned wrong slug: expected 'md-1', got '{s2_by_id.meta.slug}'"
     )
-    assert s2_by_id.meta.id == s2.meta.id
+    assert s2_by_id.meta.id == s2.step_id
 
 
 def test_require_step_by_slug_returns_correct_step(lammps_project):
@@ -142,21 +143,22 @@ def test_require_step_by_slug_returns_correct_step(lammps_project):
     """
     project_root = lammps_project["project_root"]
     calc_id = lammps_project["calc_id"]
-    
-    # Create two MD steps
-    s1 = init_step(project_root, calc_id, "md")
-    s2 = init_step(project_root, calc_id, "md")
-    
+
+    # Create two MD steps using domain API
+    svc = QVService(project_root)
+    s1 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
+    s2 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
+
     # Look up by slug
     s1_by_slug = require_step(project_root, calc_id, "md")
     s2_by_slug = require_step(project_root, calc_id, "md-1")
-    
+
     # Must return correct steps
-    assert s1_by_slug.meta.id == s1.meta.id, (
-        f"Slug 'md' returned wrong step: expected {s1.meta.id}, got {s1_by_slug.meta.id}"
+    assert s1_by_slug.meta.id == s1.step_id, (
+        f"Slug 'md' returned wrong step: expected {s1.step_id}, got {s1_by_slug.meta.id}"
     )
-    assert s2_by_slug.meta.id == s2.meta.id, (
-        f"Slug 'md-1' returned wrong step: expected {s2.meta.id}, got {s2_by_slug.meta.id}"
+    assert s2_by_slug.meta.id == s2.step_id, (
+        f"Slug 'md-1' returned wrong step: expected {s2.step_id}, got {s2_by_slug.meta.id}"
     )
 
 
@@ -168,24 +170,25 @@ def test_resource_index_matches_yaml(lammps_project):
     calc_id = lammps_project["calc_id"]
     calc_dir = lammps_project["calc_dir"]
     steps_dir = calc_dir / "steps"
-    
-    # Create steps
-    s1 = init_step(project_root, calc_id, "md")
-    s2 = init_step(project_root, calc_id, "md")
-    
+
+    # Create steps using domain API
+    svc = QVService(project_root)
+    s1 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
+    s2 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
+
     # Build fresh index
     index = build_resource_index(project_root)
-    
+
     # Check index entries match YAML
     for step_file in steps_dir.glob("*.step.yaml"):
         with open(step_file) as f:
             data = yaml.safe_load(f)
         yaml_id = data["meta"]["id"]
         yaml_slug = data["meta"]["slug"]
-        
+
         # Index should have this entry
         assert yaml_id in index.by_id, f"Step {yaml_id} not in index"
-        
+
         index_meta = index.by_id[yaml_id]
         assert index_meta.slug == yaml_slug, (
             f"Index slug mismatch for {yaml_id}: "
@@ -199,18 +202,19 @@ def test_three_steps_same_type(lammps_project):
     """
     project_root = lammps_project["project_root"]
     calc_id = lammps_project["calc_id"]
-    
-    # Create three MD steps
-    steps = [init_step(project_root, calc_id, "md") for _ in range(3)]
-    
+
+    # Create three MD steps using domain API
+    svc = QVService(project_root)
+    steps = [svc.calculation.add_step(calc_selector=calc_id, step_type="md") for _ in range(3)]
+
     # Verify IDs are unique
-    ids = [s.meta.id for s in steps]
+    ids = [s.step_id for s in steps]
     assert len(ids) == len(set(ids)), f"ID collision detected: {ids}"
-    
+
     # Verify slugs are unique and follow pattern
     slugs = [s.meta.slug for s in steps]
     assert len(slugs) == len(set(slugs)), f"Slug collision detected: {slugs}"
-    
+
     expected_slugs = ["md", "md-1", "md-2"]
     assert slugs == expected_slugs, f"Expected {expected_slugs}, got {slugs}"
 

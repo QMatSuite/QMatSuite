@@ -118,7 +118,8 @@ class TestGetCommonCards:
         index = build_resource_index(project_root)
         
         # Call service method directly with ULID (should not raise TypeError)
-        result = QVService.get_common_cards(
+        from quantumvitas._api_legacy import QVService as LegacyService
+        result = LegacyService.get_common_cards(
             project_root=project_root,
             calculation_ulid=calc_ulid,  # ULID, not selector
             step_selector=step_ulid,

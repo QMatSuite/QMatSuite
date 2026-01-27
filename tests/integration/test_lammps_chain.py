@@ -11,7 +11,6 @@ import shutil
 from pathlib import Path
 
 from quantumvitas.api import QVService
-from quantumvitas.api.compat import init_step, configure_step
 from quantumvitas.calculation.calculation import Calculation
 from quantumvitas.calculation.runner import CalculationRunner
 from quantumvitas.engine.registry import create_default_registry
@@ -95,19 +94,20 @@ def chain_project(tmp_path: Path):
     calc_doc = CalcDoc(calc_model.to_dict())
     save_yaml_doc(calc_doc, calc_path)
     
+    # Create steps using domain API
+    svc = QVService(project_root)
+
     # Create relax step
-    relax_step = init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
+    relax_step = svc.calculation.add_step(
+        calc_selector=calc_id,
         step_type="relax",
     )
     relax_step_id = relax_step.step_id
-    
-    configure_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
+
+    svc.calculation.update_step_params(
+        calc_selector=calc_id,
         step_selector=relax_step_id,
-        parameters={
+        params={
             "potential": "eam_cu",
             "units": "metal",
             "atom_style": "atomic",
@@ -118,20 +118,18 @@ def chain_project(tmp_path: Path):
             "dump_trajectory": True,
         },
     )
-    
+
     # Create first MD step (restart_from relax)
-    md_step = init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
+    md_step = svc.calculation.add_step(
+        calc_selector=calc_id,
         step_type="md",
     )
     md_step_id = md_step.step_id
-    
-    configure_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
+
+    svc.calculation.update_step_params(
+        calc_selector=calc_id,
         step_selector=md_step_id,
-        parameters={
+        params={
             "potential": "eam_cu",
             "restart_from": relax_step_id,  # Use final.data from relax
             "units": "metal",
@@ -144,11 +142,10 @@ def chain_project(tmp_path: Path):
             "dump_trajectory": True,
         },
     )
-    
+
     # Create second MD step (restart_from first MD)
-    continue_md = init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
+    continue_md = svc.calculation.add_step(
+        calc_selector=calc_id,
         step_type="md",
     )
     continue_md_id = continue_md.step_id
@@ -169,11 +166,10 @@ def chain_project(tmp_path: Path):
     )
     # ========== END ULID ASSERTIONS ==========
     
-    configure_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
+    svc.calculation.update_step_params(
+        calc_selector=calc_id,
         step_selector=continue_md_id,
-        parameters={
+        params={
             "potential": "eam_cu",
             "restart_from": md_step_id,  # Use restart.bin from first MD
             "units": "metal",
@@ -186,11 +182,13 @@ def chain_project(tmp_path: Path):
             "dump_trajectory": True,
         },
     )
-    
+
     # ========== RESTART_FROM VERIFICATION ==========
     # Verify restart_from was correctly set to upstream step (not self-reference)
     import yaml
-    continue_md_step_path = continue_md.absolute_path
+    # Construct step path from calc_dir and step slug
+    steps_dir = calc_dir / "steps"
+    continue_md_step_path = steps_dir / f"{continue_md.meta.slug}.step.yaml"
     with open(continue_md_step_path) as f:
         continue_md_data = yaml.safe_load(f)
     continue_md_restart_from = continue_md_data.get("parameters", {}).get("restart_from")

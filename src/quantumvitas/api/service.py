@@ -357,7 +357,157 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
-    
+
+        def analyze_band(
+            self,
+            bands_file: Path | None = None,
+            calculation_selector: str | None = None,
+            symmetry_file: Path | None = None,
+            scf_file: Path | None = None,
+            fermi_energy: float | None = None,
+            plot: bool = False,
+            output_dir: Path | None = None,
+            plot_format: str = "png",
+            energy_range: tuple[float, float] | None = None,
+            shift_fermi: bool = True,
+        ) -> dict:
+            """
+            Analyze band structure data.
+
+            Args:
+                bands_file: Path to bands.dat.gnu file (auto-detected if calculation provided)
+                calculation_selector: Calculation selector to auto-locate files
+                symmetry_file: Path to bands.x output with high-symmetry points
+                scf_file: Path to pw.x output (NSCF/SCF) for Fermi energy and reciprocal lattice
+                fermi_energy: Override Fermi energy in eV
+                plot: If True, generate band structure plot
+                output_dir: Directory for output files (None for auto-detect)
+                plot_format: Plot format (png, svg, pdf)
+                energy_range: Energy range for plot (min, max) in eV
+                shift_fermi: If True, shift energies to Fermi level
+
+            Returns:
+                Dict with band analysis results
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                return LegacyService.analyze_band(
+                    project_root=self._service.project_root,
+                    bands_file=bands_file,
+                    calculation_selector=calculation_selector,
+                    symmetry_file=symmetry_file,
+                    scf_file=scf_file,
+                    fermi_energy=fermi_energy,
+                    plot=plot,
+                    output_dir=output_dir,
+                    plot_format=plot_format,
+                    energy_range=energy_range,
+                    shift_fermi=shift_fermi,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def analyze_dos(
+            self,
+            dos_file: Path,
+            fermi_energy: float | None = None,
+            scf_file: Path | None = None,
+            plot: bool = False,
+            output_dir: Path | None = None,
+            plot_format: str = "png",
+            energy_range: tuple[float, float] | None = None,
+            shift_fermi: bool = True,
+        ) -> dict:
+            """
+            Analyze DOS data file.
+
+            Args:
+                dos_file: Path to DOS data file (.dat)
+                fermi_energy: Override Fermi energy in eV
+                scf_file: Path to SCF/NSCF output to extract Fermi energy
+                plot: If True, generate DOS plot
+                output_dir: Directory for output files (None for auto-detect)
+                plot_format: Plot format (png, svg, pdf)
+                energy_range: Energy range for plot (min, max) in eV
+                shift_fermi: If True, shift energies to Fermi level
+
+            Returns:
+                Dict with DOS analysis results
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                return LegacyService.analyze_dos(
+                    project_root=self._service.project_root,
+                    dos_file=dos_file,
+                    fermi_energy=fermi_energy,
+                    scf_file=scf_file,
+                    plot=plot,
+                    output_dir=output_dir,
+                    plot_format=plot_format,
+                    energy_range=energy_range,
+                    shift_fermi=shift_fermi,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def get_band_structure_data(
+            self,
+            calculation_selector: str,
+            step_selector: str | None = None,
+        ) -> dict:
+            """
+            Get band structure data for plotting in GUI.
+
+            Args:
+                calculation_selector: Calculation selector
+                step_selector: Optional step selector
+
+            Returns:
+                Dict with band energies, k-distances, high-symmetry points, and Fermi energy
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                return LegacyService.get_band_structure_data(
+                    project_root=self._service.project_root,
+                    calculation_selector=calculation_selector,
+                    step_selector=step_selector,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def get_scf_convergence_data(
+            self,
+            calculation_selector: str,
+            step_selector: str,
+        ) -> dict:
+            """
+            Get SCF convergence data for a specific step in a calculation.
+
+            Args:
+                calculation_selector: Calculation selector
+                step_selector: Step selector
+
+            Returns:
+                Dict with SCF convergence data (iterations, energies, etc.)
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                return LegacyService.get_scf_convergence_data(
+                    project_root=self._service.project_root,
+                    calculation_selector=calculation_selector,
+                    step_selector=step_selector,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
     @property
     def analysis(self) -> Analysis:
         """Access analysis capabilities."""
@@ -649,12 +799,54 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
-    
+
+        def get_vis_data(
+            self,
+            selector: str,
+            supercell: tuple[int, int, int] = (1, 1, 1),
+            repeat_boundary: bool = False,
+            display_mode: str = "primitive",
+            box_bounds: tuple[float, float, float, float, float, float] | None = None,
+        ) -> dict:
+            """
+            Get pure visualization data for a structure (no matplotlib).
+
+            Returns all data needed for 3D rendering in a GUI:
+            - Lattice vectors and parameters
+            - Atom positions (Cartesian and fractional)
+            - Element information and colors
+            - Detected bonds
+
+            Args:
+                selector: Structure selector (name/slug/path)
+                supercell: Tuple of (a, b, c) supercell scaling factors (for supercell mode)
+                repeat_boundary: If True, include periodic images at boundaries
+                display_mode: One of "primitive", "supercell", "conventional", "box"
+                box_bounds: For box mode: (xmin, xmax, ymin, ymax, zmin, zmax)
+
+            Returns:
+                Dict with all visualization data (JSON-serializable)
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                return LegacyService.get_structure_vis_data(
+                    project_root=self._service.project_root,
+                    selector=selector,
+                    supercell=supercell,
+                    repeat_boundary=repeat_boundary,
+                    display_mode=display_mode,
+                    box_bounds=box_bounds,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
     @property
     def structure(self) -> Structure:
         """Access structure capabilities."""
         return QVService.Structure(self)
-    
+
     # Calculation domain (PR5)
     class Calculation:
         """Calculation read capabilities."""
@@ -1227,25 +1419,34 @@ class QVService:
             params: dict
         ) -> StepDTO:
             """
-            Update step parameters.
-            
+            Update step parameters by modifying the step YAML file.
+
             Args:
                 calc_selector: Calculation selector
                 step_selector: Step selector
-                params: Parameters to update
-                
+                params: Parameters to update. Can contain:
+                    - 'parameters': dict of QE namelist parameters
+                    - 'cards': dict of QE card data
+                    - 'species_overrides': dict of species-specific overrides
+                    - Any other step-level keys
+
             Returns:
                 Updated StepDTO
-                
+
             Raises:
                 APIError: If calculation or step not found
             """
             try:
                 from quantumvitas.core.resolution import require_calculation, require_step
-                from quantumvitas.core.models import load_calculation, save_calculation
+                from quantumvitas.core.yamldoc import StepDoc
+                from quantumvitas.workflow.step_factory import save_step_doc
                 from quantumvitas.project.model import Project
                 from quantumvitas.calculation.calculation import Calculation
-                
+                from quantumvitas.calculation.step import Step
+                from quantumvitas.core.resources import ResourceMeta
+                from quantumvitas.core.resolution import ResolvedResource
+                import logging
+
                 # Resolve calculation and step
                 calc_resolved = require_calculation(self._service.project_root, calc_selector)
                 step_resolved = require_step(
@@ -1253,63 +1454,76 @@ class QVService:
                     calc_selector,
                     step_selector
                 )
-                
-                # Get calculation directory
+
+                # Get step path
+                step_path = step_resolved.absolute_path
+
+                # Load as StepDoc
+                step_doc = StepDoc.load(step_path)
+
+                # Apply updates via StepDoc API
+                for key, value in params.items():
+                    if value is not None:
+                        if key in ("parameters", "cards", "species_overrides"):
+                            # Use apply_patch for nested dicts (deep merge)
+                            step_doc.apply_patch({key: value})
+                        else:
+                            step_doc.set([key], value)
+
+                # Save via factory (journaled) - warnings are logged
+                warnings = save_step_doc(step_doc, step_path)
+                if warnings:
+                    logger = logging.getLogger(__name__)
+                    for warning in warnings:
+                        logger.warning(warning)
+
+                # Get calculation directory for step_to_dto
                 if calc_resolved.absolute_path.name == "calculation.yaml":
                     calc_dir = calc_resolved.absolute_path.parent
                 else:
                     calc_dir = calc_resolved.absolute_path
-                
-                # Load calculation model
-                calc_yaml = calc_dir / "calculation.yaml"
-                calc_model = load_calculation(calc_yaml, self._service.project_root)
-                
-                # Find and update step entry
-                step_id = step_resolved.meta.id if step_resolved.meta else None
-                step_entry = None
-                for entry in calc_model.steps:
-                    if entry.step_id == step_id:
-                        step_entry = entry
-                        break
-                
-                if step_entry is None:
-                    from quantumvitas.api.errors import NotFoundError
-                    raise NotFoundError(
-                        f"Step not found in calculation",
-                        context={"calc_selector": calc_selector, "step_selector": step_selector}
-                    )
-                
-                # Update step parameters (simplified - would need to merge with existing params)
-                # For now, just update the step entry's options
-                if hasattr(step_entry, 'options'):
-                    step_entry.options.update(params)
-                
-                # Save updated model
-                save_calculation(calc_model, calc_dir)
-                
-                # Reload calculation object
-                project = Project.open(self._service.project_root)
-                calc_obj = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
-                
-                # Find matching step
-                step_obj = None
-                for step in calc_obj.steps:
-                    if step.id == step_id:
-                        step_obj = step
-                        break
-                
-                if step_obj is None:
-                    from quantumvitas.api.errors import NotFoundError
-                    raise NotFoundError(
-                        f"Step not found after update",
-                        context={"calc_selector": calc_selector, "step_selector": step_selector}
-                    )
-                
+
+                # Get calc_id
+                calc_id = calc_resolved.meta.id if calc_resolved.meta else ""
+
+                # Re-read step file for fresh data
+                import yaml
+                step_data = yaml.safe_load(step_path.read_text())
+                step_meta_dict = step_data.get("meta", {})
+                step_meta = ResourceMeta.from_dict(
+                    step_meta_dict,
+                    kind="step",
+                    default_name=step_selector,
+                    default_path=str(step_path.relative_to(self._service.project_root))
+                )
+
+                # Create updated ResolvedResource
+                step_resolved_updated = ResolvedResource(
+                    meta=step_meta,
+                    entry={},
+                    absolute_path=step_path
+                )
+
+                # Get step_type and engine from registry
+                from quantumvitas.workflow.registry import get_registry
+                registry = get_registry()
+                machine_step_type = step_data.get("step_type", "scf")
+                step_spec = registry.get(machine_step_type)
+                engine = step_spec.engine if step_spec else "qe"
+
+                # Create minimal Step object
+                step_obj = Step(
+                    meta=step_meta,
+                    input_file=step_path,
+                    engine=engine,
+                    step_type=machine_step_type,
+                )
+
                 # Build StepDTO
                 return step_to_dto(
-                    step_resolved=step_resolved,
+                    step_resolved=step_resolved_updated,
                     step_obj=step_obj,
-                    calc_id=calc_resolved.meta.id if calc_resolved.meta else "",
+                    calc_id=calc_id,
                 )
             except Exception as e:
                 if isinstance(e, APIError):
@@ -1542,12 +1756,24 @@ class QVService:
                 # Create steps directory
                 steps_dir = calc_dir / "steps"
                 steps_dir.mkdir(parents=True, exist_ok=True)
-                
+
+                # Generate unique slug (deduplicate against existing step files)
+                from quantumvitas.core.resources import slugify
+                base_slug = slugify(step_name)
+                unique_slug = base_slug
+                suffix = 1
+                while (steps_dir / f"{unique_slug}.step.yaml").exists():
+                    unique_slug = f"{base_slug}-{suffix}"
+                    suffix += 1
+
+                # Use unique_slug as name (step factory uses name for slug)
+                unique_name = unique_slug if unique_slug != base_slug else step_name
+
                 # Create and save step using canonical factory
                 # Factory handles step_type mapping (accepts both public and machine types)
                 step_path = create_and_save_step(
                     step_type=step_type,  # Factory handles GEN->SPEC mapping internally
-                    name=step_name,
+                    name=unique_name,
                     steps_dir=steps_dir,
                     structure_id=structure_id,
                     parent_calculation_id=calc_id,

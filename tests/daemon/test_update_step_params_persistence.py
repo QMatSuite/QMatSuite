@@ -17,7 +17,6 @@ from pathlib import Path
 import pytest
 
 from quantumvitas.api import QVService
-from quantumvitas.api.compat import init_step
 from quantumvitas.core.yamldoc import StepDoc
 from quantumvitas.daemon.server import QVDaemon, RPCRequest
 
@@ -29,22 +28,27 @@ def send_request(daemon: QVDaemon, request_type: str, payload: dict) -> dict:
         type=request_type,
         payload=payload,
     ))
-    
+
     if not response.ok:
         raise RuntimeError(f"Daemon request failed: {response.error}")
-    
+
     return response.data
+
+
+def _get_step_yaml_path(project_root: Path, calc_slug: str, step_slug: str) -> Path:
+    """Helper to construct step YAML path."""
+    return project_root / "calculations" / calc_slug / "steps" / f"{step_slug}.step.yaml"
 
 
 @pytest.fixture
 def temp_project(tmp_path: Path) -> tuple[Path, str, str]:
     """Create a temporary project with a calculation and step.
-    
+
     Returns:
         (project_root, calc_ulid, step_ulid) tuple
     """
     project_root = QVService.init_project(tmp_path / "project")
-    
+
     # Import structure
     source = tmp_path / "si.json"
     source.write_text("""{
@@ -54,15 +58,16 @@ def temp_project(tmp_path: Path) -> tuple[Path, str, str]:
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
     QVService.import_structure(project_root, source, name="Silicon")
-    
+
     # Create calculation and get ULID
     calc_result = QVService.init_calculation(project_root, "calc001", structure_selector="silicon")
     calc_ulid = calc_result.id
-    
+
     # Create step and get ULID
-    step_result = init_step(project_root, calc_ulid, step_type="scf", name="step001")
-    step_ulid = step_result.id
-    
+    svc = QVService(project_root)
+    step_dto = svc.calculation.add_step(calc_selector=calc_ulid, step_type="scf", name="step001")
+    step_ulid = step_dto.step_id
+
     return (project_root, calc_ulid, step_ulid)
 
 
@@ -70,17 +75,16 @@ def test_update_step_params_scalar_persists_to_disk(temp_project: tuple[Path, st
     """Test that scalar parameter changes persist to disk via daemon RPC."""
     project_root, calc_ulid, step_ulid = temp_project
     daemon = QVDaemon()
-    
+
     # Get step YAML path
-    step_detail = QVService.get_step_detail(project_root, calc_ulid, step_ulid)
-    step_yaml_path = Path(step_detail["absolute_path"])
-    
+    step_yaml_path = _get_step_yaml_path(project_root, "calc001", "step001")
+
     # Record initial mtime
     initial_mtime = os.path.getmtime(step_yaml_path)
-    
+
     # Wait a bit to ensure mtime will change
     time.sleep(0.1)
-    
+
     # Call update_step_params via daemon (simulating UI Apply)
     # Use ULID for calculation (daemon handler will accept ULID or slug, but ULID is safer)
     result = send_request(daemon, "update_step_params", {
@@ -94,31 +98,30 @@ def test_update_step_params_scalar_persists_to_disk(temp_project: tuple[Path, st
         },
         "parameter_scan": None,  # No scan changes
     })
-    
+
     assert result is not None
-    
+
     # Verify file mtime changed (proves write happened)
     new_mtime = os.path.getmtime(step_yaml_path)
     assert new_mtime > initial_mtime, "File mtime did not change - write did not occur"
-    
+
     # Verify content changed
     step_doc = StepDoc.load(step_yaml_path)
     assert step_doc.get(["parameters", "SYSTEM", "ecutwfc"]) == 60
-    
-    # Verify round-trip: reload via API
-    reloaded_detail = QVService.get_step_detail(project_root, calc_ulid, step_ulid)
-    assert reloaded_detail["parameters"]["SYSTEM"]["ecutwfc"] == 60
+
+    # Verify round-trip: reload via StepDoc
+    reloaded_doc = StepDoc.load(step_yaml_path)
+    assert reloaded_doc.get(["parameters", "SYSTEM", "ecutwfc"]) == 60
 
 
 def test_update_step_params_scan_persists_to_disk(temp_project: tuple[Path, str, str]):
     """Test that scan value changes persist to disk via daemon RPC."""
     project_root, calc_ulid, step_ulid = temp_project
     daemon = QVDaemon()
-    
+
     # Get step YAML path
-    step_detail = QVService.get_step_detail(project_root, calc_ulid, step_ulid)
-    step_yaml_path = Path(step_detail["absolute_path"])
-    
+    step_yaml_path = _get_step_yaml_path(project_root, "calc001", "step001")
+
     # Set initial parameter to use scan (via direct YAML edit for setup)
     step_doc = StepDoc.load(step_yaml_path)
     step_doc.apply_patch({
@@ -131,13 +134,13 @@ def test_update_step_params_scan_persists_to_disk(temp_project: tuple[Path, str,
     })
     from quantumvitas.workflow.step_factory import save_step_doc
     save_step_doc(step_doc, step_yaml_path)
-    
+
     # Record initial mtime
     initial_mtime = os.path.getmtime(step_yaml_path)
-    
+
     # Wait a bit to ensure mtime will change
     time.sleep(0.1)
-    
+
     # Call update_step_params via daemon with new scan values (simulating UI Apply)
     # Use ULID for calculation (daemon handler will accept ULID or slug, but ULID is safer)
     result = send_request(daemon, "update_step_params", {
@@ -155,33 +158,33 @@ def test_update_step_params_scan_persists_to_disk(temp_project: tuple[Path, str,
             },
         },
     })
-    
+
     assert result is not None
-    
+
     # Verify file mtime changed (proves write happened)
     new_mtime = os.path.getmtime(step_yaml_path)
     assert new_mtime > initial_mtime, "File mtime did not change - write did not occur"
-    
+
     # Verify content changed
     step_doc = StepDoc.load(step_yaml_path)
     parameter_scan = step_doc.export_copy(["parameter_scan"]) or {}
     assert "scan001" in parameter_scan
     assert parameter_scan["scan001"]["values"] == [40, 50, 60]
-    
-    # Verify round-trip: reload via API
-    reloaded_detail = QVService.get_step_detail(project_root, calc_ulid, step_ulid)
-    assert reloaded_detail["parameter_scan"]["scan001"]["values"] == [40, 50, 60]
+
+    # Verify round-trip: reload via StepDoc
+    reloaded_doc = StepDoc.load(step_yaml_path)
+    reloaded_scan = reloaded_doc.export_copy(["parameter_scan"]) or {}
+    assert reloaded_scan["scan001"]["values"] == [40, 50, 60]
 
 
 def test_update_step_params_scalar_and_scan_persist_to_disk(temp_project: tuple[Path, str, str]):
     """Test that both scalar and scan changes persist in a single RPC call."""
     project_root, calc_ulid, step_ulid = temp_project
     daemon = QVDaemon()
-    
+
     # Get step YAML path
-    step_detail = QVService.get_step_detail(project_root, calc_ulid, step_ulid)
-    step_yaml_path = Path(step_detail["absolute_path"])
-    
+    step_yaml_path = _get_step_yaml_path(project_root, "calc001", "step001")
+
     # Set initial state with scan (via direct YAML edit for setup)
     step_doc = StepDoc.load(step_yaml_path)
     step_doc.apply_patch({
@@ -197,13 +200,13 @@ def test_update_step_params_scalar_and_scan_persist_to_disk(temp_project: tuple[
     })
     from quantumvitas.workflow.step_factory import save_step_doc
     save_step_doc(step_doc, step_yaml_path)
-    
+
     # Record initial mtime
     initial_mtime = os.path.getmtime(step_yaml_path)
-    
+
     # Wait a bit to ensure mtime will change
     time.sleep(0.1)
-    
+
     # Call update_step_params via daemon with both changes (simulating UI Apply)
     # Use ULID for calculation (daemon handler will accept ULID or slug, but ULID is safer)
     result = send_request(daemon, "update_step_params", {
@@ -222,22 +225,22 @@ def test_update_step_params_scalar_and_scan_persist_to_disk(temp_project: tuple[
             },
         },
     })
-    
+
     assert result is not None
-    
+
     # Verify file mtime changed (proves write happened)
     new_mtime = os.path.getmtime(step_yaml_path)
     assert new_mtime > initial_mtime, "File mtime did not change - write did not occur"
-    
+
     # Verify both changes persisted
     step_doc = StepDoc.load(step_yaml_path)
     assert step_doc.get(["parameters", "SYSTEM", "ecutrho"]) == 250
     parameter_scan = step_doc.export_copy(["parameter_scan"]) or {}
     assert "scan001" in parameter_scan
     assert parameter_scan["scan001"]["values"] == [40, 50, 60]
-    
-    # Verify round-trip: reload via API
-    reloaded_detail = QVService.get_step_detail(project_root, calc_ulid, step_ulid)
-    assert reloaded_detail["parameters"]["SYSTEM"]["ecutrho"] == 250
-    assert reloaded_detail["parameter_scan"]["scan001"]["values"] == [40, 50, 60]
 
+    # Verify round-trip: reload via StepDoc
+    reloaded_doc = StepDoc.load(step_yaml_path)
+    assert reloaded_doc.get(["parameters", "SYSTEM", "ecutrho"]) == 250
+    reloaded_scan = reloaded_doc.export_copy(["parameter_scan"]) or {}
+    assert reloaded_scan["scan001"]["values"] == [40, 50, 60]

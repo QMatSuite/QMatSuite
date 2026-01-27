@@ -175,7 +175,7 @@ def test_template_calculation_runs(template_project):
     )
     
     # Check result
-    assert "Calculation si-dos status: StepStatus.SUCCESS" in result.output, (
+    assert "Calculation si-dos status: SUCCESS" in result.output, (
         f"Calculation should succeed. Output:\n{result.output}"
     )
 

@@ -63,7 +63,8 @@ class TestQEDetection:
             os.environ["HOME"] = str(tmp_path)
             
             # Call preflight_check - should succeed without visiting Settings
-            result = QVService.preflight_check(
+            from quantumvitas._api_legacy import QVService as LegacyService
+            result = LegacyService.preflight_check(
                 project_root=project_root,
             )
             
@@ -116,7 +117,8 @@ class TestQEDetection:
         monkeypatch.setattr(paths_module, "get_settings_json_path", lambda: settings_file)
         
         # Call preflight_check
-        result = QVService.preflight_check(
+        from quantumvitas._api_legacy import QVService as LegacyService
+        result = LegacyService.preflight_check(
             project_root=project_root,
         )
         

@@ -231,17 +231,251 @@ def extract_calculation_selector_from_entry(entry: dict) -> str | None:
 def extract_structure_selector_from_entry(entry: dict) -> str | None:
     """
     Extract a structure selector from a project.qv.yml entry.
-    
+
     Priority order:
     1. structure_id (ID-only model)
     2. meta.id (ULID)
     3. meta.slug (slug)
     4. id (legacy)
     5. name (legacy)
-    
+
     Returns:
         Selector string (ULID, slug, or name) or None if no valid selector found
     """
     from quantumvitas.core.selectors import extract_structure_selector_from_entry as _extract
     return _extract(entry)
+
+
+def extract_step_selector_from_entry(entry: dict) -> str | None:
+    """
+    Extract a step selector from a calculation.yaml step entry.
+
+    Priority order:
+    1. step_id (ID-only model)
+    2. meta.id (ULID)
+    3. meta.slug (slug)
+    4. id (legacy)
+    5. name (legacy)
+
+    Returns:
+        Selector string (ULID, slug, or name) or None if no valid selector found
+    """
+    from quantumvitas.core.selectors import extract_step_selector_from_entry as _extract
+    return _extract(entry)
+
+
+def entry_display_name(entry: dict) -> str:
+    """
+    Get display name for a resource entry from project.qv.yml.
+
+    Uses meta.name or meta.slug or id or name fields.
+
+    Args:
+        entry: Resource entry dict
+
+    Returns:
+        Display name string
+    """
+    from quantumvitas.core.project_utils import entry_display_name as _entry_display_name
+    return _entry_display_name(entry)
+
+
+def move_to_trash(path: Path | str, trash_dir: Path | str) -> Path:
+    """
+    Move a file or directory to trash.
+
+    Args:
+        path: Path to move
+        trash_dir: Trash directory (e.g., project_root / ".trash")
+
+    Returns:
+        New path in trash directory
+    """
+    from quantumvitas.core.project_utils import move_to_trash as _move_to_trash
+    return _move_to_trash(path, trash_dir)
+
+
+def entry_matches(entry: dict, identifier: str) -> bool:
+    """
+    Check if a project entry matches a given identifier.
+
+    Args:
+        entry: Resource entry dict from project.qv.yml
+        identifier: Selector to match (ULID, slug, or name)
+
+    Returns:
+        True if entry matches identifier
+    """
+    from quantumvitas.core.project_utils import entry_matches as _entry_matches
+    return _entry_matches(entry, identifier)
+
+
+def detect_runtime_control_keys(parameters: dict) -> list[str]:
+    """
+    Detect runtime control keys in step parameters.
+
+    Args:
+        parameters: Step parameters dict
+
+    Returns:
+        List of runtime control key names found
+    """
+    from quantumvitas.calculation.structure_steps import detect_runtime_control_keys as _detect
+    return _detect(parameters)
+
+
+def needs_alat_preservation(qe_input) -> bool:
+    """
+    Check if QE input needs alat preservation during geometry optimization.
+
+    Args:
+        qe_input: QEInput object
+
+    Returns:
+        True if alat should be preserved
+    """
+    from quantumvitas.calculation.importers import _needs_alat_preservation as _needs
+    return _needs(qe_input)
+
+
+def extract_alat_bohr(qe_input) -> float | None:
+    """
+    Extract alat in Bohr from QE input.
+
+    Args:
+        qe_input: QEInput object
+
+    Returns:
+        alat in Bohr or None if not found
+    """
+    from quantumvitas.calculation.importers import _extract_alat_bohr as _extract
+    return _extract(qe_input)
+
+
+def write_qe_input_file(qe_input, filepath: Path | str) -> None:
+    """
+    Write QE input file to disk.
+
+    Args:
+        qe_input: QEInput object
+        filepath: Output file path
+    """
+    from quantumvitas.drivers.qe.io.generator import QEInputGenerator
+    QEInputGenerator.write_file(qe_input, Path(filepath))
+
+
+def build_step_spec_from_qe_input(
+    qe_input,
+    project_root: Path,
+    engine_config: dict | None = None,
+) -> dict:
+    """
+    Build step spec from imported QE input file.
+
+    Args:
+        qe_input: QEInput object
+        project_root: Project root directory
+        engine_config: Optional engine configuration
+
+    Returns:
+        Step spec dict
+    """
+    from quantumvitas.calculation.importers import build_step_spec_from_qe_input as _build
+    return _build(qe_input, project_root, engine_config)
+
+
+def find_path_context_ref(cwd: Path | str | None = None, max_depth: int = 20) -> dict:
+    """
+    Find path context from working directory.
+
+    This function scans upward from cwd to find project root and context.
+
+    Args:
+        cwd: Starting directory (defaults to current working directory)
+        max_depth: Maximum directories to scan upward
+
+    Returns:
+        Dict with keys:
+        - project_root: Path to project root
+        - is_inside_calculation: bool
+        - calculation_directory: Optional[Path] if inside a calculation
+        - calculation_selector: Optional[str] if inside a calculation
+        - step_selector: Optional[str] if inside a step
+
+    Raises:
+        APIError: If no project context found
+    """
+    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+    from quantumvitas.api.errors import NotFoundError
+
+    if cwd is None:
+        cwd = Path.cwd()
+    else:
+        cwd = Path(cwd).resolve()
+
+    try:
+        path_context = find_path_context_from_pwd(start=cwd, max_depth=max_depth)
+        result = {
+            "project_root": path_context.project_root,
+            "is_inside_calculation": path_context.is_inside_calculation(),
+            "calculation_directory": path_context.calculation_directory,
+        }
+
+        # Extract calculation and step selectors from context nodes
+        calculation_selector = None
+        step_selector = None
+        for node in path_context.nodes:
+            if node.kind == "calculation" and node.selector:
+                calculation_selector = node.selector
+            elif node.kind == "step" and node.selector:
+                step_selector = node.selector
+
+        if calculation_selector:
+            result["calculation_selector"] = calculation_selector
+        if step_selector:
+            result["step_selector"] = step_selector
+
+        return result
+    except ContextNotFoundError as e:
+        raise NotFoundError(f"No project context found: {e}", context={"cwd": str(cwd)})
+
+
+def find_project_root(start: Path | str | None = None) -> Path | None:
+    """
+    Find project root from a starting directory.
+
+    Args:
+        start: Starting directory (defaults to current working directory)
+
+    Returns:
+        Path to project root or None if not found
+    """
+    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+
+    if start is None:
+        start = Path.cwd()
+    else:
+        start = Path(start).resolve()
+
+    try:
+        ctx = find_path_context_from_pwd(start=start)
+        return ctx.project_root
+    except ContextNotFoundError:
+        return None
+
+
+def is_ulid_like(s: str) -> bool:
+    """
+    Check if string looks like a ULID (26 chars, alphanumeric).
+
+    Transparent re-export from quantumvitas.core.resolution.
+
+    Args:
+        s: String to check
+
+    Returns:
+        True if string looks like a ULID
+    """
+    from quantumvitas.core.resolution import _is_ulid_like
+    return _is_ulid_like(s)
 
