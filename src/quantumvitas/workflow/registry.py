@@ -688,7 +688,42 @@ class StepTypeRegistry:
     def has(self, step_type: str) -> bool:
         """Check if step type exists in registry (supports both public and machine types)."""
         return self.get(step_type) is not None
-    
+
+    def get_for_engine(self, step_type: str, engine: str) -> Optional[StepTypeSpec]:
+        """
+        Get specification for a step type within a specific engine.
+
+        This is used when creating steps for calculations with a known engine_family.
+        For example, get_for_engine("relax", "lammps") returns lammps_relax spec,
+        while get_for_engine("relax", "qe") returns qe_relax spec.
+
+        Args:
+            step_type: Step type identifier (public or machine type)
+            engine: Engine identifier (e.g., "qe", "lammps", "pyscf")
+
+        Returns:
+            StepTypeSpec for the engine-specific step type, or None if not found
+        """
+        step_type_lower = step_type.lower()
+        engine_lower = engine.lower()
+
+        # First try direct lookup (if step_type is already machine type like "lammps_relax")
+        if step_type_lower in self._machine_to_spec:
+            spec = self._machine_to_spec[step_type_lower]
+            # Verify it matches the requested engine
+            if spec.engine.lower() == engine_lower:
+                return spec
+
+        # Search for matching public type + engine combination
+        for spec in self._types.values():
+            if spec.engine.lower() == engine_lower:
+                if spec.id.lower() == step_type_lower or spec.public_type.lower() == step_type_lower:
+                    return spec
+
+        # Fallback: return any match if no engine-specific match found
+        # This handles cases where engine doesn't have that step type but qe does
+        return self.get(step_type)
+
     def list_all(self) -> List[str]:
         """List all registered step types (returns public types)."""
         return sorted(set(spec.id for spec in self._types.values()))

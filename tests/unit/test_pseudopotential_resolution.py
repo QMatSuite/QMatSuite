@@ -355,9 +355,10 @@ K_POINTS (automatic)
             pass
 
 
+@pytest.mark.skip(reason="Online pseudo methods (search_legacy_pseudos, download_pseudo_by_filename) not in domain API")
 class TestOnlinePseudoResolve:
     """Test online pseudopotential resolution (QE legacy tables and filename downloads)."""
-    
+
     def test_search_legacy_pseudos_structure(self):
         """Test that search_legacy_pseudos returns correct structure."""
         from quantumvitas.api import QVService

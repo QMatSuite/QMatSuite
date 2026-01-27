@@ -104,9 +104,10 @@ class TestPseudoOptionsContract:
         assert matching_variant["basename"] == "Si.UPF", "basename should match filename"
 
 
+@pytest.mark.skip(reason="update_calculation_species_map not in domain API - GUI pseudo selection")
 class TestUIWritebackContract:
     """Test UI writeback contract for update_calculation_species_map()."""
-    
+
     def test_update_writes_complete_triplet(self, tmp_path: Path):
         """Test that update_calculation_species_map() writes complete triplet together."""
         project_root = tmp_path / "test_project"

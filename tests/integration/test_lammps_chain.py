@@ -104,18 +104,21 @@ def chain_project(tmp_path: Path):
     )
     relax_step_id = relax_step.step_id
 
+    # Note: LAMMPS parameters go inside "parameters" dict
     svc.calculation.update_step_params(
         calc_selector=calc_id,
         step_selector=relax_step_id,
         params={
-            "potential": "eam_cu",
-            "units": "metal",
-            "atom_style": "atomic",
-            "energy_tolerance": 1e-4,
-            "force_tolerance": 1e-6,
-            "thermo_frequency": 100,
-            "dump_frequency": 1000,
-            "dump_trajectory": True,
+            "parameters": {
+                "potential": "eam_cu",
+                "units": "metal",
+                "atom_style": "atomic",
+                "energy_tolerance": 1e-4,
+                "force_tolerance": 1e-6,
+                "thermo_frequency": 100,
+                "dump_frequency": 1000,
+                "dump_trajectory": True,
+            },
         },
     )
 
@@ -130,16 +133,18 @@ def chain_project(tmp_path: Path):
         calc_selector=calc_id,
         step_selector=md_step_id,
         params={
-            "potential": "eam_cu",
-            "restart_from": relax_step_id,  # Use final.data from relax
-            "units": "metal",
-            "atom_style": "atomic",
-            "ensemble": "nvt",
-            "temperature": 300,
-            "n_steps": 1000,
-            "thermo_frequency": 100,
-            "dump_frequency": 100,
-            "dump_trajectory": True,
+            "parameters": {
+                "potential": "eam_cu",
+                "restart_from": relax_step_id,  # Use final.data from relax
+                "units": "metal",
+                "atom_style": "atomic",
+                "ensemble": "nvt",
+                "temperature": 300,
+                "n_steps": 1000,
+                "thermo_frequency": 100,
+                "dump_frequency": 100,
+                "dump_trajectory": True,
+            },
         },
     )
 
@@ -170,16 +175,18 @@ def chain_project(tmp_path: Path):
         calc_selector=calc_id,
         step_selector=continue_md_id,
         params={
-            "potential": "eam_cu",
-            "restart_from": md_step_id,  # Use restart.bin from first MD
-            "units": "metal",
-            "atom_style": "atomic",
-            "ensemble": "nvt",
-            "temperature": 300,
-            "n_steps": 1000,
-            "thermo_frequency": 100,
-            "dump_frequency": 100,
-            "dump_trajectory": True,
+            "parameters": {
+                "potential": "eam_cu",
+                "restart_from": md_step_id,  # Use restart.bin from first MD
+                "units": "metal",
+                "atom_style": "atomic",
+                "ensemble": "nvt",
+                "temperature": 300,
+                "n_steps": 1000,
+                "thermo_frequency": 100,
+                "dump_frequency": 100,
+                "dump_trajectory": True,
+            },
         },
     )
 

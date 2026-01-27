@@ -94,22 +94,25 @@ def inline_lj_project(tmp_path: Path, lammps_binary):
     step_id = step.step_id
 
     # Configure step with initial LJ parameters using domain API
+    # Note: LAMMPS parameters go inside "parameters" dict
     svc.calculation.update_step_params(
         calc_selector=calc_id,
         step_selector=step_id,
         params={
-            "potential": {
-                "style": "lj/cut",
-                "cutoff": 2.5,
-                "params": {"* *": "1.0 1.0"},  # epsilon=1.0, sigma=1.0
+            "parameters": {
+                "potential": {
+                    "style": "lj/cut",
+                    "cutoff": 2.5,
+                    "params": {"* *": "1.0 1.0"},  # epsilon=1.0, sigma=1.0
+                },
+                "units": "lj",
+                "atom_style": "atomic",
+                "energy_tolerance": 1e-4,
+                "force_tolerance": 1e-6,
+                "thermo_frequency": 100,
+                "dump_frequency": 1000,
+                "dump_trajectory": True,
             },
-            "units": "lj",
-            "atom_style": "atomic",
-            "energy_tolerance": 1e-4,
-            "force_tolerance": 1e-6,
-            "thermo_frequency": 100,
-            "dump_frequency": 1000,
-            "dump_trajectory": True,
         },
     )
     
@@ -292,19 +295,22 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     )
     step_id = step.step_id
 
+    # Note: LAMMPS parameters go inside "parameters" dict
     svc.calculation.update_step_params(
         calc_selector=calc_id,
         step_selector=step_id,
         params={
-            "potential": "eam_cu",
-            "units": "metal",
-            "atom_style": "atomic",
-            "ensemble": "nvt",
-            "temperature": 300,
-            "n_steps": 50,  # Short run
-            "thermo_frequency": 10,
-            "dump_frequency": 25,
-            "dump_trajectory": True,
+            "parameters": {
+                "potential": "eam_cu",
+                "units": "metal",
+                "atom_style": "atomic",
+                "ensemble": "nvt",
+                "temperature": 300,
+                "n_steps": 50,  # Short run
+                "thermo_frequency": 10,
+                "dump_frequency": 25,
+                "dump_trajectory": True,
+            },
         },
     )
     

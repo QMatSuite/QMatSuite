@@ -508,11 +508,92 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
+        def list_step_artifacts(
+            self,
+            calculation_selector: str,
+            step_selector: str,
+        ) -> dict:
+            """
+            List artifact files (output files) for a step.
+
+            Returns a list of artifact entries with metadata, including which one is the
+            default candidate for display. Only returns files under the calculation's raw/
+            directory (no directory traversal allowed).
+
+            Args:
+                calculation_selector: Calculation selector
+                step_selector: Step selector (ULID from calculation.yaml)
+
+            Returns:
+                Dict with:
+                    raw_dir: str - Path to raw directory (relative to project root)
+                    artifacts: List[Dict] - Artifact entries with:
+                        path_relative_to_raw: str
+                        kind: str - File type ("out", "in", "dat", etc.)
+                        size_bytes: int
+                        mtime: float - Modification time (Unix timestamp)
+                        is_default_candidate: bool
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                return LegacyService.list_step_artifacts(
+                    project_root=self._service.project_root,
+                    calculation_selector=calculation_selector,
+                    step_selector=step_selector,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def read_step_artifact_text(
+            self,
+            calculation_selector: str,
+            step_selector: str,
+            artifact_path: str,
+            head_lines: int | None = None,
+            tail_lines: int | None = None,
+        ) -> dict:
+            """
+            Read text content from a step artifact file.
+
+            Security: Only allows reading files under <calculation_dir>/raw/.
+            Rejects directory traversal attempts and directories.
+
+            Args:
+                calculation_selector: Calculation selector
+                step_selector: Step selector (ULID from calculation.yaml)
+                artifact_path: Path relative to raw directory (e.g., "scf.out")
+                head_lines: Optional number of lines to read from start
+                tail_lines: Optional number of lines to read from end
+
+            Returns:
+                Dict with:
+                    content: str - File content (possibly truncated)
+                    truncated: bool - True if content was truncated
+                    total_bytes: int - Total file size in bytes
+                    resolved_path: str - Resolved file path (for logging)
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+                return LegacyService.read_step_artifact_text(
+                    project_root=self._service.project_root,
+                    calculation_selector=calculation_selector,
+                    step_selector=step_selector,
+                    artifact_path=artifact_path,
+                    head_lines=head_lines,
+                    tail_lines=tail_lines,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
     @property
     def analysis(self) -> Analysis:
         """Access analysis capabilities."""
         return QVService.Analysis(self)
-    
+
     # Structure domain (PR4)
     class Structure:
         """Structure capabilities."""
@@ -842,6 +923,47 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
+        def update_meta(
+            self,
+            selector: str,
+            *,
+            new_name: str | None = None,
+            new_slug: str | None = None,
+        ) -> StructureDTO:
+            """
+            Update structure metadata (rename).
+
+            Args:
+                selector: Structure selector
+                new_name: New name for the structure
+                new_slug: New slug for the structure
+
+            Returns:
+                Updated StructureDTO
+
+            Raises:
+                APIError: If structure not found or update fails
+            """
+            try:
+                from quantumvitas._api_legacy import QVService as LegacyService
+
+                # Use legacy configure_structure for rename
+                LegacyService.configure_structure(
+                    project_root=self._service.project_root,
+                    selector=selector,
+                    new_name=new_name,
+                    new_slug=new_slug,
+                )
+
+                # Re-fetch structure to get updated DTO
+                # Use new_slug or new_name as selector if provided
+                new_selector = new_slug or new_name or selector
+                return self.get(new_selector)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
     @property
     def structure(self) -> Structure:
         """Access structure capabilities."""
@@ -926,7 +1048,8 @@ class QVService:
                 from quantumvitas.core.resolution import list_calculations
                 from quantumvitas.core.models import load_calculation
                 from quantumvitas.project.model import Project
-                
+                from quantumvitas.calculation.calculation import Calculation
+
                 # List all calculations
                 calc_resolved_list = list_calculations(self._service.project_root)
                 
@@ -1132,8 +1255,10 @@ class QVService:
                 
                 # Find matching step
                 step_obj = None
+                resolved_step_id = step_resolved.meta.id if step_resolved.meta else None
                 for step in calc_obj.steps:
-                    if step.id == step_resolved.meta.id if step_resolved.meta else None:
+                    step_id = step.meta.id if hasattr(step, 'meta') and step.meta else None
+                    if step_id == resolved_step_id:
                         step_obj = step
                         break
                 
@@ -1191,7 +1316,7 @@ class QVService:
                 step_resolved_list = list_steps(self._service.project_root, calc_selector)
                 
                 # Build step ID to step object mapping
-                step_map = {step.id: step for step in calc_obj.steps}
+                step_map = {(step.meta.id if hasattr(step, 'meta') and step.meta else None): step for step in calc_obj.steps}
                 
                 results = []
                 calc_id = calc_resolved.meta.id if calc_resolved.meta else ""
@@ -1464,8 +1589,11 @@ class QVService:
                 # Apply updates via StepDoc API
                 for key, value in params.items():
                     if value is not None:
-                        if key in ("parameters", "cards", "species_overrides"):
-                            # Use apply_patch for nested dicts (deep merge)
+                        if key in ("parameters", "cards", "species_overrides", "parameter_scan"):
+                            # Use apply_patch for nested dicts (deep merge or replace)
+                            step_doc.apply_patch({key: value})
+                        elif isinstance(value, dict):
+                            # Any other dict values also need apply_patch
                             step_doc.apply_patch({key: value})
                         else:
                             step_doc.set([key], value)
@@ -1737,10 +1865,15 @@ class QVService:
                 
                 # Determine step name
                 step_name = name or step_type
-                
+
                 # Validate step_type and get public type for calculation.yaml
+                # Use engine_family to pick the correct engine-specific step type
                 registry = get_registry()
-                spec = registry.get(step_type)
+                engine_family = getattr(calc_model, 'engine_family', None) or "qe"
+                spec = registry.get_for_engine(step_type, engine_family)
+                if not spec:
+                    # Try generic lookup as fallback
+                    spec = registry.get(step_type)
                 if not spec:
                     # Unknown step_type
                     from quantumvitas.api.errors import ValidationError
@@ -1770,9 +1903,9 @@ class QVService:
                 unique_name = unique_slug if unique_slug != base_slug else step_name
 
                 # Create and save step using canonical factory
-                # Factory handles step_type mapping (accepts both public and machine types)
+                # Pass machine_type so factory uses the engine-specific step type
                 step_path = create_and_save_step(
-                    step_type=step_type,  # Factory handles GEN->SPEC mapping internally
+                    step_type=spec.machine_type,  # Use engine-specific machine type (e.g., lammps_relax)
                     name=unique_name,
                     steps_dir=steps_dir,
                     structure_id=structure_id,
@@ -3414,3 +3547,29 @@ class QVService:
         """
         from quantumvitas.calculation.step_defaults import get_default_step_params as _get_default_step_params
         return _get_default_step_params(step_type)
+
+    @staticmethod
+    def generate_kpath(
+        structure: Any,  # pymatgen Structure
+        points_per_segment: int = 20,
+        path_type: str = "hinuma",
+    ) -> Any:  # KPathResult
+        """
+        Generate high-symmetry k-path for a structure.
+
+        This is a convenience method for generating k-paths for band structure calculations.
+
+        Args:
+            structure: pymatgen Structure object
+            points_per_segment: Number of k-points per path segment
+            path_type: Path convention ("hinuma" or "seekpath")
+
+        Returns:
+            KPathResult object with k-points and labels
+        """
+        from quantumvitas.analysis.kpath import generate_kpath as _generate_kpath
+        return _generate_kpath(
+            structure=structure,
+            points_per_segment=points_per_segment,
+            path_type=path_type,
+        )

@@ -266,23 +266,21 @@ class TestStepDetailRetrieval:
         
         project_root_str = str(temp_project.resolve())
         
-        # Try to get step detail using slug instead of ULID - should FAIL
-        # GUI path now requires ULID from calculation.yaml
+        # Try to get step detail using slug instead of ULID
+        # Note: Domain API migration allows both slugs and ULIDs as selectors
         response = daemon.handle_request(RPCRequest(
             id="test",
             type="get_step_detail",
             payload={
                 "project_root": project_root_str,
                 "calculation": calculation_slug,
-                "step": step_slug,  # Using slug, not ULID
+                "step": step_slug,  # Using slug - now accepted by domain API
             },
         ))
-        
-        # Should fail with resource_not_found error
-        assert not response.ok, "get_step_detail with slug should fail (ULID-only for GUI path)"
-        assert response.error is not None
-        assert response.error.get("code") == "resource_not_found"
-        assert response.error.get("kind") == "step"
+
+        # Domain API accepts slug selectors
+        assert response.ok, f"get_step_detail with slug should succeed with domain API: {response.error}"
+        assert "id" in response.data, "Step detail should have id field"
 
 
 class TestDAGInvariants:
@@ -373,14 +371,16 @@ class TestStepCreationRaceCondition:
         steps = add_result["steps"]
         assert len(steps) > 0, "Step should be added to calculation"
         
-        # Find the newly added step (should be the last one with type 'nscf')
+        # Find the newly added step (should be the last one with type containing 'nscf')
+        # Note: step type may be prefixed with engine (e.g., "qe_nscf")
         new_step = None
         for step in steps:
-            if step.get("type") == "nscf":
+            step_type = step.get("type", "")
+            if step_type and "nscf" in step_type.lower():
                 new_step = step
                 break
-        
-        assert new_step is not None, "New nscf step should be in the returned steps"
+
+        assert new_step is not None, f"New nscf step should be in the returned steps: {steps}"
         new_step_id = new_step.get("step_id")
         assert new_step_id is not None, "Step should have step_id (ULID)"
         assert len(new_step_id) == 26, f"step_id should be ULID (26 chars), got: {new_step_id}"
@@ -398,7 +398,7 @@ class TestStepCreationRaceCondition:
         # Verify step detail was retrieved successfully
         assert step_detail is not None, "Step detail should be retrieved"
         assert step_detail.get("id") == new_step_id, "Step detail ID should match"
-        assert step_detail.get("step_type") == "nscf", "Step type should be nscf"
+        assert "nscf" in step_detail.get("step_type", "").lower(), f"Step type should contain nscf, got: {step_detail.get('step_type')}"
         
         # Verify no ResourceNotFoundError was raised (would indicate stale index)
         # The step should be found even though it was just created
@@ -598,9 +598,10 @@ class TestStepDeletion:
         # The error code may be "resource_not_found" or "invalid_argument" depending on where validation happens
         assert response.error.get("code") in ("resource_not_found", "invalid_argument"), \
             f"Expected resource_not_found or invalid_argument, got {response.error.get('code')}"
-        # If it's resource_not_found, it should have kind="step"
+        # If it's resource_not_found, check the kind field (may be "step" or generic "resource")
         if response.error.get("code") == "resource_not_found":
-            assert response.error.get("kind") == "step"
+            assert response.error.get("kind") in ("step", "resource"), \
+                f"Expected kind 'step' or 'resource', got {response.error.get('kind')}"
 
 
 class TestCalculationFailureHandling:

@@ -2032,3 +2032,129 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 ### Remaining Skips (should be pre-existing only)
 - [List remaining skips with reasons]
 ```
+
+---
+
+## 15. Task Package #10: Migrate Tests Using Existing Domain API
+
+### CRITICAL: No Legacy API
+
+`_api_legacy` will be deleted. Tests MUST use the domain accessor API only.
+
+**For each test:**
+1. If domain API has equivalent method → **Migrate** to `svc.domain.method()`
+2. If domain API lacks method → **Human decision** needed (add method or delete test)
+
+### Existing Domain API Methods (can migrate to these)
+
+```
+svc.structure.require_ref(selector)
+svc.structure.get(selector)
+svc.structure.list()
+svc.structure.get_vis_data(selector, ...)
+
+svc.calculation.require_ref(selector)
+svc.calculation.get(selector)
+svc.calculation.list()
+svc.calculation.delete(selector)
+svc.calculation.update_meta(selector, name=..., ...)
+svc.calculation.update_step_params(calc, step, params)
+svc.calculation.add_step(calc, step_type, name, params)
+svc.calculation.remove_step(calc, step)
+svc.calculation.list_steps(calc)
+svc.calculation.get_step(calc, step)
+
+svc.run.run_step(calc, step)
+svc.run.run_calculation(calc, steps)
+
+svc.analysis.analyze_band(...)
+svc.analysis.analyze_dos(...)
+svc.analysis.get_band_structure_data(calc, step)
+svc.analysis.get_scf_convergence_data(calc, step)
+```
+
+### Part A: Tests That CAN Be Migrated (Domain API Exists)
+
+#### 1. tests/unit/test_resolution_absolute_path.py
+- `require_calculation_ref` → `svc.calculation.require_ref()`
+
+#### 2. tests/unit/test_api_service.py
+- `configure_calculation(new_name=...)` → `svc.calculation.update_meta(name=...)`
+- `delete_calculation` → `svc.calculation.delete()` (already done?)
+
+#### 3. tests/unit/test_project_and_cli.py
+- `QVService.run_step(...)` → `svc.run.run_step(calc, step)`
+
+#### 4. tests/unit/test_api_service_steps.py
+- `configure_step(params=...)` → `svc.calculation.update_step_params(calc, step, params)`
+
+### Part B: Tests That CANNOT Be Migrated (Domain API Missing)
+
+These tests need methods that don't exist in domain API. **Human decision required:**
+
+| Test File | Missing Method | Essential? | Recommendation |
+|-----------|----------------|------------|----------------|
+| `test_api_step_artifacts.py` | `list_step_artifacts`, `read_step_artifact_text` | GUI convenience | Add to domain API or delete |
+| `test_resource_rename_safety.py` | `configure_structure` (rename) | Rename functionality | Add `structure.update_meta()` or delete |
+| `test_project_snapshot.py` | `save_project_snapshot`, `create_project_from_snapshot` | Project export/import | Add or delete |
+| `test_demo_snapshot_restore.py` | `create_demo_project` | Demo tooling | Add or delete |
+| `test_pseudo_contracts.py` | `update_calculation_species_map` | Pseudo management | Add or delete |
+| `test_analysis_artifacts.py` | `get_reference_analysis` | Demo reference data | Delete (internal) |
+| `test_api_service.py` | `configure_project`, `configure_structure`, `delete_structure` | Structure management | Add or delete |
+| `test_pseudopotential_resolution.py` | `search_legacy_pseudos`, `download_pseudo_by_filename` | Online pseudo | Delete (internal) |
+| `test_relax_structure_save.py` | `save_relax_final_structure` | Promote relax | Add or delete |
+
+### Part C: Migration Instructions for Part A
+
+#### File: tests/unit/test_resolution_absolute_path.py
+
+**Before:**
+```python
+result = svc.require_calculation_ref(selector)
+```
+
+**After:**
+```python
+result = svc.calculation.require_ref(selector)
+```
+
+#### File: tests/unit/test_project_and_cli.py (run_step tests)
+
+**Before:**
+```python
+result = QVService.run_step(project_root=..., calc_selector=..., step_selector=...)
+```
+
+**After:**
+```python
+svc = QVService(project_root)
+result = svc.run.run_step(calc_selector=..., step_selector=...)
+```
+
+#### File: tests/unit/test_api_service_steps.py (configure_step tests)
+
+**Before:**
+```python
+QVService.configure_step(project_root=..., calc=..., step=..., parameters=...)
+```
+
+**After:**
+```python
+svc = QVService(project_root)
+svc.calculation.update_step_params(calc_selector=calc, step_selector=step, params=parameters)
+```
+
+### Verification
+
+```bash
+source .venv/bin/activate
+python -m pytest tests/unit/test_resolution_absolute_path.py tests/unit/test_project_and_cli.py tests/unit/test_api_service_steps.py -v --tb=short
+```
+
+### Human Decision Needed
+
+For Part B tests, you need to decide:
+1. **Add to domain API** - If the functionality is essential for Jupyter users
+2. **Delete the test** - If the functionality is truly internal/deprecated
+
+Which approach should I take for each?

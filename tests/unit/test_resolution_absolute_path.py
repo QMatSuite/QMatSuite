@@ -62,15 +62,16 @@ def minimal_project(tmp_path: Path) -> Path:
 
 def test_require_calculation_ref_absolute_path(minimal_project: Path):
     """Test that require_calculation_ref returns correct absolute_path.
-    
+
     The absolute_path should point to the calculation.yaml file, not the directory.
     This matches the contract expected by CLI code which does:
     calc_dir = calculation_resolved.absolute_path.parent
     """
-    svc = QVService(minimal_project)
-    
-    # Resolve calculation by slug
-    resolved = svc.require_calculation_ref("wf")
+    from quantumvitas.api import get_service
+    svc = get_service(minimal_project)
+
+    # Resolve calculation by slug using domain API
+    resolved = svc.calculation.require_ref("wf")
     
     # The absolute_path should point to the calculation directory
     # (most code expects this and uses absolute_path directly as a directory)
