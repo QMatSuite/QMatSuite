@@ -87,27 +87,25 @@ steps: []
         yield project_root
 
 
-@pytest.mark.skip(reason="PR10: needs CalculationDTO.steps (consider if needed)")
 def test_add_step_to_calculation_creates_valid_spec(temp_project):
     """Test that add_step_to_calculation creates a valid step spec without executable."""
-    # Use domain accessor API for step creation
-    svc = QVService(temp_project)
-    
     # Add a step (use name as selector)
-    step_dto = svc.calculation.add_step(
-        calc_selector="Test Calculation",  # Use name
+    result = QVService.add_step_to_calculation(
+        project_root=temp_project,
+        calculation_selector="Test Calculation",  # Use name
         step_type="scf",
-        name="test-scf",
+        step_name="test-scf",
     )
     
-    # Verify result - add_step returns StepDTO, not a dict
-    assert step_dto is not None
-    assert step_dto.step_id is not None, "Step should have step_id (ULID)"
-    assert step_dto.step_type == "scf" or step_dto.step_type == "qe_scf", f"Step type should be scf, got {step_dto.step_type}"
-    
-    # Verify step is in calculation by fetching calculation
-    calc_dto = svc.calculation.get("Test Calculation")
-    assert len(calc_dto.steps) >= 1, "Calculation should have at least one step"
+    # Verify result
+    assert result is not None
+    assert "steps" in result
+    assert len(result["steps"]) == 1
+    assert result["steps"][0]["type"] == "scf"
+    # With ID-only model, step entry uses step_id (ULID) as canonical reference
+    assert result["steps"][0].get("step_id") is not None, "Step entry should have step_id (ULID)"
+    # Legacy id field may be None if step was created with step_id only
+    # The step name "test-scf" is stored in the step spec meta, not in the calculation entry
     
     # Load the step spec file
     step_file = temp_project / "calculations" / "test-calculation" / "steps" / "test-scf.step.yaml"
@@ -141,12 +139,10 @@ def test_add_step_to_calculation_creates_valid_spec(temp_project):
 
 def test_add_step_to_calculation_with_defaults(temp_project):
     """Test that add_step_to_calculation applies default parameters."""
-    # Use domain accessor API for step creation
-    svc = QVService(temp_project)
-    
     # Add an nscf step
-    result = svc.calculation.add_step(
-        calc_selector="Test Calculation",  # Use name
+    result = QVService.add_step_to_calculation(
+        project_root=temp_project,
+        calculation_selector="Test Calculation",  # Use name
         step_type="nscf",
     )
     
@@ -169,15 +165,13 @@ def test_add_step_to_calculation_with_defaults(temp_project):
 
 def test_add_step_to_calculation_no_executable_in_spec(temp_project):
     """Explicitly verify that executable is never in the step spec."""
-    # Use domain accessor API for step creation
-    svc = QVService(temp_project)
-    
     # Add multiple step types
     for step_type in ["scf", "dos", "bands"]:
-        svc.calculation.add_step(
-            calc_selector="Test Calculation",  # Use name
+        QVService.add_step_to_calculation(
+            project_root=temp_project,
+            calculation_selector="Test Calculation",  # Use name
             step_type=step_type,
-            name=f"test-{step_type}",
+            step_name=f"test-{step_type}",
         )
     
     # Check all step files
@@ -191,19 +185,16 @@ def test_add_step_to_calculation_no_executable_in_spec(temp_project):
         assert not hasattr(spec, "executable"), f"StructureStepSpec from {step_file.name} has executable attribute"
 
 
-@pytest.mark.skip(reason="PR10: configure_step not in domain API")
 def test_configure_step_species_overrides(temp_project):
     """Test that configure_step handles species_overrides correctly using apply_patch."""
     from quantumvitas.core.yamldoc import StepDoc
     
-    # Use domain accessor API for step creation
-    svc = QVService(temp_project)
-    
     # Add a step first
-    svc.calculation.add_step(
-        calc_selector="Test Calculation",
+    QVService.add_step_to_calculation(
+        project_root=temp_project,
+        calculation_selector="Test Calculation",
         step_type="scf",
-        name="test-scf",
+        step_name="test-scf",
     )
     
     # Configure step with species_overrides (dict value)

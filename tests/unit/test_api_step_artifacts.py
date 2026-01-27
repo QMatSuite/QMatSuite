@@ -24,10 +24,7 @@ def project_with_step(tmp_path):
     # Create calculation and step
     calc_slug = "test-calc"
     QVService.init_calculation(project_dir, calc_slug, structure_selector="silicon")
-    
-    # Use domain accessor API for step creation
-    svc = QVService(project_dir)
-    svc.calculation.add_step(calc_selector=calc_slug, step_type="scf", name="scf")
+    QVService.init_step(project_dir, calc_slug, "scf", name="scf")
     
     # Get step ID
     from quantumvitas.core.models import load_calculation
@@ -48,7 +45,6 @@ def project_with_step(tmp_path):
     return project_dir, calc_slug, step_id, calc_dir
 
 
-@pytest.mark.skip(reason="PR10: list_step_artifacts not in domain API")
 class TestListStepArtifacts:
     """Tests for QVService.list_step_artifacts()."""
     
@@ -145,7 +141,6 @@ class TestListStepArtifacts:
         assert "scf.out" not in artifact_names
 
 
-@pytest.mark.skip(reason="PR10: read_step_artifact_text not in domain API")
 class TestReadStepArtifactText:
     """Tests for QVService.read_step_artifact_text()."""
     
