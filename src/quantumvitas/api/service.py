@@ -2995,10 +2995,11 @@ class QVService:
                 kind="calculation",
             )
             
+            # absolute_path must point to the calculation directory, not the file
             return ResolvedResource(
                 meta=meta,
                 entry=calc_entry,
-                absolute_path=calc_yaml,
+                absolute_path=calc_dir,
             )
         except Exception as e:
             if isinstance(e, APIError):
