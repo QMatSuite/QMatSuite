@@ -5208,16 +5208,19 @@ class QVDaemon:
             if calculation_path.exists():
                 wf_model = QVService.load_calculation(calculation_path, project_root=project_root)
                 # Initialize steps with pending status
-                initial_steps = [
-                    {
-                        "step_id": step.step_id,
-                        "step_type": step.type or "unknown",
-                        "status": "pending",
-                        "started_at": None,
-                        "ended_at": None,
-                    }
-                    for step in wf_model.steps
-                ]
+                initial_steps = []
+                for step in wf_model.steps:
+                    d = step.to_dict()
+                    # Normalize to exactly required keys
+                    d["step_type"] = step.type or "unknown"
+                    d["status"] = "pending"
+                    d["started_at"] = None
+                    d["ended_at"] = None
+                    # Remove everything else to avoid schema widening
+                    for k in list(d.keys()):
+                        if k not in {"step_id", "step_type", "status", "started_at", "ended_at"}:
+                            d.pop(k, None)
+                    initial_steps.append(d)
                 # Compute planned_io_dir using the same logic the runner uses (single source of truth)
                 # This ensures pending jobs show the correct io_dir that will match the runner's final io_dir
                 calculation_dir = calculation_resolved.absolute_path if calculation_resolved.absolute_path.is_dir() else calculation_resolved.absolute_path.parent
@@ -6076,9 +6079,10 @@ class QVDaemon:
                     if run_dir:
                         try:
                             revision = load_run_revision(run_dir)
+                            revision_dict = revision.to_dict()
                             run_info_cache[run_id] = {
-                                "run_digest": revision.run_digest,
-                                "step_digests": revision.step_digests,
+                                "run_digest": revision_dict.get("run_digest"),
+                                "step_digests": revision_dict.get("step_digests"),
                             }
                         except Exception:
                             pass
@@ -6419,16 +6423,18 @@ class QVDaemon:
         service = QVService.get_workflow_service()
         templates = service.list_templates()
         
+        # Serialize templates (WorkflowTemplate is not a dataclass, so manual construction)
+        templates_list = []
+        for t in templates:
+            templates_list.append({
+                "id": t.id,
+                "name": t.name,
+                "description": t.description,
+                "step_sequence": list(t.step_sequence),
+            })
+        
         return {
-            "templates": [
-                {
-                    "id": t.id,
-                    "name": t.name,
-                    "description": t.description,
-                    "step_sequence": list(t.step_sequence),
-                }
-                for t in templates
-            ]
+            "templates": templates_list
         }
     
     def _handle_detect_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -6553,15 +6559,18 @@ class QVDaemon:
         else:
             workflow_label = "Unknown"
         
-        # Convert issues to simple dict format
-        issues_list = [
-            {
-                "code": issue.severity,  # "error" or "warning"
-                "message": issue.message,
-                "step_type": issue.step_type,
-            }
-            for issue in issues
-        ]
+        # Convert issues to simple dict format (WorkflowIssue is a dataclass)
+        from dataclasses import asdict
+        issues_list = []
+        for issue in issues:
+            d = asdict(issue)
+            # Normalize to exactly required keys (rename severity -> code)
+            d["code"] = d.pop("severity")
+            # Remove any extra keys to avoid schema widening
+            for k in list(d.keys()):
+                if k not in {"code", "message", "step_type"}:
+                    d.pop(k, None)
+            issues_list.append(d)
         
         return {
             "workflow_id": match.workflow_id,
