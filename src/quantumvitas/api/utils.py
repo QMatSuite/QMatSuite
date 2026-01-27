@@ -96,7 +96,15 @@ def write_structure(
     
     # Convert dict to ResourceMeta if needed
     if metadata is not None and isinstance(metadata, dict):
-        metadata = ResourceMeta.from_dict(metadata, kind="structure")
+        # Extract default_name and default_path from metadata dict
+        default_name = metadata.get("name") or Path(filepath).stem
+        default_path = metadata.get("path") or str(Path(filepath).name)
+        metadata = ResourceMeta.from_dict(
+            metadata,
+            kind="structure",
+            default_name=default_name,
+            default_path=default_path,
+        )
     
     return _write_structure(structure, filepath, format=format, metadata=metadata)
 

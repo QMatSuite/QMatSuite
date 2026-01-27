@@ -916,7 +916,7 @@ def init_calculation_command(
 
     # Add to project.qv.yml (DAG + ID-only: only calculation_id, no meta duplication)
     calculations_section.append({
-        "calculation_id": calculation_meta["id"],  # ID-only reference (ULID)
+        "calculation_id": calculation_meta_dict["id"],  # ID-only reference (ULID)
     })
     svc.project.update_config(config)
 

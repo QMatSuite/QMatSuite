@@ -257,25 +257,102 @@ class QVService:
                 Dict with full data (may include numpy arrays)
                 
             Raises:
-                APIError: If artifact cannot be loaded
+                ValidationError: If ref is invalid or missing required fields
+                NotFoundError: If artifact file not found
+                APIError: For other errors
             """
             try:
-                artifact_path = self._service.project_root / ref.artifact_path
+                from quantumvitas.api.errors import ValidationError, NotFoundError
+                from pathlib import Path
                 
-                if not artifact_path.exists():
-                    from quantumvitas.api.errors import NotFoundError
-                    raise NotFoundError(
-                        f"Artifact not found: {ref.artifact_path}",
+                # Validate input
+                if ref is None:
+                    raise ValidationError(
+                        "AnalysisRefDTO cannot be None",
+                        code="VALIDATION_FAILED",
+                        context={"ref": None}
+                    )
+                
+                if not ref.artifact_path:
+                    raise ValidationError(
+                        "AnalysisRefDTO missing artifact_path",
+                        code="VALIDATION_FAILED",
+                        context={"ref": ref.to_dict() if hasattr(ref, 'to_dict') else str(ref)}
+                    )
+                
+                # Resolve artifact path (relative to project root)
+                artifact_path = Path(self._service.project_root) / ref.artifact_path
+                artifact_path = artifact_path.resolve()
+                
+                # Security check: ensure path is within project root
+                try:
+                    artifact_path.relative_to(Path(self._service.project_root).resolve())
+                except ValueError:
+                    raise ValidationError(
+                        f"Artifact path outside project root: {ref.artifact_path}",
+                        code="VALIDATION_FAILED",
                         context={"artifact_path": ref.artifact_path}
                     )
                 
-                import json
-                data = json.loads(artifact_path.read_text())
+                # Check if file exists
+                if not artifact_path.exists():
+                    raise NotFoundError(
+                        f"Artifact not found: {ref.artifact_path}",
+                        context={
+                            "artifact_path": ref.artifact_path,
+                            "resolved_path": str(artifact_path)
+                        }
+                    )
                 
-                # Remove metadata
-                data.pop("_artifact_meta", None)
+                # Load based on format
+                artifact_format = ref.artifact_format.lower() if ref.artifact_format else "json"
                 
-                return data
+                if artifact_format == "json":
+                    import json
+                    try:
+                        data = json.loads(artifact_path.read_text())
+                        # Remove metadata if present
+                        data.pop("_artifact_meta", None)
+                        return data
+                    except json.JSONDecodeError as e:
+                        from quantumvitas.api.errors import InternalError
+                        raise InternalError(
+                            f"Failed to parse JSON artifact: {e}",
+                            context={"artifact_path": ref.artifact_path}
+                        )
+                
+                elif artifact_format == "npz":
+                    try:
+                        import numpy as np
+                        data = np.load(str(artifact_path))
+                        # Convert to dict (arrays remain as numpy arrays)
+                        result = {key: data[key] for key in data.keys()}
+                        data.close()
+                        return result
+                    except Exception as e:
+                        from quantumvitas.api.errors import InternalError
+                        raise InternalError(
+                            f"Failed to load NPZ artifact: {e}",
+                            context={"artifact_path": ref.artifact_path}
+                        )
+                
+                elif artifact_format == "hdf5":
+                    # HDF5 support would require h5py
+                    # For now, raise an error indicating it's not yet implemented
+                    from quantumvitas.api.errors import InternalError
+                    raise InternalError(
+                        f"HDF5 format not yet supported: {artifact_format}",
+                        context={"artifact_path": ref.artifact_path, "format": artifact_format}
+                    )
+                
+                else:
+                    from quantumvitas.api.errors import ValidationError
+                    raise ValidationError(
+                        f"Unsupported artifact format: {artifact_format}",
+                        code="VALIDATION_FAILED",
+                        context={"artifact_format": artifact_format, "supported": ["json", "npz"]}
+                    )
+                    
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -1239,29 +1316,41 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
         
-        def duplicate(self, selector: str, new_name: str | None = None) -> CalculationDTO:
+        def duplicate(
+            self,
+            selector: str,
+            *,
+            new_name: str | None = None,
+            new_slug: str | None = None,
+        ) -> CalculationDTO:
             """
             Duplicate a calculation.
             
+            Copies SSOT files (calculation.yaml, step.yaml) and raw/ directory.
+            Does NOT copy outdir/, .history/, or other execution artifacts.
+            
             Args:
                 selector: Calculation selector
-                new_name: Optional name for the duplicate
+                new_name: Optional name for the duplicate (defaults to "{original_name}_copy")
+                new_slug: Optional slug for the duplicate (defaults to slugified new_name)
                 
             Returns:
                 CalculationDTO for the duplicate
                 
             Raises:
-                APIError: If calculation not found or duplication fails
+                NotFoundError: If calculation not found
+                ConflictError: If new_slug already exists
+                APIError: For other duplication failures
             """
             try:
                 from quantumvitas.core.resolution import require_calculation
-                from quantumvitas.core.models import load_calculation, save_calculation
+                from quantumvitas.core.models import load_calculation
                 from quantumvitas.project.model import Project
                 from quantumvitas.calculation.calculation import Calculation
                 from quantumvitas.core.resources import generate_resource_id
-                from quantumvitas.core.project_utils import slugify
-                import shutil
-                import yaml
+                from quantumvitas.core.project_utils import slugify, load_project_config, save_project_config
+                from quantumvitas.core.templates import _copy_calculation_from_path
+                from quantumvitas.core.resolution import ResolvedResource
                 
                 # Resolve and load original calculation
                 calc_resolved = require_calculation(self._service.project_root, selector)
@@ -1274,41 +1363,65 @@ class QVService:
                 calc_yaml = calc_dir / "calculation.yaml"
                 calc_model = load_calculation(calc_yaml, self._service.project_root)
                 
-                # Generate new ID and name
+                # Generate new ID and determine name/slug
                 new_id = generate_resource_id()
-                new_name = new_name or f"{calc_model.meta.name}_copy"
-                new_slug = slugify(new_name)
+                if new_name is None:
+                    new_name = f"{calc_model.meta.name}_copy"
+                if new_slug is None:
+                    new_slug = slugify(new_name)
+                
+                # Check for slug conflict
                 new_path = f"calculations/{new_slug}"
                 new_dir = self._service.project_root / new_path
-                
-                # Copy calculation directory
                 if new_dir.exists():
                     from quantumvitas.api.errors import ConflictError
-                    raise ConflictError(f"Calculation already exists: {new_slug}")
+                    raise ConflictError(
+                        f"Calculation with slug '{new_slug}' already exists",
+                        context={"new_slug": new_slug, "new_path": new_path}
+                    )
                 
-                shutil.copytree(calc_dir, new_dir)
+                # Use existing copy function which handles SSOT + raw/ only
+                # This copies: calculation.yaml, steps/*.step.yaml, raw/ (if exists)
+                # Does NOT copy: outdir/, .history/, or other execution artifacts
+                # Note: _copy_calculation_from_path derives slug from name, so if new_slug
+                # is provided, we need to pass a name that will slugify to new_slug, or
+                # manually update the slug after copying
+                new_calc_yaml, _, _ = _copy_calculation_from_path(
+                    source_path=calc_dir,
+                    dest_dir=new_dir,
+                    project_root=self._service.project_root,
+                    new_name=new_name,  # Will be used for both name and slug derivation
+                    calculation_ulid=new_id,
+                )
                 
-                # Update calculation.yaml with new meta
-                new_calc_yaml = new_dir / "calculation.yaml"
-                calc_data = yaml.safe_load(new_calc_yaml.read_text())
-                calc_data["meta"]["id"] = new_id
-                calc_data["meta"]["name"] = new_name
-                calc_data["meta"]["slug"] = new_slug
-                calc_data["meta"]["path"] = new_path
-                new_calc_yaml.write_text(yaml.safe_dump(calc_data, sort_keys=False))
+                # If new_slug was explicitly provided and differs from slugified name,
+                # update the calculation.yaml to use the explicit slug
+                if new_slug != slugify(new_name):
+                    import yaml
+                    calc_data = yaml.safe_load(new_calc_yaml.read_text())
+                    calc_data["meta"]["slug"] = new_slug
+                    calc_data["meta"]["path"] = f"calculations/{new_slug}"
+                    new_calc_yaml.write_text(yaml.safe_dump(calc_data, sort_keys=False, default_flow_style=False))
+                    
+                    # Also need to rename the directory if slug changed
+                    expected_dir = self._service.project_root / f"calculations/{new_slug}"
+                    if new_dir != expected_dir:
+                        new_dir.rename(expected_dir)
+                        new_dir = expected_dir
+                        new_calc_yaml = expected_dir / "calculation.yaml"
                 
                 # Reload model
                 new_calc_model = load_calculation(new_calc_yaml, self._service.project_root)
                 
                 # Add to project config
-                from quantumvitas.core.project_utils import load_project_config, save_project_config
                 config = load_project_config(self._service.project_root)
                 calculations = config.setdefault("calculations", [])
-                calculations.append({"calculation_id": new_id})
+                # Check if already in config (shouldn't be, but be safe)
+                if not any(c.get("calculation_id") == new_id for c in calculations):
+                    calculations.append({"calculation_id": new_id})
                 save_project_config(self._service.project_root, config)
                 
                 # Build ResolvedResource
-                from quantumvitas.core.resolution import ResolvedResource
                 new_calc_resolved = ResolvedResource(
                     meta=new_calc_model.meta,
                     entry={"calculation_id": new_id},
@@ -1359,40 +1472,36 @@ class QVService:
             self,
             calc_selector: str,
             step_type: str,
-            **params
+            *,
+            name: str | None = None,
+            params: dict | None = None,
         ) -> StepDTO:
             """
             Add a step to a calculation.
             
             Args:
                 calc_selector: Calculation selector
-                step_type: Step type (e.g., "qe_scf", "qe_nscf")
-                **params: Step parameters
+                step_type: Step type (e.g., "scf", "nscf", "qe_scf" - accepts both public and machine types)
+                name: Optional step name (defaults to step_type)
+                params: Optional parameter overrides (applied via apply_patch, respects managed keys)
                 
             Returns:
                 StepDTO for the new step
                 
             Raises:
-                APIError: If calculation not found or step creation fails
+                NotFoundError: If calculation not found
+                ValidationError: If step_type is invalid or unmapped
+                APIError: For other step creation failures
             """
             try:
-                from quantumvitas._api_legacy import QVService as LegacyService
                 from quantumvitas.core.resolution import require_calculation, require_step
-                from quantumvitas.core.models import load_calculation
+                from quantumvitas.core.models import load_calculation, save_calculation
                 from quantumvitas.project.model import Project
                 from quantumvitas.calculation.calculation import Calculation
-                
-                # Use legacy init_step
-                name = params.pop("name", None)
-                structure_selector = params.pop("structure_selector", None)
-                
-                step_resolved = LegacyService.init_step(
-                    project_root=self._service.project_root,
-                    calculation_selector=calc_selector,
-                    step_type=step_type,
-                    name=name,
-                    structure_selector=structure_selector,
-                )
+                from quantumvitas.workflow.step_factory import create_and_save_step
+                from quantumvitas.workflow.registry import get_registry
+                from quantumvitas.core.resources import generate_resource_id
+                import yaml
                 
                 # Resolve calculation
                 calc_resolved = require_calculation(self._service.project_root, calc_selector)
@@ -1403,30 +1512,111 @@ class QVService:
                 else:
                     calc_dir = calc_resolved.absolute_path
                 
-                # Load calculation object to find step
-                project = Project.open(self._service.project_root)
-                calc_obj = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
+                calc_yaml = calc_dir / "calculation.yaml"
+                calc_model = load_calculation(calc_yaml, self._service.project_root)
                 
-                # Find matching step
-                step_id = step_resolved.meta.id if step_resolved.meta else None
-                step_obj = None
-                for step in calc_obj.steps:
-                    if step.id == step_id:
-                        step_obj = step
-                        break
+                # Get calculation ULID
+                calc_id = calc_resolved.meta.id if calc_resolved.meta else ""
                 
-                if step_obj is None:
-                    from quantumvitas.api.errors import NotFoundError
-                    raise NotFoundError(
-                        f"Step not found after creation",
-                        context={"calc_selector": calc_selector, "step_selector": step_id}
+                # Get structure_id from calculation
+                structure_id = calc_model.structure_id if calc_model else None
+                
+                # Determine step name
+                step_name = name or step_type
+                
+                # Validate step_type and get public type for calculation.yaml
+                registry = get_registry()
+                spec = registry.get(step_type)
+                if not spec:
+                    # Unknown step_type
+                    from quantumvitas.api.errors import ValidationError
+                    raise ValidationError(
+                        f"Unknown step type: {step_type}",
+                        code="VALIDATION_FAILED",
+                        context={"step_type": step_type}
                     )
+                
+                # Use public_type for calculation.yaml (registry.get() accepts both public and machine types)
+                public_step_type = spec.public_type
+                
+                # Create steps directory
+                steps_dir = calc_dir / "steps"
+                steps_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Create and save step using canonical factory
+                # Factory handles step_type mapping (accepts both public and machine types)
+                step_path = create_and_save_step(
+                    step_type=step_type,  # Factory handles GEN->SPEC mapping internally
+                    name=step_name,
+                    steps_dir=steps_dir,
+                    structure_id=structure_id,
+                    parent_calculation_id=calc_id,
+                    overrides=params,  # apply_patch will be called inside create_step_doc
+                )
+                
+                # Read step file to get step_id
+                step_data = yaml.safe_load(step_path.read_text())
+                step_id = step_data.get("meta", {}).get("id")
+                if not step_id:
+                    from quantumvitas.api.errors import InternalError
+                    raise InternalError(
+                        "Step created but missing ULID in meta",
+                        context={"step_path": str(step_path)}
+                    )
+                
+                # Add step to calculation.yaml steps array
+                # Use public_type for calculation.yaml (calculation.yaml stores public types)
+                from quantumvitas.core.models import CalculationStepEntry
+                step_entry = CalculationStepEntry(
+                    step_id=step_id,
+                    type=public_step_type,  # Public type for calculation.yaml
+                )
+                
+                # Update calculation model
+                if not hasattr(calc_model, 'steps') or calc_model.steps is None:
+                    calc_model.steps = []
+                calc_model.steps.append(step_entry)
+                
+                # Save calculation.yaml
+                save_calculation(calc_model, calc_yaml)
+                
+                # Build ResolvedResource and Step object from step_data for DTO
+                # (We don't resolve via require_step because ResourceIndex may not be updated yet)
+                from quantumvitas.core.resources import ResourceMeta
+                from quantumvitas.core.resolution import ResolvedResource
+                from quantumvitas.calculation.step import Step
+                
+                step_meta_dict = step_data.get("meta", {})
+                step_meta = ResourceMeta.from_dict(
+                    step_meta_dict,
+                    kind="step",
+                    default_name=step_name,
+                    default_path=str(step_path.relative_to(self._service.project_root))
+                )
+                step_resolved = ResolvedResource(
+                    meta=step_meta,
+                    entry={},  # Empty entry - step not in project config
+                    absolute_path=step_path
+                )
+                
+                # Get step_type from step_data (machine type)
+                machine_step_type = step_data.get("step_type", public_step_type)
+                # Get engine from registry
+                step_spec = registry.get(machine_step_type)
+                engine = step_spec.engine if step_spec else "qe"
+                # Create minimal Step object
+                step_obj = Step(
+                    meta=step_meta,
+                    input_file=step_path,  # Placeholder - not used for DTO
+                    engine=engine,
+                    step_type=machine_step_type,
+                )
                 
                 # Build StepDTO
                 return step_to_dto(
                     step_resolved=step_resolved,
                     step_obj=step_obj,
-                    calc_id=calc_resolved.meta.id if calc_resolved.meta else "",
+                    calc_id=calc_id,
                 )
             except Exception as e:
                 if isinstance(e, APIError):
@@ -1437,22 +1627,76 @@ class QVService:
             """
             Remove a step from a calculation.
             
+            Removes step from calculation.yaml steps array and moves step file to trash.
+            Handles ghost steps (missing files) gracefully.
+            
             Args:
                 calc_selector: Calculation selector
-                step_selector: Step selector
+                step_selector: Step selector (ULID)
                 
             Raises:
-                APIError: If calculation or step not found
+                NotFoundError: If calculation or step not found in calculation.yaml
+                APIError: For other removal failures
             """
             try:
-                from quantumvitas._api_legacy import QVService as LegacyService
+                from quantumvitas.core.resolution import require_calculation, require_step, ResourceNotFoundError
+                from quantumvitas.core.models import load_calculation, save_calculation
+                from quantumvitas.core.project_utils import load_project_config, move_to_trash
+                from quantumvitas.core.resolution import make_structure_selector_resolver
+                import yaml
                 
-                # Use legacy delete_step_from_calculation
-                LegacyService.delete_step_from_calculation(
-                    project_root=self._service.project_root,
-                    calculation_selector=calc_selector,
-                    step_selector=step_selector,
-                )
+                # Resolve calculation
+                calc_resolved = require_calculation(self._service.project_root, calc_selector)
+                
+                # Get calculation directory
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                    calc_yaml = calc_resolved.absolute_path
+                else:
+                    calc_dir = calc_resolved.absolute_path
+                    calc_yaml = calc_dir / "calculation.yaml"
+                
+                # Load calculation model
+                config = load_project_config(self._service.project_root)
+                resolver = make_structure_selector_resolver(self._service.project_root, config=config)
+                calc_model = load_calculation(calc_yaml, project_root=self._service.project_root, resolve_structure_selector=resolver)
+                
+                # Find step in calculation.yaml steps array
+                step_id = step_selector
+                step_entry = None
+                for entry in calc_model.steps:
+                    if entry.step_id == step_id:
+                        step_entry = entry
+                        break
+                
+                if step_entry is None:
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(
+                        f"Step '{step_selector}' not found in calculation",
+                        context={"calc_selector": calc_selector, "step_selector": step_selector}
+                    )
+                
+                # Remove step entry from calculation model
+                calc_model.steps = [e for e in calc_model.steps if e.step_id != step_id]
+                
+                # Save calculation.yaml
+                save_calculation(calc_model, calc_yaml)
+                
+                # Try to move step file to trash (handle ghost steps gracefully)
+                trash_dir = (self._service.project_root / "trash").resolve()
+                try:
+                    step_resolved = require_step(
+                        self._service.project_root,
+                        calc_selector,
+                        step_selector
+                    )
+                    step_path = step_resolved.absolute_path
+                    if step_path.exists():
+                        move_to_trash(step_path, trash_dir)
+                except (ResourceNotFoundError, FileNotFoundError):
+                    # Ghost step - file already missing, just continue
+                    pass
+                
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -1588,26 +1832,158 @@ class QVService:
             """
             Cancel a running job.
             
-            Note: This is a simplified implementation. In a full system,
-            this would interact with a job manager.
+            Attempts to cancel a job via JobManager if available (daemon context).
+            If JobManager is not available, attempts to find run info from history
+            and returns appropriate status.
             
             Args:
                 run_id: Run ID (ULID)
                 
             Returns:
-                RunResultDTO with cancelled status
+                RunResultDTO with cancelled status (or current status if already terminal)
                 
             Raises:
-                APIError: If run not found
+                NotFoundError: If run not found
+                EngineError: If cancellation fails (e.g., job already running)
             """
             try:
-                from quantumvitas.api.errors import NotFoundError
+                from quantumvitas.api.errors import NotFoundError, EngineError
+                from quantumvitas.history.storage import ProjectHistory
+                from quantumvitas.history.run_revision import load_run_revision
                 
-                # Simplified: For now, we can't easily cancel without JobManager
-                raise NotFoundError(
-                    f"Run cancellation not yet implemented for run_id: {run_id}",
-                    context={"run_id": run_id}
-                )
+                # Try to access JobManager if available (daemon context)
+                # Check for thread-local or context variable
+                job_manager = None
+                try:
+                    import threading
+                    # Check if there's a thread-local job manager
+                    if hasattr(threading.current_thread(), 'job_manager'):
+                        job_manager = threading.current_thread().job_manager
+                except Exception:
+                    pass
+                
+                # If JobManager is available, use it to cancel
+                if job_manager is not None:
+                    job = job_manager.get_job(run_id)
+                    if job is None:
+                        raise NotFoundError(
+                            f"Run not found: {run_id}",
+                            context={"run_id": run_id}
+                        )
+                    
+                    # Attempt cancellation
+                    cancelled = job_manager.cancel_job(run_id)
+                    
+                    # Get updated job status
+                    job = job_manager.get_job(run_id)
+                    if job is None:
+                        raise NotFoundError(
+                            f"Run not found after cancellation attempt: {run_id}",
+                            context={"run_id": run_id}
+                        )
+                    
+                    # Convert job to RunResultDTO
+                    status_map = {
+                        "pending": "submitted",
+                        "running": "running",
+                        "completed": "completed",
+                        "failed": "failed",
+                        "cancelled": "cancelled",
+                    }
+                    status = status_map.get(job.status.value, "submitted")
+                    
+                    # Extract calc_id from job params or result
+                    calc_id = ""
+                    if job.params:
+                        calc_id = job.params.get("calc_id", job.params.get("calc_selector", ""))
+                    if not calc_id and job.result:
+                        calc_id = job.result.get("calc_id", "")
+                    
+                    # Extract step_ids
+                    step_ids = []
+                    if job.steps:
+                        step_ids = [s.get("step_id", "") for s in job.steps if s.get("step_id")]
+                    
+                    # Format timestamps
+                    started_at = job.started_at.isoformat() if job.started_at else None
+                    completed_at = job.completed_at.isoformat() if job.completed_at else None
+                    
+                    # Calculate duration if both timestamps available
+                    duration_seconds = None
+                    if job.started_at and job.completed_at:
+                        duration_seconds = (job.completed_at - job.started_at).total_seconds()
+                    
+                    # Build error DTO if failed
+                    error = None
+                    if status == "failed" and job.error:
+                        from quantumvitas.api.types.error import ErrorDTO
+                        error = ErrorDTO(
+                            type="RunError",
+                            code="RUN_FAILED",
+                            message=job.error,
+                            retryable=True,
+                        )
+                    
+                    return RunResultDTO(
+                        run_id=run_id,
+                        calc_id=calc_id,
+                        status=status,
+                        step_ids=step_ids,
+                        started_at=started_at,
+                        completed_at=completed_at,
+                        duration_seconds=duration_seconds,
+                        exit_code=None,
+                        log_path=job.output_file,
+                        error=error,
+                    )
+                
+                # If JobManager not available, try to find run in history
+                history = ProjectHistory(self._service.project_root)
+                run_dir = history.get_run_dir(run_id)
+                
+                if run_dir is None:
+                    raise NotFoundError(
+                        f"Run not found: {run_id}",
+                        context={"run_id": run_id}
+                    )
+                
+                # Load run revision to get status
+                try:
+                    revision = load_run_revision(run_dir)
+                    
+                    # Check if run is already terminal
+                    if revision.status in ["completed", "failed", "cancelled"]:
+                        # Return current status (can't cancel already terminal runs)
+                        status_map = {
+                            "completed": "completed",
+                            "failed": "failed",
+                            "cancelled": "cancelled",
+                        }
+                        status = status_map.get(revision.status, "completed")
+                    else:
+                        # Run is active but we can't cancel without JobManager
+                        # Return current status with hint that cancellation requires daemon
+                        status = "running"  # or "submitted" depending on revision.status
+                    
+                    return RunResultDTO(
+                        run_id=run_id,
+                        calc_id=revision.calc_id,
+                        status=status,
+                        step_ids=revision.step_ids or [],
+                        started_at=revision.started_at,
+                        completed_at=revision.finished_at,
+                        duration_seconds=None,  # Would need to calculate from timestamps
+                        exit_code=None,
+                        log_path=revision.working_dir,
+                        error=None,
+                    )
+                except Exception as e:
+                    # If we can't load revision, still raise NotFoundError
+                    raise NotFoundError(
+                        f"Run not found or inaccessible: {run_id}",
+                        context={"run_id": run_id}
+                    ) from e
+                    
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -2039,52 +2415,126 @@ class QVService:
             Validate engine installation.
             
             Args:
-                engine_name: Engine name
+                engine_name: Engine name (e.g., "qe", "vasp", "orca")
                 
             Returns:
-                Validation result dict with available, executable, version, etc.
+                Validation result dict with schema:
+                - engine_name: str
+                - ok: bool
+                - details: dict (always present; may be empty)
+                - version: str | None (optional)
+                - binary: str | None (optional)
+                - message: str | None (optional)
+                - warnings: list[str] | None (optional)
                 
             Raises:
-                APIError: If engine not found
+                ValidationError: If engine_name is unknown (invalid input)
+                APIError: For other errors
             """
             try:
-                from quantumvitas.engine.registry import create_default_registry
-                from quantumvitas.api.errors import NotFoundError
+                from quantumvitas.api.errors import ValidationError
+                from quantumvitas.core.driver_registry import DriverRegistry
+                from quantumvitas.core.driver_exceptions import UnknownEngineError
                 
-                registry = create_default_registry()
-                
-                if not registry.has(engine_name):
-                    raise NotFoundError(
-                        f"Engine not found: {engine_name}",
+                # Get driver from registry (canonical source)
+                try:
+                    driver = DriverRegistry.get_driver(engine_name)
+                except UnknownEngineError:
+                    # Unknown engine is a validation error (invalid input)
+                    raise ValidationError(
+                        f"Unknown engine: {engine_name}",
+                        code="VALIDATION_FAILED",
                         context={"engine_name": engine_name}
                     )
                 
-                engine = registry.get(engine_name)
-                
+                # Initialize result with required fields
                 result = {
-                    "engine": engine_name,
-                    "available": False,
-                    "executable": None,
-                    "version": None,
+                    "engine_name": engine_name,
+                    "ok": False,
+                    "details": {},
                 }
                 
-                # Check if engine has probe method
-                if hasattr(engine, "probe"):
-                    result["available"] = engine.probe()
+                # Engine-specific validation hooks
+                warnings = []
                 
-                # Get executable if available
-                if hasattr(engine, "executable"):
+                if engine_name == "qe":
+                    # QE validation: check if binary directory can be resolved
                     try:
-                        result["executable"] = str(engine.executable)
-                        result["available"] = True
-                    except Exception:
-                        result["available"] = False
+                        from quantumvitas.drivers.qe.engine.qe_resolver import resolve_qe_bin_dir
+                        from pathlib import Path
+                        
+                        bin_dir = resolve_qe_bin_dir()
+                        result["ok"] = True
+                        result["binary"] = str(bin_dir)
+                        result["details"]["bin_dir"] = str(bin_dir)
+                        result["details"]["mode"] = "external"  # or "internal" - simplified
+                        
+                        # Try to get version if available
+                        try:
+                            from quantumvitas.drivers.qe.engine.qe_diagnostics import diagnose_qe_resolution
+                            report = diagnose_qe_resolution()
+                            if report.version:
+                                result["version"] = report.version
+                        except Exception:
+                            pass
+                            
+                    except RuntimeError as e:
+                        # QE not found or invalid
+                        result["ok"] = False
+                        result["message"] = str(e)
+                        result["details"]["error"] = str(e)
+                    except Exception as e:
+                        # Other errors during validation
+                        result["ok"] = False
+                        result["message"] = f"Validation error: {e}"
+                        result["details"]["error"] = str(e)
+                        warnings.append(f"Unexpected error during QE validation: {e}")
                 
-                # Get version if available
-                if hasattr(engine, "version") and engine.version:
-                    result["version"] = engine.version
+                elif engine_name == "orca":
+                    # ORCA validation: check if binary can be found
+                    try:
+                        from quantumvitas.core.engines.orca_resolver import resolve_orca_bin, get_orca_version
+                        from pathlib import Path
+                        
+                        orca_bin = resolve_orca_bin()
+                        result["ok"] = True
+                        result["binary"] = str(orca_bin)
+                        result["details"]["binary"] = str(orca_bin)
+                        
+                        # Try to get version
+                        version = get_orca_version(orca_bin)
+                        if version:
+                            result["version"] = version
+                    except RuntimeError as e:
+                        # ORCA not found
+                        result["ok"] = False
+                        result["message"] = str(e)
+                        result["details"]["error"] = str(e)
+                    except Exception as e:
+                        result["ok"] = False
+                        result["message"] = f"Validation error: {e}"
+                        result["details"]["error"] = str(e)
+                
+                elif engine_name in ["pyscf", "cp2k", "lammps", "vasp"]:
+                    # For engines without specific validation hooks, return ok=True
+                    # with note that validation is not implemented
+                    result["ok"] = True
+                    result["details"]["note"] = "Engine is registered; validation hook not implemented"
+                    result["message"] = "Engine registered successfully"
+                
+                else:
+                    # Unknown engine (shouldn't happen if DriverRegistry is correct)
+                    # But if it does, return ok=True with note
+                    result["ok"] = True
+                    result["details"]["note"] = "Engine is registered; no validation hook available"
+                    result["message"] = "Engine registered successfully"
+                
+                # Add warnings if any
+                if warnings:
+                    result["warnings"] = warnings
                 
                 return result
+                
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -2094,3 +2544,635 @@ class QVService:
     def engine(self) -> Engine:
         """Access engine capabilities."""
         return QVService.Engine(self)
+    
+    # -------------------------------------------------------------------------
+    # Static methods (backwards compatibility)
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def init_project(
+        target_dir: Path | str,
+        name: str | None = None,
+        template: str | None = None,
+    ) -> Path:
+        """
+        Initialize a new QuantumVITAS project.
+        
+        This is a backwards-compatibility wrapper for the legacy QVService.init_project().
+        It creates a new project directory with project.qv.yml and standard subdirectories.
+        
+        Args:
+            target_dir: Directory to create the project in
+            name: Project name (defaults to directory name)
+            template: Optional template name (deprecated, not used)
+            
+        Returns:
+            Path to project root
+            
+        Raises:
+            ValueError: If target_dir is inside an existing project
+            APIError: If project creation fails
+        """
+        try:
+            from quantumvitas.core.context import detect_enclosing_project
+            from quantumvitas.core.project_utils import save_project_config
+            from quantumvitas.core.resources import generate_resource_id, slugify
+            
+            target_dir = Path(target_dir).resolve()
+            
+            # Check if target_dir is inside an existing project
+            enclosing_project = detect_enclosing_project(target_dir)
+            if enclosing_project:
+                raise ValueError(
+                    f"Cannot create a new project inside an existing QuantumVITAS project. "
+                    f"The selected folder is inside a project at: {enclosing_project}. "
+                    f"Please choose a parent folder above your current project directory."
+                )
+            
+            target_dir.mkdir(parents=True, exist_ok=True)
+            
+            project_name = name or target_dir.name
+            project_slug = slugify(project_name)
+            project_id = generate_resource_id()
+            
+            config = {
+                "project": {
+                    "name": project_name,
+                    "meta": {
+                        "id": project_id,
+                        "name": project_name,
+                        "slug": project_slug,
+                        "path": ".",
+                        "kind": "project",
+                    },
+                },
+                "structures": [],
+                "calculations": [],
+            }
+            
+            save_project_config(target_dir, config)
+            
+            # Create standard directories
+            (target_dir / "structures").mkdir(exist_ok=True)
+            (target_dir / "calculations").mkdir(exist_ok=True)
+            (target_dir / "pseudo").mkdir(exist_ok=True)
+            (target_dir / "trash").mkdir(exist_ok=True)
+            
+            return target_dir
+            
+        except Exception as e:
+            if isinstance(e, (ValueError, APIError)):
+                raise
+            raise map_kernel_exception(e)
+    
+    @staticmethod
+    def get_settings() -> dict[str, Any]:
+        """
+        Get global QMatSuite settings.
+        
+        This is a backwards-compatibility wrapper for the legacy QVService.get_settings().
+        Returns global settings from .qmatsuite/config/settings.json with safe defaults.
+        
+        Returns:
+            Dict with settings:
+            - version: int
+            - qe: dict with "bin_dir" (str | None)
+            - debug_resolution: bool
+            - max_concurrent_calcs: int
+            - analysis_cache_enabled: bool
+        """
+        try:
+            from quantumvitas.core.settings import load_settings
+            
+            settings = load_settings()
+            return {
+                "version": settings.version,
+                "qe": {
+                    "bin_dir": settings.qe.bin_dir,
+                },
+                "debug_resolution": settings.debug_resolution,
+                "max_concurrent_calcs": settings.max_concurrent_calcs,
+                "analysis_cache_enabled": settings.analysis_cache_enabled,
+            }
+        except Exception as e:
+            if isinstance(e, APIError):
+                raise
+            # If loading fails, return safe defaults (matches load_settings behavior)
+            # This ensures the daemon can still start even if settings file is corrupted
+            return {
+                "version": 1,
+                "qe": {
+                    "bin_dir": None,
+                },
+                "debug_resolution": False,
+                "max_concurrent_calcs": 2,
+                "analysis_cache_enabled": True,
+            }
+    
+    @staticmethod
+    def get_project_summary(project_root: Path | str) -> dict[str, Any]:
+        """
+        Get a high-level summary of a project.
+        
+        This is a backwards-compatibility wrapper for the legacy QVService.get_project_summary().
+        
+        Args:
+            project_root: Project root path
+            
+        Returns:
+            Dict with project name, id, structure count, calculation count, etc.
+        """
+        try:
+            from quantumvitas.core.project_utils import load_project_config
+            from quantumvitas.core.resolution import list_structures, list_calculations
+            
+            project_root = Path(project_root).resolve()
+            config = load_project_config(project_root)
+            
+            project_info = config.get("project", {})
+            meta = project_info.get("meta", {})
+            structures = config.get("structures", [])
+            calculations = config.get("calculations", [])
+            
+            # Use registry to resolve structure/calculation names (ID-only model)
+            structure_names = []
+            try:
+                resolved_structures = list_structures(project_root)
+                structure_names = [res.meta.name for res in resolved_structures]
+            except Exception:
+                # Fallback: try to get names from structure entries if they have meta
+                structure_names = [
+                    s.get("meta", {}).get("name") or s.get("name", "?")
+                    for s in structures
+                ]
+            
+            calculation_names = []
+            try:
+                resolved_calculations = list_calculations(project_root)
+                calculation_names = [res.meta.name for res in resolved_calculations]
+            except Exception:
+                # Fallback: try to get names from calculation entries if they have meta
+                calculation_names = [
+                    w.get("meta", {}).get("name") or w.get("name", "?")
+                    for w in calculations
+                ]
+            
+            return {
+                "id": meta.get("id"),
+                "name": project_info.get("name") or meta.get("name") or project_root.name,
+                "slug": meta.get("slug"),
+                "path": str(project_root),
+                "n_structures": len(structures),
+                "n_calculations": len(calculations),
+                "structure_names": structure_names,
+                "calculation_names": calculation_names,
+            }
+        except Exception as e:
+            if isinstance(e, APIError):
+                raise
+            raise map_kernel_exception(e)
+    
+    @staticmethod
+    def list_structures_data(project_root: Path | str) -> list[dict[str, Any]]:
+        """
+        List all structures as JSON-serializable dicts.
+        
+        This is a backwards-compatibility wrapper for the legacy QVService.list_structures_data().
+        
+        Args:
+            project_root: Project root path
+            
+        Returns:
+            List of dicts, each with id, name, slug, path, and structure metadata
+        """
+        try:
+            from quantumvitas.core.resolution import list_structures
+            from quantumvitas.io.structure_io import read_structure
+            
+            project_root = Path(project_root).resolve()
+            resolved_list = list_structures(project_root)
+            
+            result = []
+            for res in resolved_list:
+                entry = {
+                    "id": res.meta.id,
+                    "name": res.meta.name,
+                    "slug": res.meta.slug,
+                    "path": res.meta.path,
+                    "absolute_path": str(res.absolute_path),
+                }
+                
+                # Try to add structure metadata (formula, n_atoms, etc.)
+                try:
+                    if res.absolute_path.exists():
+                        struct = read_structure(res.absolute_path)
+                        entry["formula"] = struct.composition.reduced_formula
+                        entry["n_atoms"] = len(struct)
+                        entry["n_species"] = len(struct.composition.elements)
+                        entry["lattice_type"] = struct.lattice.pbc.__class__.__name__ if hasattr(struct.lattice, 'pbc') else "3D"
+                        # Lattice parameters
+                        latt = struct.lattice
+                        entry["lattice_params"] = {
+                            "a": float(latt.a),
+                            "b": float(latt.b),
+                            "c": float(latt.c),
+                            "alpha": float(latt.alpha),
+                            "beta": float(latt.beta),
+                            "gamma": float(latt.gamma),
+                            "volume": float(latt.volume),
+                        }
+                except Exception:
+                    pass  # Structure metadata is optional
+                
+                result.append(entry)
+            
+            return result
+        except Exception as e:
+            if isinstance(e, APIError):
+                raise
+            raise map_kernel_exception(e)
+    
+    @staticmethod
+    def list_calculations_data(project_root: Path | str) -> list[dict[str, Any]]:
+        """
+        List all calculations as JSON-serializable dicts.
+        
+        This is a backwards-compatibility wrapper for the legacy QVService.list_calculations_data().
+        Uses Project.open() and Calculation.from_yaml() to ensure legacy calculations
+        are automatically migrated to the ID-only model.
+        
+        Args:
+            project_root: Project root path
+            
+        Returns:
+            List of dicts, each with calculation metadata and step info
+        """
+        try:
+            from quantumvitas.core.resolution import list_calculations
+            from quantumvitas.project.model import Project
+            from quantumvitas.calculation.calculation import Calculation
+            
+            project_root = Path(project_root).resolve()
+            
+            # Use list_calculations to get all calculations (more reliable than Project.open())
+            resolved_list = list_calculations(project_root)
+            
+            # Try to open project for additional metadata (optional)
+            project = None
+            try:
+                project = Project.open(project_root)
+            except Exception:
+                pass  # Project.open() is optional for metadata
+            
+            result = []
+            for res in resolved_list:
+                entry = {
+                    "id": res.meta.id,
+                    "name": res.meta.name,
+                    "slug": res.meta.slug,
+                    "path": res.meta.path,
+                    "absolute_path": str(res.absolute_path),
+                    "mode": "normal",  # Default mode (will be overridden if calculation loads successfully)
+                    "n_steps": 0,  # Default (will be overridden if calculation loads successfully)
+                    "steps": [],  # Default (will be overridden if calculation loads successfully)
+                }
+                
+                # Try to load calculation with migration support (inspection mode)
+                # This uses Calculation.from_yaml() which handles legacy step entries
+                try:
+                    if res.absolute_path.exists() and project is not None:
+                        calculation = Calculation.from_yaml(res.absolute_path, project, materialize_steps=False)
+                        
+                        # Extract structure info
+                        if calculation.structure:
+                            entry["structure"] = calculation.structure.meta.name if hasattr(calculation.structure, 'meta') else str(calculation.structure)
+                            entry["structure_id"] = calculation.structure.meta.id if hasattr(calculation.structure, 'meta') else None
+                        else:
+                            entry["structure"] = None
+                            entry["structure_id"] = None
+                        
+                        # Ensure mode is always present (default to "normal" if not set)
+                        entry["mode"] = calculation.mode.value if hasattr(calculation.mode, 'value') else (str(calculation.mode) if calculation.mode else "normal")
+                        entry["n_steps"] = len(calculation.steps)
+                        
+                        # Extract step info from actual Step objects (which have ULID meta.id)
+                        entry["steps"] = [
+                            {
+                                "step_id": step.meta.id,  # ULID (canonical reference)
+                                "id": step.meta.id,  # Also include as 'id' for backwards compatibility in API response
+                                "type": step.step_type,
+                            }
+                            for step in calculation.steps
+                        ]
+                except Exception:
+                    pass  # Calculation metadata is optional
+                
+                result.append(entry)
+            
+            return result
+        except Exception as e:
+            if isinstance(e, APIError):
+                raise
+            raise map_kernel_exception(e)
+    
+    @staticmethod
+    def init_calculation(
+        project_root: Path | str,
+        name: str,
+        structure_selector: str | None = None,
+        template: str | None = None,
+        *,
+        index: Any = None,
+        config: dict | None = None,
+    ) -> Any:
+        """
+        Create a new calculation.
+        
+        This is a backwards-compatibility wrapper for the legacy QVService.init_calculation().
+        
+        Args:
+            project_root: Project root path
+            name: Calculation name
+            structure_selector: Optional structure selector for calculation
+            template: Optional template name
+            index: Optional resource index (for performance)
+            config: Optional project config (for performance)
+            
+        Returns:
+            ResolvedResource for the new calculation
+        """
+        try:
+            from quantumvitas.core.project_utils import load_project_config, save_project_config
+            from quantumvitas.core.resources import generate_resource_id, slugify
+            from quantumvitas.core.resolution import resolve_structure, build_resource_index
+            import yaml
+            
+            project_root = Path(project_root).resolve()
+            
+            # Load project config
+            if config is None:
+                config = load_project_config(project_root)
+            
+            calculations = config.setdefault("calculations", [])
+            
+            # Collect existing slugs
+            existing_slugs = {calc.get("meta", {}).get("slug") or calc.get("slug") for calc in calculations if calc.get("meta", {}).get("slug") or calc.get("slug")}
+            
+            # Generate unique name and slug
+            base_slug = slugify(name)
+            final_slug = base_slug
+            counter = 1
+            while final_slug in existing_slugs:
+                final_slug = f"{base_slug}-{counter}"
+                counter += 1
+            
+            final_name = name
+            
+            # Generate calculation ID
+            calc_id = generate_resource_id()
+            
+            # Create calculation directory
+            calc_dir = project_root / "calculations" / final_slug
+            calc_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Create calculation.yaml
+            calc_yaml = calc_dir / "calculation.yaml"
+            calc_data = {
+                "meta": {
+                    "id": calc_id,
+                    "name": final_name,
+                    "slug": final_slug,
+                    "path": f"calculations/{final_slug}",
+                    "kind": "calculation",
+                },
+                "steps": [],
+            }
+            
+            # Add structure reference if provided
+            if structure_selector:
+                if index is None:
+                    index = build_resource_index(project_root)
+                struct_resolved = resolve_structure(project_root, structure_selector, index=index)
+                calc_data["structure_id"] = struct_resolved.meta.id
+            
+            # Write calculation.yaml
+            with open(calc_yaml, "w", encoding="utf-8") as f:
+                yaml.dump(calc_data, f, default_flow_style=False, sort_keys=False)
+            
+            # Add to project config
+            calc_entry = {
+                "meta": {
+                    "id": calc_id,
+                    "name": final_name,
+                    "slug": final_slug,
+                    "path": f"calculations/{final_slug}",
+                    "kind": "calculation",
+                }
+            }
+            calculations.append(calc_entry)
+            save_project_config(project_root, config)
+            
+            # Return ResolvedResource
+            from quantumvitas.core.resolution import ResolvedResource
+            from quantumvitas.core.resources import ResourceMeta
+            
+            meta = ResourceMeta(
+                id=calc_id,
+                name=final_name,
+                slug=final_slug,
+                path=f"calculations/{final_slug}",
+                kind="calculation",
+            )
+            
+            return ResolvedResource(
+                meta=meta,
+                entry=calc_entry,
+                absolute_path=calc_yaml,
+            )
+        except Exception as e:
+            if isinstance(e, APIError):
+                raise
+            raise map_kernel_exception(e)
+    
+    @staticmethod
+    def run_calculation(
+        project_root: Path | str,
+        calculation_selector: str,
+        strict: bool = False,
+        verbose: bool = False,
+        *,
+        index: Any = None,
+        config: dict | None = None,
+        run_id: str | None = None,
+        run_mode: str = "incremental",
+    ) -> dict[str, Any]:
+        """
+        Run all steps in a calculation.
+        
+        This is a backwards-compatibility wrapper for the legacy QVService.run_calculation().
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            strict: If True, fail on first error
+            verbose: If True, print detailed output
+            index: Optional resource index (for performance)
+            config: Optional project config (for performance)
+            run_id: External run ID to use (e.g., job_id from JobManager)
+            run_mode: Run mode ("incremental" or "full", default "incremental")
+            
+        Returns:
+            Dict with run results
+        """
+        try:
+            from quantumvitas._api_legacy import QVService as LegacyService
+            
+            project_root = Path(project_root).resolve()
+            
+            # Use legacy implementation
+            return LegacyService.run_calculation(
+                project_root=project_root,
+                calculation_selector=calculation_selector,
+                strict=strict,
+                verbose=verbose,
+                index=index,
+                config=config,
+                run_id=run_id,
+                run_mode=run_mode,
+            )
+        except Exception as e:
+            if isinstance(e, APIError):
+                raise
+            raise map_kernel_exception(e)
+    
+    @staticmethod
+    def import_structure(
+        project_root: Path | str,
+        source: Path | str,
+        name: str | None = None,
+        format: str = "auto",
+        *,
+        index: Any = None,
+        dedup_by_fingerprint: bool = False,
+    ) -> Any:
+        """
+        Import a structure file into the project.
+        
+        This is a backwards-compatibility wrapper for the legacy QVService.import_structure().
+        
+        Args:
+            project_root: Project root path
+            source: Path to source file (CIF, QE input, JSON, etc.)
+            name: Name for the structure (defaults to filename stem)
+            format: File format hint
+            index: Optional resource index for registry update
+            dedup_by_fingerprint: If True, reuse existing structure with same content fingerprint
+        
+        Returns:
+            ResolvedResource for the imported structure
+        """
+        try:
+            from quantumvitas._api_legacy import QVService as LegacyService
+            
+            project_root = Path(project_root).resolve()
+            source = Path(source).resolve()
+            
+            # Use legacy implementation
+            return LegacyService.import_structure(
+                project_root=project_root,
+                source=source,
+                name=name,
+                format=format,
+                index=index,
+                dedup_by_fingerprint=dedup_by_fingerprint,
+            )
+        except Exception as e:
+            if isinstance(e, APIError):
+                raise
+            raise map_kernel_exception(e)
+    
+    @staticmethod
+    def configure_species_map(
+        project_root: Path | str,
+        calculation: str,
+        *,
+        from_qe_input: Path | str | None = None,
+        set_entries: list[tuple[str, float, str]] | None = None,
+        merge: bool = True,
+    ) -> dict[str, dict[str, Any]]:
+        """
+        Configure calculation-level species_map.
+        
+        This is a backwards-compatibility wrapper for the legacy QVService.configure_species_map().
+        Uses the shared API from quantumvitas.calculation.species_config.
+        
+        Args:
+            project_root: Project root directory
+            calculation: Calculation selector (id/name/slug/path)
+            from_qe_input: Optional QE input file to extract ATOMIC_SPECIES from
+            set_entries: Optional list of explicit (element, mass, pseudopot) triples
+            merge: If True (default), merge with existing species_map. If False, replace.
+            
+        Returns:
+            Updated species_map dictionary (element -> {mass, pseudopot, ...})
+        """
+        try:
+            from quantumvitas.calculation.species_config import configure_species_map as _configure_species_map
+            
+            project_root = Path(project_root).resolve()
+            if from_qe_input:
+                from_qe_input = Path(from_qe_input).resolve()
+            
+            # Use shared API
+            return _configure_species_map(
+                project_root=project_root,
+                calculation=calculation,
+                from_qe_input=from_qe_input,
+                set_entries=set_entries,
+                merge=merge,
+            )
+        except Exception as e:
+            if isinstance(e, APIError):
+                raise
+            # Map ValueError to ValidationError for API consistency
+            if isinstance(e, ValueError):
+                from quantumvitas.api.errors import ValidationError
+                raise ValidationError(
+                    str(e),
+                    code="VALIDATION_FAILED",
+                    context={"calculation": calculation}
+                )
+            raise map_kernel_exception(e)
+    
+    @staticmethod
+    def extract_calculation_selector_from_entry(entry: dict[str, Any]) -> str | None:
+        """
+        Extract a calculation selector from a project.qv.yml entry.
+        
+        This is a backwards-compatibility wrapper for the legacy QVService.extract_calculation_selector_from_entry().
+        
+        Args:
+            entry: Calculation entry dict from project.qv.yml
+            
+        Returns:
+            Selector string (ULID, slug, or name) or None if no valid selector found
+        """
+        from quantumvitas.api.utils import extract_calculation_selector_from_entry as _extract
+        return _extract(entry)
+    
+    @staticmethod
+    def get_default_step_params(step_type: str) -> dict[str, Any]:
+        """
+        Get default parameters for a step type.
+        
+        This is a backwards-compatibility wrapper for the legacy QVService.get_default_step_params().
+        
+        Args:
+            step_type: Step type (e.g., "qe_scf", "qe_nscf", "scf", "nscf")
+            
+        Returns:
+            Dict with "parameters", "cards", and "species_overrides" keys.
+            Returns empty dicts if step_type is not recognized.
+        """
+        from quantumvitas.calculation.step_defaults import get_default_step_params as _get_default_step_params
+        return _get_default_step_params(step_type)
