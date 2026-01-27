@@ -2670,6 +2670,17 @@ class QVService:
             }
     
     @staticmethod
+    def get_workflow_service() -> Any:
+        """
+        Get workflow service instance.
+        
+        Returns:
+            WorkflowService instance
+        """
+        from quantumvitas.workflow.templates import get_workflow_service as _get_workflow_service
+        return _get_workflow_service()
+    
+    @staticmethod
     def get_project_summary(project_root: Path | str) -> dict[str, Any]:
         """
         Get a high-level summary of a project.

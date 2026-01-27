@@ -24,7 +24,7 @@ import sys
 import time
 import traceback
 import yaml
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, TextIO
 
@@ -6423,15 +6423,20 @@ class QVDaemon:
         service = QVService.get_workflow_service()
         templates = service.list_templates()
         
-        # Serialize templates (WorkflowTemplate is not a dataclass, so manual construction)
+        # Serialize templates using dataclasses.asdict()
         templates_list = []
         for t in templates:
-            templates_list.append({
-                "id": t.id,
-                "name": t.name,
-                "description": t.description,
-                "step_sequence": list(t.step_sequence),
-            })
+            template_dict = asdict(t)
+            # Convert step_sequence from tuple to list for JSON serialization
+            template_dict["step_sequence"] = list(template_dict["step_sequence"])
+            # Filter to only required keys (prevent schema widening)
+            filtered_dict = {
+                "id": template_dict["id"],
+                "name": template_dict["name"],
+                "description": template_dict["description"],
+                "step_sequence": template_dict["step_sequence"],
+            }
+            templates_list.append(filtered_dict)
         
         return {
             "templates": templates_list

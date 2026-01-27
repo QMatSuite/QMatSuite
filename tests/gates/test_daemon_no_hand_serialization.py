@@ -40,7 +40,153 @@ def _find_handlers_in_file(file_path: Path) -> list[tuple[int, str]]:
     return handlers
 
 
-def _check_line_for_violations(file_path: Path, line_num: int, line: str, method_name: str, context_lines: list[str]) -> list[str]:
+def _is_inside_docstring(lines: list[str], line_idx: int) -> bool:
+    """
+    Check if line_idx is inside a docstring by looking for unclosed triple quotes.
+    
+    Args:
+        lines: All lines in the file
+        line_idx: Index of line to check (0-indexed)
+    
+    Returns:
+        True if inside a docstring, False otherwise
+    """
+    # Look backwards from line_idx to find the last opening triple quote
+    text_before = '\n'.join(lines[:line_idx + 1])
+    last_open = max(
+        text_before.rfind('"""'),
+        text_before.rfind("'''")
+    )
+    if last_open == -1:
+        return False
+    
+    # Check if there's a closing triple quote after the opening one
+    text_after_open = text_before[last_open + 3:]
+    closing = text_after_open.find('"""')
+    if closing == -1:
+        closing = text_after_open.find("'''")
+    # If no closing found, we're inside a docstring
+    return closing == -1
+
+
+def _check_for_allowlist_annotation(lines: list[str], line_idx: int) -> bool:
+    """
+    Check if line_idx or the immediately preceding line contains ALLOW_MANUAL_DICT annotation.
+    
+    Args:
+        lines: List of all lines in the file
+        line_idx: Index of line to check (0-indexed)
+    
+    Returns:
+        True if allowlist annotation found, False otherwise
+    """
+    # Check current line
+    if line_idx < len(lines):
+        if '# ALLOW_MANUAL_DICT:' in lines[line_idx]:
+            return True
+    # Check immediately preceding line
+    if line_idx > 0:
+        if '# ALLOW_MANUAL_DICT:' in lines[line_idx - 1]:
+            return True
+    return False
+
+
+def _check_manual_dict_literal(file_path: Path, line_num: int, line: str, method_name: str, 
+                                context_lines: list[str], all_lines: list[str], line_idx: int) -> list[str]:
+    """
+    Check for manual dict literal construction in handler methods.
+    
+    Flags dict literals like {"key": obj.attr, ...} or items.append({"id": t.id, ...})
+    unless they have an allowlist annotation or are in allowed contexts.
+    
+    Args:
+        file_path: Path to file being checked
+        line_num: Line number (1-indexed)
+        line: Line content to check
+        method_name: Name of the method containing this line
+        context_lines: List of lines around this line for context checking
+        all_lines: All lines in the file (for allowlist checking)
+        line_idx: Index of current line (0-indexed)
+    
+    Returns:
+        List of violation messages (empty if none)
+    """
+    violations = []
+    
+    # Skip comments and strings
+    stripped = line.strip()
+    if stripped.startswith('#') or stripped.startswith('"""') or stripped.startswith("'''"):
+        return violations
+    
+    # Skip if line is inside a docstring
+    if _is_inside_docstring(all_lines, line_idx):
+        return violations
+    
+    # Skip if line contains triple quotes (likely docstring delimiter)
+    if '"""' in line or "'''" in line:
+        return violations
+    
+    # Check for allowlist annotation
+    if _check_for_allowlist_annotation(all_lines, line_idx):
+        return violations
+    
+    # Check if we're in RPCResponse.to_json() - already allowed
+    context_lower = ' '.join([line] + context_lines[:5]).lower()
+    if 'def to_json' in context_lower or 'rpcresponse' in context_lower:
+        return violations
+    
+    # Check for file I/O / cache usage - allow these
+    if any(keyword in context_lower for keyword in ['write_text', '.write(', 'sqlite', 'db_path', 
+                                                     'conn.execute', 'cursor.execute', 'cache']):
+        return violations
+    
+    # Skip set literals (e.g., `if k not in {"code", "message"}:`)
+    # Set literals don't have colons, so if we see { ... } without :, it's likely a set
+    # But we also need to check for dict access patterns like .get("key", {})
+    if '.get(' in line or '.setdefault(' in line:
+        return violations
+    
+    # Pattern: Dict literal with object attribute access
+    # Examples: 
+    #   items.append({"id": t.id, "name": t.name})  - FLAG THIS
+    #   return {"ok": True, "enabled": bool_value}  - DON'T FLAG (no obj.attr)
+    #   if k not in {"code", "message"}:  - DON'T FLAG (set literal, no :)
+    
+    # Pattern to match: "key": obj.attr (object attribute access, not method calls)
+    dict_literal_pattern = r'["\']\w+["\']\s*:\s*\w+\.\w+(?!\s*\()'
+    
+    # Check for dict literal pattern: { "key": obj.attr, ... } 
+    # Must have: { ... "key": var.attr ... } where var.attr is object attribute access
+    # We want to flag: {"id": t.id, "name": t.name} but NOT {"ok": True, "enabled": settings.get(...)}
+    if '{' in line and ':' in line:
+        # Look for pattern: {"key": obj.attr where obj.attr is NOT a method call
+        if re.search(dict_literal_pattern, line):
+            # Make sure it's not from to_dict()/asdict() and then filtered
+            if 'to_dict()' not in line and 'asdict(' not in line:
+                violations.append(f"Manual dict literal construction found (use DTO.to_dict() or dataclasses.asdict() instead)")
+    
+    # Also check for multi-line dict literals
+    # Only flag if current line starts a dict (like "return {", "param_dict = {", "append({") 
+    # AND we see the pattern in the immediate next 2-3 lines
+    if '{' in line and (line.strip().endswith('{') or '= {' in line or 'return {' in line or '.append({' in line or '.extend({' in line):
+        # Only look at immediate next 2-3 lines for the pattern
+        # Check each line individually for the pattern
+        pattern_found = False
+        for check_line in context_lines[:3]:
+            if ':' in check_line and re.search(dict_literal_pattern, check_line):
+                pattern_found = True
+                break
+        if pattern_found:
+            # Make sure it's not from to_dict()/asdict()
+            combined = ' '.join([line] + context_lines[:3])
+            if 'to_dict()' not in combined and 'asdict(' not in combined:
+                violations.append(f"Manual dict literal construction found (use DTO.to_dict() or dataclasses.asdict() instead)")
+    
+    return violations
+
+
+def _check_line_for_violations(file_path: Path, line_num: int, line: str, method_name: str, context_lines: list[str], 
+                                all_lines: list[str] = None, line_idx: int = None) -> list[str]:
     """
     Check a single line for hand-serialization violations.
     
@@ -50,6 +196,8 @@ def _check_line_for_violations(file_path: Path, line_num: int, line: str, method
         line: Line content to check
         method_name: Name of the method containing this line
         context_lines: List of lines around this line for context checking
+        all_lines: All lines in the file (for allowlist checking)
+        line_idx: Index of current line (0-indexed)
     
     Returns:
         List of violation messages (empty if none)
@@ -115,6 +263,11 @@ def _check_line_for_violations(file_path: Path, line_num: int, line: str, method
                             if 'to_dict()' not in full_context and 'asdict(' not in full_context:
                                 violations.append(f"Manual dict construction in list comprehension (use DTO.to_dict() or dataclasses.asdict() instead)")
     
+    # Check for manual dict literal construction (PR6.5 enhancement)
+    if all_lines is not None and line_idx is not None:
+        dict_violations = _check_manual_dict_literal(file_path, line_num, line, method_name, context_lines, all_lines, line_idx)
+        violations.extend(dict_violations)
+    
     return violations
 
 
@@ -172,7 +325,7 @@ def test_daemon_no_hand_serialization():
             line = lines[i]
             # Get context (next 5 lines for checking)
             context_lines = lines[i+1:min(i+6, end_line)]
-            violations = _check_line_for_violations(daemon_file, i + 1, line, handler_name, context_lines)
+            violations = _check_line_for_violations(daemon_file, i + 1, line, handler_name, context_lines, lines, i)
             if violations:
                 for violation in violations:
                     all_violations.append(
