@@ -15,7 +15,8 @@ import time
 import uuid
 from pathlib import Path
 
-from quantumvitas.api import QVService, APIError
+from quantumvitas.api import QVService
+from quantumvitas.api.compat import configure_step, init_step, APIError
 from quantumvitas.core.paths import tmp_runs_dir
 from quantumvitas.execution.relax_artifacts import (
     get_generated_structure_path,
@@ -109,7 +110,7 @@ def promote_test_calculation_with_relax(promote_test_project):
     calc_yaml.write_text(yaml.dump(calc_data))
     
     # Create relax step
-    relax_step_result = QVService.init_step(
+    relax_step_result = init_step(
         project_root=project_root,
         calculation_selector=calc_ulid,
         step_type="pyscf_relax",
@@ -118,7 +119,7 @@ def promote_test_calculation_with_relax(promote_test_project):
     relax_step_ulid = relax_step_result.id
     
     # Configure relax step with minimal parameters for quick test
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_ulid,
         step_selector=relax_step_ulid,
@@ -248,7 +249,7 @@ class TestRelaxPromoteE2E:
         calc_yaml.write_text(yaml.dump(calc_data))
         
         # Create SCF step (not relax)
-        scf_step_result = QVService.init_step(
+        scf_step_result = init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_type="pyscf_scf",

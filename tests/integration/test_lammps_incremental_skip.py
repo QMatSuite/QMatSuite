@@ -15,6 +15,7 @@ import yaml
 from pathlib import Path
 
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import init_step, configure_step
 from quantumvitas.calculation.calculation import Calculation
 from quantumvitas.calculation.runner import CalculationRunner
 from quantumvitas.engine.registry import create_default_registry
@@ -86,15 +87,15 @@ def inline_lj_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step with inline LJ potential
-    step = QVService.init_step(
+    step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
     )
-    step_id = step.meta.id
+    step_id = step.step_id
     
     # Configure step with initial LJ parameters
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=step_id,
@@ -286,14 +287,14 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create MD step
-    step = QVService.init_step(
+    step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
     )
-    step_id = step.meta.id
+    step_id = step.step_id
     
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=step_id,

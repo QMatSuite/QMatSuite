@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import init_step
 from quantumvitas.core.yamldoc import StepDoc
 from quantumvitas.daemon.server import QVDaemon, RPCRequest
 
@@ -59,7 +60,7 @@ def temp_project(tmp_path: Path) -> tuple[Path, str, str]:
     calc_ulid = calc_result.id
     
     # Create step and get ULID
-    step_result = QVService.init_step(project_root, calc_ulid, step_type="scf", name="step001")
+    step_result = init_step(project_root, calc_ulid, step_type="scf", name="step001")
     step_ulid = step_result.id
     
     return (project_root, calc_ulid, step_ulid)

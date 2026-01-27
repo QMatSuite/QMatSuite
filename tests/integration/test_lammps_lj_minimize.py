@@ -10,6 +10,7 @@ import yaml
 from pathlib import Path
 
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import init_step, configure_step
 from quantumvitas.calculation.calculation import Calculation
 from quantumvitas.calculation.runner import CalculationRunner
 from quantumvitas.engine.registry import create_default_registry
@@ -70,15 +71,15 @@ def lj_project(tmp_path: Path):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    step_resolved = QVService.init_step(
+    step_resolved = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
     )
-    step_id = step_resolved.meta.id
+    step_id = step_resolved.step_id
     
     # Configure step parameters
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=step_id,

@@ -18,7 +18,7 @@ from pathlib import Path
 from pymatgen.core import Structure, Lattice
 import numpy as np
 
-from quantumvitas.api import QVService
+from quantumvitas.api_legacy import QVService
 from quantumvitas.analysis.structure_viz import DisplayModeParams
 # Note: _parse_optimade_structure is internal, we'll use public API instead
 # from quantumvitas.io.online_search import fetch_structure_from_optimade

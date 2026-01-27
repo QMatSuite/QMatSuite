@@ -18,6 +18,7 @@ import subprocess
 from pathlib import Path
 
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import configure_step, init_step
 from quantumvitas.calculation.calculation import Calculation
 from quantumvitas.calculation.runner import CalculationRunner
 from quantumvitas.engine.registry import create_default_registry
@@ -136,7 +137,7 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    step = QVService.init_step(
+    step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
@@ -144,7 +145,7 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
     step_id = step.meta.id
     
     # Configure step with inline LJ potential
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=step_id,
@@ -271,7 +272,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create MD step
-    step = QVService.init_step(
+    step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
@@ -279,7 +280,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     step_id = step.meta.id
     
     # Configure step
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=step_id,
@@ -405,14 +406,14 @@ def chain_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = QVService.init_step(
+    relax_step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
     )
     relax_step_id = relax_step.meta.id
     
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=relax_step_id,
@@ -429,14 +430,14 @@ def chain_project(tmp_path: Path, lammps_binary):
     )
     
     # Create MD step
-    md_step = QVService.init_step(
+    md_step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
     )
     md_step_id = md_step.meta.id
     
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=md_step_id,
@@ -601,14 +602,14 @@ def restart_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = QVService.init_step(
+    relax_step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
     )
     relax_step_id = relax_step.meta.id
     
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=relax_step_id,
@@ -625,14 +626,14 @@ def restart_project(tmp_path: Path, lammps_binary):
     )
     
     # Create first MD step
-    md1_step = QVService.init_step(
+    md1_step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
     )
     md1_step_id = md1_step.meta.id
     
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=md1_step_id,
@@ -651,7 +652,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     )
     
     # Create second MD step (restart from first MD)
-    md2_step = QVService.init_step(
+    md2_step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
@@ -670,7 +671,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     )
     # ========== END ULID ASSERTIONS ==========
     
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=md2_step_id,

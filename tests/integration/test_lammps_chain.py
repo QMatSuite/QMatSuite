@@ -11,6 +11,7 @@ import shutil
 from pathlib import Path
 
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import init_step, configure_step
 from quantumvitas.calculation.calculation import Calculation
 from quantumvitas.calculation.runner import CalculationRunner
 from quantumvitas.engine.registry import create_default_registry
@@ -95,14 +96,14 @@ def chain_project(tmp_path: Path):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = QVService.init_step(
+    relax_step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
     )
-    relax_step_id = relax_step.meta.id
+    relax_step_id = relax_step.step_id
     
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=relax_step_id,
@@ -119,14 +120,14 @@ def chain_project(tmp_path: Path):
     )
     
     # Create first MD step (restart_from relax)
-    md_step = QVService.init_step(
+    md_step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
     )
-    md_step_id = md_step.meta.id
+    md_step_id = md_step.step_id
     
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=md_step_id,
@@ -145,12 +146,12 @@ def chain_project(tmp_path: Path):
     )
     
     # Create second MD step (restart_from first MD)
-    continue_md = QVService.init_step(
+    continue_md = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
     )
-    continue_md_id = continue_md.meta.id
+    continue_md_id = continue_md.step_id
     
     # ========== ULID UNIQUENESS ASSERTIONS (detect Ubuntu CI root cause) ==========
     # These assertions fail-fast if ULID collision occurs or if restart_from is misconfigured
@@ -168,7 +169,7 @@ def chain_project(tmp_path: Path):
     )
     # ========== END ULID ASSERTIONS ==========
     
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=continue_md_id,

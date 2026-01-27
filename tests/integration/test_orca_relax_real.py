@@ -15,6 +15,7 @@ import shutil
 from pathlib import Path
 
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import run_step, init_step, configure_step
 from quantumvitas.core.paths import tmp_runs_dir
 from quantumvitas.execution.relax_artifacts import (
     get_generated_structure_path,
@@ -74,10 +75,10 @@ def orca_project_with_h2(orca_available):
     calc_yaml.write_text(yaml.dump(calc_data, default_flow_style=False))
     
     # Create relax step
-    step = QVService.init_step(project_root, calc.id, "orca_relax", name="relax")
+    step = init_step(project_root, calc.id, "orca_relax", name="relax")
     
     # Configure with minimal parameters
-    QVService.configure_step(
+    configure_step(
         project_root, calc.id, step.id,
         parameters={
             "method": "HF",
@@ -109,7 +110,7 @@ class TestORCARelaxReal:
         step_id = orca_project_with_h2["step_id"]
         
         # Run relax
-        result = QVService.run_step(project_root, calc_id, step_id)
+        result = run_step(project_root, calc_id, step_id)
         
         # Verify success
         assert result.get("success"), f"Step failed: {result.get('error')}"
@@ -131,7 +132,7 @@ class TestORCARelaxReal:
         initial_distance = orca_project_with_h2["initial_h2_distance"]
         
         # Run relax
-        result = QVService.run_step(project_root, calc_id, step_id)
+        result = run_step(project_root, calc_id, step_id)
         assert result.get("success"), f"Step failed: {result.get('error')}"
         
         # Read relaxed structure
@@ -164,7 +165,7 @@ class TestORCARelaxReal:
         step_id = orca_project_with_h2["step_id"]
         
         # Run relax
-        result = QVService.run_step(project_root, calc_id, step_id)
+        result = run_step(project_root, calc_id, step_id)
         assert result.get("success"), f"Step failed: {result.get('error')}"
         
         # Read relaxed structure

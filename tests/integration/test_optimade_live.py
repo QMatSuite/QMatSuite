@@ -489,7 +489,7 @@ def test_optimade_live_viewer_payload_builder():
     assert structure is not None
     
     # Use shared payload builder (same as production)
-    from quantumvitas.api import QVService
+    from quantumvitas.api_legacy import QVService
     from quantumvitas.analysis.structure_viz import DisplayModeParams
     
     params = DisplayModeParams(

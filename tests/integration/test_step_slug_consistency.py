@@ -13,6 +13,7 @@ import pytest
 from pathlib import Path
 
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import init_step
 from quantumvitas.core.resolution import require_step, build_resource_index
 from quantumvitas.core.models import load_calculation
 from quantumvitas.core.yamldoc import CalcDoc
@@ -71,8 +72,8 @@ def test_step_slug_uniqueness_and_consistency(lammps_project):
     steps_dir = calc_dir / "steps"
     
     # Create two MD steps (same step_type)
-    s1 = QVService.init_step(project_root, calc_id, "md")
-    s2 = QVService.init_step(project_root, calc_id, "md")
+    s1 = init_step(project_root, calc_id, "md")
+    s2 = init_step(project_root, calc_id, "md")
     
     # === Assertion 1: IDs are unique ===
     assert s1.meta.id != s2.meta.id, f"ULID collision: {s1.meta.id}"
@@ -121,8 +122,8 @@ def test_require_step_by_ulid_returns_correct_slug(lammps_project):
     calc_dir = lammps_project["calc_dir"]
     
     # Create two MD steps
-    s1 = QVService.init_step(project_root, calc_id, "md")
-    s2 = QVService.init_step(project_root, calc_id, "md")
+    s1 = init_step(project_root, calc_id, "md")
+    s2 = init_step(project_root, calc_id, "md")
     
     # Look up s2 by its ULID
     s2_by_id = require_step(project_root, calc_id, s2.meta.id)
@@ -143,8 +144,8 @@ def test_require_step_by_slug_returns_correct_step(lammps_project):
     calc_id = lammps_project["calc_id"]
     
     # Create two MD steps
-    s1 = QVService.init_step(project_root, calc_id, "md")
-    s2 = QVService.init_step(project_root, calc_id, "md")
+    s1 = init_step(project_root, calc_id, "md")
+    s2 = init_step(project_root, calc_id, "md")
     
     # Look up by slug
     s1_by_slug = require_step(project_root, calc_id, "md")
@@ -169,8 +170,8 @@ def test_resource_index_matches_yaml(lammps_project):
     steps_dir = calc_dir / "steps"
     
     # Create steps
-    s1 = QVService.init_step(project_root, calc_id, "md")
-    s2 = QVService.init_step(project_root, calc_id, "md")
+    s1 = init_step(project_root, calc_id, "md")
+    s2 = init_step(project_root, calc_id, "md")
     
     # Build fresh index
     index = build_resource_index(project_root)
@@ -200,7 +201,7 @@ def test_three_steps_same_type(lammps_project):
     calc_id = lammps_project["calc_id"]
     
     # Create three MD steps
-    steps = [QVService.init_step(project_root, calc_id, "md") for _ in range(3)]
+    steps = [init_step(project_root, calc_id, "md") for _ in range(3)]
     
     # Verify IDs are unique
     ids = [s.meta.id for s in steps]

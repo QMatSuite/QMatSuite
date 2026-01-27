@@ -15,6 +15,7 @@ from quantumvitas.calculation.calculation import Calculation
 from quantumvitas.calculation.runner import CalculationRunner
 from quantumvitas.engine.registry import create_default_registry
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import configure_step, init_step
 from quantumvitas.core.resolution import build_resource_index
 
 
@@ -98,7 +99,7 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
     save_yaml_doc(calc_doc, calc_data_path)
     
     # Create SCF step using service API
-    step_resolved = QVService.init_step(
+    step_resolved = init_step(
         project_root=temp_project,
         calculation_selector=calc_id,
         step_type="scf",
@@ -107,7 +108,7 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
     step_id = step_resolved.meta.id
     
     # Configure step parameters
-    QVService.configure_step(
+    configure_step(
         project_root=temp_project,
         calculation_selector=calc_id,
         step_selector=step_id,
@@ -224,7 +225,7 @@ class TestPySCFPhase3CIntegration:
         assert checkpoint_file.exists()
         
         # RunStep(scf): should NOT use chkfile init_guess (target step always full rerun)
-        result2 = QVService.run_step(
+        result2 = run_step(
             project_root=project_root,
             calculation_selector=calc_id,
             step_selector=step_id,
@@ -266,14 +267,14 @@ class TestPySCFPhase3CIntegration:
         save_yaml_doc(calc_doc, calc_data_path)
         
         # Create SCF step
-        scf_step_resolved = QVService.init_step(
+        scf_step_resolved = init_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_type="scf",
             name="scf",
         )
         scf_step_id = scf_step_resolved.meta.id
-        QVService.configure_step(
+        configure_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_selector=scf_step_id,
@@ -286,14 +287,14 @@ class TestPySCFPhase3CIntegration:
         )
         
         # Create MP2 step
-        mp2_step_resolved = QVService.init_step(
+        mp2_step_resolved = init_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_type="mp2",
             name="mp2",
         )
         mp2_step_id = mp2_step_resolved.meta.id
-        QVService.configure_step(
+        configure_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_selector=mp2_step_id,
@@ -303,7 +304,7 @@ class TestPySCFPhase3CIntegration:
         )
         
         # Run Step(MP2): should execute SCF then MP2 in one session
-        result = QVService.run_step(
+        result = run_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_selector=mp2_step_id,
@@ -361,14 +362,14 @@ class TestPySCFPhase3CIntegration:
         save_yaml_doc(calc_doc, calc_data_path)
         
         # Create MP2 step (no SCF dependency)
-        mp2_step_resolved = QVService.init_step(
+        mp2_step_resolved = init_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_type="mp2",
             name="mp2",
         )
         mp2_step_id = mp2_step_resolved.meta.id
-        QVService.configure_step(
+        configure_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_selector=mp2_step_id,
@@ -379,7 +380,7 @@ class TestPySCFPhase3CIntegration:
         
         # Run Step(MP2): should fail because no SCF provider exists
         # Note: The unified pipeline returns errors in the result dict rather than raising exceptions
-        result = QVService.run_step(
+        result = run_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_selector=mp2_step_id,

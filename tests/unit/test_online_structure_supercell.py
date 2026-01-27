@@ -400,7 +400,7 @@ def test_online_project_shared_pipeline():
     - build_display_atoms (unified)
     - build_bonds (from display atoms cart coords)
     """
-    from quantumvitas.api import QVService
+    from quantumvitas.api_legacy import QVService
     
     # Build a test structure (simulating online structure)
     lattice_vectors = [
@@ -539,7 +539,7 @@ def test_online_vs_project_pipeline_identical():
     - Max bond length identical within tolerance
     - No long-bond spikes: maxBond < 6 Å AND maxDegree not exploding
     """
-    from quantumvitas.api import QVService
+    from quantumvitas.api_legacy import QVService
     from quantumvitas.io.online_search import (
         OPTIMADE_BASES,
         fetch_structure_from_optimade,
