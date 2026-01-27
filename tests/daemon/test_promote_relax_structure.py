@@ -7,7 +7,8 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from quantumvitas.api import QVService, APIError
+from quantumvitas.api import QVService
+from quantumvitas.api.compat import init_step, APIError
 from quantumvitas.daemon.server import QVDaemon, RPCRequest
 from quantumvitas.execution.relax_artifacts import write_generated_structure
 
@@ -52,7 +53,7 @@ class TestPromoteRelaxStructureAPI:
         calc_ulid = calc_result.id
         
         # Create relax step
-        step_result = QVService.init_step(project_root, calc_ulid, step_type="qe_relax", name="relax")
+        step_result = init_step(project_root, calc_ulid, step_type="qe_relax", name="relax")
         step_ulid = step_result.id
         
         # Write generated structure
@@ -104,7 +105,7 @@ class TestPromoteRelaxStructureAPI:
         
         # Create calculation and step
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
-        step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
+        step_result = init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
         
         # Try to promote without current.json
         with pytest.raises(APIError) as exc_info:
@@ -133,7 +134,7 @@ class TestPromoteRelaxStructureAPI:
         
         # Create calculation and SCF step (not relax)
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
-        step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_scf", name="scf")
+        step_result = init_step(project_root, calc_result.id, step_type="qe_scf", name="scf")
         
         # Try to promote non-relax step
         with pytest.raises(APIError) as exc_info:
@@ -168,7 +169,7 @@ class TestPromoteRelaxStructureDaemonRPC:
         
         # Create calculation and relax step
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
-        step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
+        step_result = init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
         
         # Write generated structure
         lattice = Lattice.cubic(5.5)

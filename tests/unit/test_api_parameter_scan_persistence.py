@@ -10,6 +10,7 @@ Verifies that:
 import pytest
 from pathlib import Path
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import init_step
 from quantumvitas.core.yamldoc import StepDoc
 from quantumvitas.workflow.step_factory import save_step_doc
 
@@ -34,7 +35,7 @@ def test_update_step_params_parameter_scan_full_replace(tmp_path):
     calc_ulid = calc_result.id
     
     # Create step
-    step_result = QVService.init_step(project_root, "calc001", step_type="scf", name="step001")
+    step_result = init_step(project_root, "calc001", step_type="scf", name="step001")
     step_yaml = step_result.absolute_path
     
     # Set initial parameter_scan via direct YAML edit (for test setup)
@@ -51,7 +52,7 @@ def test_update_step_params_parameter_scan_full_replace(tmp_path):
     save_step_doc(step_doc, step_yaml)
     
     # Update with new parameter_scan (only scan003, should delete scan001/scan002)
-    result = QVService.update_step_params(
+    result = update_step_params(
         project_root=project_root,
         calculation_ulid=calc_ulid,
         step_selector=step_result.id,
@@ -108,11 +109,11 @@ def test_update_step_params_parameter_scan_preserves_array_values(tmp_path):
     calc_ulid = calc_result.id
     
     # Create step
-    step_result = QVService.init_step(project_root, "calc001", step_type="scf", name="step001")
+    step_result = init_step(project_root, "calc001", step_type="scf", name="step001")
     step_yaml = step_result.absolute_path
     
     # Update with scan values array of length 3
-    result = QVService.update_step_params(
+    result = update_step_params(
         project_root=project_root,
         calculation_ulid=calc_ulid,
         step_selector=step_result.id,
@@ -171,7 +172,7 @@ def test_update_step_params_parameter_scan_empty_clears_all(tmp_path):
     calc_ulid = calc_result.id
     
     # Create step
-    step_result = QVService.init_step(project_root, "calc001", step_type="scf", name="step001")
+    step_result = init_step(project_root, "calc001", step_type="scf", name="step001")
     step_yaml = step_result.absolute_path
     
     # Set initial parameter_scan via direct YAML edit (for test setup)
@@ -188,7 +189,7 @@ def test_update_step_params_parameter_scan_empty_clears_all(tmp_path):
     save_step_doc(step_doc, step_yaml)
     
     # Update with empty parameter_scan (should clear all)
-    result = QVService.update_step_params(
+    result = update_step_params(
         project_root=project_root,
         calculation_ulid=calc_ulid,
         step_selector=step_result.id,
@@ -230,11 +231,11 @@ def test_update_step_params_parameter_scan_multiple_scans(tmp_path):
     calc_ulid = calc_result.id
     
     # Create step
-    step_result = QVService.init_step(project_root, "calc001", step_type="scf", name="step001")
+    step_result = init_step(project_root, "calc001", step_type="scf", name="step001")
     step_yaml = step_result.absolute_path
     
     # Update with multiple scans
-    result = QVService.update_step_params(
+    result = update_step_params(
         project_root=project_root,
         calculation_ulid=calc_ulid,
         step_selector=step_result.id,

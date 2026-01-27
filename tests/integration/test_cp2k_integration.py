@@ -9,6 +9,7 @@ import pytest
 from pathlib import Path
 
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import configure_step, init_step
 from quantumvitas.calculation.calculation import Calculation
 from quantumvitas.calculation.runner import CalculationRunner
 from quantumvitas.engine.registry import create_default_registry
@@ -87,7 +88,7 @@ def test_cp2k_scf_silicon(cp2k_silicon_project):
     calc_id = cp2k_silicon_project["calc_id"]
     
     # Create SCF step
-    step_resolved = QVService.init_step(
+    step_resolved = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="scf",
@@ -95,7 +96,7 @@ def test_cp2k_scf_silicon(cp2k_silicon_project):
     step_id = step_resolved.meta.id
     
     # Configure step parameters
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=step_id,
@@ -145,7 +146,7 @@ def test_cp2k_relax_silicon_with_cell(cp2k_silicon_project):
     calc_id = cp2k_silicon_project["calc_id"]
     
     # Create relax step
-    step_resolved = QVService.init_step(
+    step_resolved = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
@@ -153,7 +154,7 @@ def test_cp2k_relax_silicon_with_cell(cp2k_silicon_project):
     step_id = step_resolved.meta.id
     
     # Configure step parameters
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=step_id,
@@ -228,7 +229,7 @@ def test_cp2k_md_incremental_skip_disabled(cp2k_silicon_project):
     calc_id = cp2k_silicon_project["calc_id"]
     
     # Create MD step
-    step_resolved = QVService.init_step(
+    step_resolved = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
@@ -236,7 +237,7 @@ def test_cp2k_md_incremental_skip_disabled(cp2k_silicon_project):
     step_id = step_resolved.meta.id
     
     # Configure step parameters
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=step_id,

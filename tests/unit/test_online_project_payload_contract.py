@@ -11,7 +11,7 @@ import pytest
 import numpy as np
 from pymatgen.core import Structure, Lattice
 
-from quantumvitas.api import QVService
+from quantumvitas.api_legacy import QVService
 from quantumvitas.analysis.structure_viz import DisplayModeParams
 
 

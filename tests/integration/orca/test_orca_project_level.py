@@ -3,7 +3,7 @@ Level-3 Project Integration Tests for ORCA.
 
 These tests verify the full unified pipeline (JobGraph execution) for ORCA:
 - QVService.run_calculation() runs through JobGraph pipeline
-- QVService.run_step() runs through unified run_step() (not legacy)
+- run_step() runs through unified run_step() (not legacy)
 - SPEC step types are preserved throughout execution
 
 Per Constitution §C: Run Calc and Run Step share ONE pipeline.
@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Optional
 
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import init_step
 
 
 def get_orca_path() -> Optional[Path]:
@@ -96,7 +97,7 @@ def orca_project(tmp_path):
     calc_yaml.write_text(yaml.dump(calc_data, default_flow_style=False))
 
     # Add SCF step with SPEC step type
-    step_resolved = QVService.init_step(
+    step_resolved = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="orca_scf",  # SPEC type per Constitution §B
@@ -148,7 +149,7 @@ class TestORCAProjectLevelExecution:
 
         Constitution §C: Run Step shares the unified pipeline with Run Calc.
         """
-        result = QVService.run_step(
+        result = run_step(
             project_root=orca_project["root"],
             calculation_selector=orca_project["calc_selector"],
             step_selector=orca_project["step_id"],

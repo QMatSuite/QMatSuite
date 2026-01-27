@@ -5,6 +5,7 @@ Tests that warnings are emitted when steps have prefix/outdir/pseudo_dir
 in CONTROL section (pure keyword matching, no engine detection).
 """
 
+from quantumvitas.api.compat import update_step_params
 import tempfile
 from pathlib import Path
 
@@ -136,7 +137,7 @@ def test_update_step_params_warns_on_runtime_keys(temp_project_with_step):
     project_root, calculation_id, step_id, step_file = temp_project_with_step
     
     # Update step with outdir (runtime key)
-    result = QVService.update_step_params(
+    result = update_step_params(
         project_root=project_root,
         calculation_ulid=calculation_id,
         step_selector=step_id,
@@ -163,7 +164,7 @@ def test_update_step_params_warns_regardless_of_step_type(temp_project_with_step
     step_file.write_text(yaml.safe_dump(step_data, sort_keys=False))
     
     # Update step with outdir (should warn regardless of step type - pure keyword matching)
-    result = QVService.update_step_params(
+    result = update_step_params(
         project_root=project_root,
         calculation_ulid=calculation_id,
         step_selector=step_id,
@@ -180,7 +181,7 @@ def test_update_step_params_warns_on_prefix(temp_project_with_step):
     """Test that update_step_params warns on prefix key."""
     project_root, calculation_id, step_id, step_file = temp_project_with_step
     
-    result = QVService.update_step_params(
+    result = update_step_params(
         project_root=project_root,
         calculation_ulid=calculation_id,
         step_selector=step_id,
@@ -196,7 +197,7 @@ def test_update_step_params_warns_on_pseudo_dir(temp_project_with_step):
     """Test that update_step_params warns on pseudo_dir key."""
     project_root, calculation_id, step_id, step_file = temp_project_with_step
     
-    result = QVService.update_step_params(
+    result = update_step_params(
         project_root=project_root,
         calculation_ulid=calculation_id,
         step_selector=step_id,

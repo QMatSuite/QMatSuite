@@ -21,7 +21,7 @@ from quantumvitas.io.online_search import (
     search_optimade,
 )
 from quantumvitas.io.structure_io import write_structure, read_structure
-from quantumvitas.api import QVService
+from quantumvitas.api_legacy import QVService
 from quantumvitas.analysis.structure_viz import DisplayModeParams
 
 

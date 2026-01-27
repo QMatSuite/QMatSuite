@@ -10,6 +10,7 @@ import pytest
 from pathlib import Path
 
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import run_step, configure_step, init_step
 from quantumvitas.core.paths import tmp_runs_dir
 from quantumvitas.execution.relax_artifacts import (
     get_generated_structure_path,
@@ -109,7 +110,7 @@ def qe_calculation_with_relax(qe_project_with_si):
     )
     
     # Create relax step
-    relax_step_result = QVService.init_step(
+    relax_step_result = init_step(
         project_root=project_root,
         calculation_selector=calc_ulid,
         step_type="qe_relax",
@@ -118,7 +119,7 @@ def qe_calculation_with_relax(qe_project_with_si):
     relax_step_ulid = relax_step_result.id
     
     # Configure relax step with minimal parameters for quick test
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_ulid,
         step_selector=relax_step_ulid,
@@ -184,7 +185,7 @@ class TestQERelaxReal:
         project_root = qe_calculation_with_relax["project_root"]
         
         # Run the relax step
-        result = QVService.run_step(
+        result = run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=relax_step_ulid,
@@ -277,7 +278,7 @@ class TestQERelaxReal:
         initial_structure = read_structure(structure_path)
         
         # Run the relax step
-        result = QVService.run_step(
+        result = run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=relax_step_ulid,
@@ -314,7 +315,7 @@ class TestQERelaxReal:
         project_root = qe_calculation_with_relax["project_root"]
         
         # Run the relax step
-        result = QVService.run_step(
+        result = run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=relax_step_ulid,

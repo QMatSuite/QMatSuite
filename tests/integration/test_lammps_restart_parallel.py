@@ -11,6 +11,7 @@ import shutil
 from pathlib import Path
 
 from quantumvitas.api import QVService
+from quantumvitas.api.compat import configure_step, init_step
 from quantumvitas.calculation.calculation import Calculation
 from quantumvitas.calculation.runner import CalculationRunner
 from quantumvitas.engine.registry import create_default_registry
@@ -103,14 +104,14 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = QVService.init_step(
+    relax_step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
     )
     relax_step_id = relax_step.meta.id
     
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=relax_step_id,
@@ -127,14 +128,14 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     )
     
     # Create MD step with restart_from
-    md_step = QVService.init_step(
+    md_step = init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
     )
     md_step_id = md_step.meta.id
     
-    QVService.configure_step(
+    configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=md_step_id,
