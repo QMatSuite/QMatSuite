@@ -1232,7 +1232,8 @@ def _calculation_to_resolved(project_root: Path, entry: dict) -> ResolvedResourc
                             default_name=wf_meta_dict.get("name", "Calculation"),
                             default_path=wf_meta_dict.get("path", f"calculations/{calculation_dir.name}"),
                         )
-                        abs_path = calculation_yaml.resolve()
+                        # absolute_path must point to the calculation directory, not the file
+                        abs_path = calculation_dir.resolve()
                         return ResolvedResource(meta=resource_meta, entry=entry, absolute_path=abs_path)
                 except Exception:
                     continue
@@ -1243,7 +1244,14 @@ def _calculation_to_resolved(project_root: Path, entry: dict) -> ResolvedResourc
     default_path = entry.get("path") or meta.get("path") or f"calculations/{slugify(default_name)}"
     
     resource_meta = _entry_to_meta(entry, "calculation", default_path)
-    abs_path = (project_root / resource_meta.path / "calculation.yaml").resolve()
+    # absolute_path must point to the calculation directory, not the file
+    # If default_path already includes "calculation.yaml", strip it
+    calc_dir_path = resource_meta.path
+    if calc_dir_path.endswith("/calculation.yaml"):
+        calc_dir_path = calc_dir_path[:-len("/calculation.yaml")]
+    elif calc_dir_path.endswith("calculation.yaml"):
+        calc_dir_path = calc_dir_path[:-len("calculation.yaml")]
+    abs_path = (project_root / calc_dir_path).resolve()
     
     return ResolvedResource(meta=resource_meta, entry=entry, absolute_path=abs_path)
     """Convert a calculation entry to ResolvedResource."""

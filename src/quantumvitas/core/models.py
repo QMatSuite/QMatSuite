@@ -414,8 +414,23 @@ def load_calculation(
         LegacyProjectError: If legacy fields are detected in the calculation
         FileNotFoundError: If calculation.yaml does not exist
     """
-    if path.is_dir():
+    # Normalize path: handle both directory and file paths, and prevent double-append
+    path_str = str(path)
+    
+    # Fix double-append bug: if path ends with /calculation.yaml/calculation.yaml, extract directory
+    if path_str.endswith("/calculation.yaml/calculation.yaml"):
+        # Extract the directory part (remove the double-append)
+        dir_part = path_str[:-len("/calculation.yaml/calculation.yaml")]
+        path = Path(dir_part) / "calculation.yaml"
+    elif path.is_dir():
+        # Directory: append calculation.yaml
         path = path / "calculation.yaml"
+    elif path.name == "calculation.yaml":
+        # Already a calculation.yaml file, use as-is (but verify it's actually a file)
+        if not path.is_file():
+            # Might be a malformed path, try parent directory
+            if path.parent.is_dir():
+                path = path.parent / "calculation.yaml"
     
     if not path.exists():
         raise FileNotFoundError(f"Calculation file not found: {path}")
