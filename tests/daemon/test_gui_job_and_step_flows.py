@@ -80,10 +80,12 @@ def temp_project(tmp_path: Path) -> Path:
     )
     calculation_id = calculation_result.meta.id
     
+    # Use domain accessor API for step creation
+    svc = QVService(project_dir)
+    
     # Add a simple SCF step
-    step_result = QVService.add_step_to_calculation(
-        project_root=project_dir,
-        calculation_selector=calculation_id,
+    step_result = svc.calculation.add_step(
+        calc_selector=calculation_id,
         step_type="scf",
     )
     

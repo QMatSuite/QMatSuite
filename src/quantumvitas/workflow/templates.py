@@ -532,7 +532,7 @@ class WorkflowService:
         
         # Update calculation.yaml.steps[] with created steps (authoritative)
         # Per Constitution: steps[] is single source of truth
-        from quantumvitas.api import QVService
+        from quantumvitas._api_legacy import QVService as LegacyService
         from quantumvitas.core.project_utils import find_project_root
         
         # Find project root (calc_dir is calculations/{slug}/)
@@ -546,7 +546,7 @@ class WorkflowService:
         for public_step, step_ulid in zip(public_steps, created_step_ulids):
             step_types[step_ulid] = public_step  # Store public type in calculation.yaml
         
-        QVService.calc_set_steps(
+        LegacyService.calc_set_steps(
             project_root=project_root,
             calculation_ulid=parent_calculation_id,
             ordered_step_ulids=created_step_ulids,

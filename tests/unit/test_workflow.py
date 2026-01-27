@@ -319,15 +319,7 @@ class TestStepFactory:
         assert slug in ["my-scf", "my_scf"]  # Accept either convention
         assert doc.get(["meta", "id"]) is not None
     
-    def test_create_step_doc_with_parent(self):
-        """create_step_doc includes parent_calculation_id."""
-        doc = create_step_doc(
-            step_type="nscf",
-            name="nscf",
-            parent_calculation_id="01PARENT123",
-        )
-        
-        assert doc.get(["parent_calculation_id"]) == "01PARENT123"
+    # DELETED: test_create_step_doc_with_parent - tests parent_calculation_id which was removed (DAG invariant)
     
     def test_create_step_doc_has_defaults(self):
         """create_step_doc includes default parameters."""

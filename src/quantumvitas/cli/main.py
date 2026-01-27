@@ -31,6 +31,20 @@ from quantumvitas.api import (
     QVService,
     get_service,
 )
+from quantumvitas.api.utils import (
+    build_step_spec_from_qe_input,
+    detect_runtime_control_keys,
+    entry_display_name,
+    entry_matches,
+    extract_alat_bohr,
+    extract_calculation_selector_from_entry,
+    extract_step_selector_from_entry,
+    find_path_context_ref,
+    find_project_root,
+    move_to_trash,
+    needs_alat_preservation,
+    write_qe_input_file,
+)
 from quantumvitas.data import (
     get_module_doc_url,
     get_module_param_sections,
@@ -1110,7 +1124,7 @@ def init_step_command(
         is_at_project_root = False
         if not calculation_entry:
             try:
-                path_ctx = QVService.find_path_context_ref()
+                path_ctx = find_path_context_ref()
                 # Compare resolved paths to handle symlinks and path differences
                 if cwd_resolved == project_root_resolved and not path_ctx["is_inside_calculation"]:
                     is_at_project_root = True
@@ -1143,13 +1157,13 @@ def init_step_command(
         calculation_data = yaml.safe_load(calculation_yaml.read_text()) or {}
         calculation_steps = calculation_data.setdefault("steps", [])
         existing_step_ids = [
-            QVService.extract_step_selector_from_entry(step) 
+            extract_step_selector_from_entry(step) 
             for step in calculation_steps 
-            if QVService.extract_step_selector_from_entry(step)
+            if extract_step_selector_from_entry(step)
         ]
         
         # Get parent calculation id and structure
-        parent_calculation_id = QVService.extract_calculation_selector_from_entry(calculation_entry)
+        parent_calculation_id = extract_calculation_selector_from_entry(calculation_entry)
         if not parent_calculation_id:
             # Fallback to calculation.yaml meta.id
             parent_calculation_id = calculation_data.get("meta", {}).get("id") or calculation_data.get("id")
@@ -1164,9 +1178,9 @@ def init_step_command(
         # Set calculation_steps and existing_step_ids for step creation
         calculation_steps = calculation_data.setdefault("steps", [])
         existing_step_ids = [
-            QVService.extract_step_selector_from_entry(step) 
+            extract_step_selector_from_entry(step) 
             for step in calculation_steps 
-            if QVService.extract_step_selector_from_entry(step)
+            if extract_step_selector_from_entry(step)
         ]
     else:
         calculation_structure_id = None
@@ -1308,6 +1322,9 @@ def init_step_command(
     from quantumvitas.api.utils import meta_from_name
     step_meta_dict = meta_from_name("step", name=step_display_name, path="")
     # Build step spec as dict (no StructureStepSpec dependency)
+    # DAG model: Step YAML does NOT contain structure_id or parent_calculation_id
+    # Step inherits structure from calculation.structure_id at runtime
+    # Step is associated with calculation via calculation.yaml's steps array
     spec: dict[str, Any] = {
         "meta": step_meta_dict,
         "step_type": step_type,
@@ -1315,12 +1332,8 @@ def init_step_command(
         "cards": cards,
         "species_overrides": species,
     }
-    if structure_value:
-        spec["structure"] = structure_value  # Keep for backwards compat
-    if structure_id:
-        spec["structure_id"] = structure_id  # Canonical reference (ULID)
-    if parent_calculation_id:
-        spec["parent_calculation_id"] = parent_calculation_id
+    # NOTE: Do NOT add structure, structure_id, or parent_calculation_id to spec
+    # These are DAG relationships resolved at runtime
     if kpath_result:
         spec["kpath_metadata"] = kpath_result.to_dict()
     _write_step_spec(spec_path, spec, project_root=project_root)
@@ -1357,7 +1370,7 @@ def init_step_command(
         calculation_yaml.write_text(yaml.safe_dump(calculation_data, sort_keys=False))
         from quantumvitas.api import QVService
         typer.echo(
-            f"Calculation '{QVService.entry_display_name(calculation_entry)}' updated with step id '{step_slug}'."
+            f"Calculation '{entry_display_name(calculation_entry)}' updated with step id '{step_slug}'."
         )
 
     typer.echo(f"Step spec created at {spec_path}")
@@ -1394,7 +1407,7 @@ def save_project_command(
     if project:
         project_root = Path(project).expanduser().resolve()
     else:
-        ctx = QVService.find_path_context_ref()
+        ctx = find_path_context_ref()
         project_root = ctx["project_root"]
     
     if not (project_root / "project.qv.yml").exists():
@@ -1620,8 +1633,8 @@ def run_step_command(
         typer.echo("Warning: --bidirectional is only meaningful in standalone mode (which always does roundtrip). Ignoring flag.")
     
     # Project context functions now via QVService
-    from quantumvitas.api import QVService, NotFoundError
-    
+    from quantumvitas.api import QVService, NotFoundError, get_service
+
     cwd = Path.cwd()
     try:
         # ProjectContext removed - use QVService methods directly
@@ -1818,7 +1831,7 @@ def _run_standalone_step(
     
     try:
         # Import .in to step.yaml
-        import_result = QVService.build_step_spec_from_qe_input(
+        import_result = build_step_spec_from_qe_input(
             input_file=input_path,
             destination_dir=temp_import_dir,
             structure_dir=temp_structure_dir,
@@ -1945,7 +1958,7 @@ def run_structure_command(
 
     generated_name = input_name or f"{struct_name}_{step_type}.pw.in"
     generated_input = workdir / generated_name
-    QVService.write_qe_input_file(qe_input, generated_input)
+    write_qe_input_file(qe_input, generated_input)
 
     result, prepared = QVService.run_input_step(
         engine=engine.backend,
@@ -2003,7 +2016,7 @@ def list_resources(
         struct_slug = struct_dto.meta.slug if struct_dto.meta else ""
         struct_name = struct_dto.meta.name if struct_dto.meta else ""
         for entry in config.get("structures", []):
-            if QVService.entry_matches(entry, struct_slug) or QVService.entry_matches(entry, struct_name):
+            if entry_matches(entry, struct_slug) or entry_matches(entry, struct_name):
                 struct_entry = entry
                 break
         
@@ -2157,7 +2170,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
         step_display_name = "(unnamed)"
         
         # New DAG model: step_id (ULID) is the canonical reference
-        step_id_ulid = QVService.extract_step_selector_from_entry(step_entry)
+        step_id_ulid = extract_step_selector_from_entry(step_entry)
         
         # Legacy: step_file (for backwards compatibility)
         legacy_step_file = step_entry.get("step_file")
@@ -2210,7 +2223,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
             # Have ULID but couldn't resolve - mark as missing
             step_display_name = f"(missing: {step_id_ulid[:8]}...)"
         else:
-            # Legacy: try old id field (already handled by QVService.extract_step_selector_from_entry)
+            # Legacy: try old id field (already handled by extract_step_selector_from_entry)
             # If we got here, step_id_ulid is None, so no valid selector found
             step_display_name = "(invalid entry)"
         
@@ -2454,7 +2467,7 @@ def rename_step_command(
     # Find step by matching selector (ID-only model uses step_id)
     target_step = None
     for step in steps:
-        step_selector = QVService.extract_step_selector_from_entry(step)
+        step_selector = extract_step_selector_from_entry(step)
         if step_selector == step_id:
             target_step = step
             break
@@ -2466,7 +2479,7 @@ def rename_step_command(
 
     if new_id:
         # Check for duplicate step_id
-        if any(QVService.extract_step_selector_from_entry(step) == new_id for step in steps if step is not target_step):
+        if any(extract_step_selector_from_entry(step) == new_id for step in steps if step is not target_step):
             raise typer.BadParameter(
                 f"Step id '{new_id}' already exists in calculation '{calculation_entry.get('name')}'."
             )
@@ -2678,7 +2691,7 @@ def delete_structure_command(
                     else:
                         calc_dir = calc_resolved.absolute_path
                     if calc_dir.exists():
-                        QVService.move_to_trash(calc_dir, trash_dir)
+                        move_to_trash(calc_dir, trash_dir)
                     # Remove from config
                     calculations = config.setdefault("calculations", [])
                     calculations[:] = [
@@ -2686,9 +2699,9 @@ def delete_structure_command(
                         if _get_calc_id_from_entry(e) != calc_id
                     ]
             elif not force:
-                names = ", ".join(QVService.entry_display_name(wf) for wf in referencing)
+                names = ", ".join(entry_display_name(wf) for wf in referencing)
                 raise typer.BadParameter(
-                    f"Structure '{QVService.entry_display_name(entry)}' is used by calculations: {names}. "
+                    f"Structure '{entry_display_name(entry)}' is used by calculations: {names}. "
                     "Use --force to remove anyway or --cascade to delete the calculations first."
                 )
 
@@ -2700,7 +2713,7 @@ def delete_structure_command(
         if file_rel:
             file_path = (project_root / file_rel).resolve()
             if file_path.exists():
-                QVService.move_to_trash(file_path, trash_dir)
+                move_to_trash(file_path, trash_dir)
 
         # Remove from config by structure_id (ID-only model)
         structures = config.setdefault("structures", [])
@@ -2709,7 +2722,7 @@ def delete_structure_command(
             if (e.get("structure_id") or e.get("id") or (e.get("meta") or {}).get("id")) != structure_id
         ]
         svc.project.update_config(config)
-        typer.secho(f"Structure '{QVService.entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
+        typer.secho(f"Structure '{entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
     except (ConfigError, NotFoundError) as e:
         # Registry sync or not found errors - provide user-friendly message
         if isinstance(e, ConfigError) and e.code == "REGISTRY_OUT_OF_SYNC":
@@ -2805,7 +2818,7 @@ def delete_calculation_command(
     ]
     svc.project.update_config(config)
     
-    entry_name = QVService.entry_display_name(entry) if entry else calc_id
+    entry_name = entry_display_name(entry) if entry else calc_id
     typer.secho(f"Calculation '{entry_name}' moved to trash.", fg=typer.colors.GREEN)
 
 
@@ -2851,7 +2864,7 @@ def delete_step_command(
                 wf_entry = None
             if wf_entry:
                 # Use centralized selector extraction - single selector, single resolution pattern
-                calculation_selector = QVService.extract_calculation_selector_from_entry(wf_entry)
+                calculation_selector = extract_calculation_selector_from_entry(wf_entry)
                 if not calculation_selector:
                     raise typer.BadParameter(
                         "Calculation entry found but no valid identifier. "
@@ -2895,14 +2908,14 @@ def delete_step_command(
     target_step = None
     for step in steps:
         # Use centralized selector extraction to get step_id
-        step_id = QVService.extract_step_selector_from_entry(step)
+        step_id = extract_step_selector_from_entry(step)
         if step_id == step_id_to_find:
             target_step = step
             break
     
     if not target_step:
         from quantumvitas.api import QVService
-        wf_name = QVService.entry_display_name(calculation_entry)
+        wf_name = entry_display_name(calculation_entry)
         raise typer.BadParameter(f"Step '{step_id}' not found in calculation '{wf_name}'.")
 
     trash_dir = (project_root / "trash").resolve()
@@ -2910,7 +2923,7 @@ def delete_step_command(
     # (step entries in calculation.yaml only have step_id, not step_file)
     spec_path = step_resolved.absolute_path
     if spec_path.exists():
-        QVService.move_to_trash(spec_path, trash_dir)
+        move_to_trash(spec_path, trash_dir)
 
     steps.remove(target_step)
     # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
@@ -2921,7 +2934,7 @@ def delete_step_command(
         data["calculation"].pop("structure", None)
     calculation_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
     typer.secho(
-        f"Step '{step_id}' removed from calculation '{QVService.entry_display_name(calculation_entry)}'.",
+        f"Step '{step_id}' removed from calculation '{entry_display_name(calculation_entry)}'.",
         fg=typer.colors.GREEN,
     )
 
@@ -2992,7 +3005,7 @@ def delete_project_command(
     # The shell's cwd is managed by the shell, not Python
 
     trash_dir = (project_root.parent / "trash").resolve()
-    destination = QVService.move_to_trash(project_root, trash_dir)
+    destination = move_to_trash(project_root, trash_dir)
     typer.secho(f"Project moved to {destination}", fg=typer.colors.GREEN)
     if inside_project:
         typer.secho(
@@ -3089,7 +3102,7 @@ def configure_step_command(
         try:
             from quantumvitas.api import QVService
             if not project:
-                project = QVService.find_project_root(step_file.parent if step_file.exists() else None)
+                project = find_project_root(step_file.parent if step_file.exists() else None)
             if not project:
                 raise typer.BadParameter("Could not determine project root for step resolution")
             svc_resolve = get_service(project)
@@ -3367,7 +3380,7 @@ def configure_calculation_command(
                 calculation_dir = calc_resolved.absolute_path
         except ConfigError:
             # Entry might not have path yet - try to resolve via registry
-            calculation_id = QVService.extract_calculation_selector_from_entry(calculation_entry)
+            calculation_id = extract_calculation_selector_from_entry(calculation_entry)
             if calculation_id:
                 resolved = svc.calculation.require_ref(calculation_id)
                 calculation_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "calculation.yaml" else resolved.absolute_path
@@ -3427,14 +3440,14 @@ def configure_calculation_command(
         
         for step_entry in calculation_data.get("steps", []):
             # With ID-only model, resolve step file via step_id
-            step_id = QVService.extract_step_selector_from_entry(step_entry)
+            step_id = extract_step_selector_from_entry(step_entry)
             if not step_id:
                 continue
             
             try:
                 # Resolve step file path via step_id
                 # Use centralized selector extraction for calculation selector
-                calculation_selector = QVService.extract_calculation_selector_from_entry(calculation_entry)
+                calculation_selector = extract_calculation_selector_from_entry(calculation_entry)
                 if not calculation_selector:
                     continue  # Skip if no valid selector
                 step_resolved = svc.calculation.require_step_ref(calculation_selector, step_id, config=config)
@@ -3491,7 +3504,7 @@ def configure_calculation_command(
                     index=index,
                     config=config,
                 )
-                step_ulid = QVService.extract_step_selector_from_entry(step_entry)
+                step_ulid = extract_step_selector_from_entry(step_entry)
                 if step_ulid and step_ulid not in seen_ulids:
                     reordered_entries.append(step_entry)
                     seen_ulids.add(step_ulid)
@@ -3505,9 +3518,9 @@ def configure_calculation_command(
         
         # Check if all current steps are accounted for
         current_ulids = {
-            QVService.extract_step_selector_from_entry(step) 
+            extract_step_selector_from_entry(step) 
             for step in current_steps 
-            if QVService.extract_step_selector_from_entry(step)
+            if extract_step_selector_from_entry(step)
         }
         if seen_ulids != current_ulids:
             missing_ulids = current_ulids - seen_ulids
@@ -3597,7 +3610,7 @@ def configure_species_command(
                 "No calculation specified and not inside a calculation directory. "
                 "Specify calculation id/name/slug/path or cd into a calculation folder."
             )
-        calculation = QVService.extract_calculation_selector_from_entry(calculation_entry)
+        calculation = extract_calculation_selector_from_entry(calculation_entry)
     
     # Parse --set entries into triples
     set_entries = None
@@ -3955,7 +3968,7 @@ def run_calculation_command(
                 "Specify calculation name/slug/path or cd into a calculation folder."
             )
         # Use centralized selector extraction - single selector, single resolution pattern
-        calc_selector = QVService.extract_calculation_selector_from_entry(wf_entry)
+        calc_selector = extract_calculation_selector_from_entry(wf_entry)
         if not calc_selector:
             raise typer.BadParameter(
                 "Calculation entry found but no valid identifier. "
@@ -4241,7 +4254,7 @@ def analyze_output_command(
     elif input_file is None and normalized == "band":
         # Try to auto-detect calculation from pwd
         try:
-            ctx = QVService.find_path_context_ref()
+            ctx = find_path_context_ref()
             project_root = ctx["project_root"]
             if ctx["is_inside_calculation"]:
                 # Use resolve_enclosing_path for reliable detection
@@ -4522,7 +4535,7 @@ def analyze_band_command(
     else:
         # Always try to detect project root from pwd
         try:
-            ctx = QVService.find_path_context_ref()
+            ctx = find_path_context_ref()
             project_root = ctx["project_root"]
             # Only auto-detect calculation if no input file provided
             if input_file is None and ctx["is_inside_calculation"]:
@@ -4556,8 +4569,8 @@ def analyze_band_command(
     
     # Call QVService (will raise NotFoundError if calculation not found)
     try:
-        result = QVService.analyze_band(
-            project_root=project_root,
+        svc = QVService(project_root)
+        result = svc.analysis.analyze_band(
             bands_file=input_file,
             calculation_selector=calculation_selector,
             symmetry_file=symmetry_file,
@@ -4636,15 +4649,15 @@ def analyze_dos_command(
         project_root = Path(project).resolve()
     else:
         try:
-            ctx = QVService.find_path_context_ref()
+            ctx = find_path_context_ref()
             project_root = ctx["project_root"]
         except APIError:
             pass
     
     # Call QVService
     try:
-        result = QVService.analyze_dos(
-            project_root=project_root,
+        svc = QVService(project_root)
+        result = svc.analysis.analyze_dos(
             dos_file=input_file,
             fermi_energy=fermi,
             scf_file=scf_file,
@@ -4700,7 +4713,7 @@ def analyze_energy_command(
         project_root = Path(project).resolve()
     else:
         try:
-            ctx = QVService.find_path_context_ref()
+            ctx = find_path_context_ref()
             project_root = ctx["project_root"]
         except APIError:
             pass
@@ -4951,7 +4964,7 @@ def _write_step_spec(
     warnings: list[str] = []
     
     parameters = spec.get("parameters") or {}
-    runtime_keys = QVService.detect_runtime_control_keys(parameters)
+    runtime_keys = detect_runtime_control_keys(parameters)
     if runtime_keys:
         for key in runtime_keys:
             warnings.append(
@@ -5080,8 +5093,8 @@ def _strip_structural_system_params(
         return
     
     # Check if we need to preserve alat for k-point compatibility
-    preserve_alat = QVService.needs_alat_preservation(qe_input) if qe_input else False
-    alat_bohr = QVService.extract_alat_bohr(qe_input) if preserve_alat and qe_input else None
+    preserve_alat = needs_alat_preservation(qe_input) if qe_input else False
+    alat_bohr = extract_alat_bohr(qe_input) if preserve_alat and qe_input else None
     
     for key in list(system.keys()):
         lower = str(key).lower()
@@ -5369,7 +5382,7 @@ def _execute_step_spec(
     input_name = spec_copy.get("input_name") or f"{struct_name}_{spec_copy.get('step_type', 'scf')}.pw.in"
     generated_input = workdir / input_name
     from quantumvitas.api import QVService
-    QVService.write_qe_input_file(qe_input, generated_input)
+    write_qe_input_file(qe_input, generated_input)
 
     result, prepared = QVService.run_input_step(
         engine=engine_backend,

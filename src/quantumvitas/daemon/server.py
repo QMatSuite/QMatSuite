@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, TextIO
 
 from quantumvitas.api import QVService, APIError, get_service
+from quantumvitas.api.utils import is_ulid_like
 from quantumvitas.daemon.jobs import JobManager, JobStatus
 from quantumvitas.data import qe_metadata
 from quantumvitas.data.qe_metadata import (
@@ -2106,7 +2107,8 @@ class QVDaemon:
         # Cache results
         project_root = self._require_path(payload, "project_root")
         cache_dir = project_root / "structures" / "cache"
-        cache = QVService.create_online_structure_cache(cache_dir)
+        from quantumvitas._api_legacy import QVService as LegacyService
+        cache = LegacyService.create_online_structure_cache(cache_dir)
         
         # Store optimade_base in source_summary if available
         source_summary_with_base = source_summary
@@ -2149,7 +2151,7 @@ class QVDaemon:
             trace_id: str - Optional trace ID for performance logging
         """
         from quantumvitas.api import QVService
-        from quantumvitas.api import QVService, DisplayModeParams
+        from quantumvitas.analysis.structure_viz import DisplayModeParams
         import tempfile
         import numpy as np
         
@@ -2173,7 +2175,8 @@ class QVDaemon:
         
         # Load from cache
         cache_dir = project_root / "structures" / "cache"
-        cache = QVService.create_online_structure_cache(cache_dir)
+        from quantumvitas._api_legacy import QVService as LegacyService
+        cache = LegacyService.create_online_structure_cache(cache_dir)
         
         # Always get candidate first (needed for provenance building)
         candidates = cache.get_candidates(session_id)
@@ -2522,7 +2525,8 @@ class QVDaemon:
         
         # Load structure from cache
         cache_dir = project_root / "structures" / "cache"
-        cache = QVService.create_online_structure_cache(cache_dir)
+        from quantumvitas._api_legacy import QVService as LegacyService
+        cache = LegacyService.create_online_structure_cache(cache_dir)
         
         structure = cache.get_structure(session_id, candidate_id)
         if structure is None:
@@ -2813,7 +2817,7 @@ class QVDaemon:
             }
         
         # Resolve selector to ULID at boundary
-        if QVService.is_ulid_like(selector):
+        if is_ulid_like(selector):
             calculation_ulid = selector
         else:
             try:
@@ -2828,8 +2832,10 @@ class QVDaemon:
                     }
                 }
         
+        # Use legacy API (domain accessor doesn't have this method yet)
         cache = self.state.get_cache(project_root)
-        return QVService.can_delete_calculation(
+        from quantumvitas._api_legacy import QVService as LegacyService
+        return LegacyService.can_delete_calculation(
             project_root=project_root,
             calculation_ulid=calculation_ulid,
             index=cache.index,
@@ -2893,10 +2899,10 @@ class QVDaemon:
         
         # Determine selector type for logging
         if calculation_ulid:
-            selector_type = "ulid" if QVService.is_ulid_like(calculation_ulid) else "invalid"
+            selector_type = "ulid" if is_ulid_like(calculation_ulid) else "invalid"
             target_selector = calculation_ulid
         else:
-            selector_type = "ulid" if QVService.is_ulid_like(selector) else ("slug" if "/" not in selector and "\\" not in selector else "path")
+            selector_type = "ulid" if is_ulid_like(selector) else ("slug" if "/" not in selector and "\\" not in selector else "path")
             target_selector = selector
         
         # ALWAYS-ON boundary log
@@ -2939,7 +2945,14 @@ class QVDaemon:
         
         # Get calculation name before deletion for response
         try:
-            check = QVService.can_delete_calculation(project_root, calculation_ulid)
+            cache = self.state.get_cache(project_root)
+            from quantumvitas._api_legacy import QVService as LegacyService
+            check = LegacyService.can_delete_calculation(
+                project_root=project_root,
+                calculation_ulid=calculation_ulid,
+                index=cache.index,
+                config=cache.config,
+            )
             calculation_name = check.get("calculation_name", calculation_ulid)
         except Exception as e:
             return {
@@ -2950,11 +2963,8 @@ class QVDaemon:
                 }
             }
         
-        QVService.delete_calculation(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
-            force=force,
-        )
+        svc = get_service(project_root)
+        svc.calculation.delete(calculation_ulid)
         
         # Invalidate cache after mutation
         self.state.invalidate_cache(project_root)
@@ -2995,7 +3005,9 @@ class QVDaemon:
         from quantumvitas.api import QVService
         
         logger = logging.getLogger(__name__)
-        debug_enabled = QVService.is_resolution_debug_enabled()
+        # Replace is_resolution_debug_enabled with get_settings
+        settings = QVService.get_settings()
+        debug_enabled = settings.get("debug_resolution", False)
         
         project_root = self._require_path(payload, "project_root")
         calculation_selector = self._require_str(payload, "calculation")
@@ -3003,7 +3015,7 @@ class QVDaemon:
         
         # Resolve calculation selector to ULID (kind-constrained)
         # This is the boundary where we accept slug/name but convert to ULID
-        if QVService.is_ulid_like(calculation_selector):
+        if is_ulid_like(calculation_selector):
             calculation_ulid = calculation_selector
         else:
             # Resolve slug/name to ULID with kind constraint
@@ -3019,8 +3031,10 @@ class QVDaemon:
                 f"project_root={project_root}"
             )
         
-        # Validate calculation_ulid
-        calculation_ulid = QVService.validate_ulid(calculation_ulid, kind="calculation")
+        # Replace validate_ulid with is_ulid_like check
+        if not is_ulid_like(calculation_ulid):
+            from quantumvitas.api.errors import InvalidArgumentError
+            raise InvalidArgumentError(f"Expected ULID, got: {calculation_ulid}")
         
         # DEBUG: Log the step identifier provided by UI (gated by debug flag)
         is_ulid = len(step) == 26 and step.startswith("01")
@@ -3039,21 +3053,13 @@ class QVDaemon:
                 f"{''.join(traceback.format_stack()[-5:-1])}"
             )
         
-        # Pass cached index and config to QVService to avoid rebuilding ResourceIndex
-        # This eliminates the ~20s delay from duplicate index building
-        cache = self.state.get_cache(project_root)
+        # Use domain accessor API
+        svc = get_service(project_root)
+        step_dto = svc.calculation.get_step(calculation_ulid, step)
         
-        # CRITICAL: QVService.get_step_detail now requires calculation_ulid (ULID only)
-        # if the step file is missing (ghost step), QVService.get_step_detail raises ResourceNotFoundError
-        # This is caught by handle_request and converted to a structured RPC error response with ok=False.
-        # The RPC always resolves (never hangs) - either with data or with an error.
-        return QVService.get_step_detail(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
-            step_selector=step,
-            index=cache.index,
-            config=cache.config,
-        )
+        # Serialize StepDTO to dict for daemon response
+        from quantumvitas.api._mapping.dto_mapping import step_to_dict
+        return step_to_dict(step_dto)
     
     def _handle_update_step_params(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -3083,28 +3089,41 @@ class QVDaemon:
                     f"parameters_keys={list(parameters.keys())}, "
                     f"parameter_scan={parameter_scan is not None and parameter_scan or 'None'}")
         
-        if QVService.is_ulid_like(calculation):
+        if is_ulid_like(calculation):
             calculation_ulid = calculation
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation)
             calculation_ulid = calculation_resolved.id
         
-        # Pass cached index and config to avoid rebuilding ResourceIndex
-        cache = self.state.get_cache(project_root)
-        result = QVService.update_step_params(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
-            step_selector=step,
-            parameters=parameters,
-            cards=cards,
-            parameter_scan=parameter_scan,
-            index=cache.index,
-            config=cache.config,
-        )
-        
-        # Parameter updates don't change registry (only change step file contents)
-        
-        return result
+        # Use legacy API if cards or parameter_scan are needed (domain API doesn't support them yet)
+        if cards or parameter_scan is not None:
+            cache = self.state.get_cache(project_root)
+            from quantumvitas._api_legacy import QVService as LegacyService
+            result = LegacyService.update_step_params(
+                project_root=project_root,
+                calculation_ulid=calculation_ulid,
+                step_selector=step,
+                parameters=parameters,
+                cards=cards,
+                parameter_scan=parameter_scan,
+                index=cache.index,
+                config=cache.config,
+            )
+            return result
+        else:
+            # Use domain accessor API for parameters-only updates
+            svc = get_service(project_root)
+            step_dto = svc.calculation.update_step_params(
+                calc_selector=calculation_ulid,
+                step_selector=step,
+                params=parameters,
+            )
+            # Convert StepDTO to dict for daemon response
+            return {
+                "step_id": step_dto.step_id,
+                "step_type": step_dto.step_type,
+                "status": step_dto.status,
+            }
     
     def _handle_promote_relax_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Promote a relax step's generated structure to a project resource.
@@ -3161,7 +3180,7 @@ class QVDaemon:
         step = self._require_str(payload, "step")
         
         # Resolve calculation selector to ULID at boundary
-        if QVService.is_ulid_like(calculation_selector):
+        if is_ulid_like(calculation_selector):
             calculation_ulid = calculation_selector
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
@@ -3169,7 +3188,8 @@ class QVDaemon:
         
         cache = self.state.get_cache(project_root)
         
-        return QVService.get_common_cards(
+        from quantumvitas._api_legacy import QVService as LegacyService
+        return LegacyService.get_common_cards(
             project_root=project_root,
             calculation_ulid=calculation_ulid,
             step_selector=step,
@@ -3204,7 +3224,7 @@ class QVDaemon:
             raise ValueError("view_model must be a dict")
         
         # Resolve calculation selector to ULID at boundary
-        if QVService.is_ulid_like(calculation_selector):
+        if is_ulid_like(calculation_selector):
             calculation_ulid = calculation_selector
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
@@ -3243,7 +3263,7 @@ class QVDaemon:
         step = self._require_str(payload, "step")
         
         # Resolve calculation selector to ULID at boundary
-        if QVService.is_ulid_like(calculation_selector):
+        if is_ulid_like(calculation_selector):
             calculation_ulid = calculation_selector
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
@@ -3286,7 +3306,7 @@ class QVDaemon:
         library_preference = payload.get("library_preference")
         
         # Resolve calculation selector to ULID at boundary
-        if QVService.is_ulid_like(calculation_selector):
+        if is_ulid_like(calculation_selector):
             calculation_ulid = calculation_selector
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
@@ -3444,7 +3464,7 @@ class QVDaemon:
         step = self._require_str(payload, "step")
         
         # Resolve calculation selector to ULID at boundary
-        if QVService.is_ulid_like(calculation_selector):
+        if is_ulid_like(calculation_selector):
             calculation_ulid = calculation_selector
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
@@ -3566,12 +3586,10 @@ class QVDaemon:
         
         # Delete the step (moves file to trash and removes from calculation.yaml)
         # This will handle ghost steps (missing files) gracefully
-        QVService.delete_step_from_calculation(
-            project_root=project_root,
-            calculation_selector=calculation,
+        svc = get_service(project_root)
+        svc.calculation.remove_step(
+            calc_selector=calculation,
             step_selector=step,
-            index=cache.index,
-            config=cache.config,
         )
         
         # Registry updated in-place by QVService.delete_step_from_calculation (no rebuild needed)
@@ -3952,7 +3970,7 @@ class QVDaemon:
         calculation_selector = self._require_str(payload, "calculation")
         
         # Resolve calculation selector to ULID (kind-constrained)
-        if QVService.is_ulid_like(calculation_selector):
+        if is_ulid_like(calculation_selector):
             calculation_ulid = calculation_selector
         else:
             # ALWAYS log boundary resolves (not gated by debug flag)
@@ -3999,7 +4017,7 @@ class QVDaemon:
         
         # Resolve calculation selector to ULID (kind-constrained)
         # This is the boundary where we accept slug/name but convert to ULID
-        if QVService.is_ulid_like(calculation_selector):
+        if is_ulid_like(calculation_selector):
             calculation_ulid = calculation_selector
         else:
             # Resolve slug/name to ULID with kind constraint
@@ -4015,13 +4033,15 @@ class QVDaemon:
                 f"project_root={project_root}"
             )
         
-        # Validate calculation_ulid
-        calculation_ulid = QVService.validate_ulid(calculation_ulid, kind="calculation")
+        # Replace validate_ulid with is_ulid_like check
+        if not is_ulid_like(calculation_ulid):
+            from quantumvitas.api.errors import InvalidArgumentError
+            raise InvalidArgumentError(f"Expected ULID, got: {calculation_ulid}")
         
-        # Pass cached index and config to QVService to avoid rebuilding ResourceIndex
-        # This eliminates the ~20s delay from duplicate index building
+        # Use legacy API for now (returns dict directly, domain API returns DTO that needs serialization)
         cache = self.state.get_cache(project_root)
-        return QVService.get_calculation_detail(
+        from quantumvitas._api_legacy import QVService as LegacyService
+        return LegacyService.get_calculation_detail(
             project_root=project_root,
             calculation_ulid=calculation_ulid,
             index=cache.index,
@@ -4079,20 +4099,27 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_calculation_with_fallback(project_root, calculation)
         
-        # Pass cached index and config to avoid rebuilding ResourceIndex
-        cache = self.state.get_cache(project_root)
-        result = QVService.add_step_to_calculation(
-            project_root=project_root,
-            calculation_selector=calculation,
+        svc = get_service(project_root)
+        step_dto = svc.calculation.add_step(
+            calc_selector=calculation,
             step_type=step_type,
-            step_name=step_name,
-            index=cache.index,
-            config=cache.config,
+            name=step_name,
         )
         
-        # Registry updated in-place by QVService.add_step_to_calculation (no rebuild needed)
-        
-        return result
+        # Get updated steps list using list_steps
+        steps = svc.calculation.list_steps(calculation)
+        # Use dataclasses.asdict for proper serialization (hand-serialization violation fix)
+        # Extract only needed fields from StepDTO using asdict
+        return {
+            "steps": [
+                {
+                    "step_id": asdict(s).get("step_id"),
+                    "type": asdict(s).get("step_type"),
+                    "status": asdict(s).get("status"),
+                }
+                for s in steps
+            ]
+        }
     
     def _handle_import_step_from_qe_input(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -4114,7 +4141,7 @@ class QVDaemon:
         step_name = payload.get("step_name")
         
         # Resolve calculation selector to ULID at boundary
-        if QVService.is_ulid_like(calculation_selector):
+        if is_ulid_like(calculation_selector):
             calculation_ulid = calculation_selector
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
@@ -4158,20 +4185,20 @@ class QVDaemon:
         # Log UI-provided identifiers
         logger.info(
             f"[CHANGE_CALC_STRUCTURE_RPC] UI provided calculation selector: '{calculation_selector}' "
-            f"(is_ulid={QVService.is_ulid_like(calculation_selector)})"
+            f"(is_ulid={is_ulid_like(calculation_selector)})"
         )
         logger.info(
             f"[CHANGE_CALC_STRUCTURE_RPC] UI provided structure selector: '{structure_selector}' "
-            f"(is_ulid={QVService.is_ulid_like(structure_selector)})"
+            f"(is_ulid={is_ulid_like(structure_selector)})"
         )
         
         # Warn if non-ULID selectors are provided
-        if not QVService.is_ulid_like(calculation_selector):
+        if not is_ulid_like(calculation_selector):
             logger.warning(
                 f"[CHANGE_CALC_STRUCTURE_RPC] WARNING: Non-ULID calculation selector '{calculation_selector}' "
                 f"provided by UI. Resolving to ULID at RPC boundary."
             )
-        if not QVService.is_ulid_like(structure_selector):
+        if not is_ulid_like(structure_selector):
             logger.warning(
                 f"[CHANGE_CALC_STRUCTURE_RPC] WARNING: Non-ULID structure selector '{structure_selector}' "
                 f"provided by UI. Resolving to ULID at RPC boundary."
@@ -4189,8 +4216,11 @@ class QVDaemon:
         # Validate structure selector is not project_root
         from pathlib import Path as PathLib
         project_root_path = PathLib(project_root).resolve()
+        # Inline path check (replaces QVService.is_path_like)
+        def is_path_like(s: str) -> bool:
+            return "/" in s or "\\" in s or s.startswith(".")
         # Check if selector is a path that equals project_root
-        if QVService.is_path_like(structure_selector):
+        if is_path_like(structure_selector):
             try:
                 structure_selector_path = PathLib(structure_selector).resolve()
                 if structure_selector_path == project_root_path:
@@ -4235,7 +4265,8 @@ class QVDaemon:
         )
         
         # Pass ULIDs to core service (core service requires ULID only)
-        result = QVService.change_calculation_structure(
+        from quantumvitas._api_legacy import QVService as LegacyService
+        result = LegacyService.change_calculation_structure(
             project_root=project_root,
             calculation_ulid=calculation_ulid,
             new_structure_ulid=structure_ulid,
@@ -4261,7 +4292,9 @@ class QVDaemon:
         from quantumvitas.api import QVService
         
         logger = logging.getLogger(__name__)
-        debug_enabled = QVService.is_resolution_debug_enabled()
+        # Replace is_resolution_debug_enabled with get_settings
+        settings = QVService.get_settings()
+        debug_enabled = settings.get("debug_resolution", False)
         
         project_root = self._require_path(payload, "project_root")
         calculation_selector = self._require_str(payload, "calculation")
@@ -4276,7 +4309,7 @@ class QVDaemon:
         
         # Resolve calculation selector to ULID (kind-constrained)
         # This is the boundary where we accept slug/name but convert to ULID
-        if QVService.is_ulid_like(calculation_selector):
+        if is_ulid_like(calculation_selector):
             calculation_ulid = calculation_selector
         else:
             # Resolve slug/name to ULID with kind constraint
@@ -4444,14 +4477,16 @@ class QVDaemon:
         )
         
         # Resolve calculation selector to ULID (boundary resolution, consistent with other endpoints)
-        if QVService.is_ulid_like(calculation):
+        if is_ulid_like(calculation):
             calculation_ulid = calculation
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation)
             calculation_ulid = calculation_resolved.meta.id
         
-        # Validate ULID
-        calculation_ulid = QVService.validate_ulid(calculation_ulid, kind="calculation")
+        # Replace validate_ulid with is_ulid_like check
+        if not is_ulid_like(calculation_ulid):
+            from quantumvitas.api.errors import InvalidArgumentError
+            raise InvalidArgumentError(f"Expected ULID, got: {calculation_ulid}")
         
         cache = self.state.get_cache(project_root)
         
@@ -4463,7 +4498,8 @@ class QVDaemon:
         )
         
         # Call with calculation_ulid (not calculation_selector)
-        calc_detail = QVService.get_calculation_detail(
+        from quantumvitas._api_legacy import QVService as LegacyService
+        calc_detail = LegacyService.get_calculation_detail(
             project_root=project_root,
             calculation_ulid=calculation_ulid,
             index=cache.index,
@@ -4526,7 +4562,8 @@ class QVDaemon:
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
-        return QVService.preflight_check(
+        from quantumvitas._api_legacy import QVService as LegacyService
+        return LegacyService.preflight_check(
             project_root=project_root,
             calculation_selector=calculation,
             step_selector=step,
@@ -4658,14 +4695,13 @@ class QVDaemon:
             box_bounds = tuple(box_bounds)
         trace_id = payload.get("trace_id")
         
-        return QVService.get_structure_vis_data(
-            project_root=project_root,
+        svc = get_service(project_root)
+        return svc.structure.get_vis_data(
             selector=selector,
             supercell=supercell,
             repeat_boundary=repeat_boundary,
             display_mode=display_mode,
             box_bounds=box_bounds,
-            trace_id=trace_id,
         )
     
     def _handle_get_scf_convergence(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -4684,8 +4720,8 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_step_with_fallback(project_root, calculation, step)
         
-        return QVService.get_scf_convergence_data(
-            project_root=project_root,
+        svc = get_service(project_root)
+        return svc.analysis.get_scf_convergence_data(
             calculation_selector=calculation,
             step_selector=step,
         )
@@ -4733,8 +4769,8 @@ class QVDaemon:
             self._resolve_step_with_fallback(project_root, calculation, step)
         
         try:
-            return QVService.get_band_structure_data(
-                project_root=project_root,
+            svc = get_service(project_root)
+            return svc.analysis.get_band_structure_data(
                 calculation_selector=calculation,
                 step_selector=step,
             )
@@ -6497,9 +6533,9 @@ class QVDaemon:
         # Determine selector and type for logging
         if calculation_ulid_param:
             calculation_selector = calculation_ulid_param
-            selector_type = "ulid" if QVService.is_ulid_like(calculation_selector) else "invalid"
+            selector_type = "ulid" if is_ulid_like(calculation_selector) else "invalid"
         elif calculation_selector:
-            selector_type = "ulid" if QVService.is_ulid_like(calculation_selector) else ("slug" if "/" not in calculation_selector and "\\" not in calculation_selector else "path")
+            selector_type = "ulid" if is_ulid_like(calculation_selector) else ("slug" if "/" not in calculation_selector and "\\" not in calculation_selector else "path")
         else:
             return {
                 "ok": False,
@@ -6510,7 +6546,7 @@ class QVDaemon:
             }
         
         # Resolve calculation selector to ULID (kind-constrained)
-        if QVService.is_ulid_like(calculation_selector):
+        if is_ulid_like(calculation_selector):
             calculation_ulid = calculation_selector
         else:
             # ALWAYS log boundary resolves (not gated by debug flag)

@@ -74,15 +74,16 @@ def temp_project(tmp_path: Path) -> Path:
     )
     calculation_id = calculation_result.meta.id
     
+    # Use domain accessor API for step creation
+    svc = QVService(project_dir)
+    
     # Add steps to the calculation
-    QVService.add_step_to_calculation(
-        project_root=project_dir,
-        calculation_selector=calculation_id,
+    svc.calculation.add_step(
+        calc_selector=calculation_id,
         step_type="scf",
     )
-    QVService.add_step_to_calculation(
-        project_root=project_dir,
-        calculation_selector=calculation_id,
+    svc.calculation.add_step(
+        calc_selector=calculation_id,
         step_type="nscf",
     )
     
@@ -139,8 +140,9 @@ class TestGetCalculationDetail:
         # Verify step IDs match calculation model
         # Get calculation detail directly to compare (resolve slug to ULID first)
         from quantumvitas.core.resolution import resolve_calculation
+        from quantumvitas._api_legacy import QVService as LegacyService
         calculation_resolved = resolve_calculation(temp_project, calculation_slug)
-        direct_result = QVService.get_calculation_detail(
+        direct_result = LegacyService.get_calculation_detail(
             project_root=temp_project,
             calculation_ulid=calculation_resolved.meta.id,
         )
@@ -171,14 +173,13 @@ class TestGetCalculationDetail:
         
         # Add more steps to create a multi-step calculation (scf, nscf, bands_pw, bands)
         # The temp_project fixture already has scf and nscf, so add bands_pw and bands
-        QVService.add_step_to_calculation(
-            project_root=temp_project,
-            calculation_selector=calculation_slug,
+        svc = QVService(temp_project)
+        svc.calculation.add_step(
+            calc_selector=calculation_slug,
             step_type="bands_pw",
         )
-        QVService.add_step_to_calculation(
-            project_root=temp_project,
-            calculation_selector=calculation_slug,
+        svc.calculation.add_step(
+            calc_selector=calculation_slug,
             step_type="bands",
         )
         
@@ -204,11 +205,14 @@ class TestGetCalculationDetail:
         # Verify steps are in expected order (scf, nscf, bands_pw, bands)
         # We can't verify exact types without loading the step files, but we can verify
         # that the order is consistent (same order as calculation.yaml)
+        # Note: step types are now prefixed with engine (e.g., "qe_scf" instead of "scf")
         expected_types = ["scf", "nscf", "bands_pw", "bands"]
         actual_types = [step.get("type") for step in result["steps"]]
         
         # Verify we have the expected step types (order may vary slightly, but all should be present)
-        for expected_type in expected_types[:len(actual_types)]:
+        # Map expected types to actual prefixed types
+        expected_prefixed = [f"qe_{t}" if not t.startswith("qe_") else t for t in expected_types]
+        for expected_type in expected_prefixed[:len(actual_types)]:
             assert expected_type in actual_types, f"Expected step type '{expected_type}' not found in {actual_types}"
         
         # CRITICAL: Test that get_step_detail works for ALL steps (not just the first)

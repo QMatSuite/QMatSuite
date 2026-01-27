@@ -106,8 +106,13 @@ def tmp_project_with_bands(tmp_path: Path):
     # Generate step ULID
     step_ulid = generate_resource_id()
     
-    # Create step using QVService
-    QVService.init_step(project_root, calc_slug, "bands", name="bands")
+    # Use domain accessor API for step creation
+    svc = QVService(project_root)
+    svc.calculation.add_step(
+        calc_selector=calc_slug,
+        step_type="bands",
+        name="bands",
+    )
     
     # Get the actual step ID that was created
     calc_model = load_calculation(calc_yaml, project_root=project_root, resolve_structure_selector=resolver)
@@ -147,8 +152,8 @@ def test_get_band_structure_data_success(tmp_project_with_bands):
     step_ulid = fixture["step_ulid"]
     
     # Call the service method
-    result = QVService.get_band_structure_data(
-        project_root=project_root,
+    svc = QVService(project_root)
+    result = svc.analysis.get_band_structure_data(
         calculation_selector=calc_slug,
         step_selector=step_ulid,
     )
@@ -211,8 +216,8 @@ def test_get_band_structure_data_graceful_missing_stdout(tmp_project_with_bands)
         bands_out.unlink()
     
     # Call the service method
-    result = QVService.get_band_structure_data(
-        project_root=project_root,
+    svc = QVService(project_root)
+    result = svc.analysis.get_band_structure_data(
         calculation_selector=calc_slug,
         step_selector=step_ulid,
     )
@@ -243,9 +248,9 @@ def test_get_band_structure_data_missing_gnu(tmp_project_with_bands):
     # Should raise APIError
     from quantumvitas.api import APIError
     
+    svc = QVService(project_root)
     with pytest.raises(APIError) as exc_info:
-        QVService.get_band_structure_data(
-            project_root=project_root,
+        svc.analysis.get_band_structure_data(
             calculation_selector=calc_slug,
             step_selector=step_ulid,
         )
@@ -261,8 +266,8 @@ def test_get_band_structure_data_without_step_selector(tmp_project_with_bands):
     calc_slug = fixture["calc_slug"]
     
     # Call without step_selector
-    result = QVService.get_band_structure_data(
-        project_root=project_root,
+    svc = QVService(project_root)
+    result = svc.analysis.get_band_structure_data(
         calculation_selector=calc_slug,
         step_selector=None,
     )

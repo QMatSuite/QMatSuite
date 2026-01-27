@@ -125,7 +125,8 @@ class TestGetStructureVisData:
         project_root = QVService.init_project(tmp_path / "test_project")
         QVService.import_structure(project_root, sample_structure_file, name="si")
         
-        vis_data = QVService.get_structure_vis_data(project_root, "si")
+        svc = QVService(project_root)
+        vis_data = svc.structure.get_vis_data("si")
         
         # Core fields
         assert "structure_id" in vis_data
@@ -167,8 +168,9 @@ class TestGetStructureVisData:
         project_root = QVService.init_project(tmp_path / "test_project")
         QVService.import_structure(project_root, sample_structure_file, name="si")
         
-        vis_1x1x1 = QVService.get_structure_vis_data(project_root, "si", supercell=(1, 1, 1))
-        vis_2x2x2 = QVService.get_structure_vis_data(project_root, "si", supercell=(2, 2, 2))
+        svc = QVService(project_root)
+        vis_1x1x1 = svc.structure.get_vis_data("si", supercell=(1, 1, 1))
+        vis_2x2x2 = svc.structure.get_vis_data("si", supercell=(2, 2, 2))
         
         # 2x2x2 supercell should have 8x the atoms
         assert vis_2x2x2["n_atoms"] == vis_1x1x1["n_atoms"] * 8
@@ -178,14 +180,15 @@ class TestGetStructureVisData:
         project_root = QVService.init_project(tmp_path / "test_project")
         QVService.import_structure(project_root, sample_structure_file, name="si")
         
-        vis_plain = QVService.get_structure_vis_data(
-            project_root, "si", 
+        svc = QVService(project_root)
+        vis_plain = svc.structure.get_vis_data(
+            "si", 
             supercell=(1, 1, 1), 
             repeat_boundary=False,
             display_mode="primitive"
         )
-        vis_repeat = QVService.get_structure_vis_data(
-            project_root, "si", 
+        vis_repeat = svc.structure.get_vis_data(
+            "si", 
             supercell=(1, 1, 1), 
             repeat_boundary=True,
             display_mode="primitive"
@@ -228,8 +231,9 @@ class TestGetStructureVisData:
         """Test that missing structure raises error."""
         project_root = QVService.init_project(tmp_path / "test_project")
         
+        svc = QVService(project_root)
         with pytest.raises(Exception):  # SelectorNotFoundError or similar
-            QVService.get_structure_vis_data(project_root, "nonexistent")
+            svc.structure.get_vis_data("nonexistent")
 
 
 class TestJSONSerializability:
@@ -272,7 +276,8 @@ class TestJSONSerializability:
         project_root = QVService.init_project(tmp_path / "test_project")
         QVService.import_structure(project_root, sample_structure_file, name="si")
         
-        vis_data = QVService.get_structure_vis_data(project_root, "si")
+        svc = QVService(project_root)
+        vis_data = svc.structure.get_vis_data("si")
         
         json_str = json.dumps(vis_data)
         assert json_str

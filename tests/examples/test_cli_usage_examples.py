@@ -332,29 +332,29 @@ class TestParameterOverrideParsing:
         bundle = _parse_override_args(["--ecutwfc=60"])
         overrides = bundle.parameters
         assert len(overrides) == 1
-        assert overrides[0].name == "ecutwfc"
-        assert overrides[0].value == 60
+        assert overrides[0]["name"] == "ecutwfc"
+        assert overrides[0]["value"] == 60
 
         # Simple float
         bundle = _parse_override_args(["--degauss=0.01"])
         overrides = bundle.parameters
         assert len(overrides) == 1
-        assert overrides[0].name == "degauss"
-        assert overrides[0].value == 0.01
+        assert overrides[0]["name"] == "degauss"
+        assert overrides[0]["value"] == 0.01
 
         # Boolean (true)
         bundle = _parse_override_args(["--tprnfor"])
         overrides = bundle.parameters
         assert len(overrides) == 1
-        assert overrides[0].name == "tprnfor"
-        assert overrides[0].value is True
+        assert overrides[0]["name"] == "tprnfor"
+        assert overrides[0]["value"] is True
 
         # Boolean (false)
         bundle = _parse_override_args(["--tprnfor=false"])
         overrides = bundle.parameters
         assert len(overrides) == 1
-        assert overrides[0].name == "tprnfor"
-        assert overrides[0].value is False
+        assert overrides[0]["name"] == "tprnfor"
+        assert overrides[0]["value"] is False
 
     def test_parse_section_prefixed_overrides(self):
         """
@@ -368,9 +368,9 @@ class TestParameterOverrideParsing:
         bundle = _parse_override_args(["--SYSTEM.ecutwfc=60"])
         overrides = bundle.parameters
         assert len(overrides) == 1
-        assert overrides[0].name == "ecutwfc"
-        assert overrides[0].section == "SYSTEM"
-        assert overrides[0].value == 60
+        assert overrides[0]["name"] == "ecutwfc"
+        assert overrides[0]["section"] == "SYSTEM"
+        assert overrides[0]["value"] == 60
 
         # Multiple overrides
         bundle = _parse_override_args(
@@ -382,10 +382,10 @@ class TestParameterOverrideParsing:
         )
         overrides = bundle.parameters
         assert len(overrides) == 3
-        assert overrides[0].name == "ecutwfc"
-        assert overrides[1].name == "ecutrho"
-        assert overrides[2].name == "degauss"
-        assert overrides[2].section == "SYSTEM"
+        assert overrides[0]["name"] == "ecutwfc"
+        assert overrides[1]["name"] == "ecutrho"
+        assert overrides[2]["name"] == "degauss"
+        assert overrides[2]["section"] == "SYSTEM"
 
     def test_parse_list_overrides(self):
         """

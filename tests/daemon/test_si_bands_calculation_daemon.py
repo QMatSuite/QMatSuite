@@ -203,88 +203,87 @@ class TestDaemonCalculationExecution:
             set_entries=[("Si", 28.0855, "Si.pbe-n-rrkjus_psl.1.0.0.UPF")],
         )
         
+        # Use domain accessor API for step creation
+        svc = QVService(project_dir)
+        
         # Create SCF step
-        QVService.init_step(
-            project_root=project_dir,
-            calculation_selector="bands_daemon",
+        svc.calculation.add_step(
+            calc_selector="bands_daemon",
             step_type="scf",
             name="scf",
-            structure_selector="si",
         )
         
         # Configure SCF step (no species_overrides - use calculation-level species_map)
-        QVService.configure_step(
-            project_root=project_dir,
-            calculation_selector="bands_daemon",
+        svc.calculation.update_step_params(
+            calc_selector="bands_daemon",
             step_selector="scf",
-            parameters={
-                "CONTROL": {
-                    "prefix": "si",
-                    "outdir": "./outdir",
-                    "pseudo_dir": "./",
+            params={
+                "parameters": {
+                    "CONTROL": {
+                        "prefix": "si",
+                        "outdir": "./outdir",
+                        "pseudo_dir": "./",
+                    },
+                    "SYSTEM": {
+                        "ecutwfc": 40,
+                        "ecutrho": 320,
+                        "nbnd": 8,
+                    },
+                    "ELECTRONS": {
+                        "conv_thr": 1e-8,
+                    },
                 },
-                "SYSTEM": {
-                    "ecutwfc": 40,
-                    "ecutrho": 320,
-                    "nbnd": 8,
-                },
-                "ELECTRONS": {
-                    "conv_thr": 1e-8,
-                },
-            },
-            cards={
-                "K_POINTS": {
-                    "option": "automatic",
-                    "data": [[8, 8, 8, 0, 0, 0]],
+                "cards": {
+                    "K_POINTS": {
+                        "option": "automatic",
+                        "data": [[8, 8, 8, 0, 0, 0]],
+                    },
                 },
             },
         )
         
         # Create NSCF step
-        QVService.init_step(
-            project_root=project_dir,
-            calculation_selector="bands_daemon",
+        svc.calculation.add_step(
+            calc_selector="bands_daemon",
             step_type="nscf",
             name="nscf",
-            structure_selector="si",
         )
         
         # Configure NSCF step
-        QVService.configure_step(
-            project_root=project_dir,
-            calculation_selector="bands_daemon",
+        svc.calculation.update_step_params(
+            calc_selector="bands_daemon",
             step_selector="nscf",
-            parameters={
-                "CONTROL": {
-                    "prefix": "si",
-                    "outdir": "./outdir",
-                    "pseudo_dir": "./",
+            params={
+                "parameters": {
+                    "CONTROL": {
+                        "prefix": "si",
+                        "outdir": "./outdir",
+                        "pseudo_dir": "./",
+                    },
+                    "SYSTEM": {
+                        "ecutwfc": 40,
+                        "ecutrho": 320,
+                        "nbnd": 8,
+                        "occupations": "tetrahedra",
+                    },
+                    "ELECTRONS": {
+                        "conv_thr": 1e-8,
+                    },
                 },
-                "SYSTEM": {
-                    "ecutwfc": 40,
-                    "ecutrho": 320,
-                    "nbnd": 8,
-                    "occupations": "tetrahedra",
-                },
-                "ELECTRONS": {
-                    "conv_thr": 1e-8,
-                },
-            },
-            cards={
-                "K_POINTS": {
-                    "option": "automatic",
-                    "data": [[12, 12, 12, 0, 0, 0]],
+                "cards": {
+                    "K_POINTS": {
+                        "option": "automatic",
+                        "data": [[12, 12, 12, 0, 0, 0]],
+                    },
                 },
             },
         )
         
         # Create bands calculation step (pw.x with calculation='bands')
-        QVService.init_step(
-            project_root=project_dir,
-            calculation_selector="bands_daemon",
+        svc.calculation.add_step(
+            calc_selector="bands_daemon",
             step_type="bands_pw",
             name="bands",
-            structure_selector="si",
         )
         
         # Configure bands step with manual k-path
@@ -297,51 +296,51 @@ class TestDaemonCalculationExecution:
             [0.0, 0.0, 0.0, 0],        # Gamma (end)
         ]
         
-        QVService.configure_step(
-            project_root=project_dir,
-            calculation_selector="bands_daemon",
+        svc.calculation.update_step_params(
+            calc_selector="bands_daemon",
             step_selector="bands",
-            parameters={
-                "CONTROL": {
-                    "prefix": "si",
-                    "outdir": "./outdir",
-                    "pseudo_dir": "./",
+            params={
+                "parameters": {
+                    "CONTROL": {
+                        "prefix": "si",
+                        "outdir": "./outdir",
+                        "pseudo_dir": "./",
+                    },
+                    "SYSTEM": {
+                        "ecutwfc": 40,
+                        "ecutrho": 320,
+                        "nbnd": 8,
+                    },
+                    "ELECTRONS": {
+                        "conv_thr": 1e-8,
+                    },
                 },
-                "SYSTEM": {
-                    "ecutwfc": 40,
-                    "ecutrho": 320,
-                    "nbnd": 8,
-                },
-                "ELECTRONS": {
-                    "conv_thr": 1e-8,
-                },
-            },
-            cards={
-                "K_POINTS": {
-                    "option": "crystal_b",
-                    "data": kpoints_data,
+                "cards": {
+                    "K_POINTS": {
+                        "option": "crystal_b",
+                        "data": kpoints_data,
+                    },
                 },
             },
         )
         
         # Create bands.x post-processing step
-        QVService.init_step(
-            project_root=project_dir,
-            calculation_selector="bands_daemon",
+        svc.calculation.add_step(
+            calc_selector="bands_daemon",
             step_type="bands",
             name="bandspp",
-            structure_selector="si",
         )
         
-        QVService.configure_step(
-            project_root=project_dir,
-            calculation_selector="bands_daemon",
+        svc.calculation.update_step_params(
+            calc_selector="bands_daemon",
             step_selector="bandspp",
-            parameters={
-                "BANDS": {
-                    "prefix": "si",
-                    "outdir": "./outdir",
-                    "filband": "si.bands.dat",
+            params={
+                "parameters": {
+                    "BANDS": {
+                        "prefix": "si",
+                        "outdir": "./outdir",
+                        "filband": "si.bands.dat",
+                    },
                 },
             },
         )
@@ -456,10 +455,9 @@ class TestDaemonCalculationExecution:
         
         # Use QVService.analyze_band() to analyze and generate plot
         # This is the service-layer equivalent of "qv analyze band ... --plot"
-        result = QVService.analyze_band(
-            project_root=project_dir,
+        svc = QVService(project_dir)
+        result = svc.analysis.analyze_band(
             bands_file=bands_gnu,
-            calculation_selector="bands_daemon",
             symmetry_file=symmetry_file,
             scf_file=scf_file,
             plot=True,

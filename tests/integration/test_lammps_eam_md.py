@@ -11,7 +11,6 @@ import shutil
 from pathlib import Path
 
 from quantumvitas.api import QVService
-from quantumvitas.api.compat import init_step
 from quantumvitas.calculation.calculation import Calculation
 from quantumvitas.calculation.runner import CalculationRunner
 from quantumvitas.engine.registry import create_default_registry
@@ -95,20 +94,19 @@ def eam_md_project(tmp_path: Path):
     calc_doc = CalcDoc(calc_model.to_dict())
     save_yaml_doc(calc_doc, calc_path)
     
-    # Create MD step
-    step_resolved = init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
+    # Create MD step using domain API
+    svc = QVService(project_root)
+    step_dto = svc.calculation.add_step(
+        calc_selector=calc_id,
         step_type="md",
     )
-    step_id = step_resolved.meta.id
-    
-    # Configure step parameters
-    QVService.configure_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
+    step_id = step_dto.step_id
+
+    # Configure step parameters using domain API
+    svc.calculation.update_step_params(
+        calc_selector=calc_id,
         step_selector=step_id,
-        parameters={
+        params={
             "potential": "eam_cu",
             "units": "metal",
             "atom_style": "atomic",

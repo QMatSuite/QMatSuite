@@ -73,13 +73,10 @@ def create_step_doc(
         "step_type": machine_step_type,  # Machine type goes to step.yaml
     }
     
-    # Add structure_id if provided (legacy field, kept for backwards compat)
-    if structure_id:
-        data["structure"] = structure_id
-    
-    # Add parent calculation id
-    if parent_calculation_id:
-        data["parent_calculation_id"] = parent_calculation_id
+    # DAG model: Do NOT store structure_id in step YAML
+    # Step inherits structure from its parent calculation at runtime
+    # structure_id and parent_calculation_id are NOT stored in step.yaml
+    # The association is via calculation.yaml's steps array
     
     # Add parameters from defaults
     if defaults.get("parameters"):
