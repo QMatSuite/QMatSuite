@@ -11,24 +11,11 @@ from pathlib import Path
 from typing import Dict, Any
 
 from quantumvitas.project.model import Project
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.calculation.calculation import Calculation
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.calculation.runner import CalculationRunner
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.engine.registry import create_default_registry
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.api import QVService
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
-# Removed compat import - use domain API
 from quantumvitas.core.resolution import build_resource_index
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 
 
 @pytest.fixture
@@ -111,24 +98,26 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
     save_yaml_doc(calc_doc, calc_data_path)
     
     # Create SCF step using service API
-    step_resolved = init_step(
+    step_resolved = QVService.init_step(
         project_root=temp_project,
         calculation_selector=calc_id,
         step_type="scf",
         name="scf",
     )
     step_id = step_resolved.meta.id
-    
-    # Configure step parameters
-    configure_step(
-        project_root=temp_project,
-        calculation_selector=calc_id,
+
+    # Configure step parameters using domain accessor
+    svc = QVService(temp_project)
+    svc.calculation.update_step_params(
+        calc_selector=calc_id,
         step_selector=step_id,
-        parameters={
-            "method": "rhf",
-            "basis": "sto-3g",
-            "max_cycle": 50,
-            "conv_tol": 1e-9,
+        params={
+            "parameters": {
+                "method": "rhf",
+                "basis": "sto-3g",
+                "max_cycle": 50,
+                "conv_tol": 1e-9,
+            },
         },
     )
     
@@ -237,7 +226,7 @@ class TestPySCFPhase3CIntegration:
         assert checkpoint_file.exists()
         
         # RunStep(scf): should NOT use chkfile init_guess (target step always full rerun)
-        result2 = run_step(
+        result2 = QVService.run_step(
             project_root=project_root,
             calculation_selector=calc_id,
             step_selector=step_id,
@@ -279,44 +268,47 @@ class TestPySCFPhase3CIntegration:
         save_yaml_doc(calc_doc, calc_data_path)
         
         # Create SCF step
-        scf_step_resolved = init_step(
+        scf_step_resolved = QVService.init_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_type="scf",
             name="scf",
         )
         scf_step_id = scf_step_resolved.meta.id
-        configure_step(
-            project_root=temp_project,
-            calculation_selector=calc_id,
+        svc = QVService(temp_project)
+        svc.calculation.update_step_params(
+            calc_selector=calc_id,
             step_selector=scf_step_id,
-            parameters={
-                "method": "rhf",
-                "basis": "sto-3g",
-                "max_cycle": 50,
-                "conv_tol": 1e-9,
+            params={
+                "parameters": {
+                    "method": "rhf",
+                    "basis": "sto-3g",
+                    "max_cycle": 50,
+                    "conv_tol": 1e-9,
+                },
             },
         )
-        
+
         # Create MP2 step
-        mp2_step_resolved = init_step(
+        mp2_step_resolved = QVService.init_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_type="mp2",
             name="mp2",
         )
         mp2_step_id = mp2_step_resolved.meta.id
-        configure_step(
-            project_root=temp_project,
-            calculation_selector=calc_id,
+        svc.calculation.update_step_params(
+            calc_selector=calc_id,
             step_selector=mp2_step_id,
-            parameters={
-                "basis": "sto-3g",
+            params={
+                "parameters": {
+                    "basis": "sto-3g",
+                },
             },
         )
-        
+
         # Run Step(MP2): should execute SCF then MP2 in one session
-        result = run_step(
+        result = QVService.run_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_selector=mp2_step_id,
@@ -374,25 +366,27 @@ class TestPySCFPhase3CIntegration:
         save_yaml_doc(calc_doc, calc_data_path)
         
         # Create MP2 step (no SCF dependency)
-        mp2_step_resolved = init_step(
+        mp2_step_resolved = QVService.init_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_type="mp2",
             name="mp2",
         )
         mp2_step_id = mp2_step_resolved.meta.id
-        configure_step(
-            project_root=temp_project,
-            calculation_selector=calc_id,
+        svc = QVService(temp_project)
+        svc.calculation.update_step_params(
+            calc_selector=calc_id,
             step_selector=mp2_step_id,
-            parameters={
-                "basis": "sto-3g",
+            params={
+                "parameters": {
+                    "basis": "sto-3g",
+                },
             },
         )
-        
+
         # Run Step(MP2): should fail because no SCF provider exists
         # Note: The unified pipeline returns errors in the result dict rather than raising exceptions
-        result = run_step(
+        result = QVService.run_step(
             project_root=temp_project,
             calculation_selector=calc_id,
             step_selector=mp2_step_id,

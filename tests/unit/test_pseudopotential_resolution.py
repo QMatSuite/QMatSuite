@@ -355,16 +355,15 @@ K_POINTS (automatic)
             pass
 
 
-@pytest.mark.skip(reason="Online pseudo methods (search_legacy_pseudos, download_pseudo_by_filename) not in domain API")
 class TestOnlinePseudoResolve:
     """Test online pseudopotential resolution (QE legacy tables and filename downloads)."""
 
     def test_search_legacy_pseudos_structure(self):
         """Test that search_legacy_pseudos returns correct structure."""
-        from quantumvitas.api import QVService
-        
+        from quantumvitas._api_legacy import QVService as LegacyService
+
         # This will fail if offline, but structure should be correct
-        result = QVService.search_legacy_pseudos('Si')
+        result = LegacyService.search_legacy_pseudos('Si')
         
         assert isinstance(result, dict)
         assert 'candidates' in result
@@ -382,14 +381,14 @@ class TestOnlinePseudoResolve:
     
     def test_download_pseudo_by_filename_structure(self, tmp_path: Path):
         """Test that download_pseudo_by_filename has correct structure (won't actually download)."""
-        from quantumvitas.api import QVService
-        
+        from quantumvitas._api_legacy import QVService as LegacyService
+
         # Create a fake project root
         project_root = tmp_path / "project"
         project_root.mkdir()
-        
+
         # This will fail (file doesn't exist on server), but structure should be correct
-        result = QVService.download_pseudo_by_filename(
+        result = LegacyService.download_pseudo_by_filename(
             project_root=project_root,
             filename="NonExistent.UPF",
         )
@@ -404,7 +403,7 @@ class TestOnlinePseudoResolve:
     def test_download_pseudo_deduplication(self, tmp_path: Path):
         """Test that download_pseudo_by_filename deduplicates by SHA256."""
         import hashlib
-        from quantumvitas.api import QVService
+        from quantumvitas._api_legacy import QVService as LegacyService
         
         project_root = tmp_path / "project"
         project_root.mkdir()
@@ -430,34 +429,34 @@ class TestOnlinePseudoResolve:
     
     def test_download_pseudo_conflict_renaming(self, tmp_path: Path):
         """Test that download_pseudo_by_filename renames on filename conflicts."""
-        from quantumvitas.api import QVService
-        
+        from quantumvitas._api_legacy import QVService as LegacyService
+
         project_root = tmp_path / "project"
         project_root.mkdir()
         pseudo_dir = project_root / "pseudo"
         pseudo_dir.mkdir()
-        
+
         # Create an existing file with same name but different content
         existing_file = pseudo_dir / "Si.UPF"
         existing_file.write_bytes(b"existing content")
-        
+
         # Simulate downloading a different file with same name
         # (In real scenario, this would download from network)
         # The function should rename to Si_1.UPF
-        
+
         # Verify conflict resolution logic exists
         # (Full test would require mocking urllib.request.urlopen)
         assert existing_file.exists()
-    
+
     def test_search_legacy_pseudos_handles_offline(self):
         """Test that search_legacy_pseudos handles offline gracefully."""
-        from quantumvitas.api import QVService
+        from quantumvitas._api_legacy import QVService as LegacyService
         import socket
-        
+
         # Try to search - should not crash even if offline
         # (This test may pass or fail depending on network, but should not crash)
         try:
-            result = QVService.search_legacy_pseudos('Si')
+            result = LegacyService.search_legacy_pseudos('Si')
             # If we get here, structure is correct
             assert isinstance(result, dict)
             assert 'candidates' in result

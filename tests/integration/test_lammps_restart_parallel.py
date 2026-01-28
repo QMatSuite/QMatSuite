@@ -11,33 +11,24 @@ import shutil
 from pathlib import Path
 
 from quantumvitas.api import QVService
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
-# Removed compat import - use domain API
 from quantumvitas.calculation.calculation import Calculation
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.calculation.runner import CalculationRunner
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.engine.registry import create_default_registry
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.project.model import Project
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.core.yaml_io import save_yaml_doc
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.core.yamldoc import CalcDoc
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.core.models import load_calculation
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.core.pseudo_provenance import compute_sha256_file
 
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
+
+def configure_step(project_root, calculation_selector, step_selector, parameters):
+    """Helper function to configure step parameters via domain accessor."""
+    svc = QVService(project_root)
+    svc.calculation.update_step_params(
+        calc_selector=calculation_selector,
+        step_selector=step_selector,
+        params={"parameters": parameters},
+    )
 
 
 def get_lammps_binary():
@@ -122,7 +113,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = init_step(
+    relax_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
@@ -146,7 +137,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     )
     
     # Create MD step with restart_from
-    md_step = init_step(
+    md_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",

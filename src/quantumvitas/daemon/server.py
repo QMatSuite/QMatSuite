@@ -2107,8 +2107,8 @@ class QVDaemon:
         # Cache results
         project_root = self._require_path(payload, "project_root")
         cache_dir = project_root / "structures" / "cache"
-        from quantumvitas._api_legacy import QVService as LegacyService
-        cache = LegacyService.create_online_structure_cache(cache_dir)
+        from quantumvitas.api.utils import OnlineStructureCache
+        cache = OnlineStructureCache(cache_dir)
         
         # Store optimade_base in source_summary if available
         source_summary_with_base = source_summary
@@ -2151,7 +2151,8 @@ class QVDaemon:
             trace_id: str - Optional trace ID for performance logging
         """
         from quantumvitas.api import QVService
-        from quantumvitas.api.compat import DisplayModeParams
+        from quantumvitas.api.utils import DisplayModeParams, build_structure_vis_payload
+        from quantumvitas.api.utils import write_structure
         import tempfile
         import numpy as np
         
@@ -2175,8 +2176,8 @@ class QVDaemon:
         
         # Load from cache
         cache_dir = project_root / "structures" / "cache"
-        from quantumvitas._api_legacy import QVService as LegacyService
-        cache = LegacyService.create_online_structure_cache(cache_dir)
+        from quantumvitas.api.utils import OnlineStructureCache
+        cache = OnlineStructureCache(cache_dir)
         
         # Always get candidate first (needed for provenance building)
         candidates = cache.get_candidates(session_id)
@@ -2374,17 +2375,16 @@ class QVDaemon:
             repeat_boundary=repeat_boundary,
         )
         
-        # Use shared payload builder with timing (same function as project structures)
+        # Use kernel payload builder (same transformation as project structures)
         # This pipeline:
         # - Canonicalizes structure (wraps frac coords into [0,1))
         # - Builds display atoms for the chosen mode
         # - Computes bonds from the exact same atom list that is rendered
         # - All using Cartesian coordinates only
-        vis_payload = QVService._build_structure_vis_payload(
+        vis_payload = build_structure_vis_payload(
             structure,
             params,
-            structure_meta={"structure_id": f"online:{candidate_id}"},  # Mark as online for logging only
-            trace_id=trace_id,
+            structure_meta={"structure_id": f"online:{candidate_id}"},
         )
         
         # CRITICAL: Payload contract - atoms contains ALL display atoms
@@ -2471,7 +2471,7 @@ class QVDaemon:
         # Also return structure JSON for detail panel
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp:
             tmp_path = Path(tmp.name)
-            QVService.write_structure(structure, tmp_path)
+            write_structure(structure, tmp_path)
             structure_json = tmp_path.read_text()
             tmp_path.unlink()
         
@@ -2525,8 +2525,8 @@ class QVDaemon:
         
         # Load structure from cache
         cache_dir = project_root / "structures" / "cache"
-        from quantumvitas._api_legacy import QVService as LegacyService
-        cache = LegacyService.create_online_structure_cache(cache_dir)
+        from quantumvitas.api.utils import OnlineStructureCache
+        cache = OnlineStructureCache(cache_dir)
         
         structure = cache.get_structure(session_id, candidate_id)
         if structure is None:

@@ -3364,7 +3364,45 @@ class QVService:
             if isinstance(e, APIError):
                 raise
             raise map_kernel_exception(e)
-    
+
+    @staticmethod
+    def init_step(
+        project_root: Path | str,
+        calculation_selector: str,
+        step_type: str,
+        name: str | None = None,
+        structure_selector: str | None = None,
+    ) -> Any:
+        """
+        Create a new step in a calculation.
+
+        This is a backwards-compatibility wrapper for the legacy QVService.init_step().
+
+        Args:
+            project_root: Project root path
+            calculation_selector: Parent calculation selector
+            step_type: Step type (scf, nscf, dos, bands, etc.)
+            name: Optional step name (defaults to step_type)
+            structure_selector: Optional structure (defaults to calculation's structure)
+
+        Returns:
+            ResolvedResource for the new step
+        """
+        try:
+            from quantumvitas._api_legacy import QVService as LegacyService
+
+            return LegacyService.init_step(
+                project_root=Path(project_root).resolve(),
+                calculation_selector=calculation_selector,
+                step_type=step_type,
+                name=name,
+                structure_selector=structure_selector,
+            )
+        except Exception as e:
+            if isinstance(e, APIError):
+                raise
+            raise map_kernel_exception(e)
+
     @staticmethod
     def run_calculation(
         project_root: Path | str,
@@ -3415,7 +3453,54 @@ class QVService:
             if isinstance(e, APIError):
                 raise
             raise map_kernel_exception(e)
-    
+
+    @staticmethod
+    def run_step(
+        project_root: Path | str,
+        calculation_selector: str,
+        step_selector: str,
+        verbose: bool = False,
+        *,
+        index: Any = None,
+        config: dict | None = None,
+        run_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Run a single step in a calculation.
+
+        This is a backwards-compatibility wrapper for the legacy QVService.run_step().
+        Uses TARGET selection mode - the target step always runs.
+
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            step_selector: Step selector
+            verbose: If True, print detailed output
+            index: Optional resource index (for performance)
+            config: Optional project config (for performance)
+            run_id: External run ID to use (e.g., job_id from JobManager)
+
+        Returns:
+            Dict with step, step_id, step_type, success, error, input_file, output_file, etc.
+        """
+        try:
+            from quantumvitas._api_legacy import QVService as LegacyService
+
+            # Use legacy implementation
+            return LegacyService.run_step(
+                project_root=Path(project_root).resolve(),
+                calculation_selector=calculation_selector,
+                step_selector=step_selector,
+                verbose=verbose,
+                index=index,
+                config=config,
+                run_id=run_id,
+            )
+        except Exception as e:
+            if isinstance(e, APIError):
+                raise
+            raise map_kernel_exception(e)
+
     @staticmethod
     def import_structure(
         project_root: Path | str,
@@ -3461,7 +3546,52 @@ class QVService:
             if isinstance(e, APIError):
                 raise
             raise map_kernel_exception(e)
-    
+
+    @staticmethod
+    def promote_relax_structure(
+        project_root: Path | str,
+        calculation_selector: str,
+        step_selector: str,
+        name: str | None = None,
+        *,
+        index: Any = None,
+        config: dict | None = None,
+    ) -> Any:
+        """
+        Promote a relax step's generated structure to a project resource.
+
+        This is a backwards-compatibility wrapper for the legacy QVService.promote_relax_structure().
+
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector (ULID, slug, or name)
+            step_selector: Step selector (ULID, slug, or name)
+            name: Optional name for the new structure (defaults to calc_step_relaxed)
+            index: Optional resource index
+            config: Optional project config
+
+        Returns:
+            ResolvedResource for the newly created structure
+
+        Raises:
+            APIError: If step not found, not a relax step, or no generated structure
+        """
+        try:
+            from quantumvitas._api_legacy import QVService as LegacyService
+
+            return LegacyService.promote_relax_structure(
+                project_root=Path(project_root).resolve(),
+                calculation_selector=calculation_selector,
+                step_selector=step_selector,
+                name=name,
+                index=index,
+                config=config,
+            )
+        except Exception as e:
+            if isinstance(e, APIError):
+                raise
+            raise map_kernel_exception(e)
+
     @staticmethod
     def configure_species_map(
         project_root: Path | str,

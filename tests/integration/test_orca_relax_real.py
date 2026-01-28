@@ -26,7 +26,7 @@ from quantumvitas.execution.relax_artifacts import (
 from pymatgen.core import Molecule
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.requires_orca, pytest.mark.skip(reason="Pending migration from compat to domain API")]
+pytestmark = [pytest.mark.integration, pytest.mark.requires_orca]
 
 
 @pytest.fixture(scope="module")
@@ -77,15 +77,19 @@ def orca_project_with_h2(orca_available):
     calc_yaml.write_text(yaml.dump(calc_data, default_flow_style=False))
     
     # Create relax step
-    step = init_step(project_root, calc.id, "orca_relax", name="relax")
-    
+    step = QVService.init_step(project_root, calc.id, "orca_relax", name="relax")
+
     # Configure with minimal parameters
-    configure_step(
-        project_root, calc.id, step.id,
-        parameters={
-            "method": "HF",
-            "basis": "STO-3G",
-            "geom": {"MaxIter": 50},
+    svc = QVService(project_root)
+    svc.calculation.update_step_params(
+        calc_selector=calc.id,
+        step_selector=step.id,
+        params={
+            "parameters": {
+                "method": "HF",
+                "basis": "STO-3G",
+                "geom": {"MaxIter": 50},
+            },
         },
     )
     
@@ -112,7 +116,7 @@ class TestORCARelaxReal:
         step_id = orca_project_with_h2["step_id"]
         
         # Run relax
-        result = run_step(project_root, calc_id, step_id)
+        result = QVService.run_step(project_root, calc_id, step_id)
         
         # Verify success
         assert result.get("success"), f"Step failed: {result.get('error')}"
@@ -134,7 +138,7 @@ class TestORCARelaxReal:
         initial_distance = orca_project_with_h2["initial_h2_distance"]
         
         # Run relax
-        result = run_step(project_root, calc_id, step_id)
+        result = QVService.run_step(project_root, calc_id, step_id)
         assert result.get("success"), f"Step failed: {result.get('error')}"
         
         # Read relaxed structure
@@ -167,7 +171,7 @@ class TestORCARelaxReal:
         step_id = orca_project_with_h2["step_id"]
         
         # Run relax
-        result = run_step(project_root, calc_id, step_id)
+        result = QVService.run_step(project_root, calc_id, step_id)
         assert result.get("success"), f"Step failed: {result.get('error')}"
         
         # Read relaxed structure

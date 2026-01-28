@@ -15,11 +15,13 @@ from quantumvitas.api.types.base import BaseDTO
 class MetaDTO(BaseDTO):
     """
     Common metadata for entities.
-    
+
     All entity DTOs can include this for human-readable metadata.
     """
+    id: str | None = None            # ULID identifier
     slug: str | None = None          # Human-readable identifier
     name: str | None = None          # Display name
+    path: str | None = None          # Relative path within project
     description: str | None = None
     tags: list[str] | None = None
     created_at: str | None = None    # ISO datetime

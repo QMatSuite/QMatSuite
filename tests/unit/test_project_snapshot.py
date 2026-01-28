@@ -203,77 +203,82 @@ class TestProjectSnapshot:
                         f"Pseudo file {pseudo_file} should not be created (snapshot doesn't embed content)"
 
 
-@pytest.mark.skip(reason="Snapshot CLI methods (save_project_snapshot, create_project_from_snapshot) not in domain API")
 class TestSnapshotCLI:
     """Test CLI commands for snapshot operations."""
 
     def test_save_project_snapshot_cli(self, project1_path: Path, temp_dir: Path):
         """Test qv save-project CLI command."""
+        from quantumvitas._api_legacy import QVService as LegacyService
+
         snapshot_path = temp_dir / "snapshot.yml"
-        
-        QVService.save_project_snapshot(
+
+        LegacyService.save_project_snapshot(
             project_root=project1_path,
             output_path=snapshot_path,
             overwrite=False,
         )
-        
+
         assert snapshot_path.exists()
-        
+
         # Verify snapshot content
         snapshot_data = yaml.safe_load(snapshot_path.read_text())
         assert snapshot_data["version"] == 1
         assert "project" in snapshot_data
         assert "structures" in snapshot_data
         assert "calculations" in snapshot_data
-    
+
     def test_create_project_from_snapshot_cli(
         self, project1_path: Path, temp_dir: Path
     ):
         """Test qv init project --snapshot CLI command."""
+        from quantumvitas._api_legacy import QVService as LegacyService
+
         # Create snapshot
         snapshot_path = temp_dir / "snapshot.yml"
-        QVService.save_project_snapshot(
+        LegacyService.save_project_snapshot(
             project_root=project1_path,
             output_path=snapshot_path,
             overwrite=True,
         )
-        
+
         # Create new project from snapshot
-        new_project_root = QVService.create_project_from_snapshot(
+        new_project_root = LegacyService.create_project_from_snapshot(
             parent_dir=temp_dir,
             snapshot_path=snapshot_path,
             project_name="CLI Test Project",
         )
-        
+
         assert new_project_root.exists()
         assert (new_project_root / "project.qv.yml").exists()
-        
+
         new_project = load_project(new_project_root)
         assert new_project.name == "CLI Test Project"
         assert len(new_project.structures) == 1
         assert len(new_project.calculations) == 1
-    
+
     def test_snapshot_overwrite_protection(
         self, project1_path: Path, temp_dir: Path
     ):
         """Test that snapshot save fails if file exists and overwrite=False."""
+        from quantumvitas._api_legacy import QVService as LegacyService
+
         snapshot_path = temp_dir / "snapshot.yml"
         snapshot_path.write_text("existing content")
-        
+
         with pytest.raises(Exception):  # APIError
-            QVService.save_project_snapshot(
+            LegacyService.save_project_snapshot(
                 project_root=project1_path,
                 output_path=snapshot_path,
                 overwrite=False,
             )
-        
+
         # Should work with overwrite=True
-        QVService.save_project_snapshot(
+        LegacyService.save_project_snapshot(
             project_root=project1_path,
             output_path=snapshot_path,
             overwrite=True,
         )
-        
+
         # Content should be replaced
         snapshot_data = yaml.safe_load(snapshot_path.read_text())
         assert snapshot_data["version"] == 1
@@ -462,45 +467,49 @@ class TestSnapshotRoundtrip:
             assert new_calculation.structure_id is not None
             assert len(original_calculation.steps) == len(new_calculation.steps)
     
-    @pytest.mark.skip(reason="create_demo_project not in domain API - demo tooling")
     def test_create_demo_project_defaults_to_bands(self, temp_dir: Path):
         """Test that create_demo_project defaults to si_bands_demo when demo_id is not specified."""
-        result = QVService.create_demo_project(
+        from quantumvitas._api_legacy import QVService as LegacyService
+
+        result = LegacyService.create_demo_project(
             target_dir=temp_dir,
             name="test-demo-project",
         )
-        
+
         project_root = Path(result["project_root"])
-        
+
         # Verify project was created
         assert project_root.exists()
         assert (project_root / "project.qv.yml").exists()
-        
+
         # Verify project structure
         project_model = load_project(project_root)
         assert project_model.meta.name == "test-demo-project"
         assert len(project_model.structures) > 0
         assert len(project_model.calculations) > 0
-        
+
         # Verify it's the bands demo (should have bands-related calculations)
         calculation_slugs = {w.meta.slug for w in project_model.calculations}
         # si_bands_demo should have calculations with "bands" in the name/slug
         assert any("band" in slug.lower() for slug in calculation_slugs), \
             "Default demo should be si_bands_demo (bands calculation)"
-    
-    @pytest.mark.skip(reason="create_demo_project not in domain API - demo tooling")
+
     def test_create_demo_project_with_explicit_demo_id(self, temp_dir: Path):
         """Test creating a demo project with explicit demo_id."""
-        # Test DOS demo
-        result = QVService.create_demo_project(
-            target_dir=temp_dir,
+        from quantumvitas._api_legacy import QVService as LegacyService
+
+        # Test DOS demo - use unique subdir to avoid conflict
+        dos_dir = temp_dir / "dos_demo"
+        dos_dir.mkdir(parents=True, exist_ok=True)
+        result = LegacyService.create_demo_project(
+            target_dir=dos_dir,
             name="test-dos-project",
             demo_id="si_dos_demo",
         )
-        
+
         project_root = Path(result["project_root"])
         project_model = load_project(project_root)
-        
+
         # Verify it's the DOS demo
         calculation_slugs = {w.meta.slug for w in project_model.calculations}
         # si_dos_demo should have calculations with "dos" in the name/slug

@@ -45,6 +45,8 @@ from quantumvitas.api.utils import (
     needs_alat_preservation,
     write_qe_input_file,
 )
+# Kernel utility re-exported via API utils (avoids direct core.* imports per import rules)
+from quantumvitas.api.utils import calculations_using_structure
 from quantumvitas.data import (
     get_module_doc_url,
     get_module_param_sections,
@@ -1639,14 +1641,14 @@ def run_step_command(
     try:
         # ProjectContext removed - use QVService methods directly
         svc = get_service(project or cwd)
-        ctx_obj = None  # Context no longer needed - use svc directly
+        project_root = svc.project_root
     except NotFoundError as e:
         raise typer.BadParameter(
             f"Project not found: {e}. "
             "Run inside a project directory or specify --project <path>. "
             "For standalone execution, use --standalone --input <file>."
         ) from e
-    
+
     # If target is provided (legacy support), try to resolve step from it
     # This will also resolve the calculation from the step path
     if target:
@@ -1660,7 +1662,7 @@ def run_step_command(
             # Try to find the step in the registry by path
             step_path = target.resolve()
             try:
-                rel_path = step_path.relative_to(ctx_obj.project_root)
+                rel_path = step_path.relative_to(project_root)
                 # Extract calculation and step from path (e.g., calculations/wf/steps/scf.step.yaml)
                 if "calculations" in rel_path.parts and "steps" in rel_path.parts:
                     # Find calculation slug from path
@@ -1668,13 +1670,11 @@ def run_step_command(
                     if calculations_idx + 1 < len(rel_path.parts):
                         calculation_slug = rel_path.parts[calculations_idx + 1]
                         # Resolve calculation from slug
-                        from quantumvitas.api import get_service
-                        svc = get_service(ctx_obj.project_root)
-                        calculation_resolved = svc.calculation.require_ref(calculation_slug, config=ctx_obj.config)
+                        calculation_resolved = svc.calculation.require_ref(calculation_slug)
                         # Extract step selector from filename
                         step_selector = step_path.stem.replace(".step", "")
                         calc_selector = calculation_resolved.meta.id if calculation_resolved.meta else calculation_slug
-                        step_resolved = svc.calculation.require_step_ref(calc_selector, step_selector, config=ctx_obj.config)
+                        step_resolved = svc.calculation.require_step_ref(calc_selector, step_selector)
                     else:
                         raise typer.BadParameter(
                             f"Step file {target} path is invalid. "
@@ -1682,8 +1682,6 @@ def run_step_command(
                         )
                 else:
                     # Try to find step in registry by absolute path
-                    from quantumvitas.api import QVService
-                    svc = get_service(ctx_obj.project_root)
                     registry = svc.project.build_resource_index()
                     # Look for step by path in registry
                     step_found = None
@@ -1692,14 +1690,14 @@ def run_step_command(
                             meta = registry.by_id.get(resource_id)
                             if meta and meta.kind == "step":
                                 # Find parent calculation from step path
-                                step_rel = Path(path).relative_to(ctx_obj.project_root)
+                                step_rel = Path(path).relative_to(project_root)
                                 if "calculations" in step_rel.parts and "steps" in step_rel.parts:
                                     calculations_idx = step_rel.parts.index("calculations")
                                     if calculations_idx + 1 < len(step_rel.parts):
                                         calculation_slug = step_rel.parts[calculations_idx + 1]
-                                        calculation_resolved = svc.calculation.require_ref(calculation_slug, config=ctx_obj.config)
+                                        calculation_resolved = svc.calculation.require_ref(calculation_slug)
                                         calc_selector = calculation_resolved.meta.id if calculation_resolved.meta else calculation_slug
-                                        step_resolved = svc.calculation.require_step_ref(calc_selector, meta.slug or meta.name or meta.id, config=ctx_obj.config)
+                                        step_resolved = svc.calculation.require_step_ref(calc_selector, meta.slug or meta.name or meta.id)
                                         step_found = True
                                         break
                     if not step_found:
@@ -1721,32 +1719,30 @@ def run_step_command(
             )
     else:
         # No target - resolve calculation first, then step
-        from quantumvitas.api import get_service
-        svc = get_service(ctx_obj.project_root)
         try:
-            calculation_resolved = svc.calculation.require_ref(calculation, config=ctx_obj.config)
+            calculation_resolved = svc.calculation.require_ref(calculation)
         except Exception as e:
             from quantumvitas.api.errors import NotFoundError
             if isinstance(e, NotFoundError):
                 raise typer.BadParameter(str(e)) from e
             raise
-        
+
         # Use --step option or auto-detect
         try:
             calc_selector = calculation_resolved.meta.id if calculation_resolved.meta else calculation
-            step_resolved = svc.calculation.require_step_ref(calc_selector, step, config=ctx_obj.config)
+            step_resolved = svc.calculation.require_step_ref(calc_selector, step)
         except Exception as e:
             from quantumvitas.api.errors import NotFoundError
             if isinstance(e, NotFoundError):
                 raise typer.BadParameter(str(e)) from e
             raise
-    
+
     # Run step via QVService (registry-based, uses calculation.structure_id)
     from quantumvitas.api import QVService
-    
+
     try:
         result = QVService.run_step(
-            project_root=ctx_obj.project_root,
+            project_root=project_root,
             calculation_selector=calculation_resolved.meta.slug or calculation_resolved.meta.name or calculation_resolved.meta.id,
             step_selector=step_resolved.meta.slug or step_resolved.meta.name or step_resolved.meta.id,
         )
@@ -2022,9 +2018,9 @@ def list_resources(
         
         using_calculations = []
         if struct_entry:
-            using_wfs = svc.calculations_using_structure(struct_entry, config=config)
+            using_wfs = calculations_using_structure(project_root, config, struct_entry)
             using_calculations = [
-                (wf.get("meta") or {}).get("slug") or wf.get("name") 
+                (wf.get("meta") or {}).get("slug") or wf.get("name")
                 for wf in using_wfs
             ]
         
@@ -3982,11 +3978,11 @@ def run_calculation_command(
 
     # Set mode if needed (must be done before calling run_calculation)
     if strict or mode:
-        # Model I/O functions now via QVService
-        from quantumvitas.api import QVService
-        
+        # Model I/O functions re-exported via API utils (avoids direct core.* imports)
+        from quantumvitas.api.utils import load_calculation, save_calculation
+
         # Load the model, update mode, and save
-        calc_model = QVService.load_calculation(calc_dir, project_root)
+        calc_model = load_calculation(calc_dir, project_root)
         if strict:
             calc_model.mode = "strict"
         elif mode:
@@ -3994,8 +3990,8 @@ def run_calculation_command(
                 calc_model.mode = mode.lower()
             except ValueError as exc:
                 raise typer.BadParameter("Mode must be 'normal' or 'strict'.") from exc
-        
-        QVService.save_calculation(calc_model, calc_dir)
+
+        save_calculation(calc_model, calc_dir)
 
     # Use QVService static method which wraps CalculationRunner internally
     result_dict = QVService.run_calculation(

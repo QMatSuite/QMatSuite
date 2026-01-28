@@ -106,39 +106,40 @@ class TestDemoSnapshotRestore:
             calculations_dir = project_root / "calculations"
             assert calculations_dir.exists(), f"calculations directory should exist: {calculations_dir}"
     
-    @pytest.mark.skip(reason="create_demo_project not in domain API - demo tooling")
     def test_create_demo_project_via_api(self):
-        """Test creating demo project via QVService.create_demo_project."""
+        """Test creating demo project via LegacyService.create_demo_project."""
+        from quantumvitas._api_legacy import QVService as LegacyService
+
         with tempfile.TemporaryDirectory() as tmpdir:
-            result = QVService.create_demo_project(
+            result = LegacyService.create_demo_project(
                 target_dir=Path(tmpdir),
                 name="test_demo",
                 demo_id="si_bands_demo",
             )
-            
+
             project_root = Path(result["project_root"])
-            
+
             # Verify project root exists
             assert project_root.exists(), f"Project root should exist: {project_root}"
-            
+
             # Verify project.qv.yml exists
             project_config = project_root / "project.qv.yml"
             assert project_config.exists(), f"project.qv.yml should exist: {project_config}"
-            
+
             # Verify structures directory exists and has files
             structures_dir = project_root / "structures"
             assert structures_dir.exists(), f"structures directory should exist: {structures_dir}"
             structure_files = list(structures_dir.glob("*.json"))
             assert len(structure_files) > 0, f"At least one structure file should exist"
-            
+
             # Verify calculations directory exists and has files
             calculations_dir = project_root / "calculations"
             assert calculations_dir.exists(), f"calculations directory should exist: {calculations_dir}"
             calculation_yamls = list(calculations_dir.glob("*/calculation.yaml"))
             assert len(calculation_yamls) > 0, f"At least one calculation.yaml should exist"
-            
+
             # Verify project can be opened by QVService
-            summary = QVService.get_project_summary(project_root)
+            summary = LegacyService.get_project_summary(project_root)
             assert summary is not None, "Project summary should be available"
             assert summary["n_structures"] > 0, "Project should have at least one structure"
             assert summary["n_calculations"] > 0, "Project should have at least one calculation"

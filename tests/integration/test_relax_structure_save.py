@@ -11,9 +11,10 @@ from quantumvitas.calculation.structure_steps import StructureStepSpec
 from quantumvitas.core.resources import meta_from_name, generate_resource_id
 
 
-@pytest.mark.skip(reason="save_relax_final_structure not in domain API - promote functionality")
 def test_save_relax_structure_idempotency(tmp_path: Path):
     """Test that save_relax_final_structure is idempotent (returns same ULID on repeated calls)."""
+    from quantumvitas._api_legacy import QVService as LegacyService
+
     project_root = tmp_path / "test_project"
     project_root.mkdir()
     
@@ -129,7 +130,7 @@ End final coordinates
 """)
     
     # First call: should create structure
-    result1 = QVService.save_relax_final_structure(
+    result1 = LegacyService.save_relax_final_structure(
         project_root=project_root,
         calculation_selector="relax-test",
         step_selector=step_id,
@@ -157,7 +158,7 @@ End final coordinates
     assert step_data.get("produced_structure_ulid") == structure_ulid_1
     
     # Second call: should return existing structure (idempotent)
-    result2 = QVService.save_relax_final_structure(
+    result2 = LegacyService.save_relax_final_structure(
         project_root=project_root,
         calculation_selector="relax-test",
         step_selector=step_id,

@@ -104,35 +104,36 @@ class TestPseudoOptionsContract:
         assert matching_variant["basename"] == "Si.UPF", "basename should match filename"
 
 
-@pytest.mark.skip(reason="update_calculation_species_map not in domain API - GUI pseudo selection")
 class TestUIWritebackContract:
     """Test UI writeback contract for update_calculation_species_map()."""
 
     def test_update_writes_complete_triplet(self, tmp_path: Path):
         """Test that update_calculation_species_map() writes complete triplet together."""
+        from quantumvitas._api_legacy import QVService as LegacyService
+
         project_root = tmp_path / "test_project"
         project_root.mkdir()
         (project_root / "pseudo").mkdir()
-        
+
         # Create project
         QVService.init_project(project_root, "Test Project")
-        
+
         # Create calculation
         calc_result = QVService.init_calculation(
             project_root=project_root,
             name="Test Calc",
         )
         calc_id = calc_result.meta.id
-        
+
         # Create test pseudo file
         pseudo_file = project_root / "pseudo" / "Si.UPF"
         create_test_upf_file(pseudo_file, "Si")
-        
+
         # Get options to get valid sha256 and sha_family
         options = get_pseudo_options_for_elements(project_root, ["Si"])
         assert "Si" in options and len(options["Si"]) > 0
         variant = options["Si"][0]
-        
+
         # Update species_map with complete triplet
         species_map = {
             "Si": {
@@ -143,15 +144,15 @@ class TestUIWritebackContract:
                 "pseudo_sha_family": variant["sha_family"],
             }
         }
-        
-        QVService.update_calculation_species_map(
+
+        LegacyService.update_calculation_species_map(
             project_root=project_root,
             calculation_selector=calc_id,
             species_map=species_map,
         )
-        
+
         # Load and verify
-        calc_result = QVService.get_calculation(project_root, calc_id)
+        calc_result = LegacyService.get_calculation(project_root, calc_id)
         calc_yaml = calc_result.absolute_path / "calculation.yaml"
         calc_model = load_calculation(calc_yaml, project_root)
         
@@ -169,20 +170,22 @@ class TestUIWritebackContract:
     
     def test_update_rejects_incomplete_triplet(self, tmp_path: Path):
         """Test that update with incomplete triplet is handled (should still work but warn)."""
+        from quantumvitas._api_legacy import QVService as LegacyService
+
         project_root = tmp_path / "test_project"
         project_root.mkdir()
         (project_root / "pseudo").mkdir()
-        
+
         # Create project
         QVService.init_project(project_root, "Test Project")
-        
+
         # Create calculation
         calc_result = QVService.init_calculation(
             project_root=project_root,
             name="Test Calc",
         )
         calc_id = calc_result.meta.id
-        
+
         # Try to update with only basename (incomplete)
         species_map = {
             "Si": {
@@ -191,16 +194,16 @@ class TestUIWritebackContract:
                 # Missing sha256 and sha_family
             }
         }
-        
+
         # This should still work (no validation error), but the fields will be missing
-        QVService.update_calculation_species_map(
+        LegacyService.update_calculation_species_map(
             project_root=project_root,
             calculation_selector=calc_id,
             species_map=species_map,
         )
-        
+
         # Load and verify
-        calc_result = QVService.get_calculation(project_root, calc_id)
+        calc_result = LegacyService.get_calculation(project_root, calc_id)
         calc_yaml = calc_result.absolute_path / "calculation.yaml"
         calc_model = load_calculation(calc_yaml, project_root)
         

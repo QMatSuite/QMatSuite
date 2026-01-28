@@ -19,15 +19,8 @@ from pathlib import Path
 from typing import Dict, Any
 
 from quantumvitas.api import QVService
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
-# Removed compat import - use domain API
 from quantumvitas.calculation.manifest import load_manifest, Manifest
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.core.paths import tmp_runs_dir
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 
 
 @pytest.fixture
@@ -105,7 +98,7 @@ class TestVASPProjectE2E:
         calc_dir = vasp_calculation["calc_dir"]
         
         # Add SCF step
-        scf_result = init_step(
+        scf_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_type="vasp_scf",
@@ -114,7 +107,7 @@ class TestVASPProjectE2E:
         scf_ulid = scf_result.id
         
         # Add Bands step
-        bands_result = init_step(
+        bands_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_type="vasp_bands",
@@ -123,7 +116,7 @@ class TestVASPProjectE2E:
         bands_ulid = bands_result.id
         
         # Run SCF
-        scf_run_result = run_step(
+        scf_run_result = QVService.run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=scf_ulid,
@@ -139,7 +132,7 @@ class TestVASPProjectE2E:
         assert (scf_workdir / "CHGCAR").exists()
         
         # Run Bands
-        bands_run_result = run_step(
+        bands_run_result = QVService.run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=bands_ulid,
@@ -160,7 +153,7 @@ class TestVASPProjectE2E:
         calc_dir = vasp_calculation["calc_dir"]
         
         # Add SCF step
-        scf_result = init_step(
+        scf_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_type="vasp_scf",
@@ -169,7 +162,7 @@ class TestVASPProjectE2E:
         scf_ulid = scf_result.id
         
         # Add DOS step
-        dos_result = init_step(
+        dos_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_type="vasp_dos",
@@ -178,7 +171,7 @@ class TestVASPProjectE2E:
         dos_ulid = dos_result.id
         
         # Run SCF
-        scf_run_result = run_step(
+        scf_run_result = QVService.run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=scf_ulid,
@@ -192,7 +185,7 @@ class TestVASPProjectE2E:
         assert (scf_workdir / "CHGCAR").exists()
         
         # Run DOS
-        dos_run_result = run_step(
+        dos_run_result = QVService.run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=dos_ulid,
@@ -213,7 +206,7 @@ class TestVASPProjectE2E:
         calc_dir = vasp_calculation["calc_dir"]
         
         # Add SCF step
-        scf_result = init_step(
+        scf_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_type="vasp_scf",
@@ -222,7 +215,7 @@ class TestVASPProjectE2E:
         scf_ulid = scf_result.id
         
         # Add Bands step
-        bands_result = init_step(
+        bands_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_type="vasp_bands",
@@ -276,7 +269,7 @@ class TestVASPProjectE2E:
         calc_dir = vasp_calculation["calc_dir"]
         
         # Add SCF step
-        scf_result = init_step(
+        scf_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_type="vasp_scf",
@@ -293,7 +286,7 @@ class TestVASPProjectE2E:
             assert manifest.steps[0].done is False
         
         # Run SCF
-        scf_run_result = run_step(
+        scf_run_result = QVService.run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=scf_ulid,

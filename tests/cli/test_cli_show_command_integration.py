@@ -78,7 +78,6 @@ def _ensure_clean_directory(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
-@pytest.mark.skip(reason="Test uses project_root_path fixture that returns None - needs investigation")
 def test_cli_show_command_executes_against_references(
     ci_test_data_dir: Path,
     project_root_path: Path,

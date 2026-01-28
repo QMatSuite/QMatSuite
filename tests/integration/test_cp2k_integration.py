@@ -9,30 +9,13 @@ import pytest
 from pathlib import Path
 
 from quantumvitas.api import QVService
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
-# Removed compat import - use domain API
 from quantumvitas.calculation.calculation import Calculation
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.calculation.runner import CalculationRunner
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.engine.registry import create_default_registry
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.project.model import Project
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.core.yaml_io import save_yaml_doc
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.core.yamldoc import CalcDoc
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.core.models import load_calculation
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 
 
 # Check CP2K availability
@@ -104,27 +87,29 @@ def test_cp2k_scf_silicon(cp2k_silicon_project):
     calc_id = cp2k_silicon_project["calc_id"]
     
     # Create SCF step
-    step_resolved = init_step(
+    step_resolved = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="scf",
     )
     step_id = step_resolved.meta.id
-    
+
     # Configure step parameters
-    configure_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
+    svc = QVService(project_root)
+    svc.calculation.update_step_params(
+        calc_selector=calc_id,
         step_selector=step_id,
-        parameters={
-            "functional": "PBE",
-            "cutoff": 300,
-            "rel_cutoff": 50,
-            "basis_set": "DZVP-MOLOPT-SR-GTH",
-            "potential": "GTH-PBE",
-            "scf_max_iter": 50,
-            "scf_eps_scf": 1e-6,
-            "ignore_convergence_failure": True,  # Allow test to complete even if SCF doesn't fully converge
+        params={
+            "parameters": {
+                "functional": "PBE",
+                "cutoff": 300,
+                "rel_cutoff": 50,
+                "basis_set": "DZVP-MOLOPT-SR-GTH",
+                "potential": "GTH-PBE",
+                "scf_max_iter": 50,
+                "scf_eps_scf": 1e-6,
+                "ignore_convergence_failure": True,  # Allow test to complete even if SCF doesn't fully converge
+            },
         },
     )
     
@@ -162,29 +147,31 @@ def test_cp2k_relax_silicon_with_cell(cp2k_silicon_project):
     calc_id = cp2k_silicon_project["calc_id"]
     
     # Create relax step
-    step_resolved = init_step(
+    step_resolved = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
     )
     step_id = step_resolved.meta.id
-    
+
     # Configure step parameters
-    configure_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
+    svc = QVService(project_root)
+    svc.calculation.update_step_params(
+        calc_selector=calc_id,
         step_selector=step_id,
-        parameters={
-            "functional": "PBE",
-            "cutoff": 300,
-            "rel_cutoff": 50,
-            "basis_set": "DZVP-MOLOPT-SR-GTH",
-            "potential": "GTH-PBE",
-            "scf_max_iter": 50,
-            "scf_eps_scf": 1e-6,
-            "max_iter": 10,  # Short run for testing
-            "optimize_cell": False,  # Geometry optimization only
-            "ignore_convergence_failure": True,  # Allow test to complete even if SCF doesn't fully converge
+        params={
+            "parameters": {
+                "functional": "PBE",
+                "cutoff": 300,
+                "rel_cutoff": 50,
+                "basis_set": "DZVP-MOLOPT-SR-GTH",
+                "potential": "GTH-PBE",
+                "scf_max_iter": 50,
+                "scf_eps_scf": 1e-6,
+                "max_iter": 10,  # Short run for testing
+                "optimize_cell": False,  # Geometry optimization only
+                "ignore_convergence_failure": True,  # Allow test to complete even if SCF doesn't fully converge
+            },
         },
     )
     
@@ -245,30 +232,32 @@ def test_cp2k_md_incremental_skip_disabled(cp2k_silicon_project):
     calc_id = cp2k_silicon_project["calc_id"]
     
     # Create MD step
-    step_resolved = init_step(
+    step_resolved = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
     )
     step_id = step_resolved.meta.id
-    
+
     # Configure step parameters
-    configure_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
+    svc = QVService(project_root)
+    svc.calculation.update_step_params(
+        calc_selector=calc_id,
         step_selector=step_id,
-        parameters={
-            "functional": "PBE",
-            "cutoff": 300,
-            "rel_cutoff": 50,
-            "basis_set": "DZVP-MOLOPT-SR-GTH",
-            "potential": "GTH-PBE",
-            "scf_max_iter": 50,
-            "scf_eps_scf": 1e-6,
-            "ensemble": "NVT",
-            "steps": 5,  # Very short MD for testing
-            "timestep": 0.5,  # fs
-            "temperature": 300,
+        params={
+            "parameters": {
+                "functional": "PBE",
+                "cutoff": 300,
+                "rel_cutoff": 50,
+                "basis_set": "DZVP-MOLOPT-SR-GTH",
+                "potential": "GTH-PBE",
+                "scf_max_iter": 50,
+                "scf_eps_scf": 1e-6,
+                "ensemble": "NVT",
+                "steps": 5,  # Very short MD for testing
+                "timestep": 0.5,  # fs
+                "temperature": 300,
+            },
         },
     )
     
