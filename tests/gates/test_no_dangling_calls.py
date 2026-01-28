@@ -9,6 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def test_no_dangling_calls():
     """Ensure all QVService calls resolve to existing methods."""

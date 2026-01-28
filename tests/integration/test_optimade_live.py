@@ -493,22 +493,20 @@ def test_optimade_live_viewer_payload_builder():
     assert structure is not None
     
     # Use shared payload builder (same as production)
-    from quantumvitas.api_legacy import QVService
-    from quantumvitas.analysis.structure_viz import DisplayModeParams
-    
+    from quantumvitas.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
+
     params = DisplayModeParams(
         mode="primitive",
         supercell=None,
         box_bounds=None,
         repeat_boundary=False,
     )
-    
+
     # Build payload
-    payload = QVService._build_structure_vis_payload(
+    payload = build_structure_vis_payload(
         structure,
         params,
         structure_meta=None,
-        trace_id="test_trace",
     )
     
     # Verify JSON serializable
