@@ -609,3 +609,6 @@ From `src/quantumvitas/api/service.py`:
 **Next Steps**: Focus on PR10 (remove `_api_legacy` import, add gate tests, reduce exports to ≤30)
 
 
+
+
+
