@@ -19,7 +19,20 @@ from quantumvitas.execution.relax_artifacts import (
 from pymatgen.core import Structure, Lattice
 
 
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API"), pytest.mark.integration, pytest.mark.requires_qe]
+pytestmark = [pytest.mark.integration, pytest.mark.requires_qe]
+
+
+def configure_step(project_root, calculation_selector, step_selector, parameters, cards=None):
+    """Helper function to configure step parameters via domain accessor."""
+    svc = QVService(project_root)
+    params_dict = {"parameters": parameters}
+    if cards:
+        params_dict["cards"] = cards
+    svc.calculation.update_step_params(
+        calc_selector=calculation_selector,
+        step_selector=step_selector,
+        params=params_dict,
+    )
 
 
 @pytest.fixture(scope="module")
@@ -110,7 +123,7 @@ def qe_calculation_with_relax(qe_project_with_si):
     )
     
     # Create relax step
-    relax_step_result = init_step(
+    relax_step_result = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_ulid,
         step_type="qe_relax",
@@ -185,7 +198,7 @@ class TestQERelaxReal:
         project_root = qe_calculation_with_relax["project_root"]
         
         # Run the relax step
-        result = run_step(
+        result = QVService.run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=relax_step_ulid,
@@ -278,7 +291,7 @@ class TestQERelaxReal:
         initial_structure = read_structure(structure_path)
         
         # Run the relax step
-        result = run_step(
+        result = QVService.run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=relax_step_ulid,
@@ -315,7 +328,7 @@ class TestQERelaxReal:
         project_root = qe_calculation_with_relax["project_root"]
         
         # Run the relax step
-        result = run_step(
+        result = QVService.run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=relax_step_ulid,

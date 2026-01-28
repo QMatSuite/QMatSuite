@@ -18,33 +18,24 @@ import subprocess
 from pathlib import Path
 
 from quantumvitas.api import QVService
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
-# Removed compat import - use domain API
 from quantumvitas.calculation.calculation import Calculation
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.calculation.runner import CalculationRunner
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.engine.registry import create_default_registry
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.project.model import Project
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.core.yaml_io import save_yaml_doc
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.core.yamldoc import CalcDoc
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.core.models import load_calculation
-
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
 from quantumvitas.core.pseudo_provenance import compute_sha256_file
 
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
+
+def configure_step(project_root, calculation_selector, step_selector, parameters):
+    """Helper function to configure step parameters via domain accessor."""
+    svc = QVService(project_root)
+    svc.calculation.update_step_params(
+        calc_selector=calculation_selector,
+        step_selector=step_selector,
+        params={"parameters": parameters},
+    )
 
 
 def get_lammps_binary_info():
@@ -155,7 +146,7 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    step = init_step(
+    step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
@@ -290,7 +281,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create MD step
-    step = init_step(
+    step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
@@ -424,7 +415,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = init_step(
+    relax_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
@@ -448,7 +439,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     )
     
     # Create MD step
-    md_step = init_step(
+    md_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
@@ -620,7 +611,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = init_step(
+    relax_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
@@ -644,7 +635,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     )
     
     # Create first MD step
-    md1_step = init_step(
+    md1_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
@@ -670,7 +661,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     )
     
     # Create second MD step (restart from first MD)
-    md2_step = init_step(
+    md2_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",

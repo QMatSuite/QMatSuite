@@ -268,7 +268,6 @@ def test_cli_import_structure_registers_json(tmp_path: Path):
     assert struct_meta.get("name") == "si_struct"
 
 
-@pytest.mark.skip(reason="CLI list uses calculations_using_structure not in domain API")
 def test_cli_list(sample_project: Path):
     runner = CliRunner()
     result = runner.invoke(app, ["list", "--project", str(sample_project)])
@@ -420,7 +419,6 @@ def test_cli_delete_calculation(tmp_path: Path):
     assert all(entry["name"] != "wf1" for entry in data["calculations"])
 
 
-@pytest.mark.skip(reason="CLI run uses QVService.load_calculation static method not in domain API")
 def test_cli_run_calculation_strict_option(sample_project: Path, monkeypatch):
     """Test that --strict flag sets calculation mode to STRICT."""
     runner = CliRunner()
@@ -491,7 +489,6 @@ def test_cli_run_calculation_strict_option(sample_project: Path, monkeypatch):
     assert calc_mode == "strict", f"Expected mode='strict', got mode='{calc_mode}'"
 
 
-@pytest.mark.skip(reason="CLI run uses QVService.run_step static method not in domain API")
 def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     runner = CliRunner()
     project_root = tmp_path / "proj"
@@ -616,7 +613,6 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     assert captured["input_file"].exists()
 
 
-@pytest.mark.skip(reason="CLI run uses QVService.run_step static method not in domain API")
 def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     runner = CliRunner()
     project_root = tmp_path / "proj"
@@ -883,7 +879,6 @@ def test_cli_show_command(tmp_path: Path):
     assert "inside a calculation directory" in result.stdout or "--structure" in result.stdout
 
 
-@pytest.mark.skip(reason="CLI show-command uses method that returns None project_root")
 def test_cli_show_command_import_preserves_original_parameters(
     ci_test_data_dir: Path, tmp_path: Path, monkeypatch
 ):

@@ -352,20 +352,28 @@ class TestAPIImportRules:
     FORBIDDEN_PREFIXES = ("quantumvitas.frontends", "quantumvitas.cli", "quantumvitas.daemon", "quantumvitas.tools")
 
     def test_api_no_frontend_imports(self):
-        """api.py must not import from frontends/*."""
+        """api/* must not import from frontends/*."""
+        # Check for api/ directory (new structure) or api.py (legacy)
+        api_dir = PROJECT_ROOT / "src/quantumvitas/api"
         api_file = PROJECT_ROOT / "src/quantumvitas/api.py"
-        if not api_file.exists():
-            pytest.skip("API file does not exist")
 
-        violations = scan_python_files(
-            [api_file.parent],
-            self.FORBIDDEN_PREFIXES,
-        )
-
-        # Filter to only api.py
-        violations = [v for v in violations if v.file_path.name == "api.py"]
-
-        _report_violations(violations, "API: Forbidden frontend imports", api_file)
+        if api_dir.exists():
+            # New structure: scan api/ directory
+            violations = scan_python_files(
+                [api_dir],
+                self.FORBIDDEN_PREFIXES,
+            )
+            _report_violations(violations, "API: Forbidden frontend imports", api_dir)
+        elif api_file.exists():
+            # Legacy structure: scan single api.py file
+            violations = scan_python_files(
+                [api_file.parent],
+                self.FORBIDDEN_PREFIXES,
+            )
+            violations = [v for v in violations if v.file_path.name == "api.py"]
+            _report_violations(violations, "API: Forbidden frontend imports", api_file)
+        else:
+            pytest.skip("API directory/file does not exist")
 
     def _format_violations(self, violations: list[Violation]) -> str:
         """Format violations for assertion message."""

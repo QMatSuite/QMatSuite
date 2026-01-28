@@ -479,3 +479,122 @@ def is_ulid_like(s: str) -> bool:
     from quantumvitas.core.resolution import _is_ulid_like
     return _is_ulid_like(s)
 
+
+def calculations_using_structure(project_root: Path, config: dict | None, struct_entry: dict) -> list:
+    """
+    Find calculations that use a given structure.
+
+    Transparent re-export from quantumvitas.core.project_utils.
+
+    Args:
+        project_root: Project root path
+        config: Project configuration dict (from load_project_config)
+        struct_entry: Structure entry dict with 'id' field
+
+    Returns:
+        List of calculation entries that reference this structure
+    """
+    from quantumvitas.core.project_utils import calculations_using_structure as _calculations_using_structure
+    return _calculations_using_structure(project_root, config, struct_entry)
+
+
+def load_calculation(path: Path, project_root: Path | None = None):
+    """
+    Load a CalculationModel from a calculation.yaml file.
+
+    Transparent re-export from quantumvitas.core.models.
+
+    Args:
+        path: Path to calculation.yaml or calculation directory
+        project_root: Project root for relative path calculation
+
+    Returns:
+        CalculationModel instance
+    """
+    from quantumvitas.core.models import load_calculation as _load_calculation
+    return _load_calculation(path, project_root)
+
+
+def save_calculation(model, path: Path) -> None:
+    """
+    Save a CalculationModel to a calculation.yaml file.
+
+    Transparent re-export from quantumvitas.core.models.
+
+    Args:
+        model: CalculationModel instance
+        path: Path to save to (directory or calculation.yaml file)
+    """
+    from quantumvitas.core.models import save_calculation as _save_calculation
+    _save_calculation(model, path)
+
+
+# =============================================================================
+# Visualization utilities (re-exports from analysis layer)
+# =============================================================================
+
+def get_display_mode_params_class():
+    """
+    Get the DisplayModeParams class for constructing display mode parameters.
+
+    This is the proper way for frontends to access the DisplayModeParams type.
+
+    Returns:
+        DisplayModeParams class
+    """
+    from quantumvitas.analysis.structure_viz import DisplayModeParams
+    return DisplayModeParams
+
+
+# Re-export DisplayModeParams directly for type hints and direct construction
+from quantumvitas.analysis.structure_viz import DisplayModeParams  # noqa: E402, F401
+
+
+def build_structure_vis_payload(
+    structure,
+    params,
+    structure_meta: dict | None = None,
+) -> dict:
+    """
+    Build visualization payload from a structure.
+
+    Pure transformation: Structure + DisplayModeParams → visualization primitives dict.
+
+    This function transforms a pymatgen Structure into a dict containing all data
+    needed for 3D visualization (atoms, bonds, lattice).
+
+    Args:
+        structure: pymatgen Structure object
+        params: DisplayModeParams with mode, supercell, box_bounds, repeat_boundary
+        structure_meta: Optional metadata dict (structure_id, structure_name, formula)
+
+    Returns:
+        Dict with atoms, bonds, lattice, n_atoms, n_bonds, element_colors, etc.
+    """
+    from quantumvitas.analysis.structure_viz import (
+        build_structure_vis_payload as _build_structure_vis_payload
+    )
+    return _build_structure_vis_payload(structure, params, structure_meta)
+
+
+# =============================================================================
+# Online structure cache (re-export from IO layer)
+# =============================================================================
+
+def create_online_structure_cache(cache_dir: Path):
+    """
+    Create an OnlineStructureCache instance for managing online structure search results.
+
+    Args:
+        cache_dir: Directory for cache storage (typically project_root/structures/cache/)
+
+    Returns:
+        OnlineStructureCache instance
+    """
+    from quantumvitas.io.online_cache import OnlineStructureCache
+    return OnlineStructureCache(cache_dir)
+
+
+# Re-export OnlineStructureCache class for type hints
+from quantumvitas.io.online_cache import OnlineStructureCache  # noqa: E402, F401
+

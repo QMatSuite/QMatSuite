@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.api import QVService
+from quantumvitas.api import get_service
 from quantumvitas.calculation.structure_steps import (
     detect_runtime_control_keys,
     StructureStepSpec,
@@ -131,39 +131,21 @@ def test_detect_runtime_control_keys():
     assert len(detect_runtime_control_keys(params7)) == 0
 
 
-@pytest.mark.skip(reason="update_step_params API changed - warnings not yet in StepDTO")
-def test_update_step_params_warns_on_runtime_keys(temp_project_with_step):
-    """Test that update_step_params returns warnings when step has runtime CONTROL keys."""
+def test_update_step_params_preserves_runtime_keys(temp_project_with_step):
+    """Test that update_step_params preserves runtime CONTROL keys (doesn't strip them)."""
     project_root, calculation_id, step_id, step_file = temp_project_with_step
 
     # Update step with outdir (runtime key)
-    svc = QVService(project_root)
-    result = svc.calculation.update_step_params(
+    svc = get_service(project_root)
+    svc.calculation.update_step_params(
         calc_selector=calculation_id,
         step_selector=step_id,
         params={"CONTROL": {"outdir": "./custom_outdir"}},
     )
 
-    # TODO: StepDTO doesn't have warnings - need to add warning mechanism
     # Verify step.yaml still contains the key (no stripping)
+    # Runtime keys are preserved - warnings are detected at kernel level (not API)
+    # Note: CONTROL is a top-level key in step YAML, not nested under "parameters"
     step_data = yaml.safe_load(step_file.read_text())
-    assert step_data["parameters"]["CONTROL"]["outdir"] == "./custom_outdir"
-
-
-@pytest.mark.skip(reason="update_step_params API changed - warnings not yet in StepDTO")
-def test_update_step_params_warns_regardless_of_step_type(temp_project_with_step):
-    """Test that warnings are generated for any step type with runtime keys (no engine detection)."""
-    pass  # Skipped - needs API update to return warnings
-
-
-@pytest.mark.skip(reason="update_step_params API changed - warnings not yet in StepDTO")
-def test_update_step_params_warns_on_prefix(temp_project_with_step):
-    """Test that update_step_params warns on prefix key."""
-    pass  # Skipped - needs API update to return warnings
-
-
-@pytest.mark.skip(reason="update_step_params API changed - warnings not yet in StepDTO")
-def test_update_step_params_warns_on_pseudo_dir(temp_project_with_step):
-    """Test that update_step_params warns on pseudo_dir key."""
-    pass  # Skipped - needs API update to return warnings
+    assert step_data["CONTROL"]["outdir"] == "./custom_outdir"
 

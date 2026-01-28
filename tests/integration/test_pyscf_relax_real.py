@@ -21,7 +21,7 @@ from quantumvitas.execution.relax_artifacts import (
 from pymatgen.core import Molecule
 
 
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API"), pytest.mark.integration]
+pytestmark = [pytest.mark.integration]
 
 
 def is_pyscf_available() -> bool:
@@ -106,23 +106,25 @@ def pyscf_calculation_with_relax(pyscf_project_with_h2):
     calc_yaml.write_text(yaml.dump(calc_data))
     
     # Create relax step
-    relax_step_result = init_step(
+    relax_step_result = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_ulid,
         step_type="pyscf_relax",
         name="relax",
     )
     relax_step_ulid = relax_step_result.id
-    
+
     # Configure relax step with minimal parameters for quick test
-    configure_step(
-        project_root=project_root,
-        calculation_selector=calc_ulid,
+    svc = QVService(project_root)
+    svc.calculation.update_step_params(
+        calc_selector=calc_ulid,
         step_selector=relax_step_ulid,
-        parameters={
-            "method": "rhf",
-            "basis": "sto-3g",  # Minimal basis for speed
-            "maxsteps": 50,
+        params={
+            "parameters": {
+                "method": "rhf",
+                "basis": "sto-3g",  # Minimal basis for speed
+                "maxsteps": 50,
+            },
         },
     )
     
@@ -153,16 +155,16 @@ class TestPySCFRelaxReal:
         project_root = pyscf_calculation_with_relax["project_root"]
         
         # Run the relax step
-        result = run_step(
+        result = QVService.run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=relax_step_ulid,
             verbose=False,
         )
-        
+
         # Verify step completed
         assert result.get("success") is True, f"Step failed: {result.get('error')}"
-        
+
         # Verify current.json was created
         artifact_path = get_generated_structure_path(calc_dir, relax_step_ulid)
         assert artifact_path.exists(), (
@@ -205,15 +207,15 @@ class TestPySCFRelaxReal:
         initial_distance = initial_structure.get_distance(0, 1)
         
         # Run the relax step
-        result = run_step(
+        result = QVService.run_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_selector=relax_step_ulid,
             verbose=False,
         )
-        
+
         assert result.get("success") is True, f"Step failed: {result.get('error')}"
-        
+
         # Load relaxed structure
         relaxed_structure = read_generated_structure(calc_dir, relax_step_ulid)
         assert relaxed_structure is not None

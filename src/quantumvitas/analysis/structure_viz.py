@@ -41,6 +41,7 @@ __all__ = [
     "WRAP_TOL",  # Wrap tolerance constant
     "BOUNDARY_TOL",  # Boundary tolerance constant
     "BOUNDARY_FRAC_TOL",  # Legacy constant (debug checks only)
+    "build_structure_vis_payload",  # Pure transformation: Structure -> visualization payload
 ]
 
 import matplotlib
@@ -1902,5 +1903,158 @@ def visualize_structure(
     
     # Close figure to free memory
     plt.close(fig)
-    
+
+    return result
+
+
+# =============================================================================
+# Visualization Payload Builder (Pure Transformation)
+# =============================================================================
+
+def build_structure_vis_payload(
+    structure: PMGStructure,
+    params: DisplayModeParams,
+    structure_meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Build visualization payload from a structure.
+
+    Pure transformation: Structure + DisplayModeParams → visualization primitives dict.
+
+    This is a kernel function that transforms a pymatgen Structure into a dict
+    containing all data needed for 3D visualization (atoms, bonds, lattice).
+
+    Args:
+        structure: pymatgen Structure object
+        params: DisplayModeParams with mode, supercell, box_bounds, repeat_boundary
+        structure_meta: Optional metadata dict (structure_id, structure_name, formula)
+            Used only for populating result fields, not for any computation.
+
+    Returns:
+        Dict with:
+            - atoms: List of atom dicts with cart_coords, frac_coords, element, color, radius
+            - bonds: List of bond dicts with idx1, idx2, coord1, coord2, distance
+            - lattice: Dict with matrix, a, b, c, alpha, beta, gamma, volume
+            - n_atoms, n_bonds: Counts
+            - element_colors: Color mapping dict
+            - Optional: structure_id, structure_name, formula, supercell, display_mode
+
+    Note:
+        - This is a pure transformation with no side effects (except logging)
+        - Caller is responsible for JSON serialization if needed
+        - Caller is responsible for timing/performance metrics if needed
+    """
+    # Build display atoms using the unified function
+    display_atoms_list, display_structure = build_display_atoms(
+        structure,
+        params,
+        wrap_coords=True,
+    )
+
+    # Get lattice info from display structure
+    lattice = display_structure.lattice
+
+    # Build atoms list
+    # CONTRACT: atoms contains ALL display atoms (for rendering + bonds)
+    # boundary atoms are marked with is_boundary flag
+    atoms: List[Dict[str, Any]] = []
+    for da in display_atoms_list:
+        atom_dict = {
+            "index": len(atoms),
+            "original_idx": da.original_idx,
+            "element": da.element,
+            "cart_coords": [float(c) for c in da.cart_coords],
+            "frac_coords": [float(f) for f in da.frac_coords],
+            "color": get_element_color(da.element),
+            "radius": get_element_radius(da.element),
+        }
+        # Mark boundary atoms for UI
+        if "boundary" in da.stable_id:
+            atom_dict["is_boundary"] = True
+        atoms.append(atom_dict)
+
+    # Build bonds using cartesian distances only
+    # The display_atoms_list already includes all repeated/boundary atoms
+    bonds: List[Dict[str, Any]] = []
+    try:
+        atoms_cart = np.array([da.cart_coords for da in display_atoms_list])
+        species = [da.element for da in display_atoms_list]
+
+        detected_bonds = build_bonds(
+            atoms_cart,
+            species=species,
+            max_factor=1.2,
+            tolerance=0.3,
+            max_cutoff=3.5,
+        )
+
+        # Convert to dict format
+        # CRITICAL: bonds.idx1/idx2 must reference atoms array (0 to len(atoms)-1)
+        max_bond_idx = -1
+        for bond in detected_bonds:
+            idx1 = int(bond.idx1)
+            idx2 = int(bond.idx2)
+            max_bond_idx = max(max_bond_idx, idx1, idx2)
+            bonds.append({
+                "idx1": idx1,
+                "idx2": idx2,
+                "coord1": [float(c) for c in bond.coord1],
+                "coord2": [float(c) for c in bond.coord2],
+                "distance": float(bond.distance),
+            })
+
+        # Validate: bonds must only reference atoms array
+        atoms_len = len(atoms)
+        if bonds and max_bond_idx >= atoms_len:
+            raise ValueError(
+                f"Invalid bond indices: max={max_bond_idx} >= atoms_len={atoms_len}"
+            )
+    except Exception as e:
+        logger.warning(f"Failed to build bonds: {e}")
+
+    # Build result dict
+    result: Dict[str, Any] = {
+        "n_atoms": len(atoms),
+        "n_bonds": len(bonds),
+        "lattice": {
+            "matrix": lattice.matrix.tolist(),
+            "a": float(lattice.a),
+            "b": float(lattice.b),
+            "c": float(lattice.c),
+            "alpha": float(lattice.alpha),
+            "beta": float(lattice.beta),
+            "gamma": float(lattice.gamma),
+            "volume": float(lattice.volume),
+        },
+        "atoms": atoms,
+        "boundary_atoms": [],  # DEPRECATED: Use atoms.filter(a=>a.is_boundary)
+        "bonds": bonds,
+        "element_colors": ELEMENT_COLORS,
+    }
+
+    # Add metadata if provided
+    if structure_meta:
+        result.update(structure_meta)
+
+    # Ensure required fields exist
+    if "structure_id" not in result:
+        result["structure_id"] = structure_meta.get("structure_id", "unknown") if structure_meta else "unknown"
+    if "structure_name" not in result:
+        result["structure_name"] = structure_meta.get("structure_name", "") if structure_meta else ""
+    if "formula" not in result:
+        # Compute from atoms
+        from collections import Counter
+        element_counts = Counter(atom["element"] for atom in atoms)
+        formula_parts = []
+        for element, count in sorted(element_counts.items()):
+            if count == 1:
+                formula_parts.append(element)
+            else:
+                formula_parts.append(f"{element}{count}")
+        result["formula"] = "".join(formula_parts)
+    if "supercell" not in result:
+        result["supercell"] = list(params.supercell) if params.supercell else [1, 1, 1]
+    if "display_mode" not in result:
+        result["display_mode"] = params.mode
+
     return result

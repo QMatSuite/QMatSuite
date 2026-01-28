@@ -32,7 +32,6 @@ def send_request(daemon: QVDaemon, method: str, payload: dict) -> dict:
     return response.data
 
 
-@pytest.mark.skip(reason="promote_relax_structure not yet in domain API")
 class TestPromoteRelaxStructureAPI:
     """Test promote_relax_structure API directly."""
 
@@ -58,7 +57,7 @@ class TestPromoteRelaxStructureAPI:
         calc_ulid = calc_result.id
         
         # Create relax step
-        step_result = init_step(project_root, calc_ulid, step_type="qe_relax", name="relax")
+        step_result = QVService.init_step(project_root, calc_ulid, step_type="qe_relax", name="relax")
         step_ulid = step_result.id
         
         # Write generated structure
@@ -110,7 +109,7 @@ class TestPromoteRelaxStructureAPI:
         
         # Create calculation and step
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
-        step_result = init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
+        step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
         
         # Try to promote without current.json
         with pytest.raises(APIError) as exc_info:
@@ -139,7 +138,7 @@ class TestPromoteRelaxStructureAPI:
         
         # Create calculation and SCF step (not relax)
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
-        step_result = init_step(project_root, calc_result.id, step_type="qe_scf", name="scf")
+        step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_scf", name="scf")
         
         # Try to promote non-relax step
         with pytest.raises(APIError) as exc_info:
@@ -152,7 +151,6 @@ class TestPromoteRelaxStructureAPI:
         assert "not a relax step" in str(exc_info.value)
 
 
-@pytest.mark.skip(reason="promote_relax_structure not yet in domain API")
 class TestPromoteRelaxStructureDaemonRPC:
     """Test promote_relax_structure via daemon RPC."""
 
@@ -175,7 +173,7 @@ class TestPromoteRelaxStructureDaemonRPC:
         
         # Create calculation and relax step
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
-        step_result = init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
+        step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
         
         # Write generated structure
         lattice = Lattice.cubic(5.5)

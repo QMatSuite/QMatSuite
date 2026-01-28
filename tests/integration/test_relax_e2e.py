@@ -88,7 +88,6 @@ class TestRelaxE2E:
         assert len(loaded) == 2
         assert loaded.lattice.a == pytest.approx(5.5)
 
-    @pytest.mark.skip(reason="promote_relax_structure not yet in domain API")
     def test_promote_relax_structure_e2e(self, tmp_path):
         """End-to-end test: create relax step, write structure, promote."""
         from pymatgen.core import Structure, Lattice
@@ -109,7 +108,7 @@ class TestRelaxE2E:
         calc_ulid = calc_result.id
         
         # Create relax step
-        step_result = init_step(project_root, calc_ulid, step_type="qe_relax", name="relax")
+        step_result = QVService.init_step(project_root, calc_ulid, step_type="qe_relax", name="relax")
         step_ulid = step_result.id
         
         # Write generated structure (simulating relax execution)
@@ -148,7 +147,6 @@ class TestRelaxE2E:
         loaded = read_structure(promoted_result.absolute_path)
         assert loaded.lattice.a == pytest.approx(5.5)
 
-    @pytest.mark.skip(reason="promote_relax_structure not yet in domain API")
     def test_promote_requires_current_json(self, tmp_path):
         """Promote fails if current.json doesn't exist."""
         # Create project
@@ -165,7 +163,7 @@ class TestRelaxE2E:
         
         # Create calculation and relax step
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
-        step_result = init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
+        step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
         
         # Try to promote without current.json
         with pytest.raises(APIError) as exc_info:
@@ -177,7 +175,6 @@ class TestRelaxE2E:
         
         assert "No generated structure found" in str(exc_info.value)
 
-    @pytest.mark.skip(reason="promote_relax_structure not yet in domain API")
     def test_promote_requires_relax_step_type(self, tmp_path):
         """Promote fails if step is not a relax step."""
         # Create project
@@ -194,7 +191,7 @@ class TestRelaxE2E:
         
         # Create calculation and SCF step (not relax)
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
-        step_result = init_step(project_root, calc_result.id, step_type="qe_scf", name="scf")
+        step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_scf", name="scf")
         
         # Try to promote non-relax step
         with pytest.raises(APIError) as exc_info:

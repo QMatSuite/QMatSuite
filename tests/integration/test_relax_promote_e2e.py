@@ -28,7 +28,17 @@ from quantumvitas.execution.relax_artifacts import (
 from pymatgen.core import Molecule
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.skip(reason="promote_relax_structure not yet in domain API")]
+pytestmark = [pytest.mark.integration]
+
+
+def configure_step(project_root, calculation_selector, step_selector, parameters):
+    """Helper function to configure step parameters via domain accessor."""
+    svc = QVService(project_root)
+    svc.calculation.update_step_params(
+        calc_selector=calculation_selector,
+        step_selector=step_selector,
+        params={"parameters": parameters},
+    )
 
 
 def is_pyscf_available() -> bool:
@@ -113,7 +123,7 @@ def promote_test_calculation_with_relax(promote_test_project):
     calc_yaml.write_text(yaml.dump(calc_data))
     
     # Create relax step
-    relax_step_result = init_step(
+    relax_step_result = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_ulid,
         step_type="pyscf_relax",
@@ -158,7 +168,7 @@ class TestRelaxPromoteE2E:
         initial_structure_id = promote_test_calculation_with_relax["structure_id"]
         
         # Get initial structure count
-        initial_structures = QVService.list_structures(project_root)
+        initial_structures = QVService.list_structures_data(project_root)
         initial_count = len(initial_structures)
         
         # Run the relax step
@@ -185,7 +195,7 @@ class TestRelaxPromoteE2E:
         )
         
         # Verify new structure was created
-        all_structures = QVService.list_structures(project_root)
+        all_structures = QVService.list_structures_data(project_root)
         assert len(all_structures) == initial_count + 1, "Should have one more structure"
         
         # Verify promoted structure has different ULID
@@ -252,7 +262,7 @@ class TestRelaxPromoteE2E:
         calc_yaml.write_text(yaml.dump(calc_data))
         
         # Create SCF step (not relax)
-        scf_step_result = init_step(
+        scf_step_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
             step_type="pyscf_scf",

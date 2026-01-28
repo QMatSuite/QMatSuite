@@ -35,10 +35,20 @@ class TestQVServiceProject:
         config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
         assert config["project"]["name"] == "auto-named"
 
-    @pytest.mark.skip(reason="configure_project not in domain API - direct YAML editing")
     def test_configure_project(self, tmp_path):
         """Configure project settings."""
-        pass
+        from quantumvitas._api_legacy import QVService as LegacyService
+
+        project_dir = tmp_path / "config-project"
+        QVService.init_project(project_dir, name="Original Name")
+
+        # Configure project to change name
+        LegacyService.configure_project(project_dir, new_name="New Name")
+
+        config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
+        assert config["project"]["name"] == "New Name"
+        assert config["project"]["meta"]["name"] == "New Name"
+        assert config["project"]["meta"]["slug"] == "new-name"
 
     def test_init_project_prevents_nested_project(self, tmp_path):
         """Test that init_project raises ValueError if target_dir is inside an existing project."""
@@ -62,10 +72,18 @@ class TestQVServiceProject:
         with pytest.raises(ValueError, match="inside an existing QuantumVITAS project"):
             QVService.init_project(structures_dir, name="Nested Project")
 
-    @pytest.mark.skip(reason="create_demo_project not in domain API - demo tooling")
     def test_create_demo_project_prevents_nested_project(self, tmp_path):
         """Test that create_demo_project raises ValueError if target_dir is inside an existing project."""
-        pass
+        from quantumvitas._api_legacy import QVService as LegacyService
+
+        # Create a project first
+        parent_project = tmp_path / "parent-project"
+        QVService.init_project(parent_project, name="Parent Project")
+
+        # Try to create a demo project inside the existing project
+        nested_dir = parent_project / "nested-demo"
+        with pytest.raises(ValueError, match="inside an existing QuantumVITAS project"):
+            LegacyService.create_demo_project(nested_dir, name="Nested Demo")
 
 
 class TestQVServiceStructure:
@@ -150,10 +168,27 @@ class TestQVServiceStructure:
         result = svc.structure.get("si-crystal")
         assert result.meta.name == "Si Crystal"
 
-    @pytest.mark.skip(reason="delete_structure not in domain API - rarely used")
     def test_delete_structure(self, project_with_struct_source):
         """Delete a structure."""
-        pass
+        from quantumvitas._api_legacy import QVService as LegacyService
+
+        project_dir, source_file = project_with_struct_source
+
+        # Import a structure
+        result = QVService.import_structure(project_dir, source_file, name="To Delete")
+        structure_ulid = result.meta.id
+
+        # Verify structure exists
+        svc = get_service(project_dir)
+        structures_before = svc.structure.list()
+        assert any(s.meta.id == structure_ulid for s in structures_before)
+
+        # Delete the structure
+        LegacyService.delete_structure(project_dir, structure_ulid)
+
+        # Verify structure is gone
+        structures_after = svc.structure.list()
+        assert not any(s.meta.id == structure_ulid for s in structures_after)
 
 
 class TestQVServiceCalculation:
@@ -216,10 +251,41 @@ class TestQVServiceCalculation:
         result = svc.calculation.get("my-calculation")
         assert result.meta.name == "My Calculation"
 
-    @pytest.mark.skip(reason="configure_calculation not in domain API - change structure via YAML")
     def test_configure_calculation_structure(self, project, tmp_path):
-        """Configure calculation structure."""
-        pass
+        """Configure calculation structure using change_calculation_structure."""
+        from quantumvitas._api_legacy import QVService as LegacyService
+
+        # Import two structures
+        source1 = tmp_path / "si1.json"
+        source1.write_text("""{
+            "@module": "pymatgen.core.structure",
+            "@class": "Structure",
+            "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
+            "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
+        }""")
+        source2 = tmp_path / "si2.json"
+        source2.write_text("""{
+            "@module": "pymatgen.core.structure",
+            "@class": "Structure",
+            "lattice": {"matrix": [[5.5,0,0],[0,5.5,0],[0,0,5.5]], "a": 5.5, "b": 5.5, "c": 5.5, "alpha": 90, "beta": 90, "gamma": 90},
+            "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
+        }""")
+        struct1 = QVService.import_structure(project, source1, name="Silicon1")
+        struct2 = QVService.import_structure(project, source2, name="Silicon2")
+
+        # Create calculation with first structure
+        calc = QVService.init_calculation(project, "Test Calc", structure_selector=struct1.meta.id)
+
+        # Change calculation structure using the proper API
+        LegacyService.change_calculation_structure(
+            project_root=project,
+            calculation_ulid=calc.meta.id,
+            new_structure_ulid=struct2.meta.id,
+        )
+
+        # Verify structure was changed
+        calc_yaml = yaml.safe_load((calc.absolute_path / "calculation.yaml").read_text())
+        assert calc_yaml.get("structure_id") == struct2.meta.id
 
     def test_delete_calculation(self, project):
         """Delete a calculation using domain API."""

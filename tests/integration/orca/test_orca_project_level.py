@@ -18,9 +18,6 @@ from typing import Optional
 
 from quantumvitas.api import QVService
 
-pytestmark = [pytest.mark.skip(reason="Pending migration from compat to domain API")]
-# Removed compat import - use domain API
-
 
 def get_orca_path() -> Optional[Path]:
     """Get ORCA path using the resolver."""
@@ -99,7 +96,7 @@ def orca_project(tmp_path):
     calc_yaml.write_text(yaml.dump(calc_data, default_flow_style=False))
 
     # Add SCF step with SPEC step type
-    step_resolved = init_step(
+    step_resolved = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="orca_scf",  # SPEC type per Constitution §B
@@ -151,7 +148,7 @@ class TestORCAProjectLevelExecution:
 
         Constitution §C: Run Step shares the unified pipeline with Run Calc.
         """
-        result = run_step(
+        result = QVService.run_step(
             project_root=orca_project["root"],
             calculation_selector=orca_project["calc_selector"],
             step_selector=orca_project["step_id"],

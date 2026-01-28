@@ -353,34 +353,26 @@ class TestEnsureAnalysisArtifact:
         assert "Missing" in status.error
 
 
-@pytest.mark.skip(reason="ensure_calculation_analysis, get_scf_convergence_data not in domain API")
 class TestIntegrationWithQVService:
     """Integration tests with QVService."""
 
-    def test_ensure_calculation_analysis_method_exists(self):
-        """Test that QVService has ensure_calculation_analysis method."""
-        from quantumvitas.api import QVService
-        
-        assert hasattr(QVService, "ensure_calculation_analysis")
-        assert callable(QVService.ensure_calculation_analysis)
-    
     def test_get_scf_uses_artifact(self, tmp_path):
         """Test that get_scf_convergence_data reads from artifact."""
         # This test verifies the integration without running actual QE
         from quantumvitas.api import QVService
-        
+
         # Create a minimal project
         project_root = QVService.init_project(tmp_path / "test_project")
-        
-        # Create calculation
-        QVService.init_calculation(project_root, "test-calculation")
-        
+
+        # Create calculation with a step (need step for get_scf_convergence_data)
+        calc_result = QVService.init_calculation(project_root, "test-calculation")
+        calc_dir = calc_result.absolute_path
+
         # Create raw directory (may already exist from init_calculation)
-        raw_dir = project_root / "calculations" / "test-calculation" / "raw"
+        raw_dir = calc_dir / "raw"
         raw_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Pre-create SCF artifact (simulating prior analysis)
-        calculation_dir = project_root / "calculations" / "test-calculation"
         cached_data = {
             "converged": True,
             "iterations": [
@@ -396,51 +388,52 @@ class TestIntegrationWithQVService:
             "source_file": str(raw_dir / "scf.out"),
             "units": {"energy": "Ry", "fermi": "eV"},
         }
-        write_artifact(calculation_dir, AnalysisType.SCF, cached_data)
-        
-        # Now call get_scf_convergence_data - should read from artifact
-        result = QVService.get_scf_convergence_data(
-            project_root=project_root,
+        write_artifact(calc_dir, AnalysisType.SCF, cached_data)
+
+        # Now call get_scf_convergence_data via domain accessor
+        svc = QVService(project_root)
+        result = svc.analysis.get_scf_convergence_data(
             calculation_selector="test-calculation",
             step_selector="scf",
         )
-        
+
         assert result["converged"] is True
         assert result["total_energy_ry"] == -100.5
         assert result["fermi_energy_ev"] == 5.5
         assert len(result["iterations"]) == 2
 
 
-@pytest.mark.skip(reason="get_reference_analysis not in domain API - demo tooling")
 class TestGetReferenceAnalysis:
-    """Tests for QVService.get_reference_analysis."""
+    """Tests for LegacyService.get_reference_analysis."""
 
     def test_non_demo_project_returns_none(self, tmp_path):
         """Test that non-demo projects return None for reference analysis."""
         from quantumvitas.api import QVService
-        
+        from quantumvitas._api_legacy import QVService as LegacyService
+
         # Create a regular (non-demo) project
         project_root = QVService.init_project(tmp_path / "regular_project")
         QVService.init_calculation(project_root, "test-calculation")
-        
+
         # Should return None since it's not a demo project
-        result = QVService.get_reference_analysis(
+        result = LegacyService.get_reference_analysis(
             project_root=project_root,
             calculation_selector="test-calculation",
             analysis_type="bands",
         )
-        
+
         assert result is None
-    
+
     def test_demo_project_returns_reference_data(self, tmp_path):
         """Test that demo projects return reference analysis data."""
         from quantumvitas.api import QVService
+        from quantumvitas._api_legacy import QVService as LegacyService
         from quantumvitas.core.project_utils import load_project_config, save_project_config
-        
+
         # Create a project and manually set it up as a demo project
         project_root = QVService.init_project(tmp_path / "demo_project")
         QVService.init_calculation(project_root, "si-bands")
-        
+
         # Add demo origin info to project settings
         config = load_project_config(project_root)
         if "project" not in config:
@@ -456,14 +449,14 @@ class TestGetReferenceAnalysis:
             }
         }
         save_project_config(project_root, config)
-        
+
         # Should return reference data
-        result = QVService.get_reference_analysis(
+        result = LegacyService.get_reference_analysis(
             project_root=project_root,
             calculation_selector="si-bands",
             analysis_type="bands",
         )
-        
+
         assert result is not None
         assert "_is_reference" in result
         assert result["_is_reference"] is True
@@ -474,16 +467,17 @@ class TestGetReferenceAnalysis:
         assert "fermi_energy_ev" in result
         assert "high_symmetry_points" in result
         assert result["n_bands"] == 8
-    
+
     def test_demo_project_scf_reference(self, tmp_path):
         """Test SCF reference data from demo project."""
         from quantumvitas.api import QVService
+        from quantumvitas._api_legacy import QVService as LegacyService
         from quantumvitas.core.project_utils import load_project_config, save_project_config
-        
+
         # Create a project and manually set it up as a demo project
         project_root = QVService.init_project(tmp_path / "demo_project_scf")
         QVService.init_calculation(project_root, "si-bands")
-        
+
         # Add demo origin info
         config = load_project_config(project_root)
         config["project"]["settings"] = {
@@ -497,29 +491,30 @@ class TestGetReferenceAnalysis:
             }
         }
         save_project_config(project_root, config)
-        
+
         # Get SCF reference
-        result = QVService.get_reference_analysis(
+        result = LegacyService.get_reference_analysis(
             project_root=project_root,
             calculation_selector="si-bands",
             analysis_type="scf",
         )
-        
+
         assert result is not None
         assert result["_is_reference"] is True
         assert "converged" in result
         assert "iterations" in result
         assert result["converged"] is True
-    
+
     def test_missing_artifact_type_returns_none(self, tmp_path):
         """Test that missing artifact type returns None."""
         from quantumvitas.api import QVService
+        from quantumvitas._api_legacy import QVService as LegacyService
         from quantumvitas.core.project_utils import load_project_config, save_project_config
-        
+
         # Create a demo project without DOS reference
         project_root = QVService.init_project(tmp_path / "demo_no_dos")
         QVService.init_calculation(project_root, "si-bands")
-        
+
         config = load_project_config(project_root)
         config["project"]["settings"] = {
             "origin": {
@@ -535,11 +530,11 @@ class TestGetReferenceAnalysis:
         save_project_config(project_root, config)
         
         # Should return None for DOS (not available)
-        result = QVService.get_reference_analysis(
+        result = LegacyService.get_reference_analysis(
             project_root=project_root,
             calculation_selector="si-bands",
             analysis_type="dos",
         )
-        
+
         assert result is None
 

@@ -180,8 +180,10 @@ def structure_to_dto(
     meta = None
     if struct_model and struct_model.meta:
         meta = MetaDTO(
+            id=struct_model.meta.id if hasattr(struct_model.meta, 'id') else None,
             slug=struct_model.meta.slug,
             name=struct_model.meta.name,
+            path=struct_model.meta.path if hasattr(struct_model.meta, 'path') else None,
             description=getattr(struct_model.meta, 'description', None),
             tags=list(struct_model.meta.tags) if getattr(struct_model.meta, 'tags', None) else None,
             created_at=struct_model.meta.created_at.isoformat() if getattr(struct_model.meta, 'created_at', None) else None,
