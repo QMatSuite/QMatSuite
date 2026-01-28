@@ -62,11 +62,10 @@ class TestQEDetection:
         try:
             os.environ["HOME"] = str(tmp_path)
             
-            # Call preflight_check - should succeed without visiting Settings
-            from quantumvitas._api_legacy import QVService as LegacyService
-            result = LegacyService.preflight_check(
-                project_root=project_root,
-            )
+            # Call preflight_check via domain accessor - should succeed without visiting Settings
+            from quantumvitas.api import QVService
+            svc = QVService(project_root)
+            result = svc.run.preflight()
             
             # Should find QE (internal)
             qe_check = next((c for c in result["checks"] if c["name"] == "QE Installation"), None)
@@ -116,11 +115,10 @@ class TestQEDetection:
         from quantumvitas.core import paths as paths_module
         monkeypatch.setattr(paths_module, "get_settings_json_path", lambda: settings_file)
         
-        # Call preflight_check
-        from quantumvitas._api_legacy import QVService as LegacyService
-        result = LegacyService.preflight_check(
-            project_root=project_root,
-        )
+        # Call preflight_check via domain accessor
+        from quantumvitas.api import QVService
+        svc = QVService(project_root)
+        result = svc.run.preflight()
         
         # Should find QE from settings (external)
         qe_check = next((c for c in result["checks"] if c["name"] == "QE Installation"), None)

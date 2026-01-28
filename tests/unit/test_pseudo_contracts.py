@@ -105,11 +105,12 @@ class TestPseudoOptionsContract:
 
 
 class TestUIWritebackContract:
-    """Test UI writeback contract for update_calculation_species_map()."""
+    """Test UI writeback contract for species_map updates."""
 
     def test_update_writes_complete_triplet(self, tmp_path: Path):
-        """Test that update_calculation_species_map() writes complete triplet together."""
-        from quantumvitas._api_legacy import QVService as LegacyService
+        """Test that species_map update writes complete triplet together."""
+        from quantumvitas.core.resolution import require_calculation
+        from quantumvitas.core.models import save_calculation
 
         project_root = tmp_path / "test_project"
         project_root.mkdir()
@@ -134,8 +135,16 @@ class TestUIWritebackContract:
         assert "Si" in options and len(options["Si"]) > 0
         variant = options["Si"][0]
 
-        # Update species_map with complete triplet
-        species_map = {
+        # Resolve calculation and update species_map directly via kernel
+        calc_resolved = require_calculation(project_root, calc_id)
+        calc_dir = calc_resolved.absolute_path
+        if calc_dir.name == "calculation.yaml":
+            calc_dir = calc_dir.parent
+        calc_yaml = calc_dir / "calculation.yaml"
+
+        # Load, update species_map, and save
+        calc_model = load_calculation(calc_yaml, project_root)
+        calc_model.species_map = {
             "Si": {
                 "mass": 28.0855,
                 "pseudopot": variant["basename"],
@@ -144,33 +153,27 @@ class TestUIWritebackContract:
                 "pseudo_sha_family": variant["sha_family"],
             }
         }
+        save_calculation(calc_model, calc_yaml)
 
-        LegacyService.update_calculation_species_map(
-            project_root=project_root,
-            calculation_selector=calc_id,
-            species_map=species_map,
-        )
-
-        # Load and verify
-        calc_result = LegacyService.get_calculation(project_root, calc_id)
-        calc_yaml = calc_result.absolute_path / "calculation.yaml"
+        # Reload and verify
         calc_model = load_calculation(calc_yaml, project_root)
-        
+
         assert calc_model.species_map is not None
         assert "Si" in calc_model.species_map
-        
+
         si_entry = calc_model.species_map["Si"]
         assert si_entry["pseudo_basename"] == variant["basename"]
         assert si_entry["pseudo_sha256"] == variant["sha256"]
         assert si_entry["pseudo_sha_family"] == variant["sha_family"]
-        
+
         # Verify no legacy fields
         assert "pseudo_sha_token" not in si_entry, "Must not write legacy pseudo_sha_token"
         assert "sha_token" not in si_entry, "Must not write legacy sha_token"
-    
+
     def test_update_rejects_incomplete_triplet(self, tmp_path: Path):
         """Test that update with incomplete triplet is handled (should still work but warn)."""
-        from quantumvitas._api_legacy import QVService as LegacyService
+        from quantumvitas.core.resolution import require_calculation
+        from quantumvitas.core.models import save_calculation
 
         project_root = tmp_path / "test_project"
         project_root.mkdir()
@@ -186,30 +189,30 @@ class TestUIWritebackContract:
         )
         calc_id = calc_result.meta.id
 
-        # Try to update with only basename (incomplete)
-        species_map = {
+        # Resolve calculation and update species_map directly via kernel
+        calc_resolved = require_calculation(project_root, calc_id)
+        calc_dir = calc_resolved.absolute_path
+        if calc_dir.name == "calculation.yaml":
+            calc_dir = calc_dir.parent
+        calc_yaml = calc_dir / "calculation.yaml"
+
+        # Load, update with incomplete species_map, and save
+        calc_model = load_calculation(calc_yaml, project_root)
+        calc_model.species_map = {
             "Si": {
                 "mass": 28.0855,
                 "pseudo_basename": "Si.UPF",
                 # Missing sha256 and sha_family
             }
         }
+        save_calculation(calc_model, calc_yaml)
 
-        # This should still work (no validation error), but the fields will be missing
-        LegacyService.update_calculation_species_map(
-            project_root=project_root,
-            calculation_selector=calc_id,
-            species_map=species_map,
-        )
-
-        # Load and verify
-        calc_result = LegacyService.get_calculation(project_root, calc_id)
-        calc_yaml = calc_result.absolute_path / "calculation.yaml"
+        # Reload and verify
         calc_model = load_calculation(calc_yaml, project_root)
-        
+
         assert calc_model.species_map is not None
         assert "Si" in calc_model.species_map
-        
+
         si_entry = calc_model.species_map["Si"]
         # Fields may be missing, but should not have legacy token
         assert "pseudo_sha_token" not in si_entry, "Must not write legacy pseudo_sha_token"

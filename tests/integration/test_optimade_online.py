@@ -74,12 +74,9 @@ def test_optimade_fetch_structure():
         query="Si",
         max_results=1,
     )
-    
-    if base_url is None:
-        pytest.skip("OPTIMADE search failed (network or provider issue)")
-    
-    if not results or len(results) == 0:
-        pytest.skip("No search results available")
+
+    assert base_url is not None, "OPTIMADE search failed (network or provider issue)"
+    assert results and len(results) > 0, "No search results available"
     
     candidate_id = results[0]["id"]
     
@@ -116,11 +113,9 @@ def test_optimade_structure_has_required_fields():
         query="Si",
         max_results=1,
     )
-    
-    if base_url is None:
-        pytest.skip("OPTIMADE search failed (network or provider issue)")
-    if not results or len(results) == 0:
-        pytest.skip("No search results available")
+
+    assert base_url is not None, "OPTIMADE search failed (network or provider issue)"
+    assert results and len(results) > 0, "No search results available"
     
     candidate_id = results[0]["id"]
     structure, raw_data = fetch_structure_from_optimade(base_url, candidate_id)

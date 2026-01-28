@@ -138,12 +138,23 @@ class ORCADriver(BaseEngineDriver):
         return ORCARecipe
 
     def get_materialization_map(self) -> dict[str, str]:
-        """Return ORCA GEN→SPEC mappings."""
+        """Return ORCA GEN→SPEC mappings.
+
+        This is the SSOT for ORCA step-type mappings.
+        """
         return {
             "GEN_SCF": "orca_scf",
+            "GEN_HF": "orca_hf",
             "GEN_OPT": "orca_opt",
+            "GEN_RELAX": "orca_relax",
             "GEN_FREQ": "orca_freq",
             "GEN_SP": "orca_sp",
+            "GEN_TD": "orca_td",
+            "GEN_TDDFT": "orca_tddft",
+            "GEN_MP2": "orca_mp2",
+            "GEN_CCSD": "orca_ccsd",
+            "GEN_CASSCF": "orca_casscf",
+            "GEN_NEVPT2": "orca_nevpt2",
         }
 
     # ─────────────────────────────────────────────────────────────────────

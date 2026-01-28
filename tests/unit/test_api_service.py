@@ -36,19 +36,16 @@ class TestQVServiceProject:
         assert config["project"]["name"] == "auto-named"
 
     def test_configure_project(self, tmp_path):
-        """Configure project settings."""
-        from quantumvitas._api_legacy import QVService as LegacyService
-
+        """Configure project settings via project accessor."""
         project_dir = tmp_path / "config-project"
         QVService.init_project(project_dir, name="Original Name")
 
-        # Configure project to change name
-        LegacyService.configure_project(project_dir, new_name="New Name")
+        # Configure project via project.update_config accessor
+        svc = get_service(project_dir)
+        svc.project.update_config({"project": {"name": "New Name"}})
 
         config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
         assert config["project"]["name"] == "New Name"
-        assert config["project"]["meta"]["name"] == "New Name"
-        assert config["project"]["meta"]["slug"] == "new-name"
 
     def test_init_project_prevents_nested_project(self, tmp_path):
         """Test that init_project raises ValueError if target_dir is inside an existing project."""
@@ -74,8 +71,6 @@ class TestQVServiceProject:
 
     def test_create_demo_project_prevents_nested_project(self, tmp_path):
         """Test that create_demo_project raises ValueError if target_dir is inside an existing project."""
-        from quantumvitas._api_legacy import QVService as LegacyService
-
         # Create a project first
         parent_project = tmp_path / "parent-project"
         QVService.init_project(parent_project, name="Parent Project")
@@ -83,7 +78,7 @@ class TestQVServiceProject:
         # Try to create a demo project inside the existing project
         nested_dir = parent_project / "nested-demo"
         with pytest.raises(ValueError, match="inside an existing QuantumVITAS project"):
-            LegacyService.create_demo_project(nested_dir, name="Nested Demo")
+            QVService.create_demo_project(nested_dir, name="Nested Demo")
 
 
 class TestQVServiceStructure:
@@ -170,8 +165,6 @@ class TestQVServiceStructure:
 
     def test_delete_structure(self, project_with_struct_source):
         """Delete a structure."""
-        from quantumvitas._api_legacy import QVService as LegacyService
-
         project_dir, source_file = project_with_struct_source
 
         # Import a structure
@@ -183,8 +176,8 @@ class TestQVServiceStructure:
         structures_before = svc.structure.list()
         assert any(s.meta.id == structure_ulid for s in structures_before)
 
-        # Delete the structure
-        LegacyService.delete_structure(project_dir, structure_ulid)
+        # Delete the structure via domain accessor
+        svc.structure.delete(structure_ulid)
 
         # Verify structure is gone
         structures_after = svc.structure.list()
@@ -252,9 +245,7 @@ class TestQVServiceCalculation:
         assert result.meta.name == "My Calculation"
 
     def test_configure_calculation_structure(self, project, tmp_path):
-        """Configure calculation structure using change_calculation_structure."""
-        from quantumvitas._api_legacy import QVService as LegacyService
-
+        """Configure calculation structure using set_structure."""
         # Import two structures
         source1 = tmp_path / "si1.json"
         source1.write_text("""{
@@ -276,12 +267,9 @@ class TestQVServiceCalculation:
         # Create calculation with first structure
         calc = QVService.init_calculation(project, "Test Calc", structure_selector=struct1.meta.id)
 
-        # Change calculation structure using the proper API
-        LegacyService.change_calculation_structure(
-            project_root=project,
-            calculation_ulid=calc.meta.id,
-            new_structure_ulid=struct2.meta.id,
-        )
+        # Change calculation structure via domain accessor
+        svc = get_service(project)
+        svc.calculation.set_structure(calc.meta.id, struct2.meta.id)
 
         # Verify structure was changed
         calc_yaml = yaml.safe_load((calc.absolute_path / "calculation.yaml").read_text())

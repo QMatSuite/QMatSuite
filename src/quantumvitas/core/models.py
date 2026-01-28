@@ -1107,3 +1107,90 @@ def ensure_calculation_meta(
         save_calculation(model, calculation_yaml)
         return meta
 
+
+# ---------------------------------------------------------------------------
+# Calculation Step Management
+# ---------------------------------------------------------------------------
+
+
+def set_calculation_steps(
+    project_root: Path,
+    calculation_ulid: str,
+    ordered_step_ulids: List[str],
+    *,
+    step_types: Optional[Dict[str, str]] = None,
+    index: Optional[Any] = None,
+    config: Optional[dict] = None,
+) -> None:
+    """
+    Set calculation.yaml.steps[] to an ordered list of step ULIDs.
+
+    CRITICAL: This function preserves step type metadata in calculation.yaml.
+    If step_types mapping is provided, it will be used. Otherwise, step types
+    are resolved from step YAML files or preserved from existing entries.
+
+    This is a kernel function used by workflow/templates.py during workflow
+    instantiation. It directly manipulates the CalculationModel.
+
+    Args:
+        project_root: Project root path
+        calculation_ulid: Calculation ULID
+        ordered_step_ulids: Ordered list of step ULIDs
+        step_types: Optional mapping of step_ulid -> step_type (for new steps)
+        index: Optional ResourceIndex
+        config: Optional project config
+    """
+    from quantumvitas.core.resolution import resolve_calculation, resolve_step
+    from quantumvitas.core.yamldoc import StepDoc
+
+    if config is None:
+        from quantumvitas.core.project_utils import load_project_config
+        config = load_project_config(project_root)
+
+    # Resolve calculation to get current model
+    calculation = resolve_calculation(project_root, calculation_ulid, config=config, index=index)
+    calc_path = calculation.absolute_path / "calculation.yaml"
+    wf_model = load_calculation(calc_path, project_root)
+
+    # Build mapping of step_ulid -> step entry
+    step_map = {s.step_id: s for s in wf_model.steps if s.step_id}
+
+    # Build new steps list preserving type info
+    new_steps = []
+    for step_ulid in ordered_step_ulids:
+        if step_ulid in step_map:
+            # Preserve existing entry (includes type if present)
+            new_steps.append(step_map[step_ulid])
+        else:
+            # Step not in current model - resolve step_type
+            step_type = None
+
+            # Try step_types mapping first (provided by caller)
+            if step_types and step_ulid in step_types:
+                step_type = step_types[step_ulid]
+
+            # If not provided, try to resolve from step YAML file
+            if not step_type:
+                try:
+                    # Resolve step to get file path
+                    step_resolved = resolve_step(
+                        project_root,
+                        calculation_ulid,
+                        step_ulid,
+                        config=config,
+                        index=index,
+                    )
+                    # Load step YAML to get step_type
+                    step_doc = StepDoc.load(step_resolved.absolute_path)
+                    step_type = step_doc.get(["step_type"], default=None)
+                except Exception:
+                    # Step file missing or invalid - leave type as None
+                    # This will be resolved later when step is loaded
+                    pass
+
+            # Create entry with step_type if available
+            new_steps.append(CalculationStepEntry(step_id=step_ulid, type=step_type))
+
+    wf_model.steps = new_steps
+    save_calculation(wf_model, calc_path)
+

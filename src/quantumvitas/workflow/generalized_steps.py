@@ -59,61 +59,11 @@ class GeneralizedStep(str, Enum):
     CUSTOM = "CUSTOM"
 
 
-# Materialization mapping: (engine_family, generalized_step) → engine_specific_step_type | None
-# Returns None if the generalized step is not supported by the engine family
-MATERIALIZATION_MAP: Dict[Tuple[str, str], Optional[str]] = {
-    # QE family mappings
-    ("qe", "SCF"): "qe_scf",
-    ("qe", "NSCF"): "qe_nscf",
-    ("qe", "RELAX"): "qe_relax",
-    ("qe", "VC_RELAX"): "qe_relax",  # VC_RELAX now maps to unified qe_relax
-    ("qe", "BANDS"): "qe_bands_pw",  # pw.x calculation='bands'
-    ("qe", "BANDS_POST"): "qe_bands",  # bands.x post-processing
-    ("qe", "DOS"): "qe_dos",
-    ("qe", "WANNIER_CONVERT"): "qe_pw2wannier90",
-    ("qe", "WANNIER"): "w90_run",  # wannier90 is part of qe family toolchain
-    ("qe", "PHONON"): "qe_ph",
-    ("qe", "MD"): "qe_md",
-    ("qe", "VC_MD"): "qe_vc_md",
-    ("qe", "TD"): None,  # Phase 3C: QE TD not yet implemented in registry (TODO: add qe_tddft when needed)
-    ("qe", "CUSTOM"): "qe_custom",
-    
-    # PySCF family mappings
-    ("pyscf", "SCF"): "pyscf_scf",
-    ("pyscf", "MP2"): "pyscf_mp2",
-    ("pyscf", "TD"): "pyscf_td",  # Phase 3C: Generalized "td" key
-
-    # ORCA family mappings
-    ("orca", "SCF"): "orca_scf",
-    ("orca", "HF"): "orca_hf",
-    ("orca", "TD"): "orca_td",  # ORCA TDDFT/CIS
-
-    # VASP family mappings
-    ("vasp", "SCF"): "vasp_scf",
-    ("vasp", "NSCF"): "vasp_nscf",
-    ("vasp", "RELAX"): "vasp_relax",
-    ("vasp", "BANDS"): "vasp_bands",
-    ("vasp", "BANDS_POST"): None,  # 0-mapping: VASP doesn't need post-processing
-    ("vasp", "BANDSPP"): None,     # 0-mapping: VASP doesn't need post-processing (PUBLIC key alias)
-    ("vasp", "DOS"): None,          # 0-mapping: VASP DOS integrated in nscf output
-    ("vasp", "DOSPP"): None,       # 0-mapping: VASP DOS integrated in nscf output (PUBLIC key alias)
-
-    # LAMMPS family mappings (Classical MD)
-    ("lammps", "RELAX"): "lammps_relax",
-    ("lammps", "MD"): "lammps_md",
-    
-    # CP2K family mappings
-    ("cp2k", "SCF"): "cp2k_scf",
-    ("cp2k", "RELAX"): "cp2k_relax",
-    ("cp2k", "VC_RELAX"): "cp2k_relax",
-    ("cp2k", "MD"): "cp2k_md",
-    ("cp2k", "VC_MD"): "cp2k_md",
-
-    # Wannier90 standalone (if needed in future)
-    # ("w90", "WANNIER"): "w90_run",
-
-    # Unsupported combinations return None (materialization will fail)
-}
+# =============================================================================
+# SSOT: DriverRegistry is the single source of truth for step-type mappings.
+# Each driver defines its own get_materialization_map() method.
+# The static MATERIALIZATION_MAP has been removed to eliminate drift.
+# =============================================================================
 
 
 def materialize_step(
@@ -122,17 +72,17 @@ def materialize_step(
 ) -> Optional[str]:
     """
     Materialize a generalized step to an engine-specific step type.
-    
-    This now delegates to DriverRegistry for registered engines.
-    Falls back to legacy MATERIALIZATION_MAP for backward compatibility.
-    
+
+    SSOT: Delegates to DriverRegistry which is the single source of truth.
+    Each driver defines its own get_materialization_map() method.
+
     Args:
         generalized_step: Generalized step identifier (e.g., "SCF", "NSCF", "GEN_SCF")
         engine_family: Engine family identifier (e.g., "qe", "pyscf")
-    
+
     Returns:
         Engine-specific step type identifier, or None if not supported
-    
+
     Example:
         >>> materialize_step("SCF", "qe")
         "qe_scf"
@@ -140,49 +90,54 @@ def materialize_step(
         "qe_scf"
         >>> materialize_step("SCF", "pyscf")
         "pyscf_scf"
-        >>> materialize_step("SCF", "vasp")
-        None
     """
     # Ensure drivers are loaded
     import quantumvitas.drivers
-    
-    # Try registry first (supports "GEN_SCF" format)
+
+    # Normalize to GEN_ format
     gen_type_upper = generalized_step.upper()
-    if gen_type_upper.startswith("GEN_"):
-        try:
-            return DriverRegistry.materialize_step_type(engine_family, gen_type_upper)
-        except (UnknownMaterializationError, UnknownEngineError):
-            pass
-    
-    # Try with "GEN_" prefix if not already present
     if not gen_type_upper.startswith("GEN_"):
-        try:
-            gen_type_with_prefix = f"GEN_{gen_type_upper}"
-            return DriverRegistry.materialize_step_type(engine_family, gen_type_with_prefix)
-        except (UnknownMaterializationError, UnknownEngineError):
-            pass
-    
-    # Fallback to legacy MATERIALIZATION_MAP (for backward compatibility)
-    key = (engine_family.lower(), gen_type_upper)
-    return MATERIALIZATION_MAP.get(key)
+        gen_type_upper = f"GEN_{gen_type_upper}"
+
+    try:
+        return DriverRegistry.materialize_step_type(engine_family, gen_type_upper)
+    except (UnknownMaterializationError, UnknownEngineError):
+        return None
 
 
 def _is_zero_mapping(gen_step: str, engine_family: str) -> bool:
     """
-    Check if (engine_family, gen_step) is explicitly mapped to None.
-    
-    Returns True only if the key exists in MATERIALIZATION_MAP with value None.
-    Returns False if the key is not in the map at all.
-    
+    Check if (engine_family, gen_step) is an explicit zero-mapping.
+
+    Zero-mappings are GEN types that have no corresponding step for an engine
+    because the functionality is integrated into another step (e.g., VASP DOS
+    is integrated into NSCF output).
+
+    SSOT: Queries driver's _get_zero_mappings() method if available.
+
     Args:
         gen_step: Generalized step identifier (e.g., "BANDS_POST", "DOS")
         engine_family: Engine family identifier (e.g., "vasp")
-    
+
     Returns:
         True if this is an explicit 0-mapping, False otherwise
     """
-    key = (engine_family.lower(), gen_step.upper())
-    return key in MATERIALIZATION_MAP and MATERIALIZATION_MAP[key] is None
+    import quantumvitas.drivers
+
+    # Normalize to GEN_ format
+    gen_type_upper = gen_step.upper()
+    if not gen_type_upper.startswith("GEN_"):
+        gen_type_upper = f"GEN_{gen_type_upper}"
+
+    try:
+        driver = DriverRegistry.get_driver(engine_family)
+        # Check if driver has _get_zero_mappings method
+        if hasattr(driver, "_get_zero_mappings"):
+            zero_mappings = driver._get_zero_mappings()
+            return gen_type_upper in zero_mappings
+        return False
+    except UnknownEngineError:
+        return False
 
 
 def materialize_workflow(
@@ -248,30 +203,30 @@ def materialize_public_step_key(
 ) -> Optional[str]:
     """
     Materialize a PUBLIC step key (like "scf", "bands_pw", "td") to MACHINE step type.
-    
+
     Phase 3B/3C: Helper for materializing PUBLIC step keys from workflow templates.
-    
+
+    SSOT: Uses DriverRegistry via materialize_step() for all mappings.
+
     Strategy:
-    1. First try registry lookup for PUBLIC keys (handles "scf", "td", etc.)
-    2. If that fails, try MATERIALIZATION_MAP (for GeneralizedStep enum values like "SCF", "TD")
+    1. First try StepTypeRegistry lookup for PUBLIC keys (handles "scf", "td", etc.)
+    2. If that fails, try DriverRegistry via materialize_step()
     3. Verify the machine type's engine matches engine_family
-    
+
     Args:
         public_step_key: PUBLIC step key (e.g., "scf", "bands_pw", "td", "mp2")
         engine_family: Engine family identifier (e.g., "qe", "pyscf")
-    
+
     Returns:
         MACHINE step type (e.g., "qe_scf", "pyscf_td"), or None if unsupported
-    
+
     Example:
         >>> materialize_public_step_key("scf", "qe")
         "qe_scf"
         >>> materialize_public_step_key("td", "pyscf")
         "pyscf_td"
-        >>> materialize_public_step_key("scf", "vasp")
-        None
     """
-    # Strategy: Prioritize registry lookup for PUBLIC keys
+    # Strategy: Prioritize StepTypeRegistry lookup for PUBLIC keys
     # This ensures PUBLIC keys like "bands" map correctly (qe_bands, not qe_bands_pw)
     from quantumvitas.workflow.registry import get_registry
     registry = get_registry()
@@ -282,64 +237,81 @@ def materialize_public_step_key(
         if spec_engine_family == engine_family:
             return spec.machine_type
 
-    # No special cases - each driver is responsible for its own step types
-    # W90 is a separate driver; its step types are registered with engine="w90"
-    
-    # Fallback: Try MATERIALIZATION_MAP (for GeneralizedStep enum values like "SCF", "TD")
-    # This handles backward compatibility with enum values
-    # Phase 3C: Also handles "td" -> "TD" enum mapping
+    # Fallback: Try DriverRegistry via materialize_step()
+    # This handles GeneralizedStep enum values like "SCF", "TD"
     result = materialize_step(public_step_key.upper(), engine_family)
     if result is not None:
         return result
-    
+
     return None
 
 
 def get_supported_generalized_steps(engine_family: str) -> list[str]:
     """
     Get list of generalized steps supported by an engine family.
-    
+
+    SSOT: Queries driver's get_materialization_map() method.
+
     Args:
         engine_family: Engine family identifier (e.g., "qe", "pyscf")
-    
+
     Returns:
         List of generalized step identifiers supported by the family
-    
+        (with GEN_ prefix stripped for backward compatibility)
+
     Example:
         >>> get_supported_generalized_steps("qe")
-        ["SCF", "NSCF", "RELAX", "VC_RELAX", "BANDS", "DOS", ...]
+        ["BANDS", "BANDS_POST", "CUSTOM", "DOS", "MD", "NSCF", "PHONON", ...]
     """
-    engine_family_lower = engine_family.lower()
-    supported = [
-        gen_step
-        for (family, gen_step), specific_step in MATERIALIZATION_MAP.items()
-        if family == engine_family_lower and specific_step is not None
-    ]
-    return sorted(supported)
+    import quantumvitas.drivers
+
+    try:
+        driver = DriverRegistry.get_driver(engine_family)
+        mat_map = driver.get_materialization_map()
+        # Strip GEN_ prefix for backward compatibility
+        supported = [
+            gen_type[4:] if gen_type.startswith("GEN_") else gen_type
+            for gen_type in mat_map.keys()
+        ]
+        return sorted(supported)
+    except UnknownEngineError:
+        return []
 
 
 def get_engine_families_for_step(generalized_step: str) -> list[str]:
     """
     Get list of engine families that support a given generalized step.
-    
+
+    SSOT: Queries all drivers' get_materialization_map() methods.
+
     Args:
         generalized_step: Generalized step identifier (e.g., "SCF", "NSCF")
-    
+
     Returns:
         List of engine family identifiers that support the step
-    
+
     Example:
         >>> get_engine_families_for_step("SCF")
-        ["qe", "pyscf"]
+        ["cp2k", "orca", "pyscf", "qe", "vasp"]
     """
+    import quantumvitas.drivers
+
+    # Normalize to GEN_ format
     gen_step_upper = generalized_step.upper()
-    families = [
-        family
-        for (family, gen_step), specific_step in MATERIALIZATION_MAP.items()
-        if gen_step == gen_step_upper and specific_step is not None
-    ]
-    # Remove duplicates while preserving order
-    return sorted(list(set(families)))
+    if not gen_step_upper.startswith("GEN_"):
+        gen_step_upper = f"GEN_{gen_step_upper}"
+
+    families = []
+    for engine_family in DriverRegistry.get_all_engines():
+        try:
+            driver = DriverRegistry.get_driver(engine_family)
+            mat_map = driver.get_materialization_map()
+            if gen_step_upper in mat_map:
+                families.append(engine_family)
+        except UnknownEngineError:
+            continue
+
+    return sorted(families)
 
 
 def dematerialize_step(
@@ -347,33 +319,29 @@ def dematerialize_step(
 ) -> Optional[Tuple[str, str]]:
     """
     Reverse materialization: map engine-specific step to (engine_family, generalized_step).
-    
+
+    SSOT: Queries DriverRegistry to find the mapping.
+
     Args:
         engine_specific_step: Engine-specific step type identifier (e.g., "qe_scf", "pyscf_scf")
-    
+
     Returns:
         Tuple of (engine_family, generalized_step), or None if not found
-    
+        The generalized_step is returned WITH GEN_ prefix (e.g., "GEN_SCF")
+
     Example:
         >>> dematerialize_step("qe_scf")
-        ("qe", "SCF")
+        ("qe", "GEN_SCF")
         >>> dematerialize_step("pyscf_scf")
-        ("pyscf", "SCF")
+        ("pyscf", "GEN_SCF")
         >>> dematerialize_step("unknown_step")
         None
     """
-    # Build reverse mapping from MATERIALIZATION_MAP
-    for (family, gen_step), specific_step in MATERIALIZATION_MAP.items():
-        if specific_step == engine_specific_step:
-            return (family, gen_step)
-
-    # Use registry to get engine family for this step type
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers  # Ensure loaded
+    import quantumvitas.drivers
 
     if DriverRegistry.is_step_type_registered(engine_specific_step):
         engine = DriverRegistry.get_engine_for_step_type(engine_specific_step)
-        # Check all materialization maps to find the generalized step
+        # Check this engine's materialization map
         driver = DriverRegistry.get_driver(engine)
         mat_map = driver.get_materialization_map()
         # Reverse lookup in this engine's materialization map
@@ -389,13 +357,13 @@ def dematerialize_to_generalized_step(
 ) -> Optional[str]:
     """
     Reverse materialization: map engine-specific step to generalized step only.
-    
+
     Args:
         engine_specific_step: Engine-specific step type identifier (e.g., "qe_scf", "pyscf_scf")
-    
+
     Returns:
-        Generalized step identifier, or None if not found
-    
+        Generalized step identifier (without GEN_ prefix for backward compat), or None
+
     Example:
         >>> dematerialize_to_generalized_step("qe_scf")
         "SCF"
@@ -404,6 +372,10 @@ def dematerialize_to_generalized_step(
     """
     result = dematerialize_step(engine_specific_step)
     if result:
-        return result[1]  # Return generalized step only
+        gen_step = result[1]
+        # Strip GEN_ prefix for backward compatibility
+        if gen_step.startswith("GEN_"):
+            return gen_step[4:]
+        return gen_step
     return None
 

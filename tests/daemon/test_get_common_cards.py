@@ -116,16 +116,15 @@ class TestGetCommonCards:
         
         # Build index
         index = build_resource_index(project_root)
-        
-        # Call service method directly with ULID (should not raise TypeError)
-        from quantumvitas._api_legacy import QVService as LegacyService
-        result = LegacyService.get_common_cards(
-            project_root=project_root,
-            calculation_ulid=calc_ulid,  # ULID, not selector
+
+        # Call service method via domain accessor (QVService)
+        from quantumvitas.api import QVService
+        svc = QVService(project_root)
+        result = svc.calculation.get_common_cards(
+            calc_selector=calc_ulid,  # ULID as selector
             step_selector=step_ulid,
-            index=index,
         )
-        
+
         # Should return result (may be empty if no common cards, but no error)
         assert isinstance(result, dict)
 

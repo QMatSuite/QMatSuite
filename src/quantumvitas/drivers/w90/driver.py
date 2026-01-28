@@ -80,10 +80,11 @@ class W90Driver(BaseEngineDriver):
     def get_materialization_map(self) -> dict[str, str]:
         """Return W90 GEN→SPEC mappings.
 
-        Wannier90 doesn't have standard generalized steps,
-        so this map is empty.
+        This is the SSOT for Wannier90 step-type mappings.
         """
-        return {}
+        return {
+            "GEN_WANNIER": "w90_run",
+        }
 
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Override defaults where W90 differs

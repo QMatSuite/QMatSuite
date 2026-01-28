@@ -1638,6 +1638,65 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
+        def delete(self, selector: str, force: bool = False) -> None:
+            """
+            Delete a structure.
+
+            Args:
+                selector: Structure selector (ULID)
+                force: If True, delete even if used by calculations
+
+            Raises:
+                ConflictError: If structure is used by calculations and force=False
+                APIError: If structure not found or deletion fails
+            """
+            try:
+                from quantumvitas.core.resolution import require_structure
+                from quantumvitas.core.project_utils import (
+                    load_project_config,
+                    save_project_config,
+                    calculations_using_structure,
+                    move_to_trash,
+                )
+                import shutil
+
+                project_root = self._service.project_root
+                config = load_project_config(project_root)
+
+                # Resolve structure
+                struct_resolved = require_structure(project_root, selector, config=config)
+                structure_id = struct_resolved.meta.id
+
+                # Build structure entry dict for calculations_using_structure
+                struct_entry = {"structure_id": structure_id}
+
+                # Check for dependent calculations
+                dependent = calculations_using_structure(project_root, config, struct_entry)
+                if dependent and not force:
+                    from quantumvitas.api.errors import ConflictError
+                    raise ConflictError(
+                        f"Structure is used by {len(dependent)} calculation(s)",
+                        context={"dependent_calculations": [c.get("meta", {}).get("name", "?") for c in dependent]}
+                    )
+
+                # Remove from project.qv.yml
+                structures = config.get("structures", [])
+                config["structures"] = [
+                    s for s in structures
+                    if s.get("structure_id") != structure_id and s.get("meta", {}).get("id") != structure_id
+                ]
+                save_project_config(project_root, config)
+
+                # Move structure file to trash
+                trash_dir = project_root / ".trash"
+                if struct_resolved.absolute_path.exists():
+                    move_to_trash(struct_resolved.absolute_path, trash_dir)
+
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
     @property
     def structure(self) -> Structure:
         """Access structure capabilities."""
@@ -5831,3 +5890,292 @@ class QVService:
             points_per_segment=points_per_segment,
             path_type=path_type,
         )
+
+    # -------------------------------------------------------------------------
+    # Demo Projects (Onboarding)
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def create_demo_project(
+        target_dir: Path | str,
+        name: str = "demo-si-project",
+        demo_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Create a demo project from a bundled snapshot.
+
+        This is the primary onboarding entry point for new users.
+        Creates a ready-to-run project from resources/demo_projects/.
+
+        Args:
+            target_dir: Directory to create the project in
+            name: Project name
+            demo_id: Demo snapshot ID (default 'si_bands_demo')
+
+        Returns:
+            Dict with project_root and demo_id
+
+        Raises:
+            ValueError: If target_dir is inside an existing project
+            FileNotFoundError: If demo snapshot not found
+        """
+        from quantumvitas.core.resources import get_resources_dir
+        from quantumvitas.core.project_utils import find_project_root
+        from quantumvitas.project.snapshot import (
+            ProjectSnapshot,
+            materialize_project_from_snapshot,
+        )
+        import yaml
+
+        target_dir = Path(target_dir).resolve()
+        demo_name = demo_id or "si_bands_demo"
+
+        # Check not inside existing project
+        enclosing = find_project_root(target_dir, max_levels=20)
+        if enclosing is not None:
+            raise ValueError(
+                f"Target directory is inside an existing QuantumVITAS project at: {enclosing}. "
+                "Please choose a parent workspace folder, not a project folder."
+            )
+
+        # Locate and load demo snapshot
+        resources_dir = get_resources_dir()
+        demo_snapshot_path = resources_dir / "demo_projects" / f"{demo_name}.yml"
+
+        if not demo_snapshot_path.exists():
+            available = [f.stem for f in (resources_dir / "demo_projects").glob("*.yml")]
+            raise FileNotFoundError(
+                f"Demo snapshot '{demo_name}' not found. "
+                f"Available demos: {', '.join(available) or 'none'}"
+            )
+
+        with open(demo_snapshot_path, "r") as f:
+            snapshot_data = yaml.safe_load(f)
+
+        if not snapshot_data:
+            raise ValueError(f"Demo snapshot '{demo_name}' is empty or invalid")
+
+        snapshot = ProjectSnapshot.from_dict(snapshot_data)
+
+        # Materialize project
+        project_root = materialize_project_from_snapshot(
+            snapshot=snapshot,
+            parent_dir=target_dir,
+            new_project_name=name,
+        )
+
+        return {
+            "project_root": str(project_root),
+            "demo_id": demo_name,
+        }
+
+    @staticmethod
+    def list_demo_projects() -> list[dict[str, Any]]:
+        """
+        List available demo project snapshots.
+
+        Returns:
+            List of dicts with id, name, description for each demo
+        """
+        from quantumvitas.core.resources import get_resources_dir
+        import yaml
+
+        resources_dir = get_resources_dir()
+        demo_dir = resources_dir / "demo_projects"
+
+        if not demo_dir.exists():
+            return []
+
+        demos = []
+        for snapshot_path in sorted(demo_dir.glob("*.yml")):
+            try:
+                with open(snapshot_path, "r") as f:
+                    data = yaml.safe_load(f)
+
+                project_data = data.get("project", {})
+                demos.append({
+                    "id": snapshot_path.stem,
+                    "name": project_data.get("name", snapshot_path.stem),
+                    "description": project_data.get("description", ""),
+                })
+            except Exception:
+                # Skip invalid snapshots
+                continue
+
+        return demos
+
+    # -------------------------------------------------------------------------
+    # Relax Structure Save (Execution)
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def save_relax_final_structure(
+        project_root: Path | str,
+        calculation_selector: str,
+        step_selector: str,
+        parent_structure_ulid: str,
+        slug_hint: str | None = None,
+        index: Any | None = None,
+        config: dict | None = None,
+    ) -> dict[str, Any]:
+        """
+        Save the final structure from a relax/vc-relax step as a new Structure resource.
+
+        IDEMPOTENT: For a given (calculation_ulid, step_ulid), at most ONE structure
+        may ever be created. Repeated calls return the existing structure ULID.
+
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            step_selector: Step selector (ULID)
+            parent_structure_ulid: ULID of the input structure (for provenance)
+            slug_hint: Optional hint for structure slug/name
+            index: Optional ResourceIndex
+            config: Optional project config
+
+        Returns:
+            Dict with structure_ulid and already_exists flag
+
+        Raises:
+            ValueError: If step is not a relax/vc-relax step
+            FileNotFoundError: If output file not found
+        """
+        from quantumvitas.calculation.geometry import (
+            read_final_geometry_from_output_text,
+            structure_from_qe_geometry_snapshot,
+        )
+        from quantumvitas.calculation.naming import CalculationFileNaming, find_calculation_raw_dir
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from quantumvitas.core.models import load_calculation
+        from quantumvitas.core.project_utils import load_project_config, save_project_config, collect_slugs
+        from quantumvitas.core.resolution import resolve_calculation, resolve_step
+        from quantumvitas.core.resources import (
+            ensure_relative_path,
+            generate_unique_name_and_slug,
+            meta_from_name,
+        )
+        from quantumvitas.io.structure_io import write_structure
+        import yaml
+        import json
+
+        project_root = Path(project_root).resolve()
+
+        # Resolve calculation and step
+        calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        calculation_dir = calculation_resolved.absolute_path.parent if calculation_resolved.absolute_path.name == "calculation.yaml" else calculation_resolved.absolute_path
+        calculation_ulid = calculation_resolved.meta.id
+
+        if config is None:
+            config = load_project_config(project_root)
+
+        # Load calculation to get working_dir
+        wf_model = load_calculation(calculation_dir / "calculation.yaml", project_root=project_root)
+        working_dir_name = wf_model.working_dir
+        raw_dir = find_calculation_raw_dir(calculation_dir, working_dir_name)
+
+        # Resolve step
+        step_resolved = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
+        step_ulid = step_resolved.meta.id
+
+        # Load step spec
+        spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=None)
+        step_type = spec.step_type
+
+        # Validate step type
+        if step_type not in ("relax", "vc-relax"):
+            raise ValueError(
+                f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type})"
+            )
+
+        # Check if structure already created (idempotency check)
+        step_yaml_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
+        existing_structure_ulid = step_yaml_data.get("produced_structure_ulid")
+
+        if existing_structure_ulid:
+            return {
+                "structure_ulid": existing_structure_ulid,
+                "already_exists": True,
+            }
+
+        # Find output file
+        base_output = raw_dir / CalculationFileNaming.output_filename(step_type, working_dir=None)
+        if base_output.exists():
+            output_file = base_output
+        else:
+            output_filename = CalculationFileNaming.output_filename(step_type, working_dir=raw_dir)
+            output_file = raw_dir / output_filename
+
+        if not output_file.exists():
+            raise FileNotFoundError(
+                f"Output file not found for step '{step_selector}': {output_file}. "
+                f"Step may not have completed successfully."
+            )
+
+        # Parse final geometry
+        output_text = output_file.read_text()
+        snapshot, species = read_final_geometry_from_output_text(output_text)
+
+        # Convert to structure
+        structure = structure_from_qe_geometry_snapshot(snapshot, species)
+
+        # Generate structure name/slug
+        structures = config.setdefault("structures", [])
+        existing_slugs = collect_slugs(structures, project_root=project_root)
+
+        if slug_hint:
+            preferred_name = slug_hint
+        else:
+            step_name = spec.meta.name or step_type
+            preferred_name = f"{step_name} relaxed"
+
+        final_name, final_slug = generate_unique_name_and_slug(
+            kind="structure",
+            preferred_name=preferred_name,
+            existing_slugs=existing_slugs,
+        )
+
+        # Write structure file
+        dest_path = project_root / "structures" / f"{final_slug}.json"
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        meta = meta_from_name(
+            "structure",
+            name=final_name,
+            path=ensure_relative_path(dest_path, base=project_root),
+        )
+
+        write_structure(structure, dest_path, metadata=meta)
+
+        # Add provenance
+        structure_data = json.loads(dest_path.read_text())
+        if "extra" not in structure_data:
+            structure_data["extra"] = {}
+        structure_data["extra"]["relax_provenance"] = {
+            "parent_structure_ulid": parent_structure_ulid,
+            "source_calculation_ulid": calculation_ulid,
+            "source_step_ulid": step_ulid,
+        }
+        dest_path.write_text(json.dumps(structure_data, indent=2))
+
+        # Add to project config
+        entry = {"structure_id": meta.id}
+        structures.append(entry)
+        save_project_config(project_root, config)
+
+        # Update step YAML with produced_structure_ulid
+        from quantumvitas.core.yamldoc import StepDoc
+        from quantumvitas.workflow.step_factory import save_step_doc
+
+        step_doc = StepDoc.load(step_resolved.absolute_path)
+        step_doc.set(["produced_structure_ulid"], meta.id)
+        save_step_doc(step_doc, step_resolved.absolute_path)
+
+        # Update registry in-place if index is provided
+        if index is not None:
+            from quantumvitas.core.resolution import update_registry_add_structure
+            update_registry_add_structure(index, meta, dest_path)
+
+        return {
+            "structure_ulid": meta.id,
+            "already_exists": False,
+        }
