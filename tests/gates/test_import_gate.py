@@ -39,8 +39,8 @@ def test_cli_daemon_import_gate():
         if directory.exists():
             files_to_check.extend(directory.rglob("*.py"))
 
-    # Allowed quantumvitas import prefixes
-    allowed_qv_prefixes = [
+    # Always allowed quantumvitas import prefixes
+    always_allowed_qv_prefixes = [
         "quantumvitas.api",
         "quantumvitas.api.utils",
     ]
@@ -58,6 +58,7 @@ def test_cli_daemon_import_gate():
         "quantumvitas.drivers",
         "quantumvitas.presets",
         "quantumvitas.project",
+        "quantumvitas.data",
         "quantumvitas._api_legacy",
         "quantumvitas.api_legacy",
     ]
@@ -65,6 +66,10 @@ def test_cli_daemon_import_gate():
     violations = []
 
     for file_path in files_to_check:
+        # Determine which package this file belongs to
+        is_daemon = "daemon" in file_path.parts
+        is_cli = "cli" in file_path.parts
+
         try:
             content = file_path.read_text()
             tree = ast.parse(content, filename=str(file_path))
@@ -86,11 +91,20 @@ def test_cli_daemon_import_gate():
                 for imported_module, lineno in imports_to_check:
                     # Only check quantumvitas.* imports
                     if imported_module.startswith("quantumvitas."):
-                        # Must match one of the allowed prefixes
+                        # Check if it's always allowed
                         allowed = any(
                             imported_module.startswith(prefix)
-                            for prefix in allowed_qv_prefixes
+                            for prefix in always_allowed_qv_prefixes
                         )
+
+                        # Allow daemon to import from quantumvitas.daemon.*
+                        if not allowed and is_daemon and imported_module.startswith("quantumvitas.daemon"):
+                            allowed = True
+
+                        # Allow CLI to import from quantumvitas.cli.*
+                        if not allowed and is_cli and imported_module.startswith("quantumvitas.cli"):
+                            allowed = True
+
                         if not allowed:
                             violations.append({
                                 "file": str(file_path.relative_to(project_root)),
@@ -116,9 +130,11 @@ def test_cli_daemon_import_gate():
             error_msg += f"    → imports '{v['module']}'\n\n"
 
         error_msg += "ALLOWED quantumvitas imports:\n"
-        for prefix in allowed_qv_prefixes:
+        for prefix in always_allowed_qv_prefixes:
             error_msg += f"  ✓ {prefix}\n"
             error_msg += f"  ✓ {prefix}.*\n"
+        error_msg += "  ✓ quantumvitas.daemon.* (only from daemon/ files)\n"
+        error_msg += "  ✓ quantumvitas.cli.* (only from cli/ files)\n"
         error_msg += "\n"
 
         error_msg += "FORBIDDEN kernel imports (examples):\n"

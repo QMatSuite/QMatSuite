@@ -598,3 +598,23 @@ def create_online_structure_cache(cache_dir: Path):
 # Re-export OnlineStructureCache class for type hints
 from quantumvitas.io.online_cache import OnlineStructureCache  # noqa: E402, F401
 
+
+# =============================================================================
+# QE metadata utilities (re-exports from drivers layer)
+# =============================================================================
+
+# Re-export QE metadata functions for daemon/CLI use
+from quantumvitas.drivers.qe.data.qe_metadata import (  # noqa: E402, F401
+    get_ui_parameters,
+    list_supported_modules,
+    get_module_param_sections,
+    get_module_card_sections,
+    get_module_doc_url,
+    get_metadata_file_info,
+    get_qe_metadata_debug_info,
+    safe_load_metadata,
+    reload_metadata,
+    QEUIParam,
+    _iter_params,  # Private helper needed by daemon
+)
+

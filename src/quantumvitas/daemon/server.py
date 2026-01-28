@@ -31,16 +31,17 @@ from typing import Any, Callable, Dict, Optional, TextIO
 from quantumvitas.api import QVService, APIError, get_service
 from quantumvitas.api.utils import is_ulid_like
 from quantumvitas.daemon.jobs import JobManager, JobStatus
-from quantumvitas.data import qe_metadata
-from quantumvitas.data.qe_metadata import (
+from quantumvitas.api.utils import (
     get_ui_parameters,
     list_supported_modules,
     get_module_param_sections,
+    get_module_card_sections,
     get_module_doc_url,
     get_metadata_file_info,
     get_qe_metadata_debug_info,
     safe_load_metadata,
     reload_metadata,
+    _iter_params,
 )
 
 
@@ -1523,9 +1524,8 @@ class QVDaemon:
                 
                 result = []
                 seen_sections = set()
-                
+
                 # Get card sections (from card_metadata) for reference
-                from quantumvitas.data import get_module_card_sections
                 card_sections = get_module_card_sections(module)
                 card_names_upper = {card_name.upper() for card_name in card_sections}
                 
@@ -1662,9 +1662,9 @@ class QVDaemon:
                 if is_namelist:
                     # Handle namelist sections
                     section_with_prefix = f"&{section_normalized}"
-                    
+
                     # Get all parameters for the module (use internal _iter_params)
-                    params = qe_metadata._iter_params(module)
+                    params = _iter_params(module)
                     
                     # Filter by section
                     for param in params:
@@ -1750,12 +1750,11 @@ class QVDaemon:
                 # Search across all modules
                 for module in modules:
                     # Get sections for this module (both namelists and cards)
-                    from quantumvitas.data import get_module_card_sections
                     card_sections = get_module_card_sections(module)
                     sections_dict = get_module_param_sections(module)
-                    
+
                     # Search namelist parameters
-                    params = qe_metadata._iter_params(module)
+                    params = _iter_params(module)
                     for param in params:
                         param_name = param.get("name", "").lower()
                         param_desc = (param.get("description") or "").lower()
