@@ -160,3 +160,5 @@ which cp2k.ssmp
 brew install lammps
 lammps_serial -h | head
 brew --prefix lammps
+
+conda install -c conda-forge siesta

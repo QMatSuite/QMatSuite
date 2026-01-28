@@ -2832,15 +2832,9 @@ class QVDaemon:
                     }
                 }
         
-        # Use legacy API (domain accessor doesn't have this method yet)
-        cache = self.state.get_cache(project_root)
-        from quantumvitas._api_legacy import QVService as LegacyService
-        return LegacyService.can_delete_calculation(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
-            index=cache.index,
-            config=cache.config,
-        )
+        # Use domain API
+        svc = get_service(project_root)
+        return svc.calculation.can_delete(calculation_ulid)
     
     def _handle_delete_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -2945,14 +2939,8 @@ class QVDaemon:
         
         # Get calculation name before deletion for response
         try:
-            cache = self.state.get_cache(project_root)
-            from quantumvitas._api_legacy import QVService as LegacyService
-            check = LegacyService.can_delete_calculation(
-                project_root=project_root,
-                calculation_ulid=calculation_ulid,
-                index=cache.index,
-                config=cache.config,
-            )
+            svc = get_service(project_root)
+            check = svc.calculation.can_delete(calculation_ulid)
             calculation_name = check.get("calculation_name", calculation_ulid)
         except Exception as e:
             return {
@@ -3131,36 +3119,27 @@ class QVDaemon:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation)
             calculation_ulid = calculation_resolved.id
         
-        # Use legacy API if cards or parameter_scan are needed (domain API doesn't support them yet)
-        if cards or parameter_scan is not None:
-            cache = self.state.get_cache(project_root)
-            from quantumvitas._api_legacy import QVService as LegacyService
-            result = LegacyService.update_step_params(
-                project_root=project_root,
-                calculation_ulid=calculation_ulid,
-                step_selector=step,
-                parameters=parameters,
-                cards=cards,
-                parameter_scan=parameter_scan,
-                index=cache.index,
-                config=cache.config,
-            )
-            return result
-        else:
-            # Use domain accessor API for parameters-only updates
-            svc = get_service(project_root)
-            # Domain API expects params dict with "parameters" key
-            step_dto = svc.calculation.update_step_params(
-                calc_selector=calculation_ulid,
-                step_selector=step,
-                params={"parameters": parameters},
-            )
-            # Convert StepDTO to dict for daemon response
-            return {
-                "step_id": step_dto.step_id,
-                "step_type": step_dto.step_type,
-                "status": step_dto.status,
-            }
+        # Use domain API (supports parameters, cards, and parameter_scan)
+        svc = get_service(project_root)
+        params = {}
+        if parameters:
+            params["parameters"] = parameters
+        if cards:
+            params["cards"] = cards
+        if parameter_scan is not None:
+            params["parameter_scan"] = parameter_scan
+
+        step_dto = svc.calculation.update_step_params(
+            calc_selector=calculation_ulid,
+            step_selector=step,
+            params=params,
+        )
+        # Convert StepDTO to dict for daemon response
+        return {
+            "step_id": step_dto.step_id,
+            "step_type": step_dto.step_type,
+            "status": step_dto.status,
+        }
     
     def _handle_promote_relax_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Promote a relax step's generated structure to a project resource.
@@ -3223,17 +3202,10 @@ class QVDaemon:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
             calculation_ulid = calculation_resolved.id
         
-        cache = self.state.get_cache(project_root)
-        
-        from quantumvitas._api_legacy import QVService as LegacyService
-        return LegacyService.get_common_cards(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
-            step_selector=step,
-            index=cache.index,
-            config=cache.config,
-        )
-    
+        # Use domain API
+        svc = get_service(project_root)
+        return svc.calculation.get_common_cards(calculation_ulid, step)
+
     def _handle_set_common_card(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Set a common card from view model.
@@ -4074,16 +4046,10 @@ class QVDaemon:
         if not is_ulid_like(calculation_ulid):
             from quantumvitas.api.errors import InvalidArgumentError
             raise InvalidArgumentError(f"Expected ULID, got: {calculation_ulid}")
-        
-        # Use legacy API for now (returns dict directly, domain API returns DTO that needs serialization)
-        cache = self.state.get_cache(project_root)
-        from quantumvitas._api_legacy import QVService as LegacyService
-        return LegacyService.get_calculation_detail(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
-            index=cache.index,
-            config=cache.config,
-        )
+
+        # Use domain API
+        svc = get_service(project_root)
+        return svc.calculation.get_detail(calculation_ulid)
     
     def _handle_reorder_calculation_steps(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -4301,17 +4267,14 @@ class QVDaemon:
             f"ulid={structure_ulid}, kind={structure_resolved.meta.kind}"
         )
         
-        # Pass ULIDs to core service (core service requires ULID only)
-        from quantumvitas._api_legacy import QVService as LegacyService
-        result = LegacyService.change_calculation_structure(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
-            new_structure_ulid=structure_ulid,
+        # Use domain API
+        svc = get_service(project_root)
+        result = svc.calculation.set_structure(
+            calc_selector=calculation_ulid,
+            structure_selector=structure_ulid,
             update_steps=update_steps,
-            index=cache.index,
-            config=cache.config,
         )
-        
+
         return result
     
     def _handle_get_calculation_pseudo_mapping(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -4526,23 +4489,18 @@ class QVDaemon:
             raise InvalidArgumentError(f"Expected ULID, got: {calculation_ulid}")
         
         cache = self.state.get_cache(project_root)
-        
+
         # Log actual call parameters
         logger.info(
             f"[GET_PSEUDO_OPTIONS_FOR_CALCULATION] "
             f"calling get_calculation_detail with calculation_ulid={calculation_ulid} "
-            f"(resolved from selector={calculation}, index and config from cache)"
+            f"(resolved from selector={calculation})"
         )
-        
-        # Call with calculation_ulid (not calculation_selector)
-        from quantumvitas._api_legacy import QVService as LegacyService
-        calc_detail = LegacyService.get_calculation_detail(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
-            index=cache.index,
-            config=cache.config,
-        )
-        
+
+        # Use domain API
+        svc = get_service(project_root)
+        calc_detail = svc.calculation.get_detail(calculation_ulid)
+
         # Extract elements from structure
         elements: List[str] = []
         structure_id = calc_detail.get("structure_id")
@@ -4596,16 +4554,12 @@ class QVDaemon:
             self._resolve_calculation_with_fallback(project_root, calculation)
         if calculation and step:
             self._resolve_step_with_fallback(project_root, calculation, step)
-        
-        # Pass cached index and config to avoid rebuilding ResourceIndex
-        cache = self.state.get_cache(project_root)
-        from quantumvitas._api_legacy import QVService as LegacyService
-        return LegacyService.preflight_check(
-            project_root=project_root,
-            calculation_selector=calculation,
+
+        # Use domain API
+        svc = get_service(project_root)
+        return svc.run.preflight(
+            calc_selector=calculation,
             step_selector=step,
-            index=cache.index,
-            config=cache.config,
         )
     
     # -------------------------------------------------------------------------
@@ -6090,187 +6044,66 @@ class QVDaemon:
     def _handle_get_project_history(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get project history timeline for notebook view.
-        
+
         Payload:
             project_root: str - Path to project root
             limit: Optional[int] - Maximum events (default 100)
             calc_id: Optional[str] - Filter by calculation ID
-            
+
         Returns:
             timeline: List of timeline entries (runs, edits, pins)
             latest_run_id: Latest run ULID or null
         """
-        from quantumvitas.history.storage import ProjectHistory
-        from quantumvitas.history.events import EventType
-        from quantumvitas.history.run_revision import load_run_revision
-        
         project_root = Path(self._require_str(payload, "project_root"))
         limit = payload.get("limit", 100)
         calc_id = payload.get("calc_id")
-        
-        history = ProjectHistory(project_root)
-        
-        # Get all events
-        events = history.list_events(
-            calc_id=calc_id,
-            limit=limit,
-            reverse=True,
-        )
-        
-        # Build timeline entries
-        timeline = []
-        run_info_cache = {}
-        
-        for event in events:
-            entry = {
-                "id": event.id,
-                "timestamp": event.timestamp,
-                "event_type": event.event_type,
-                "calc_id": event.calc_id,
-                "step_id": event.step_id,
-            }
-            
-            if event.event_type == EventType.RUN_STARTED.value:
-                entry["run_id"] = getattr(event, "run_id", "")
-                entry["step_ids"] = getattr(event, "step_ids", [])
-                entry["step_types"] = getattr(event, "step_types", [])
-                entry["calc_name"] = getattr(event, "calc_name", "")
-                
-            elif event.event_type == EventType.RUN_FINISHED.value:
-                run_id = getattr(event, "run_id", "")
-                entry["run_id"] = run_id
-                entry["status"] = getattr(event, "status", "")
-                entry["duration_seconds"] = getattr(event, "duration_seconds", None)
-                entry["step_count"] = getattr(event, "step_count", 0)
-                entry["success_count"] = getattr(event, "success_count", 0)
-                entry["failure_count"] = getattr(event, "failure_count", 0)
-                entry["error_summary"] = getattr(event, "error_summary", None)
-                
-                # Try to load run digest
-                if run_id and run_id not in run_info_cache:
-                    run_dir = history.get_run_dir(run_id)
-                    if run_dir:
-                        try:
-                            revision = load_run_revision(run_dir)
-                            revision_dict = revision.to_dict()
-                            run_info_cache[run_id] = {
-                                "run_digest": revision_dict.get("run_digest"),
-                                "step_digests": revision_dict.get("step_digests"),
-                            }
-                        except Exception:
-                            pass
-                
-                if run_id in run_info_cache:
-                    entry["run_digest"] = run_info_cache[run_id].get("run_digest")
-                    entry["step_digests"] = run_info_cache[run_id].get("step_digests")
-                
-            elif event.event_type == EventType.EDIT.value:
-                entry["doc_type"] = getattr(event, "doc_type", "")
-                entry["doc_path"] = getattr(event, "doc_path", "")
-                entry["summary"] = getattr(event, "summary", "")
-                entry["actor"] = getattr(event, "actor", "")
-                
-            elif event.event_type == EventType.PIN_CREATED.value:
-                entry["run_id"] = getattr(event, "run_id", "")
-                entry["analysis_kind"] = getattr(event, "analysis_kind", "")
-                entry["pin_path"] = getattr(event, "pin_path", "")
-                
-            elif event.event_type == EventType.BASELINE.value:
-                entry["structure_ids"] = getattr(event, "structure_ids", [])
-                entry["calculation_ids"] = getattr(event, "calculation_ids", [])
-            
-            timeline.append(entry)
-        
-        latest_run_id = history.get_latest_run_id()
-        
-        return {
-            "timeline": timeline,
-            "latest_run_id": latest_run_id,
-            "total": len(timeline),
-        }
+
+        # Use domain API
+        svc = get_service(project_root)
+        return svc.history.get_timeline(limit=limit, calc_id=calc_id)
     
     def _handle_get_run_revision(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get details of a specific run revision.
-        
+
         Payload:
             project_root: str - Path to project root
             run_id: str - Run ULID
-            
+
         Returns:
             revision: Run revision dict or null
         """
-        from quantumvitas.history.storage import ProjectHistory
-        from quantumvitas.history.run_revision import load_run_revision
-        
         project_root = Path(self._require_str(payload, "project_root"))
         run_id = self._require_str(payload, "run_id")
-        
-        history = ProjectHistory(project_root)
-        run_dir = history.get_run_dir(run_id)
-        
-        if not run_dir:
-            return {"revision": None, "error": f"Run not found: {run_id}"}
-        
-        try:
-            revision = load_run_revision(run_dir)
-            return {"revision": revision.to_dict()}
-        except Exception as e:
-            return {"revision": None, "error": str(e)}
+
+        # Use domain API
+        svc = get_service(project_root)
+        return svc.history.get_run_revision(run_id)
     
     def _handle_list_project_runs(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         List all runs for a project.
-        
+
         Payload:
             project_root: str - Path to project root
             calc_id: Optional[str] - Filter by calculation ID
             limit: Optional[int] - Maximum runs (default 50)
-            
+
         Returns:
             runs: List of run summaries
         """
-        from quantumvitas.history.storage import ProjectHistory
-        from quantumvitas.history.run_revision import load_run_revision
-        
         project_root = Path(self._require_str(payload, "project_root"))
         calc_id = payload.get("calc_id")
         limit = payload.get("limit", 50)
-        
-        history = ProjectHistory(project_root)
-        run_ids = history.list_runs(calc_id=calc_id, limit=limit)
-        
-        runs = []
-        for run_id in run_ids:
-            run_dir = history.get_run_dir(run_id)
-            if run_dir:
-                try:
-                    revision = load_run_revision(run_dir)
-                    runs.append({
-                        "run_id": run_id,
-                        "calc_id": revision.calc_id,
-                        "calc_name": revision.calc_name,
-                        "status": revision.status,
-                        "started_at": revision.started_at,
-                        "finished_at": revision.finished_at,
-                        "step_count": len(revision.step_ids),
-                        "run_digest": revision.run_digest,
-                    })
-                except Exception:
-                    runs.append({
-                        "run_id": run_id,
-                        "error": "Failed to load run revision",
-                    })
-        
-        return {
-            "runs": runs,
-            "total": len(runs),
-        }
+
+        # Use domain API
+        svc = get_service(project_root)
+        return svc.history.list_runs(calc_id=calc_id, limit=limit)
     
     def _handle_pin_analysis_to_history(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Pin analysis results to history.
-        
+
         Payload:
             project_root: str - Path to project root
             run_id: str - Run ULID
@@ -6278,18 +6111,17 @@ class QVDaemon:
             analysis_kind: str - Type of analysis (e.g., "bands", "dos")
             png_data_base64: Optional[str] - Base64-encoded PNG data
             json_payload: Optional[dict] - JSON data to store
-            
+
         Returns:
             result: Pin result dict
         """
         import base64
-        from quantumvitas.history.pins import pin_analysis_to_history, PinError
-        
+
         project_root = Path(self._require_str(payload, "project_root"))
         run_id = self._require_str(payload, "run_id")
         step_id = self._require_str(payload, "step_id")
         analysis_kind = self._require_str(payload, "analysis_kind")
-        
+
         # Decode PNG if provided
         png_data = None
         png_base64 = payload.get("png_data_base64")
@@ -6298,190 +6130,111 @@ class QVDaemon:
                 png_data = base64.b64decode(png_base64)
             except Exception as e:
                 return {"success": False, "error": f"Failed to decode PNG: {e}"}
-        
+
         json_payload = payload.get("json_payload")
-        
-        try:
-            result = pin_analysis_to_history(
-                project_root=project_root,
-                run_id=run_id,
-                step_id=step_id,
-                analysis_kind=analysis_kind,
-                png_data=png_data,
-                json_payload=json_payload,
-            )
-            return result.to_dict()
-        except PinError as e:
-            return {"success": False, "error": str(e)}
-    
+
+        # Use domain API
+        svc = get_service(project_root)
+        return svc.history.pin_analysis(
+            run_id=run_id,
+            step_id=step_id,
+            analysis_kind=analysis_kind,
+            png_data=png_data,
+            json_payload=json_payload,
+        )
+
     def _handle_can_pin_to_run(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Check if pinning is allowed for a run and step.
-        
+
         Payload:
             project_root: str - Path to project root
             run_id: str - Run ULID
             step_id: str - Step ULID
-            
+
         Returns:
             allowed: bool
             reason: Optional[str] - Reason if not allowed
         """
-        from quantumvitas.history.pins import can_pin_to_run
-        
         project_root = Path(self._require_str(payload, "project_root"))
         run_id = self._require_str(payload, "run_id")
         step_id = self._require_str(payload, "step_id")
-        
-        return can_pin_to_run(project_root, run_id, step_id)
+
+        # Use domain API
+        svc = get_service(project_root)
+        return svc.history.can_pin(run_id, step_id)
     
     def _handle_get_pin_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get pinned data for a step analysis.
-        
+
         Payload:
             project_root: str - Path to project root
             run_id: str - Run ULID
             step_id: str - Step ULID
             analysis_kind: str - Type of analysis
-            
+
         Returns:
             png_path: Optional[str] - Path to PNG file
             json_path: Optional[str] - Path to JSON file
             json_data: Optional[dict] - Parsed JSON data
         """
-        from quantumvitas.history.pins import get_pin_data
-        
         project_root = Path(self._require_str(payload, "project_root"))
         run_id = self._require_str(payload, "run_id")
         step_id = self._require_str(payload, "step_id")
         analysis_kind = self._require_str(payload, "analysis_kind")
-        
-        return get_pin_data(project_root, run_id, step_id, analysis_kind)
-    
+
+        # Use domain API
+        svc = get_service(project_root)
+        return svc.history.get_pin_data(run_id, step_id, analysis_kind)
+
     def _handle_get_latest_run_for_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get the latest run_id that includes a specific step.
-        
+
         Used by the Analysis panel to determine if "Pin to History" should be enabled.
-        
+
         Payload:
             project_root: str - Path to project root
             step_id: str - Step ULID
-            
+
         Returns:
             run_id: Optional[str] - Latest run ULID containing this step
             can_pin: bool - Whether pinning is allowed
             reason: Optional[str] - Reason if cannot pin
         """
-        from quantumvitas.history.storage import ProjectHistory
-        from quantumvitas.history.events import EventType
-        
         project_root = Path(self._require_str(payload, "project_root"))
         step_id = self._require_str(payload, "step_id")
-        
-        history = ProjectHistory(project_root)
-        
-        # Get latest run_id
-        latest_run_id = history.get_latest_run_id()
-        
-        if not latest_run_id:
-            return {
-                "run_id": None,
-                "can_pin": False,
-                "reason": "No runs found in history",
-            }
-        
-        # Check if the step is in the latest run
-        step_ids_in_run = history.get_run_step_ids(latest_run_id)
-        
-        if step_id not in step_ids_in_run:
-            return {
-                "run_id": None,
-                "can_pin": False,
-                "reason": "Step not in latest run",
-            }
-        
-        return {
-            "run_id": latest_run_id,
-            "can_pin": True,
-            "reason": None,
-        }
+
+        # Use domain API
+        svc = get_service(project_root)
+        return svc.history.get_latest_run_for_step(step_id)
     
     def _handle_delete_project_history(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Delete the entire .history directory for a project.
-        
+
         Safety:
         - Only deletes the .history directory
         - Validates path to prevent traversal attacks
         - Does NOT delete any present-tense truth files
-        
+
         Payload:
             project_root: str - Path to project root
             confirm: bool - Must be True to confirm deletion
-            
+
         Returns:
             success: bool
             error: Optional[str]
             deleted_path: Optional[str] - Path that was deleted
         """
-        import shutil
-        from quantumvitas.history.storage import HISTORY_DIR_NAME
-        
         project_root = Path(self._require_str(payload, "project_root"))
         confirm = payload.get("confirm", False)
-        
-        if not confirm:
-            return {
-                "success": False,
-                "error": "Deletion requires confirmation (confirm: true)",
-            }
-        
-        # Safety: resolve paths and verify
-        project_root = project_root.resolve()
-        history_dir = project_root / HISTORY_DIR_NAME
-        
-        # Validate that history_dir is actually inside project_root
-        try:
-            history_dir_resolved = history_dir.resolve()
-            # Check that it's a subdirectory of project_root
-            if not str(history_dir_resolved).startswith(str(project_root)):
-                return {
-                    "success": False,
-                    "error": "Security error: invalid path",
-                }
-            # Check that it has the expected name
-            if history_dir_resolved.name != HISTORY_DIR_NAME:
-                return {
-                    "success": False,
-                    "error": f"Security error: unexpected path name",
-                }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Path validation error: {e}",
-            }
-        
-        if not history_dir.exists():
-            return {
-                "success": True,
-                "deleted_path": None,
-                "message": "History directory does not exist",
-            }
-        
-        try:
-            shutil.rmtree(history_dir)
-            return {
-                "success": True,
-                "deleted_path": str(history_dir),
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Failed to delete history: {e}",
-            }
-    
+
+        # Use domain API
+        svc = get_service(project_root)
+        return svc.history.delete(confirm=confirm)
+
     # -------------------------------------------------------------------------
     # Workflow Handlers
     # -------------------------------------------------------------------------
