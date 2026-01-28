@@ -279,14 +279,18 @@ def test_optimade_live_fetch_si_structure_and_parse_pymatgen():
     
     # Assert required field values
     assert provenance["source_name"] != "", "source_name is empty"
-    assert "Materials Cloud" in provenance["source_name"], (
-        f"source_name should contain 'Materials Cloud', got '{provenance['source_name']}'"
+    # Accept either Materials Project or Materials Cloud as valid OPTIMADE sources
+    assert ("Materials Project" in provenance["source_name"] or
+            "Materials Cloud" in provenance["source_name"]), (
+        f"source_name should contain 'Materials Project' or 'Materials Cloud', got '{provenance['source_name']}'"
     )
-    assert provenance["provider"] == "main", (
-        f"Expected provider='main', got '{provenance['provider']}'"
+    # Provider varies by source: "main" for Materials Cloud, "mp" for Materials Project
+    assert provenance["provider"] in ("main", "mp"), (
+        f"Expected provider='main' or 'mp', got '{provenance['provider']}'"
     )
     assert provenance["database"] != "", "database is empty"
-    assert provenance["base_url"].startswith("https://optimade.materialscloud.org/"), (
+    assert (provenance["base_url"].startswith("https://optimade.materialsproject.org") or
+            provenance["base_url"].startswith("https://optimade.materialscloud.org/")), (
         f"base_url should start with https://optimade.materialscloud.org/, got '{provenance['base_url']}'"
     )
     assert provenance["optimade_id"] == structure_id, (

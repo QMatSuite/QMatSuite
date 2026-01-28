@@ -138,14 +138,9 @@ class TestGetCalculationDetail:
                 assert isinstance(step["step_file"], str), "step_file should be a string if present"
         
         # Verify step IDs match calculation model
-        # Get calculation detail directly to compare (resolve slug to ULID first)
-        from quantumvitas.core.resolution import resolve_calculation
-        from quantumvitas._api_legacy import QVService as LegacyService
-        calculation_resolved = resolve_calculation(temp_project, calculation_slug)
-        direct_result = LegacyService.get_calculation_detail(
-            project_root=temp_project,
-            calculation_ulid=calculation_resolved.meta.id,
-        )
+        # Get calculation detail directly via domain accessor to compare
+        svc = QVService(temp_project)
+        direct_result = svc.calculation.get_detail(calculation_slug)
         assert len(direct_result["steps"]) == len(result["steps"]), \
             "Daemon result should match direct QVService result"
         

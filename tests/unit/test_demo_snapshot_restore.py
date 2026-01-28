@@ -107,11 +107,9 @@ class TestDemoSnapshotRestore:
             assert calculations_dir.exists(), f"calculations directory should exist: {calculations_dir}"
     
     def test_create_demo_project_via_api(self):
-        """Test creating demo project via LegacyService.create_demo_project."""
-        from quantumvitas._api_legacy import QVService as LegacyService
-
+        """Test creating demo project via QVService.create_demo_project."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            result = LegacyService.create_demo_project(
+            result = QVService.create_demo_project(
                 target_dir=Path(tmpdir),
                 name="test_demo",
                 demo_id="si_bands_demo",
@@ -139,7 +137,7 @@ class TestDemoSnapshotRestore:
             assert len(calculation_yamls) > 0, f"At least one calculation.yaml should exist"
 
             # Verify project can be opened by QVService
-            summary = LegacyService.get_project_summary(project_root)
+            summary = QVService.get_project_summary(project_root)
             assert summary is not None, "Project summary should be available"
             assert summary["n_structures"] > 0, "Project should have at least one structure"
             assert summary["n_calculations"] > 0, "Project should have at least one calculation"

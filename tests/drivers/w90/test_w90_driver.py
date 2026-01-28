@@ -47,10 +47,11 @@ class TestW90Driver:
         driver = W90Driver()
         assert "cross_engine" in driver.get_capabilities()
 
-    def test_materialization_map_empty(self):
-        """W90 has no generalized step mappings."""
+    def test_materialization_map(self):
+        """W90 has GEN_WANNIER mapping (SSOT for Wannier steps)."""
         driver = W90Driver()
-        assert driver.get_materialization_map() == {}
+        mat_map = driver.get_materialization_map()
+        assert mat_map == {"GEN_WANNIER": "w90_run"}
 
 
 class TestW90Registration:

@@ -134,13 +134,18 @@ class PySCFDriver(BaseEngineDriver):
         return PySCFRecipe
 
     def get_materialization_map(self) -> dict[str, str]:
-        """Return PySCF GEN→SPEC mappings."""
+        """Return PySCF GEN→SPEC mappings.
+
+        This is the SSOT for PySCF step-type mappings.
+        """
         return {
             "GEN_SCF": "pyscf_scf",
             "GEN_DFT": "pyscf_dft",
             "GEN_OPT": "pyscf_opt",
+            "GEN_RELAX": "pyscf_relax",
             "GEN_FREQ": "pyscf_freq",
             "GEN_MP2": "pyscf_mp2",
+            "GEN_TD": "pyscf_td",
         }
 
     # ─────────────────────────────────────────────────────────────────────

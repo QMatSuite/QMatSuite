@@ -50,6 +50,13 @@ class VASPDriver(BaseEngineDriver):
                 category="calculation",
             ),
             StepTypeSpec(
+                id="vasp_nscf",
+                engine="vasp",
+                executable="vasp_std",
+                description="VASP non-self-consistent calculation",
+                category="calculation",
+            ),
+            StepTypeSpec(
                 id="vasp_relax",
                 engine="vasp",
                 executable="vasp_std",
@@ -135,16 +142,31 @@ class VASPDriver(BaseEngineDriver):
 
     def get_materialization_map(self) -> dict[str, str]:
         """Return VASP GEN→SPEC mappings.
-        
-        Note: GEN_DOS is a zero-mapping (integrated in NSCF output).
+
+        This is the SSOT for VASP step-type mappings.
+        Note: GEN_DOS, GEN_BANDS_POST, GEN_DOSPP, GEN_BANDSPP are zero-mappings
+        (integrated in NSCF output, no separate step needed).
         """
         return {
             "GEN_SCF": "vasp_scf",
+            "GEN_NSCF": "vasp_nscf",
             "GEN_RELAX": "vasp_relax",
             "GEN_VC_RELAX": "vasp_vc_relax",
             "GEN_MD": "vasp_md",
             "GEN_BANDS": "vasp_bands",
-            # GEN_DOS is zero-mapping (integrated in NSCF output, no separate step)
+            # Zero-mappings are handled by _get_zero_mappings()
+        }
+
+    def _get_zero_mappings(self) -> set[str]:
+        """Return GEN types that are explicit zero-mappings (no step needed).
+
+        These are operations that VASP handles implicitly in other steps.
+        """
+        return {
+            "GEN_DOS",        # DOS integrated in NSCF output
+            "GEN_DOSPP",      # DOS integrated in NSCF output (PUBLIC key alias)
+            "GEN_BANDS_POST", # VASP doesn't need post-processing
+            "GEN_BANDSPP",    # VASP doesn't need post-processing (PUBLIC key alias)
         }
 
     # ─────────────────────────────────────────────────────────────────────

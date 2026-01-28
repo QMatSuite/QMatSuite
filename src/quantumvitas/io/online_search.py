@@ -33,9 +33,11 @@ from quantumvitas.io.online_cache import CandidateSummary
 logger = logging.getLogger(__name__)
 
 
-# Materials Cloud OPTIMADE endpoints (provider+database scoped)
-# Try in order: mc3d-pbe-v1, mc3d-pbesol-v2, mc3d-pbesol-v1
+# OPTIMADE endpoints (try in order until one succeeds)
+# Primary: Materials Project (fast, reliable, comprehensive)
+# Fallbacks: Materials Cloud databases (mc3d-pbe-v1, mc3d-pbesol-v2, mc3d-pbesol-v1)
 OPTIMADE_BASES = [
+    "https://optimade.materialsproject.org",
     "https://optimade.materialscloud.org/main/mc3d-pbe-v1",
     "https://optimade.materialscloud.org/main/mc3d-pbesol-v2",
     "https://optimade.materialscloud.org/main/mc3d-pbesol-v1",

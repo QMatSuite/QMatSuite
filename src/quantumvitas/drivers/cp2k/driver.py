@@ -114,13 +114,18 @@ class CP2KDriver(BaseEngineDriver):
         return CP2KRecipe
 
     def get_materialization_map(self) -> dict[str, str]:
-        """Return CP2K GEN→SPEC mappings."""
+        """Return CP2K GEN→SPEC mappings.
+
+        This is the SSOT for CP2K step-type mappings.
+        """
         return {
             "GEN_SCF": "cp2k_scf",
             "GEN_RELAX": "cp2k_relax",
+            "GEN_VC_RELAX": "cp2k_relax",  # Maps to same step type
             "GEN_OPT": "cp2k_geo_opt",
             "GEN_CELL_OPT": "cp2k_cell_opt",
             "GEN_MD": "cp2k_md",
+            "GEN_VC_MD": "cp2k_md",  # Maps to same step type
             "GEN_BANDS": "cp2k_bands",
             "GEN_DOS": "cp2k_dos",
         }

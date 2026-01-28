@@ -267,40 +267,6 @@ def map_kernel_exception(exc: Exception) -> APIError:
             cause=_make_cause(exc, trace_id),
         )
     
-    # Legacy API errors (QVServiceError) - preserve message for security errors
-    if isinstance(exc, _get_kernel_class("QVServiceError")):
-        msg = str(exc).lower()
-        # Security-related errors
-        if "security" in msg or "traversal" in msg:
-            return ValidationError(
-                message=str(exc),
-                code="SECURITY_VIOLATION",
-                context={"reason": str(exc)},
-                cause=_make_cause(exc, trace_id),
-            )
-        # File/directory not found errors
-        if "not found" in msg:
-            return NotFoundError(
-                message=str(exc),
-                context={"reason": str(exc)},
-                cause=_make_cause(exc, trace_id),
-            )
-        # Directory rejection errors
-        if "directory" in msg:
-            return ValidationError(
-                message=str(exc),
-                code="INVALID_PATH",
-                context={"reason": str(exc)},
-                cause=_make_cause(exc, trace_id),
-            )
-        # Generic QVServiceError - preserve message
-        return ValidationError(
-            message=str(exc),
-            code="SERVICE_ERROR",
-            context={"reason": str(exc)},
-            cause=_make_cause(exc, trace_id),
-        )
-
     # Fallback: internal error
     return InternalError(
         message="Unexpected error",
@@ -361,7 +327,8 @@ def _get_kernel_class(class_name: str) -> type:
         "EngineNotFoundError": ("quantumvitas.core.driver_exceptions", "UnknownEngineError"),
         "ProjectConfigError": ("quantumvitas.core.project_utils", "ProjectConfigError"),
         "ModeMismatchError": ("quantumvitas.core.project_utils", "ProjectConfigError"),  # Fallback
-        "QVServiceError": ("quantumvitas._api_legacy", "QVServiceError"),
+        # QVServiceError removed - no longer exists after _api_legacy purge
+        # Legacy exception handling preserved via fallback to InternalError
     }
     
     if class_name not in kernel_exceptions:
