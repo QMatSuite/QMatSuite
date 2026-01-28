@@ -205,14 +205,11 @@ class TestGetCalculationDetail:
         # Verify steps are in expected order (scf, nscf, bands_pw, bands)
         # We can't verify exact types without loading the step files, but we can verify
         # that the order is consistent (same order as calculation.yaml)
-        # Note: step types are now prefixed with engine (e.g., "qe_scf" instead of "scf")
         expected_types = ["scf", "nscf", "bands_pw", "bands"]
         actual_types = [step.get("type") for step in result["steps"]]
-        
+
         # Verify we have the expected step types (order may vary slightly, but all should be present)
-        # Map expected types to actual prefixed types
-        expected_prefixed = [f"qe_{t}" if not t.startswith("qe_") else t for t in expected_types]
-        for expected_type in expected_prefixed[:len(actual_types)]:
+        for expected_type in expected_types[:len(actual_types)]:
             assert expected_type in actual_types, f"Expected step type '{expected_type}' not found in {actual_types}"
         
         # CRITICAL: Test that get_step_detail works for ALL steps (not just the first)
@@ -234,10 +231,19 @@ class TestGetCalculationDetail:
                 f"Step {idx} detail id should match calculation step id. Expected {step_id}, got {step_detail['id']}"
             assert "step_type" in step_detail, f"Step {idx} detail should have step_type field"
             
-            # Verify step_type matches (if available)
+            # Verify step_type is related (calculation.yaml may store public type, step.yaml stores machine type)
+            # e.g., calculation.yaml: "scf", step.yaml: "qe_scf" - both are valid representations
             if step_type:
-                assert step_detail["step_type"] == step_type, \
-                    f"Step {idx} detail step_type should match. Expected {step_type}, got {step_detail['step_type']}"
+                detail_step_type = step_detail["step_type"]
+                # Allow either exact match or public/machine type equivalence
+                matches = (
+                    detail_step_type == step_type or
+                    detail_step_type == f"qe_{step_type}" or
+                    step_type == f"qe_{detail_step_type}" or
+                    detail_step_type.replace("qe_", "") == step_type.replace("qe_", "")
+                )
+                assert matches, \
+                    f"Step {idx} detail step_type should be related. Expected {step_type} or qe_{step_type}, got {detail_step_type}"
             
             # Verify other expected fields
             assert "parameters" in step_detail, f"Step {idx} detail should have parameters field"
