@@ -1,2 +1,1 @@
-"""Gate tests for engine driver migration."""
-
+"""Gate tests for enforcing architecture boundaries."""

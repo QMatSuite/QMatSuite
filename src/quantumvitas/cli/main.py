@@ -47,7 +47,7 @@ from quantumvitas.api.utils import (
 )
 # Kernel utility re-exported via API utils (avoids direct core.* imports per import rules)
 from quantumvitas.api.utils import calculations_using_structure
-from quantumvitas.data import (
+from quantumvitas.api.utils import (
     get_module_doc_url,
     get_module_param_sections,
     list_supported_modules,
