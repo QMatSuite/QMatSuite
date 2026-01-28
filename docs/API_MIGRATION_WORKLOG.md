@@ -101,5 +101,262 @@ grep -rn "from quantumvitas\.api_legacy\|from quantumvitas\._api_legacy" tests/ 
 4. **All gates passing:**
    - Single QVService definition: ✅
    - No legacy imports: ✅
-   - Dangling call scanner: ✅ (scanner runs without finding legacy calls)
+   - Dangling call scanner: 212 dangling calls remain (methods called on QVService that don't exist)
+
+---
+
+## Phase B: Migrate Dangling Calls
+
+### Scanner State (2026-01-28)
+- **Canonical QVService methods:** 27
+- **Dangling call sites:** 212
+- **Unique dangling methods:** 113
+
+### Top 10 Dangling Methods (by call count)
+| Method | Calls | Classification | Action |
+|--------|-------|---------------|--------|
+| `is_ulid_like` | 22 | C (utils) | Import from `api.utils`, call directly |
+| `get_pseudo_config` | 15 | B (capability) | Add to QVService.pseudo or domain fn |
+| `validate_ulid` | 7 | C (utils) | Import from `api.utils`, call directly |
+| `load_pseudo_config` | 4 | B/D (internal) | Merge into get_pseudo_config or domain |
+| `can_delete_structure` | 4 | A (exists) | Already on QVService.structure |
+| `download_pseudo_by_filename` | 4 | B (capability) | Add to QVService.pseudo |
+| `run_input_step` | 3 | B (capability) | Consolidate with run_step |
+| `list_installed_sssp` | 3 | B (capability) | Add to QVService.pseudo |
+| `check_archives_status` | 3 | B (capability) | Add to QVService.pseudo |
+| `detect_engine_for_calculation` | 3 | B (capability) | Add to QVService.engine |
+
+---
+
+### Batch 1: Utils Functions (Category C)
+
+#### `is_ulid_like` - 22 callsites in frontends/daemon/server.py
+- **Classification:** C (pure utils)
+- **Action:** Already in `quantumvitas.api.utils.is_ulid_like`. File needs to import from utils and call directly instead of `QVService.is_ulid_like()`
+- **Status:** ✅ DONE
+
+#### `validate_ulid` - 7 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils`, replaced calls
+- **Status:** ✅ DONE
+
+---
+
+### Batch 2: Structure Utils (Category C)
+
+#### `can_delete_structure` - 4 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils`, replaced calls in daemon/server.py and frontends/daemon/server.py
+- **Status:** ✅ DONE
+
+#### `load_calculation` - 3 callsites
+- **Classification:** C (pure utils)
+- **Action:** Already in `api.utils`, just needed to replace `QVService.load_calculation()` calls
+- **Status:** ✅ DONE
+
+---
+
+### Batch 3: Pseudo Config Utils (Category C)
+
+#### `get_pseudo_config` - 15+ callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils`, replaced calls
+- **Status:** ✅ DONE
+
+#### `set_pseudo_config` - 2+ callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils`, replaced calls
+- **Status:** ✅ DONE
+
+#### `validate_pseudo_config` - 1 callsite
+- **Classification:** C (pure utils)
+- **Action:** Added `validate_pseudo_config_dict()` to `api.utils`, replaced calls
+- **Status:** ✅ DONE
+
+#### `load_pseudo_config` - 4 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added `load_pseudo_config_raw()` to `api.utils`, replaced calls
+- **Status:** ✅ DONE
+
+---
+
+### Progress Summary (2026-01-28)
+
+| Batch | Initial | After | Reduction |
+|-------|---------|-------|-----------|
+| Start | 212 | - | - |
+| Utils (is_ulid_like, validate_ulid) | 212 | 183 | -29 |
+| can_delete_structure | 183 | 179 | -4 |
+| load_calculation | 179 | 176 | -3 |
+| Pseudo config | 176 | 154 | -22 |
+| delete_structure, rename_structure | 154 | 141 | -4 |
+| detect_engine/presets, download_pseudo_by_filename | 141 | 131 | -10 |
+| QE engine utils (detect_qe, list, discover, set, env_info) | 131 | 121 | -10 |
+| resolve_pseudo_provenance, download_pseudo_from_url | 121 | 117 | -4 |
+
+**Current state:** 117 dangling calls remaining (45% reduction)
+
+---
+
+### Batch 4: Structure Management (Category C)
+
+#### `delete_structure` - 2 callsites (daemon + frontends)
+- **Classification:** C (pure utils, wraps svc.structure.delete)
+- **Action:** Added to `api.utils`, replaced calls
+- **Status:** ✅ DONE
+
+#### `rename_structure` - 2 callsites (daemon + frontends)
+- **Classification:** C (pure utils, wraps svc.structure.update_meta)
+- **Action:** Added to `api.utils`, replaced calls
+- **Status:** ✅ DONE
+
+---
+
+### Batch 5: Calculation Detection (Category C)
+
+#### `detect_engine_for_calculation` - 3 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils`, wraps presets.integration._detect_engine_for_calculation
+- **Status:** ✅ DONE
+
+#### `detect_presets_from_calculation` - 3 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils`, wraps presets.integration.detect_presets_from_calculation
+- **Status:** ✅ DONE
+
+#### `download_pseudo_by_filename` - 4 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils` with full implementation
+- **Status:** ✅ DONE
+
+---
+
+### Batch 6: QE Engine Utils (Category C)
+
+#### `detect_qe` - 2 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils`, wraps core QE resolver
+- **Status:** ✅ DONE
+
+#### `get_environment_info` - 2 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils`
+- **Status:** ✅ DONE
+
+#### `list_qe_engines` - 2 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils`
+- **Status:** ✅ DONE
+
+#### `discover_qe_engines` - 2 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils`
+- **Status:** ✅ DONE
+
+#### `set_qe_engine` - 2 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils`
+- **Status:** ✅ DONE
+
+---
+
+### Batch 7: Pseudo Utilities (Category C)
+
+#### `resolve_pseudo_provenance` - 2 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils`, wraps core.pseudo_provenance
+- **Status:** ✅ DONE
+
+#### `download_pseudo_from_url` - 2 callsites
+- **Classification:** C (pure utils)
+- **Action:** Added to `api.utils` with full implementation
+- **Status:** ✅ DONE
+
+---
+
+### Remaining Dangling Methods (117 calls)
+
+| Method | Calls | Classification | Notes |
+|--------|-------|---------------|-------|
+| `run_input_step` | 3 | B (CLI-specific) | Complex workflow integration |
+| `create_blob_store` | 3 | D (internal) | Analysis layer |
+| `create_default_registry` | 2 | D (internal) | Project layer |
+| `rename_calculation` | 2 | B (has internal deps) | Calls configure_calculation internally |
+| `set_common_card` | 2 | B (QE-specific) | QE card manipulation |
+| `get_pseudo_mapping` | 2 | B (step-specific) | Complex step context |
+| `set_pseudo_mapping` | 2 | B (step-specific) | Complex step context |
+| `import_pseudo_files` | 2 | B (pseudo) | Could be utils |
+| `search_legacy_pseudos` | 2 | B (pseudo) | Network/scraping |
+| ... and 97 more | varies | varies | Mostly CLI code |
+
+### Exit Criteria Status
+
+| Criterion | Status |
+|-----------|--------|
+| Zero legacy imports in src/ | ✅ PASS |
+| Zero legacy imports in tests/ | ✅ PASS |
+| All tests pass | ✅ PASS (2545 passed, 9 skipped) |
+| Single QVService definition | ✅ PASS |
+| Vault unreachable at runtime | ✅ PASS |
+| Dangling calls eliminated | ⚠️ IN PROGRESS (117 remaining) |
+
+### Test Results (Latest)
+
+```
+=========== 2545 passed, 9 skipped, 40 warnings in 96.65s ===========
+```
+
+### Bug Fixes During Migration
+
+#### 1. frontends/daemon/server.py broken import
+- **Issue:** Import `from quantumvitas.frontends.daemon.jobs` failed (module didn't exist)
+- **Verification:** `python -c "import quantumvitas.frontends.daemon.jobs"` → ModuleNotFoundError
+- **Fix:** Changed to `from quantumvitas.daemon.jobs import JobManager, JobStatus`
+- **Status:** ✅ FIXED
+
+#### 2. PySCF relax tests failing without optimizer
+- **Issue:** Tests checked for PySCF but not for geometric/berny optimizer availability
+- **Fix:** Updated `is_pyscf_available()` in both test files to check optimizer imports
+- **Files:** `test_pyscf_relax_real.py`, `test_relax_promote_e2e.py`
+- **Status:** ✅ FIXED (tests now skip properly)
+
+#### 3. Missing QVServiceError compatibility alias
+- **Issue:** frontends/daemon/server.py imported `QVServiceError` which was moved to vault
+- **Fix:** Added compatibility aliases in api/__init__.py:
+  - `QVServiceError = APIError`
+  - `ErrorSpec = APIError`
+  - `ErrorCodes = type("ErrorCodes", (), {})`
+- **Status:** ✅ FIXED
+
+---
+
+## Part 1: Daemon Server Consolidation
+
+### Entrypoint Analysis
+
+**Console scripts (pyproject.toml):**
+```
+qv = "quantumvitas.cli:app"
+```
+The daemon is NOT a console script - it's used programmatically by GUI.
+
+**Import surface analysis:**
+- `quantumvitas.daemon.server`: 20+ imports across tests and daemon/__init__.py
+- `quantumvitas.frontends.daemon.server`: ZERO external imports (orphaned)
+
+**File sizes:**
+- `daemon/server.py`: 6516 lines
+- `frontends/daemon/server.py`: 6734 lines (stale fork)
+
+### Conclusion
+**Canonical implementation:** `quantumvitas.daemon.server`
+- All tests import from it
+- daemon/__init__.py re-exports from it
+- frontends/daemon/server.py is an orphaned duplicate with zero consumers
+
+### Action: Convert frontends/daemon/server.py to shim
+- Remove 6700+ lines of duplicated business logic
+- Replace with strict re-export shim
+- Add deprecation warning
+- Add gate test to prevent future divergence
 

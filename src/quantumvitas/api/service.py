@@ -1149,6 +1149,419 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
+        def analyze_scf(
+            self,
+            scf_file: Path,
+            plot: bool = False,
+            output_dir: Path | None = None,
+            plot_format: str = "png",
+        ) -> dict:
+            """
+            Analyze SCF output file for energies and convergence.
+
+            Args:
+                scf_file: Path to SCF output file (.out)
+                plot: If True, generate convergence plot
+                output_dir: Directory for output files (None for auto-detect)
+                plot_format: Plot format (png, svg, pdf)
+
+            Returns:
+                Dict with SCF analysis results
+            """
+            try:
+                from quantumvitas.analysis.parsers import parse_scf_output
+                from quantumvitas.analysis.plotting import plot_scf_convergence, save_figure
+
+                project_root = self._service.project_root
+                scf_file = Path(scf_file).resolve()
+                if not scf_file.exists():
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(f"SCF output file not found: {scf_file}")
+
+                # Parse SCF output
+                result = parse_scf_output(scf_file)
+                data = result.to_dict()
+
+                # Determine output directory
+                local_output_dir = output_dir
+                if local_output_dir is None and project_root:
+                    from quantumvitas.calculation.naming import find_calculation_results_dir
+                    # Try to detect calculation context from file location
+                    try:
+                        # If file is in a calculation/raw/ directory, use calculation/results/
+                        if scf_file.parent.name == "raw":
+                            calc_dir = scf_file.parent.parent
+                            local_output_dir = find_calculation_results_dir(calc_dir)
+                    except Exception:
+                        pass
+
+                # Generate plot if requested
+                plot_path = None
+                if plot and result.iterations:
+                    fig, ax = plot_scf_convergence(result)
+                    if local_output_dir:
+                        local_output_dir = Path(local_output_dir)
+                        local_output_dir.mkdir(parents=True, exist_ok=True)
+                        plot_path = local_output_dir / f"scf_convergence.{plot_format}"
+                        save_figure(fig, plot_path)
+
+                return {
+                    "data": data,
+                    "plot_path": str(plot_path) if plot_path else None,
+                    "converged": result.converged,
+                    "total_energy_ry": result.total_energy,
+                    "fermi_energy_ev": result.fermi_energy,
+                    "n_iterations": len(result.iterations),
+                }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def ensure_analysis(
+            self,
+            calculation_selector: str,
+            analysis_type: str,
+            step_selector: str | None = None,
+            force: bool = False,
+        ) -> dict:
+            """
+            Ensure analysis artifacts exist for a calculation.
+
+            If JSON artifact exists and force=False, returns cached status.
+            Otherwise, parses QE outputs and writes JSON artifact.
+
+            Args:
+                calculation_selector: Calculation selector
+                analysis_type: Type of analysis ("scf", "dos", "bands")
+                step_selector: Optional step selector
+                force: Force re-parse even if artifact exists
+
+            Returns:
+                Dict with ok, analysis_type, artifact_path, parsed_fresh, error, summary
+            """
+            try:
+                from quantumvitas.analysis.artifacts import ensure_analysis_artifact
+                from quantumvitas.calculation.naming import find_calculation_raw_dir
+                from quantumvitas.core.resolution import require_calculation
+
+                project_root = self._service.project_root
+                calculation = require_calculation(project_root, calculation_selector)
+                calculation_dir = calculation.absolute_path
+                raw_dir = find_calculation_raw_dir(calculation_dir)
+
+                if not raw_dir.exists():
+                    return {
+                        "ok": False,
+                        "analysis_type": analysis_type,
+                        "artifact_path": None,
+                        "parsed_fresh": False,
+                        "error": f"Calculation raw directory not found: {raw_dir}. The calculation may not have been run yet.",
+                        "summary": None,
+                    }
+
+                # Delegate to the artifacts module
+                status = ensure_analysis_artifact(
+                    analysis_type=analysis_type,
+                    calculation_dir=calculation_dir,
+                    raw_dir=raw_dir,
+                    step_selector=step_selector,
+                    force=force,
+                )
+
+                return {
+                    "ok": status.ok,
+                    "analysis_type": analysis_type,
+                    "artifact_path": str(status.artifact_path) if status.artifact_path else None,
+                    "parsed_fresh": status.parsed_fresh,
+                    "error": status.error,
+                    "summary": status.summary,
+                }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def get_dos_data(
+            self,
+            calculation_selector: str,
+            step_selector: str | None = None,
+        ) -> dict:
+            """
+            Get DOS data for plotting.
+
+            First attempts to load from JSON artifact (<calculation>/analysis/dos.json).
+            If artifact doesn't exist, parses QE output directly and writes artifact.
+
+            Args:
+                calculation_selector: Calculation selector
+                step_selector: Optional step selector
+
+            Returns:
+                Dict with DOS data arrays and Fermi energy
+            """
+            try:
+                from quantumvitas.analysis.artifacts import read_artifact, ensure_analysis_artifact, AnalysisType
+                from quantumvitas.calculation.naming import find_calculation_raw_dir
+                from quantumvitas.core.resolution import require_calculation
+
+                project_root = self._service.project_root
+                calculation = require_calculation(project_root, calculation_selector)
+                calculation_dir = calculation.absolute_path
+                raw_dir = find_calculation_raw_dir(calculation_dir)
+
+                if not raw_dir.exists():
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(
+                        f"Calculation raw directory not found: {raw_dir}. "
+                        f"The calculation may not have been run yet."
+                    )
+
+                # Try to load from artifact first
+                cached = read_artifact(calculation_dir, AnalysisType.DOS)
+                if cached:
+                    return {
+                        "calculation": calculation_selector,
+                        "step": step_selector,
+                        "data_file": cached.get("source_file", ""),
+                        "n_points": cached.get("n_points", 0),
+                        "fermi_energy_ev": cached.get("fermi_energy_ev"),
+                        "energy_range_ev": cached.get("energy_range_ev", [0, 0]),
+                        "energies_ev": cached.get("energies_ev", []),
+                        "dos_states_per_ev": cached.get("dos_states_per_ev", []),
+                        "idos": cached.get("idos"),
+                        "units": cached.get("units", {"energy": "eV", "dos": "states/eV"}),
+                    }
+
+                # No artifact - parse and create one
+                status = ensure_analysis_artifact(
+                    analysis_type=AnalysisType.DOS,
+                    calculation_dir=calculation_dir,
+                    raw_dir=raw_dir,
+                    step_selector=step_selector,
+                    force=False,
+                )
+
+                if not status.ok:
+                    from quantumvitas.api.errors import EngineError
+                    raise EngineError(status.error or "Failed to parse DOS data")
+
+                # Now read the freshly created artifact
+                cached = read_artifact(calculation_dir, AnalysisType.DOS)
+                if not cached:
+                    from quantumvitas.api.errors import EngineError
+                    raise EngineError("Failed to read DOS artifact after creation")
+
+                return {
+                    "calculation": calculation_selector,
+                    "step": step_selector,
+                    "data_file": cached.get("source_file", ""),
+                    "n_points": cached.get("n_points", 0),
+                    "fermi_energy_ev": cached.get("fermi_energy_ev"),
+                    "energy_range_ev": cached.get("energy_range_ev", [0, 0]),
+                    "energies_ev": cached.get("energies_ev", []),
+                    "dos_states_per_ev": cached.get("dos_states_per_ev", []),
+                    "idos": cached.get("idos"),
+                    "units": cached.get("units", {"energy": "eV", "dos": "states/eV"}),
+                }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def get_reference_analysis(
+            self,
+            calculation_selector: str,
+            analysis_type: str,
+        ) -> dict | None:
+            """
+            Get reference analysis data for demo projects.
+
+            If the project was created from a demo snapshot that includes reference
+            artifacts, this returns the reference data for comparison.
+
+            Args:
+                calculation_selector: Calculation selector
+                analysis_type: Type of analysis ("scf", "dos", "bands")
+
+            Returns:
+                Dict with reference analysis data, or None if not a demo project
+            """
+            try:
+                import json
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.core.resources import get_resources_dir
+
+                project_root = self._service.project_root
+                config = load_project_config(project_root)
+
+                # Check if project has demo origin
+                project_settings = config.get("project", {}).get("settings", {})
+                origin = project_settings.get("origin", {})
+
+                if origin.get("kind") != "demo":
+                    return None
+
+                demo_id = origin.get("demo_id")
+                if not demo_id:
+                    return None
+
+                # Get reference_artifacts mapping
+                reference_artifacts = origin.get("reference_artifacts", {})
+
+                # If no reference_artifacts in project settings, try snapshot meta
+                if not reference_artifacts:
+                    resources_dir = get_resources_dir()
+                    demo_snapshot_path = resources_dir / "demo_projects" / f"{demo_id}.yml"
+                    if demo_snapshot_path.exists():
+                        import yaml
+                        try:
+                            snapshot_data = yaml.safe_load(demo_snapshot_path.read_text())
+                            snapshot_meta = snapshot_data.get("meta", {})
+                            reference_artifacts = snapshot_meta.get("reference_artifacts", {})
+                        except Exception:
+                            pass
+
+                # Check if reference artifact exists for this analysis type
+                artifact_filename = reference_artifacts.get(analysis_type)
+                if not artifact_filename:
+                    return None
+
+                # Load reference JSON from demo_projects directory
+                resources_dir = get_resources_dir()
+                reference_path = resources_dir / "demo_projects" / artifact_filename
+
+                if not reference_path.exists():
+                    return None
+
+                data = json.loads(reference_path.read_text())
+                data["_is_reference"] = True
+                data["_reference_source"] = demo_id
+
+                return data
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def find_band_files(
+            self,
+            directory: Path,
+            prefix: str | None = None,
+        ) -> Any:
+            """
+            Find band structure analysis files in a directory.
+
+            Args:
+                directory: Directory to search (typically calculation/raw/)
+                prefix: Optional prefix to filter files
+
+            Returns:
+                BandAnalysisFiles with found files
+            """
+            try:
+                from quantumvitas.calculation.naming import find_band_analysis_files
+                return find_band_analysis_files(Path(directory), prefix=prefix)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def get_relax_final_structure_preview(
+            self,
+            calc_selector: str,
+            step_selector: str,
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> dict:
+            """
+            Preview final structure from relax/vc-relax step output (NO SIDE EFFECTS).
+
+            Parses QE output file to extract final coordinates block.
+            Does NOT create any Structure resource.
+
+            Args:
+                calc_selector: Calculation selector
+                step_selector: Step selector (ULID)
+                index: Optional ResourceIndex
+                config: Optional project config
+
+            Returns:
+                Dict with cell, species, positions, volume
+            """
+            try:
+                from quantumvitas.calculation.geometry import (
+                    read_final_geometry_from_output_text,
+                    structure_from_qe_geometry_snapshot,
+                )
+                from quantumvitas.calculation.naming import CalculationFileNaming, find_calculation_raw_dir
+                from quantumvitas.core.models import load_calculation
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.core.resolution import resolve_calculation, resolve_step
+                from quantumvitas.calculation.structure_steps import StructureStepSpec
+                from quantumvitas.api.errors import ValidationError
+
+                if config is None:
+                    config = load_project_config(self._service.project_root)
+
+                # Resolve calculation and step
+                calculation_resolved = resolve_calculation(
+                    self._service.project_root, calc_selector, config=config, index=index
+                )
+                calculation_dir = (
+                    calculation_resolved.absolute_path.parent
+                    if calculation_resolved.absolute_path.name == "calculation.yaml"
+                    else calculation_resolved.absolute_path
+                )
+
+                # Load calculation to get working_dir
+                wf_model = load_calculation(
+                    calculation_dir / "calculation.yaml", project_root=self._service.project_root
+                )
+                working_dir_name = wf_model.working_dir
+                raw_dir = find_calculation_raw_dir(calculation_dir, working_dir_name)
+
+                # Resolve step
+                step_resolved = resolve_step(
+                    self._service.project_root, calc_selector, step_selector, config=config, index=index
+                )
+                spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=None)
+                step_type = spec.step_type
+
+                # Validate step type
+                if step_type not in ("relax", "vc-relax"):
+                    raise ValidationError(
+                        f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type})"
+                    )
+
+                # Find output file
+                output_filename = CalculationFileNaming.output_filename(step_type, working_dir=raw_dir)
+                output_file = raw_dir / output_filename
+
+                if not output_file.exists():
+                    raise ValidationError(
+                        f"Output file not found for step '{step_selector}': {output_file}. "
+                        "Step may not have completed successfully."
+                    )
+
+                # Parse final geometry
+                output_text = output_file.read_text()
+                snapshot, species = read_final_geometry_from_output_text(output_text)
+                structure = structure_from_qe_geometry_snapshot(snapshot, species)
+
+                return {
+                    "cell": structure.lattice.matrix.tolist(),
+                    "species": species,
+                    "positions": structure.cart_coords.tolist(),
+                    "volume": structure.volume,
+                    "n_atoms": len(species),
+                }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
     @property
     def analysis(self) -> Analysis:
         """Access analysis capabilities."""
@@ -3221,7 +3634,685 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
-    
+
+        def rename(
+            self,
+            selector: str,
+            new_name: str,
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> dict:
+            """
+            Rename a calculation.
+
+            Args:
+                selector: Calculation selector
+                new_name: New name for the calculation
+                index: Optional ResourceIndex (for in-place updates)
+                config: Optional project config
+
+            Returns:
+                Dict with old_name, new_name, new_slug
+            """
+            try:
+                from quantumvitas.core.resolution import resolve_calculation
+                from quantumvitas.core.project_utils import load_project_config, find_calculation_entry
+                from quantumvitas.core.resources import slugify
+
+                if config is None:
+                    config = load_project_config(self._service.project_root)
+
+                resolved = resolve_calculation(self._service.project_root, selector, config=config, index=index)
+                old_name = resolved.meta.name
+                calculation_id = resolved.meta.id
+
+                # Use configure_calculation to update name
+                self.configure(selector, new_name=new_name)
+
+                return {
+                    "success": True,
+                    "old_name": old_name,
+                    "new_name": new_name,
+                    "new_slug": slugify(new_name),
+                }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def set_common_card(
+            self,
+            calc_selector: str,
+            step_selector: str,
+            card_name: str,
+            view_model: dict,
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> dict:
+            """
+            Set a common card (K_POINTS, etc.) from view model.
+
+            Args:
+                calc_selector: Calculation selector (ULID)
+                step_selector: Step selector
+                card_name: Card name (e.g., "K_POINTS")
+                view_model: View model dict from UI
+                index: Optional ResourceIndex
+                config: Optional project config
+
+            Returns:
+                Updated step detail dict
+            """
+            try:
+                from quantumvitas.core.resolution import validate_ulid, resolve_step, make_structure_selector_resolver
+                from quantumvitas.calculation.k_points_view import (
+                    KPointsViewModel, KPointsAutomatic, KPointsPoint,
+                    format_k_points, k_points_to_card_data,
+                )
+                from quantumvitas.calculation.structure_steps import StructureStepSpec
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.core.yamldoc import StepDoc
+                from quantumvitas.workflow.step_factory import save_step_doc
+
+                # Validate ULID
+                calc_ulid = validate_ulid(calc_selector, kind="calculation")
+
+                if config is None:
+                    config = load_project_config(self._service.project_root)
+
+                step = resolve_step(self._service.project_root, calc_ulid, step_selector, config=config, index=index)
+
+                # Convert view model to raw text based on card type
+                if card_name.upper() == "K_POINTS":
+                    kp_vm = KPointsViewModel(
+                        raw=view_model.get("raw", ""),
+                        mode=view_model.get("mode", "custom"),
+                        automatic=KPointsAutomatic(**view_model["automatic"]) if view_model.get("automatic") else None,
+                        points=[
+                            KPointsPoint(x=p["x"], y=p["y"], z=p["z"], w=p["w"])
+                            for p in (view_model.get("points") or [])
+                        ] if view_model.get("points") else None,
+                        warnings=view_model.get("warnings"),
+                    )
+                    raw = format_k_points(kp_vm)
+                    card_data = k_points_to_card_data(raw)
+
+                    step_doc = StepDoc.load(step.absolute_path)
+                    step_doc.set(["cards", "K_POINTS"], card_data)
+                    save_step_doc(step_doc, step.absolute_path)
+                else:
+                    from quantumvitas.api.errors import ValidationError
+                    raise ValidationError(f"Unsupported card: {card_name}")
+
+                # Return updated step detail
+                return self.get_step_detail(calc_selector, step_selector)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def get_step_pseudo_mapping(
+            self,
+            calc_selector: str,
+            step_selector: str,
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> dict:
+            """
+            Get pseudopotential mapping for a step.
+
+            Args:
+                calc_selector: Calculation selector (ULID)
+                step_selector: Step selector
+                index: Optional ResourceIndex
+                config: Optional project config
+
+            Returns:
+                Dict with species, mapping, pseudo_dir, available_pseudos, warnings
+            """
+            try:
+                from quantumvitas.core.resolution import validate_ulid, resolve_structure
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.io import read_structure
+                from quantumvitas.core.pseudo_config import PseudoConfig, get_sssp_library_path
+                import json
+
+                # Validate ULID
+                calc_ulid = validate_ulid(calc_selector, kind="calculation")
+
+                # Get step detail
+                step_detail = self.get_step_detail(calc_selector, step_selector)
+
+                if config is None:
+                    config = load_project_config(self._service.project_root)
+
+                # Get species list from structure
+                species_list: list[str] = []
+                if step_detail.get("structure"):
+                    try:
+                        structure = resolve_structure(
+                            self._service.project_root, step_detail["structure"], config=config, index=index
+                        )
+                        if structure.absolute_path.exists():
+                            struct_obj = read_structure(structure.absolute_path)
+                            species_set = set()
+                            species_list = []
+                            for site in struct_obj.sites:
+                                symbol = site.specie.symbol
+                                if symbol not in species_set:
+                                    species_set.add(symbol)
+                                    species_list.append(symbol)
+                    except Exception:
+                        pass
+
+                # Get current mapping from species_overrides
+                mapping: dict[str, str] = {}
+                species_overrides = step_detail.get("species_overrides", {})
+                for species, overrides in species_overrides.items():
+                    if isinstance(overrides, dict) and "pseudopot" in overrides:
+                        mapping[species] = str(overrides["pseudopot"])
+
+                # Get pseudo_dir from CONTROL namelist
+                pseudo_dir = ""
+                parameters = step_detail.get("parameters", {})
+                control_params = parameters.get("CONTROL", {})
+                if isinstance(control_params, dict) and "pseudo_dir" in control_params:
+                    pseudo_dir = str(control_params["pseudo_dir"])
+
+                # List available UPF files in project
+                available_pseudos: list[str] = []
+                project_pseudo_dir = self._service.project_root / "pseudo"
+                if project_pseudo_dir.exists():
+                    for file in project_pseudo_dir.iterdir():
+                        if file.is_file() and file.suffix.lower() == ".upf":
+                            available_pseudos.append(file.name)
+                available_pseudos.sort()
+
+                # Check SSSP libraries
+                sssp_defaults: dict[str, dict[str, str]] = {}
+                sssp_installed: dict[str, bool] = {"precision": False, "efficiency": False}
+                try:
+                    pseudo_config = PseudoConfig.with_defaults()
+                    store_dir = Path(pseudo_config.store_dir) if pseudo_config.store_dir else None
+
+                    if store_dir:
+                        for flavor in ["precision", "efficiency"]:
+                            lib_base = get_sssp_library_path(store_dir, "1.3.0", flavor)
+                            lib_path = lib_base / "library"
+                            cutoffs_path = lib_base / "cutoffs.json"
+
+                            if lib_path.exists() and any(lib_path.glob("*.upf")) or any(lib_path.glob("*.UPF")):
+                                sssp_installed[flavor] = True
+
+                            if cutoffs_path.exists():
+                                try:
+                                    cutoffs_data = json.loads(cutoffs_path.read_text())
+                                    for species in species_list:
+                                        if species not in sssp_defaults:
+                                            sssp_defaults[species] = {"precision": "", "efficiency": ""}
+                                        element_data = cutoffs_data.get(species, {})
+                                        filename = element_data.get("filename", "")
+                                        if filename and (lib_path / filename).exists():
+                                            sssp_defaults[species][flavor] = filename
+                                except Exception:
+                                    pass
+                except Exception:
+                    pass
+
+                # Generate warnings
+                warnings: list[str] = []
+                for species in species_list:
+                    if species not in mapping:
+                        warnings.append(f"Missing pseudopotential for {species}")
+                    elif mapping[species] and mapping[species] not in available_pseudos:
+                        warnings.append(f"Pseudopotential file '{mapping[species]}' not found in project")
+
+                return {
+                    "species": species_list,
+                    "mapping": mapping,
+                    "pseudo_dir": pseudo_dir,
+                    "available_pseudos": available_pseudos,
+                    "warnings": warnings,
+                    "sssp_defaults": sssp_defaults,
+                    "sssp_installed": sssp_installed,
+                }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def set_step_pseudo_mapping(
+            self,
+            calc_selector: str,
+            step_selector: str,
+            mapping: dict[str, str],
+            library_preference: str | None = None,
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> dict:
+            """
+            Set pseudopotential mapping for a step.
+
+            Args:
+                calc_selector: Calculation selector (ULID)
+                step_selector: Step selector
+                mapping: Species -> pseudo filename mapping
+                library_preference: Optional library preference
+                index: Optional ResourceIndex
+                config: Optional project config
+
+            Returns:
+                Updated step detail dict
+            """
+            try:
+                from quantumvitas.core.resolution import validate_ulid, resolve_step, make_structure_selector_resolver
+                from quantumvitas.calculation.structure_steps import StructureStepSpec
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.core.yamldoc import StepDoc
+                from quantumvitas.workflow.step_factory import save_step_doc
+
+                # Validate ULID
+                calc_ulid = validate_ulid(calc_selector, kind="calculation")
+
+                if config is None:
+                    config = load_project_config(self._service.project_root)
+
+                step = resolve_step(self._service.project_root, calc_ulid, step_selector, config=config, index=index)
+
+                # Load step spec
+                resolver = make_structure_selector_resolver(self._service.project_root, config=config)
+                spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
+
+                # Update species_overrides
+                if not spec.species_overrides:
+                    spec.species_overrides = {}
+
+                for species, pseudo_filename in mapping.items():
+                    if species not in spec.species_overrides:
+                        spec.species_overrides[species] = {}
+
+                    if pseudo_filename:
+                        spec.species_overrides[species]["pseudopot"] = str(pseudo_filename)
+                    else:
+                        if "pseudopot" in spec.species_overrides[species]:
+                            del spec.species_overrides[species]["pseudopot"]
+                        if not spec.species_overrides[species]:
+                            del spec.species_overrides[species]
+
+                # Save via StepDoc
+                step_doc = StepDoc.load(step.absolute_path)
+                step_doc.apply_patch({"species_overrides": spec.species_overrides})
+                save_step_doc(step_doc, step.absolute_path)
+
+                return self.get_step_detail(calc_selector, step_selector)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def reset_step_params(
+            self,
+            calc_selector: str,
+            step_selector: str,
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> dict:
+            """
+            Reset step parameters to defaults based on step type.
+
+            Args:
+                calc_selector: Calculation selector
+                step_selector: Step selector
+                index: Optional ResourceIndex
+                config: Optional project config
+
+            Returns:
+                Updated step detail dict
+            """
+            try:
+                from quantumvitas.core.resolution import resolve_step, make_structure_selector_resolver
+                from quantumvitas.calculation.structure_steps import StructureStepSpec
+                from quantumvitas.calculation.step_defaults import get_default_step_params
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.core.yamldoc import StepDoc
+                from quantumvitas.workflow.step_factory import save_step_doc
+
+                if config is None:
+                    config = load_project_config(self._service.project_root)
+
+                step = resolve_step(self._service.project_root, calc_selector, step_selector, config=config, index=index)
+
+                # Load step spec to get step_type
+                resolver = make_structure_selector_resolver(self._service.project_root, config=config)
+                spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
+
+                # Get defaults for this step type
+                defaults = get_default_step_params(spec.step_type)
+
+                # Reset parameters and cards via StepDoc
+                step_doc = StepDoc.load(step.absolute_path)
+                step_doc.apply_patch({
+                    "parameters": defaults.get("parameters", {}),
+                    "cards": defaults.get("cards", {}),
+                    "species_overrides": defaults.get("species_overrides", {}),
+                })
+                save_step_doc(step_doc, step.absolute_path)
+
+                return self.get_step_detail(calc_selector, step_selector)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def reorder_steps(
+            self,
+            calc_selector: str,
+            new_order: list[str],
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> dict:
+            """
+            Reorder calculation steps.
+
+            Args:
+                calc_selector: Calculation selector
+                new_order: List of step IDs/slugs in new order
+                index: Optional ResourceIndex
+                config: Optional project config
+
+            Returns:
+                Updated calculation info dict
+            """
+            try:
+                from quantumvitas.core.resolution import resolve_calculation
+                from quantumvitas.core.models import load_calculation, save_calculation
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.api.errors import ValidationError
+
+                if config is None:
+                    config = load_project_config(self._service.project_root)
+
+                calculation = resolve_calculation(self._service.project_root, calc_selector, config=config, index=index)
+                wf_path = calculation.absolute_path / "calculation.yaml"
+                wf_model = load_calculation(wf_path)
+
+                # Validate all step IDs exist
+                existing_ids = {s.step_id for s in wf_model.steps}
+                existing_slugs = {}
+                for s in wf_model.steps:
+                    if s.step_id:
+                        existing_slugs[s.step_id] = s
+                    if s.type:
+                        existing_slugs[s.type] = s
+
+                # Resolve the new order
+                reordered = []
+                seen = set()
+                for selector in new_order:
+                    if selector in existing_slugs:
+                        step = existing_slugs[selector]
+                        if step.step_id not in seen:
+                            reordered.append(step)
+                            seen.add(step.step_id)
+                    else:
+                        raise ValidationError(f"Step '{selector}' not found in calculation")
+
+                # Ensure all steps are accounted for
+                if len(reordered) != len(wf_model.steps):
+                    missing = existing_ids - seen
+                    raise ValidationError(f"New order missing steps: {missing}")
+
+                # Update the model
+                wf_model.steps = reordered
+                save_calculation(wf_model, wf_path)
+
+                # Return updated detail
+                return self.get_detail(calc_selector)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def import_step_from_qe_input(
+            self,
+            calc_selector: str,
+            input_file: Path | str,
+            step_name: str | None = None,
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> dict:
+            """
+            Import a QE input file as a step (preserves original parameters).
+
+            Args:
+                calc_selector: Calculation selector (ULID)
+                input_file: Path to QE input file
+                step_name: Optional step name
+                index: Optional ResourceIndex
+                config: Optional project config
+
+            Returns:
+                Updated calculation info dict
+            """
+            try:
+                from quantumvitas.core.resolution import validate_ulid, resolve_calculation
+                from quantumvitas.calculation.importers import build_step_spec_from_qe_input
+                from quantumvitas.core.models import load_calculation, save_calculation, CalculationStepEntry
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.api.errors import NotFoundError
+
+                # Validate ULID
+                calc_ulid = validate_ulid(calc_selector, kind="calculation")
+
+                input_file = Path(input_file).resolve()
+                if not input_file.exists():
+                    raise NotFoundError(f"QE input file not found: {input_file}")
+
+                if config is None:
+                    config = load_project_config(self._service.project_root)
+
+                calculation = resolve_calculation(self._service.project_root, calc_ulid, config=config, index=index)
+                calculation_dir = calculation.absolute_path
+                steps_dir = calculation_dir / "steps"
+                steps_dir.mkdir(exist_ok=True)
+
+                # Load calculation model
+                wf_model = load_calculation(calculation_dir, self._service.project_root)
+
+                # Determine step name
+                step_name = step_name or input_file.stem
+
+                # Import step spec from QE input (apply_defaults=False for import mode)
+                import_result = build_step_spec_from_qe_input(
+                    input_file=input_file,
+                    destination_dir=steps_dir,
+                    structure_dir=self._service.project_root / "structures",
+                    step_id=step_name,
+                    structure_id=None,
+                    reference_structure_by="id",
+                    apply_defaults=False,
+                )
+
+                spec = import_result.spec
+                step_id = spec.meta.id if spec.meta else import_result.step_id
+
+                # Add step to calculation.yaml
+                step_entry = CalculationStepEntry(
+                    step_id=step_id,
+                    type=spec.step_type,
+                )
+
+                if not hasattr(wf_model, 'steps') or wf_model.steps is None:
+                    wf_model.steps = []
+                wf_model.steps.append(step_entry)
+
+                # Save calculation.yaml
+                wf_path = calculation_dir / "calculation.yaml"
+                save_calculation(wf_model, wf_path)
+
+                return self.get_detail(calc_selector)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def get_pseudo_mapping(
+            self,
+            calc_selector: str,
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> dict:
+            """
+            Get pseudopotential mapping for a calculation (calculation-level).
+
+            Args:
+                calc_selector: Calculation selector (ULID)
+                index: Optional ResourceIndex
+                config: Optional project config
+
+            Returns:
+                Dict with species, mapping, species_map, available_pseudos, etc.
+            """
+            try:
+                from quantumvitas.core.resolution import validate_ulid, resolve_calculation, resolve_structure, make_structure_selector_resolver
+                from quantumvitas.core.models import load_calculation
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.io import read_structure
+                from quantumvitas.core.pseudo_config import load_pseudo_config, get_sssp_library_path
+                from quantumvitas.core.pseudo import get_system_pseudo_dir
+                import json
+
+                # Validate ULID
+                calc_ulid = validate_ulid(calc_selector, kind="calculation")
+
+                if config is None:
+                    config = load_project_config(self._service.project_root)
+
+                calculation = resolve_calculation(self._service.project_root, calc_ulid, config=config, index=index)
+                wf_path = calculation.absolute_path / "calculation.yaml"
+
+                resolver = make_structure_selector_resolver(self._service.project_root, config=config)
+                wf_model = load_calculation(wf_path, project_root=self._service.project_root, resolve_structure_selector=resolver)
+
+                # Get element list from structure
+                species_list: list[str] = []
+                if wf_model.structure_id:
+                    try:
+                        struct_resolved = resolve_structure(self._service.project_root, wf_model.structure_id, config=config, index=index)
+                        if struct_resolved.absolute_path.exists():
+                            structure = read_structure(struct_resolved.absolute_path)
+                            species_list = sorted(set(str(el) for el in structure.composition.elements))
+                    except Exception:
+                        pass
+
+                # Build mapping from species_map
+                mapping: dict[str, str] = {}
+                if wf_model.species_map:
+                    for element, settings in wf_model.species_map.items():
+                        pseudo = settings.get("pseudopot", "")
+                        if pseudo:
+                            mapping[element] = pseudo
+
+                # Get available pseudos
+                pseudo_dir = self._service.project_root / "pseudo"
+                available_pseudos: list[str] = []
+                if pseudo_dir.exists():
+                    available_pseudos = sorted([
+                        f.name for f in pseudo_dir.iterdir()
+                        if f.is_file() and f.suffix.lower() == ".upf"
+                    ])
+
+                # Check SSSP libraries
+                sssp_defaults: dict[str, dict[str, str]] = {}
+                sssp_installed = {"precision": False, "efficiency": False}
+                try:
+                    pseudo_config = load_pseudo_config()
+                    store_dir = Path(pseudo_config.store_dir) if pseudo_config.store_dir else None
+
+                    if store_dir:
+                        for flavor in ["precision", "efficiency"]:
+                            lib_path = get_sssp_library_path(store_dir, "1.3.0", flavor) / "library"
+                            if lib_path.exists() and list(lib_path.glob("*.upf")):
+                                sssp_installed[flavor] = True
+                except Exception:
+                    pass
+
+                # Generate warnings
+                warnings: list[str] = []
+                for species in species_list:
+                    if species not in mapping:
+                        warnings.append(f"Missing pseudopotential for {species}")
+
+                return {
+                    "species": species_list,
+                    "mapping": mapping,
+                    "species_map": wf_model.species_map or {},
+                    "available_pseudos": available_pseudos,
+                    "pseudo_dir": str(pseudo_dir),
+                    "warnings": warnings,
+                    "sssp_defaults": sssp_defaults,
+                    "sssp_installed": sssp_installed,
+                }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def update_species_map(
+            self,
+            calc_selector: str,
+            species_map: dict[str, dict],
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> dict:
+            """
+            Update calculation species_map (pseudopotential mapping).
+
+            Args:
+                calc_selector: Calculation selector
+                species_map: New species mapping
+                index: Optional ResourceIndex
+                config: Optional project config
+
+            Returns:
+                Updated calculation info dict
+            """
+            try:
+                from quantumvitas.core.resolution import resolve_calculation, make_structure_selector_resolver
+                from quantumvitas.core.models import load_calculation, save_calculation
+                from quantumvitas.core.project_utils import load_project_config
+
+                if config is None:
+                    config = load_project_config(self._service.project_root)
+
+                calculation = resolve_calculation(self._service.project_root, calc_selector, config=config, index=index)
+                wf_path = calculation.absolute_path / "calculation.yaml"
+
+                resolver = make_structure_selector_resolver(self._service.project_root, config=config)
+                wf_model = load_calculation(wf_path, project_root=self._service.project_root, resolve_structure_selector=resolver)
+
+                old_species_map = wf_model.species_map
+                wf_model.species_map = species_map
+                save_calculation(wf_model, wf_path)
+
+                result = self.get_detail(calc_selector)
+                result["old_species_map"] = old_species_map
+
+                return result
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
     @property
     def calculation(self) -> Calculation:
         """Access calculation capabilities."""
@@ -4134,7 +5225,110 @@ class QVService:
                 new_slug=new_slug,
                 new_path=new_path,
             )
-    
+
+        def import_pseudo_files(
+            self,
+            file_paths: list[str],
+        ) -> dict:
+            """
+            Import pseudopotential files into project pseudo directory.
+
+            Handles filename conflicts by auto-renaming with deterministic suffix.
+
+            Args:
+                file_paths: List of source file paths to import
+
+            Returns:
+                Dict with imported, renamed, skipped, errors
+            """
+            try:
+                import shutil
+                import hashlib
+
+                def compute_sha256(file_path: Path) -> str:
+                    sha256 = hashlib.sha256()
+                    with open(file_path, 'rb') as f:
+                        for chunk in iter(lambda: f.read(8192), b''):
+                            sha256.update(chunk)
+                    return sha256.hexdigest()
+
+                project_pseudo_dir = self._service.project_root / "pseudo"
+                project_pseudo_dir.mkdir(parents=True, exist_ok=True)
+
+                # Build SHA256 index of existing pseudos for deduplication
+                existing_hashes: dict[str, str] = {}
+                for existing_file in project_pseudo_dir.iterdir():
+                    if existing_file.is_file() and existing_file.suffix.lower() == ".upf":
+                        try:
+                            existing_hashes[compute_sha256(existing_file)] = existing_file.name
+                        except Exception:
+                            pass
+
+                imported: list[str] = []
+                renamed: dict[str, str] = {}
+                skipped: list[str] = []
+                errors: list[str] = []
+
+                for file_path_str in file_paths:
+                    try:
+                        source_path = Path(file_path_str).resolve()
+
+                        if not source_path.exists():
+                            errors.append(f"File not found: {file_path_str}")
+                            continue
+
+                        if not source_path.is_file():
+                            errors.append(f"Not a file: {file_path_str}")
+                            continue
+
+                        suffix_lower = source_path.suffix.lower()
+                        if suffix_lower != ".upf":
+                            errors.append(f"Invalid file type (expected .UPF): {source_path.name}")
+                            continue
+
+                        source_hash = compute_sha256(source_path)
+
+                        # Check for content duplicate
+                        if source_hash in existing_hashes:
+                            existing_name = existing_hashes[source_hash]
+                            skipped.append(f"{source_path.name} (identical to {existing_name})")
+                            imported.append(existing_name)
+                            continue
+
+                        # Determine target filename
+                        original_name = source_path.name
+                        target_name = original_name
+                        target_path = project_pseudo_dir / target_name
+
+                        # Handle filename conflict
+                        if target_path.exists():
+                            base_name = source_path.stem
+                            extension = source_path.suffix
+                            counter = 1
+                            while target_path.exists():
+                                target_name = f"{base_name}_{counter}{extension}"
+                                target_path = project_pseudo_dir / target_name
+                                counter += 1
+                            renamed[original_name] = target_name
+
+                        shutil.copy2(source_path, target_path)
+                        imported.append(target_name)
+                        existing_hashes[source_hash] = target_name
+
+                    except Exception as e:
+                        errors.append(f"Error importing {file_path_str}: {e}")
+
+                return {
+                    "imported": imported,
+                    "renamed": renamed,
+                    "skipped": skipped,
+                    "errors": errors,
+                }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
     @property
     def project(self) -> Project:
         """Access project capabilities."""
@@ -6179,3 +7373,443 @@ class QVService:
             "structure_ulid": meta.id,
             "already_exists": False,
         }
+
+    # -------------------------------------------------------------------------
+    # Pseudo Management (Global Operations)
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def init_pseudo_dirs() -> dict[str, str]:
+        """
+        Initialize pseudopotential directories.
+
+        Returns:
+            Dict with paths (store_path, etc.)
+        """
+        from quantumvitas.core.pseudo_config import init_pseudo_dirs as _init_pseudo_dirs
+
+        paths = _init_pseudo_dirs()
+        return {k: str(v) for k, v in paths.items()}
+
+    @staticmethod
+    def list_pseudo_libraries() -> list[dict[str, Any]]:
+        """
+        List available pseudopotential libraries.
+
+        Returns:
+            List of library dicts
+        """
+        from quantumvitas.core.library_manager import get_supported_libraries
+
+        libraries = get_supported_libraries()
+        return [lib.to_dict() if hasattr(lib, 'to_dict') else lib for lib in libraries]
+
+    @staticmethod
+    def get_library_status(library_id: str) -> dict[str, Any]:
+        """
+        Get status of a pseudopotential library.
+
+        Args:
+            library_id: Library identifier (e.g., "sssp_precision_1.3")
+
+        Returns:
+            Dict with library status
+        """
+        from quantumvitas.core.library_manager import get_library_status as _get_library_status
+
+        status = _get_library_status(library_id)
+        return status.to_dict() if hasattr(status, 'to_dict') else status
+
+    @staticmethod
+    def install_pseudo_library(
+        library_id: str,
+        variants: list[str],
+        source: str = "github_release",
+        local_archive_paths: list[str] | None = None,
+        force: bool = False,
+        allow_download: bool | None = None,
+    ) -> dict[str, Any]:
+        """
+        Install a pseudopotential library.
+
+        Args:
+            library_id: Library identifier
+            variants: List of variant names to install
+            source: Installation source ("github_release", "local_archive", or "seed")
+            local_archive_paths: For source="local_archive", paths to archive files
+            force: If True, download even if allow_download is False
+            allow_download: Optional override for allow_download (uses config if None)
+
+        Returns:
+            Dict with installation result
+        """
+        from quantumvitas.core.library_manager import install_library as _install_library
+        from quantumvitas.core.pseudo_config import load_pseudo_config, save_pseudo_config
+
+        config = load_pseudo_config()
+        if allow_download is None:
+            allow_download = config.allow_download
+
+        # If force=True and downloads are disabled, enable them automatically
+        if force and not allow_download and source == "github_release":
+            config.allow_download = True
+            save_pseudo_config(config)
+            allow_download = True
+
+        result = _install_library(
+            library_id=library_id,
+            variants=variants,
+            source=source,
+            local_archive_paths=local_archive_paths,
+            config=config,
+            force=force,
+            allow_download=allow_download,
+        )
+        return result
+
+    @staticmethod
+    def remove_pseudo_library(library_id: str, variants: list[str] | None = None) -> dict[str, Any]:
+        """
+        Remove a pseudopotential library.
+
+        Args:
+            library_id: Library identifier
+            variants: Optional list of variants to remove (removes all if None)
+
+        Returns:
+            Dict with removal result
+        """
+        from quantumvitas.core.library_manager import remove_library as _remove_library
+
+        result = _remove_library(library_id=library_id, variants=variants)
+        return result
+
+    @staticmethod
+    def repair_pseudo_library(library_id: str) -> dict[str, Any]:
+        """
+        Repair a pseudopotential library (verify checksums, re-extract if needed).
+
+        Args:
+            library_id: Library identifier
+
+        Returns:
+            Dict with repair result
+        """
+        from quantumvitas.core.library_manager import repair_library as _repair_library
+
+        result = _repair_library(library_id=library_id)
+        return result
+
+    @staticmethod
+    def compute_store_size() -> dict[str, Any]:
+        """
+        Compute pseudopotential store size.
+
+        Returns:
+            Dict with total_bytes and breakdown by library
+        """
+        from quantumvitas.core.library_manager import compute_store_size as _compute_store_size
+
+        return _compute_store_size()
+
+    @staticmethod
+    def is_pseudo_archive_installed(asset_name: str, expected_sha256: str) -> bool:
+        """
+        Check if a pseudopotential archive is installed.
+
+        Args:
+            asset_name: Archive filename
+            expected_sha256: Expected SHA256 hash
+
+        Returns:
+            True if archive is installed with matching hash
+        """
+        from quantumvitas.core.pseudo_installs import is_archive_installed
+
+        return is_archive_installed(asset_name=asset_name, expected_sha256=expected_sha256)
+
+    @staticmethod
+    def install_pseudo_archive(
+        asset_url: str,
+        asset_name: str,
+        expected_sha256: str,
+        expected_size: int | None = None,
+        config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Install a pseudopotential archive.
+
+        Args:
+            asset_url: URL to download archive from
+            asset_name: Archive filename
+            expected_sha256: Expected SHA256 hash
+            expected_size: Optional expected file size
+            config: Optional pseudo config dict
+
+        Returns:
+            Dict with success, messages, errors
+        """
+        from quantumvitas.core.pseudo_installs import install_archive as _install_archive
+        from quantumvitas.core.pseudo_config import PseudoConfig, load_pseudo_config
+
+        if config is None:
+            pseudo_config = load_pseudo_config()
+        else:
+            pseudo_config = PseudoConfig.from_dict(config)
+
+        result = _install_archive(
+            asset_url=asset_url,
+            asset_name=asset_name,
+            expected_sha256=expected_sha256,
+            expected_size=expected_size,
+            config=pseudo_config,
+        )
+        return result.to_dict() if hasattr(result, 'to_dict') else result
+
+    @staticmethod
+    def install_sssp_from_seed(
+        seed_dir: Path | str,
+        store_dir: Path | str,
+        version: str = "1.3.0",
+        flavor: str = "efficiency",
+    ) -> dict[str, Any]:
+        """
+        Install SSSP library from seed to store.
+
+        Args:
+            seed_dir: Path to seed directory
+            store_dir: Path to store directory
+            version: SSSP version (default: "1.3.0")
+            flavor: "efficiency" or "precision" (default: "efficiency")
+
+        Returns:
+            Dict with success, messages, errors, files_installed
+        """
+        from quantumvitas.core.pseudo_config import install_sssp_from_seed as _install_sssp_from_seed
+
+        return _install_sssp_from_seed(Path(seed_dir), Path(store_dir), version, flavor)
+
+    @staticmethod
+    def install_all_sssp_from_seed(
+        seed_dir: Path | str,
+        store_dir: Path | str,
+    ) -> dict[str, Any]:
+        """
+        Install all available SSSP libraries from seed to store.
+
+        Args:
+            seed_dir: Path to seed directory
+            store_dir: Path to store directory
+
+        Returns:
+            Dict with success, installed, skipped, failed, messages
+        """
+        from quantumvitas.core.pseudo_config import install_all_sssp_from_seed as _install_all_sssp_from_seed
+
+        return _install_all_sssp_from_seed(Path(seed_dir), Path(store_dir))
+
+    @staticmethod
+    def download_sssp_library(
+        store_dir: Path | str,
+        flavor: str,
+        version: str = "1.3.0",
+        force: bool = False,
+        allow_download: bool = True,
+        seed_dir: Path | str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Download SSSP library from GitHub release and install into store.
+
+        Args:
+            store_dir: Path to pseudo store directory
+            flavor: "efficiency" or "precision"
+            version: SSSP version (default: "1.3.0")
+            force: If True, download even if allow_download is False
+            allow_download: Global setting
+            seed_dir: Optional seed directory path
+
+        Returns:
+            Dict with success, messages, errors, files_installed
+        """
+        from quantumvitas.core.pseudo_config import download_sssp_library as _download_sssp_library
+
+        return _download_sssp_library(
+            Path(store_dir),
+            flavor,
+            version,
+            force,
+            allow_download,
+            Path(seed_dir) if seed_dir else None,
+        )
+
+    @staticmethod
+    def download_all_sssp(
+        store_dir: Path | str,
+        force: bool = False,
+        allow_download: bool = True,
+        seed_dir: Path | str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Download all supported SSSP libraries from GitHub release.
+
+        Args:
+            store_dir: Path to pseudo store directory
+            force: If True, download even if allow_download is False
+            allow_download: Global setting
+            seed_dir: Optional seed directory path
+
+        Returns:
+            Dict with success, installed, skipped, failed, messages
+        """
+        from quantumvitas.core.pseudo_config import download_all_sssp as _download_all_sssp
+
+        return _download_all_sssp(
+            Path(store_dir),
+            force,
+            allow_download,
+            Path(seed_dir) if seed_dir else None,
+        )
+
+    @staticmethod
+    def import_seed_archives(
+        seed_dir: Path | str,
+        archive_paths: list[Path | str],
+    ) -> dict[str, Any]:
+        """
+        Import seed archives into seed directory.
+
+        Args:
+            seed_dir: Path to seed directory
+            archive_paths: List of paths to archive files to import
+
+        Returns:
+            Dict with success, imported, failed, messages, errors
+        """
+        from quantumvitas.core.pseudo_config import import_seed_archives as _import_seed_archives
+
+        return _import_seed_archives(Path(seed_dir), [Path(p) for p in archive_paths])
+
+    @staticmethod
+    def analyze_project_pseudo_effects(
+        project_root: Path | str,
+        selections: list[Any],
+    ) -> dict[str, Any]:
+        """
+        Analyze what would happen if pseudo selections were applied (read-only).
+
+        Args:
+            project_root: Project root path
+            selections: List of PseudoSelection objects or dicts
+
+        Returns:
+            PseudoPrepareReport as dict
+        """
+        from quantumvitas.core.pseudo_runtime import (
+            analyze_project_pseudo_effects as _analyze_project_pseudo_effects,
+            PseudoSelection,
+        )
+
+        # Convert dicts to PseudoSelection if needed
+        converted_selections = []
+        for sel in selections:
+            if isinstance(sel, dict):
+                converted_selections.append(PseudoSelection(
+                    element=sel["element"],
+                    requested_basename=sel["requested_basename"],
+                    requested_sha256=sel.get("requested_sha256"),
+                    requested_sha_family=sel.get("requested_sha_family"),
+                    source_kind=sel.get("source_kind", "project"),
+                    source_path=Path(sel["source_path"]) if sel.get("source_path") else None,
+                ))
+            else:
+                converted_selections.append(sel)
+
+        report = _analyze_project_pseudo_effects(Path(project_root), converted_selections)
+
+        # Convert report to dict
+        return {
+            "actions": [
+                {
+                    "action": a.action,
+                    "element": a.element,
+                    "detail": a.detail,
+                    "source_path": str(a.source_path) if a.source_path else None,
+                    "dest_path": str(a.dest_path) if a.dest_path else None,
+                    "renamed_from": str(a.renamed_from) if a.renamed_from else None,
+                    "renamed_to": str(a.renamed_to) if a.renamed_to else None,
+                }
+                for a in report.actions
+            ],
+            "warnings": report.warnings,
+            "errors": report.errors,
+        }
+
+    @staticmethod
+    def materialize_pseudo_file(
+        project_root: Path | str,
+        element: str,
+        sha256: str,
+        preferred_basename: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Materialize a pseudo file from sha256 selection to actual file path.
+
+        Args:
+            project_root: Project root path
+            element: Element symbol
+            sha256: SHA256 hash of the pseudo file
+            preferred_basename: Preferred basename (for display/filename)
+
+        Returns:
+            Dict with success, file_path, source, error, needs_install, archive_asset
+        """
+        from quantumvitas.core.pseudo_options import materialize_pseudo_file as _materialize_pseudo_file
+        return _materialize_pseudo_file(
+            project_root=Path(project_root),
+            element=element,
+            sha256=sha256,
+            preferred_basename=preferred_basename,
+        )
+
+    @staticmethod
+    def get_pseudo_options_for_elements(
+        project_root: Path | str,
+        elements: list[str],
+        config: dict[str, Any] | None = None,
+    ) -> dict[str, list[dict[str, Any]]]:
+        """
+        Get deduplicated pseudo options for a list of elements.
+
+        Args:
+            project_root: Project root path
+            elements: List of element symbols
+            config: Optional PseudoConfig dict (loads if not provided)
+
+        Returns:
+            Dict mapping element -> List[PseudoVariant dict] (sha256-keyed)
+        """
+        from quantumvitas.core.pseudo_options import get_pseudo_options_for_elements as _get_pseudo_options_for_elements
+        from quantumvitas.core.pseudo_config import PseudoConfig
+
+        # Convert config dict to PseudoConfig if needed
+        pseudo_config = None
+        if config is not None:
+            if isinstance(config, dict):
+                pseudo_config = PseudoConfig.from_dict(config) if hasattr(PseudoConfig, 'from_dict') else None
+            else:
+                pseudo_config = config
+
+        options = _get_pseudo_options_for_elements(
+            project_root=Path(project_root),
+            elements=elements,
+            config=pseudo_config,
+        )
+
+        # Convert PseudoVariant objects to dicts
+        result = {}
+        for element, variants in options.items():
+            result[element] = [
+                v.to_dict() if hasattr(v, 'to_dict') else v
+                for v in variants
+            ]
+        return result

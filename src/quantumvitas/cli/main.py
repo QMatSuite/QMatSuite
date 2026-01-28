@@ -700,10 +700,15 @@ def init_project_command(
         
         parent_dir.mkdir(parents=True, exist_ok=True)
         
-        project_dir = QVService.create_project_from_snapshot(
+        import yaml
+        from quantumvitas.api.utils import get_project_snapshot_class, materialize_project_from_snapshot
+        ProjectSnapshot = get_project_snapshot_class()
+        snapshot_data = yaml.safe_load(snapshot_path.read_text())
+        snapshot = ProjectSnapshot.from_dict(snapshot_data)
+        project_dir = materialize_project_from_snapshot(
+            snapshot=snapshot,
             parent_dir=parent_dir,
-            snapshot_path=snapshot_path,
-            project_name=name,
+            new_project_name=name,
         )
         
         typer.secho(
@@ -724,6 +729,7 @@ def init_project_command(
 
     project_dir.mkdir(parents=True, exist_ok=True)
     project_name = name or project_dir.name
+    import yaml
     from quantumvitas.api.utils import meta_from_name
     project_meta_dict = meta_from_name("project", name=project_name, path=".")
     project_meta = project_meta_dict  # Use dict directly (no ResourceMeta dependency)
@@ -1416,13 +1422,15 @@ def save_project_command(
         raise typer.BadParameter(f"Not a project: {project_root}")
     
     # Export snapshot
+    import yaml
+    from quantumvitas.api.utils import export_project_to_snapshot
     output_path = Path(output).expanduser().resolve()
     try:
-        QVService.save_project_snapshot(
-            project_root=project_root,
-            output_path=output_path,
-            overwrite=overwrite,
-        )
+        if output_path.exists() and not overwrite:
+            raise typer.BadParameter(f"Snapshot file already exists: {output_path}. Use --overwrite to replace.")
+        snapshot = export_project_to_snapshot(project_root)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(yaml.safe_dump(snapshot.to_dict(), sort_keys=False, default_flow_style=False))
         typer.secho(
             f"Project snapshot saved to {output_path}",
             fg=typer.colors.GREEN
@@ -1533,7 +1541,8 @@ def detect_qe(
     config_dict = None
     if path:
         config_dict = {"name": "qe", "qe_home": str(path)}
-    registry = QVService.create_default_registry(config_dict)
+    from quantumvitas.api.utils import create_default_registry
+    registry = create_default_registry(config_dict)
     engine = registry.get("qe")
     info = _collect_qe_detection_info(engine.backend)
 
@@ -1878,7 +1887,8 @@ def _run_standalone_step(
         # Note: Step execution is handled via API, not direct Step object
         
         # Run using production pipeline via API
-        result, prepared = QVService.run_input_step(
+        from quantumvitas.api.utils import run_input_step
+        result, prepared = run_input_step(
             engine="qe",
             input_file=generated_input,
             working_dir=workdir_path,
@@ -1924,7 +1934,8 @@ def run_structure_command(
     """
     Generate a QE input from a stored structure + CLI parameters, then run it.
     """
-    registry = QVService.create_default_registry()
+    from quantumvitas.api.utils import create_default_registry
+    registry = create_default_registry()
     engine = registry.get("qe")
 
     if project:
@@ -1949,14 +1960,16 @@ def run_structure_command(
         step_type=step_type,
         parameter_overrides=bundle.parameters,
     )
-    QVService.apply_card_overrides_to_qe_input(qe_input, bundle.card_overrides)
-    QVService.apply_species_overrides_to_qe_input(qe_input, bundle.species_overrides)
+    from quantumvitas.api.utils import apply_card_overrides_to_qe_input, apply_species_overrides_to_qe_input
+    apply_card_overrides_to_qe_input(qe_input, bundle.card_overrides)
+    apply_species_overrides_to_qe_input(qe_input, bundle.species_overrides)
 
     generated_name = input_name or f"{struct_name}_{step_type}.pw.in"
     generated_input = workdir / generated_name
     write_qe_input_file(qe_input, generated_input)
 
-    result, prepared = QVService.run_input_step(
+    from quantumvitas.api.utils import run_input_step
+    result, prepared = run_input_step(
         engine=engine.backend,
         input_file=generated_input,
         working_dir=workdir,
@@ -4278,17 +4291,19 @@ def analyze_output_command(
     if normalized == "band":
         search_dir: Optional[Path] = None
         
+        from quantumvitas.api.utils import find_calculation_raw_dir, find_band_analysis_files
+
         if calculation_dir:
-            search_dir = QVService.find_calculation_raw_dir(calculation_dir)
+            search_dir = find_calculation_raw_dir(calculation_dir)
         elif input_file:
             # Use input file's directory as search dir
             search_dir = Path(input_file).resolve().parent
         else:
             # Search current directory
             search_dir = Path.cwd()
-        
+
         if search_dir and search_dir.exists():
-            found_files = QVService.find_band_analysis_files(search_dir)
+            found_files = find_band_analysis_files(search_dir)
             
             # Use found files if not explicitly provided
             if input_file is None:
@@ -4324,7 +4339,8 @@ def analyze_output_command(
     # Determine output directory: explicit > calculation results > None
     output_dir = Path(output) if output else None
     if output_dir is None and calculation_dir:
-        output_dir = QVService.find_calculation_results_dir(calculation_dir)
+        from quantumvitas.api.utils import find_calculation_results_dir
+        output_dir = find_calculation_results_dir(calculation_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         typer.echo(f"Output directory: {output_dir}")
     elif output_dir is None:
@@ -4714,15 +4730,35 @@ def analyze_energy_command(
         except APIError:
             pass
     
-    # Call QVService
+    # Call QVService (instance method when project context available)
     try:
-        result = QVService.analyze_scf(
-            project_root=project_root,
-            scf_file=input_file,
-            plot=plot,
-            output_dir=output,
-            plot_format=plot_format,
-        )
+        if project_root:
+            from quantumvitas.api import get_service
+            svc = get_service(project_root)
+            result = svc.analysis.analyze_scf(
+                scf_file=input_file,
+                plot=plot,
+                output_dir=output,
+                plot_format=plot_format,
+            )
+        else:
+            # Standalone analysis without project context
+            from quantumvitas.api.utils import parse_scf_output, plot_scf_convergence, save_figure
+            scf_result = parse_scf_output(input_file)
+            plot_path = None
+            if plot and scf_result.iterations and output:
+                fig, ax = plot_scf_convergence(scf_result)
+                output.mkdir(parents=True, exist_ok=True)
+                plot_path = output / f"scf_convergence.{plot_format}"
+                save_figure(fig, plot_path)
+            result = {
+                "data": scf_result.to_dict(),
+                "plot_path": str(plot_path) if plot_path else None,
+                "converged": scf_result.converged,
+                "total_energy_ry": scf_result.total_energy,
+                "fermi_energy_ev": scf_result.fermi_energy,
+                "n_iterations": len(scf_result.iterations),
+            }
         
         # Print full SCF data
         typer.echo(json.dumps(result["data"], indent=2, default=str))
@@ -4858,8 +4894,9 @@ def analyze_structure_command(
     else:
         output_path = Path.cwd() / f"{struct_name}_structure.{plot_format}"
     
-    # Visualize
-    result = QVService.visualize_structure_direct(
+    # Visualize (direct kernel call - no project context needed)
+    from quantumvitas.api.utils import visualize_structure
+    result = visualize_structure(
         structure=structure,
         output_path=output_path,
         supercell=supercell_tuple,
@@ -5185,7 +5222,8 @@ def _is_empty_card_value(value: Any) -> bool:
 def _collect_qe_detection_info(backend) -> dict[str, Any]:
     # Show env var for debugging (what user set), but use internal registry for resolution
     env_home = _safe_path(os.getenv("QE_HOME"))
-    registry_home = _safe_path(QVService.get_qe_home())  # Internal registry (preferred)
+    from quantumvitas.api.utils import get_qe_home
+    registry_home = _safe_path(get_qe_home())  # Internal registry (preferred)
     
     installation = getattr(backend, "installation", None) or getattr(
         backend, "_installation", None
@@ -5377,10 +5415,10 @@ def _execute_step_spec(
 
     input_name = spec_copy.get("input_name") or f"{struct_name}_{spec_copy.get('step_type', 'scf')}.pw.in"
     generated_input = workdir / input_name
-    from quantumvitas.api import QVService
     write_qe_input_file(qe_input, generated_input)
 
-    result, prepared = QVService.run_input_step(
+    from quantumvitas.api.utils import run_input_step
+    result, prepared = run_input_step(
         engine=engine_backend,
         input_file=generated_input,
         working_dir=workdir,

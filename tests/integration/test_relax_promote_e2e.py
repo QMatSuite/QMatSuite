@@ -42,19 +42,31 @@ def configure_step(project_root, calculation_selector, step_selector, parameters
 
 
 def is_pyscf_available() -> bool:
-    """Check if PySCF can be imported."""
+    """Check if PySCF and an optimizer (geometric or berny) can be imported."""
     try:
         import pyscf
-        return True
+        # Also check for optimizer availability
+        try:
+            from pyscf.geomopt.geometric_solver import optimize
+            return True
+        except ImportError:
+            pass
+        try:
+            from pyscf.geomopt.berny_solver import optimize
+            return True
+        except ImportError:
+            pass
+        # PySCF available but no optimizer
+        return False
     except ImportError:
         return False
 
 
 @pytest.fixture(scope="module", autouse=True)
 def skip_if_pyscf_unavailable():
-    """Skip all tests in this module if PySCF is not available."""
+    """Skip all tests in this module if PySCF or optimizer is not available."""
     if not is_pyscf_available():
-        pytest.skip("PySCF not installed. Install with: pip install pyscf")
+        pytest.skip("PySCF or optimizer not available. Install with: pip install pyscf geometric (or pyberny)")
 
 
 @pytest.fixture

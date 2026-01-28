@@ -13,7 +13,7 @@ from typing import Any
 
 
 def get_canonical_qvservice_methods() -> set[str]:
-    """Get all method names from canonical QVService."""
+    """Get all method names and nested class names from canonical QVService."""
     service_file = Path("src/quantumvitas/api/service.py")
     if not service_file.exists():
         return set()
@@ -22,13 +22,16 @@ def get_canonical_qvservice_methods() -> set[str]:
     try:
         content = service_file.read_text(encoding="utf-8")
         tree = ast.parse(content, filename=str(service_file))
-        
+
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name == "QVService":
                 for item in node.body:
                     if isinstance(item, ast.FunctionDef):
                         methods.add(item.name)
                     elif isinstance(item, ast.AsyncFunctionDef):
+                        methods.add(item.name)
+                    elif isinstance(item, ast.ClassDef):
+                        # Include nested class names (Analysis, Structure, etc.)
                         methods.add(item.name)
     except Exception:
         pass
