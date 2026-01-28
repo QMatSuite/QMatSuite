@@ -18,8 +18,7 @@ from pathlib import Path
 from pymatgen.core import Structure, Lattice
 import numpy as np
 
-from quantumvitas.api_legacy import QVService
-from quantumvitas.analysis.structure_viz import DisplayModeParams
+from quantumvitas.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
 # Note: _parse_optimade_structure is internal, we'll use public API instead
 # from quantumvitas.io.online_search import fetch_structure_from_optimade
 
@@ -97,11 +96,10 @@ def test_optimade_online_pipeline_payload_contract():
         box_bounds=None,
     )
     
-    payload = QVService._build_structure_vis_payload(
+    payload = build_structure_vis_payload(
         structure_primitive,
         params,
         structure_meta={"structure_id": "online:test_candidate"},
-        trace_id="test",
     )
     
     # Verify contract
@@ -157,19 +155,17 @@ def test_optimade_vs_project_same_structure_identical_payload():
     )
     
     # ONLINE payload
-    online_payload = QVService._build_structure_vis_payload(
+    online_payload = build_structure_vis_payload(
         structure_online,
         params,
         structure_meta={"structure_id": "online:test"},
-        trace_id="online",
     )
-    
+
     # PROJECT payload
-    project_payload = QVService._build_structure_vis_payload(
+    project_payload = build_structure_vis_payload(
         structure_project,
         params,
         structure_meta={"structure_id": "project:test"},
-        trace_id="project",
     )
     
     # ASSERT: Identical payload metrics

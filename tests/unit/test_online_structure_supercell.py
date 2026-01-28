@@ -400,8 +400,8 @@ def test_online_project_shared_pipeline():
     - build_display_atoms (unified)
     - build_bonds (from display atoms cart coords)
     """
-    from quantumvitas.api_legacy import QVService
-    
+    from quantumvitas.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
+
     # Build a test structure (simulating online structure)
     lattice_vectors = [
         [3.16, 0.0, 0.0],
@@ -414,12 +414,9 @@ def test_online_project_shared_pipeline():
         [1.58, 1.58, 9.225],
     ]
     species = ["Mo", "S", "S"]
-    
+
     lattice = Lattice(lattice_vectors)
     structure = Structure(lattice, species, cartesian_positions, coords_are_cartesian=True)
-    
-    # Test that _build_structure_vis_payload works (same path for online and project)
-    from quantumvitas.analysis.structure_viz import DisplayModeParams
     
     params = DisplayModeParams(
         mode="primitive",
@@ -429,19 +426,17 @@ def test_online_project_shared_pipeline():
     )
     
     # Test ONLINE path payload (marked as online)
-    online_payload = QVService._build_structure_vis_payload(
+    online_payload = build_structure_vis_payload(
         structure,
         params,
         structure_meta={"structure_id": "online:test_candidate"},
-        trace_id="test_trace_online",
     )
-    
+
     # Test PROJECT path payload (marked as project)
-    project_payload = QVService._build_structure_vis_payload(
+    project_payload = build_structure_vis_payload(
         structure,
         params,
         structure_meta={"structure_id": "project:test_structure"},
-        trace_id="test_trace_project",
     )
     
     # EVIDENCE: Compare payload schemas
@@ -499,7 +494,7 @@ def test_online_project_shared_pipeline():
     assert "atoms" in online_payload
     assert "bonds" in online_payload
     assert "lattice" in online_payload
-    assert "perf" in online_payload
+    # Note: "perf" key is optional - only legacy version included it
     
     # Verify atoms have both cart and frac coords
     for atom in online_payload["atoms"]:
@@ -539,14 +534,13 @@ def test_online_vs_project_pipeline_identical():
     - Max bond length identical within tolerance
     - No long-bond spikes: maxBond < 6 Å AND maxDegree not exploding
     """
-    from quantumvitas.api_legacy import QVService
+    from quantumvitas.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
     from quantumvitas.io.online_search import (
         OPTIMADE_BASES,
         fetch_structure_from_optimade,
         search_optimade,
     )
     from quantumvitas.io.structure_io import write_structure, read_structure
-    from quantumvitas.analysis.structure_viz import DisplayModeParams
     import tempfile
     import numpy as np
     
@@ -612,20 +606,18 @@ def test_online_vs_project_pipeline_identical():
         )
         
         # Project path: call via get_structure_vis_data (simulates project rendering)
-        # But we'll call _build_structure_vis_payload directly for comparison
-        payload_project = QVService._build_structure_vis_payload(
+        # But we'll call build_structure_vis_payload directly for comparison
+        payload_project = build_structure_vis_payload(
             structure_project,
             params,
             structure_meta={"structure_id": "test_project"},
-            trace_id="test_project",
         )
-        
-        # Online path: call _build_structure_vis_payload directly (same as online handler does)
-        payload_online = QVService._build_structure_vis_payload(
+
+        # Online path: call build_structure_vis_payload directly (same as online handler does)
+        payload_online = build_structure_vis_payload(
             structure_online,
             params,
             structure_meta={"structure_id": "online:test"},
-            trace_id="test_online",
         )
         
         # Assertions: outputs must be identical

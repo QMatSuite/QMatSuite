@@ -21,8 +21,7 @@ from quantumvitas.io.online_search import (
     search_optimade,
 )
 from quantumvitas.io.structure_io import write_structure, read_structure
-from quantumvitas.api_legacy import QVService
-from quantumvitas.analysis.structure_viz import DisplayModeParams
+from quantumvitas.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
 
 
 @pytest.mark.integration
@@ -34,7 +33,7 @@ def test_online_vs_project_pipeline_bit_aligned():
     
     Test logic:
     1. Fetch structure from OPTIMADE (live HTTP)
-    2. Path A: Direct online pipeline (call _build_structure_vis_payload with online structure)
+    2. Path A: Direct online pipeline (call build_structure_vis_payload with online structure)
     3. Path B: Write structure to project file, then call project pipeline
     4. Compare outputs: lattice, atoms, bonds must be identical (within tolerance)
     
@@ -87,11 +86,10 @@ def test_online_vs_project_pipeline_bit_aligned():
     )
     
     # Path A: Online pipeline (direct call to shared builder)
-    payload_online = QVService._build_structure_vis_payload(
+    payload_online = build_structure_vis_payload(
         structure_online,
         params,
         structure_meta={"structure_id": f"online:{entry_id}"},
-        trace_id="test_online_alignment",
     )
     
     # Path B: Project pipeline (write to file, then load and call shared builder)
@@ -108,11 +106,10 @@ def test_online_vs_project_pipeline_bit_aligned():
         structure_project = read_structure(structure_file)
         
         # Call shared builder (same as project path)
-        payload_project = QVService._build_structure_vis_payload(
+        payload_project = build_structure_vis_payload(
             structure_project,
             params,
             structure_meta={"structure_id": "test_project"},
-            trace_id="test_project_alignment",
         )
     
     # Step 4: Compare outputs (must be identical within tolerance)

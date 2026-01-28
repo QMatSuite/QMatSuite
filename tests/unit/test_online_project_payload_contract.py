@@ -11,8 +11,7 @@ import pytest
 import numpy as np
 from pymatgen.core import Structure, Lattice
 
-from quantumvitas.api_legacy import QVService
-from quantumvitas.analysis.structure_viz import DisplayModeParams
+from quantumvitas.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
 
 
 def test_online_project_payload_contract_identical():
@@ -50,19 +49,17 @@ def test_online_project_payload_contract_identical():
     )
     
     # ONLINE path payload
-    online_payload = QVService._build_structure_vis_payload(
+    online_payload = build_structure_vis_payload(
         structure,
         params,
         structure_meta={"structure_id": "online:test_candidate"},
-        trace_id="test_trace_online",
     )
-    
+
     # PROJECT path payload
-    project_payload = QVService._build_structure_vis_payload(
+    project_payload = build_structure_vis_payload(
         structure,
         params,
         structure_meta={"structure_id": "project:test_structure"},
-        trace_id="test_trace_project",
     )
     
     # Extract payload metrics
@@ -167,11 +164,10 @@ def test_payload_contract_atoms_contains_all_display_atoms():
         box_bounds=None,
     )
     
-    payload = QVService._build_structure_vis_payload(
+    payload = build_structure_vis_payload(
         structure,
         params,
         structure_meta={"structure_id": "test"},
-        trace_id="test",
     )
     
     atoms_len = len(payload["atoms"])
