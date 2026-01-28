@@ -19,7 +19,18 @@ from pathlib import Path
 import pytest
 
 
-SHIM_PATH = Path("src/quantumvitas/frontends/daemon/server.py")
+def _find_repo_root() -> Path:
+    """Find repository root (directory containing pyproject.toml or .git)."""
+    current = Path(__file__).resolve().parent
+    while current != current.parent:
+        if (current / "pyproject.toml").exists() or (current / ".git").exists():
+            return current
+        current = current.parent
+    raise RuntimeError("Could not find repository root")
+
+
+REPO_ROOT = _find_repo_root()
+SHIM_PATH = REPO_ROOT / "src/quantumvitas/frontends/daemon/server.py"
 MAX_LINES = 60  # A pure shim should be very short
 
 
