@@ -29,7 +29,53 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, TextIO
 
 from quantumvitas.api import QVService, APIError, get_service
-from quantumvitas.api.utils import is_ulid_like
+from quantumvitas.api.utils import (
+    is_ulid_like,
+    validate_ulid,
+    can_delete_structure,
+    load_calculation,
+    get_pseudo_config,
+    set_pseudo_config,
+    validate_pseudo_config_dict,
+    load_pseudo_config_raw,
+    list_installed_sssp,
+    list_seed_archives,
+    check_archives_status,
+    load_manifest_archives,
+    delete_structure,
+    rename_structure,
+    detect_engine_for_calculation,
+    detect_presets_from_calculation,
+    download_pseudo_by_filename,
+    detect_qe,
+    get_environment_info,
+    list_qe_engines,
+    discover_qe_engines,
+    set_qe_engine,
+    resolve_pseudo_provenance,
+    download_pseudo_from_url,
+    get_journal,
+    create_blob_store,
+    compute_io_dir_from_calculation_model,
+    parse_volume_artifact,
+    apply_presets_to_step,
+    get_preset_catalog,
+    detect_workflow_type,
+    get_step_preset_footprints,
+    resolve_precision_context,
+    generate_unique_name_and_slug,
+    meta_from_name,
+    list_calculation_templates,
+    read_structure,
+    find_path_context_from_pwd,
+    canonicalize_structure,
+    reduce_formula,
+    search_online_structures,
+    fetch_structure_from_optimade,
+    score_candidate,
+    extract_provenance,
+    set_settings,
+)
 from quantumvitas.daemon.jobs import JobManager, JobStatus
 from quantumvitas.api.utils import (
     get_ui_parameters,
@@ -683,7 +729,7 @@ class QVDaemon:
         
         Returns detection status, qe_home, version, executables
         """
-        return QVService.detect_qe()
+        return detect_qe()
     
     def _handle_get_env_info(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -693,7 +739,7 @@ class QVDaemon:
         
         Returns python_version, qv_version, qe_home, etc.
         """
-        return QVService.get_environment_info()
+        return get_environment_info()
     
     def _handle_list_qe_engines(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -703,7 +749,7 @@ class QVDaemon:
         
         Returns managed_engines and external_engines lists.
         """
-        return QVService.list_qe_engines()
+        return list_qe_engines()
     
     def _handle_discover_qe_engines(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -713,7 +759,7 @@ class QVDaemon:
         
         Returns discovered_engines list (cached in .tmp/probe/).
         """
-        return QVService.discover_qe_engines()
+        return discover_qe_engines()
     
     def _handle_set_qe_engine(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -725,7 +771,7 @@ class QVDaemon:
         Returns success status.
         """
         bin_dir = payload.get("bin_dir")
-        return QVService.set_qe_engine(bin_dir=bin_dir)
+        return set_qe_engine(bin_dir=bin_dir)
     
     # -------------------------------------------------------------------------
     # Pseudopotential configuration handlers
@@ -745,7 +791,7 @@ class QVDaemon:
             default_store_dir: str - Default store directory
             default_seed_dir: str - Default seed directory
         """
-        return QVService.get_pseudo_config()
+        return get_pseudo_config()
     
     def _handle_set_pseudo_config(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -759,7 +805,11 @@ class QVDaemon:
         Returns:
             Updated config (same format as get_pseudo_config)
         """
-        return QVService.set_pseudo_config(payload)
+        return set_pseudo_config(
+            store_dir=payload.get("store_dir"),
+            seed_dir=payload.get("seed_dir"),
+            allow_download=payload.get("allow_download"),
+        )
     
     def _handle_validate_pseudo_config(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -778,7 +828,7 @@ class QVDaemon:
             warnings: List[str]
             errors: List[str]
         """
-        return QVService.validate_pseudo_config()
+        return validate_pseudo_config_dict()
     
     def _handle_init_pseudo_dirs(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -812,7 +862,7 @@ class QVDaemon:
         from quantumvitas.api import QVService
         from pathlib import Path
         
-        config = QVService.load_pseudo_config()
+        config = load_pseudo_config_raw()
         
         if not config.seed_dir:
             return {
@@ -851,7 +901,7 @@ class QVDaemon:
         Returns:
             libraries: List of SSSPLibraryInfo dicts
         """
-        libraries = QVService.list_installed_sssp()
+        libraries = list_installed_sssp()
         return {
             "libraries": libraries,
         }
@@ -868,13 +918,13 @@ class QVDaemon:
         from quantumvitas.api import QVService
         from pathlib import Path
         
-        config = QVService.load_pseudo_config()
+        config = load_pseudo_config_raw()
         
         if not config.seed_dir:
             return {"archives": []}
         
         seed_dir = Path(config.seed_dir)
-        archives = QVService.list_seed_archives(seed_dir)
+        archives = list_seed_archives(seed_dir)
         
         return {
             "archives": [arch.to_dict() for arch in archives],
@@ -931,7 +981,7 @@ class QVDaemon:
         )
         
         # Add installed libraries to response
-        result["installed_libraries"] = QVService.list_installed_sssp()
+        result["installed_libraries"] = list_installed_sssp()
         
         return result
     
@@ -954,7 +1004,7 @@ class QVDaemon:
         
         force = payload.get("force", False)
         
-        config = QVService.load_pseudo_config()
+        config = load_pseudo_config_raw()
         
         if not config.store_dir:
             return {
@@ -973,7 +1023,7 @@ class QVDaemon:
         )
         
         # Add installed libraries to response
-        result["installed_libraries"] = QVService.list_installed_sssp()
+        result["installed_libraries"] = list_installed_sssp()
         
         return result
     
@@ -998,7 +1048,7 @@ class QVDaemon:
                 "errors": ["No files provided"],
             }
         
-        config = QVService.load_pseudo_config()
+        config = load_pseudo_config_raw()
         if not config.seed_dir:
             return {
                 "imported": [],
@@ -1178,7 +1228,7 @@ class QVDaemon:
                 "Must provide either 'pseudo_abspath' or both 'project_root' and 'pseudo_relpath'"
             )
         
-        return QVService.resolve_pseudo_provenance(
+        return resolve_pseudo_provenance(
             str(pseudo_path),
             project_root=project_root_str,
         )
@@ -1195,9 +1245,9 @@ class QVDaemon:
             - grouped_by_library: Dict[str, List[ArchiveStatus dict]] - Grouped by library_name
         """
         try:
-            config = QVService.get_pseudo_config()
-            archives = QVService.load_manifest_archives()
-            archives_status = QVService.check_archives_status(archives=archives, config=config)
+            config = get_pseudo_config()
+            archives = load_manifest_archives()
+            archives_status = check_archives_status(archives=archives, config=config)
             
             # Group by library_name + library_version
             grouped: Dict[str, List[Dict[str, Any]]] = {}
@@ -1249,7 +1299,7 @@ class QVDaemon:
         force = payload.get("force", False)
         
         try:
-            config = QVService.get_pseudo_config()
+            config = get_pseudo_config()
             
             # Check if downloads are allowed
             if not config.get("allow_download", False) and not force:
@@ -1261,7 +1311,7 @@ class QVDaemon:
                 }
             
             # Find archive in manifest
-            archives = QVService.load_manifest_archives()
+            archives = load_manifest_archives()
             archive = None
             for arch in archives:
                 if arch.get("asset_name") == asset_name:
@@ -1284,7 +1334,7 @@ class QVDaemon:
                     config=config,
                 ):
                     # Return success with current status
-                    archives_updated = QVService.check_archives_status(archives=[archive], config=config)
+                    archives_updated = check_archives_status(archives=[archive], config=config)
                     return {
                         "success": True,
                         "messages": [f"Archive already installed: {asset_name}"],
@@ -1310,7 +1360,7 @@ class QVDaemon:
             )
             
             # Get updated status
-            archives_updated = QVService.check_archives_status(archives=[archive], config=config)
+            archives_updated = check_archives_status(archives=[archive], config=config)
             archive_status = archives_updated[0] if archives_updated else None
             
             return {
@@ -1360,7 +1410,7 @@ class QVDaemon:
         if not isinstance(enabled, bool):
             raise ValueError(f"Invalid enabled value: {enabled}. Must be boolean")
         
-        QVService.set_settings({"debug_resolution": enabled})
+        set_settings({"debug_resolution": enabled})
         
         return {"ok": True, "enabled": enabled}
     
@@ -1994,7 +2044,7 @@ class QVDaemon:
             return {"found": False, "project_root": None}
         
         try:
-            ctx = QVService.find_path_context_from_pwd(start_dir)
+            ctx = find_path_context_from_pwd(start_dir)
             return {"found": True, "project_root": str(ctx.project_root)}
         except NotFoundError:
             # ContextNotFoundError is mapped to NotFoundError by map_kernel_exception
@@ -2101,7 +2151,7 @@ class QVDaemon:
         session_id = str(uuid.uuid4())
         
         # Search online (returns optimade_base for 2-step fetch)
-        source_summary, candidates, structures, optimade_base = QVService.search_online_structures(query, max_results=max_results)
+        source_summary, candidates, structures, optimade_base = search_online_structures(query, max_results=max_results)
         
         # Cache results
         project_root = self._require_path(payload, "project_root")
@@ -2213,15 +2263,15 @@ class QVDaemon:
                 
                 if optimade_base and candidate.source_id:
                     # Fetch structure from OPTIMADE
-                    structure, optimade_raw_data = QVService.fetch_structure_from_optimade(optimade_base, candidate.source_id)
+                    structure, optimade_raw_data = fetch_structure_from_optimade(optimade_base, candidate.source_id)
                     
                     if structure:
                         # Score and update candidate
                         # Get query from session
                         session_info = cache.get_session_info(session_id)
                         query = session_info.query if session_info else ""
-                        query_reduced = QVService.reduce_formula(query) if query else ""
-                        score, flags = QVService.score_candidate(structure, "optimade", query_reduced, {})
+                        query_reduced = reduce_formula(query) if query else ""
+                        score, flags = score_candidate(structure, "optimade", query_reduced, {})
                         candidate.score = score
                         candidate.flags = flags
                         candidate.nsites = len(structure)
@@ -2339,7 +2389,7 @@ class QVDaemon:
                         database = parts[0]
                 
                 # Use shared helper function
-                provenance = QVService.extract_provenance(
+                provenance = extract_provenance(
                     provider=provider,
                     database=database,
                     base_url=optimade_base or "",
@@ -2537,7 +2587,7 @@ class QVDaemon:
         default_name = candidate.label if candidate else structure.composition.reduced_formula
         
         # Canonicalize structure (wrap coords, stable species ordering)
-        QVService.canonicalize_structure(structure)
+        canonicalize_structure(structure)
         
         # Generate unique name and slug
         cache = self.state.get_cache(project_root)
@@ -2546,7 +2596,7 @@ class QVDaemon:
         existing_slugs = cache.svc.collect_slugs(structures)
         
         structure_name = name or default_name
-        final_name, final_slug = QVService.generate_unique_name_and_slug(
+        final_name, final_slug = generate_unique_name_and_slug(
             kind="structure",
             preferred_name=structure_name,
             existing_slugs=existing_slugs,
@@ -2556,7 +2606,7 @@ class QVDaemon:
         dest_path = project_root / "structures" / f"{final_slug}.json"
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         
-        meta = QVService.meta_from_name(
+        meta = meta_from_name(
             name=final_name,
             kind="structure",
             path=str(dest_path),
@@ -2623,7 +2673,7 @@ class QVDaemon:
         
         # Pass cached index and config for in-place registry updates
         cache = self.state.get_cache(project_root)
-        result = QVService.rename_structure(
+        result = rename_structure(
             project_root=project_root,
             selector=selector,
             new_name=new_name,
@@ -2644,7 +2694,7 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         selector = self._require_str(payload, "selector")
         
-        return QVService.can_delete_structure(
+        return can_delete_structure(
             project_root=project_root,
             selector=selector,
         )
@@ -2663,13 +2713,13 @@ class QVDaemon:
         force = payload.get("force", False)
         
         # Get structure name before deletion for response
-        check = QVService.can_delete_structure(project_root, selector)
+        check = can_delete_structure(project_root, selector)
         structure_name = check.get("structure_name", selector)
         
         # Pass cached index for in-place registry updates
         # Note: QVService.delete_structure loads config internally; we only pass index
         cache = self.state.get_cache(project_root)
-        QVService.delete_structure(
+        delete_structure(
             project_root=project_root,
             selector=selector,
             force=force,
@@ -2689,7 +2739,7 @@ class QVDaemon:
         """
         List available calculation templates.
         """
-        templates = QVService.list_calculation_templates()
+        templates = list_calculation_templates()
         
         return {
             "templates": templates,
@@ -2761,14 +2811,14 @@ class QVDaemon:
         
         # Pass cached index and config for in-place registry updates
         cache = self.state.get_cache(project_root)
-        result = QVService.rename_calculation(
-            project_root=project_root,
+        svc = get_service(project_root)
+        result = svc.calculation.rename(
             selector=target,
             new_name=new_name,
             index=cache.index,
             config=cache.config,
         )
-        
+
         return result
     
     def _handle_can_delete_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -2908,7 +2958,7 @@ class QVDaemon:
         if calculation_ulid:
             # Already a ULID, validate it
             try:
-                calculation_ulid = QVService.validate_ulid(calculation_ulid, kind="calculation")
+                calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
             except ValueError as e:
                 return {
                     "ok": False,
@@ -3240,9 +3290,9 @@ class QVDaemon:
         
         cache = self.state.get_cache(project_root)
         
-        return QVService.set_common_card(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
+        svc = get_service(project_root)
+        return svc.calculation.set_common_card(
+            calc_selector=calculation_ulid,
             step_selector=step,
             card_name=card_name,
             view_model=view_model,
@@ -3279,9 +3329,9 @@ class QVDaemon:
         
         cache = self.state.get_cache(project_root)
         
-        return QVService.get_pseudo_mapping(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
+        svc = get_service(project_root)
+        return svc.calculation.get_step_pseudo_mapping(
+            calc_selector=calculation_ulid,
             step_selector=step,
             index=cache.index,
             config=cache.config,
@@ -3322,9 +3372,9 @@ class QVDaemon:
         
         cache = self.state.get_cache(project_root)
         
-        return QVService.set_pseudo_mapping(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
+        svc = get_service(project_root)
+        return svc.calculation.set_step_pseudo_mapping(
+            calc_selector=calculation_ulid,
             step_selector=step,
             mapping=mapping,
             library_preference=library_preference,
@@ -3353,8 +3403,8 @@ class QVDaemon:
         if not isinstance(file_paths, list):
             raise ValueError("file_paths must be a list")
         
-        return QVService.import_pseudo_files(
-            project_root=project_root,
+        svc = get_service(project_root)
+        return svc.project.import_pseudo_files(
             file_paths=file_paths,
         )
     
@@ -3378,7 +3428,8 @@ class QVDaemon:
             cache = self.state.get_cache(project_root)
             config = cache.config
         
-        return QVService.search_legacy_pseudos(
+        from quantumvitas.api.utils import search_legacy_pseudos
+        return search_legacy_pseudos(
             element=element,
             config=config,
         )
@@ -3405,7 +3456,7 @@ class QVDaemon:
         if dest_dir:
             dest_path = Path(dest_dir)
         
-        return QVService.download_pseudo_by_filename(
+        return download_pseudo_by_filename(
             project_root=project_root,
             filename=filename,
             dest_dir=dest_path,
@@ -3436,7 +3487,7 @@ class QVDaemon:
         
         # If candidate has URL, use download_pseudo_from_url
         if "url" in candidate:
-            return QVService.download_pseudo_from_url(
+            return download_pseudo_from_url(
                 project_root=project_root,
                 url=candidate["url"],
                 dest_dir=dest_path,
@@ -3445,7 +3496,7 @@ class QVDaemon:
         # Otherwise use download_pseudo_by_filename
         elif "filename" in candidate:
             cache = self.state.get_cache(project_root)
-            return QVService.download_pseudo_by_filename(
+            return download_pseudo_by_filename(
                 project_root=project_root,
                 filename=candidate["filename"],
                 dest_dir=dest_path,
@@ -3480,9 +3531,9 @@ class QVDaemon:
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
-        result = QVService.reset_step_params(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
+        svc = get_service(project_root)
+        result = svc.calculation.reset_step_params(
+            calc_selector=calculation_ulid,
             step_selector=step,
             index=cache.index,
             config=cache.config,
@@ -3513,9 +3564,9 @@ class QVDaemon:
         
         cache = self.state.get_cache(project_root)
         
-        return QVService.get_relax_final_structure_preview(
-            project_root=project_root,
-            calculation_selector=calculation,
+        svc = get_service(project_root)
+        return svc.analysis.get_relax_final_structure_preview(
+            calc_selector=calculation,
             step_selector=step,
             index=cache.index,
             config=cache.config,
@@ -3641,7 +3692,7 @@ class QVDaemon:
                 "schema_version": int
             }
         """
-        catalog = QVService.get_preset_catalog()
+        catalog = get_preset_catalog()
         return catalog
     
     def _handle_detect_presets(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -3674,12 +3725,12 @@ class QVDaemon:
             calculation_dir = resolved.absolute_path
         
         # Detect engine from calculation (for filtering)
-        engine_filter = QVService.detect_engine_for_calculation(calculation_dir)
+        engine_filter = detect_engine_for_calculation(calculation_dir)
         
         # Detect presets from calculation steps
         # If precision context resolution fails, it will be mapped to ConfigError by map_kernel_exception
         try:
-            dimension_states = QVService.detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
+            dimension_states = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
         except ConfigError as e:
             # PrecisionContextError is mapped to ConfigError by map_kernel_exception
             # Check if it's a precision context error by checking the error message or context
@@ -3726,7 +3777,7 @@ class QVDaemon:
             calculation_dir = resolved.absolute_path
         
         # Detect workflow type
-        workflow = QVService.detect_workflow_type(calculation_dir)
+        workflow = detect_workflow_type(calculation_dir)
         
         return {
             "workflow": workflow,
@@ -3767,7 +3818,7 @@ class QVDaemon:
         step_path = resolved_step.path
         
         try:
-            QVService.apply_presets_to_step(step_path, presets, validate_physics=validate_physics)
+            apply_presets_to_step(step_path, presets, validate_physics=validate_physics)
         except ValidationError as e:
             # PresetCompilationError is mapped to ValidationError by map_kernel_exception
             # Check if it's a preset compilation error by checking the error message
@@ -3784,8 +3835,8 @@ class QVDaemon:
         
         # Return updated dimension states for the calculation
         calculation_dir = step_path.parent.parent  # steps/foo.step.yaml -> calculation_dir
-        engine_filter = QVService.detect_engine_for_calculation(calculation_dir)
-        updated_dimension_states = QVService.detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
+        engine_filter = detect_engine_for_calculation(calculation_dir)
+        updated_dimension_states = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
         
         return {
             "status": "applied",
@@ -3845,11 +3896,12 @@ class QVDaemon:
             try:
                 # Use unified resolver (single source of truth)
                 try:
-                    context = QVService.resolve_precision_context(
+                    context = resolve_precision_context(
                         calculation_dir=calculation_dir,
                         project_root=project_root,
                     )
-                    precision_advisor = QVService.create_precision_advisor(
+                    from quantumvitas.api.utils import create_precision_advisor
+                    precision_advisor = create_precision_advisor(
                         species_map=context.species_map,
                         lattice_matrix=context.lattice_matrix,
                         repo_root=project_root,
@@ -3891,7 +3943,7 @@ class QVDaemon:
                     except (ValueError, KeyError) as e:
                         self.logger.warning(f"Invalid precision level '{precision_option}': {e}")
                 
-                result = QVService.apply_presets_to_step(
+                result = apply_presets_to_step(
                     step_path, presets, 
                     validate_physics=validate_physics,
                     precision_advice=precision_advice,
@@ -3943,8 +3995,8 @@ class QVDaemon:
                 })
         
         # Return updated dimension states for the calculation
-        engine_filter = QVService.detect_engine_for_calculation(calculation_dir)
-        updated_dimension_states = QVService.detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
+        engine_filter = detect_engine_for_calculation(calculation_dir)
+        updated_dimension_states = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
         
         return {
             "status": "applied",
@@ -4001,7 +4053,7 @@ class QVDaemon:
             calculation_dir = resolved.absolute_path
         
         # Get step footprints
-        footprints = QVService.get_step_preset_footprints(calculation_dir)
+        footprints = get_step_preset_footprints(calculation_dir)
         
         return {
             "footprints": footprints,
@@ -4071,9 +4123,9 @@ class QVDaemon:
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
-        result = QVService.reorder_calculation_steps(
-            project_root=project_root,
-            calculation_selector=calculation,
+        svc = get_service(project_root)
+        result = svc.calculation.reorder_steps(
+            calc_selector=calculation,
             new_order=new_order,
             index=cache.index,
             config=cache.config,
@@ -4151,9 +4203,9 @@ class QVDaemon:
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
-        result = QVService.import_step_from_qe_input(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
+        svc = get_service(project_root)
+        result = svc.calculation.import_step_from_qe_input(
+            calc_selector=calculation_ulid,
             input_file=input_file,
             step_name=step_name,
             index=cache.index,
@@ -4325,13 +4377,13 @@ class QVDaemon:
             )
         
         # Validate calculation_ulid
-        calculation_ulid = QVService.validate_ulid(calculation_ulid, kind="calculation")
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
         
         # Pass cached index and config
         cache = self.state.get_cache(project_root)
-        result = QVService.get_calculation_pseudo_mapping(
-            project_root=project_root,
-            calculation_ulid=calculation_ulid,
+        svc = get_service(project_root)
+        result = svc.calculation.get_pseudo_mapping(
+            calc_selector=calculation_ulid,
             index=cache.index,
             config=cache.config,
         )
@@ -4368,9 +4420,9 @@ class QVDaemon:
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
-        result = QVService.update_calculation_species_map(
-            project_root=project_root,
-            calculation_selector=calculation,
+        svc = get_service(project_root)
+        result = svc.calculation.update_species_map(
+            calc_selector=calculation,
             species_map=species_map,
             index=cache.index,
             config=cache.config,
@@ -4509,7 +4561,7 @@ class QVDaemon:
                     cache.svc, structure_id, config=cache.config
                 )
                 if struct_resolved.absolute_path.exists():
-                    structure = QVService.read_structure(struct_resolved.absolute_path)
+                    structure = read_structure(struct_resolved.absolute_path)
                     elements = sorted(set(str(el) for el in structure.composition.elements))
             except Exception:
                 pass
@@ -4650,8 +4702,8 @@ class QVDaemon:
         if step:
             self._resolve_step_with_fallback(project_root, calculation, step)
         
-        return QVService.ensure_calculation_analysis(
-            project_root=project_root,
+        svc = get_service(project_root)
+        return svc.analysis.ensure_analysis(
             calculation_selector=calculation,
             analysis_type=analysis_type,
             step_selector=step,
@@ -4734,8 +4786,8 @@ class QVDaemon:
         if step:
             self._resolve_step_with_fallback(project_root, calculation, step)
         
-        return QVService.get_dos_data(
-            project_root=project_root,
+        svc = get_service(project_root)
+        return svc.analysis.get_dos_data(
             calculation_selector=calculation,
             step_selector=step,
         )
@@ -4801,10 +4853,10 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_calculation_with_fallback(project_root, calculation)
         
-        result = QVService.get_reference_analysis(
-            project_root=project_root,
+        svc = get_service(project_root)
+        result = svc.analysis.get_reference_analysis(
             calculation_selector=calculation,
-            analysis_type=analysis_type,  # type: ignore
+            analysis_type=analysis_type,
         )
         
         return result
@@ -4881,7 +4933,7 @@ class QVDaemon:
         file_type = file_path.suffix.lower().lstrip(".")
         band_index = payload.get("band_index", 1)
         
-        return QVService.parse_volume_artifact(
+        return parse_volume_artifact(
             file_path=file_path,
             calc_dir=calc_dir,
             file_type=file_type,
@@ -4904,8 +4956,8 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_step_with_fallback(project_root, calculation, step)
         
-        return QVService.list_step_artifacts(
-            project_root=project_root,
+        svc = get_service(project_root)
+        return svc.analysis.list_step_artifacts(
             calculation_selector=calculation,
             step_selector=step,
         )
@@ -4932,8 +4984,8 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_step_with_fallback(project_root, calculation, step)
         
-        return QVService.read_step_artifact_text(
-            project_root=project_root,
+        svc = get_service(project_root)
+        return svc.analysis.read_step_artifact_text(
             calculation_selector=calculation,
             step_selector=step,
             artifact_path=artifact_path,
@@ -5102,7 +5154,7 @@ class QVDaemon:
                 raise ValueError(f"Invalid band_index: {band_index}. Must be >= 1 (1-based)")
             
             # Parse volume artifact
-            result = QVService.parse_volume_artifact(
+            result = parse_volume_artifact(
                 file_path=file_path,
                 calc_dir=calc_dir,
                 file_type=file_type,
@@ -5116,7 +5168,7 @@ class QVDaemon:
             # Log blob contract for debugging (Phase 0 contract verification)
             if file_type == "xsf" and result.get("preview_blob_id"):
                 # Create blob store for path lookup
-                blob_store = QVService.create_blob_store(calc_dir)
+                blob_store = create_blob_store(calc_dir)
                 preview_path = blob_store.get_blob_path(result["preview_blob_id"])
                 if preview_path:
                     preview_size = os.path.getsize(preview_path)
@@ -5139,7 +5191,7 @@ class QVDaemon:
             
             if file_type == "xsf" and result.get("blob_id"):
                 # Create blob store for path lookup
-                blob_store = QVService.create_blob_store(calc_dir)
+                blob_store = create_blob_store(calc_dir)
                 full_path = blob_store.get_blob_path(result["blob_id"])
                 if full_path:
                     full_size = os.path.getsize(full_path)
@@ -5160,7 +5212,7 @@ class QVDaemon:
             
             if file_type == "bxsf" and result.get("preview_blob_id"):
                 # Create blob store for path lookup
-                blob_store = QVService.create_blob_store(calc_dir)
+                blob_store = create_blob_store(calc_dir)
                 preview_path = blob_store.get_blob_path(result["preview_blob_id"])
                 if preview_path:
                     preview_size = os.path.getsize(preview_path)
@@ -5232,7 +5284,7 @@ class QVDaemon:
             from quantumvitas.api import QVService
             calculation_path = calculation_resolved.absolute_path / "calculation.yaml" if calculation_resolved.absolute_path.is_dir() else calculation_resolved.absolute_path
             if calculation_path.exists():
-                wf_model = QVService.load_calculation(calculation_path, project_root=project_root)
+                wf_model = load_calculation(calculation_path, project_root=project_root)
                 # Initialize steps with pending status
                 initial_steps = []
                 for step in wf_model.steps:
@@ -5250,7 +5302,7 @@ class QVDaemon:
                 # Compute planned_io_dir using the same logic the runner uses (single source of truth)
                 # This ensures pending jobs show the correct io_dir that will match the runner's final io_dir
                 calculation_dir = calculation_resolved.absolute_path if calculation_resolved.absolute_path.is_dir() else calculation_resolved.absolute_path.parent
-                planned_io_dir = QVService.compute_io_dir_from_calculation_model(calculation_dir, wf_model.working_dir)
+                planned_io_dir = compute_io_dir_from_calculation_model(calculation_dir, wf_model.working_dir)
                 initial_io_dir = str(planned_io_dir)
         except Exception:
             # If we can't load calculation, just use empty steps and no io_dir
@@ -5320,9 +5372,9 @@ class QVDaemon:
             from quantumvitas.api import QVService
             calculation_path = calculation_resolved.absolute_path / "calculation.yaml" if calculation_resolved.absolute_path.is_dir() else calculation_resolved.absolute_path
             if calculation_path.exists():
-                wf_model = QVService.load_calculation(calculation_path, project_root=project_root)
+                wf_model = load_calculation(calculation_path, project_root=project_root)
                 calculation_dir = calculation_resolved.absolute_path if calculation_resolved.absolute_path.is_dir() else calculation_resolved.absolute_path.parent
-                planned_io_dir = QVService.compute_io_dir_from_calculation_model(calculation_dir, wf_model.working_dir)
+                planned_io_dir = compute_io_dir_from_calculation_model(calculation_dir, wf_model.working_dir)
                 initial_io_dir = str(planned_io_dir)
         except Exception:
             pass
@@ -5860,7 +5912,7 @@ class QVDaemon:
                         # Determine project root (calculations/calculation_name/calculation.yaml -> project_root)
                         project_root = calculation_path.parent.parent.parent
                         # Load calculation model to get steps
-                        wf_model = QVService.load_calculation(calculation_path, project_root=project_root)
+                        wf_model = load_calculation(calculation_path, project_root=project_root)
                         step_ids = [entry.step_id for entry in wf_model.steps if entry.step_id]
                     except Exception:
                         # If we can't load the calculation, just use empty steps
@@ -6002,7 +6054,7 @@ class QVDaemon:
         doc_type = payload.get("doc_type")
         limit = payload.get("limit", 100)
         
-        journal = QVService.get_journal()
+        journal = get_journal()
         entries = journal.list_entries(
             target_ulid=target_ulid,
             doc_type=doc_type,
@@ -6028,7 +6080,7 @@ class QVDaemon:
         
         entry_id = self._require_str(payload, "entry_id")
         
-        journal = QVService.get_journal()
+        journal = get_journal()
         entry = journal.get_entry(entry_id)
         
         if entry is None:
