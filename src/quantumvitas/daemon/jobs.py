@@ -193,6 +193,18 @@ class JobManager:
             try:
                 result = func(**kwargs)
                 
+                # Convert DTO to dict if needed
+                if hasattr(result, 'to_dict'):
+                    result = result.to_dict()
+                elif not isinstance(result, dict):
+                    # Fallback: try to convert using asdict if it's a dataclass
+                    from dataclasses import asdict
+                    try:
+                        result = asdict(result)
+                    except (TypeError, ValueError):
+                        # Last resort: convert to string representation
+                        result = {"error": f"Cannot serialize result type: {type(result).__name__}"}
+                
                 # Try to extract output file and io_dir from result
                 if isinstance(result, dict):
                     output_file = result.get("output_file") or result.get("last_output_file")
@@ -345,6 +357,18 @@ class JobManager:
             
             try:
                 result = func(**kwargs)
+                
+                # Convert DTO to dict if needed
+                if hasattr(result, 'to_dict'):
+                    result = result.to_dict()
+                elif not isinstance(result, dict):
+                    # Fallback: try to convert using asdict if it's a dataclass
+                    from dataclasses import asdict
+                    try:
+                        result = asdict(result)
+                    except (TypeError, ValueError):
+                        # Last resort: convert to string representation
+                        result = {"error": f"Cannot serialize result type: {type(result).__name__}"}
                 
                 # Try to extract output file and io_dir from result
                 if isinstance(result, dict):

@@ -798,8 +798,8 @@ class TestCalculationFailureHandling:
         assert result is not None, \
             f"Job should have a result. Job status: {job.status.value}, error: {job.error}"
         
-        # Verify calculation status is FAILED
-        assert result["status"] == "failed", f"Calculation should be FAILED, got {result['status']}"
+        # Verify calculation status is FAILED (legacy mapped status)
+        assert result["status"] == "FAILED", f"Calculation should be FAILED, got {result['status']}"
         
         # Verify step statuses
         steps = result["steps"]
