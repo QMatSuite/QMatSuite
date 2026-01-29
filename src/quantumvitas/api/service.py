@@ -5057,9 +5057,11 @@ class QVService:
             """Convert legacy result dict to RunResultDTO."""
             from quantumvitas.api.types.error import ErrorDTO
             
-            # Extract step IDs
+            # Extract step IDs and step details
             step_ids = []
+            step_details = None
             if "steps" in result_dict:
+                step_details = result_dict["steps"]
                 step_ids = [s.get("step_id", "") for s in result_dict["steps"] if s.get("step_id")]
             
             # Map status
@@ -5098,6 +5100,10 @@ class QVService:
                 exit_code=None,
                 log_path=result_dict.get("io_dir"),
                 error=error,
+                _step_details=step_details,
+                io_dir=result_dict.get("io_dir"),
+                input_file=result_dict.get("input_file"),
+                output_file=result_dict.get("output_file"),
             )
     
     @property

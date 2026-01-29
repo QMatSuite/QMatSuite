@@ -572,8 +572,11 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     captured = {}
 
     # Constitution §C: run_step uses unified pipeline (CalculationRunner), not run_input_step
-    # Mock QVService.run_step to return expected result format
-    def fake_run_step(project_root, calculation_selector, step_selector, verbose=False, **kwargs):
+    # Mock the instance method svc.run.run_step() to return expected result format
+    from quantumvitas.api.types.run import RunResultDTO
+    from unittest.mock import patch
+    
+    def fake_run_step(self, calc_selector, step_selector):
         # Create a mock input file to verify it would be generated
         raw_dir = calculation_dir / "raw"
         raw_dir.mkdir(parents=True, exist_ok=True)
@@ -583,15 +586,26 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
         mock_output.write_text("Mock QE output\nJOB DONE")
         captured["input_file"] = mock_input
         captured["output_file"] = mock_output
-        return {
-            "step_id": step_id,
-            "step_type": "scf",
-            "status": "completed",
-            "input_file": str(mock_input),
-            "output_file": str(mock_output),
-        }
+        # Return RunResultDTO with compatibility fields
+        return RunResultDTO(
+            run_id="test_run_id",
+            calc_id=calculation_id,
+            status="completed",
+            step_ids=[step_id],
+            io_dir=str(raw_dir),
+            input_file=str(mock_input),
+            output_file=str(mock_output),
+            _step_details=[{
+                "step_id": step_id,
+                "step_type": "scf",
+                "status": "completed",
+                "message": None,
+                "metrics": {},
+            }],
+        )
 
-    monkeypatch.setattr("quantumvitas.api.QVService.run_step", fake_run_step)
+    # Mock the run_step method on QVService.Run class
+    monkeypatch.setattr("quantumvitas.api.service.QVService.Run.run_step", fake_run_step)
 
     # Use new CLI pattern: --calculation + --step (deprecated bare step path still works but requires calculation context)
     result = runner.invoke(
@@ -690,8 +704,11 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     captured = {}
 
     # Constitution §C: run_step uses unified pipeline (CalculationRunner), not run_input_step
-    # Mock QVService.run_step to return expected result format
-    def fake_run_step(project_root, calculation_selector, step_selector, verbose=False, **kwargs):
+    # Mock the instance method svc.run.run_step() to return expected result format
+    from quantumvitas.api.types.run import RunResultDTO
+    from unittest.mock import patch
+    
+    def fake_run_step(self, calc_selector, step_selector):
         # Create a mock input file to verify it would be generated
         raw_dir = calculation_dir / "raw"
         raw_dir.mkdir(parents=True, exist_ok=True)
@@ -701,15 +718,26 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
         mock_output.write_text("Mock QE output\nJOB DONE")
         captured["input_file"] = mock_input
         captured["output_file"] = mock_output
-        return {
-            "step_id": step_id,
-            "step_type": "scf",
-            "status": "completed",
-            "input_file": str(mock_input),
-            "output_file": str(mock_output),
-        }
+        # Return RunResultDTO with compatibility fields
+        return RunResultDTO(
+            run_id="test_run_id",
+            calc_id=calculation_id,
+            status="completed",
+            step_ids=[step_id],
+            io_dir=str(raw_dir),
+            input_file=str(mock_input),
+            output_file=str(mock_output),
+            _step_details=[{
+                "step_id": step_id,
+                "step_type": "scf",
+                "status": "completed",
+                "message": None,
+                "metrics": {},
+            }],
+        )
 
-    monkeypatch.setattr("quantumvitas.api.QVService.run_step", fake_run_step)
+    # Mock the run_step method on QVService.Run class
+    monkeypatch.setattr("quantumvitas.api.service.QVService.Run.run_step", fake_run_step)
 
     # Use new CLI pattern: --calculation + --step (deprecated bare step path still works but requires calculation context)
     result = runner.invoke(

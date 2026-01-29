@@ -4021,27 +4021,12 @@ def run_calculation_command(
         calc_selector=calc_selector,
         steps=None,  # Run all steps
     )
-    # Convert DTO to dict for compatibility
-    result_dict = {
-        "calculation": calc_selector,
-        "status": result_dto.status,
-        "n_steps": len(result_dto.steps),
-        "steps": [
-            {
-                "step_id": s.step_id,
-                "step_type": s.step_type,
-                "status": s.status,
-                "message": s.message,
-                "metrics": s.metrics,
-            }
-            for s in result_dto.steps
-        ],
-        "io_dir": result_dto.io_dir,
-        "run_id": result_dto.run_id,
-    }
+    # Convert DTO to dict for compatibility (includes legacy status mapping)
+    result_dict = result_dto.to_dict()
+    result_dict["calculation"] = calc_selector
+    result_dict["n_steps"] = len(result_dto.steps)
     
-    # The static method returns a dict with status and steps
-    # Work with the dict directly instead of converting back to CalculationResult
+    # Extract status and steps from dict (status is already mapped to legacy format)
     status_str = result_dict.get("status", "SUCCESS")
     steps_list = result_dict.get("steps", [])
 

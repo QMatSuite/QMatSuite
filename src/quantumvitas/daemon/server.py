@@ -2008,18 +2008,8 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         svc = get_service(project_root)
         structure_dtos = svc.structure.list()
-        # Convert DTOs to dicts for JSON serialization
-        structures = [
-            {
-                "id": dto.id,
-                "name": dto.name,
-                "slug": dto.slug,
-                "path": dto.path,
-                "formula": dto.formula,
-                "n_atoms": dto.n_atoms,
-            }
-            for dto in structure_dtos
-        ]
+        # Convert DTOs to dicts for JSON serialization using to_dict()
+        structures = [dto.to_dict() for dto in structure_dtos]
         return {"structures": structures, "count": len(structures)}
     
     def _handle_list_calculations(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -2032,19 +2022,8 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         svc = get_service(project_root)
         calculation_dtos = svc.calculation.list()
-        # Convert DTOs to dicts for JSON serialization
-        calculations = [
-            {
-                "id": dto.id,
-                "name": dto.name,
-                "slug": dto.slug,
-                "path": dto.path,
-                "status": dto.status,
-                "structure_id": dto.structure_id,
-                "n_steps": dto.n_steps,
-            }
-            for dto in calculation_dtos
-        ]
+        # Convert DTOs to dicts for JSON serialization using to_dict()
+        calculations = [dto.to_dict() for dto in calculation_dtos]
         return {"calculations": calculations, "count": len(calculations)}
     
     def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:

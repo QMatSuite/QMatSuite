@@ -6,6 +6,8 @@ This module provides DTOs for calculations and steps.
 
 from __future__ import annotations
 
+from typing import Any
+
 from dataclasses import dataclass
 
 from quantumvitas.api.types.base import BaseDTO
@@ -51,6 +53,47 @@ class CalculationDTO(BaseDTO):
     # Minimal info (optional)
     step_count: int | None = None
     completed_step_count: int | None = None
+    
+    # Compatibility properties for historical API contract
+    @property
+    def id(self) -> str:
+        """Compatibility: return calc_id or meta.id."""
+        return self.meta.id if self.meta and self.meta.id else self.calc_id
+    
+    @property
+    def name(self) -> str | None:
+        """Compatibility: return meta.name."""
+        return self.meta.name if self.meta else None
+    
+    @property
+    def slug(self) -> str | None:
+        """Compatibility: return meta.slug."""
+        return self.meta.slug if self.meta else None
+    
+    @property
+    def path(self) -> str | None:
+        """Compatibility: return meta.path."""
+        return self.meta.path if self.meta else None
+    
+    @property
+    def n_steps(self) -> int | None:
+        """Compatibility: alias for step_count."""
+        return self.step_count
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dict with compatibility properties."""
+        result = super().to_dict()
+        # Add compatibility properties
+        result["id"] = self.id
+        if self.name is not None:
+            result["name"] = self.name
+        if self.slug is not None:
+            result["slug"] = self.slug
+        if self.path is not None:
+            result["path"] = self.path
+        if self.n_steps is not None:
+            result["n_steps"] = self.n_steps
+        return result
 
 
 @dataclass
