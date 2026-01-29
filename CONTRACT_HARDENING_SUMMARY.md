@@ -242,7 +242,7 @@ No violations detected.
 4. **Soft gate available** - Set `QV_ENFORCE_GUI_RPC_COVERAGE=1` to make test_gui_methods_covered fail on missing coverage
 
 **Test Summary**:
-- Local: 2940 passed, 22 skipped
+- Local: 2946 passed, 22 skipped
 - CI expected: Same results (all environment-specific differences now handled)
 
 ---
@@ -267,3 +267,127 @@ Updated to return proper demo metadata from YAML:
 Added `ALLOW_EMPTY_WHEN_BASELINE_HAD_ITEMS` to allow `discovered_engines` to be empty in CI (where QE is not installed) while baseline had items.
 
 See `docs/E2E_TEST_FIXES_SUMMARY.md` for full details.
+
+---
+
+## Ubuntu CI and GUI E2E Fixes (2026-01-29)
+
+### 1. Float Tolerance Fix for Ubuntu CI
+
+**File**: `tests/contract_crawler/golden_comparison.py`
+
+**Problem**: Ubuntu CI failure:
+```
+Contract drift detected for get_structure_vis:
+Value mismatch at lattice.matrix[1][0]: expected -3.324916059685064e-16, got 8.732105987744135e-16
+```
+
+**Root Cause**: Values ~1e-16 are floating-point noise around zero. Relative tolerance (1e-9) doesn't work when both values are essentially zero.
+
+**Fix**: Added absolute tolerance (`FLOAT_ATOL = 1e-12`) in addition to relative tolerance:
+```python
+def _floats_approx_equal(a, b, rtol=FLOAT_RTOL, atol=FLOAT_ATOL):
+    """Check: |a - b| <= atol + rtol * max(|a|, |b|)"""
+    if a == b:
+        return True
+    diff = abs(a - b)
+    return diff <= atol + rtol * max(abs(a), abs(b))
+```
+
+This uses the standard NumPy `isclose` formula: absolute tolerance handles near-zero values, relative tolerance handles larger values.
+
+### 2. Step Type Consistency Fix (step_type mapped to v0 format)
+
+**File**: `src/quantumvitas/daemon/compat.py`
+
+**Problem**: E2E test `demo_calculation.spec.ts` failed:
+```
+Expected pattern: /qe_scf/i
+Received string: "scf"
+```
+
+The GUI reads step types from two sources:
+- `list_calculations` → `step.type` (mapped to v0 format: `qe_scf`)
+- `get_step_detail` → `stepDetail.step_type` (NOT mapped: `scf`)
+
+**Fix**: Added `step_type` mapping to `_shape_step_detail()`:
+```python
+def _shape_step_detail(response):
+    ...
+    # Map step_type to v0 format (qe_ prefix) for consistency
+    if "step_type" in response:
+        response["step_type"] = _map_step_type_to_v0(response["step_type"])
+```
+
+Now both sources return consistent v0 format (`qe_scf`).
+
+### 3. E2E Test Expectations Updated
+
+**Files**:
+- `gui/tests/e2e/demo_calculation_run.spec.ts`
+- `gui/tests/e2e/step_defaults.spec.ts`
+
+**Problem**: Tests hardcoded short step type names (`scf`, `bands`) but v0 API returns prefixed names (`qe_scf`, `qe_bands`).
+
+**Fix**: Updated test expectations to match v0 API format:
+```typescript
+// Before
+const bandsStepChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-bands"]');
+expect(stepType?.toLowerCase()).toBe('bands');
+
+// After
+const bandsStepChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-qe_bands"]');
+expect(stepType?.toLowerCase()).toBe('qe_bands');
+```
+
+### 4. Static GUI RPC Wiring Gate
+
+**File**: `tests/gates/test_gui_rpc_wiring.py` (NEW)
+
+**Purpose**: Mechanical static scan gate ensuring GUI-called RPC methods exist in daemon registry.
+
+**Features**:
+- Pure code scanning (no runtime, no manifest, no fixtures)
+- Extracts method names from:
+  - GUI: `QVCommandMap` interface in `gui/src/types/qv.ts`
+  - Daemon: handler dictionary in `src/quantumvitas/daemon/server.py`
+- Fails if GUI calls methods not wired in daemon
+- Small exempt list with documented reasons (capped at 5)
+
+**Tests**:
+- `test_all_gui_methods_have_daemon_handlers` - Main wiring check
+- `test_exempt_methods_documented` - Exemptions must have reasons
+- `test_exempt_cap` - Max 5 exemptions allowed
+- `test_extraction_sanity` - Sanity check for method counts
+
+---
+
+## Baseline Golden Failures Status
+
+The following 3 methods remain as expected baseline failures:
+
+| Method | Failure Reason | Resolution Status |
+|--------|---------------|-------------------|
+| `get_band_structure_data` | Missing `*.dat.gnu` file | Requires QE computation |
+| `get_dos_data` | Missing `*.dos.dat` file | Requires QE computation |
+| `import_structure` | Recipe payload issue | Needs recipe fix |
+
+These are **skipped** in golden contract tests because the baseline itself failed to generate successful fixtures. They cannot be tested without either:
+1. Actual QE computation output files (bands, dos)
+2. Fixing the recipe to correctly create import payloads
+
+**Impact**: These methods have **soft enforcement only** in GUI field tests.
+
+---
+
+## Final Test Summary
+
+**Local (macOS)**:
+- **2946 passed**, 22 skipped
+- Gate tests: 6 new (GUI RPC wiring)
+- Contract tests: All pass with float tolerance fix
+
+**CI Expected (Ubuntu + macOS)**:
+- Same 2946 passed, 22 skipped
+- Float tolerance fix eliminates Ubuntu-specific failures
+- Step type consistency ensures E2E tests pass
