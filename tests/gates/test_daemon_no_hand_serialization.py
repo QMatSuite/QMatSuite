@@ -402,3 +402,58 @@ def test_daemon_no_hand_serialization():
         )
         pytest.fail(error_msg)
 
+
+def test_all_handler_responses_json_serializable():
+    """
+    Every handler response must be JSON-serializable.
+
+    This is a runtime guard complementing the static AST checks.
+    """
+    import json
+    from io import StringIO
+    from tests.contract_crawler.crawler import crawl_all_methods
+
+    report = crawl_all_methods()
+
+    failures = report.not_json_serializable
+    if failures:
+        failure_details = "\n".join([
+            f"  - {r.method_name}: {r.serialization_error}"
+            for r in failures
+        ])
+        pytest.fail(f"Handlers returning non-JSON-serializable data:\n{failure_details}")
+
+
+def test_no_dto_leakage_in_responses():
+    """
+    Handler responses must not contain DTO instances (must use to_dict()).
+    """
+    from io import StringIO
+    from tests.contract_crawler.crawler import crawl_all_methods
+    from quantumvitas.api.types.base import BaseDTO
+
+    def check_for_dto_leakage(obj, path=""):
+        """Recursively check for DTO instances."""
+        if isinstance(obj, BaseDTO):
+            return [f"{path}: Found raw DTO {type(obj).__name__}"]
+
+        leaks = []
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                leaks.extend(check_for_dto_leakage(v, f"{path}.{k}"))
+        elif isinstance(obj, list):
+            for i, v in enumerate(obj):
+                leaks.extend(check_for_dto_leakage(v, f"{path}[{i}]"))
+
+        return leaks
+
+    report = crawl_all_methods()
+
+    all_leaks = []
+    for result in report.covered:
+        if result.response_data:
+            leaks = check_for_dto_leakage(result.response_data, result.method_name)
+            all_leaks.extend(leaks)
+
+    assert not all_leaks, f"DTO leakage detected:\n" + "\n".join(all_leaks)
+
