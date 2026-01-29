@@ -1,0 +1,13 @@
+{
+  "method": "can_delete_structure",
+  "success": true,
+  "response": {
+    "can_delete": true,
+    "using_calculations": [],
+    "structure_name": null
+  },
+  "recipe_name": "OtherMethodsRecipe(can_delete_structure)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:21.402819",
+  "source": "recipe"
+}

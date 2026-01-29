@@ -1,0 +1,34 @@
+{
+  "method": "add_step_to_calculation",
+  "success": true,
+  "response": {
+    "id": "<NORMALIZED_ID>",
+    "name": "demo_calc",
+    "slug": "demo_calc",
+    "structure_id": "<NORMALIZED_ID>",
+    "steps": [
+      {
+        "step_id": "<NORMALIZED_ID>",
+        "type": "scf",
+        "input": null,
+        "reference": null
+      },
+      {
+        "step_id": "<NORMALIZED_ID>",
+        "type": "nscf",
+        "input": null,
+        "reference": null
+      },
+      {
+        "step_id": "<NORMALIZED_ID>",
+        "type": "qe_bands",
+        "input": null,
+        "reference": null
+      }
+    ]
+  },
+  "recipe_name": "CalculationMutationsRecipe(add_step_to_calculation)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.197130",
+  "source": "recipe"
+}

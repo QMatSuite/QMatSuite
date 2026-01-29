@@ -1,0 +1,12 @@
+{
+  "method": "structure_import_online_candidate",
+  "success": false,
+  "error": {
+    "code": "recipe_failure",
+    "message": "{'code': 'invalid_argument', 'message': 'Candidate mp-149 not found in cache'}"
+  },
+  "recipe_name": "NetworkMethodsRecipe(structure_import_online_candidate)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:04.355581",
+  "source": "recipe"
+}

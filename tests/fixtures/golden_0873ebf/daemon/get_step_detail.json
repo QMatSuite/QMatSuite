@@ -1,12 +1,51 @@
 {
   "method": "get_step_detail",
-  "success": false,
-  "error": {
-    "code": "recipe_failure",
-    "message": "Setup exception: QVService() takes no arguments"
+  "success": true,
+  "response": {
+    "id": "<NORMALIZED_ID>",
+    "name": "scf",
+    "slug": "scf",
+    "path": "<NORMALIZED_PATH>",
+    "absolute_path": "<NORMALIZED_PATH>",
+    "step_type": "qe_scf",
+    "structure": "",
+    "parent_calculation_id": "<NORMALIZED_ID>",
+    "parameters": {
+      "CONTROL": {
+        "calculation": "<NORMALIZED_ID>",
+        "outdir": "./outdir",
+        "restart_mode": "from_scratch"
+      },
+      "ELECTRONS": {
+        "conv_thr": 1e-08
+      },
+      "SYSTEM": {
+        "ecutwfc": 50
+      }
+    },
+    "cards": {
+      "K_POINTS": {
+        "option": "automatic",
+        "data": [
+          [
+            8,
+            8,
+            8,
+            0,
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    "species_overrides": {},
+    "prefix_outdir_injection": {
+      "effective_prefix": "<NORMALIZED_ID>",
+      "effective_outdir": "./outdir"
+    }
   },
   "recipe_name": "GetStepDetailRecipe",
   "baseline_commit": "0873ebf",
-  "generated_at": "2026-01-28T23:40:44.917009",
+  "generated_at": "2026-01-29T03:26:59.169299",
   "source": "recipe"
 }

@@ -204,8 +204,15 @@ class TestGetCalculationDetail:
         actual_types = [step.get("type") for step in result["steps"]]
 
         # Verify we have the expected step types (order may vary slightly, but all should be present)
+        # Step types may have qe_ prefix (e.g., qe_scf, qe_nscf) or not
+        def normalize_step_type(t: str) -> str:
+            """Normalize step type by removing qe_ prefix."""
+            return t.replace("qe_", "") if t else t
+
+        normalized_actual = [normalize_step_type(t) for t in actual_types]
         for expected_type in expected_types[:len(actual_types)]:
-            assert expected_type in actual_types, f"Expected step type '{expected_type}' not found in {actual_types}"
+            normalized_expected = normalize_step_type(expected_type)
+            assert normalized_expected in normalized_actual, f"Expected step type '{expected_type}' not found in {actual_types}"
         
         # CRITICAL: Test that get_step_detail works for ALL steps (not just the first)
         # This ensures the ULID-based resolution works for every step in the calculation

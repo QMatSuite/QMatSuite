@@ -1,0 +1,55 @@
+{
+  "method": "set_pseudo_mapping",
+  "success": true,
+  "response": {
+    "id": "<NORMALIZED_ID>",
+    "name": "scf",
+    "slug": "scf",
+    "path": "<NORMALIZED_PATH>",
+    "absolute_path": "<NORMALIZED_PATH>",
+    "step_type": "qe_scf",
+    "structure": "",
+    "parent_calculation_id": "<NORMALIZED_ID>",
+    "parameters": {
+      "CONTROL": {
+        "calculation": "<NORMALIZED_ID>",
+        "outdir": "./outdir",
+        "restart_mode": "from_scratch"
+      },
+      "ELECTRONS": {
+        "conv_thr": 1e-08
+      },
+      "SYSTEM": {
+        "ecutwfc": 50
+      }
+    },
+    "cards": {
+      "K_POINTS": {
+        "option": "automatic",
+        "data": [
+          [
+            8,
+            8,
+            8,
+            0,
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    "species_overrides": {
+      "Si": {
+        "pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+      }
+    },
+    "prefix_outdir_injection": {
+      "effective_prefix": "<NORMALIZED_ID>",
+      "effective_outdir": "./outdir"
+    }
+  },
+  "recipe_name": "OtherMethodsRecipe(set_pseudo_mapping)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:25.546736",
+  "source": "recipe"
+}

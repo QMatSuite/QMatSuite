@@ -1,0 +1,24 @@
+{
+  "method": "detect_workflow",
+  "success": true,
+  "response": {
+    "match": {
+      "workflow_id": "scf",
+      "workflow_name": "SCF",
+      "coverage": 1.0,
+      "present_steps": [
+        "scf",
+        "nscf"
+      ],
+      "missing_steps": [],
+      "extra_steps": [
+        "nscf"
+      ],
+      "ordering_valid": true
+    }
+  },
+  "recipe_name": "WorkflowRecipe(detect_workflow)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.542349",
+  "source": "recipe"
+}

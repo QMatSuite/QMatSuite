@@ -1,0 +1,12 @@
+{
+  "method": "list_step_artifacts",
+  "success": true,
+  "response": {
+    "raw_dir": "calculations/demo_calc/raw",
+    "artifacts": []
+  },
+  "recipe_name": "StepMethodsRecipe(list_step_artifacts)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:03.989775",
+  "source": "recipe"
+}

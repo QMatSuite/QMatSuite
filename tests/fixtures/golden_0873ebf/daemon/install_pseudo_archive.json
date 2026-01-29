@@ -1,0 +1,16 @@
+{
+  "method": "install_pseudo_archive",
+  "success": true,
+  "response": {
+    "success": false,
+    "messages": [],
+    "errors": [
+      "asset_name is required"
+    ],
+    "archive_status": null
+  },
+  "recipe_name": "PseudoMethodsRecipe(install_pseudo_archive)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:24.874345",
+  "source": "recipe"
+}

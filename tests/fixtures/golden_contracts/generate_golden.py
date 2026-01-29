@@ -98,6 +98,7 @@ def copy_contract_crawler_to_worktree(worktree_path: Path):
         "introspection.py",
         "payloads.py",
         "crawler.py",
+        "v0_payloads.py",  # Centralized v0 payload schemas
     ]
 
     for filename in files_to_copy:
@@ -117,6 +118,14 @@ def copy_contract_crawler_to_worktree(worktree_path: Path):
         print(f"  Copied recipes/ to worktree", file=sys.stderr)
     else:
         print(f"  WARNING: recipes/ not found, skipping", file=sys.stderr)
+    
+    # Copy GUI methods file if it exists (for prioritization)
+    gui_methods_src = REPO_ROOT / "gui" / "tests" / "e2e" / "tools" / "gui_rpc_methods.txt"
+    if gui_methods_src.exists():
+        gui_methods_dst = worktree_path / "gui" / "tests" / "e2e" / "tools" / "gui_rpc_methods.txt"
+        gui_methods_dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(gui_methods_src, gui_methods_dst)
+        print(f"  Copied gui_rpc_methods.txt to worktree", file=sys.stderr)
 
 
 def run_worktree_runner(worktree_path: Path) -> dict:

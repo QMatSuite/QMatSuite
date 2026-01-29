@@ -1,0 +1,22 @@
+{
+  "method": "get_project_summary",
+  "success": true,
+  "response": {
+    "id": "<NORMALIZED_ID>",
+    "name": "demo_project",
+    "slug": "demo_project",
+    "path": "<NORMALIZED_PATH>",
+    "n_structures": 1,
+    "n_calculations": 1,
+    "structure_names": [
+      "silicon"
+    ],
+    "calculation_names": [
+      "demo_calc"
+    ]
+  },
+  "recipe_name": "ProjectMethodsRecipe(get_project_summary)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.748143",
+  "source": "recipe"
+}

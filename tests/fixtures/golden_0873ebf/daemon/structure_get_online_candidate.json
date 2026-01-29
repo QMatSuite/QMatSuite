@@ -1,0 +1,17 @@
+{
+  "method": "structure_get_online_candidate",
+  "success": true,
+  "response": {
+    "ok": false,
+    "error": {
+      "code": "CANDIDATE_NOT_FOUND",
+      "message": "Candidate mp-149 not found in session mock_session_id",
+      "candidate_id": "mp-149",
+      "session_id": "mock_session_id"
+    }
+  },
+  "recipe_name": "NetworkMethodsRecipe(structure_get_online_candidate)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:04.353095",
+  "source": "recipe"
+}

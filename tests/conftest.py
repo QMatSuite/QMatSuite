@@ -40,6 +40,19 @@ def cleanup_repo_pseudo_at_start():
 
 
 @pytest.fixture(scope="session", autouse=True)
+def cleanup_repo_temp_at_start():
+    """Clean up repo_root/temp at session start and end (forbidden per CONSTITUTION_ZH.md 9.1.3)."""
+    repo_root = _find_repo_root()
+    repo_temp = repo_root / "temp"
+    if repo_temp.exists():
+        shutil.rmtree(repo_temp)
+    yield
+    # Clean up at session end as well
+    if repo_temp.exists():
+        shutil.rmtree(repo_temp)
+
+
+@pytest.fixture(scope="session", autouse=True)
 def force_test_cwd_to_tmp(tmp_path_factory):
     """Force CWD to a tmp directory to prevent relative Path('pseudo') from landing in repo root."""
     original_cwd = os.getcwd()

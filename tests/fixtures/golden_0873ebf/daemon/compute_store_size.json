@@ -2,10 +2,10 @@
   "method": "compute_store_size",
   "success": true,
   "response": {
-    "size_bytes": 0
+    "size_bytes": 342700154
   },
   "payload": {},
   "baseline_commit": "0873ebf",
-  "generated_at": "2026-01-28T23:40:44.915393",
+  "generated_at": "2026-01-29T03:26:59.118194",
   "source": "auto_crawler"
 }

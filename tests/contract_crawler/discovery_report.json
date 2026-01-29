@@ -1,0 +1,826 @@
+{
+  "generated_at": "2026-01-29T01:02:26.517558",
+  "total_methods": 116,
+  "success_count": 24,
+  "failure_count": 92,
+  "failure_buckets": {
+    "no_payload": 6,
+    "missing_fields": 3,
+    "needs_resources": 83,
+    "error": 0
+  },
+  "results": [
+    {
+      "method_name": "add_step_to_calculation",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "analyze_project_pseudo_effects",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "apply_presets_to_calculation",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "apply_presets_to_step",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "can_delete_calculation",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "can_delete_structure",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "can_pin_to_run",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "cancel_job",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "change_calculation_structure",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "compile_fixture_volume",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "compute_store_size",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "create_calculation",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "create_demo_project",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "create_project",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "delete_calculation",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "delete_project_history",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "delete_step",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "delete_structure",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "detect_presets",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "detect_qe",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "detect_workflow",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "detect_workflow_for_calculation",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "discover_qe_engines",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "download_all_sssp",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "download_pseudo_by_filename",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "download_pseudo_candidate",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "download_sssp_library",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "ensure_calculation_analysis",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "find_project_root",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "get_band_structure_data",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_calculation_detail",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_calculation_pseudo_mapping",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_common_cards",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_debug_resolution",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "get_dos_data",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_env_info",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "get_job_logs",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_job_status",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_journal_entry",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_latest_run_for_step",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_library_status",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_pin_data",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_preset_catalog",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "get_project_history",
+      "attempt_status": "failed",
+      "failure_bucket": "no_payload",
+      "error_type": "no_payload_generator",
+      "error_message": "No minimal payload defined for this method"
+    },
+    {
+      "method_name": "get_project_summary",
+      "attempt_status": "failed",
+      "failure_bucket": "no_payload",
+      "error_type": "no_payload_generator",
+      "error_message": "No minimal payload defined for this method"
+    },
+    {
+      "method_name": "get_pseudo_config",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "get_pseudo_mapping",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_pseudo_options_for_calculation",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_qe_parameter_metadata_debug_info",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "get_reference_analysis",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_relax_final_structure_preview",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_run_revision",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_scf_convergence",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_step_detail",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_step_preset_footprints",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "get_structure_vis",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "import_pseudo_files",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "import_seed_archives",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "import_step_from_qe_input",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "import_structure",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "init_pseudo_dirs",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "install_library",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "install_pseudo_archive",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "install_seed_to_store",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "instantiate_workflow",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "job_counts",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "list_calculation_templates",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "list_calculations",
+      "attempt_status": "failed",
+      "failure_bucket": "no_payload",
+      "error_type": "no_payload_generator",
+      "error_message": "No minimal payload defined for this method"
+    },
+    {
+      "method_name": "list_demo_projects",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "list_installed_sssp",
+      "attempt_status": "failed",
+      "failure_bucket": "missing_fields",
+      "error_type": "handler_error",
+      "error_message": "list_installed_sssp() missing 1 required positional argument: 'store_dir'"
+    },
+    {
+      "method_name": "list_jobs",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "list_journal_entries",
+      "attempt_status": "failed",
+      "failure_bucket": "no_payload",
+      "error_type": "no_payload_generator",
+      "error_message": "No minimal payload defined for this method"
+    },
+    {
+      "method_name": "list_libraries",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "list_project_runs",
+      "attempt_status": "failed",
+      "failure_bucket": "no_payload",
+      "error_type": "no_payload_generator",
+      "error_message": "No minimal payload defined for this method"
+    },
+    {
+      "method_name": "list_pseudo_archives_status",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "list_qe_engines",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "list_qe_parameter_metadata",
+      "attempt_status": "failed",
+      "failure_bucket": "missing_fields",
+      "error_type": "invalid_argument",
+      "error_message": "'operation' is required in payload. Must be one of: list_modules, list_sections, list_parameters, search"
+    },
+    {
+      "method_name": "list_qe_ui_parameters",
+      "attempt_status": "failed",
+      "failure_bucket": "missing_fields",
+      "error_type": "invalid_argument",
+      "error_message": "'module' is required in payload"
+    },
+    {
+      "method_name": "list_seed_archives",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "list_step_artifacts",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "list_structures",
+      "attempt_status": "failed",
+      "failure_bucket": "no_payload",
+      "error_type": "no_payload_generator",
+      "error_message": "No minimal payload defined for this method"
+    },
+    {
+      "method_name": "list_wannier_3d_fixtures",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "list_workflow_templates",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "materialize_pseudo_file",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "pin_analysis_to_history",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "ping",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "preflight_check",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "promote_relax_structure",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "read_step_artifact_text",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "rebuild_project_registry",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "reload_qe_parameter_metadata",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "remove_library",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "rename_calculation",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "rename_structure",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "reorder_calculation_steps",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "repair_library",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "reset_step_params",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "resolve_project_pseudo_provenance",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "run_calculation",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "run_single_step",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "run_step",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "save_relax_final_structure",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "search_legacy_pseudos",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "set_common_card",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "set_debug_resolution",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "set_log_level",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "set_pseudo_config",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "set_pseudo_mapping",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "set_qe_engine",
+      "attempt_status": "success",
+      "failure_bucket": null,
+      "error_type": null,
+      "error_message": null
+    },
+    {
+      "method_name": "shutdown",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "structure_get_online_candidate",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "structure_import_online_candidate",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "structure_search_online",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "update_calculation_species_map",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "update_step_params",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    },
+    {
+      "method_name": "validate_pseudo_config",
+      "attempt_status": "failed",
+      "failure_bucket": "needs_resources",
+      "error_type": "recipe_required",
+      "error_message": "Method requires recipe (complex prerequisites)"
+    }
+  ]
+}

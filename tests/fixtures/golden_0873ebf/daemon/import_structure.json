@@ -1,0 +1,12 @@
+{
+  "method": "import_structure",
+  "success": false,
+  "error": {
+    "code": "recipe_failure",
+    "message": "{'code': 'resource_not_found', 'kind': 'structure', 'selector': 'nacl_import', 'id': None, 'message': \"Structure not found - selector: 'nacl_import' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_recipe_h6fnhof9/ProjectMutationsRecipe_import_structure/demo_project\"}"
+  },
+  "recipe_name": "ProjectMutationsRecipe(import_structure)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.914194",
+  "source": "recipe"
+}

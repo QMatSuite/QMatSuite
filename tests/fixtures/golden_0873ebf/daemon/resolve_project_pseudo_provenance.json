@@ -1,0 +1,12 @@
+{
+  "method": "resolve_project_pseudo_provenance",
+  "success": false,
+  "error": {
+    "code": "recipe_failure",
+    "message": "{'code': 'project_missing', 'message': 'Pseudo file not found: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_recipe_h6fnhof9/PseudoMethodsRecipe_resolve_project_pseudo_provenance/demo_project/Si.pbe-n-rrkjus_psl.1.0.0.UPF', 'kind': 'project_missing'}"
+  },
+  "recipe_name": "PseudoMethodsRecipe(resolve_project_pseudo_provenance)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:25.019601",
+  "source": "recipe"
+}

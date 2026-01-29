@@ -1,0 +1,32 @@
+{
+  "method": "get_step_preset_footprints",
+  "success": true,
+  "response": {
+    "footprints": {
+      "nscf.step.yaml": {
+        "params": {
+          "ecutwfc": 50,
+          "conv_thr": 1e-08,
+          "kmesh": "12\u00d712\u00d712"
+        },
+        "magnetism": "nonmagnetic",
+        "occupations_scheme": "fixed",
+        "precision": "Custom"
+      },
+      "scf.step.yaml": {
+        "params": {
+          "ecutwfc": 50,
+          "conv_thr": 1e-08,
+          "kmesh": "8\u00d78\u00d78"
+        },
+        "magnetism": "nonmagnetic",
+        "occupations_scheme": "fixed",
+        "precision": "Custom"
+      }
+    }
+  },
+  "recipe_name": "CalculationMethodsRecipe(get_step_preset_footprints)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.820109",
+  "source": "recipe"
+}

@@ -46,12 +46,13 @@ class GetStepDetailRecipe(Recipe):
         self.project_root.mkdir()
         QVService.init_project(self.project_root, name="test_project")
 
-        # Get service
-        if get_service is None:
-            # Fallback: try direct instantiation
-            svc = QVService(self.project_root)
-        else:
-            svc = get_service(self.project_root)
+        # Check if QVService methods are static (baseline) or instance-based (current)
+        is_static_api = True
+        try:
+            test_svc = QVService(self.project_root)
+            is_static_api = False
+        except (TypeError, AttributeError):
+            is_static_api = True
 
         # Create structure by importing from a temporary file
         structure = Structure(Lattice.cubic(5.43), ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
@@ -60,25 +61,64 @@ class GetStepDetailRecipe(Recipe):
             struct_file = Path(f.name)
 
         try:
-            struct_dto = svc.structure.import_file(source=struct_file, name="silicon")
+            if is_static_api:
+                struct_result = QVService.import_structure(self.project_root, struct_file, name="silicon")
+                structure_id = struct_result.id if hasattr(struct_result, 'id') else struct_result.structure_id if hasattr(struct_result, 'structure_id') else None
+            else:
+                svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
+                struct_dto = svc.structure.import_file(source=struct_file, name="silicon")
+                structure_id = struct_dto.structure_id
         finally:
-            struct_file.unlink()  # Clean up temp file
+            struct_file.unlink()
 
         # Create calculation
-        calc_dto = svc.calculation.create(
-            engine="qe",
-            name="test_calc",
-            structure_selector=struct_dto.structure_id,
-        )
-        self.calc_id = calc_dto.calc_id
+        if is_static_api:
+            calc_result = QVService.init_calculation(
+                self.project_root,
+                name="test_calc",
+                structure_selector=structure_id,
+            )
+            self.calc_id = calc_result.id if hasattr(calc_result, 'id') else None
+        else:
+            svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
+            calc_dto = svc.calculation.create(
+                engine="qe",
+                name="test_calc",
+                structure_selector=structure_id,
+            )
+            self.calc_id = calc_dto.calc_id
 
         # Add SCF step
-        step_dto = svc.calculation.add_step(
-            calc_selector=self.calc_id,
-            step_type="qe_scf",
-            name="scf",
-        )
-        self.step_id = step_dto.step_id
+        if is_static_api:
+            step_result = QVService.add_step_to_calculation(
+                self.project_root,
+                calculation_selector=self.calc_id,
+                step_type="qe_scf",
+                step_name="scf",
+            )
+            # 0873ebf returns calculation dict with steps list
+            if isinstance(step_result, dict) and "steps" in step_result:
+                steps_list = step_result["steps"]
+                if steps_list:
+                    last_step = steps_list[-1]
+                    if isinstance(last_step, dict):
+                        self.step_id = last_step.get("id") or last_step.get("step_id")
+                    elif hasattr(last_step, 'id'):
+                        self.step_id = last_step.id
+                    elif hasattr(last_step, 'step_id'):
+                        self.step_id = last_step.step_id
+            elif isinstance(step_result, dict):
+                self.step_id = step_result.get("step_id")
+            elif hasattr(step_result, 'step_id'):
+                self.step_id = step_result.step_id
+        else:
+            svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
+            step_dto = svc.calculation.add_step(
+                calc_selector=self.calc_id,
+                step_type="qe_scf",
+                name="scf",
+            )
+            self.step_id = step_dto.step_id
 
         return True
 

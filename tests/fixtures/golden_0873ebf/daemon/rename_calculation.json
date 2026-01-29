@@ -1,0 +1,14 @@
+{
+  "method": "rename_calculation",
+  "success": true,
+  "response": {
+    "success": true,
+    "old_name": "demo_calc",
+    "new_name": "renamed_calc",
+    "new_slug": "renamed_calc"
+  },
+  "recipe_name": "CalculationMutationsRecipe(rename_calculation)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:04.137592",
+  "source": "recipe"
+}

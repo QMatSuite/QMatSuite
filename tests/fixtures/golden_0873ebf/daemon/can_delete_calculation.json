@@ -1,0 +1,13 @@
+{
+  "method": "can_delete_calculation",
+  "success": true,
+  "response": {
+    "calculation_name": "demo_calc",
+    "dependent_calculations": [],
+    "has_dependencies": false
+  },
+  "recipe_name": "CalculationMethodsRecipe(can_delete_calculation)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:21.381715",
+  "source": "recipe"
+}

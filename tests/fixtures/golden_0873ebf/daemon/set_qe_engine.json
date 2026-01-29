@@ -1,0 +1,13 @@
+{
+  "method": "set_qe_engine",
+  "success": true,
+  "response": {
+    "success": true
+  },
+  "payload": {
+    "bin_dir": null
+  },
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.119048",
+  "source": "auto_crawler"
+}

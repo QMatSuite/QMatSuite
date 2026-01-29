@@ -1,0 +1,27 @@
+{
+  "method": "get_scf_convergence",
+  "success": true,
+  "response": {
+    "calculation": "<NORMALIZED_ID>",
+    "step": "<NORMALIZED_ID>",
+    "output_file": "<NORMALIZED_PATH>",
+    "converged": true,
+    "n_iterations": 0,
+    "total_energy_ry": null,
+    "fermi_energy_ev": null,
+    "iterations": [],
+    "calculation_type": null,
+    "n_electrons": null,
+    "n_kpoints": null,
+    "ecutwfc_ry": null,
+    "units": {
+      "energy": "Ry",
+      "fermi": "eV",
+      "time": "s"
+    }
+  },
+  "recipe_name": "EngineMethodsRecipe(get_scf_convergence)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.795514",
+  "source": "recipe"
+}

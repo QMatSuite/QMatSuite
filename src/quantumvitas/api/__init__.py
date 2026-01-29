@@ -45,6 +45,8 @@ from quantumvitas.api.types import (  # noqa: F401
     RunResultDTO,
     AnalysisRefDTO,
     AnalysisSummaryDTO,
+    # Online search types (API-owned DTO)
+    CandidateSummary,
 )
 
 # PR10: Canonical service acquisition helper
@@ -105,5 +107,7 @@ __all__ = [
     "RunResultDTO",
     "AnalysisRefDTO",
     "AnalysisSummaryDTO",
+    # Online search
+    "CandidateSummary",
 ]
 

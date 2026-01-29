@@ -7,7 +7,7 @@ This module exports all Data Transfer Objects (DTOs) for the API.
 from quantumvitas.api.types.analysis import AnalysisRefDTO, AnalysisSummaryDTO
 from quantumvitas.api.types.base import BaseDTO, JsonValue, to_json_value
 from quantumvitas.api.types.calculation import CalculationDTO, CalculationRefDTO, StepDTO
-from quantumvitas.api.types.common import MetaDTO
+from quantumvitas.api.types.common import MetaDTO, CandidateSummary
 from quantumvitas.api.types.error import ErrorDTO
 from quantumvitas.api.types.run import RunResultDTO
 from quantumvitas.api.types.structure import StructureDTO
@@ -19,6 +19,7 @@ __all__ = [
     "to_json_value",
     # Common
     "MetaDTO",
+    "CandidateSummary",
     # Error
     "ErrorDTO",
     # Calculation

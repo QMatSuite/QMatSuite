@@ -1,0 +1,12 @@
+{
+  "method": "get_band_structure_data",
+  "success": false,
+  "error": {
+    "code": "recipe_failure",
+    "message": "{'code': 'service_error', 'message': 'Missing required files: Bands data file (*.dat.gnu)'}"
+  },
+  "recipe_name": "EngineMethodsRecipe(get_band_structure_data)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.637740",
+  "source": "recipe"
+}

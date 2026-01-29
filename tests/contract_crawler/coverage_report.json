@@ -1,0 +1,945 @@
+{
+  "generated_at": "2026-01-29T01:50:24.191517",
+  "summary": {
+    "total_methods": 116,
+    "covered_auto": 26,
+    "covered_recipe": 85,
+    "not_covered": 0,
+    "exempt": 5,
+    "gui_total": 70,
+    "gui_covered": 66,
+    "gui_exempt": 4,
+    "gui_missing_count": 0
+  },
+  "gui_missing_methods": [],
+  "methods": [
+    {
+      "method_name": "add_step_to_calculation",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/add_step_to_calculation.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "analyze_project_pseudo_effects",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "apply_presets_to_calculation",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/apply_presets_to_calculation.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "apply_presets_to_step",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "can_delete_calculation",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "can_delete_structure",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "can_pin_to_run",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "cancel_job",
+      "is_gui_used": true,
+      "coverage_status": "exempt",
+      "fixture_path": null,
+      "source": null,
+      "exempt_reason": "Requires active running job; job state is ephemeral and cannot be deterministically created for golden fixtures"
+    },
+    {
+      "method_name": "change_calculation_structure",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/change_calculation_structure.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "compile_fixture_volume",
+      "is_gui_used": true,
+      "coverage_status": "exempt",
+      "fixture_path": null,
+      "source": null,
+      "exempt_reason": "Dev-only endpoint requiring specific Wannier90 fixture files that are not part of standard test setup"
+    },
+    {
+      "method_name": "compute_store_size",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/compute_store_size.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "create_calculation",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/create_calculation.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "create_demo_project",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/create_demo_project.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "create_project",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/create_project.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "delete_calculation",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/delete_calculation.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "delete_project_history",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/delete_project_history.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "delete_step",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/delete_step.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "delete_structure",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/delete_structure.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "detect_presets",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/detect_presets.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "detect_qe",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/detect_qe.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "detect_workflow",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/detect_workflow.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "detect_workflow_for_calculation",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/detect_workflow_for_calculation.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "discover_qe_engines",
+      "is_gui_used": false,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/discover_qe_engines.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "download_all_sssp",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "download_pseudo_by_filename",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "download_pseudo_candidate",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "download_sssp_library",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "ensure_calculation_analysis",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/ensure_calculation_analysis.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "find_project_root",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/find_project_root.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_band_structure_data",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_band_structure_data.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_calculation_detail",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_calculation_detail.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_calculation_pseudo_mapping",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_common_cards",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_debug_resolution",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_debug_resolution.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_dos_data",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_dos_data.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_env_info",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_env_info.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_job_logs",
+      "is_gui_used": true,
+      "coverage_status": "exempt",
+      "fixture_path": null,
+      "source": null,
+      "exempt_reason": "Requires active job with log file; job state is ephemeral and cannot be deterministically created for golden fixtures"
+    },
+    {
+      "method_name": "get_job_status",
+      "is_gui_used": true,
+      "coverage_status": "exempt",
+      "fixture_path": null,
+      "source": null,
+      "exempt_reason": "Requires active job in JobManager; job state is ephemeral and cannot be deterministically created for golden fixtures"
+    },
+    {
+      "method_name": "get_journal_entry",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_latest_run_for_step",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_latest_run_for_step.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_library_status",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_pin_data",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_preset_catalog",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_preset_catalog.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_project_history",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_project_history.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_project_summary",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_project_summary.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_pseudo_config",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_pseudo_config.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_pseudo_mapping",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_pseudo_options_for_calculation",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_qe_parameter_metadata_debug_info",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_qe_parameter_metadata_debug_info.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_reference_analysis",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_reference_analysis.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_relax_final_structure_preview",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_run_revision",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_scf_convergence",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_scf_convergence.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_step_detail",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_step_detail.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_step_preset_footprints",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_step_preset_footprints.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "get_structure_vis",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/get_structure_vis.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "import_pseudo_files",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "import_seed_archives",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "import_step_from_qe_input",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/import_step_from_qe_input.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "import_structure",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/import_structure.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "init_pseudo_dirs",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "install_library",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "install_pseudo_archive",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "install_seed_to_store",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "instantiate_workflow",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/instantiate_workflow.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "job_counts",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/job_counts.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_calculation_templates",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_calculation_templates.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_calculations",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_demo_projects",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_demo_projects.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_installed_sssp",
+      "is_gui_used": false,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_installed_sssp.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_jobs",
+      "is_gui_used": false,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_jobs.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_journal_entries",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_journal_entries.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_libraries",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_libraries.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_project_runs",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_pseudo_archives_status",
+      "is_gui_used": false,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_pseudo_archives_status.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_qe_engines",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_qe_engines.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_qe_parameter_metadata",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_qe_parameter_metadata.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_qe_ui_parameters",
+      "is_gui_used": false,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_qe_ui_parameters.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_seed_archives",
+      "is_gui_used": false,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_seed_archives.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_step_artifacts",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_step_artifacts.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_structures",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_structures.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_wannier_3d_fixtures",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_wannier_3d_fixtures.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "list_workflow_templates",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/list_workflow_templates.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "materialize_pseudo_file",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "pin_analysis_to_history",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/pin_analysis_to_history.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "ping",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/ping.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "preflight_check",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/preflight_check.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "promote_relax_structure",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "read_step_artifact_text",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/read_step_artifact_text.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "rebuild_project_registry",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/rebuild_project_registry.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "reload_qe_parameter_metadata",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/reload_qe_parameter_metadata.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "remove_library",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "rename_calculation",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/rename_calculation.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "rename_structure",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/rename_structure.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "reorder_calculation_steps",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/reorder_calculation_steps.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "repair_library",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "reset_step_params",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/reset_step_params.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "resolve_project_pseudo_provenance",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "run_calculation",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/run_calculation.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "run_single_step",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "run_step",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/run_step.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "save_relax_final_structure",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "search_legacy_pseudos",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "set_common_card",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "set_debug_resolution",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/set_debug_resolution.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "set_log_level",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/set_log_level.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "set_pseudo_config",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "set_pseudo_mapping",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "set_qe_engine",
+      "is_gui_used": true,
+      "coverage_status": "covered_auto",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/set_qe_engine.json",
+      "source": "auto_crawler",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "shutdown",
+      "is_gui_used": false,
+      "coverage_status": "exempt",
+      "fixture_path": null,
+      "source": null,
+      "exempt_reason": "Terminates daemon process; cannot be tested in golden generation as it stops the daemon"
+    },
+    {
+      "method_name": "structure_get_online_candidate",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/structure_get_online_candidate.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "structure_import_online_candidate",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/structure_import_online_candidate.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "structure_search_online",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/structure_search_online.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "update_calculation_species_map",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "update_step_params",
+      "is_gui_used": true,
+      "coverage_status": "covered_recipe",
+      "fixture_path": "<HOME>/QMatSuite/tests/fixtures/golden_0873ebf/daemon/update_step_params.json",
+      "source": "recipe",
+      "exempt_reason": null
+    },
+    {
+      "method_name": "validate_pseudo_config",
+      "is_gui_used": false,
+      "coverage_status": "covered_recipe",
+      "fixture_path": null,
+      "source": "recipe",
+      "exempt_reason": null
+    }
+  ]
+}
