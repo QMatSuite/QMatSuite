@@ -59,7 +59,7 @@ Also updated compat shaper `_shape_list_demo_projects()` to handle the new field
 
 ---
 
-### 3. Step Count = 0 (INVESTIGATION NEEDED)
+### 3. Step Count = 0 (FIXED)
 
 **Error**:
 ```
@@ -68,32 +68,28 @@ Expected: > 0
 Received:   0
 ```
 
-**Observed Behavior**: After creating demo project and navigating to calculation detail, no step rows are rendered.
+**Observed Behavior**: After creating demo project and navigating to calculation list, `steps` array was empty.
 
-**Analysis**:
-1. **Daemon code looks correct**: `get_calculation_detail` returns `steps` array from `calc_model.steps`
-2. **Compat shaper preserves steps**: `_shape_calculation_detail` iterates and shapes each step, doesn't filter/remove
-3. **Golden contracts verify steps**: `get_calculation_detail.json` fixture shows 2 steps
+**Root Cause**:
+1. The HEAD API uses DTOs (`CalculationDTO`) which return `step_ids` (list of ULIDs) instead of the full `steps` array that the v0 API returned
+2. The compat layer's `_shape_list_calculations()` function tried to expand `step_ids` to full `steps` by reading `calculation.yaml`, but it couldn't find the file because:
+   - It was computing the path as `{project_root}/calculations/{calc_id}` using the ULID as directory name
+   - But the actual directory is named using the slug (e.g., `si-bands`), not the ULID
 
-**Possible Causes**:
-1. **Daemon**: `calc_model.steps` might be empty due to:
-   - Calculation.yaml not having steps after materialization
-   - `CalculationStepEntry.from_dict` raising `LegacyProjectError` (silent exception)
+**Fix**:
+1. Added `_project_root` to daemon handler response for `list_calculations` (server.py line 2040)
+2. Updated `_shape_list_calculations()` to:
+   - Extract `_project_root` from response
+   - Compute `absolute_path` using `slug` (or `name`) instead of `id` for directory name
+   - Pass the correct path to `_expand_step_ids_to_steps()` which reads `calculation.yaml`
 
-2. **GUI**: Step rows might not be rendered due to:
-   - Frontend bug in step rendering component
-   - Wrong `data-testid` attribute pattern
-
-3. **Timing**: Race condition between project creation and calculation loading
-
-**Recommended Next Steps**:
-1. Add logging to `_shape_create_demo_project` to capture exceptions
-2. Check if calculation.yaml is created correctly with steps after `materialize_project_from_snapshot`
-3. Verify GUI renders steps when `steps` array is non-empty
+**Files Changed**:
+- `src/quantumvitas/daemon/server.py` (line 2040: added `_project_root`)
+- `src/quantumvitas/daemon/compat.py` (lines 468-522: fixed path computation using slug)
 
 ---
 
-### 4. Bands Step Tab & SCF Step Row Not Visible (CASCADING)
+### 4. Bands Step Tab & SCF Step Row Not Visible (EXPECTED TO BE FIXED)
 
 **Error**:
 ```
@@ -104,6 +100,8 @@ Error: element(s) not found
 
 **Root Cause**: Cascading from Issue #3. If steps aren't showing, analysis tabs and step rows won't be rendered.
 
+**Expected Resolution**: Should be fixed by Issue #3 fix - now that steps are returned correctly, the GUI should render the step tabs and rows.
+
 ---
 
 ## Summary of Changes Made
@@ -112,18 +110,36 @@ Error: element(s) not found
 |-------|--------|---------------|
 | Schema drift `discover_qe_engines` | FIXED | `tests/contract_crawler/test_schema_preservation.py` |
 | Demo card showing ID | FIXED | `src/quantumvitas/api/service.py`, `src/quantumvitas/daemon/compat.py` |
-| Steps not showing | NEEDS INVESTIGATION | - |
-| Analysis tabs not visible | CASCADING | - |
+| Steps not showing | FIXED | `src/quantumvitas/daemon/server.py`, `src/quantumvitas/daemon/compat.py` |
+| Analysis tabs not visible | EXPECTED FIXED | Cascading fix from steps issue |
 
 ## Test Coverage Verification
 
 The golden contract tests gate these issues:
 - `get_calculation_detail.json` verifies `steps` array is returned with `id`, `name`, `type`, `slug`, `step_file`, `missing`
+- `list_calculations.json` verifies `calculations` array includes proper `steps` expansion
 - `list_demo_projects.json` verifies `title`, `subtitle`, `tags` are returned
 - `discover_qe_engines.json` verifies response schema (now allows empty list in CI)
 
 ## CI Workflow Status
 
-The schema drift fix should resolve the `discover_qe_engines` test failure. The demo title fix should resolve the `demo_gallery.spec.ts` E2E failure.
+All E2E-related issues should now be resolved:
 
-The steps-related E2E failures require further investigation into whether it's a daemon issue (empty steps returned) or GUI issue (steps not rendered).
+1. **Schema drift `discover_qe_engines`**: Fixed - allows empty list in CI where QE is not installed
+2. **Demo gallery title**: Fixed - reads from correct `meta.title` in YAML
+3. **Steps not showing**: Fixed - compat layer now correctly expands `step_ids` to full `steps` array
+4. **Analysis tabs/rows**: Expected to be fixed by steps fix (cascading dependency)
+
+## Technical Details: Step Expansion Fix
+
+The key insight is that the HEAD API (using DTOs) returns `step_ids` as a list of ULIDs, while the v0 API returned a full `steps` array with `{step_id, id, type, name, slug}` objects.
+
+The compat layer's `_expand_step_ids_to_steps()` function:
+1. Takes the list of `step_ids` and the calculation's `absolute_path`
+2. Reads `calculation.yaml` from that path
+3. Builds a step_id → type mapping from the YAML
+4. Returns a full `steps` array with all required fields
+
+The fix ensures the `absolute_path` is computed correctly:
+- Before: Used ULID as directory name → path didn't exist → couldn't read YAML → empty types
+- After: Uses slug/name as directory name → path exists → reads YAML correctly → full step info
