@@ -116,12 +116,12 @@
       "invocation_line": 396,
       "invocation_snippet": "call('get_common_cards', {...})",
       "required_fields": [
-        "cards",
-        "cards.*"
+        "k_points"
       ],
       "field_access_snippets": {
-        "cards": "cardsResponse.data (line 382)"
-      }
+        "k_points": "gui/src/types/qv.ts:1164-1188 - TypeScript result type defines k_points with raw, mode, automatic?, points?"
+      },
+      "evidence": "GUI TypeScript type at gui/src/types/qv.ts:1164-1188 shows result: { k_points?: {...} }"
     },
     "get_pseudo_mapping": {
       "file": "gui/src/components/panels/StepDetailPanel.tsx",
@@ -248,13 +248,16 @@
       "invocation_line": 95,
       "invocation_snippet": "qv.call('get_preset_catalog', {})",
       "required_fields": [
-        "presets",
-        "presets[].id",
-        "presets[].name"
+        "dimensions",
+        "dimensions[].dimension",
+        "dimensions[].label",
+        "schema_version"
       ],
       "field_access_snippets": {
-        "presets": "response.data (inferred from usage)"
-      }
+        "dimensions": "gui/src/types/qv.ts:1565-1582 - TypeScript result type defines dimensions array",
+        "schema_version": "gui/src/types/qv.ts:1583 - TypeScript result type defines schema_version: number"
+      },
+      "evidence": "GUI TypeScript type at gui/src/types/qv.ts:1563-1584 shows result: { dimensions: Array<...>, schema_version: number }"
     },
     "list_qe_ui_parameters": {
       "file": "gui/src/hooks/useQVClient.ts",

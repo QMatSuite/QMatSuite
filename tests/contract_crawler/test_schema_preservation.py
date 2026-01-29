@@ -73,6 +73,8 @@ FULLY_SKIPPABLE_SUBTREES = {
     "installed_sources",  # Installation state varies
     "variant_statuses",  # Library installation state varies
     "data",  # get_library_status data varies by environment
+    "templates",  # Calculation templates vary by environment (order, descriptions)
+    "discovered_engines",  # QE engines discovered vary by CI environment
 }
 
 # Subtrees where we skip content but enforce item schema (GUI-critical)
