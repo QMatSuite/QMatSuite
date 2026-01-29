@@ -154,15 +154,24 @@ FLOAT_TOLERANCE_FIELDS = {
 
 # Relative tolerance for float comparisons
 FLOAT_RTOL = 1e-9
+# Absolute tolerance for values near zero (handles floating point noise ~1e-16)
+FLOAT_ATOL = 1e-12
 
 
-def _floats_approx_equal(a: float, b: float, rtol: float = FLOAT_RTOL) -> bool:
-    """Check if two floats are approximately equal within relative tolerance."""
+def _floats_approx_equal(a: float, b: float, rtol: float = FLOAT_RTOL, atol: float = FLOAT_ATOL) -> bool:
+    """Check if two floats are approximately equal within tolerance.
+
+    Uses both relative and absolute tolerance:
+    - Absolute tolerance (atol): For values very close to zero (floating point noise)
+    - Relative tolerance (rtol): For larger values
+
+    Values are considered equal if: |a - b| <= atol + rtol * max(|a|, |b|)
+    """
     if a == b:
         return True
-    if a == 0 or b == 0:
-        return abs(a - b) < rtol
-    return abs(a - b) / max(abs(a), abs(b)) < rtol
+    diff = abs(a - b)
+    # Combined tolerance: absolute for small values, relative for larger
+    return diff <= atol + rtol * max(abs(a), abs(b))
 
 
 def _compare_values(exp_val: Any, act_val: Any, path: str, differences: list[str], key: str = "") -> None:

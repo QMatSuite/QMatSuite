@@ -919,6 +919,10 @@ def _shape_step_detail(response: Dict[str, Any]) -> Dict[str, Any]:
     response.pop("step_id", None)
     response.pop("calc_id", None)
 
+    # Map step_type to v0 format (qe_ prefix) for consistency with step.type in list_calculations
+    if "step_type" in response:
+        response["step_type"] = _map_step_type_to_v0(response["step_type"])
+
     return response
 
 

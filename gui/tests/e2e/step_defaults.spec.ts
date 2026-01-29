@@ -119,17 +119,17 @@ test.describe('E2E: Step Parameter Defaults', () => {
     // Wait for the add step form to disappear (indicating the step was added)
     await expect(appPage.getByTestId('qv-add-step-form')).not.toBeVisible({ timeout: 10000 });
     
-    // Wait for a new step row with type 'scf' to appear
-    // We'll look for step rows and find one with 'scf' type badge
+    // Wait for a new step row with type 'qe_scf' to appear (v0 format uses qe_ prefix)
+    // We'll look for step rows and find one with 'qe_scf' type badge
     const stepRows = appPage.locator('[data-testid^="qv-step-row-"]');
-    
+
     // Wait until we have at least one step row
     await expect(stepRows.first()).toBeVisible({ timeout: 10000 });
-    
-    // Find the scf step we just added - wait for it to appear with type 'scf'
-    // The step should be visible in the list with a step-type-badge showing 'scf'
+
+    // Find the scf step we just added - wait for it to appear with type 'qe_scf'
+    // The step should be visible in the list with a step-type-badge showing 'qe_scf' (v0 format)
     const scfStepRow = stepRows.filter({
-      has: appPage.locator('.step-type-badge').filter({ hasText: /^scf$/i })
+      has: appPage.locator('.step-type-badge').filter({ hasText: /^qe_scf$/i })
     }).last();
     
     // Wait for the scf step to be visible and enabled
@@ -148,10 +148,10 @@ test.describe('E2E: Step Parameter Defaults', () => {
     const stepDetailPanel = appPage.getByTestId('qv-step-detail');
     await expect(stepDetailPanel).toBeVisible({ timeout: 10000 });
     
-    // Verify step type is scf (scoped to step detail panel)
+    // Verify step type is qe_scf (scoped to step detail panel, v0 format uses qe_ prefix)
     const stepTypeBadge = stepDetailPanel.locator('.step-type-badge');
     await expect(stepTypeBadge).toBeVisible({ timeout: 5000 });
-    await expect(stepTypeBadge).toContainText('scf');
+    await expect(stepTypeBadge).toContainText('qe_scf');
     
     // Get the step file path from the step detail panel
     const stepFilePath = stepDetailPanel.getByTestId('qv-step-file-path');
