@@ -1,0 +1,11 @@
+{
+  "method": "list_installed_sssp",
+  "success": true,
+  "response": {
+    "libraries": []
+  },
+  "payload": {},
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915528",
+  "source": "auto_crawler"
+}

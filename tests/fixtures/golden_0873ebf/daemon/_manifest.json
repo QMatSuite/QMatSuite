@@ -1,0 +1,33 @@
+{
+  "baseline_commit": "0873ebf",
+  "total_methods": 25,
+  "success_count": 22,
+  "failure_count": 3,
+  "methods": [
+    "compute_store_size",
+    "discover_qe_engines",
+    "find_project_root",
+    "get_debug_resolution",
+    "get_env_info",
+    "get_preset_catalog",
+    "get_pseudo_config",
+    "get_qe_parameter_metadata_debug_info",
+    "job_counts",
+    "list_calculation_templates",
+    "list_demo_projects",
+    "list_installed_sssp",
+    "list_jobs",
+    "list_libraries",
+    "list_pseudo_archives_status",
+    "list_qe_engines",
+    "list_qe_parameter_metadata",
+    "list_qe_ui_parameters",
+    "list_seed_archives",
+    "list_wannier_3d_fixtures",
+    "list_workflow_templates",
+    "ping",
+    "set_debug_resolution",
+    "set_log_level",
+    "get_step_detail"
+  ]
+}

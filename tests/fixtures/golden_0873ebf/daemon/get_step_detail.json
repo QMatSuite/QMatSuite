@@ -1,0 +1,12 @@
+{
+  "method": "get_step_detail",
+  "success": false,
+  "error": {
+    "code": "recipe_failure",
+    "message": "Setup exception: QVService() takes no arguments"
+  },
+  "recipe_name": "GetStepDetailRecipe",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.917009",
+  "source": "recipe"
+}

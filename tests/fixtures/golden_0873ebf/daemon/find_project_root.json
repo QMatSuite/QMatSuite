@@ -1,0 +1,14 @@
+{
+  "method": "find_project_root",
+  "success": true,
+  "response": {
+    "found": false,
+    "project_root": "<NORMALIZED_PATH>"
+  },
+  "payload": {
+    "cwd": "."
+  },
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915421",
+  "source": "auto_crawler"
+}

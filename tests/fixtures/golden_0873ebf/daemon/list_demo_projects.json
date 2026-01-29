@@ -1,0 +1,345 @@
+{
+  "method": "list_demo_projects",
+  "success": true,
+  "response": {
+    "demos": [
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "00 Si Scf",
+        "title": "0 Si Scf",
+        "subtitle": "SCF",
+        "description": "Demo project: 00_Si_scf",
+        "recommended_use": "General",
+        "recommended_analysis": "scf",
+        "tags": [
+          "tutorial",
+          "qe",
+          "scf"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "03 Si Vc Relax",
+        "title": "3 Si Vc Relax",
+        "subtitle": "VC-Relax",
+        "description": "Demo project: 03_Si_vc_relax",
+        "recommended_use": "General",
+        "recommended_analysis": null,
+        "tags": [
+          "tutorial",
+          "qe",
+          "vc-relax"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "04 Si Dos",
+        "title": "4 Si Dos",
+        "subtitle": "SCF \u2192 NSCF \u2192 DOS",
+        "description": "Demo project: 04_Si_DOS",
+        "recommended_use": "General",
+        "recommended_analysis": "dos",
+        "tags": [
+          "tutorial",
+          "qe",
+          "scf",
+          "nscf"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "06 Al Dos",
+        "title": "6 Al Dos",
+        "subtitle": "VC-Relax \u2192 SCF \u2192 NSCF \u2192 DOS",
+        "description": "Demo project: 06_Al_DOS",
+        "recommended_use": "General",
+        "recommended_analysis": "dos",
+        "tags": [
+          "tutorial",
+          "qe",
+          "vc-relax",
+          "scf"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "07 Si Bandstructure",
+        "title": "7 Si Bandstructure",
+        "subtitle": "SCF \u2192 NSCF \u2192 Bands \u2192 Bands \u2192 custom",
+        "description": "Demo project: 07_Si_bandStructure",
+        "recommended_use": "General",
+        "recommended_analysis": "bands",
+        "tags": [
+          "tutorial",
+          "qe",
+          "scf",
+          "nscf"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "08 Fe Dos",
+        "title": "08 Fe Dos  2 Noncolinear",
+        "subtitle": "SCF",
+        "description": "Demo project: 08_Fe_DOS",
+        "recommended_use": "General",
+        "recommended_analysis": "scf",
+        "tags": [
+          "tutorial",
+          "qe",
+          "scf"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "09 Si Phonon",
+        "title": "09 Si Phonon  3 Phonon Dispersion",
+        "subtitle": "SCF \u2192 Phonon \u2192 q2r \u2192 matdyn \u2192 custom",
+        "description": "Demo project: 09_Si_phonon",
+        "recommended_use": "General",
+        "recommended_analysis": "scf",
+        "tags": [
+          "tutorial",
+          "qe",
+          "scf",
+          "ph"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "12 Nmr Gipaw",
+        "title": "12 Nmr Gipaw  2 Benzene",
+        "subtitle": "SCF \u2192 GIPAW",
+        "description": "Demo project: 12_NMR_gipaw",
+        "recommended_use": "General",
+        "recommended_analysis": "scf",
+        "tags": [
+          "tutorial",
+          "qe",
+          "scf",
+          "gipaw"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "13 Graphene",
+        "title": "13 Graphene",
+        "subtitle": "VC-Relax \u2192 SCF \u2192 Bands \u2192 Bands \u2192 custom",
+        "description": "Demo project: 13_graphene",
+        "recommended_use": "General",
+        "recommended_analysis": "bands",
+        "tags": [
+          "tutorial",
+          "qe",
+          "vc-relax",
+          "scf"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "15 Bulk Modulus Si",
+        "title": "15 Bulk Modulus Si",
+        "subtitle": "SCF \u2192 SCF \u2192 SCF",
+        "description": "Demo project: 15_bulk_modulus_Si",
+        "recommended_use": "General",
+        "recommended_analysis": "scf",
+        "tags": [
+          "tutorial",
+          "qe",
+          "scf",
+          "scf"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "19 Si Cpmd",
+        "title": "19 Si Cpmd  4 Bomd Nvt",
+        "subtitle": "custom \u2192 custom \u2192 custom",
+        "description": "Demo project: 19_Si_CPMD",
+        "recommended_use": "General",
+        "recommended_analysis": null,
+        "tags": [
+          "tutorial",
+          "qe",
+          "custom",
+          "custom"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "Copper Wannier90 Demo",
+        "title": "Copper Wannier90 Demo",
+        "subtitle": "",
+        "description": "Demo project: copper_wannier90_demo",
+        "recommended_use": "General",
+        "recommended_analysis": null,
+        "tags": [],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "Diamond Wannier90 Demo",
+        "title": "Diamond Wannier90 Demo",
+        "subtitle": "",
+        "description": "Demo project: diamond_wannier90_demo",
+        "recommended_use": "General",
+        "recommended_analysis": null,
+        "tags": [],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "Formaldehyde Orca Tddft",
+        "title": "Formaldehyde ORCA TDDFT",
+        "subtitle": "SCF + TDDFT excited states calculation",
+        "description": "Demo project: formaldehyde_orca_tddft",
+        "recommended_use": "General",
+        "recommended_analysis": "excited_states",
+        "tags": [
+          "orca",
+          "molecular",
+          "scf",
+          "tddft",
+          "excited_states",
+          "formaldehyde",
+          "tutorial"
+        ],
+        "difficulty": "intermediate",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "Methane Orca Freq",
+        "title": "Methane ORCA Frequency",
+        "subtitle": "SCF + numerical frequency calculation",
+        "description": "Demo project: methane_orca_freq",
+        "recommended_use": "General",
+        "recommended_analysis": "frequencies",
+        "tags": [
+          "orca",
+          "molecular",
+          "scf",
+          "frequency",
+          "vibrational",
+          "methane",
+          "tutorial"
+        ],
+        "difficulty": "intermediate",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "Si Band Structure",
+        "title": "Silicon band structure",
+        "subtitle": "SCF \u2192 NSCF \u2192 Bands",
+        "description": "Silicon band structure calculation with SCF, NSCF, and bands steps. Demonstrates k-path generation and band structure analysis.",
+        "recommended_use": "Band structure analysis",
+        "recommended_analysis": "bands",
+        "tags": [
+          "bands",
+          "Si",
+          "PW",
+          "tutorial",
+          "beginner"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "Si DOS",
+        "title": "Silicon density of states",
+        "subtitle": "SCF \u2192 NSCF \u2192 DOS",
+        "description": "Silicon density of states calculation with SCF, NSCF, and DOS steps. Demonstrates DOS analysis calculation.",
+        "recommended_use": "Density of states analysis",
+        "recommended_analysis": "dos",
+        "tags": [
+          "dos",
+          "Si",
+          "PW",
+          "tutorial"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "Silicon Wannier90 Demo",
+        "title": "Silicon Wannier90 Demo",
+        "subtitle": "",
+        "description": "Demo project: silicon_wannier90_demo",
+        "recommended_use": "General",
+        "recommended_analysis": null,
+        "tags": [],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "Water Orca Scf",
+        "title": "Water ORCA SCF Single Point",
+        "subtitle": "B3LYP/def2-SVP DFT calculation on water molecule",
+        "description": "Demo project: water_orca_scf",
+        "recommended_use": "General",
+        "recommended_analysis": "energy",
+        "tags": [
+          "orca",
+          "molecular",
+          "scf",
+          "dft",
+          "water",
+          "tutorial"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "Water Pyscf Scf",
+        "title": "Water PySCF RHF Single Point",
+        "subtitle": "Molecular HF calculation",
+        "description": "Demo project: water_pyscf_scf",
+        "recommended_use": "General",
+        "recommended_analysis": "energy",
+        "tags": [
+          "pyscf",
+          "molecular",
+          "HF",
+          "water",
+          "tutorial"
+        ],
+        "difficulty": "beginner",
+        "estimated_runtime_scf": null
+      }
+    ],
+    "count": 20
+  },
+  "payload": {},
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915524",
+  "source": "auto_crawler"
+}

@@ -1,0 +1,11 @@
+{
+  "method": "list_qe_parameter_metadata",
+  "success": false,
+  "error": {
+    "code": "invalid_argument",
+    "message": "'operation' is required in payload. Must be one of: list_modules, list_sections, list_parameters, search"
+  },
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915673",
+  "source": "auto_crawler"
+}

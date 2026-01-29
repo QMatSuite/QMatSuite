@@ -1,0 +1,14 @@
+{
+  "method": "get_qe_parameter_metadata_debug_info",
+  "success": true,
+  "response": {
+    "loaded_via": "not_loaded",
+    "loaded_at": null,
+    "schema_version": null,
+    "path_abs": null
+  },
+  "payload": {},
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915463",
+  "source": "auto_crawler"
+}

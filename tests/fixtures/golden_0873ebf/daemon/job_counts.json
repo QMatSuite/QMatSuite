@@ -1,0 +1,19 @@
+{
+  "method": "job_counts",
+  "success": true,
+  "response": {
+    "counts": {
+      "pending": 0,
+      "running": 0,
+      "completed": 0,
+      "failed": 0,
+      "cancelled": 0
+    },
+    "running": 0,
+    "pending": 0
+  },
+  "payload": {},
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915469",
+  "source": "auto_crawler"
+}

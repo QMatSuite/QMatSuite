@@ -20,13 +20,11 @@ from io import StringIO
 from pathlib import Path
 
 # Add worktree src to path (this script runs from worktree)
+# worktree_runner.py is at: worktree/tests/fixtures/golden_contracts/worktree_runner.py
+# So we need to go up 4 levels to get to worktree root
 WORKTREE_ROOT = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(WORKTREE_ROOT / "src"))
 sys.path.insert(0, str(WORKTREE_ROOT / "tests"))
-
-# Import from 0873ebf baseline
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
-import quantumvitas
 
 # CRITICAL: Runtime assertions to ensure worktree isolation
 BASELINE_COMMIT = "0873ebf"
@@ -54,7 +52,8 @@ def verify_baseline_isolation():
         f"Worktree isolation violated."
     )
 
-    # Check quantumvitas module path
+    # Import quantumvitas AFTER setting up path, then check its location
+    import quantumvitas
     qv_module_path = Path(quantumvitas.__file__).resolve()
     worktree_src = (WORKTREE_ROOT / "src").resolve()
 
@@ -67,11 +66,36 @@ def verify_baseline_isolation():
     print(f"[VERIFIED] quantumvitas from: {qv_module_path}", file=sys.stderr)
 
 
+# Verify isolation FIRST before importing anything
+verify_baseline_isolation()
+
+# Import from 0873ebf baseline (after path setup and verification)
+from quantumvitas.daemon.server import QVDaemon, RPCRequest
+
 # Import crawler and recipes (copied into worktree by generate_golden.py)
 # Note: These are copied to tests/contract_crawler/ in worktree
-from tests.contract_crawler.crawler import crawl_all_methods
-from tests.contract_crawler.payloads import get_minimal_payload
-from tests.contract_crawler.recipes import ALL_RECIPES
+# Use direct file imports since tests/ may not be a package in worktree
+crawler_path = WORKTREE_ROOT / "tests" / "contract_crawler" / "crawler.py"
+payloads_path = WORKTREE_ROOT / "tests" / "contract_crawler" / "payloads.py"
+recipes_path = WORKTREE_ROOT / "tests" / "contract_crawler" / "recipes" / "__init__.py"
+
+# Import using importlib to handle the module loading
+import importlib.util
+
+spec = importlib.util.spec_from_file_location("contract_crawler.crawler", crawler_path)
+crawler_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(crawler_module)
+crawl_all_methods = crawler_module.crawl_all_methods
+
+spec = importlib.util.spec_from_file_location("contract_crawler.payloads", payloads_path)
+payloads_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(payloads_module)
+get_minimal_payload = payloads_module.get_minimal_payload
+
+spec = importlib.util.spec_from_file_location("contract_crawler.recipes", recipes_path)
+recipes_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(recipes_module)
+ALL_RECIPES = recipes_module.ALL_RECIPES
 
 
 # Non-deterministic fields to normalize (NARROWED: only truly non-deterministic)
@@ -132,13 +156,12 @@ def main():
     Run crawler and recipes, output JSON to stdout.
 
     Flow:
-    1. Verify baseline isolation
+    1. Verify baseline isolation (already done at module level)
     2. Run auto-crawler, store results with payload metadata
     3. Run recipes, store results with recipe_name metadata
     4. Output all golden fixtures as JSON to stdout
     """
-    # STEP 1: Verify we're running baseline code
-    verify_baseline_isolation()
+    # Isolation already verified at module import time
 
     baseline_commit = "0873ebf"
     all_golden = {}

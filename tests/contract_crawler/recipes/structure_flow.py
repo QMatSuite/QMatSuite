@@ -7,7 +7,20 @@ import tempfile
 
 from pymatgen.core import Structure, Lattice
 
-from quantumvitas.api import get_service, QVService
+# Try to import API - may differ in baseline
+try:
+    from quantumvitas.api import get_service, QVService
+except ImportError:
+    # Fallback for baseline compatibility
+    try:
+        from quantumvitas.api import QVService
+        # In baseline, QVService might be used directly
+        def get_service(project_root):
+            return QVService(project_root)
+    except ImportError:
+        # If all else fails, we'll handle in setup
+        get_service = None
+        QVService = None
 
 from .base import Recipe
 
@@ -25,13 +38,20 @@ class GetStepDetailRecipe(Recipe):
 
     def setup(self) -> bool:
         """Create project with structure, calculation, and step."""
+        if QVService is None:
+            return False  # API not available in this baseline
+        
         # Create project
         self.project_root = self.tmp_path / "test_project"
         self.project_root.mkdir()
         QVService.init_project(self.project_root, name="test_project")
 
         # Get service
-        svc = get_service(self.project_root)
+        if get_service is None:
+            # Fallback: try direct instantiation
+            svc = QVService(self.project_root)
+        else:
+            svc = get_service(self.project_root)
 
         # Create structure by importing from a temporary file
         structure = Structure(Lattice.cubic(5.43), ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])

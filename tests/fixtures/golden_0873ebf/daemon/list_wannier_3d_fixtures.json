@@ -1,0 +1,72 @@
+{
+  "method": "list_wannier_3d_fixtures",
+  "success": true,
+  "response": {
+    "fixtures": [
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "example01/gaas_00001.xsf",
+        "kind": "xsf",
+        "path": "/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/tests/data/wannier_3d_test/example01/gaas_00001.xsf"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "example01/gaas_00002.xsf",
+        "kind": "xsf",
+        "path": "/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/tests/data/wannier_3d_test/example01/gaas_00002.xsf"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "example01/gaas_00003.xsf",
+        "kind": "xsf",
+        "path": "/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/tests/data/wannier_3d_test/example01/gaas_00003.xsf"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "example01/gaas_00004.xsf",
+        "kind": "xsf",
+        "path": "/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/tests/data/wannier_3d_test/example01/gaas_00004.xsf"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "example05/diamond_00001.xsf",
+        "kind": "xsf",
+        "path": "/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/tests/data/wannier_3d_test/example05/diamond_00001.xsf"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "example05/diamond_00002.xsf",
+        "kind": "xsf",
+        "path": "/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/tests/data/wannier_3d_test/example05/diamond_00002.xsf"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "example05/diamond_00003.xsf",
+        "kind": "xsf",
+        "path": "/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/tests/data/wannier_3d_test/example05/diamond_00003.xsf"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "example05/diamond_00004.xsf",
+        "kind": "xsf",
+        "path": "/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/tests/data/wannier_3d_test/example05/diamond_00004.xsf"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "example02/lead.bxsf",
+        "kind": "bxsf",
+        "path": "/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/tests/data/wannier_3d_test/example02/lead.bxsf"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "example04/copper.bxsf",
+        "kind": "bxsf",
+        "path": "/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/tests/data/wannier_3d_test/example04/copper.bxsf"
+      }
+    ]
+  },
+  "payload": {},
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915696",
+  "source": "auto_crawler"
+}

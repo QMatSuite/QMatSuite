@@ -1,0 +1,36 @@
+{
+  "method": "list_calculation_templates",
+  "success": true,
+  "response": {
+    "templates": [
+      {
+        "name": "si-dos",
+        "path": "/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/resources/calculation_templates/si-dos",
+        "description": null,
+        "n_steps": 3,
+        "step_types": [
+          "scf",
+          "nscf",
+          "dos"
+        ]
+      },
+      {
+        "name": "si-bands",
+        "path": "/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/resources/calculation_templates/si-bands",
+        "description": "Silicon band structure calculation (SCF -> NSCF -> Bands -> bands.x)",
+        "n_steps": 4,
+        "step_types": [
+          "scf",
+          "nscf",
+          "bands_pw",
+          "bands"
+        ]
+      }
+    ],
+    "count": 2
+  },
+  "payload": {},
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915477",
+  "source": "auto_crawler"
+}
