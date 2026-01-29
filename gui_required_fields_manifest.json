@@ -1,0 +1,298 @@
+{
+  "generated_at": "2025-01-27",
+  "generation_method": "Static analysis of gui/src directory using ripgrep patterns",
+  "commands_used": [
+    "grep -r \"\\.request\\(|call\\(|invoke\\(\" gui/src",
+    "grep -r \"response\\.data\\.\" gui/src"
+  ],
+  "limitations": [
+    "Field paths are best-effort JSONPath approximations",
+    "Nested field access (e.g., parameters[namelist][key]) is simplified",
+    "Array iteration patterns (e.g., structures.map(s => s.id)) are represented as array access",
+    "Conditional access patterns may not be fully captured",
+    "TypeScript type definitions in gui/src/types/qv.ts provide additional context but are not exhaustively analyzed here"
+  ],
+  "methods": {
+    "get_step_detail": {
+      "file": "gui/src/components/panels/StepDetailPanel.tsx",
+      "invocation_line": 351,
+      "invocation_snippet": "window.qv.request<StepDetail>('get_step_detail', {...})",
+      "required_fields": [
+        "id",
+        "name",
+        "step_type",
+        "parameters",
+        "parameters.*",
+        "parameter_scan",
+        "structure"
+      ],
+      "field_access_snippets": {
+        "id": "response.data.id (line 363)",
+        "name": "response.data.name (line 364)",
+        "step_type": "response.data.step_type (lines 365, 409, 435)",
+        "parameters": "response.data.parameters (lines 371, 436, 549, 845, 883)",
+        "parameter_scan": "response.data.parameter_scan (line 373)",
+        "structure": "stepDetail.structure (line 1368)"
+      }
+    },
+    "get_calculation_detail": {
+      "file": "gui/src/App.tsx",
+      "invocation_line": 1290,
+      "invocation_snippet": "qv.call('get_calculation_detail', {...})",
+      "required_fields": [
+        "id",
+        "steps",
+        "steps[].id",
+        "steps[].name",
+        "steps[].type",
+        "steps[].slug",
+        "structure_id"
+      ],
+      "field_access_snippets": {
+        "steps": "calculationDetail?.steps (line 112, 925)",
+        "steps[].id": "step.id (lines 1440, 1439)",
+        "structure_id": "selectedCalculation?.structure_id (line 1625)"
+      }
+    },
+    "list_structures": {
+      "file": "gui/src/hooks/useQVClient.ts",
+      "invocation_line": 362,
+      "invocation_snippet": "call('list_structures', { project_root: projectRoot })",
+      "required_fields": [
+        "structures",
+        "structures[].id",
+        "structures[].name",
+        "structures[].slug",
+        "count"
+      ],
+      "field_access_snippets": {
+        "structures": "response.data.structures (lines 473, 510, 1227, 1991)",
+        "structures[].id": "structuresList.find((s: StructureInfo) => s.id === ...) (line 1228)"
+      }
+    },
+    "list_calculations": {
+      "file": "gui/src/hooks/useQVClient.ts",
+      "invocation_line": 367,
+      "invocation_snippet": "call('list_calculations', { project_root: projectRoot })",
+      "required_fields": [
+        "calculations",
+        "calculations[].id",
+        "calculations[].steps",
+        "count"
+      ],
+      "field_access_snippets": {
+        "calculations": "response.data.calculations (lines 499, 2019)"
+      }
+    },
+    "list_journal_entries": {
+      "file": "gui/src/components/settings/JournalHistoryPanel.tsx",
+      "invocation_line": 39,
+      "invocation_snippet": "qv.call('list_journal_entries', {...})",
+      "required_fields": [
+        "entries",
+        "entries[].calc_id",
+        "entries[].step_id"
+      ],
+      "field_access_snippets": {
+        "entries": "response.data.entries (line 40)"
+      }
+    },
+    "get_structure_vis": {
+      "file": "gui/src/App.tsx",
+      "invocation_line": 725,
+      "invocation_snippet": "qv.call('get_structure_vis', {...})",
+      "required_fields": [
+        "atoms",
+        "bonds",
+        "boundary_atoms"
+      ],
+      "field_access_snippets": {
+        "atoms": "response.data.atoms (type definition in gui/src/types/qv.ts:119)",
+        "bonds": "response.data.bonds (type definition in gui/src/types/qv.ts:120)"
+      }
+    },
+    "get_common_cards": {
+      "file": "gui/src/components/panels/StepDetailPanel.tsx",
+      "invocation_line": 396,
+      "invocation_snippet": "call('get_common_cards', {...})",
+      "required_fields": [
+        "cards",
+        "cards.*"
+      ],
+      "field_access_snippets": {
+        "cards": "cardsResponse.data (line 382)"
+      }
+    },
+    "get_pseudo_mapping": {
+      "file": "gui/src/components/panels/StepDetailPanel.tsx",
+      "invocation_line": 437,
+      "invocation_snippet": "call('get_pseudo_mapping', {...})",
+      "required_fields": [
+        "mapping",
+        "mapping.*"
+      ],
+      "field_access_snippets": {
+        "mapping": "mappingResponse.data (line 397)"
+      }
+    },
+    "create_demo_project": {
+      "file": "gui/src/components/dialogs/CreateProjectDialog.tsx",
+      "invocation_line": 97,
+      "invocation_snippet": "qv.call('create_demo_project', {...})",
+      "required_fields": [
+        "project_root",
+        "project_id",
+        "project_name",
+        "structure.id",
+        "calculation"
+      ],
+      "field_access_snippets": {
+        "project_root": "response.data.project_root (line 121)"
+      }
+    },
+    "list_demo_projects": {
+      "file": "gui/src/components/panels/DemoGalleryPanel.tsx",
+      "invocation_line": 36,
+      "invocation_snippet": "qv.call('list_demo_projects', {})",
+      "required_fields": [
+        "demos",
+        "demos[].id",
+        "demos[].title"
+      ],
+      "field_access_snippets": {
+        "demos": "response.data.demos (line 43)"
+      }
+    },
+    "get_project_summary": {
+      "file": "gui/src/hooks/useQVClient.ts",
+      "invocation_line": 357,
+      "invocation_snippet": "call('get_project_summary', { project_root: projectRoot })",
+      "required_fields": [
+        "id",
+        "name"
+      ],
+      "field_access_snippets": {
+        "name": "response.data.name (line 173, comment example)"
+      }
+    },
+    "run_step": {
+      "file": "gui/src/components/panels/StepDetailPanel.tsx",
+      "invocation_line": 600,
+      "invocation_snippet": "qv.call('run_step', {...})",
+      "required_fields": [
+        "id",
+        "status"
+      ],
+      "field_access_snippets": {
+        "id": "response.data (line 600)"
+      }
+    },
+    "list_step_artifacts": {
+      "file": "gui/src/components/panels/StepOutputTextViewer.tsx",
+      "invocation_line": 54,
+      "invocation_snippet": "qv.call('list_step_artifacts', {...})",
+      "required_fields": [
+        "artifacts",
+        "artifacts[]"
+      ],
+      "field_access_snippets": {
+        "artifacts": "response.data.artifacts (line 61)"
+      }
+    },
+    "read_step_artifact_text": {
+      "file": "gui/src/components/panels/StepOutputTextViewer.tsx",
+      "invocation_line": 101,
+      "invocation_snippet": "qv.call('read_step_artifact_text', {...})",
+      "required_fields": [
+        "content",
+        "truncated",
+        "total_bytes"
+      ],
+      "field_access_snippets": {
+        "content": "response.data.content (line 111)",
+        "truncated": "response.data.truncated (line 112)",
+        "total_bytes": "response.data.total_bytes (line 113)"
+      }
+    },
+    "get_band_structure_data": {
+      "file": "gui/src/components/panels/CalculationAnalysisPanel.tsx",
+      "invocation_line": 197,
+      "invocation_snippet": "qv.call('get_band_structure_data', {...})",
+      "required_fields": [
+        "kpoints",
+        "bands",
+        "n_bands",
+        "n_kpoints",
+        "high_symmetry_points"
+      ],
+      "field_access_snippets": {
+        "n_bands": "response.data.n_bands (line 204)",
+        "n_kpoints": "response.data.n_kpoints (line 204)",
+        "high_symmetry_points": "response.data.high_symmetry_points (line 204)"
+      }
+    },
+    "get_dos_data": {
+      "file": "gui/src/components/panels/CalculationAnalysisPanel.tsx",
+      "invocation_line": 176,
+      "invocation_snippet": "qv.call('get_dos_data', {...})",
+      "required_fields": [
+        "energies",
+        "dos"
+      ],
+      "field_access_snippets": {
+        "data": "response.data.data (line 921, AnalysisPanel.tsx)"
+      }
+    },
+    "get_preset_catalog": {
+      "file": "gui/src/hooks/usePresetCatalog.ts",
+      "invocation_line": 95,
+      "invocation_snippet": "qv.call('get_preset_catalog', {})",
+      "required_fields": [
+        "presets",
+        "presets[].id",
+        "presets[].name"
+      ],
+      "field_access_snippets": {
+        "presets": "response.data (inferred from usage)"
+      }
+    },
+    "list_qe_ui_parameters": {
+      "file": "gui/src/hooks/useQVClient.ts",
+      "invocation_line": 382,
+      "invocation_snippet": "call('list_qe_ui_parameters', { module, step_type })",
+      "required_fields": [
+        "parameters",
+        "parameters[].name",
+        "parameters[].type"
+      ],
+      "field_access_snippets": {
+        "parameters": "response.data.parameters (inferred from usage)"
+      }
+    },
+    "import_structure": {
+      "file": "gui/src/components/dialogs/ImportStructureDialog.tsx",
+      "invocation_line": 66,
+      "invocation_snippet": "qv.call('import_structure', {...})",
+      "required_fields": [
+        "structure_id"
+      ],
+      "field_access_snippets": {
+        "structure_id": "response.data.structure_id (line 75)"
+      }
+    },
+    "create_calculation": {
+      "file": "gui/src/components/dialogs/CreateCalculationDialog.tsx",
+      "invocation_line": 96,
+      "invocation_snippet": "qv.call('create_calculation', {...})",
+      "required_fields": [
+        "calculation_id",
+        "slug"
+      ],
+      "field_access_snippets": {
+        "calculation_id": "response.data.calculation_id (line 109)",
+        "slug": "response.data.slug (line 110)"
+      }
+    }
+  }
+}
+

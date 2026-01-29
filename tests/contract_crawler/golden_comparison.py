@@ -76,6 +76,10 @@ VARIABLE_LENGTH_LISTS = {
 
 # Fields that are data-dependent and should be skipped in value comparison
 # These fields exist in both v0 and HEAD but their values depend on recipe world state
+#
+# WARNING: Fields in DATA_DEPENDENT_FIELDS skip value comparison.
+# GUI-critical fields (steps, structure, status) are validated separately
+# by test_gui_field_enforcement.py to ensure they exist with correct types.
 DATA_DEPENDENT_FIELDS = {
     "formula",  # Depends on imported structure
     "n_atoms",  # Depends on imported structure
