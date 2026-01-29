@@ -62,19 +62,31 @@ ENVIRONMENT_DEPENDENT_DICTS = {
     "element_colors",  # Keys are element names
 }
 
-# Top-level fields that are data-dependent (skip entire subtree)
-DATA_DEPENDENT_SUBTREES = {
+# Subtrees that can be fully skipped (truly environment-dependent)
+FULLY_SKIPPABLE_SUBTREES = {
     "entries",  # Journal entries vary by recipe operations
     "demos",  # Demo list varies by environment
     "archives",  # Pseudo archives vary by environment
     "libraries",  # Library list varies by environment
-    "steps",  # Steps vary by recipe operations
     "perf",  # Performance metrics vary by run
     "sssp_defaults",  # SSSP state varies by environment
     "installed_sources",  # Installation state varies
     "variant_statuses",  # Library installation state varies
     "data",  # get_library_status data varies by environment
 }
+
+# Subtrees where we skip content but enforce item schema (GUI-critical)
+# Format: {field_name: [required_item_fields]}
+# NOTE: Field requirements are method-specific. Some methods (like add_step_to_calculation)
+# have different step schemas in baseline (step_id instead of id, no name).
+ITEM_SCHEMA_REQUIRED_SUBTREES = {
+    "steps": ["type"],  # Minimum: type is always required. id/name vary by method.
+    "structures": ["id", "name"],  # Each structure must have these
+    "calculations": ["id"],  # Each calculation must have these
+}
+
+# Maximum items to check in arrays (balance thoroughness vs performance)
+MAX_ARRAY_ITEMS_TO_CHECK = 5
 
 
 def compare_schemas(baseline: Any, current: Any, path: str = "") -> List[str]:
@@ -84,23 +96,73 @@ def compare_schemas(baseline: Any, current: Any, path: str = "") -> List[str]:
     Rules:
     - All keys in baseline must exist in current
     - Types must match (dict/list/scalar)
-    - Lists must have same structure (but may have different lengths)
+    - Lists: check up to MAX_ARRAY_ITEMS_TO_CHECK items
+    - Empty list when baseline had items = VIOLATION
     - Values may differ (that's for normalization)
     """
     violations = []
 
     if baseline is None:
-        # Null is acceptable
         return violations
 
-    # Skip data-dependent subtrees
     key = path.split(".")[-1] if path else ""
-    if key in DATA_DEPENDENT_SUBTREES:
+
+    # Skip data-dependent subtrees entirely
+    if key in FULLY_SKIPPABLE_SUBTREES:
+        return violations
+
+    # Item schema required subtrees: skip content but enforce item schema
+    # For these fields, we enforce that items have the required fields from baseline
+    if key in ITEM_SCHEMA_REQUIRED_SUBTREES:
+        required_fields = ITEM_SCHEMA_REQUIRED_SUBTREES[key]
+
+        if not isinstance(baseline, list):
+            return violations
+
+        if not isinstance(current, list):
+            violations.append(f"{path}: Expected list, got {type(current).__name__}")
+            return violations
+
+        # EMPTY LIST POLICY: Empty when baseline had items = violation
+        if baseline and not current:
+            violations.append(f"{path}: Empty list (baseline had {len(baseline)} items)")
+            return violations
+
+        if not current:
+            # Both empty - OK
+            return violations
+
+        # Check multiple items (up to MAX_ARRAY_ITEMS_TO_CHECK)
+        items_to_check = min(MAX_ARRAY_ITEMS_TO_CHECK, len(current))
+
+        for i in range(items_to_check):
+            item = current[i]
+            if not isinstance(item, dict):
+                violations.append(f"{path}[{i}]: Expected dict, got {type(item).__name__}")
+                continue
+
+            # For steps, check what baseline actually has (different methods have different schemas)
+            if key == "steps" and baseline:
+                # Use baseline item as reference for required fields
+                baseline_item = baseline[0] if baseline else {}
+                # Enforce minimum: type is always required
+                if "type" not in item:
+                    violations.append(f"{path}[{i}]: Missing GUI-critical field 'type'")
+                # Also check if baseline had id/step_id - enforce whichever baseline has
+                if "id" in baseline_item and "id" not in item:
+                    violations.append(f"{path}[{i}]: Missing GUI-critical field 'id' (baseline has it)")
+                if "step_id" in baseline_item and "step_id" not in item:
+                    violations.append(f"{path}[{i}]: Missing GUI-critical field 'step_id' (baseline has it)")
+            else:
+                # For other arrays, use fixed required_fields list
+                for field in required_fields:
+                    if field not in item:
+                        violations.append(f"{path}[{i}]: Missing GUI-critical field '{field}'")
+
         return violations
 
     if isinstance(baseline, dict):
         if not isinstance(current, dict):
-            # Allow None vs dict for optional fields
             if current is None:
                 return violations
             violations.append(f"{path}: Expected dict, got {type(current).__name__}")
@@ -122,10 +184,11 @@ def compare_schemas(baseline: Any, current: Any, path: str = "") -> List[str]:
             violations.append(f"{path}: Expected list, got {type(current).__name__}")
             return violations
 
-        # Check that list has at least as many items (or same structure)
+        # Check multiple items for structural consistency
         if baseline and current:
-            # Compare first item schemas as representative
-            violations.extend(compare_schemas(baseline[0], current[0], f"{path}[0]"))
+            items_to_check = min(MAX_ARRAY_ITEMS_TO_CHECK, len(baseline), len(current))
+            for i in range(items_to_check):
+                violations.extend(compare_schemas(baseline[i], current[i], f"{path}[{i}]"))
 
     elif isinstance(baseline, bool):
         if not isinstance(current, bool):
@@ -133,7 +196,6 @@ def compare_schemas(baseline: Any, current: Any, path: str = "") -> List[str]:
 
     elif isinstance(baseline, (int, float)):
         if not isinstance(current, (int, float)):
-            # Allow int/float interchange
             violations.append(f"{path}: Expected number, got {type(current).__name__}")
 
     elif isinstance(baseline, str):
