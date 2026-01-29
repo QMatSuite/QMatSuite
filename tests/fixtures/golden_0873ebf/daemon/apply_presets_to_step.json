@@ -1,0 +1,12 @@
+{
+  "method": "apply_presets_to_step",
+  "success": false,
+  "error": {
+    "code": "recipe_failure",
+    "message": "{'code': 'handler_error', 'message': \"'ResolvedResource' object has no attribute 'path'\"}"
+  },
+  "recipe_name": "OtherMethodsRecipe(apply_presets_to_step)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:21.360576",
+  "source": "recipe"
+}

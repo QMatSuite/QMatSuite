@@ -1,0 +1,54 @@
+{
+  "method": "update_step_params",
+  "success": true,
+  "response": {
+    "id": "<NORMALIZED_ID>",
+    "name": "scf",
+    "slug": "scf",
+    "path": "<NORMALIZED_PATH>",
+    "absolute_path": "<NORMALIZED_PATH>",
+    "step_type": "qe_scf",
+    "structure": "",
+    "parent_calculation_id": "<NORMALIZED_ID>",
+    "parameters": {
+      "CONTROL": {
+        "calculation": "<NORMALIZED_ID>",
+        "outdir": "./outdir",
+        "restart_mode": "from_scratch"
+      },
+      "ELECTRONS": {
+        "conv_thr": 1e-08
+      },
+      "SYSTEM": {
+        "ecutwfc": 50
+      }
+    },
+    "cards": {
+      "K_POINTS": {
+        "option": "automatic",
+        "data": [
+          [
+            8,
+            8,
+            8,
+            0,
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    "species_overrides": {},
+    "prefix_outdir_injection": {
+      "effective_prefix": "<NORMALIZED_ID>",
+      "effective_outdir": "./outdir"
+    },
+    "warnings": [
+      "CONTROL.outdir looks like a runtime-managed key. For QE it is protected and will be overridden at run time (default outdir=./outdir, pseudo_dir=project/pseudo, prefix is engine-managed). If you are not using QE, you can ignore this warning."
+    ]
+  },
+  "recipe_name": "StepMutationsRecipe(update_step_params)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:21.316885",
+  "source": "recipe"
+}

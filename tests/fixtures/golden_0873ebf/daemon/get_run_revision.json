@@ -1,0 +1,12 @@
+{
+  "method": "get_run_revision",
+  "success": true,
+  "response": {
+    "revision": null,
+    "error": "Run not found: test_run_id"
+  },
+  "recipe_name": "OtherMethodsRecipe(get_run_revision)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:24.872393",
+  "source": "recipe"
+}

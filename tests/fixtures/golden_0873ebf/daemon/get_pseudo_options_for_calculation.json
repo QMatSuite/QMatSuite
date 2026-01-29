@@ -1,0 +1,12 @@
+{
+  "method": "get_pseudo_options_for_calculation",
+  "success": false,
+  "error": {
+    "code": "recipe_failure",
+    "message": "{'code': 'handler_error', 'message': \"'dict' object has no attribute 'store_dir'\"}"
+  },
+  "recipe_name": "CalculationMethodsRecipe(get_pseudo_options_for_calculation)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:24.825702",
+  "source": "recipe"
+}

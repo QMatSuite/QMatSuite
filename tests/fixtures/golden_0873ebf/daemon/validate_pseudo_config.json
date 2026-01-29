@@ -1,0 +1,25 @@
+{
+  "method": "validate_pseudo_config",
+  "success": true,
+  "response": {
+    "ok": true,
+    "repo_pseudo_exists": true,
+    "store_dir_exists": true,
+    "store_dir_writable": true,
+    "seed_dir_exists": true,
+    "seed_has_sssp": true,
+    "messages": [
+      "<NORMALIZED_PATH>",
+      "\u2713 Store dir exists: <NORMALIZED_PATH>",
+      "\u2713 Store dir is writable",
+      "\u2713 Seed dir exists: <NORMALIZED_PATH>",
+      "\u2713 Seed contains SSSP data"
+    ],
+    "warnings": [],
+    "errors": []
+  },
+  "recipe_name": "PseudoMethodsRecipe(validate_pseudo_config)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:25.578688",
+  "source": "recipe"
+}

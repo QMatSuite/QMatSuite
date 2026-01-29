@@ -1,0 +1,12 @@
+{
+  "method": "set_common_card",
+  "success": false,
+  "error": {
+    "code": "recipe_failure",
+    "message": "{'code': 'handler_error', 'message': \"Cannot set() a dict at path 'cards.K_POINTS'. Use apply_patch() for subtree updates.\"}"
+  },
+  "recipe_name": "OtherMethodsRecipe(set_common_card)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:25.515518",
+  "source": "recipe"
+}

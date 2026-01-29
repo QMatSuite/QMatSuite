@@ -1,0 +1,37 @@
+{
+  "method": "rebuild_project_registry",
+  "success": true,
+  "response": {
+    "project_root": "<NORMALIZED_PATH>",
+    "index_stats": {
+      "structures": 1,
+      "calculations": 1,
+      "steps": 2
+    },
+    "dag_diff": {
+      "structures_added": [
+        {
+          "id": "<NORMALIZED_ID>",
+          "slug": "silicon",
+          "name": "silicon",
+          "suffix": "<NORMALIZED_ID>"
+        }
+      ],
+      "structures_removed": [],
+      "calculations_added": [
+        {
+          "id": "<NORMALIZED_ID>",
+          "slug": "demo_calc",
+          "name": "demo_calc",
+          "suffix": "<NORMALIZED_ID>"
+        }
+      ],
+      "calculations_removed": [],
+      "calculations_changed": []
+    }
+  },
+  "recipe_name": "ProjectMethodsRecipe(rebuild_project_registry)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:04.107624",
+  "source": "recipe"
+}

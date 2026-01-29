@@ -1,0 +1,13 @@
+{
+  "method": "remove_library",
+  "success": true,
+  "response": {
+    "success": false,
+    "messages": [],
+    "errors": []
+  },
+  "recipe_name": "PseudoMethodsRecipe(remove_library)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:24.999484",
+  "source": "recipe"
+}

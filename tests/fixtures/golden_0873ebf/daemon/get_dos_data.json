@@ -1,0 +1,12 @@
+{
+  "method": "get_dos_data",
+  "success": false,
+  "error": {
+    "code": "recipe_failure",
+    "message": "{'code': 'service_error', 'message': 'Missing required files: DOS data file (*.dos.dat)'}"
+  },
+  "recipe_name": "EngineMethodsRecipe(get_dos_data)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.688829",
+  "source": "recipe"
+}

@@ -1,0 +1,13 @@
+{
+  "method": "instantiate_workflow",
+  "success": true,
+  "response": {
+    "step_paths": [
+      "<NORMALIZED_PATH>"
+    ]
+  },
+  "recipe_name": "WorkflowRecipe(instantiate_workflow)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.945470",
+  "source": "recipe"
+}

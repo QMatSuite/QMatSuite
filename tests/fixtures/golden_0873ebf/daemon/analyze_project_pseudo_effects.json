@@ -1,0 +1,13 @@
+{
+  "method": "analyze_project_pseudo_effects",
+  "success": true,
+  "response": {
+    "actions": [],
+    "warnings": [],
+    "errors": []
+  },
+  "recipe_name": "OtherMethodsRecipe(analyze_project_pseudo_effects)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:21.338368",
+  "source": "recipe"
+}

@@ -594,14 +594,19 @@ def rename_structure(
         config: Optional project config (ignored in canonical impl)
 
     Returns:
-        Dict with old_name, new_name, new_slug
+        Dict with success, old_name, new_name, new_slug
     """
     from quantumvitas.api import get_service
 
     svc = get_service(project_root)
-    result = svc.structure.update_meta(selector, name=new_name)
+    # Get old name before renaming
+    old_struct = svc.structure.get(selector)
+    old_name = old_struct.name if old_struct else selector
+
+    result = svc.structure.update_meta(selector, new_name=new_name)
     return {
-        "old_name": selector,  # approximation
+        "success": True,
+        "old_name": old_name,
         "new_name": result.name,
         "new_slug": result.slug,
     }
@@ -732,18 +737,29 @@ def load_pseudo_config_raw():
     return _load_pseudo_config()
 
 
-def list_installed_sssp() -> list[dict]:
+def list_installed_sssp(store_dir: "Path | None" = None) -> list[dict]:
     """
     List installed SSSP libraries.
 
     Transparent wrapper around core.pseudo_config.list_installed_sssp().
 
+    Args:
+        store_dir: Path to pseudo store directory. If None, uses default from config.
+
     Returns:
         List of library dicts with name, version, etc.
     """
-    from quantumvitas.core.pseudo_config import list_installed_sssp as _list_installed_sssp
+    from quantumvitas.core.pseudo_config import (
+        list_installed_sssp as _list_installed_sssp,
+        load_pseudo_config,
+    )
+    from pathlib import Path
 
-    libraries = _list_installed_sssp()
+    if store_dir is None:
+        config = load_pseudo_config()
+        store_dir = config.store_dir
+
+    libraries = _list_installed_sssp(Path(store_dir))
     return [lib.to_dict() if hasattr(lib, 'to_dict') else lib for lib in libraries]
 
 
@@ -2136,4 +2152,36 @@ def create_precision_advisor(
         lattice_matrix=lattice_matrix,
         repo_root=repo_root,
     )
+
+
+def load_project_config(project_root: Path) -> dict:
+    """
+    Load project configuration from project.qv.yml.
+
+    Transparent wrapper around core.project_utils.load_project_config().
+
+    Args:
+        project_root: Path to project root directory
+
+    Returns:
+        Project configuration dict
+    """
+    from quantumvitas.core.project_utils import load_project_config as _load_project_config
+    return _load_project_config(project_root)
+
+
+def build_resource_index(project_root: Path):
+    """
+    Build resource index for a project.
+
+    Transparent wrapper around core.resolution.build_resource_index().
+
+    Args:
+        project_root: Path to project root directory
+
+    Returns:
+        ResourceIndex instance
+    """
+    from quantumvitas.core.resolution import build_resource_index as _build_resource_index
+    return _build_resource_index(project_root)
 

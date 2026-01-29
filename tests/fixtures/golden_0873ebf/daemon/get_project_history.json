@@ -1,0 +1,23 @@
+{
+  "method": "get_project_history",
+  "success": true,
+  "response": {
+    "timeline": [
+      {
+        "id": "<NORMALIZED_ID>",
+        "timestamp": "<NORMALIZED_TIMESTAMP>",
+        "event_type": "baseline",
+        "calc_id": "<NORMALIZED_ID>",
+        "step_id": "<NORMALIZED_ID>",
+        "structure_ids": "<NORMALIZED_ID>",
+        "calculation_ids": []
+      }
+    ],
+    "latest_run_id": null,
+    "total": 1
+  },
+  "recipe_name": "ProjectMethodsRecipe(get_project_history)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.727535",
+  "source": "recipe"
+}

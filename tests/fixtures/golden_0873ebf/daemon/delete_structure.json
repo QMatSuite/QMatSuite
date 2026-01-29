@@ -1,0 +1,12 @@
+{
+  "method": "delete_structure",
+  "success": true,
+  "response": {
+    "success": true,
+    "name": null
+  },
+  "recipe_name": "DestructiveMethodsRecipe(delete_structure)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.479785",
+  "source": "recipe"
+}

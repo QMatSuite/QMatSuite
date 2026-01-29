@@ -1,0 +1,14 @@
+{
+  "method": "read_step_artifact_text",
+  "success": true,
+  "response": {
+    "content": "# Dummy SCF output\n",
+    "truncated": false,
+    "total_bytes": 19,
+    "resolved_path": "<NORMALIZED_PATH>"
+  },
+  "recipe_name": "StepMethodsRecipe(read_step_artifact_text)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:04.082331",
+  "source": "recipe"
+}

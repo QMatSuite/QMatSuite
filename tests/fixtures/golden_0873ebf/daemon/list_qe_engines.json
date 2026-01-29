@@ -3,11 +3,11 @@
   "success": true,
   "response": {
     "current_mode": "internal",
-    "current_bin_dir": null,
+    "current_bin_dir": "<NORMALIZED_PATH>",
     "internal_engines": []
   },
   "payload": {},
   "baseline_commit": "0873ebf",
-  "generated_at": "2026-01-28T23:40:44.915671",
+  "generated_at": "2026-01-29T03:26:59.118912",
   "source": "auto_crawler"
 }

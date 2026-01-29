@@ -1,10 +1,11 @@
 """Minimal payload generators for RPC methods."""
 
+import os
 from pathlib import Path
 from typing import Any
 
 
-def get_minimal_payload(method_name: str, project_root: Path | None = None) -> dict[str, Any] | None:
+def get_minimal_payload(method_name: str, project_root: Path | None = None, tmp_path: Path | None = None) -> dict[str, Any] | None:
     """
     Generate minimal payload for an RPC method.
 
@@ -18,11 +19,8 @@ def get_minimal_payload(method_name: str, project_root: Path | None = None) -> d
         "list_qe_engines": {},
         "discover_qe_engines": {},
         "get_debug_resolution": {},
-        "list_qe_ui_parameters": {},
-        "list_qe_parameter_metadata": {},
         "get_qe_parameter_metadata_debug_info": {},
         "get_pseudo_config": {},
-        "list_installed_sssp": {},
         "list_seed_archives": {},
         "list_libraries": {},
         "list_pseudo_archives_status": {},
@@ -34,6 +32,9 @@ def get_minimal_payload(method_name: str, project_root: Path | None = None) -> d
         "list_wannier_3d_fixtures": {},
         "job_counts": {},
         "list_jobs": {},
+        # Additional stateless/near-stateless methods
+        "detect_qe": {"search_paths": []},  # Empty list uses default PATH search
+        "reload_qe_parameter_metadata": {},  # Reloads internal cache
     }
 
     if method_name in STATELESS:
@@ -58,11 +59,23 @@ def get_minimal_payload(method_name: str, project_root: Path | None = None) -> d
     SIMPLE_PARAMS = {
         "set_log_level": {"level": "INFO"},
         "set_debug_resolution": {"enabled": False},
-        "find_project_root": {"cwd": "."},
+        "set_qe_engine": {"bin_dir": None},  # None means use internal QE
     }
 
     if method_name in SIMPLE_PARAMS:
         return SIMPLE_PARAMS[method_name]
+
+    # find_project_root needs isolation: use tmp_path if provided, otherwise skip
+    # This ensures deterministic results in parallel test runs
+    if method_name == "find_project_root":
+        if tmp_path is not None:
+            # Use xdist worker ID for extra uniqueness
+            worker_id = os.environ.get("PYTEST_XDIST_WORKER", "gw0")
+            search_dir = tmp_path / f"find_root_{worker_id}"
+            search_dir.mkdir(parents=True, exist_ok=True)
+            return {"cwd": str(search_dir)}
+        # No tmp_path: return None to indicate this needs a recipe/fixture
+        return None
 
     # Complex methods - require recipes
     return None
@@ -141,8 +154,8 @@ def get_methods_needing_recipes() -> set[str]:
         "compile_fixture_volume",
         
         # System mutations
-        "shutdown", "set_qe_engine", "reload_qe_parameter_metadata",
-        
+        "shutdown",
+
         # Workflow requiring calculation context
         "detect_workflow", "instantiate_workflow",
     }

@@ -1,0 +1,124 @@
+{
+  "method": "reload_qe_parameter_metadata",
+  "success": true,
+  "response": {
+    "modules": [
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "pw.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PW.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "ph.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PH.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "q2r.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_Q2R.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "matdyn.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_MATDYN.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "pp.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PP.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "bands.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_BANDS.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "dos.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_DOS.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "projwfc.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PROJWFC.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "neb.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_NEB.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "cp.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_CP.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "ld1.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_LD1.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "hp.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_HP.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "pwcond.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PWCOND.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "postahc.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_POSTAHC.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "dynmat.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_DYNMAT.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "oscdft_et.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_OSCDFT_ET.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "oscdft_pp.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_OSCDFT_PP.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "band_interpolation.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_BAND_INTERPOLATION.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "cppp.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_CPPP.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "d3hess.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_D3HESS.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "ppacf.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PPACF.html"
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "label": "pprism.x",
+        "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PPRISM.html"
+      }
+    ],
+    "metadata_path_abs": "<NORMALIZED_PATH>",
+    "schema_version": 3
+  },
+  "payload": {},
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.119033",
+  "source": "auto_crawler"
+}

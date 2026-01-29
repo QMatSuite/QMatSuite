@@ -2,14 +2,14 @@
   "method": "get_env_info",
   "success": true,
   "response": {
-    "python_version": "3.14.2",
-    "python_executable": "<HOME>/QMatSuite/.venv/bin/python",
-    "qv_version": "2.0.0",
-    "qe_home": "<HOME>/src/q-e-qe-7.5",
+    "python_version": "<NORMALIZED_ID>",
+    "python_executable": "<NORMALIZED_PATH>",
+    "qv_version": "<NORMALIZED_ID>",
+    "qe_home": "<NORMALIZED_PATH>",
     "qe_found": true
   },
   "payload": {},
   "baseline_commit": "0873ebf",
-  "generated_at": "2026-01-28T23:40:44.915428",
+  "generated_at": "2026-01-29T03:26:59.118244",
   "source": "auto_crawler"
 }

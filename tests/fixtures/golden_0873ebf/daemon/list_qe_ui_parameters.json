@@ -1,11 +1,127 @@
 {
   "method": "list_qe_ui_parameters",
-  "success": false,
-  "error": {
-    "code": "invalid_argument",
-    "message": "'module' is required in payload"
+  "success": true,
+  "response": {
+    "parameters": [
+      {
+        "namelist": "SYSTEM",
+        "name": "ecutwfc",
+        "label": "Wavefunction Cutoff",
+        "type": "number",
+        "unit": "Ry",
+        "description": "Kinetic energy cutoff for wavefunctions",
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "ecutrho",
+        "label": "Charge Density Cutoff",
+        "type": "number",
+        "unit": "Ry",
+        "description": "Kinetic energy cutoff for charge density (default: 4\u00d7ecutwfc)",
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "occupations",
+        "label": "Occupations",
+        "type": "select",
+        "options": [
+          "smearing",
+          "fixed",
+          "tetrahedra",
+          "tetrahedra_lin",
+          "tetrahedra_opt"
+        ],
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "smearing",
+        "label": "Smearing Type",
+        "type": "select",
+        "options": [
+          "gaussian",
+          "gauss",
+          "methfessel-paxton",
+          "m-p",
+          "mp",
+          "marzari-vanderbilt",
+          "cold",
+          "m-v",
+          "mv",
+          "fermi-dirac",
+          "f-d",
+          "fd"
+        ],
+        "importance": "advanced"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "degauss",
+        "label": "Smearing Width",
+        "type": "number",
+        "unit": "Ry",
+        "description": "Gaussian spreading for Brillouin-zone integration",
+        "importance": "advanced"
+      },
+      {
+        "namelist": "ELECTRONS",
+        "name": "conv_thr",
+        "label": "Convergence Threshold",
+        "type": "number",
+        "description": "Convergence threshold for self-consistency",
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "nspin",
+        "label": "Spin Polarization",
+        "type": "select",
+        "description": "1=non-magnetic, 2=collinear, 4=noncollinear",
+        "options": [
+          "1",
+          "2",
+          "4"
+        ],
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "noncolin",
+        "label": "Noncollinear",
+        "type": "bool",
+        "description": "Enable noncollinear magnetism",
+        "importance": "advanced"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "lspinorb",
+        "label": "Spin-Orbit Coupling",
+        "type": "bool",
+        "description": "Enable spin-orbit coupling",
+        "importance": "advanced"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "nosym",
+        "label": "Disable Symmetry",
+        "type": "bool",
+        "description": "Disable symmetry operations",
+        "importance": "advanced"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "noinv",
+        "label": "Disable Inversion",
+        "type": "bool",
+        "description": "Disable inversion symmetry",
+        "importance": "advanced"
+      }
+    ]
   },
+  "recipe_name": "SimpleQueriesRecipe(list_qe_ui_parameters)",
   "baseline_commit": "0873ebf",
-  "generated_at": "2026-01-28T23:40:44.915678",
-  "source": "auto_crawler"
+  "generated_at": "2026-01-29T03:27:24.940944",
+  "source": "recipe"
 }

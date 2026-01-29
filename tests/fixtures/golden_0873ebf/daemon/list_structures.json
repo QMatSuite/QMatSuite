@@ -1,0 +1,33 @@
+{
+  "method": "list_structures",
+  "success": true,
+  "response": {
+    "structures": [
+      {
+        "id": "<NORMALIZED_ID>",
+        "name": "silicon",
+        "slug": "silicon",
+        "path": "<NORMALIZED_PATH>",
+        "absolute_path": "<NORMALIZED_PATH>",
+        "formula": "Si",
+        "n_atoms": 2,
+        "n_species": 1,
+        "lattice_type": "tuple",
+        "lattice_params": {
+          "a": 5.43,
+          "b": 5.43,
+          "c": 5.43,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0,
+          "volume": 160.10300699999996
+        }
+      }
+    ],
+    "count": 1
+  },
+  "recipe_name": "ProjectMethodsRecipe(list_structures)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:04.010067",
+  "source": "recipe"
+}

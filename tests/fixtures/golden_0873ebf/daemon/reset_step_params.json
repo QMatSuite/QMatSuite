@@ -1,0 +1,12 @@
+{
+  "method": "reset_step_params",
+  "success": false,
+  "error": {
+    "code": "recipe_failure",
+    "message": "{'code': 'handler_error', 'message': \"QVService.reset_step_params() got an unexpected keyword argument 'calculation_ulid'\"}"
+  },
+  "recipe_name": "StepMutationsRecipe(reset_step_params)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:04.221970",
+  "source": "recipe"
+}

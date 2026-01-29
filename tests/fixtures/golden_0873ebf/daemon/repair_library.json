@@ -1,0 +1,13 @@
+{
+  "method": "repair_library",
+  "success": true,
+  "response": {
+    "success": true,
+    "messages": [],
+    "errors": []
+  },
+  "recipe_name": "PseudoMethodsRecipe(repair_library)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:24.999880",
+  "source": "recipe"
+}

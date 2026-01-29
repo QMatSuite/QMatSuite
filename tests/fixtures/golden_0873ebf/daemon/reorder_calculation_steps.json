@@ -1,0 +1,41 @@
+{
+  "method": "reorder_calculation_steps",
+  "success": true,
+  "response": {
+    "id": "<NORMALIZED_ID>",
+    "name": "demo_calc",
+    "slug": "demo_calc",
+    "path": "<NORMALIZED_PATH>",
+    "absolute_path": "<NORMALIZED_PATH>",
+    "structure": "silicon",
+    "structure_id": "<NORMALIZED_ID>",
+    "structure_elements": [
+      "Si"
+    ],
+    "mode": "normal",
+    "n_steps": 2,
+    "steps": [
+      {
+        "id": "<NORMALIZED_ID>",
+        "slug": "nscf",
+        "name": "nscf",
+        "type": "qe_nscf",
+        "step_file": "steps/nscf.step.yaml",
+        "missing": false
+      },
+      {
+        "id": "<NORMALIZED_ID>",
+        "slug": "scf",
+        "name": "scf",
+        "type": "qe_scf",
+        "step_file": "steps/scf.step.yaml",
+        "missing": false
+      }
+    ],
+    "species_map": null
+  },
+  "recipe_name": "CalculationMutationsRecipe(reorder_calculation_steps)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:27:04.200522",
+  "source": "recipe"
+}

@@ -1,0 +1,11 @@
+{
+  "method": "delete_step",
+  "success": true,
+  "response": {
+    "status": "deleted"
+  },
+  "recipe_name": "DestructiveMethodsRecipe(delete_step)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.453087",
+  "source": "recipe"
+}

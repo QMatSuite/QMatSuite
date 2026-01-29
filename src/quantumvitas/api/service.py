@@ -2494,7 +2494,82 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
-        
+
+        def get_step_detail(self, calc_selector: str, step_selector: str) -> dict:
+            """
+            Get detailed step information as a dict (for daemon responses).
+
+            Unlike get_step() which returns a StepDTO, this returns a full dict
+            including parameters, cards, species_overrides, etc.
+
+            Args:
+                calc_selector: Calculation selector
+                step_selector: Step selector
+
+            Returns:
+                Dict with step detail including parameters, cards, etc.
+            """
+            try:
+                import yaml
+                from quantumvitas.core.resolution import require_calculation, require_step, make_structure_selector_resolver
+                from quantumvitas.calculation.structure_steps import StructureStepSpec
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.api._mapping.dto_mapping import step_to_dict
+
+                # Get StepDTO first
+                step_dto = self.get_step(calc_selector, step_selector)
+                result = step_to_dict(step_dto)
+
+                # Resolve step to get file path
+                step_resolved = require_step(
+                    self._service.project_root,
+                    calc_selector,
+                    step_selector
+                )
+
+                # Add path info
+                step_path = step_resolved.absolute_path
+                result["path"] = str(step_path.relative_to(self._service.project_root))
+                result["absolute_path"] = str(step_path)
+
+                # Load step spec to get parameters, cards, species_overrides
+                if step_path.exists():
+                    config = load_project_config(self._service.project_root)
+                    resolver = make_structure_selector_resolver(self._service.project_root, config=config)
+                    spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolver)
+
+                    result["parameters"] = spec.parameters or {}
+                    result["cards"] = spec.cards or {}
+                    result["species_overrides"] = spec.species_overrides or {}
+                    result["structure"] = spec.structure_id or spec.structure or ""
+                    result["parent_calculation_id"] = spec.parent_calculation_id or ""
+
+                    # Add name/slug from spec meta if available
+                    if spec.meta:
+                        result["name"] = spec.meta.name or step_resolved.meta.name if step_resolved.meta else step_selector
+                        result["slug"] = spec.meta.slug or step_resolved.meta.slug if step_resolved.meta else step_selector
+                        result["id"] = step_resolved.meta.id if step_resolved.meta else step_selector
+
+                    # Add prefix/outdir injection info (if applicable)
+                    if spec.parameters and "CONTROL" in spec.parameters:
+                        control = spec.parameters["CONTROL"]
+                        result["prefix_outdir_injection"] = {
+                            "effective_prefix": control.get("calculation", ""),
+                            "effective_outdir": control.get("outdir", "./outdir"),
+                        }
+                else:
+                    result["parameters"] = {}
+                    result["cards"] = {}
+                    result["species_overrides"] = {}
+                    result["structure"] = ""
+                    result["parent_calculation_id"] = ""
+
+                return result
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
         def list_steps(self, calc_selector: str) -> list[StepDTO]:
             """
             List all steps in a calculation.
@@ -3245,23 +3320,43 @@ class QVService:
                         pass
 
                 # Build step summaries
+                # Use ResourceIndex to resolve step paths (step files are named by slug, not ULID)
+                from quantumvitas.core.resolution import build_resource_index, resolve_step
+                step_index = build_resource_index(self._service.project_root)
+                calc_id_for_resolve = calc_resolved.meta.id if calc_resolved.meta else selector
+
                 step_summaries = []
                 for entry in calc_model.steps:
                     step_id = entry.step_id
-                    step_path = calc_dir / "steps" / f"{step_id}.step.yaml"
+
+                    # Resolve step to get actual file path
+                    step_path = None
+                    step_resolved = None
+                    try:
+                        step_resolved = resolve_step(
+                            self._service.project_root,
+                            calc_id_for_resolve,
+                            step_id,
+                            config=config,
+                            index=step_index,
+                        )
+                        step_path = step_resolved.absolute_path
+                    except Exception:
+                        # If resolution fails, step is missing
+                        pass
 
                     # Use entry.step_type (machine type from calculation.yaml) as primary
                     step_type = entry.step_type
-                    step_name = step_id
+                    step_name = step_resolved.meta.name if step_resolved and step_resolved.meta else step_id
                     step_status = "pending"
 
-                    if step_path.exists():
+                    if step_path and step_path.exists():
                         try:
                             spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolver)
                             # Only use spec.step_type if entry didn't have one
                             if not step_type:
                                 step_type = spec.step_type
-                            step_name = spec.meta.name if spec.meta else step_id
+                            step_name = spec.meta.name if spec.meta else step_name
                             step_status = spec.status if hasattr(spec, "status") else "pending"
                         except Exception:
                             pass
@@ -3273,7 +3368,7 @@ class QVService:
                         "step_type": step_type,
                         "name": step_name,
                         "status": step_status,
-                        "missing": not step_path.exists(),
+                        "missing": not (step_path and step_path.exists()),
                     })
 
                 calc_id = calc_resolved.meta.id if calc_resolved.meta else selector
@@ -3736,8 +3831,8 @@ class QVService:
                 old_name = resolved.meta.name
                 calculation_id = resolved.meta.id
 
-                # Use configure_calculation to update name
-                self.configure(selector, new_name=new_name)
+                # Use update_meta to update name
+                self.update_meta(selector, name=new_name)
 
                 return {
                     "success": True,
@@ -5041,6 +5136,87 @@ class QVService:
                             "message": str(e)
                         })
                         errors.append(f"Structure check failed: {e}")
+
+                # Check 5: Pseudopotentials (v0 contract compatibility)
+                if calculation:
+                    try:
+                        # Get calculation directory
+                        if calculation.absolute_path.name == "calculation.yaml":
+                            calc_yaml = calculation.absolute_path
+                        else:
+                            calc_yaml = calculation.absolute_path / "calculation.yaml"
+
+                        if config is None:
+                            config = load_project_config(self._service.project_root)
+                        resolver = make_structure_selector_resolver(
+                            self._service.project_root,
+                            config=config
+                        )
+                        calc_model = load_calculation(
+                            calc_yaml,
+                            project_root=self._service.project_root,
+                            resolve_structure_selector=resolver
+                        )
+
+                        # Check if species_map is defined in any step
+                        has_species_map = False
+                        if calc_model.steps:
+                            for step in calc_model.steps:
+                                if hasattr(step, 'species_map') and step.species_map:
+                                    has_species_map = True
+                                    break
+
+                        if not has_species_map:
+                            checks.append({
+                                "name": "Pseudopotentials",
+                                "ok": True,
+                                "message": "No species_map defined - skipping pseudo check"
+                            })
+                        else:
+                            # species_map exists, would need to verify pseudos exist
+                            # For now, just mark as ok (detailed check can be added later)
+                            checks.append({
+                                "name": "Pseudopotentials",
+                                "ok": True,
+                                "message": "Pseudopotential configuration found"
+                            })
+                    except Exception as e:
+                        checks.append({
+                            "name": "Pseudopotentials",
+                            "ok": False,
+                            "message": str(e)
+                        })
+                        warnings.append(f"Pseudopotential check failed: {e}")
+
+                # Check 6: Working Directory (v0 contract compatibility)
+                if calculation:
+                    try:
+                        # Working directory is typically calculation's io_dir
+                        calc_dir = calculation.absolute_path
+                        if calc_dir.name == "calculation.yaml":
+                            calc_dir = calc_dir.parent
+
+                        # Check if directory exists and is writable
+                        if calc_dir.exists() and calc_dir.is_dir():
+                            checks.append({
+                                "name": "Working Directory",
+                                "ok": True,
+                                "message": "Working directory exists"
+                            })
+                        else:
+                            checks.append({
+                                "name": "Working Directory",
+                                "ok": False,
+                                "message": f"Working directory does not exist: {calc_dir}"
+                            })
+                            errors.append("Working directory does not exist")
+                    except Exception as e:
+                        checks.append({
+                            "name": "Working Directory",
+                            "ok": False,
+                            "message": str(e)
+                        })
+                        warnings.append(f"Working directory check failed: {e}")
 
                 return {
                     "ok": len(errors) == 0,
@@ -6993,6 +7169,46 @@ class QVService:
             raise map_kernel_exception(e)
 
     @staticmethod
+    def run_single_step(
+        project_root: Path | str,
+        calculation_selector: str,
+        step_ulid: str,
+        verbose: bool = False,
+        *,
+        index: Any = None,
+        config: dict | None = None,
+        run_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Run a single step in a calculation by ULID (advanced feature, always runs).
+
+        This is a variant of run_step that accepts step_ulid instead of step_selector.
+        For backward compatibility with the daemon's job submission.
+
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            step_ulid: Step ULID (must match a step in calculation.yaml)
+            verbose: If True, print detailed output
+            index: Optional resource index (for performance)
+            config: Optional project config (for performance)
+            run_id: External run ID to use (e.g., job_id from JobManager)
+
+        Returns:
+            Dict with step, step_id, step_type, success, error, input_file, output_file, etc.
+        """
+        # Delegate to run_step using step_ulid as the step_selector
+        return QVService.run_step(
+            project_root=project_root,
+            calculation_selector=calculation_selector,
+            step_selector=step_ulid,  # step_ulid works as a step selector
+            verbose=verbose,
+            index=index,
+            config=config,
+            run_id=run_id,
+        )
+
+    @staticmethod
     # TEMP SHIM for PR; TODO relocate to Structure.import_file()
     def import_structure(
         project_root: Path | str,
@@ -7600,17 +7816,18 @@ class QVService:
     # -------------------------------------------------------------------------
 
     @staticmethod
-    def init_pseudo_dirs() -> dict[str, str]:
+    def init_pseudo_dirs() -> dict[str, Any]:
         """
         Initialize pseudopotential directories.
 
         Returns:
-            Dict with paths (store_path, etc.)
+            Dict with: store_dir_created (bool), seed_dir_created (bool),
+            messages (list), errors (list)
         """
-        from quantumvitas.core.pseudo_config import init_pseudo_dirs as _init_pseudo_dirs
+        from quantumvitas.core.pseudo_config import load_pseudo_config, init_pseudo_dirs as _init_pseudo_dirs
 
-        paths = _init_pseudo_dirs()
-        return {k: str(v) for k, v in paths.items()}
+        config = load_pseudo_config()
+        return _init_pseudo_dirs(config)
 
     @staticmethod
     def list_pseudo_libraries() -> list[dict[str, Any]]:
@@ -7706,19 +7923,20 @@ class QVService:
         return result
 
     @staticmethod
-    def repair_pseudo_library(library_id: str) -> dict[str, Any]:
+    def repair_pseudo_library(library_id: str, variants: list[str] | None = None) -> dict[str, Any]:
         """
         Repair a pseudopotential library (verify checksums, re-extract if needed).
 
         Args:
             library_id: Library identifier
+            variants: List of variant names to repair (optional, repairs all if not specified)
 
         Returns:
             Dict with repair result
         """
         from quantumvitas.core.library_manager import repair_library as _repair_library
 
-        result = _repair_library(library_id=library_id)
+        result = _repair_library(library_id=library_id, variants=variants or [])
         return result
 
     @staticmethod

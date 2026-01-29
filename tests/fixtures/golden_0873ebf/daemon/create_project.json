@@ -1,0 +1,13 @@
+{
+  "method": "create_project",
+  "success": true,
+  "response": {
+    "project_root": "<NORMALIZED_PATH>",
+    "name": "test_project",
+    "id": "<NORMALIZED_ID>"
+  },
+  "recipe_name": "ProjectMutationsRecipe(create_project)",
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-29T03:26:59.385085",
+  "source": "recipe"
+}

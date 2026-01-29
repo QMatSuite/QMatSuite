@@ -77,6 +77,7 @@ from quantumvitas.api.utils import (
     set_settings,
 )
 from quantumvitas.daemon.jobs import JobManager, JobStatus
+from quantumvitas.daemon.compat import adapt_payload, shape_response
 from quantumvitas.api.utils import (
     get_ui_parameters,
     list_supported_modules,
@@ -624,9 +625,16 @@ class QVDaemon:
                     pass
         
         try:
-            result = handler(request.payload)
+            # Apply v0 compatibility: adapt payload before handler
+            adapted_payload = adapt_payload(request.type, request.payload)
+
+            result = handler(adapted_payload)
+
+            # Apply v0 compatibility: shape response after handler
+            shaped_result = shape_response(request.type, result)
+
             duration_ms = (time.time() - start_time) * 1000
-            
+
             # Log request timing
             # Polling RPCs (job_counts, list_jobs) log at DEBUG to avoid spam
             # Other RPCs log at INFO
@@ -637,8 +645,8 @@ class QVDaemon:
                 self.log(f"[RPC]{tag} {request.type} (req_id={request.id}, project: {project_root.name}) took {duration_ms:.1f}ms", level=log_level)
             else:
                 self.log(f"[RPC]{tag} {request.type} (req_id={request.id}) took {duration_ms:.1f}ms", level=log_level)
-            
-            return RPCResponse(id=request.id, ok=True, data=result)
+
+            return RPCResponse(id=request.id, ok=True, data=shaped_result)
             
         except ValueError as e:
             # ValueError from handler should be converted to structured error
@@ -909,25 +917,25 @@ class QVDaemon:
     def _handle_list_seed_archives(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         List SSSP archives in seed directory.
-        
+
         Payload: (none required, uses saved config)
-        
+
         Returns:
             archives: List of SeedArchiveInfo dicts
         """
-        from quantumvitas.api import QVService
         from pathlib import Path
-        
+
         config = load_pseudo_config_raw()
-        
+
         if not config.seed_dir:
             return {"archives": []}
-        
+
         seed_dir = Path(config.seed_dir)
+        # list_seed_archives from api/utils already returns dicts
         archives = list_seed_archives(seed_dir)
-        
+
         return {
-            "archives": [arch.to_dict() for arch in archives],
+            "archives": archives,
         }
     
     def _handle_download_sssp_library(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -959,9 +967,9 @@ class QVDaemon:
         
         version = payload.get("version", "1.3.0")
         force = payload.get("force", False)
-        
-        config = load_pseudo_config()
-        
+
+        config = load_pseudo_config_raw()
+
         if not config.store_dir:
             return {
                 "success": False,
@@ -3092,47 +3100,9 @@ class QVDaemon:
                 f"{''.join(traceback.format_stack()[-5:-1])}"
             )
         
-        # Use domain accessor API
+        # Use domain accessor API - get_step_detail returns full step info
         svc = get_service(project_root)
-        step_dto = svc.calculation.get_step(calculation_ulid, step)
-
-        # Serialize StepDTO to dict for daemon response
-        from quantumvitas.api._mapping.dto_mapping import step_to_dict
-        result = step_to_dict(step_dto)
-
-        # Load step spec to get parameters for GUI
-        # Use calculation path + step slug to find step file (avoid kernel imports)
-        try:
-            import yaml
-            calc_dto = svc.calculation.get(calculation_ulid)
-            # Get calculation directory from project root + calc meta slug
-            calc_slug = calc_dto.meta.slug if calc_dto.meta else calculation_ulid
-            calc_dir = project_root / "calculations" / calc_slug
-            step_slug = result.get("meta", {}).get("slug") or step_dto.step_id
-            # Try common step file patterns
-            step_path = None
-            for pattern in [f"{step_slug}.step.yaml", f"{step_slug}.yaml"]:
-                candidate = calc_dir / "steps" / pattern
-                if candidate.exists():
-                    step_path = candidate
-                    break
-            if step_path and step_path.exists():
-                step_spec_data = yaml.safe_load(step_path.read_text())
-                result["parameters"] = step_spec_data.get("parameters", {})
-                result["cards"] = step_spec_data.get("cards", {})
-                # Also add name/slug from meta if available in spec
-                spec_meta = step_spec_data.get("meta", {})
-                if spec_meta.get("name"):
-                    result["name"] = spec_meta["name"]
-                if spec_meta.get("slug"):
-                    result["slug"] = spec_meta["slug"]
-            else:
-                result["parameters"] = {}
-                result["cards"] = {}
-        except Exception:
-            # If we can't load parameters, use empty defaults
-            result["parameters"] = {}
-            result["cards"] = {}
+        result = svc.calculation.get_step_detail(calculation_ulid, step)
 
         return result
     
@@ -3185,12 +3155,8 @@ class QVDaemon:
             step_selector=step,
             params=params,
         )
-        # Convert StepDTO to dict for daemon response
-        return {
-            "step_id": step_dto.step_id,
-            "step_type": step_dto.step_type,
-            "status": step_dto.status,
-        }
+        # Return full step detail for v0 compat
+        return svc.calculation.get_step_detail(calculation_ulid, step)
     
     def _handle_promote_relax_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Promote a relax step's generated structure to a project resource.
@@ -4164,9 +4130,17 @@ class QVDaemon:
         
         # Get updated steps list using list_steps
         steps = svc.calculation.list_steps(calculation)
+
+        # Get calculation details for v0 compat
+        calc_detail = svc.calculation.get(calculation)
+
         # Use dataclasses.asdict for proper serialization (hand-serialization violation fix)
         # Extract only needed fields from StepDTO using asdict
         return {
+            "calculation_id": calc_detail.calc_id if calc_detail else None,
+            "calculation_name": calc_detail.name if calc_detail else "",
+            "calculation_slug": calc_detail.slug if calc_detail else "",
+            "structure": calc_detail.structure_id if calc_detail else None,
             "steps": [
                 {
                     "step_id": asdict(s).get("step_id"),
@@ -4443,25 +4417,14 @@ class QVDaemon:
         Returns:
             Dict with actions, warnings, errors (no mutations performed)
         """
-        from quantumvitas.api import QVService, PseudoSelection
-        from pathlib import Path
-        
+        from quantumvitas.api import QVService
+
         project_root = self._require_path(payload, "project_root")
         selections_data = payload.get("selections", [])
-        
-        selections: List[PseudoSelection] = []
-        for sel_data in selections_data:
-            selections.append(PseudoSelection(
-                element=sel_data["element"],
-                requested_basename=sel_data["requested_basename"],
-                requested_sha256=sel_data.get("requested_sha256"),
-                requested_sha_family=sel_data.get("requested_sha_family"),
-                source_kind=sel_data.get("source_kind", "project"),
-                source_path=Path(sel_data["source_path"]) if sel_data.get("source_path") else None,
-            ))
-        
-        report_dict = QVService.analyze_project_pseudo_effects(project_root, selections)
-        
+
+        # Pass dicts directly - QVService.analyze_project_pseudo_effects accepts dicts
+        report_dict = QVService.analyze_project_pseudo_effects(project_root, selections_data)
+
         return report_dict
     
     def _handle_materialize_pseudo_file(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -5768,28 +5731,29 @@ class QVDaemon:
             }
         """
         import time
-        
+
+        from quantumvitas.api.utils import load_project_config, build_resource_index
+
         project_root = self._require_path(payload, "project_root")
         project_root = project_root.resolve()
-        
+
         # Get project name for logging
         try:
-            svc = QVService(project_root)
-            config = svc.load_project_config()
+            config = load_project_config(project_root)
             project_name = config.get("meta", {}).get("name") or project_root.name
         except Exception:
             project_name = project_root.name
-        
+
         # Take snapshot of current registry (if any)
         old_cache = self.state._caches.get(project_root)
         old_snapshot = self._snapshot_dag(old_cache.index if old_cache else None)
-        
+
         # Rebuild the registry
         t0 = time.perf_counter()
         try:
             svc = QVService(project_root)
-            config = svc.load_project_config()
-            index = svc.build_resource_index()
+            config = load_project_config(project_root)
+            index = build_resource_index(project_root)
             self.state._caches[project_root] = ProjectCache(
                 project_root=project_root,
                 index=index,
@@ -5842,23 +5806,23 @@ class QVDaemon:
             reason: Reason string for logging (e.g., "write_operation:create_demo_project")
         """
         import time
-        
+        from quantumvitas.api.utils import load_project_config, build_resource_index
+
         project_root = project_root.resolve()
-        
+
         # Get project name for logging
         try:
-            svc = QVService(project_root)
-            config = svc.load_project_config()
+            config = load_project_config(project_root)
             project_name = config.get("meta", {}).get("name") or project_root.name
         except Exception:
             project_name = project_root.name
-        
+
         # Rebuild the registry
         t0 = time.perf_counter()
         try:
             svc = QVService(project_root)
-            config = svc.load_project_config()
-            index = svc.build_resource_index()
+            config = load_project_config(project_root)
+            index = build_resource_index(project_root)
             self.state._caches[project_root] = ProjectCache(
                 project_root=project_root,
                 index=index,

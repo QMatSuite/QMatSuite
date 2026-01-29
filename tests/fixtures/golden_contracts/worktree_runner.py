@@ -96,46 +96,138 @@ spec = importlib.util.spec_from_file_location("contract_crawler.recipes", recipe
 recipes_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(recipes_module)
 ALL_RECIPES = recipes_module.ALL_RECIPES
+get_recipe_for_method = recipes_module.get_recipe_for_method
 
 
-# Non-deterministic fields to normalize (NARROWED: only truly non-deterministic)
+# Non-deterministic fields to normalize (expanded for v0 compat testing)
+# MUST MATCH tests/contract_crawler/normalization.py
 NORMALIZE_FIELDS = {
     # ULIDs - truly non-deterministic
     "id", "structure_id", "calc_id", "step_id", "run_id", "job_id",
-    "calculation_id", "entry_id",
+    "calculation_id", "entry_id", "calculation_ulid", "target_ulid",
+    "target_name", "step", "calculation", "parent_calculation_id",
+    # ULID-derived fields (suffix = last 6 chars of ULID)
+    "suffix",
+    # Arrays of IDs
+    "structure_ids",
     # Timestamps - truly non-deterministic
     "created_at", "updated_at", "started_at", "completed_at", "timestamp",
+    "cached_at", "generated_at",
     # Paths containing temp directories - non-deterministic due to temp path
-    "project_root", "log_path", "io_dir",
+    "project_root", "log_path", "io_dir", "path", "absolute_path",
+    "output_file", "resolved_path", "metadata_path_abs",
+    # QE detection paths - vary by environment
+    "qe_home", "qe_bin_dir", "pw_path", "current_bin_dir",
+    # Engine discovery fields - engine_id varies
+    "engine_id",
+    # Environment info - vary by system
+    "python_version", "python_executable", "qv_version",
+    # Session IDs - UUIDs
+    "session_id",
 }
 
 # Nested fields to normalize (dot notation)
 NORMALIZE_NESTED = {
-    "meta.id", "meta.created_at", "meta.updated_at",
+    "meta.id", "meta.created_at", "meta.updated_at", "meta.path",
+    "prefix_outdir_injection.effective_prefix",
 }
+
+import re
+
+# ULID pattern: 26 uppercase alphanumeric chars
+ULID_PATTERN = re.compile(r'^[0-9A-Z]{26}$')
+
+# Temp path patterns
+TEMP_PATH_PATTERNS = [
+    r'/var/folders/',
+    r'/private/var/folders/',
+    r'/tmp/',
+    r'/private/tmp/',
+    r'pytest-',
+    r'qv_recipe_',
+    r'qv_golden_',
+]
+
+# Patterns for paths that should be normalized within message strings
+# These match absolute paths that vary by environment
+PATH_IN_STRING_PATTERNS = [
+    # QE executable paths (e.g., "pw.x found at /path/to/pw.x")
+    re.compile(r'(/[^\s]+/(?:pw|ph|dos|bands|projwfc|pp)\.x(?:\.exe)?)'),
+    # QE engine paths (e.g., ".qmatsuite/engines/qe/...")
+    re.compile(r'(/[^\s]+/\.qmatsuite/engines/[^\s]+)'),
+    # Project paths (e.g., "Project exists: /path/to/project")
+    re.compile(r'((?:Project exists|Project path)[:\s]+)(/[^\s]+)'),
+    # Generic absolute paths after "at " or ": "
+    re.compile(r'(at |: )(/(?:Users|home|var|private|tmp)[^\s]+)'),
+    # Paths in parentheses (e.g., "QE q-e-qe-7.5 (/Users/...)")
+    re.compile(r'(\()(/(?:Users|home|var|private|tmp)[^\s\)]+)(\))'),
+    # Created dir messages (e.g., "Created store dir: /path/to/dir")
+    re.compile(r'(Created (?:store|seed) dir: )(/[^\s]+)'),
+]
+
+
+def _is_ulid_like(value: str) -> bool:
+    """Check if value looks like a ULID."""
+    return bool(ULID_PATTERN.match(value))
+
+
+def _is_temp_path(value: str) -> bool:
+    """Check if value is a temp path."""
+    return any(pattern in value for pattern in TEMP_PATH_PATTERNS)
+
+
+def _normalize_paths_in_string(value: str) -> str:
+    """Normalize absolute paths embedded in message strings."""
+    result = value
+    for pattern in PATH_IN_STRING_PATTERNS:
+        # Replace paths with normalized placeholder, preserving prefix/suffix
+        if pattern.groups == 1:
+            # Pattern captures just the path
+            result = pattern.sub('<NORMALIZED_PATH>', result)
+        elif pattern.groups == 2:
+            # Pattern captures prefix + path
+            result = pattern.sub(r'\1<NORMALIZED_PATH>', result)
+        elif pattern.groups == 3:
+            # Pattern captures prefix + path + suffix (e.g., parentheses)
+            result = pattern.sub(r'\1<NORMALIZED_PATH>\3', result)
+    return result
 
 
 def normalize_value(key: str, value, parent_key: str = ""):
     """
     Normalize non-deterministic fields for comparison.
 
-    KEY-BASED NORMALIZATION (no heuristics):
+    Uses both key-based and value-based heuristics:
     - If key in NORMALIZE_FIELDS or full_key in NORMALIZE_NESTED, replace with placeholder
-    - Placeholder type depends on field name pattern
-    - Do NOT examine value content to decide normalization
+    - If value looks like a ULID, normalize it
+    - If value is a temp path, normalize it
     """
     full_key = f"{parent_key}.{key}" if parent_key else key
 
-    # Check if this field should be normalized (key-based only)
+    # Check if this field should be normalized (key-based)
     if key in NORMALIZE_FIELDS or full_key in NORMALIZE_NESTED:
-        # Determine placeholder by field name (not by value content)
-        if "timestamp" in key.lower() or key in ("created_at", "updated_at", "started_at", "completed_at"):
+        # Determine placeholder by field name
+        if "timestamp" in key.lower() or key in ("created_at", "updated_at", "started_at", "completed_at", "cached_at", "generated_at"):
             return "<NORMALIZED_TIMESTAMP>"
-        elif "path" in key.lower() or key in ("project_root", "log_path", "io_dir"):
+        elif "path" in key.lower() or key in ("project_root", "log_path", "io_dir", "absolute_path", "output_file", "resolved_path", "metadata_path_abs", "qe_home", "qe_bin_dir", "pw_path", "python_executable", "current_bin_dir"):
             return "<NORMALIZED_PATH>"
         else:
             # Default: ID-like fields
             return "<NORMALIZED_ID>"
+
+    # Value-based heuristics for strings
+    if isinstance(value, str):
+        # Check for ULID-like values
+        if _is_ulid_like(value):
+            return "<NORMALIZED_ID>"
+        # Check for temp paths
+        if _is_temp_path(value):
+            return "<NORMALIZED_PATH>"
+        # Normalize paths embedded in message and label strings (when they contain paths)
+        if key in ("message", "label") or "message" in key.lower():
+            normalized = _normalize_paths_in_string(value)
+            if normalized != value:
+                return normalized
 
     # Recursively normalize dicts and lists
     if isinstance(value, dict):
@@ -197,9 +289,16 @@ def main():
             }
             print(f"  [auto] {result.method_name}: FAILED - {result.error}", file=sys.stderr)
 
-    print(f"\nRunning {len(ALL_RECIPES)} recipes from 0873ebf...", file=sys.stderr)
+    # STEP 3: Load GUI methods for prioritization
+    gui_methods = set()
+    gui_methods_file = WORKTREE_ROOT / "gui" / "tests" / "e2e" / "tools" / "gui_rpc_methods.txt"
+    if gui_methods_file.exists():
+        gui_methods = set(line.strip() for line in gui_methods_file.read_text().splitlines() if line.strip())
+        print(f"Loaded {len(gui_methods)} GUI-used methods for prioritization", file=sys.stderr)
 
-    # STEP 3: Run recipes
+    print(f"\nRunning recipes from 0873ebf...", file=sys.stderr)
+
+    # STEP 4: Run static recipes (from ALL_RECIPES)
     import tempfile
     temp_base = Path(tempfile.mkdtemp(prefix="qv_recipe_"))
 
@@ -218,7 +317,7 @@ def main():
                     "method": method_name,
                     "success": True,
                     "response": normalize_response(result.response_data),
-                    "recipe_name": recipe_name,  # Store recipe class name for replay
+                    "recipe_name": recipe_name,
                     "baseline_commit": baseline_commit,
                     "generated_at": datetime.now().isoformat(),
                     "source": "recipe",
@@ -247,7 +346,72 @@ def main():
             }
             print(f"  [recipe] {method_name} ({recipe_name}): EXCEPTION - {e}", file=sys.stderr)
 
-    # STEP 4: Output JSON to stdout
+    # STEP 5: Run parameterized recipes for ALL methods not yet covered
+    if get_recipe_for_method:
+        # Dynamically load parameterized recipes module
+        param_recipes_path = WORKTREE_ROOT / "tests" / "contract_crawler" / "recipes" / "parameterized.py"
+        if param_recipes_path.exists():
+            spec_param = importlib.util.spec_from_file_location("contract_crawler.recipes.parameterized", param_recipes_path)
+            param_module = importlib.util.module_from_spec(spec_param)
+            spec_param.loader.exec_module(param_module)
+            PARAMETERIZED_RECIPES = param_module.PARAMETERIZED_RECIPES
+
+            # Collect ALL methods that need parameterized recipes (not just GUI)
+            methods_to_cover = set()
+            for recipe_cls in PARAMETERIZED_RECIPES:
+                if recipe_cls is None:
+                    continue
+                for method_name in recipe_cls.COVERED_METHODS:
+                    if method_name not in all_golden:  # Not already covered
+                        methods_to_cover.add((method_name, recipe_cls))
+
+            # Sort: GUI methods first, then alphabetical
+            methods_to_cover = sorted(methods_to_cover, key=lambda x: (x[0] not in gui_methods, x[0]))
+            
+            for method_name, recipe_cls in methods_to_cover:
+                recipe_name = f"{recipe_cls.__name__}({method_name})"
+                recipe_dir = temp_base / f"{recipe_cls.__name__}_{method_name}"
+                recipe_dir.mkdir(exist_ok=True)
+                
+                try:
+                    recipe = recipe_cls(recipe_dir, method_name)
+                    result = recipe.execute()
+                    
+                    if result.success:
+                        all_golden[method_name] = {
+                            "method": method_name,
+                            "success": True,
+                            "response": normalize_response(result.response_data),
+                            "recipe_name": recipe_name,
+                            "baseline_commit": baseline_commit,
+                            "generated_at": datetime.now().isoformat(),
+                            "source": "recipe",
+                        }
+                        print(f"  [recipe] {method_name} ({recipe_name}): OK", file=sys.stderr)
+                    else:
+                        all_golden[method_name] = {
+                            "method": method_name,
+                            "success": False,
+                            "error": {"code": "recipe_failure", "message": result.error or "Unknown failure"},
+                            "recipe_name": recipe_name,
+                            "baseline_commit": baseline_commit,
+                            "generated_at": datetime.now().isoformat(),
+                            "source": "recipe",
+                        }
+                        print(f"  [recipe] {method_name} ({recipe_name}): FAILED - {result.error}", file=sys.stderr)
+                except Exception as e:
+                    all_golden[method_name] = {
+                        "method": method_name,
+                        "success": False,
+                        "error": {"code": "recipe_exception", "message": str(e)},
+                        "recipe_name": recipe_name,
+                        "baseline_commit": baseline_commit,
+                        "generated_at": datetime.now().isoformat(),
+                        "source": "recipe",
+                    }
+                    print(f"  [recipe] {method_name} ({recipe_name}): EXCEPTION - {e}", file=sys.stderr)
+
+    # STEP 6: Output JSON to stdout
     print(json.dumps(all_golden, indent=2))
 
 
