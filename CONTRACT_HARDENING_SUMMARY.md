@@ -35,10 +35,12 @@ Expanded HARD_REDLINE_FIELDS from 8 to **17 methods** covering all manifest meth
 | **get_preset_catalog** | dimensions, dimensions[].dimension/label, schema_version |
 | list_qe_ui_parameters | parameters, parameters[].name/type |
 
-**Soft Enforcement Only (3)** - Golden fixtures failed at baseline:
-- `get_band_structure_data` - Missing bands data file
-- `get_dos_data` - Missing DOS data file
-- `import_structure` - Structure not found
+**Soft Enforcement Only (1)** - Golden fixture failed at baseline:
+- `import_structure` - 0873ebf daemon bug (treats name as selector)
+
+**Now HARD Enforced** (previously baseline-failed, now fixed):
+- `get_band_structure_data` - Synthetic data files created by recipe
+- `get_dos_data` - Synthetic data files created by recipe
 
 ### 2. API/Manifest Mismatch Resolution (CLOSED)
 
@@ -364,19 +366,27 @@ expect(stepType?.toLowerCase()).toBe('qe_bands');
 
 ## Baseline Golden Failures Status
 
-The following 3 methods remain as expected baseline failures:
+### FIXED (2 of 3)
 
-| Method | Failure Reason | Resolution Status |
-|--------|---------------|-------------------|
-| `get_band_structure_data` | Missing `*.dat.gnu` file | Requires QE computation |
-| `get_dos_data` | Missing `*.dos.dat` file | Requires QE computation |
-| `import_structure` | Recipe payload issue | Needs recipe fix |
+| Method | Resolution |
+|--------|------------|
+| `get_band_structure_data` | ✅ **FIXED** - Recipe now creates synthetic `bands.dat.gnu` and `bands.out` files |
+| `get_dos_data` | ✅ **FIXED** - Recipe now creates synthetic `dos.dat` file |
 
-These are **skipped** in golden contract tests because the baseline itself failed to generate successful fixtures. They cannot be tested without either:
-1. Actual QE computation output files (bands, dos)
-2. Fixing the recipe to correctly create import payloads
+The `EngineMethodsRecipe` was updated to:
+1. Detect API style (static vs instance-based) for 0873ebf compatibility
+2. Create synthetic data files with proper QE output format
+3. Add appropriate step types (bands, dos) to the calculation
 
-**Impact**: These methods have **soft enforcement only** in GUI field tests.
+### REMAINING (1)
+
+| Method | Failure Reason | Status |
+|--------|---------------|--------|
+| `import_structure` | 0873ebf daemon bug - treats `name` as selector | Baseline bug, cannot fix |
+
+The `import_structure` failure is a genuine bug in the 0873ebf daemon handler that incorrectly processes the payload. This cannot be fixed without modifying the baseline code.
+
+**Impact**: 2 methods now have **hard enforcement** in GUI field tests. Only `import_structure` remains as soft enforcement.
 
 ---
 
