@@ -91,6 +91,12 @@ ITEM_SCHEMA_REQUIRED_SUBTREES = {
     "discovered_engines": [],  # If present, items should have consistent schema
 }
 
+# Lists that are allowed to be empty even when baseline had items
+# These are environment-dependent lists where CI may not have the software installed
+ALLOW_EMPTY_WHEN_BASELINE_HAD_ITEMS = {
+    "discovered_engines",  # CI may not have QE installed (0 engines in CI, 1+ locally)
+}
+
 # Maximum items to check in arrays (balance thoroughness vs performance)
 MAX_ARRAY_ITEMS_TO_CHECK = 5
 
@@ -130,8 +136,10 @@ def compare_schemas(baseline: Any, current: Any, path: str = "") -> List[str]:
             return violations
 
         # EMPTY LIST POLICY: Empty when baseline had items = violation
+        # Exception: Environment-dependent lists (like discovered_engines) are allowed to be empty
         if baseline and not current:
-            violations.append(f"{path}: Empty list (baseline had {len(baseline)} items)")
+            if key not in ALLOW_EMPTY_WHEN_BASELINE_HAD_ITEMS:
+                violations.append(f"{path}: Empty list (baseline had {len(baseline)} items)")
             return violations
 
         if not current:

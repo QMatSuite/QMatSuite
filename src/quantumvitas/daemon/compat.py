@@ -236,30 +236,35 @@ def _shape_list_demo_projects(response: Dict[str, Any]) -> Dict[str, Any]:
 
     response = copy.deepcopy(response)
     for demo in response.get("demos", []):
-        if "subtitle" not in demo:
-            demo["subtitle"] = demo.get("name", "")
+        # Ensure subtitle has a value (service now returns it, but provide fallback)
+        if not demo.get("subtitle"):
+            demo["subtitle"] = ""
         if "difficulty" not in demo:
             demo["difficulty"] = "beginner"
         if "recommended_use" not in demo:
             demo["recommended_use"] = "General"
-        # Try to derive recommended_analysis from demo name/subtitle
+        # Try to derive recommended_analysis from title/name/subtitle/id
         if demo.get("recommended_analysis") is None:
+            # Check multiple fields for analysis type hints
+            title = demo.get("title", "").lower()
             name = demo.get("name", "").lower()
             subtitle = demo.get("subtitle", "").lower()
-            if "dos" in name or "dos" in subtitle:
+            demo_id = demo.get("id", "").lower()
+            check_text = f"{title} {name} {subtitle} {demo_id}"
+            if "dos" in check_text:
                 demo["recommended_analysis"] = "dos"
-            elif "band" in name or "band" in subtitle:
+            elif "band" in check_text:
                 demo["recommended_analysis"] = "bands"
-            elif "scf" in name or "scf" in subtitle:
+            elif "scf" in check_text and "nscf" not in check_text:
                 demo["recommended_analysis"] = "scf"
-            elif "phonon" in name or "phonon" in subtitle:
+            elif "phonon" in check_text:
                 demo["recommended_analysis"] = "scf"
             # Keep None for others (e.g., vc-relax, wannier)
         if not demo.get("description"):
-            demo["description"] = f"Demo project: {demo.get('name', '')}"
-        # v0 required fields
-        if "title" not in demo:
-            demo["title"] = demo.get("name", "")
+            demo["description"] = f"Demo project: {demo.get('title') or demo.get('name', '')}"
+        # v0 required fields (service now returns these, but provide fallback)
+        if not demo.get("title"):
+            demo["title"] = demo.get("name", demo.get("id", ""))
         if "tags" not in demo:
             demo["tags"] = []
         if "estimated_runtime_scf" not in demo:
