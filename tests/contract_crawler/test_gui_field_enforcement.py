@@ -62,8 +62,10 @@ HARD_REDLINE_FIELDS = {
         "top_level": ["entries"],
         # Note: entries may be empty in test scenarios, so don't enforce item fields
     },
-    # NOTE: get_common_cards excluded - manifest expects 'cards' but API returns 'k_points'
-    # This is a manifest/API mismatch that needs investigation, kept in soft layer only.
+    # RESOLVED: GUI expects k_points (gui/src/types/qv.ts:1164-1188), manifest corrected
+    "get_common_cards": {
+        "top_level": [],  # k_points is optional per GUI TypeScript type
+    },
     "get_pseudo_mapping": {
         "top_level": ["mapping"],
     },
@@ -81,8 +83,11 @@ HARD_REDLINE_FIELDS = {
     "read_step_artifact_text": {
         "top_level": ["content", "truncated", "total_bytes"],
     },
-    # NOTE: get_preset_catalog excluded - manifest expects 'presets' but API returns
-    # 'dimensions', 'schema_version'. This is a manifest/API mismatch, kept in soft layer only.
+    # RESOLVED: GUI expects dimensions + schema_version (gui/src/types/qv.ts:1565-1584), manifest corrected
+    "get_preset_catalog": {
+        "top_level": ["dimensions", "schema_version"],
+        "array_items": {"dimensions": ["dimension", "label"]},
+    },
     "list_qe_ui_parameters": {
         "top_level": ["parameters"],
         "array_items": {"parameters": ["name", "type"]},

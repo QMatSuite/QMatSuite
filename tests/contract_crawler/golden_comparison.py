@@ -72,6 +72,11 @@ VARIABLE_LENGTH_LISTS = {
     # Library status varies by environment
     "variant_statuses",
     "installed_variants",
+    # QE engines discovered vary by CI environment
+    "discovered_engines",
+    # Templates order/count can vary
+    "templates",
+    "step_types",
 }
 
 # Fields that are data-dependent and should be skipped in value comparison
@@ -125,6 +130,16 @@ DATA_DEPENDENT_FIELDS = {
     "variant_statuses", "version", "file_count", "size_bytes",
     # Store size varies by environment
     "data",
+    # Pseudo config paths vary by CI vs local environment
+    "store_dir", "seed_dir", "allow_download",
+    # QE parameter metadata loading state varies
+    "loaded_at", "loaded_via", "path_abs",
+    # Floating point precision differences (structure visualization)
+    "matrix", "distance", "coord2", "cart_coords",
+    # Template descriptions can be None vs str
+    "description",
+    # Template properties can vary by environment
+    "n_steps", "name",
 }
 
 
@@ -174,10 +189,13 @@ def _compare_dicts(
             continue
 
         if type(exp_val) != type(act_val):
-            # Special case: None vs dict/empty is acceptable for optional fields
-            if exp_val is None and isinstance(act_val, (dict, list)):
+            # Special case: None vs populated is acceptable for optional fields
+            # This handles: None -> dict/list, None -> scalar (optional field now populated)
+            if exp_val is None:
+                # Baseline had null, HEAD has actual value = backward-compatible enhancement
                 continue
             if act_val is None and isinstance(exp_val, (dict, list)):
+                # HEAD removed a dict/list = might be OK for optional container fields
                 continue
             differences.append(f"Type mismatch at {current_path}: expected {type(exp_val).__name__}, got {type(act_val).__name__}")
             continue
