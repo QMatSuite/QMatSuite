@@ -115,6 +115,13 @@ Lists where **length varies** by environment:
 | `variant_statuses`, `installed_variants` | Library state |
 | `discovered_engines` | QE engines vary by CI setup (0 in CI, 1+ local) |
 
+### ALLOW_EMPTY_WHEN_BASELINE_HAD_ITEMS (Schema Preservation)
+Lists allowed to be empty even when baseline had items:
+
+| Field | Justification |
+|-------|---------------|
+| `discovered_engines` | CI may not have QE installed (0 engines in CI, 1+ locally) |
+
 ### ITEM_SCHEMA_REQUIRED_SUBTREES (Schema Preservation)
 Arrays where **item schema is enforced** even if content varies:
 
@@ -237,3 +244,26 @@ No violations detected.
 **Test Summary**:
 - Local: 2940 passed, 22 skipped
 - CI expected: Same results (all environment-specific differences now handled)
+
+---
+
+## E2E Test Fixes (2026-01-29)
+
+### `list_demo_projects` API Enhancement
+
+**File**: `src/quantumvitas/api/service.py`
+
+Updated to return proper demo metadata from YAML:
+- `title`: Human-readable display name (e.g., "Silicon band structure")
+- `subtitle`: Workflow description (e.g., "SCF → NSCF → Bands")
+- `tags`: Category tags (e.g., ["bands", "Si", "PW"])
+
+**Root Cause**: Demo YAML has metadata at top-level `meta` key, but service was reading from `project.name` which doesn't exist.
+
+### Schema Drift: `discover_qe_engines`
+
+**File**: `tests/contract_crawler/test_schema_preservation.py`
+
+Added `ALLOW_EMPTY_WHEN_BASELINE_HAD_ITEMS` to allow `discovered_engines` to be empty in CI (where QE is not installed) while baseline had items.
+
+See `docs/E2E_TEST_FIXES_SUMMARY.md` for full details.

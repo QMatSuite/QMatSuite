@@ -7605,7 +7605,10 @@ class QVService:
         List available demo project snapshots.
 
         Returns:
-            List of dicts with id, name, description for each demo
+            List of dicts with id, name, title, subtitle, description, tags for each demo.
+            - title: Human-readable display name (e.g., "Silicon band structure")
+            - subtitle: Workflow description (e.g., "SCF → NSCF → Bands")
+            - name: Internal project name (for backwards compat)
         """
         from quantumvitas.core.resources import get_resources_dir
         import yaml
@@ -7622,11 +7625,27 @@ class QVService:
                 with open(snapshot_path, "r") as f:
                     data = yaml.safe_load(f)
 
+                # Top-level meta contains display fields (title, subtitle, tags)
+                demo_meta = data.get("meta", {})
+                # project.meta contains internal project info
                 project_data = data.get("project", {})
+                project_meta = project_data.get("meta", {})
+
+                # Use top-level meta.title for display, fallback to project.meta.name
+                title = demo_meta.get("title") or project_meta.get("name") or snapshot_path.stem
+
                 demos.append({
                     "id": snapshot_path.stem,
-                    "name": project_data.get("name", snapshot_path.stem),
-                    "description": project_data.get("description", ""),
+                    # name: Keep project.meta.name for backwards compat
+                    "name": project_meta.get("name", snapshot_path.stem),
+                    # title: Human-readable display name (GUI uses this for card titles)
+                    "title": title,
+                    # subtitle: Workflow description
+                    "subtitle": demo_meta.get("subtitle", ""),
+                    # description: Longer description
+                    "description": demo_meta.get("description") or project_data.get("description", ""),
+                    # tags: Category tags for filtering
+                    "tags": demo_meta.get("tags", []),
                 })
             except Exception:
                 # Skip invalid snapshots
