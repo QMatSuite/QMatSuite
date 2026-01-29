@@ -2023,16 +2023,22 @@ class QVDaemon:
     def _handle_list_calculations(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         List calculations in project.
-        
+
         Payload:
             project_root: str - Path to project root
         """
         project_root = self._require_path(payload, "project_root")
         svc = get_service(project_root)
         calculation_dtos = svc.calculation.list()
-        # Convert DTOs to dicts for JSON serialization using to_dict()
+        # Convert DTOs to dicts for JSON serialization
+        # Note: DTOs have step_ids but not full steps; compat layer expands these
         calculations = [dto.to_dict() for dto in calculation_dtos]
-        return {"calculations": calculations, "count": len(calculations)}
+        return {
+            "calculations": calculations,
+            "count": len(calculations),
+            # Internal: project_root for compat layer to compute absolute paths
+            "_project_root": str(project_root),
+        }
     
     def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

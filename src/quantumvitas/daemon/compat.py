@@ -466,14 +466,36 @@ def _shape_list_pseudo_archives_status(response: Dict[str, Any]) -> Dict[str, An
 
 
 def _shape_list_calculations(response: Dict[str, Any]) -> Dict[str, Any]:
-    """Add v0 fields to calculations."""
+    """Add v0 fields to calculations.
+
+    v0 API returns calculations with full `steps` array containing:
+    - step_id: ULID
+    - id: same ULID (for backwards compat)
+    - type: step type (e.g., qe_scf)
+
+    HEAD API (DTOs) returns `step_ids` (list of ULIDs) instead of full steps.
+    This shaper expands step_ids to full steps by reading calculation.yaml.
+    """
     if "calculations" not in response:
         return response
 
     response = copy.deepcopy(response)
+
+    # Get project root (passed internally from daemon handler for path computation)
+    project_root = response.pop("_project_root", None)
+
     for calc in response.get("calculations", []):
+        calc_id = calc.get("id", "")
+        # Use slug for path computation (directory name is slug, not ULID)
+        calc_slug = calc.get("slug") or calc.get("name") or calc_id
+
+        # Compute absolute_path from project_root if not already set
+        if not calc.get("absolute_path") and project_root and calc_slug:
+            from pathlib import Path
+            calc["absolute_path"] = str(Path(project_root) / "calculations" / calc_slug)
+
         if "path" not in calc:
-            calc["path"] = ""
+            calc["path"] = f"calculations/{calc_slug}" if calc_slug else ""
         if "absolute_path" not in calc:
             calc["absolute_path"] = ""
         if "mode" not in calc:
@@ -485,8 +507,19 @@ def _shape_list_calculations(response: Dict[str, Any]) -> Dict[str, Any]:
                 calc.get("structure_slug") or
                 calc.get("structure_id", "")
             )
+
+        # Expand step_ids to full steps if steps is empty/missing
+        # v0 API returned steps array with {step_id, id, type}
+        # HEAD API returns step_ids (list of ULIDs)
+        if not calc.get("steps") and calc.get("step_ids"):
+            calc["steps"] = _expand_step_ids_to_steps(
+                calc.get("step_ids", []),
+                calc.get("absolute_path", ""),
+            )
+
         if "steps" not in calc:
             calc["steps"] = []
+
         # Shape steps
         for step in calc.get("steps", []):
             step_type = step.get("type", "")
@@ -499,6 +532,59 @@ def _shape_list_calculations(response: Dict[str, Any]) -> Dict[str, Any]:
                 step["slug"] = step.get("name", "")
 
     return response
+
+
+def _expand_step_ids_to_steps(step_ids: list, calc_absolute_path: str) -> list:
+    """
+    Expand step_ids (list of ULIDs) to full steps array.
+
+    Reads calculation.yaml to get step_id → type mapping.
+
+    Args:
+        step_ids: List of step ULIDs
+        calc_absolute_path: Absolute path to calculation directory
+
+    Returns:
+        List of step dicts with {step_id, id, type}
+    """
+    if not step_ids or not calc_absolute_path:
+        return []
+
+    from pathlib import Path
+    import yaml
+
+    calc_dir = Path(calc_absolute_path)
+    calc_yaml = calc_dir / "calculation.yaml"
+
+    if not calc_yaml.exists():
+        # Fallback: return minimal steps with just IDs
+        return [{"step_id": sid, "id": sid, "type": ""} for sid in step_ids]
+
+    try:
+        with open(calc_yaml) as f:
+            calc_data = yaml.safe_load(f) or {}
+
+        # Build step_id → type mapping from calculation.yaml
+        step_type_map = {}
+        for step_entry in calc_data.get("steps", []):
+            sid = step_entry.get("step_id")
+            stype = step_entry.get("type", "")
+            if sid:
+                step_type_map[sid] = stype
+
+        # Build steps array
+        steps = []
+        for sid in step_ids:
+            steps.append({
+                "step_id": sid,
+                "id": sid,
+                "type": step_type_map.get(sid, ""),
+            })
+
+        return steps
+    except Exception:
+        # Fallback: return minimal steps with just IDs
+        return [{"step_id": sid, "id": sid, "type": ""} for sid in step_ids]
 
 
 def _shape_get_project_history(response: Dict[str, Any]) -> Dict[str, Any]:
