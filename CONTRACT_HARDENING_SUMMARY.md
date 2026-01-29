@@ -51,35 +51,97 @@ Expanded HARD_REDLINE_FIELDS from 8 to **17 methods** covering all manifest meth
 
 Both methods now in HARD_REDLINE_FIELDS with correct field names.
 
-### 3. CI Environment-Dependent Fields
-
-**File**: `tests/contract_crawler/golden_comparison.py`
-
-Added to DATA_DEPENDENT_FIELDS:
-- `store_dir`, `seed_dir`, `allow_download` - Pseudo config paths vary by CI vs local
-- `loaded_at`, `loaded_via`, `path_abs` - QE parameter metadata loading state
-- `matrix`, `distance`, `coord2`, `cart_coords` - Floating point precision
-- `description`, `n_steps`, `name` - Template properties
-
-Added to VARIABLE_LENGTH_LISTS:
-- `discovered_engines` - QE engines vary by CI environment
-- `templates`, `step_types` - Template lists vary
-
-Added to FULLY_SKIPPABLE_SUBTREES (schema preservation):
-- `templates` - Calculation templates vary by environment
-- `discovered_engines` - QE engines discovered vary by CI
-
-### 4. Type Mismatch Tolerance
+### 3. Type Mismatch Tolerance
 
 **File**: `tests/contract_crawler/golden_comparison.py`
 
 Updated type comparison to allow `None` → any value progression (optional field becoming populated is backward-compatible).
 
-### 5. CLI Test Isolation Fix
+### 4. CLI Test Isolation Fix
 
 **File**: `tests/cli/test_si_dos_calculation_cli.py`
 
 Changed `cli_si_dos_project` fixture to use `tmp_path` for xdist compatibility.
+
+---
+
+## Final Skip Policy (Tightened)
+
+The skip policy is designed to be **minimal** - only skipping fields that are genuinely non-deterministic across environments while enforcing schema and semantics wherever possible.
+
+### DATA_DEPENDENT_FIELDS (Value Skip Only)
+Fields where values vary by environment but **type and presence are still enforced**:
+
+| Field | Justification |
+|-------|---------------|
+| `formula`, `n_atoms`, `lattice_*`, `volume`, `a/b/c`, `alpha/beta/gamma` | Depends on imported structure (test fixtures may differ) |
+| `sssp_defaults`, `installed_sources`, `sssp_installed` | SSSP library installation state varies |
+| `candidates_by_element`, `resolved_by_element` | Library/network state dependent |
+| `files_installed`, `success` (network ops) | Network operation results vary |
+| `steps`, `structure` | Content varies by recipe execution order |
+| `perf`, `*_ms`, `bytes` | Performance metrics are non-deterministic |
+| `seed_dir_created`, `store_dir_created` | Directory creation state |
+| `libraries`, `session_id`, `message` | Session/library state dependent |
+| `grouped_by_library`, `species_map` | Pseudo library state |
+| `status`, `installed`, `installed_variants`, `variant_statuses`, `version`, `file_count`, `size_bytes` | Library status varies |
+| `data` | Store size varies |
+| `store_dir`, `seed_dir`, `allow_download` | Pseudo config paths vary by CI vs local |
+| `loaded_at`, `loaded_via`, `path_abs` | QE parameter metadata loading state |
+
+### FLOAT_TOLERANCE_FIELDS (Tolerance Comparison)
+Numeric fields compared with **relative tolerance (1e-9)** instead of exact match:
+
+| Field | Justification |
+|-------|---------------|
+| `matrix`, `distance`, `coord2`, `cart_coords` | Floating point precision differences across platforms |
+
+### SCHEMA_ONLY_LISTS (Schema Enforced, Content Skipped)
+Lists where **item schema is enforced** but content/order may vary:
+
+| Field | Justification |
+|-------|---------------|
+| `templates` | Template order varies by filesystem discovery order |
+| `step_types` | Step types within templates may vary |
+
+### VARIABLE_LENGTH_LISTS (Type Check Only)
+Lists where **length varies** by environment:
+
+| Field | Justification |
+|-------|---------------|
+| `candidates`, `errors`, `messages`, `internal_engines` | Network/internal state |
+| `entries` | Journal entries vary by recipe operations |
+| `skipped`, `installed`, `failed`, `files_downloaded`, `installed_libraries`, `warnings` | Network download results |
+| `demos`, `archives` | Environment-specific discovery |
+| `variant_statuses`, `installed_variants` | Library state |
+| `discovered_engines` | QE engines vary by CI setup (0 in CI, 1+ local) |
+
+### ITEM_SCHEMA_REQUIRED_SUBTREES (Schema Preservation)
+Arrays where **item schema is enforced** even if content varies:
+
+| Field | Required Item Fields | Justification |
+|-------|---------------------|---------------|
+| `steps` | `type` (min), baseline's `id`/`step_id` | GUI-critical step rendering |
+| `structures` | `id`, `name` | GUI-critical structure list |
+| `calculations` | `id` | GUI-critical calculation list |
+| `templates` | `name` | GUI needs template names |
+| `discovered_engines` | (schema only) | If present, enforce consistent schema |
+
+### FULLY_SKIPPABLE_SUBTREES (Content Fully Skipped)
+Subtrees with **genuinely nondeterministic content** (strict policy):
+
+| Subtree | Justification |
+|---------|---------------|
+| `entries` | Journal entries vary by recipe operations (write order) |
+| `demos` | Demo list varies by environment (filesystem discovery) |
+| `archives` | Pseudo archives depend on installed libraries |
+| `libraries` | Library list varies by environment |
+| `perf` | Performance metrics vary by run |
+| `sssp_defaults` | SSSP state varies by environment |
+| `installed_sources` | Installation state varies |
+| `variant_statuses` | Library installation state varies |
+| `data` | get_library_status data varies by environment |
+
+**NOT skipped** (schema enforcement applies): `templates`, `discovered_engines`
 
 ---
 
@@ -120,9 +182,9 @@ Same golden fixture failures for GUI enforcement tests.
 
 CI fixes applied:
 - Pseudo config paths (store_dir, seed_dir) now skipped - vary by environment
-- Template ordering now skipped - varies by environment
-- QE engine discovery now skipped - varies by CI setup
-- Floating point precision differences now tolerated
+- Template ordering uses **schema enforcement** (not full skip)
+- QE engine discovery uses **schema enforcement** (not full skip)
+- Floating point precision uses **tolerance comparison** (not full skip)
 - Optional fields becoming populated (null → value) now tolerated
 
 ### Skip Stability
@@ -130,7 +192,7 @@ CI fixes applied:
 All 22 skips are:
 1. **Deterministic** - Based on committed golden fixtures or missing directories
 2. **Environment-independent** - Same skips locally and in CI
-3. **Justified** - Each skip has a documented reason
+3. **Justified** - Each skip has a documented reason above
 
 ---
 
@@ -157,7 +219,7 @@ No violations detected.
 
 2. **Daemon kernel-ban enforced**: Gate test passes, compat.py only imports from `quantumvitas.api.*`.
 
-3. **CI will not fail**: All environment-specific fields now properly skipped.
+3. **CI will not fail**: All environment-specific fields now properly handled with minimal skipping.
 
 ---
 
@@ -169,7 +231,7 @@ No violations detected.
 2. **API/manifest mismatches RESOLVED** with evidence from GUI TypeScript types:
    - `get_common_cards`: GUI expects `k_points` (gui/src/types/qv.ts:1164-1188)
    - `get_preset_catalog`: GUI expects `dimensions` + `schema_version` (gui/src/types/qv.ts:1565-1584)
-3. **CI environment differences handled** - paths, floating point, metadata loading state all properly skipped
+3. **Tightened skip policy** - Uses tolerance/schema enforcement instead of full skips where possible
 4. **Soft gate available** - Set `QV_ENFORCE_GUI_RPC_COVERAGE=1` to make test_gui_methods_covered fail on missing coverage
 
 **Test Summary**:

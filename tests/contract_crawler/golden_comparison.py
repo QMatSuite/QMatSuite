@@ -72,10 +72,17 @@ VARIABLE_LENGTH_LISTS = {
     # Library status varies by environment
     "variant_statuses",
     "installed_variants",
-    # QE engines discovered vary by CI environment
+    # QE engines discovered vary by CI environment (0 in CI, 1+ local)
+    # Reason: CI may not stage internal QE to .qmatsuite/engines/qe/
     "discovered_engines",
-    # Templates order/count can vary
+}
+
+# Lists where we verify item schema but allow different ordering/counts
+# Used for lists with stable item schema but environment-dependent content
+SCHEMA_ONLY_LISTS = {
+    # Templates: same schema, but order varies by filesystem/discovery order
     "templates",
+    # Step types list within templates can vary
     "step_types",
 }
 
@@ -131,16 +138,61 @@ DATA_DEPENDENT_FIELDS = {
     # Store size varies by environment
     "data",
     # Pseudo config paths vary by CI vs local environment
+    # Reason: CI uses different base paths than local dev machine
     "store_dir", "seed_dir", "allow_download",
     # QE parameter metadata loading state varies
+    # Reason: depends on whether metadata cache is warm
     "loaded_at", "loaded_via", "path_abs",
-    # Floating point precision differences (structure visualization)
-    "matrix", "distance", "coord2", "cart_coords",
-    # Template descriptions can be None vs str
-    "description",
-    # Template properties can vary by environment
-    "n_steps", "name",
 }
+
+# Fields where we use approximate (tolerance) comparison for floats
+# These are still compared, just with numerical tolerance for precision differences
+FLOAT_TOLERANCE_FIELDS = {
+    # Structure visualization: matrix/coords can have ~1e-15 precision differences
+    "matrix", "distance", "coord2", "cart_coords",
+}
+
+# Relative tolerance for float comparisons
+FLOAT_RTOL = 1e-9
+
+
+def _floats_approx_equal(a: float, b: float, rtol: float = FLOAT_RTOL) -> bool:
+    """Check if two floats are approximately equal within relative tolerance."""
+    if a == b:
+        return True
+    if a == 0 or b == 0:
+        return abs(a - b) < rtol
+    return abs(a - b) / max(abs(a), abs(b)) < rtol
+
+
+def _compare_values(exp_val: Any, act_val: Any, path: str, differences: list[str], key: str = "") -> None:
+    """Compare two values, handling floats with tolerance."""
+    # Float tolerance comparison
+    if isinstance(exp_val, float) and isinstance(act_val, float):
+        if not _floats_approx_equal(exp_val, act_val):
+            differences.append(f"Value mismatch at {path}: expected {exp_val!r}, got {act_val!r}")
+        return
+
+    # List of floats (e.g., coordinates)
+    if isinstance(exp_val, list) and isinstance(act_val, list):
+        if len(exp_val) != len(act_val):
+            differences.append(f"List length mismatch at {path}: expected {len(exp_val)}, got {len(act_val)}")
+            return
+        for i, (e, a) in enumerate(zip(exp_val, act_val)):
+            if isinstance(e, float) and isinstance(a, float):
+                if not _floats_approx_equal(e, a):
+                    differences.append(f"Value mismatch at {path}[{i}]: expected {e!r}, got {a!r}")
+            elif isinstance(e, list) and isinstance(a, list):
+                _compare_values(e, a, f"{path}[{i}]", differences, key)
+            elif isinstance(e, dict) and isinstance(a, dict):
+                _compare_dicts(e, a, f"{path}[{i}]", differences)
+            elif e != a and not (isinstance(e, str) and e.startswith("<NORMALIZED")):
+                differences.append(f"Value mismatch at {path}[{i}]: expected {e!r}, got {a!r}")
+        return
+
+    # Default: exact comparison
+    if exp_val != act_val:
+        differences.append(f"Value mismatch at {path}: expected {exp_val!r}, got {act_val!r}")
 
 
 def _compare_dicts(
@@ -184,7 +236,6 @@ def _compare_dicts(
 
         # Skip data-dependent fields (values depend on recipe world state)
         if key in DATA_DEPENDENT_FIELDS:
-            # Allow type flexibility for data-dependent fields (None vs dict/list is OK)
             # These fields vary by environment/state, so we only verify presence
             continue
 
@@ -206,15 +257,39 @@ def _compare_dicts(
             # Allow variable length for certain fields (e.g., network search results)
             if key in VARIABLE_LENGTH_LISTS:
                 # Only verify it's a list, don't compare length or contents
+                # Reason: these lists depend on network/installation state
                 continue
+
+            # Schema-only lists: verify item schema but allow different order/count
+            if key in SCHEMA_ONLY_LISTS:
+                # Verify both are lists with similar item structure
+                if exp_val and act_val:
+                    # Check first item schema only (don't compare values or order)
+                    if isinstance(exp_val[0], dict) and isinstance(act_val[0], dict):
+                        # Verify keys match (schema), but don't compare values
+                        exp_keys = set(exp_val[0].keys())
+                        act_keys = set(act_val[0].keys())
+                        missing = exp_keys - act_keys
+                        if missing:
+                            differences.append(f"Schema mismatch at {current_path}[0]: missing keys {missing}")
+                continue
+
             if len(exp_val) != len(act_val):
                 differences.append(f"List length mismatch at {current_path}: expected {len(exp_val)}, got {len(act_val)}")
             else:
                 for i, (e, a) in enumerate(zip(exp_val, act_val)):
                     if isinstance(e, dict):
                         _compare_dicts(e, a, f"{current_path}[{i}]", differences, allow_extra_keys)
+                    elif isinstance(e, (int, float)) and isinstance(a, (int, float)):
+                        # Use tolerance for numeric comparisons
+                        _compare_values(e, a, f"{current_path}[{i}]", differences, key)
+                    elif isinstance(e, list) and isinstance(a, list):
+                        _compare_values(e, a, f"{current_path}[{i}]", differences, key)
                     elif e != a and not (isinstance(e, str) and e.startswith("<NORMALIZED")):
                         differences.append(f"Value mismatch at {current_path}[{i}]: expected {e!r}, got {a!r}")
+        elif isinstance(exp_val, (int, float)) and isinstance(act_val, (int, float)):
+            # Use tolerance for top-level numeric comparisons
+            _compare_values(exp_val, act_val, current_path, differences, key)
         elif exp_val != act_val:
             differences.append(f"Value mismatch at {current_path}: expected {exp_val!r}, got {act_val!r}")
 
