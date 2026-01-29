@@ -1747,14 +1747,23 @@ def run_step_command(
             raise
 
     # Run step via QVService (registry-based, uses calculation.structure_id)
-    from quantumvitas.api import QVService
+    from quantumvitas.api import get_service
 
     try:
-        result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calculation_resolved.meta.slug or calculation_resolved.meta.name or calculation_resolved.meta.id,
+        svc = get_service(project_root)
+        result_dto = svc.run.run_step(
+            calc_selector=calculation_resolved.meta.slug or calculation_resolved.meta.name or calculation_resolved.meta.id,
             step_selector=step_resolved.meta.slug or step_resolved.meta.name or step_resolved.meta.id,
         )
+        # Convert DTO to dict for compatibility
+        result = {
+            "input_file": result_dto.input_file,
+            "output_file": result_dto.output_file,
+            "io_dir": result_dto.io_dir,
+            "run_id": result_dto.run_id,
+            "status": result_dto.status,
+            "success": result_dto.status == "success",
+        }
         
         # Always print "Step finished" line as CLI contract (test requirement)
         # Match expected test output format: "Step finished: <output> -> (input <input>)"
@@ -3653,8 +3662,8 @@ def configure_species_command(
     
     # Call shared API
     try:
-        updated_species_map = QVService.configure_species_map(
-            project_root=project_root,
+        svc = get_service(project_root)
+        updated_species_map = svc.calculation.configure_species_map(
             calculation=calculation,
             from_qe_input=from_input,
             set_entries=set_entries,
@@ -4006,15 +4015,30 @@ def run_calculation_command(
 
         save_calculation(calc_model, calc_dir)
 
-    # Use QVService static method which wraps CalculationRunner internally
-    result_dict = QVService.run_calculation(
-        project_root=project_root,
-        calculation_selector=calc_selector,
-        strict=strict,
-        verbose=verbose,
-        config=config,
-        index=registry,
+    # Use instance method which wraps CalculationRunner internally
+    svc = get_service(project_root)
+    result_dto = svc.run.run_calculation(
+        calc_selector=calc_selector,
+        steps=None,  # Run all steps
     )
+    # Convert DTO to dict for compatibility
+    result_dict = {
+        "calculation": calc_selector,
+        "status": result_dto.status,
+        "n_steps": len(result_dto.steps),
+        "steps": [
+            {
+                "step_id": s.step_id,
+                "step_type": s.step_type,
+                "status": s.status,
+                "message": s.message,
+                "metrics": s.metrics,
+            }
+            for s in result_dto.steps
+        ],
+        "io_dir": result_dto.io_dir,
+        "run_id": result_dto.run_id,
+    }
     
     # The static method returns a dict with status and steps
     # Work with the dict directly instead of converting back to CalculationResult

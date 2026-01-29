@@ -1995,7 +1995,8 @@ class QVDaemon:
             project_root: str - Path to project root
         """
         project_root = self._require_path(payload, "project_root")
-        return QVService.get_project_summary(project_root)
+        svc = get_service(project_root)
+        return svc.project.get_summary()
     
     def _handle_list_structures(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -2005,9 +2006,20 @@ class QVDaemon:
             project_root: str - Path to project root
         """
         project_root = self._require_path(payload, "project_root")
-        # TODO(STEP4): Migrate to svc.structure.list() when domain method is fully working
-        # For now, using static method that returns JSON-serializable dicts (acceptable per STEP4.4)
-        structures = QVService.list_structures_data(project_root)
+        svc = get_service(project_root)
+        structure_dtos = svc.structure.list()
+        # Convert DTOs to dicts for JSON serialization
+        structures = [
+            {
+                "id": dto.id,
+                "name": dto.name,
+                "slug": dto.slug,
+                "path": dto.path,
+                "formula": dto.formula,
+                "n_atoms": dto.n_atoms,
+            }
+            for dto in structure_dtos
+        ]
         return {"structures": structures, "count": len(structures)}
     
     def _handle_list_calculations(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -2018,9 +2030,21 @@ class QVDaemon:
             project_root: str - Path to project root
         """
         project_root = self._require_path(payload, "project_root")
-        # TODO(STEP4): Migrate to svc.calculation.list() when domain method is fully working
-        # For now, using static method that returns JSON-serializable dicts (acceptable per STEP4.4)
-        calculations = QVService.list_calculations_data(project_root)
+        svc = get_service(project_root)
+        calculation_dtos = svc.calculation.list()
+        # Convert DTOs to dicts for JSON serialization
+        calculations = [
+            {
+                "id": dto.id,
+                "name": dto.name,
+                "slug": dto.slug,
+                "path": dto.path,
+                "status": dto.status,
+                "structure_id": dto.structure_id,
+                "n_steps": dto.n_steps,
+            }
+            for dto in calculation_dtos
+        ]
         return {"calculations": calculations, "count": len(calculations)}
     
     def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -2086,7 +2110,8 @@ class QVDaemon:
         # Project creation creates a new project - registry will be built on first access
         
         # Get summary of newly created project
-        summary = QVService.get_project_summary(project_root)
+        svc = get_service(project_root)
+        summary = svc.project.get_summary()
         
         return {
             "project_root": str(project_root),
@@ -2111,25 +2136,23 @@ class QVDaemon:
             raise FileNotFoundError(f"Structure file not found: {source_file}")
         
         # Pass cached index for in-place registry updates
-        # Note: QVService.import_structure loads config internally; we only pass index
         cache = self.state.get_cache(project_root)
-        result = QVService.import_structure(
-            project_root=project_root,
+        svc = get_service(project_root)
+        result_dto = svc.structure.import_file(
             source=source_file,
             name=name,
-            index=cache.index,
         )
         
         # Get structure metadata
-        structures = QVService.list_structures_data(project_root)
-        new_struct = next((s for s in structures if s.get("id") == result.meta.id), None)
+        structure_dtos = svc.structure.list()
+        new_struct_dto = next((s for s in structure_dtos if s.id == result_dto.id), None)
         
         return {
-            "structure_id": result.meta.id,
-            "name": result.meta.name,
-            "slug": result.meta.slug,
-            "formula": new_struct.get("formula", "?") if new_struct else "?",
-            "n_atoms": new_struct.get("n_atoms", 0) if new_struct else 0,
+            "structure_id": result_dto.id,
+            "name": result_dto.name,
+            "slug": result_dto.slug,
+            "formula": new_struct_dto.formula if new_struct_dto else "?",
+            "n_atoms": new_struct_dto.n_atoms if new_struct_dto else 0,
         }
     
     def _handle_structure_search_online(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -2763,8 +2786,8 @@ class QVDaemon:
         
         # Pass cached index and config for in-place registry updates
         cache = self.state.get_cache(project_root)
-        result = QVService.init_calculation(
-            project_root=project_root,
+        svc = get_service(project_root)
+        result = svc.project.init_calculation(
             name=name,
             structure_selector=structure,
             template=template,
@@ -2773,15 +2796,15 @@ class QVDaemon:
         )
         
         # Get calculation details
-        calculations = QVService.list_calculations_data(project_root)
-        new_wf = next((w for w in calculations if w.get("id") == result.meta.id), None)
+        calculation_dtos = svc.calculation.list()
+        new_wf_dto = next((w for w in calculation_dtos if w.id == result.meta.id), None)
         
         return {
             "calculation_id": result.meta.id,
             "calculation_ulid": result.meta.id,  # Explicit ULID for UI to use
             "name": result.meta.name,
             "slug": result.meta.slug,
-            "n_steps": new_wf.get("n_steps", 0) if new_wf else 0,
+            "n_steps": new_wf_dto.n_steps if new_wf_dto else 0,
         }
     
     # -------------------------------------------------------------------------
@@ -3206,8 +3229,8 @@ class QVDaemon:
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
-        result = QVService.promote_relax_structure(
-            project_root=project_root,
+        svc = get_service(project_root)
+        result = svc.structure.promote_relax_structure(
             calculation_selector=calculation,
             step_selector=step,
             name=name,
@@ -3596,9 +3619,9 @@ class QVDaemon:
         self._resolve_step_with_fallback(project_root, calculation, step)
         
         cache = self.state.get_cache(project_root)
+        svc = get_service(project_root)
         
-        result = QVService.save_relax_final_structure(
-            project_root=project_root,
+        result = svc.structure.save_relax_final_structure(
             calculation_selector=calculation,
             step_selector=step,
             parent_structure_ulid=parent_structure_ulid,
@@ -4483,8 +4506,8 @@ class QVDaemon:
         sha256 = self._require_str(payload, "sha256")
         preferred_basename = payload.get("preferred_basename")
         
-        return QVService.materialize_pseudo_file(
-            project_root=project_root,
+        svc = get_service(project_root)
+        return svc.project.materialize_pseudo_file(
             element=element,
             sha256=sha256,
             preferred_basename=preferred_basename,
@@ -4573,8 +4596,8 @@ class QVDaemon:
         
         # Get options (sha256-keyed, filename-first, constitution-compliant)
         from quantumvitas.api import QVService
-        options = QVService.get_pseudo_options_for_elements(
-            project_root=project_root,
+        svc = get_service(project_root)
+        options = svc.project.get_pseudo_options(
             elements=elements,
             config=cache.config,
         )
@@ -5314,10 +5337,20 @@ class QVDaemon:
         
         # Submit job with target info for display
         # Note: job_id is passed to run_calculation as run_id for history unification
+        # Create wrapper function that uses instance method
+        def run_calculation_wrapper(**kwargs):
+            project_root = Path(kwargs.pop("project_root"))
+            calculation_selector = kwargs.pop("calculation_selector") or kwargs.pop("calculation")
+            svc = get_service(project_root)
+            # Note: run_calculation instance method doesn't support all kwargs yet
+            # For now, only pass steps if provided
+            steps = kwargs.pop("steps", None)
+            return svc.run.run_calculation(calculation_selector, steps=steps)
+        
         self.job_manager.submit_with_id(
             job_id=job_id,
             job_type="run_calculation",
-            func=QVService.run_calculation,
+            func=run_calculation_wrapper,
             params={
                 "project_root": str(project_root),
                 "calculation": calculation,
@@ -5327,7 +5360,7 @@ class QVDaemon:
             project_root_display=str(project_root.resolve()),  # Normalize to absolute path
             initial_steps=initial_steps,  # Initialize steps at job creation
             initial_io_dir=initial_io_dir,  # Initialize io_dir at job creation (so it shows immediately)
-            # kwargs for QVService.run_calculation
+            # kwargs for run_calculation_wrapper
             project_root=project_root,
             calculation_selector=calculation,
             strict=strict,
@@ -5385,10 +5418,18 @@ class QVDaemon:
         
         # Submit job with target info for display
         # Note: job_id is passed to run_step as run_id for history unification
+        # Create wrapper function that uses instance method
+        def run_step_wrapper(**kwargs):
+            project_root = Path(kwargs.pop("project_root"))
+            calculation_selector = kwargs.pop("calculation_selector") or kwargs.pop("calculation")
+            step_selector = kwargs.pop("step_selector") or kwargs.pop("step")
+            svc = get_service(project_root)
+            return svc.run.run_step(calculation_selector, step_selector)
+        
         self.job_manager.submit_with_id(
             job_id=job_id,
             job_type="run_step",
-            func=QVService.run_step,
+            func=run_step_wrapper,
             params={
                 "project_root": str(project_root),
                 "calculation": calculation,
@@ -5397,7 +5438,7 @@ class QVDaemon:
             target_name=target_name,
             project_root_display=str(project_root),
             initial_io_dir=initial_io_dir,  # Initialize io_dir at job creation (so it shows immediately)
-            # kwargs for QVService.run_step
+            # kwargs for run_step_wrapper
             project_root=project_root,
             calculation_selector=calculation,
             step_selector=step,
