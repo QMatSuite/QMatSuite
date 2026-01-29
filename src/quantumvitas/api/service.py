@@ -2109,6 +2109,75 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
+        
+        def promote_relax_structure(
+            self,
+            calculation_selector: str,
+            step_selector: str,
+            name: str | None = None,
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> Any:
+            """
+            Promote a relax step's generated structure to a project resource.
+            
+            Args:
+                calculation_selector: Calculation selector (ULID, slug, or name)
+                step_selector: Step selector (ULID, slug, or name)
+                name: Optional name for the new structure (defaults to calc_step_relaxed)
+                index: Optional resource index
+                config: Optional project config
+                
+            Returns:
+                ResolvedResource for the newly created structure
+            """
+            # TEMP SHIM: Delegate to static method for now
+            return QVService.promote_relax_structure(
+                project_root=self._service.project_root,
+                calculation_selector=calculation_selector,
+                step_selector=step_selector,
+                name=name,
+                index=index,
+                config=config,
+            )
+        
+        def save_relax_final_structure(
+            self,
+            calculation_selector: str,
+            step_selector: str,
+            parent_structure_ulid: str,
+            slug_hint: str | None = None,
+            index: Any | None = None,
+            config: dict | None = None,
+        ) -> dict[str, Any]:
+            """
+            Save the final structure from a relax/vc-relax step as a new Structure resource.
+            
+            IDEMPOTENT: For a given (calculation_ulid, step_ulid), at most ONE structure
+            may ever be created. Repeated calls return the existing structure ULID.
+            
+            Args:
+                calculation_selector: Calculation selector
+                step_selector: Step selector (ULID)
+                parent_structure_ulid: ULID of the input structure (for provenance)
+                slug_hint: Optional hint for structure slug/name
+                index: Optional ResourceIndex
+                config: Optional project config
+                
+            Returns:
+                Dict with structure_ulid and already_exists flag
+            """
+            # TEMP SHIM: Delegate to static method for now
+            return QVService.save_relax_final_structure(
+                project_root=self._service.project_root,
+                calculation_selector=calculation_selector,
+                step_selector=step_selector,
+                parent_structure_ulid=parent_structure_ulid,
+                slug_hint=slug_hint,
+                index=index,
+                config=config,
+            )
 
     @property
     def structure(self) -> Structure:
@@ -4312,6 +4381,35 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
+        
+        def configure_species_map(
+            self,
+            calculation: str,
+            *,
+            from_qe_input: Path | str | None = None,
+            set_entries: list[tuple[str, float, str]] | None = None,
+            merge: bool = True,
+        ) -> dict[str, dict[str, Any]]:
+            """
+            Configure calculation-level species_map.
+            
+            Args:
+                calculation: Calculation selector (id/name/slug/path)
+                from_qe_input: Optional QE input file to extract ATOMIC_SPECIES from
+                set_entries: Optional list of explicit (element, mass, pseudopot) triples
+                merge: If True (default), merge with existing species_map. If False, replace.
+                
+            Returns:
+                Updated species_map dictionary (element -> {mass, pseudopot, ...})
+            """
+            # TEMP SHIM: Delegate to static method for now
+            return QVService.configure_species_map(
+                project_root=self._service.project_root,
+                calculation=calculation,
+                from_qe_input=from_qe_input,
+                set_entries=set_entries,
+                merge=merge,
+            )
 
     @property
     def calculation(self) -> Calculation:
@@ -5328,6 +5426,114 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
+        
+        def get_summary(self) -> dict[str, Any]:
+            """
+            Get a high-level summary of the project.
+            
+            Returns:
+                Dict with project name, id, structure count, calculation count, etc.
+            """
+            # TEMP SHIM: Delegate to static method for now
+            return QVService.get_project_summary(self._service.project_root)
+        
+        def init_calculation(
+            self,
+            name: str,
+            structure_selector: str | None = None,
+            template: str | None = None,
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> Any:
+            """
+            Create a new calculation.
+            
+            Args:
+                name: Calculation name
+                structure_selector: Optional structure selector for calculation
+                template: Optional template name
+                index: Optional resource index (for performance)
+                config: Optional project config (for performance)
+                
+            Returns:
+                ResolvedResource for the new calculation
+            """
+            # TEMP SHIM: Delegate to static method for now
+            return QVService.init_calculation(
+                project_root=self._service.project_root,
+                name=name,
+                structure_selector=structure_selector,
+                template=template,
+                index=index,
+                config=config,
+            )
+        
+        def analyze_pseudo_effects(
+            self,
+            selections: list[Any],
+        ) -> dict[str, Any]:
+            """
+            Analyze what would happen if pseudo selections were applied (read-only).
+            
+            Args:
+                selections: List of PseudoSelection objects or dicts
+                
+            Returns:
+                PseudoPrepareReport as dict
+            """
+            # TEMP SHIM: Delegate to static method for now
+            return QVService.analyze_project_pseudo_effects(
+                project_root=self._service.project_root,
+                selections=selections,
+            )
+        
+        def materialize_pseudo_file(
+            self,
+            element: str,
+            sha256: str,
+            preferred_basename: str | None = None,
+        ) -> dict[str, Any]:
+            """
+            Materialize a pseudo file from sha256 selection to actual file path.
+            
+            Args:
+                element: Element symbol
+                sha256: SHA256 hash of the pseudo file
+                preferred_basename: Preferred basename (for display/filename)
+                
+            Returns:
+                Dict with success, file_path, source, error, needs_install, archive_asset
+            """
+            # TEMP SHIM: Delegate to static method for now
+            return QVService.materialize_pseudo_file(
+                project_root=self._service.project_root,
+                element=element,
+                sha256=sha256,
+                preferred_basename=preferred_basename,
+            )
+        
+        def get_pseudo_options(
+            self,
+            elements: list[str],
+            config: dict[str, Any] | None = None,
+        ) -> dict[str, list[dict[str, Any]]]:
+            """
+            Get deduplicated pseudo options for a list of elements.
+            
+            Args:
+                elements: List of element symbols
+                config: Optional PseudoConfig dict (loads if not provided)
+                
+            Returns:
+                Dict mapping element -> List[PseudoVariant dict] (sha256-keyed)
+            """
+            # TEMP SHIM: Delegate to static method for now
+            return QVService.get_pseudo_options_for_elements(
+                project_root=self._service.project_root,
+                elements=elements,
+                config=config,
+            )
 
     @property
     def project(self) -> Project:
@@ -6105,7 +6311,8 @@ class QVService:
         """
         Get a high-level summary of a project.
         
-        This is a backwards-compatibility wrapper for the legacy QVService.get_project_summary().
+        # TEMP SHIM for PR; TODO relocate to Project.get_summary()
+        This is a backwards-compatibility wrapper. Frontends should use get_service(project_root).project.get_summary() instead.
         
         Args:
             project_root: Project root path
@@ -6224,6 +6431,7 @@ class QVService:
             raise map_kernel_exception(e)
     
     @staticmethod
+    # TEMP SHIM for PR; TODO relocate to Calculation.list()
     def list_calculations_data(project_root: Path | str) -> list[dict[str, Any]]:
         """
         List all calculations as JSON-serializable dicts.
@@ -6307,6 +6515,7 @@ class QVService:
             raise map_kernel_exception(e)
     
     @staticmethod
+    # TEMP SHIM for PR; TODO relocate to Project.init_calculation()
     def init_calculation(
         project_root: Path | str,
         name: str,
@@ -6549,6 +6758,7 @@ class QVService:
             raise map_kernel_exception(e)
 
     @staticmethod
+    # TEMP SHIM for PR; TODO relocate to Run.run_calculation()
     def run_calculation(
         project_root: Path | str,
         calculation_selector: str,
@@ -6646,6 +6856,7 @@ class QVService:
             raise map_kernel_exception(e)
 
     @staticmethod
+    # TEMP SHIM for PR; TODO relocate to Run.run_step()
     def run_step(
         project_root: Path | str,
         calculation_selector: str,
@@ -6776,6 +6987,7 @@ class QVService:
             raise map_kernel_exception(e)
 
     @staticmethod
+    # TEMP SHIM for PR; TODO relocate to Structure.import_file()
     def import_structure(
         project_root: Path | str,
         source: Path | str,
@@ -6895,6 +7107,7 @@ class QVService:
             raise map_kernel_exception(e)
 
     @staticmethod
+    # TEMP SHIM for PR; TODO relocate to Structure.promote_relax_structure()
     def promote_relax_structure(
         project_root: Path | str,
         calculation_selector: str,
@@ -6974,6 +7187,7 @@ class QVService:
             raise map_kernel_exception(e)
 
     @staticmethod
+    # TEMP SHIM for PR; TODO relocate to Calculation.configure_species_map()
     def configure_species_map(
         project_root: Path | str,
         calculation: str,
@@ -7203,6 +7417,7 @@ class QVService:
     # -------------------------------------------------------------------------
 
     @staticmethod
+    # TEMP SHIM for PR; TODO relocate to Structure.save_relax_final_structure()
     def save_relax_final_structure(
         project_root: Path | str,
         calculation_selector: str,
@@ -7690,6 +7905,7 @@ class QVService:
         return _import_seed_archives(Path(seed_dir), [Path(p) for p in archive_paths])
 
     @staticmethod
+    # TEMP SHIM for PR; TODO relocate to Project.analyze_pseudo_effects()
     def analyze_project_pseudo_effects(
         project_root: Path | str,
         selections: list[Any],
@@ -7745,6 +7961,7 @@ class QVService:
         }
 
     @staticmethod
+    # TEMP SHIM for PR; TODO relocate to Project.materialize_pseudo_file()
     def materialize_pseudo_file(
         project_root: Path | str,
         element: str,
@@ -7772,6 +7989,7 @@ class QVService:
         )
 
     @staticmethod
+    # TEMP SHIM for PR; TODO relocate to Project.get_pseudo_options()
     def get_pseudo_options_for_elements(
         project_root: Path | str,
         elements: list[str],
