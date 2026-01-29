@@ -63,18 +63,18 @@ ENVIRONMENT_DEPENDENT_DICTS = {
 }
 
 # Subtrees that can be fully skipped (truly environment-dependent)
+# STRICT POLICY: Only skip subtrees with genuinely nondeterministic content
 FULLY_SKIPPABLE_SUBTREES = {
-    "entries",  # Journal entries vary by recipe operations
-    "demos",  # Demo list varies by environment
-    "archives",  # Pseudo archives vary by environment
+    "entries",  # Journal entries vary by recipe operations (write order)
+    "demos",  # Demo list varies by environment (filesystem discovery)
+    "archives",  # Pseudo archives depend on installed libraries
     "libraries",  # Library list varies by environment
     "perf",  # Performance metrics vary by run
     "sssp_defaults",  # SSSP state varies by environment
     "installed_sources",  # Installation state varies
     "variant_statuses",  # Library installation state varies
     "data",  # get_library_status data varies by environment
-    "templates",  # Calculation templates vary by environment (order, descriptions)
-    "discovered_engines",  # QE engines discovered vary by CI environment
+    # NOTE: templates and discovered_engines NOT skipped - use schema enforcement
 }
 
 # Subtrees where we skip content but enforce item schema (GUI-critical)
@@ -85,6 +85,10 @@ ITEM_SCHEMA_REQUIRED_SUBTREES = {
     "steps": ["type"],  # Minimum: type is always required. id/name vary by method.
     "structures": ["id", "name"],  # Each structure must have these
     "calculations": ["id"],  # Each calculation must have these
+    # Templates: enforce schema but allow different order/count (filesystem discovery order varies)
+    "templates": ["name"],  # Each template must have name
+    # Discovered engines: may be empty in CI, but if present, enforce schema
+    "discovered_engines": [],  # If present, items should have consistent schema
 }
 
 # Maximum items to check in arrays (balance thoroughness vs performance)
