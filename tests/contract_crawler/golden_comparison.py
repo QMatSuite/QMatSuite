@@ -119,6 +119,7 @@ DATA_DEPENDENT_FIELDS = {
     # SSSP installation state
     "sssp_installed",
     "precision", "efficiency",  # SSSP variant flags
+    "seed_has_sssp",  # Depends on whether SSSP library is installed
     # Library status state
     "status", "installed", "installed_variants",
     "variant_statuses", "version", "file_count", "size_bytes",

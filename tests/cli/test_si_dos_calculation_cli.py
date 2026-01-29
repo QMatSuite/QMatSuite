@@ -14,14 +14,18 @@ pytestmark = pytest.mark.qe_cli
 
 
 @pytest.fixture
-def cli_si_dos_project(ci_test_data_dir: Path, project_root_path: Path) -> Path:
-    """Create a temporary project layout for CLI calculation testing."""
+def cli_si_dos_project(ci_test_data_dir: Path, project_root_path: Path, tmp_path: Path) -> Path:
+    """Create a temporary project layout for CLI calculation testing.
+
+    Uses tmp_path for proper isolation in parallel xdist runs.
+    """
     steps = [
         {"id": "scf", "input": "si.1_scf.in", "reference": "si.1_scf.out"},
         {"id": "nscf", "input": "si.2_nscf.in", "reference": "si.2_nscf.out"},
         {"id": "dos", "input": "si.3_dos.in", "reference": "si.3_dos.out"},
     ]
-    project_root = project_root_path / ".tmp" / "test_outputs" / "cli_si_dos_project"
+    # Use tmp_path for proper xdist isolation (each worker gets unique temp dir)
+    project_root = tmp_path / "cli_si_dos_project"
     return create_calculation_project(
         project_root=project_root,
         calculation_id="si_dos",
