@@ -1,0 +1,11 @@
+{
+  "method": "list_qe_ui_parameters",
+  "success": false,
+  "error": {
+    "code": "invalid_argument",
+    "message": "'module' is required in payload"
+  },
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915678",
+  "source": "auto_crawler"
+}

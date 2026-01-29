@@ -1,0 +1,12 @@
+{
+  "method": "list_jobs",
+  "success": true,
+  "response": {
+    "jobs": [],
+    "count": 0
+  },
+  "payload": {},
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915532",
+  "source": "auto_crawler"
+}

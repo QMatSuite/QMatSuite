@@ -1,0 +1,14 @@
+{
+  "method": "set_log_level",
+  "success": true,
+  "response": {
+    "ok": true,
+    "level": "INFO"
+  },
+  "payload": {
+    "level": "INFO"
+  },
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915722",
+  "source": "auto_crawler"
+}

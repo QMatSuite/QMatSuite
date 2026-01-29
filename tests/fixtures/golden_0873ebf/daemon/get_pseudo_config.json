@@ -1,0 +1,16 @@
+{
+  "method": "get_pseudo_config",
+  "success": true,
+  "response": {
+    "store_dir": "<HOME>/QMatSuite/temp/pseudo",
+    "seed_dir": "<HOME>/QMatSuite/temp/assets/pseudo_seed",
+    "allow_download": true,
+    "repo_pseudo_dir": "/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/resources/pseudo",
+    "default_store_dir": "/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/.qmatsuite/libraries/pseudo",
+    "default_seed_dir": "/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_golden_0873ebf_7gujvc9c/.qmatsuite/seeds/pseudo"
+  },
+  "payload": {},
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915460",
+  "source": "auto_crawler"
+}

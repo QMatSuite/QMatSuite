@@ -1,0 +1,11 @@
+{
+  "method": "compute_store_size",
+  "success": true,
+  "response": {
+    "size_bytes": 0
+  },
+  "payload": {},
+  "baseline_commit": "0873ebf",
+  "generated_at": "2026-01-28T23:40:44.915393",
+  "source": "auto_crawler"
+}
