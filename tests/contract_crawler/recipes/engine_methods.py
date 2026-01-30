@@ -159,7 +159,7 @@ class EngineMethodsRecipe(Recipe):
                         step_type="bands",
                         name="bands",
                     )
-                    self.bands_step_id = step_dto.step_id
+                    self.bands_step_id = step_dto.step_ulid
                 except Exception:
                     self.bands_step_id = self.world.get("step_ids", [None])[0]
 
@@ -208,7 +208,7 @@ class EngineMethodsRecipe(Recipe):
                         step_type="dos",
                         name="dos",
                     )
-                    self.dos_step_id = step_dto.step_id
+                    self.dos_step_id = step_dto.step_ulid
                 except Exception:
                     self.dos_step_id = self.world.get("step_ids", [None])[0]
 

@@ -8,7 +8,6 @@
     "path": "<NORMALIZED_PATH>",
     "absolute_path": "<NORMALIZED_PATH>",
     "structure": "germanium",
-    "structure_id": "<NORMALIZED_ID>",
     "structure_elements": [
       "Ge"
     ],
@@ -16,20 +15,22 @@
     "n_steps": 2,
     "steps": [
       {
-        "id": "<NORMALIZED_ID>",
         "slug": "scf",
         "name": "scf",
-        "type": "qe_scf",
         "step_file": "steps/scf.step.yaml",
-        "missing": false
+        "missing": false,
+        "step_type_spec": "qe_scf",
+        "step_type_gen": "scf",
+        "ulid": "<NORMALIZED_ID>"
       },
       {
-        "id": "<NORMALIZED_ID>",
         "slug": "nscf",
         "name": "nscf",
-        "type": "qe_nscf",
         "step_file": "steps/nscf.step.yaml",
-        "missing": false
+        "missing": false,
+        "step_type_spec": "qe_nscf",
+        "step_type_gen": "nscf",
+        "ulid": "<NORMALIZED_ID>"
       }
     ],
     "species_map": null,
@@ -46,7 +47,8 @@
         "new_structure_id": "<NORMALIZED_ID>"
       }
     ],
-    "warnings": []
+    "warnings": [],
+    "structure_ulid": "<NORMALIZED_ID>"
   },
   "recipe_name": "CalculationMutationsRecipe(change_calculation_structure)",
   "baseline_commit": "0873ebf",

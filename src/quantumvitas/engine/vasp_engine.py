@@ -240,7 +240,7 @@ class VaspEngine(Engine):
                 if result.stderr:
                     error += f"\n{result.stderr[:500]}"
             
-            step_type = step.step_type if hasattr(step, "step_type") else "vasp_scf"
+            step_type = step.step_type_spec if hasattr(step, "step_type_spec") else "vasp_scf"
             input_file = working_dir / "INCAR"  # VASP uses INCAR as primary input
             
             return StepResult(

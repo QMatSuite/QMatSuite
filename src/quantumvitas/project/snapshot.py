@@ -351,7 +351,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         # Export steps in the order from calculation.yaml
         # Use calculation_model.steps which preserves the order from calculation.yaml
         for step_entry in calculation_model.steps:
-            step_id = step_entry.step_id  # DAG + ULID model: only step_id (ULID) is used
+            step_id = step_entry.step_ulid  # DAG + ULID model: only step_ulid (ULID) is used
             if not step_id:
                 continue
             
@@ -806,9 +806,14 @@ def materialize_project_from_snapshot(
             step_spec_dict.pop("parent_calculation_id", None)
             step_spec_dict.pop("structure", None)  # Also remove legacy structure selector
             
-            # Update meta with new IDs
+            # Migrate step_type to step_type_spec if needed (for demo snapshots)
+            if "step_type" in step_spec_dict and "step_type_spec" not in step_spec_dict:
+                step_spec_dict["step_type_spec"] = step_spec_dict.pop("step_type")
+            
+            # Update meta with new IDs (use ulid, not id)
             step_spec_dict["meta"] = {
-                "id": new_step_id,
+                "ulid": new_step_id,
+                "id": new_step_id,  # Keep id for backwards compat during migration
                 "name": step_name,
                 "slug": step_slug,
                 "path": f"calculations/{calculation_slug}/steps/{step_slug}.step.yaml",
@@ -824,14 +829,14 @@ def materialize_project_from_snapshot(
             step_file = steps_dir / f"{step_slug}.step.yaml"
             step_file.write_text(yaml.safe_dump(step_spec.to_dict(), sort_keys=False))
             
-            # Add to calculation steps list using step_id (ULID) from step meta
+            # Add to calculation steps list using step_ulid (ULID) from step meta
             from quantumvitas.core.models import CalculationStepEntry
             step_meta = step_spec_dict.get("meta", {})
             step_id = step_meta.get("id") or step_spec_dict.get("id")
             calculation_model.steps.append(CalculationStepEntry(
-                step_id=step_id,  # Use ULID from step meta (canonical reference)
-                type=step_data.get("step_type"),
-                # step_file is NOT stored - step location resolved via registry using step_id
+                step_ulid=step_id,  # Use ULID from step meta (canonical reference)
+                step_type_spec=step_spec.step_type_spec,  # Use step_type_spec from StructureStepSpec
+                # step_file is NOT stored - step location resolved via registry using step_ulid
             ))
         
         # Save calculation.yaml

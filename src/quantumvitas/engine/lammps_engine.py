@@ -561,7 +561,7 @@ class LammpsEngine(Engine):
                     error = f"LAMMPS reported errors:\n" + "\n".join(error_lines[:5])
         
         return StepResult(
-            step_type=step.step_type if hasattr(step, "step_type") else "",
+            step_type=step.step_type_spec if hasattr(step, "step_type_spec") else "",
             input_file=working_dir / "in.lammps",
             success=(result.returncode == 0 and error is None),
             error=error,

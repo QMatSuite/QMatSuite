@@ -147,14 +147,14 @@ class ProjectHistory:
                 return False
         
         # Create baseline event
-        project_id = self._get_project_id()
-        structure_ids = self._get_structure_ids()
-        calculation_ids = self._get_calculation_ids()
+        project_ulid = self._get_project_ulid()
+        structure_ulids = self._get_structure_ulids()
+        calculation_ulids = self._get_calculation_ulids()
         
         baseline = BaselineEvent.create(
-            project_id=project_id,
-            structure_ids=structure_ids,
-            calculation_ids=calculation_ids,
+            project_ulid=project_ulid,
+            structure_ulids=structure_ulids,
+            calculation_ulids=calculation_ulids,
         )
         
         self.append_event(baseline)
@@ -464,27 +464,27 @@ class ProjectHistory:
         
         return False
     
-    def _get_project_id(self) -> str:
-        """Get project ID from project.qv.yml."""
+    def _get_project_ulid(self) -> str:
+        """Get project ULID from project.qv.yml."""
         try:
             from quantumvitas.core.project_utils import load_project_config
             config = load_project_config(self.project_root)
             project_meta = config.get("project", {}).get("meta", {})
-            return project_meta.get("id", "")
+            return project_meta.get("ulid", project_meta.get("id", ""))
         except Exception:
             return ""
     
-    def _get_structure_ids(self) -> List[str]:
-        """Get list of structure IDs from project."""
+    def _get_structure_ulids(self) -> List[str]:
+        """Get list of structure ULIDs from project."""
         try:
             from quantumvitas.core.project_utils import load_project_config
             config = load_project_config(self.project_root)
             structures = config.get("structures", [])
-            return [s.get("structure_id", s.get("id", "")) for s in structures if s]
+            return [s.get("structure_ulid", s.get("structure_id", s.get("id", ""))) for s in structures if s]
         except Exception:
             return []
     
-    def _get_calculation_ids(self) -> List[str]:
+    def _get_calculation_ulids(self) -> List[str]:
         """Get list of calculation IDs from project."""
         try:
             from quantumvitas.core.project_utils import load_project_config

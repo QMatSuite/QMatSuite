@@ -26,7 +26,7 @@ class ORCAEngineConfig:
 @dataclass
 class ORCAStepResult:
     """Result of executing a step within a chain."""
-    step_id: str
+    step_ulid: str
     success: bool
     metrics: Dict[str, Any] = field(default_factory=dict)
     artifacts: Dict[str, str] = field(default_factory=dict)
@@ -186,12 +186,12 @@ class ORCAEngine(Engine):
         Returns:
             StepResult with execution status
         """
-        # Extract structure_id and project_root from step.options (set by handler)
-        structure_id = None
+        # Extract structure_ulid and project_root from step.options (set by handler)
+        structure_ulid = None
         project_root = None
         
         if hasattr(step, 'options'):
-            structure_id = step.options.get('structure_id')
+            structure_ulid = step.options.get('structure_ulid') or step.options.get('structure_id')
             project_root_str = step.options.get('project_root')
             if project_root_str:
                 project_root = Path(project_root_str)
@@ -200,7 +200,7 @@ class ORCAEngine(Engine):
             target_step=step,
             chain_steps=[step],  # Chain of length 1
             calculation_raw_dir=working_dir,
-            structure_id=structure_id,
+            structure_ulid=structure_ulid,
             project_root=project_root,
         )
 
@@ -410,7 +410,7 @@ class ORCAEngine(Engine):
             artifacts["gbw"] = str(gbw_file)
 
         return ORCAStepResult(
-            step_id=step.id,
+            step_ulid=step.meta.id,
             success=success,
             metrics=metrics,
             artifacts=artifacts,
@@ -422,7 +422,7 @@ class ORCAEngine(Engine):
         target_step,
         chain_steps: List[Any],
         calculation_raw_dir: Path,
-        structure_id: Optional[str] = None,
+        structure_ulid: Optional[str] = None,
         project_root: Optional[Path] = None,
     ) -> "StepResult":
         """
@@ -435,7 +435,7 @@ class ORCAEngine(Engine):
             target_step: Target Step object
             chain_steps: List of Step objects in dependency order (from root to target)
             calculation_raw_dir: Base working directory (calc/raw/)
-            structure_id: Structure resource ID (for Molecule loading)
+            structure_ulid: Structure resource ULID (for Molecule loading)
             project_root: Project root path (for structure resolution)
             
         Returns:
@@ -452,7 +452,7 @@ class ORCAEngine(Engine):
         calculation_raw_dir = Path(calculation_raw_dir)
         
         # 1. Validate inputs
-        if not structure_id:
+        if not structure_ulid:
             return StepResult(
                 step_type="orca_relax",
                 input_file=calculation_raw_dir / "chain.inp",
@@ -471,7 +471,7 @@ class ORCAEngine(Engine):
         
         # 2. Load Molecule
         try:
-            structure_resolved = require_structure(project_root, structure_id)
+            structure_resolved = require_structure(project_root, structure_ulid)
             structure_path = structure_resolved.absolute_path
             molecule = read_structure(structure_path)
             
@@ -535,7 +535,7 @@ class ORCAEngine(Engine):
                         self.step = step
                         self.id = step.meta.id
                         self.public_type = public_type
-                        self.step_type = step_type
+                        self.step_type_spec = step_type
                         self.parameters = parameters
                         # Forward other attributes
                         if hasattr(step, 'options'):
@@ -597,7 +597,7 @@ class ORCAEngine(Engine):
         # Find result for target step
         target_result = None
         for orca_result in orca_results:
-            if orca_result.step_id == target_step.meta.id:
+            if orca_result.step_ulid == target_step.meta.id:
                 target_result = orca_result
                 break
         
@@ -624,7 +624,7 @@ class ORCAEngine(Engine):
         }
         
         return StepResult(
-            step_type=target_step.step_type or "orca_relax",
+            step_type=target_step.step_type_spec or "orca_relax",
             input_file=Path(target_result.artifacts.get("input", working_dir / f"{chain.key}.inp")),
             output_file=Path(target_result.artifacts.get("output", working_dir / f"{chain.key}.out")),
             success=target_result.success,

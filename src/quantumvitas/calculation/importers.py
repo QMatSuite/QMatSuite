@@ -245,7 +245,7 @@ def build_step_spec_from_qe_input(
         meta=step_meta,
         structure_id=structure_id,  # Always set structure_id (ID-only model)
         structure=structure_selector,  # Legacy selector (empty if using ID-only)
-        step_type=step_type,
+        step_type_spec=step_type,
         parameters=parameters,
         input_name=input_path.name,
         cards=cards,

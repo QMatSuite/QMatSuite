@@ -202,7 +202,7 @@ def qe_step_handler(
                 }
         
         # If this is a relax step and succeeded, add artifact spec for post-processing
-        step_type = step.step_type if hasattr(step, "step_type") else None
+        step_type = step.step_type_spec if hasattr(step, "step_type_spec") else None
         if success and step_type and is_relax_step_type(step_type) and result.output_file:
             step_result_data["relax_artifact_spec"] = RelaxArtifactSpec(
                 artifact_type="qe_output",

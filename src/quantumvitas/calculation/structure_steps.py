@@ -44,7 +44,7 @@ class StructureStepSpec:
     meta: ResourceMeta
     structure: str  # Legacy selector (backwards compat, not authoritative)
     structure_id: Optional[str] = None  # Canonical structure reference (ULID)
-    step_type: str = "scf"
+    step_type_spec: str = "scf"
     parameters: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     input_name: Optional[str] = None
     cards: Dict[str, Dict[str, Any]] = field(default_factory=dict)
@@ -102,7 +102,10 @@ class StructureStepSpec:
         # Step.yaml stores machine types (SPEC, e.g., "qe_scf").
         # Constitution §B: Persisted truth = SPEC. In-memory model MUST use SPEC types.
         # No normalization to GEN - use registry mapping for display/filenames when needed.
-        step_type = str(data.get("step_type", "scf"))
+        # HARD ERROR if old keys exist
+        if "step_type" in data and "step_type_spec" not in data:
+            raise ValueError("Legacy 'step_type' key found in step.yaml. Run migration script.")
+        step_type_spec = str(data.get("step_type_spec", "scf"))
         
         parameters = data.get("parameters") or {}
         if not isinstance(parameters, dict):
@@ -121,12 +124,18 @@ class StructureStepSpec:
         kpath_metadata = data.get("kpath_metadata")
 
         meta_dict = data.get("meta")
-        default_name = data.get("name") or str(step_type)
+        # HARD ERROR if old meta.id key exists
+        if meta_dict and "id" in meta_dict and "ulid" not in meta_dict:
+            raise ValueError("Legacy 'meta.id' key found in step.yaml. Run migration script.")
+        default_name = data.get("name") or str(step_type_spec)
         default_path = (
             ensure_relative_path(source_path.name, base=source_path.parent)
             if source_path
             else (meta_dict or {}).get("path") or f"{default_name}.step.yaml"
         )
+        # Update meta_dict to use ulid if present, otherwise use id (for backwards compat during migration)
+        if meta_dict and "ulid" in meta_dict:
+            meta_dict = {**meta_dict, "id": meta_dict["ulid"]}
         meta = ResourceMeta.from_dict(
             meta_dict,
             kind="step",
@@ -138,7 +147,7 @@ class StructureStepSpec:
             meta=meta,
             structure_id=structure_id,
             structure=structure or "",  # Provide empty string if only structure_id present
-            step_type=step_type,
+            step_type_spec=step_type_spec,
             parameters=parameters,
             input_name=input_name,
             cards=cards,
@@ -181,9 +190,13 @@ class StructureStepSpec:
         This method explicitly excludes structure_id, parent_calculation_id, and structure fields
         to enforce the DAG invariant that steps do not duplicate calculation-level references.
         """
+        # Convert meta.id to meta.ulid for step.yaml output
+        meta_dict = self.meta.to_dict()
+        if "id" in meta_dict:
+            meta_dict = {**meta_dict, "ulid": meta_dict.pop("id")}
         data: Dict[str, Any] = {
-            "meta": self.meta.to_dict(),
-            "step_type": self.step_type,
+            "meta": meta_dict,
+            "step_type_spec": self.step_type_spec,
         }
         # Step-local configuration only
         if self.parameters:
@@ -456,7 +469,7 @@ def _generate_postprocessing_input(
     
     These don't need structure-based input, just the appropriate namelist.
     """
-    step_type_lower = spec.step_type.lower() if spec.step_type else "dos"
+    step_type_lower = spec.step_type_spec.lower() if spec.step_type_spec else "dos"
     # Convert machine_type (e.g., 'qe_bands') to public_type (e.g., 'bands') for lookup
     step_type_public = _normalize_step_type_to_public(step_type_lower)
     
@@ -516,7 +529,7 @@ def generate_qe_input_from_spec(
         allow_step_species_overrides: If True, fall back to spec.species_overrides when
             species_map is None. If False, raise error when species_map is None (project runs only).
     """
-    step_type_lower = spec.step_type.lower() if spec.step_type else "scf"
+    step_type_lower = spec.step_type_spec.lower() if spec.step_type_spec else "scf"
     # Convert machine_type (e.g., 'qe_bands') to public_type (e.g., 'bands') for lookup
     step_type_public = _normalize_step_type_to_public(step_type_lower)
     
@@ -530,7 +543,7 @@ def generate_qe_input_from_spec(
         combined_overrides.extend(extra_overrides)
     qe_input = generate_qe_input_from_structure(
         structure=structure,
-        step_type=spec.step_type,
+        step_type=spec.step_type_spec,
         parameter_overrides=combined_overrides,
     )
     
@@ -754,7 +767,7 @@ def materialize_step_spec(
 
     # Check if this is a Wannier90 step type - these need special handling
     # and should NOT go through QE input generation/validation
-    step_type_lower = (spec_obj.step_type or "scf").lower()
+    step_type_lower = (spec_obj.step_type_spec or "scf").lower()
     WANNIER90_STEP_TYPES = {"w90_preproc", "w90_run", "pw2wannier90"}
     
     # Phase 3C: Check if calculation is PySCF - PySCF steps should NOT go through QE input generation

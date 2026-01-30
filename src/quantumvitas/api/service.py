@@ -92,8 +92,8 @@ class QVService:
                 
                 # Build summary DTO
                 return analysis_summary_to_dto(
-                    calc_id=calc_resolved.meta.id if calc_resolved.meta else "",
-                    step_id=step_resolved.meta.id if step_resolved.meta else "",
+                    calc_ulid=calc_resolved.meta.id if calc_resolved.meta else "",
+                    step_ulid=step_resolved.meta.id if step_resolved.meta else "",
                     scf_data=scf_data,
                 )
             except Exception as e:
@@ -232,8 +232,8 @@ class QVService:
                 
                 # Build reference DTO
                 return analysis_ref_to_dto(
-                    calc_id=calc_resolved.meta.id if calc_resolved.meta else "",
-                    step_id=step_resolved.meta.id if step_resolved.meta else "",
+                    calc_ulid=calc_resolved.meta.id if calc_resolved.meta else "",
+                    step_ulid=step_resolved.meta.id if step_resolved.meta else "",
                     property_name=property_name,
                     artifact_path=str(artifact_path.relative_to(self._service.project_root)),
                     artifact_format="json",
@@ -909,8 +909,8 @@ class QVService:
                     resolver = make_structure_selector_resolver(project_root, config=config)
                     calc_yaml_path = calculation_dir / "calculation.yaml"
                     wf_model = load_calculation(calc_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
-                    step_entry = next((e for e in wf_model.steps if e.step_id == step_selector), None)
-                    step_type = step_entry.type if step_entry and step_entry.type else None
+                    step_entry = next((e for e in wf_model.steps if e.step_ulid == step_selector), None)
+                    step_type = step_entry.step_type_spec if step_entry and step_entry.step_type_spec else None
                     if step_entry and hasattr(step_entry, 'parameters'):
                         step_params = step_entry.parameters or {}
 
@@ -2488,7 +2488,7 @@ class QVService:
                 return step_to_dto(
                     step_resolved=step_resolved,
                     step_obj=step_obj,
-                    calc_id=calc_resolved.meta.id if calc_resolved.meta else "",
+                    calc_ulid=calc_resolved.meta.id if calc_resolved.meta else "",
                 )
             except Exception as e:
                 if isinstance(e, APIError):
@@ -2620,7 +2620,7 @@ class QVService:
                             dto = step_to_dto(
                                 step_resolved=step_resolved,
                                 step_obj=step_obj,
-                                calc_id=calc_id,
+                                calc_ulid=calc_id,
                             )
                             results.append(dto)
                     except Exception:
@@ -2668,7 +2668,7 @@ class QVService:
                 
                 for step in calc_obj.steps:
                     step_id = step.id
-                    step_type = step.step_type if hasattr(step, 'step_type') else None
+                    step_type = step.step_type_spec if hasattr(step, 'step_type_spec') else None
                     
                     if not step_type:
                         continue
@@ -3007,7 +3007,7 @@ class QVService:
                 return step_to_dto(
                     step_resolved=step_resolved_updated,
                     step_obj=step_obj,
-                    calc_id=calc_id,
+                    calc_ulid=calc_id,
                 )
             except Exception as e:
                 if isinstance(e, APIError):
@@ -3327,7 +3327,7 @@ class QVService:
 
                 step_summaries = []
                 for entry in calc_model.steps:
-                    step_id = entry.step_id
+                    step_id = entry.step_ulid
 
                     # Resolve step to get actual file path
                     step_path = None
@@ -3345,17 +3345,17 @@ class QVService:
                         # If resolution fails, step is missing
                         pass
 
-                    # Use entry.step_type (machine type from calculation.yaml) as primary
-                    step_type = entry.step_type
+                    # Use entry.step_type_spec (SPEC type from calculation.yaml) as primary
+                    step_type = entry.step_type_spec
                     step_name = step_resolved.meta.name if step_resolved and step_resolved.meta else step_id
                     step_status = "pending"
 
                     if step_path and step_path.exists():
                         try:
                             spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolver)
-                            # Only use spec.step_type if entry didn't have one
+                            # Only use spec.step_type_spec if entry didn't have one
                             if not step_type:
-                                step_type = spec.step_type
+                                step_type = spec.step_type_spec
                             step_name = spec.meta.name if spec.meta else step_name
                             step_status = spec.status if hasattr(spec, "status") else "pending"
                         except Exception:
@@ -3653,7 +3653,7 @@ class QVService:
                 
                 # Read step file to get step_id
                 step_data = yaml.safe_load(step_path.read_text())
-                step_id = step_data.get("meta", {}).get("id")
+                step_id = step_data.get("meta", {}).get("ulid") or step_data.get("meta", {}).get("id")
                 if not step_id:
                     from quantumvitas.api.errors import InternalError
                     raise InternalError(
@@ -3662,11 +3662,11 @@ class QVService:
                     )
                 
                 # Add step to calculation.yaml steps array
-                # Use public_type for calculation.yaml (calculation.yaml stores public types)
+                # Use step_type_spec (SPEC value) for calculation.yaml
                 from quantumvitas.core.models import CalculationStepEntry
                 step_entry = CalculationStepEntry(
-                    step_id=step_id,
-                    type=public_step_type,  # Public type for calculation.yaml
+                    step_ulid=step_id,
+                    step_type_spec=spec.step_type_spec,  # SPEC type (e.g., "qe_scf")
                 )
                 
                 # Update calculation model
@@ -3696,8 +3696,8 @@ class QVService:
                     absolute_path=step_path
                 )
                 
-                # Get step_type from step_data (machine type)
-                machine_step_type = step_data.get("step_type", public_step_type)
+                # Get step_type_spec from step_data (machine type)
+                machine_step_type = step_data.get("step_type_spec") or step_data.get("step_type", public_step_type)
                 # Get engine from registry
                 step_spec = registry.get(machine_step_type)
                 engine = step_spec.engine if step_spec else "qe"
@@ -3706,14 +3706,14 @@ class QVService:
                     meta=step_meta,
                     input_file=step_path,  # Placeholder - not used for DTO
                     engine=engine,
-                    step_type=machine_step_type,
+                    step_type_spec=machine_step_type,
                 )
                 
                 # Build StepDTO
                 return step_to_dto(
                     step_resolved=step_resolved,
                     step_obj=step_obj,
-                    calc_id=calc_id,
+                    calc_ulid=calc_id,
                 )
             except Exception as e:
                 if isinstance(e, APIError):
@@ -3762,7 +3762,7 @@ class QVService:
                 step_id = step_selector
                 step_entry = None
                 for entry in calc_model.steps:
-                    if entry.step_id == step_id:
+                    if entry.step_ulid == step_id:
                         step_entry = entry
                         break
                 
@@ -4156,7 +4156,7 @@ class QVService:
                 spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
 
                 # Get defaults for this step type
-                defaults = get_default_step_params(spec.step_type)
+                defaults = get_default_step_params(spec.step_type_spec)
 
                 # Reset parameters and cards via StepDoc
                 step_doc = StepDoc.load(step.absolute_path)
@@ -4309,8 +4309,8 @@ class QVService:
 
                 # Add step to calculation.yaml
                 step_entry = CalculationStepEntry(
-                    step_id=step_id,
-                    type=spec.step_type,
+                    step_ulid=step_id,
+                    step_type_spec=spec.step_type_spec,
                 )
 
                 if not hasattr(wf_model, 'steps') or wf_model.steps is None:
@@ -6929,7 +6929,7 @@ class QVService:
             step_id_from_doc = step_doc.get(["meta", "id"])
             if calculation_yaml_path.exists():
                 wf_model = load_calculation(calculation_dir, project_root)
-                step_entry = CalculationStepEntry(step_id=step_id_from_doc, type=step_type)
+                step_entry = CalculationStepEntry(step_ulid=step_id_from_doc, step_type_spec=machine_step_type)
                 wf_model.steps.append(step_entry)
                 save_calculation(wf_model, calculation_dir)
 

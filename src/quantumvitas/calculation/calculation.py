@@ -295,10 +295,10 @@ def _build_step(
     from quantumvitas.core.resolution import make_structure_selector_resolver
     from quantumvitas.core.project_utils import load_project_config
     
-    # Require step_id (ULID) - no legacy fallback
+    # Require step_ulid (ULID) - no legacy fallback
     from quantumvitas.core.exceptions import LegacyProjectError
     
-    step_id = step_data.get("step_id")
+    step_id = step_data.get("step_ulid") or step_data.get("step_id")
     if not step_id:
         # Check for legacy fields
         has_legacy_id = "id" in step_data
@@ -494,8 +494,8 @@ def _build_step_inspection(
     from quantumvitas.core.resolution import make_structure_selector_resolver
     from quantumvitas.core.project_utils import load_project_config
     
-    # Prefer step_id (ULID) - canonical reference, fall back to legacy id field
-    step_id = step_data.get("step_id") or step_data.get("id")
+    # Prefer step_ulid (ULID) - canonical reference, fall back to legacy step_id/id fields
+    step_id = step_data.get("step_ulid") or step_data.get("step_id") or step_data.get("id")
     if not step_id:
         raise ValueError(f"Step entry missing both 'step_id' and 'id': {step_data}")
     
@@ -605,7 +605,7 @@ def _build_step_inspection(
                 step_file_path,
                 resolve_structure_selector=resolver,
             )
-            step_type = spec.step_type
+            step_type = spec.step_type_spec
         except ResourceNotFoundError:
             # ULID not found in registry - treat as legacy
             is_ulid = False
@@ -639,7 +639,7 @@ def _build_step_inspection(
                     resolve_structure_selector=resolver,
                 )
                 step_meta = spec.meta  # This contains the ULID from the step file
-                step_type = spec.step_type
+                step_type = spec.step_type_spec
                 # Store the real ULID for migration
                 new_step_id = step_meta.id
             else:
@@ -792,7 +792,7 @@ def _build_step_from_spec(
             # Use apply_defaults=False to get only what's in the input file
             extracted_params, extracted_cards = _build_step_spec_from_qe_input_data(
                 existing_qe_input,
-                spec_preview.step_type or "scf",
+                spec_preview.step_type_spec or "scf",
                 apply_defaults=False,
             )
             
@@ -848,7 +848,7 @@ def _build_step_from_spec(
         input_override = spec_preview.input_name
     else:
         # Generate filename from step_type
-        step_type = spec_preview.step_type or "scf"
+        step_type = spec_preview.step_type_spec or "scf"
         
         # Use step_type_counts to determine if we need numbering
         # Count how many steps of this type we've already processed

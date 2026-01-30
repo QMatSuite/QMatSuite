@@ -71,7 +71,7 @@ def reconcile_manifest(
     # Process all steps in topology (even if old manifest is shorter)
     for i, step in enumerate(calculation_steps):
         # Get step kind (step type)
-        step_kind = str(step.step_type) if step.step_type else "unknown"
+        step_kind = str(step.step_type_spec) if step.step_type_spec else "unknown"
         # Use step.meta.id (ULID) instead of step.id (slug)
         step_ulid = step.meta.id
         

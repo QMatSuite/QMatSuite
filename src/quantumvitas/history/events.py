@@ -105,24 +105,24 @@ class BaselineEvent(HistoryEvent):
     """
     event_type: str = field(default=EventType.BASELINE.value)
     snapshot_path: Optional[str] = None  # Optional path to baseline snapshot
-    structure_ids: List[str] = field(default_factory=list)
-    calculation_ids: List[str] = field(default_factory=list)
+    structure_ulids: List[str] = field(default_factory=list)
+    calculation_ulids: List[str] = field(default_factory=list)
     
     @classmethod
     def create(
         cls,
-        project_id: str,
-        structure_ids: Optional[List[str]] = None,
-        calculation_ids: Optional[List[str]] = None,
+        project_ulid: str,
+        structure_ulids: Optional[List[str]] = None,
+        calculation_ulids: Optional[List[str]] = None,
         snapshot_path: Optional[str] = None,
     ) -> "BaselineEvent":
         """Create a new baseline event."""
         return cls(
             id=cls.generate_id(),
             timestamp=cls.now_timestamp(),
-            project_id=project_id,
-            structure_ids=structure_ids or [],
-            calculation_ids=calculation_ids or [],
+            project_ulid=project_ulid,
+            structure_ulids=structure_ulids or [],
+            calculation_ulids=calculation_ulids or [],
             snapshot_path=snapshot_path,
         )
     
@@ -132,12 +132,12 @@ class BaselineEvent(HistoryEvent):
             id=data["id"],
             timestamp=data["timestamp"],
             event_type=data.get("event_type", EventType.BASELINE.value),
-            project_id=data.get("project_id"),
-            calc_id=data.get("calc_id"),
-            step_id=data.get("step_id"),
+            project_ulid=data.get("project_ulid", data.get("project_id")),
+            calc_ulid=data.get("calc_ulid", data.get("calc_id")),
+            step_ulid=data.get("step_ulid", data.get("step_id")),
             snapshot_path=data.get("snapshot_path"),
-            structure_ids=data.get("structure_ids", []),
-            calculation_ids=data.get("calculation_ids", []),
+            structure_ulids=data.get("structure_ulids", data.get("structure_ids", [])),
+            calculation_ulids=data.get("calculation_ulids", data.get("calculation_ids", [])),
         )
 
 

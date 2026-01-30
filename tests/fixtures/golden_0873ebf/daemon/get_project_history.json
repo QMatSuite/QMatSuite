@@ -7,10 +7,10 @@
         "id": "<NORMALIZED_ID>",
         "timestamp": "<NORMALIZED_TIMESTAMP>",
         "event_type": "baseline",
-        "calc_id": "<NORMALIZED_ID>",
         "step_id": "<NORMALIZED_ID>",
         "structure_ids": "<NORMALIZED_ID>",
-        "calculation_ids": []
+        "calculation_ids": [],
+        "calc_ulid": "<NORMALIZED_ID>"
       }
     ],
     "latest_run_id": null,

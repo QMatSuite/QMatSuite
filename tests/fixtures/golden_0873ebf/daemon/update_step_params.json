@@ -2,14 +2,11 @@
   "method": "update_step_params",
   "success": true,
   "response": {
-    "id": "<NORMALIZED_ID>",
     "name": "scf",
     "slug": "scf",
     "path": "<NORMALIZED_PATH>",
     "absolute_path": "<NORMALIZED_PATH>",
-    "step_type": "qe_scf",
     "structure": "",
-    "parent_calculation_id": "<NORMALIZED_ID>",
     "parameters": {
       "CONTROL": {
         "calculation": "<NORMALIZED_ID>",
@@ -45,7 +42,11 @@
     },
     "warnings": [
       "CONTROL.outdir looks like a runtime-managed key. For QE it is protected and will be overridden at run time (default outdir=./outdir, pseudo_dir=project/pseudo, prefix is engine-managed). If you are not using QE, you can ignore this warning."
-    ]
+    ],
+    "step_type_spec": "qe_scf",
+    "step_type_gen": "scf",
+    "ulid": "<NORMALIZED_ID>",
+    "parent_calculation_ulid": "<NORMALIZED_ID>"
   },
   "recipe_name": "StepMutationsRecipe(update_step_params)",
   "baseline_commit": "0873ebf",

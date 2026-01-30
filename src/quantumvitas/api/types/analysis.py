@@ -20,8 +20,8 @@ class AnalysisRefDTO(BaseDTO):
     Use this for large arrays/data that should be loaded on-demand.
     """
     # Identity
-    calc_id: str
-    step_id: str
+    calc_ulid: str
+    step_ulid: str
     property_name: str        # "band_structure", "dos", "trajectory"
 
     # Artifact reference
@@ -43,8 +43,8 @@ class AnalysisSummaryDTO(BaseDTO):
     Quick analysis overview (no large data).
     """
     # Identity
-    calc_id: str
-    step_id: str
+    calc_ulid: str
+    step_ulid: str
 
     # Status
     converged: bool | None = None

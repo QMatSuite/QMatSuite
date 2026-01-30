@@ -2,14 +2,11 @@
   "method": "set_pseudo_mapping",
   "success": true,
   "response": {
-    "id": "<NORMALIZED_ID>",
     "name": "scf",
     "slug": "scf",
     "path": "<NORMALIZED_PATH>",
     "absolute_path": "<NORMALIZED_PATH>",
-    "step_type": "qe_scf",
     "structure": "",
-    "parent_calculation_id": "<NORMALIZED_ID>",
     "parameters": {
       "CONTROL": {
         "calculation": "<NORMALIZED_ID>",
@@ -46,7 +43,11 @@
     "prefix_outdir_injection": {
       "effective_prefix": "<NORMALIZED_ID>",
       "effective_outdir": "./outdir"
-    }
+    },
+    "step_type_spec": "qe_scf",
+    "step_type_gen": "scf",
+    "ulid": "<NORMALIZED_ID>",
+    "parent_calculation_ulid": "<NORMALIZED_ID>"
   },
   "recipe_name": "OtherMethodsRecipe(set_pseudo_mapping)",
   "baseline_commit": "0873ebf",

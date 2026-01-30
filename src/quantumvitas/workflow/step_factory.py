@@ -65,12 +65,12 @@ def create_step_doc(
     # step.yaml stores machine_type (qe_scf), not public_type (scf)
     data: Dict[str, Any] = {
         "meta": {
-            "id": step_id,
+            "ulid": step_id,
             "name": name,
             "slug": slug,
             "kind": "step",
         },
-        "step_type": machine_step_type,  # Machine type goes to step.yaml
+        "step_type_spec": machine_step_type,  # Machine type goes to step.yaml
     }
     
     # DAG model: Do NOT store structure_id in step YAML
