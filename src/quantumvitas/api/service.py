@@ -3621,8 +3621,8 @@ class QVService:
                         context={"step_type": step_type}
                     )
                 
-                # Use public_type for calculation.yaml (registry.get() accepts both public and machine types)
-                public_step_type = spec.public_type
+                # Use gen type for calculation.yaml (registry.get() accepts both gen and spec types)
+                public_step_type = spec.step_type_gen
                 
                 # Create steps directory
                 steps_dir = calc_dir / "steps"
@@ -3641,9 +3641,9 @@ class QVService:
                 unique_name = unique_slug if unique_slug != base_slug else step_name
 
                 # Create and save step using canonical factory
-                # Pass machine_type so factory uses the engine-specific step type
+                # Pass spec type so factory uses the engine-specific step type
                 step_path = create_and_save_step(
-                    step_type=spec.machine_type,  # Use engine-specific machine type (e.g., lammps_relax)
+                    step_type=spec.step_type_spec,  # Use engine-specific spec type (e.g., lammps_relax)
                     name=unique_name,
                     steps_dir=steps_dir,
                     structure_id=structure_id,

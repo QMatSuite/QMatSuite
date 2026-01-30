@@ -235,7 +235,7 @@ def materialize_public_step_key(
         # Check if the spec's engine matches the requested engine_family
         spec_engine_family = spec.engine
         if spec_engine_family == engine_family:
-            return spec.machine_type
+            return spec.step_type_spec
 
     # Fallback: Try DriverRegistry via materialize_step()
     # This handles GeneralizedStep enum values like "SCF", "TD"

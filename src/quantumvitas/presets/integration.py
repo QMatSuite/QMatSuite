@@ -466,8 +466,8 @@ def apply_presets_to_step(
     from quantumvitas.workflow.registry import get_registry
     registry = get_registry()
     spec = registry.get(step_type)
-    if spec and spec.public_type:
-        step_type = spec.public_type
+    if spec and spec.step_type_gen:
+        step_type = spec.step_type_gen
     
     # Resolve engine from step context (for capability validation)
     from quantumvitas.presets.capability import resolve_engine_for_step, require_preset_capability, CapabilityError

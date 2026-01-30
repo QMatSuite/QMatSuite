@@ -70,7 +70,7 @@ class TestStepTypeRouting:
 
         from quantumvitas.core.driver_registry import DriverRegistry
         spec = DriverRegistry.get_step_type_spec("qe_scf")
-        assert spec.id == "qe_scf"
+        assert spec.id == "qe_scf"  # driver_protocol StepTypeSpec uses 'id' field
         assert spec.engine == "qe"
         assert spec.executable == "pw.x"
 

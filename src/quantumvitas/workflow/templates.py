@@ -327,8 +327,8 @@ class WorkflowService:
                 registry = get_registry()
                 spec = registry.get(step_type)  # Accepts both public and machine types
                 if spec:
-                    # Use id (public type) for workflow detection (workflows use public types)
-                    public_type = spec.id  # id is the public type
+                    # Use gen type for workflow detection (workflows use gen types)
+                    public_type = spec.step_type_gen
                     present_steps.append(public_type)
                     if debug_enabled:
                         logger.info(

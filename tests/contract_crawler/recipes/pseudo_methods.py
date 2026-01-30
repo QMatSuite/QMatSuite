@@ -62,6 +62,23 @@ class PseudoMethodsRecipe(Recipe):
             QVService.init_project(self.project_root, name="demo_project")
             self.world = build_demo_world(self.project_root)
         
+        # For validate_pseudo_config, set up directories and config
+        if self.method_name == "validate_pseudo_config":
+            from quantumvitas.core.pseudo_config import PseudoConfig, save_pseudo_config
+            store_dir = self.tmp_path / "pseudo_store"
+            seed_dir = self.tmp_path / "pseudo_seed"
+            store_dir.mkdir(exist_ok=True)
+            seed_dir.mkdir(exist_ok=True)
+            # Create SSSP directory structure to match golden
+            (seed_dir / "sssp").mkdir(exist_ok=True)
+            # Save config with these directories
+            config = PseudoConfig(
+                store_dir=str(store_dir),
+                seed_dir=str(seed_dir),
+                allow_download=True,
+            )
+            save_pseudo_config(config)
+        
         return True
     
     def build_payload(self) -> dict[str, Any]:

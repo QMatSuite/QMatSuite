@@ -167,7 +167,7 @@ class CalculationStepEntry:
             registry = get_registry()
             spec = registry.get(step_type_raw)  # Accepts both public and machine types
             if spec:
-                step_type_public = spec.public_type
+                step_type_public = spec.step_type_gen
         
         return cls(
             step_id=step_id,

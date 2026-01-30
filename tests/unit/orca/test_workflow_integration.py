@@ -18,8 +18,8 @@ class TestORCAStepTypeRegistration:
         spec = registry.get("orca_scf")
 
         assert spec is not None
-        assert spec.id == "scf"
-        assert spec.machine_type == "orca_scf"
+        assert spec.step_type_gen == "scf"
+        assert spec.step_type_spec == "orca_scf"
         assert spec.engine == "orca"
 
     def test_orca_hf_registered(self):
@@ -30,8 +30,8 @@ class TestORCAStepTypeRegistration:
         spec = registry.get("orca_hf")
 
         assert spec is not None
-        assert spec.id == "hf"
-        assert spec.machine_type == "orca_hf"
+        assert spec.step_type_gen == "hf"
+        assert spec.step_type_spec == "orca_hf"
         assert spec.engine == "orca"
 
     def test_orca_td_registered(self):
@@ -42,8 +42,8 @@ class TestORCAStepTypeRegistration:
         spec = registry.get("orca_td")
 
         assert spec is not None
-        assert spec.id == "td"
-        assert spec.machine_type == "orca_td"
+        assert spec.step_type_gen == "td"
+        assert spec.step_type_spec == "orca_td"
         assert spec.engine == "orca"
 
     def test_orca_scf_produces_gbw(self):

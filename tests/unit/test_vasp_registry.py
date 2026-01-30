@@ -27,9 +27,9 @@ class TestVASPStepTypeRegistry:
         spec = registry.get("vasp_scf")
         
         assert spec is not None
-        assert spec.id == "scf"
-        assert spec.machine_type == "vasp_scf"
-        assert spec.public_type == "scf"
+        assert spec.step_type_gen == "scf"
+        assert spec.step_type_spec == "vasp_scf"
+        assert spec.step_type_gen == "scf"
         assert spec.engine == "vasp"
         assert spec.executable == "vasp_std"
         assert spec.requires_structure is True

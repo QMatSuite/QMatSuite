@@ -25,7 +25,7 @@ class TestStepTypeRegistration:
         registry = StepTypeRegistry()
         spec = registry.get("w90_preproc")
         assert spec is not None
-        assert spec.id == "w90_preproc"
+        assert spec.step_type_gen == "w90_preproc"
         assert spec.executable == "wannier90.x"
         assert spec.engine == "qe"
     
@@ -34,7 +34,7 @@ class TestStepTypeRegistration:
         registry = StepTypeRegistry()
         spec = registry.get("pw2wannier90")
         assert spec is not None
-        assert spec.id == "pw2wannier90"
+        assert spec.step_type_gen == "pw2wannier90"
         assert spec.executable == "pw2wannier90.x"
         assert spec.engine == "qe"
     
@@ -43,7 +43,7 @@ class TestStepTypeRegistration:
         registry = StepTypeRegistry()
         spec = registry.get("w90_run")
         assert spec is not None
-        assert spec.id == "w90_run"
+        assert spec.step_type_gen == "w90_run"
         assert spec.executable == "wannier90.x"
         assert spec.engine == "qe"
 
