@@ -84,15 +84,17 @@ def extract_step_selector_from_entry(entry: dict) -> Optional[str]:
     Extract a step selector from a calculation.yaml steps entry.
     
     Priority order:
-    1. step_id (DAG + ID-only model - ULID)
-    2. id (legacy)
-    3. name (legacy)
+    1. step_ulid (canonical - ULID)
+    2. step_id (legacy - ULID)
+    3. id (legacy)
+    4. name (legacy)
     
     Returns:
         Selector string (ULID or name) or None if no valid selector found
     """
     return (
-        entry.get("step_id") or
+        entry.get("step_ulid") or
+        entry.get("step_id") or  # Legacy fallback
         entry.get("id") or
         entry.get("name")
     )

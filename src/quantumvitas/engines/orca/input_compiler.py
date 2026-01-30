@@ -58,9 +58,9 @@ class ORCAInputCompiler:
 
         # Process downstream steps
         for step in chain.downstream:
-            if step.public_type == "td":
+            if step.step_type_gen == "td":
                 self._process_td_step(step, blocks)
-            elif step.public_type == "relax":
+            elif step.step_type_gen == "relax":
                 # Add Opt keyword for geometry optimization
                 keywords.add("Opt")
                 # Process relax-specific parameters (e.g., MaxIter, convergence)
@@ -102,7 +102,7 @@ class ORCAInputCompiler:
         params = step.parameters
 
         # Method/functional
-        if step.public_type == "hf":
+        if step.step_type_gen == "hf":
             keywords.add("HF")
         else:
             # DFT functional

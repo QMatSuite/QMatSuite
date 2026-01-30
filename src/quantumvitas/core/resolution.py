@@ -1428,7 +1428,8 @@ def resolve_step(
     if _is_ulid_like(step_selector):
         for step_file, data in step_entries:
             meta = data.get("meta") or {}
-            if meta.get("id") == step_selector:
+            # Check both ulid (canonical) and id (legacy) for backwards compatibility
+            if meta.get("ulid") == step_selector or meta.get("id") == step_selector:
                 return _step_path_to_resolved(step_file, project_root)
     
     # Strategy 5: step meta.name or meta.slug (exact match)
@@ -1443,9 +1444,10 @@ def resolve_step(
     for step_file, data in step_entries:
         step_id = data.get("id", "")
         meta = data.get("meta") or {}
-        meta_id = meta.get("id", "")
-        # Check both top-level id and meta.id
-        if step_id.lower() == step_selector.lower() or meta_id.lower() == step_selector.lower():
+        meta_ulid = meta.get("ulid", "")
+        meta_id = meta.get("id", "")  # Legacy fallback
+        # Check both top-level id and meta.ulid (canonical) and meta.id (legacy)
+        if step_id.lower() == step_selector.lower() or meta_ulid.lower() == step_selector.lower() or meta_id.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
     
     # Strategy 7: step_type (exact match) - for backwards compatibility

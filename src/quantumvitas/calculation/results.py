@@ -14,8 +14,8 @@ from .types import StepMode, StepStatus
 
 @dataclass(slots=True)
 class StepResultSummary:
-    step_id: str
-    step_type: str
+    step_ulid: str  # ULID (was step_id)
+    step_type_spec: str  # SPEC type (was step_type)
     status: StepStatus
     working_dir: Path
     input_file: Path
@@ -46,8 +46,10 @@ class CalculationResult:
             "finished_at": self.finished_at.isoformat(),
             "steps": [
                 {
-                    "step_id": step.step_id,
-                    "step_type": step.step_type_spec if hasattr(step, "step_type_spec") else getattr(step, "step_type", None),
+                    "step_ulid": step.step_ulid,
+                    "step_id": step.step_ulid,  # Backwards compat
+                    "step_type_spec": step.step_type_spec,
+                    "step_type": step.step_type_spec,  # Backwards compat
                     "status": step.status.value,
                     "working_dir": str(step.working_dir),  # Keep for backward compat in step summaries
                     "input_file": str(step.input_file),

@@ -490,7 +490,7 @@ class PySCFEngine(Engine):
                 if step_yaml_path.exists():
                     import yaml
                     step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
-                    step_type = step_data.get("step_type") or "unknown"
+                    step_type = step_data.get("step_type_spec") or step_data.get("step_type") or "unknown"
             
             # HARD ERROR if step_type not found - no fallbacks allowed
             if step_type == "unknown" or not step_type:

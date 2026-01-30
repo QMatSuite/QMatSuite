@@ -365,7 +365,7 @@ class ORCAEngine(Engine):
             "execution_time": execution_time,
         }
 
-        if step.public_type in ("scf", "hf", "dft"):
+        if step.step_type_gen in ("scf", "hf", "dft"):
             # SCF-like step: extract energy
             energy = get_energy(properties)
             if energy is not None:
@@ -385,7 +385,7 @@ class ORCAEngine(Engine):
                 spd = properties["Single_Point_Data"]
                 metrics["converged"] = spd.get("Converged", False)
 
-        elif step.public_type == "td":
+        elif step.step_type_gen == "td":
             # TDDFT step: extract excitations
             tddft_data = get_tddft_excitations(properties)
             if tddft_data:
@@ -516,7 +516,7 @@ class ORCAEngine(Engine):
             
             if step_type:
                 spec = registry.get(step_type)
-                public_type = spec.step_type_gen if spec else step_type
+                step_type_gen = spec.step_type_gen if spec else step_type
                 
                 # Load parameters from step.yaml if not in step object
                 parameters = {}
@@ -529,19 +529,19 @@ class ORCAEngine(Engine):
                         step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
                         parameters = step_data.get("parameters", {})
                 
-                # Create a wrapper object with public_type and parameters
+                # Create a wrapper object with step_type_gen and parameters
                 class StepWrapper:
-                    def __init__(self, step, public_type, step_type, parameters):
+                    def __init__(self, step, step_type_gen, step_type_spec, parameters):
                         self.step = step
                         self.id = step.meta.id
-                        self.public_type = public_type
-                        self.step_type_spec = step_type
+                        self.step_type_gen = step_type_gen
+                        self.step_type_spec = step_type_spec
                         self.parameters = parameters
                         # Forward other attributes
                         if hasattr(step, 'options'):
                             self.options = step.options
                 
-                steps_with_public_type.append(StepWrapper(step, public_type, step_type, parameters))
+                steps_with_public_type.append(StepWrapper(step, step_type_gen, step_type, parameters))
             else:
                 # No step_type, skip this step
                 continue

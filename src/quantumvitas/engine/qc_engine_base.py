@@ -12,8 +12,8 @@ from typing import Any, List, Optional, Protocol, Sequence
 class StepLike(Protocol):
     """Protocol for step-like objects."""
     id: str
-    public_type: str
-    step_type: str
+    step_type_gen: str  # GEN type (engine-agnostic, e.g., "scf")
+    step_type_spec: str  # SPEC type (engine-prefixed, e.g., "qe_scf")
 
 
 # Step types that start a new chain (SCF roots)
@@ -116,7 +116,7 @@ def detect_chains(steps: Sequence[Any]) -> List[QCChain]:
     current_chain: Optional[QCChain] = None
 
     for step in steps:
-        if step.public_type in SCF_ROOT_TYPES:
+        if step.step_type_gen in SCF_ROOT_TYPES:
             # Start a new chain
             if current_chain is not None:
                 chains.append(current_chain)
@@ -157,8 +157,8 @@ def derive_chain_key(chain: QCChain, chain_index: int) -> str:
     Returns:
         Chain key string
     """
-    step_types = [chain.scf_root.public_type]
-    step_types.extend(step.public_type for step in chain.downstream)
+    step_types = [chain.scf_root.step_type_gen]
+    step_types.extend(step.step_type_gen for step in chain.downstream)
 
     base_key = "_".join(step_types)
     return f"chain{chain_index:02d}_{base_key}"
