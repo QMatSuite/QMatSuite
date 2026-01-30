@@ -12,7 +12,6 @@
         "library_version": null,
         "xc": null,
         "quality": null,
-        "type": null,
         "relativistic": null,
         "category": "gipaw",
         "installed": false,
@@ -29,7 +28,6 @@
         "library_version": "2017",
         "xc": null,
         "quality": null,
-        "type": null,
         "relativistic": null,
         "category": "scan",
         "installed": false,
@@ -46,7 +44,6 @@
         "library_version": "1.3.0",
         "xc": "pbe",
         "quality": "efficiency",
-        "type": null,
         "relativistic": null,
         "category": "sssp",
         "installed": false,
@@ -63,7 +60,6 @@
         "library_version": "1.3.0",
         "xc": "pbe",
         "quality": "precision",
-        "type": null,
         "relativistic": null,
         "category": "sssp",
         "installed": false,
@@ -80,13 +76,14 @@
         "library_version": "04",
         "xc": "pbe",
         "quality": "standard",
-        "type": "nc",
         "relativistic": "fr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbe_standard_upf.tar"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbe_standard_upf.tar",
+        "step_type_gen": "nc",
+        "step_type_spec": "qe_nc"
       },
       {
         "asset_name": "nc-fr-04_pbe_stringent_upf.tar",
@@ -97,13 +94,14 @@
         "library_version": "04",
         "xc": "pbe",
         "quality": "stringent",
-        "type": "nc",
         "relativistic": "fr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbe_stringent_upf.tar"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbe_stringent_upf.tar",
+        "step_type_gen": "nc",
+        "step_type_spec": "qe_nc"
       },
       {
         "asset_name": "nc-fr-04_pbesol_standard_upf.tar",
@@ -114,13 +112,14 @@
         "library_version": "04",
         "xc": "pbesol",
         "quality": "standard",
-        "type": "nc",
         "relativistic": "fr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbesol_standard_upf.tar"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbesol_standard_upf.tar",
+        "step_type_gen": "nc",
+        "step_type_spec": "qe_nc"
       },
       {
         "asset_name": "nc-fr-04_pbesol_stringent_upf.tar",
@@ -131,13 +130,14 @@
         "library_version": "04",
         "xc": "pbesol",
         "quality": "stringent",
-        "type": "nc",
         "relativistic": "fr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbesol_stringent_upf.tar"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbesol_stringent_upf.tar",
+        "step_type_gen": "nc",
+        "step_type_spec": "qe_nc"
       },
       {
         "asset_name": "nc-sr-04_pbe_standard_upf.tgz",
@@ -148,13 +148,14 @@
         "library_version": "04",
         "xc": "pbe",
         "quality": "standard",
-        "type": "nc",
         "relativistic": "sr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbe_standard_upf.tgz"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbe_standard_upf.tgz",
+        "step_type_gen": "nc",
+        "step_type_spec": "qe_nc"
       },
       {
         "asset_name": "nc-sr-04_pbe_stringent_upf.tgz",
@@ -165,13 +166,14 @@
         "library_version": "04",
         "xc": "pbe",
         "quality": "stringent",
-        "type": "nc",
         "relativistic": "sr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbe_stringent_upf.tgz"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbe_stringent_upf.tgz",
+        "step_type_gen": "nc",
+        "step_type_spec": "qe_nc"
       },
       {
         "asset_name": "nc-sr-04_pbesol_standard_upf.tgz",
@@ -182,13 +184,14 @@
         "library_version": "04",
         "xc": "pbesol",
         "quality": "standard",
-        "type": "nc",
         "relativistic": "sr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbesol_standard_upf.tgz"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbesol_standard_upf.tgz",
+        "step_type_gen": "nc",
+        "step_type_spec": "qe_nc"
       },
       {
         "asset_name": "nc-sr-04_pbesol_stringent_upf.tgz",
@@ -199,13 +202,14 @@
         "library_version": "04",
         "xc": "pbesol",
         "quality": "stringent",
-        "type": "nc",
         "relativistic": "sr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbesol_stringent_upf.tgz"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbesol_stringent_upf.tgz",
+        "step_type_gen": "nc",
+        "step_type_spec": "qe_nc"
       },
       {
         "asset_name": "nc-sr-04_pw_standard_upf.tgz",
@@ -216,13 +220,14 @@
         "library_version": "04",
         "xc": "pw",
         "quality": "standard",
-        "type": "nc",
         "relativistic": "sr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pw_standard_upf.tgz"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pw_standard_upf.tgz",
+        "step_type_gen": "nc",
+        "step_type_spec": "qe_nc"
       },
       {
         "asset_name": "nc-sr-04_pw_stringent_upf.tgz",
@@ -233,13 +238,14 @@
         "library_version": "04",
         "xc": "pw",
         "quality": "stringent",
-        "type": "nc",
         "relativistic": "sr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pw_stringent_upf.tgz"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pw_stringent_upf.tgz",
+        "step_type_gen": "nc",
+        "step_type_spec": "qe_nc"
       },
       {
         "asset_name": "paw-sr-11_lda_standard_upf.tgz",
@@ -250,13 +256,14 @@
         "library_version": "11",
         "xc": "lda",
         "quality": "standard",
-        "type": "paw",
         "relativistic": "sr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_lda_standard_upf.tgz"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_lda_standard_upf.tgz",
+        "step_type_gen": "paw",
+        "step_type_spec": "qe_paw"
       },
       {
         "asset_name": "paw-sr-11_lda_stringent_upf.tgz",
@@ -267,13 +274,14 @@
         "library_version": "11",
         "xc": "lda",
         "quality": "stringent",
-        "type": "paw",
         "relativistic": "sr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_lda_stringent_upf.tgz"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_lda_stringent_upf.tgz",
+        "step_type_gen": "paw",
+        "step_type_spec": "qe_paw"
       },
       {
         "asset_name": "paw-sr-11_pbe_standard_upf.tgz",
@@ -284,13 +292,14 @@
         "library_version": "11",
         "xc": "pbe",
         "quality": "standard",
-        "type": "paw",
         "relativistic": "sr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbe_standard_upf.tgz"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbe_standard_upf.tgz",
+        "step_type_gen": "paw",
+        "step_type_spec": "qe_paw"
       },
       {
         "asset_name": "paw-sr-11_pbe_stringent_upf.tgz",
@@ -301,13 +310,14 @@
         "library_version": "11",
         "xc": "pbe",
         "quality": "stringent",
-        "type": "paw",
         "relativistic": "sr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbe_stringent_upf.tgz"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbe_stringent_upf.tgz",
+        "step_type_gen": "paw",
+        "step_type_spec": "qe_paw"
       },
       {
         "asset_name": "paw-sr-11_pbesol_standard_upf.tgz",
@@ -318,13 +328,14 @@
         "library_version": "11",
         "xc": "pbesol",
         "quality": "standard",
-        "type": "paw",
         "relativistic": "sr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbesol_standard_upf.tgz"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbesol_standard_upf.tgz",
+        "step_type_gen": "paw",
+        "step_type_spec": "qe_paw"
       },
       {
         "asset_name": "paw-sr-11_pbesol_stringent_upf.tgz",
@@ -335,13 +346,14 @@
         "library_version": "11",
         "xc": "pbesol",
         "quality": "stringent",
-        "type": "paw",
         "relativistic": "sr",
         "category": "pseudo-dojo",
         "installed": false,
         "corrupt": false,
         "warning": null,
-        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbesol_stringent_upf.tgz"
+        "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbesol_stringent_upf.tgz",
+        "step_type_gen": "paw",
+        "step_type_spec": "qe_paw"
       },
       {
         "asset_name": "ps-library-legacy.tar.gz",
@@ -352,7 +364,6 @@
         "library_version": "legacy",
         "xc": null,
         "quality": null,
-        "type": null,
         "relativistic": null,
         "category": "pslibrary",
         "installed": false,
@@ -369,7 +380,6 @@
         "library_version": "1.0.0",
         "xc": null,
         "quality": null,
-        "type": null,
         "relativistic": null,
         "category": "pslibrary",
         "installed": false,
@@ -386,7 +396,6 @@
         "library_version": null,
         "xc": null,
         "quality": null,
-        "type": null,
         "relativistic": null,
         "category": "hgh",
         "installed": false,
@@ -403,7 +412,6 @@
         "library_version": "1.5",
         "xc": null,
         "quality": null,
-        "type": null,
         "relativistic": null,
         "category": "gbrv",
         "installed": false,
@@ -420,7 +428,6 @@
         "library_version": "1.5",
         "xc": null,
         "quality": null,
-        "type": null,
         "relativistic": null,
         "category": "gbrv",
         "installed": false,
@@ -437,7 +444,6 @@
         "library_version": "1.5",
         "xc": null,
         "quality": null,
-        "type": null,
         "relativistic": null,
         "category": "gbrv",
         "installed": false,
@@ -454,7 +460,6 @@
         "library_version": "2020-02-06",
         "xc": null,
         "quality": null,
-        "type": null,
         "relativistic": null,
         "category": "sg15",
         "installed": false,
@@ -474,7 +479,6 @@
           "library_version": null,
           "xc": null,
           "quality": null,
-          "type": null,
           "relativistic": null,
           "category": "gipaw",
           "installed": false,
@@ -493,7 +497,6 @@
           "library_version": "2017",
           "xc": null,
           "quality": null,
-          "type": null,
           "relativistic": null,
           "category": "scan",
           "installed": false,
@@ -512,7 +515,6 @@
           "library_version": "1.3.0",
           "xc": "pbe",
           "quality": "efficiency",
-          "type": null,
           "relativistic": null,
           "category": "sssp",
           "installed": false,
@@ -529,7 +531,6 @@
           "library_version": "1.3.0",
           "xc": "pbe",
           "quality": "precision",
-          "type": null,
           "relativistic": null,
           "category": "sssp",
           "installed": false,
@@ -548,13 +549,14 @@
           "library_version": "04",
           "xc": "pbe",
           "quality": "standard",
-          "type": "nc",
           "relativistic": "fr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbe_standard_upf.tar"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbe_standard_upf.tar",
+          "step_type_gen": "nc",
+          "step_type_spec": "qe_nc"
         },
         {
           "asset_name": "nc-fr-04_pbe_stringent_upf.tar",
@@ -565,13 +567,14 @@
           "library_version": "04",
           "xc": "pbe",
           "quality": "stringent",
-          "type": "nc",
           "relativistic": "fr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbe_stringent_upf.tar"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbe_stringent_upf.tar",
+          "step_type_gen": "nc",
+          "step_type_spec": "qe_nc"
         },
         {
           "asset_name": "nc-fr-04_pbesol_standard_upf.tar",
@@ -582,13 +585,14 @@
           "library_version": "04",
           "xc": "pbesol",
           "quality": "standard",
-          "type": "nc",
           "relativistic": "fr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbesol_standard_upf.tar"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbesol_standard_upf.tar",
+          "step_type_gen": "nc",
+          "step_type_spec": "qe_nc"
         },
         {
           "asset_name": "nc-fr-04_pbesol_stringent_upf.tar",
@@ -599,13 +603,14 @@
           "library_version": "04",
           "xc": "pbesol",
           "quality": "stringent",
-          "type": "nc",
           "relativistic": "fr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbesol_stringent_upf.tar"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-fr-04_pbesol_stringent_upf.tar",
+          "step_type_gen": "nc",
+          "step_type_spec": "qe_nc"
         },
         {
           "asset_name": "nc-sr-04_pbe_standard_upf.tgz",
@@ -616,13 +621,14 @@
           "library_version": "04",
           "xc": "pbe",
           "quality": "standard",
-          "type": "nc",
           "relativistic": "sr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbe_standard_upf.tgz"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbe_standard_upf.tgz",
+          "step_type_gen": "nc",
+          "step_type_spec": "qe_nc"
         },
         {
           "asset_name": "nc-sr-04_pbe_stringent_upf.tgz",
@@ -633,13 +639,14 @@
           "library_version": "04",
           "xc": "pbe",
           "quality": "stringent",
-          "type": "nc",
           "relativistic": "sr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbe_stringent_upf.tgz"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbe_stringent_upf.tgz",
+          "step_type_gen": "nc",
+          "step_type_spec": "qe_nc"
         },
         {
           "asset_name": "nc-sr-04_pbesol_standard_upf.tgz",
@@ -650,13 +657,14 @@
           "library_version": "04",
           "xc": "pbesol",
           "quality": "standard",
-          "type": "nc",
           "relativistic": "sr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbesol_standard_upf.tgz"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbesol_standard_upf.tgz",
+          "step_type_gen": "nc",
+          "step_type_spec": "qe_nc"
         },
         {
           "asset_name": "nc-sr-04_pbesol_stringent_upf.tgz",
@@ -667,13 +675,14 @@
           "library_version": "04",
           "xc": "pbesol",
           "quality": "stringent",
-          "type": "nc",
           "relativistic": "sr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbesol_stringent_upf.tgz"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pbesol_stringent_upf.tgz",
+          "step_type_gen": "nc",
+          "step_type_spec": "qe_nc"
         },
         {
           "asset_name": "nc-sr-04_pw_standard_upf.tgz",
@@ -684,13 +693,14 @@
           "library_version": "04",
           "xc": "pw",
           "quality": "standard",
-          "type": "nc",
           "relativistic": "sr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pw_standard_upf.tgz"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pw_standard_upf.tgz",
+          "step_type_gen": "nc",
+          "step_type_spec": "qe_nc"
         },
         {
           "asset_name": "nc-sr-04_pw_stringent_upf.tgz",
@@ -701,13 +711,14 @@
           "library_version": "04",
           "xc": "pw",
           "quality": "stringent",
-          "type": "nc",
           "relativistic": "sr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pw_stringent_upf.tgz"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/nc-sr-04_pw_stringent_upf.tgz",
+          "step_type_gen": "nc",
+          "step_type_spec": "qe_nc"
         }
       ],
       "PseudoDojo 11": [
@@ -720,13 +731,14 @@
           "library_version": "11",
           "xc": "lda",
           "quality": "standard",
-          "type": "paw",
           "relativistic": "sr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_lda_standard_upf.tgz"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_lda_standard_upf.tgz",
+          "step_type_gen": "paw",
+          "step_type_spec": "qe_paw"
         },
         {
           "asset_name": "paw-sr-11_lda_stringent_upf.tgz",
@@ -737,13 +749,14 @@
           "library_version": "11",
           "xc": "lda",
           "quality": "stringent",
-          "type": "paw",
           "relativistic": "sr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_lda_stringent_upf.tgz"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_lda_stringent_upf.tgz",
+          "step_type_gen": "paw",
+          "step_type_spec": "qe_paw"
         },
         {
           "asset_name": "paw-sr-11_pbe_standard_upf.tgz",
@@ -754,13 +767,14 @@
           "library_version": "11",
           "xc": "pbe",
           "quality": "standard",
-          "type": "paw",
           "relativistic": "sr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbe_standard_upf.tgz"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbe_standard_upf.tgz",
+          "step_type_gen": "paw",
+          "step_type_spec": "qe_paw"
         },
         {
           "asset_name": "paw-sr-11_pbe_stringent_upf.tgz",
@@ -771,13 +785,14 @@
           "library_version": "11",
           "xc": "pbe",
           "quality": "stringent",
-          "type": "paw",
           "relativistic": "sr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbe_stringent_upf.tgz"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbe_stringent_upf.tgz",
+          "step_type_gen": "paw",
+          "step_type_spec": "qe_paw"
         },
         {
           "asset_name": "paw-sr-11_pbesol_standard_upf.tgz",
@@ -788,13 +803,14 @@
           "library_version": "11",
           "xc": "pbesol",
           "quality": "standard",
-          "type": "paw",
           "relativistic": "sr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbesol_standard_upf.tgz"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbesol_standard_upf.tgz",
+          "step_type_gen": "paw",
+          "step_type_spec": "qe_paw"
         },
         {
           "asset_name": "paw-sr-11_pbesol_stringent_upf.tgz",
@@ -805,13 +821,14 @@
           "library_version": "11",
           "xc": "pbesol",
           "quality": "stringent",
-          "type": "paw",
           "relativistic": "sr",
           "category": "pseudo-dojo",
           "installed": false,
           "corrupt": false,
           "warning": null,
-          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbesol_stringent_upf.tgz"
+          "upstream_url": "https://github.com/QMatSuite/qmatsuite-assets/releases/download/assets-2025-12-26/paw-sr-11_pbesol_stringent_upf.tgz",
+          "step_type_gen": "paw",
+          "step_type_spec": "qe_paw"
         }
       ],
       "PSLibrary legacy": [
@@ -824,7 +841,6 @@
           "library_version": "legacy",
           "xc": null,
           "quality": null,
-          "type": null,
           "relativistic": null,
           "category": "pslibrary",
           "installed": false,
@@ -843,7 +859,6 @@
           "library_version": "1.0.0",
           "xc": null,
           "quality": null,
-          "type": null,
           "relativistic": null,
           "category": "pslibrary",
           "installed": false,
@@ -862,7 +877,6 @@
           "library_version": null,
           "xc": null,
           "quality": null,
-          "type": null,
           "relativistic": null,
           "category": "hgh",
           "installed": false,
@@ -881,7 +895,6 @@
           "library_version": "1.5",
           "xc": null,
           "quality": null,
-          "type": null,
           "relativistic": null,
           "category": "gbrv",
           "installed": false,
@@ -898,7 +911,6 @@
           "library_version": "1.5",
           "xc": null,
           "quality": null,
-          "type": null,
           "relativistic": null,
           "category": "gbrv",
           "installed": false,
@@ -915,7 +927,6 @@
           "library_version": "1.5",
           "xc": null,
           "quality": null,
-          "type": null,
           "relativistic": null,
           "category": "gbrv",
           "installed": false,
@@ -934,7 +945,6 @@
           "library_version": "2020-02-06",
           "xc": null,
           "quality": null,
-          "type": null,
           "relativistic": null,
           "category": "sg15",
           "installed": false,

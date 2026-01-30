@@ -456,8 +456,8 @@ def complete_run_revision(
         error_msg = step_result.get("message") if step_status == "failed" else None
         
         digest = compute_step_digest(
-            step_id=step_id,
-            step_type=step_type,
+            step_ulid=step_id,
+            step_type_spec=step_type,
             working_dir=working_dir,
             step_name=step_name,
             step_status=step_status,

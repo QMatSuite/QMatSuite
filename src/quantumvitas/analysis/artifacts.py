@@ -577,7 +577,7 @@ def parse_and_write_bands_artifact(
                     from quantumvitas.calculation.structure_steps import StructureStepSpec
                     try:
                         spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=None)
-                        step_type = spec.step_type
+                        step_type = spec.step_type_spec
                     except Exception:
                         # Fallback: try from calculation.yaml
                         steps = calc_data.get("steps", [])

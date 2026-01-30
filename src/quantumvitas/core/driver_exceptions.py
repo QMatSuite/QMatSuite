@@ -12,7 +12,7 @@ class UnknownStepTypeError(DriverError):
     """Raised when step type is not registered."""
 
     def __init__(self, step_type: str, known_types: Optional[List[str]] = None):
-        self.step_type = step_type
+        self.step_type_spec = step_type
         self.known_types = known_types or []
         similar = self._find_similar()
 
@@ -49,7 +49,7 @@ class UnknownStepTypeError(DriverError):
 
         candidates = []
         for known in self.known_types:
-            dist = levenshtein(self.step_type.lower(), known.lower())
+            dist = levenshtein(self.step_type_spec.lower(), known.lower())
             if dist <= max_distance:
                 candidates.append((dist, known))
 

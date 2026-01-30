@@ -5,27 +5,30 @@
     "id": "<NORMALIZED_ID>",
     "name": "demo_calc",
     "slug": "demo_calc",
-    "structure_id": "<NORMALIZED_ID>",
     "steps": [
       {
-        "step_id": "<NORMALIZED_ID>",
-        "type": "scf",
         "input": null,
-        "reference": null
+        "reference": null,
+        "step_type_gen": "scf",
+        "step_type_spec": "qe_scf",
+        "step_ulid": "<NORMALIZED_ID>"
       },
       {
-        "step_id": "<NORMALIZED_ID>",
-        "type": "nscf",
         "input": null,
-        "reference": null
+        "reference": null,
+        "step_type_gen": "nscf",
+        "step_type_spec": "qe_nscf",
+        "step_ulid": "<NORMALIZED_ID>"
       },
       {
-        "step_id": "<NORMALIZED_ID>",
-        "type": "qe_bands",
         "input": null,
-        "reference": null
+        "reference": null,
+        "step_type_spec": "qe_bands",
+        "step_type_gen": "bands",
+        "step_ulid": "<NORMALIZED_ID>"
       }
-    ]
+    ],
+    "structure_ulid": "<NORMALIZED_ID>"
   },
   "recipe_name": "CalculationMutationsRecipe(add_step_to_calculation)",
   "baseline_commit": "0873ebf",

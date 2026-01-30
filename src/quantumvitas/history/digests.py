@@ -92,8 +92,8 @@ class StepDigest:
     Contains key metrics extracted from the step's output files.
     All metrics are DigestValue objects for consistent status tracking.
     """
-    step_id: str
-    step_type: str
+    step_ulid: str
+    step_type_spec: str
     step_name: Optional[str] = None
     status: str = "success"  # "success", "failed", "skipped"
     
@@ -139,8 +139,8 @@ class StepDigest:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         d = {
-            "step_id": self.step_id,
-            "step_type": self.step_type,
+            "step_ulid": self.step_ulid,
+            "step_type_spec": self.step_type_spec,
             "step_name": self.step_name,
             "status": self.status,
             "output_file": self.output_file,
@@ -171,8 +171,8 @@ class StepDigest:
     def from_dict(cls, data: Dict[str, Any]) -> "StepDigest":
         """Create from dictionary."""
         digest = cls(
-            step_id=data.get("step_id", ""),
-            step_type=data.get("step_type", ""),
+            step_ulid=data.get("step_ulid", ""),
+            step_type_spec=data.get("step_type_spec", ""),
             step_name=data.get("step_name"),
             status=data.get("status", "success"),
             output_file=data.get("output_file"),
@@ -198,8 +198,8 @@ class StepDigest:
 
 
 def compute_step_digest(
-    step_id: str,
-    step_type: str,
+    step_ulid: str,
+    step_type_spec: str,
     working_dir: Path,
     step_name: Optional[str] = None,
     step_status: str = "success",
@@ -209,11 +209,11 @@ def compute_step_digest(
     Compute digest for a step's results.
     
     This is the main entry point for step digest computation.
-    It dispatches to type-specific parsers based on step_type.
+    It dispatches to type-specific parsers based on step_type_spec.
     
     Args:
-        step_id: ULID of the step
-        step_type: Type of step (scf, nscf, bands, dos, relax, etc.)
+        step_ulid: ULID of the step
+        step_type_spec: SPEC type of step (qe_scf, vasp_relax, etc.)
         working_dir: Path to working directory containing output files
         step_name: Human-readable step name
         step_status: Step execution status
@@ -223,8 +223,8 @@ def compute_step_digest(
         StepDigest with computed metrics
     """
     digest = StepDigest(
-        step_id=step_id,
-        step_type=step_type,
+        step_ulid=step_ulid,
+        step_type_spec=step_type_spec,
         step_name=step_name,
         status=step_status,
         error_message=error_message,
@@ -233,7 +233,7 @@ def compute_step_digest(
     working_dir = Path(working_dir)
     
     # Find output file based on step type
-    output_file = _find_output_file(working_dir, step_type)
+    output_file = _find_output_file(working_dir, step_type_spec)
     
     if output_file:
         digest.output_file = str(output_file.relative_to(working_dir) if output_file.is_relative_to(working_dir) else output_file)
@@ -242,7 +242,7 @@ def compute_step_digest(
         digest.output_exists = False
     
     # Dispatch to type-specific parser
-    step_type_lower = step_type.lower() if step_type else ""
+    step_type_lower = step_type_spec.lower() if step_type_spec else ""
     
     try:
         if step_type_lower in ("scf", "relax", "vc-relax", "vc_relax", "md", "vc-md"):
@@ -260,25 +260,25 @@ def compute_step_digest(
             if output_file:
                 _parse_generic_digest(digest, output_file)
     except Exception as e:
-        logger.warning(f"Error computing digest for step {step_id} ({step_type}): {e}")
+        logger.warning(f"Error computing digest for step {step_ulid} ({step_type_spec}): {e}")
         digest.error_message = str(e)
     
     return digest
 
 
-def _find_output_file(working_dir: Path, step_type: str) -> Optional[Path]:
+def _find_output_file(working_dir: Path, step_type_spec: str) -> Optional[Path]:
     """
     Find the output file for a step type.
     
     Tries multiple naming conventions:
-    - <step_type>.out (new convention)
-    - <step_type>.pw_run.out (QE wrapper output)
-    - <prefix>.<step_type>.out (legacy)
+    - <step_type_spec>.out (new convention)
+    - <step_type_spec>.pw_run.out (QE wrapper output)
+    - <prefix>.<step_type_spec>.out (legacy)
     """
     if not working_dir.exists():
         return None
     
-    step_type_lower = step_type.lower() if step_type else ""
+    step_type_lower = step_type_spec.lower() if step_type_spec else ""
     
     # Try exact matches first
     candidates = [
@@ -348,7 +348,7 @@ def _parse_scf_digest(digest: StepDigest, output_file: Optional[Path]) -> None:
             digest.cpu_time = DigestValue.ok(result.total_cpu_time, "s")
         
         # Check for relax-specific info
-        if digest.step_type in ("relax", "vc-relax", "vc_relax"):
+        if digest.step_type_spec in ("relax", "vc-relax", "vc_relax"):
             _parse_relax_specific(digest, output_file)
         
     except Exception as e:

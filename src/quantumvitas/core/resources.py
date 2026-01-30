@@ -219,7 +219,8 @@ class ResourceMeta:
         default_path: str,
     ) -> "ResourceMeta":
         data = data or {}
-        resource_id = data.get("id") or generate_resource_id()
+        # Check for ulid first (new format), then id (legacy)
+        resource_id = data.get("ulid") or data.get("id") or generate_resource_id()
         name = data.get("name") or default_name
         slug = data.get("slug") or slugify(name)
         path = data.get("path") or default_path

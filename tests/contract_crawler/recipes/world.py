@@ -155,14 +155,14 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
             step_type="qe_scf",
             name="scf",
         )
-        step1_id = step1_dto.step_id
+        step1_id = step1_dto.step_ulid
         
         step2_dto = svc.calculation.add_step(
             calc_selector=calc_id,
             step_type="qe_nscf",
             name="nscf",
         )
-        step2_id = step2_dto.step_id
+        step2_id = step2_dto.step_ulid
     
     step_ids = [step1_id, step2_id] if step1_id and step2_id else []
     

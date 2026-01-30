@@ -7,25 +7,26 @@
         "namelist": "SYSTEM",
         "name": "ecutwfc",
         "label": "Wavefunction Cutoff",
-        "type": "number",
         "unit": "Ry",
         "description": "Kinetic energy cutoff for wavefunctions",
-        "importance": "core"
+        "importance": "core",
+        "step_type_gen": "number",
+        "step_type_spec": "qe_number"
       },
       {
         "namelist": "SYSTEM",
         "name": "ecutrho",
         "label": "Charge Density Cutoff",
-        "type": "number",
         "unit": "Ry",
         "description": "Kinetic energy cutoff for charge density (default: 4\u00d7ecutwfc)",
-        "importance": "core"
+        "importance": "core",
+        "step_type_gen": "number",
+        "step_type_spec": "qe_number"
       },
       {
         "namelist": "SYSTEM",
         "name": "occupations",
         "label": "Occupations",
-        "type": "select",
         "options": [
           "smearing",
           "fixed",
@@ -33,13 +34,14 @@
           "tetrahedra_lin",
           "tetrahedra_opt"
         ],
-        "importance": "core"
+        "importance": "core",
+        "step_type_gen": "select",
+        "step_type_spec": "qe_select"
       },
       {
         "namelist": "SYSTEM",
         "name": "smearing",
         "label": "Smearing Type",
-        "type": "select",
         "options": [
           "gaussian",
           "gauss",
@@ -54,69 +56,78 @@
           "f-d",
           "fd"
         ],
-        "importance": "advanced"
+        "importance": "advanced",
+        "step_type_gen": "select",
+        "step_type_spec": "qe_select"
       },
       {
         "namelist": "SYSTEM",
         "name": "degauss",
         "label": "Smearing Width",
-        "type": "number",
         "unit": "Ry",
         "description": "Gaussian spreading for Brillouin-zone integration",
-        "importance": "advanced"
+        "importance": "advanced",
+        "step_type_gen": "number",
+        "step_type_spec": "qe_number"
       },
       {
         "namelist": "ELECTRONS",
         "name": "conv_thr",
         "label": "Convergence Threshold",
-        "type": "number",
         "description": "Convergence threshold for self-consistency",
-        "importance": "core"
+        "importance": "core",
+        "step_type_gen": "number",
+        "step_type_spec": "qe_number"
       },
       {
         "namelist": "SYSTEM",
         "name": "nspin",
         "label": "Spin Polarization",
-        "type": "select",
         "description": "1=non-magnetic, 2=collinear, 4=noncollinear",
         "options": [
           "1",
           "2",
           "4"
         ],
-        "importance": "core"
+        "importance": "core",
+        "step_type_gen": "select",
+        "step_type_spec": "qe_select"
       },
       {
         "namelist": "SYSTEM",
         "name": "noncolin",
         "label": "Noncollinear",
-        "type": "bool",
         "description": "Enable noncollinear magnetism",
-        "importance": "advanced"
+        "importance": "advanced",
+        "step_type_gen": "bool",
+        "step_type_spec": "qe_bool"
       },
       {
         "namelist": "SYSTEM",
         "name": "lspinorb",
         "label": "Spin-Orbit Coupling",
-        "type": "bool",
         "description": "Enable spin-orbit coupling",
-        "importance": "advanced"
+        "importance": "advanced",
+        "step_type_gen": "bool",
+        "step_type_spec": "qe_bool"
       },
       {
         "namelist": "SYSTEM",
         "name": "nosym",
         "label": "Disable Symmetry",
-        "type": "bool",
         "description": "Disable symmetry operations",
-        "importance": "advanced"
+        "importance": "advanced",
+        "step_type_gen": "bool",
+        "step_type_spec": "qe_bool"
       },
       {
         "namelist": "SYSTEM",
         "name": "noinv",
         "label": "Disable Inversion",
-        "type": "bool",
         "description": "Disable inversion symmetry",
-        "importance": "advanced"
+        "importance": "advanced",
+        "step_type_gen": "bool",
+        "step_type_spec": "qe_bool"
       }
     ]
   },

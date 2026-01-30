@@ -28,7 +28,6 @@
         ],
         "default": "nonmagnetic",
         "scope": {
-          "type": "variant_step_types",
           "step_types": [
             "bands_pw",
             "md",
@@ -37,7 +36,9 @@
             "scf",
             "vc-md",
             "vc-relax"
-          ]
+          ],
+          "step_type_spec": "variant_step_types",
+          "step_type_gen": "variant_step_types"
         }
       },
       {
@@ -61,7 +62,6 @@
         ],
         "default": "fixed",
         "scope": {
-          "type": "variant_step_types",
           "step_types": [
             "md",
             "nscf",
@@ -69,7 +69,9 @@
             "scf",
             "vc-md",
             "vc-relax"
-          ]
+          ],
+          "step_type_spec": "variant_step_types",
+          "step_type_gen": "variant_step_types"
         }
       },
       {
@@ -93,7 +95,6 @@
         ],
         "default": "med",
         "scope": {
-          "type": "variants",
           "variants": [
             {
               "name": "PRECISION_PW_DEFAULT",
@@ -120,7 +121,9 @@
               ],
               "notes": "no K_POINTS (kpath preserved)"
             }
-          ]
+          ],
+          "step_type_gen": "variants",
+          "step_type_spec": "qe_variants"
         }
       },
       {
@@ -148,7 +151,6 @@
         ],
         "default": "normal",
         "scope": {
-          "type": "variant_step_types",
           "step_types": [
             "bands_pw",
             "md",
@@ -157,7 +159,9 @@
             "scf",
             "vc-md",
             "vc-relax"
-          ]
+          ],
+          "step_type_spec": "variant_step_types",
+          "step_type_gen": "variant_step_types"
         }
       },
       {
@@ -168,10 +172,11 @@
         "options": [],
         "default": "",
         "scope": {
-          "type": "variant_step_types",
           "step_types": [
             "scf"
-          ]
+          ],
+          "step_type_spec": "variant_step_types",
+          "step_type_gen": "variant_step_types"
         }
       }
     ],

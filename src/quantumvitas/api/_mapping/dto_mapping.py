@@ -26,16 +26,16 @@ def kernel_to_dto(kernel_obj: Any) -> Any:
 
 
 def analysis_summary_to_dto(
-    calc_id: str,
-    step_id: str,
+    calc_ulid: str,
+    step_ulid: str,
     scf_data: dict[str, Any] | None = None,
 ) -> AnalysisSummaryDTO:
     """
     Map analysis data to AnalysisSummaryDTO.
     
     Args:
-        calc_id: Calculation ULID
-        step_id: Step ULID
+        calc_ulid: Calculation ULID
+        step_ulid: Step ULID
         scf_data: Optional SCF analysis data from artifact
         
     Returns:
@@ -71,8 +71,8 @@ def analysis_summary_to_dto(
             available_properties.append("scf")
     
     return AnalysisSummaryDTO(
-        calc_id=calc_id,
-        step_id=step_id,
+        calc_ulid=calc_ulid,
+        step_ulid=step_ulid,
         converged=converged,
         total_energy_ev=total_energy_ev,
         fermi_energy_ev=fermi_energy_ev,
@@ -84,8 +84,8 @@ def analysis_summary_to_dto(
 
 
 def analysis_ref_to_dto(
-    calc_id: str,
-    step_id: str,
+    calc_ulid: str,
+    step_ulid: str,
     property_name: str,
     artifact_path: str,
     artifact_format: str,
@@ -146,8 +146,8 @@ def analysis_ref_to_dto(
         summary["n_kpoints"] = clean_data.get("n_kpoints")
     
     return AnalysisRefDTO(
-        calc_id=calc_id,
-        step_id=step_id,
+        calc_ulid=calc_ulid,
+        step_ulid=step_ulid,
         property_name=property_name,
         artifact_path=artifact_path,
         artifact_format=artifact_format,
@@ -245,7 +245,7 @@ def _derive_step_status(step_obj: Any, calc_dir: Path) -> str:
     from quantumvitas.calculation.types import StepStatus
     
     # Check if step is done
-    step_type = step_obj.step_type if hasattr(step_obj, 'step_type') else None
+    step_type = step_obj.step_type_spec if hasattr(step_obj, 'step_type_spec') else None
     if step_type:
         raw_dir = calc_dir / "raw"
         if is_step_done(calc_dir, step_type, calc_raw_dir=raw_dir):
@@ -326,11 +326,11 @@ def calculation_ref_to_dto(
             updated_at=calc_resolved.meta.updated_at.isoformat() if hasattr(calc_resolved.meta, 'updated_at') and calc_resolved.meta.updated_at else None,
         )
     
-    # Get calculation ID
-    calc_id = calc_resolved.meta.id if calc_resolved.meta else ""
+    # Get calculation ULID
+    calc_ulid = calc_resolved.meta.id if calc_resolved.meta else ""
     
     return CalculationRefDTO(
-        calc_id=calc_id,
+        calc_ulid=calc_ulid,
         path=rel_path,
         meta=meta,
     )
@@ -366,8 +366,8 @@ def calculation_to_dto(
             updated_at=calc_model.meta.updated_at.isoformat() if hasattr(calc_model.meta, 'updated_at') and calc_model.meta.updated_at else None,
         )
     
-    # Get calculation ID
-    calc_id = calc_resolved.meta.id if calc_resolved.meta else ""
+    # Get calculation ULID
+    calc_ulid = calc_resolved.meta.id if calc_resolved.meta else ""
     
     # Get engine family
     engine = calc_model.engine_family if calc_model else None
@@ -376,47 +376,47 @@ def calculation_to_dto(
         first_step = calc_obj.steps[0]
         if hasattr(first_step, 'engine'):
             engine = first_step.engine
-        elif hasattr(first_step, 'step_type'):
-            # Extract engine from step_type (e.g., "qe_scf" -> "qe")
-            step_type = first_step.step_type
-            if step_type and "_" in step_type:
-                engine = step_type.split("_")[0]
+        elif hasattr(first_step, 'step_type_spec'):
+            # Extract engine from step_type_spec (e.g., "qe_scf" -> "qe")
+            step_type_spec = first_step.step_type_spec
+            if step_type_spec and "_" in step_type_spec:
+                engine = step_type_spec.split("_")[0]
     
     # Derive status
     status = _derive_calculation_status(calc_obj)
     
-    # Get step IDs and counts
-    step_ids = []
+    # Get step ULIDs and counts
+    step_ulids = []
     step_count = 0
     completed_step_count = 0
     
     if hasattr(calc_obj, 'steps'):
         step_count = len(calc_obj.steps)
         for step in calc_obj.steps:
-            # Step stores ID in meta.id (ResourceMeta)
-            step_id = None
+            # Step stores ULID in meta.id (ResourceMeta)
+            step_ulid = None
             if hasattr(step, 'meta') and step.meta:
-                step_id = step.meta.id
+                step_ulid = step.meta.id
             elif hasattr(step, 'id'):
-                step_id = step.id
-            if step_id:
-                step_ids.append(step_id)
+                step_ulid = step.id
+            if step_ulid:
+                step_ulids.append(step_ulid)
 
             # Count completed steps (simplified)
             step_status = getattr(step, 'status', None)
             if step_status == "completed" or step_status == "success":
                 completed_step_count += 1
     
-    # Get structure ID
-    structure_id = calc_model.structure_id if calc_model else None
+    # Get structure ULID
+    structure_ulid = calc_model.structure_ulid if hasattr(calc_model, 'structure_ulid') else (calc_model.structure_id if hasattr(calc_model, 'structure_id') else None)
     
     return CalculationDTO(
-        calc_id=calc_id,
+        calc_ulid=calc_ulid,
         engine=engine or "unknown",
         status=status,
         meta=meta,
-        structure_id=structure_id,
-        step_ids=step_ids if step_ids else None,
+        structure_ulid=structure_ulid,
+        step_ulids=step_ulids if step_ulids else None,
         step_count=step_count if step_count > 0 else None,
         completed_step_count=completed_step_count if completed_step_count > 0 else None,
     )
@@ -425,7 +425,7 @@ def calculation_to_dto(
 def step_to_dto(
     step_resolved: Any,  # ResolvedResource
     step_obj: Any,  # Step
-    calc_id: str,
+    calc_ulid: str,
 ) -> StepDTO:
     """
     Map step data to StepDTO.
@@ -433,12 +433,13 @@ def step_to_dto(
     Args:
         step_resolved: ResolvedResource for the step
         step_obj: Step object
-        calc_id: Parent calculation ULID
+        calc_ulid: Parent calculation ULID
         
     Returns:
         StepDTO
     """
     from datetime import datetime
+    from quantumvitas.api import get_step_type_gen
     
     # Extract metadata
     meta = None
@@ -454,11 +455,19 @@ def step_to_dto(
             updated_at=step_resolved.meta.updated_at.isoformat() if hasattr(step_resolved.meta, 'updated_at') and step_resolved.meta.updated_at else None,
         )
     
-    # Get step ID
-    step_id = step_resolved.meta.id if step_resolved.meta else ""
+    # Get step ULID
+    step_ulid = step_resolved.meta.id if step_resolved.meta else ""
     
-    # Get step type
-    step_type = step_obj.step_type if hasattr(step_obj, 'step_type') else "unknown"
+    # Get step type (SPEC)
+    step_type_spec = step_obj.step_type_spec if hasattr(step_obj, 'step_type_spec') else "unknown"
+    
+    # Convert to GEN using registry SSOT
+    step_type_gen = None
+    if step_type_spec and step_type_spec != "unknown":
+        try:
+            step_type_gen = get_step_type_gen(step_type_spec)
+        except (KeyError, ValueError):
+            pass
     
     # Derive status (simplified - would check step results in full implementation)
     status = "pending"
@@ -480,10 +489,11 @@ def step_to_dto(
     # For now, leave them as None
     
     return StepDTO(
-        step_id=step_id,
-        calc_id=calc_id,
-        step_type=step_type,
+        step_ulid=step_ulid,
+        calc_ulid=calc_ulid,
+        step_type_spec=step_type_spec,
         status=status,
+        step_type_gen=step_type_gen,
         meta=meta,
         started_at=started_at,
         completed_at=completed_at,
@@ -504,10 +514,13 @@ def step_to_dict(step_dto: StepDTO) -> dict[str, Any]:
         Dictionary representation of the step
     """
     result = {
-        "id": step_dto.step_id,  # Backwards compat field for GUI
-        "step_id": step_dto.step_id,
-        "calc_id": step_dto.calc_id,
-        "step_type": step_dto.step_type,
+        "ulid": step_dto.step_ulid,  # New field name
+        "id": step_dto.step_ulid,  # Backwards compat field for GUI
+        "step_ulid": step_dto.step_ulid,
+        "calc_ulid": step_dto.calc_ulid,
+        "step_type_spec": step_dto.step_type_spec,
+        "step_type_gen": step_dto.step_type_gen,
+        "step_type": step_dto.step_type_gen if step_dto.step_type_gen else step_dto.step_type_spec,  # Backwards compat
         "status": step_dto.status,
     }
 

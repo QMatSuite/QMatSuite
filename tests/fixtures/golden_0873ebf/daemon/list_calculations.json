@@ -13,18 +13,20 @@
         "n_steps": 2,
         "steps": [
           {
-            "step_id": "<NORMALIZED_ID>",
-            "id": "<NORMALIZED_ID>",
-            "type": "qe_scf"
+            "step_type_spec": "qe_scf",
+            "step_type_gen": "scf",
+            "ulid": "<NORMALIZED_ID>",
+            "step_ulid": "<NORMALIZED_ID>"
           },
           {
-            "step_id": "<NORMALIZED_ID>",
-            "id": "<NORMALIZED_ID>",
-            "type": "qe_nscf"
+            "step_type_spec": "qe_nscf",
+            "step_type_gen": "nscf",
+            "ulid": "<NORMALIZED_ID>",
+            "step_ulid": "<NORMALIZED_ID>"
           }
         ],
         "structure": "silicon",
-        "structure_id": "<NORMALIZED_ID>"
+        "structure_ulid": "<NORMALIZED_ID>"
       }
     ],
     "count": 1

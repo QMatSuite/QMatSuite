@@ -1213,14 +1213,14 @@ def init_step_command(
             if index is not None
             else len(calculation_steps)
         )
-        # Use step_id (ULID) from step spec meta (canonical reference)
+        # Use step_ulid (ULID) from step spec meta (canonical reference)
         # TODO: Use QVService API
         # rel_step_path is already a relative path string from ensure_relative_path
-        # Create step entry with only step_id (ULID) - no step_file (resolved via registry)
+        # Create step entry with only step_ulid (ULID) - no step_file (resolved via registry)
         step_entry = CalculationStepEntry(
-            step_id=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
-            type=step_type,
-            # step_file is NOT stored - step location resolved via registry using step_id
+            step_ulid=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
+            step_type_spec=spec.step_type_spec,  # Use SPEC type from step spec
+            # step_file is NOT stored - step location resolved via registry using step_ulid
         )
         calculation_steps.insert(
             step_entry.to_dict(),
@@ -1716,7 +1716,7 @@ def _run_standalone_step(
             meta=spec.meta,
             input_file=generated_input,
             engine="qe",
-            step_type=spec.step_type,  # Already a string from spec
+            step_type=spec.step_type_spec,  # Already a string from spec
             options={},
             reference_output=None,
         )
@@ -1809,7 +1809,7 @@ def run_structure_command(
     )
 
     typer.echo(
-        f"Structure run finished: {result.step_type} -> {result.output_file} "
+        f"Structure run finished: {result.step_type_spec if hasattr(result, 'step_type_spec') else getattr(result, 'step_type', 'unknown')} -> {result.output_file} "
         f"(input {generated_input})"
     )
     typer.echo(f"Working dir: {prepared.working_dir}")
@@ -2008,7 +2008,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
                     try:
                         spec = StructureStepSpec.from_yaml(step_resolved.absolute_path)
                         step_meta = spec.meta
-                        step_display_name = step_meta.name or spec.step_type or "(unnamed)"
+                        step_display_name = step_meta.name or spec.step_type_spec or "(unnamed)"
                     except Exception:
                         # If we can't load, infer from filename
                         step_display_name = step_resolved.absolute_path.stem.replace(".step", "") or "(unnamed)"
@@ -2022,7 +2022,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
                 try:
                     spec = StructureStepSpec.from_yaml(spec_path)
                     step_meta = spec.meta
-                    step_display_name = step_meta.name or spec.step_type or "(unnamed)"
+                    step_display_name = step_meta.name or spec.step_type_spec or "(unnamed)"
                     rel_path = legacy_step_file
                 except Exception:
                     step_display_name = spec_path.stem.replace(".step", "") or "(unnamed)"
@@ -3450,14 +3450,14 @@ def run_calculation_command(
                 line += f" [{step.message}]"
             typer.echo(line)
             # Print step_type for each step (contract requirement)
-            typer.echo(f"step_type: {step.step_type}")
+            typer.echo(f"step_type: {step.step_type_spec if hasattr(step, 'step_type_spec') else getattr(step, 'step_type', 'unknown')}")
             if step.metrics:
                 for key, value in step.metrics.items():
                     typer.echo(f"    {key}: {value}")
     else:
         # Even when not verbose, print step_type for each step (contract requirement)
         for step in result.steps:
-            typer.echo(f"step_type: {step.step_type}")
+            typer.echo(f"step_type: {step.step_type_spec if hasattr(step, 'step_type_spec') else getattr(step, 'step_type', 'unknown')}")
 
 
 @app.command("run-calculation")
@@ -4753,7 +4753,7 @@ def _execute_step_spec(
     workdir = workdir.resolve()
     workdir.mkdir(parents=True, exist_ok=True)
 
-    input_name = spec_copy.input_name or f"{struct_name}_{spec_copy.step_type}.pw.in"
+    input_name = spec_copy.input_name or f"{struct_name}_{spec_copy.step_type_spec}.pw.in"
     generated_input = workdir / input_name
     QEInputGenerator.write_file(qe_input, generated_input)
 

@@ -26,7 +26,7 @@ class Step:
     meta: ResourceMeta
     input_file: Path
     engine: Optional[str] = None
-    step_type: Optional[str] = None
+    step_type_spec: Optional[str] = None
     options: Dict[str, object] = field(default_factory=dict)
     mode: StepMode = StepMode.NORMAL
     reference_output: Optional[Path] = None
@@ -94,7 +94,7 @@ class Step:
         
         try:
             input_path = self.resolve_input_path(calculation_raw_dir)
-            step_type_value = self.step_type
+            step_type_value = self.step_type_spec
             timeout = self.options.get("timeout")
 
             # E. Logging: Essential info only
@@ -132,7 +132,7 @@ class Step:
             # Create a failed StepResult from the exception
             from quantumvitas.engine.base import StepResult as StepResultClass
             return StepResultClass(
-                step_type=self.step_type or "unknown",
+                step_type=self.step_type_spec or "unknown",
                 input_file=getattr(self, 'input_file', Path()),
                 success=False,
                 error=f"{type(e).__name__}: {str(e)}\n\nTraceback (first 500 chars):\n{tb_str[:500]}",

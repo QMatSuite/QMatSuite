@@ -11,6 +11,8 @@ This ensures UI (unchanged since 0873ebf) works with current HEAD.
 from typing import Any, Dict, Optional
 import copy
 
+from quantumvitas.api import get_step_type_gen
+
 
 # -----------------------------------------------------------------------------
 # Payload Adapters - Transform old payloads to new format
@@ -196,24 +198,6 @@ def _shape_get_pseudo_config(response: Dict[str, Any]) -> Dict[str, Any]:
     return response
 
 
-def _map_step_type_to_v0(step_type: str) -> str:
-    """Map new step types to v0 format (qe_ prefix)."""
-    # Map short types to qe_ prefixed types
-    TYPE_MAP = {
-        "scf": "qe_scf",
-        "nscf": "qe_nscf",
-        "bands": "qe_bands",
-        "dos": "qe_dos",
-        "relax": "qe_relax",
-        "vc-relax": "qe_vc_relax",
-        "ph": "qe_ph",
-        "q2r": "qe_q2r",
-        "matdyn": "qe_matdyn",
-        "projwfc": "qe_projwfc",
-    }
-    return TYPE_MAP.get(step_type, step_type)
-
-
 def _shape_list_journal_entries(response: Dict[str, Any]) -> Dict[str, Any]:
     """Map step types to v0 format."""
     if "entries" not in response:
@@ -224,8 +208,11 @@ def _shape_list_journal_entries(response: Dict[str, Any]) -> Dict[str, Any]:
         for key in ["before", "after"]:
             if key in entry and "steps" in entry[key]:
                 for step in entry[key]["steps"]:
-                    if "type" in step:
-                        step["type"] = _map_step_type_to_v0(step["type"])
+                    # Data should already have step_type_spec from kernel
+                    # Convert to GEN for v0 RPC response
+                    if "step_type_spec" in step:
+                        step["type"] = get_step_type_gen(step["step_type_spec"])
+                        step["step_type_gen"] = step["type"]  # Also add for v1 compatibility
     return response
 
 
@@ -428,8 +415,11 @@ def _shape_change_calculation_structure(response: Dict[str, Any]) -> Dict[str, A
         # Derive name from type if missing
         if _should_derive_step_name(step.get("name", "")):
             step["name"] = _derive_step_name_from_type(step_type)
-        if "type" in step:
-            step["type"] = _map_step_type_to_v0(step["type"])
+        # Data should already have step_type_spec from kernel
+        # Convert to GEN for v0 RPC response
+        if "step_type_spec" in step:
+            step["type"] = get_step_type_gen(step["step_type_spec"])
+            step["step_type_gen"] = step["type"]  # Also add for v1 compatibility
         if _should_derive_step_name(step.get("slug", "")):
             step["slug"] = step.get("name", "")
         # Regenerate step_file if missing or contains ULID
@@ -522,12 +512,15 @@ def _shape_list_calculations(response: Dict[str, Any]) -> Dict[str, Any]:
 
         # Shape steps
         for step in calc.get("steps", []):
-            step_type = step.get("type", "")
-            # Derive name from type if missing
-            if _should_derive_step_name(step.get("name", "")):
-                step["name"] = _derive_step_name_from_type(step_type)
-            if "type" in step:
-                step["type"] = _map_step_type_to_v0(step["type"])
+            # Data should already have step_type_spec from kernel
+            # Convert to GEN for v0 RPC response
+            if "step_type_spec" in step:
+                step_type_gen = get_step_type_gen(step["step_type_spec"])
+                step["type"] = step_type_gen
+                step["step_type_gen"] = step_type_gen  # Also add for v1 compatibility
+                # Derive name from type if missing
+                if _should_derive_step_name(step.get("name", "")):
+                    step["name"] = _derive_step_name_from_type(step_type_gen)
             if _should_derive_step_name(step.get("slug", "")):
                 step["slug"] = step.get("name", "")
 
@@ -713,8 +706,11 @@ def _shape_calculation_detail(response: Dict[str, Any]) -> Dict[str, Any]:
         if _should_derive_step_name(step.get("name", "")):
             step["name"] = _derive_step_name_from_type(step_type)
         # Map step type to v0 format
-        if "type" in step:
-            step["type"] = _map_step_type_to_v0(step["type"])
+        # Data should already have step_type_spec from kernel
+        # Convert to GEN for v0 RPC response
+        if "step_type_spec" in step:
+            step["type"] = get_step_type_gen(step["step_type_spec"])
+            step["step_type_gen"] = step["type"]  # Also add for v1 compatibility
         # v0 required step fields
         if _should_derive_step_name(step.get("slug", "")):
             step["slug"] = step.get("name", "")
@@ -768,8 +764,11 @@ def _shape_update_calculation_species_map(response: Dict[str, Any]) -> Dict[str,
         # Derive name from type if missing
         if _should_derive_step_name(step.get("name", "")):
             step["name"] = _derive_step_name_from_type(step_type)
-        if "type" in step:
-            step["type"] = _map_step_type_to_v0(step["type"])
+        # Data should already have step_type_spec from kernel
+        # Convert to GEN for v0 RPC response
+        if "step_type_spec" in step:
+            step["type"] = get_step_type_gen(step["step_type_spec"])
+            step["step_type_gen"] = step["type"]  # Also add for v1 compatibility
         if _should_derive_step_name(step.get("slug", "")):
             step["slug"] = step.get("name", "")
         # Regenerate step_file if missing or contains ULID
@@ -919,9 +918,11 @@ def _shape_step_detail(response: Dict[str, Any]) -> Dict[str, Any]:
     response.pop("step_id", None)
     response.pop("calc_id", None)
 
-    # Map step_type to v0 format (qe_ prefix) for consistency with step.type in list_calculations
-    if "step_type" in response:
-        response["step_type"] = _map_step_type_to_v0(response["step_type"])
+    # Data should already have step_type_spec from kernel
+    # Convert to GEN for v0 RPC response
+    if "step_type_spec" in response:
+        response["step_type"] = get_step_type_gen(response["step_type_spec"])
+        response["step_type_gen"] = response["step_type"]  # Also add for v1 compatibility
 
     return response
 

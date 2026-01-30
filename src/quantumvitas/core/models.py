@@ -78,21 +78,13 @@ class CalculationStepEntry:
     
     The step file location is resolved via ResourceIndex using step_id, not stored here.
     """
-    step_id: Optional[str] = None  # Canonical step reference (ULID from step meta) - REQUIRED
-    type: Optional[str] = None  # Calculation-local metadata (step type for display/ordering) - stores PUBLIC type
+    step_ulid: Optional[str] = None  # Canonical step reference (ULID from step meta) - REQUIRED
+    step_type_spec: Optional[str] = None  # SPEC type (e.g., "qe_scf") - Calculation-local metadata
     input: Optional[str] = None  # Calculation-local metadata (legacy input file reference)
     reference: Optional[str] = None  # Calculation-local metadata (reference file)
     
     # Legacy field removed - step_id (ULID) is the only identifier
     
-    @property
-    def step_type(self) -> Optional[str]:
-        """
-        Backward compatibility: step_type property returns the type field (public type).
-        
-        This allows code that expects step_type to continue working.
-        """
-        return self.type
     
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -103,10 +95,10 @@ class CalculationStepEntry:
         Does not write legacy id field.
         """
         d: Dict[str, Any] = {}
-        if self.step_id:
-            d["step_id"] = self.step_id
-        if self.type:
-            d["type"] = self.type
+        if self.step_ulid:
+            d["step_ulid"] = self.step_ulid
+        if self.step_type_spec:
+            d["step_type_spec"] = self.step_type_spec
         if self.input:
             d["input"] = self.input
         if self.reference:
@@ -132,25 +124,31 @@ class CalculationStepEntry:
         """
         from quantumvitas.core.exceptions import LegacyProjectError
         
-        # New format: step_id (ULID) - REQUIRED
-        step_id = data.get("step_id")
+        # HARD ERROR if old keys exist
+        if "type" in data and "step_type_spec" not in data:
+            raise ValueError("Legacy 'type' key in calculation.yaml. Run migration script.")
+        if "step_id" in data and "step_ulid" not in data:
+            raise ValueError("Legacy 'step_id' key in calculation.yaml. Run migration script.")
+        
+        # New format: step_ulid (ULID) - REQUIRED
+        step_ulid = data.get("step_ulid")
         
         # Detect legacy patterns
         has_step_file = "step_file" in data
-        has_legacy_id = "id" in data and data.get("id") != step_id
+        has_legacy_id = "id" in data and data.get("id") != step_ulid
         
-        # Check if step_id is missing or not a ULID (26 chars starting with "01")
-        is_ulid = step_id and len(step_id) == 26 and step_id.startswith("01")
-        missing_or_invalid_step_id = not step_id or not is_ulid
+        # Check if step_ulid is missing or not a ULID (26 chars starting with "01")
+        is_ulid = step_ulid and len(step_ulid) == 26 and step_ulid.startswith("01")
+        missing_or_invalid_step_ulid = not step_ulid or not is_ulid
         
-        if has_step_file or has_legacy_id or missing_or_invalid_step_id:
+        if has_step_file or has_legacy_id or missing_or_invalid_step_ulid:
             error_msg = "Legacy calculation step entry detected. "
             if has_step_file:
-                error_msg += "Field 'step_file' is not supported (use step_id ULID instead). "
-            if missing_or_invalid_step_id:
-                error_msg += f"step_id must be a ULID (26 chars), got: {step_id}. "
+                error_msg += "Field 'step_file' is not supported (use step_ulid ULID instead). "
+            if missing_or_invalid_step_ulid:
+                error_msg += f"step_ulid must be a ULID (26 chars), got: {step_ulid}. "
             if has_legacy_id:
-                error_msg += "Legacy 'id' field detected (use step_id ULID instead). "
+                error_msg += "Legacy 'id' field detected (use step_ulid ULID instead). "
             error_msg += "Please run the migration script to upgrade this calculation."
             
             if project_root:
@@ -158,20 +156,12 @@ class CalculationStepEntry:
             else:
                 raise LegacyProjectError(Path.cwd(), error_msg)
         
-        # Phase 2: Normalize machine type (qe_scf) to public type (scf) in type field
-        step_type_raw = data.get("type")
-        step_type_public = step_type_raw
-        if step_type_raw:
-            # If it's a machine type, convert to public type
-            from quantumvitas.workflow.registry import get_registry
-            registry = get_registry()
-            spec = registry.get(step_type_raw)  # Accepts both public and machine types
-            if spec:
-                step_type_public = spec.step_type_gen
+        # calculation.yaml stores step_type_spec (SPEC value like "qe_scf")
+        step_type_spec = data.get("step_type_spec")
         
         return cls(
-            step_id=step_id,
-            type=step_type_public,  # Store public type for backward compatibility
+            step_ulid=step_ulid,
+            step_type_spec=step_type_spec,  # SPEC type (e.g., "qe_scf")
             input=data.get("input") or data.get("file"),
             reference=data.get("reference"),
             # Do not store legacy id field
@@ -1153,7 +1143,7 @@ def set_calculation_steps(
     wf_model = load_calculation(calc_path, project_root)
 
     # Build mapping of step_ulid -> step entry
-    step_map = {s.step_id: s for s in wf_model.steps if s.step_id}
+    step_map = {s.step_ulid: s for s in wf_model.steps if s.step_ulid}
 
     # Build new steps list preserving type info
     new_steps = []
@@ -1188,8 +1178,8 @@ def set_calculation_steps(
                     # This will be resolved later when step is loaded
                     pass
 
-            # Create entry with step_type if available
-            new_steps.append(CalculationStepEntry(step_id=step_ulid, type=step_type))
+            # Create entry with step_type_spec if available
+            new_steps.append(CalculationStepEntry(step_ulid=step_ulid, step_type_spec=step_type))
 
     wf_model.steps = new_steps
     save_calculation(wf_model, calc_path)

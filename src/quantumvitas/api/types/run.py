@@ -21,12 +21,12 @@ class RunResultDTO(BaseDTO):
     NOTE: Uses run_id (not job_id) for consistent ULID naming.
     """
     # Identity (required)
-    run_id: str               # ULID (was job_id)
-    calc_id: str
+    run_ulid: str               # ULID (was job_id)
+    calc_ulid: str
     status: str               # submitted, running, completed, failed, cancelled
 
     # Steps executed
-    step_ids: list[str]
+    step_ulids: list[str]
 
     # Timing (optional)
     started_at: str | None = None
@@ -58,8 +58,8 @@ class RunResultDTO(BaseDTO):
             # Return step-like objects from stored details
             return [StepResultCompat(**step_dict) for step_dict in self._step_details]
         
-        # Fallback: create minimal step objects from step_ids
-        return [StepResultCompat(step_id=step_id) for step_id in self.step_ids]
+        # Fallback: create minimal step objects from step_ulids
+        return [StepResultCompat(step_ulid=step_ulid) for step_ulid in self.step_ulids]
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dict with compatibility properties."""
@@ -67,8 +67,9 @@ class RunResultDTO(BaseDTO):
         # Add steps property for compatibility (always include, even if empty)
         result["steps"] = [
             {
-                "step_id": s.step_id,
-                "step_type": s.step_type,
+                "step_ulid": s.step_ulid,
+                "step_type_spec": s.step_type_spec,
+                "step_type_gen": s.step_type_gen,
                 "status": s.status,
                 "message": s.message,
                 "metrics": s.metrics,
@@ -93,10 +94,11 @@ class RunResultDTO(BaseDTO):
 class StepResultCompat:
     """Compatibility class for step results in RunResultDTO."""
     
-    def __init__(self, step_id: str, step_type: str | None = None, status: str | None = None,
+    def __init__(self, step_ulid: str, step_type_spec: str | None = None, step_type_gen: str | None = None, status: str | None = None,
                  message: str | None = None, metrics: dict[str, Any] | None = None):
-        self.step_id = step_id
-        self.step_type = step_type
+        self.step_ulid = step_ulid
+        self.step_type_spec = step_type_spec
+        self.step_type_gen = step_type_gen
         self.status = status
         self.message = message
         self.metrics = metrics or {}

@@ -1990,7 +1990,7 @@ def run_structure_command(
     )
 
     typer.echo(
-        f"Structure run finished: {result.step_type} -> {result.output_file} "
+        f"Structure run finished: {result.step_type_spec if hasattr(result, 'step_type_spec') else getattr(result, 'step_type', 'unknown')} -> {result.output_file} "
         f"(input {generated_input})"
     )
     typer.echo(f"Working dir: {prepared.working_dir}")

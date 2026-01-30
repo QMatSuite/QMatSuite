@@ -61,11 +61,11 @@ def _get_engine_family_from_step(step) -> Optional[str]:
     Returns:
         Engine family string ("qe", "pyscf", "orca") or None if unknown
     """
-    if not step or not step.step_type:
+    if not step or not step.step_type_spec:
         return None
 
     # Get the step type string
-    step_type_str = str(step.step_type) if step.step_type else "unknown"
+    step_type_str = str(step.step_type_spec) if step.step_type_spec else "unknown"
 
     # Look up in registry to get the engine
     try:
@@ -575,8 +575,8 @@ class CalculationRunner:
                 # Find step index in calculation
                 calc_step_idx = self._find_step_index(calculation, step_ulid)
 
-                step_type = step.step_type or "custom"
-                step_type_str = step.step_type or "unknown"
+                step_type = step.step_type_spec or "custom"
+                step_type_str = step.step_type_spec or "unknown"
 
                 # Extract input/output from Job (source of truth for GEN filenames)
                 job_input_file = job.input_files[0] if job.input_files else Path()
@@ -697,7 +697,7 @@ class CalculationRunner:
             # Gather step info
             step_ids = [s.meta.id for s in calculation.steps]
             step_types = [
-                str(s.step_type) if s.step_type else "unknown"
+                str(s.step_type_spec) if s.step_type_spec else "unknown"
                 for s in calculation.steps
             ]
             
@@ -801,7 +801,7 @@ class CalculationRunner:
             for summary in step_summaries:
                 step_results.append({
                     "step_id": summary.step_id,
-                    "step_type": summary.step_type,
+                    "step_type": summary.step_type_spec if hasattr(summary, "step_type_spec") else getattr(summary, "step_type", None),
                     "step_name": getattr(summary, "step_name", None),
                     "status": summary.status.value if hasattr(summary.status, "value") else str(summary.status),
                     "message": summary.message,

@@ -1563,7 +1563,7 @@ class QVService:
                 model.structure = new_structure
             
             if new_step_order:
-                step_map = {s.step_id: s for s in model.steps}
+                step_map = {s.step_ulid: s for s in model.steps}
                 new_steps = []
                 for step_id in new_step_order:
                     if step_id in step_map:
@@ -1929,7 +1929,7 @@ class QVService:
         # CRITICAL: Verify step_selector exists in calculation.yaml's steps array
         # This ensures the step belongs to this calculation's DAG
         step_id = step_selector
-        entry = next((e for e in wf_model.steps if e.step_id == step_id), None)
+        entry = next((e for e in wf_model.steps if e.step_ulid == step_id), None)
         if entry is None:
             # Step not in this calculation's DAG
             raise ResourceNotFoundError(
@@ -2218,7 +2218,7 @@ class QVService:
             "n_steps": len(results.steps),
             "steps": [
                 {
-                    "step_id": s.step_id,
+                    "step_id": s.step_ulid,
                     "step_type": s.step_type,
                     "status": s.status.value,
                     "message": s.message,
@@ -2384,7 +2384,7 @@ class QVService:
         # Find the target step's result in the summaries
         target_summary = None
         for summary in result.steps:
-            if summary.step_id == target_step_id:
+            if summary.step_ulid == target_step_id:
                 target_summary = summary
                 break
 
@@ -4420,8 +4420,8 @@ class QVService:
             resolver = make_structure_selector_resolver(project_root, config=config)
             calc_yaml_path = calculation_dir / "calculation.yaml"
             wf_model = load_calculation(calc_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
-            step_entry = next((e for e in wf_model.steps if e.step_id == step_selector), None)
-            step_type = step_entry.type if step_entry and step_entry.type else None
+            step_entry = next((e for e in wf_model.steps if e.step_ulid == step_selector), None)
+            step_type = step_entry.step_type_spec if step_entry and step_entry.step_type_spec else None
             if step_entry and hasattr(step_entry, 'parameters'):
                 step_params = step_entry.parameters or {}
         
@@ -5384,18 +5384,18 @@ class QVService:
             # Log calculation.yaml steps entries
             logger.info(
                 f"[GET_STEP_DETAIL] calculation.yaml.steps[] entries: "
-                f"{[(e.step_id, e.type) for e in wf_model.steps]}"
+                f"{[(e.step_ulid, e.step_type_spec) for e in wf_model.steps]}"
             )
         
         # CRITICAL: Verify step_selector exists in calculation.yaml's steps array
         # This ensures the step belongs to this calculation's DAG
         step_id = step_selector
-        entry = next((e for e in wf_model.steps if e.step_id == step_id), None)
+        entry = next((e for e in wf_model.steps if e.step_ulid == step_id), None)
         if entry is None:
             # Step not in this calculation's DAG
             logger.error(
                 f"[GET_STEP_DETAIL] ERROR: Step selector '{step_selector}' not found in "
-                f"calculation.yaml.steps[]. Available step_ids: {[e.step_id for e in wf_model.steps]}"
+                f"calculation.yaml.steps[]. Available step_ulids: {[e.step_ulid for e in wf_model.steps]}"
             )
             raise ResourceNotFoundError(
                 kind="step",
@@ -5409,7 +5409,7 @@ class QVService:
         if debug_enabled:
             logger.info(
                 f"[GET_STEP_DETAIL] Step entry found in calculation.yaml: "
-                f"step_id={entry.step_id}, type={entry.type}"
+                f"step_ulid={entry.step_ulid}, step_type_spec={entry.step_type_spec}"
             )
         
         # Now that we know the step belongs to this calculation, resolve it via ResourceIndex
@@ -6571,7 +6571,7 @@ class QVService:
                     "library_version": m.library_version,
                     "xc": m.xc,
                     "quality": m.quality,
-                    "type": m.type,
+                    "type": m.step_type_spec,
                     "relativistic": m.relativistic,
                     "path_in_archive": m.path_in_archive,
                     "basename": m.basename,
@@ -6953,12 +6953,12 @@ class QVService:
         step_doc.set(["structure_id"], structure_id_value)
         save_step_doc(step_doc, import_result.spec_path)
         
-        # Add step to calculation model using step_id (ULID) from step spec meta
-        # step_file is NOT stored - step location resolved via registry using step_id
+        # Add step to calculation model using step_ulid (ULID) from step spec meta
+        # step_file is NOT stored - step location resolved via registry using step_ulid
         wf_model.steps.append(CalculationStepEntry(
-            step_id=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
-            type=spec.step_type,
-            # step_file is NOT stored - step location resolved via registry using step_id
+            step_ulid=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
+            step_type_spec=spec.step_type_spec,
+            # step_file is NOT stored - step location resolved via registry using step_ulid
         ))
         save_calculation(wf_model, calculation_dir)
         
@@ -7134,10 +7134,10 @@ class QVService:
         
         def updater(steps: List) -> List:
             # Verify step_ulid not already present
-            if any(s.step_id == step_ulid for s in steps):
+            if any(s.step_ulid == step_ulid for s in steps):
                 raise QVServiceError(f"Step {step_ulid} already in calculation")
             
-            new_entry = CalculationStepEntry(step_id=step_ulid, type=step_type)
+            new_entry = CalculationStepEntry(step_ulid=step_ulid, step_type_spec=step_type)
             if position is None:
                 return steps + [new_entry]
             else:
@@ -7169,7 +7169,7 @@ class QVService:
             config: Optional project config
         """
         def updater(steps: List) -> List:
-            return [s for s in steps if s.step_id != step_ulid]
+            return [s for s in steps if s.step_ulid != step_ulid]
         
         QVService._update_calculation_steps(
             project_root, calculation_ulid, updater, index=index, config=config
@@ -7214,7 +7214,7 @@ class QVService:
         wf_model = load_calculation(calc_path, project_root)
         
         # Build mapping of step_ulid -> step entry
-        step_map = {s.step_id: s for s in wf_model.steps if s.step_id}
+        step_map = {s.step_ulid: s for s in wf_model.steps if s.step_ulid}
         
         # Build new steps list preserving type info
         new_steps = []
@@ -7249,8 +7249,8 @@ class QVService:
                         # This will be resolved later when step is loaded
                         pass
                 
-                # Create entry with step_type if available
-                new_steps.append(CalculationStepEntry(step_id=step_ulid, type=step_type))
+                # Create entry with step_type_spec if available
+                new_steps.append(CalculationStepEntry(step_ulid=step_ulid, step_type_spec=step_type))
         
         wf_model.steps = new_steps
         # Save via CalcDoc + yaml_io (journaled)
@@ -7290,16 +7290,16 @@ class QVService:
         wf_model = load_calculation(wf_path)
         
         # Validate all step IDs exist
-        existing_ids = {s.step_id for s in wf_model.steps}
+        existing_ids = {s.step_ulid for s in wf_model.steps}
         existing_slugs = {}
         for s in wf_model.steps:
             # Create a mapping from possible identifiers to step entries
             # Use step_id (ULID) as primary key
-            if s.step_id:
-                existing_slugs[s.step_id] = s
+            if s.step_ulid:
+                existing_slugs[s.step_ulid] = s
             # Also allow matching by type for convenience (if unique)
-            if s.type:
-                existing_slugs[s.type] = s
+            if s.step_type_spec:
+                existing_slugs[s.step_type_spec] = s
         
         # Resolve the new order
         reordered = []
@@ -7307,9 +7307,9 @@ class QVService:
         for selector in new_order:
             if selector in existing_slugs:
                 step = existing_slugs[selector]
-                if step.step_id not in seen:
+                if step.step_ulid not in seen:
                     reordered.append(step)
-                    seen.add(step.step_id)
+                    seen.add(step.step_ulid)
             else:
                 raise QVServiceError(f"Step '{selector}' not found in calculation")
         
@@ -7319,7 +7319,7 @@ class QVService:
             raise QVServiceError(f"New order missing steps: {missing}")
         
         # Update the model using helper
-        ordered_step_ulids = [s.step_id for s in reordered if s.step_id]
+        ordered_step_ulids = [s.step_ulid for s in reordered if s.step_ulid]
         QVService.calc_set_steps(
             project_root=project_root,
             calculation_ulid=calculation.meta.id,
@@ -7385,8 +7385,8 @@ class QVService:
         base_slug = slugify(step_name)
         
         # Check for duplicates and add suffix if needed
-        existing_ids = {s.step_id for s in wf_model.steps if s.step_id}
-        existing_types = {s.type for s in wf_model.steps if s.type}
+        existing_ids = {s.step_ulid for s in wf_model.steps if s.step_ulid}
+        existing_types = {s.step_type_spec for s in wf_model.steps if s.step_type_spec}
         slug = base_slug
         counter = 1
         while slug in existing_types:
@@ -7541,12 +7541,12 @@ class QVService:
                 f"Directory exists: {steps_dir.exists()}, writable: {steps_dir.is_dir()}"
             )
         
-        # Create step entry for calculation.yaml using step_id (ULID) from step spec meta
-        # step_file is NOT stored - step location resolved via registry using step_id
+        # Create step entry for calculation.yaml using step_ulid (ULID) from step spec meta
+        # step_file is NOT stored - step location resolved via registry using step_ulid
         new_step = CalculationStepEntry(
-            step_id=step_spec.meta.id,  # Use ULID from step spec meta (canonical reference)
-            type=step_type,
-            # step_file is NOT stored - step location resolved via registry using step_id
+            step_ulid=step_spec.meta.id,  # Use ULID from step spec meta (canonical reference)
+            step_type_spec=step_spec.step_type_spec,  # Use SPEC type from step spec
+            # step_file is NOT stored - step location resolved via registry using step_ulid
         )
         
         # Add step to calculation
@@ -7572,8 +7572,8 @@ class QVService:
             "structure_id": wf_model.structure_id,
             "steps": [
                 {
-                    "step_id": step.step_id,
-                    "type": step.type,
+                    "step_id": step.step_ulid,
+                    "type": step.step_type_spec,
                     "input": step.input,
                     "reference": step.reference,
                 }
@@ -8222,7 +8222,7 @@ class QVService:
         # This is the ONLY source of truth for step identity and order
         step_summaries = []
         for idx, entry in enumerate(wf_model.steps):
-            step_id = entry.step_id  # ULID from calculation.yaml (canonical)
+            step_id = entry.step_ulid  # ULID from calculation.yaml (canonical)
             
             # Use ResourceIndex ONLY to resolve path/meta, NOT for ordering or selector guessing
             step_resolved = None

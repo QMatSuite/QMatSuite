@@ -47,7 +47,7 @@ class CalculationResult:
             "steps": [
                 {
                     "step_id": step.step_id,
-                    "step_type": step.step_type,
+                    "step_type": step.step_type_spec if hasattr(step, "step_type_spec") else getattr(step, "step_type", None),
                     "status": step.status.value,
                     "working_dir": str(step.working_dir),  # Keep for backward compat in step summaries
                     "input_file": str(step.input_file),

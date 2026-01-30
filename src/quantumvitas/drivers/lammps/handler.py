@@ -329,7 +329,7 @@ def lammps_step_handler(
         }
         
         # If this is a relax step and succeeded, add artifact spec for post-processing
-        step_type = step_spec.step_type if hasattr(step_spec, "step_type") else None
+        step_type = step_spec.step_type_spec if hasattr(step_spec, "step_type_spec") else None
         if success and step_type and is_relax_step_type(step_type):
             final_data_path = working_dir / "final.data"
             if final_data_path.exists():

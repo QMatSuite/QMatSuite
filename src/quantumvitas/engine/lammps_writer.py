@@ -100,7 +100,7 @@ def build_template_context(
     step_ulid = step.meta.id if hasattr(step, "meta") and hasattr(step.meta, "id") else ""
     
     context = {
-        "step_type": step.step_type if hasattr(step, "step_type") else "",
+        "step_type": step.step_type_spec if hasattr(step, "step_type_spec") else "",
         "step_ulid": step_ulid,
         "units": params.get("units", "metal"),
         "atom_style": params.get("atom_style", "atomic"),

@@ -13,6 +13,8 @@ Per requirements:
 from __future__ import annotations
 
 from typing import Dict, List, Any
+
+from quantumvitas.workflow.registry import get_registry
 from collections import defaultdict
 
 from quantumvitas.presets.variants_registry import (
@@ -181,12 +183,16 @@ def get_preset_catalog() -> Dict[str, Any]:
             scope = {
                 "type": "variants",
                 "variants": variant_details,
+                "step_type_spec": "qe_variants",  # Scope type indicator
+                "step_type_gen": "variants",  # Scope type indicator
             }
         else:
-            # Single variant or simple case - show step types
+            # Single variant or simple case - show step types (as strings, GEN types)
             scope = {
                 "type": "variant_step_types",
-                "step_types": sorted(all_step_types),
+                "step_types": sorted(all_step_types),  # List of strings (GEN types)
+                "step_type_spec": "variant_step_types",  # Scope type indicator
+                "step_type_gen": "variant_step_types",  # Scope type indicator
             }
         
         dimensions_list.append({

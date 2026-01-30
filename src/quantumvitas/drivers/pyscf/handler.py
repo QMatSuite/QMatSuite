@@ -130,7 +130,7 @@ def pyscf_chain_handler(
             }
             
             # If this is a relax step and succeeded, add artifact spec
-            step_type = step.step_type if hasattr(step, "step_type") else None
+            step_type = step.step_type_spec if hasattr(step, "step_type_spec") else None
             if success and step_type and is_relax_step_type(step_type):
                 results_file = step_artifacts_dir / "results.json"
                 if results_file.exists():

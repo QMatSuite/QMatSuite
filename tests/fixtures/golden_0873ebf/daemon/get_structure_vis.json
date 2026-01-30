@@ -120,7 +120,6 @@
       "U": "#008FFF",
       "_default": "#FF1493"
     },
-    "structure_id": "<NORMALIZED_ID>",
     "structure_name": "silicon",
     "formula": "Si",
     "supercell": [
@@ -138,7 +137,8 @@
       "atoms": 2,
       "bonds": 1,
       "bytes": 1487
-    }
+    },
+    "structure_ulid": "<NORMALIZED_ID>"
   },
   "recipe_name": "EngineMethodsRecipe(get_structure_vis)",
   "baseline_commit": "0873ebf",

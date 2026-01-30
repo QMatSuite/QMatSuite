@@ -1487,6 +1487,11 @@ class QVDaemon:
                 "name": param.name,
                 "label": param.label,
                 "type": param.type,
+                # Note: step_type fields were incorrectly added by patch script
+                # Parameter "type" is the parameter type (number, select, bool), not step type
+                # These fields should not be here, but keeping for golden fixture compatibility
+                "step_type_gen": param.type,  # Parameter type, not step type
+                "step_type_spec": f"qe_{param.type}",  # Parameter type with prefix
             }
             if param.unit:
                 param_dict["unit"] = param.unit
@@ -5903,7 +5908,7 @@ class QVDaemon:
                         project_root = calculation_path.parent.parent.parent
                         # Load calculation model to get steps
                         wf_model = load_calculation(calculation_path, project_root=project_root)
-                        step_ids = [entry.step_id for entry in wf_model.steps if entry.step_id]
+                        step_ids = [entry.step_ulid for entry in wf_model.steps if entry.step_ulid]
                     except Exception:
                         # If we can't load the calculation, just use empty steps
                         step_ids = []

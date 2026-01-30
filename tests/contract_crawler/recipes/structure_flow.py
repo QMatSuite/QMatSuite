@@ -118,7 +118,7 @@ class GetStepDetailRecipe(Recipe):
                 step_type="qe_scf",
                 name="scf",
             )
-            self.step_id = step_dto.step_id
+            self.step_id = step_dto.step_ulid
 
         return True
 
