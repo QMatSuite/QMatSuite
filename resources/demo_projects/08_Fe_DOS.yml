@@ -66,12 +66,11 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KE2M0MTREA6S4KMY1E2CVVZX
       name: fe.scf_noncollin
       slug: fe-scf_noncollin
       path: fe.scf_noncollin.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KE2M0MTREA6S4KMY1E2CVVZX
     parameters:
       CONTROL:
         calculation: scf
@@ -104,6 +103,7 @@ calculations:
     species_overrides:
       Fe:
         mass: 55.845
+    step_type_spec: qe_scf
   structure_id: 01KE2M0MTHTSNFD07R9QXG12T0
   species_map:
     Fe:

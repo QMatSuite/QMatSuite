@@ -102,13 +102,21 @@ class GetStepDetailRecipe(Recipe):
                 if steps_list:
                     last_step = steps_list[-1]
                     if isinstance(last_step, dict):
-                        self.step_id = last_step.get("id") or last_step.get("step_id")
+                        self.step_id = last_step.get("ulid") or last_step.get("step_ulid") or last_step.get("id") or last_step.get("step_id")
+                    elif hasattr(last_step, 'step_ulid'):
+                        self.step_id = last_step.step_ulid
+                    elif hasattr(last_step, 'ulid'):
+                        self.step_id = last_step.ulid
                     elif hasattr(last_step, 'id'):
                         self.step_id = last_step.id
                     elif hasattr(last_step, 'step_id'):
                         self.step_id = last_step.step_id
             elif isinstance(step_result, dict):
-                self.step_id = step_result.get("step_id")
+                self.step_id = step_result.get("step_ulid") or step_result.get("ulid") or step_result.get("step_id")
+            elif hasattr(step_result, 'step_ulid'):
+                self.step_id = step_result.step_ulid
+            elif hasattr(step_result, 'ulid'):
+                self.step_id = step_result.ulid
             elif hasattr(step_result, 'step_id'):
                 self.step_id = step_result.step_id
         else:
@@ -130,11 +138,14 @@ class GetStepDetailRecipe(Recipe):
         }
 
     def validate_response(self, response_data: dict[str, Any]) -> tuple[bool, str | None]:
-        # Required keys
-        required = ["step_type", "parameters"]
+        # Required keys (allow backwards compat)
+        required = ["parameters"]
         for key in required:
             if key not in response_data:
                 return False, f"Missing required key: {key}"
+        # Check for step type fields (new or backwards compat)
+        if "step_type_spec" not in response_data and "step_type" not in response_data:
+            return False, "Missing step_type_spec or step_type"
 
         # JSON serializable check
         try:

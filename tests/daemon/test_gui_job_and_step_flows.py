@@ -221,7 +221,7 @@ class TestStepDetailRetrieval:
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) > 0
         step_entry = wf_model.steps[0]
-        step_id_ulid = step_entry.step_id
+        step_id_ulid = step_entry.step_ulid
         assert step_id_ulid, "Step should have step_id (ULID)"
         assert len(step_id_ulid) == 26, f"step_id should be ULID (26 chars), got: {step_id_ulid}"
         
@@ -258,7 +258,7 @@ class TestStepDetailRetrieval:
         from quantumvitas.core.models import load_calculation
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         step_entry = wf_model.steps[0]
-        step_id_ulid = step_entry.step_id
+        step_id_ulid = step_entry.step_ulid
         
         # Resolve step to get its slug
         step_resolved = require_step(temp_project, calculation_slug, step_id_ulid)
@@ -316,7 +316,7 @@ class TestDAGInvariants:
         from quantumvitas.core.models import load_calculation
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         step_entry = wf_model.steps[0]
-        step_id_ulid = step_entry.step_id
+        step_id_ulid = step_entry.step_ulid
         
         # Resolve step file
         step_resolved = require_step(temp_project, calculation.slug, step_id_ulid)
@@ -412,7 +412,7 @@ class TestStepCreationRaceCondition:
         # Find the step entry we just created
         new_step_entry = None
         for step in wf_model.steps:
-            if step.step_id == new_step_id:
+            if step.step_ulid == new_step_id:
                 new_step_entry = step
                 break
         
@@ -457,7 +457,7 @@ class TestStepDeletion:
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) > 0
         step_entry = wf_model.steps[0]
-        step_id_ulid = step_entry.step_id
+        step_id_ulid = step_entry.step_ulid
         initial_step_count = len(wf_model.steps)
         
         project_root_str = str(temp_project.resolve())
@@ -492,7 +492,7 @@ class TestStepDeletion:
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) > 0
         step_entry = wf_model.steps[0]
-        step_id_ulid = step_entry.step_id
+        step_id_ulid = step_entry.step_ulid
         
         step_resolved = require_step(temp_project, calculation_slug, step_id_ulid, index=index)
         original_step_path = step_resolved.absolute_path
@@ -542,7 +542,7 @@ class TestStepDeletion:
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) > 0
         step_entry = wf_model.steps[0]
-        step_id_ulid = step_entry.step_id
+        step_id_ulid = step_entry.step_ulid
         initial_step_count = len(wf_model.steps)
         
         # Manually delete the step file to simulate a ghost step

@@ -79,12 +79,11 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KE2M087HC2KQ8NX8SEESD2Q7
       name: si.vc_relax
       slug: si-vc_relax
       path: si.vc_relax.step.yaml
       kind: step
-    step_type: vc-relax
+      ulid: 01KE2M087HC2KQ8NX8SEESD2Q7
     parameters:
       CONTROL:
         calculation: vc-relax
@@ -111,6 +110,7 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
+    step_type_spec: qe_vc-relax
   structure_id: 01KE2M087ACNW7EWMBP23SQZHF
   species_map:
     Si:

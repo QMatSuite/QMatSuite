@@ -79,12 +79,11 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KE2KYNFNQW5C44KZBFNGVJM6
       name: si.scf
       slug: si-scf
       path: si.scf.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KE2KYNFNQW5C44KZBFNGVJM6
     parameters:
       CONTROL:
         calculation: scf
@@ -105,6 +104,7 @@ calculations:
     species_overrides:
       Si:
         mass: 28.086
+    step_type_spec: qe_scf
   structure_id: 01KE2KYNFBA76RAM5E04QRDRS9
   species_map:
     Si:

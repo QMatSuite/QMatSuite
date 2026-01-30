@@ -46,12 +46,11 @@ calculations:
   structure_id: 01KE3PTDXGQSDTBKQ4GEZTCX7B
   steps:
   - meta:
-      id: 01KE3PTDXGRE7SZ296T5RYJNGN
       name: pyscf_scf
       slug: pyscf-scf
       path: calculations/h2o-rhf/steps/pyscf_scf.step.yaml
       kind: step
-    step_type: pyscf_scf
+      ulid: 01KE3PTDXGRE7SZ296T5RYJNGN
     parameters:
       method: rhf
       basis: 6-31g
@@ -73,6 +72,7 @@ calculations:
         y: -0.755453
         z: -0.471161
       unit: Angstrom
+    step_type_spec: pyscf_scf
 meta:
   id: water_pyscf_scf_demo
   title: Water PySCF RHF Single Point

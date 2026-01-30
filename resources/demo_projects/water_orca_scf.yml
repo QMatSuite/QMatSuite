@@ -65,17 +65,17 @@ calculations:
   engine_family: orca
   steps:
   - meta:
-      id: 01KEX4RTDGYZC6T290YQM9NDTF
       name: scf
       slug: scf
       path: calculations/h2o-b3lyp-single-point/steps/scf.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KEX4RTDGYZC6T290YQM9NDTF
     parameters:
       functional: B3LYP
       basis: def2-SVP
       charge: 0
       spin: 0
+    step_type_spec: qe_scf
 meta:
   id: water_orca_scf
   title: Water ORCA SCF Single Point

@@ -199,12 +199,11 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KE2KZ5WM1P065CEH8WFJF21K
       name: graphene.1_vc_relax
       slug: graphene-1_vc_relax
       path: graphene.1_vc_relax.step.yaml
       kind: step
-    step_type: vc-relax
+      ulid: 01KE2KZ5WM1P065CEH8WFJF21K
     parameters:
       CONTROL:
         calculation: vc-relax
@@ -241,13 +240,13 @@ calculations:
     species_overrides:
       C:
         mass: 12.0107
+    step_type_spec: qe_vc-relax
   - meta:
-      id: 01KE2KZ5XCGH4AGTNG9Q52WCSE
       name: graphene.2_scf
       slug: graphene-2_scf
       path: graphene.2_scf.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KE2KZ5XCGH4AGTNG9Q52WCSE
     parameters:
       CONTROL:
         calculation: scf
@@ -276,13 +275,13 @@ calculations:
     species_overrides:
       C:
         mass: 12.0107
+    step_type_spec: qe_scf
   - meta:
-      id: 01KE2KZ5YJKBWQRYKZVPGZVAKB
       name: graphene.3_bands
       slug: graphene-3_bands
       path: graphene.3_bands.step.yaml
       kind: step
-    step_type: bands_pw
+      ulid: 01KE2KZ5YJKBWQRYKZVPGZVAKB
     parameters:
       CONTROL:
         calculation: bands
@@ -322,25 +321,26 @@ calculations:
     species_overrides:
       C:
         mass: 12.0107
+    step_type_spec: bands_pw
   - meta:
-      id: 01KE2KZ60H9QMN3WXV6GB6M05D
       name: graphene.4_bands_pp
       slug: graphene-4_bands_pp
       path: graphene.4_bands_pp.step.yaml
       kind: step
-    step_type: bands
+      ulid: 01KE2KZ60H9QMN3WXV6GB6M05D
     parameters:
       BANDS:
         filband: graphene.bands.dat
     input_name: graphene.4_bands_pp.in
+    step_type_spec: qe_bands
   - meta:
-      id: 01KE2KZ62DG5C1GH9ZX0GBN97V
       name: graphene.5_plotband
       slug: graphene-5_plotband
       path: graphene.5_plotband.step.yaml
       kind: step
-    step_type: custom
+      ulid: 01KE2KZ62DG5C1GH9ZX0GBN97V
     input_name: graphene.5_plotband.in
+    step_type_spec: qe_custom
   structure_id: 01KE2KZ5WDGPM4AJAG40SF9MZ0
   species_map:
     C:

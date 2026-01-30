@@ -182,9 +182,11 @@ def create_calculation_project(
                 print(f"Warning: Failed to parse {input_file}: {e}")
         
         # DAG model: Step YAML should NOT contain structure_id (inherits from calculation)
+        # Convert step_id (e.g., "scf") to step_type_spec (e.g., "qe_scf")
+        step_type_spec = step.get("step_type_spec", f"qe_{step_id}")  # Default to qe_<step_id>
         step_spec = {
             "meta": step_meta.to_dict(),
-            "step_type": step_id,  # Use step id as step_type (scf, nscf, dos, etc.)
+            "step_type_spec": step_type_spec,  # SPEC type (e.g., "qe_scf")
             # structure_id is NOT written to step YAML (DAG model)
         }
         # Add extracted parameters and cards if available
@@ -198,9 +200,10 @@ def create_calculation_project(
         
         step_file.write_text(yaml.safe_dump(step_spec, sort_keys=False))
         
-        # Create step entry with step_id (ULID)
+        # Create step entry with step_ulid (ULID)
         step_entry = {
-            "step_id": step_ulid,
+            "step_ulid": step_ulid,
+            "step_type_spec": step.get("step_type_spec", "qe_scf"),  # Default to qe_scf if not specified
             "input": step["input"],
         }
         if step.get("reference"):
@@ -227,7 +230,8 @@ def create_calculation_project(
     
     calculation_config = {
         "meta": {
-            "id": calculation_ulid,
+            "ulid": calculation_ulid,
+            "id": calculation_ulid,  # Backwards compat
             "name": calculation_id,  # Human-readable name
             "slug": calculation_id,
             "path": f"calculations/{calculation_id}",

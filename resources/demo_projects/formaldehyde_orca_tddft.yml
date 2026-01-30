@@ -75,27 +75,27 @@ calculations:
   engine_family: orca
   steps:
   - meta:
-      id: 01KEX4RTDH36XZW1EXPJG8AR7B
       name: scf
       slug: scf
       path: calculations/ch2o-scf--plus-tddft/steps/scf.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KEX4RTDH36XZW1EXPJG8AR7B
     parameters:
       functional: B3LYP
       basis: def2-SVP
       charge: 0
       spin: 0
+    step_type_spec: qe_scf
   - meta:
-      id: 01KEX4RTDH231PK9922797Y174
       name: td
       slug: td
       path: calculations/ch2o-scf--plus-tddft/steps/td.step.yaml
       kind: step
-    step_type: td
+      ulid: 01KEX4RTDH231PK9922797Y174
     parameters:
       nroots: 5
       tda: true
+    step_type_spec: pyscf_td
 meta:
   id: formaldehyde_orca_tddft
   title: Formaldehyde ORCA TDDFT

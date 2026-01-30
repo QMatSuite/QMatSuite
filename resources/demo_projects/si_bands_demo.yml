@@ -79,12 +79,11 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KC3901JEVJJ7S8G3E7Z9K2RZ
       name: scf
       slug: scf
       path: calculations/si-bands/steps/scf.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KC3901JEVJJ7S8G3E7Z9K2RZ
     parameters:
       CONTROL:
         calculation: scf
@@ -109,13 +108,13 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
+    step_type_spec: qe_scf
   - meta:
-      id: 01KC39AWHWQ5EQSNFQADAA2AGP
       name: nscf
       slug: nscf
       path: calculations/si-bands/steps/nscf.step.yaml
       kind: step
-    step_type: nscf
+      ulid: 01KC39AWHWQ5EQSNFQADAA2AGP
     parameters:
       CONTROL:
         calculation: nscf
@@ -141,13 +140,13 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
+    step_type_spec: qe_nscf
   - meta:
-      id: 01KC39C21NREKW2YVZJY8E40RN
       name: bands_pw
       slug: bands_pw
       path: calculations/si-bands/steps/bands_pw.step.yaml
       kind: step
-    step_type: bands_pw
+      ulid: 01KC39C21NREKW2YVZJY8E40RN
     parameters:
       CONTROL:
         calculation: bands
@@ -187,16 +186,17 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
+    step_type_spec: bands_pw
   - meta:
-      id: 01KC39BB6NNP4AF070GWPKK0J0
       name: bands
       slug: bands
       path: calculations/si-bands/steps/bands.step.yaml
       kind: step
-    step_type: bands
+      ulid: 01KC39BB6NNP4AF070GWPKK0J0
     parameters:
       BANDS:
         filband: si.bands.dat
+    step_type_spec: qe_bands
   structure_id: 01KC38ZCMZZQ8DAA61A6SC8X23
   species_map:
     Si:

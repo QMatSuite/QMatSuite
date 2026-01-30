@@ -264,7 +264,7 @@ class TestGetCalculationDetail:
         wf_model = load_calculation(calculation_yaml_path, project_root=temp_project, resolve_structure_selector=resolver)
         
         # Verify step IDs match calculation.yaml order
-        calculation_yaml_step_ids = [entry.step_id for entry in wf_model.steps]
+        calculation_yaml_step_ids = [entry.step_ulid for entry in wf_model.steps]
         api_step_ids = [step.get("id") or step.get("step_id") for step in result["steps"]]
         
         assert len(calculation_yaml_step_ids) == len(api_step_ids), \

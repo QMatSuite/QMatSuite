@@ -157,12 +157,11 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KE2KZXCASHV81MSTY4K7NY8M
       name: si.1_erelax
       slug: si-1_erelax
       path: si.1_erelax.step.yaml
       kind: step
-    step_type: custom
+      ulid: 01KE2KZXCASHV81MSTY4K7NY8M
     parameters:
       CONTROL:
         calculation: cp
@@ -186,13 +185,13 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
+    step_type_spec: qe_custom
   - meta:
-      id: 01KE2KZXCZ6926T5DH1P36BAB5
       name: si.2_randDisplace
       slug: si-2_randdisplace
       path: si.2_randDisplace.step.yaml
       kind: step
-    step_type: custom
+      ulid: 01KE2KZXCZ6926T5DH1P36BAB5
     parameters:
       CONTROL:
         calculation: cp
@@ -220,13 +219,13 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
+    step_type_spec: qe_custom
   - meta:
-      id: 01KE2KZXDZVGRSHS8B23FY3EAH
       name: si.3_cp_BOMD_NVT
       slug: si-3_cp_bomd_nvt
       path: si.3_cp_BOMD_NVT.step.yaml
       kind: step
-    step_type: custom
+      ulid: 01KE2KZXDZVGRSHS8B23FY3EAH
     parameters:
       CONTROL:
         calculation: cp
@@ -257,6 +256,7 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
+    step_type_spec: qe_custom
   structure_id: 01KE2KZXC3KDRFMED4BX6PHSMD
   species_map:
     Si:

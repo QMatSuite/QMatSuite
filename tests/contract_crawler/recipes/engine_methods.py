@@ -147,7 +147,7 @@ class EngineMethodsRecipe(Recipe):
                         elif hasattr(last_step, "id"):
                             self.bands_step_id = last_step.id
                         elif hasattr(last_step, "step_id"):
-                            self.bands_step_id = last_step.step_id
+                            self.bands_step_id = last_step.step_ulid
                 except Exception:
                     self.bands_step_id = self.world.get("step_ids", [None])[0]
             else:
@@ -196,7 +196,7 @@ class EngineMethodsRecipe(Recipe):
                         elif hasattr(last_step, "id"):
                             self.dos_step_id = last_step.id
                         elif hasattr(last_step, "step_id"):
-                            self.dos_step_id = last_step.step_id
+                            self.dos_step_id = last_step.step_ulid
                 except Exception:
                     self.dos_step_id = self.world.get("step_ids", [None])[0]
             else:

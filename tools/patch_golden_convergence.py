@@ -39,14 +39,13 @@ def patch_step(step: dict) -> bool:
     # Rename type → step_type_spec + step_type_gen
     if "type" in step and "step_type_spec" not in step:
         old_type = step.pop("type")
-        if old_type and isinstance(old_type, str):
-            if "_" in old_type:  # Already SPEC
-                step["step_type_spec"] = old_type
-                step["step_type_gen"] = spec_to_gen(old_type)
-            else:  # GEN value - assume QE for golden fixtures
-                step["step_type_gen"] = old_type
-                step["step_type_spec"] = f"qe_{old_type}"
-            modified = True
+        if "_" in old_type:  # Already SPEC
+            step["step_type_spec"] = old_type
+            step["step_type_gen"] = spec_to_gen(old_type)
+        else:  # GEN value - assume QE for golden fixtures
+            step["step_type_gen"] = old_type
+            step["step_type_spec"] = f"qe_{old_type}"
+        modified = True
 
     # Rename id → ulid (only for normalized placeholders or 26-char ULIDs)
     if "id" in step:
@@ -58,11 +57,6 @@ def patch_step(step: dict) -> bool:
     # Rename step_id → step_ulid
     if "step_id" in step:
         step["step_ulid"] = step.pop("step_id")
-        modified = True
-
-    # Rename calc_id → calc_ulid
-    if "calc_id" in step:
-        step["calc_ulid"] = step.pop("calc_id")
         modified = True
 
     return modified
@@ -88,16 +82,6 @@ def patch_recursive(data, depth=0) -> bool:
         # Rename parent_calculation_id → parent_calculation_ulid
         if "parent_calculation_id" in data:
             data["parent_calculation_ulid"] = data.pop("parent_calculation_id")
-            modified = True
-
-        # Rename calc_id → calc_ulid (for calculation objects)
-        if "calc_id" in data and "calc_ulid" not in data:
-            data["calc_ulid"] = data.pop("calc_id")
-            modified = True
-
-        # Rename structure_id → structure_ulid
-        if "structure_id" in data and "structure_ulid" not in data:
-            data["structure_ulid"] = data.pop("structure_id")
             modified = True
 
         # Recurse
@@ -134,4 +118,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

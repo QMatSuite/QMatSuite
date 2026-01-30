@@ -62,7 +62,7 @@ def test_calculation_get_step_returns_dto(tmp_path):
     try:
         step = svc.calculation.get_step("test_calc", "step1")
         assert isinstance(step, StepDTO)
-        assert step.step_id is not None
+        assert step.step_ulid is not None
         assert step.calc_id is not None
         assert step.step_type is not None
         assert step.status in ["pending", "running", "completed", "failed"]

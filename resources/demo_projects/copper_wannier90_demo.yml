@@ -75,12 +75,11 @@ calculations:
       pseudo_sha_family: de1aa1c318431ac01818be83d52292c276b90b49e1119b99a731c0452cdd2cbb
   steps:
   - meta:
-      id: 01KE2K2ENXW0HRGBRBSQ6Y75WF
       name: scf
       slug: scf
       path: calculations/copper-mlwfs/steps/scf.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KE2K2ENXW0HRGBRBSQ6Y75WF
     index: 0
     parameters:
       CONTROL:
@@ -106,13 +105,13 @@ calculations:
           - '0'
           - '0'
           - '0'
+    step_type_spec: qe_scf
   - meta:
-      id: 01KE2K2ENXRWH7HNY9SVJQPZQT
       name: nscf
       slug: nscf
       path: calculations/copper-mlwfs/steps/nscf.step.yaml
       kind: step
-    step_type: nscf
+      ulid: 01KE2K2ENXRWH7HNY9SVJQPZQT
     index: 1
     parameters:
       CONTROL:
@@ -392,13 +391,13 @@ calculations:
           - '0.0156250'
     depends_on:
     - 01KE2K2ENXW0HRGBRBSQ6Y75WF
+    step_type_spec: qe_nscf
   - meta:
-      id: 01KE2K2ENX215V1GVW8VCDXD1Y
       name: w90_preproc
       slug: w90_preproc
       path: calculations/copper-mlwfs/steps/w90_preproc.step.yaml
       kind: step
-    step_type: w90_preproc
+      ulid: 01KE2K2ENX215V1GVW8VCDXD1Y
     index: 2
     parameters: &id001
       seedname: copper
@@ -416,30 +415,31 @@ calculations:
       num_iter: 200
     depends_on:
     - 01KE2K2ENXRWH7HNY9SVJQPZQT
+    step_type_spec: w90_preproc
   - meta:
-      id: 01KE2K2ENYP0E8K617P76DZTHG
       name: pw2wannier90
       slug: pw2wannier90
       path: calculations/copper-mlwfs/steps/pw2wannier90.step.yaml
       kind: step
-    step_type: pw2wannier90
+      ulid: 01KE2K2ENYP0E8K617P76DZTHG
     index: 4
     parameters:
       seedname: copper
     depends_on:
     - 01KE2K2ENXRWH7HNY9SVJQPZQT
     - 01KE2K2ENX215V1GVW8VCDXD1Y
+    step_type_spec: qe_pw2wannier90
   - meta:
-      id: 01KE2K2ENX5Q3AQ1MFNKVNAY6G
       name: w90_run
       slug: w90_run
       path: calculations/copper-mlwfs/steps/w90_run.step.yaml
       kind: step
-    step_type: w90_run
+      ulid: 01KE2K2ENX5Q3AQ1MFNKVNAY6G
     index: 4
     parameters: *id001
     depends_on:
     - 01KE2K2ENYP0E8K617P76DZTHG
+    step_type_spec: w90_run
 pseudo:
   files:
   - Cu.pz-n-van_ak.UPF

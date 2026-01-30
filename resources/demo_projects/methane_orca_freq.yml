@@ -85,17 +85,17 @@ calculations:
   engine_family: orca
   steps:
   - meta:
-      id: 01KEX4RTDKF0N5GS3BXSDYTT34
       name: scf
       slug: scf
       path: calculations/ch4-scf--plus-frequency/steps/scf.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KEX4RTDKF0N5GS3BXSDYTT34
     parameters:
       functional: B3LYP
       basis: def2-TZVP
       charge: 0
       spin: 0
+    step_type_spec: qe_scf
 meta:
   id: methane_orca_freq
   title: Methane ORCA Frequency

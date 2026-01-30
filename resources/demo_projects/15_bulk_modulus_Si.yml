@@ -199,12 +199,11 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KE2KZGYEF75PMEQ55GTTD1D0
       name: si.1_scf_equilibrium
       slug: si-1_scf_equilibrium
       path: si.1_scf_equilibrium.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KE2KZGYEF75PMEQ55GTTD1D0
     parameters:
       CONTROL:
         calculation: scf
@@ -232,13 +231,13 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
+    step_type_spec: qe_scf
   - meta:
-      id: 01KE2KZGZ4FGHCDM324ZPDN1DZ
       name: si.2_scf_1.01a
       slug: si-2_scf_1-01a
       path: si.2_scf_1.01a.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KE2KZGZ4FGHCDM324ZPDN1DZ
     parameters:
       CONTROL:
         calculation: scf
@@ -266,13 +265,13 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
+    step_type_spec: qe_scf
   - meta:
-      id: 01KE2KZH08QYV24EFJR25EPG9C
       name: si.3_scf_0.99a
       slug: si-3_scf_0-99a
       path: si.3_scf_0.99a.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KE2KZH08QYV24EFJR25EPG9C
     parameters:
       CONTROL:
         calculation: scf
@@ -300,6 +299,7 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
+    step_type_spec: qe_scf
   structure_id: 01KE2KZGY7QPTQSEWMFDFM712V
   species_map:
     Si:

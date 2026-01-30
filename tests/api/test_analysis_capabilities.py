@@ -45,7 +45,7 @@ def test_get_summary_returns_dto(tmp_path):
         summary = svc.analysis.get_summary("test_calc", "step1")
         assert isinstance(summary, AnalysisSummaryDTO)
         assert summary.calc_id is not None
-        assert summary.step_id is not None
+        assert summary.step_ulid is not None
     except Exception:
         # Expected to fail without full project setup
         pass
