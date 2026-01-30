@@ -66,7 +66,7 @@ def pick_first_candidate(
     
     # Pick first result (as returned by search)
     entry = entries[0]
-    entry_id = entry.get("id")
+    entry_id = entry.get("ulid")
     attrs = entry.get("attributes", {})
     if entry_id:
         return None, entry_id, attrs

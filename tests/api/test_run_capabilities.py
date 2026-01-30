@@ -29,8 +29,8 @@ def test_run_calculation_returns_dto(tmp_path):
     try:
         result = svc.run.run_calculation("test_calc")
         assert isinstance(result, RunResultDTO)
-        assert result.run_id is not None
-        assert result.calc_id is not None
+        assert result.run_ulid is not None
+        assert result.calc_ulid is not None
         assert result.status in ["submitted", "running", "completed", "failed", "cancelled"]
     except Exception:
         # Expected to fail without full project setup
@@ -49,7 +49,7 @@ def test_run_step_returns_dto(tmp_path):
     try:
         result = svc.run.run_step("test_calc", "step1")
         assert isinstance(result, RunResultDTO)
-        assert result.run_id is not None
+        assert result.run_ulid is not None
     except Exception:
         # Expected to fail without full project setup
         pass
@@ -91,7 +91,7 @@ def test_cancel_happy_path(tmp_path):
     mock_job.started_at = None
     mock_job.completed_at = datetime.now(timezone.utc)
     mock_job.params = {"calc_id": "calc123"}
-    mock_job.steps = [{"step_id": "step1"}]
+    mock_job.steps = [{"step_ulid": "step1"}]
     mock_job.output_file = None
     mock_job.error = None
     
@@ -105,10 +105,10 @@ def test_cancel_happy_path(tmp_path):
         result = svc.run.cancel("01ARZ3NDEKTSV4RRFFQ69G5FAV")
     
     assert isinstance(result, RunResultDTO)
-    assert result.run_id == "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+    assert result.run_ulid == "01ARZ3NDEKTSV4RRFFQ69G5FAV"
     assert result.status == "cancelled"
-    assert result.calc_id == "calc123"
-    assert result.step_ids == ["step1"]
+    assert result.calc_ulid == "calc123"
+    assert result.step_ulids == ["step1"]
     assert mock_job_manager.cancel_job.called
     assert mock_job_manager.cancel_job.call_args[0][0] == "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 
@@ -155,7 +155,7 @@ def test_cancel_json_serializable(tmp_path):
     mock_job.started_at = datetime.now(timezone.utc)
     mock_job.completed_at = datetime.now(timezone.utc)
     mock_job.params = {"calc_id": "calc123"}
-    mock_job.steps = [{"step_id": "step1"}]
+    mock_job.steps = [{"step_ulid": "step1"}]
     mock_job.output_file = "/path/to/log.txt"
     mock_job.error = None
     

@@ -1,11 +1,11 @@
 meta:
-  id: 01KB9JWASAS0TZPM0H6QDJKTGC
+  ulid: 01KB9JWASAS0TZPM0H6QDJKTGC
   name: nscf
   slug: nscf
   path: calculations/si-dos/steps/nscf.step.yaml
   kind: step
 structure: si
-step_type: nscf
+step_type_spec: nscf
 parent_calculation_id: 01KB9JA6JSMH7XFZ1AK917TV6J
 parameters:
   CONTROL:

@@ -76,7 +76,7 @@ class PreflightChecker:
             if predecessor is None:
                 return None
             # CRITICAL: Use Runtime SSOT, NOT scan archive
-            return calculation.io.raw_dir / predecessor.meta.id
+            return calculation.io.raw_dir / predecessor.meta.ulid
         else:
             return calculation.io.raw_dir / req.source_step
 
@@ -85,7 +85,7 @@ class PreflightChecker:
         steps = calculation.steps
         current_idx = None
         for i, step in enumerate(steps):
-            if step.meta.id == current_step.meta.id:
+            if step.meta.ulid == current_step.meta.ulid:
                 current_idx = i
                 break
         if current_idx is None or current_idx == 0:

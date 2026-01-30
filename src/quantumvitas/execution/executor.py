@@ -328,7 +328,7 @@ class JobExecutor:
                     try:
                         from quantumvitas.core.yamldoc import StepDoc
                         step_doc = StepDoc.load(candidate)
-                        if step_doc.get(["meta", "id"]) == step_ulid:
+                        if step_doc.get(["meta", "ulid"]) == step_ulid:
                             step_file = candidate
                             break
                     except Exception:
@@ -413,7 +413,7 @@ class JobExecutor:
                     for candidate in steps_dir.glob("*.step.yaml"):
                         try:
                             step_doc = StepDoc.load(candidate)
-                            if step_doc.get(["meta", "id"]) == step_ulid:
+                            if step_doc.get(["meta", "ulid"]) == step_ulid:
                                 step_file = candidate
                                 break
                         except Exception:
@@ -477,7 +477,7 @@ class JobExecutor:
                 context = PostJobContext(
                     calc_raw_dir=raw_dir,
                     variant_key=variant_key,
-                    run_id=run_id,
+                    run_ulid=run_id,
                 )
                 
                 archive_action = ArchiveToSlotAction(variant_key=variant_key)
@@ -522,7 +522,7 @@ class JobExecutor:
     def _find_step_by_ulid(self, calculation: "Calculation", step_ulid: str) -> Optional["Step"]:
         """Find step in calculation by ULID."""
         for step in calculation.steps:
-            if hasattr(step, 'meta') and step.meta.id == step_ulid:
+            if hasattr(step, 'meta') and step.meta.ulid == step_ulid:
                 return step
         return None
     
@@ -550,7 +550,7 @@ class JobExecutor:
         
         # Get calculation directory and ULIDs
         calc_dir = calculation.dir
-        calculation_ulid = calculation.meta.id if hasattr(calculation, 'meta') else None
+        calculation_ulid = calculation.meta.ulid if hasattr(calculation, 'meta') else None
         input_structure_ulid = calculation.structure_id if hasattr(calculation, 'structure_id') else None
         
         # Build run context for artifact processing
@@ -626,8 +626,8 @@ class JobExecutor:
                             try:
                                 from quantumvitas.core.yamldoc import StepDoc
                                 step_doc = StepDoc.load(candidate)
-                                if step_doc.get(["meta", "id"]) == step.meta.id:
-                                    step_type = step_doc.get(["step_type"])
+                                if step_doc.get(["meta", "ulid"]) == step.meta.ulid:
+                                    step_type = step_doc.get(["step_type_spec"])
                                     break
                             except Exception:
                                 continue
@@ -637,7 +637,7 @@ class JobExecutor:
             if step_type and is_relax_step_type(step_type):
                 # Check for current.json
                 calc_dir = calculation.dir
-                artifact_path = get_generated_structure_path(calc_dir, step.meta.id)
+                artifact_path = get_generated_structure_path(calc_dir, step.meta.ulid)
                 
                 if not artifact_path.exists():
                     current_step = calculation.steps[step_idx] if step_idx < len(calculation.steps) else None
@@ -646,8 +646,8 @@ class JobExecutor:
                     
                     raise MissingArtifactError(
                         f"MISSING_ARTIFACT_ERROR: Step '{current_step_name}' requires "
-                        f"the relaxed structure from step '{relax_step_name}' (ULID: {step.meta.id}), but "
-                        f"generated_structures/step_{step.meta.id}/current.json is missing.\n\n"
+                        f"the relaxed structure from step '{relax_step_name}' (ULID: {step.meta.ulid}), but "
+                        f"generated_structures/step_{step.meta.ulid}/current.json is missing.\n\n"
                         "This typically means:\n"
                         "- The relax step has not been executed yet\n"
                         "- The relax step failed before producing output\n"
@@ -657,7 +657,7 @@ class JobExecutor:
                     )
                 
                 # Load and return structure
-                structure = read_generated_structure(calc_dir, step.meta.id)
+                structure = read_generated_structure(calc_dir, step.meta.ulid)
                 if structure is None:
                     # File exists but couldn't be parsed
                     raise MissingArtifactError(

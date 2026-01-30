@@ -47,7 +47,7 @@ class QERecipe(BaseRecipe):
             job_id = f"step_{idx:02d}"
 
             # Get step type info from registry
-            step_type = step.step_type
+            step_type = step.step_type_spec
             spec = registry.get(str(step_type)) if step_type else None
 
             # Determine executable and input file
@@ -74,7 +74,7 @@ class QERecipe(BaseRecipe):
             # Create job
             job = Job(
                 id=job_id,
-                step_ids=[step.meta.id],
+                step_ids=[step.meta.ulid],
                 working_dir=calc_raw_dir,
                 command=command,
                 input_files=[calc_raw_dir / input_file],
@@ -84,7 +84,7 @@ class QERecipe(BaseRecipe):
                 metadata={
                     "engine": "qe",
                     "spec_step_type": spec.step_type_spec if spec else None,
-                    "public_type": public_type,
+                    "step_type_gen": public_type,
                     "scratch_dir": calc_raw_dir / "outdir",
                 },
             )

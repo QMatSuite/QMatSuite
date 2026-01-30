@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KC38Z11XMKJWB5HGV58QHEJZ
+    ulid: 01KC38Z11XMKJWB5HGV58QHEJZ
     name: project2_bands
     slug: project2_bands
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KC38ZCMZZQ8DAA61A6SC8X23
+    ulid: 01KC38ZCMZZQ8DAA61A6SC8X23
     name: Si
     slug: si
     path: structures/si.json
@@ -70,7 +70,7 @@ structures:
       - 1.3773039781619374
 calculations:
 - meta:
-    id: 01KC38ZHBGWW0T1W9BV7ASEP2Z
+    ulid: 01KC38ZHBGWW0T1W9BV7ASEP2Z
     name: Si bands
     slug: si-bands
     path: calculations/si-bands
@@ -210,7 +210,7 @@ pseudo:
   files:
   - Si.pbe-n-rrkjus_psl.1.0.0.UPF
 meta:
-  id: si_bands_demo
+  ulid: si_bands_demo
   title: Silicon band structure
   subtitle: "SCF \u2192 NSCF \u2192 Bands"
   tags:

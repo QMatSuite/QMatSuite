@@ -31,7 +31,7 @@ class TestGetCommonCards:
         calc_ulid = generate_resource_id()
         (project_root / "project.qv.yml").write_text(
             yaml.safe_dump({
-                "project": {"name": "Test", "id": generate_resource_id()},
+                "project": {"name": "Test", "ulid": generate_resource_id()},
                 "calculations": [{"calculation_id": calc_ulid}]
             }, sort_keys=False)
         )
@@ -40,8 +40,8 @@ class TestGetCommonCards:
         calc_dir.mkdir(parents=True)
         (calc_dir / "calculation.yaml").write_text(
             yaml.safe_dump({
-                "meta": {"id": calc_ulid, "name": "test-calc", "slug": "test-calc"},
-                "id": "test-calc",
+                "meta": {"ulid": calc_ulid, "name": "test-calc", "slug": "test-calc"},
+                "ulid": "test-calc",
             }, sort_keys=False)
         )
         
@@ -50,8 +50,8 @@ class TestGetCommonCards:
         step_ulid = generate_resource_id()
         (steps_dir / "scf.step.yaml").write_text(
             yaml.safe_dump({
-                "meta": {"id": step_ulid, "name": "scf", "slug": "scf"},
-                "step_type": "scf",
+                "meta": {"ulid": step_ulid, "name": "scf", "slug": "scf"},
+                "step_type_gen": "scf",
                 "parameters": {},
                 "cards": {"K_POINTS": {"mode": "automatic", "nk1": 2, "nk2": 2, "nk3": 2}},
             }, sort_keys=False)
@@ -59,7 +59,7 @@ class TestGetCommonCards:
         
         # Update calculation.yaml with step
         calc_data = yaml.safe_load((calc_dir / "calculation.yaml").read_text())
-        calc_data["steps"] = [{"step_id": step_ulid, "type": "scf"}]
+        calc_data["steps"] = [{"step_ulid": step_ulid, "step_type_gen": "scf"}]
         (calc_dir / "calculation.yaml").write_text(yaml.safe_dump(calc_data, sort_keys=False))
         
         # Build index
@@ -83,7 +83,7 @@ class TestGetCommonCards:
         calc_ulid = generate_resource_id()
         (project_root / "project.qv.yml").write_text(
             yaml.safe_dump({
-                "project": {"name": "Test", "id": generate_resource_id()},
+                "project": {"name": "Test", "ulid": generate_resource_id()},
                 "calculations": [{"calculation_id": calc_ulid}]
             }, sort_keys=False)
         )
@@ -92,8 +92,8 @@ class TestGetCommonCards:
         calc_dir.mkdir(parents=True)
         (calc_dir / "calculation.yaml").write_text(
             yaml.safe_dump({
-                "meta": {"id": calc_ulid, "name": "test-calc", "slug": "test-calc"},
-                "id": "test-calc",
+                "meta": {"ulid": calc_ulid, "name": "test-calc", "slug": "test-calc"},
+                "ulid": "test-calc",
             }, sort_keys=False)
         )
         
@@ -102,8 +102,8 @@ class TestGetCommonCards:
         step_ulid = generate_resource_id()
         (steps_dir / "scf.step.yaml").write_text(
             yaml.safe_dump({
-                "meta": {"id": step_ulid, "name": "scf", "slug": "scf"},
-                "step_type": "scf",
+                "meta": {"ulid": step_ulid, "name": "scf", "slug": "scf"},
+                "step_type_gen": "scf",
                 "parameters": {},
                 "cards": {"K_POINTS": {"mode": "automatic", "nk1": 2, "nk2": 2, "nk3": 2}},
             }, sort_keys=False)
@@ -111,7 +111,7 @@ class TestGetCommonCards:
         
         # Update calculation.yaml with step
         calc_data = yaml.safe_load((calc_dir / "calculation.yaml").read_text())
-        calc_data["steps"] = [{"step_id": step_ulid, "type": "scf"}]
+        calc_data["steps"] = [{"step_ulid": step_ulid, "step_type_gen": "scf"}]
         (calc_dir / "calculation.yaml").write_text(yaml.safe_dump(calc_data, sort_keys=False))
         
         # Build index

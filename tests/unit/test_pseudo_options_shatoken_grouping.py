@@ -84,7 +84,7 @@ def temp_project(tmp_path: Path) -> Path:
     project_config = {
         "project": {
             "name": "Test Project",
-            "id": "test-project-id",
+            "ulid": "test-project-id",
         }
     }
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))

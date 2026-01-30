@@ -52,7 +52,7 @@ class TestCalculationULIDContracts:
         calc_yaml = calc_dir / "calculation.yaml"
         calc_data = {
             "meta": {
-                "id": calc_id,
+                "ulid": calc_id,
                 "name": "bands",
                 "slug": "bands",
                 "path": "calculations/bands",
@@ -95,7 +95,7 @@ class TestCalculationULIDContracts:
         calc_yaml = calc_dir / "calculation.yaml"
         calc_data = {
             "meta": {
-                "id": calc_id,
+                "ulid": calc_id,
                 "name": "bands",
                 "slug": "bands",
                 "path": "calculations/bands",
@@ -104,7 +104,7 @@ class TestCalculationULIDContracts:
             "mode": "normal",
             "working_dir": "raw",
             "steps": [
-                {"step_id": step_id, "type": "bands"},
+                {"step_ulid": step_id, "step_type_gen": "bands"},
             ],
         }
         calc_yaml.write_text(yaml.safe_dump(calc_data, sort_keys=False))
@@ -113,12 +113,12 @@ class TestCalculationULIDContracts:
         step_yaml = steps_dir / "bands.step.yaml"
         step_data = {
             "meta": {
-                "id": step_id,
+                "ulid": step_id,
                 "name": "bands",
                 "slug": "bands",  # Same slug as calculation!
                 "kind": "step",
             },
-            "step_type": "bands",
+            "step_type_gen": "bands",
             "parameters": {},
             "cards": {},
         }
@@ -136,12 +136,12 @@ class TestCalculationULIDContracts:
         
         # Test: ULID should work (even with slug collision)
         result = svc.calculation.get_step(calc_id, step_id)
-        assert result.step_id == step_id
+        assert result.step_ulid == step_id
         
         # Test: slug should be rejected (domain API accepts selectors, but we test ULID requirement)
         # The domain API accepts selectors, so this test may need adjustment
         # For now, verify ULID works
-        assert result.step_id == step_id
+        assert result.step_ulid == step_id
     
     def test_resolve_id_with_expected_kind_filters_by_kind(self, project_root):
         """Test that resolve_id with expected_kind filters by resource kind."""
@@ -154,8 +154,7 @@ class TestCalculationULIDContracts:
         index = ResourceIndex()
         
         # Add calculation with slug "bands"
-        calc_meta = ResourceMeta(
-            id=calc_id,
+        calc_meta = ResourceMeta(ulid=calc_id,
             name="bands",
             slug="bands",
             path="calculations/bands",
@@ -164,8 +163,7 @@ class TestCalculationULIDContracts:
         index.add_resource(calc_meta, project_root / "calculations" / "bands" / "calculation.yaml")
         
         # Add step with slug "bands" (collision!)
-        step_meta = ResourceMeta(
-            id=step_id,
+        step_meta = ResourceMeta(ulid=step_id,
             name="bands",
             slug="bands",
             path="calculations/bands/steps/bands.step.yaml",
@@ -210,12 +208,12 @@ class TestCalculationULIDContracts:
             step_yaml = steps_dir / f"{step_type}.step.yaml"
             step_data = {
                 "meta": {
-                    "id": step_id,
+                    "ulid": step_id,
                     "name": step_type,
                     "slug": step_type,
                     "kind": "step",
                 },
-                "step_type": step_type,
+                "step_type_gen": step_type,
                 "parameters": {},
                 "cards": {},
             }
@@ -225,7 +223,7 @@ class TestCalculationULIDContracts:
         calc_yaml = calc_dir / "calculation.yaml"
         calc_data = {
             "meta": {
-                "id": calc_id,
+                "ulid": calc_id,
                 "name": "test",
                 "slug": "test",
                 "path": "calculations/test",
@@ -234,7 +232,7 @@ class TestCalculationULIDContracts:
             "mode": "normal",
             "working_dir": "raw",
             "steps": [
-                {"step_id": step_id, "type": step_type}
+                {"step_ulid": step_id, "step_type_gen": step_type}
                 for step_id, step_type in zip(step_ids, step_types)
             ],
         }
@@ -276,12 +274,12 @@ class TestCalculationULIDContracts:
             step_yaml = steps_dir / f"{step_type}.step.yaml"
             step_data = {
                 "meta": {
-                    "id": step_id,
+                    "ulid": step_id,
                     "name": step_type,
                     "slug": step_type,
                     "kind": "step",
                 },
-                "step_type": step_type,
+                "step_type_gen": step_type,
                 "parameters": {},
                 "cards": {},
             }
@@ -291,7 +289,7 @@ class TestCalculationULIDContracts:
         calc_yaml = calc_dir / "calculation.yaml"
         calc_data = {
             "meta": {
-                "id": calc_id,
+                "ulid": calc_id,
                 "name": "test",
                 "slug": "test",
                 "path": "calculations/test",
@@ -300,7 +298,7 @@ class TestCalculationULIDContracts:
             "mode": "normal",
             "working_dir": "raw",
             "steps": [
-                {"step_id": step_id}  # No type field!
+                {"step_ulid": step_id}  # No type field!
                 for step_id in step_ids
             ],
         }

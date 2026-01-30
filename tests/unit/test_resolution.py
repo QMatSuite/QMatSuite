@@ -74,7 +74,7 @@ class TestStructureResolution:
                     "name": "Silicon",
                     "file": "structures/silicon.json",
                     "meta": {
-                        "id": "01ABCDEFGHIJKLMNOPQRSTUV",
+                        "ulid": "01ABCDEFGHIJKLMNOPQRSTUV",
                         "name": "Silicon",
                         "slug": "silicon",
                         "path": "structures/silicon.json",
@@ -103,7 +103,7 @@ class TestStructureResolution:
         """Resolve structure by ULID (26 chars uppercase)."""
         # Note: ULIDs are typically uppercase, but we also check lowercase in entry_matches_ulid
         result = resolve_structure(project_with_structures, "silicon")  # Use slug instead
-        assert result.meta.id is not None
+        assert result.meta.ulid is not None
     
     def test_resolve_by_path(self, project_with_structures):
         """Resolve structure by path."""
@@ -131,7 +131,7 @@ class TestCalculationResolution:
         # Create calculation.yaml
         wf_yaml = {
             "meta": {
-                "id": "01CALCULATION_ULID_HERE_____",
+                "ulid": "01CALCULATION_ULID_HERE_____",
                 "name": "Si DOS",
                 "slug": "si-dos",
             },
@@ -147,7 +147,7 @@ class TestCalculationResolution:
                     "name": "Si DOS",
                     "path": "calculations/si-dos",
                     "meta": {
-                        "id": "01CALCULATION_ULID_HERE_____",
+                        "ulid": "01CALCULATION_ULID_HERE_____",
                         "name": "Si DOS",
                         "slug": "si-dos",
                         "path": "calculations/si-dos",
@@ -189,11 +189,11 @@ class TestStepResolution:
         
         # Create step file
         step_yaml = {
-            "id": "scf-step",
-            "step_type": "scf",
+            "ulid": "scf-step",
+            "step_type_gen": "scf",
             "structure": "silicon",
             "meta": {
-                "id": "01STEP_ULID_HERE________",
+                "ulid": "01STEP_ULID_HERE________",
                 "name": "scf",
                 "slug": "scf",
             },
@@ -201,7 +201,7 @@ class TestStepResolution:
         (steps_dir / "scf.step.yaml").write_text(yaml.safe_dump(step_yaml))
         
         # Create calculation.yaml
-        wf_yaml = {"meta": {"slug": "test-calculation"}, "steps": [{"id": "scf-step"}]}
+        wf_yaml = {"meta": {"slug": "test-calculation"}, "steps": [{"ulid": "scf-step"}]}
         (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(wf_yaml))
         
         config = {
@@ -212,7 +212,7 @@ class TestStepResolution:
                     "name": "Test Calculation",
                     "path": "calculations/test-calculation",
                     "meta": {
-                        "id": "01CALCULATION_HERE_________",
+                        "ulid": "01CALCULATION_HERE_________",
                         "slug": "test-calculation",
                     },
                 },

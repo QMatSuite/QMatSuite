@@ -84,7 +84,7 @@ FULLY_SKIPPABLE_SUBTREES = {
 ITEM_SCHEMA_REQUIRED_SUBTREES = {
     "steps": ["type"],  # Minimum: type is always required. id/name vary by method.
     "structures": ["id", "name"],  # Each structure must have these
-    "calculations": ["id"],  # Each calculation must have these
+    "calculations": ["ulid"],  # Each calculation must have these
     # Templates: enforce schema but allow different order/count (filesystem discovery order varies)
     "templates": ["name"],  # Each template must have name
     # Discovered engines: may be empty in CI, but if present, enforce schema
@@ -159,14 +159,14 @@ def compare_schemas(baseline: Any, current: Any, path: str = "") -> List[str]:
             if key == "steps" and baseline:
                 # Use baseline item as reference for required fields
                 baseline_item = baseline[0] if baseline else {}
-                # Enforce minimum: type is always required
-                if "type" not in item:
-                    violations.append(f"{path}[{i}]: Missing GUI-critical field 'type'")
-                # Also check if baseline had id/step_id - enforce whichever baseline has
-                if "id" in baseline_item and "id" not in item:
-                    violations.append(f"{path}[{i}]: Missing GUI-critical field 'id' (baseline has it)")
-                if "step_id" in baseline_item and "step_id" not in item:
-                    violations.append(f"{path}[{i}]: Missing GUI-critical field 'step_id' (baseline has it)")
+                # Enforce minimum: step_type_spec is always required (canonical naming)
+                if "step_type_spec" not in item:
+                    violations.append(f"{path}[{i}]: Missing GUI-critical field 'step_type_spec'")
+                # Also check if baseline had ulid/step_ulid - enforce whichever baseline has
+                if "ulid" in baseline_item and "ulid" not in item:
+                    violations.append(f"{path}[{i}]: Missing GUI-critical field 'ulid' (baseline has it)")
+                if "step_ulid" in baseline_item and "step_ulid" not in item:
+                    violations.append(f"{path}[{i}]: Missing GUI-critical field 'step_ulid' (baseline has it)")
             else:
                 # For other arrays, use fixed required_fields list
                 for field in required_fields:

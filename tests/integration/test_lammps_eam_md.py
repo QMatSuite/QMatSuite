@@ -53,7 +53,7 @@ def eam_md_project(tmp_path: Path):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC")
-    structure_id = struct_result.meta.id
+    structure_id = struct_result.meta.ulid
     
     # Copy potential file if available
     potential_src = Path(__file__).parent.parent / "data" / "lammps" / "eam_md" / "potentials" / "Cu_u3.eam"
@@ -76,7 +76,7 @@ def eam_md_project(tmp_path: Path):
         name="eam_md",
         structure_selector=structure_id,
     )
-    calc_id = calc_resolved.meta.id
+    calc_id = calc_resolved.meta.ulid
     calc_dir = calc_resolved.absolute_path
     calc_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_path, project_root=project_root)
@@ -100,7 +100,7 @@ def eam_md_project(tmp_path: Path):
         calc_selector=calc_id,
         step_type="md",
     )
-    step_id = step_dto.step_id
+    step_id = step_dto.step_ulid
 
     # Configure step parameters using domain API
     # Note: LAMMPS parameters go inside "parameters" dict
@@ -147,7 +147,7 @@ def test_eam_md_workflow(eam_md_project):
     assert result.status.value == "success", f"Calculation failed: {result.steps[0].message if result.steps else 'Unknown error'}"
     
     # Verify output files exist
-    working_dir = calculation.raw_dir / calculation.steps[0].meta.id
+    working_dir = calculation.raw_dir / calculation.steps[0].meta.ulid
     assert (working_dir / "log.lammps").exists(), "Log file should exist"
     assert (working_dir / "trajectory.lammpstrj").exists(), "Trajectory dump should exist"
     

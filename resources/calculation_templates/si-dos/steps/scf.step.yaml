@@ -1,11 +1,11 @@
 meta:
-  id: 01KB9JR6C8550NT0EFR361ZVTR
+  ulid: 01KB9JR6C8550NT0EFR361ZVTR
   name: scf
   slug: scf
   path: scf.step.yaml
   kind: step
 structure: si
-step_type: scf
+step_type_spec: scf
 parent_calculation_id: 01KB9JA6JSMH7XFZ1AK917TV6J
 parameters:
   CONTROL:

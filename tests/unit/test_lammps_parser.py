@@ -82,8 +82,8 @@ class TestTrajectoryBuilder:
             "n_atoms": 2,
             "box_bounds": {"xlo": 0.0, "xhi": 10.0, "ylo": 0.0, "yhi": 10.0, "zlo": 0.0, "zhi": 10.0},
             "atoms": [
-                {"id": 1, "type": 1, "x": 0.0, "y": 0.0, "z": 0.0, "vx": 0.1, "vy": 0.1, "vz": 0.1},
-                {"id": 2, "type": 1, "x": 1.0, "y": 1.0, "z": 1.0, "vx": 0.2, "vy": 0.2, "vz": 0.2},
+                {"ulid": 1, "step_type_gen": 1, "x": 0.0, "y": 0.0, "z": 0.0, "vx": 0.1, "vy": 0.1, "vz": 0.1},
+                {"ulid": 2, "step_type_gen": 1, "x": 1.0, "y": 1.0, "z": 1.0, "vx": 0.2, "vy": 0.2, "vz": 0.2},
             ],
         }]
         

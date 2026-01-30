@@ -93,14 +93,14 @@ def test_infer_calculation_identity_from_step_yaml_files():
         # Create step.yaml files with machine types
         step1_yaml = steps_dir / "step1.step.yaml"
         step1_yaml.write_text(yaml.safe_dump({
-            "step_type": "qe_scf",
-            "meta": {"id": "step1"},
+            "step_type_gen": "qe_scf",
+            "meta": {"ulid": "step1"},
         }))
         
         step2_yaml = steps_dir / "step2.step.yaml"
         step2_yaml.write_text(yaml.safe_dump({
-            "step_type": "qe_nscf",
-            "meta": {"id": "step2"},
+            "step_type_gen": "qe_nscf",
+            "meta": {"ulid": "step2"},
         }))
         
         # Empty steps list - should fallback to step.yaml files
@@ -122,10 +122,10 @@ def test_ensure_calculation_identity_writes_back():
         # Create calculation.yaml without structure_kind/engine_family
         calc_yaml = calc_dir / "calculation.yaml"
         calc_data = {
-            "meta": {"id": "calc1", "name": "Test Calc", "slug": "test-calc"},
+            "meta": {"ulid": "calc1", "name": "Test Calc", "slug": "test-calc"},
             "steps": [
-                {"step_id": "step1", "type": "scf"},
-                {"step_id": "step2", "type": "nscf"},
+                {"step_ulid": "step1", "step_type_gen": "scf"},
+                {"step_ulid": "step2", "step_type_gen": "nscf"},
             ],
         }
         calc_yaml.write_text(yaml.safe_dump(calc_data))
@@ -148,7 +148,7 @@ def test_ensure_calculation_identity_preserves_existing():
         # Create calculation.yaml with existing identity
         calc_yaml = calc_dir / "calculation.yaml"
         calc_data = {
-            "meta": {"id": "calc1", "name": "Test Calc", "slug": "test-calc"},
+            "meta": {"ulid": "calc1", "name": "Test Calc", "slug": "test-calc"},
             "structure_kind": "molecule",
             "engine_family": "pyscf",
             "steps": [],
@@ -198,7 +198,7 @@ def test_save_calculation_immutability(
         # Create initial calculation.yaml if existing values provided
         if existing_kind is not None or existing_family is not None:
             calc_data = {
-                "meta": {"id": "calc1", "name": "Test", "slug": "test"},
+                "meta": {"ulid": "calc1", "name": "Test", "slug": "test"},
             }
             if existing_kind:
                 calc_data["structure_kind"] = existing_kind
@@ -207,8 +207,7 @@ def test_save_calculation_immutability(
             calc_yaml.write_text(yaml.safe_dump(calc_data))
         
         # Create model with new values
-        meta = ResourceMeta(
-            id="calc1",
+        meta = ResourceMeta(ulid="calc1",
             name="Test",
             slug="test",
             path="calculations/test",

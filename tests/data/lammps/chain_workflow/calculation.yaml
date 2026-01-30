@@ -8,8 +8,8 @@ potential_map:
     - Cu
     sha256: placeholder
 steps:
-- id: relax_step
-  type: relax
+- step_ulid: relax_step
+  step_type_spec: relax
   parameters:
     potential: eam_cu
     units: metal
@@ -19,8 +19,8 @@ steps:
     thermo_frequency: 100
     dump_frequency: 1000
     dump_trajectory: true
-- id: md_step
-  type: md
+- step_ulid: md_step
+  step_type_spec: md
   parameters:
     potential: eam_cu
     restart_from: relax_step
@@ -32,8 +32,8 @@ steps:
     thermo_frequency: 100
     dump_frequency: 100
     dump_trajectory: true
-- id: continue_md
-  type: md
+- step_ulid: continue_md
+  step_type_spec: md
   parameters:
     potential: eam_cu
     restart_from: md_step

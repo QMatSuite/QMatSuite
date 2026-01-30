@@ -127,7 +127,7 @@ class RunRevision:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
-            "id": self.id,
+            "ulid": self.id,
             "project_id": self.project_id,
             "calc_id": self.calc_id,
             "calc_name": self.calc_name,
@@ -155,7 +155,7 @@ class RunRevision:
     def from_dict(cls, data: Dict[str, Any]) -> "RunRevision":
         """Create from dictionary."""
         return cls(
-            id=data.get("id", ""),
+            id=data.get("ulid", ""),
             project_id=data.get("project_id", ""),
             calc_id=data.get("calc_id", ""),
             calc_name=data.get("calc_name"),
@@ -265,7 +265,7 @@ def create_run_revision(
     try:
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
-        project_id = config.get("project", {}).get("meta", {}).get("id", "")
+        project_id = config.get("project", {}).get("meta", {}).get("ulid", "")
     except Exception:
         project_id = ""
     
@@ -358,7 +358,7 @@ def _create_snapshot(
                 try:
                     import yaml
                     data = yaml.safe_load(calc_yaml.read_text()) or {}
-                    meta_id = data.get("meta", {}).get("id", "")
+                    meta_id = data.get("meta", {}).get("ulid", "")
                     if meta_id == calc_id:
                         calc_dir = d
                         break

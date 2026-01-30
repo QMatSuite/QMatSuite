@@ -230,17 +230,17 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
     
     # Verify step_ids are ULIDs (DAG + ULID model)
     for step_result in result.step_results:
-        assert len(step_result.step_id) == 26, f"step_id should be ULID (26 chars), got: {step_result.step_id}"
-        assert step_result.step_id.startswith("01"), f"step_id should start with '01', got: {step_result.step_id}"
+        assert len(step_result.step_ulid) == 26, f"step_id should be ULID (26 chars), got: {step_result.step_ulid}"
+        assert step_result.step_ulid.startswith("01"), f"step_id should start with '01', got: {step_result.step_ulid}"
         # Verify step file has meta.id matching step_id
         spec_data = yaml.safe_load(step_result.spec_path.read_text())
         spec_meta = spec_data.get("meta", {})
-        assert spec_meta.get("id") == step_result.step_id, "Step file meta.id should match step_id ULID"
+        assert spec_meta.get("ulid") == step_result.step_ulid, "Step file meta.id should match step_id ULID"
 
     # Create minimal project manifest referencing generated files
-    # Need to use the actual structure_id from the step result, not "si"
-    # Get the structure_id from the first step result (all steps share the same structure)
-    actual_structure_id = result.step_results[0].structure_id
+    # Need to use the actual structure_ulid from the step result, not "si"
+    # Get the structure_ulid from the first step result (all steps share the same structure)
+    actual_structure_id = result.step_results[0].structure_ulid
     
     # Verify structure file exists and has correct meta
     assert result.structure_path.exists(), f"Structure file should exist: {result.structure_path}"
@@ -248,7 +248,7 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
     import json
     structure_data = json.loads(result.structure_path.read_text())
     structure_meta = structure_data.get(STRUCTURE_META_KEY, {})
-    assert structure_meta.get("id") == actual_structure_id, "Structure file should have matching ID"
+    assert structure_meta.get("ulid") == actual_structure_id, "Structure file should have matching ID"
     
     # Get relative path properly (handle both absolute and relative paths)
     try:
@@ -264,7 +264,7 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
     # Get calculation ID: prefer meta.id (ULID), fall back to id field (human-readable name)
     # If calculation.yaml doesn't have meta, we need to ensure it does or use a generated ULID
     calculation_meta = calculation_yaml_data.get("meta", {})
-    actual_calculation_id = calculation_meta.get("id")
+    actual_calculation_id = calculation_meta.get("ulid")
     
     # If calculation.yaml doesn't have meta.id, we need to create it
     # For now, generate a ULID and update the calculation.yaml
@@ -273,10 +273,10 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
         actual_calculation_id = generate_resource_id()
         calculation_meta = meta_from_name(
             "calculation",
-            name=calculation_yaml_data.get("id", "si_flow"),
+            name=calculation_yaml_data.get("ulid", "si_flow"),
             path="calculations/si_flow"
         )
-        calculation_meta.id = actual_calculation_id
+        calculation_meta.ulid = actual_calculation_id
         calculation_yaml_data["meta"] = calculation_meta.to_dict()
         calculation_yaml_path.write_text(yaml.safe_dump(calculation_yaml_data, sort_keys=False))
     
@@ -284,7 +284,7 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
     calculation_steps = calculation_yaml_data.get("steps", [])
     assert len(calculation_steps) == 2
     for step_entry in calculation_steps:
-        step_id = step_entry.get("step_id")
+        step_id = step_entry.get("step_ulid")
         assert step_id is not None, "Step entry must have step_id"
         assert len(step_id) == 26, f"step_id should be ULID (26 chars), got: {step_id}"
         assert step_id.startswith("01"), f"step_id should start with '01', got: {step_id}"
@@ -295,11 +295,11 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
     project_config = {
         "project": {"name": "si_project"},
         "structures": [{
-            "id": actual_structure_id,
+            "ulid": actual_structure_id,
             "file": str(structures_rel),
             "format": "json",
         }],
-        "calculations": [{"id": actual_calculation_id, "path": "calculations/si_flow"}],
+        "calculations": [{"ulid": actual_calculation_id, "path": "calculations/si_flow"}],
         "settings": {},
     }
     project_root.mkdir(parents=True, exist_ok=True)
@@ -314,8 +314,8 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
     for step in calculation.steps:
         assert step.input_file.exists()
         # Verify step has ULID meta.id
-        assert len(step.meta.id) == 26, f"Step meta.id should be ULID (26 chars), got: {step.meta.id}"
-        assert step.meta.id.startswith("01"), f"Step meta.id should start with '01', got: {step.meta.id}"
+        assert len(step.meta.ulid) == 26, f"Step meta.id should be ULID (26 chars), got: {step.meta.ulid}"
+        assert step.meta.ulid.startswith("01"), f"Step meta.id should start with '01', got: {step.meta.ulid}"
 
 
 def test_materialize_step_spec_generates_atomic_species(tmp_path: Path):

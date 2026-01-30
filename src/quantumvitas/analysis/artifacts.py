@@ -571,7 +571,7 @@ def parse_and_write_bands_artifact(
                     import yaml
                     calc_data = yaml.safe_load(calc_yaml.read_text()) or {}
                     calc_meta = calc_data.get("meta", {})
-                    calc_id = calc_meta.get("id") or calc_meta.get("slug") or calculation_dir.name
+                    calc_id = calc_meta.get("ulid") or calc_meta.get("slug") or calculation_dir.name
                     step = require_step(project_root, calc_id, step_selector)
                     # Get step type from step
                     from quantumvitas.calculation.structure_steps import StructureStepSpec
@@ -581,7 +581,7 @@ def parse_and_write_bands_artifact(
                     except Exception:
                         # Fallback: try from calculation.yaml
                         steps = calc_data.get("steps", [])
-                        step_entry = next((e for e in steps if e.get("id") == step_selector or e.get("step_id") == step_selector), None)
+                        step_entry = next((e for e in steps if e.get("ulid") == step_selector or e.get("step_id") == step_selector), None)
                         step_type = step_entry.get("type") if step_entry else None
                     
                     if step_type:

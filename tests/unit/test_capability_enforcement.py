@@ -76,7 +76,7 @@ class TestApplyUnsupportedPresetRaisesError:
             
             # Create a QE step
             step_data = {
-                "step_type": "qe_scf",
+                "step_type_gen": "qe_scf",
                 "parameters": {
                     "SYSTEM": {
                         "ecutwfc": 30.0,
@@ -151,7 +151,7 @@ class TestResolveEngineForStep:
             step_path = Path(tmpdir) / "qe_step.step.yaml"
             
             step_data = {
-                "step_type": "qe_scf",
+                "step_type_gen": "qe_scf",
                 "parameters": {}
             }
             
@@ -167,7 +167,7 @@ class TestResolveEngineForStep:
             step_path = Path(tmpdir) / "pyscf_step.step.yaml"
             
             step_data = {
-                "step_type": "pyscf_scf",
+                "step_type_gen": "pyscf_scf",
                 "parameters": {}
             }
             

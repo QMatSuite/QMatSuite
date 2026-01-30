@@ -1,7 +1,7 @@
 project:
   name: silicon-band-structure-2
   meta:
-    id: 01KDTJYMXYVEC4TPPTD1GHVFCV
+    ulid: 01KDTJYMXYVEC4TPPTD1GHVFCV
     name: silicon-band-structure-2
     slug: silicon-band-structure-2
     path: .

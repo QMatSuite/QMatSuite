@@ -201,7 +201,7 @@ def search_cod(query: str, max_results: int = 10) -> List[Dict[str, Any]]:
                 # Generate a candidate entry ID
                 entry_id = f"cod_formula_{reduced}"
                 return [{
-                    "id": f"cod_{entry_id}",
+                    "ulid": f"cod_{entry_id}",
                     "entry_id": entry_id,
                     "structure": structure,
                     "formula": formula,
@@ -235,7 +235,7 @@ def search_cod(query: str, max_results: int = 10) -> List[Dict[str, Any]]:
                 # Convert to dict-like format for consistency
                 formula = structure.composition.reduced_formula
                 entries.append({
-                    "id": f"cod_{entry_id}",
+                    "ulid": f"cod_{entry_id}",
                     "entry_id": str(entry_id),
                     "structure": structure,
                     "formula": formula,
@@ -759,7 +759,7 @@ def search_online_structures(
             try:
                 # OPTIMADE payload is in data[i].attributes
                 attrs = entry.get("attributes", {})
-                entry_id = entry.get("id", "")
+                entry_id = entry.get("ulid", "")
                 
                 if not entry_id:
                     continue

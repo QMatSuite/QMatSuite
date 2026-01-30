@@ -35,7 +35,7 @@ def extract_calculation_selector_from_entry(entry: dict) -> Optional[str]:
     
     Priority order:
     1. calculation_id (ID-only model)
-    2. meta.id (ULID)
+    2. meta.ulid (ULID)
     3. meta.slug (slug)
     4. id (legacy)
     5. name (legacy)
@@ -49,9 +49,9 @@ def extract_calculation_selector_from_entry(entry: dict) -> Optional[str]:
     """
     return (
         entry.get("calculation_id") or
-        (entry.get("meta") or {}).get("id") or
+        (entry.get("meta") or {}).get("ulid") or
         (entry.get("meta") or {}).get("slug") or
-        entry.get("id") or
+        entry.get("ulid") or
         entry.get("name")
     )
 
@@ -62,7 +62,7 @@ def extract_structure_selector_from_entry(entry: dict) -> Optional[str]:
     
     Priority order:
     1. structure_id (ID-only model)
-    2. meta.id (ULID)
+    2. meta.ulid (ULID)
     3. meta.slug (slug)
     4. id (legacy)
     5. name (legacy)
@@ -72,9 +72,9 @@ def extract_structure_selector_from_entry(entry: dict) -> Optional[str]:
     """
     return (
         entry.get("structure_id") or
-        (entry.get("meta") or {}).get("id") or
+        (entry.get("meta") or {}).get("ulid") or
         (entry.get("meta") or {}).get("slug") or
-        entry.get("id") or
+        entry.get("ulid") or
         entry.get("name")
     )
 
@@ -95,7 +95,7 @@ def extract_step_selector_from_entry(entry: dict) -> Optional[str]:
     return (
         entry.get("step_ulid") or
         entry.get("step_id") or  # Legacy fallback
-        entry.get("id") or
+        entry.get("ulid") or
         entry.get("name")
     )
 
@@ -210,7 +210,7 @@ def match_step_selector(
             try:
                 from quantumvitas.calculation.structure_steps import StructureStepSpec
                 spec = StructureStepSpec.from_yaml(step_resolved.absolute_path)
-                if spec.step_type and spec.step_type.lower() == selector.lower():
+                if spec.step_type_spec and spec.step_type_spec.lower() == selector.lower():
                     matches.append((step_entry, step_resolved, "step_type"))
                     continue
             except Exception:

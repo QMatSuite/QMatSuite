@@ -27,7 +27,7 @@ def test_list_wannier_3d_fixtures():
     
     # Assert structure
     for fixture in fixtures:
-        assert "id" in fixture, f"Fixture missing 'id': {fixture}"
+        assert "ulid" in fixture, f"Fixture missing 'ulid': {fixture}"
         assert "label" in fixture, f"Fixture missing 'label': {fixture}"
         assert "kind" in fixture, f"Fixture missing 'kind': {fixture}"
         assert "path" in fixture, f"Fixture missing 'path': {fixture}"

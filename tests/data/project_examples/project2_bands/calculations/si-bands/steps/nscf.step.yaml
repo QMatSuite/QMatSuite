@@ -1,10 +1,10 @@
 meta:
-  id: 01KC39AWHWQ5EQSNFQADAA2AGP
+  ulid: 01KC39AWHWQ5EQSNFQADAA2AGP
   name: nscf
   slug: nscf
   path: calculations/si-bands/steps/nscf.step.yaml
   kind: step
-step_type: nscf
+step_type_spec: nscf
 parameters:
   CONTROL:
     calculation: nscf

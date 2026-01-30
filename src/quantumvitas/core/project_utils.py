@@ -84,7 +84,7 @@ def collect_slugs(entries: list[dict], *, exclude: Optional[dict] = None, projec
                 if exclude is not None and entry is exclude:
                     continue
                 # Try to get resource ID (structure_id, calculation_id, or id)
-                resource_id = entry.get("structure_id") or entry.get("calculation_id") or entry.get("id")
+                resource_id = entry.get("structure_id") or entry.get("calculation_id") or entry.get("ulid")
                 if resource_id and resource_id in index.by_id:
                     meta = index.by_id[resource_id]
                     if meta.slug:
@@ -99,7 +99,7 @@ def collect_slugs(entries: list[dict], *, exclude: Optional[dict] = None, projec
         if exclude is not None and entry is exclude:
             continue
         meta = entry.get("meta") or {}
-        slug = meta.get("slug") or slugify(entry.get("name") or entry.get("id") or "")
+        slug = meta.get("slug") or slugify(entry.get("name") or entry.get("ulid") or "")
         if slug:
             slugs.append(slug)
     return slugs
@@ -126,7 +126,7 @@ def entry_matches(entry: dict, identifier: str) -> bool:
     meta = entry.get("meta") or {}
     
     # Check id first (case-sensitive, exact match for ULID)
-    entry_id = meta.get("id") or entry.get("id")
+    entry_id = meta.get("ulid") or entry.get("ulid")
     if entry_id and entry_id == ident:
         return True
     
@@ -150,15 +150,15 @@ def entry_matches(entry: dict, identifier: str) -> bool:
 def entry_display_name(entry: dict, fallback: str = "resource") -> str:
     """Get a human-readable display name for an entry."""
     meta = entry.get("meta") or {}
-    return entry.get("name") or meta.get("name") or entry.get("id") or fallback
+    return entry.get("name") or meta.get("name") or entry.get("ulid") or fallback
 
 
 def ensure_structure_entry_defaults(entry: dict) -> None:
     """Ensure a structure entry has all required default fields."""
     meta = entry.setdefault("meta", {})
-    if not meta.get("id"):
-        meta["id"] = generate_resource_id()
-    name_candidate = entry.get("name") or meta.get("name") or entry.get("id") or "Structure"
+    if not meta.get("ulid"):
+        meta["ulid"] = generate_resource_id()
+    name_candidate = entry.get("name") or meta.get("name") or entry.get("ulid") or "Structure"
     meta.setdefault("name", name_candidate)
     entry.setdefault("name", meta["name"])
     slug_candidate = meta.get("slug") or slugify(meta["name"])
@@ -173,9 +173,9 @@ def ensure_structure_entry_defaults(entry: dict) -> None:
 def ensure_calculation_entry_defaults(entry: dict) -> None:
     """Ensure a calculation entry has all required default fields."""
     meta = entry.setdefault("meta", {})
-    if not meta.get("id"):
-        meta["id"] = generate_resource_id()
-    name_candidate = entry.get("name") or meta.get("name") or entry.get("id") or "Calculation"
+    if not meta.get("ulid"):
+        meta["ulid"] = generate_resource_id()
+    name_candidate = entry.get("name") or meta.get("name") or entry.get("ulid") or "Calculation"
     meta.setdefault("name", name_candidate)
     entry.setdefault("name", meta["name"])
     slug_candidate = meta.get("slug") or slugify(meta["name"])
@@ -209,7 +209,7 @@ def find_structure_entry(
             index = build_resource_index(project_root)
             resolved = resolve_structure(project_root, identifier, config, index=index)
             # Convert ResolvedResource back to entry dict format for backwards compat
-            structure_id = resolved.meta.id
+            structure_id = resolved.meta.ulid
             # Find entry by ID using centralized selector extraction
             entries = config.setdefault("structures", [])
             for entry in entries:
@@ -218,7 +218,7 @@ def find_structure_entry(
                     return entry
             # If not found in config, create minimal entry from resolved resource
             return {
-                "id": structure_id,
+                "ulid": structure_id,
                 "meta": resolved.meta.to_dict(),
             }
         except Exception:
@@ -275,7 +275,7 @@ def find_calculation_entry(
             index = build_resource_index(project_root)
             resolved = resolve_calculation(project_root, identifier, config, index=index)
             # Convert ResolvedResource back to entry dict format for backwards compat
-            calculation_id = resolved.meta.id
+            calculation_id = resolved.meta.ulid
             # Find entry by ID using centralized selector extraction
             entries = config.setdefault("calculations", [])
             for entry in entries:
@@ -284,7 +284,7 @@ def find_calculation_entry(
                     return entry
             # If not found in config, create minimal entry from resolved resource
             return {
-                "id": calculation_id,
+                "ulid": calculation_id,
                 "meta": resolved.meta.to_dict(),
             }
         except Exception:
@@ -344,7 +344,7 @@ def calculation_directory(project_root: Path, entry: dict) -> Path:
         # (might be a stale path or registry needs to be checked)
     
     # ID-only model: resolve via registry
-    calculation_id = entry.get("calculation_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
+    calculation_id = entry.get("calculation_id") or entry.get("ulid") or (entry.get("meta") or {}).get("ulid")
     if calculation_id:
         try:
             from quantumvitas.core.resolution import build_resource_index, require_calculation
@@ -373,7 +373,7 @@ def calculation_directory(project_root: Path, entry: dict) -> Path:
     raise ProjectConfigError(
         f"Calculation entry is missing a path and cannot be resolved via registry. "
         f"Entry path: {rel_path_str}, project_root: {project_root}, "
-        f"calculation_id: {entry.get('calculation_id') or entry.get('id') or (entry.get('meta') or {}).get('id')}"
+        f"calculation_id: {entry.get('calculation_id') or entry.get("ulid") or (entry.get('meta') or {}).get("ulid")}"
     )
 
 
@@ -507,7 +507,7 @@ def find_enclosing_calculation(
         index = build_resource_index(project_root)
         
         for entry in calculations:
-            calculation_id = entry.get("calculation_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
+            calculation_id = entry.get("calculation_id") or entry.get("ulid") or (entry.get("meta") or {}).get("ulid")
             if not calculation_id:
                 continue
             try:
@@ -579,7 +579,7 @@ def find_step_in_calculation(
         try:
             wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
             for step in wf_data.get("steps", []):
-                step_id = step.get("id", "")
+                step_id = step.get("ulid", "")
                 if step_id.lower() == step_identifier.lower():
                     # Found step id, look for corresponding YAML
                     step_yaml = steps_dir / f"{step_id}.step.yaml"
@@ -605,7 +605,7 @@ def find_step_in_calculation(
             # Or parse and check step_type/id inside
             try:
                 step_data = yaml.safe_load(step_path.read_text()) or {}
-                if step_data.get("id", "").lower() == ident_lower:
+                if step_data.get("ulid", "").lower() == ident_lower:
                     return step_path
                 if step_data.get("step_type", "").lower() == ident_lower:
                     return step_path
@@ -776,7 +776,7 @@ def resolve_resource(
             return ResourceContext(
                 project_root=project_root,
                 config=config,
-                entry={"id": identifier, "path": str(step_path)},
+                entry={"ulid": identifier, "path": str(step_path)},
                 parent_entry=calculation_entry,
                 resource_path=step_path,
             )
@@ -818,7 +818,7 @@ def structure_reference_tokens(entry: dict, project_root: Path) -> tuple[set[str
         entry.get("name"),
         meta.get("name"),
         meta.get("slug"),
-        meta.get("id"),
+        meta.get("ulid"),
     ):
         if candidate:
             aliases.add(str(candidate).strip().lower())
@@ -890,7 +890,7 @@ def calculation_identifiers(entry: dict) -> set[str]:
         entry.get("name"),
         meta.get("name"),
         meta.get("slug"),
-        meta.get("id"),
+        meta.get("ulid"),
     }
     return {str(value) for value in identifiers if value}
 
@@ -961,7 +961,7 @@ def apply_structure_rename(
     
     # In ID-only model, entry might only have structure_id - resolve path from registry if needed
     if not previous_path:
-        structure_id = entry.get("structure_id") or entry.get("id") or meta.get("id")
+        structure_id = entry.get("structure_id") or entry.get("ulid") or meta.get("ulid")
         if structure_id:
             try:
                 from quantumvitas.core.resolution import build_resource_index, resolve_structure
@@ -1272,7 +1272,7 @@ def delete_calculation_entry(
         # Remove by matching calculation_id
         calculations[:] = [
             e for e in calculations
-            if (e.get("calculation_id") or e.get("id") or (e.get("meta") or {}).get("id")) != calculation_id
+            if (e.get("calculation_id") or e.get("ulid") or (e.get("meta") or {}).get("ulid")) != calculation_id
         ]
     else:
         # Fallback: try to remove by object identity

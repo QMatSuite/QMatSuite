@@ -41,8 +41,8 @@ class StructureDTO(BaseDTO):
     # Compatibility properties for historical API contract
     @property
     def id(self) -> str:
-        """Compatibility: return structure_id or meta.id."""
-        return self.meta.id if self.meta and self.meta.id else self.structure_id
+        """Compatibility: return structure_id or meta.ulid."""
+        return self.meta.ulid if self.meta and self.meta.ulid else self.structure_id
     
     @property
     def name(self) -> str | None:
@@ -68,7 +68,7 @@ class StructureDTO(BaseDTO):
         """Convert to dict with compatibility properties."""
         result = super().to_dict()
         # Add compatibility properties
-        result["id"] = self.id
+        result["ulid"] = self.id
         if self.name is not None:
             result["name"] = self.name
         if self.slug is not None:

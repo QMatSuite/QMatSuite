@@ -10,7 +10,7 @@ class MockStep:
     """Mock step for testing."""
     def __init__(self, step_type: str, step_id: str = "01TEST"):
         self.step_type = step_type
-        self.meta = type('meta', (), {'id': step_id})()
+        self.meta = type('meta', (), {"ulid": step_id})()
 
 
 class TestVASPRecipe:

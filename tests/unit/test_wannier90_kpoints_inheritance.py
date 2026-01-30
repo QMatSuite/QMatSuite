@@ -111,9 +111,9 @@ def test_w90_kpoints_match_nscf_order(diamond_nscf_input, tmp_path):
     # Create calculation.yaml with nscf step
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text(yaml.dump({
-        "meta": {"id": "01TEST", "name": "test", "slug": "test", "path": "test", "kind": "calculation"},
+        "meta": {"ulid": "01TEST", "name": "test", "slug": "test", "path": "test", "kind": "calculation"},
         "steps": [
-            {"id": "01NSCF", "type": "nscf", "input": "nscf.in"}
+            {"ulid": "01NSCF", "step_type_gen": "nscf", "input": "nscf.in"}
         ]
     }))
     
@@ -143,8 +143,7 @@ def test_w90_kpoints_match_nscf_order(diamond_nscf_input, tmp_path):
     
     # Create w90_preproc step spec
     spec = StructureStepSpec(
-        meta=ResourceMeta(
-            id="01W90",
+        meta=ResourceMeta(ulid="01W90",
             name="w90_preproc",
             slug="w90_preproc",
             path="steps/w90_preproc.step.yaml",
@@ -209,9 +208,9 @@ def test_find_nscf_input_file(tmp_path):
     # Create calculation.yaml
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text(yaml.dump({
-        "meta": {"id": "01TEST", "name": "test", "slug": "test", "path": "test", "kind": "calculation"},
+        "meta": {"ulid": "01TEST", "name": "test", "slug": "test", "path": "test", "kind": "calculation"},
         "steps": [
-            {"id": "01NSCF", "type": "nscf", "input": "nscf.in"}
+            {"ulid": "01NSCF", "step_type_gen": "nscf", "input": "nscf.in"}
         ]
     }))
     
@@ -234,9 +233,9 @@ def test_extract_kpoints_from_nscf_step(tmp_path):
     # Create calculation.yaml
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text(yaml.dump({
-        "meta": {"id": "01TEST", "name": "test", "slug": "test", "path": "test", "kind": "calculation"},
+        "meta": {"ulid": "01TEST", "name": "test", "slug": "test", "path": "test", "kind": "calculation"},
         "steps": [
-            {"id": "01NSCF", "type": "nscf", "input": "nscf.in"}
+            {"ulid": "01NSCF", "step_type_gen": "nscf", "input": "nscf.in"}
         ]
     }))
     

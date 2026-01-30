@@ -88,7 +88,7 @@ def qe_project_with_si():
     
     return {
         "project_root": project_root,
-        "structure_id": struct_result.meta.id,
+        "structure_id": struct_result.meta.ulid,
         "structure_path": struct_result.absolute_path,
         "test_dir": test_dir,  # Keep test_dir for cleanup if needed
     }

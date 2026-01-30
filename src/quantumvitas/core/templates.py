@@ -140,19 +140,19 @@ def _regenerate_ulids_in_meta(data: Dict[str, Any], ulid_map: Dict[str, str]) ->
     Regenerate ULIDs in meta sections and track the mapping.
     """
     if "meta" in data and isinstance(data["meta"], dict):
-        old_id = data["meta"].get("id")
+        old_id = data["meta"].get("ulid")
         if old_id:
             new_id = generate_ulid()
             ulid_map[old_id] = new_id
-            data["meta"]["id"] = new_id
+            data["meta"]["ulid"] = new_id
     
     # Also handle __qv_meta__ for structure JSON
     if "__qv_meta__" in data and isinstance(data["__qv_meta__"], dict):
-        old_id = data["__qv_meta__"].get("id")
+        old_id = data["__qv_meta__"].get("ulid")
         if old_id:
             new_id = generate_ulid()
             ulid_map[old_id] = new_id
-            data["__qv_meta__"]["id"] = new_id
+            data["__qv_meta__"]["ulid"] = new_id
 
 
 def _update_parent_calculation_ids(data: Dict[str, Any], ulid_map: Dict[str, str]) -> None:
@@ -265,12 +265,12 @@ def _copy_calculation_from_path(
     else:
         # Use template name
         meta = calculation_data.get("meta", {})
-        final_name = meta.get("name") or calculation_data.get("id") or dest_dir.name
+        final_name = meta.get("name") or calculation_data.get("ulid") or dest_dir.name
         final_slug = meta.get("slug") or slugify(final_name)
     
     # Get old ID for mapping (from meta or top-level id field)
     meta = calculation_data.get("meta", {})
-    old_id = meta.get("id") or calculation_data.get("id", "")
+    old_id = meta.get("ulid") or calculation_data.get("ulid", "")
     if old_id:
         ulid_map[old_id] = new_id
     
@@ -279,16 +279,16 @@ def _copy_calculation_from_path(
     
     # Update the meta section (new format)
     calculation_data["meta"] = {
-        "id": new_id,
+        "ulid": new_id,
         "name": final_name,
         "slug": final_slug,
         "path": calculation_path,
         "kind": "calculation",
     }
     
-    # Remove old-format id field if present (replaced by meta.id)
-    if "id" in calculation_data and calculation_data["id"] != new_id:
-        del calculation_data["id"]
+    # Remove old-format id field if present (replaced by meta.ulid)
+    if "id" in calculation_data and calculation_data["ulid"] != new_id:
+        del calculation_data["ulid"]
     
     # Handle structure - check both new format (top-level) and old format (calculation section)
     calculation_section = calculation_data.get("calculation", {})
@@ -303,7 +303,7 @@ def _copy_calculation_from_path(
         try:
             config = load_project_config(project_root)
             resolved = resolve_structure(project_root, structure, config)
-            structure_id = resolved.meta.id
+            structure_id = resolved.meta.ulid
         except Exception:
             # If resolution fails, structure_id remains None (will be set later if structure is added)
             pass
@@ -315,7 +315,7 @@ def _copy_calculation_from_path(
         try:
             config = load_project_config(project_root)
             resolved = resolve_structure(project_root, template_structure, config)
-            structure_id = resolved.meta.id
+            structure_id = resolved.meta.ulid
         except Exception:
             # Structure not found in project yet - will be copied from template
             pass

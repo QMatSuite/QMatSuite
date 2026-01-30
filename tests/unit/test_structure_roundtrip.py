@@ -181,7 +181,7 @@ class TestStructureToQEInputToStructure:
 
         for step_type in ["scf", "nscf", "relax", "vc-relax", "bands"]:
             qe_input = generate_qe_input_from_structure(
-                structure=original, step_type=step_type
+                structure=original, step_type_spec=step_type
             )
 
             # Verify step type is set correctly
@@ -211,7 +211,7 @@ class TestStructureToQEInputToStructure:
         ]
 
         qe_input = generate_qe_input_from_structure(
-            structure=original, step_type="scf", parameter_overrides=overrides
+            structure=original, step_type_spec="scf", parameter_overrides=overrides
         )
 
         # Verify parameters were applied
@@ -438,7 +438,7 @@ class TestStepSpecRoundtrip:
         spec = StructureStepSpec(
             meta=meta_from_name("step", name="nscf", path="nscf.step.yaml"),
             structure="si",
-            step_type="nscf",
+            step_type_spec="nscf",
             parameters={
                 "SYSTEM": {"ecutwfc": 60, "ecutrho": 240},
                 "ELECTRONS": {"mixing_beta": 0.7},
@@ -482,7 +482,7 @@ class TestStepSpecRoundtrip:
         spec = StructureStepSpec(
             meta=meta_from_name("step", name="scf", path="step.yaml"),
             structure="",  # Empty legacy field (not written to YAML)
-            step_type="scf",
+            step_type_spec="scf",
             parameters={
                 "SYSTEM": {"ecutwfc": 60},
             },

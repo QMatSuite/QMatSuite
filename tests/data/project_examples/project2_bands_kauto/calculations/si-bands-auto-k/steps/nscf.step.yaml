@@ -1,11 +1,11 @@
 meta:
-  id: 01KBH6NXY0WVRQ0FAB992Y0WFP
+  ulid: 01KBH6NXY0WVRQ0FAB992Y0WFP
   name: nscf
   slug: nscf
   path: calculations/si-bands-auto-k/steps/nscf.step.yaml
   kind: step
 structure: si
-step_type: nscf
+step_type_spec: nscf
 parent_calculation_id: 01KBH5KYPE659SWXHXQP1BXX16
 parameters:
   CONTROL:

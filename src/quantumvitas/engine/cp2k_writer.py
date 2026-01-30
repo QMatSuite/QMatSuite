@@ -27,7 +27,7 @@ def write_cp2k_input(
         structure: Pymatgen Structure object
         output_path: Path to write input.inp
     """
-    step_type = getattr(step, "step_type", None) or ""
+    step_type = getattr(step, "step_type_spec", None) or ""
     params = getattr(step, "parameters", None) or {}
 
     with open(output_path, "w") as f:

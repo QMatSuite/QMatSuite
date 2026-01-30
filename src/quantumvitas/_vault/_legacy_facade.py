@@ -550,8 +550,7 @@ class QVService:
         
         # Reconstruct ResolvedResource from dict
         from quantumvitas.core.resources import ResourceMeta, ResourceKind
-        calc_meta = ResourceMeta(
-            id=calculation_resolved["meta"]["id"],
+        calc_meta = ResourceMeta(ulid=calculation_resolved["meta"]["ulid"],
             name=calculation_resolved["meta"]["name"],
             slug=calculation_resolved["meta"]["slug"],
             path=calculation_resolved["meta"]["path"],
@@ -1048,8 +1047,7 @@ class QVService:
             )
             calculation_id = new_ulid
             # Create meta for the template-based calculation
-            calculation_meta = ResourceMeta(
-                id=calculation_id,
+            calculation_meta = ResourceMeta(ulid=calculation_id,
                 name=final_name,
                 slug=final_slug,
                 path=calculation_path,
@@ -1072,8 +1070,7 @@ class QVService:
                 structure_name = resolved_structure.meta.name
             
             # Create calculation using model
-            calculation_meta = ResourceMeta(
-                id=calculation_id,
+            calculation_meta = ResourceMeta(ulid=calculation_id,
                 name=final_name,
                 slug=final_slug,
                 path=calculation_path,
@@ -1811,7 +1808,7 @@ class QVService:
                 for s in results.steps
             ],
             "io_dir": io_dir,  # I/O directory from runner (source of truth)
-            "run_id": results.run_id,  # History run_id (== job_id when provided)
+            "run_id": results.run_ulid,  # History run_id (== job_id when provided)
         }
     
     @staticmethod
@@ -2000,7 +1997,7 @@ class QVService:
             "output_file": output_file,
             "io_dir": io_dir,
             "working_dir": io_dir,  # Backward compat
-            "run_id": result.run_id,
+            "run_id": result.run_ulid,
         }
 
     # REMOVED: run_step_legacy() was deleted per Constitution §C audit fix.
@@ -7042,8 +7039,7 @@ class QVService:
         # NO structure_id (inherits from calculation.structure_id at execution time).
         # NO parent_calculation_id (parent is implicit from step file location).
         # Structure is resolved via calculation.structure_id when the step is executed.
-        step_meta = ResourceMeta(
-            id=str(ulid_module.new()),  # Actual ULID for the step spec
+        step_meta = ResourceMeta(ulid=str(ulid_module.new()),  # Actual ULID for the step spec
             name=step_name,
             slug=slug,
             path=f"calculations/{wf_model.meta.slug}/{step_file}",

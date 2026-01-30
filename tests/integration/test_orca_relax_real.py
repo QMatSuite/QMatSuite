@@ -65,7 +65,7 @@ def orca_project_with_h2(orca_available):
     # Create calculation
     calc = QVService.init_calculation(
         project_root, "h2_relax",
-        structure_selector=struct_result.meta.id,
+        structure_selector=struct_result.meta.ulid,
     )
     
     # Set engine_family to orca and structure_kind to molecule in calculation.yaml
@@ -96,8 +96,8 @@ def orca_project_with_h2(orca_available):
     yield {
         "project_root": project_root,
         "calc_id": calc.id,
-        "step_id": step.id,
-        "structure_path": project_root / "structures" / f"{struct_result.meta.id}.json",
+        "step_ulid": step.id,
+        "structure_path": project_root / "structures" / f"{struct_result.meta.ulid}.json",
         "initial_h2_distance": 0.8,
     }
     
@@ -113,7 +113,7 @@ class TestORCARelaxReal:
         """Test that ORCA relax creates current.json with relaxed structure."""
         project_root = orca_project_with_h2["project_root"]
         calc_id = orca_project_with_h2["calc_id"]
-        step_id = orca_project_with_h2["step_id"]
+        step_id = orca_project_with_h2["step_ulid"]
         
         # Run relax
         result = QVService.run_step(project_root, calc_id, step_id)
@@ -134,7 +134,7 @@ class TestORCARelaxReal:
         """Test that relaxed structure has different geometry."""
         project_root = orca_project_with_h2["project_root"]
         calc_id = orca_project_with_h2["calc_id"]
-        step_id = orca_project_with_h2["step_id"]
+        step_id = orca_project_with_h2["step_ulid"]
         initial_distance = orca_project_with_h2["initial_h2_distance"]
         
         # Run relax
@@ -168,7 +168,7 @@ class TestORCARelaxReal:
         """Test that relaxed molecule has same composition as input."""
         project_root = orca_project_with_h2["project_root"]
         calc_id = orca_project_with_h2["calc_id"]
-        step_id = orca_project_with_h2["step_id"]
+        step_id = orca_project_with_h2["step_ulid"]
         
         # Run relax
         result = QVService.run_step(project_root, calc_id, step_id)

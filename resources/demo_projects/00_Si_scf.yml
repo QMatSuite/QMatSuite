@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE2KYNFA1YS70G548P3NBC22
+    ulid: 01KE2KYNFA1YS70G548P3NBC22
     name: 00_Si_scf
     slug: 00_si_scf
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE2KYNFRQGJGGVK0TZ99TNPG
+    ulid: 01KE2KYNFRQGJGGVK0TZ99TNPG
     name: si.scf
     slug: si-scf
     path: structures/si-scf.json
@@ -70,7 +70,7 @@ structures:
       - 1.3494018878460001
 calculations:
 - meta:
-    id: 01KE2KYNFCDM3MRZRCAC5PMM54
+    ulid: 01KE2KYNFCDM3MRZRCAC5PMM54
     name: Si Scf
     slug: si-scf
     path: calculations/si-scf
@@ -118,7 +118,7 @@ pseudo:
   files:
   - Si.pz-vbc.UPF
 meta:
-  id: 00_Si_scf
+  ulid: 00_Si_scf
   title: 0 Si Scf
   subtitle: SCF
   tags:

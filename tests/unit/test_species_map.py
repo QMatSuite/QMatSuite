@@ -18,7 +18,7 @@ class TestSpeciesMapMigration:
         from quantumvitas.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
         
         calc = CalculationModel(
-            meta=ResourceMeta(id="01TEST", name="test", slug="test", path=".", kind="calculation")
+            meta=ResourceMeta(ulid="01TEST", name="test", slug="test", path=".", kind="calculation")
         )
         
         result = migrate_species_overrides_to_calc(calc, [None, None, {}])
@@ -29,7 +29,7 @@ class TestSpeciesMapMigration:
         from quantumvitas.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
         
         calc = CalculationModel(
-            meta=ResourceMeta(id="01TEST", name="test", slug="test", path=".", kind="calculation")
+            meta=ResourceMeta(ulid="01TEST", name="test", slug="test", path=".", kind="calculation")
         )
         
         step_overrides = [
@@ -47,7 +47,7 @@ class TestSpeciesMapMigration:
         from quantumvitas.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
         
         calc = CalculationModel(
-            meta=ResourceMeta(id="01TEST", name="test", slug="test", path=".", kind="calculation")
+            meta=ResourceMeta(ulid="01TEST", name="test", slug="test", path=".", kind="calculation")
         )
         
         step_overrides = [
@@ -65,7 +65,7 @@ class TestSpeciesMapMigration:
         from quantumvitas.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
         
         calc = CalculationModel(
-            meta=ResourceMeta(id="01TEST", name="test", slug="test", path=".", kind="calculation")
+            meta=ResourceMeta(ulid="01TEST", name="test", slug="test", path=".", kind="calculation")
         )
         
         step_overrides = [
@@ -82,7 +82,7 @@ class TestSpeciesMapMigration:
         
         existing_map = {"Si": {"pseudopot": "existing.UPF"}}
         calc = CalculationModel(
-            meta=ResourceMeta(id="01TEST", name="test", slug="test", path=".", kind="calculation"),
+            meta=ResourceMeta(ulid="01TEST", name="test", slug="test", path=".", kind="calculation"),
             species_map=existing_map,
         )
         
@@ -212,7 +212,7 @@ class TestCalculationModelSpeciesMap:
         }
         
         calc = CalculationModel(
-            meta=ResourceMeta(id="01TEST", name="test", slug="test", path=".", kind="calculation"),
+            meta=ResourceMeta(ulid="01TEST", name="test", slug="test", path=".", kind="calculation"),
             species_map=species_map,
         )
         
@@ -229,7 +229,7 @@ class TestCalculationModelSpeciesMap:
         from quantumvitas.core.models import CalculationModel, ResourceMeta
         
         calc = CalculationModel(
-            meta=ResourceMeta(id="01TEST", name="test", slug="test", path=".", kind="calculation"),
+            meta=ResourceMeta(ulid="01TEST", name="test", slug="test", path=".", kind="calculation"),
             species_map=None,
         )
         

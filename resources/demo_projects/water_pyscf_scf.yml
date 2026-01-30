@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE3PTDXG9FSV6VJ8QGK8SZCC
+    ulid: 01KE3PTDXG9FSV6VJ8QGK8SZCC
     name: Water PySCF SCF
     slug: water-pyscf-scf
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE3PTDXGQSDTBKQ4GEZTCX7B
+    ulid: 01KE3PTDXGQSDTBKQ4GEZTCX7B
     name: H2O
     slug: h2o
     path: structures/h2o.json
@@ -36,7 +36,7 @@ structures:
     unit: Angstrom
 calculations:
 - meta:
-    id: 01KE3PTDXGCWF0ZV2XVQ8G591V
+    ulid: 01KE3PTDXGCWF0ZV2XVQ8G591V
     name: H2O RHF Single Point
     slug: h2o-rhf
     path: calculations/h2o-rhf
@@ -74,7 +74,7 @@ calculations:
       unit: Angstrom
     step_type_spec: pyscf_scf
 meta:
-  id: water_pyscf_scf_demo
+  ulid: water_pyscf_scf_demo
   title: Water PySCF RHF Single Point
   subtitle: Molecular HF calculation
   tags:

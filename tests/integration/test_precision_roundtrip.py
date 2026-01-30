@@ -56,7 +56,7 @@ class TestPrecisionRoundtrip:
         from quantumvitas.io.structure_io import STRUCTURE_META_KEY
         struct_dict = structure.as_dict()
         struct_dict[STRUCTURE_META_KEY] = {
-            "id": "test_structure",
+            "ulid": "test_structure",
             "name": "test_structure",
             "slug": "test_structure",
         }
@@ -91,7 +91,7 @@ class TestPrecisionRoundtrip:
         # Initialize empty steps
         for step_file in [scf_step, nscf_step, bands_pw_step, bands_step]:
             step_file.write_text(yaml.safe_dump({
-                "step_type": step_file.stem.split(".")[0],
+                "step_type_gen": step_file.stem.split(".")[0],
                 "parameters": {},
                 "cards": {},
             }))
@@ -157,7 +157,7 @@ class TestPrecisionRoundtrip:
         # Create scf step
         scf_step = temp_calc_dir / "steps" / "scf.step.yaml"
         scf_step.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {},
             "cards": {},
         }))

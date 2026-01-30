@@ -1,5 +1,5 @@
 meta:
-  id: 01KDTJYMXYMMQHMDM7N3BXQAH6
+  ulid: 01KDTJYMXYMMQHMDM7N3BXQAH6
   name: Si bands
   slug: si-bands
   path: calculations/si-bands
@@ -7,14 +7,14 @@ meta:
 mode: normal
 working_dir: raw
 steps:
-- step_id: 01KDTJYMXYG7DM4V80GGGPQAT9
-  type: scf
-- step_id: 01KDTJYMXYTA85JQ23357NV2D4
-  type: nscf
-- step_id: 01KDTJYMXYPAZNJY4FH3PV7B91
-  type: bands_pw
-- step_id: 01KDTJYMXYCM2E6AGA3RZPJRG3
-  type: bands
+- step_ulid: 01KDTJYMXYG7DM4V80GGGPQAT9
+  step_type_spec: scf
+- step_ulid: 01KDTJYMXYTA85JQ23357NV2D4
+  step_type_spec: nscf
+- step_ulid: 01KDTJYMXYPAZNJY4FH3PV7B91
+  step_type_spec: bands_pw
+- step_ulid: 01KDTJYMXYCM2E6AGA3RZPJRG3
+  step_type_spec: bands
 structure_id: 01KDTJYMXY21PZ4P5J5P0RCERR
 species_map:
   Si:

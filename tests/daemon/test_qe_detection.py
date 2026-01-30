@@ -27,7 +27,7 @@ class TestQEDetection:
         project_root = tmp_path / "project"
         project_root.mkdir()
         (project_root / "project.qv.yml").write_text(
-            yaml.safe_dump({"project": {"name": "Test", "id": generate_resource_id()}}, sort_keys=False)
+            yaml.safe_dump({"project": {"name": "Test", "ulid": generate_resource_id()}}, sort_keys=False)
         )
         
         # Create internal QE structure
@@ -85,7 +85,7 @@ class TestQEDetection:
         project_root = tmp_path / "project"
         project_root.mkdir()
         (project_root / "project.qv.yml").write_text(
-            yaml.safe_dump({"project": {"name": "Test", "id": generate_resource_id()}}, sort_keys=False)
+            yaml.safe_dump({"project": {"name": "Test", "ulid": generate_resource_id()}}, sort_keys=False)
         )
         
         # Create settings with external QE

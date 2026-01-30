@@ -107,20 +107,15 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
         )
         # Result is calculation dict, steps are in "steps" list
         # Get the last step (the one we just added)
-        # In baseline, steps are ResolvedResource objects or dicts with 'id' field
+        # Extract step ULID from result
         if isinstance(step1_result, dict) and "steps" in step1_result:
             steps_list = step1_result["steps"]
             if steps_list:
                 last_step = steps_list[-1]
-                # Try different ways to get step_id
                 if isinstance(last_step, dict):
-                    step1_id = last_step.get("id") or last_step.get("step_id")
-                elif hasattr(last_step, 'id'):
-                    step1_id = last_step.id
-                elif hasattr(last_step, 'step_id'):
-                    step1_id = last_step.step_ulid
+                    step1_id = last_step["step_ulid"]  # Canonical field only
                 else:
-                    step1_id = None
+                    step1_id = last_step.step_ulid  # Canonical attribute only
             else:
                 step1_id = None
         else:
@@ -137,13 +132,9 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
             if steps_list:
                 last_step = steps_list[-1]
                 if isinstance(last_step, dict):
-                    step2_id = last_step.get("id") or last_step.get("step_id")
-                elif hasattr(last_step, 'id'):
-                    step2_id = last_step.id
-                elif hasattr(last_step, 'step_id'):
-                    step2_id = last_step.step_ulid
+                    step2_id = last_step["step_ulid"]  # Canonical field only
                 else:
-                    step2_id = None
+                    step2_id = last_step.step_ulid  # Canonical attribute only
             else:
                 step2_id = None
         else:
@@ -156,7 +147,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
             name="scf",
         )
         step1_id = step1_dto.step_ulid
-        
+
         step2_dto = svc.calculation.add_step(
             calc_selector=calc_id,
             step_type="qe_nscf",
@@ -165,7 +156,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
         step2_id = step2_dto.step_ulid
     
     step_ids = [step1_id, step2_id] if step1_id and step2_id else []
-    
+
     # Ensure raw directory exists for step artifacts
     calc_dir = project_root / "calculations" / calc_slug
     raw_dir = calc_dir / "raw"
@@ -177,7 +168,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
         if "project" in config and "id" in config["project"]:
-            project_id = config["project"]["id"]
+            project_id = config["project"]["ulid"]
     except Exception:
         pass
     

@@ -41,11 +41,11 @@ class W90Recipe(BaseRecipe):
         jobs: List[Job] = []
 
         for step in steps:
-            step_type = step.step_type
+            step_type = step.step_type_spec
             spec = registry.get(step_type) if step_type else None
 
-            job_id = step.meta.id
-            working_dir = calc_raw_dir / step.meta.id
+            job_id = step.meta.ulid
+            working_dir = calc_raw_dir / step.meta.ulid
 
             # Wannier90 command
             command = ["wannier90.x", "wannier90"]
@@ -61,7 +61,7 @@ class W90Recipe(BaseRecipe):
 
             job = Job(
                 id=job_id,
-                step_ids=[step.meta.id],
+                step_ids=[step.meta.ulid],
                 working_dir=working_dir,
                 command=command,
                 input_files=input_files,
@@ -71,7 +71,7 @@ class W90Recipe(BaseRecipe):
                 metadata={
                     "engine": "w90",
                     "spec_step_type": spec.step_type_spec if spec else None,
-                    "public_type": "postprocess",
+                    "step_type_gen": "postprocess",
                 },
             )
             jobs.append(job)

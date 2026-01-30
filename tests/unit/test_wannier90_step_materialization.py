@@ -39,8 +39,7 @@ def test_w90_preproc_does_not_use_qe_validation(temp_dir, simple_structure):
     should NOT be validated against QE 'pw' module schema.
     """
     # Create step spec with Wannier90 parameters
-    meta = ResourceMeta(
-        id="01TEST",
+    meta = ResourceMeta(ulid="01TEST",
         name="w90_preproc",
         slug="w90_preproc",
         path="steps/w90_preproc.step.yaml",
@@ -50,7 +49,7 @@ def test_w90_preproc_does_not_use_qe_validation(temp_dir, simple_structure):
     spec = StructureStepSpec(
         meta=meta,
         structure="structure.json",  # Not used for Wannier90, but required
-        step_type="w90_preproc",
+        step_type_spec="w90_preproc",
         parameters={
             "seedname": "diamond",
             "num_wann": 4,
@@ -97,8 +96,7 @@ def test_w90_preproc_does_not_use_qe_validation(temp_dir, simple_structure):
 
 def test_w90_preproc_generates_win_file(temp_dir, simple_structure):
     """Test that w90_preproc generates a proper .win file."""
-    meta = ResourceMeta(
-        id="01TEST",
+    meta = ResourceMeta(ulid="01TEST",
         name="w90_preproc",
         slug="w90_preproc",
         path="steps/w90_preproc.step.yaml",
@@ -108,7 +106,7 @@ def test_w90_preproc_generates_win_file(temp_dir, simple_structure):
     spec = StructureStepSpec(
         meta=meta,
         structure="structure.json",
-        step_type="w90_preproc",
+        step_type_spec="w90_preproc",
         parameters={
             "seedname": "test",
             "num_wann": 4,
@@ -145,8 +143,7 @@ def test_w90_preproc_generates_win_file(temp_dir, simple_structure):
 
 def test_pw2wannier90_generates_pw2wan_file(temp_dir, simple_structure):
     """Test that pw2wannier90 generates a proper .pw2wan file."""
-    meta = ResourceMeta(
-        id="01TEST",
+    meta = ResourceMeta(ulid="01TEST",
         name="pw2wannier90",
         slug="pw2wannier90",
         path="steps/pw2wannier90.step.yaml",
@@ -162,7 +159,7 @@ def test_pw2wannier90_generates_pw2wan_file(temp_dir, simple_structure):
     spec = StructureStepSpec(
         meta=meta,
         structure=str(structure_file),  # Use absolute path
-        step_type="pw2wannier90",
+        step_type_spec="pw2wannier90",
         parameters={
             "seedname": "test",
             "prefix": "pwscf",

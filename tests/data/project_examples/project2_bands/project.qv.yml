@@ -1,7 +1,7 @@
 project:
   name: project2_bands
   meta:
-    id: 01KC38Z11XMKJWB5HGV58QHEJZ
+    ulid: 01KC38Z11XMKJWB5HGV58QHEJZ
     name: project2_bands
     slug: project2_bands
     path: .

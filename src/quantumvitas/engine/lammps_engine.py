@@ -125,7 +125,7 @@ class LammpsEngine(Engine):
         # StructureStepSpec has .parameters as a dict
         # Step dataclass doesn't have parameters (need to load from step.yaml)
         params = getattr(step, "parameters", None) or {}
-        step_type = getattr(step, "step_type", None) or ""
+        step_type = getattr(step, "step_type_spec", None) or ""
         
         # Validate custom_script assets if present
         validate_custom_script_assets(params)
@@ -146,7 +146,7 @@ class LammpsEngine(Engine):
                 raise ValueError("Calculation has no structure_id and restart_from not specified")
             
             # Write structure.data
-            step_ulid = step.meta.id if hasattr(step, "meta") and hasattr(step.meta, "id") else ""
+            step_ulid = step.meta.ulid if hasattr(step, "meta") and hasattr(step.meta, "ulid") else ""
             atom_style = params.get("atom_style", "atomic")
             write_lammps_data(
                 structure=structure,
@@ -342,7 +342,7 @@ class LammpsEngine(Engine):
         # FAIL-FAST: Detect self-reference (restart_from == current step ULID)
         # This is the root cause of Ubuntu CI failures where downstream step 
         # references itself instead of upstream step
-        current_step_ulid = step.meta.id if hasattr(step, "meta") and hasattr(step.meta, "id") else None
+        current_step_ulid = step.meta.ulid if hasattr(step, "meta") and hasattr(step.meta, "ulid") else None
         if current_step_ulid and restart_from == current_step_ulid:
             raise ValueError(
                 f"[LAMMPS-SELF-REFERENCE-ERROR] restart_from cannot reference the current step itself. "
@@ -358,7 +358,7 @@ class LammpsEngine(Engine):
         ref_step = None
         for calc_step in calculation.steps:
             if (
-                (hasattr(calc_step, "meta") and calc_step.meta.id == restart_from)
+                (hasattr(calc_step, "meta") and calc_step.meta.ulid == restart_from)
                 or (hasattr(calc_step, "meta") and hasattr(calc_step.meta, "slug") and calc_step.meta.slug == restart_from)
                 or str(calc_step) == restart_from
             ):
@@ -369,14 +369,14 @@ class LammpsEngine(Engine):
             raise ValueError(f"restart_from references unknown step: {restart_from}")
         
         # Find artifact in reference step's workdir
-        ref_step_ulid = ref_step.meta.id if hasattr(ref_step, "meta") and hasattr(ref_step.meta, "id") else ""
+        ref_step_ulid = ref_step.meta.ulid if hasattr(ref_step, "meta") and hasattr(ref_step.meta, "ulid") else ""
         if not ref_step_ulid:
             raise ValueError(f"Reference step has no ULID")
         
         ref_workdir = calculation.io.raw_dir / ref_step_ulid
         
         # Debug: Log search context
-        print(f"[LAMMPS-DEBUG] resolve_restart_artifact: step_ulid={step.meta.id if hasattr(step, 'meta') else 'unknown'}, "
+        print(f"[LAMMPS-DEBUG] resolve_restart_artifact: step_ulid={step.meta.ulid if hasattr(step, 'meta') else 'unknown'}, "
               f"restart_from={restart_from}, upstream_step_ulid={ref_step_ulid}")
         print(f"[LAMMPS-DEBUG] resolve_restart_artifact: calculation.raw_dir={calculation.io.raw_dir}, "
               f"ref_workdir={ref_workdir}")
@@ -459,7 +459,7 @@ class LammpsEngine(Engine):
         
         # Generate structure.data if structure available
         if structure:
-            step_ulid = step.meta.id if hasattr(step, "meta") and hasattr(step.meta, "id") else ""
+            step_ulid = step.meta.ulid if hasattr(step, "meta") and hasattr(step.meta, "ulid") else ""
             atom_style = params.get("atom_style", "atomic")
             write_lammps_data(
                 structure=structure,

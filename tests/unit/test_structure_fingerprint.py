@@ -151,7 +151,7 @@ class TestQVServiceDedup:
         resolved2 = QVService.import_structure(project_root, struct_file2, name="struct2", dedup_by_fingerprint=True)
         
         # Both should resolve to the same structure (deduplicated by fingerprint)
-        assert resolved1.meta.id == resolved2.meta.id, \
+        assert resolved1.meta.ulid == resolved2.meta.ulid, \
             "Identical structures should be deduplicated to same structure_id when dedup enabled"
         
         # Project should have only 1 structure
@@ -179,7 +179,7 @@ class TestQVServiceDedup:
         resolved2 = QVService.import_structure(project_root, struct_file2, name="struct2")
         
         # They should have different structure_ids
-        assert resolved1.meta.id != resolved2.meta.id, \
+        assert resolved1.meta.ulid != resolved2.meta.ulid, \
             "Different structures should have different structure_ids"
         
         # Project should have 2 structures
@@ -815,7 +815,7 @@ class TestImportStructureUnifiedFingerprint:
         resolved2 = QVService.import_structure(project_root, mol_file2, name="h2_2", dedup_by_fingerprint=True)
         
         # Should be same structure (deduped)
-        assert resolved1.meta.id == resolved2.meta.id, (
+        assert resolved1.meta.ulid == resolved2.meta.ulid, (
             "Translated molecules should dedup to same structure_id"
         )
 

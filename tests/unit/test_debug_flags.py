@@ -89,8 +89,7 @@ class TestDebugFlags:
         # Create index and resolve (functionality should work even with flag OFF)
         index = ResourceIndex()
         calc_id = "01ABCDEFGHIJKLMNOPQRSTUVWX"
-        calc_meta = ResourceMeta(
-            id=calc_id,
+        calc_meta = ResourceMeta(ulid=calc_id,
             name="test",
             slug="test",
             path="calculations/test",

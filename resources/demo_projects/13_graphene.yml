@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE2KZ5WDWQHPG9TMZV7RRP34
+    ulid: 01KE2KZ5WDWQHPG9TMZV7RRP34
     name: 13_graphene
     slug: 13_graphene
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE2KZ5WR4KZ13E58TWWPKXWA
+    ulid: 01KE2KZ5WR4KZ13E58TWWPKXWA
     name: graphene.1_vc_relax
     slug: graphene-1_vc_relax
     path: structures/graphene-1_vc_relax.json
@@ -69,7 +69,7 @@ structures:
       - 1.4202816629166202
       - 5.0
 - meta:
-    id: 01KE2KZ5XJA2J041482GX0CA4D
+    ulid: 01KE2KZ5XJA2J041482GX0CA4D
     name: graphene.2_scf
     slug: graphene-2_scf
     path: structures/graphene-2_scf.json
@@ -129,7 +129,7 @@ structures:
       - 1.4235552318494797
       - 5.000000025465974
 - meta:
-    id: 01KE2KZ5YXPK58XXRCQ42M7420
+    ulid: 01KE2KZ5YXPK58XXRCQ42M7420
     name: graphene.3_bands
     slug: graphene-3_bands
     path: structures/graphene-3_bands.json
@@ -190,7 +190,7 @@ structures:
       - 5.000000025465974
 calculations:
 - meta:
-    id: 01KE2KZ5WEQS893KTN63G9B9VB
+    ulid: 01KE2KZ5WEQS893KTN63G9B9VB
     name: Graphene
     slug: graphene
     path: calculations/graphene
@@ -354,7 +354,7 @@ pseudo:
   files:
   - C.pbe-n-kjpaw_psl.1.0.0.UPF
 meta:
-  id: 13_graphene
+  ulid: 13_graphene
   title: 13 Graphene
   subtitle: "VC-Relax \u2192 SCF \u2192 Bands \u2192 Bands \u2192 custom"
   tags:

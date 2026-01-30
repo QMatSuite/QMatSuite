@@ -41,7 +41,7 @@ if __name__ == "__main__":
                 "chain_steps": [
                     {
                         "step_ulid": "single_step",  # Dummy ULID for single-step conversion
-                        "step_type": step_type,
+                        "step_type_spec": step_type,
                         "parameters": params,
                         "step_artifacts_dir": working_dir,
                         "allow_chkfile_init_guess": allow_chkfile_init_guess,

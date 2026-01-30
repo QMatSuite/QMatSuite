@@ -2,7 +2,7 @@
   "method": "add_step_to_calculation",
   "success": true,
   "response": {
-    "id": "<NORMALIZED_ID>",
+    "ulid": "<NORMALIZED_ID>",
     "name": "demo_calc",
     "slug": "demo_calc",
     "steps": [

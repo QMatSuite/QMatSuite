@@ -34,7 +34,7 @@ class TestHandlePySCFRelaxOutput:
         }
         
         step_ulid = "01PYSCFRELAX"
-        step_type = "pyscf_relax"
+        step_type= "pyscf_relax"
         calculation_ulid = "01CALCTEST"
         input_structure_ulid = "01STRUCTEST"
         run_id = "run001"

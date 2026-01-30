@@ -172,7 +172,7 @@ class Cp2kEngine(Engine):
             env["CP2K_DATA_DIR"] = str(data_dir)
 
         # Get step type for timeout/threads
-        step_type = getattr(step, "step_type", None) or ""
+        step_type = getattr(step, "step_type_spec", None) or ""
         params = getattr(step, "parameters", None) or {}
 
         # Execute CP2K
@@ -190,7 +190,7 @@ class Cp2kEngine(Engine):
             )
         except subprocess.TimeoutExpired:
             return Cp2kStepResult(
-                step_type=step_type,
+                step_type_spec=step_type,
                 input_file=working_dir / input_file,
                 success=False,
                 error="CP2K execution timed out",
@@ -198,7 +198,7 @@ class Cp2kEngine(Engine):
             )
         except Exception as e:
             return Cp2kStepResult(
-                step_type=step_type,
+                step_type_spec=step_type,
                 input_file=working_dir / input_file,
                 success=False,
                 error=f"CP2K execution failed: {e}",
@@ -219,7 +219,7 @@ class Cp2kEngine(Engine):
             success = self._check_success(output_path, step_type)
 
         return Cp2kStepResult(
-            step_type=step_type,
+            step_type_spec=step_type,
             input_file=working_dir / input_file,
             success=success,
             error=result.stderr if not success else None,

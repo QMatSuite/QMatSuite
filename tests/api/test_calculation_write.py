@@ -82,7 +82,7 @@ def test_duplicate_calculation_happy_path(tmp_path):
     # Write calculation.yaml
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text("""meta:
-  id: 01TESTORIGINAL1234567890
+  ulid: 01TESTORIGINAL1234567890
   name: Original Calculation
   slug: original_calc
   path: calculations/original_calc
@@ -94,12 +94,12 @@ structure_kind: periodic
     # Write step file
     step_yaml = steps_dir / "step1.step.yaml"
     step_yaml.write_text("""meta:
-  id: 01TESTSTEP1234567890123
+  ulid: 01TESTSTEP1234567890123
   name: step1
   slug: step1
   path: calculations/original_calc/steps/step1.step.yaml
   kind: step
-step_type: qe_scf
+step_type_spec: qe_scf
 parameters:
   system:
     ecutwfc: 30.0
@@ -135,7 +135,7 @@ parameters:
     
     # Verify step has new ULID
     new_step_data = yaml.safe_load(step_files[0].read_text())
-    assert new_step_data["meta"]["id"] != "01TESTSTEP1234567890123"
+    assert new_step_data["meta"]["ulid"] != "01TESTSTEP1234567890123"
     
     # Verify calculation is in project config
     config_after = yaml.safe_load((project_root / "project.qv.yml").read_text())
@@ -167,7 +167,7 @@ def test_duplicate_slug_conflict_raises_conflict(tmp_path):
     calc_dir.mkdir(parents=True)
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text("""meta:
-  id: 01TESTEXISTING1234567890
+  ulid: 01TESTEXISTING1234567890
   name: Existing Calculation
   slug: existing_calc
   path: calculations/existing_calc
@@ -201,7 +201,7 @@ def test_duplicate_with_custom_slug(tmp_path):
     calc_dir.mkdir(parents=True)
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text("""meta:
-  id: 01TESTORIGINAL1234567890
+  ulid: 01TESTORIGINAL1234567890
   name: Original
   slug: original
   path: calculations/original
@@ -256,7 +256,6 @@ def test_add_step_persists_and_returns_step_dto(tmp_path):
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text("""meta:
   ulid: 01TESTCALC1234567890123456
-  id: 01TESTCALC1234567890123456
   name: Test Calculation
   slug: test_calc
   path: calculations/test_calc
@@ -319,23 +318,23 @@ def test_remove_step_removes_from_step_yaml(tmp_path):
     steps_dir = calc_dir / "steps"
     steps_dir.mkdir()
     
-    step_id = "01TESTSTEP1234567890123456"  # Proper ULID length (26 chars)
+    step_ulid = "01TESTSTEP1234567890123456"  # Proper ULID length (26 chars)
     step_yaml = steps_dir / "scf1.step.yaml"
     step_yaml.write_text(f"""meta:
-  id: {step_id}
+  ulid: {step_ulid}
   name: scf1
   slug: scf1
   path: calculations/test_calc/steps/scf1.step.yaml
   kind: step
-step_type: qe_scf
+step_type_spec: qe_scf
 parameters:
   system:
     ecutwfc: 30.0
 """)
-    
+
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text(f"""meta:
-  id: 01TESTCALC1234567890123456
+  ulid: 01TESTCALC1234567890123456
   name: Test Calculation
   slug: test_calc
   path: calculations/test_calc
@@ -343,8 +342,8 @@ parameters:
 engine_family: qe
 structure_kind: periodic
 steps:
-  - step_id: {step_id}
-    type: scf
+  - step_ulid: {step_ulid}
+    step_type_spec: qe_scf
 """)
     
     # Add to project config
@@ -360,7 +359,7 @@ steps:
     assert len(calc_data_before.get("steps", [])) == 1
     
     # Remove step
-    svc.calculation.remove_step("test_calc", step_id)
+    svc.calculation.remove_step("test_calc", step_ulid)
     
     # Verify step file moved to trash
     assert not step_yaml.exists()
@@ -398,7 +397,7 @@ def test_remove_step_unknown_step_raises_not_found(tmp_path):
     calc_dir.mkdir(parents=True)
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text("""meta:
-  id: 01TESTCALC1234567890123456
+  ulid: 01TESTCALC1234567890123456
   name: Test Calculation
   slug: test_calc
   path: calculations/test_calc
@@ -407,14 +406,14 @@ engine_family: qe
 structure_kind: periodic
 steps: []
 """)
-    
+
     import yaml
     config = {"name": "test", "calculations": [{"calculation_id": "01TESTCALC1234567890123456"}], "structures": []}
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
-    
+
     svc = QVService(project_root)
-    
+
     from quantumvitas.api.errors import NotFoundError
     with pytest.raises(NotFoundError):
-        svc.calculation.remove_step("test_calc", "nonexistent_step_id")
+        svc.calculation.remove_step("test_calc", "nonexistent_step_ulid")
 

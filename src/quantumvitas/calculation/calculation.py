@@ -75,7 +75,7 @@ class Calculation:
         
         # Fallback: get from structure ref if available
         if self.structure:
-            return self.structure.meta.id
+            return self.structure.meta.ulid
         
         return None
 
@@ -183,7 +183,7 @@ class Calculation:
             raise FileNotFoundError(f"calculation.yaml not found: {calculation_yaml}")
 
         data = yaml.safe_load(calculation_yaml.read_text())
-        calculation_id = data.get("id", calculation_dir.name)
+        calculation_id = data.get("ulid", calculation_dir.name)
         mode = StepMode(data.get("mode", StepMode.NORMAL.value))
 
         calculation_meta = data.get("calculation", {})
@@ -210,7 +210,7 @@ class Calculation:
             except Exception:
                 # Try to resolve by ID if direct lookup fails
                 for struct_ref in project.structures.values():
-                    if struct_ref.meta.id == structure_id:
+                    if struct_ref.meta.ulid == structure_id:
                         structure_ref = struct_ref
                         break
 
@@ -443,12 +443,12 @@ def _build_step(
     # instead of building metadata from calculation.yaml step_data.
     step_meta = step_resolved.meta
     
-    # Assert step_id from calculation.yaml matches step_meta.id from step.yaml
+    # Assert step_id from calculation.yaml matches step_meta.ulid from step.yaml
     # This ensures ULID consistency across calculation.yaml and step.yaml
-    if step_meta.id != step_id:
+    if step_meta.ulid != step_id:
         raise ValueError(
             f"Step ULID mismatch: calculation.yaml step_id='{step_id}' "
-            f"does not match step.yaml meta.id='{step_meta.id}'. "
+            f"does not match step.yaml meta.ulid='{step_meta.ulid}'. "
             f"This indicates a corrupted calculation or step file."
         )
 
@@ -460,7 +460,7 @@ def _build_step(
     # If existing_input_file is provided (legacy calculation.yaml with input: field),
     # ignore it for production run. This ensures production always uses YAML SSOT clean rewrite.
     step = _build_step_from_spec(
-        step_id=step_id,  # Use ULID from calculation.yaml (must match step_meta.id)
+        step_id=step_id,  # Use ULID from calculation.yaml (must match step_meta.ulid)
         engine_name=engine_name,
         step_file=str(step_file_path.relative_to(calculation_dir)) if step_file_path.is_relative_to(calculation_dir) else step_file_path.name,
         calculation_dir=calculation_dir,
@@ -498,7 +498,7 @@ def _build_step_inspection(
     from quantumvitas.core.project_utils import load_project_config
     
     # Prefer step_ulid (ULID) - canonical reference, fall back to legacy step_id/id fields
-    step_id = step_data.get("step_ulid") or step_data.get("step_id") or step_data.get("id")
+    step_id = step_data.get("step_ulid") or step_data.get("step_id") or step_data.get("ulid")
     if not step_id:
         raise ValueError(f"Step entry missing both 'step_id' and 'id': {step_data}")
     
@@ -598,7 +598,7 @@ def _build_step_inspection(
             step_resolved = require_step(project.root, calculation_selector, step_id)
             step_file_path = step_resolved.absolute_path
             step_meta = step_resolved.meta
-            new_step_id = step_meta.id  # Use the ULID from registry
+            new_step_id = step_meta.ulid  # Use the ULID from registry
             
             # Load step spec just to get metadata (no materialization)
             try:
@@ -647,27 +647,27 @@ def _build_step_inspection(
                 step_meta = spec.meta  # This contains the ULID from the step file
                 step_type = spec.step_type_spec
                 # Store the real ULID for migration
-                new_step_id = step_meta.id
+                new_step_id = step_meta.ulid
             else:
                 # Create minimal meta if file doesn't exist
                 step_meta = ResourceMeta(
-                    id=generate_resource_id(),
+                    ulid=generate_resource_id(),
                     name=step_id,
                     slug=step_id,
                     path=f"calculations/{calculation_dir.name}/steps/{step_id}.step.yaml",
                     kind="step",
                 )
-                step_type = "custom"
+                step_type_spec= "custom"
         else:
             # Create minimal meta if no file found
             step_meta = ResourceMeta(
-                id=generate_resource_id(),
+                ulid=generate_resource_id(),
                 name=step_id,
                 slug=step_id,
                 path=f"calculations/{calculation_dir.name}/steps/{step_id}.step.yaml",
                 kind="step",
             )
-            step_type = "custom"
+            step_type_spec= "custom"
     
     # Handle input path (if specified)
     input_path_value = step_data.get("input") or step_data.get("file")
@@ -886,7 +886,7 @@ def _build_step_from_spec(
         project_root=project.root if project else None,
     )
 
-    step_type = spec.step_type
+    step_type = spec.step_type_spec
 
     # Ensure generated_input is a valid file path (not directory, not '.')
     if generated_input.exists() and generated_input.is_dir():
@@ -933,7 +933,7 @@ def _build_step_meta(
     calculation_dir: Path,
     project: Project,
 ) -> ResourceMeta:
-    name = step_data.get("name") or step_data.get("id") or "step"
+    name = step_data.get("name") or step_data.get("ulid") or "step"
     default_path = step_data.get("path") or _default_step_path(
         calculation_dir=calculation_dir, project=project, step_name=name
     )

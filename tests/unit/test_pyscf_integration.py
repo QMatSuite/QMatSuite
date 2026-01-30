@@ -210,7 +210,7 @@ class TestPySCFEngineAvailability:
         
         # Create mock step
         class MockStep:
-            step_type = "pyscf_scf"
+            step_type= "pyscf_scf"
             parameters = {"atoms": []}
             options = {}
         

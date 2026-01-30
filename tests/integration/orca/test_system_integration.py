@@ -145,8 +145,8 @@ class TestSystemIntegration:
 
         # Verify both step results
         assert len(results) == 2
-        assert results[0].step_id == "step_01"
-        assert results[1].step_id == "step_02"
+        assert results[0].step_ulid == "step_01"
+        assert results[1].step_ulid == "step_02"
         assert results[0].success and results[1].success
 
     def test_manifest_like_tracking(self, orca_engine, calc_structure):
@@ -171,7 +171,7 @@ class TestSystemIntegration:
             "done": results[0].success,
             "step_results": [
                 {
-                    "step_id": r.step_id,
+                    "step_ulid": r.step_ulid,
                     "success": r.success,
                     "metrics": r.metrics,
                 }

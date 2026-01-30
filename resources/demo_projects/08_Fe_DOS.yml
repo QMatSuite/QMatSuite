@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE2M0MTGPF4MQNW6D3472HJ4
+    ulid: 01KE2M0MTGPF4MQNW6D3472HJ4
     name: 08_Fe_DOS
     slug: 08_fe_dos
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE2M0MTV66K9HXNY7QZ6STQT
+    ulid: 01KE2M0MTV66K9HXNY7QZ6STQT
     name: fe.scf_noncollin
     slug: fe-scf_noncollin
     path: structures/fe-scf_noncollin.json
@@ -57,7 +57,7 @@ structures:
       - 0.0
 calculations:
 - meta:
-    id: 01KE2M0MTJDNZEQ4YF4BVGYKDC
+    ulid: 01KE2M0MTJDNZEQ4YF4BVGYKDC
     name: Fe Dos  2 Noncolinear
     slug: fe-dos-2-noncolinear
     path: calculations/fe-dos-2-noncolinear
@@ -117,7 +117,7 @@ pseudo:
   files:
   - Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
 meta:
-  id: 08_Fe_DOS
+  ulid: 08_Fe_DOS
   title: 08 Fe Dos  2 Noncolinear
   subtitle: SCF
   tags:

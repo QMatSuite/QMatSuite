@@ -36,7 +36,7 @@ class MetaDTO(BaseDTO):
 
     All entity DTOs can include this for human-readable metadata.
     """
-    id: str | None = None            # ULID identifier
+    ulid: str | None = None          # ULID identifier
     slug: str | None = None          # Human-readable identifier
     name: str | None = None          # Display name
     path: str | None = None          # Relative path within project

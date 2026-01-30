@@ -1,10 +1,10 @@
 meta:
-  id: 01KDTJYMXYCM2E6AGA3RZPJRG3
+  ulid: 01KDTJYMXYCM2E6AGA3RZPJRG3
   name: bands
   slug: bands
   path: calculations/si-bands/steps/bands.step.yaml
   kind: step
-step_type: bands
+step_type_spec: bands
 parameters:
   BANDS:
     filband: si.bands.dat

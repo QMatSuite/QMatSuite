@@ -90,7 +90,7 @@ class OtherMethodsRecipe(Recipe):
             return {
                 **base,
                 "run_id": "mock_run_id",
-                "step_id": self.world.get("step_ids", [""])[0] if self.world.get("step_ids") else "",
+                "step_ulid": self.world.get("step_ids", [""])[0] if self.world.get("step_ids") else "",
             }
 
         if self.method_name == "get_journal_entry":
@@ -102,7 +102,7 @@ class OtherMethodsRecipe(Recipe):
         if self.method_name == "get_pin_data":
             return {
                 **base,
-                "step_id": self.world.get("step_ids", [""])[0] if self.world.get("step_ids") else "",
+                "step_ulid": self.world.get("step_ids", [""])[0] if self.world.get("step_ids") else "",
                 "run_id": "test_run_id",
                 "analysis_kind": "scf",
             }

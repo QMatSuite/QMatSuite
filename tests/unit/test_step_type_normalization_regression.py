@@ -79,8 +79,7 @@ class TestBandsInputGeneration:
         from quantumvitas.core.resources import ResourceMeta, generate_resource_id, slugify
         
         # Create minimal metadata
-        meta = ResourceMeta(
-            id=generate_resource_id(),
+        meta = ResourceMeta(ulid=generate_resource_id(),
             name="test_bands",
             slug=slugify("test_bands"),
             path="test/test_bands.step.yaml",
@@ -91,7 +90,7 @@ class TestBandsInputGeneration:
         spec = StructureStepSpec(
             meta=meta,
             structure="si",  # Legacy selector field
-            step_type="qe_bands",  # Machine type
+            step_type_spec="qe_bands",  # Machine type
             parameters={
                 "BANDS": {
                     "prefix": "si",

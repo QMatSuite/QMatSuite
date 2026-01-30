@@ -11,7 +11,7 @@
     "dag_diff": {
       "structures_added": [
         {
-          "id": "<NORMALIZED_ID>",
+          "ulid": "<NORMALIZED_ID>",
           "slug": "silicon",
           "name": "silicon",
           "suffix": "<NORMALIZED_ID>"
@@ -20,7 +20,7 @@
       "structures_removed": [],
       "calculations_added": [
         {
-          "id": "<NORMALIZED_ID>",
+          "ulid": "<NORMALIZED_ID>",
           "slug": "demo_calc",
           "name": "demo_calc",
           "suffix": "<NORMALIZED_ID>"

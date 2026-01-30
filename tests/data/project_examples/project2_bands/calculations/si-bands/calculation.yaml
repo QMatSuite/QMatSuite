@@ -1,5 +1,5 @@
 meta:
-  id: 01KC38ZHBGWW0T1W9BV7ASEP2Z
+  ulid: 01KC38ZHBGWW0T1W9BV7ASEP2Z
   name: Si bands
   slug: si-bands
   path: calculations/si-bands
@@ -8,13 +8,13 @@ structure_id: 01KC38ZCMZZQ8DAA61A6SC8X23
 mode: normal
 working_dir: raw
 steps:
-- step_id: 01KC3901JEVJJ7S8G3E7Z9K2RZ
-  type: scf
-- step_id: 01KC39AWHWQ5EQSNFQADAA2AGP
-  type: nscf
-- step_id: 01KC39C21NREKW2YVZJY8E40RN
-  type: bands_pw
-- step_id: 01KC39BB6NNP4AF070GWPKK0J0
-  type: bands
+- step_ulid: 01KC3901JEVJJ7S8G3E7Z9K2RZ
+  step_type_spec: scf
+- step_ulid: 01KC39AWHWQ5EQSNFQADAA2AGP
+  step_type_spec: nscf
+- step_ulid: 01KC39C21NREKW2YVZJY8E40RN
+  step_type_spec: bands_pw
+- step_ulid: 01KC39BB6NNP4AF070GWPKK0J0
+  step_type_spec: bands
 structure_kind: periodic
 engine_family: qe

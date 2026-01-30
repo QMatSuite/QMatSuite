@@ -4,7 +4,7 @@
   "response": {
     "libraries": [
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "SSSP",
         "description": "Standard Solid State Pseudopotentials",
         "supported_variants": [

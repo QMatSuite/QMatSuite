@@ -138,8 +138,8 @@ class TestLoadEffectiveStructure:
         calc.dir.mkdir(parents=True)
         
         step = MagicMock()
-        step.meta = ResourceMeta(id="01SCF", name="scf", slug="scf", path="steps/scf.step.yaml", kind="step")
-        step.step_type = "qe_scf"
+        step.meta = ResourceMeta(ulid="01SCF", name="scf", slug="scf", path="steps/scf.step.yaml", kind="step")
+        step.step_type_spec= "qe_scf"
         calc.steps = [step]
         
         # Try to load effective structure for step 0 (first step)
@@ -163,12 +163,12 @@ class TestLoadEffectiveStructure:
         calc.dir.mkdir(parents=True)
         
         relax_step = MagicMock()
-        relax_step.meta = ResourceMeta(id="01RELAX", name="relax", slug="relax", path="steps/relax.step.yaml", kind="step")
-        relax_step.step_type = "qe_relax"
+        relax_step.meta = ResourceMeta(ulid="01RELAX", name="relax", slug="relax", path="steps/relax.step.yaml", kind="step")
+        relax_step.step_type_spec= "qe_relax"
         
         scf_step = MagicMock()
-        scf_step.meta = ResourceMeta(id="01SCF", name="scf", slug="scf", path="steps/scf.step.yaml", kind="step")
-        scf_step.step_type = "qe_scf"
+        scf_step.meta = ResourceMeta(ulid="01SCF", name="scf", slug="scf", path="steps/scf.step.yaml", kind="step")
+        scf_step.step_type_spec= "qe_scf"
         
         calc.steps = [relax_step, scf_step]
         
@@ -198,12 +198,12 @@ class TestLoadEffectiveStructure:
         calc.dir.mkdir(parents=True)
         
         relax_step = MagicMock()
-        relax_step.meta = ResourceMeta(id="01RELAX", name="relax", slug="relax", path="steps/relax.step.yaml", kind="step")
-        relax_step.step_type = "qe_relax"
+        relax_step.meta = ResourceMeta(ulid="01RELAX", name="relax", slug="relax", path="steps/relax.step.yaml", kind="step")
+        relax_step.step_type_spec= "qe_relax"
         
         scf_step = MagicMock()
-        scf_step.meta = ResourceMeta(id="01SCF", name="scf", slug="scf", path="steps/scf.step.yaml", kind="step")
-        scf_step.step_type = "qe_scf"
+        scf_step.meta = ResourceMeta(ulid="01SCF", name="scf", slug="scf", path="steps/scf.step.yaml", kind="step")
+        scf_step.step_type_spec= "qe_scf"
         
         calc.steps = [relax_step, scf_step]
         

@@ -25,7 +25,7 @@ def test_structure_dto_no_positions(tmp_path):
     # Create a minimal structure JSON file
     structure_data = {
         "__qv_meta__": {
-            "id": "01HX7YPVK8DQNZPMJ4GHAB5678",
+            "ulid": "01HX7YPVK8DQNZPMJ4GHAB5678",
             "name": "test_structure",
             "slug": "test-structure",
         },

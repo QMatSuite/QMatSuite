@@ -194,7 +194,7 @@ class ResourceMeta:
     portable.
     """
 
-    id: str
+    ulid: str  # CANONICAL: renamed from id
     name: str
     slug: str
     path: str
@@ -202,7 +202,7 @@ class ResourceMeta:
 
     def to_dict(self) -> dict:
         return {
-            "id": self.id,
+            "ulid": self.ulid,  # CANONICAL: output ulid not id
             "name": self.name,
             "slug": self.slug,
             "path": self.path,
@@ -219,14 +219,28 @@ class ResourceMeta:
         default_path: str,
     ) -> "ResourceMeta":
         data = data or {}
-        # Check for ulid first (new format), then id (legacy)
-        resource_id = data.get("ulid") or data.get("id") or generate_resource_id()
+
+        # ABSOLUTE LAW: Hard error on legacy "id" key (no fallback, no silent accept)
+        if "id" in data:
+            raise ValueError(
+                f"Legacy 'id' field found in meta. Expected 'ulid'. "
+                f"Run migration script. Keys: {list(data.keys())}"
+            )
+
+        # For existing data (loaded from file), ulid must be present
+        # For new resources (empty dict), generate ulid
+        if data and "ulid" not in data:
+            raise ValueError(
+                f"Missing required 'ulid' field in meta. Keys: {list(data.keys())}"
+            )
+
+        resource_ulid = data.get("ulid") or generate_resource_id()
         name = data.get("name") or default_name
         slug = data.get("slug") or slugify(name)
         path = data.get("path") or default_path
         stored_kind = data.get("kind") or kind
         return cls(
-            id=str(resource_id),
+            ulid=str(resource_ulid),
             name=name,
             slug=slug,
             path=path,
@@ -245,7 +259,7 @@ class ResourceMeta:
     ) -> "ResourceMeta":
         new_name = name or self.name
         return ResourceMeta(
-            id=self.id,
+            ulid=self.ulid,
             name=new_name,
             slug=slug or (slugify(new_name) if name else self.slug),
             path=path or self.path,
@@ -258,7 +272,7 @@ def meta_from_name(kind: ResourceKind, *, name: str, path: str) -> ResourceMeta:
     Helper for creating metadata when scaffolding new resources.
     """
     return ResourceMeta(
-        id=generate_resource_id(),
+        ulid=generate_resource_id(),
         name=name,
         slug=slugify(name),
         path=path,

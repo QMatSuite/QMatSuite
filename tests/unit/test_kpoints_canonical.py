@@ -26,7 +26,7 @@ class TestKPointsCanonicalization:
         temp_dir = tempfile.mkdtemp()
         step_file = Path(temp_dir) / "scf.step.yaml"
         step_file.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {},
                 "ELECTRONS": {},
@@ -71,7 +71,7 @@ class TestKPointsCanonicalization:
         # Add invalid parameters.K_POINTS (should be ignored)
         content = yaml.safe_load(temp_step_file.read_text())
         content["parameters"]["K_POINTS"] = {
-            "type": "automatic",
+            "step_type_gen": "automatic",
             "mesh": [4, 4, 4, 0, 0, 0],
         }
         # No cards.K_POINTS - should return None

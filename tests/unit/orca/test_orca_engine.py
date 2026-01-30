@@ -217,5 +217,5 @@ class TestORCAEngineChainExecution:
                     results = engine.run_chain(chain, tmp_path, molecule)
 
                     assert len(results) == 2
-                    assert results[0].step_id == "s1"
-                    assert results[1].step_id == "s2"
+                    assert results[0].step_ulid == "s1"
+                    assert results[1].step_ulid == "s2"

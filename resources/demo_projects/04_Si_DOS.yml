@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE2M08EGV2AXXRS1VXX68Y70
+    ulid: 01KE2M08EGV2AXXRS1VXX68Y70
     name: 04_Si_DOS
     slug: 04_si_dos
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE2M08ETEBYWTF11BF5FCEV1
+    ulid: 01KE2M08ETEBYWTF11BF5FCEV1
     name: si.1_scf
     slug: si-1_scf
     path: structures/si-1_scf.json
@@ -70,7 +70,7 @@ structures:
       - 1.3773039781619374
 calculations:
 - meta:
-    id: 01KE2M08EJSNJAQZ0TG3EKF1TQ
+    ulid: 01KE2M08EJSNJAQZ0TG3EKF1TQ
     name: Si Dos
     slug: si-dos
     path: calculations/si-dos
@@ -165,7 +165,7 @@ pseudo:
   files:
   - Si.pbe-n-rrkjus_psl.1.0.0.UPF
 meta:
-  id: 04_Si_DOS
+  ulid: 04_Si_DOS
   title: 4 Si Dos
   subtitle: "SCF \u2192 NSCF \u2192 DOS"
   tags:

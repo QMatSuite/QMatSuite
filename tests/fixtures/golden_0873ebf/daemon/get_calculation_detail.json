@@ -2,7 +2,7 @@
   "method": "get_calculation_detail",
   "success": true,
   "response": {
-    "id": "<NORMALIZED_ID>",
+    "ulid": "<NORMALIZED_ID>",
     "name": "demo_calc",
     "slug": "demo_calc",
     "path": "<NORMALIZED_PATH>",

@@ -51,13 +51,13 @@ class RelaxArtifactSpec:
         artifact_type: Type key for handler lookup (e.g., "lammps_data", "qe_output")
         artifact_path: Path to the artifact file (e.g., final.data, .out file)
         step_ulid: ULID of the step that produced the artifact
-        step_type: Step type (e.g., "lammps_relax", "qe_relax")
+        step_type_spec: Step type spec (e.g., "lammps_relax", "qe_relax")
         extra: Additional context needed by the handler (e.g., chain_key for ORCA)
     """
     artifact_type: str
     artifact_path: Path
     step_ulid: str
-    step_type: str
+    step_type_spec: str
     extra: Dict[str, Any] = None
     
     def __post_init__(self):
@@ -70,7 +70,7 @@ class RelaxArtifactSpec:
             "artifact_type": self.artifact_type,
             "artifact_path": str(self.artifact_path),
             "step_ulid": self.step_ulid,
-            "step_type": self.step_type_spec,
+            "step_type_spec": self.step_type_spec,
             "extra": self.extra,
         }
     
@@ -81,7 +81,7 @@ class RelaxArtifactSpec:
             artifact_type=data["artifact_type"],
             artifact_path=Path(data["artifact_path"]),
             step_ulid=data["step_ulid"],
-            step_type=data["step_type"],
+            step_type_spec=data["step_type_spec"],
             extra=data.get("extra", {}),
         )
 
@@ -418,7 +418,7 @@ def write_generated_structure(
     # Build structure dict with metadata
     structure_dict = structure.as_dict()
     structure_dict["__qv_meta__"] = {
-        "type": "generated_structure",
+        "step_type_gen": "generated_structure",
         "source_step_ulid": step_ulid,
         "source_run_id": run_id,
         "generated_at": datetime.now(timezone.utc).isoformat(),

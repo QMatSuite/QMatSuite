@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KEX4RTDHB33662N06J09R312
+    ulid: 01KEX4RTDHB33662N06J09R312
     name: Formaldehyde ORCA TDDFT
     slug: formaldehyde-orca-tddft
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KEX4RTDH8MB2RF2P2XQ4ZZ9T
+    ulid: 01KEX4RTDH8MB2RF2P2XQ4ZZ9T
     name: CH2O
     slug: ch2o
     path: structures/ch2o.json
@@ -63,7 +63,7 @@ structures:
     properties: {}
 calculations:
 - meta:
-    id: 01KEX4RTDH4HHTH0AZVM4ZQDGR
+    ulid: 01KEX4RTDH4HHTH0AZVM4ZQDGR
     name: CH2O SCF + TDDFT
     slug: ch2o-scf--plus-tddft
     path: calculations/ch2o-scf--plus-tddft
@@ -97,7 +97,7 @@ calculations:
       tda: true
     step_type_spec: pyscf_td
 meta:
-  id: formaldehyde_orca_tddft
+  ulid: formaldehyde_orca_tddft
   title: Formaldehyde ORCA TDDFT
   subtitle: SCF + TDDFT excited states calculation
   tags:

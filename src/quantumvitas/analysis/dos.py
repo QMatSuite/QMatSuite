@@ -92,7 +92,7 @@ def analyze_dos(calculation: Calculation, result: CalculationResult, results_dir
     
     Looks for DOS .dat files in the calculation output directory and processes them.
     """
-    dos_steps = [step for step in result.steps if step.step_type and step.step_type.startswith("dos")]
+    dos_steps = [step for step in result.steps if step.step_type_spec and step.step_type_spec.startswith("dos")]
     if not dos_steps:
         return
     
@@ -111,7 +111,7 @@ def analyze_dos(calculation: Calculation, result: CalculationResult, results_dir
     
     for step in dos_steps:
         # Look for DOS files associated with this step
-        step_id = step.step_id
+        step_id = step.step_ulid
         
         # Common naming patterns
         possible_dos_files = [

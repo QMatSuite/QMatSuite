@@ -108,10 +108,10 @@ def create_calculation_project(
     
     project_config = {
         "project": {"name": project_root.name},
-        "calculations": [{"id": calculation_ulid, "path": f"calculations/{calculation_id}"}],  # Use ULID, not human-readable name
+        "calculations": [{"ulid": calculation_ulid, "path": f"calculations/{calculation_id}"}],  # Use ULID, not human-readable name
         "structures": [
             {
-                "id": structure_id,
+                "ulid": structure_id,
                 "file": "structures/test_structure.json",
                 "meta": structure_meta.to_dict(),
             }
@@ -131,7 +131,7 @@ def create_calculation_project(
     
     step_entries = []
     for step in steps:
-        step_id = step["id"]
+        step_id = step["ulid"]
         step_ulid = generate_resource_id()
         step_file = steps_dir / f"{step_id}.step.yaml"
         step_meta = meta_from_name("step", name=step_id, path=f"calculations/{calculation_id}/steps/{step_id}.step.yaml")
@@ -214,7 +214,7 @@ def create_calculation_project(
     # This is required for project runs (enforcement: no fallback to step-level)
     calc_species_map = {}
     for step in steps:
-        step_id = step["id"]
+        step_id = step["ulid"]
         step_file = steps_dir / f"{step_id}.step.yaml"
         if step_file.exists():
             try:
@@ -231,7 +231,7 @@ def create_calculation_project(
     calculation_config = {
         "meta": {
             "ulid": calculation_ulid,
-            "id": calculation_ulid,  # Backwards compat
+            "ulid": calculation_ulid,  # Backwards compat
             "name": calculation_id,  # Human-readable name
             "slug": calculation_id,
             "path": f"calculations/{calculation_id}",

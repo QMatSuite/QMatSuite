@@ -211,13 +211,13 @@ class CalculationRunner:
                 ))
                 # Don't proceed to QE steps if Step0 refresh failed
                 return CalculationResult(
-                    calculation_id=calculation.id,
+                    calculation_ulid=calculation.id,
                     status=status,
                     started=started,
                     finished=datetime.now(timezone.utc),
                     step_summaries=step_summaries,
                     io_dir=calculation.raw_dir.resolve() if calculation.raw_dir else None,
-                    run_id=actual_run_id,
+                    run_ulid=actual_run_id,
                 )
             
             # Log warnings if any
@@ -237,7 +237,7 @@ class CalculationRunner:
                 ))
                 # Don't proceed to QE steps if Step0 failed
                 return CalculationResult(
-                    calculation_id=calculation.id,
+                    calculation_ulid=calculation.id,
                     status=status,
                     started=started,
                     finished=datetime.now(timezone.utc),
@@ -330,7 +330,7 @@ class CalculationRunner:
                     for entry in manifest.steps:
                         entry.done = False
                         entry.done_at = None
-                        entry.run_id = None  # Clear run_id for full run
+                        entry.run_ulid = None  # Clear run_id for full run
                         entry.started_at = None  # Clear started_at for full run
                     save_manifest_atomic(calculation.dir, manifest)
                     logger.info(f"[CALCULATION_RUNNER] Full run mode: reconciled manifest, marked all entries as done=False, cleared run_id/timestamps")
@@ -403,15 +403,15 @@ class CalculationRunner:
                     step_resolved = require_step(
                         calculation.project.root,
                         calculation.id,
-                        step.meta.id,
+                        step.meta.ulid,
                         config=config,
                         index=None,
                     )
                     step_doc_dict = StepDoc.load(step_resolved.absolute_path).to_dict()
-                    step_shas[step.meta.id] = compute_step_sha(step_doc_dict)
+                    step_shas[step.meta.ulid] = compute_step_sha(step_doc_dict)
                 except Exception as e:
-                    logger.debug(f"[CALCULATION_RUNNER] Failed to compute SHA for step {step.meta.id}: {e}")
-                    step_shas[step.meta.id] = ""
+                    logger.debug(f"[CALCULATION_RUNNER] Failed to compute SHA for step {step.meta.ulid}: {e}")
+                    step_shas[step.meta.ulid] = ""
 
         except Exception as e:
             logger.warning(f"[CALCULATION_RUNNER] Failed to compute SHAs for JobGraph: {e}")
@@ -444,21 +444,21 @@ class CalculationRunner:
             if not skip_history and actual_run_id:
                 self._complete_history_recording(
                     calculation=calculation,
-                    run_id=actual_run_id,
+                    run_ulid=actual_run_id,
                     status=status,
                     step_summaries=step_summaries,
                     working_dir=io_dir,
                 )
 
             return CalculationResult(
-                calculation_id=calculation.id,
+                calculation_ulid=calculation.id,
                 mode=calculation.mode,
                 steps=step_summaries,
                 status=status,
                 started_at=started,
                 finished_at=finished,
                 io_dir=io_dir,
-                run_id=actual_run_id,
+                run_ulid=actual_run_id,
             )
 
         except Exception as e:
@@ -659,14 +659,14 @@ class CalculationRunner:
     def _find_step_by_ulid(self, calculation: Calculation, step_ulid: str):
         """Find a step in calculation by its ULID."""
         for step in calculation.steps:
-            if step.meta.id == step_ulid:
+            if step.meta.ulid == step_ulid:
                 return step
         return None
 
     def _find_step_index(self, calculation: Calculation, step_ulid: str) -> Optional[int]:
         """Find the index of a step in calculation by its ULID."""
         for idx, step in enumerate(calculation.steps):
-            if step.meta.id == step_ulid:
+            if step.meta.ulid == step_ulid:
                 return idx
         return None
 
@@ -695,7 +695,7 @@ class CalculationRunner:
             from quantumvitas.history.events import RunStartedEvent
             
             # Gather step info
-            step_ids = [s.meta.id for s in calculation.steps]
+            step_ids = [s.meta.ulid for s in calculation.steps]
             step_types = [
                 str(s.step_type_spec) if s.step_type_spec else "unknown"
                 for s in calculation.steps
@@ -763,7 +763,7 @@ class CalculationRunner:
             event = RunStartedEvent.create(
                 project_id=project_id,
                 calc_id=calculation.id,
-                run_id=actual_run_id,
+                run_ulid=actual_run_id,
                 calc_name=calculation.name if hasattr(calculation, "name") else None,
                 step_ids=step_ids,
                 step_types=step_types,
@@ -800,8 +800,8 @@ class CalculationRunner:
             step_results = []
             for summary in step_summaries:
                 step_results.append({
-                    "step_id": summary.step_id,
-                    "step_type": summary.step_type_spec if hasattr(summary, "step_type_spec") else getattr(summary, "step_type", None),
+                    "step_id": summary.step_ulid,
+                    "step_type_spec": summary.step_type_spec if hasattr(summary, "step_type_spec") else getattr(summary, "step_type", None),
                     "step_name": getattr(summary, "step_name", None),
                     "status": summary.status.value if hasattr(summary.status, "value") else str(summary.status),
                     "message": summary.message,
@@ -815,7 +815,7 @@ class CalculationRunner:
             if status != StepStatus.SUCCESS:
                 failed_steps = [s for s in step_summaries if s.status != StepStatus.SUCCESS]
                 if failed_steps:
-                    error_summary = f"Failed steps: {', '.join(s.step_id for s in failed_steps[:3])}"
+                    error_summary = f"Failed steps: {', '.join(s.step_ulid for s in failed_steps[:3])}"
                     if len(failed_steps) > 3:
                         error_summary += f" (+{len(failed_steps) - 3} more)"
             

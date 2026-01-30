@@ -4,7 +4,7 @@
   "response": {
     "templates": [
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Band Structure",
         "description": "Electronic band structure along k-path",
         "step_sequence": [
@@ -14,7 +14,7 @@
         ]
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Density of States",
         "description": "Electronic density of states calculation",
         "step_sequence": [
@@ -24,7 +24,7 @@
         ]
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Projected DOS",
         "description": "Atom/orbital-resolved density of states",
         "step_sequence": [
@@ -34,7 +34,7 @@
         ]
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Relaxation",
         "description": "Atomic relaxation (optimize positions, fixed cell)",
         "step_sequence": [
@@ -42,7 +42,7 @@
         ]
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "SCF",
         "description": "Self-consistent field calculation (ground state energy)",
         "step_sequence": [
@@ -50,7 +50,7 @@
         ]
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "SCF + MP2",
         "description": "Self-consistent field calculation followed by MP2 correlation energy",
         "step_sequence": [
@@ -59,7 +59,7 @@
         ]
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "SCF + Excited States",
         "description": "Self-consistent field calculation followed by time-dependent excited states (TDDFT/TDHF)",
         "step_sequence": [
@@ -68,7 +68,7 @@
         ]
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Full Relaxation",
         "description": "Variable-cell relaxation (optimize positions and cell)",
         "step_sequence": [
@@ -76,7 +76,7 @@
         ]
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Wannierization",
         "description": "Maximally localized Wannier functions",
         "step_sequence": [

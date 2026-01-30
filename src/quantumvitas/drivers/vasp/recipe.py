@@ -59,15 +59,15 @@ class VASPRecipe(BaseRecipe):
         
         for step in steps:
             # Get step type info
-            step_type = step.step_type
+            step_type = step.step_type_spec
             spec = registry.get(step_type) if step_type else None
             public_type = spec.step_type_gen if spec else "unknown"
             
             # Job ID = step ULID
-            job_id = step.meta.id
+            job_id = step.meta.ulid
             
             # Working directory: isolated per step
-            working_dir = calc_raw_dir / step.meta.id
+            working_dir = calc_raw_dir / step.meta.ulid
             
             # VASP executable (from spec)
             executable = spec.executable if spec else "vasp_std"
@@ -101,7 +101,7 @@ class VASPRecipe(BaseRecipe):
             # Create job
             job = Job(
                 id=job_id,
-                step_ids=[step.meta.id],
+                step_ids=[step.meta.ulid],
                 working_dir=working_dir,
                 command=command,
                 input_files=input_files,
@@ -111,7 +111,7 @@ class VASPRecipe(BaseRecipe):
                 metadata={
                     "engine": "vasp",
                     "spec_step_type": spec.step_type_spec if spec else None,
-                    "public_type": public_type,
+                    "step_type_gen": public_type,
                 },
             )
             jobs.append(job)

@@ -656,8 +656,8 @@ class TestYamlIO:
         path = tmp_path / "step.yaml"
         
         doc = StepDoc({
-            "meta": {"id": "test"},
-            "step_type": "scf",
+            "meta": {"ulid": "test"},
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {"ecutwfc": 60},
             },

@@ -410,7 +410,7 @@ class ORCAEngine(Engine):
             artifacts["gbw"] = str(gbw_file)
 
         return ORCAStepResult(
-            step_ulid=step.meta.id,
+            step_ulid=step.meta.ulid,
             success=success,
             metrics=metrics,
             artifacts=artifacts,
@@ -454,7 +454,7 @@ class ORCAEngine(Engine):
         # 1. Validate inputs
         if not structure_ulid:
             return StepResult(
-                step_type="orca_relax",
+                step_type_spec="orca_relax",
                 input_file=calculation_raw_dir / "chain.inp",
                 success=False,
                 error="Structure ID is required for ORCA chain execution",
@@ -462,7 +462,7 @@ class ORCAEngine(Engine):
             )
         if not project_root:
             return StepResult(
-                step_type="orca_relax",
+                step_type_spec="orca_relax",
                 input_file=calculation_raw_dir / "chain.inp",
                 success=False,
                 error="Project root is required for structure resolution",
@@ -477,7 +477,7 @@ class ORCAEngine(Engine):
             
             if not isinstance(molecule, PMGMolecule):
                 return StepResult(
-                    step_type="orca_relax",
+                    step_type_spec="orca_relax",
                     input_file=calculation_raw_dir / "chain.inp",
                     success=False,
                     error=f"Expected Molecule for ORCA, got {type(molecule)}",
@@ -485,7 +485,7 @@ class ORCAEngine(Engine):
                 )
         except Exception as e:
             return StepResult(
-                step_type="orca_relax",
+                step_type_spec="orca_relax",
                 input_file=calculation_raw_dir / "chain.inp",
                 success=False,
                 error=f"Failed to load molecule: {e}",
@@ -533,7 +533,7 @@ class ORCAEngine(Engine):
                 class StepWrapper:
                     def __init__(self, step, step_type_gen, step_type_spec, parameters):
                         self.step = step
-                        self.id = step.meta.id
+                        self.id = step.meta.ulid
                         self.step_type_gen = step_type_gen
                         self.step_type_spec = step_type_spec
                         self.parameters = parameters
@@ -553,7 +553,7 @@ class ORCAEngine(Engine):
         if not chains:
             if not steps_with_public_type:
                 return StepResult(
-                    step_type="orca_relax",
+                    step_type_spec="orca_relax",
                     input_file=calculation_raw_dir / "chain.inp",
                     success=False,
                     error="No valid steps provided",
@@ -586,7 +586,7 @@ class ORCAEngine(Engine):
             )
         except Exception as e:
             return StepResult(
-                step_type="orca_relax",
+                step_type_spec="orca_relax",
                 input_file=working_dir / f"{chain.key}.inp",
                 success=False,
                 error=f"ORCA chain execution failed: {e}",
@@ -597,7 +597,7 @@ class ORCAEngine(Engine):
         # Find result for target step
         target_result = None
         for orca_result in orca_results:
-            if orca_result.step_ulid == target_step.meta.id:
+            if orca_result.step_ulid == target_step.meta.ulid:
                 target_result = orca_result
                 break
         
@@ -607,7 +607,7 @@ class ORCAEngine(Engine):
         
         if target_result is None:
             return StepResult(
-                step_type="orca_relax",
+                step_type_spec="orca_relax",
                 input_file=working_dir / f"{chain.key}.inp",
                 success=False,
                 error="No result found for target step",

@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KC38M041WTC1XKXQHHRC1AHY
+    ulid: 01KC38M041WTC1XKXQHHRC1AHY
     name: project1
     slug: project1
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KC38MBGSS8MX3Z4ETZMXZZY4
+    ulid: 01KC38MBGSS8MX3Z4ETZMXZZY4
     name: Si
     slug: si
     path: structures/si.json
@@ -70,7 +70,7 @@ structures:
       - 1.3773039781619374
 calculations:
 - meta:
-    id: 01KC38MFJZ7RF3SB7SHVYDQ4J8
+    ulid: 01KC38MFJZ7RF3SB7SHVYDQ4J8
     name: Si dos
     slug: si-dos
     path: calculations/si-dos
@@ -162,7 +162,7 @@ pseudo:
   files:
   - Si.pbe-n-rrkjus_psl.1.0.0.UPF
 meta:
-  id: si_dos_demo
+  ulid: si_dos_demo
   title: Silicon density of states
   subtitle: "SCF \u2192 NSCF \u2192 DOS"
   tags:

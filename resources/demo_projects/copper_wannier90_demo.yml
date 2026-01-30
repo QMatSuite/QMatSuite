@@ -2,7 +2,7 @@ version: '1.0'
 generated_at: '2026-01-03T13:49:14.686040'
 project:
   meta:
-    id: 01KE2K2ENX8BSFMKES12DZ617G
+    ulid: 01KE2K2ENX8BSFMKES12DZ617G
     name: Copper Wannier90 Demo
     slug: copper-wannier90-demo
     path: .
@@ -10,7 +10,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE2K2ENX56JW1A2E6VKVXTYG
+    ulid: 01KE2K2ENX56JW1A2E6VKVXTYG
     name: Copper
     slug: copper
     path: structures/copper.json
@@ -58,7 +58,7 @@ structures:
       - 0.0
 calculations:
 - meta:
-    id: 01KE2K2ENX9FKG2V38R75NW5SK
+    ulid: 01KE2K2ENX9FKG2V38R75NW5SK
     name: Copper MLWFs
     slug: copper-mlwfs
     path: calculations/copper-mlwfs

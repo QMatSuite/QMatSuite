@@ -1,10 +1,10 @@
 meta:
-  id: 01KC38PGMYFABDDE5T6CA8A2J8
+  ulid: 01KC38PGMYFABDDE5T6CA8A2J8
   name: dos
   slug: dos
   path: calculations/si-dos/steps/dos.step.yaml
   kind: step
-step_type: dos
+step_type_spec: dos
 parameters:
   DOS:
     emax: 16.0

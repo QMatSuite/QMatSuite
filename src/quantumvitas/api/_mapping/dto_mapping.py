@@ -180,7 +180,7 @@ def structure_to_dto(
     meta = None
     if struct_model and struct_model.meta:
         meta = MetaDTO(
-            id=struct_model.meta.id if hasattr(struct_model.meta, 'id') else None,
+            ulid=struct_model.meta.ulid if hasattr(struct_model.meta, 'ulid') else None,
             slug=struct_model.meta.slug,
             name=struct_model.meta.name,
             path=struct_model.meta.path if hasattr(struct_model.meta, 'path') else None,
@@ -191,7 +191,7 @@ def structure_to_dto(
         )
     
     # Get structure ID
-    structure_id = struct_resolved.meta.id if struct_resolved.meta else ""
+    structure_id = struct_resolved.meta.ulid if struct_resolved.meta else ""
     
     # Extract crystallographic data (if periodic)
     space_group = None
@@ -327,7 +327,7 @@ def calculation_ref_to_dto(
         )
     
     # Get calculation ULID
-    calc_ulid = calc_resolved.meta.id if calc_resolved.meta else ""
+    calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else ""
     
     return CalculationRefDTO(
         calc_ulid=calc_ulid,
@@ -367,7 +367,7 @@ def calculation_to_dto(
         )
     
     # Get calculation ULID
-    calc_ulid = calc_resolved.meta.id if calc_resolved.meta else ""
+    calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else ""
     
     # Get engine family
     engine = calc_model.engine_family if calc_model else None
@@ -393,10 +393,10 @@ def calculation_to_dto(
     if hasattr(calc_obj, 'steps'):
         step_count = len(calc_obj.steps)
         for step in calc_obj.steps:
-            # Step stores ULID in meta.id (ResourceMeta)
+            # Step stores ULID in meta.ulid (ResourceMeta)
             step_ulid = None
             if hasattr(step, 'meta') and step.meta:
-                step_ulid = step.meta.id
+                step_ulid = step.meta.ulid
             elif hasattr(step, 'id'):
                 step_ulid = step.id
             if step_ulid:
@@ -456,7 +456,7 @@ def step_to_dto(
         )
     
     # Get step ULID
-    step_ulid = step_resolved.meta.id if step_resolved.meta else ""
+    step_ulid = step_resolved.meta.ulid if step_resolved.meta else ""
     
     # Get step type (SPEC)
     step_type_spec = step_obj.step_type_spec if hasattr(step_obj, 'step_type_spec') else "unknown"
@@ -515,12 +515,12 @@ def step_to_dict(step_dto: StepDTO) -> dict[str, Any]:
     """
     result = {
         "ulid": step_dto.step_ulid,  # New field name
-        "id": step_dto.step_ulid,  # Backwards compat field for GUI
+        "ulid": step_dto.step_ulid,  # Backwards compat field for GUI
         "step_ulid": step_dto.step_ulid,
         "calc_ulid": step_dto.calc_ulid,
         "step_type_spec": step_dto.step_type_spec,
         "step_type_gen": step_dto.step_type_gen,
-        "step_type": step_dto.step_type_gen if step_dto.step_type_gen else step_dto.step_type_spec,  # Backwards compat
+        "step_type_gen": step_dto.step_type_gen if step_dto.step_type_gen else step_dto.step_type_spec,  # Backwards compat
         "status": step_dto.status,
     }
 

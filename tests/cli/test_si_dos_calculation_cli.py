@@ -20,9 +20,9 @@ def cli_si_dos_project(ci_test_data_dir: Path, project_root_path: Path, tmp_path
     Uses tmp_path for proper isolation in parallel xdist runs.
     """
     steps = [
-        {"id": "scf", "input": "si.1_scf.in", "reference": "si.1_scf.out"},
-        {"id": "nscf", "input": "si.2_nscf.in", "reference": "si.2_nscf.out"},
-        {"id": "dos", "input": "si.3_dos.in", "reference": "si.3_dos.out"},
+        {"ulid": "scf", "input": "si.1_scf.in", "reference": "si.1_scf.out"},
+        {"ulid": "nscf", "input": "si.2_nscf.in", "reference": "si.2_nscf.out"},
+        {"ulid": "dos", "input": "si.3_dos.in", "reference": "si.3_dos.out"},
     ]
     # Use tmp_path for proper xdist isolation (each worker gets unique temp dir)
     project_root = tmp_path / "cli_si_dos_project"

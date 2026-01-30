@@ -63,7 +63,7 @@ class TestInvariantEnforcement:
         from quantumvitas.io.structure_io import STRUCTURE_META_KEY
         struct_dict = structure.as_dict()
         struct_dict[STRUCTURE_META_KEY] = {
-            "id": "test_structure",
+            "ulid": "test_structure",
             "name": "test_structure",
             "slug": "test_structure",
         }
@@ -104,7 +104,7 @@ class TestInvariantEnforcement:
         """
         step_path = temp_calc_dir / "steps" / "scf.step.yaml"
         step_path.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "occupations": "smearing",
@@ -146,7 +146,7 @@ class TestInvariantEnforcement:
         """
         step_path = temp_calc_dir / "steps" / "scf.step.yaml"
         step_path.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "occupations": "smearing",
@@ -204,7 +204,7 @@ class TestInvariantEnforcement:
         ]:
             step_path = temp_calc_dir / "steps" / f"scf_{precision_level}.step.yaml"
             step_path.write_text(yaml.safe_dump({
-                "step_type": "scf",
+                "step_type_gen": "scf",
                 "parameters": {
                     "SYSTEM": {
                         "occupations": "smearing",
@@ -253,7 +253,7 @@ class TestInvariantEnforcement:
         """
         step_path = temp_calc_dir / "steps" / "scf.step.yaml"
         step_path.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "occupations": "smearing",
@@ -294,7 +294,7 @@ class TestInvariantEnforcement:
         """
         step_path = temp_calc_dir / "steps" / "scf.step.yaml"
         step_path.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "occupations": "smearing",
@@ -333,7 +333,7 @@ class TestInvariantEnforcement:
         """
         step_path = temp_calc_dir / "steps" / "scf.step.yaml"
         step_path.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "occupations": "fixed",
@@ -371,7 +371,7 @@ class TestInvariantEnforcement:
         """
         step_path = temp_calc_dir / "steps" / "scf.step.yaml"
         step_path.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "occupations": "smearing",
@@ -411,7 +411,7 @@ class TestInvariantEnforcement:
         
         step_path = temp_calc_dir / "steps" / "scf.step.yaml"
         step_path.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "occupations": "smearing",

@@ -57,8 +57,8 @@ class CalculationDTO(BaseDTO):
     # Compatibility properties for historical API contract
     @property
     def id(self) -> str:
-        """Compatibility: return calc_ulid or meta.id."""
-        return self.meta.id if self.meta and self.meta.id else self.calc_ulid
+        """Compatibility: return calc_ulid or meta.ulid."""
+        return self.meta.ulid if self.meta and self.meta.ulid else self.calc_ulid
     
     @property
     def calc_id(self) -> str:
@@ -99,7 +99,7 @@ class CalculationDTO(BaseDTO):
         """Convert to dict with compatibility properties."""
         result = super().to_dict()
         # Add compatibility properties
-        result["id"] = self.id
+        result["ulid"] = self.id
         if self.name is not None:
             result["name"] = self.name
         if self.slug is not None:

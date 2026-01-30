@@ -3,7 +3,6 @@
   "total_demos": 3,
   "demos": [
     {
-      "id": "water_orca_scf",
       "title": "Water ORCA SCF Single Point",
       "yaml_file": "water_orca_scf.yml",
       "readme_file": "water_orca_scf_README.md",
@@ -15,10 +14,10 @@
         "water",
         "tutorial"
       ],
-      "difficulty": "beginner"
+      "difficulty": "beginner",
+      "ulid": "water_orca_scf"
     },
     {
-      "id": "formaldehyde_orca_tddft",
       "title": "Formaldehyde ORCA TDDFT",
       "yaml_file": "formaldehyde_orca_tddft.yml",
       "readme_file": "formaldehyde_orca_tddft_README.md",
@@ -31,10 +30,10 @@
         "formaldehyde",
         "tutorial"
       ],
-      "difficulty": "intermediate"
+      "difficulty": "intermediate",
+      "ulid": "formaldehyde_orca_tddft"
     },
     {
-      "id": "methane_orca_freq",
       "title": "Methane ORCA Frequency",
       "yaml_file": "methane_orca_freq.yml",
       "readme_file": "methane_orca_freq_README.md",
@@ -47,7 +46,8 @@
         "methane",
         "tutorial"
       ],
-      "difficulty": "intermediate"
+      "difficulty": "intermediate",
+      "ulid": "methane_orca_freq"
     }
   ]
 }

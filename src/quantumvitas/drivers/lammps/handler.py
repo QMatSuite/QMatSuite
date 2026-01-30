@@ -29,7 +29,7 @@ def _find_step_by_ulid(calculation: "Calculation", step_ulid: str):
     """Find a step in calculation by its ULID."""
     from quantumvitas.calculation.step import Step
     for step in calculation.steps:
-        if step.meta.id == step_ulid:
+        if step.meta.ulid == step_ulid:
             return step
     return None
 
@@ -337,7 +337,7 @@ def lammps_step_handler(
                     artifact_type="lammps_data",
                     artifact_path=final_data_path,
                     step_ulid=step_ulid,
-                    step_type=str(step_type),
+                    step_type_spec=str(step_type),
                 ).to_dict()
         
         return JobResult(

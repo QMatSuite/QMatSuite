@@ -25,7 +25,7 @@ class TestStructureDTOContract:
     def test_structure_dto_has_compat_properties_with_meta(self):
         """StructureDTO.to_dict() includes id/name/slug/path/n_atoms when meta exists."""
         meta = MetaDTO(
-            id="01ABC123",
+            ulid="01ABC123",
             name="si-bulk",
             slug="si-bulk",
             path="structures/si-bulk.json"
@@ -40,7 +40,7 @@ class TestStructureDTOContract:
         result = dto.to_dict()
         
         # Compatibility properties must be present
-        assert result["id"] == "01ABC123"
+        assert result["ulid"] == "01ABC123"
         assert result["name"] == "si-bulk"
         assert result["slug"] == "si-bulk"
         assert result["path"] == "structures/si-bulk.json"
@@ -61,7 +61,7 @@ class TestStructureDTOContract:
         result = dto.to_dict()
         
         # Compatibility properties must be present (fallback to structure_id for id)
-        assert result["id"] == "01ABC123"  # Falls back to structure_id
+        assert result["ulid"] == "01ABC123"  # Falls back to structure_id
         assert result["n_atoms"] == 8
         # Canonical fields still present
         assert result["num_atoms"] == 8
@@ -76,13 +76,13 @@ class TestCalculationDTOContract:
     def test_calculation_dto_has_compat_properties_with_meta(self):
         """CalculationDTO.to_dict() includes id/name/slug/path/n_steps when meta exists."""
         meta = MetaDTO(
-            id="01DEF456",
+            ulid="01DEF456",
             name="si-dos",
             slug="si-dos",
             path="calculations/si-dos"
         )
         dto = CalculationDTO(
-            calc_id="01DEF456",
+            calc_ulid="01DEF456",
             engine="qe",
             status="completed",
             step_count=3,
@@ -92,33 +92,33 @@ class TestCalculationDTOContract:
         result = dto.to_dict()
         
         # Compatibility properties must be present
-        assert result["id"] == "01DEF456"
+        assert result["ulid"] == "01DEF456"
         assert result["name"] == "si-dos"
         assert result["slug"] == "si-dos"
         assert result["path"] == "calculations/si-dos"
         assert result["n_steps"] == 3
         # Canonical field also present
         assert result["step_count"] == 3
-        assert result["calc_id"] == "01DEF456"
-    
+        assert result["calc_ulid"] == "01DEF456"
+
     def test_calculation_dto_has_compat_properties_without_meta(self):
         """CalculationDTO.to_dict() includes id/n_steps when meta is None (name/slug/path may be omitted if None)."""
         dto = CalculationDTO(
-            calc_id="01DEF456",
+            calc_ulid="01DEF456",
             engine="qe",
             status="completed",
             step_count=3,
             meta=None
         )
-        
+
         result = dto.to_dict()
-        
-        # Compatibility properties must be present (fallback to calc_id for id)
-        assert result["id"] == "01DEF456"  # Falls back to calc_id
+
+        # Compatibility properties must be present (fallback to calc_ulid for id)
+        assert result["ulid"] == "01DEF456"  # Falls back to calc_ulid
         assert result["n_steps"] == 3
         # Canonical fields still present
         assert result["step_count"] == 3
-        assert result["calc_id"] == "01DEF456"
+        assert result["calc_ulid"] == "01DEF456"
         # name/slug/path are only included if not None (current implementation)
         # This is acceptable for compatibility - frontends should handle missing keys
 
@@ -129,27 +129,27 @@ class TestRunResultDTOContract:
     def test_run_result_dto_has_steps_list(self):
         """RunResultDTO.to_dict() includes steps as list of dicts."""
         dto = RunResultDTO(
-            run_id="01RUN789",
-            calc_id="01DEF456",
+            run_ulid="01RUN789",
+            calc_ulid="01DEF456",
             status="completed",
-            step_ids=["step1", "step2"],
+            step_ulids=["step1", "step2"],
             _step_details=[
                 {
                     "step_ulid": "step1",
-                    "step_id": "step1",  # Backwards compat
+                    "step_ulid": "step1",  # Backwards compat
                     "step_type_spec": "qe_scf",
                     "step_type_gen": "scf",
-                    "step_type": "scf",  # Backwards compat
+                    "step_type_gen": "scf",  # Backwards compat
                     "status": "completed",
                     "message": "Step completed",
                     "metrics": {"energy": -10.5}
                 },
                 {
                     "step_ulid": "step2",
-                    "step_id": "step2",  # Backwards compat
+                    "step_ulid": "step2",  # Backwards compat
                     "step_type_spec": "qe_nscf",
                     "step_type_gen": "nscf",
-                    "step_type": "nscf",  # Backwards compat
+                    "step_type_gen": "nscf",  # Backwards compat
                     "status": "completed",
                     "message": None,
                     "metrics": {}
@@ -170,20 +170,16 @@ class TestRunResultDTOContract:
         # Each step must have required keys
         step1 = result["steps"][0]
         assert step1["step_ulid"] == "step1"
-        assert step1["step_id"] == "step1"  # Backwards compat
         assert step1["step_type_spec"] == "qe_scf"
         assert step1["step_type_gen"] == "scf"
-        assert step1["step_type"] == "scf"  # Backwards compat
         assert step1["status"] == "completed"
         assert step1["message"] == "Step completed"
         assert step1["metrics"] == {"energy": -10.5}
-        
+
         step2 = result["steps"][1]
         assert step2["step_ulid"] == "step2"
-        assert step2["step_id"] == "step2"  # Backwards compat
         assert step2["step_type_spec"] == "qe_nscf"
         assert step2["step_type_gen"] == "nscf"
-        assert step2["step_type"] == "nscf"  # Backwards compat
         assert step2["status"] == "completed"
         assert step2["message"] is None
         assert step2["metrics"] == {}
@@ -191,10 +187,10 @@ class TestRunResultDTOContract:
     def test_run_result_dto_has_io_fields(self):
         """RunResultDTO.to_dict() includes io_dir/input_file/output_file."""
         dto = RunResultDTO(
-            run_id="01RUN789",
-            calc_id="01DEF456",
+            run_ulid="01RUN789",
+            calc_ulid="01DEF456",
             status="completed",
-            step_ids=[],
+            step_ulids=[],
             io_dir="/path/to/io",
             input_file="/path/to/input.in",
             output_file="/path/to/output.out"
@@ -219,10 +215,10 @@ class TestRunResultDTOContract:
         
         for canonical_status, expected_legacy in test_cases:
             dto = RunResultDTO(
-                run_id="01RUN789",
-                calc_id="01DEF456",
+                run_ulid="01RUN789",
+                calc_ulid="01DEF456",
                 status=canonical_status,
-                step_ids=[]
+                step_ulids=[]
             )
             
             result = dto.to_dict()
@@ -234,10 +230,10 @@ class TestRunResultDTOContract:
     def test_run_result_dto_steps_empty_when_no_details(self):
         """RunResultDTO.to_dict() handles empty steps gracefully."""
         dto = RunResultDTO(
-            run_id="01RUN789",
-            calc_id="01DEF456",
+            run_ulid="01RUN789",
+            calc_ulid="01DEF456",
             status="completed",
-            step_ids=[],
+            step_ulids=[],
             _step_details=None
         )
         

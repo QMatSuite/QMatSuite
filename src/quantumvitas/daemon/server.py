@@ -8,9 +8,9 @@ Provides a stdio-based JSON-RPC interface for GUI integration.
 - Uses JobManager for long-running QE operations
 
 Protocol:
-    Request:  {"id": "req1", "type": "command_name", "payload": {...}}
-    Response: {"id": "req1", "ok": true, "data": {...}}
-              {"id": "req1", "ok": false, "error": {"code": "...", "message": "..."}}
+    Request:  {"ulid": "req1", "type": "command_name", "payload": {...}}
+    Response: {"ulid": "req1", "ok": true, "data": {...}}
+              {"ulid": "req1", "ok": false, "error": {"code": "...", "message": "..."}}
 
 The daemon itself never touches cwd; all paths come from request payloads.
 """
@@ -110,7 +110,7 @@ class RPCResponse:
     
     def to_json(self) -> str:
         """Convert to JSON string."""
-        result = {"id": self.id, "ok": self.ok}
+        result = {"ulid": self.id, "ok": self.ok}
         if self.ok:
             result["data"] = self.data or {}
         else:
@@ -214,7 +214,7 @@ class QVDaemon:
     
     Or for testing:
         daemon = QVDaemon(stdin=my_input, stdout=my_output)
-        daemon.handle_request({"id": "1", "type": "ping", "payload": {}})
+        daemon.handle_request({"ulid": "1", "type": "ping", "payload": {}})
     """
     
     def __init__(
@@ -662,7 +662,7 @@ class QVDaemon:
                 "code": "resource_not_found",
                 "kind": e.context.get("resource_type", "resource"),
                 "selector": e.context.get("selector", ""),
-                "id": e.context.get("id", ""),
+                "ulid": e.context.get("ulid", ""),
                 "message": str(e),
             }
             # Include details from context if present
@@ -1486,7 +1486,7 @@ class QVDaemon:
                 "namelist": param.namelist,
                 "name": param.name,
                 "label": param.label,
-                "type": param.type,
+                "step_type_gen": param.type,
                 # Note: step_type fields were incorrectly added by patch script
                 # Parameter "type" is the parameter type (number, select, bool), not step type
                 # These fields should not be here, but keeping for golden fixture compatibility
@@ -1521,8 +1521,8 @@ class QVDaemon:
             For "search": requires "query": str (searches across all modules/sections)
         
         Returns:
-            For "list_modules": {"modules": [{"id": "pw", "label": "pw.x"}, ...]}
-            For "list_sections": {"sections": [{"id": "&SYSTEM", "kind": "namelist", "label": "&SYSTEM"}, ...]}
+            For "list_modules": {"modules": [{"ulid": "pw", "label": "pw.x"}, ...]}
+            For "list_sections": {"sections": [{"ulid": "&SYSTEM", "kind": "namelist", "label": "&SYSTEM"}, ...]}
             For "list_parameters": {"parameters": [{name, type, default, enum, description, indexing, ...}, ...]}
             For "search": {"results": [{module, section, name, type, ...}, ...]}
         """
@@ -1560,7 +1560,7 @@ class QVDaemon:
                     doc_url = get_module_doc_url(module_id)
                     label = f"{module_id}.x" if module_id else module_id
                     result.append({
-                        "id": module_id,
+                        "ulid": module_id,
                         "label": label,
                         "doc_url": doc_url,
                     })
@@ -1637,7 +1637,7 @@ class QVDaemon:
                     if section_normalized in card_names_upper:
                         # This is a card
                         result.append({
-                            "id": section_normalized,  # For lookups
+                            "ulid": section_normalized,  # For lookups
                             "name": section_normalized,  # Clean name without '&'
                             "label": section_normalized,  # Label is same as name for cards (no '&')
                             "kind": "card",
@@ -1645,7 +1645,7 @@ class QVDaemon:
                     elif section_part.startswith("&"):
                         # This is a namelist
                         result.append({
-                            "id": section_part,  # Keep original for backward compatibility (with '&')
+                            "ulid": section_part,  # Keep original for backward compatibility (with '&')
                             "name": section_normalized,  # Clean name without '&'
                             "label": section_part,  # Label includes '&' prefix for namelists
                             "kind": "namelist",
@@ -1655,7 +1655,7 @@ class QVDaemon:
                         # If it's in card_metadata, it's a card; otherwise, treat as namelist
                         if section_normalized in card_names_upper:
                             result.append({
-                                "id": section_normalized,
+                                "ulid": section_normalized,
                                 "name": section_normalized,
                                 "label": section_normalized,
                                 "kind": "card",
@@ -1663,7 +1663,7 @@ class QVDaemon:
                         else:
                             # Treat as namelist (add '&' prefix for label)
                             result.append({
-                                "id": f"&{section_normalized}",
+                                "ulid": f"&{section_normalized}",
                                 "name": section_normalized,
                                 "label": f"&{section_normalized}",
                                 "kind": "namelist",
@@ -1675,7 +1675,7 @@ class QVDaemon:
                     card_name_upper = card_name.upper()
                     if card_name_upper not in [s["name"] for s in result]:
                         result.append({
-                            "id": card_name_upper,
+                            "ulid": card_name_upper,
                             "name": card_name_upper,
                             "label": card_name_upper,
                             "kind": "card",
@@ -1929,7 +1929,7 @@ class QVDaemon:
             No fields required.
         
         Returns:
-            {"modules": [{"id": "pw", "label": "pw.x"}, ...]} - Fresh list of modules
+            {"modules": [{"ulid": "pw", "label": "pw.x"}, ...]} - Fresh list of modules
             after reload, so the frontend can immediately refresh.
         """
         self.log("[RPC] reload_qe_parameter_metadata")
@@ -1948,7 +1948,7 @@ class QVDaemon:
                 doc_url = get_module_doc_url(module_id)
                 label = f"{module_id}.x" if module_id else module_id
                 result.append({
-                    "id": module_id,
+                    "ulid": module_id,
                     "label": label,
                     "doc_url": doc_url,
                 })
@@ -2114,7 +2114,7 @@ class QVDaemon:
         return {
             "project_root": str(project_root),
             "name": summary.get("name", name or target_dir.name),
-            "id": summary.get("id"),
+            "ulid": summary.get("ulid"),
         }
     
     def _handle_import_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -2658,7 +2658,7 @@ class QVDaemon:
         
         # Add to project config
         entry = {
-            "structure_id": meta.id,
+            "structure_id": meta.ulid,
         }
         structures.append(entry)
         cache.svc.save_project_config(config)
@@ -2670,7 +2670,7 @@ class QVDaemon:
             cache_state.svc.update_registry_add_structure(cache_state.index, resolved.meta, dest_path)
         
         return {
-            "new_structure_id": meta.id,
+            "new_structure_id": meta.ulid,
             "name": meta.name,
             "slug": meta.slug,
         }
@@ -2795,11 +2795,11 @@ class QVDaemon:
         
         # Get calculation details
         calculation_dtos = svc.calculation.list()
-        new_wf_dto = next((w for w in calculation_dtos if w.id == result.meta.id), None)
+        new_wf_dto = next((w for w in calculation_dtos if w.id == result.meta.ulid), None)
         
         return {
-            "calculation_id": result.meta.id,
-            "calculation_ulid": result.meta.id,  # Explicit ULID for UI to use
+            "calculation_id": result.meta.ulid,
+            "calculation_ulid": result.meta.ulid,  # Explicit ULID for UI to use
             "name": result.meta.name,
             "slug": result.meta.slug,
             "n_steps": new_wf_dto.n_steps if new_wf_dto else 0,
@@ -3079,7 +3079,7 @@ class QVDaemon:
             # Resolve slug/name to ULID with kind constraint
             # ALWAYS log boundary resolves (not gated by debug flag)
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-            calculation_ulid = calculation_resolved.meta.id
+            calculation_ulid = calculation_resolved.meta.ulid
             # Determine selector type for logging
             selector_type = "slug" if calculation_selector in [calculation_resolved.meta.slug] else "name"
             logger.info(
@@ -3200,7 +3200,7 @@ class QVDaemon:
         return {
             "success": True,
             "structure": {
-                "id": result.meta.id,
+                "ulid": result.meta.ulid,
                 "name": result.meta.name,
                 "path": str(result.absolute_path.relative_to(project_root)),
             },
@@ -3662,7 +3662,7 @@ class QVDaemon:
                         "options": [{"value": str, "label": str}],
                         "default": str,
                         "scope": {
-                            "type": "variant_step_types" | "variants",
+                            "step_type_gen": "variant_step_types" | "variants",
                             "step_types": List[str] | None,
                             "variants": List[Dict] | None,
                         }
@@ -3932,7 +3932,7 @@ class QVDaemon:
                     steps_updated += 1
                     step_results.append({
                         "step_file": step_name,
-                        "step_type": step_type,
+                        "step_type_gen": step_type,
                         "status": "updated",
                         "applied_presets": list(result["filtered_options"].keys()),
                         "updated_fields": result.get("updated_fields", []),
@@ -3942,7 +3942,7 @@ class QVDaemon:
                     steps_skipped += 1
                     step_results.append({
                         "step_file": step_name,
-                        "step_type": step_type,
+                        "step_type_gen": step_type,
                         "status": "skipped",
                         "reason": "non-receiver",
                         "updated_fields": [],
@@ -3955,7 +3955,7 @@ class QVDaemon:
                 steps_skipped += 1
                 step_results.append({
                     "step_file": step_name,
-                    "step_type": step_type if 'step_type' in dir() else "unknown",
+                    "step_type_gen": step_type if 'step_type' in dir() else "unknown",
                     "status": "error",
                     "reason": str(e),
                     "updated_fields": [],
@@ -3966,7 +3966,7 @@ class QVDaemon:
                 steps_skipped += 1
                 step_results.append({
                     "step_file": step_name,
-                    "step_type": "unknown",
+                    "step_type_gen": "unknown",
                     "status": "error",
                     "reason": str(e),
                     "updated_fields": [],
@@ -4014,7 +4014,7 @@ class QVDaemon:
         else:
             # ALWAYS log boundary resolves (not gated by debug flag)
             resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-            calculation_ulid = resolved.meta.id
+            calculation_ulid = resolved.meta.ulid
             selector_type = "slug" if calculation_selector == resolved.meta.slug else "name"
             logger.info(
                 f"[BOUNDARY_RESOLVE] endpoint=GET_STEP_PRESET_FOOTPRINTS selector='{calculation_selector}' "
@@ -4062,7 +4062,7 @@ class QVDaemon:
             # Resolve slug/name to ULID with kind constraint
             # ALWAYS log boundary resolves (not gated by debug flag)
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-            calculation_ulid = calculation_resolved.meta.id
+            calculation_ulid = calculation_resolved.meta.ulid
             # Determine selector type for logging
             selector_type = "slug" if calculation_selector == calculation_resolved.meta.slug else "name"
             logger.info(
@@ -4155,7 +4155,7 @@ class QVDaemon:
             "steps": [
                 {
                     "step_id": asdict(s).get("step_id"),
-                    "type": asdict(s).get("step_type"),
+                    "step_type_gen": asdict(s).get("step_type"),
                     "status": asdict(s).get("status"),
                 }
                 for s in steps
@@ -4353,7 +4353,7 @@ class QVDaemon:
             # Resolve slug/name to ULID with kind constraint
             # ALWAYS log boundary resolves (not gated by debug flag)
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-            calculation_ulid = calculation_resolved.meta.id
+            calculation_ulid = calculation_resolved.meta.ulid
             # Determine selector type for logging
             selector_type = "slug" if calculation_selector == calculation_resolved.meta.slug else "name"
             logger.info(
@@ -4508,7 +4508,7 @@ class QVDaemon:
             calculation_ulid = calculation
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation)
-            calculation_ulid = calculation_resolved.meta.id
+            calculation_ulid = calculation_resolved.meta.ulid
         
         # Replace validate_ulid with is_ulid_like check
         if not is_ulid_like(calculation_ulid):
@@ -4867,7 +4867,7 @@ class QVDaemon:
                     # XSF fixture (MLWF)
                     for xsf_file in xsf_files:
                         fixtures.append({
-                            "id": f"{example_dir.name}_{xsf_file.stem}",
+                            "ulid": f"{example_dir.name}_{xsf_file.stem}",
                             "name": f"{example_dir.name} - {xsf_file.stem}",
                             "file_path": str(xsf_file.resolve()),
                             "type": "xsf",
@@ -4877,7 +4877,7 @@ class QVDaemon:
                     # BXSF fixture (Fermi surface)
                     for bxsf_file in bxsf_files:
                         fixtures.append({
-                            "id": f"{example_dir.name}_{bxsf_file.stem}",
+                            "ulid": f"{example_dir.name}_{bxsf_file.stem}",
                             "name": f"{example_dir.name} - {bxsf_file.stem}",
                             "file_path": str(bxsf_file.resolve()),
                             "type": "bxsf",
@@ -5057,7 +5057,7 @@ class QVDaemon:
                     fixture_path = fixtures_root / entry["path"]
                     if fixture_path.exists():
                         fixtures.append({
-                            "id": entry.get("id", f"{fixture_path.parent.name}_{fixture_path.stem}"),
+                            "ulid": entry.get("ulid", f"{fixture_path.parent.name}_{fixture_path.stem}"),
                             "label": entry.get("label", str(fixture_path.relative_to(fixtures_root))),
                             "kind": entry.get("kind", "xsf" if fixture_path.suffix == ".xsf" else "bxsf"),
                             "path": str(fixture_path.resolve()),
@@ -5077,7 +5077,7 @@ class QVDaemon:
             for xsf_file in xsf_files:
                 rel_path = xsf_file.relative_to(fixtures_root)
                 fixtures.append({
-                    "id": f"{xsf_file.parent.name}_{xsf_file.stem}",
+                    "ulid": f"{xsf_file.parent.name}_{xsf_file.stem}",
                     "label": str(rel_path),
                     "kind": "xsf",
                     "path": str(xsf_file.resolve()),
@@ -5086,7 +5086,7 @@ class QVDaemon:
             for bxsf_file in bxsf_files:
                 rel_path = bxsf_file.relative_to(fixtures_root)
                 fixtures.append({
-                    "id": f"{bxsf_file.parent.name}_{bxsf_file.stem}",
+                    "ulid": f"{bxsf_file.parent.name}_{bxsf_file.stem}",
                     "label": str(rel_path),
                     "kind": "bxsf",
                     "path": str(bxsf_file.resolve()),
@@ -5933,17 +5933,17 @@ class QVDaemon:
         
         Returns:
             {
-                "structures_added": [ { "id": ..., "slug": ..., "suffix": ... }, ... ],
+                "structures_added": [ { "ulid": ..., "slug": ..., "suffix": ... }, ... ],
                 "structures_removed": [ ... ],
-                "calculations_added": [ { "id": ..., "slug": ..., "suffix": ... }, ... ],
+                "calculations_added": [ { "ulid": ..., "slug": ..., "suffix": ... }, ... ],
                 "calculations_removed": [ ... ],
                 "calculations_changed": [
                     {
                         "calculation_id": ...,
                         "calculation_slug": ...,
                         "suffix": ...,
-                        "steps_added": [ { "id": ..., "suffix": ... }, ... ],
-                        "steps_removed": [ { "id": ..., "suffix": ... }, ... ],
+                        "steps_added": [ { "ulid": ..., "suffix": ... }, ... ],
+                        "steps_removed": [ { "ulid": ..., "suffix": ... }, ... ],
                     },
                     ...
                 ]
@@ -5970,7 +5970,7 @@ class QVDaemon:
         for struct_id in new_structures:
             if struct_id not in old_structures:
                 diff["structures_added"].append({
-                    "id": struct_id,
+                    "ulid": struct_id,
                     "slug": new_structures[struct_id]["slug"],
                     "name": new_structures[struct_id]["name"],
                     "suffix": _ulid_suffix(struct_id),
@@ -5980,7 +5980,7 @@ class QVDaemon:
         for struct_id in old_structures:
             if struct_id not in new_structures:
                 diff["structures_removed"].append({
-                    "id": struct_id,
+                    "ulid": struct_id,
                     "slug": old_structures[struct_id]["slug"],
                     "name": old_structures[struct_id]["name"],
                     "suffix": _ulid_suffix(struct_id),
@@ -5990,7 +5990,7 @@ class QVDaemon:
         for wf_id in new_calculations:
             if wf_id not in old_calculations:
                 diff["calculations_added"].append({
-                    "id": wf_id,
+                    "ulid": wf_id,
                     "slug": new_calculations[wf_id]["slug"],
                     "name": new_calculations[wf_id]["name"],
                     "suffix": _ulid_suffix(wf_id),
@@ -6000,7 +6000,7 @@ class QVDaemon:
         for wf_id in old_calculations:
             if wf_id not in new_calculations:
                 diff["calculations_removed"].append({
-                    "id": wf_id,
+                    "ulid": wf_id,
                     "slug": old_calculations[wf_id]["slug"],
                     "name": old_calculations[wf_id]["name"],
                     "suffix": _ulid_suffix(wf_id),
@@ -6021,8 +6021,8 @@ class QVDaemon:
                         "calculation_slug": new_calculations[wf_id]["slug"],
                         "calculation_name": new_calculations[wf_id]["name"],
                         "suffix": _ulid_suffix(wf_id),
-                        "steps_added": [{"id": s, "suffix": _ulid_suffix(s)} for s in steps_added],
-                        "steps_removed": [{"id": s, "suffix": _ulid_suffix(s)} for s in steps_removed],
+                        "steps_added": [{"ulid": s, "suffix": _ulid_suffix(s)} for s in steps_added],
+                        "steps_removed": [{"ulid": s, "suffix": _ulid_suffix(s)} for s in steps_removed],
                     })
         
         return diff
@@ -6303,7 +6303,7 @@ class QVDaemon:
             template_dict["step_sequence"] = list(template_dict["step_sequence"])
             # Filter to only required keys (prevent schema widening)
             filtered_dict = {
-                "id": template_dict["id"],
+                "ulid": template_dict["ulid"],
                 "name": template_dict["name"],
                 "description": template_dict["description"],
                 "step_sequence": template_dict["step_sequence"],
@@ -6387,7 +6387,7 @@ class QVDaemon:
         else:
             # ALWAYS log boundary resolves (not gated by debug flag)
             resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-            calculation_ulid = resolved.meta.id
+            calculation_ulid = resolved.meta.ulid
             logger.info(
                 f"[DETECT_WORKFLOW] endpoint=DETECT_WORKFLOW_FOR_CALCULATION "
                 f"selector='{calculation_selector}' selector_type={selector_type} "

@@ -30,7 +30,7 @@ class TestAPIServiceFacade:
         (project_root / "project.qv.yml").write_text("""project:
   name: test_project
   meta:
-    id: 01ARZ3NDEKTSV4RRFFQ69G5FAV
+    ulid: 01ARZ3NDEKTSV4RRFFQ69G5FAV
     name: test_project
     slug: test-project
     path: "."
@@ -336,5 +336,5 @@ class TestAPIErrors:
         """API errors can be instantiated with message and context."""
         from quantumvitas.api import NotFoundError
 
-        err = NotFoundError("Resource not found", context={"id": "123"})
+        err = NotFoundError("Resource not found", context={"ulid": "123"})
         assert "Resource not found" in str(err)

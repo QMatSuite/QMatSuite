@@ -12,7 +12,7 @@ from typing import Dict, Any
 def empty_step_yaml() -> Dict[str, Any]:
     """Fixture providing an empty step YAML structure."""
     return {
-        "step_type": "scf",
+        "step_type_gen": "scf",
         "parameters": {},
         "cards": {},
     }
@@ -22,7 +22,7 @@ def empty_step_yaml() -> Dict[str, Any]:
 def scf_step_yaml() -> Dict[str, Any]:
     """Fixture providing a basic SCF step YAML structure."""
     return {
-        "step_type": "scf",
+        "step_type_gen": "scf",
         "parameters": {
             "SYSTEM": {},
             "ELECTRONS": {},

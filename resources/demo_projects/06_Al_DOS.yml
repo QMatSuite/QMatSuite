@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE2M0K7R1P7KJHG4TMH39FGF
+    ulid: 01KE2M0K7R1P7KJHG4TMH39FGF
     name: 06_Al_DOS
     slug: 06_al_dos
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE2M0K87TZFG85B2B6GTAVX1
+    ulid: 01KE2M0K87TZFG85B2B6GTAVX1
     name: al.1_vc_relax
     slug: al-1_vc_relax
     path: structures/al-1_vc_relax.json
@@ -56,7 +56,7 @@ structures:
       - 0.0
       - 0.0
 - meta:
-    id: 01KE2M0K93KQRHHVAR7B9EXKKE
+    ulid: 01KE2M0K93KQRHHVAR7B9EXKKE
     name: al.2_scf
     slug: al-2_scf
     path: structures/al-2_scf.json
@@ -104,7 +104,7 @@ structures:
       - 0.0
 calculations:
 - meta:
-    id: 01KE2M0K7V5Z1TPJAD1HXJFVHT
+    ulid: 01KE2M0K7V5Z1TPJAD1HXJFVHT
     name: Al Dos
     slug: al-dos
     path: calculations/al-dos
@@ -243,7 +243,7 @@ pseudo:
   files:
   - Al.pbe-n-kjpaw_psl.1.0.0.UPF
 meta:
-  id: 06_Al_DOS
+  ulid: 06_Al_DOS
   title: 6 Al Dos
   subtitle: "VC-Relax \u2192 SCF \u2192 NSCF \u2192 DOS"
   tags:

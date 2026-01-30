@@ -26,7 +26,7 @@ def _find_step_by_ulid(calculation: "Calculation", step_ulid: str):
     """Find a step in calculation by its ULID."""
     from quantumvitas.calculation.step import Step
     for step in calculation.steps:
-        if step.meta.id == step_ulid:
+        if step.meta.ulid == step_ulid:
             return step
     return None
 
@@ -94,9 +94,9 @@ def w90_run_handler(
             # Find w90_preproc step or any step with .amn, .mmn, .eig files
             inputs = {}
             for prev_step in calculation.steps:
-                if prev_step.meta.id == step_ulid:
+                if prev_step.meta.ulid == step_ulid:
                     continue
-                prev_dir = calculation.raw_dir / prev_step.meta.id
+                prev_dir = calculation.raw_dir / prev_step.meta.ulid
                 if not prev_dir.exists():
                     continue
 

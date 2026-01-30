@@ -28,18 +28,18 @@ class StepResultSummary:
 
 @dataclass(slots=True)
 class CalculationResult:
-    calculation_id: str
+    calculation_ulid: str  # ULID (was calculation_id)
     mode: StepMode
     steps: List[StepResultSummary]
     status: StepStatus
     started_at: datetime
     finished_at: datetime
     io_dir: Optional[Path] = None  # The actual I/O directory used by the runner (source of truth)
-    run_id: Optional[str] = None  # History run ULID (for linking to project history)
+    run_ulid: Optional[str] = None  # History run ULID (for linking to project history)
 
     def to_dict(self) -> Dict[str, object]:
         result = {
-            "calculation_id": self.calculation_id,
+            "calculation_ulid": self.calculation_ulid,
             "mode": self.mode.value,
             "status": self.status.value,
             "started_at": self.started_at.isoformat(),
@@ -47,11 +47,9 @@ class CalculationResult:
             "steps": [
                 {
                     "step_ulid": step.step_ulid,
-                    "step_id": step.step_ulid,  # Backwards compat
                     "step_type_spec": step.step_type_spec,
-                    "step_type": step.step_type_spec,  # Backwards compat
                     "status": step.status.value,
-                    "working_dir": str(step.working_dir),  # Keep for backward compat in step summaries
+                    "working_dir": str(step.working_dir),
                     "input_file": str(step.input_file),
                     "output_file": str(step.output_file),
                     "reference_file": str(step.reference_file) if step.reference_file else None,
@@ -65,8 +63,8 @@ class CalculationResult:
         # Include io_dir if available (runner is source of truth)
         if self.io_dir:
             result["io_dir"] = str(self.io_dir.resolve())
-        # Include run_id for history reference
-        if self.run_id:
-            result["run_id"] = self.run_id
+        # Include run_ulid for history reference
+        if self.run_ulid:
+            result["run_ulid"] = self.run_ulid
         return result
 

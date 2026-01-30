@@ -25,7 +25,7 @@ def _find_step_by_ulid(calculation: "Calculation", step_ulid: str):
     """Find a step in calculation by its ULID."""
     from quantumvitas.calculation.step import Step
     for step in calculation.steps:
-        if step.meta.id == step_ulid:
+        if step.meta.ulid == step_ulid:
             return step
     return None
 
@@ -177,7 +177,7 @@ def cp2k_step_handler(
         "output_file": str(result.output_file) if result.output_file else None,
     }
 
-    if result.success and is_relax_step_type(step_spec.step_type):
+    if result.success and is_relax_step_type(step_spec.step_type_spec):
         if result.trajectory_file:
             # Include cell_path in extra dict
             extra = {}
@@ -187,7 +187,7 @@ def cp2k_step_handler(
                 artifact_type="cp2k_trajectory",
                 artifact_path=result.trajectory_file,
                 step_ulid=step_ulid,
-                step_type=str(step_spec.step_type),
+                step_type_spec=str(step_spec.step_type_spec),
                 extra=extra,
             ).to_dict()
 
@@ -220,7 +220,7 @@ def _resolve_cp2k_restart_artifacts(step_spec, calculation, step_ulid: str) -> O
     steps = calculation.steps
     current_idx = None
     for i, step in enumerate(steps):
-        if step.meta.id == step_ulid:
+        if step.meta.ulid == step_ulid:
             current_idx = i
             break
     if current_idx is None or current_idx == 0:
@@ -228,7 +228,7 @@ def _resolve_cp2k_restart_artifacts(step_spec, calculation, step_ulid: str) -> O
     predecessor = steps[current_idx - 1]
 
     # CRITICAL: Use Runtime SSOT
-    predecessor_dir = calculation.io.raw_dir / predecessor.meta.id
+    predecessor_dir = calculation.io.raw_dir / predecessor.meta.ulid
 
     result = {}
 

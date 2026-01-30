@@ -12,8 +12,8 @@ from quantumvitas.api.types.analysis import AnalysisRefDTO, AnalysisSummaryDTO
 def test_analysis_ref_dto_required_fields():
     """AnalysisRefDTO has all required fields."""
     dto = AnalysisRefDTO(
-        calc_id="01HX7YPVK8DQNZPMJ4GHAB1234",
-        step_id="01HX7YPVK8DQNZPMJ4GHAB9012",
+        calc_ulid="01HX7YPVK8DQNZPMJ4GHAB1234",
+        step_ulid="01HX7YPVK8DQNZPMJ4GHAB9012",
         property_name="band_structure",
         artifact_path=".qmatsuite/artifacts/01HX.../bands.hdf5",
         artifact_format="hdf5",
@@ -26,7 +26,7 @@ def test_analysis_ref_dto_required_fields():
         }
     )
     d = dto.to_dict()
-    assert d["calc_id"] == "01HX7YPVK8DQNZPMJ4GHAB1234"
+    assert d["calc_ulid"] == "01HX7YPVK8DQNZPMJ4GHAB1234"
     assert d["property_name"] == "band_structure"
     assert d["artifact_format"] == "hdf5"
     assert d["summary"]["n_bands"] == 120
@@ -35,8 +35,8 @@ def test_analysis_ref_dto_required_fields():
 def test_analysis_ref_dto_with_preview():
     """AnalysisRefDTO can include preview."""
     dto = AnalysisRefDTO(
-        calc_id="01HX7YPVK8DQNZPMJ4GHAB1234",
-        step_id="01HX7YPVK8DQNZPMJ4GHAB9012",
+        calc_ulid="01HX7YPVK8DQNZPMJ4GHAB1234",
+        step_ulid="01HX7YPVK8DQNZPMJ4GHAB9012",
         property_name="band_structure",
         artifact_path=".qmatsuite/artifacts/01HX.../bands.hdf5",
         artifact_format="hdf5",
@@ -55,19 +55,19 @@ def test_analysis_ref_dto_with_preview():
 def test_analysis_summary_dto_required_fields():
     """AnalysisSummaryDTO has required identity fields."""
     dto = AnalysisSummaryDTO(
-        calc_id="01HX7YPVK8DQNZPMJ4GHAB1234",
-        step_id="01HX7YPVK8DQNZPMJ4GHAB9012"
+        calc_ulid="01HX7YPVK8DQNZPMJ4GHAB1234",
+        step_ulid="01HX7YPVK8DQNZPMJ4GHAB9012"
     )
     d = dto.to_dict()
-    assert d["calc_id"] == "01HX7YPVK8DQNZPMJ4GHAB1234"
-    assert d["step_id"] == "01HX7YPVK8DQNZPMJ4GHAB9012"
+    assert d["calc_ulid"] == "01HX7YPVK8DQNZPMJ4GHAB1234"
+    assert d["step_ulid"] == "01HX7YPVK8DQNZPMJ4GHAB9012"
 
 
 def test_analysis_summary_dto_with_results():
     """AnalysisSummaryDTO can include key results."""
     dto = AnalysisSummaryDTO(
-        calc_id="01HX7YPVK8DQNZPMJ4GHAB1234",
-        step_id="01HX7YPVK8DQNZPMJ4GHAB9012",
+        calc_ulid="01HX7YPVK8DQNZPMJ4GHAB1234",
+        step_ulid="01HX7YPVK8DQNZPMJ4GHAB9012",
         converged=True,
         total_energy_ev=-310.456789,
         fermi_energy_ev=6.234,

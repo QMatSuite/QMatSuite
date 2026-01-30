@@ -1,11 +1,11 @@
 meta:
-  id: 01KBSIBANDSBANDSTEP00001
+  ulid: 01KBSIBANDSBANDSTEP00001
   name: bands
   slug: bands
   path: calculations/si-bands/steps/bands.step.yaml
   kind: step
 structure: si
-step_type: bands_pw
+step_type_spec: bands_pw
 parent_calculation_id: 01KBSIBANDSCALCULATION00001
 parameters:
   CONTROL:

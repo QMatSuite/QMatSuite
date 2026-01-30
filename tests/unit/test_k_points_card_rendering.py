@@ -27,8 +27,7 @@ def test_k_points_card_renders_as_card_not_namelist(sample_structure, tmp_path):
     from quantumvitas.core.models import ResourceMeta
     # Create a step spec with K_POINTS in cards
     spec = StructureStepSpec(
-        meta=ResourceMeta(
-            id="test-step",
+        meta=ResourceMeta(ulid="test-step",
             name="test",
             slug="test-scf",
             path="test.step.yaml",
@@ -89,8 +88,7 @@ def test_k_points_automatic_format(sample_structure, tmp_path):
     """Test that K_POINTS with automatic option renders correctly."""
     from quantumvitas.core.models import ResourceMeta
     spec = StructureStepSpec(
-        meta=ResourceMeta(
-            id="test-step",
+        meta=ResourceMeta(ulid="test-step",
             name="test",
             slug="test-scf",
             path="test.step.yaml",
@@ -134,8 +132,7 @@ def test_k_points_crystal_format(sample_structure, tmp_path):
     """Test that K_POINTS with crystal_b format renders correctly."""
     from quantumvitas.core.models import ResourceMeta
     spec = StructureStepSpec(
-        meta=ResourceMeta(
-            id="test-step",
+        meta=ResourceMeta(ulid="test-step",
             name="test",
             slug="test-bands",
             path="test.step.yaml",
@@ -183,8 +180,7 @@ def test_no_k_points_in_parameters_rendered(sample_structure, tmp_path):
     from quantumvitas.core.models import ResourceMeta
     # Even if someone mistakenly puts k_points in parameters, it should not render as &K_POINTS
     spec = StructureStepSpec(
-        meta=ResourceMeta(
-            id="test-step",
+        meta=ResourceMeta(ulid="test-step",
             name="test",
             slug="test-scf",
             path="test.step.yaml",

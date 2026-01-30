@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE2KZ5NNXS6E1JP6MPYC4BKH
+    ulid: 01KE2KZ5NNXS6E1JP6MPYC4BKH
     name: 12_NMR_gipaw
     slug: 12_nmr_gipaw
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE2KZ5P6KX6SRQSFCFV9SVJ0
+    ulid: 01KE2KZ5P6KX6SRQSFCFV9SVJ0
     name: benzene.1_scf
     slug: benzene-1_scf
     path: structures/benzene-1_scf.json
@@ -200,7 +200,7 @@ structures:
       - 0.0
 calculations:
 - meta:
-    id: 01KE2KZ5NSEAQV7WXEY227D94W
+    ulid: 01KE2KZ5NSEAQV7WXEY227D94W
     name: Nmr Gipaw  2 Benzene
     slug: nmr-gipaw-2-benzene
     path: calculations/nmr-gipaw-2-benzene
@@ -280,7 +280,7 @@ pseudo:
   - C.pbe-tm-gipaw.UPF
   - H.pbe-tm-gipaw.UPF
 meta:
-  id: 12_NMR_gipaw
+  ulid: 12_NMR_gipaw
   title: 12 Nmr Gipaw  2 Benzene
   subtitle: "SCF \u2192 GIPAW"
   tags:

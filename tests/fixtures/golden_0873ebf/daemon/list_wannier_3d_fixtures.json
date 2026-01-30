@@ -4,61 +4,61 @@
   "response": {
     "fixtures": [
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "label": "example01/gaas_00001.xsf",
         "kind": "xsf",
         "path": "<NORMALIZED_PATH>"
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "label": "example01/gaas_00002.xsf",
         "kind": "xsf",
         "path": "<NORMALIZED_PATH>"
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "label": "example01/gaas_00003.xsf",
         "kind": "xsf",
         "path": "<NORMALIZED_PATH>"
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "label": "example01/gaas_00004.xsf",
         "kind": "xsf",
         "path": "<NORMALIZED_PATH>"
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "label": "example05/diamond_00001.xsf",
         "kind": "xsf",
         "path": "<NORMALIZED_PATH>"
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "label": "example05/diamond_00002.xsf",
         "kind": "xsf",
         "path": "<NORMALIZED_PATH>"
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "label": "example05/diamond_00003.xsf",
         "kind": "xsf",
         "path": "<NORMALIZED_PATH>"
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "label": "example05/diamond_00004.xsf",
         "kind": "xsf",
         "path": "<NORMALIZED_PATH>"
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "label": "example02/lead.bxsf",
         "kind": "bxsf",
         "path": "<NORMALIZED_PATH>"
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "label": "example04/copper.bxsf",
         "kind": "bxsf",
         "path": "<NORMALIZED_PATH>"

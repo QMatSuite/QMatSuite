@@ -187,7 +187,7 @@ def test_cli_show_command_executes_against_references(
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
         index = build_resource_index(project_root)
-        step_id = last_step.get("step_id") or last_step.get("id")
+        step_id = last_step.get("step_ulid") or last_step.get("ulid")
         calculation_slug = calculation_dir.name
         step_resolved = resolve_step(project_root, calculation_slug, step_id, config=config, index=index)
         step_spec_path = step_resolved.absolute_path

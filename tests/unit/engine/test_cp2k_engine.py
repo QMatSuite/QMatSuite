@@ -168,9 +168,9 @@ class TestPreflightChecker:
         
         # Create mock step
         mock_step = MagicMock()
-        mock_step.meta.id = "test123"
+        mock_step.meta.ulid = "test123"
         mock_step.meta = MagicMock()
-        mock_step.meta.id = "test123"
+        mock_step.meta.ulid = "test123"
         
         # Create requirement
         req = PreflightRequirement(
@@ -194,9 +194,9 @@ class TestPreflightChecker:
         mock_calc.steps = []
         
         mock_step = MagicMock()
-        mock_step.meta.id = "test123"
+        mock_step.meta.ulid = "test123"
         mock_step.meta = MagicMock()
-        mock_step.meta.id = "test123"
+        mock_step.meta.ulid = "test123"
         
         req = PreflightRequirement(
             artifact_type="wfn",
@@ -228,8 +228,7 @@ class TestCp2kInputGeneration:
         
         # Create step spec for relax
         step_spec = StructureStepSpec(
-            meta=ResourceMeta(
-                id="test123",
+            meta=ResourceMeta(ulid="test123",
                 name="test",
                 slug="test",
                 kind="step",
@@ -269,8 +268,7 @@ class TestCp2kInputGeneration:
         structure = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
         
         step_spec = StructureStepSpec(
-            meta=ResourceMeta(
-                id="test123",
+            meta=ResourceMeta(ulid="test123",
                 name="test",
                 slug="test",
                 kind="step",
@@ -299,8 +297,7 @@ class TestCp2kInputGeneration:
         structure = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
         
         step_spec = StructureStepSpec(
-            meta=ResourceMeta(
-                id="test123",
+            meta=ResourceMeta(ulid="test123",
                 name="test",
                 slug="test",
                 kind="step",

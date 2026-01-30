@@ -64,7 +64,7 @@ class TestPrecisionScfNscf:
         from quantumvitas.io.structure_io import STRUCTURE_META_KEY
         struct_dict = structure.as_dict()
         struct_dict[STRUCTURE_META_KEY] = {
-            "id": "test_structure",
+            "ulid": "test_structure",
             "name": "test_structure",
             "slug": "test_structure",
         }
@@ -105,14 +105,14 @@ class TestPrecisionScfNscf:
         # Create scf step
         scf_step = temp_calc_dir / "steps" / "1_scf.step.yaml"
         scf_step.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {},
         }))
         
         # Create nscf step
         nscf_step = temp_calc_dir / "steps" / "2_nscf.step.yaml"
         nscf_step.write_text(yaml.safe_dump({
-            "step_type": "nscf",
+            "step_type_gen": "nscf",
             "parameters": {},
         }))
         
@@ -211,7 +211,7 @@ class TestPrecisionBandsPw:
             ],
         }
         bands_step.write_text(yaml.safe_dump({
-            "step_type": "bands_pw",
+            "step_type_gen": "bands_pw",
             "parameters": {},
             "cards": {
                 "K_POINTS": original_kpoints,
@@ -287,7 +287,7 @@ class TestPrecisionCustomOnMismatch:
         from quantumvitas.io.structure_io import STRUCTURE_META_KEY
         struct_dict = structure.as_dict()
         struct_dict[STRUCTURE_META_KEY] = {
-            "id": "test_structure",
+            "ulid": "test_structure",
             "name": "test_structure",
             "slug": "test_structure",
         }
@@ -310,7 +310,7 @@ class TestPrecisionCustomOnMismatch:
         # Create scf step
         scf_step = temp_calc_dir / "steps" / "scf.step.yaml"
         scf_step.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {},
         }))
         
@@ -380,8 +380,7 @@ class TestDaemonHandlerRegression:
         
         # Create a mock ResolvedResource with absolute_path
         # ResourceMeta needs path parameter
-        meta = ResourceMeta(
-            id="test_calc",
+        meta = ResourceMeta(ulid="test_calc",
             name="Test Calculation",
             slug="test-calc",
             kind="calculation",  # type: ignore

@@ -28,7 +28,7 @@ def temp_project():
         structure_file = structures_dir / "si.json"
         structure_file.write_text("""{
   "__qv_meta__": {
-    "id": "01TESTSTRUCTUREID123456789",
+    "ulid": "01TESTSTRUCTUREID123456789",
     "name": "Si",
     "slug": "si",
     "path": "structures/si.json",
@@ -48,19 +48,19 @@ def temp_project():
         # Create project.qv.yml with structure and calculation entries (ID-only)
         (project_root / "project.qv.yml").write_text("""name: Test Project
 structures:
-  - id: 01TESTSTRUCTUREID123456789
+  - ulid: 01TESTSTRUCTUREID123456789
     file: structures/si.json
     meta:
-      id: 01TESTSTRUCTUREID123456789
+      ulid: 01TESTSTRUCTUREID123456789
       name: Si
       slug: si
       path: structures/si.json
       kind: structure
 calculations:
-  - id: test-calculation-ulid
+  - calculation_id: test-calculation-ulid
     path: calculations/test-calculation
     meta:
-      id: test-calculation-ulid
+      ulid: test-calculation-ulid
       name: Test Calculation
       slug: test-calculation
       path: calculations/test-calculation
@@ -74,12 +74,12 @@ calculations:
         calculation_dir.mkdir()
         calculation_yaml = calculation_dir / "calculation.yaml"
         calculation_yaml.write_text("""meta:
-  id: test-calculation-ulid
+  ulid: test-calculation-ulid
   name: Test Calculation
   slug: test-calculation
   path: calculations/test-calculation
   kind: calculation
-structure_id: 01TESTSTRUCTUREID123456789
+structure_ulid: 01TESTSTRUCTUREID123456789
 structure_name: Si
 steps: []
 """)

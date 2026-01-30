@@ -42,7 +42,7 @@ def lammps_project(tmp_path: Path):
     calc_result = QVService.init_calculation(
         project_root=project_root,
         name="test_calc",
-        structure_selector=struct_result.meta.id,
+        structure_selector=struct_result.meta.ulid,
     )
     
     # Configure for LAMMPS
@@ -53,7 +53,7 @@ def lammps_project(tmp_path: Path):
     
     return {
         "project_root": project_root,
-        "calc_id": calc_result.meta.id,
+        "calc_id": calc_result.meta.ulid,
         "calc_dir": calc_result.absolute_path,
     }
 
@@ -76,7 +76,7 @@ def test_step_slug_uniqueness_and_consistency(lammps_project):
     s2 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
 
     # === Assertion 1: IDs are unique ===
-    assert s1.step_id != s2.step_id, f"ULID collision: {s1.step_id}"
+    assert s1.step_ulid != s2.step_ulid, f"ULID collision: {s1.step_ulid}"
 
     # === Assertion 2: Slugs are unique ===
     assert s1.meta.slug != s2.meta.slug, (
@@ -108,8 +108,8 @@ def test_step_slug_uniqueness_and_consistency(lammps_project):
     )
 
     # YAML meta.id must match returned object step_id
-    assert data_1["meta"]["id"] == s1.step_id
-    assert data_2["meta"]["id"] == s2.step_id
+    assert data_1["meta"]["ulid"] == s1.step_ulid
+    assert data_2["meta"]["ulid"] == s2.step_ulid
 
 
 def test_require_step_by_ulid_returns_correct_slug(lammps_project):
@@ -127,13 +127,13 @@ def test_require_step_by_ulid_returns_correct_slug(lammps_project):
     s2 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
 
     # Look up s2 by its ULID
-    s2_by_id = require_step(project_root, calc_id, s2.step_id)
+    s2_by_id = require_step(project_root, calc_id, s2.step_ulid)
 
     # Slug must match YAML, not be re-computed as "md"
     assert s2_by_id.meta.slug == "md-1", (
         f"require_step(ULID) returned wrong slug: expected 'md-1', got '{s2_by_id.meta.slug}'"
     )
-    assert s2_by_id.meta.id == s2.step_id
+    assert s2_by_id.meta.ulid == s2.step_ulid
 
 
 def test_require_step_by_slug_returns_correct_step(lammps_project):
@@ -154,11 +154,11 @@ def test_require_step_by_slug_returns_correct_step(lammps_project):
     s2_by_slug = require_step(project_root, calc_id, "md-1")
 
     # Must return correct steps
-    assert s1_by_slug.meta.id == s1.step_id, (
-        f"Slug 'md' returned wrong step: expected {s1.step_id}, got {s1_by_slug.meta.id}"
+    assert s1_by_slug.meta.ulid == s1.step_ulid, (
+        f"Slug 'md' returned wrong step: expected {s1.step_ulid}, got {s1_by_slug.meta.ulid}"
     )
-    assert s2_by_slug.meta.id == s2.step_id, (
-        f"Slug 'md-1' returned wrong step: expected {s2.step_id}, got {s2_by_slug.meta.id}"
+    assert s2_by_slug.meta.ulid == s2.step_ulid, (
+        f"Slug 'md-1' returned wrong step: expected {s2.step_ulid}, got {s2_by_slug.meta.ulid}"
     )
 
 
@@ -183,7 +183,7 @@ def test_resource_index_matches_yaml(lammps_project):
     for step_file in steps_dir.glob("*.step.yaml"):
         with open(step_file) as f:
             data = yaml.safe_load(f)
-        yaml_id = data["meta"]["id"]
+        yaml_id = data["meta"]["ulid"]
         yaml_slug = data["meta"]["slug"]
 
         # Index should have this entry
@@ -208,7 +208,7 @@ def test_three_steps_same_type(lammps_project):
     steps = [svc.calculation.add_step(calc_selector=calc_id, step_type="md") for _ in range(3)]
 
     # Verify IDs are unique
-    ids = [s.step_id for s in steps]
+    ids = [s.step_ulid for s in steps]
     assert len(ids) == len(set(ids)), f"ID collision detected: {ids}"
 
     # Verify slugs are unique and follow pattern

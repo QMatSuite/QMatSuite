@@ -51,7 +51,7 @@ class JournalEntry:
     
     Attributes:
         id: ULID for this entry (unique identifier)
-        target_ulid: ULID of the target document (from meta.id)
+        target_ulid: ULID of the target document (from meta.ulid)
         doc_type: Type of document ("step", "calc", "project")
         timestamp: When the change occurred (UTC)
         before: Deep copy snapshot before change
@@ -240,7 +240,7 @@ class Journal:
                 
                 try:
                     data = json.loads(line)
-                    if data.get("id") == entry_id:
+                    if data.get("ulid") == entry_id:
                         return JournalEntry.from_dict(data)
                 except (json.JSONDecodeError, TypeError, KeyError):
                     continue
@@ -326,11 +326,11 @@ def extract_target_ulid(data: dict) -> str:
     """
     Extract target ULID from document data.
     
-    Looks for meta.id, falls back to generating a new ULID.
+    Looks for meta.ulid, falls back to generating a new ULID.
     """
     meta = data.get("meta", {})
     if isinstance(meta, dict):
-        id_val = meta.get("id")
+        id_val = meta.get("ulid")
         if id_val and isinstance(id_val, str):
             return id_val
     

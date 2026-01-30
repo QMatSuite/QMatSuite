@@ -13,7 +13,7 @@ class TestDaemonQEUIParameters:
     def test_list_qe_ui_parameters_pw_scf(self):
         """Test fetching UI parameters for pw/scf."""
         daemon = QVDaemon()
-        payload = {"module": "pw", "step_type": "scf"}
+        payload = {"module": "pw", "step_type_gen": "scf"}
         
         result = daemon._handle_list_qe_ui_parameters(payload)
         
@@ -32,7 +32,7 @@ class TestDaemonQEUIParameters:
     def test_list_qe_ui_parameters_pw_nscf(self):
         """Test fetching UI parameters for pw/nscf."""
         daemon = QVDaemon()
-        payload = {"module": "pw", "step_type": "nscf"}
+        payload = {"module": "pw", "step_type_gen": "nscf"}
         
         result = daemon._handle_list_qe_ui_parameters(payload)
         
@@ -43,7 +43,7 @@ class TestDaemonQEUIParameters:
     def test_list_qe_ui_parameters_bands_bands(self):
         """Test fetching UI parameters for bands/bands."""
         daemon = QVDaemon()
-        payload = {"module": "bands", "step_type": "bands"}
+        payload = {"module": "bands", "step_type_gen": "bands"}
         
         result = daemon._handle_list_qe_ui_parameters(payload)
         
@@ -58,7 +58,7 @@ class TestDaemonQEUIParameters:
     def test_list_qe_ui_parameters_nonexistent_module(self):
         """Test that nonexistent module raises error."""
         daemon = QVDaemon()
-        payload = {"module": "nonexistent", "step_type": "scf"}
+        payload = {"module": "nonexistent", "step_type_gen": "scf"}
         
         with pytest.raises(ValueError, match="Unknown module"):
             daemon._handle_list_qe_ui_parameters(payload)
@@ -66,7 +66,7 @@ class TestDaemonQEUIParameters:
     def test_list_qe_ui_parameters_missing_module(self):
         """Test that missing module raises error."""
         daemon = QVDaemon()
-        payload = {"step_type": "scf"}
+        payload = {"step_type_gen": "scf"}
         
         with pytest.raises(ValueError, match="'module' is required"):
             daemon._handle_list_qe_ui_parameters(payload)
@@ -84,7 +84,7 @@ class TestDaemonQEUIParameters:
         from quantumvitas.data import get_module_param_sections
         
         daemon = QVDaemon()
-        payload = {"module": "pw", "step_type": "scf"}
+        payload = {"module": "pw", "step_type_gen": "scf"}
         
         result = daemon._handle_list_qe_ui_parameters(payload)
         

@@ -124,7 +124,7 @@ class TestUIWritebackContract:
             project_root=project_root,
             name="Test Calc",
         )
-        calc_id = calc_result.meta.id
+        calc_id = calc_result.meta.ulid
 
         # Create test pseudo file
         pseudo_file = project_root / "pseudo" / "Si.UPF"
@@ -187,7 +187,7 @@ class TestUIWritebackContract:
             project_root=project_root,
             name="Test Calc",
         )
-        calc_id = calc_result.meta.id
+        calc_id = calc_result.meta.ulid
 
         # Resolve calculation and update species_map directly via kernel
         calc_resolved = require_calculation(project_root, calc_id)

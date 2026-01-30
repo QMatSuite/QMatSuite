@@ -34,7 +34,7 @@ class GetStepDetailRecipe(Recipe):
     def __init__(self, tmp_path: Path):
         super().__init__(tmp_path)
         self.calc_id: str | None = None
-        self.step_id: str | None = None
+        self.step_ulid: str | None = None
 
     def setup(self) -> bool:
         """Create project with structure, calculation, and step."""
@@ -102,23 +102,13 @@ class GetStepDetailRecipe(Recipe):
                 if steps_list:
                     last_step = steps_list[-1]
                     if isinstance(last_step, dict):
-                        self.step_id = last_step.get("ulid") or last_step.get("step_ulid") or last_step.get("id") or last_step.get("step_id")
-                    elif hasattr(last_step, 'step_ulid'):
-                        self.step_id = last_step.step_ulid
-                    elif hasattr(last_step, 'ulid'):
-                        self.step_id = last_step.ulid
-                    elif hasattr(last_step, 'id'):
-                        self.step_id = last_step.id
-                    elif hasattr(last_step, 'step_id'):
-                        self.step_id = last_step.step_id
+                        self.step_ulid = last_step["step_ulid"]  # Canonical field only
+                    else:
+                        self.step_ulid = last_step.step_ulid  # Canonical attribute only
             elif isinstance(step_result, dict):
-                self.step_id = step_result.get("step_ulid") or step_result.get("ulid") or step_result.get("step_id")
-            elif hasattr(step_result, 'step_ulid'):
-                self.step_id = step_result.step_ulid
-            elif hasattr(step_result, 'ulid'):
-                self.step_id = step_result.ulid
-            elif hasattr(step_result, 'step_id'):
-                self.step_id = step_result.step_id
+                self.step_ulid = step_result["step_ulid"]  # Canonical field only
+            else:
+                self.step_ulid = step_result.step_ulid  # Canonical attribute only
         else:
             svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
             step_dto = svc.calculation.add_step(
@@ -126,7 +116,7 @@ class GetStepDetailRecipe(Recipe):
                 step_type="qe_scf",
                 name="scf",
             )
-            self.step_id = step_dto.step_ulid
+            self.step_ulid = step_dto.step_ulid
 
         return True
 
@@ -134,7 +124,7 @@ class GetStepDetailRecipe(Recipe):
         return {
             "project_root": str(self.project_root),
             "calculation": self.calc_id,
-            "step": self.step_id,
+            "step": self.step_ulid,
         }
 
     def validate_response(self, response_data: dict[str, Any]) -> tuple[bool, str | None]:

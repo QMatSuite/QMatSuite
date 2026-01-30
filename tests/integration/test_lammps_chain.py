@@ -53,7 +53,7 @@ def chain_project(tmp_path: Path):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC")
-    structure_id = struct_result.meta.id
+    structure_id = struct_result.meta.ulid
     
     # Copy potential file if available
     potential_src = Path(__file__).parent.parent / "data" / "lammps" / "chain_workflow" / "potentials" / "Cu_u3.eam"
@@ -76,7 +76,7 @@ def chain_project(tmp_path: Path):
         name="chain_workflow",
         structure_selector=structure_id,
     )
-    calc_id = calc_resolved.meta.id
+    calc_id = calc_resolved.meta.ulid
     calc_dir = calc_resolved.absolute_path
     calc_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_path, project_root=project_root)
@@ -102,7 +102,7 @@ def chain_project(tmp_path: Path):
         calc_selector=calc_id,
         step_type="relax",
     )
-    relax_step_id = relax_step.step_id
+    relax_step_id = relax_step.step_ulid
 
     # Note: LAMMPS parameters go inside "parameters" dict
     svc.calculation.update_step_params(
@@ -127,7 +127,7 @@ def chain_project(tmp_path: Path):
         calc_selector=calc_id,
         step_type="md",
     )
-    md_step_id = md_step.step_id
+    md_step_id = md_step.step_ulid
 
     svc.calculation.update_step_params(
         calc_selector=calc_id,
@@ -153,7 +153,7 @@ def chain_project(tmp_path: Path):
         calc_selector=calc_id,
         step_type="md",
     )
-    continue_md_id = continue_md.step_id
+    continue_md_id = continue_md.step_ulid
     
     # ========== ULID UNIQUENESS ASSERTIONS (detect Ubuntu CI root cause) ==========
     # These assertions fail-fast if ULID collision occurs or if restart_from is misconfigured
@@ -245,7 +245,7 @@ def test_chain_workflow(chain_project):
         if result.steps:
             print(f"[LAMMPS-DEBUG] test_chain_workflow: last step message: {result.steps[-1].message}")
             for i, step_summary in enumerate(result.steps):
-                step_ulid = step_summary.step_id if hasattr(step_summary, 'step_id') else f"step_{i}"
+                step_ulid = step_summary.step_ulid if hasattr(step_summary, 'step_id') else f"step_{i}"
                 step_dir = calculation.raw_dir / step_ulid
                 print(f"[LAMMPS-DEBUG] test_chain_workflow: step {i} (ulid={step_ulid}):")
                 print(f"  status={step_summary.status if hasattr(step_summary, 'status') else 'unknown'}")
@@ -269,8 +269,8 @@ def test_chain_workflow(chain_project):
     assert len(result.steps) == 3, "Should have 3 steps"
     
     # Verify restart artifacts exist
-    relax_dir = calculation.raw_dir / calculation.steps[0].meta.id
-    md_dir = calculation.raw_dir / calculation.steps[1].meta.id
+    relax_dir = calculation.raw_dir / calculation.steps[0].meta.ulid
+    md_dir = calculation.raw_dir / calculation.steps[1].meta.ulid
     
     if not (relax_dir / "final.data").exists():
         print(f"[LAMMPS-DEBUG] test_chain_workflow: final.data missing in {relax_dir}")

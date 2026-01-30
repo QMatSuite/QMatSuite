@@ -214,7 +214,7 @@ class TestDigestRobustness:
         )
         
         # Should not crash
-        assert digest.step_id == "test-empty"
+        assert digest.step_ulid == "test-empty"
         assert digest.output_exists is True
     
     def test_malformed_output_file(self, tmp_path: Path):
@@ -229,7 +229,7 @@ class TestDigestRobustness:
         )
         
         # Should not crash, but mark values as unknown
-        assert digest.step_id == "test-malformed"
+        assert digest.step_ulid == "test-malformed"
         # converged should be unknown (no JOB DONE marker)
         if digest.converged:
             assert digest.converged.status in ("unknown", "ok")

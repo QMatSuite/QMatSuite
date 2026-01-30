@@ -87,7 +87,7 @@ class StructureStepSpec:
             try:
                 resolved_resource = resolve_structure_selector(structure)
                 # Extract the ID from the resolved resource
-                structure_id = resolved_resource.meta.id if hasattr(resolved_resource, 'meta') else str(resolved_resource)
+                structure_id = resolved_resource.meta.ulid if hasattr(resolved_resource, 'meta') else str(resolved_resource)
                 # Drop the legacy selector after resolution
                 structure = None
             except Exception:
@@ -124,18 +124,16 @@ class StructureStepSpec:
         kpath_metadata = data.get("kpath_metadata")
 
         meta_dict = data.get("meta")
-        # HARD ERROR if old meta.id key exists
+        # HARD ERROR if old meta.ulid key exists
         if meta_dict and "id" in meta_dict and "ulid" not in meta_dict:
-            raise ValueError("Legacy 'meta.id' key found in step.yaml. Run migration script.")
+            raise ValueError("Legacy 'meta.ulid' key found in step.yaml. Run migration script.")
         default_name = data.get("name") or str(step_type_spec)
         default_path = (
             ensure_relative_path(source_path.name, base=source_path.parent)
             if source_path
             else (meta_dict or {}).get("path") or f"{default_name}.step.yaml"
         )
-        # Update meta_dict to use ulid if present, otherwise use id (for backwards compat during migration)
-        if meta_dict and "ulid" in meta_dict:
-            meta_dict = {**meta_dict, "id": meta_dict["ulid"]}
+        # CANONICAL: meta_dict must have "ulid" key only (NO backwards compat)
         meta = ResourceMeta.from_dict(
             meta_dict,
             kind="step",
@@ -190,10 +188,8 @@ class StructureStepSpec:
         This method explicitly excludes structure_id, parent_calculation_id, and structure fields
         to enforce the DAG invariant that steps do not duplicate calculation-level references.
         """
-        # Convert meta.id to meta.ulid for step.yaml output
+        # CANONICAL: ResourceMeta.to_dict() outputs "ulid" only
         meta_dict = self.meta.to_dict()
-        if "id" in meta_dict:
-            meta_dict = {**meta_dict, "ulid": meta_dict.pop("id")}
         data: Dict[str, Any] = {
             "meta": meta_dict,
             "step_type_spec": self.step_type_spec,
@@ -363,7 +359,7 @@ def _inject_calculation_prefix_outdir(
     R2-R4: Inject calculation-level prefix/outdir into QE input if schema supports it.
     
     This implements the calculation-level prefix/outdir propagation rule:
-    - R1: Canonical prefix = stable id-derived prefix (from calculation.meta.id ULID)
+    - R1: Canonical prefix = stable id-derived prefix (from calculation.meta.ulid ULID)
     - R2: Only inject if the step's QE module schema defines prefix/outdir parameters
     - R3: Step-level prefix/outdir in spec_params are ignored (overridden by calculation-level)
     - R4: Outdir defaults to "./outdir" if not provided
@@ -730,7 +726,7 @@ def materialize_step_spec(
                 config = load_project_config(proj_root)
                 def resolver(selector: str) -> str:
                     resolved = resolve_structure(proj_root, selector, config)
-                    return resolved.meta.id
+                    return resolved.meta.ulid
                 return resolver
             except ProjectConfigError:
                 # project_root is not a project directory - return None (no resolver)
@@ -1016,7 +1012,7 @@ def materialize_step_spec(
                         resolver = make_structure_selector_resolver(project_root_path, config=config)
                         calc_model = load_calculation(calc_yaml_path, project_root=project_root_path, resolve_structure_selector=resolver)
                         # Stable prefix derived from calc ULID; slug changes do not affect it
-                        calc_prefix = stable_short_calc_prefix(calc_model.meta.id) if calc_model.meta and calc_model.meta.id else None
+                        calc_prefix = stable_short_calc_prefix(calc_model.meta.ulid) if calc_model.meta and calc_model.meta.ulid else None
                 except Exception:
                     pass
             
@@ -1194,7 +1190,7 @@ def materialize_step_spec(
                 calculation_species_map = calc_model.species_map
                 # R1: Canonical prefix = stable id-derived prefix (from calc ULID)
                 # Stable prefix derived from calc ULID; slug changes do not affect it
-                calculation_prefix = stable_short_calc_prefix(calc_model.meta.id) if calc_model.meta and calc_model.meta.id else None
+                calculation_prefix = stable_short_calc_prefix(calc_model.meta.ulid) if calc_model.meta and calc_model.meta.ulid else None
                 calculation_context["calculation_path"] = str(calc_yaml_path)
                 calculation_context["species_map"] = calc_model.species_map
                 calculation_context["prefix"] = calculation_prefix
@@ -1456,7 +1452,7 @@ def _resolve_structure_for_spec(
                         try:
                             struct_data = json.loads(struct_file.read_text())
                             struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
-                            if struct_meta.get("id") == spec.structure_id:
+                            if struct_meta.get("ulid") == spec.structure_id:
                                 return read_structure(struct_file)
                         except Exception:
                             continue
@@ -1524,7 +1520,7 @@ def _resolve_structure_for_spec(
                         if project:
                             try:
                                 struct_ref = project.get_structure(wf_model.structure)
-                                structure_to_resolve = struct_ref.meta.id
+                                structure_to_resolve = struct_ref.meta.ulid
                             except Exception:
                                 structure_to_resolve = wf_model.structure
                     
@@ -1546,7 +1542,7 @@ def _resolve_structure_for_spec(
                                 try:
                                     struct_data = json.loads(struct_file.read_text())
                                     struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
-                                    if struct_meta.get("id") == structure_to_resolve:
+                                    if struct_meta.get("ulid") == structure_to_resolve:
                                         return read_structure(struct_file)
                                 except Exception:
                                     continue
@@ -1604,7 +1600,7 @@ def _resolve_structure_for_spec(
                                     try:
                                         struct_data = json.loads(struct_file.read_text())
                                         struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
-                                        if struct_meta.get("id") == wf_model.structure_id:
+                                        if struct_meta.get("ulid") == wf_model.structure_id:
                                             return read_structure(struct_file)
                                     except Exception:
                                         continue
@@ -1629,7 +1625,7 @@ def _resolve_structure_for_spec(
                 # Try to find structure by ID in project's structures dict
                 struct_ref = None
                 for ref in project.structures.values():
-                    if ref.meta.id == spec.structure_id:
+                    if ref.meta.ulid == spec.structure_id:
                         struct_ref = ref
                         break
                 
@@ -1661,7 +1657,7 @@ def _resolve_structure_for_spec(
             if project_structures_dir.exists():
                 search_roots.append(project_structures_dir)
         
-        # Try to find structure file by scanning for files with matching meta.id
+        # Try to find structure file by scanning for files with matching meta.ulid
         for root in search_roots:
             if root.exists() and root.is_dir():
                 # Look for JSON files in this directory
@@ -1669,7 +1665,7 @@ def _resolve_structure_for_spec(
                     try:
                         struct_data = json.loads(struct_file.read_text())
                         struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
-                        if struct_meta.get("id") == spec.structure_id:
+                        if struct_meta.get("ulid") == spec.structure_id:
                             return read_structure(struct_file)
                     except Exception:
                         continue
@@ -1709,7 +1705,7 @@ def _resolve_structure_for_spec(
                         # Legacy: calculation has structure path, try to resolve it
                         try:
                             struct_ref = project.get_structure(wf_model.structure)
-                            structure_to_resolve = struct_ref.meta.id
+                            structure_to_resolve = struct_ref.meta.ulid
                         except Exception:
                             # If resolution fails, try to use structure as a path
                             structure_to_resolve = wf_model.structure
@@ -1741,7 +1737,7 @@ def _resolve_structure_for_spec(
                                         try:
                                             struct_data = json.loads(struct_file.read_text())
                                             struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
-                                            if struct_meta.get("id") == structure_to_resolve:
+                                            if struct_meta.get("ulid") == structure_to_resolve:
                                                 return read_structure(struct_file)
                                         except Exception:
                                             continue
@@ -1791,7 +1787,7 @@ def _resolve_structure_for_spec(
                                         try:
                                             struct_data = json.loads(struct_file.read_text())
                                             struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
-                                            if struct_meta.get("id") == wf_model.structure_id:
+                                            if struct_meta.get("ulid") == wf_model.structure_id:
                                                 return read_structure(struct_file)
                                         except Exception:
                                             continue
@@ -1848,7 +1844,7 @@ def _resolve_structure_for_spec(
                         try:
                             struct_data = json.loads(struct_file.read_text())
                             struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
-                            if struct_meta.get("id") == structure_id_to_match:
+                            if struct_meta.get("ulid") == structure_id_to_match:
                                 return read_structure(struct_file)
                         except Exception:
                             continue

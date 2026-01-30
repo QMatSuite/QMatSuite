@@ -175,14 +175,14 @@ class ResourceIndex:
     
     def add_resource(self, meta: ResourceMeta, absolute_path: Path) -> None:
         """Add a resource to the index."""
-        self.by_id[meta.id] = meta
-        self.by_slug[meta.slug] = meta.id
-        self.by_path[absolute_path.resolve()] = meta.id
+        self.by_id[meta.ulid] = meta
+        self.by_slug[meta.slug] = meta.ulid
+        self.by_path[absolute_path.resolve()] = meta.ulid
         name_lower = meta.name.lower()
         if name_lower not in self.by_name:
             self.by_name[name_lower] = []
-        if meta.id not in self.by_name[name_lower]:
-            self.by_name[name_lower].append(meta.id)
+        if meta.ulid not in self.by_name[name_lower]:
+            self.by_name[name_lower].append(meta.ulid)
     
     def remove_resource(self, resource_id: str) -> None:
         """
@@ -242,11 +242,11 @@ class ResourceIndex:
         Update the metadata for a resource (used for renames).
         
         Args:
-            resource_id: Resource ID (ULID) - must match new_meta.id
+            resource_id: Resource ID (ULID) - must match new_meta.ulid
             new_meta: Updated ResourceMeta
         """
-        if resource_id != new_meta.id:
-            raise ValueError(f"Resource ID mismatch: {resource_id} != {new_meta.id}")
+        if resource_id != new_meta.ulid:
+            raise ValueError(f"Resource ID mismatch: {resource_id} != {new_meta.ulid}")
         
         if resource_id not in self.by_id:
             return
@@ -454,7 +454,7 @@ class ResolvedResource:
     
     @property
     def id(self) -> str:
-        return self.meta.id
+        return self.meta.ulid
     
     @property
     def name(self) -> str:
@@ -564,12 +564,13 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
                 try:
                     data = yaml.safe_load(calculation_yaml.read_text()) or {}
                     meta_dict = data.get("meta", {})
-                    if meta_dict and meta_dict.get("id"):
+                    # CANONICAL ONLY: meta.ulid (NO fallback to id)
+                    if meta_dict and meta_dict.get("ulid"):
                         from quantumvitas.core.resources import ResourceMeta
                         default_name = meta_dict.get("name") or calculation_dir.name
                         default_path = meta_dict.get("path") or f"calculations/{calculation_dir.name}"
                         meta = ResourceMeta.from_dict(
-                            meta_dict, 
+                            meta_dict,
                             kind="calculation",
                             default_name=default_name,
                             default_path=default_path,
@@ -596,7 +597,8 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
                     try:
                         data = yaml.safe_load(step_file.read_text()) or {}
                         meta_dict = data.get("meta", {})
-                        if meta_dict and meta_dict.get("id"):
+                        # CANONICAL ONLY: meta.ulid (NO fallback to id)
+                        if meta_dict and meta_dict.get("ulid"):
                             from quantumvitas.core.resources import ResourceMeta
                             default_name = meta_dict.get("name") or step_file.stem
                             default_path = meta_dict.get("path") or f"calculations/{calculation_dir.name}/steps/{step_file.name}"
@@ -629,7 +631,8 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
                 data = json.loads(struct_file.read_text())
                 # Handle both __qv_meta__ wrapper and direct meta
                 meta_dict = data.get("__qv_meta__") or data.get("meta")
-                if meta_dict and meta_dict.get("id"):
+                # CANONICAL ONLY: meta.ulid (NO fallback to id)
+                if meta_dict and meta_dict.get("ulid"):
                     from quantumvitas.core.resources import ResourceMeta
                     default_name = meta_dict.get("name") or struct_file.stem
                     default_path = meta_dict.get("path") or f"structures/{struct_file.name}"
@@ -817,13 +820,13 @@ def _entry_to_meta(entry: dict, kind: ResourceKind, default_path: str) -> Resour
     meta_dict = entry.get("meta") or {}
     from quantumvitas.core.resources import generate_resource_id
     
-    resource_id = meta_dict.get("id") or entry.get("id") or generate_resource_id()
+    resource_id = meta_dict.get("ulid") or entry.get("ulid") or generate_resource_id()
     name = meta_dict.get("name") or entry.get("name") or kind.capitalize()
     slug = meta_dict.get("slug") or slugify(name)
     path = meta_dict.get("path") or entry.get("path") or entry.get("file") or default_path
     
     return ResourceMeta(
-        id=str(resource_id),
+        ulid=str(resource_id),
         name=name,
         slug=slug,
         path=path,
@@ -834,7 +837,7 @@ def _entry_to_meta(entry: dict, kind: ResourceKind, default_path: str) -> Resour
 def _entry_matches_ulid(entry: dict, ulid: str) -> bool:
     """Check if entry has the given ULID."""
     meta = entry.get("meta") or {}
-    entry_id = meta.get("id") or entry.get("id")
+    entry_id = meta.get("ulid") or entry.get("ulid")
     return entry_id == ulid
 
 
@@ -926,7 +929,7 @@ def resolve_structure(
             abs_path = (project_root / meta.path).resolve()
         
         # Build entry dict for backwards compatibility (minimal, ID-only)
-        entry = {"id": resource_id, "meta": meta.to_dict()}
+        entry = {"ulid": resource_id, "meta": meta.to_dict()}
         
         return ResolvedResource(meta=meta, entry=entry, absolute_path=abs_path)
     
@@ -1018,14 +1021,14 @@ def make_structure_selector_resolver(
     """
     def resolver(selector: str) -> str:
         resolved = resolve_structure(project_root, selector, config=config, index=index)
-        return resolved.meta.id
+        return resolved.meta.ulid
     return resolver
 
 
 def _structure_to_resolved(project_root: Path, entry: dict) -> ResolvedResource:
     """Convert a structure entry to ResolvedResource."""
     # ID-only model: entry only has structure_id, need to load structure file to get meta
-    structure_id = entry.get("structure_id") or entry.get("id")
+    structure_id = entry.get("structure_id") or entry.get("ulid")
     
     # Try to find and load structure file by ID
     structures_dir = project_root / "structures"
@@ -1035,7 +1038,7 @@ def _structure_to_resolved(project_root: Path, entry: dict) -> ResolvedResource:
                 import json
                 struct_data = json.loads(struct_file.read_text())
                 struct_meta_dict = struct_data.get("__qv_meta__") or struct_data.get("meta")
-                if struct_meta_dict and struct_meta_dict.get("id") == structure_id:
+                if struct_meta_dict and struct_meta_dict.get("ulid") == structure_id:
                     # Found matching structure file - use its meta
                     from quantumvitas.core.resources import ResourceMeta
                     resource_meta = ResourceMeta.from_dict(
@@ -1134,7 +1137,7 @@ def resolve_calculation(
                 )
         
         # Build entry dict for backwards compatibility (minimal, ID-only)
-        entry = {"id": resource_id, "meta": meta.to_dict()}
+        entry = {"ulid": resource_id, "meta": meta.to_dict()}
         
         return ResolvedResource(meta=meta, entry=entry, absolute_path=abs_path)
     
@@ -1209,7 +1212,7 @@ def _resolve_calculation_by_path(
 def _calculation_to_resolved(project_root: Path, entry: dict) -> ResolvedResource:
     """Convert a calculation entry to ResolvedResource."""
     # ID-only model: entry only has calculation_id (or id), need to load calculation.yaml to get meta
-    calculation_id = entry.get("calculation_id") or entry.get("id")
+    calculation_id = entry.get("calculation_id") or entry.get("ulid")
     
     # Try to find and load calculation.yaml by ID
     calculations_dir = project_root / "calculations"
@@ -1223,7 +1226,7 @@ def _calculation_to_resolved(project_root: Path, entry: dict) -> ResolvedResourc
                     import yaml
                     wf_data = yaml.safe_load(calculation_yaml.read_text())
                     wf_meta_dict = wf_data.get("meta") or {}
-                    if wf_meta_dict.get("id") == calculation_id:
+                    if wf_meta_dict.get("ulid") == calculation_id:
                         # Found matching calculation - use its meta
                         from quantumvitas.core.resources import ResourceMeta
                         resource_meta = ResourceMeta.from_dict(
@@ -1378,7 +1381,7 @@ def resolve_step(
                     raise RegistryOutOfSyncError(
                         kind="step",
                         selector=step_selector,
-                        id=resource_id,
+                        ulid=resource_id,
                         project_root=project_root,
                         expected_path=abs_path,
                         actual_state="file does not exist",
@@ -1429,7 +1432,7 @@ def resolve_step(
         for step_file, data in step_entries:
             meta = data.get("meta") or {}
             # Check both ulid (canonical) and id (legacy) for backwards compatibility
-            if meta.get("ulid") == step_selector or meta.get("id") == step_selector:
+            if meta.get("ulid") == step_selector or meta.get("ulid") == step_selector:
                 return _step_path_to_resolved(step_file, project_root)
     
     # Strategy 5: step meta.name or meta.slug (exact match)
@@ -1442,11 +1445,11 @@ def resolve_step(
     
     # Strategy 6: step id field from step YAML (exact match) - check both top-level and meta
     for step_file, data in step_entries:
-        step_id = data.get("id", "")
+        step_id = data.get("ulid", "")
         meta = data.get("meta") or {}
         meta_ulid = meta.get("ulid", "")
-        meta_id = meta.get("id", "")  # Legacy fallback
-        # Check both top-level id and meta.ulid (canonical) and meta.id (legacy)
+        meta_id = meta.get("ulid", "")  # Legacy fallback
+        # Check both top-level id and meta.ulid (canonical) and meta.ulid (legacy)
         if step_id.lower() == step_selector.lower() or meta_ulid.lower() == step_selector.lower() or meta_id.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
     
@@ -1497,7 +1500,7 @@ def _step_path_to_resolved(step_path: Path, project_root: Path) -> ResolvedResou
         data = {}
     
     meta_dict = data.get("meta") or {}
-    step_id = meta_dict.get("id") or data.get("id") or step_path.stem.replace(".step", "")
+    step_id = meta_dict.get("ulid") or data.get("ulid") or step_path.stem.replace(".step", "")
     step_name = meta_dict.get("name") or data.get("step_type") or step_id
     # CRITICAL FIX: Use meta.slug from YAML (authoritative), fallback to slugify(name)
     # Previously: slug=slugify(step_name) - this caused inconsistency when step_name="md"
@@ -1507,7 +1510,7 @@ def _step_path_to_resolved(step_path: Path, project_root: Path) -> ResolvedResou
     from quantumvitas.core.resources import generate_resource_id
     
     resource_meta = ResourceMeta(
-        id=meta_dict.get("id") or generate_resource_id(),
+        ulid=meta_dict.get("ulid") or generate_resource_id(),
         name=step_name,
         slug=step_slug,  # Use YAML-sourced slug (authoritative)
         path=ensure_relative_path(step_path, base=project_root),
@@ -1548,7 +1551,7 @@ def resolve_project(selector: str) -> ResolvedResource:
     from quantumvitas.core.resources import generate_resource_id
     
     resource_meta = ResourceMeta(
-        id=meta_dict.get("id") or generate_resource_id(),
+        ulid=meta_dict.get("ulid") or generate_resource_id(),
         name=meta_dict.get("name") or project_section.get("name") or project_root.name,
         slug=meta_dict.get("slug") or slugify(project_root.name),
         path=".",
@@ -1624,7 +1627,7 @@ def require_structure(
             raise RegistryOutOfSyncError(
                 kind="structure",
                 selector=selector_or_id,
-                id=resolved.meta.id if resolved.meta else None,
+                ulid=resolved.meta.ulid if resolved.meta else None,
                 project_root=project_root,
                 expected_path=expected_path or resolved.absolute_path,
                 actual_state="file does not exist",
@@ -1690,7 +1693,7 @@ def require_calculation(
             raise RegistryOutOfSyncError(
                 kind="calculation",
                 selector=selector_or_id,
-                id=resolved.meta.id if resolved.meta else None,
+                ulid=resolved.meta.ulid if resolved.meta else None,
                 project_root=project_root,
                 expected_path=expected_path or resolved.absolute_path,
                 actual_state="file does not exist",

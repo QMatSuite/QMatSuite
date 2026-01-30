@@ -144,8 +144,8 @@ def test_load_artifact_json(tmp_path):
     
     # Create AnalysisRefDTO
     ref = AnalysisRefDTO(
-        calc_id="test_calc_id",
-        step_id="test_step_id",
+        calc_ulid="test_calc_id",
+        step_ulid="test_step_id",
         property_name="scf",
         artifact_path=str(artifact_path.relative_to(project_root)),
         artifact_format="json",
@@ -189,8 +189,8 @@ def test_load_artifact_npz(tmp_path):
     
     # Create AnalysisRefDTO
     ref = AnalysisRefDTO(
-        calc_id="test_calc_id",
-        step_id="test_step_id",
+        calc_ulid="test_calc_id",
+        step_ulid="test_step_id",
         property_name="band_structure",
         artifact_path=str(artifact_path.relative_to(project_root)),
         artifact_format="npz",
@@ -223,8 +223,8 @@ def test_load_artifact_not_found(tmp_path):
     
     # Create AnalysisRefDTO pointing to non-existent file
     ref = AnalysisRefDTO(
-        calc_id="test_calc_id",
-        step_id="test_step_id",
+        calc_ulid="test_calc_id",
+        step_ulid="test_step_id",
         property_name="scf",
         artifact_path="test_calc/analysis/nonexistent.json",
         artifact_format="json",
@@ -270,8 +270,8 @@ def test_load_artifact_invalid_ref_missing_path(tmp_path):
     
     # Create AnalysisRefDTO with missing artifact_path
     ref = AnalysisRefDTO(
-        calc_id="test_calc_id",
-        step_id="test_step_id",
+        calc_ulid="test_calc_id",
+        step_ulid="test_step_id",
         property_name="scf",
         artifact_path="",  # Empty path
         artifact_format="json",
@@ -305,8 +305,8 @@ def test_load_artifact_unsupported_format(tmp_path):
     
     # Create AnalysisRefDTO with unsupported format
     ref = AnalysisRefDTO(
-        calc_id="test_calc_id",
-        step_id="test_step_id",
+        calc_ulid="test_calc_id",
+        step_ulid="test_step_id",
         property_name="scf",
         artifact_path=str(artifact_path.relative_to(project_root)),
         artifact_format="unknown",

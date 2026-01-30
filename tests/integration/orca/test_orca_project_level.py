@@ -70,7 +70,7 @@ def orca_project(tmp_path):
     structure_id = generate_resource_id()
     structure_data = {
         "__qv_meta__": {
-            "id": structure_id,
+            "ulid": structure_id,
             "name": "H2O",
             "slug": "h2o",
             "path": "structures/h2o.json",
@@ -86,7 +86,7 @@ def orca_project(tmp_path):
         name="h2o-scf",
         structure_selector=structure_id,
     )
-    calc_id = calc_resolved.meta.id
+    calc_id = calc_resolved.meta.ulid
     calc_dir = calc_resolved.absolute_path
 
     # Set engine_family to orca in calculation.yaml
@@ -101,7 +101,7 @@ def orca_project(tmp_path):
         calculation_selector=calc_id,
         step_type="orca_scf",  # SPEC type per Constitution §B
     )
-    step_id = step_resolved.meta.id
+    step_id = step_resolved.meta.ulid
 
     # Update step parameters
     step_yaml = step_resolved.absolute_path
@@ -117,7 +117,7 @@ def orca_project(tmp_path):
         "structure_id": structure_id,
         "calc_id": calc_id,
         "calc_dir": calc_dir,
-        "step_id": step_id,
+        "step_ulid": step_id,
         "calc_selector": "h2o-scf",
     }
 
@@ -151,13 +151,13 @@ class TestORCAProjectLevelExecution:
         result = QVService.run_step(
             project_root=orca_project["root"],
             calculation_selector=orca_project["calc_selector"],
-            step_selector=orca_project["step_id"],
+            step_selector=orca_project["step_ulid"],
             verbose=False,
         )
 
         # Should complete (success or failure based on ORCA availability)
         assert "step_id" in result
-        assert result["step_id"] == orca_project["step_id"]
+        assert result["step_ulid"] == orca_project["step_ulid"]
 
     def test_spec_step_type_preserved_in_step_yaml(self, orca_project):
         """Verify SPEC step types are preserved in step.yaml.
@@ -206,7 +206,7 @@ class TestORCARegistryLookup:
 
         # Create mock step with SPEC type
         mock_step = MagicMock()
-        mock_step.step_type = "orca_scf"
+        mock_step.step_type_spec= "orca_scf"
 
         result = _get_engine_family_from_step(mock_step)
         assert result == "orca", f"Expected 'orca', got '{result}'"

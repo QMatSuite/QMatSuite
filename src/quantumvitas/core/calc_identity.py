@@ -229,7 +229,7 @@ def infer_calculation_identity(
         Tuple of (structure_kind, engine_family) or (None, None) if inference fails
     """
     # Extract step types from CalculationStepEntry objects
-    step_types = [step.step_type for step in steps if step.step_type]
+    step_types = [step.step_type_spec for step in steps if step.step_type_spec]
     
     # Use the helper function that works with step type strings
     return _infer_identity_from_step_types(calc_dir, step_types)

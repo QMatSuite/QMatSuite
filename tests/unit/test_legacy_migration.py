@@ -31,7 +31,7 @@ def test_migrate_legacy_project_minimal(tmp_path):
     structure_file = structures_dir / "si.json"
     structure_data = {
         "meta": {
-            "id": structure_id,
+            "ulid": structure_id,
             "name": "Si",
             "slug": "si",
             "path": "structures/si.json",
@@ -56,7 +56,7 @@ def test_migrate_legacy_project_minimal(tmp_path):
     calculation_ulid = generate_resource_id()
     legacy_calculation = {
         "meta": {
-            "id": calculation_ulid,
+            "ulid": calculation_ulid,
             "name": "Si Flow",
             "slug": "si-flow",
             "path": "calculations/si_flow",
@@ -65,8 +65,8 @@ def test_migrate_legacy_project_minimal(tmp_path):
         "structure": "si",  # Legacy selector, no structure_id
         "steps": [
             {
-                "id": "si_scf",  # Legacy id field, not step_id ULID
-                "type": "scf",
+                "ulid": "si_scf",  # Legacy id field, not step_id ULID
+                "step_type_gen": "scf",
                 "step_file": "steps/si_scf.step.yaml",  # Legacy step_file
             },
         ],
@@ -79,13 +79,13 @@ def test_migrate_legacy_project_minimal(tmp_path):
     step_ulid = generate_resource_id()
     step_data = {
         "meta": {
-            "id": step_ulid,
+            "ulid": step_ulid,
             "name": "si_scf",
             "slug": "si-scf",
             "path": "calculations/si_flow/steps/si_scf.step.yaml",
             "kind": "step",
         },
-        "step_type": "scf",
+        "step_type_gen": "scf",
     }
     step_file.write_text(yaml.safe_dump(step_data, sort_keys=False))
     
@@ -94,7 +94,7 @@ def test_migrate_legacy_project_minimal(tmp_path):
         "project": {
             "name": "Legacy Project",
             "meta": {
-                "id": generate_resource_id(),
+                "ulid": generate_resource_id(),
                 "slug": "legacy-project",
             },
         },
@@ -103,7 +103,7 @@ def test_migrate_legacy_project_minimal(tmp_path):
                 "name": "Si",
                 "file": "structures/si.json",
                 "meta": {
-                    "id": structure_id,
+                    "ulid": structure_id,
                     "name": "Si",
                     "slug": "si",
                     "path": "structures/si.json",
@@ -140,11 +140,11 @@ def test_migrate_legacy_project_minimal(tmp_path):
     # Verify steps have step_id (ULID)
     assert len(calculation_model.steps) == 1
     step_entry = calculation_model.steps[0]
-    assert step_entry.step_id is not None
-    assert len(step_entry.step_id) == 26
-    assert step_entry.step_id.startswith("01")
+    assert step_entry.step_ulid is not None
+    assert len(step_entry.step_ulid) == 26
+    assert step_entry.step_ulid.startswith("01")
     # Should match the ULID from the step file
-    assert step_entry.step_id == step_ulid
+    assert step_entry.step_ulid == step_ulid
     
     # Verify calculation.yaml no longer has legacy fields
     calculation_data = yaml.safe_load(calculation_yaml.read_text())

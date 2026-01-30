@@ -112,7 +112,7 @@ def get_preset_catalog() -> Dict[str, Any]:
                     ],
                     "default": str,
                     "scope": {
-                        "type": "variant_step_types" | "variants",
+                        "step_type_gen": "variant_step_types" | "variants",
                         "step_types": List[str] | None,
                         "variants": List[Dict] | None,
                     }
@@ -181,7 +181,7 @@ def get_preset_catalog() -> Dict[str, Any]:
         if dimension == "precision" and len(variants) > 1:
             # Precision has multiple variants - show variant details
             scope = {
-                "type": "variants",
+                "step_type_gen": "variants",
                 "variants": variant_details,
                 "step_type_spec": "qe_variants",  # Scope type indicator
                 "step_type_gen": "variants",  # Scope type indicator
@@ -189,7 +189,7 @@ def get_preset_catalog() -> Dict[str, Any]:
         else:
             # Single variant or simple case - show step types (as strings, GEN types)
             scope = {
-                "type": "variant_step_types",
+                "step_type_gen": "variant_step_types",
                 "step_types": sorted(all_step_types),  # List of strings (GEN types)
                 "step_type_spec": "variant_step_types",  # Scope type indicator
                 "step_type_gen": "variant_step_types",  # Scope type indicator

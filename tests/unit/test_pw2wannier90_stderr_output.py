@@ -70,7 +70,7 @@ def test_stderr_file_path_format():
     from quantumvitas.core.engines.qe_calculation import QECalculationRunner
     
     # F: Verify the path format logic - output files use step_type.err naming
-    step_type = "pw2wannier90"
+    step_type= "pw2wannier90"
     working_dir = Path("/tmp/test")
     # Output files use step_type.err convention (not based on input filename)
     expected_stderr = working_dir / f"{step_type}.err"
