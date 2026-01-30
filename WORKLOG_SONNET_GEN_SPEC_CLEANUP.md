@@ -633,3 +633,147 @@ Fixed `.id` attribute access:
 **Audit Gate**: PASSED ✅ (0 FORBIDDEN patterns)
 **Test Status**: Improving (was 2376 passed/435 failed → checking new counts)
 **Key insight**: API methods use `step_type=` parameter, model fields use `step_type_spec`
+
+---
+
+## Phase 7: Final Test Fixes (2026-01-30)
+
+### All Tests Passing ✅
+
+**Final Test Run**:
+```
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+========== 2998 passed, 18 skipped, 612 warnings in 89.77s ===========
+```
+
+### Fixes Applied
+
+#### 1. Wannier90 Kpoints (`src/quantumvitas/calculation/wannier90_kpoints.py`)
+**Line 138**: Changed from reading legacy `type` field to `step_type_gen`
+```python
+# BEFORE
+step_type = step_entry.get("type", "").lower()
+
+# AFTER
+step_type_gen = step_entry.get("step_type_gen", "").lower()
+```
+
+#### 2. Test Mock `calculation.id` → `calculation.ulid` (`tests/daemon/test_gui_job_and_step_flows.py`)
+**Line 747**: Fixed CalculationResult constructor
+```python
+# BEFORE
+return CalculationResult(
+    calculation_id=calculation.id,
+    ...
+
+# AFTER
+return CalculationResult(
+    calculation_ulid=calculation.ulid,
+    ...
+```
+
+#### 3. Test Mock `calculation.id` → `calculation.ulid` (`tests/integration/test_incremental_run.py`)
+**Lines 977-983**: Fixed mock function and CalculationResult
+```python
+# BEFORE
+execution_calls.append({
+    "calculation_id": calculation.id,
+    "run_id": run_id,
+    ...
+return CalculationResult(
+    calculation_id=calculation.id,
+    ...
+
+# AFTER
+execution_calls.append({
+    "calculation_ulid": calculation.ulid,
+    "run_ulid": run_ulid,
+    ...
+return CalculationResult(
+    calculation_ulid=calculation.ulid,
+    ...
+```
+
+#### 4. pw2wannier90 Post-Processing (`src/quantumvitas/calculation/structure_steps.py`)
+**Line 268-271**: Added `pw2wannier90` to post-processing step types
+```python
+# BEFORE
+POST_PROCESSING_STEP_TYPES = {
+    "dos", "bands", "projwfc", "pp", "q2r", "matdyn", "dynmat",
+    "sumpdos", "band_interpolation", "ppacf", "pprism",
+}
+
+# AFTER
+POST_PROCESSING_STEP_TYPES = {
+    "dos", "bands", "projwfc", "pp", "q2r", "matdyn", "dynmat",
+    "sumpdos", "band_interpolation", "ppacf", "pprism",
+    "pw2wannier90",  # pw2wannier90.x uses INPUTPP namelist (like pp.x)
+}
+```
+
+#### 5. WANNIER90 Step Type Normalization (`src/quantumvitas/calculation/structure_steps.py`)
+**Lines 781-784, 835, 843, 1005**: Fixed step type comparisons to use GEN type
+```python
+# BEFORE
+step_type_lower = (spec_obj.step_type_spec or "scf").lower()
+WANNIER90_STEP_TYPES = {"w90_preproc", "w90_run", "pw2wannier90"}
+...
+if step_type_lower in WANNIER90_STEP_TYPES:
+    ...
+    if step_type_lower == "w90_preproc" or step_type_lower == "w90_run":
+    ...
+    elif step_type_lower == "pw2wannier90":
+
+# AFTER
+step_type_lower = (spec_obj.step_type_spec or "scf").lower()
+# Convert to GEN type for comparison (e.g., "qe_pw2wannier90" -> "pw2wannier90")
+step_type_gen = _normalize_step_type_to_gen(step_type_lower)
+WANNIER90_STEP_TYPES = {"w90_preproc", "w90_run", "pw2wannier90"}
+...
+if step_type_gen in WANNIER90_STEP_TYPES:
+    ...
+    if step_type_gen == "w90_preproc" or step_type_gen == "w90_run":
+    ...
+    elif step_type_gen == "pw2wannier90":
+```
+
+### Skipped Tests (18 total - ALL NORMAL)
+
+1. **Import rules tests (2 skips)**: Skip when optional directories (notebook frontend, tools) don't exist
+2. **Golden contract tests (13 skips)**: Skip when minimal payloads/recipes aren't found for certain API methods
+3. **GUI field enforcement (1 skip)**: Skip when manifest coverage is incomplete for `import_structure`
+4. **Schema drift test (1 skip)**: Skip for `find_project_root` without schema definition
+5. **GUI methods covered (1 skip)**: Skip when certain methods aren't covered by tests
+
+### Files Modified in Phase 7
+
+1. `src/quantumvitas/calculation/wannier90_kpoints.py` - step_type_gen reading
+2. `src/quantumvitas/calculation/structure_steps.py` - pw2wannier90 post-processing, step_type normalization
+3. `tests/daemon/test_gui_job_and_step_flows.py` - calculation.ulid, calculation_ulid
+4. `tests/integration/test_incremental_run.py` - calculation.ulid, calculation_ulid, run_ulid
+
+---
+
+## FINAL STATUS: ALL TESTS PASSING ✅
+
+```
+========== 2998 passed, 18 skipped, 612 warnings in 89.77s ===========
+```
+
+### Non-Negotiable Laws Compliance - COMPLETE
+
+- ✅ **Law #1**: NO FALLBACKS - All dual-read logic removed
+- ✅ **Law #2**: NO ALIASES - ResourceMeta.id deleted, only ulid exists
+- ✅ **Law #3**: Two Step-Type Fields - step_type_spec (YAML/SPEC) + step_type_gen (API/GEN)
+- ✅ **Law #4**: YAML is SPEC-Only - YAML files use step_type_spec
+- ✅ **Law #5**: RPC Contract - API uses canonical fields
+- ✅ **Law #6**: Registry is SSOT - normalize_step_type_to_gen for SPEC→GEN
+- ✅ **Law #7**: ULID Identity Fields - All resources use meta.ulid
+
+### Key Design Decisions
+
+1. **Calculation model**: Uses `ulid` attribute (not `id`)
+2. **CalculationResult**: Uses `calculation_ulid` field (not `calculation_id`)
+3. **calculation.yaml steps**: Store `step_type_gen` (workflow-level representation)
+4. **step.yaml files**: Store `step_type_spec` (engine-prefixed, persisted)
+5. **WANNIER90 step detection**: Must normalize SPEC→GEN before comparison
