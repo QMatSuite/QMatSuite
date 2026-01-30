@@ -513,7 +513,7 @@ class JobExecutor:
                 continue
             
             # Check if this is a relax step
-            step_type = getattr(step, 'step_type', None)
+            step_type = getattr(step, 'step_type_spec', None)
             if step_type and is_relax_step_type(step_type):
                 cleaned = clean_generated_structure(calc_dir, step_ulid)
                 if cleaned:
@@ -615,7 +615,7 @@ class JobExecutor:
             step = calculation.steps[j]
             
             # Check if this step is a relax step
-            step_type = getattr(step, 'step_type', None) or getattr(step, 'public_type', None)
+            step_type = getattr(step, 'step_type_spec', None)
             if not step_type:
                 # Try to get from step doc if available
                 try:

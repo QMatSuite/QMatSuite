@@ -1455,12 +1455,12 @@ class QVDaemon:
             List of UI parameter descriptors with namelist, name, label, type, unit, etc.
         """
         module = payload.get("module", "").strip().lower()
-        step_type = payload.get("step_type", "").strip().lower()
-        
+        step_type = payload.get("step_type_spec", "").strip().lower()
+
         if not module:
             raise ValueError("'module' is required in payload")
         if not step_type:
-            raise ValueError("'step_type' is required in payload")
+            raise ValueError("'step_type_spec' is required in payload")
         
         # Validate module is supported
         supported_modules = list_supported_modules()
@@ -2892,7 +2892,7 @@ class QVDaemon:
         else:
             try:
                 calculation_resolved = self._resolve_calculation_with_fallback(project_root, selector)
-                calculation_ulid = calculation_resolved.id
+                calculation_ulid = calculation_resolved.ulid
             except Exception as e:
                 return {
                     "ok": False,
@@ -2992,7 +2992,7 @@ class QVDaemon:
             # Resolve selector to ULID
             try:
                 calculation_resolved = self._resolve_calculation_with_fallback(project_root, selector)
-                calculation_ulid = calculation_resolved.id
+                calculation_ulid = calculation_resolved.ulid
                 logger.info(
                     f"[DELETE_CALCULATION] Resolved selector '{selector}' -> ulid={calculation_ulid}"
                 )
@@ -3149,7 +3149,7 @@ class QVDaemon:
             calculation_ulid = calculation
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation)
-            calculation_ulid = calculation_resolved.id
+            calculation_ulid = calculation_resolved.ulid
         
         # Use domain API (supports parameters, cards, and parameter_scan)
         svc = get_service(project_root)
@@ -3228,7 +3228,7 @@ class QVDaemon:
             calculation_ulid = calculation_selector
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-            calculation_ulid = calculation_resolved.id
+            calculation_ulid = calculation_resolved.ulid
         
         # Use domain API
         svc = get_service(project_root)
@@ -3265,7 +3265,7 @@ class QVDaemon:
             calculation_ulid = calculation_selector
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-            calculation_ulid = calculation_resolved.id
+            calculation_ulid = calculation_resolved.ulid
         
         cache = self.state.get_cache(project_root)
         
@@ -3304,7 +3304,7 @@ class QVDaemon:
             calculation_ulid = calculation_selector
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-            calculation_ulid = calculation_resolved.id
+            calculation_ulid = calculation_resolved.ulid
         
         cache = self.state.get_cache(project_root)
         
@@ -3347,7 +3347,7 @@ class QVDaemon:
             calculation_ulid = calculation_selector
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-            calculation_ulid = calculation_resolved.id
+            calculation_ulid = calculation_resolved.ulid
         
         cache = self.state.get_cache(project_root)
         
@@ -3506,7 +3506,7 @@ class QVDaemon:
             calculation_ulid = calculation_selector
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-            calculation_ulid = calculation_resolved.id
+            calculation_ulid = calculation_resolved.ulid
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
@@ -3911,7 +3911,7 @@ class QVDaemon:
             try:
                 # Load step to get step_type for result
                 content = yaml.safe_load(step_path.read_text()) or {}
-                step_type = content.get("step_type", "scf")
+                step_type = content.get("step_type_spec", "scf")
                 
                 # Get step-type-aware precision advice if applicable
                 precision_advice = None
@@ -4126,7 +4126,7 @@ class QVDaemon:
         """
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
-        step_type = self._require_str(payload, "step_type")
+        step_type = self._require_str(payload, "step_type_spec")
         step_name = payload.get("step_name", step_type)
         
         # Resolve with fallback to ensure cache is up-to-date
@@ -4155,7 +4155,7 @@ class QVDaemon:
             "steps": [
                 {
                     "step_id": asdict(s).get("step_id"),
-                    "step_type_gen": asdict(s).get("step_type"),
+                    "step_type_gen": asdict(s).get("step_type_spec"),
                     "status": asdict(s).get("status"),
                 }
                 for s in steps
@@ -4186,7 +4186,7 @@ class QVDaemon:
             calculation_ulid = calculation_selector
         else:
             calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-            calculation_ulid = calculation_resolved.id
+            calculation_ulid = calculation_resolved.ulid
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
@@ -4247,7 +4247,7 @@ class QVDaemon:
         
         # Resolve calculation selector to ULID at RPC boundary
         calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-        calculation_ulid = calculation_resolved.id
+        calculation_ulid = calculation_resolved.ulid
         
         logger.info(
             f"[CHANGE_CALC_STRUCTURE_RPC] Resolved calculation: selector='{calculation_selector}' -> "
@@ -4298,7 +4298,7 @@ class QVDaemon:
                 pass
             raise
         
-        structure_ulid = structure_resolved.id
+        structure_ulid = structure_resolved.ulid
         
         logger.info(
             f"[CHANGE_CALC_STRUCTURE_RPC] Resolved structure: selector='{structure_selector}' -> "
@@ -5266,13 +5266,13 @@ class QVDaemon:
                 for step in wf_model.steps:
                     d = step.to_dict()
                     # Normalize to exactly required keys
-                    d["step_type"] = step.type or "unknown"
+                    d["step_type_spec"] = step.type or "unknown"
                     d["status"] = "pending"
                     d["started_at"] = None
                     d["ended_at"] = None
                     # Remove everything else to avoid schema widening
                     for k in list(d.keys()):
-                        if k not in {"step_id", "step_type", "status", "started_at", "ended_at"}:
+                        if k not in {"step_id", "step_type_spec", "status", "started_at", "ended_at"}:
                             d.pop(k, None)
                     initial_steps.append(d)
                 # Compute planned_io_dir using the same logic the runner uses (single source of truth)
@@ -6445,7 +6445,7 @@ class QVDaemon:
             d["code"] = d.pop("severity")
             # Remove any extra keys to avoid schema widening
             for k in list(d.keys()):
-                if k not in {"code", "message", "step_type"}:
+                if k not in {"code", "message", "step_type_spec"}:
                     d.pop(k, None)
             issues_list.append(d)
         

@@ -19,8 +19,8 @@ from quantumvitas.io import QEInput, QEInputParser, QEModule
 if TYPE_CHECKING:
     from .qe import QuantumEspressoEngine
 
-# Import normalize_step_type_to_public from registry (SSOT for machine→public conversion)
-from quantumvitas.workflow.registry import normalize_step_type_to_public as _normalize_step_type_to_public
+# Import normalize_step_type_to_gen from registry (SSOT for spec→gen conversion)
+from quantumvitas.workflow.registry import normalize_step_type_to_gen as _normalize_step_type_to_gen
 
 
 @dataclass
@@ -225,12 +225,12 @@ class QECalculationRunner:
             step_type = self.detect_step_type(input_file)
             logger.info(f"[RUN_STEP] Auto-detected step_type: {step_type}")
         
-        # Convert machine_type (e.g., 'qe_bands') to public_type (e.g., 'bands') for lookup
-        step_type_public = _normalize_step_type_to_public(step_type)
-        logger.debug(f"[RUN_STEP] step_type_public: {step_type_public} (from {step_type})")
-        
-        # Get executable for this step type (using public_type)
-        executable = self.engine.EXECUTABLE_MAP.get(step_type_public, "pw.x")
+        # Convert step_type_spec (e.g., 'qe_bands') to step_type_gen (e.g., 'bands') for lookup
+        step_gen_type = _normalize_step_type_to_gen(step_type)
+        logger.debug(f"[RUN_STEP] step_gen_type: {step_gen_type} (from {step_type})")
+
+        # Get executable for this step type (using step_type_gen)
+        executable = self.engine.EXECUTABLE_MAP.get(step_gen_type, "pw.x")
         logger.debug(f"[RUN_STEP] Executable: {executable}")
         
         # Resolve input_file to absolute path for logging and validation
@@ -382,7 +382,7 @@ class QECalculationRunner:
                                 # Read stderr from file
                                 stderr = stderr_capture_path.read_text() if stderr_capture_path.exists() else ""
                                 return StepResult(
-                                    step_type=step_type,
+                                    step_type_spec=step_type,
                                     input_file=input_file,
                                     success=False,
                                     error=f"Step execution timed out after {timeout}s",
@@ -481,7 +481,7 @@ class QECalculationRunner:
                             # Read stderr from file
                             stderr = stderr_capture_path.read_text() if stderr_capture_path.exists() else ""
                             return StepResult(
-                                step_type=step_type,
+                                step_type_spec=step_type,
                                 input_file=input_file,
                                 success=False,
                                 error=f"Step execution timed out after {timeout}s",
@@ -617,7 +617,7 @@ class QECalculationRunner:
                         f"success={success}, return_code={return_code}")
             
             return StepResult(
-                step_type=step_type,
+                step_type_spec=step_type,
                 input_file=input_file,
                 output_file=result_output_file,  # Primary artifact
                 stdout_file=stdout_capture_path,  # Always step_type.out
@@ -633,7 +633,7 @@ class QECalculationRunner:
         
         except Exception as e:
             return StepResult(
-                step_type=step_type,
+                step_type_spec=step_type,
                 input_file=input_file,
                 success=False,
                 error=f"Step execution failed: {str(e)}",
@@ -677,7 +677,7 @@ class QECalculationRunner:
             result = self.run_step(
                 input_file=input_file,
                 working_dir=working_dir,
-                step_type=step_type,
+                step_type_spec=step_type,
                 timeout=timeout,
                 environment=environment
             )

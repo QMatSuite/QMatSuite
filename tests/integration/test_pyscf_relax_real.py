@@ -103,7 +103,7 @@ def pyscf_calculation_with_relax(pyscf_project_with_h2):
         name="h2_relax",
         structure_selector=structure_id,
     )
-    calc_ulid = calc_result.id
+    calc_ulid = calc_result.ulid
     if calc_result.absolute_path.is_dir():
         calc_dir = calc_result.absolute_path
     else:
@@ -124,7 +124,7 @@ def pyscf_calculation_with_relax(pyscf_project_with_h2):
         step_type="pyscf_relax",
         name="relax",
     )
-    relax_step_ulid = relax_step_result.id
+    relax_step_ulid = relax_step_result.ulid
 
     # Configure relax step with minimal parameters for quick test
     svc = QVService(project_root)

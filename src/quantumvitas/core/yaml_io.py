@@ -316,7 +316,7 @@ def _infer_history_doc_type(data: dict) -> str:
         return "structure"
     
     # Heuristics
-    if "step_type" in data or "parameters" in data:
+    if "step_type_spec" in data or "parameters" in data:
         return "step"
     if "steps" in data or "structure_id" in data:
         return "calc"

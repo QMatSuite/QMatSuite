@@ -594,7 +594,7 @@ class StepDoc(YamlDoc):
         value = super().get(path, default)
         
         # Convert machine type to public type for step_type field
-        if path == ("step_type",) or path == ["step_type"]:
+        if path == ("step_type_spec",) or path == ["step_type_spec"]:
             if isinstance(value, str):
                 from quantumvitas.workflow.registry import get_registry
                 registry = get_registry()

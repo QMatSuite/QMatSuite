@@ -330,7 +330,7 @@ def _extract_step_selector(yaml_path: Path, fallback: str) -> str:
     
     try:
         data = yaml.safe_load(yaml_path.read_text()) or {}
-        return data.get("ulid") or data.get("step_type") or fallback
+        return data.get("ulid") or data.get("step_type_spec") or fallback
     except Exception:
         return fallback
 

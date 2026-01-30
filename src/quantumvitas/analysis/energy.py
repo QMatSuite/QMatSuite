@@ -90,8 +90,8 @@ def summarize_calculation_energies(
     energies: List[Dict[str, object]] = []
     for step in result.steps:
         entry = {
-            "step_id": step.step_ulid,
-            "step_type_spec": step.step_type_spec if hasattr(step, "step_type_spec") else getattr(step, "step_type", None),
+            "step_ulid": step.step_ulid,
+            "step_type_spec": step.step_type_spec,
             "status": step.status.value,
             "total_energy_ry": step.metrics.get("total_energy_ry"),
             "fermi_energy_ev": step.metrics.get("fermi_energy_ev"),

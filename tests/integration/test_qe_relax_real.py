@@ -106,7 +106,7 @@ def qe_calculation_with_relax(qe_project_with_si):
         name="si_relax",
         structure_selector=structure_id,
     )
-    calc_ulid = calc_result.id
+    calc_ulid = calc_result.ulid
     # calc_dir should be the calculation directory (where calculation.yaml is)
     # calc_result.absolute_path is the calculation.yaml file, so parent is the calc dir
     # But we need to check: if absolute_path is already a directory, use it; otherwise use parent
@@ -129,7 +129,7 @@ def qe_calculation_with_relax(qe_project_with_si):
         step_type="qe_relax",
         name="relax",
     )
-    relax_step_ulid = relax_step_result.id
+    relax_step_ulid = relax_step_result.ulid
     
     # Configure relax step with minimal parameters for quick test
     configure_step(

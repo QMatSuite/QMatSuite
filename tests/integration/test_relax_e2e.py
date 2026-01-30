@@ -105,11 +105,11 @@ class TestRelaxE2E:
         
         # Create calculation
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
-        calc_ulid = calc_result.id
+        calc_ulid = calc_result.ulid
         
         # Create relax step
         step_result = QVService.init_step(project_root, calc_ulid, step_type="qe_relax", name="relax")
-        step_ulid = step_result.id
+        step_ulid = step_result.ulid
         
         # Write generated structure (simulating relax execution)
         relaxed_lattice = Lattice.cubic(5.5)  # Different lattice
@@ -163,14 +163,14 @@ class TestRelaxE2E:
         
         # Create calculation and relax step
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
-        step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
+        step_result = QVService.init_step(project_root, calc_result.ulid, step_type="qe_relax", name="relax")
         
         # Try to promote without current.json
         with pytest.raises(APIError) as exc_info:
             QVService.promote_relax_structure(
                 project_root=project_root,
-                calculation_selector=calc_result.id,
-                step_selector=step_result.id,
+                calculation_selector=calc_result.ulid,
+                step_selector=step_result.ulid,
             )
         
         assert "No generated structure found" in str(exc_info.value)
@@ -191,14 +191,14 @@ class TestRelaxE2E:
         
         # Create calculation and SCF step (not relax)
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
-        step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_scf", name="scf")
+        step_result = QVService.init_step(project_root, calc_result.ulid, step_type="qe_scf", name="scf")
         
         # Try to promote non-relax step
         with pytest.raises(APIError) as exc_info:
             QVService.promote_relax_structure(
                 project_root=project_root,
-                calculation_selector=calc_result.id,
-                step_selector=step_result.id,
+                calculation_selector=calc_result.ulid,
+                step_selector=step_result.ulid,
             )
         
         assert "not a relax step" in str(exc_info.value)

@@ -19,7 +19,7 @@ def sample_structure():
 def test_structure_step_spec_from_dict():
     data = {
         "structure": "si",
-        "step_type_gen": "nscf",
+        "step_type_spec": "qe_nscf",
         "parameters": {
             "SYSTEM": {"ecutwfc": 60},
             "ELECTRONS": {"conv_thr": 1e-8},
@@ -28,7 +28,7 @@ def test_structure_step_spec_from_dict():
     }
     spec = StructureStepSpec.from_dict(data)
     assert spec.structure == "si"
-    assert spec.step_type == "nscf"
+    assert spec.step_type_spec == "qe_nscf"
     assert spec.parameters["SYSTEM"]["ecutwfc"] == 60
     assert spec.input_name == "si_nscf.pw.in"
 

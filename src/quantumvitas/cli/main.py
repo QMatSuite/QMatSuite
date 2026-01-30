@@ -1890,11 +1890,11 @@ def _run_standalone_step(
             "meta": step_meta,
             "input_file": str(generated_input),
             "engine": "qe",
-            "step_type_spec": spec.get("step_type"),
+            "step_type_spec": spec.get("step_type_spec"),
             "options": {},
         }
         # Note: Step execution is handled via API, not direct Step object
-        
+
         # Run using production pipeline via API
         from quantumvitas.api.utils import run_input_step
         result, prepared = run_input_step(
@@ -1902,7 +1902,7 @@ def _run_standalone_step(
             input_file=generated_input,
             working_dir=workdir_path,
             project_root=workdir_path,  # Standalone: use workdir as pseudo base (workdir/pseudo)
-            step_type=spec.get("step_type"),
+            step_type=spec.get("step_type_spec"),
             keep_original=False,
         )
         
@@ -2213,7 +2213,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
                         spec_dict = yaml.safe_load(step_resolved.absolute_path.read_text())
                         if spec_dict:
                             meta = spec_dict.get("meta", {})
-                            step_display_name = meta.get("name") or spec_dict.get("step_type") or "(unnamed)"
+                            step_display_name = meta.get("name") or spec_dict.get("step_type_spec") or "(unnamed)"
                         else:
                             step_display_name = step_resolved.absolute_path.stem.replace(".step", "") or "(unnamed)"
                     except Exception:
@@ -2230,7 +2230,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
                     spec_dict = yaml.safe_load(spec_path.read_text())
                     if spec_dict:
                         step_meta = spec_dict.get("meta", {})
-                        step_display_name = step_meta.get("name") or spec_dict.get("step_type") or "(unnamed)"
+                        step_display_name = step_meta.get("name") or spec_dict.get("step_type_spec") or "(unnamed)"
                     else:
                         step_display_name = spec_path.stem.replace(".step", "") or "(unnamed)"
                     rel_path = legacy_step_file
@@ -4033,22 +4033,22 @@ def run_calculation_command(
     typer.echo(f"Calculation {calc_selector} status: {status_str.upper()}")
     if verbose:
         for step_dict in steps_list:
-            line = f"- {step_dict.get('step_id', 'unknown')}: {step_dict.get('status', 'unknown')}"
+            line = f"- {step_dict.get('step_ulid', 'unknown')}: {step_dict.get('status', 'unknown')}"
             if step_dict.get("reference_file"):
                 ref_path = Path(step_dict["reference_file"])
                 line += f" (ref: {ref_path.name})"
             if step_dict.get("message"):
                 line += f" [{step_dict['message']}]"
             typer.echo(line)
-            # Print step_type for each step (contract requirement)
-            typer.echo(f"step_type: {step_dict.get('step_type', 'unknown')}")
+            # Print step_type_spec for each step (contract requirement)
+            typer.echo(f"step_type_spec: {step_dict.get('step_type_spec', 'unknown')}")
             if step_dict.get("metrics"):
                 for key, value in step_dict["metrics"].items():
                     typer.echo(f"  {key}: {value}")
     else:
-        # Even when not verbose, print step_type for each step (contract requirement)
+        # Even when not verbose, print step_type_spec for each step (contract requirement)
         for step_dict in steps_list:
-            typer.echo(f"step_type: {step_dict.get('step_type', 'unknown')}")
+            typer.echo(f"step_type_spec: {step_dict.get('step_type_spec', 'unknown')}")
 
 
 @app.command("run-calculation")
@@ -5422,7 +5422,7 @@ def _execute_step_spec(
     workdir = workdir.resolve()
     workdir.mkdir(parents=True, exist_ok=True)
 
-    input_name = spec_copy.get("input_name") or f"{struct_name}_{spec_copy.get('step_type', 'scf')}.pw.in"
+    input_name = spec_copy.get("input_name") or f"{struct_name}_{spec_copy.get('step_type_spec', 'scf')}.pw.in"
     generated_input = workdir / input_name
     write_qe_input_file(qe_input, generated_input)
 

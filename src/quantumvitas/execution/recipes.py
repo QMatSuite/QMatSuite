@@ -52,47 +52,47 @@ def verify_qc_topology(steps: List["Step"], registry) -> None:
         TopologyError: If topology is invalid
     """
     for i, step in enumerate(steps):
-        # Get step type (try public_type first, fallback to step_type)
-        step_type = getattr(step, 'public_type', None) or getattr(step, 'step_type', None)
+        # Get step type
+        step_type = getattr(step, 'step_type_spec', None)
         if not step_type:
             continue
-        
+
         # Look up spec to get gen type
         spec = registry.get(step_type)
         if spec:
-            step_public_type = spec.step_type_gen
+            step_gen_type = spec.step_type_gen
         else:
             # Fallback: assume step_type is already gen type
-            step_public_type = step_type
-        
-        if step_public_type in RELAX_STEP_TYPES:
+            step_gen_type = step_type
+
+        if step_gen_type in RELAX_STEP_TYPES:
             continue  # Relax is standalone, always valid
-        
-        if step_public_type in SCF_ROOT_TYPES:
+
+        if step_gen_type in SCF_ROOT_TYPES:
             continue  # SCF root starts new chain, always valid
-        
+
         # Non-relax, non-SCF: must find SCF ancestor without intervening relax
         found_scf = False
         for j in range(i - 1, -1, -1):
             ancestor_step = steps[j]
-            ancestor_type = getattr(ancestor_step, 'public_type', None) or getattr(ancestor_step, 'step_type', None)
+            ancestor_type = getattr(ancestor_step, 'step_type_spec', None)
             if not ancestor_type:
                 continue
-            
+
             ancestor_spec = registry.get(ancestor_type)
             if ancestor_spec:
-                ancestor_public_type = ancestor_spec.step_type_gen
+                ancestor_gen_type = ancestor_spec.step_type_gen
             else:
-                ancestor_public_type = ancestor_type
-            
-            if ancestor_public_type in RELAX_STEP_TYPES:
+                ancestor_gen_type = ancestor_type
+
+            if ancestor_gen_type in RELAX_STEP_TYPES:
                 step_name = getattr(step, 'name', f'step_{i}') or f'step_{i}'
                 raise TopologyError(
                     f"TOPOLOGY_ERROR: Step '{step_name}' (index {i}) cannot trace to SCF root. "
                     f"A relax step at index {j} blocks the dependency chain. "
                     "Relax steps are not electronic state providers; they must be in standalone chains."
                 )
-            if ancestor_public_type in SCF_ROOT_TYPES:
+            if ancestor_gen_type in SCF_ROOT_TYPES:
                 found_scf = True
                 break
         

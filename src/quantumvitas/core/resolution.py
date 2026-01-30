@@ -453,7 +453,7 @@ class ResolvedResource:
     absolute_path: Path  # Resolved absolute path to resource
     
     @property
-    def id(self) -> str:
+    def ulid(self) -> str:
         return self.meta.ulid
     
     @property
@@ -1453,9 +1453,9 @@ def resolve_step(
         if step_id.lower() == step_selector.lower() or meta_ulid.lower() == step_selector.lower() or meta_id.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
     
-    # Strategy 7: step_type (exact match) - for backwards compatibility
+    # Strategy 7: step_type_spec (exact match)
     for step_file, data in step_entries:
-        step_type = data.get("step_type", "")
+        step_type = data.get("step_type_spec", "")
         if step_type.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
     
@@ -1501,7 +1501,7 @@ def _step_path_to_resolved(step_path: Path, project_root: Path) -> ResolvedResou
     
     meta_dict = data.get("meta") or {}
     step_id = meta_dict.get("ulid") or data.get("ulid") or step_path.stem.replace(".step", "")
-    step_name = meta_dict.get("name") or data.get("step_type") or step_id
+    step_name = meta_dict.get("name") or data.get("step_type_spec") or step_id
     # CRITICAL FIX: Use meta.slug from YAML (authoritative), fallback to slugify(name)
     # Previously: slug=slugify(step_name) - this caused inconsistency when step_name="md"
     # but YAML meta.slug="md-1"

@@ -48,17 +48,17 @@ def verify_step_result(
     """
     # Check if step succeeded
     if not step_result.success:
-        return False, f"Step {step_result.step_type} failed: {step_result.error}"
+        return False, f"Step {step_result.step_type_spec} failed: {step_result.error}"
     
     # Check output file exists
     if not step_result.output_file or not step_result.output_file.exists():
-        return False, f"Output file not found for step {step_result.step_type}"
+        return False, f"Output file not found for step {step_result.step_type_spec}"
     
     output_content = step_result.output_file.read_text()
     
     # Always check for JOB DONE first
     if "JOB DONE" not in output_content:
-        return False, f"JOB DONE not found in output for step {step_result.step_type}"
+        return False, f"JOB DONE not found in output for step {step_result.step_type_spec}"
     
     # If no reference file, just check JOB DONE
     if reference_file is None or not reference_file.exists():
@@ -71,7 +71,7 @@ def verify_step_result(
         return False, f"Error reading reference file: {e}"
     
     # Route to appropriate verification based on step type
-    step_type = step_result.step_type.lower()
+    step_type = step_result.step_type_spec.lower()
     
     if step_type == "scf":
         return _verify_scf_energy(
@@ -256,5 +256,5 @@ def verify_step_with_reference(
     success, message = verify_step_result(
         step_result, reference_file, category, tolerance
     )
-    assert success, f"Step {step_result.step_type} verification failed: {message}"
+    assert success, f"Step {step_result.step_type_spec} verification failed: {message}"
 

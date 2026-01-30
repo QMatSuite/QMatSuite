@@ -61,7 +61,7 @@ class VASPRecipe(BaseRecipe):
             # Get step type info
             step_type = step.step_type_spec
             spec = registry.get(step_type) if step_type else None
-            public_type = spec.step_type_gen if spec else "unknown"
+            gen_type = spec.step_type_gen if spec else "unknown"
             
             # Job ID = step ULID
             job_id = step.meta.ulid
@@ -110,8 +110,8 @@ class VASPRecipe(BaseRecipe):
                 fingerprint=fingerprint,
                 metadata={
                     "engine": "vasp",
-                    "spec_step_type": spec.step_type_spec if spec else None,
-                    "step_type_gen": public_type,
+                    "step_type_spec": spec.step_type_spec if spec else None,
+                    "step_type_gen": gen_type,
                 },
             )
             jobs.append(job)

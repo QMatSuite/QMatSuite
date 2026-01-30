@@ -72,7 +72,7 @@ class QeEngine(Engine):
         return self._engine.run_step(
             input_file=input_path,
             working_dir=working_dir,
-            step_type=step_type_value,
+            step_type_spec=step_type_value,
             timeout=timeout,
         )
 

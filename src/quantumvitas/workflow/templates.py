@@ -226,8 +226,8 @@ class WorkflowService:
         
         for i, step_entry in enumerate(steps):
             step_type = None
-            step_ulid = step_entry.get("step_id")
-            step_entry_type = step_entry.get("step_type") or step_entry.get("type")
+            step_ulid = step_entry.get("step_ulid")
+            step_entry_type = step_entry.get("step_type_spec")
             
             logger.info(
                 f"[WORKFLOW_DETECT] Processing step entry {i+1}/{len(steps)}: "
@@ -248,7 +248,7 @@ class WorkflowService:
                     if calc_yaml.exists():
                         from quantumvitas.core.yamldoc import CalcDoc
                         calc_doc = CalcDoc.load(calc_yaml)
-                        calculation_ulid = calc_doc.get(["meta", "id"], default=None)
+                        calculation_ulid = calc_doc.get(["meta", "ulid"], default=None) or calc_doc.get(["meta", "id"], default=None)
                         
                         if calculation_ulid:
                             resolved_step = resolve_step(
@@ -322,17 +322,17 @@ class WorkflowService:
                             pass
             
             if step_type:
-                # Phase 2: Map engine-specific step type (machine type) to public type for workflow detection
+                # Phase 2: Map engine-specific step type (step_type_spec) to gen type for workflow detection
                 from quantumvitas.workflow.registry import get_registry
                 registry = get_registry()
-                spec = registry.get(step_type)  # Accepts both public and machine types
+                spec = registry.get(step_type)  # Accepts both gen and spec types
                 if spec:
                     # Use gen type for workflow detection (workflows use gen types)
-                    public_type = spec.step_type_gen
-                    present_steps.append(public_type)
+                    gen_type = spec.step_type_gen
+                    present_steps.append(gen_type)
                     if debug_enabled:
                         logger.info(
-                            f"[WORKFLOW_DETECT] Step {i+1} mapped: {step_type} -> {public_type}"
+                            f"[WORKFLOW_DETECT] Step {i+1} mapped: {step_type} -> {gen_type}"
                         )
                 else:
                     # Fallback: use step_type as-is (may be public type already)

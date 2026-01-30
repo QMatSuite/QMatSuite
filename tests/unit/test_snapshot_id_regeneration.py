@@ -115,7 +115,7 @@ class TestSnapshotIDRegeneration:
         # Assert: Each calculation has the same number and types of steps
         for i, calculation_data in enumerate(snapshot.calculations):
             snapshot_steps = calculation_data.get("steps", [])
-            snapshot_step_types = [s.get("step_type") for s in snapshot_steps]
+            snapshot_step_types = [s.get("step_type_spec") or s.get("step_type") for s in snapshot_steps]
             
             new_calculation_entry = new_project.calculations[i]
             new_calculation = load_calculation(
@@ -141,7 +141,7 @@ class TestSnapshotIDRegeneration:
                         step_path = new_project_root / step_meta.path
                         if step_path.exists():
                             step_spec = StructureStepSpec.from_yaml(step_path)
-                            new_step_types.append(step_spec.step_type)
+                            new_step_types.append(step_spec.step_type_spec)
             
             assert set(new_step_types) == set(snapshot_step_types), (
                 f"Calculation {i} step types mismatch: snapshot has {set(snapshot_step_types)}, "

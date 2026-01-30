@@ -53,19 +53,19 @@ class QERecipe(BaseRecipe):
             # Determine executable and input file
             if spec:
                 executable = spec.executable
-                public_type = spec.step_type_gen
+                gen_type = spec.step_type_gen
             else:
                 executable = "pw.x"
-                public_type = str(step_type) if step_type else "custom"
+                gen_type = str(step_type) if step_type else "custom"
 
             # Input file uses GEN naming (per Constitution §F)
-            input_file = f"{public_type}.in"
+            input_file = f"{gen_type}.in"
 
             # Build command
             command = [executable, input_file]
 
             # Expected outputs (GEN naming)
-            expected_outputs = [calc_raw_dir / f"{public_type}.out"]
+            expected_outputs = [calc_raw_dir / f"{gen_type}.out"]
 
             # Fingerprint
             step_sha = self._get_step_sha(step, step_shas)
@@ -83,8 +83,8 @@ class QERecipe(BaseRecipe):
                 fingerprint=fingerprint,
                 metadata={
                     "engine": "qe",
-                    "spec_step_type": spec.step_type_spec if spec else None,
-                    "step_type_gen": public_type,
+                    "step_type_spec": spec.step_type_spec if spec else None,
+                    "step_type_gen": gen_type,
                     "scratch_dir": calc_raw_dir / "outdir",
                 },
             )

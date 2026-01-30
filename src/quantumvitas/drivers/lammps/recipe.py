@@ -62,32 +62,32 @@ class LAMMPSRecipe(BaseRecipe):
             # Get step type info
             step_type = step.step_type_spec
             spec = registry.get(step_type) if step_type else None
-            public_type = spec.step_type_gen if spec else "unknown"
-            
+            gen_type = spec.step_type_gen if spec else "unknown"
+
             # Job ID = step ULID
             job_id = step.meta.ulid
-            
+
             # Working directory: isolated per step
             working_dir = calc_raw_dir / step.meta.ulid
-            
+
             # LAMMPS executable (placeholder; actual path resolved by LammpsEngine at runtime)
             executable = spec.executable if spec else "lmp"
-            
+
             # Command: lmp -in in.lammps -log log.lammps
             command = [executable, "-in", "in.lammps", "-log", "log.lammps"]
-            
+
             # Input files (will be materialized into working_dir by LammpsEngine)
             input_files = [
                 working_dir / "in.lammps",
                 working_dir / "structure.data",
             ]
-            
+
             # Expected outputs
             expected_outputs = [
                 working_dir / "log.lammps",
             ]
             # Add final.data for relax steps
-            if public_type == "relax":
+            if gen_type == "relax":
                 expected_outputs.append(working_dir / "final.data")
             
             # Fingerprint
@@ -144,8 +144,8 @@ class LAMMPSRecipe(BaseRecipe):
                 fingerprint=fingerprint,
                 metadata={
                     "engine": "lammps",
-                    "spec_step_type": spec.step_type_spec if spec else None,
-                    "step_type_gen": public_type,
+                    "step_type_spec": spec.step_type_spec if spec else None,
+                    "step_type_gen": gen_type,
                 },
             )
             jobs.append(job)

@@ -786,7 +786,7 @@ def materialize_project_from_snapshot(
         # Create step files
         for step_data in calculation_data.get("steps", []):
             step_meta = step_data.get("meta", {})
-            step_name = step_meta.get("name", step_data.get("step_type", "step"))
+            step_name = step_meta.get("name") or step_data.get("step_type_spec", "step")
             step_slug = step_meta.get("slug") or slugify(step_name)
             old_step_id = step_meta.get("ulid")
             new_step_id = id_mapping.get(old_step_id, generate_resource_id())
@@ -801,11 +801,11 @@ def materialize_project_from_snapshot(
             step_spec_dict.pop("structure_id", None)
             step_spec_dict.pop("parent_calculation_id", None)
             step_spec_dict.pop("structure", None)  # Also remove legacy structure selector
-            
-            # Migrate step_type to step_type_spec if needed (for demo snapshots)
-            if "step_type" in step_spec_dict and "step_type_spec" not in step_spec_dict:
-                step_spec_dict["step_type_spec"] = step_spec_dict.pop("step_type")
-            
+
+            # Require canonical step_type_spec (no legacy migration)
+            if "step_type_spec" not in step_spec_dict:
+                raise ValueError(f"Step spec missing required 'step_type_spec' field: {step_spec_dict}")
+
             # Update meta with new IDs (use ulid, not id)
             step_spec_dict["meta"] = {
                 "ulid": new_step_id,

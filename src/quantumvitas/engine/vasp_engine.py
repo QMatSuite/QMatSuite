@@ -113,7 +113,7 @@ class VaspEngine(Engine):
                 params.update(vasp_params.get("incar", {}))
         
         # Set defaults based on step type
-        step_type = getattr(step, "step_type_spec", None) or getattr(step, "public_type", None)
+        step_type = getattr(step, "step_type_spec", None)
         
         if step_type == "vasp_bands":
             # Bands calculation: read charge density from CHGCAR
@@ -244,7 +244,7 @@ class VaspEngine(Engine):
             input_file = working_dir / "INCAR"  # VASP uses INCAR as primary input
             
             return StepResult(
-                step_type=step_type,
+                step_type_spec=step_type,
                 input_file=input_file,
                 success=success,
                 error=error,

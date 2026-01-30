@@ -880,7 +880,7 @@ class QVService:
                 from quantumvitas.calculation.naming import find_calculation_raw_dir, CalculationFileNaming
                 from quantumvitas.core.resolution import require_calculation, require_step
                 from quantumvitas.calculation.structure_steps import StructureStepSpec
-                from quantumvitas.workflow.registry import normalize_step_type_to_public
+                from quantumvitas.workflow.registry import normalize_step_type_to_gen
                 from quantumvitas.calculation.step_artifacts import get_step_artifacts, get_default_artifact
 
                 project_root = self._service.project_root
@@ -921,10 +921,10 @@ class QVService:
                     raw_dir_rel = raw_dir.relative_to(project_root) if raw_dir.is_relative_to(project_root) else str(raw_dir)
                     return {"raw_dir": str(raw_dir_rel), "artifacts": []}
 
-                # Use public type for filenames
-                public_step_type = normalize_step_type_to_public(step_type)
-                output_ext = CalculationFileNaming.output_extension(public_step_type)
-                step_type_lower = public_step_type.lower()
+                # Use gen type for filenames
+                gen_step_type = normalize_step_type_to_gen(step_type)
+                output_ext = CalculationFileNaming.output_extension(gen_step_type)
+                step_type_lower = gen_step_type.lower()
 
                 # Get step-specific artifacts
                 step_artifacts = get_step_artifacts(step_type_lower, step_params, raw_dir)
@@ -2995,7 +2995,7 @@ class QVService:
                 # Get step_type_spec and engine from registry
                 from quantumvitas.workflow.registry import get_registry
                 registry = get_registry()
-                machine_step_type = step_data.get("step_type_spec") or step_data.get("step_type", "scf")
+                machine_step_type = step_data.get("step_type_spec", "scf")
                 step_spec = registry.get(machine_step_type)
                 engine = step_spec.engine if step_spec else "qe"
 
@@ -3713,7 +3713,7 @@ class QVService:
                 )
                 
                 # Get step_type_spec from step_data (machine type)
-                machine_step_type = step_data.get("step_type_spec") or step_data.get("step_type", public_step_type)
+                machine_step_type = step_data.get("step_type_spec", public_step_type)
                 # Get engine from registry
                 step_spec = registry.get(machine_step_type)
                 engine = step_spec.engine if step_spec else "qe"
@@ -4684,7 +4684,7 @@ class QVService:
                 step_type_spec= "unknown"
                 try:
                     step_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
-                    step_type = step_data.get("step_type", "unknown")
+                    step_type = step_data.get("step_type_spec", "unknown")
                 except Exception:
                     pass
 
@@ -7134,7 +7134,7 @@ class QVService:
             step_type_spec= "unknown"
             try:
                 step_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
-                step_type = step_data.get("step_type", "unknown")
+                step_type = step_data.get("step_type_spec", "unknown")
             except Exception:
                 pass
 
@@ -7406,7 +7406,7 @@ class QVService:
 
             # Get step type to verify it's a relax step
             step_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
-            step_type = step_data.get("step_type", "")
+            step_type = step_data.get("step_type_spec", "")
 
             if "relax" not in step_type.lower() and "vc-" not in step_type.lower() and "md" not in step_type.lower():
                 from quantumvitas.api.errors import ValidationError

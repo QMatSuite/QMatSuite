@@ -12,82 +12,82 @@ Per docs/plans/orca_execution_mvp_plan.md:
 import pytest
 
 
-class TestPublicTypeTokens:
+class TestGenTypeTokens:
     """Tests for stable token mapping (immutable contract)."""
 
     def test_token_mapping_exists(self):
-        """PUBLIC_TYPE_TOKENS constant should exist."""
-        from quantumvitas.workflow.registry import PUBLIC_TYPE_TOKENS
+        """GEN_TYPE_TOKENS constant should exist."""
+        from quantumvitas.workflow.registry import GEN_TYPE_TOKENS
 
-        assert isinstance(PUBLIC_TYPE_TOKENS, dict)
-        assert len(PUBLIC_TYPE_TOKENS) >= 6  # At least scf, hf, td, mp2, freq, nmr
+        assert isinstance(GEN_TYPE_TOKENS, dict)
+        assert len(GEN_TYPE_TOKENS) >= 6  # At least scf, hf, td, mp2, freq, nmr
 
     def test_scf_token_is_s(self):
         """scf token MUST be 's' (immutable contract)."""
-        from quantumvitas.workflow.registry import PUBLIC_TYPE_TOKENS
+        from quantumvitas.workflow.registry import GEN_TYPE_TOKENS
 
-        assert PUBLIC_TYPE_TOKENS["scf"] == "s"
+        assert GEN_TYPE_TOKENS["scf"] == "s"
 
     def test_hf_token_is_h(self):
         """hf token MUST be 'h' (immutable contract)."""
-        from quantumvitas.workflow.registry import PUBLIC_TYPE_TOKENS
+        from quantumvitas.workflow.registry import GEN_TYPE_TOKENS
 
-        assert PUBLIC_TYPE_TOKENS["hf"] == "h"
+        assert GEN_TYPE_TOKENS["hf"] == "h"
 
     def test_td_token_is_t(self):
         """td token MUST be 't' (immutable contract)."""
-        from quantumvitas.workflow.registry import PUBLIC_TYPE_TOKENS
+        from quantumvitas.workflow.registry import GEN_TYPE_TOKENS
 
-        assert PUBLIC_TYPE_TOKENS["td"] == "t"
+        assert GEN_TYPE_TOKENS["td"] == "t"
 
     def test_mp2_token_is_m2(self):
         """mp2 token MUST be 'm2' (immutable contract)."""
-        from quantumvitas.workflow.registry import PUBLIC_TYPE_TOKENS
+        from quantumvitas.workflow.registry import GEN_TYPE_TOKENS
 
-        assert PUBLIC_TYPE_TOKENS["mp2"] == "m2"
+        assert GEN_TYPE_TOKENS["mp2"] == "m2"
 
     def test_freq_token_is_f(self):
         """freq token MUST be 'f' (immutable contract)."""
-        from quantumvitas.workflow.registry import PUBLIC_TYPE_TOKENS
+        from quantumvitas.workflow.registry import GEN_TYPE_TOKENS
 
-        assert PUBLIC_TYPE_TOKENS["freq"] == "f"
+        assert GEN_TYPE_TOKENS["freq"] == "f"
 
     def test_nmr_token_is_n(self):
         """nmr token MUST be 'n' (immutable contract)."""
-        from quantumvitas.workflow.registry import PUBLIC_TYPE_TOKENS
+        from quantumvitas.workflow.registry import GEN_TYPE_TOKENS
 
-        assert PUBLIC_TYPE_TOKENS["nmr"] == "n"
+        assert GEN_TYPE_TOKENS["nmr"] == "n"
 
 
-class TestGetTokenForPublicType:
-    """Tests for get_token_for_public_type function."""
+class TestGetTokenForGenType:
+    """Tests for get_token_for_gen_type function (GEN step type to token lookup)."""
 
     def test_get_scf_token(self):
         """Get token for scf returns 's'."""
-        from quantumvitas.workflow.registry import get_token_for_public_type
+        from quantumvitas.workflow.registry import get_token_for_gen_type
 
-        assert get_token_for_public_type("scf") == "s"
+        assert get_token_for_gen_type("scf") == "s"
 
     def test_get_td_token(self):
         """Get token for td returns 't'."""
-        from quantumvitas.workflow.registry import get_token_for_public_type
+        from quantumvitas.workflow.registry import get_token_for_gen_type
 
-        assert get_token_for_public_type("td") == "t"
+        assert get_token_for_gen_type("td") == "t"
 
     def test_case_insensitive(self):
         """Token lookup should be case-insensitive."""
-        from quantumvitas.workflow.registry import get_token_for_public_type
+        from quantumvitas.workflow.registry import get_token_for_gen_type
 
-        assert get_token_for_public_type("SCF") == "s"
-        assert get_token_for_public_type("Td") == "t"
-        assert get_token_for_public_type("MP2") == "m2"
+        assert get_token_for_gen_type("SCF") == "s"
+        assert get_token_for_gen_type("Td") == "t"
+        assert get_token_for_gen_type("MP2") == "m2"
 
     def test_unknown_type_raises(self):
-        """Unknown public_type should raise ValueError."""
-        from quantumvitas.workflow.registry import get_token_for_public_type
+        """Unknown gen_type should raise ValueError."""
+        from quantumvitas.workflow.registry import get_token_for_gen_type
 
         with pytest.raises(ValueError, match="No stable token defined"):
-            get_token_for_public_type("unknown_type")
+            get_token_for_gen_type("unknown_type")
 
 
 class TestGenerateSubchainBasename:
@@ -130,7 +130,7 @@ class TestGenerateSubchainBasename:
         assert generate_subchain_basename(["scf", "mp2", "nmr"]) == "s_m2_n"
 
     def test_empty_raises(self):
-        """Empty public_types list should raise ValueError."""
+        """Empty gen_types list should raise ValueError."""
         from quantumvitas.workflow.registry import generate_subchain_basename
 
         with pytest.raises(ValueError, match="cannot be empty"):
@@ -255,13 +255,13 @@ class TestStepTypeSpecToken:
 
 
 class TestTokenConsistency:
-    """Tests for consistency between PUBLIC_TYPE_TOKENS and StepTypeSpec.token."""
+    """Tests for consistency between GEN_TYPE_TOKENS and StepTypeSpec.token."""
 
     def test_tokens_match_mapping(self):
-        """StepTypeSpec.token values should match PUBLIC_TYPE_TOKENS."""
+        """StepTypeSpec.token values should match GEN_TYPE_TOKENS."""
         from quantumvitas.workflow.registry import (
             get_registry,
-            PUBLIC_TYPE_TOKENS,
+            GEN_TYPE_TOKENS,
         )
 
         reg = get_registry()
@@ -270,7 +270,7 @@ class TestTokenConsistency:
         for machine_type in ["pyscf_scf", "pyscf_mp2", "pyscf_td"]:
             spec = reg.get(machine_type)
             if spec and spec.token:
-                expected_token = PUBLIC_TYPE_TOKENS.get(spec.step_type_gen)
+                expected_token = GEN_TYPE_TOKENS.get(spec.step_type_gen)
                 assert spec.token == expected_token, (
                     f"{machine_type}: token '{spec.token}' != expected '{expected_token}'"
                 )
@@ -279,7 +279,7 @@ class TestTokenConsistency:
         for machine_type in ["orca_scf", "orca_hf", "orca_td"]:
             spec = reg.get(machine_type)
             if spec and spec.token:
-                expected_token = PUBLIC_TYPE_TOKENS.get(spec.step_type_gen)
+                expected_token = GEN_TYPE_TOKENS.get(spec.step_type_gen)
                 assert spec.token == expected_token, (
                     f"{machine_type}: token '{spec.token}' != expected '{expected_token}'"
                 )

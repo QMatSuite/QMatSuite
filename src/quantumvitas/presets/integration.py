@@ -460,9 +460,9 @@ def apply_presets_to_step(
     # Load step using StepDoc (compiler has write access to parameters/cards)
     doc = StepDoc.load(step_path, access_control=True, owner="compiler")
     
-    # Get step_type for variant lookup (map machine_type to public_type if needed)
+    # Get step_type for variant lookup (map step_type_spec to step_type_gen if needed)
     step_type = doc.get(["step_type_spec"], default="scf")
-    # Map machine_type to public_type for variant lookup (presets use public_type)
+    # Map step_type_spec to step_type_gen for variant lookup (presets use step_type_gen)
     from quantumvitas.workflow.registry import get_registry
     registry = get_registry()
     spec = registry.get(step_type)
@@ -811,7 +811,7 @@ def apply_presets_to_step(
     if unified_patch:
         # Serialize IR patch to engine format before writing to step.yaml
         # step.yaml stores YAML native booleans (true/false), not QE strings
-        # Get original step_type (before public_type mapping) to determine engine
+        # Get original step_type (before step_type_gen mapping) to determine engine
         original_step_type = doc.get(["step_type_spec"], default="scf")
         # In v0, all steps are QE, but we check for future extensibility
         # For now, assume QE backend
@@ -1049,11 +1049,14 @@ def detect_workflow_type(calculation_dir: Path) -> str:
     except Exception:
         return "Unknown"
     
-    # Collect step types
+    # Collect step types (as GEN types for workflow matching)
+    from quantumvitas.workflow.registry import get_registry
+    registry = get_registry()
+
     step_types = set()
     for step_entry in steps:
-        # Try to get step_type from entry or load step file
-        step_type = step_entry.get("step_type")
+        # Get step_type from entry
+        step_type = step_entry.get("step_type_spec")
         if not step_type:
             # Load from step file
             step_file = step_entry.get("step_file")
@@ -1065,9 +1068,15 @@ def detect_workflow_type(calculation_dir: Path) -> str:
                         step_type = step_doc.get(["step_type_spec"], default=None)
                     except Exception:
                         pass
-        
+
         if step_type:
-            step_types.add(step_type.lower())
+            # Convert SPEC type to GEN type for workflow matching
+            spec = registry.get(step_type)
+            if spec:
+                step_types.add(spec.step_type_gen.lower())
+            else:
+                # Fallback: use as-is
+                step_types.add(step_type.lower())
     
     # Workflow detection rules (order matters - more specific first)
     if "md" in step_types or "vc-md" in step_types:

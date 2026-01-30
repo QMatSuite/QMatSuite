@@ -21,7 +21,7 @@ from .naming import CalculationFileNaming
 
 @dataclass(slots=True)
 class Calculation:
-    id: str
+    ulid: str  # CANONICAL: renamed from id
     project: Project
     dir: Path
     mode: StepMode
@@ -253,7 +253,7 @@ class Calculation:
 
         # Create calculation instance
         calculation = cls(
-            id=calculation_id,
+            ulid=calculation_id,  # CANONICAL: renamed from id
             project=project,
             dir=calculation_dir,
             mode=mode,
@@ -373,10 +373,9 @@ def _build_step(
     engine_name = step_data.get("engine")
     if engine_name is None:
         # Try to infer from step type (from step_data or step file)
-        # Check step_type_spec first (canonical), then fallback to legacy fields
+        # Check step_type_spec first (canonical), then type field
         step_type = (step_data.get("step_type_spec") or step_file_data.get("step_type_spec") or
-                     step_data.get("type") or step_data.get("step_type") or 
-                     step_file_data.get("step_type") or step_file_data.get("type"))
+                     step_data.get("type") or step_file_data.get("type"))
         if step_type:
             # First try workflow registry lookup
             from quantumvitas.workflow.registry import get_registry
@@ -533,10 +532,9 @@ def _build_step_inspection(
     engine_name = step_data.get("engine")
     if engine_name is None:
         # Try to infer from step type (from step_data or step file)
-        # Check step_type_spec first (canonical), then fallback to legacy fields
+        # Check step_type_spec first (canonical), then type field
         step_type = (step_data.get("step_type_spec") or step_file_data.get("step_type_spec") or
-                     step_data.get("type") or step_data.get("step_type") or 
-                     step_file_data.get("step_type") or step_file_data.get("type"))
+                     step_data.get("type") or step_file_data.get("type"))
         if step_type:
             # First try workflow registry lookup
             from quantumvitas.workflow.registry import get_registry

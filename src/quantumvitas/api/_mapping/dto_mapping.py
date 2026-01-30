@@ -397,8 +397,6 @@ def calculation_to_dto(
             step_ulid = None
             if hasattr(step, 'meta') and step.meta:
                 step_ulid = step.meta.ulid
-            elif hasattr(step, 'id'):
-                step_ulid = step.id
             if step_ulid:
                 step_ulids.append(step_ulid)
 
@@ -408,7 +406,7 @@ def calculation_to_dto(
                 completed_step_count += 1
     
     # Get structure ULID
-    structure_ulid = calc_model.structure_ulid if hasattr(calc_model, 'structure_ulid') else (calc_model.structure_id if hasattr(calc_model, 'structure_id') else None)
+    structure_ulid = calc_model.structure_ulid if hasattr(calc_model, 'structure_ulid') else None
     
     return CalculationDTO(
         calc_ulid=calc_ulid,

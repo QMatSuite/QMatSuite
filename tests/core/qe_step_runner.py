@@ -281,7 +281,7 @@ def run_and_verify_step_with_assert(
         # Enhanced error reporting for easier debugging of CI/calculation failures
         details = [
             f"Step index: {step_index}",
-            f"Step type (inferred): {step_result.step_type}",
+            f"Step type (inferred): {step_result.step_type_spec}",
             f"Category: {category or 'N/A'}",
             f"Working dir: {Path(working_dir).absolute()}",
             f"Input file: {Path(input_file).absolute()}",

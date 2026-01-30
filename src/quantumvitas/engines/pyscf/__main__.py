@@ -29,7 +29,7 @@ if __name__ == "__main__":
         else:
             # Legacy single-step job.json: convert to chain of length 1
             # Extract step info from job.json
-            step_type = job_data.get("step_type", "pyscf_scf")
+            step_type = job_data.get("step_type_spec", "pyscf_scf")
             working_dir = job_data.get("working_dir", str(job_path.parent))
             params = job_data.get("parameters", {})
             resources = job_data.get("resources", {})

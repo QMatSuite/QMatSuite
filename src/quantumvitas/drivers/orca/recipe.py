@@ -77,9 +77,9 @@ class ORCARecipe(BaseRecipe):
 
         # Build subchain for each step
         for target_idx, target_step in enumerate(steps):
-            # Get public types for all steps in subchain
+            # Get gen types for all steps in subchain
             subchain_steps = steps[: target_idx + 1]
-            public_types = []
+            gen_types = []
 
             for s in subchain_steps:
                 spec = (
@@ -87,15 +87,15 @@ class ORCARecipe(BaseRecipe):
                     if s.step_type_spec
                     else None
                 )
-                pt = spec.step_type_gen if spec else "scf"
-                public_types.append(pt)
+                gt = spec.step_type_gen if spec else "scf"
+                gen_types.append(gt)
 
             # Generate subchain basename from stable tokens
             try:
-                basename = generate_subchain_basename(public_types)
+                basename = generate_subchain_basename(gen_types)
             except ValueError:
                 # Fallback if token not defined
-                basename = "_".join(public_types)
+                basename = "_".join(gen_types)
 
             # Collect step IDs and SHAs for fingerprint
             step_ids = [s.meta.ulid for s in subchain_steps]
@@ -127,7 +127,7 @@ class ORCARecipe(BaseRecipe):
                     "engine": "orca",
                     "subchain_basename": basename,
                     "chain_key": namespace_folder,
-                    "public_types": public_types,
+                    "gen_types": gen_types,
                     "moread_file": "scf.gbw" if target_idx > 0 else None,
                 },
             )

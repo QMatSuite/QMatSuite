@@ -120,7 +120,7 @@ def promote_test_calculation_with_relax(promote_test_project):
         name="h2_relax",
         structure_selector=structure_id,
     )
-    calc_ulid = calc_result.id
+    calc_ulid = calc_result.ulid
     if calc_result.absolute_path.is_dir():
         calc_dir = calc_result.absolute_path
     else:
@@ -141,7 +141,7 @@ def promote_test_calculation_with_relax(promote_test_project):
         step_type="pyscf_relax",
         name="relax",
     )
-    relax_step_ulid = relax_step_result.id
+    relax_step_ulid = relax_step_result.ulid
     
     # Configure relax step with minimal parameters for quick test
     configure_step(
@@ -262,7 +262,7 @@ class TestRelaxPromoteE2E:
             name="h2_scf",
             structure_selector=structure_id,
         )
-        calc_ulid = calc_result.id
+        calc_ulid = calc_result.ulid
         
         # Set engine_family to pyscf
         import yaml
@@ -280,7 +280,7 @@ class TestRelaxPromoteE2E:
             step_type="pyscf_scf",
             name="scf",
         )
-        scf_step_ulid = scf_step_result.id
+        scf_step_ulid = scf_step_result.ulid
         
         # Try to promote non-relax step
         with pytest.raises(APIError) as exc_info:

@@ -76,28 +76,28 @@ def ensure_calculation_identity(calc_dir: Path, project_root: Optional[Path] = N
         pass
 
 
-def _infer_engine_family_from_machine_types(machine_types: List[str]) -> Optional[str]:
+def _infer_engine_family_from_spec_types(spec_types: List[str]) -> Optional[str]:
     """
-    Infer engine_family from machine step types using registry.
-    
+    Infer engine_family from step_type_spec values using registry.
+
     Uses DriverRegistry to look up engine for each step type.
     Returns a single family if all steps belong to one engine, None if mixed/unknown.
-    
+
     Args:
-        machine_types: List of machine step type identifiers (e.g., ["qe_scf", "qe_nscf"])
-    
+        spec_types: List of step_type_spec identifiers (e.g., ["qe_scf", "qe_nscf"])
+
     Returns:
         Engine family identifier ("qe", "pyscf", etc.) if all steps share one family,
         None if mixed or unknown
     """
-    if not machine_types:
+    if not spec_types:
         return None
-    
+
     # Ensure drivers are loaded
     import quantumvitas.drivers
-    
+
     families = set()
-    for step_type in machine_types:
+    for step_type in spec_types:
         if DriverRegistry.is_step_type_registered(step_type):
             engine = DriverRegistry.get_engine_for_step_type(step_type)
             families.add(engine)
@@ -132,71 +132,71 @@ def _infer_identity_from_step_types(
     step_types: List[str],
 ) -> Tuple[Optional[str], Optional[str]]:
     """
-    Infer calculation identity from step type strings (public types).
-    
+    Infer calculation identity from step type strings.
+
     Helper function for ensure_calculation_identity that works with raw step types
     from YAML data without requiring CalculationStepEntry objects.
-    
+
     Args:
         calc_dir: Calculation directory path
-        step_types: List of step type strings (public types from calculation.yaml)
-    
+        step_types: List of step type strings from calculation.yaml
+
     Returns:
         Tuple of (structure_kind, engine_family) or (None, None) if inference fails
     """
     from quantumvitas.workflow.registry import get_registry
-    
-    # Strategy 1: Use step types from calculation.yaml (public types)
-    # Convert public types to machine types via registry or DriverRegistry materialization
-    machine_types = []
+
+    # Strategy 1: Use step types from calculation.yaml
+    # Convert gen types to spec types via registry or DriverRegistry materialization
+    spec_types = []
     if step_types:
         registry = get_registry()
         # Ensure drivers are loaded for materialization
         import quantumvitas.drivers
         from quantumvitas.core.driver_registry import DriverRegistry
-        
+
         for step_type in step_types:
             # First try workflow registry lookup
             spec = registry.get(step_type)
             if spec:
-                machine_types.append(spec.step_type_spec)
+                spec_types.append(spec.step_type_spec)
                 continue
-            
+
             # If registry lookup fails, try DriverRegistry materialization
             # Try common engine families (qe is most common for legacy imports)
             for engine_family in ["qe", "vasp", "orca", "pyscf", "cp2k", "lammps", "w90"]:
                 try:
                     materialized = DriverRegistry.materialize_step_type(
-                        engine_family, 
+                        engine_family,
                         f"GEN_{step_type.upper()}" if not step_type.upper().startswith("GEN_") else step_type.upper()
                     )
                     if materialized:
-                        machine_types.append(materialized)
+                        spec_types.append(materialized)
                         break
                 except Exception:
                     continue
-            
-            # If still no match, check if step_type is already a machine type
+
+            # If still no match, check if step_type is already a spec type
             if DriverRegistry.is_step_type_registered(step_type):
-                machine_types.append(step_type)
-    
+                spec_types.append(step_type)
+
     # Strategy 2: Fallback to step.yaml files if calculation.yaml steps empty
-    if not machine_types:
+    if not spec_types:
         steps_dir = calc_dir / "steps"
         if steps_dir.exists():
             for step_file in steps_dir.glob("*.step.yaml"):
                 try:
                     import yaml
                     step_data = yaml.safe_load(step_file.read_text()) or {}
-                    machine_type = step_data.get("step_type")
-                    if machine_type:
-                        machine_types.append(machine_type)
+                    spec_type = step_data.get("step_type_spec")
+                    if spec_type:
+                        spec_types.append(spec_type)
                 except Exception:
                     # Best-effort: skip files that can't be read
                     continue
-    
-    # Infer engine_family from machine types
-    engine_family = _infer_engine_family_from_machine_types(machine_types)
+
+    # Infer engine_family from spec types
+    engine_family = _infer_engine_family_from_spec_types(spec_types)
     
     # Infer structure_kind from engine_family
     structure_kind = None

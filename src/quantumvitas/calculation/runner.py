@@ -211,7 +211,7 @@ class CalculationRunner:
                 ))
                 # Don't proceed to QE steps if Step0 refresh failed
                 return CalculationResult(
-                    calculation_ulid=calculation.id,
+                    calculation_ulid=calculation.ulid,
                     status=status,
                     started=started,
                     finished=datetime.now(timezone.utc),
@@ -237,7 +237,7 @@ class CalculationRunner:
                 ))
                 # Don't proceed to QE steps if Step0 failed
                 return CalculationResult(
-                    calculation_ulid=calculation.id,
+                    calculation_ulid=calculation.ulid,
                     status=status,
                     started=started,
                     finished=datetime.now(timezone.utc),
@@ -402,7 +402,7 @@ class CalculationRunner:
                 try:
                     step_resolved = require_step(
                         calculation.project.root,
-                        calculation.id,
+                        calculation.ulid,
                         step.meta.ulid,
                         config=config,
                         index=None,
@@ -444,14 +444,14 @@ class CalculationRunner:
             if not skip_history and actual_run_id:
                 self._complete_history_recording(
                     calculation=calculation,
-                    run_ulid=actual_run_id,
+                    run_id=actual_run_id,
                     status=status,
                     step_summaries=step_summaries,
                     working_dir=io_dir,
                 )
 
             return CalculationResult(
-                calculation_ulid=calculation.id,
+                calculation_ulid=calculation.ulid,
                 mode=calculation.mode,
                 steps=step_summaries,
                 status=status,
@@ -738,7 +738,7 @@ class CalculationRunner:
             # Create run revision (use external run_id if provided)
             run_revision = create_run_revision(
                 project_root=calculation.project.root,
-                calc_id=calculation.id,
+                calc_id=calculation.ulid,
                 calc_name=calculation.name if hasattr(calculation, "name") else None,
                 step_ids=step_ids,
                 step_types=step_types,
@@ -762,8 +762,8 @@ class CalculationRunner:
             
             event = RunStartedEvent.create(
                 project_id=project_id,
-                calc_id=calculation.id,
-                run_ulid=actual_run_id,
+                calc_id=calculation.ulid,
+                run_id=actual_run_id,
                 calc_name=calculation.name if hasattr(calculation, "name") else None,
                 step_ids=step_ids,
                 step_types=step_types,
@@ -800,8 +800,8 @@ class CalculationRunner:
             step_results = []
             for summary in step_summaries:
                 step_results.append({
-                    "step_id": summary.step_ulid,
-                    "step_type_spec": summary.step_type_spec if hasattr(summary, "step_type_spec") else getattr(summary, "step_type", None),
+                    "step_ulid": summary.step_ulid,
+                    "step_type_spec": summary.step_type_spec,
                     "step_name": getattr(summary, "step_name", None),
                     "status": summary.status.value if hasattr(summary.status, "value") else str(summary.status),
                     "message": summary.message,
@@ -839,7 +839,7 @@ class CalculationRunner:
             
             event = RunFinishedEvent.create(
                 project_id=run_revision.project_id,
-                calc_id=calculation.id,
+                calc_id=calculation.ulid,
                 run_id=run_id,
                 status=status_str,
                 duration_seconds=duration,

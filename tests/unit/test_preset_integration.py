@@ -373,9 +373,9 @@ class TestDetectWorkflowType:
         """Single SCF step detected as SCF workflow."""
         calc_yaml = tmp_path / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
-            "steps": [{"step_type_gen": "scf"}],
+            "steps": [{"step_type_spec": "qe_scf"}],
         }))
-        
+
         result = detect_workflow_type(tmp_path)
         assert result == "SCF"
     
@@ -384,12 +384,12 @@ class TestDetectWorkflowType:
         calc_yaml = tmp_path / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "steps": [
-                {"step_type_gen": "scf"},
-                {"step_type_gen": "nscf"},
-                {"step_type_gen": "dos"},
+                {"step_type_spec": "qe_scf"},
+                {"step_type_spec": "qe_nscf"},
+                {"step_type_spec": "qe_dos"},
             ],
         }))
-        
+
         result = detect_workflow_type(tmp_path)
         assert result == "DOS"
     
@@ -398,30 +398,23 @@ class TestDetectWorkflowType:
         calc_yaml = tmp_path / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "steps": [
-                {"step_type_gen": "scf"},
-                {"step_type_gen": "bands_pw"},
-                {"step_type_gen": "bands"},
+                {"step_type_spec": "qe_scf"},
+                {"step_type_spec": "qe_bands_pw"},
+                {"step_type_spec": "qe_bands"},
             ],
         }))
-        
+
         result = detect_workflow_type(tmp_path)
         assert result == "BandStructure"
     
     def test_relaxation_workflow(self, tmp_path):
         """Relax or vc-relax detected as Relaxation."""
         calc_yaml = tmp_path / "calculation.yaml"
+        # Note: qe_relax covers both 'relax' and 'vc-relax' in the registry
         calc_yaml.write_text(yaml.safe_dump({
-            "steps": [{"step_type_gen": "vc-relax"}],
+            "steps": [{"step_type_spec": "qe_relax"}],
         }))
-        
-        result = detect_workflow_type(tmp_path)
-        assert result == "Relaxation"
-        
-        # Also plain relax
-        calc_yaml.write_text(yaml.safe_dump({
-            "steps": [{"step_type_gen": "relax"}],
-        }))
-        
+
         result = detect_workflow_type(tmp_path)
         assert result == "Relaxation"
     
@@ -430,11 +423,11 @@ class TestDetectWorkflowType:
         calc_yaml = tmp_path / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "steps": [
-                {"step_type_gen": "scf"},
-                {"step_type_gen": "ph"},
+                {"step_type_spec": "qe_scf"},
+                {"step_type_spec": "qe_ph"},
             ],
         }))
-        
+
         result = detect_workflow_type(tmp_path)
         assert result == "Phonon"
     
@@ -442,17 +435,17 @@ class TestDetectWorkflowType:
         """MD steps detected as MD workflow."""
         calc_yaml = tmp_path / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
-            "steps": [{"step_type_gen": "md"}],
+            "steps": [{"step_type_spec": "qe_md"}],
         }))
-        
+
         result = detect_workflow_type(tmp_path)
         assert result == "MD"
-        
-        # Also vc-md
+
+        # Also vc-md (note: underscore in spec type)
         calc_yaml.write_text(yaml.safe_dump({
-            "steps": [{"step_type_gen": "vc-md"}],
+            "steps": [{"step_type_spec": "qe_vc_md"}],
         }))
-        
+
         result = detect_workflow_type(tmp_path)
         assert result == "MD"
     
@@ -462,13 +455,13 @@ class TestDetectWorkflowType:
         calc_yaml.write_text(yaml.safe_dump({
             "steps": [{"step_file": "steps/scf.step.yaml"}],
         }))
-        
+
         steps_dir = tmp_path / "steps"
         steps_dir.mkdir()
         (steps_dir / "scf.step.yaml").write_text(yaml.safe_dump({
-            "step_type_gen": "relax",
+            "step_type_spec": "qe_relax",
         }))
-        
+
         result = detect_workflow_type(tmp_path)
         assert result == "Relaxation"
 

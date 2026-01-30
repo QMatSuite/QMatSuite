@@ -54,7 +54,7 @@ def _infer_engine_family_from_steps(steps: List["CalculationStepEntry"]) -> Opti
 
     families = set()
     for step in steps:
-        step_type = step.type  # Use .type which stores public_type
+        step_type = step.type  # Use .type which stores step_type_gen
         if step_type and DriverRegistry.is_step_type_registered(step_type):
             engine = DriverRegistry.get_engine_for_step_type(step_type)
             families.add(engine)

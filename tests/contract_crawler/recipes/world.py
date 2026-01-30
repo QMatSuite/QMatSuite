@@ -84,7 +84,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
             name="demo_calc",
             structure_selector=structure_id,
         )
-        calc_id = calc_result.id if hasattr(calc_result, 'id') else None
+        calc_id = calc_result.ulid if hasattr(calc_result, 'ulid') else None
         calc_slug = calc_result.slug if hasattr(calc_result, 'slug') else "demo_calc"
     else:
         svc = QVService(project_root) if get_service is None else get_service(project_root)

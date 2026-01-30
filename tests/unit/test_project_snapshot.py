@@ -354,7 +354,7 @@ class TestSnapshotRoundtrip:
                 if step_file.exists():
                     try:
                         step_spec = StructureStepSpec.from_yaml(step_file)
-                        original_steps_by_type[step_spec.step_type] = step_spec
+                        original_steps_by_type[step_spec.step_type_spec] = step_spec
                     except Exception:
                         pass
         
@@ -367,7 +367,7 @@ class TestSnapshotRoundtrip:
                 if step_file.exists():
                     try:
                         step_spec = StructureStepSpec.from_yaml(step_file)
-                        new_steps_by_type[step_spec.step_type] = step_spec
+                        new_steps_by_type[step_spec.step_type_spec] = step_spec
                     except Exception:
                         pass
         
@@ -381,7 +381,7 @@ class TestSnapshotRoundtrip:
             common_type = list(original_steps_by_type.keys())[0]
             original_step = original_steps_by_type[common_type]
             new_step = new_steps_by_type[common_type]
-            assert original_step.step_type == new_step.step_type
+            assert original_step.step_type_spec == new_step.step_type_spec
         
         # DAG model: Step YAML should NOT contain structure_id or parent_calculation_id
         # Verify new step YAML does not contain these fields

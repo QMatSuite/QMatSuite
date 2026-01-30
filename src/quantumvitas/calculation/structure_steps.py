@@ -249,15 +249,15 @@ def generate_qe_input_from_structure(
 
 
 # Post-processing step types that don't need structure-based input
-# These are public_type names (not machine_type like qe_bands)
+# These are step_type_gen names (not step_type_spec like qe_bands)
 POST_PROCESSING_STEP_TYPES = {
     "dos", "bands", "projwfc", "pp", "q2r", "matdyn", "dynmat",
     "sumpdos", "band_interpolation", "ppacf", "pprism",
 }
 
 
-# Import normalize_step_type_to_public from registry (SSOT for machine→public conversion)
-from quantumvitas.workflow.registry import normalize_step_type_to_public as _normalize_step_type_to_public
+# Import normalize_step_type_to_gen from registry (SSOT for spec→gen conversion)
+from quantumvitas.workflow.registry import normalize_step_type_to_gen as _normalize_step_type_to_gen
 
 # Mapping of step type to primary namelist name
 STEP_TYPE_NAMELIST_MAP = {
@@ -374,9 +374,9 @@ def _inject_calculation_prefix_outdir(
     """
     # Determine which QE module this step uses
     step_type_lower = step_type.lower()
-    # Convert machine_type (e.g., 'qe_scf') to public_type (e.g., 'scf') for lookup
-    step_type_public = _normalize_step_type_to_public(step_type_lower)
-    module = STEP_TYPE_MODULE_MAP.get(step_type_public)
+    # Convert step_type_spec (e.g., 'qe_scf') to step_type_gen (e.g., 'scf') for lookup
+    step_gen_type = _normalize_step_type_to_gen(step_type_lower)
+    module = STEP_TYPE_MODULE_MAP.get(step_gen_type)
     if not module:
         # Unknown step type - skip injection
         return
@@ -466,12 +466,12 @@ def _generate_postprocessing_input(
     These don't need structure-based input, just the appropriate namelist.
     """
     step_type_lower = spec.step_type_spec.lower() if spec.step_type_spec else "dos"
-    # Convert machine_type (e.g., 'qe_bands') to public_type (e.g., 'bands') for lookup
-    step_type_public = _normalize_step_type_to_public(step_type_lower)
-    
-    # Get the primary namelist name for this step type (using public_type)
-    namelist_name = STEP_TYPE_NAMELIST_MAP.get(step_type_public, step_type_public.upper())
-    module = STEP_TYPE_MODULE_MAP.get(step_type_public, QEModule.DOS)
+    # Convert step_type_spec (e.g., 'qe_bands') to step_type_gen (e.g., 'bands') for lookup
+    step_gen_type = _normalize_step_type_to_gen(step_type_lower)
+
+    # Get the primary namelist name for this step type (using step_type_gen)
+    namelist_name = STEP_TYPE_NAMELIST_MAP.get(step_gen_type, step_gen_type.upper())
+    module = STEP_TYPE_MODULE_MAP.get(step_gen_type, QEModule.DOS)
     
     # Build parameters for the namelist
     params: Dict[str, Any] = {}
@@ -526,11 +526,11 @@ def generate_qe_input_from_spec(
             species_map is None. If False, raise error when species_map is None (project runs only).
     """
     step_type_lower = spec.step_type_spec.lower() if spec.step_type_spec else "scf"
-    # Convert machine_type (e.g., 'qe_bands') to public_type (e.g., 'bands') for lookup
-    step_type_public = _normalize_step_type_to_public(step_type_lower)
-    
+    # Convert step_type_spec (e.g., 'qe_bands') to step_type_gen (e.g., 'bands') for lookup
+    step_gen_type = _normalize_step_type_to_gen(step_type_lower)
+
     # Handle post-processing step types differently
-    if step_type_public in POST_PROCESSING_STEP_TYPES:
+    if step_gen_type in POST_PROCESSING_STEP_TYPES:
         return _generate_postprocessing_input(spec, extra_overrides)
 
     spec_overrides = parameter_dict_to_overrides(spec.parameters)

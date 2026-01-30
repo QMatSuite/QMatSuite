@@ -956,7 +956,7 @@ def test_cli_show_command_import_preserves_original_parameters(
             steps=[
                 StepResultSummary(
                     step_id=step.meta.ulid,
-                    step_type=step.step_type,
+                    step_type=step.step_type_spec,
                     status=StepStatus.SUCCESS,
                     working_dir=calculation.dir / "raw",
                     input_file=step.input_file or calculation.dir / "raw" / "mock.in",

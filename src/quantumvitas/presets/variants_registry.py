@@ -307,20 +307,20 @@ def get_variant(dimension: str, step_type: str) -> Optional[ParamSpaceVariant]:
 
     Args:
         dimension: Dimension name (e.g., "precision", "magnetism")
-        step_type: Step type string (e.g., "scf", "bands_pw", or "qe_scf" for machine_type)
-                   If machine_type is provided, it will be mapped to public_type automatically.
+        step_type: Step type string (e.g., "scf", "bands_pw", or "qe_scf" for step_type_spec)
+                   If step_type_spec is provided, it will be mapped to step_type_gen automatically.
 
     Returns:
         ParamSpaceVariant if one applies, None otherwise
     """
-    # STEP TYPE MAPPING: Map machine_type to public_type for variant lookup
-    # Presets use gen/public step types (string), not machine_type
+    # STEP TYPE MAPPING: Map step_type_spec to step_type_gen for variant lookup
+    # Presets use gen step types (string), not step_type_spec
     # This is the single mapping point - all preset/paramspace lookups go through here
     from quantumvitas.workflow.registry import get_registry
     registry = get_registry()
     spec = registry.get(step_type)
     if spec and spec.step_type_gen:
-        # Map machine_type to public_type
+        # Map step_type_spec to step_type_gen
         step_type = spec.step_type_gen
     
     key = (step_type, dimension)
