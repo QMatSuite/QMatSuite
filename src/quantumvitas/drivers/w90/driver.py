@@ -58,7 +58,7 @@ class W90Driver(BaseEngineDriver):
         """
         return [
             StepTypeSpec(
-                id="w90_run",
+                step_type_spec="w90_run",
                 engine="w90",
                 executable="wannier90.x",
                 description="Wannier90 MLWF construction",

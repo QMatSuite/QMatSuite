@@ -21,7 +21,7 @@ class TestORCADriver:
         driver = ORCADriver()
         specs = driver.get_step_type_specs()
 
-        spec_ids = {s.id for s in specs}
+        spec_ids = {s.step_type_spec for s in specs}
         assert "orca_scf" in spec_ids
         assert "orca_opt" in spec_ids
         assert "orca_freq" in spec_ids

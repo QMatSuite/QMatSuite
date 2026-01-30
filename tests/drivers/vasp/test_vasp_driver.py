@@ -22,7 +22,7 @@ class TestVASPDriver:
         specs = driver.get_step_type_specs()
 
         # Check required step types exist
-        spec_ids = {s.id for s in specs}
+        spec_ids = {s.step_type_spec for s in specs}
         assert "vasp_scf" in spec_ids
         assert "vasp_relax" in spec_ids
         assert "vasp_md" in spec_ids
