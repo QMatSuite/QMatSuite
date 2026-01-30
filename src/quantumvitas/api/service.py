@@ -1781,8 +1781,10 @@ class QVService:
                     # Return JSON-serializable visualization data
                     # For now, return basic structure info for visualization
                     # Full visualization would require the structure_viz module
+                    structure_ulid = struct_resolved.meta.id if struct_resolved.meta else ""
                     return {
-                        "structure_id": struct_resolved.meta.id if struct_resolved.meta else "",
+                        "structure_ulid": structure_ulid,
+                        "structure_id": structure_ulid,  # Backwards compat
                         "num_atoms": len(pmg_structure),
                         "formula": pmg_structure.formula,
                     }
@@ -1794,8 +1796,10 @@ class QVService:
                         output_path=None,  # Don't save, just get data
                         plot_format=format,
                     )
+                    structure_ulid = struct_resolved.meta.id if struct_resolved.meta else ""
                     return {
-                        "structure_id": struct_resolved.meta.id if struct_resolved.meta else "",
+                        "structure_ulid": structure_ulid,
+                        "structure_id": structure_ulid,  # Backwards compat
                         "n_atoms": result.n_atoms if hasattr(result, "n_atoms") else len(pmg_structure),
                         "format": format,
                     }
@@ -1985,9 +1989,11 @@ class QVService:
                 )
 
                 # Build payload
+                structure_ulid = resolved.meta.id if resolved.meta else None
                 structure_meta = {
-                    "structure_id": resolved.meta.id,
-                    "structure_name": resolved.meta.name,
+                    "structure_ulid": structure_ulid,
+                    "structure_id": structure_ulid,  # Backwards compat
+                    "structure_name": resolved.meta.name if resolved.meta else None,
                     "formula": original_structure.composition.reduced_formula,
                     "supercell": list(supercell_normalized),
                     "display_mode": effective_mode,
@@ -2988,10 +2994,10 @@ class QVService:
                     absolute_path=step_path
                 )
 
-                # Get step_type and engine from registry
+                # Get step_type_spec and engine from registry
                 from quantumvitas.workflow.registry import get_registry
                 registry = get_registry()
-                machine_step_type = step_data.get("step_type", "scf")
+                machine_step_type = step_data.get("step_type_spec") or step_data.get("step_type", "scf")
                 step_spec = registry.get(machine_step_type)
                 engine = step_spec.engine if step_spec else "qe"
 
@@ -3000,7 +3006,7 @@ class QVService:
                     meta=step_meta,
                     input_file=step_path,
                     engine=engine,
-                    step_type=machine_step_type,
+                    step_type_spec=machine_step_type,
                 )
 
                 # Build StepDTO
@@ -3361,11 +3367,21 @@ class QVService:
                         except Exception:
                             pass
 
+                    # Convert step_type_spec to step_type_gen for response
+                    step_type_gen = None
+                    if step_type:
+                        try:
+                            from quantumvitas.api import get_step_type_gen
+                            step_type_gen = get_step_type_gen(step_type)
+                        except (KeyError, ValueError):
+                            pass
+                    
                     step_summaries.append({
-                        "id": step_id,
-                        "step_id": step_id,
-                        "type": step_type,
-                        "step_type": step_type,
+                        "id": step_id,  # Backwards compat
+                        "step_ulid": step_id,
+                        "step_type_spec": step_type,
+                        "step_type_gen": step_type_gen,
+                        "type": step_type_gen if step_type_gen else step_type,  # Backwards compat
                         "name": step_name,
                         "status": step_status,
                         "missing": not (step_path and step_path.exists()),
@@ -3378,7 +3394,8 @@ class QVService:
                     "name": calc_resolved.meta.name if calc_resolved.meta else selector,
                     "slug": calc_resolved.meta.slug if calc_resolved.meta else None,
                     "structure": structure_name,
-                    "structure_id": structure_id,
+                    "structure_ulid": structure_id,  # structure_id is actually a ULID
+                    "structure_id": structure_id,  # Backwards compat
                     "structure_name": structure_name,
                     "structure_elements": structure_elements,
                     "steps": step_summaries,
@@ -3460,7 +3477,8 @@ class QVService:
                                     step_doc.set(["structure"], "")
                                     save_step_doc(step_doc, step_file)
                                     updated_steps.append({
-                                        "step_id": spec.meta.id,
+                                        "step_ulid": spec.meta.id,
+                                        "step_id": spec.meta.id,  # Backwards compat
                                         "old_structure_id": old_step_struct_id,
                                         "new_structure_id": struct_resolved.meta.id,
                                     })
@@ -3774,7 +3792,7 @@ class QVService:
                     )
                 
                 # Remove step entry from calculation model
-                calc_model.steps = [e for e in calc_model.steps if e.step_id != step_id]
+                calc_model.steps = [e for e in calc_model.steps if e.step_ulid != step_id]
                 
                 # Save calculation.yaml
                 save_calculation(calc_model, calc_yaml)
@@ -4207,13 +4225,13 @@ class QVService:
                 wf_model = load_calculation(wf_path)
 
                 # Validate all step IDs exist
-                existing_ids = {s.step_id for s in wf_model.steps}
+                existing_ids = {s.step_ulid for s in wf_model.steps}
                 existing_slugs = {}
                 for s in wf_model.steps:
-                    if s.step_id:
-                        existing_slugs[s.step_id] = s
-                    if s.type:
-                        existing_slugs[s.type] = s
+                    if s.step_ulid:
+                        existing_slugs[s.step_ulid] = s
+                    if s.step_type_spec:
+                        existing_slugs[s.step_type_spec] = s
 
                 # Resolve the new order
                 reordered = []
@@ -4221,9 +4239,9 @@ class QVService:
                 for selector in new_order:
                     if selector in existing_slugs:
                         step = existing_slugs[selector]
-                        if step.step_id not in seen:
+                        if step.step_ulid not in seen:
                             reordered.append(step)
-                            seen.add(step.step_id)
+                            seen.add(step.step_ulid)
                     else:
                         raise ValidationError(f"Step '{selector}' not found in calculation")
 
@@ -4594,8 +4612,10 @@ class QVService:
                     "n_steps": len(results.steps),
                     "steps": [
                         {
-                            "step_id": s.step_id,
-                            "step_type": s.step_type,
+                            "step_ulid": s.step_ulid,
+                            "step_id": s.step_ulid,  # Backwards compat
+                            "step_type_spec": s.step_type_spec if s.step_type_spec else None,
+                            "step_type": s.step_type,  # Backwards compat
                             "status": s.status.value,
                             "message": s.message,
                             "metrics": s.metrics,
@@ -4702,7 +4722,7 @@ class QVService:
                 # Find target step's result
                 target_summary = None
                 for summary in result.steps:
-                    if summary.step_id == target_step_id:
+                    if summary.step_ulid == target_step_id:
                         target_summary = summary
                         break
 
@@ -6019,7 +6039,8 @@ class QVService:
                         "timestamp": event.timestamp,
                         "event_type": event.event_type,
                         "calc_id": event.calc_id,
-                        "step_id": event.step_id,
+                        "step_ulid": event.step_ulid,
+                        "step_id": event.step_ulid,  # Backwards compat
                     }
 
                     if event.event_type == EventType.RUN_STARTED.value:
@@ -6666,10 +6687,13 @@ class QVService:
                         
                         # Extract structure info
                         if calculation.structure:
+                            structure_ulid = calculation.structure.meta.id if hasattr(calculation.structure, 'meta') and calculation.structure.meta else None
                             entry["structure"] = calculation.structure.meta.name if hasattr(calculation.structure, 'meta') else str(calculation.structure)
-                            entry["structure_id"] = calculation.structure.meta.id if hasattr(calculation.structure, 'meta') else None
+                            entry["structure_ulid"] = structure_ulid
+                            entry["structure_id"] = structure_ulid  # Backwards compat
                         else:
                             entry["structure"] = None
+                            entry["structure_ulid"] = None
                             entry["structure_id"] = None
                         
                         # Ensure mode is always present (default to "normal" if not set)
@@ -6677,14 +6701,25 @@ class QVService:
                         entry["n_steps"] = len(calculation.steps)
                         
                         # Extract step info from actual Step objects (which have ULID meta.id)
-                        entry["steps"] = [
-                            {
-                                "step_id": step.meta.id,  # ULID (canonical reference)
-                                "id": step.meta.id,  # Also include as 'id' for backwards compatibility in API response
-                                "type": step.step_type,
-                            }
-                            for step in calculation.steps
-                        ]
+                        from quantumvitas.api import get_step_type_gen
+                        entry["steps"] = []
+                        for step in calculation.steps:
+                            step_ulid = step.meta.id if step.meta else None
+                            step_type_spec = step.step_type_spec if hasattr(step, 'step_type_spec') else None
+                            step_type_gen = None
+                            if step_type_spec:
+                                try:
+                                    step_type_gen = get_step_type_gen(step_type_spec)
+                                except (KeyError, ValueError):
+                                    pass
+                            entry["steps"].append({
+                                "step_ulid": step_ulid,
+                                "id": step_ulid,  # Backwards compat
+                                "step_id": step_ulid,  # Backwards compat
+                                "step_type_spec": step_type_spec,
+                                "step_type_gen": step_type_gen,
+                                "type": step_type_gen if step_type_gen else step_type_spec,  # Backwards compat
+                            })
                 except Exception:
                     pass  # Calculation metadata is optional
                 
@@ -7021,8 +7056,10 @@ class QVService:
                 "n_steps": len(results.steps),
                 "steps": [
                     {
-                        "step_id": s.step_id,
-                        "step_type": s.step_type,
+                        "step_ulid": s.step_ulid,
+                        "step_id": s.step_ulid,  # Backwards compat
+                        "step_type_spec": s.step_type_spec,
+                        "step_type": s.step_type_spec,  # Backwards compat
                         "status": s.status.value,
                         "message": s.message,
                         "metrics": s.metrics,
@@ -7131,7 +7168,7 @@ class QVService:
 
             target_summary = None
             for summary in result.steps:
-                if summary.step_id == target_step_id:
+                if summary.step_ulid == target_step_id:
                     target_summary = summary
                     break
 

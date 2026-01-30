@@ -916,9 +916,9 @@ def resolve_engine_for_step(
         if not step_yaml_path.exists():
             raise FileNotFoundError(f"Step YAML file not found: {step_yaml_path}")
         step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
-        step_type_str = step_data.get("step_type")
+        step_type_str = step_data.get("step_type_spec") or step_data.get("step_type")
         if not step_type_str:
-            raise ValueError(f"Step YAML file missing 'step_type' field: {step_yaml_path}")
+            raise ValueError(f"Step YAML file missing 'step_type_spec' or 'step_type' field: {step_yaml_path}")
     else:
         raise ValueError("Must provide one of: step_yaml_path or machine_step_type")
     

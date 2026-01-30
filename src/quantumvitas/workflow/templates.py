@@ -527,7 +527,7 @@ class WorkflowService:
             created_paths.append(step_path)
             
             # Collect step ULID for calc steps[] update
-            step_ulid = step_doc.get(["meta", "id"])
+            step_ulid = step_doc.get(["meta", "ulid"]) or step_doc.get(["meta", "id"])  # Fallback for legacy
             created_step_ulids.append(step_ulid)
         
         # Update calculation.yaml.steps[] with created steps (authoritative)

@@ -199,8 +199,8 @@ class CalculationRunner:
                 calculation_failed = True
                 status = StepStatus.FAILED
                 step_summaries.append(StepResultSummary(
-                    step_id="step0",
-                    step_type="custom",
+                    step_ulid="step0",
+                    step_type_spec="custom",
                     status=StepStatus.FAILED,
                     working_dir=calculation.raw_dir,
                     input_file=Path(),
@@ -225,8 +225,8 @@ class CalculationRunner:
                 # TODO: Consider logging these warnings somewhere visible
                 pass
                 step_summaries.append(StepResultSummary(
-                    step_id="step0",
-                    step_type="custom",
+                    step_ulid="step0",
+                    step_type_spec="custom",
                     status=StepStatus.FAILED,
                     working_dir=calculation.raw_dir,
                     input_file=Path(),
@@ -585,8 +585,8 @@ class CalculationRunner:
                 if job_result.skipped:
                     # Step was skipped - use Job fields (expected paths)
                     summary = StepResultSummary(
-                        step_id=step_ulid,
-                        step_type=step_type,
+                        step_ulid=step_ulid,
+                        step_type_spec=step_type,
                         status=StepStatus.SUCCESS,
                         working_dir=job.working_dir,
                         input_file=job_input_file,
@@ -640,8 +640,8 @@ class CalculationRunner:
                             logger.warning(f"Failed to update provenance: {e}")
 
                     summary = StepResultSummary(
-                        step_id=step_ulid,
-                        step_type=step_type,
+                        step_ulid=step_ulid,
+                        step_type_spec=step_type,
                         status=StepStatus.SUCCESS if step_success else StepStatus.FAILED,
                         working_dir=job.working_dir,
                         input_file=job_input_file,

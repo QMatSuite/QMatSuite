@@ -2037,8 +2037,10 @@ def build_structure_vis_payload(
         result.update(structure_meta)
 
     # Ensure required fields exist
+    if "structure_ulid" not in result:
+        result["structure_ulid"] = structure_meta.get("structure_ulid") or structure_meta.get("structure_id", "unknown") if structure_meta else "unknown"
     if "structure_id" not in result:
-        result["structure_id"] = structure_meta.get("structure_id", "unknown") if structure_meta else "unknown"
+        result["structure_id"] = structure_meta.get("structure_id") or structure_meta.get("structure_ulid", "unknown") if structure_meta else "unknown"
     if "structure_name" not in result:
         result["structure_name"] = structure_meta.get("structure_name", "") if structure_meta else ""
     if "formula" not in result:

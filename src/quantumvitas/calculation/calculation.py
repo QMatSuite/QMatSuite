@@ -373,7 +373,10 @@ def _build_step(
     engine_name = step_data.get("engine")
     if engine_name is None:
         # Try to infer from step type (from step_data or step file)
-        step_type = step_data.get("type") or step_data.get("step_type") or step_file_data.get("step_type") or step_file_data.get("type")
+        # Check step_type_spec first (canonical), then fallback to legacy fields
+        step_type = (step_data.get("step_type_spec") or step_file_data.get("step_type_spec") or
+                     step_data.get("type") or step_data.get("step_type") or 
+                     step_file_data.get("step_type") or step_file_data.get("type"))
         if step_type:
             # First try workflow registry lookup
             from quantumvitas.workflow.registry import get_registry
@@ -530,7 +533,10 @@ def _build_step_inspection(
     engine_name = step_data.get("engine")
     if engine_name is None:
         # Try to infer from step type (from step_data or step file)
-        step_type = step_data.get("type") or step_data.get("step_type") or step_file_data.get("step_type") or step_file_data.get("type")
+        # Check step_type_spec first (canonical), then fallback to legacy fields
+        step_type = (step_data.get("step_type_spec") or step_file_data.get("step_type_spec") or
+                     step_data.get("type") or step_data.get("step_type") or 
+                     step_file_data.get("step_type") or step_file_data.get("type"))
         if step_type:
             # First try workflow registry lookup
             from quantumvitas.workflow.registry import get_registry
@@ -695,7 +701,7 @@ def _build_step_inspection(
         meta=step_meta,
         input_file=dummy_input,
         engine=engine_name,
-        step_type=step_type or "custom",
+        step_type_spec=step_type or "custom",
         options={},
         reference_output=reference_path,
     ), False  # No migration needed (legacy calculations raise errors)
@@ -906,7 +912,7 @@ def _build_step_from_spec(
         meta=step_meta,
         input_file=input_file_value,
         engine=engine_name,
-        step_type=step_type,
+        step_type_spec=step_type,
         options=options,
         reference_output=reference,
     )

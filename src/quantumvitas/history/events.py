@@ -51,7 +51,7 @@ class HistoryEvent:
     event_type: str
     project_id: Optional[str] = None
     calc_id: Optional[str] = None
-    step_id: Optional[str] = None
+    step_ulid: Optional[str] = None  # ULID (was step_id)
     
     @classmethod
     def generate_id(cls) -> str:
@@ -187,7 +187,7 @@ class EditEvent(HistoryEvent):
             timestamp=cls.now_timestamp(),
             project_id=project_id,
             calc_id=calc_id,
-            step_id=step_id,
+            step_ulid=step_id,
             doc_type=doc_type,
             doc_path=doc_path,
             changes=[asdict(c) if hasattr(c, "__dataclass_fields__") else c for c in changes],
@@ -203,7 +203,7 @@ class EditEvent(HistoryEvent):
             event_type=data.get("event_type", EventType.EDIT.value),
             project_id=data.get("project_id"),
             calc_id=data.get("calc_id"),
-            step_id=data.get("step_id"),
+            step_ulid=data.get("step_ulid", data.get("step_id")),
             doc_type=data.get("doc_type"),
             doc_path=data.get("doc_path"),
             changes=data.get("changes", []),
@@ -264,7 +264,7 @@ class RunStartedEvent(HistoryEvent):
             event_type=data.get("event_type", EventType.RUN_STARTED.value),
             project_id=data.get("project_id"),
             calc_id=data.get("calc_id"),
-            step_id=data.get("step_id"),
+            step_ulid=data.get("step_ulid", data.get("step_id")),
             run_id=data.get("run_id", ""),
             calc_name=data.get("calc_name"),
             step_ids=data.get("step_ids", []),
@@ -327,7 +327,7 @@ class RunFinishedEvent(HistoryEvent):
             event_type=data.get("event_type", EventType.RUN_FINISHED.value),
             project_id=data.get("project_id"),
             calc_id=data.get("calc_id"),
-            step_id=data.get("step_id"),
+            step_ulid=data.get("step_ulid", data.get("step_id")),
             run_id=data.get("run_id", ""),
             status=data.get("status", ""),
             duration_seconds=data.get("duration_seconds"),
@@ -366,7 +366,7 @@ class PinCreatedEvent(HistoryEvent):
             timestamp=cls.now_timestamp(),
             project_id=project_id,
             calc_id=calc_id,
-            step_id=step_id,
+            step_ulid=step_id,
             run_id=run_id,
             analysis_kind=analysis_kind,
             pin_path=pin_path,
@@ -380,7 +380,7 @@ class PinCreatedEvent(HistoryEvent):
             event_type=data.get("event_type", EventType.PIN_CREATED.value),
             project_id=data.get("project_id"),
             calc_id=data.get("calc_id"),
-            step_id=data.get("step_id"),
+            step_ulid=data.get("step_ulid", data.get("step_id")),
             run_id=data.get("run_id", ""),
             analysis_kind=data.get("analysis_kind", ""),
             pin_path=data.get("pin_path"),

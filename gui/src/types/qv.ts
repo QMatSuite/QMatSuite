@@ -192,8 +192,9 @@ export type RightSelection =
 // =============================================================================
 
 export interface StepInfo {
-  id: string;
-  type: string;
+  ulid: string;
+  step_type_spec: string;
+  step_type_gen: string;
   step_file: string;
 }
 
@@ -415,12 +416,13 @@ export interface EnvironmentInfo {
 // =============================================================================
 
 export interface StepDetail {
-  id: string;
+  ulid: string;
   name: string;
   slug: string;
   path: string;
   absolute_path: string;
-  step_type: string;
+  step_type_spec: string;
+  step_type_gen: string;
   structure: string | null;
   parent_calculation_id: string | null;
   parameters: Record<string, Record<string, unknown>>;
