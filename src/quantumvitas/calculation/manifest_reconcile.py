@@ -61,7 +61,7 @@ def reconcile_manifest(
     from quantumvitas.core.project_utils import load_project_config
     
     calc_model = load_calculation(calc_dir / "calculation.yaml", project_root=project_root)
-    calculation_id = calc_model.meta.id
+    calculation_id = calc_model.meta.ulid
     config = load_project_config(project_root)
     
     # Build new manifest aligned to current topology
@@ -72,8 +72,8 @@ def reconcile_manifest(
     for i, step in enumerate(calculation_steps):
         # Get step kind (step type)
         step_kind = str(step.step_type_spec) if step.step_type_spec else "unknown"
-        # Use step.meta.id (ULID) instead of step.id (slug)
-        step_ulid = step.meta.id
+        # Use step.meta.ulid (ULID) instead of step.id (slug)
+        step_ulid = step.meta.ulid
         
         # Load step YAML to compute step_sha
         from quantumvitas.core.yamldoc import StepDoc
@@ -86,7 +86,7 @@ def reconcile_manifest(
             step_doc_dict = StepDoc.load(step_yaml_path).to_dict()
             step_sha = compute_step_sha(step_doc_dict)
         except Exception as e:
-            logger.warning(f"Failed to compute step_sha for step {step.meta.slug} (ulid={step.meta.id}): {e}")
+            logger.warning(f"Failed to compute step_sha for step {step.meta.slug} (ulid={step.meta.ulid}): {e}")
             step_sha = ""
         
         # Check if old manifest has matching entry
@@ -129,7 +129,7 @@ def reconcile_manifest(
                                 pseudo_set_sha=current_pseudo_set_sha,
                                 structure_sha=structure_sha,
                                 step_sha=step_sha,
-                                run_id=old_entry.run_id,
+                                run_ulid=old_entry.run_ulid,
                                 done=False,  # Force rerun
                                 started_at=None,
                                 done_at=None,
@@ -151,7 +151,7 @@ def reconcile_manifest(
                                 pseudo_set_sha=current_pseudo_set_sha,
                                 structure_sha=structure_sha,
                                 step_sha=step_sha,
-                                run_id=old_entry.run_id,  # Keep old run_id
+                                run_ulid=old_entry.run_ulid,  # Keep old run_id
                                 done=True,  # Verified as done
                                 started_at=old_entry.started_at,  # Keep timestamps
                                 done_at=old_entry.done_at,
@@ -167,7 +167,7 @@ def reconcile_manifest(
                                 pseudo_set_sha=current_pseudo_set_sha,
                                 structure_sha=structure_sha,
                                 step_sha=step_sha,
-                                run_id=old_entry.run_id,
+                                run_ulid=old_entry.run_ulid,
                                 done=False,  # Not actually done
                                 started_at=None,
                                 done_at=None,
@@ -177,7 +177,7 @@ def reconcile_manifest(
                                 first_changed_idx = i
                             continue
                     except Exception as e:
-                        logger.warning(f"Failed to verify step done status for step {step.meta.slug} (ulid={step.meta.id}): {e}, marking as not done")
+                        logger.warning(f"Failed to verify step done status for step {step.meta.slug} (ulid={step.meta.ulid}): {e}, marking as not done")
                         # On error, mark as not done
                         new_entry = ManifestStepEntry(
                             kind=step_kind,
@@ -185,7 +185,7 @@ def reconcile_manifest(
                             pseudo_set_sha=current_pseudo_set_sha,
                             structure_sha=structure_sha,
                             step_sha=step_sha,
-                            run_id=old_entry.run_id,
+                            run_ulid=old_entry.run_ulid,
                             done=False,
                             started_at=None,
                             done_at=None,
@@ -202,7 +202,7 @@ def reconcile_manifest(
                         pseudo_set_sha=current_pseudo_set_sha,
                         structure_sha=structure_sha,
                         step_sha=step_sha,
-                        run_id=old_entry.run_id,  # Keep run_id but done=false
+                        run_ulid=old_entry.run_ulid,  # Keep run_id but done=false
                         done=False,  # Force rerun
                         started_at=None,
                         done_at=None,
@@ -223,7 +223,7 @@ def reconcile_manifest(
                     pseudo_set_sha=current_pseudo_set_sha,
                     structure_sha=structure_sha,
                     step_sha=step_sha,
-                    run_id=None,  # Clear run_id on kind mismatch
+                    run_ulid=None,  # Clear run_ulid on kind mismatch
                     done=False,
                     started_at=None,  # Clear timestamps on kind mismatch
                     done_at=None,
@@ -238,7 +238,7 @@ def reconcile_manifest(
                 pseudo_set_sha=current_pseudo_set_sha,
                 structure_sha=structure_sha,
                 step_sha=step_sha,
-                run_id=None,
+                run_ulid=None,
                 done=False,
                 started_at=None,
                 done_at=None,

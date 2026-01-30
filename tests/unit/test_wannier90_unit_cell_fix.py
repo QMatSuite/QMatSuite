@@ -48,8 +48,7 @@ def test_w90_unit_cell_cart_in_angstrom(diamond_structure, tmp_path):
     """
     # Create a minimal step spec for w90_preproc
     spec = StructureStepSpec(
-        meta=ResourceMeta(
-            id="test",
+        meta=ResourceMeta(ulid="test",
             name="test",
             slug="test",
             path="test",
@@ -122,8 +121,7 @@ def test_w90_atoms_frac_from_structure(diamond_structure, tmp_path):
     diamond_structure.to(fmt="json", filename=str(structure_file))
     
     spec = StructureStepSpec(
-        meta=ResourceMeta(
-            id="test",
+        meta=ResourceMeta(ulid="test",
             name="test",
             slug="test",
             path="test",

@@ -96,7 +96,7 @@ def _check_manual_dict_literal(file_path: Path, line_num: int, line: str, method
     """
     Check for manual dict literal construction in handler methods.
     
-    Flags dict literals like {"key": obj.attr, ...} or items.append({"id": t.id, ...})
+    Flags dict literals like {"key": obj.attr, ...} or items.append({"ulid": t.id, ...})
     unless they have an allowlist annotation or are in allowed contexts.
     
     Args:
@@ -148,7 +148,7 @@ def _check_manual_dict_literal(file_path: Path, line_num: int, line: str, method
     
     # Pattern: Dict literal with object attribute access
     # Examples: 
-    #   items.append({"id": t.id, "name": t.name})  - FLAG THIS
+    #   items.append({"ulid": t.id, "name": t.name})  - FLAG THIS
     #   return {"ok": True, "enabled": bool_value}  - DON'T FLAG (no obj.attr)
     #   if k not in {"code", "message"}:  - DON'T FLAG (set literal, no :)
     
@@ -157,7 +157,7 @@ def _check_manual_dict_literal(file_path: Path, line_num: int, line: str, method
     
     # Check for dict literal pattern: { "key": obj.attr, ... } 
     # Must have: { ... "key": var.attr ... } where var.attr is object attribute access
-    # We want to flag: {"id": t.id, "name": t.name} but NOT {"ok": True, "enabled": settings.get(...)}
+    # We want to flag: {"ulid": t.id, "name": t.name} but NOT {"ok": True, "enabled": settings.get(...)}
     if '{' in line and ':' in line:
         # Look for pattern: {"key": obj.attr where obj.attr is NOT a method call
         if re.search(dict_literal_pattern, line):

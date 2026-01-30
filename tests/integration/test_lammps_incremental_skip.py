@@ -66,7 +66,7 @@ def inline_lj_project(tmp_path: Path, lammps_binary):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Ar FCC")
-    structure_id = struct_result.meta.id
+    structure_id = struct_result.meta.ulid
     
     # Create calculation
     calc_result = QVService.init_calculation(
@@ -74,7 +74,7 @@ def inline_lj_project(tmp_path: Path, lammps_binary):
         name="inline_lj",
         structure_selector=structure_id,
     )
-    calc_id = calc_result.meta.id
+    calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path
     
     # Configure calculation
@@ -91,7 +91,7 @@ def inline_lj_project(tmp_path: Path, lammps_binary):
         calc_selector=calc_id,
         step_type="relax",
     )
-    step_id = step.step_id
+    step_id = step.step_ulid
 
     # Configure step with initial LJ parameters using domain API
     # Note: LAMMPS parameters go inside "parameters" dict
@@ -119,7 +119,7 @@ def inline_lj_project(tmp_path: Path, lammps_binary):
     return {
         "project_root": project_root,
         "calc_dir": calc_dir,
-        "step_id": step_id,
+        "step_ulid": step_id,
         "calc_id": calc_id,
     }
 
@@ -137,7 +137,7 @@ def test_inline_lj_potential_affects_skip(inline_lj_project, lammps_binary):
     """
     project_root = inline_lj_project["project_root"]
     calc_dir = inline_lj_project["calc_dir"]
-    step_id = inline_lj_project["step_id"]
+    step_id = inline_lj_project["step_ulid"]
     calc_id = inline_lj_project["calc_id"]
     
     # First run
@@ -248,7 +248,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC")
-    structure_id = struct_result.meta.id
+    structure_id = struct_result.meta.ulid
     
     # Copy potential file from resources
     repo_root = Path(__file__).parent.parent.parent
@@ -268,7 +268,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
         name="external_pot",
         structure_selector=structure_id,
     )
-    calc_id = calc_result.meta.id
+    calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path
     
     # Configure calculation with potential_map
@@ -293,7 +293,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
         calc_selector=calc_id,
         step_type="md",
     )
-    step_id = step.step_id
+    step_id = step.step_ulid
 
     # Note: LAMMPS parameters go inside "parameters" dict
     svc.calculation.update_step_params(
@@ -317,7 +317,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     return {
         "project_root": project_root,
         "calc_dir": calc_dir,
-        "step_id": step_id,
+        "step_ulid": step_id,
         "calc_id": calc_id,
         "potential_file": potential_dst,
         "initial_sha": initial_sha,
@@ -338,7 +338,7 @@ def test_external_potential_file_content_affects_skip(external_potential_project
     """
     project_root = external_potential_project["project_root"]
     calc_dir = external_potential_project["calc_dir"]
-    step_id = external_potential_project["step_id"]
+    step_id = external_potential_project["step_ulid"]
     calc_id = external_potential_project["calc_id"]
     potential_file = external_potential_project["potential_file"]
     initial_sha = external_potential_project["initial_sha"]

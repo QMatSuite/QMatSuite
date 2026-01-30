@@ -59,7 +59,7 @@ def build_test_step_yaml(
         Dict representing step YAML structure
     """
     result: Dict[str, Any] = {
-        "step_type": step_type,
+        "step_type_gen": step_type,
     }
     
     if parameters:

@@ -7,7 +7,7 @@ This module tests the exact same daemon endpoints that the GUI uses:
 - Step detail retrieval (get_step_detail)
 
 These tests simulate what the GUI does but in pure Python, ensuring:
-- DAG + ID-only model is respected (calculation.structure_id ULID, step.step_id ULID)
+- DAG + ID-only model is respected (calculation.structure_id ULID, step.step_ulid ULID)
 - Selectors work correctly (calculation slug, step ULID)
 - Path normalization is consistent (project_root matching)
 
@@ -64,7 +64,7 @@ def temp_project(tmp_path: Path) -> Path:
                 source=scf_in,
                 name="Si",
             )
-            structure_id = structure_resolved.meta.id
+            structure_id = structure_resolved.meta.ulid
         else:
             # Skip if no test data
             pytest.skip("Test data not available")
@@ -78,7 +78,7 @@ def temp_project(tmp_path: Path) -> Path:
         name="test_calculation",
         structure_selector=structure_id,
     )
-    calculation_id = calculation_result.meta.id
+    calculation_id = calculation_result.meta.ulid
     
     # Use domain accessor API for step creation
     svc = QVService(project_dir)
@@ -144,11 +144,11 @@ class TestJobSubmissionAndListing:
         jobs = list_response["jobs"]
         
         # Job should appear in the list
-        job_ids = [j["id"] for j in jobs]
+        job_ids = [j["ulid"] for j in jobs]
         assert job_id in job_ids, f"Job {job_id} not found in list. Found: {job_ids}"
         
         # Verify job has correct project_root
-        job = next(j for j in jobs if j["id"] == job_id)
+        job = next(j for j in jobs if j["ulid"] == job_id)
         assert job["project_root"] == project_root_str, \
             f"Job project_root mismatch: {job['project_root']} != {project_root_str}"
         assert job["job_type"] == "run_calculation"
@@ -191,7 +191,7 @@ class TestJobSubmissionAndListing:
             list_response = send_request(daemon, "list_jobs", {
                 "project_root": path_format,
             })
-            job_ids = [j["id"] for j in list_response["jobs"]]
+            job_ids = [j["ulid"] for j in list_response["jobs"]]
             assert job_id in job_ids, \
                 f"Job not found with path format: {path_format}"
 
@@ -235,7 +235,7 @@ class TestStepDetailRetrieval:
         })
         
         assert "id" in detail_response
-        assert detail_response["id"] == step_id_ulid
+        assert detail_response["ulid"] == step_id_ulid
         assert "step_type" in detail_response
         assert "parameters" in detail_response
         assert "cards" in detail_response
@@ -362,7 +362,7 @@ class TestStepCreationRaceCondition:
         add_result = send_request(daemon, "add_step_to_calculation", {
             "project_root": project_root,
             "calculation": calculation_slug,
-            "step_type": "nscf",
+            "step_type_gen": "nscf",
             "step_name": "nscf",
         })
         
@@ -381,7 +381,7 @@ class TestStepCreationRaceCondition:
                 break
 
         assert new_step is not None, f"New nscf step should be in the returned steps: {steps}"
-        new_step_id = new_step.get("step_id")
+        new_step_id = new_step.get("step_ulid")
         assert new_step_id is not None, "Step should have step_id (ULID)"
         assert len(new_step_id) == 26, f"step_id should be ULID (26 chars), got: {new_step_id}"
         
@@ -397,7 +397,7 @@ class TestStepCreationRaceCondition:
         
         # Verify step detail was retrieved successfully
         assert step_detail is not None, "Step detail should be retrieved"
-        assert step_detail.get("id") == new_step_id, "Step detail ID should match"
+        assert step_detail.get("ulid") == new_step_id, "Step detail ID should match"
         assert "nscf" in step_detail.get("step_type", "").lower(), f"Step type should contain nscf, got: {step_detail.get('step_type')}"
         
         # Verify no ResourceNotFoundError was raised (would indicate stale index)
@@ -432,7 +432,7 @@ class TestStepCreationRaceCondition:
         step_data = yaml.safe_load(step_file_path.read_text())
         assert step_data is not None, "Step file should contain valid YAML"
         assert "meta" in step_data, "Step file should have meta block"
-        assert step_data["meta"]["id"] == new_step_id, "Step file meta.id should match calculation entry step_id"
+        assert step_data["meta"]["ulid"] == new_step_id, "Step file meta.id should match calculation entry step_id"
         
         # Verify DAG invariants: step file should NOT contain structure_id or parent_calculation_id
         assert "structure_id" not in step_data, "Step YAML should NOT contain structure_id (DAG invariant)"
@@ -474,7 +474,7 @@ class TestStepDeletion:
         # Reload calculation.yaml and verify step is removed
         wf_model_after = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model_after.steps) == initial_step_count - 1
-        assert not any(s.step_id == step_id_ulid for s in wf_model_after.steps), \
+        assert not any(s.step_ulid == step_id_ulid for s in wf_model_after.steps), \
             f"Step {step_id_ulid} should be removed from calculation.yaml"
     
     def test_delete_step_via_daemon_moves_step_file_to_trash(self, temp_project: Path, daemon: QVDaemon):
@@ -565,7 +565,7 @@ class TestStepDeletion:
         # Verify step entry is removed from calculation.yaml
         wf_model_after = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model_after.steps) == initial_step_count - 1
-        assert not any(s.step_id == step_id_ulid for s in wf_model_after.steps), \
+        assert not any(s.step_ulid == step_id_ulid for s in wf_model_after.steps), \
             f"Step {step_id_ulid} should be removed from calculation.yaml even if file was missing"
     
     def test_delete_step_via_daemon_invalid_ulid_raises_resource_not_found(self, temp_project: Path, daemon: QVDaemon):
@@ -631,14 +631,14 @@ class TestCalculationFailureHandling:
         send_request(daemon, "add_step_to_calculation", {
             "project_root": project_root_str,
             "calculation": calculation_slug,
-            "step_type": "nscf",
+            "step_type_gen": "nscf",
         })
         
         # Add projwfc step
         send_request(daemon, "add_step_to_calculation", {
             "project_root": project_root_str,
             "calculation": calculation_slug,
-            "step_type": "projwfc",
+            "step_type_gen": "projwfc",
         })
         
         # Verify calculation has 3 steps now
@@ -656,7 +656,7 @@ class TestCalculationFailureHandling:
         )
         
         # Get step IDs
-        step_ids = [s.step_id for s in wf_model.steps]
+        step_ids = [s.step_ulid for s in wf_model.steps]
         scf_step_id = step_ids[0]
         nscf_step_id = step_ids[1]
         projwfc_step_id = step_ids[2]
@@ -682,11 +682,11 @@ class TestCalculationFailureHandling:
             # Get step IDs from calculation model (ULIDs from calculation.yaml)
             from quantumvitas.core.models import load_calculation
             wf_model = load_calculation(calculation.dir / "calculation.yaml", calculation.project.root)
-            step_ulids = [s.step_id for s in wf_model.steps]
+            step_ulids = [s.step_ulid for s in wf_model.steps]
             
             for i, step in enumerate(calculation.steps):
                 # Use ULID from calculation.yaml, not step.meta.slug (slug is for display only)
-                step_id = step_ulids[i] if i < len(step_ulids) else step.meta.id
+                step_id = step_ulids[i] if i < len(step_ulids) else step.meta.ulid
                 step_type = step.step_type or "custom"
                 
                 # If a previous step failed, mark remaining steps as SKIPPED
@@ -806,15 +806,15 @@ class TestCalculationFailureHandling:
         assert len(steps) == 3, f"Should have 3 steps, got {len(steps)}"
         
         # First step (scf) should be SUCCESS
-        scf_step = next(s for s in steps if s["step_id"] == scf_step_id)
+        scf_step = next(s for s in steps if s["step_ulid"] == scf_step_id)
         assert scf_step["status"] == "success", f"SCF step should be SUCCESS, got {scf_step['status']}"
         
         # Second step (nscf) should be FAILED
-        nscf_step = next(s for s in steps if s["step_id"] == nscf_step_id)
+        nscf_step = next(s for s in steps if s["step_ulid"] == nscf_step_id)
         assert nscf_step["status"] == "failed", f"NSCF step should be FAILED, got {nscf_step['status']}"
         
         # Third step (projwfc) should be SKIPPED
-        projwfc_step = next(s for s in steps if s["step_id"] == projwfc_step_id)
+        projwfc_step = next(s for s in steps if s["step_ulid"] == projwfc_step_id)
         assert projwfc_step["status"] == "skipped", \
             f"PROJWFC step should be SKIPPED, got {projwfc_step['status']}"
         assert "skipped because a previous step failed" in projwfc_step.get("message", "").lower(), \

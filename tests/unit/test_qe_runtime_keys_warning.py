@@ -33,7 +33,7 @@ def temp_project_with_step():
         structure_file = structures_dir / "si.json"
         structure_file.write_text("""{
   "__qv_meta__": {
-    "id": "01TESTSTRUCTUREID123456789",
+    "ulid": "01TESTSTRUCTUREID123456789",
     "name": "Si",
     "slug": "si",
     "path": "structures/si.json",
@@ -81,7 +81,7 @@ steps: []
         step_id = generate_resource_id()
         step_file = steps_dir / "scf.step.yaml"
         step_meta = meta_from_name("step", name="scf", path="steps/scf.step.yaml")
-        step_meta.id = step_id  # ResourceMeta still uses .id, not .ulid
+        step_meta.ulid = step_id  # ResourceMeta uses .ulid
         step_spec = StructureStepSpec(
             meta=step_meta,
             structure="",

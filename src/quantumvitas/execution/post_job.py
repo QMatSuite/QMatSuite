@@ -21,10 +21,10 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class PostJobContext:
     """Context for post-job actions."""
-    
+
     calc_raw_dir: Path
     variant_key: Optional[str]
-    run_id: str
+    run_ulid: str
 
 
 class PostJobAction(ABC):
@@ -176,7 +176,7 @@ class ArchiveToSlotAction(PostJobAction):
             self._append_slots_entry(
                 slots_file,
                 variant_key=self.variant_key,
-                run_id=context.run_id,
+                run_id=context.run_ulid,
                 ok=getattr(job_result, "success", False),
                 archived_path=str(dest_dir.relative_to(context.calc_raw_dir)),
                 copied_files=copied_files,

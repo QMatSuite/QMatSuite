@@ -1,11 +1,11 @@
 meta:
-  id: 01KBH1ZPE9F10VY6WG88X6ZMPC
+  ulid: 01KBH1ZPE9F10VY6WG88X6ZMPC
   name: bands_pw
   slug: bands_pw
   path: calculations/si-bands/steps/bands_pw.step.yaml
   kind: step
 structure: si
-step_type: bands_pw
+step_type_spec: bands_pw
 parent_calculation_id: 01KBH0RGF179RD73PNKD0N8GNS
 parameters:
   CONTROL:

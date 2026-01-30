@@ -153,8 +153,8 @@ def test_nested_structures():
     data = {
         "calc_id": "01HX7YPVK8DQNZPMJ4GHAB1234",
         "steps": [
-            {"step_id": "01HX7YPVK8DQNZPMJ4GHAB5678", "status": "completed"},
-            {"step_id": "01HX7YPVK8DQNZPMJ4GHAB9012", "status": "pending"},
+            {"step_ulid": "01HX7YPVK8DQNZPMJ4GHAB5678", "status": "completed"},
+            {"step_ulid": "01HX7YPVK8DQNZPMJ4GHAB9012", "status": "pending"},
         ],
         "meta": {
             "created_at": datetime(2026, 1, 23, 10, 0, 0),

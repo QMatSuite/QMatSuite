@@ -56,26 +56,26 @@ class TestSnapshotIDRegeneration:
         
         # Project ID
         project_meta = snapshot.project.get("meta", {})
-        if project_meta.get("id"):
-            snapshot_ids.add(project_meta["id"])
+        if project_meta.get("ulid"):
+            snapshot_ids.add(project_meta["ulid"])
         
         # Structure IDs
         for struct_data in snapshot.structures:
             struct_meta = struct_data.get("meta", {})
-            if struct_meta.get("id"):
-                snapshot_ids.add(struct_meta["id"])
+            if struct_meta.get("ulid"):
+                snapshot_ids.add(struct_meta["ulid"])
         
         # Calculation IDs
         for calculation_data in snapshot.calculations:
             calculation_meta = calculation_data.get("meta", {})
-            if calculation_meta.get("id"):
-                snapshot_ids.add(calculation_meta["id"])
+            if calculation_meta.get("ulid"):
+                snapshot_ids.add(calculation_meta["ulid"])
             
             # Step IDs
             for step_data in calculation_data.get("steps", []):
                 step_meta = step_data.get("meta", {})
-                if step_meta.get("id"):
-                    snapshot_ids.add(step_meta["id"])
+                if step_meta.get("ulid"):
+                    snapshot_ids.add(step_meta["ulid"])
         
         assert len(snapshot_ids) > 0, "Snapshot should contain at least some IDs"
         
@@ -134,9 +134,9 @@ class TestSnapshotIDRegeneration:
             
             new_step_types = []
             for step_entry in new_calculation.steps:
-                if step_entry.step_id:
+                if step_entry.step_ulid:
                     # Resolve step file via registry using step_id
-                    step_meta = materialized_index.by_id.get(step_entry.step_id)
+                    step_meta = materialized_index.by_id.get(step_entry.step_ulid)
                     if step_meta and step_meta.kind == "step":
                         step_path = new_project_root / step_meta.path
                         if step_path.exists():
@@ -171,9 +171,9 @@ class TestSnapshotIDRegeneration:
             # Check step → calculation references
             # Use materialized_index to resolve step files via step_id
             for step_entry in calculation.steps:
-                if step_entry.step_id:
+                if step_entry.step_ulid:
                     # Resolve step file via registry using step_id
-                    step_meta = materialized_index.by_id.get(step_entry.step_id)
+                    step_meta = materialized_index.by_id.get(step_entry.step_ulid)
                     if step_meta and step_meta.kind == "step":
                         step_path = new_project_root / step_meta.path
                         if step_path.exists():

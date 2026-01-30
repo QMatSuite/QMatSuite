@@ -2,7 +2,7 @@
   "method": "update_calculation_species_map",
   "success": true,
   "response": {
-    "id": "<NORMALIZED_ID>",
+    "ulid": "<NORMALIZED_ID>",
     "name": "demo_calc",
     "slug": "demo_calc",
     "path": "<NORMALIZED_PATH>",

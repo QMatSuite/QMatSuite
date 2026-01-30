@@ -104,7 +104,7 @@ class TestRelaxE2E:
         struct_result = QVService.import_structure(project_root, source, name="Silicon")
         
         # Create calculation
-        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
+        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
         calc_ulid = calc_result.id
         
         # Create relax step
@@ -122,7 +122,7 @@ class TestRelaxE2E:
             step_ulid=step_ulid,
             step_type="qe_relax",
             calculation_ulid=calc_ulid,
-            input_structure_ulid=struct_result.meta.id,
+            input_structure_ulid=struct_result.meta.ulid,
         )
         
         # Verify current.json exists
@@ -138,7 +138,7 @@ class TestRelaxE2E:
         )
         
         # Verify new structure created
-        assert promoted_result.meta.id != struct_result.meta.id
+        assert promoted_result.meta.ulid != struct_result.meta.ulid
         assert promoted_result.meta.name == "relaxed_silicon"
         assert promoted_result.absolute_path.exists()
         
@@ -162,7 +162,7 @@ class TestRelaxE2E:
         struct_result = QVService.import_structure(project_root, source, name="Silicon")
         
         # Create calculation and relax step
-        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
+        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
         step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
         
         # Try to promote without current.json
@@ -190,7 +190,7 @@ class TestRelaxE2E:
         struct_result = QVService.import_structure(project_root, source, name="Silicon")
         
         # Create calculation and SCF step (not relax)
-        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
+        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
         step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_scf", name="scf")
         
         # Try to promote non-relax step

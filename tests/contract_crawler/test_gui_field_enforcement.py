@@ -31,31 +31,31 @@ MANIFEST_PATH = Path(__file__).parent.parent.parent / "gui_required_fields_manif
 HARD_REDLINE_FIELDS = {
     # Core project/structure/calculation methods
     "get_calculation_detail": {
-        "top_level": ["id", "steps"],
-        "array_items": {"steps": ["id", "type", "name"]},
+        "top_level": ["ulid", "steps"],
+        "array_items": {"steps": ["step_ulid", "step_type_spec", "step_type_gen", "name"]},
     },
     "get_step_detail": {
-        "top_level": ["id", "name", "step_type"],
+        "top_level": ["ulid", "name", "step_type_spec", "step_type_gen"],
     },
     "list_structures": {
         "top_level": ["structures"],
-        "array_items": {"structures": ["id", "name"]},
+        "array_items": {"structures": ["ulid", "name"]},
     },
     "list_calculations": {
         "top_level": ["calculations"],
-        "array_items": {"calculations": ["id"]},
+        "array_items": {"calculations": ["ulid"]},
     },
     "create_demo_project": {
-        "top_level": ["project_root", "project_id"],
+        "top_level": ["project_root", "project_ulid"],
     },
     "create_calculation": {
-        "top_level": ["calculation_id"],
+        "top_level": ["calculation_ulid"],
     },
     "get_structure_vis": {
         "top_level": ["atoms", "bonds"],
     },
     "run_step": {
-        "top_level": ["job_id", "status"],  # Baseline has job_id, not id
+        "top_level": ["job_ulid", "status"],
     },
     # Additional GUI-critical methods (from manifest with successful golden fixtures)
     "list_journal_entries": {

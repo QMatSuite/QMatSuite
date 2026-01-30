@@ -4,7 +4,7 @@
   "response": {
     "structures": [
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "silicon",
         "slug": "silicon",
         "path": "<NORMALIZED_PATH>",

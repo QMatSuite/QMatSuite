@@ -60,7 +60,7 @@ class TestQERecipe:
         assert len(graph) == 1
         job = graph.jobs[0]
         assert job.id == "step_00"
-        assert job.step_ids == ["01ABCDEF"]
+        assert job.step_ulids == ["01ABCDEF"]
         assert job.working_dir == calc_raw_dir
         assert job.command == ["pw.x", "scf.in"]
         assert job.engine == "qe"
@@ -168,7 +168,7 @@ class TestORCARecipe:
         job = graph.jobs[0]
         # Job ID is from stable tokens
         assert job.id == "s"  # SCF token
-        assert job.step_ids == ["01ABCDEF"]
+        assert job.step_ulids == ["01ABCDEF"]
         # Working dir is namespaced
         assert "scf_" in str(job.working_dir)
 

@@ -1,7 +1,7 @@
 project:
   name: project2_bands_kauto
   meta:
-    id: 01KBH0N8H2W53FFED02D8T3W3T
+    ulid: 01KBH0N8H2W53FFED02D8T3W3T
     name: project2_bands_kauto
     slug: project2_bands_kauto
     path: .
@@ -12,7 +12,7 @@ calculations:
 - name: Si bands
   path: calculations/si-bands
   meta:
-    id: 01KBH0RGF179RD73PNKD0N8GNS
+    ulid: 01KBH0RGF179RD73PNKD0N8GNS
     name: Si bands
     slug: si-bands
     path: calculations/si-bands
@@ -20,7 +20,7 @@ calculations:
 - name: Si bands auto k
   path: calculations/si-bands-auto-k
   meta:
-    id: 01KBH5KYPE659SWXHXQP1BXX16
+    ulid: 01KBH5KYPE659SWXHXQP1BXX16
     name: Si bands auto k
     slug: si-bands-auto-k
     path: calculations/si-bands-auto-k
@@ -30,7 +30,7 @@ structures:
   file: structures/si.json
   format: json
   meta:
-    id: 01KBH0RFSSZ1G305C8PS5F1WHC
+    ulid: 01KBH0RFSSZ1G305C8PS5F1WHC
     name: Si
     slug: si
     path: structures/si.json

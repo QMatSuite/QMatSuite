@@ -1,10 +1,10 @@
 meta:
-  id: 01KDTJYMXYG7DM4V80GGGPQAT9
+  ulid: 01KDTJYMXYG7DM4V80GGGPQAT9
   name: scf
   slug: scf
   path: calculations/si-bands/steps/scf.step.yaml
   kind: step
-step_type: scf
+step_type_spec: scf
 parameters:
   CONTROL:
     calculation: scf

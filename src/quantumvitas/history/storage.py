@@ -152,9 +152,9 @@ class ProjectHistory:
         calculation_ulids = self._get_calculation_ulids()
         
         baseline = BaselineEvent.create(
-            project_ulid=project_ulid,
-            structure_ulids=structure_ulids,
-            calculation_ulids=calculation_ulids,
+            project_id=project_ulid,
+            structure_ids=structure_ulids,
+            calculation_ids=calculation_ulids,
         )
         
         self.append_event(baseline)
@@ -243,11 +243,11 @@ class ProjectHistory:
                     # Apply filters
                     if event_types and event.event_type not in event_types:
                         continue
-                    if calc_id and event.calc_id != calc_id:
+                    if calc_id and event.calc_ulid != calc_id:
                         continue
                     if run_id:
                         # Check run_id field for run events
-                        event_run_id = getattr(event, "run_id", None)
+                        event_run_id = getattr(event, "run_ulid", None)
                         if event_run_id != run_id:
                             continue
                     if since and event.timestamp < since:
@@ -293,7 +293,7 @@ class ProjectHistory:
                 
                 try:
                     data = json.loads(line)
-                    if data.get("id") == event_id:
+                    if data.get("ulid") == event_id:
                         return HistoryEvent.from_dict(data)
                 except (json.JSONDecodeError, TypeError, KeyError):
                     continue
@@ -317,9 +317,9 @@ class ProjectHistory:
         if events:
             event = events[0]
             if isinstance(event, RunFinishedEvent):
-                return event.run_id
+                return event.run_ulid
             # Fallback for generic event
-            return getattr(event, "run_id", None)
+            return getattr(event, "run_ulid", None)
         
         return None
     
@@ -401,15 +401,15 @@ class ProjectHistory:
         
         run_ids = []
         seen = set()
-        
+
         for event in events:
-            run_id = getattr(event, "run_id", None)
+            run_id = getattr(event, "run_ulid", None)
             if run_id and run_id not in seen:
                 seen.add(run_id)
                 run_ids.append(run_id)
                 if limit and len(run_ids) >= limit:
                     break
-        
+
         return run_ids
     
     def get_pins_for_run(self, run_id: str) -> List[Dict[str, Any]]:
@@ -431,12 +431,12 @@ class ProjectHistory:
         for event in events:
             if isinstance(event, PinCreatedEvent):
                 pins.append({
-                    "step_id": event.step_id,
+                    "step_id": event.step_ulid,
                     "analysis_kind": event.analysis_kind,
                     "pin_path": event.pin_path,
                     "timestamp": event.timestamp,
                 })
-        
+
         return pins
     
     def pin_exists(self, run_id: str, step_id: str, analysis_kind: str) -> bool:
@@ -458,10 +458,10 @@ class ProjectHistory:
         
         for event in events:
             if (isinstance(event, PinCreatedEvent) and
-                event.step_id == step_id and
+                event.step_ulid == step_id and
                 event.analysis_kind == analysis_kind):
                 return True
-        
+
         return False
     
     def _get_project_ulid(self) -> str:
@@ -470,7 +470,7 @@ class ProjectHistory:
             from quantumvitas.core.project_utils import load_project_config
             config = load_project_config(self.project_root)
             project_meta = config.get("project", {}).get("meta", {})
-            return project_meta.get("ulid", project_meta.get("id", ""))
+            return project_meta.get("ulid", "")
         except Exception:
             return ""
     
@@ -480,7 +480,7 @@ class ProjectHistory:
             from quantumvitas.core.project_utils import load_project_config
             config = load_project_config(self.project_root)
             structures = config.get("structures", [])
-            return [s.get("structure_ulid", s.get("structure_id", s.get("id", ""))) for s in structures if s]
+            return [s.get("structure_ulid", s.get("structure_id", s.get("ulid", ""))) for s in structures if s]
         except Exception:
             return []
     
@@ -490,7 +490,7 @@ class ProjectHistory:
             from quantumvitas.core.project_utils import load_project_config
             config = load_project_config(self.project_root)
             calculations = config.get("calculations", [])
-            return [c.get("calculation_id", c.get("id", "")) for c in calculations if c]
+            return [c.get("calculation_id", c.get("ulid", "")) for c in calculations if c]
         except Exception:
             return []
 

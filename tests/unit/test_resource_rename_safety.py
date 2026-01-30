@@ -33,7 +33,7 @@ class TestResourceRenameSafety:
         struct = Structure(Lattice.cubic(5.0), ['Si'], [[0, 0, 0]])
         struct_file = project_root / "structures" / "si.json"
         struct_meta = {
-            'id': generate_resource_id(),
+            "ulid": generate_resource_id(),
             'name': 'Si',
             'slug': 'si',
             'path': 'structures/si.json',
@@ -44,13 +44,13 @@ class TestResourceRenameSafety:
         # Register structure
         from quantumvitas.core.project_utils import load_project_config, save_project_config
         config = load_project_config(project_root)
-        config['structures'].append({'id': struct_meta['id']})
+        config['structures'].append({"ulid": struct_meta["ulid"]})
         save_project_config(project_root, config)
 
         # Create calculation with structure
         calculation = QVService.init_calculation(project_root, "Test Calculation", structure_selector="Si")
-        original_calculation_id = calculation.meta.id
-        original_structure_id = struct_meta['id']
+        original_calculation_id = calculation.meta.ulid
+        original_structure_id = struct_meta["ulid"]
 
         # Verify calculation has structure_id
         calculation_yaml = project_root / calculation.meta.path / "calculation.yaml"
@@ -73,12 +73,12 @@ class TestResourceRenameSafety:
 
         # Verify structure_id is unchanged (key invariant: ID-based references persist)
         assert renamed_calculation_data["structure_id"] == original_structure_id
-        assert renamed_calculation_data["meta"]["id"] == original_calculation_id  # ID unchanged
+        assert renamed_calculation_data["meta"]["ulid"] == original_calculation_id  # ID unchanged
 
         # Verify structure reference still resolves
         from quantumvitas.core.resolution import resolve_structure
         resolved_structure = resolve_structure(project_root, original_structure_id)
-        assert resolved_structure.meta.id == original_structure_id
+        assert resolved_structure.meta.ulid == original_structure_id
 
     def test_structure_rename_preserves_calculation_reference(self, tmp_path: Path):
         """Test that renaming a structure preserves calculation structure_id reference."""
@@ -93,7 +93,7 @@ class TestResourceRenameSafety:
         struct = Structure(Lattice.cubic(5.0), ['Si'], [[0, 0, 0]])
         struct_file = project_root / "structures" / "si.json"
         struct_meta = {
-            'id': generate_resource_id(),
+            "ulid": generate_resource_id(),
             'name': 'Si',
             'slug': 'si',
             'path': 'structures/si.json',
@@ -104,12 +104,12 @@ class TestResourceRenameSafety:
         # Register structure
         from quantumvitas.core.project_utils import load_project_config, save_project_config
         config = load_project_config(project_root)
-        config['structures'].append({'id': struct_meta['id']})
+        config['structures'].append({"ulid": struct_meta["ulid"]})
         save_project_config(project_root, config)
 
         # Create calculation with structure
         calculation = QVService.init_calculation(project_root, "Test Calculation", structure_selector="Si")
-        original_structure_id = struct_meta['id']
+        original_structure_id = struct_meta["ulid"]
 
         # Verify calculation has structure_id
         calculation_yaml = project_root / calculation.meta.path / "calculation.yaml"
@@ -130,7 +130,7 @@ class TestResourceRenameSafety:
         from quantumvitas.core.resolution import resolve_structure, build_resource_index
         index = build_resource_index(project_root)
         resolved_structure = resolve_structure(project_root, original_structure_id, index=index)
-        assert resolved_structure.meta.id == original_structure_id
+        assert resolved_structure.meta.ulid == original_structure_id
 
     def test_step_rename_preserves_calculation_reference(self, tmp_path: Path):
         """Test that renaming a step preserves parent_calculation_id reference."""
@@ -145,7 +145,7 @@ class TestResourceRenameSafety:
         struct = Structure(Lattice.cubic(5.0), ['Si'], [[0, 0, 0]])
         struct_file = project_root / "structures" / "si.json"
         struct_meta = {
-            'id': generate_resource_id(),
+            "ulid": generate_resource_id(),
             'name': 'Si',
             'slug': 'si',
             'path': 'structures/si.json',
@@ -155,18 +155,18 @@ class TestResourceRenameSafety:
 
         from quantumvitas.core.project_utils import load_project_config, save_project_config
         config = load_project_config(project_root)
-        config['structures'].append({'id': struct_meta['id']})
+        config['structures'].append({"ulid": struct_meta["ulid"]})
         save_project_config(project_root, config)
 
         calculation = QVService.init_calculation(project_root, "Test Calculation", structure_selector="Si")
-        original_calculation_id = calculation.meta.id
+        original_calculation_id = calculation.meta.ulid
 
         # Create step using domain API
         svc = get_service(project_root)
         step = svc.calculation.add_step(calc_selector=calculation.meta.slug, step_type="scf")
         step_file = project_root / calculation.meta.path / "steps" / "scf.step.yaml"
         step_data = yaml.safe_load(step_file.read_text())
-        original_step_id = step_data["meta"]["id"]
+        original_step_id = step_data["meta"]["ulid"]
         # DAG model: Step YAML should NOT contain parent_calculation_id
         assert "parent_calculation_id" not in step_data, "Step YAML should not contain parent_calculation_id (DAG model)"
 
@@ -190,7 +190,7 @@ class TestResourceRenameSafety:
         step_entries = calculation_data.get("steps", [])
         assert len(step_entries) > 0
         # Step entry should have step_id (ULID)
-        assert step_entries[0].get("step_id") == original_step_id or step_entries[0].get("id") == "scf"
+        assert step_entries[0].get("step_ulid") == original_step_id or step_entries[0].get("ulid") == "scf"
 
 
 class TestResourceIndexAfterRename:
@@ -203,7 +203,7 @@ class TestResourceIndexAfterRename:
 
         # Create calculation
         calculation = QVService.init_calculation(project_root, "Original Name")
-        original_id = calculation.meta.id
+        original_id = calculation.meta.ulid
 
         # Build index
         index = build_resource_index(project_root)
@@ -230,7 +230,7 @@ class TestResourceIndexAfterRename:
         # Verify resolution still works by ID
         from quantumvitas.core.resolution import resolve_calculation
         resolved = resolve_calculation(project_root, original_id, index=index)
-        assert resolved.meta.id == original_id
+        assert resolved.meta.ulid == original_id
 
 
 class TestResourceRenameEdgeCases:
@@ -251,7 +251,7 @@ class TestResourceRenameEdgeCases:
         struct_a = Structure(Lattice.cubic(5.0), ['Si'], [[0, 0, 0]])
         struct_a_file = project_root / "structures" / "si_a.json"
         struct_a_meta = {
-            'id': generate_resource_id(),
+            "ulid": generate_resource_id(),
             'name': 'Si A',
             'slug': 'si-a',
             'path': 'structures/si_a.json',
@@ -263,7 +263,7 @@ class TestResourceRenameEdgeCases:
         struct_b = Structure(Lattice.cubic(5.0), ['C'], [[0, 0, 0]])
         struct_b_file = project_root / "structures" / "si_b.json"
         struct_b_meta = {
-            'id': generate_resource_id(),
+            "ulid": generate_resource_id(),
             'name': 'Si B',
             'slug': 'si-b',
             'path': 'structures/si_b.json',
@@ -273,8 +273,8 @@ class TestResourceRenameEdgeCases:
 
         # Register both structures
         config = load_project_config(project_root)
-        config['structures'].append({'id': struct_a_meta['id']})
-        config['structures'].append({'id': struct_b_meta['id']})
+        config['structures'].append({"ulid": struct_a_meta["ulid"]})
+        config['structures'].append({"ulid": struct_b_meta["ulid"]})
         save_project_config(project_root, config)
 
         # Try to rename A to have the same slug as B - should fail
@@ -307,7 +307,7 @@ class TestResourceRenameEdgeCases:
         struct = Structure(Lattice.cubic(5.0), ['Si'], [[0, 0, 0]])
         struct_file = project_root / "structures" / "si.json"
         struct_meta = {
-            'id': generate_resource_id(),
+            "ulid": generate_resource_id(),
             'name': 'Si',
             'slug': 'si',
             'path': 'structures/si.json',
@@ -316,12 +316,12 @@ class TestResourceRenameEdgeCases:
         write_structure(struct, struct_file, metadata=struct_meta)
 
         config = load_project_config(project_root)
-        config['structures'].append({'id': struct_meta['id']})
+        config['structures'].append({"ulid": struct_meta["ulid"]})
         save_project_config(project_root, config)
 
         # Create calculation in calculations/ directory
         calculation = QVService.init_calculation(project_root, "Original Calculation", structure_selector="Si")
-        original_calculation_id = calculation.meta.id
+        original_calculation_id = calculation.meta.ulid
         original_path = calculation.meta.path
 
         # Verify original path
@@ -338,7 +338,7 @@ class TestResourceRenameEdgeCases:
         # Find calculation entry by ID (ID-only model: entry may have id or calculation_id field)
         calculation_entry = None
         for w in calculations_after:
-            entry_id = w.get("id") or w.get("calculation_id") or (w.get("meta") or {}).get("id")
+            entry_id = w.get("ulid") or w.get("calculation_id") or (w.get("meta") or {}).get("ulid")
             if entry_id == original_calculation_id:
                 calculation_entry = w
                 break
@@ -347,7 +347,7 @@ class TestResourceRenameEdgeCases:
             f"Calculation entry should exist. Found calculations: {calculations_after}, looking for ID: {original_calculation_id}"
 
         # Verify calculation ID is unchanged
-        entry_id = calculation_entry.get("id") or calculation_entry.get("calculation_id") or (calculation_entry.get("meta") or {}).get("id")
+        entry_id = calculation_entry.get("ulid") or calculation_entry.get("calculation_id") or (calculation_entry.get("meta") or {}).get("ulid")
         assert entry_id == original_calculation_id, "Calculation ID should be unchanged"
 
         # Verify new path (may have changed if slug changed)
@@ -374,7 +374,7 @@ class TestResourceRenameEdgeCases:
 
         # Verify calculation.yaml has correct structure_id reference
         calculation_data = yaml.safe_load(calculation_yaml.read_text())
-        assert calculation_data.get("structure_id") == struct_meta['id'], \
+        assert calculation_data.get("structure_id") == struct_meta["ulid"], \
             "Calculation should still reference the same structure_id"
 
     def test_multiple_consecutive_renames_keep_selector_stable(self, tmp_path: Path):
@@ -384,7 +384,7 @@ class TestResourceRenameEdgeCases:
 
         # Create calculation
         calculation = QVService.init_calculation(project_root, "Calculation A")
-        original_calculation_id = calculation.meta.id
+        original_calculation_id = calculation.meta.ulid
 
         svc = get_service(project_root)
 
@@ -400,7 +400,7 @@ class TestResourceRenameEdgeCases:
         # Verify ID is unchanged through all renames
         index_final = build_resource_index(project_root)
         calculation_c = resolve_calculation(project_root, original_calculation_id, index=index_final)
-        assert calculation_c.meta.id == original_calculation_id, \
+        assert calculation_c.meta.ulid == original_calculation_id, \
             "Calculation ID should remain stable through multiple renames"
 
         # Verify name is updated (check calculation.yaml)
@@ -410,7 +410,7 @@ class TestResourceRenameEdgeCases:
 
         # After second rename, name should be "Calculation C"
         # The key invariant is that ID-based resolution still works
-        assert calculation_c.meta.id == original_calculation_id, \
+        assert calculation_c.meta.ulid == original_calculation_id, \
             "Calculation ID should remain stable through multiple renames (primary invariant)"
 
         # Verify no stale references to intermediate names
@@ -418,7 +418,7 @@ class TestResourceRenameEdgeCases:
             # Try to resolve by old name "Calculation A" - should fail or return different calculation
             resolved_by_old_name = resolve_calculation(project_root, "Calculation A", index=index_final)
             # If it resolves, it should be a different calculation (shouldn't happen)
-            assert resolved_by_old_name.meta.id != original_calculation_id, \
+            assert resolved_by_old_name.meta.ulid != original_calculation_id, \
                 "Old name should not resolve to the same calculation"
         except Exception:
             # Expected: old name should not resolve
@@ -426,5 +426,5 @@ class TestResourceRenameEdgeCases:
 
         # Verify resolution by stable ID still works (key invariant)
         resolved_by_id = resolve_calculation(project_root, original_calculation_id, index=index_final)
-        assert resolved_by_id.meta.id == original_calculation_id, \
+        assert resolved_by_id.meta.ulid == original_calculation_id, \
             "Resolution by stable ID should work after multiple renames"

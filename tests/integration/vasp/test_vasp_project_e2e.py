@@ -45,7 +45,7 @@ def vasp_project(use_fake_vasp, tmp_path):
     
     return {
         "root": project_root,
-        "structure_id": struct_result.meta.id,
+        "structure_id": struct_result.meta.ulid,
     }
 
 

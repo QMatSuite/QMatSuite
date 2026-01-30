@@ -71,7 +71,7 @@ class ORCARecipe(BaseRecipe):
 
         # Get SCF root info for namespace folder
         scf_root = steps[0]
-        scf_ulid = scf_root.meta.id
+        scf_ulid = scf_root.meta.ulid
         namespace_folder = get_chain_namespace_folder(scf_ulid)
         working_dir = calc_raw_dir / namespace_folder
 
@@ -83,8 +83,8 @@ class ORCARecipe(BaseRecipe):
 
             for s in subchain_steps:
                 spec = (
-                    registry.get(str(s.step_type))
-                    if s.step_type
+                    registry.get(str(s.step_type_spec))
+                    if s.step_type_spec
                     else None
                 )
                 pt = spec.step_type_gen if spec else "scf"
@@ -98,7 +98,7 @@ class ORCARecipe(BaseRecipe):
                 basename = "_".join(public_types)
 
             # Collect step IDs and SHAs for fingerprint
-            step_ids = [s.meta.id for s in subchain_steps]
+            step_ids = [s.meta.ulid for s in subchain_steps]
             step_sha_list = [
                 self._get_step_sha(s, step_shas) or ""
                 for s in subchain_steps

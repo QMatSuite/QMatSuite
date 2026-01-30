@@ -59,7 +59,7 @@ def test_online_vs_project_pipeline_bit_aligned():
     
     # Get first entry
     entry = entries[0]
-    entry_id = entry.get("id")
+    entry_id = entry.get("ulid")
     if not entry_id:
         pytest.fail(
             f"Entry has no 'id' field. Entry keys: {list(entry.keys())}. "

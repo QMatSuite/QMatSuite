@@ -143,11 +143,9 @@ class EngineMethodsRecipe(Recipe):
                     if isinstance(result, dict) and "steps" in result and result["steps"]:
                         last_step = result["steps"][-1]
                         if isinstance(last_step, dict):
-                            self.bands_step_id = last_step.get("id") or last_step.get("step_id")
-                        elif hasattr(last_step, "id"):
-                            self.bands_step_id = last_step.id
-                        elif hasattr(last_step, "step_id"):
-                            self.bands_step_id = last_step.step_ulid
+                            self.bands_step_id = last_step["step_ulid"]  # Canonical field only
+                        else:
+                            self.bands_step_id = last_step.step_ulid  # Canonical attribute only
                 except Exception:
                     self.bands_step_id = self.world.get("step_ids", [None])[0]
             else:
@@ -192,11 +190,9 @@ class EngineMethodsRecipe(Recipe):
                     if isinstance(result, dict) and "steps" in result and result["steps"]:
                         last_step = result["steps"][-1]
                         if isinstance(last_step, dict):
-                            self.dos_step_id = last_step.get("id") or last_step.get("step_id")
-                        elif hasattr(last_step, "id"):
-                            self.dos_step_id = last_step.id
-                        elif hasattr(last_step, "step_id"):
-                            self.dos_step_id = last_step.step_ulid
+                            self.dos_step_id = last_step["step_ulid"]  # Canonical field only
+                        else:
+                            self.dos_step_id = last_step.step_ulid  # Canonical attribute only
                 except Exception:
                     self.dos_step_id = self.world.get("step_ids", [None])[0]
             else:
@@ -257,7 +253,7 @@ class EngineMethodsRecipe(Recipe):
         if self.method_name == "get_latest_run_for_step":
             return {
                 **base,
-                "step_id": self.world.get("step_ids", [""])[0] if self.world.get("step_ids") else "",
+                "step_ulid": self.world.get("step_ids", [""])[0] if self.world.get("step_ids") else "",
             }
 
         if self.method_name == "get_band_structure_data":
@@ -299,7 +295,7 @@ class EngineMethodsRecipe(Recipe):
             return {
                 **base,
                 "calculation": self.world["calculation_selector"],
-                "step_id": self.world["step_selector"],
+                "step_ulid": self.world["step_selector"],
                 "run_id": "mock_run_id",
                 "analysis_kind": "scf",
             }

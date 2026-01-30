@@ -225,7 +225,7 @@ class PySCFEngine(Engine):
         working_dir.mkdir(parents=True, exist_ok=True)
         
         job_spec = {
-            "step_type": "pyscf_scf",
+            "step_type_spec": "pyscf_scf",
             "working_dir": str(working_dir),
             "parameters": params,
             "resources": {},
@@ -359,7 +359,7 @@ class PySCFEngine(Engine):
         
         # SINGLE SOURCE OF TRUTH: Read machine step_type from step.yaml
         # step.yaml stores machine types (e.g., "pyscf_scf", "pyscf_mp2")
-        # Step.step_type enum MUST NOT be used for execution
+        # Step.step_type_spec enum MUST NOT be used for execution
         target_step_type = None
         if hasattr(target_step, 'meta') and hasattr(target_step.meta, 'path') and target_step.meta.path and project_root:
             step_yaml_path = project_root / target_step.meta.path
@@ -374,7 +374,7 @@ class PySCFEngine(Engine):
                 step_type="unknown",
                 input_file=calculation_raw_dir / "job_chain.json",
                 success=False,
-                error=f"Failed to read machine step_type from step.yaml for target step. Step meta.path={getattr(target_step.meta, 'path', 'None') if hasattr(target_step, 'meta') else 'No meta'}, project_root={project_root}. Execution MUST use machine step_type from step.yaml, not Step.step_type enum.",
+                error=f"Failed to read machine step_type from step.yaml for target step. Step meta.path={getattr(target_step.meta, 'path', 'None') if hasattr(target_step, 'meta') else 'No meta'}, project_root={project_root}. Execution MUST use machine step_type from step.yaml, not Step.step_type_spec enum.",
                 execution_time=time.time() - start_time,
             )
         
@@ -479,11 +479,11 @@ class PySCFEngine(Engine):
         # Build chain step specs
         chain_step_specs = []
         for step in chain_steps:
-            step_ulid = step.meta.id if hasattr(step, 'meta') and hasattr(step.meta, 'id') else "unknown"
+            step_ulid = step.meta.ulid if hasattr(step, 'meta') and hasattr(step.meta, 'id') else "unknown"
             
             # Phase 3C: Read machine step_type from step.yaml (step.yaml stores machine types)
-            # Step.step_type is StepType enum which doesn't have all machine types (e.g., no "mp2")
-            step_type = "unknown"
+            # Step.step_type_spec is StepType enum which doesn't have all machine types (e.g., no "mp2")
+            step_type= "unknown"
             if hasattr(step, 'meta') and hasattr(step.meta, 'path') and step.meta.path:
                 # step.meta.path is relative to project root
                 step_yaml_path = project_root / step.meta.path
@@ -498,7 +498,7 @@ class PySCFEngine(Engine):
                     step_type="unknown",
                     input_file=calculation_raw_dir / "job_chain.json",
                     success=False,
-                    error=f"Failed to read machine step_type from step.yaml for chain step {step_ulid}. Step meta.path={getattr(step.meta, 'path', 'None') if hasattr(step, 'meta') else 'No meta'}, project_root={project_root}. Execution MUST use machine step_type from step.yaml, not Step.step_type enum.",
+                    error=f"Failed to read machine step_type from step.yaml for chain step {step_ulid}. Step meta.path={getattr(step.meta, 'path', 'None') if hasattr(step, 'meta') else 'No meta'}, project_root={project_root}. Execution MUST use machine step_type from step.yaml, not Step.step_type_spec enum.",
                     execution_time=time.time() - start_time,
                 )
             
@@ -541,7 +541,7 @@ class PySCFEngine(Engine):
             # Determine allow_chkfile_init_guess
             # Target step: always False (full rerun)
             # Prerequisite steps: True (incremental semantics - may use chkfile)
-            is_target = (step_ulid == target_step.meta.id)
+            is_target = (step_ulid == target_step.meta.ulid)
             allow_chkfile_init_guess = not is_target
             
             # Validation before adding to chain
@@ -579,7 +579,7 @@ class PySCFEngine(Engine):
             
             chain_step_specs.append({
                 "step_ulid": step_ulid,
-                "step_type": step_type,
+                "step_type_spec": step_type,
                 "parameters": params,
                 "step_artifacts_dir": str(step_artifacts_dir),
                 "allow_chkfile_init_guess": allow_chkfile_init_guess,
@@ -589,7 +589,7 @@ class PySCFEngine(Engine):
         job_chain_spec = {
             "base_working_dir": str(calculation_raw_dir),
             "chain_steps": chain_step_specs,
-            "target_step_ulid": target_step.meta.id,
+            "target_step_ulid": target_step.meta.ulid,
             "resources": {},
         }
         
@@ -651,7 +651,7 @@ class PySCFEngine(Engine):
             )
         
         # Parse results (from target step's artifacts directory)
-        target_artifacts_dir = calculation_raw_dir / "step_artifacts" / target_step.meta.id
+        target_artifacts_dir = calculation_raw_dir / "step_artifacts" / target_step.meta.ulid
         results_file = target_artifacts_dir / "results.json"
         parsed_output: Optional[Dict[str, Any]] = None
         success = False

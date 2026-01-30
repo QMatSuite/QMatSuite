@@ -92,7 +92,7 @@ class ProjectContext:
                             try:
                                 wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
                                 wf_meta = wf_data.get("meta") or {}
-                                current_calculation_id = wf_meta.get("id")
+                                current_calculation_id = wf_meta.get("ulid")
                                 
                                 # Check if inside steps directory
                                 if len(parts) >= 3 and parts[2] == "steps":
@@ -111,7 +111,7 @@ class ProjectContext:
                                                     step_id,
                                                     config=config,
                                                 )
-                                                current_step_id = step_resolved.meta.id
+                                                current_step_id = step_resolved.meta.ulid
                                             except Exception:
                                                 pass  # Step not found, that's OK
                             except Exception:
@@ -246,7 +246,7 @@ def resolve_step_for_cli(
     Raises:
         ResourceNotFoundError: If step not found or ambiguous
     """
-    calculation_id = calculation_resolved.meta.id
+    calculation_id = calculation_resolved.meta.ulid
     
     if step_option:
         step_option = step_option.strip()
@@ -295,7 +295,7 @@ def resolve_step_for_cli(
         return require_step(
             ctx.project_root,
             calculation_selector,
-            calculation.steps[0].meta.id,
+            calculation.steps[0].meta.ulid,
             config=ctx.config,
         )
     

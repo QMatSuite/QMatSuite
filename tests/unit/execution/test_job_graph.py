@@ -29,7 +29,7 @@ class TestJob:
         )
 
         assert job.id == "step_00"
-        assert job.step_ids == ["ulid_001"]
+        assert job.step_ulids == ["ulid_001"]
         assert job.working_dir == Path("/calc/raw")
         assert job.command == ["pw.x", "scf.in"]
         assert job.deps == []
@@ -54,7 +54,7 @@ class TestJob:
         )
 
         assert job.id == "s_m2"
-        assert len(job.step_ids) == 2
+        assert len(job.step_ulids) == 2
         assert job.deps == ["s"]
         assert job.fingerprint == "abc123"
         assert job.engine == "orca"
@@ -163,7 +163,7 @@ class TestJobGraph:
         job = graph.get_job("step_01")
         assert job is not None
         assert job.id == "step_01"
-        assert job.step_ids == ["ulid_nscf"]
+        assert job.step_ulids == ["ulid_nscf"]
 
     def test_get_job_not_found(self):
         """get_job returns None for unknown ID."""

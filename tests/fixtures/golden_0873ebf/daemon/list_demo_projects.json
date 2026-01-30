@@ -4,7 +4,7 @@
   "response": {
     "demos": [
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "00 Si Scf",
         "title": "0 Si Scf",
         "subtitle": "SCF",
@@ -20,7 +20,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "03 Si Vc Relax",
         "title": "3 Si Vc Relax",
         "subtitle": "VC-Relax",
@@ -36,7 +36,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "04 Si Dos",
         "title": "4 Si Dos",
         "subtitle": "SCF \u2192 NSCF \u2192 DOS",
@@ -53,7 +53,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "06 Al Dos",
         "title": "6 Al Dos",
         "subtitle": "VC-Relax \u2192 SCF \u2192 NSCF \u2192 DOS",
@@ -70,7 +70,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "07 Si Bandstructure",
         "title": "7 Si Bandstructure",
         "subtitle": "SCF \u2192 NSCF \u2192 Bands \u2192 Bands \u2192 custom",
@@ -87,7 +87,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "08 Fe Dos",
         "title": "08 Fe Dos  2 Noncolinear",
         "subtitle": "SCF",
@@ -103,7 +103,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "09 Si Phonon",
         "title": "09 Si Phonon  3 Phonon Dispersion",
         "subtitle": "SCF \u2192 Phonon \u2192 q2r \u2192 matdyn \u2192 custom",
@@ -120,7 +120,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "12 Nmr Gipaw",
         "title": "12 Nmr Gipaw  2 Benzene",
         "subtitle": "SCF \u2192 GIPAW",
@@ -137,7 +137,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "13 Graphene",
         "title": "13 Graphene",
         "subtitle": "VC-Relax \u2192 SCF \u2192 Bands \u2192 Bands \u2192 custom",
@@ -154,7 +154,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "15 Bulk Modulus Si",
         "title": "15 Bulk Modulus Si",
         "subtitle": "SCF \u2192 SCF \u2192 SCF",
@@ -171,7 +171,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "19 Si Cpmd",
         "title": "19 Si Cpmd  4 Bomd Nvt",
         "subtitle": "custom \u2192 custom \u2192 custom",
@@ -188,7 +188,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Copper Wannier90 Demo",
         "title": "Copper Wannier90 Demo",
         "subtitle": "",
@@ -200,7 +200,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Diamond Wannier90 Demo",
         "title": "Diamond Wannier90 Demo",
         "subtitle": "",
@@ -212,7 +212,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Formaldehyde Orca Tddft",
         "title": "Formaldehyde ORCA TDDFT",
         "subtitle": "SCF + TDDFT excited states calculation",
@@ -232,7 +232,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Methane Orca Freq",
         "title": "Methane ORCA Frequency",
         "subtitle": "SCF + numerical frequency calculation",
@@ -252,7 +252,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Si Band Structure",
         "title": "Silicon band structure",
         "subtitle": "SCF \u2192 NSCF \u2192 Bands",
@@ -270,7 +270,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Si DOS",
         "title": "Silicon density of states",
         "subtitle": "SCF \u2192 NSCF \u2192 DOS",
@@ -287,7 +287,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Silicon Wannier90 Demo",
         "title": "Silicon Wannier90 Demo",
         "subtitle": "",
@@ -299,7 +299,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Water Orca Scf",
         "title": "Water ORCA SCF Single Point",
         "subtitle": "B3LYP/def2-SVP DFT calculation on water molecule",
@@ -318,7 +318,7 @@
         "estimated_runtime_scf": null
       },
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "name": "Water Pyscf Scf",
         "title": "Water PySCF RHF Single Point",
         "subtitle": "Molecular HF calculation",

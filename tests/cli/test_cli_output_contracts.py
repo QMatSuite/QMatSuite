@@ -21,9 +21,9 @@ from tests.utils.calculation_projects import create_calculation_project
 def cli_si_dos_project(ci_test_data_dir: Path, project_root_path: Path) -> Path:
     """Create a temporary project layout for CLI calculation testing."""
     steps = [
-        {"id": "scf", "input": "si.1_scf.in", "reference": "si.1_scf.out"},
-        {"id": "nscf", "input": "si.2_nscf.in", "reference": "si.2_nscf.out"},
-        {"id": "dos", "input": "si.3_dos.in", "reference": "si.3_dos.out"},
+        {"ulid": "scf", "input": "si.1_scf.in", "reference": "si.1_scf.out"},
+        {"ulid": "nscf", "input": "si.2_nscf.in", "reference": "si.2_nscf.out"},
+        {"ulid": "dos", "input": "si.3_dos.in", "reference": "si.3_dos.out"},
     ]
     project_root = project_root_path / ".tmp" / "test_outputs" / "cli_si_dos_project"
     return create_calculation_project(

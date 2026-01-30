@@ -207,7 +207,7 @@ Si   0.250000000   0.250000000   0.250000000
         calc_dir.mkdir()
         
         step_ulid = "01RELAXTEST"
-        step_type = "qe_relax"
+        step_type= "qe_relax"
         calculation_ulid = "01CALCTEST"
         input_structure_ulid = "01STRUCTEST"
         run_id = "run001"
@@ -274,8 +274,8 @@ class TestScopedCleanup:
         
         # Create mock calculation and job
         mock_step = MagicMock()
-        mock_step.meta.id = step_ulid
-        mock_step.step_type = "qe_relax"
+        mock_step.meta.ulid = step_ulid
+        mock_step.step_type_spec= "qe_relax"
         
         mock_calculation = MagicMock()
         mock_calculation.dir = calc_dir
@@ -335,12 +335,12 @@ class TestScopedCleanup:
         
         # Create job that only includes step1
         mock_step1 = MagicMock()
-        mock_step1.meta.id = step1_ulid
-        mock_step1.step_type = "qe_relax"
+        mock_step1.meta.ulid = step1_ulid
+        mock_step1.step_type_spec= "qe_relax"
         
         mock_step2 = MagicMock()
-        mock_step2.meta.id = step2_ulid
-        mock_step2.step_type = "qe_relax"
+        mock_step2.meta.ulid = step2_ulid
+        mock_step2.step_type_spec= "qe_relax"
         
         mock_calculation = MagicMock()
         mock_calculation.dir = calc_dir

@@ -53,7 +53,7 @@ class TestPromoteRelaxStructureAPI:
         struct_result = QVService.import_structure(project_root, source, name="Silicon")
         
         # Create calculation
-        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
+        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
         calc_ulid = calc_result.id
         
         # Create relax step
@@ -71,7 +71,7 @@ class TestPromoteRelaxStructureAPI:
             step_ulid=step_ulid,
             step_type="qe_relax",
             calculation_ulid=calc_ulid,
-            input_structure_ulid=struct_result.meta.id,
+            input_structure_ulid=struct_result.meta.ulid,
         )
         
         # Promote
@@ -83,7 +83,7 @@ class TestPromoteRelaxStructureAPI:
         )
         
         # Verify new structure was created
-        assert result.meta.id != struct_result.meta.id  # Different ULID
+        assert result.meta.ulid != struct_result.meta.ulid  # Different ULID
         assert result.meta.name == "relaxed_silicon"
         assert result.absolute_path.exists()
         
@@ -108,7 +108,7 @@ class TestPromoteRelaxStructureAPI:
         struct_result = QVService.import_structure(project_root, source, name="Silicon")
         
         # Create calculation and step
-        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
+        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
         step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
         
         # Try to promote without current.json
@@ -137,7 +137,7 @@ class TestPromoteRelaxStructureAPI:
         struct_result = QVService.import_structure(project_root, source, name="Silicon")
         
         # Create calculation and SCF step (not relax)
-        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
+        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
         step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_scf", name="scf")
         
         # Try to promote non-relax step
@@ -172,7 +172,7 @@ class TestPromoteRelaxStructureDaemonRPC:
         struct_result = QVService.import_structure(project_root, source, name="Silicon")
         
         # Create calculation and relax step
-        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.id)
+        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
         step_result = QVService.init_step(project_root, calc_result.id, step_type="qe_relax", name="relax")
         
         # Write generated structure

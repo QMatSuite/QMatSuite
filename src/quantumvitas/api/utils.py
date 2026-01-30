@@ -216,7 +216,7 @@ def extract_calculation_selector_from_entry(entry: dict) -> str | None:
     
     Priority order:
     1. calculation_id (ID-only model)
-    2. meta.id (ULID)
+    2. meta.ulid (ULID)
     3. meta.slug (slug)
     4. id (legacy)
     5. name (legacy)
@@ -234,7 +234,7 @@ def extract_structure_selector_from_entry(entry: dict) -> str | None:
 
     Priority order:
     1. structure_id (ID-only model)
-    2. meta.id (ULID)
+    2. meta.ulid (ULID)
     3. meta.slug (slug)
     4. id (legacy)
     5. name (legacy)
@@ -252,7 +252,7 @@ def extract_step_selector_from_entry(entry: dict) -> str | None:
 
     Priority order:
     1. step_id (ID-only model)
-    2. meta.id (ULID)
+    2. meta.ulid (ULID)
     3. meta.slug (slug)
     4. id (legacy)
     5. name (legacy)

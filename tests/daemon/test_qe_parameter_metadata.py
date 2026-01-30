@@ -33,17 +33,17 @@ def test_list_modules_returns_all_modules(daemon):
     assert len(modules) > 0
     
     # Verify all expected modules are present (at least pw should exist)
-    module_ids = [m["id"] for m in modules]
+    module_ids = [m["ulid"] for m in modules]
     assert "pw" in module_ids
     
     # Verify module structure
     for module in modules:
         assert "id" in module
         assert "label" in module
-        assert isinstance(module["id"], str)
+        assert isinstance(module["ulid"], str)
         assert isinstance(module["label"], str)
         # Label should be module_id.x for consistency
-        assert module["label"] == f"{module['id']}.x"
+        assert module["label"] == f"{module["ulid"]}.x"
 
 
 def test_list_modules_preserves_json_order(daemon):
@@ -64,7 +64,7 @@ def test_list_modules_preserves_json_order(daemon):
     
     assert response.ok is True
     modules = response.data["modules"]
-    actual_order = [m["id"] for m in modules]
+    actual_order = [m["ulid"] for m in modules]
     
     # Verify order matches JSON order (at least for first few modules)
     # We check the first 5 to allow for some flexibility, but order should be preserved
@@ -96,7 +96,7 @@ def test_list_sections_for_valid_module(daemon):
         assert "label" in section  # Display label from metadata
         assert "kind" in section
         assert section["kind"] in ("namelist", "card")
-        assert isinstance(section["id"], str)
+        assert isinstance(section["ulid"], str)
         assert isinstance(section["name"], str)
         assert isinstance(section["label"], str)
         # name should NOT have '&' prefix
@@ -109,12 +109,12 @@ def test_list_sections_for_valid_module(daemon):
     
     # Should have at least &CONTROL and &SYSTEM namelists for pw
     section_names = [s["name"] for s in sections]
-    section_ids = [s["id"] for s in sections]
+    section_ids = [s["ulid"] for s in sections]
     assert "CONTROL" in section_names or "&CONTROL" in section_ids
     assert "SYSTEM" in section_names or "&SYSTEM" in section_ids
     
     # Verify K_POINTS is a card (not a namelist)
-    kpoints_sections = [s for s in sections if s["name"] == "K_POINTS" or s["id"] == "K_POINTS"]
+    kpoints_sections = [s for s in sections if s["name"] == "K_POINTS" or s["ulid"] == "K_POINTS"]
     if kpoints_sections:
         kpoints = kpoints_sections[0]
         assert kpoints["kind"] == "card", f"K_POINTS should be a card, got {kpoints['kind']}"
@@ -445,12 +445,12 @@ def test_reload_qe_parameter_metadata(daemon):
     for module in reloaded_modules:
         assert "id" in module
         assert "label" in module
-        assert isinstance(module["id"], str)
+        assert isinstance(module["ulid"], str)
         assert isinstance(module["label"], str)
     
     # Verify we get the same modules (same IDs)
-    initial_ids = {m["id"] for m in initial_modules}
-    reloaded_ids = {m["id"] for m in reloaded_modules}
+    initial_ids = {m["ulid"] for m in initial_modules}
+    reloaded_ids = {m["ulid"] for m in reloaded_modules}
     assert initial_ids == reloaded_ids, "Reloaded modules should match initial modules"
     
     # Verify cache was cleared by checking that subsequent list_modules call works

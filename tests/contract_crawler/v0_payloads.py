@@ -145,7 +145,7 @@ def _build_list_qe_ui_parameters(world: Dict[str, Any], **extra) -> Dict[str, An
     """
     return {
         "module": extra.get("module", "pw"),
-        "step_type": extra.get("step_type", "scf"),
+        "step_type_gen": extra.get("step_type", "scf"),
     }
 
 

@@ -1,10 +1,10 @@
 meta:
-  id: 01KC38NVA0NES3T6YG7DK8DP82
+  ulid: 01KC38NVA0NES3T6YG7DK8DP82
   name: scf
   slug: scf
   path: calculations/si-dos/steps/scf.step.yaml
   kind: step
-step_type: scf
+step_type_spec: scf
 parameters:
   CONTROL:
     calculation: scf

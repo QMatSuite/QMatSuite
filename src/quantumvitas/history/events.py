@@ -6,8 +6,8 @@ Events are append-only and immutable. Each event has:
 - timestamp: ISO 8601 timestamp
 - event_type: discriminator for event kind
 - project_id: optional project ULID
-- calc_id: optional calculation ULID  
-- step_id: optional step ULID
+- calc_id: optional calculation ULID
+- step_ulid: optional step ULID
 """
 
 from __future__ import annotations
@@ -43,14 +43,14 @@ class EditOperation(str, Enum):
 class HistoryEvent:
     """
     Base class for all history events.
-    
+
     All events are immutable once created.
     """
     id: str  # ULID for this event
     timestamp: str  # ISO 8601 format
     event_type: str
-    project_id: Optional[str] = None
-    calc_id: Optional[str] = None
+    project_ulid: Optional[str] = None  # ULID (was project_id)
+    calc_ulid: Optional[str] = None  # Calculation ULID (was calc_id)
     step_ulid: Optional[str] = None  # ULID (was step_id)
     
     @classmethod
@@ -111,25 +111,25 @@ class BaselineEvent(HistoryEvent):
     @classmethod
     def create(
         cls,
-        project_ulid: str,
-        structure_ulids: Optional[List[str]] = None,
-        calculation_ulids: Optional[List[str]] = None,
+        project_id: str,
+        structure_ids: Optional[List[str]] = None,
+        calculation_ids: Optional[List[str]] = None,
         snapshot_path: Optional[str] = None,
     ) -> "BaselineEvent":
         """Create a new baseline event."""
         return cls(
             id=cls.generate_id(),
             timestamp=cls.now_timestamp(),
-            project_ulid=project_ulid,
-            structure_ulids=structure_ulids or [],
-            calculation_ulids=calculation_ulids or [],
+            project_ulid=project_id,
+            structure_ulids=structure_ids or [],
+            calculation_ulids=calculation_ids or [],
             snapshot_path=snapshot_path,
         )
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "BaselineEvent":
         return cls(
-            id=data["id"],
+            id=data.get("id", data.get("ulid")),
             timestamp=data["timestamp"],
             event_type=data.get("event_type", EventType.BASELINE.value),
             project_ulid=data.get("project_ulid", data.get("project_id")),
@@ -185,8 +185,8 @@ class EditEvent(HistoryEvent):
         return cls(
             id=cls.generate_id(),
             timestamp=cls.now_timestamp(),
-            project_id=project_id,
-            calc_id=calc_id,
+            project_ulid=project_id,
+            calc_ulid=calc_id,
             step_ulid=step_id,
             doc_type=doc_type,
             doc_path=doc_path,
@@ -194,15 +194,15 @@ class EditEvent(HistoryEvent):
             actor=actor,
             summary=summary,
         )
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "EditEvent":
         return cls(
-            id=data["id"],
+            id=data.get("id", data.get("ulid")),
             timestamp=data["timestamp"],
             event_type=data.get("event_type", EventType.EDIT.value),
-            project_id=data.get("project_id"),
-            calc_id=data.get("calc_id"),
+            project_ulid=data.get("project_ulid", data.get("project_id")),
+            calc_ulid=data.get("calc_ulid", data.get("calc_id")),
             step_ulid=data.get("step_ulid", data.get("step_id")),
             doc_type=data.get("doc_type"),
             doc_path=data.get("doc_path"),
@@ -216,11 +216,11 @@ class EditEvent(HistoryEvent):
 class RunStartedEvent(HistoryEvent):
     """
     Event recording the start of an engine run.
-    
+
     Created at the beginning of CalculationRunner.run().
     """
     event_type: str = field(default=EventType.RUN_STARTED.value)
-    run_id: str = ""  # ULID for this run
+    run_ulid: str = ""  # ULID for this run
     calc_name: Optional[str] = None
     step_ids: List[str] = field(default_factory=list)  # Steps to be executed
     step_types: List[str] = field(default_factory=list)  # Step types for display
@@ -245,9 +245,9 @@ class RunStartedEvent(HistoryEvent):
         return cls(
             id=cls.generate_id(),
             timestamp=cls.now_timestamp(),
-            project_id=project_id,
-            calc_id=calc_id,
-            run_id=run_id,
+            project_ulid=project_id,
+            calc_ulid=calc_id,
+            run_ulid=run_id,
             calc_name=calc_name,
             step_ids=step_ids or [],
             step_types=step_types or [],
@@ -255,17 +255,17 @@ class RunStartedEvent(HistoryEvent):
             structure_id=structure_id,
             snapshot_path=snapshot_path,
         )
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "RunStartedEvent":
         return cls(
-            id=data["id"],
+            id=data.get("id", data.get("ulid")),
             timestamp=data["timestamp"],
             event_type=data.get("event_type", EventType.RUN_STARTED.value),
-            project_id=data.get("project_id"),
-            calc_id=data.get("calc_id"),
+            project_ulid=data.get("project_ulid", data.get("project_id")),
+            calc_ulid=data.get("calc_ulid", data.get("calc_id")),
             step_ulid=data.get("step_ulid", data.get("step_id")),
-            run_id=data.get("run_id", ""),
+            run_ulid=data.get("run_ulid", data.get("run_id", "")),
             calc_name=data.get("calc_name"),
             step_ids=data.get("step_ids", []),
             step_types=data.get("step_types", []),
@@ -279,11 +279,11 @@ class RunStartedEvent(HistoryEvent):
 class RunFinishedEvent(HistoryEvent):
     """
     Event recording the completion of an engine run.
-    
+
     Created at the end of CalculationRunner.run(), after digests are computed.
     """
     event_type: str = field(default=EventType.RUN_FINISHED.value)
-    run_id: str = ""  # Links to run revision
+    run_ulid: str = ""  # Links to run revision
     status: str = ""  # "success", "failed", "cancelled"
     duration_seconds: Optional[float] = None
     step_count: int = 0
@@ -308,9 +308,9 @@ class RunFinishedEvent(HistoryEvent):
         return cls(
             id=cls.generate_id(),
             timestamp=cls.now_timestamp(),
-            project_id=project_id,
-            calc_id=calc_id,
-            run_id=run_id,
+            project_ulid=project_id,
+            calc_ulid=calc_id,
+            run_ulid=run_id,
             status=status,
             duration_seconds=duration_seconds,
             step_count=step_count,
@@ -318,17 +318,17 @@ class RunFinishedEvent(HistoryEvent):
             failure_count=failure_count,
             error_summary=error_summary,
         )
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "RunFinishedEvent":
         return cls(
-            id=data["id"],
+            id=data.get("id", data.get("ulid")),
             timestamp=data["timestamp"],
             event_type=data.get("event_type", EventType.RUN_FINISHED.value),
-            project_id=data.get("project_id"),
-            calc_id=data.get("calc_id"),
+            project_ulid=data.get("project_ulid", data.get("project_id")),
+            calc_ulid=data.get("calc_ulid", data.get("calc_id")),
             step_ulid=data.get("step_ulid", data.get("step_id")),
-            run_id=data.get("run_id", ""),
+            run_ulid=data.get("run_ulid", data.get("run_id", "")),
             status=data.get("status", ""),
             duration_seconds=data.get("duration_seconds"),
             step_count=data.get("step_count", 0),
@@ -342,11 +342,11 @@ class RunFinishedEvent(HistoryEvent):
 class PinCreatedEvent(HistoryEvent):
     """
     Event recording a pin-to-history action.
-    
+
     Created when user pins analysis results to history.
     """
     event_type: str = field(default=EventType.PIN_CREATED.value)
-    run_id: str = ""  # Run this pin belongs to
+    run_ulid: str = ""  # Run this pin belongs to
     analysis_kind: str = ""  # "bands", "dos", "scf_convergence", etc.
     pin_path: Optional[str] = None  # Path to pinned files
     
@@ -364,24 +364,24 @@ class PinCreatedEvent(HistoryEvent):
         return cls(
             id=cls.generate_id(),
             timestamp=cls.now_timestamp(),
-            project_id=project_id,
-            calc_id=calc_id,
+            project_ulid=project_id,
+            calc_ulid=calc_id,
             step_ulid=step_id,
-            run_id=run_id,
+            run_ulid=run_id,
             analysis_kind=analysis_kind,
             pin_path=pin_path,
         )
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "PinCreatedEvent":
         return cls(
-            id=data["id"],
+            id=data.get("id", data.get("ulid")),
             timestamp=data["timestamp"],
             event_type=data.get("event_type", EventType.PIN_CREATED.value),
-            project_id=data.get("project_id"),
-            calc_id=data.get("calc_id"),
+            project_ulid=data.get("project_ulid", data.get("project_id")),
+            calc_ulid=data.get("calc_ulid", data.get("calc_id")),
             step_ulid=data.get("step_ulid", data.get("step_id")),
-            run_id=data.get("run_id", ""),
+            run_ulid=data.get("run_ulid", data.get("run_id", "")),
             analysis_kind=data.get("analysis_kind", ""),
             pin_path=data.get("pin_path"),
         )

@@ -113,7 +113,7 @@ class W90Driver(BaseEngineDriver):
 
         w90_run requires output from w90_preproc step.
         """
-        if step.step_type == "w90_run":
+        if step.step_type_spec == "w90_run":
             return [
                 PreflightRequirement(
                     artifact_type="w90_amn",

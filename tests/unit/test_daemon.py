@@ -234,7 +234,7 @@ class TestQVDaemonProtocol:
         
         daemon = QVDaemon(stdin=stdin, stdout=stdout)
         
-        response = daemon.handle_line('{"id": "1", "payload": {}}')
+        response = daemon.handle_line('{"ulid": "1", "payload": {}}')
         
         assert not response.ok
         assert response.error["code"] == "invalid_request"
@@ -250,7 +250,7 @@ class TestQVDaemonProtocol:
         json_str = response.to_json()
         parsed = json.loads(json_str)
         
-        assert parsed["id"] == "test-1"
+        assert parsed["ulid"] == "test-1"
         assert parsed["ok"] is True
         assert parsed["data"]["key"] == "value"
     
@@ -265,7 +265,7 @@ class TestQVDaemonProtocol:
         json_str = response.to_json()
         parsed = json.loads(json_str)
         
-        assert parsed["id"] == "test-1"
+        assert parsed["ulid"] == "test-1"
         assert parsed["ok"] is False
         assert parsed["error"]["code"] == "test_error"
 
@@ -410,7 +410,7 @@ class TestQVDaemonHandlers:
         ))
         
         assert status_response.ok
-        assert status_response.data["id"] == job_id
+        assert status_response.data["ulid"] == job_id
         assert status_response.data["job_type"] == "run_calculation"
         
         daemon.job_manager.shutdown()
@@ -446,7 +446,7 @@ class TestQVDaemonHandlers:
             assert actual_keys == expected_keys, f"Template keys mismatch: got {actual_keys}, expected {expected_keys}"
             
             # Type checks
-            assert isinstance(template["id"], str)
+            assert isinstance(template["ulid"], str)
             assert isinstance(template["name"], str)
             assert template["description"] is None or isinstance(template["description"], str)
             
@@ -577,8 +577,8 @@ class TestQVDaemonMainLoop:
     def test_processes_multiple_requests(self):
         """Test that daemon processes multiple requests."""
         requests = [
-            '{"id": "1", "type": "ping", "payload": {}}',
-            '{"id": "2", "type": "ping", "payload": {}}',
+            '{"ulid": "1", "type": "ping", "payload": {}}',
+            '{"ulid": "2", "type": "ping", "payload": {}}',
         ]
         stdin = StringIO("\n".join(requests) + "\n")
         stdout = StringIO()
@@ -600,9 +600,9 @@ class TestQVDaemonMainLoop:
     def test_shutdown_command_stops_loop(self):
         """Test that shutdown command stops the main loop."""
         requests = [
-            '{"id": "1", "type": "ping", "payload": {}}',
-            '{"id": "2", "type": "shutdown", "payload": {}}',
-            '{"id": "3", "type": "ping", "payload": {}}',  # Should not be processed
+            '{"ulid": "1", "type": "ping", "payload": {}}',
+            '{"ulid": "2", "type": "shutdown", "payload": {}}',
+            '{"ulid": "3", "type": "ping", "payload": {}}',  # Should not be processed
         ]
         stdin = StringIO("\n".join(requests) + "\n")
         stdout = StringIO()

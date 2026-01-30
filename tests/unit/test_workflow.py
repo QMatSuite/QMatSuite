@@ -225,15 +225,15 @@ class TestWorkflowDetection:
         
         # Create calculation.yaml
         _save_yaml_raw({
-            "id": "test-calc",
+            "ulid": "test-calc",
             "steps": [
-                {"step_type": "scf", "file": "steps/scf.step.yaml"}
+                {"step_type_gen": "scf", "file": "steps/scf.step.yaml"}
             ]
         }, calc_dir / "calculation.yaml")
         
         # Create step file
         _save_yaml_raw({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {}
         }, steps_dir / "scf.step.yaml")
         
@@ -250,11 +250,11 @@ class TestWorkflowDetection:
         
         # Create calculation.yaml with all DOS steps
         _save_yaml_raw({
-            "id": "test-calc",
+            "ulid": "test-calc",
             "steps": [
-                {"step_type": "scf"},
-                {"step_type": "nscf"},
-                {"step_type": "dos"},
+                {"step_type_gen": "scf"},
+                {"step_type_gen": "nscf"},
+                {"step_type_gen": "dos"},
             ]
         }, calc_dir / "calculation.yaml")
         
@@ -272,10 +272,10 @@ class TestWorkflowDetection:
         
         # Create calculation.yaml missing dos step
         _save_yaml_raw({
-            "id": "test-calc",
+            "ulid": "test-calc",
             "steps": [
-                {"step_type": "scf"},
-                {"step_type": "nscf"},
+                {"step_type_gen": "scf"},
+                {"step_type_gen": "nscf"},
             ]
         }, calc_dir / "calculation.yaml")
         
@@ -312,12 +312,12 @@ class TestStepFactory:
         )
         
         assert isinstance(doc, StepDoc)
-        assert doc.get(["step_type"]) == "scf"
+        assert doc.get(["step_type_spec"]) == "qe_scf"  # Machine type, not gen type
         assert doc.get(["meta", "name"]) == "my_scf"
         # slugify converts underscores to hyphens
         slug = doc.get(["meta", "slug"])
         assert slug in ["my-scf", "my_scf"]  # Accept either convention
-        assert doc.get(["meta", "id"]) is not None
+        assert doc.get(["meta", "ulid"]) is not None
     
     # DELETED: test_create_step_doc_with_parent - tests parent_calculation_id which was removed (DAG invariant)
     
@@ -358,7 +358,7 @@ class TestStepFactory:
         
         # Verify content
         loaded = StepDoc.load(path)
-        assert loaded.get(["step_type"]) == "scf"
+        assert loaded.get(["step_type_spec"]) == "qe_scf"  # Machine type
     
     def test_create_and_save_step(self, tmp_path):
         """create_and_save_step creates and saves in one call."""
@@ -457,7 +457,7 @@ class TestWorkflowInstantiation:
         project_root = tmp_path / "project"
         project_root.mkdir()
         project_config = {
-            "project": {"name": "Test", "id": generate_resource_id()},
+            "project": {"name": "Test", "ulid": generate_resource_id()},
             "calculations": [{"calculation_id": calc_ulid}]
         }
         (project_root / "project.qv.yml").write_text(
@@ -470,12 +470,12 @@ class TestWorkflowInstantiation:
         # Create calculation.yaml with meta.id and proper structure
         calc_yaml_data = {
             "meta": {
-                "id": calc_ulid,
+                "ulid": calc_ulid,
                 "name": "test-calc",
                 "slug": "test-calc",
                 "path": "calculations/test_calc"
             },
-            "id": "test-calc",
+            "ulid": "test-calc",
         }
         _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
         
@@ -495,7 +495,7 @@ class TestWorkflowInstantiation:
         
         # Check step content
         doc = StepDoc.load(paths[0])
-        assert doc.get(["step_type"]) == "scf"
+        assert doc.get(["step_type_spec"]) == "scf"
     
     def test_instantiate_dos_workflow(self, tmp_path, service, test_journal):
         """Instantiate DOS workflow creates three steps."""
@@ -509,7 +509,7 @@ class TestWorkflowInstantiation:
         project_root = tmp_path / "project"
         project_root.mkdir()
         project_config = {
-            "project": {"name": "Test", "id": generate_resource_id()},
+            "project": {"name": "Test", "ulid": generate_resource_id()},
             "calculations": [{"calculation_id": calc_ulid}]
         }
         (project_root / "project.qv.yml").write_text(
@@ -522,12 +522,12 @@ class TestWorkflowInstantiation:
         # Create calculation.yaml with meta.id and proper structure
         calc_yaml_data = {
             "meta": {
-                "id": calc_ulid,
+                "ulid": calc_ulid,
                 "name": "test-calc",
                 "slug": "test-calc",
                 "path": "calculations/test_calc"
             },
-            "id": "test-calc",
+            "ulid": "test-calc",
         }
         _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
         
@@ -548,7 +548,7 @@ class TestWorkflowInstantiation:
         step_types = []
         for path in paths:
             doc = StepDoc.load(path)
-            step_types.append(doc.get(["step_type"]))
+            step_types.append(doc.get(["step_type_spec"]))
         
         assert step_types == ["scf", "nscf", "dos"]
     
@@ -564,7 +564,7 @@ class TestWorkflowInstantiation:
         project_root = tmp_path / "project"
         project_root.mkdir()
         project_config = {
-            "project": {"name": "Test", "id": generate_resource_id()},
+            "project": {"name": "Test", "ulid": generate_resource_id()},
             "calculations": [{"calculation_id": calc_ulid}]
         }
         (project_root / "project.qv.yml").write_text(
@@ -577,12 +577,12 @@ class TestWorkflowInstantiation:
         # Create calculation.yaml with meta.id and proper structure
         calc_yaml_data = {
             "meta": {
-                "id": calc_ulid,
+                "ulid": calc_ulid,
                 "name": "test-calc",
                 "slug": "test-calc",
                 "path": "calculations/test_calc"
             },
-            "id": "test-calc",
+            "ulid": "test-calc",
         }
         _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
         
@@ -599,7 +599,7 @@ class TestWorkflowInstantiation:
         
         assert len(paths) == 3
         
-        step_types = [StepDoc.load(p).get(["step_type"]) for p in paths]
+        step_types = [StepDoc.load(p).get(["step_type_spec"]) for p in paths]
         assert step_types == ["scf", "bands_pw", "bands"]
     
     def test_instantiate_unknown_raises(self, tmp_path, service):
@@ -629,7 +629,7 @@ class TestWorkflowInstantiation:
         project_root = tmp_path / "project"
         project_root.mkdir()
         project_config = {
-            "project": {"name": "Test", "id": generate_resource_id()},
+            "project": {"name": "Test", "ulid": generate_resource_id()},
             "calculations": [{"calculation_id": calc_ulid}]
         }
         (project_root / "project.qv.yml").write_text(
@@ -642,12 +642,12 @@ class TestWorkflowInstantiation:
         # Create calculation.yaml with meta.id and proper structure
         calc_yaml_data = {
             "meta": {
-                "id": calc_ulid,
+                "ulid": calc_ulid,
                 "name": "test-calc",
                 "slug": "test-calc",
                 "path": "calculations/test_calc"
             },
-            "id": "test-calc",
+            "ulid": "test-calc",
         }
         _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
         
@@ -690,11 +690,11 @@ class TestWorkflowValidation:
         calc_dir.mkdir()
         
         _save_yaml_raw({
-            "id": "test-calc",
+            "ulid": "test-calc",
             "steps": [
-                {"step_type": "scf"},
-                {"step_type": "nscf"},
-                {"step_type": "dos"},
+                {"step_type_gen": "scf"},
+                {"step_type_gen": "nscf"},
+                {"step_type_gen": "dos"},
             ]
         }, calc_dir / "calculation.yaml")
         
@@ -709,10 +709,10 @@ class TestWorkflowValidation:
         calc_dir.mkdir()
         
         _save_yaml_raw({
-            "id": "test-calc",
+            "ulid": "test-calc",
             "steps": [
-                {"step_type": "scf"},
-                {"step_type": "nscf"},
+                {"step_type_gen": "scf"},
+                {"step_type_gen": "nscf"},
                 # Missing dos
             ]
         }, calc_dir / "calculation.yaml")

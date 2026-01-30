@@ -39,7 +39,7 @@ def temp_project(tmp_path: Path):
     structure = Structure(Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
     struct_id = generate_resource_id()
     struct_meta = meta_from_name("structure", name="si", path="structures/si.json")
-    struct_meta["id"] = struct_id
+    struct_meta["ulid"] = struct_id
     
     struct_file = structures_dir / "si.json"
     import json
@@ -50,7 +50,7 @@ def temp_project(tmp_path: Path):
     
     # Update project config
     config = yaml.safe_load((project_root / "project.qv.yml").read_text())
-    config["structures"] = [{"id": struct_id}]
+    config["structures"] = [{"ulid": struct_id}]
     
     # Create a calculation
     calculations_dir = project_root / "calculations"
@@ -61,7 +61,7 @@ def temp_project(tmp_path: Path):
     
     calc_id = generate_resource_id()
     calc_meta = meta_from_name("calculation", name="test_calc", path="calculations/test_calc")
-    calc_meta["id"] = calc_id
+    calc_meta["ulid"] = calc_id
     
     (calc_dir / "calculation.yaml").write_text(yaml.safe_dump({
         "meta": calc_meta,
@@ -69,7 +69,7 @@ def temp_project(tmp_path: Path):
         "steps": []
     }))
     
-    config["calculations"] = [{"id": calc_id}]
+    config["calculations"] = [{"ulid": calc_id}]
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
     
     return project_root

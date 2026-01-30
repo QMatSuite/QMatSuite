@@ -35,7 +35,7 @@ class ManifestStepEntry:
     structure_sha: str  # SHA256 of structure JSON (meta stripped) - init structure SHA
     step_sha: str  # SHA256 of step YAML (meta stripped)
     effective_structure_sha: Optional[str] = None  # NEW: SHA256 of effective structure at execution time (for relax-aware skip logic)
-    run_id: Optional[str] = None  # Last attempted run ID (ULID)
+    run_ulid: Optional[str] = None  # Last attempted run ULID
     done: bool = False  # Whether step is completed
     started_at: Optional[str] = None  # ISO8601 timestamp
     done_at: Optional[str] = None  # ISO8601 timestamp when done==true
@@ -54,7 +54,7 @@ class ManifestStepEntry:
             structure_sha=data["structure_sha"],
             step_sha=data["step_sha"],
             effective_structure_sha=data.get("effective_structure_sha"),  # Optional, backward compatible
-            run_id=data.get("run_id"),
+            run_ulid=data.get("run_ulid"),
             done=data.get("done", False),
             started_at=data.get("started_at"),
             done_at=data.get("done_at"),
@@ -214,7 +214,7 @@ def update_manifest_step(
         structure_sha=structure_sha,
         step_sha=step_sha,
         effective_structure_sha=effective_structure_sha,
-        run_id=run_id,
+        run_ulid=run_id,  # Parameter is run_id, field is run_ulid
         done=done,
         started_at=started_at,
         done_at=done_at,

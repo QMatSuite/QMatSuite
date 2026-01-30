@@ -2,7 +2,7 @@ version: '1.0'
 generated_at: '2026-01-03T13:49:14.638320'
 project:
   meta:
-    id: 01KE2K2EMC0HH4DB025X9671SD
+    ulid: 01KE2K2EMC0HH4DB025X9671SD
     name: Diamond Wannier90 Demo
     slug: diamond-wannier90-demo
     path: .
@@ -10,7 +10,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE2K2EMCFP2KVK2H4MV1S0ZK
+    ulid: 01KE2K2EMCFP2KVK2H4MV1S0ZK
     name: Diamond
     slug: diamond
     path: structures/diamond.json
@@ -71,7 +71,7 @@ structures:
       - 0.4034976233265
 calculations:
 - meta:
-    id: 01KE2K2EMCFVASR6P3YAXRCVRN
+    ulid: 01KE2K2EMCFVASR6P3YAXRCVRN
     name: Diamond MLWFs
     slug: diamond-mlwfs
     path: calculations/diamond-mlwfs

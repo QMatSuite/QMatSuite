@@ -69,7 +69,7 @@ class PySCFRecipe(BaseRecipe):
 
         # Get SCF root info for namespace folder
         scf_root = steps[0]
-        scf_ulid = scf_root.meta.id
+        scf_ulid = scf_root.meta.ulid
         namespace_folder = get_chain_namespace_folder(scf_ulid)
         working_dir = calc_raw_dir / namespace_folder
 
@@ -81,8 +81,8 @@ class PySCFRecipe(BaseRecipe):
 
             for s in subchain_steps:
                 spec = (
-                    registry.get(str(s.step_type))
-                    if s.step_type
+                    registry.get(str(s.step_type_spec))
+                    if s.step_type_spec
                     else None
                 )
                 pt = spec.step_type_gen if spec else "scf"
@@ -95,7 +95,7 @@ class PySCFRecipe(BaseRecipe):
                 basename = "_".join(public_types)
 
             # Collect step IDs and SHAs for fingerprint
-            step_ids = [s.meta.id for s in subchain_steps]
+            step_ids = [s.meta.ulid for s in subchain_steps]
             step_sha_list = [
                 self._get_step_sha(s, step_shas) or ""
                 for s in subchain_steps
@@ -107,7 +107,7 @@ class PySCFRecipe(BaseRecipe):
             # Expected outputs: results.json for each step + checkpoint
             step_artifacts_dir = calc_raw_dir / "step_artifacts"
             expected_outputs = [
-                step_artifacts_dir / s.meta.id / "results.json"
+                step_artifacts_dir / s.meta.ulid / "results.json"
                 for s in subchain_steps
             ]
             expected_outputs.append(working_dir / "checkpoint.chk")
@@ -127,7 +127,7 @@ class PySCFRecipe(BaseRecipe):
                     "subchain_basename": basename,
                     "chain_key": namespace_folder,
                     "public_types": public_types,
-                    "target_step_ulid": target_step.meta.id,
+                    "target_step_ulid": target_step.meta.ulid,
                 },
             )
             jobs.append(job)

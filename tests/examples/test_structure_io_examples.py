@@ -49,7 +49,7 @@ class TestReadWriteStructure:
 
         # Write structure to JSON
         metadata = {
-            "id": "demo-structure",
+            "ulid": "demo-structure",
             "name": "Si demo",
             "slug": "si-demo",
             "path": "structures/si.json",

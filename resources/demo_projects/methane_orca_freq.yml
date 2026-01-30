@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KEX4RTDK93SD5RVBPXZ56G2V
+    ulid: 01KEX4RTDK93SD5RVBPXZ56G2V
     name: Methane ORCA Frequency
     slug: methane-orca-freq
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KEX4RTDKVXC38QJK70KZP3NA
+    ulid: 01KEX4RTDKVXC38QJK70KZP3NA
     name: CH4
     slug: ch4
     path: structures/ch4.json
@@ -73,7 +73,7 @@ structures:
     properties: {}
 calculations:
 - meta:
-    id: 01KEX4RTDKBTW1BTNRAHHGE1VF
+    ulid: 01KEX4RTDKBTW1BTNRAHHGE1VF
     name: CH4 SCF + Frequency
     slug: ch4-scf--plus-frequency
     path: calculations/ch4-scf--plus-frequency
@@ -97,7 +97,7 @@ calculations:
       spin: 0
     step_type_spec: qe_scf
 meta:
-  id: methane_orca_freq
+  ulid: methane_orca_freq
   title: Methane ORCA Frequency
   subtitle: SCF + numerical frequency calculation
   tags:

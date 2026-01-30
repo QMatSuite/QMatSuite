@@ -9,7 +9,7 @@ class MockStep:
     """Mock step for testing."""
     def __init__(self, step_type: str, public_type: str = None):
         self.step_type = step_type
-        self.public_type = public_type or step_type
+        self.step_type_gen = public_type or step_type
 
 
 class TestReferenceSCFResolver:

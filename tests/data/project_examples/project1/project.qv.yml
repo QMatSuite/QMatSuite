@@ -1,7 +1,7 @@
 project:
   name: project1
   meta:
-    id: 01KC38M041WTC1XKXQHHRC1AHY
+    ulid: 01KC38M041WTC1XKXQHHRC1AHY
     name: project1
     slug: project1
     path: .

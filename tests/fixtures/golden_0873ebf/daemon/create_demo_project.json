@@ -6,7 +6,7 @@
     "project_id": "<NORMALIZED_ID>",
     "project_name": "demo-si-project",
     "structure": {
-      "id": "<NORMALIZED_ID>",
+      "ulid": "<NORMALIZED_ID>",
       "name": "Si"
     },
     "calculation": "<NORMALIZED_ID>",

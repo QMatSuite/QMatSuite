@@ -52,7 +52,7 @@ def temp_project(tmp_path: Path) -> Path:
                 source=scf_in,
                 name="Si",
             )
-            structures["Si"] = structure1.meta.id
+            structures["Si"] = structure1.meta.ulid
             
             # Create a second structure for testing structure change
             structure2 = QVService.import_structure(
@@ -60,7 +60,7 @@ def temp_project(tmp_path: Path) -> Path:
                 source=scf_in,
                 name="Si2",
             )
-            structures["Si2"] = structure2.meta.id
+            structures["Si2"] = structure2.meta.ulid
         else:
             pytest.skip("Test data not available")
     else:
@@ -72,7 +72,7 @@ def temp_project(tmp_path: Path) -> Path:
         name="test_calculation",
         structure_selector=structures["Si"],
     )
-    calculation_id = calculation_result.meta.id
+    calculation_id = calculation_result.meta.ulid
     
     # Use domain accessor API for step creation
     svc = QVService(project_dir)
@@ -145,8 +145,8 @@ class TestGetCalculationDetail:
             "Daemon result should match direct QVService result"
         
         # Verify step IDs are consistent
-        daemon_step_ids = {s.get("step_id") or s.get("id") for s in result["steps"]}
-        direct_step_ids = {s.get("step_id") or s.get("id") for s in direct_result["steps"]}
+        daemon_step_ids = {s.get("step_ulid") or s.get("ulid") for s in result["steps"]}
+        direct_step_ids = {s.get("step_ulid") or s.get("ulid") for s in direct_result["steps"]}
         assert daemon_step_ids == direct_step_ids, \
             "Step IDs from daemon should match direct QVService call"
     
@@ -191,7 +191,7 @@ class TestGetCalculationDetail:
         # Verify each step has a ULID (26 characters)
         step_ids = []
         for step in result["steps"]:
-            step_id = step.get("id") or step.get("step_id")
+            step_id = step.get("ulid") or step.get("step_ulid")
             assert step_id is not None, "Step must have id field"
             assert isinstance(step_id, str), "Step id must be a string"
             assert len(step_id) == 26, f"Step id must be a ULID (26 chars), got '{step_id}' (length {len(step_id)})"
@@ -217,7 +217,7 @@ class TestGetCalculationDetail:
         # CRITICAL: Test that get_step_detail works for ALL steps (not just the first)
         # This ensures the ULID-based resolution works for every step in the calculation
         for idx, step in enumerate(result["steps"]):
-            step_id = step.get("id") or step.get("step_id")
+            step_id = step.get("ulid") or step.get("step_ulid")
             step_type = step.get("type")
             
             # Call get_step_detail via daemon with the ULID
@@ -229,8 +229,8 @@ class TestGetCalculationDetail:
             
             # Verify response structure
             assert "id" in step_detail, f"Step {idx} detail should have id field"
-            assert step_detail["id"] == step_id, \
-                f"Step {idx} detail id should match calculation step id. Expected {step_id}, got {step_detail['id']}"
+            assert step_detail["ulid"] == step_id, \
+                f"Step {idx} detail id should match calculation step id. Expected {step_id}, got {step_detail["ulid"]}"
             assert "step_type" in step_detail, f"Step {idx} detail should have step_type field"
             
             # Verify step_type is related (calculation.yaml may store public type, step.yaml stores machine type)
@@ -265,7 +265,7 @@ class TestGetCalculationDetail:
         
         # Verify step IDs match calculation.yaml order
         calculation_yaml_step_ids = [entry.step_ulid for entry in wf_model.steps]
-        api_step_ids = [step.get("id") or step.get("step_id") for step in result["steps"]]
+        api_step_ids = [step.get("ulid") or step.get("step_ulid") for step in result["steps"]]
         
         assert len(calculation_yaml_step_ids) == len(api_step_ids), \
             f"Step count mismatch: calculation.yaml has {len(calculation_yaml_step_ids)}, API returned {len(api_step_ids)}"

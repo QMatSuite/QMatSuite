@@ -28,11 +28,11 @@ class MockStep:
     def __init__(self, step_id: str, step_type: str, public_type: str, parameters: Dict[str, Any] = None):
         self.id = step_id
         self.step_type = step_type
-        self.public_type = public_type
+        self.step_type_gen = public_type
         self.parameters = parameters or {}
         self.options = {}
         # Create mock meta object
-        self.meta = type('Meta', (), {'id': step_id})()
+        self.meta = type('Meta', (), {"ulid": step_id})()
 
 
 class MockCalculation:

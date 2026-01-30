@@ -4,7 +4,7 @@
   "response": {
     "timeline": [
       {
-        "id": "<NORMALIZED_ID>",
+        "ulid": "<NORMALIZED_ID>",
         "timestamp": "<NORMALIZED_TIMESTAMP>",
         "event_type": "baseline",
         "step_id": "<NORMALIZED_ID>",

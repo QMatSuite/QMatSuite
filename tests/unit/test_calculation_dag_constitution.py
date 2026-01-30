@@ -26,8 +26,7 @@ def test_calculation_yaml_only_persists_structure_id(tmp_path):
     
     # Create calculation model with structure_id only (DAG + ULID model)
     model = CalculationModel(
-        meta=ResourceMeta(
-            id=generate_resource_id(),
+        meta=ResourceMeta(ulid=generate_resource_id(),
             name="Test Calculation",
             slug="test-calculation",
             path="calculations/test-calculation",
@@ -74,7 +73,7 @@ def test_calculation_roundtrip_strips_legacy_fields(tmp_path):
     # Create calculation.yaml with legacy fields (simulating old format)
     legacy_yaml = {
         "meta": {
-            "id": generate_resource_id(),
+            "ulid": generate_resource_id(),
             "name": "Roundtrip Test",
             "slug": "roundtrip-test",
             "path": "calculations/roundtrip",
@@ -123,7 +122,7 @@ def test_calculation_legacy_selector_raises_error(tmp_path):
     from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
     structure_file.write_text(json.dumps({
         STRUCTURE_META_KEY: {
-            "id": structure_id,
+            "ulid": structure_id,
             "name": "Test Structure",
             "slug": "test-structure",
             "path": "structures/test-structure.json",
@@ -141,7 +140,7 @@ def test_calculation_legacy_selector_raises_error(tmp_path):
     project_config = {
         "project": {"name": "Test Project"},
         "structures": [{
-            "id": structure_id,
+            "ulid": structure_id,
             "file": "structures/test-structure.json",
             "format": "json",
         }],
@@ -152,7 +151,7 @@ def test_calculation_legacy_selector_raises_error(tmp_path):
     # Create calculation.yaml with legacy structure selector (no structure_id)
     legacy_yaml = {
         "meta": {
-            "id": generate_resource_id(),
+            "ulid": generate_resource_id(),
             "name": "Legacy Test",
             "slug": "legacy-test",
             "path": "calculations/legacy-test",

@@ -79,12 +79,12 @@ class CP2KRecipe(BaseRecipe):
         jobs: List[Job] = []
 
         for step in steps:
-            step_type = step.step_type
+            step_type = step.step_type_spec
             spec = registry.get(step_type) if step_type else None
             public_type = spec.step_type_gen if spec else "unknown"
 
-            job_id = step.meta.id
-            working_dir = calc_raw_dir / step.meta.id
+            job_id = step.meta.ulid
+            working_dir = calc_raw_dir / step.meta.ulid
 
             # CP2K command
             command = ["cp2k.ssmp", "-i", "input.inp", "-o", "output.log"]
@@ -105,7 +105,7 @@ class CP2KRecipe(BaseRecipe):
 
             job = Job(
                 id=job_id,
-                step_ids=[step.meta.id],
+                step_ids=[step.meta.ulid],
                 working_dir=working_dir,
                 command=command,
                 input_files=input_files,
@@ -115,7 +115,7 @@ class CP2KRecipe(BaseRecipe):
                 metadata={
                     "engine": "cp2k",
                     "spec_step_type": spec.step_type_spec if spec else None,
-                    "public_type": public_type,
+                    "step_type_gen": public_type,
                 },
             )
             jobs.append(job)

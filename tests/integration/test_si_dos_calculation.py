@@ -29,9 +29,9 @@ def si_dos_dir(ci_test_data_dir):
 @pytest.fixture
 def si_dos_project(project_root_path: Path, si_dos_dir: Path) -> Path:
     steps = [
-        {"id": "scf", "input": "si.1_scf.in", "reference": "si.1_scf.out"},
-        {"id": "nscf", "input": "si.2_nscf.in", "reference": "si.2_nscf.out"},
-        {"id": "dos", "input": "si.3_dos.in", "reference": "si.3_dos.out"},
+        {"ulid": "scf", "input": "si.1_scf.in", "reference": "si.1_scf.out"},
+        {"ulid": "nscf", "input": "si.2_nscf.in", "reference": "si.2_nscf.out"},
+        {"ulid": "dos", "input": "si.3_dos.in", "reference": "si.3_dos.out"},
     ]
     from quantumvitas.core.paths import tmp_runs_dir
     destination = tmp_runs_dir() / "calculation_si_dos"

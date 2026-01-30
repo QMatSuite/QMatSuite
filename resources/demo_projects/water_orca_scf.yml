@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KEX4RTDGTNKD67JT79WZXK0Z
+    ulid: 01KEX4RTDGTNKD67JT79WZXK0Z
     name: Water ORCA SCF Single Point
     slug: water-orca-scf
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KEX4RTDGR5PNF8DAMGW678N2
+    ulid: 01KEX4RTDGR5PNF8DAMGW678N2
     name: H2O
     slug: h2o
     path: structures/h2o.json
@@ -53,7 +53,7 @@ structures:
     properties: {}
 calculations:
 - meta:
-    id: 01KEX4RTDG5BVW9BW27PKTRNRY
+    ulid: 01KEX4RTDG5BVW9BW27PKTRNRY
     name: H2O B3LYP Single Point
     slug: h2o-b3lyp-single-point
     path: calculations/h2o-b3lyp-single-point
@@ -77,7 +77,7 @@ calculations:
       spin: 0
     step_type_spec: qe_scf
 meta:
-  id: water_orca_scf
+  ulid: water_orca_scf
   title: Water ORCA SCF Single Point
   subtitle: B3LYP/def2-SVP DFT calculation on water molecule
   tags:

@@ -137,7 +137,7 @@ def save_yaml_doc(
         
     Journal Integration:
         - Captures before (snapshot) and after (current state)
-        - Records entry with target ULID from meta.id
+        - Records entry with target ULID from meta.ulid
         - Infers doc_type from document structure
         
     Project History Integration:
@@ -331,7 +331,7 @@ def _extract_project_id(project_root: Path) -> str:
     try:
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
-        return config.get("project", {}).get("meta", {}).get("id", "")
+        return config.get("project", {}).get("meta", {}).get("ulid", "")
     except Exception:
         return ""
 
@@ -341,7 +341,7 @@ def _extract_calc_id(data: dict, path: Path) -> Optional[str]:
     # From data meta
     meta = data.get("meta", {})
     if meta.get("kind") == "calculation":
-        return meta.get("id")
+        return meta.get("ulid")
     
     # From step's parent calculation
     if meta.get("kind") == "step":
@@ -353,7 +353,7 @@ def _extract_calc_id(data: dict, path: Path) -> Optional[str]:
                 try:
                     import yaml
                     calc_data = yaml.safe_load(calc_yaml.read_text()) or {}
-                    return calc_data.get("meta", {}).get("id")
+                    return calc_data.get("meta", {}).get("ulid")
                 except Exception:
                     pass
             current = current.parent
@@ -365,7 +365,7 @@ def _extract_step_id(data: dict) -> Optional[str]:
     """Extract step ID from data."""
     meta = data.get("meta", {})
     if meta.get("kind") == "step":
-        return meta.get("id")
+        return meta.get("ulid")
     return None
 
 

@@ -53,7 +53,7 @@ class TestPrecisionDetectionCustom:
         from quantumvitas.io.structure_io import STRUCTURE_META_KEY
         struct_dict = structure.as_dict()
         struct_dict[STRUCTURE_META_KEY] = {
-            "id": "test_structure",
+            "ulid": "test_structure",
             "name": "test_structure",
             "slug": "test_structure",
         }
@@ -88,7 +88,7 @@ class TestPrecisionDetectionCustom:
         # Create scf step
         scf_step = temp_calc_dir / "steps" / "scf.step.yaml"
         scf_step.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {},
         }))
         
@@ -123,7 +123,7 @@ class TestPrecisionDetectionCustom:
         # Create scf step with some precision-like params but not canonical
         scf_step = temp_calc_dir / "steps" / "scf.step.yaml"
         scf_step.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": 50,

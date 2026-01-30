@@ -72,25 +72,25 @@ def _infer_engine_family_from_steps(steps: List["CalculationStepEntry"]) -> Opti
 class CalculationStepEntry:
     """
     An entry in the calculation's step list.
-    
-    Cross-resource reference: step_id (ULID) is the ONLY allowed cross-resource field.
-    All other fields (type, input, reference) are calculation-local metadata, not cross-references.
-    
-    The step file location is resolved via ResourceIndex using step_id, not stored here.
+
+    Cross-resource reference: step_ulid (ULID) is the ONLY allowed cross-resource field.
+    All other fields (step_type_spec, input, reference) are calculation-local metadata, not cross-references.
+
+    The step file location is resolved via ResourceIndex using step_ulid, not stored here.
     """
     step_ulid: Optional[str] = None  # Canonical step reference (ULID from step meta) - REQUIRED
     step_type_spec: Optional[str] = None  # SPEC type (e.g., "qe_scf") - Calculation-local metadata
     input: Optional[str] = None  # Calculation-local metadata (legacy input file reference)
     reference: Optional[str] = None  # Calculation-local metadata (reference file)
     
-    # Legacy field removed - step_id (ULID) is the only identifier
+    # Legacy field removed - step_ulid (ULID) is the only identifier
     
     
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert to dictionary for YAML serialization.
-        
-        Writes step_id (ULID) as the ONLY cross-resource reference.
+
+        Writes step_ulid (ULID) as the ONLY cross-resource reference.
         Does NOT write step_file (file location resolved via registry).
         Does not write legacy id field.
         """
@@ -104,23 +104,23 @@ class CalculationStepEntry:
         if self.reference:
             d["reference"] = self.reference
         # Do not write legacy "id" field
-        # Do not write step_file (resolved via registry using step_id)
+        # Do not write step_file (resolved via registry using step_ulid)
         return d
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any], project_root: Optional[Path] = None) -> "CalculationStepEntry":
         """
         Create CalculationStepEntry from dictionary.
-        
+
         This method only supports the DAG + ULID model. Legacy calculations
-        (with step_file or non-ULID step_id) must be migrated first.
+        (with step_file or non-ULID step_ulid) must be migrated first.
         
         Args:
             data: Dictionary containing step entry data
             project_root: Optional project root for error messages
         
         Raises:
-            LegacyProjectError: If legacy fields are detected (step_file, non-ULID step_id)
+            LegacyProjectError: If legacy fields are detected (step_file, non-ULID step_ulid)
         """
         from quantumvitas.core.exceptions import LegacyProjectError
         
@@ -135,7 +135,7 @@ class CalculationStepEntry:
         
         # Detect legacy patterns
         has_step_file = "step_file" in data
-        has_legacy_id = "id" in data and data.get("id") != step_ulid
+        has_legacy_id = "id" in data and data.get("ulid") != step_ulid
         
         # Check if step_ulid is missing or not a ULID (26 chars starting with "01")
         is_ulid = step_ulid and len(step_ulid) == 26 and step_ulid.startswith("01")
@@ -212,7 +212,7 @@ class CalculationModel:
     
     @property
     def id(self) -> str:
-        return self.meta.id
+        return self.meta.ulid
     
     @property
     def name(self) -> str:
@@ -227,8 +227,8 @@ class CalculationModel:
         Convert to dictionary for YAML serialization.
         
         DAG + ID-only constitution:
-        - structure_id: ULID only (canonical reference)
-        - steps: step_id (ULID) only
+        - structure_ulid: ULID only (canonical reference)
+        - steps: step_ulid (ULID) only
         - species_map: element -> {pseudopot, mass} (calc-level authority)
         - Do NOT write structure_name (cosmetic only, not used for resolution)
         """
@@ -309,7 +309,7 @@ class CalculationModel:
         meta = ResourceMeta.from_dict(
             data.get("meta"),
             kind="calculation",
-            default_name=data.get("id") or default_name,
+            default_name=data.get("ulid") or default_name,
             default_path=default_path,
         )
         
@@ -378,7 +378,7 @@ class CalculationModel:
             potential_map=potential_map,
         )
     
-    # Legacy resolve_step_ids method removed - all steps must have step_id (ULID) at load time
+    # Legacy resolve_step_ids method removed - all steps must have step_ulid (ULID) at load time
 
 
 def load_calculation(
@@ -429,7 +429,7 @@ def load_calculation(
     
     # Default name and path
     calculation_dir = path.parent
-    default_name = data.get("id") or calculation_dir.name
+    default_name = data.get("ulid") or calculation_dir.name
     
     if project_root:
         try:
@@ -619,7 +619,7 @@ class StructureEntry:
         No file path - structure location resolved via ResourceIndex using structure_id.
         """
         result = {
-            "structure_id": self.meta.id,  # ID-only reference (ULID)
+            "structure_id": self.meta.ulid,  # ID-only reference (ULID)
         }
         # Format is optional metadata, not a cross-reference
         if self.format != "auto":
@@ -637,7 +637,7 @@ class StructureEntry:
         # structure_id (ULID) is required
         structure_id = data.get("structure_id")
         if not structure_id:
-            structure_id = data.get("id")  # Fallback to 'id' field if structure_id missing
+            structure_id = data.get("ulid")  # Fallback to 'id' field if structure_id missing
         
         # Extract name/slug/path from meta for display
         meta_dict = data.get("meta") or {}
@@ -654,7 +654,7 @@ class StructureEntry:
                         import json
                         struct_data = json.loads(struct_file.read_text())
                         struct_meta_dict = struct_data.get("__qv_meta__") or struct_data.get("meta")
-                        if struct_meta_dict and struct_meta_dict.get("id") == structure_id:
+                        if struct_meta_dict and struct_meta_dict.get("ulid") == structure_id:
                             # Found matching structure file - use its meta
                             meta = ResourceMeta.from_dict(
                                 struct_meta_dict,
@@ -697,7 +697,7 @@ class StructureEntry:
         
         # Last resort: create meta from provided/defaults
         meta = ResourceMeta(
-            id=meta_dict.get("id") or structure_id or generate_resource_id(),
+            ulid=meta_dict.get("ulid") or structure_id or generate_resource_id(),
             name=name,
             slug=meta_dict.get("slug") or slugify(name),
             path=file_path,
@@ -725,7 +725,7 @@ class CalculationEntry:
         No path - calculation location resolved via ResourceIndex using calculation_id.
         """
         return {
-            "calculation_id": self.meta.id,  # ID-only reference (ULID)
+            "calculation_id": self.meta.ulid,  # ID-only reference (ULID)
         }
     
     @classmethod
@@ -739,7 +739,7 @@ class CalculationEntry:
         # calculation_id (ULID) is required
         calculation_id = data.get("calculation_id")
         if not calculation_id:
-            calculation_id = data.get("id")  # Fallback to 'id' field if calculation_id missing
+            calculation_id = data.get("ulid")  # Fallback to 'id' field if calculation_id missing
         
         # Extract name/slug/path from meta for display
         meta_dict = data.get("meta") or {}
@@ -760,7 +760,7 @@ class CalculationEntry:
                             import yaml
                             wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
                             wf_meta_dict = wf_data.get("meta", {})
-                            if wf_meta_dict and wf_meta_dict.get("id") == calculation_id:
+                            if wf_meta_dict and wf_meta_dict.get("ulid") == calculation_id:
                                 # Found matching calculation - use its meta
                                 # But prefer name from entry (project.qv.yml) if it exists and is different from slug
                                 entry_name = data.get("name") or meta_dict.get("name")
@@ -811,7 +811,7 @@ class CalculationEntry:
         
         # Last resort: create meta from provided/defaults
         meta = ResourceMeta(
-            id=meta_dict.get("id") or calculation_id or generate_resource_id(),
+            ulid=meta_dict.get("ulid") or calculation_id or generate_resource_id(),
             name=name,
             slug=meta_dict.get("slug") or slugify(name),
             path=path,
@@ -834,7 +834,7 @@ class ProjectModel:
     
     @property
     def id(self) -> str:
-        return self.meta.id
+        return self.meta.ulid
     
     @property
     def name(self) -> str:
@@ -893,7 +893,7 @@ class ProjectModel:
         """Find structure by ULID, slug, or name."""
         selector_lower = selector.lower()
         for s in self.structures:
-            if s.meta.id == selector:  # ULID exact match
+            if s.meta.ulid == selector:  # ULID exact match
                 return s
             if s.meta.slug == selector_lower:
                 return s
@@ -905,7 +905,7 @@ class ProjectModel:
         """Find calculation by ULID, slug, or name."""
         selector_lower = selector.lower()
         for w in self.calculations:
-            if w.meta.id == selector:  # ULID exact match
+            if w.meta.ulid == selector:  # ULID exact match
                 return w
             if w.meta.slug == selector_lower:
                 return w
@@ -1074,9 +1074,9 @@ def ensure_calculation_meta(
     if calculation_yaml.exists():
         model = load_calculation(calculation_yaml, project_root)
         # Ensure all fields are populated
-        if not model.meta.id or len(model.meta.id) != 26:
+        if not model.meta.ulid or len(model.meta.ulid) != 26:
             model.meta = ResourceMeta(
-                id=calculation_id or generate_resource_id(),
+                ulid=calculation_id or generate_resource_id(),
                 name=model.meta.name or default_name,
                 slug=model.meta.slug or default_slug,
                 path=model.meta.path or default_path,
@@ -1087,7 +1087,7 @@ def ensure_calculation_meta(
     else:
         # Create new
         meta = ResourceMeta(
-            id=calculation_id or generate_resource_id(),
+            ulid=calculation_id or generate_resource_id(),
             name=default_name,
             slug=default_slug,
             path=default_path,
@@ -1172,7 +1172,7 @@ def set_calculation_steps(
                     )
                     # Load step YAML to get step_type
                     step_doc = StepDoc.load(step_resolved.absolute_path)
-                    step_type = step_doc.get(["step_type"], default=None)
+                    step_type = step_doc.get(["step_type_spec"], default=None)
                 except Exception:
                     # Step file missing or invalid - leave type as None
                     # This will be resolved later when step is loaded

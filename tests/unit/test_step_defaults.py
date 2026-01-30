@@ -227,7 +227,7 @@ class TestStepDefaultsImportFromInput:
         calculation_yaml = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())
         last_step = calculation_yaml["steps"][-1]
         # ID-only model: use step_id (ULID) to resolve step file
-        step_id = last_step.get("step_id") or last_step.get("id")
+        step_id = last_step.get("step_ulid") or last_step.get("ulid")
         assert step_id, "Step entry should have step_id"
         # Resolve step to get its file path
         step_resolved = require_step(project_root, calculation_slug, step_id)

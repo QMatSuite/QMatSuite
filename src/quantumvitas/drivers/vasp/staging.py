@@ -88,7 +88,7 @@ def stage_chgcar(
         # For non-SCF steps, also check if reference SCF output files exist
         # This handles the case where manifest hasn't been updated yet
         if not is_current_scf:
-            ref_workdir = calc_raw_dir / reference_scf_step.meta.id
+            ref_workdir = calc_raw_dir / reference_scf_step.meta.ulid
             chgcar_src = ref_workdir / "CHGCAR"
             outcar_src = ref_workdir / "OUTCAR"
             
@@ -99,45 +99,45 @@ def stage_chgcar(
                     outcar_text = outcar_src.read_text()
                     if "free  energy   TOTEN" in outcar_text:
                         logger.info(
-                            f"Reference SCF step {reference_scf_step.meta.id} appears done "
+                            f"Reference SCF step {reference_scf_step.meta.ulid} appears done "
                             f"(output files exist) even though manifest says not done. Proceeding."
                         )
                         # Proceed with staging
                     else:
                         # OUTCAR exists but no energy - not done
                         raise MissingPrerequisiteError(
-                            f"Reference SCF step {reference_scf_step.meta.id} is not done. "
-                            f"Run SCF first before running {current_step.step_type}."
+                            f"Reference SCF step {reference_scf_step.meta.ulid} is not done. "
+                            f"Run SCF first before running {current_step.step_type_spec}."
                         )
                 except Exception as e:
                     # Error reading OUTCAR - assume not done
                     raise MissingPrerequisiteError(
-                        f"Reference SCF step {reference_scf_step.meta.id} is not done. "
-                        f"Run SCF first before running {current_step.step_type}."
+                        f"Reference SCF step {reference_scf_step.meta.ulid} is not done. "
+                        f"Run SCF first before running {current_step.step_type_spec}."
                     ) from e
             else:
                 # Output files don't exist - definitely not done
                 raise MissingPrerequisiteError(
-                    f"Reference SCF step {reference_scf_step.meta.id} is not done. "
-                    f"Run SCF first before running {current_step.step_type}."
+                    f"Reference SCF step {reference_scf_step.meta.ulid} is not done. "
+                    f"Run SCF first before running {current_step.step_type_spec}."
                 )
         else:
             # SCF: optional, skip silently
             logger.debug(
-                f"CHGCAR staging skipped for SCF step {current_step.meta.id}: "
-                f"reference SCF {reference_scf_step.meta.id} is not done"
+                f"CHGCAR staging skipped for SCF step {current_step.meta.ulid}: "
+                f"reference SCF {reference_scf_step.meta.ulid} is not done"
             )
             return
     
     # Check file exists
-    ref_workdir = calc_raw_dir / reference_scf_step.meta.id
+    ref_workdir = calc_raw_dir / reference_scf_step.meta.ulid
     chgcar_src = ref_workdir / "CHGCAR"
     
     if not chgcar_src.exists():
         if is_current_scf:
             # SCF: optional, skip silently
             logger.debug(
-                f"CHGCAR staging skipped for SCF step {current_step.meta.id}: "
+                f"CHGCAR staging skipped for SCF step {current_step.meta.ulid}: "
                 f"CHGCAR not found in reference SCF workdir {ref_workdir}"
             )
             return
@@ -145,8 +145,8 @@ def stage_chgcar(
             # Non-SCF: prerequisite, hard error
             raise MissingArtifactError(
                 f"CHGCAR not found in reference SCF workdir: {ref_workdir}. "
-                f"Reference SCF step {reference_scf_step.meta.id} must produce CHGCAR "
-                f"before running {current_step.step_type}."
+                f"Reference SCF step {reference_scf_step.meta.ulid} must produce CHGCAR "
+                f"before running {current_step.step_type_spec}."
             )
     
     # Copy CHGCAR
@@ -154,13 +154,13 @@ def stage_chgcar(
     try:
         shutil.copy2(chgcar_src, chgcar_dst)
         logger.info(
-            f"Copied CHGCAR from {reference_scf_step.meta.id} to {current_step.meta.id}"
+            f"Copied CHGCAR from {reference_scf_step.meta.ulid} to {current_step.meta.ulid}"
         )
     except Exception as e:
         if is_current_scf:
             # SCF: optional, log warning but don't fail
             logger.warning(
-                f"Failed to copy CHGCAR for SCF step {current_step.meta.id}: {e}"
+                f"Failed to copy CHGCAR for SCF step {current_step.meta.ulid}: {e}"
             )
             return
         else:
@@ -202,16 +202,16 @@ def stage_wavecar(
     if manifest_entry is None or not manifest_entry.done:
         if required:
             raise MissingPrerequisiteError(
-                f"Reference SCF step {reference_scf_step.meta.id} is not done. "
-                f"Cannot copy WAVECAR for {current_step.step_type}."
+                f"Reference SCF step {reference_scf_step.meta.ulid} is not done. "
+                f"Cannot copy WAVECAR for {current_step.step_type_spec}."
             )
         logger.debug(
-            f"WAVECAR staging skipped: reference SCF {reference_scf_step.meta.id} is not done"
+            f"WAVECAR staging skipped: reference SCF {reference_scf_step.meta.ulid} is not done"
         )
         return False
     
     # Check file exists
-    ref_workdir = calc_raw_dir / reference_scf_step.meta.id
+    ref_workdir = calc_raw_dir / reference_scf_step.meta.ulid
     wavecar_src = ref_workdir / "WAVECAR"
     
     if not wavecar_src.exists():
@@ -229,7 +229,7 @@ def stage_wavecar(
     try:
         shutil.copy2(wavecar_src, wavecar_dst)
         logger.info(
-            f"Copied WAVECAR from {reference_scf_step.meta.id} to {current_step.meta.id}"
+            f"Copied WAVECAR from {reference_scf_step.meta.ulid} to {current_step.meta.ulid}"
         )
         return True
     except Exception as e:
@@ -238,7 +238,7 @@ def stage_wavecar(
                 f"Failed to copy WAVECAR from {ref_workdir} to {target_workdir}: {e}"
             ) from e
         logger.warning(
-            f"Failed to copy WAVECAR for step {current_step.meta.id}: {e}"
+            f"Failed to copy WAVECAR for step {current_step.meta.ulid}: {e}"
         )
         return False
 

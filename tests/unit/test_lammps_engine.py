@@ -132,9 +132,9 @@ class TestLammpsRestartFromValidation:
         
         # Create mock step with restart_from pointing to itself
         mock_step = MagicMock()
-        mock_step.meta.id = "01ABCD1234567890123456"
+        mock_step.meta.ulid = "01ABCD1234567890123456"
         mock_step.parameters = {"restart_from": "01ABCD1234567890123456"}  # Self-reference!
-        mock_step.step_type = "lammps_md"
+        mock_step.step_type_spec= "lammps_md"
         
         # Create mock calculation
         mock_calculation = MagicMock()
@@ -151,12 +151,12 @@ class TestLammpsRestartFromValidation:
         
         # Create mock upstream step
         mock_upstream = MagicMock()
-        mock_upstream.meta.id = "01UPSTREAM000000000000"
+        mock_upstream.meta.ulid = "01UPSTREAM000000000000"
         mock_upstream.meta.slug = "upstream"
         
         # Create mock current step with restart_from pointing to upstream
         mock_step = MagicMock()
-        mock_step.meta.id = "01CURRENT0000000000000"
+        mock_step.meta.ulid = "01CURRENT0000000000000"
         mock_step.parameters = {"restart_from": "01UPSTREAM000000000000"}
         
         # Create mock calculation

@@ -55,7 +55,7 @@ class TestLoadStepParameters:
         steps_dir.mkdir()
         
         step_content = {
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {"nspin": 2, "ecutwfc": 50},
                 "CONTROL": {"calculation": "scf"},
@@ -74,14 +74,14 @@ class TestLoadStepParameters:
         
         # SCF step
         scf_content = {
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {"SYSTEM": {"nspin": 2}},
         }
         (steps_dir / "01-scf.step.yaml").write_text(yaml.safe_dump(scf_content))
         
         # NSCF step
         nscf_content = {
-            "step_type": "nscf",
+            "step_type_gen": "nscf",
             "parameters": {"SYSTEM": {"nspin": 2}},
         }
         (steps_dir / "02-nscf.step.yaml").write_text(yaml.safe_dump(nscf_content))
@@ -96,7 +96,7 @@ class TestLoadStepParameters:
         
         # Valid step
         (steps_dir / "01-scf.step.yaml").write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {"SYSTEM": {"nspin": 2}},
         }))
         
@@ -127,7 +127,7 @@ class TestDetectPresetsFromCalculation:
         steps_dir.mkdir()
         
         step_content = {
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "nspin": 2,
@@ -152,7 +152,7 @@ class TestDetectPresetsFromCalculation:
         # All steps have nspin=2
         for name in ["01-scf", "02-nscf", "03-dos"]:
             step_content = {
-                "step_type": name.split("-")[1],
+                "step_type_gen": name.split("-")[1],
                 "parameters": {"SYSTEM": {"nspin": 2}},
             }
             (steps_dir / f"{name}.step.yaml").write_text(yaml.safe_dump(step_content))
@@ -167,13 +167,13 @@ class TestDetectPresetsFromCalculation:
         
         # SCF with nspin=1
         (steps_dir / "01-scf.step.yaml").write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {"SYSTEM": {"nspin": 1}},
         }))
         
         # Another step with nspin=2
         (steps_dir / "02-nscf.step.yaml").write_text(yaml.safe_dump({
-            "step_type": "nscf",
+            "step_type_gen": "nscf",
             "parameters": {"SYSTEM": {"nspin": 2}},
         }))
         
@@ -186,7 +186,7 @@ class TestDetectPresetsFromCalculation:
         steps_dir.mkdir()
         
         step_content = {
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {"SYSTEM": {"nspin": 2}},
         }
         (steps_dir / "scf.step.yaml").write_text(yaml.safe_dump(step_content))
@@ -204,7 +204,7 @@ class TestApplyPresetsToStep:
         """Applying presets overwrites preset-related params."""
         step_path = tmp_path / "test.step.yaml"
         original_content = {
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "nspin": 1,
@@ -242,7 +242,7 @@ class TestApplyPresetsToStep:
         """Non-preset SYSTEM params are preserved."""
         step_path = tmp_path / "test.step.yaml"
         original_content = {
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "nspin": 1,
@@ -275,7 +275,7 @@ class TestApplyPresetsToStep:
         """Old preset params are removed, not left dangling."""
         step_path = tmp_path / "test.step.yaml"
         original_content = {
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     # Metal params that should be removed for insulator
@@ -302,7 +302,7 @@ class TestApplyPresetsToStep:
         from quantumvitas.presets.compiler import PresetCompilationError
         
         step_path = tmp_path / "test.step.yaml"
-        step_path.write_text(yaml.safe_dump({"step_type": "scf", "parameters": {}}))
+        step_path.write_text(yaml.safe_dump({"step_type_gen": "scf", "parameters": {}}))
         
         # Invalid physics: This test is no longer applicable since magnetism merges spin+soc
         # All magnetism options are valid. Test removed - physics validation now happens at option level.
@@ -311,7 +311,7 @@ class TestApplyPresetsToStep:
     def test_apply_can_skip_physics_validation(self, tmp_path):
         """Physics validation can be disabled."""
         step_path = tmp_path / "test.step.yaml"
-        step_path.write_text(yaml.safe_dump({"step_type": "scf", "parameters": {}}))
+        step_path.write_text(yaml.safe_dump({"step_type_gen": "scf", "parameters": {}}))
         
         # With magnetism, all options are valid. Test applies noncollinear_soc.
         result = apply_presets_to_step(
@@ -344,7 +344,7 @@ class TestApplyPresetsToStep:
         
         # Create initial step
         step_path.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {"SYSTEM": {}},
         }))
         
@@ -373,7 +373,7 @@ class TestDetectWorkflowType:
         """Single SCF step detected as SCF workflow."""
         calc_yaml = tmp_path / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
-            "steps": [{"step_type": "scf"}],
+            "steps": [{"step_type_gen": "scf"}],
         }))
         
         result = detect_workflow_type(tmp_path)
@@ -384,9 +384,9 @@ class TestDetectWorkflowType:
         calc_yaml = tmp_path / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "steps": [
-                {"step_type": "scf"},
-                {"step_type": "nscf"},
-                {"step_type": "dos"},
+                {"step_type_gen": "scf"},
+                {"step_type_gen": "nscf"},
+                {"step_type_gen": "dos"},
             ],
         }))
         
@@ -398,9 +398,9 @@ class TestDetectWorkflowType:
         calc_yaml = tmp_path / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "steps": [
-                {"step_type": "scf"},
-                {"step_type": "bands_pw"},
-                {"step_type": "bands"},
+                {"step_type_gen": "scf"},
+                {"step_type_gen": "bands_pw"},
+                {"step_type_gen": "bands"},
             ],
         }))
         
@@ -411,7 +411,7 @@ class TestDetectWorkflowType:
         """Relax or vc-relax detected as Relaxation."""
         calc_yaml = tmp_path / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
-            "steps": [{"step_type": "vc-relax"}],
+            "steps": [{"step_type_gen": "vc-relax"}],
         }))
         
         result = detect_workflow_type(tmp_path)
@@ -419,7 +419,7 @@ class TestDetectWorkflowType:
         
         # Also plain relax
         calc_yaml.write_text(yaml.safe_dump({
-            "steps": [{"step_type": "relax"}],
+            "steps": [{"step_type_gen": "relax"}],
         }))
         
         result = detect_workflow_type(tmp_path)
@@ -430,8 +430,8 @@ class TestDetectWorkflowType:
         calc_yaml = tmp_path / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "steps": [
-                {"step_type": "scf"},
-                {"step_type": "ph"},
+                {"step_type_gen": "scf"},
+                {"step_type_gen": "ph"},
             ],
         }))
         
@@ -442,7 +442,7 @@ class TestDetectWorkflowType:
         """MD steps detected as MD workflow."""
         calc_yaml = tmp_path / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
-            "steps": [{"step_type": "md"}],
+            "steps": [{"step_type_gen": "md"}],
         }))
         
         result = detect_workflow_type(tmp_path)
@@ -450,7 +450,7 @@ class TestDetectWorkflowType:
         
         # Also vc-md
         calc_yaml.write_text(yaml.safe_dump({
-            "steps": [{"step_type": "vc-md"}],
+            "steps": [{"step_type_gen": "vc-md"}],
         }))
         
         result = detect_workflow_type(tmp_path)
@@ -466,7 +466,7 @@ class TestDetectWorkflowType:
         steps_dir = tmp_path / "steps"
         steps_dir.mkdir()
         (steps_dir / "scf.step.yaml").write_text(yaml.safe_dump({
-            "step_type": "relax",
+            "step_type_gen": "relax",
         }))
         
         result = detect_workflow_type(tmp_path)
@@ -620,7 +620,7 @@ class TestConvergencePreset:
         
         step_path = tmp_path / "test.step.yaml"
         step_path.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {"ecutwfc": 50, "ecutrho": 200},
                 "ELECTRONS": {},
@@ -681,7 +681,7 @@ class TestConvergencePreset:
         for step_type in pw_step_types:
             step_path = tmp_path / f"{step_type}.step.yaml"
             step_path.write_text(yaml.safe_dump({
-                "step_type": step_type,
+                "step_type_gen": step_type,
                 "parameters": {"ELECTRONS": {}},
             }))
             
@@ -713,7 +713,7 @@ class TestConvergencePreset:
         for step_type in non_pw_step_types:
             step_path = tmp_path / f"{step_type}.step.yaml"
             step_path.write_text(yaml.safe_dump({
-                "step_type": step_type,
+                "step_type_gen": step_type,
                 "parameters": {"ELECTRONS": {}},
             }))
             

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 def _find_step_by_ulid(calculation: "Calculation", step_ulid: str) -> Optional["Step"]:
     """Find a step in calculation by its ULID."""
     for step in calculation.steps:
-        if step.meta.id == step_ulid:
+        if step.meta.ulid == step_ulid:
             return step
     return None
 
@@ -171,7 +171,7 @@ def qe_step_handler(
                     step_id=step_ulid,
                     calculation_slug=calculation.id,
                     engine=engine,
-                    step_type=step.step_type if step.step_type else None,
+                    step_type=step.step_type_spec if step.step_type_spec else None,
                     timeout=step.options.get("timeout"),
                 )
             else:
@@ -208,7 +208,7 @@ def qe_step_handler(
                 artifact_type="qe_output",
                 artifact_path=Path(result.output_file),
                 step_ulid=step_ulid,
-                step_type=str(step_type),
+                step_type_spec=str(step_type),
             ).to_dict()
 
         return JobResult(

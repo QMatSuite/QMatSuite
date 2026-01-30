@@ -99,7 +99,7 @@ class Step:
 
             # E. Logging: Essential info only
             logger.debug(
-                f"[Step.run] Executing step: slug={self.meta.slug}, ulid={self.meta.id}, type={step_type_value}"
+                f"[Step.run] Executing step: slug={self.meta.slug}, ulid={self.meta.ulid}, type={step_type_value}"
             )
             
             # Production run contract: never parse .in files during execution.
@@ -120,14 +120,14 @@ class Step:
             )
             
             logger.debug(
-                f"[Step.run] Step {self.meta.slug} (ulid={self.meta.id}) completed: success={result.success}, return_code={getattr(result, 'return_code', 'N/A')}"
+                f"[Step.run] Step {self.meta.slug} (ulid={self.meta.ulid}) completed: success={result.success}, return_code={getattr(result, 'return_code', 'N/A')}"
             )
             
             return result
         except Exception as e:
             import traceback
             tb_str = traceback.format_exc()
-            logger.exception(f"[Step.run] Step {self.meta.slug} (ulid={self.meta.id}) raised exception: {type(e).__name__}: {e}")
+            logger.exception(f"[Step.run] Step {self.meta.slug} (ulid={self.meta.ulid}) raised exception: {type(e).__name__}: {e}")
             
             # Create a failed StepResult from the exception
             from quantumvitas.engine.base import StepResult as StepResultClass

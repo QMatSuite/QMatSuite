@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE2M0KQN0Y6T7V6NXYQZS4Z3
+    ulid: 01KE2M0KQN0Y6T7V6NXYQZS4Z3
     name: 07_Si_bandStructure
     slug: 07_si_bandstructure
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE2M0KR15YW5PZMJPQXRVBCQ
+    ulid: 01KE2M0KR15YW5PZMJPQXRVBCQ
     name: si.0_scf
     slug: si-0_scf
     path: structures/si-0_scf.json
@@ -70,7 +70,7 @@ structures:
       - 1.3773039781619374
 calculations:
 - meta:
-    id: 01KE2M0KQQYQ69E3HQJMQKZ8BM
+    ulid: 01KE2M0KQQYQ69E3HQJMQKZ8BM
     name: Si Bandstructure
     slug: si-bandstructure
     path: calculations/si-bandstructure
@@ -222,7 +222,7 @@ pseudo:
   files:
   - Si.pbe-n-rrkjus_psl.1.0.0.UPF
 meta:
-  id: 07_Si_bandStructure
+  ulid: 07_Si_bandStructure
   title: 7 Si Bandstructure
   subtitle: "SCF \u2192 NSCF \u2192 Bands \u2192 Bands \u2192 custom"
   tags:

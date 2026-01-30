@@ -2,7 +2,7 @@
   "method": "import_step_from_qe_input",
   "success": true,
   "response": {
-    "id": "<NORMALIZED_ID>",
+    "ulid": "<NORMALIZED_ID>",
     "name": "demo_calc",
     "slug": "demo_calc",
     "path": "<NORMALIZED_PATH>",

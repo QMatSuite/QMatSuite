@@ -90,7 +90,7 @@ def promote_test_project():
     structure_id = generate_resource_id()
     structure_data = {
         "__qv_meta__": {
-            "id": structure_id,
+            "ulid": structure_id,
             "name": "H2",
             "slug": "h2",
             "path": "structures/h2.json",
@@ -211,7 +211,7 @@ class TestRelaxPromoteE2E:
         assert len(all_structures) == initial_count + 1, "Should have one more structure"
         
         # Verify promoted structure has different ULID
-        assert promoted_result.meta.id != initial_structure_id, "Promoted structure should have different ULID"
+        assert promoted_result.meta.ulid != initial_structure_id, "Promoted structure should have different ULID"
         assert promoted_result.meta.name == "relaxed_h2", "Promoted structure should have correct name"
         assert promoted_result.absolute_path.exists(), "Promoted structure file should exist"
         
@@ -325,10 +325,10 @@ class TestRelaxPromoteE2E:
         new_calc_result = QVService.init_calculation(
             project_root=project_root,
             name="h2_relaxed_scf",
-            structure_selector=promoted_result.meta.id,
+            structure_selector=promoted_result.meta.ulid,
         )
         
-        assert new_calc_result.meta.id != calc_ulid, "New calculation should have different ULID"
+        assert new_calc_result.meta.ulid != calc_ulid, "New calculation should have different ULID"
         assert new_calc_result.absolute_path.exists(), "New calculation file should exist"
         
         # Verify the new calculation uses the promoted structure
@@ -336,5 +336,5 @@ class TestRelaxPromoteE2E:
         new_calc_dir = new_calc_result.absolute_path.parent if new_calc_result.absolute_path.name == "calculation.yaml" else new_calc_result.absolute_path
         new_calc_yaml = new_calc_dir / "calculation.yaml"
         new_calc_data = yaml.safe_load(new_calc_yaml.read_text())
-        assert new_calc_data["structure_id"] == promoted_result.meta.id, "New calculation should use promoted structure"
+        assert new_calc_data["structure_id"] == promoted_result.meta.ulid, "New calculation should use promoted structure"
 

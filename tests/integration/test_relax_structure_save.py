@@ -26,7 +26,7 @@ def test_save_relax_structure_idempotency(tmp_path: Path):
         "project": {
             "name": "Test Project",
             "meta": {
-                "id": generate_resource_id(),
+                "ulid": generate_resource_id(),
                 "name": "Test Project",
                 "slug": "test-project",
                 "path": ".",
@@ -43,7 +43,7 @@ def test_save_relax_structure_idempotency(tmp_path: Path):
     parent_structure_path = project_root / "structures" / "si-bulk.json"
     parent_structure_data = {
         "__qv_meta__": {
-            "id": parent_structure_id,
+            "ulid": parent_structure_id,
             "name": "Si bulk",
             "slug": "si-bulk",
             "path": "structures/si-bulk.json",
@@ -79,20 +79,20 @@ def test_save_relax_structure_idempotency(tmp_path: Path):
     step_path = calc_dir / "steps" / "relax.step.yaml"
     
     step_meta = meta_from_name("step", name="relax", path=f"calculations/relax-test/steps/relax.step.yaml")
-    step_meta.id = step_id  # Set the ULID to match step_id in calculation.yaml
+    step_meta.ulid = step_id  # Set the ULID to match step_id in calculation.yaml
     step_spec = StructureStepSpec(
         meta=step_meta,
         structure="si-bulk",  # Legacy selector
         structure_id=parent_structure_id,
-        step_type="vc-relax",
+        step_type_spec="vc-relax",
         parameters={},
     )
     step_path.write_text(yaml.safe_dump(step_spec.to_dict(), sort_keys=False))
     
     calc_config = {
-        "id": calc_id,
+        "ulid": calc_id,
         "meta": {
-            "id": calc_id,
+            "ulid": calc_id,
             "name": "relax-test",
             "slug": "relax-test",
             "path": "calculations/relax-test",
@@ -103,7 +103,7 @@ def test_save_relax_structure_idempotency(tmp_path: Path):
             "working_dir": "raw",
         },
         "steps": [
-            {"step_id": step_id},
+            {"step_ulid": step_id},
         ],
     }
     (calc_dir / "calculation.yaml").write_text(yaml.safe_dump(calc_config))
@@ -150,7 +150,7 @@ End final coordinates
     new_structure_file = project_root / "structures" / "relaxed.json"
     assert new_structure_file.exists()
     new_structure_data = json.loads(new_structure_file.read_text())
-    assert new_structure_data["__qv_meta__"]["id"] == structure_ulid_1
+    assert new_structure_data["__qv_meta__"]["ulid"] == structure_ulid_1
     
     # Verify step YAML was updated with produced_structure_ulid
     step_data = yaml.safe_load(step_path.read_text())

@@ -137,7 +137,7 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             assert len(calculations) > 0, "Calculation should be registered"
             from quantumvitas.core.resolution import build_resource_index, require_calculation
             index = build_resource_index(project_dir)
-            calculation_id = calculations[0].get("id") or calculations[0].get("calculation_id")
+            calculation_id = calculations[0].get("ulid") or calculations[0].get("calculation_id")
             assert calculation_id is not None, "Calculation entry should have id"
             resolved = require_calculation(project_dir, calculation_id, index=index)
             assert resolved.meta.name == "graphene bands", f"Calculation name should be 'graphene bands'. Found: {resolved.meta.name}"
@@ -173,11 +173,11 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             # Verify step is in calculation.yaml
             calculation_data = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())
             # Steps now use step_id (ULID) instead of id (slug)
-            step_ids = [s.get("step_id") or s.get("id") for s in calculation_data.get("steps", [])]
+            step_ids = [s.get("step_ulid") or s.get("ulid") for s in calculation_data.get("steps", [])]
             assert len(step_ids) > 0, "SCF step should be in calculation"
             # Verify step entry has step_id (ULID) - step_file is NOT stored (resolved via registry)
             step_entry = calculation_data.get("steps", [])[0]
-            assert step_entry.get("step_id") is not None, "Step entry should have step_id (ULID)"
+            assert step_entry.get("step_ulid") is not None, "Step entry should have step_id (ULID)"
             # step_file is NOT stored in calculation.yaml - step location resolved via registry using step_id
             assert "step_file" not in step_entry or step_entry.get("step_file") is None, \
                 "step_file should not be stored in calculation.yaml (resolved via registry)"

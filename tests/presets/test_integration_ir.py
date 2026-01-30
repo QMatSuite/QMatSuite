@@ -30,7 +30,7 @@ class TestSSOTEnforcement:
         
         # Initial step.yaml with some QE params
         initial_content = {
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": 30.0,
@@ -72,7 +72,7 @@ class TestSSOTEnforcement:
         step_path = tmp_path / "test.step.yaml"
         
         initial_content = {
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {"ecutwfc": 30.0},
             },
@@ -105,7 +105,7 @@ class TestRoundTripBehavior:
         
         # Initial empty step
         initial_content = {
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {},
         }
         step_path.write_text(yaml.safe_dump(initial_content))
@@ -142,7 +142,7 @@ class TestRoundTripBehavior:
         
         # Create step with QE params that match a preset
         initial_content = {
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "nspin": 2,
@@ -185,7 +185,7 @@ class TestBackwardCompatibility:
         
         # Old-style step.yaml with QE params only
         old_content = {
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": 50.0,

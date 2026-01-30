@@ -4,7 +4,7 @@
   "response": {
     "project_root": "<NORMALIZED_PATH>",
     "name": "test_project",
-    "id": "<NORMALIZED_ID>"
+    "ulid": "<NORMALIZED_ID>"
   },
   "recipe_name": "ProjectMutationsRecipe(create_project)",
   "baseline_commit": "0873ebf",

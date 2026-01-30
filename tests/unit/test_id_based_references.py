@@ -27,8 +27,7 @@ class TestCalculationModelStructureReferences:
         structure_id = generate_resource_id()
         structure_name = "Si"
         
-        meta = ResourceMeta(
-            id=generate_resource_id(),
+        meta = ResourceMeta(ulid=generate_resource_id(),
             name="Test Calculation",
             slug="test-calculation",
             path="calculations/test-calculation",
@@ -58,7 +57,7 @@ class TestCalculationModelStructureReferences:
         structure_id = generate_resource_id()
         data = {
             "meta": {
-                "id": generate_resource_id(),
+                "ulid": generate_resource_id(),
                 "name": "Test Calculation",
                 "slug": "test-calculation",
                 "path": "calculations/test-calculation",
@@ -82,7 +81,7 @@ class TestCalculationModelStructureReferences:
         
         data = {
             "meta": {
-                "id": generate_resource_id(),
+                "ulid": generate_resource_id(),
                 "name": "Test Calculation",
                 "slug": "test-calculation",
                 "path": "calculations/test-calculation",
@@ -112,14 +111,14 @@ class TestCalculationModelStructureReferences:
         config = {
             "project": {
                 "name": "Test Project",
-                "meta": {"id": generate_resource_id(), "slug": "test-project"},
+                "meta": {"ulid": generate_resource_id(), "slug": "test-project"},
             },
             "structures": [
                 {
                     "name": "Si",
                     "file": "structures/si.json",
                     "meta": {
-                        "id": structure_id,
+                        "ulid": structure_id,
                         "name": "Si",
                         "slug": "si",
                         "path": "structures/si.json",
@@ -137,7 +136,7 @@ class TestCalculationModelStructureReferences:
         calculation_yaml = calculation_dir / "calculation.yaml"
         calculation_yaml.write_text(yaml.safe_dump({
             "meta": {
-                "id": generate_resource_id(),
+                "ulid": generate_resource_id(),
                 "name": "Test Calculation",
                 "slug": "test-calculation",
                 "path": "calculations/test-calculation",
@@ -168,8 +167,7 @@ class TestStructureStepSpecStructureReferences:
         """
         structure_id = generate_resource_id()
         
-        meta = ResourceMeta(
-            id=generate_resource_id(),
+        meta = ResourceMeta(ulid=generate_resource_id(),
             name="scf",
             slug="scf",
             path="steps/scf.step.yaml",
@@ -180,7 +178,7 @@ class TestStructureStepSpecStructureReferences:
             meta=meta,
             structure="si",  # Legacy selector for backwards compat (in memory only)
             structure_id=structure_id,  # In memory only (for backwards compat)
-            step_type="scf",
+            step_type_spec="scf",
             parent_calculation_id=generate_resource_id(),  # In memory only (for backwards compat)
         )
         
@@ -199,7 +197,7 @@ class TestStructureStepSpecStructureReferences:
         structure_id = generate_resource_id()
         data = {
             "meta": {
-                "id": generate_resource_id(),
+                "ulid": generate_resource_id(),
                 "name": "scf",
                 "slug": "scf",
                 "path": "steps/scf.step.yaml",
@@ -207,7 +205,7 @@ class TestStructureStepSpecStructureReferences:
             },
             "structure_id": structure_id,
             "structure": "si",  # Still present for backwards compat
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parent_calculation_id": generate_resource_id(),
         }
         
@@ -219,14 +217,14 @@ class TestStructureStepSpecStructureReferences:
         """Test loading StructureStepSpec from dict with legacy structure selector only."""
         data = {
             "meta": {
-                "id": generate_resource_id(),
+                "ulid": generate_resource_id(),
                 "name": "scf",
                 "slug": "scf",
                 "path": "steps/scf.step.yaml",
                 "kind": "step",
             },
             "structure": "si",  # Legacy selector only
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parent_calculation_id": generate_resource_id(),
         }
         
@@ -242,13 +240,13 @@ class TestStructureStepSpecStructureReferences:
         """
         data = {
             "meta": {
-                "id": generate_resource_id(),
+                "ulid": generate_resource_id(),
                 "name": "scf",
                 "slug": "scf",
                 "path": "steps/scf.step.yaml",
                 "kind": "step",
             },
-            "step_type": "scf",
+            "step_type_gen": "scf",
         }
         
         # Should NOT raise error - structure is resolved from calculation at runtime
@@ -271,7 +269,7 @@ class TestBackwardsCompatibility:
         # Write legacy format (structure selector only, no structure_id)
         calculation_yaml.write_text(yaml.safe_dump({
             "meta": {
-                "id": generate_resource_id(),
+                "ulid": generate_resource_id(),
                 "name": "Test Calculation",
                 "slug": "test-calculation",
                 "path": "calculations/test-calculation",
@@ -296,14 +294,14 @@ class TestBackwardsCompatibility:
         # Write legacy format (structure selector only)
         step_yaml.write_text(yaml.safe_dump({
             "meta": {
-                "id": generate_resource_id(),
+                "ulid": generate_resource_id(),
                 "name": "scf",
                 "slug": "scf",
                 "path": "steps/scf.step.yaml",
                 "kind": "step",
             },
             "structure": "si",
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parent_calculation_id": generate_resource_id(),
         }))
         
@@ -322,8 +320,7 @@ class TestBackwardsCompatibility:
         calculation_yaml = calculation_dir / "calculation.yaml"
         
         structure_id = generate_resource_id()
-        meta = ResourceMeta(
-            id=generate_resource_id(),
+        meta = ResourceMeta(ulid=generate_resource_id(),
             name="Test Calculation",
             slug="test-calculation",
             path="calculations/test-calculation",
@@ -367,14 +364,14 @@ class TestStructureResolution:
         
         structure = Structure([[3.84, 0, 0], [0, 3.84, 0], [0, 0, 3.84]], ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
         meta = meta_from_name("structure", name="Si", path="structures/si.json")
-        meta.id = structure_id
+        meta.ulid = structure_id
         write_structure(structure, structure_file, metadata=meta)
         
         # Create project
         config = {
             "project": {
                 "name": "Test Project",
-                "meta": {"id": generate_resource_id(), "slug": "test-project"},
+                "meta": {"ulid": generate_resource_id(), "slug": "test-project"},
             },
             "structures": [
                 {
@@ -391,8 +388,7 @@ class TestStructureResolution:
         project = Project.open(project_root)
         
         # Create step spec with both structure_id and structure
-        step_meta = ResourceMeta(
-            id=generate_resource_id(),
+        step_meta = ResourceMeta(ulid=generate_resource_id(),
             name="scf",
             slug="scf",
             path="steps/scf.step.yaml",
@@ -403,7 +399,7 @@ class TestStructureResolution:
             meta=step_meta,
             structure="wrong",  # Wrong selector
             structure_id=structure_id,  # Correct ID
-            step_type="scf",
+            step_type_spec="scf",
         )
         
         # Resolve structure - should use structure_id

@@ -54,7 +54,7 @@ def temp_project(tmp_path: Path) -> Path:
     
     structure_id = generate_resource_id()
     config["structures"].append({
-        "id": structure_id,
+        "ulid": structure_id,
         "name": "H2",
         "slug": "h2",
         "file": "structures/h2.json",
@@ -77,7 +77,7 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
     structure_id = None
     for struct in config.get("structures", []):
         if struct.get("slug") == "h2":
-            structure_id = struct.get("id")
+            structure_id = struct.get("ulid")
             break
     assert structure_id is not None, "Structure h2 not found in project config"
     
@@ -87,7 +87,7 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
         name="test_calc",
         structure_selector=structure_id,
     )
-    calc_id = calc_resolved.meta.id
+    calc_id = calc_resolved.meta.ulid
     calc_dir = calc_resolved.absolute_path
     
     # Configure calculation engine_family
@@ -104,7 +104,7 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
         step_type="scf",
         name="scf",
     )
-    step_id = step_resolved.meta.id
+    step_id = step_resolved.meta.ulid
 
     # Configure step parameters using domain accessor
     svc = QVService(temp_project)
@@ -125,7 +125,7 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
         "project_root": temp_project,
         "calc_dir": calc_dir,
         "calc_id": calc_id,
-        "step_id": step_id,
+        "step_ulid": step_id,
     }
 
 
@@ -153,7 +153,7 @@ class TestPySCFPhase3CIntegration:
         # The result.steps list contains StepResultSummary with step_id
         step_summaries = result1.get("steps", [])
         assert len(step_summaries) > 0, "No steps were executed"
-        executed_step_id = step_summaries[0]["step_id"]
+        executed_step_id = step_summaries[0]["step_ulid"]
         
         # Check that checkpoint was created
         calc_dir = pyscf_calculation["calc_dir"]
@@ -189,7 +189,7 @@ class TestPySCFPhase3CIntegration:
         # Verify checkpoint exists
         calc_dir = pyscf_calculation["calc_dir"]
         raw_dir = calc_dir / "raw"
-        step_artifacts_dir = raw_dir / "step_artifacts" / pyscf_calculation["step_id"]
+        step_artifacts_dir = raw_dir / "step_artifacts" / pyscf_calculation["step_ulid"]
         checkpoint_file = step_artifacts_dir / "checkpoint.chk"
         assert checkpoint_file.exists()
         
@@ -208,7 +208,7 @@ class TestPySCFPhase3CIntegration:
         """T3: RunStep(scf) does NOT use chkfile init_guess (forced full rerun)."""
         project_root = pyscf_calculation["project_root"]
         calc_id = pyscf_calculation["calc_id"]
-        step_id = pyscf_calculation["step_id"]
+        step_id = pyscf_calculation["step_ulid"]
         
         # First run: create checkpoint
         result1 = QVService.run_calculation(
@@ -248,7 +248,7 @@ class TestPySCFPhase3CIntegration:
         structure_id = None
         for struct in config.get("structures", []):
             if struct.get("slug") == "h2":
-                structure_id = struct.get("id")
+                structure_id = struct.get("ulid")
                 break
         assert structure_id is not None, "Structure h2 not found"
         
@@ -257,7 +257,7 @@ class TestPySCFPhase3CIntegration:
             name="test_calc_mp2",
             structure_selector=structure_id,
         )
-        calc_id = calc_resolved.meta.id
+        calc_id = calc_resolved.meta.ulid
         calc_dir = calc_resolved.absolute_path
         
         # Configure engine_family
@@ -274,7 +274,7 @@ class TestPySCFPhase3CIntegration:
             step_type="scf",
             name="scf",
         )
-        scf_step_id = scf_step_resolved.meta.id
+        scf_step_id = scf_step_resolved.meta.ulid
         svc = QVService(temp_project)
         svc.calculation.update_step_params(
             calc_selector=calc_id,
@@ -296,7 +296,7 @@ class TestPySCFPhase3CIntegration:
             step_type="mp2",
             name="mp2",
         )
-        mp2_step_id = mp2_step_resolved.meta.id
+        mp2_step_id = mp2_step_resolved.meta.ulid
         svc.calculation.update_step_params(
             calc_selector=calc_id,
             step_selector=mp2_step_id,
@@ -346,7 +346,7 @@ class TestPySCFPhase3CIntegration:
         structure_id = None
         for struct in config.get("structures", []):
             if struct.get("slug") == "h2":
-                structure_id = struct.get("id")
+                structure_id = struct.get("ulid")
                 break
         assert structure_id is not None, "Structure h2 not found"
         
@@ -355,7 +355,7 @@ class TestPySCFPhase3CIntegration:
             name="test_calc_mp2_only",
             structure_selector=structure_id,
         )
-        calc_id = calc_resolved.meta.id
+        calc_id = calc_resolved.meta.ulid
         calc_dir = calc_resolved.absolute_path
         
         # Configure engine_family
@@ -372,7 +372,7 @@ class TestPySCFPhase3CIntegration:
             step_type="mp2",
             name="mp2",
         )
-        mp2_step_id = mp2_step_resolved.meta.id
+        mp2_step_id = mp2_step_resolved.meta.ulid
         svc = QVService(temp_project)
         svc.calculation.update_step_params(
             calc_selector=calc_id,

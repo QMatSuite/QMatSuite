@@ -74,7 +74,7 @@ class Job:
     def to_dict(self) -> Dict[str, Any]:
         """Convert job to JSON-serializable dict."""
         return {
-            "id": self.id,
+            "ulid": self.id,
             "job_type": self.job_type,
             "status": self.status.value,
             "created_at": self.created_at.isoformat(),
@@ -94,7 +94,7 @@ class Job:
     def to_summary_dict(self) -> Dict[str, Any]:
         """Convert job to a summary dict (less detail, for list views)."""
         result = {
-            "id": self.id,
+            "ulid": self.id,
             "job_type": self.job_type,
             "status": self.status.value,
             "created_at": self.created_at.isoformat(),

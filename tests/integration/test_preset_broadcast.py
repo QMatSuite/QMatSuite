@@ -107,7 +107,7 @@ class TestApplyPresetsToStep:
         """Apply presets to a receiver step (SCF) - should update."""
         step_file = temp_step_dir / "1_scf.step.yaml"
         step_file.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {
                 "SYSTEM": {"nbnd": 40}  # nbnd is not a preset param
             }
@@ -127,7 +127,7 @@ class TestApplyPresetsToStep:
         """Apply presets to a non-receiver step (DOS) - should skip."""
         step_file = temp_step_dir / "2_dos.step.yaml"
         step_file.write_text(yaml.safe_dump({
-            "step_type": "dos",
+            "step_type_gen": "dos",
             "parameters": {
                 "DOS": {"fildos": "dos.dat"}
             }
@@ -146,7 +146,7 @@ class TestApplyPresetsToStep:
         """Apply multiple preset dimensions at once."""
         step_file = temp_step_dir / "1_scf.step.yaml"
         step_file.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {}
         }))
         
@@ -182,29 +182,29 @@ class TestBroadcastApply:
         # Create calculation.yaml
         calc_yaml = calc_dir / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
-            "meta": {"id": "01TEST", "name": "test_calc", "slug": "test_calc"},
+            "meta": {"ulid": "01TEST", "name": "test_calc", "slug": "test_calc"},
             "structure_id": "01STRUCT",
             "steps": [
-                {"step_file": "steps/1_scf.step.yaml", "step_type": "scf"},
-                {"step_file": "steps/2_nscf.step.yaml", "step_type": "nscf"},
-                {"step_file": "steps/3_dos.step.yaml", "step_type": "dos"},
+                {"step_file": "steps/1_scf.step.yaml", "step_type_gen": "scf"},
+                {"step_file": "steps/2_nscf.step.yaml", "step_type_gen": "nscf"},
+                {"step_file": "steps/3_dos.step.yaml", "step_type_gen": "dos"},
             ]
         }))
         
         # Create receiver steps (SCF, NSCF)
         (steps_dir / "1_scf.step.yaml").write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {"SYSTEM": {"ecutwfc": 40.0}}
         }))
         
         (steps_dir / "2_nscf.step.yaml").write_text(yaml.safe_dump({
-            "step_type": "nscf",
+            "step_type_gen": "nscf",
             "parameters": {"SYSTEM": {"ecutwfc": 40.0}}
         }))
         
         # Create non-receiver step (DOS)
         (steps_dir / "3_dos.step.yaml").write_text(yaml.safe_dump({
-            "step_type": "dos",
+            "step_type_gen": "dos",
             "parameters": {"DOS": {"fildos": "dos.dat"}}
         }))
         
@@ -299,7 +299,7 @@ class TestBroadcastApplyEdgeCases:
         
         # Create a step with no parameters section
         (steps_dir / "1_scf.step.yaml").write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
         }))
         
         return calc_dir
@@ -325,7 +325,7 @@ class TestBroadcastApplyEdgeCases:
         # Create a step with noncolin=false, then manually add lspinorb=true
         # This creates a contradiction: SOC requires noncollinear
         step_file.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {"SYSTEM": {"noncolin": False, "lspinorb": True}}
         }))
         
@@ -368,7 +368,7 @@ class TestBroadcastApplyEdgeCases:
         # in the final state. Let's create a step with noncolin=true and nspin=2 (manually),
         # then apply something that doesn't fix it
         step_file.write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {"SYSTEM": {"noncolin": True, "nspin": 2}}
         }))
         
@@ -416,13 +416,13 @@ class TestCustomStateDetection:
         
         # SCF with collinear spin
         (steps_dir / "1_scf.step.yaml").write_text(yaml.safe_dump({
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {"SYSTEM": {"nspin": 2}}
         }))
         
         # NSCF with non-spin (default)
         (steps_dir / "2_nscf.step.yaml").write_text(yaml.safe_dump({
-            "step_type": "nscf",
+            "step_type_gen": "nscf",
             "parameters": {"SYSTEM": {"ecutwfc": 40.0}}  # No nspin = nonspin
         }))
         

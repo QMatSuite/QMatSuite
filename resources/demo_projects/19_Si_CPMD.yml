@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE2KZXC2WRP1AG4Y9XFYFYWX
+    ulid: 01KE2KZXC2WRP1AG4Y9XFYFYWX
     name: 19_Si_CPMD
     slug: 19_si_cpmd
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE2KZXCEFJ7HS66HR9HQD64F
+    ulid: 01KE2KZXCEFJ7HS66HR9HQD64F
     name: si.1_erelax
     slug: si-1_erelax
     path: structures/si-1_erelax.json
@@ -148,7 +148,7 @@ structures:
       - 4.223136593556277
 calculations:
 - meta:
-    id: 01KE2KZXC5XPHQ48Q92C3KFKHM
+    ulid: 01KE2KZXC5XPHQ48Q92C3KFKHM
     name: Si Cpmd  4 Bomd Nvt
     slug: si-cpmd-4-bomd-nvt
     path: calculations/si-cpmd-4-bomd-nvt
@@ -270,7 +270,7 @@ pseudo:
   files:
   - Si.pbe-n-rrkjus_psl.1.0.0.UPF
 meta:
-  id: 19_Si_CPMD
+  ulid: 19_Si_CPMD
   title: 19 Si Cpmd  4 Bomd Nvt
   subtitle: "custom \u2192 custom \u2192 custom"
   tags:

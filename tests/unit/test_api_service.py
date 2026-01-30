@@ -169,19 +169,19 @@ class TestQVServiceStructure:
 
         # Import a structure
         result = QVService.import_structure(project_dir, source_file, name="To Delete")
-        structure_ulid = result.meta.id
+        structure_ulid = result.meta.ulid
 
         # Verify structure exists
         svc = get_service(project_dir)
         structures_before = svc.structure.list()
-        assert any(s.meta.id == structure_ulid for s in structures_before)
+        assert any(s.meta.ulid == structure_ulid for s in structures_before)
 
         # Delete the structure via domain accessor
         svc.structure.delete(structure_ulid)
 
         # Verify structure is gone
         structures_after = svc.structure.list()
-        assert not any(s.meta.id == structure_ulid for s in structures_after)
+        assert not any(s.meta.ulid == structure_ulid for s in structures_after)
 
 
 class TestQVServiceCalculation:
@@ -265,15 +265,15 @@ class TestQVServiceCalculation:
         struct2 = QVService.import_structure(project, source2, name="Silicon2")
 
         # Create calculation with first structure
-        calc = QVService.init_calculation(project, "Test Calc", structure_selector=struct1.meta.id)
+        calc = QVService.init_calculation(project, "Test Calc", structure_selector=struct1.meta.ulid)
 
         # Change calculation structure via domain accessor
         svc = get_service(project)
-        svc.calculation.set_structure(calc.meta.id, struct2.meta.id)
+        svc.calculation.set_structure(calc.meta.ulid, struct2.meta.ulid)
 
         # Verify structure was changed
         calc_yaml = yaml.safe_load((calc.absolute_path / "calculation.yaml").read_text())
-        assert calc_yaml.get("structure_id") == struct2.meta.id
+        assert calc_yaml.get("structure_id") == struct2.meta.ulid
 
     def test_delete_calculation(self, project):
         """Delete a calculation using domain API."""
@@ -323,10 +323,10 @@ class TestQVServiceStep:
         )
 
         # StepDTO has step_id and meta
-        assert result.step_id is not None
+        assert result.step_ulid is not None
         # Verify step file was created
         from quantumvitas.core.resolution import require_step
-        step_resolved = require_step(project_with_calculation, "test-calculation", result.step_id)
+        step_resolved = require_step(project_with_calculation, "test-calculation", result.step_ulid)
         assert step_resolved.absolute_path.exists()
         assert step_resolved.absolute_path.suffix == ".yaml"
 
@@ -340,7 +340,7 @@ class TestQVServiceStep:
 
         # Read step file to verify no structure_id
         from quantumvitas.core.resolution import require_step
-        step_resolved = require_step(project_with_calculation, "test-calculation", result.step_id)
+        step_resolved = require_step(project_with_calculation, "test-calculation", result.step_ulid)
         step_data = yaml.safe_load(step_resolved.absolute_path.read_text())
         # DAG model: Step YAML should NOT contain structure_id (inherits from calculation)
         assert "structure_id" not in step_data, "Step YAML should not contain structure_id (DAG model)"
@@ -370,21 +370,21 @@ class TestQVServiceStep:
         # Use calculation.get() which includes step_ids
         calc_dto = svc.calculation.get("test-calculation")
 
-        assert calc_dto.step_ids is not None
-        assert len(calc_dto.step_ids) >= 2
+        assert calc_dto.step_ulids is not None
+        assert len(calc_dto.step_ulids) >= 2
 
     def test_delete_step(self, project_with_calculation):
         """Delete a step using domain API."""
         svc = get_service(project_with_calculation)
         step_result = svc.calculation.add_step(calc_selector="test-calculation", step_type="scf")
-        step_id = step_result.step_id
+        step_id = step_result.step_ulid
 
         # Delete the step
         svc.calculation.remove_step(calc_selector="test-calculation", step_selector=step_id)
 
         # Verify step is gone from calculation
         calc_dto = svc.calculation.get("test-calculation")
-        step_ids = calc_dto.step_ids or []
+        step_ids = calc_dto.step_ulids or []
 
         assert step_id not in step_ids
 

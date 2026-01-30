@@ -140,9 +140,9 @@ def is_step_done(calc_dir: Path, step_kind: str, calc_raw_dir: Optional[Path] = 
         # Try to get step_ulid from step_doc
         step_ulid = None
         if step_doc:
-            # Check meta.id or step_id
+            # Check meta.ulid or step_id
             meta = step_doc.get("meta", {})
-            step_ulid = meta.get("id") or step_doc.get("step_id")
+            step_ulid = meta.get("ulid") or step_doc.get("step_id")
         
         # If we have step_ulid, check in specific workdir
         if step_ulid:
@@ -183,7 +183,7 @@ def is_step_done(calc_dir: Path, step_kind: str, calc_raw_dir: Optional[Path] = 
         step_ulid = None
         if step_doc:
             meta = step_doc.get("meta", {})
-            step_ulid = meta.get("id") or step_doc.get("step_id")
+            step_ulid = meta.get("ulid") or step_doc.get("step_id")
         
         if step_ulid:
             step_workdir = calc_raw_dir / step_ulid

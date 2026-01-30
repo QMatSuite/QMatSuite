@@ -308,7 +308,7 @@ def _load_step_parameters(
         try:
             # Load via StepDoc (detector is read-only)
             doc = StepDoc.load(step_file, access_control=True, owner="detector")
-            step_type = doc.get(["step_type"], default="scf")
+            step_type = doc.get(["step_type_spec"], default="scf")
             
             # Filter to only receiver steps for preset detection
             if receivers_only and not is_receiver(step_type):
@@ -364,7 +364,7 @@ def _load_step_parameters_with_types(
         try:
             # Load via StepDoc (detector is read-only)
             doc = StepDoc.load(step_file, access_control=True, owner="detector")
-            step_type = doc.get(["step_type"], default="scf")
+            step_type = doc.get(["step_type_spec"], default="scf")
             
             if receivers_only and not is_receiver(step_type):
                 continue
@@ -461,7 +461,7 @@ def apply_presets_to_step(
     doc = StepDoc.load(step_path, access_control=True, owner="compiler")
     
     # Get step_type for variant lookup (map machine_type to public_type if needed)
-    step_type = doc.get(["step_type"], default="scf")
+    step_type = doc.get(["step_type_spec"], default="scf")
     # Map machine_type to public_type for variant lookup (presets use public_type)
     from quantumvitas.workflow.registry import get_registry
     registry = get_registry()
@@ -812,7 +812,7 @@ def apply_presets_to_step(
         # Serialize IR patch to engine format before writing to step.yaml
         # step.yaml stores YAML native booleans (true/false), not QE strings
         # Get original step_type (before public_type mapping) to determine engine
-        original_step_type = doc.get(["step_type"], default="scf")
+        original_step_type = doc.get(["step_type_spec"], default="scf")
         # In v0, all steps are QE, but we check for future extensibility
         # For now, assume QE backend
         from quantumvitas.ir.backends.qe.mapping import ir_params_to_qe_params
@@ -1062,7 +1062,7 @@ def detect_workflow_type(calculation_dir: Path) -> str:
                 if step_path.exists():
                     try:
                         step_doc = StepDoc.load(step_path, access_control=True, owner="detector")
-                        step_type = step_doc.get(["step_type"], default=None)
+                        step_type = step_doc.get(["step_type_spec"], default=None)
                     except Exception:
                         pass
         

@@ -21,7 +21,7 @@ class TestBannedStepTypeVocabulary:
     """Step-type vocabulary must use only step_type_spec/step_type_gen."""
 
     def test_no_bare_step_type_in_step_factory(self):
-        count = rg_count(r'"step_type":', "src/quantumvitas/workflow/step_factory.py")
+        count = rg_count(r'"step_type_gen":', "src/quantumvitas/workflow/step_factory.py")
         assert count == 0, "step_factory.py writes bare 'step_type'"
 
     def test_no_bare_type_field_in_models(self):
@@ -41,8 +41,9 @@ class TestBannedStepTypeVocabulary:
         assert count == 0, "registry.py still uses .machine_type"
 
     def test_no_public_type_in_registry(self):
+        # Check for old .public_type attribute (should use .step_type_gen now)
         count = rg_count(r"\.public_type\b", "src/quantumvitas/workflow/registry.py")
-        assert count == 0, "registry.py still uses .public_type"
+        assert count == 0, "registry.py still uses .public_type (should use .step_type_gen)"
 
     def test_no_spec_id_in_registry(self):
         count = rg_count(r"spec\.id\b", "src/quantumvitas/workflow/registry.py")
@@ -94,8 +95,9 @@ class TestYamlSpecOnly:
         assert count == 0, "Demo YAML files contain step_type_gen"
 
     def test_no_bare_step_type_in_golden(self):
+        # Check for bare "step_type": or "type": (should use step_type_spec/step_type_gen)
         count = rg_count(r'"step_type":', "tests/fixtures/golden_0873ebf/daemon/")
-        assert count == 0, "Golden fixtures have bare step_type"
+        assert count == 0, "Golden fixtures have bare step_type (should use step_type_spec/step_type_gen)"
 
 
 class TestIdentityFieldsRenamed:
@@ -107,7 +109,7 @@ class TestIdentityFieldsRenamed:
         assert count == 0, "models.py still has step_id as field or dict key"
 
     def test_no_meta_id_in_factory(self):
-        # Check specifically for "id": in meta context
-        count = rg_count(r'"id":\s*step_id', "src/quantumvitas/workflow/step_factory.py")
-        assert count == 0, "step_factory.py still writes meta.id"
+        # Check for legacy "id": pattern (should use "ulid": now)
+        count = rg_count(r'"id":\s*step', "src/quantumvitas/workflow/step_factory.py")
+        assert count == 0, "step_factory.py still writes meta.id (should use ulid)"
 

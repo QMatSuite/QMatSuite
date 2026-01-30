@@ -71,7 +71,7 @@ H    -0.757160     0.000000    -0.468000
         xyz_path.write_text(xyz_content)
         
         step_ulid = "01ORCARELAX"
-        step_type = "orca_relax"
+        step_type= "orca_relax"
         calculation_ulid = "01CALCTEST"
         input_structure_ulid = "01STRUCTEST"
         run_id = "run001"

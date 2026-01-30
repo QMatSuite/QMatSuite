@@ -51,13 +51,13 @@ class TestPseudopotentialResolution:
         # Create a step spec with species_overrides
         step_spec_dict = {
             "meta": {
-                "id": generate_resource_id(),
+                "ulid": generate_resource_id(),
                 "name": "test_step",
                 "slug": "test_step",
                 "path": "test_step.step.yaml",
                 "kind": "step",
             },
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "structure_id": generate_resource_id(),
             "species_overrides": {
                 "Si": {
@@ -111,7 +111,7 @@ class TestPseudopotentialResolution:
             meta=meta_from_name("step", name="test", path="test.step.yaml"),
             structure="test_structure",  # Required field
             structure_id=generate_resource_id(),
-            step_type="scf",
+            step_type_spec="scf",
             species_overrides={},  # Empty initially
         )
         

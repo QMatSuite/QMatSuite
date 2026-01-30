@@ -113,7 +113,7 @@ def test_template_calculation_ulids_consistent(template_project):
         calculation_yaml_path = project_dir / "calculations" / "si-dos" / "calculation.yaml"
         if calculation_yaml_path.exists():
             wf_data = yaml.safe_load(calculation_yaml_path.read_text())
-            wf_id = (wf_data.get("meta") or {}).get("id")
+            wf_id = (wf_data.get("meta") or {}).get("ulid")
             if wf_id:
                 # Find entry by ID
                 for wf in config.get("calculations", []):
@@ -127,8 +127,8 @@ def test_template_calculation_ulids_consistent(template_project):
     # In ID-only model, calculation entry might have calculation_id (ULID) directly or in meta.id
     calculation_ulid = (
         calculation_entry.get("calculation_id") or
-        calculation_entry.get("id") or
-        (calculation_entry.get("meta") or {}).get("id")
+        calculation_entry.get("ulid") or
+        (calculation_entry.get("meta") or {}).get("ulid")
     )
     assert calculation_ulid, "Calculation should have a ULID (calculation_id, id, or meta.id)"
     
@@ -209,7 +209,7 @@ def test_init_calculation_from_template_with_custom_structure(tmp_path):
         json.dump({
             "structure": struct.as_dict(),
             "__qv_meta__": {
-                "id": structure_ulid,
+                "ulid": structure_ulid,
                 "name": "custom_si",
                 "slug": "custom_si",
                 "path": "structures/custom_si.json",

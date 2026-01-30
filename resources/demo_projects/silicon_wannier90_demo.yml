@@ -2,7 +2,7 @@ version: '1.0'
 generated_at: '2026-01-03T13:49:14.738512'
 project:
   meta:
-    id: 01KE2K2EQH1SRN43S7787WH2BV
+    ulid: 01KE2K2EQH1SRN43S7787WH2BV
     name: Silicon Wannier90 Demo
     slug: silicon-wannier90-demo
     path: .
@@ -10,7 +10,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE2K2EQHAGN1FBNDXXNK23FM
+    ulid: 01KE2K2EQHAGN1FBNDXXNK23FM
     name: Silicon
     slug: silicon
     path: structures/silicon.json
@@ -71,7 +71,7 @@ structures:
       - 0.0
 calculations:
 - meta:
-    id: 01KE2K2EQH1YWT2K0MCMV2K98T
+    ulid: 01KE2K2EQH1YWT2K0MCMV2K98T
     name: Silicon MLWFs
     slug: silicon-mlwfs
     path: calculations/silicon-mlwfs

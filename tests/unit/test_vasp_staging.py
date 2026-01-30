@@ -18,7 +18,7 @@ class MockStep:
     def __init__(self, step_type: str, step_id: str = "01TEST"):
         self.step_type = step_type
         self.meta = Mock()
-        self.meta.id = step_id
+        self.meta.ulid = step_id
 
 
 class TestVASPStaging:

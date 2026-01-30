@@ -35,9 +35,9 @@ def migrate_legacy_project(project_root: Path) -> None:
     
     Migration steps:
     1. Backup original project.qv.yml and calculation.yaml files
-    2. Ensure all structures have ULID meta.id
+    2. Ensure all structures have ULID meta.ulid
     3. For each calculation:
-       - Ensure meta.id is a ULID
+       - Ensure meta.ulid is a ULID
        - Ensure meta.slug exists
        - Convert structure selector to structure_id (ULID)
        - Convert step entries to use step_id (ULID)
@@ -69,7 +69,7 @@ def migrate_legacy_project(project_root: Path) -> None:
     # Step 2: Load project config
     config = load_project_config(project_root)
     
-    # Step 3: Migrate structures (ensure ULID meta.id)
+    # Step 3: Migrate structures (ensure ULID meta.ulid)
     structures = config.get("structures", [])
     structures_dir = project_root / "structures"
     
@@ -89,8 +89,8 @@ def migrate_legacy_project(project_root: Path) -> None:
             struct_meta_dict = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
             
             # Generate ULID if missing
-            if not struct_meta_dict.get("id"):
-                struct_meta_dict["id"] = generate_resource_id()
+            if not struct_meta_dict.get("ulid"):
+                struct_meta_dict["ulid"] = generate_resource_id()
                 struct_meta_dict.setdefault("name", Path(struct_file).stem)
                 struct_meta_dict.setdefault("slug", slugify(struct_meta_dict["name"]))
                 struct_meta_dict.setdefault("kind", "structure")
@@ -108,8 +108,8 @@ def migrate_legacy_project(project_root: Path) -> None:
             # Update entry meta
             if "meta" not in struct_entry:
                 struct_entry["meta"] = struct_meta_dict
-            elif not struct_entry["meta"].get("id"):
-                struct_entry["meta"]["id"] = struct_meta_dict["id"]
+            elif not struct_entry["meta"].get("ulid"):
+                struct_entry["meta"]["ulid"] = struct_meta_dict["ulid"]
         except Exception as e:
             print(f"  Warning: Could not migrate structure {struct_file}: {e}")
     
@@ -143,8 +143,8 @@ def migrate_legacy_project(project_root: Path) -> None:
         
         # Ensure calculation meta has ULID
         wf_meta = wf_data.get("meta", {})
-        if not wf_meta.get("id"):
-            wf_meta["id"] = generate_resource_id()
+        if not wf_meta.get("ulid"):
+            wf_meta["ulid"] = generate_resource_id()
             wf_meta.setdefault("name", calculation_dir.name)
             wf_meta.setdefault("slug", slugify(wf_meta["name"]))
             wf_meta.setdefault("kind", "calculation")
@@ -159,7 +159,7 @@ def migrate_legacy_project(project_root: Path) -> None:
                 # Resolve structure to get ULID
                 index = build_resource_index(project_root)
                 resolved = resolve_structure(project_root, legacy_structure, index=index)
-                structure_id = resolved.meta.id
+                structure_id = resolved.meta.ulid
                 
                 wf_data["structure_id"] = structure_id
                 print(f"    Converted structure selector '{legacy_structure}' to structure_id: {structure_id}")
@@ -181,7 +181,7 @@ def migrate_legacy_project(project_root: Path) -> None:
         for i, step_entry in enumerate(steps):
             step_id_ulid = step_entry.get("step_id")
             legacy_step_file = step_entry.get("step_file")
-            legacy_id = step_entry.get("id")
+            legacy_id = step_entry.get("ulid")
             step_type = step_entry.get("type", "unknown")
             
             # If step_id is missing or not a ULID, we need to find/create the step file
@@ -201,7 +201,7 @@ def migrate_legacy_project(project_root: Path) -> None:
                 if step_file_path and step_file_path.exists():
                     try:
                         spec = StructureStepSpec.from_yaml(step_file_path)
-                        step_id_ulid = spec.meta.id
+                        step_id_ulid = spec.meta.ulid
                         print(f"    Step {i+1}: Found ULID {step_id_ulid} from existing file")
                     except Exception as e:
                         print(f"    Step {i+1}: Warning: Could not load step file {step_file_path}: {e}")
@@ -221,11 +221,11 @@ def migrate_legacy_project(project_root: Path) -> None:
                         name=step_name,
                         path=f"{calculation_path}/steps/{step_filename}",
                     )
-                    step_meta.id = step_id_ulid
+                    step_meta.ulid = step_id_ulid
                     
                     minimal_spec = StructureStepSpec(
                         meta=step_meta,
-                        step_type=step_type or "scf",
+                        step_type_spec=step_type or "scf",
                     )
                     
                     step_file_path.write_text(yaml.safe_dump(minimal_spec.to_dict(), sort_keys=False))

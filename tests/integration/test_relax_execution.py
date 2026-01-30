@@ -61,8 +61,8 @@ class TestRelaxExecutorIntegration:
         
         # Create mock calculation and job
         mock_step = MagicMock()
-        mock_step.meta.id = step_ulid
-        mock_step.step_type = "qe_relax"
+        mock_step.meta.ulid = step_ulid
+        mock_step.step_type_spec= "qe_relax"
         
         mock_calculation = MagicMock()
         mock_calculation.dir = calc_dir
@@ -123,13 +123,13 @@ class TestRelaxExecutorIntegration:
         
         # Create mock calculation and job
         mock_step = MagicMock()
-        mock_step.meta.id = step_ulid
-        mock_step.step_type = "qe_relax"
+        mock_step.meta.ulid = step_ulid
+        mock_step.step_type_spec= "qe_relax"
         
         mock_calculation = MagicMock()
         mock_calculation.dir = calc_dir
         mock_calculation.steps = [mock_step]
-        mock_calculation.meta.id = "calc001"
+        mock_calculation.meta.ulid = "calc001"
         mock_calculation.structure_id = "struct001"
         
         job = Job(
@@ -155,7 +155,7 @@ class TestRelaxExecutorIntegration:
                         artifact_type="qe_output",
                         artifact_path=output_path,
                         step_ulid=step_ulid,
-                        step_type="qe_relax",
+                        step_type_spec="qe_relax",
                     ).to_dict(),
                 },
             },
@@ -199,8 +199,8 @@ class TestRelaxExecutorIntegration:
         step_ulid = "01RELAXSTEP"
         
         mock_step = MagicMock()
-        mock_step.meta.id = step_ulid
-        mock_step.step_type = "qe_relax"
+        mock_step.meta.ulid = step_ulid
+        mock_step.step_type_spec= "qe_relax"
         
         mock_calculation = MagicMock()
         mock_calculation.dir = calc_dir
@@ -272,12 +272,12 @@ class TestRelaxExecutorIntegration:
         
         # Create job that only includes step1
         mock_step1 = MagicMock()
-        mock_step1.meta.id = step1_ulid
-        mock_step1.step_type = "qe_relax"
+        mock_step1.meta.ulid = step1_ulid
+        mock_step1.step_type_spec= "qe_relax"
         
         mock_step2 = MagicMock()
-        mock_step2.meta.id = step2_ulid
-        mock_step2.step_type = "qe_relax"
+        mock_step2.meta.ulid = step2_ulid
+        mock_step2.step_type_spec= "qe_relax"
         
         mock_calculation = MagicMock()
         mock_calculation.dir = calc_dir

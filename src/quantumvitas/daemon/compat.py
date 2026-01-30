@@ -30,7 +30,7 @@ def _adapt_delete_structure(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Add selector from structure_id if missing."""
     if "selector" not in payload and "structure_id" in payload:
         payload = dict(payload)
-        payload["selector"] = {"id": payload["structure_id"]}
+        payload["selector"] = {"ulid": payload["structure_id"]}
     return payload
 
 
@@ -39,7 +39,7 @@ def _adapt_get_structure_vis(payload: Dict[str, Any]) -> Dict[str, Any]:
     if "selector" not in payload:
         payload = dict(payload)
         if "structure_id" in payload:
-            payload["selector"] = {"id": payload["structure_id"]}
+            payload["selector"] = {"ulid": payload["structure_id"]}
         elif "structure_name" in payload:
             payload["selector"] = {"name": payload["structure_name"]}
     return payload
@@ -120,7 +120,7 @@ def _adapt_rename_structure(payload: Dict[str, Any]) -> Dict[str, Any]:
     if "selector" not in payload:
         payload = dict(payload)
         if "structure_id" in payload:
-            payload["selector"] = {"id": payload["structure_id"]}
+            payload["selector"] = {"ulid": payload["structure_id"]}
         elif "structure_name" in payload:
             payload["selector"] = {"name": payload["structure_name"]}
         elif "structure_slug" in payload:
@@ -236,7 +236,7 @@ def _shape_list_demo_projects(response: Dict[str, Any]) -> Dict[str, Any]:
             title = demo.get("title", "").lower()
             name = demo.get("name", "").lower()
             subtitle = demo.get("subtitle", "").lower()
-            demo_id = demo.get("id", "").lower()
+            demo_id = demo.get("ulid", "").lower()
             check_text = f"{title} {name} {subtitle} {demo_id}"
             if "dos" in check_text:
                 demo["recommended_analysis"] = "dos"
@@ -251,7 +251,7 @@ def _shape_list_demo_projects(response: Dict[str, Any]) -> Dict[str, Any]:
             demo["description"] = f"Demo project: {demo.get('title') or demo.get('name', '')}"
         # v0 required fields (service now returns these, but provide fallback)
         if not demo.get("title"):
-            demo["title"] = demo.get("name", demo.get("id", ""))
+            demo["title"] = demo.get("name", demo.get("ulid", ""))
         if "tags" not in demo:
             demo["tags"] = []
         if "estimated_runtime_scf" not in demo:
@@ -298,7 +298,7 @@ def _shape_add_step_to_calculation(response: Dict[str, Any]) -> Dict[str, Any]:
 
     # Add id if missing
     if "id" not in response and "calculation_id" in response:
-        response["id"] = response["calculation_id"]
+        response["ulid"] = response["calculation_id"]
     # v0 required fields at top level
     if "name" not in response:
         response["name"] = response.get("calculation_name", "")
@@ -331,7 +331,7 @@ def _shape_add_step_to_calculation(response: Dict[str, Any]) -> Dict[str, Any]:
         step.pop("id", None)  # v0 only had step_id, not id
         # Rename step_id to match v0 if needed
         if "step_id" not in step and "id" in step:
-            step["step_id"] = step["id"]
+            step["step_id"] = step["ulid"]
 
     return response
 
@@ -475,7 +475,7 @@ def _shape_list_calculations(response: Dict[str, Any]) -> Dict[str, Any]:
     project_root = response.pop("_project_root", None)
 
     for calc in response.get("calculations", []):
-        calc_id = calc.get("id", "")
+        calc_id = calc.get("ulid", "")
         # Use slug for path computation (directory name is slug, not ULID)
         calc_slug = calc.get("slug") or calc.get("name") or calc_id
 
@@ -551,7 +551,7 @@ def _expand_step_ids_to_steps(step_ids: list, calc_absolute_path: str) -> list:
 
     if not calc_yaml.exists():
         # Fallback: return minimal steps with just IDs
-        return [{"step_id": sid, "id": sid, "type": ""} for sid in step_ids]
+        return [{"step_id": sid, "ulid": sid, "step_type_gen": ""} for sid in step_ids]
 
     try:
         with open(calc_yaml) as f:
@@ -570,14 +570,14 @@ def _expand_step_ids_to_steps(step_ids: list, calc_absolute_path: str) -> list:
         for sid in step_ids:
             steps.append({
                 "step_id": sid,
-                "id": sid,
-                "type": step_type_map.get(sid, ""),
+                "ulid": sid,
+                "step_type_gen": step_type_map.get(sid, ""),
             })
 
         return steps
     except Exception:
         # Fallback: return minimal steps with just IDs
-        return [{"step_id": sid, "id": sid, "type": ""} for sid in step_ids]
+        return [{"step_id": sid, "ulid": sid, "step_type_gen": ""} for sid in step_ids]
 
 
 def _shape_get_project_history(response: Dict[str, Any]) -> Dict[str, Any]:
@@ -684,14 +684,16 @@ def _shape_search_legacy_pseudos(response: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _shape_calculation_detail(response: Dict[str, Any]) -> Dict[str, Any]:
-    """Shape calculation detail for v0 compat."""
+    """Shape calculation detail to canonical schema."""
     response = copy.deepcopy(response)
 
-    # Ensure id field
-    if "id" not in response and "calculation_id" in response:
-        response["id"] = response["calculation_id"]
+    # Canonical: ulid for calculation identity
+    if "ulid" not in response and "calculation_id" in response:
+        response["ulid"] = response.pop("calculation_id")
+    elif "calculation_id" in response:
+        response.pop("calculation_id")
 
-    # v0 required fields
+    # Required fields
     if "path" not in response:
         response["path"] = ""
     if "absolute_path" not in response:
@@ -699,38 +701,58 @@ def _shape_calculation_detail(response: Dict[str, Any]) -> Dict[str, Any]:
     if "species_map" not in response:
         response["species_map"] = None
 
-    # Shape steps
+    # Shape steps to canonical schema
     for step in response.get("steps", []):
-        step_type = step.get("type", "")
-        # Derive name from type if missing
+        # Canonical: step_ulid for step identity
+        if "step_ulid" not in step:
+            if "id" in step:
+                step["step_ulid"] = step.pop("id")
+            elif "step_id" in step:
+                step["step_ulid"] = step.pop("step_id")
+
+        # Canonical: step_type_spec (SPEC) and step_type_gen (GEN)
+        if "step_type_spec" not in step and "type" in step:
+            # Assume type contains SPEC if it has underscore, else GEN
+            type_val = step.pop("type")
+            if "_" in type_val:
+                step["step_type_spec"] = type_val
+                step["step_type_gen"] = get_step_type_gen(type_val)
+            else:
+                # GEN value - need to infer SPEC (fallback to qe_)
+                step["step_type_gen"] = type_val
+                step["step_type_spec"] = f"qe_{type_val}"
+
+        # Ensure both fields present
+        if "step_type_spec" in step and "step_type_gen" not in step:
+            step["step_type_gen"] = get_step_type_gen(step["step_type_spec"])
+
+        # Derive name from step_type_gen if missing
         if _should_derive_step_name(step.get("name", "")):
-            step["name"] = _derive_step_name_from_type(step_type)
-        # Map step type to v0 format
-        # Data should already have step_type_spec from kernel
-        # Convert to GEN for v0 RPC response
-        if "step_type_spec" in step:
-            step["type"] = get_step_type_gen(step["step_type_spec"])
-            step["step_type_gen"] = step["type"]  # Also add for v1 compatibility
-        # v0 required step fields
+            step["name"] = step.get("step_type_gen", step.get("step_type_spec", "").split("_", 1)[-1])
+
+        # Derive slug from name if missing
         if _should_derive_step_name(step.get("slug", "")):
             step["slug"] = step.get("name", "")
+
         # Regenerate step_file if missing or contains ULID
         step_file = step.get("step_file", "")
         if not step_file or any(_is_ulid(part.replace(".step.yaml", "").replace(".in", ""))
                                 for part in step_file.split("/")):
             step["step_file"] = f"steps/{step.get('name', '')}.step.yaml"
-        # Remove v1-only fields (not in v0 baseline response)
+
+        # Remove old/ambiguous fields
         step.pop("status", None)
-        step.pop("step_type", None)
-        step.pop("step_id", None)  # v0 uses "id", not "step_id"
+        step.pop("step_type", None)  # Ambiguous - use step_type_spec or step_type_gen explicitly
+        step.pop("type", None)  # Ambiguous - use step_type_spec or step_type_gen explicitly
+        step.pop("id", None)  # Ambiguous - use step_ulid explicitly
+
         # Ensure missing is boolean
         if "missing" in step:
             step["missing"] = bool(step["missing"])
         else:
             step["missing"] = False
 
-    # Remove v1-only top-level fields
-    response.pop("calculation_id", None)
+    # Remove non-canonical top-level fields
     response.pop("structure_name", None)
 
     return response
@@ -817,7 +839,7 @@ def _shape_create_demo_project(response: Dict[str, Any]) -> Dict[str, Any]:
 
                 # Add v0 expected fields
                 if "project_id" not in response:
-                    response["project_id"] = summary.get("id", "")
+                    response["project_id"] = summary.get("ulid", "")
                 if "project_name" not in response:
                     response["project_name"] = summary.get("name", "demo-si-project")
 
@@ -826,14 +848,14 @@ def _shape_create_demo_project(response: Dict[str, Any]) -> Dict[str, Any]:
                 if structures and "structure" not in response:
                     first_struct = structures[0]
                     response["structure"] = {
-                        "id": first_struct.get("id", ""),
+                        "ulid": first_struct.get("ulid", ""),
                         "name": first_struct.get("name", ""),
                     }
 
                 # Get first calculation
                 calcs = QVService.list_calculations_data(project_path)
                 if calcs and "calculation" not in response:
-                    response["calculation"] = calcs[0].get("id", "")
+                    response["calculation"] = calcs[0].get("ulid", "")
 
                 if "ready_to_run" not in response:
                     response["ready_to_run"] = True
@@ -847,7 +869,7 @@ def _shape_create_demo_project(response: Dict[str, Any]) -> Dict[str, Any]:
     if "project_name" not in response:
         response["project_name"] = "demo-si-project"
     if "structure" not in response:
-        response["structure"] = {"id": "", "name": ""}
+        response["structure"] = {"ulid": "", "name": ""}
     if "calculation" not in response:
         response["calculation"] = ""
     if "ready_to_run" not in response:

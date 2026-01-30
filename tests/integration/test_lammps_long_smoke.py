@@ -126,7 +126,7 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="LJ FCC 108")
-    structure_id = struct_result.meta.id
+    structure_id = struct_result.meta.ulid
     
     # Create calculation
     calc_result = QVService.init_calculation(
@@ -134,7 +134,7 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
         name="lj_relax",
         structure_selector=structure_id,
     )
-    calc_id = calc_result.meta.id
+    calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path
     
     # Configure calculation
@@ -151,7 +151,7 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
         calculation_selector=calc_id,
         step_type="relax",
     )
-    step_id = step.meta.id
+    step_id = step.meta.ulid
     
     # Configure step with inline LJ potential
     configure_step(
@@ -177,7 +177,7 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
     return {
         "project_root": project_root,
         "calc_dir": calc_dir,
-        "step_id": step_id,
+        "step_ulid": step_id,
     }
 
 
@@ -185,7 +185,7 @@ def test_workflow_a_lj_relax(lj_relax_project, lammps_binary):
     """Workflow A: LJ Relax with inline potential dict."""
     project_root = lj_relax_project["project_root"]
     calc_dir = lj_relax_project["calc_dir"]
-    step_id = lj_relax_project["step_id"]
+    step_id = lj_relax_project["step_ulid"]
     
     # Run calculation
     project = Project.open(project_root)
@@ -242,7 +242,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC 32")
-    structure_id = struct_result.meta.id
+    structure_id = struct_result.meta.ulid
     
     # Copy potential file
     potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
@@ -261,7 +261,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
         name="eam_md",
         structure_selector=structure_id,
     )
-    calc_id = calc_result.meta.id
+    calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path
     
     # Configure calculation with potential_map
@@ -286,7 +286,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
         calculation_selector=calc_id,
         step_type="md",
     )
-    step_id = step.meta.id
+    step_id = step.meta.ulid
     
     # Configure step
     configure_step(
@@ -310,7 +310,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     return {
         "project_root": project_root,
         "calc_dir": calc_dir,
-        "step_id": step_id,
+        "step_ulid": step_id,
     }
 
 
@@ -318,7 +318,7 @@ def test_workflow_b_eam_md(eam_md_project, lammps_binary):
     """Workflow B: EAM MD with external potential file."""
     project_root = eam_md_project["project_root"]
     calc_dir = eam_md_project["calc_dir"]
-    step_id = eam_md_project["step_id"]
+    step_id = eam_md_project["step_ulid"]
     
     # Run calculation
     project = Project.open(project_root)
@@ -376,7 +376,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC 32")
-    structure_id = struct_result.meta.id
+    structure_id = struct_result.meta.ulid
     
     # Copy potential file
     potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
@@ -395,7 +395,7 @@ def chain_project(tmp_path: Path, lammps_binary):
         name="chain",
         structure_selector=structure_id,
     )
-    calc_id = calc_result.meta.id
+    calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path
     
     # Configure calculation
@@ -420,7 +420,7 @@ def chain_project(tmp_path: Path, lammps_binary):
         calculation_selector=calc_id,
         step_type="relax",
     )
-    relax_step_id = relax_step.meta.id
+    relax_step_id = relax_step.meta.ulid
     
     configure_step(
         project_root=project_root,
@@ -444,7 +444,7 @@ def chain_project(tmp_path: Path, lammps_binary):
         calculation_selector=calc_id,
         step_type="md",
     )
-    md_step_id = md_step.meta.id
+    md_step_id = md_step.meta.ulid
     
     configure_step(
         project_root=project_root,
@@ -496,7 +496,7 @@ def test_workflow_c_chain(chain_project, lammps_binary):
         if result.steps:
             print(f"[LAMMPS-DEBUG] test_workflow_c_chain: last step message: {result.steps[-1].message}")
             for i, step_summary in enumerate(result.steps):
-                step_ulid = step_summary.step_id if hasattr(step_summary, 'step_id') else f"step_{i}"
+                step_ulid = step_summary.step_ulid if hasattr(step_summary, 'step_id') else f"step_{i}"
                 step_dir = calculation.raw_dir / step_ulid
                 print(f"[LAMMPS-DEBUG] test_workflow_c_chain: step {i} (ulid={step_ulid}):")
                 print(f"  status={step_summary.status if hasattr(step_summary, 'status') else 'unknown'}")
@@ -572,7 +572,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC 32")
-    structure_id = struct_result.meta.id
+    structure_id = struct_result.meta.ulid
     
     # Copy potential file
     potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
@@ -591,7 +591,7 @@ def restart_project(tmp_path: Path, lammps_binary):
         name="restart",
         structure_selector=structure_id,
     )
-    calc_id = calc_result.meta.id
+    calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path
     
     # Configure calculation
@@ -616,7 +616,7 @@ def restart_project(tmp_path: Path, lammps_binary):
         calculation_selector=calc_id,
         step_type="relax",
     )
-    relax_step_id = relax_step.meta.id
+    relax_step_id = relax_step.meta.ulid
     
     configure_step(
         project_root=project_root,
@@ -640,7 +640,7 @@ def restart_project(tmp_path: Path, lammps_binary):
         calculation_selector=calc_id,
         step_type="md",
     )
-    md1_step_id = md1_step.meta.id
+    md1_step_id = md1_step.meta.ulid
     
     configure_step(
         project_root=project_root,
@@ -666,7 +666,7 @@ def restart_project(tmp_path: Path, lammps_binary):
         calculation_selector=calc_id,
         step_type="md",
     )
-    md2_step_id = md2_step.meta.id
+    md2_step_id = md2_step.meta.ulid
     
     # ========== ULID UNIQUENESS ASSERTIONS (detect Ubuntu CI root cause) ==========
     assert relax_step_id != md1_step_id, (
@@ -762,7 +762,7 @@ def test_workflow_d_restart(restart_project, lammps_binary):
         if result.steps:
             print(f"[LAMMPS-DEBUG] test_workflow_d_restart: last step message: {result.steps[-1].message}")
             for i, step_summary in enumerate(result.steps):
-                step_ulid = step_summary.step_id if hasattr(step_summary, 'step_id') else f"step_{i}"
+                step_ulid = step_summary.step_ulid if hasattr(step_summary, 'step_id') else f"step_{i}"
                 step_dir = calculation.raw_dir / step_ulid
                 print(f"[LAMMPS-DEBUG] test_workflow_d_restart: step {i} (ulid={step_ulid}):")
                 print(f"  status={step_summary.status if hasattr(step_summary, 'status') else 'unknown'}")

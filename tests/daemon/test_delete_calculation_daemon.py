@@ -23,7 +23,7 @@ class TestDeleteCalculationDaemon:
         project_root = tmp_path / "project"
         project_root.mkdir()
         (project_root / "project.qv.yml").write_text(
-            yaml.safe_dump({"project": {"name": "Test", "id": generate_resource_id()}}, sort_keys=False)
+            yaml.safe_dump({"project": {"name": "Test", "ulid": generate_resource_id()}}, sort_keys=False)
         )
         
         # Create calculation (this registers it in project config)

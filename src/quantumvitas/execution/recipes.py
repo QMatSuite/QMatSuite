@@ -151,7 +151,7 @@ class BaseRecipe(ABC):
         """Get SHA for a step from the provided map."""
         if step_shas is None:
             return None
-        return step_shas.get(step.meta.id)
+        return step_shas.get(step.meta.ulid)
 
 
 def get_recipe_for_engine(engine_family: str) -> BaseRecipe:

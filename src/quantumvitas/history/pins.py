@@ -34,19 +34,19 @@ class PinError(Exception):
 class PinResult:
     """Result of a pin operation."""
     success: bool
-    run_id: str
-    step_id: str
+    run_ulid: str
+    step_ulid: str
     analysis_kind: str
     png_path: Optional[str] = None
     json_path: Optional[str] = None
     error: Optional[str] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
             "success": self.success,
-            "run_id": self.run_id,
-            "step_id": self.step_id,
+            "run_ulid": self.run_ulid,
+            "step_ulid": self.step_ulid,
             "analysis_kind": self.analysis_kind,
             "png_path": self.png_path,
             "json_path": self.json_path,
@@ -119,8 +119,8 @@ def pin_analysis_to_history(
             if pin["step_id"] == step_id and pin["analysis_kind"] == analysis_kind:
                 return PinResult(
                     success=True,
-                    run_id=run_id,
-                    step_id=step_id,
+                    run_ulid=run_id,
+                    step_ulid=step_id,
                     analysis_kind=analysis_kind,
                     png_path=pin.get("pin_path"),
                     error="Pin already exists (de-duplicated)",
@@ -128,8 +128,8 @@ def pin_analysis_to_history(
         # Shouldn't reach here, but return success anyway
         return PinResult(
             success=True,
-            run_id=run_id,
-            step_id=step_id,
+            run_ulid=run_id,
+            step_ulid=step_id,
             analysis_kind=analysis_kind,
             error="Pin already exists",
         )
@@ -159,7 +159,7 @@ def pin_analysis_to_history(
     try:
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
-        project_id = config.get("project", {}).get("meta", {}).get("id", "")
+        project_id = config.get("project", {}).get("meta", {}).get("ulid", "")
     except Exception:
         project_id = ""
     
@@ -185,8 +185,8 @@ def pin_analysis_to_history(
     
     return PinResult(
         success=True,
-        run_id=run_id,
-        step_id=step_id,
+        run_ulid=run_id,
+        step_ulid=step_id,
         analysis_kind=analysis_kind,
         png_path=png_path,
         json_path=json_path,

@@ -28,7 +28,7 @@ def _find_step_by_ulid(calculation: "Calculation", step_ulid: str):
     """Find a step in calculation by its ULID."""
     from quantumvitas.calculation.step import Step
     for step in calculation.steps:
-        if step.meta.id == step_ulid:
+        if step.meta.ulid == step_ulid:
             return step
     return None
 
@@ -107,11 +107,11 @@ def vasp_step_handler(
         # Find reference SCF if needed
         ref_scf_step = None
         ref_manifest_entry = None
-        if step.step_type and step.step_type != "vasp_scf":
+        if step.step_type_spec and step.step_type_spec != "vasp_scf":
             # Non-SCF step: need reference SCF
             steps_list = calculation.steps
             current_idx = next(
-                (i for i, s in enumerate(steps_list) if s.meta.id == step_ulid),
+                (i for i, s in enumerate(steps_list) if s.meta.ulid == step_ulid),
                 None
             )
             if current_idx is not None:
@@ -120,7 +120,7 @@ def vasp_step_handler(
                     ref_idx, ref_scf_step = ref_result
                     # Get manifest entry for reference
                     ref_manifest_entry = next(
-                        (e for e in manifest.steps if e.step_ulid == ref_scf_step.meta.id),
+                        (e for e in manifest.steps if e.step_ulid == ref_scf_step.meta.ulid),
                         None
                     )
         

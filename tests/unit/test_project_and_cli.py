@@ -36,17 +36,17 @@ def sample_project(tmp_path: Path) -> Path:
     # Create structure with proper meta
     structure_id = generate_resource_id()
     structure_meta_dict = meta_from_name("structure", name="si", path="structures/si.json")
-    structure_meta_dict["id"] = structure_id
+    structure_meta_dict["ulid"] = structure_id
     
     # Generate calculation ULID (ID-only model)
     calculation_ulid = generate_resource_id()
     
     project_config = {
         "project": {"name": "sample"},
-        "calculations": [{"id": calculation_ulid, "path": "calculations/wf"}],  # Use ULID, not human-readable name
+        "calculations": [{"ulid": calculation_ulid, "path": "calculations/wf"}],  # Use ULID, not human-readable name
         "structures": [
             {
-                "id": structure_id,
+                "ulid": structure_id,
                 "file": "structures/si.json",
                 "meta": structure_meta_dict,
             }
@@ -101,7 +101,7 @@ def sample_project(tmp_path: Path) -> Path:
         {
             "meta": {
                 "ulid": calculation_ulid,
-                "id": calculation_ulid,  # Backwards compat
+                "ulid": calculation_ulid,  # Backwards compat
                 "name": "wf",
                 "slug": "wf",
                 "path": "calculations/wf",
@@ -142,7 +142,7 @@ def test_project_open(sample_project: Path):
     assert len(config.get("calculations", [])) == 1
     # Verify calculation can be resolved by ID from config
     calc_entry = config["calculations"][0]
-    calc_id = calc_entry.get("id")
+    calc_id = calc_entry.get("ulid")
     assert calc_id is not None
     # Verify we can resolve it via API (by ULID)
     calc_ref = svc.calculation.require_ref(calc_id)
@@ -150,7 +150,7 @@ def test_project_open(sample_project: Path):
     # Check structures - verify via config (structure.list() requires file to be loadable which may fail)
     assert len(config.get("structures", [])) == 1
     struct_entry = config["structures"][0]
-    struct_id = struct_entry.get("id")
+    struct_id = struct_entry.get("ulid")
     assert struct_id is not None
     # Verify structure metadata from config
     struct_meta = struct_entry.get("meta", {})
@@ -433,8 +433,8 @@ def test_cli_run_calculation_strict_option(sample_project: Path, monkeypatch):
             "n_steps": 1,
             "steps": [
                 {
-                    "step_id": "scf",
-                    "step_type": "scf",
+                    "step_ulid": "scf",
+                    "step_type_gen": "scf",
                     "status": "success",
                     "message": None,
                     "metrics": {},
@@ -530,28 +530,28 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     
     # Create calculation.yaml with structure_id
     calculation_meta_dict = meta_from_name("calculation", name="test_calculation", path="calculations/test_calculation")
-    calculation_meta_dict["id"] = calculation_id
+    calculation_meta_dict["ulid"] = calculation_id
     calculation_yaml_data = {
         "meta": calculation_meta_dict,
-        "structure_id": struct_resolved.meta.id if struct_resolved.meta else None,
+        "structure_id": struct_resolved.meta.ulid if struct_resolved.meta else None,
         "steps": [],
     }
     (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
     
     # Update project config
     config = yaml.safe_load((project_root / "project.qv.yml").read_text())
-    config["calculations"] = [{"id": calculation_id}]
+    config["calculations"] = [{"ulid": calculation_id}]
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
 
     # Step file in calculation directory (DAG model: no structure_id in step YAML)
     step_file = calculation_dir / "steps" / "scf.step.yaml"
     step_id = generate_resource_id()
     step_meta_dict = meta_from_name("step", name="scf", path="calculations/test_calculation/steps/scf.step.yaml")
-    step_meta_dict["id"] = step_id
+    step_meta_dict["ulid"] = step_id
     yaml.safe_dump(
         {
             "meta": step_meta_dict,
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "input_name": "si_step.pw.in",
             "parameters": {
                 "SYSTEM": {"ecutwfc": 60},
@@ -566,7 +566,7 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     )
     
     # Update calculation.yaml to include step
-    calculation_yaml_data["steps"] = [{"step_id": step_id}]
+    calculation_yaml_data["steps"] = [{"step_ulid": step_id}]
     (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
 
     # Track calls to verify the API is invoked
@@ -597,8 +597,8 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
             input_file=str(mock_input),
             output_file=str(mock_output),
             _step_details=[{
-                "step_id": step_id,
-                "step_type": "scf",
+                "step_ulid": step_id,
+                "step_type_gen": "scf",
                 "status": "completed",
                 "message": None,
                 "metrics": {},
@@ -665,28 +665,28 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     
     # Create calculation.yaml with structure_id
     calculation_meta_dict = meta_from_name("calculation", name="test_calculation", path="calculations/test_calculation")
-    calculation_meta_dict["id"] = calculation_id
+    calculation_meta_dict["ulid"] = calculation_id
     calculation_yaml_data = {
         "meta": calculation_meta_dict,
-        "structure_id": struct_resolved.meta.id if struct_resolved.meta else None,
+        "structure_id": struct_resolved.meta.ulid if struct_resolved.meta else None,
         "steps": [],
     }
     (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
     
     # Update project config
     config = yaml.safe_load((project_root / "project.qv.yml").read_text())
-    config["calculations"] = [{"id": calculation_id}]
+    config["calculations"] = [{"ulid": calculation_id}]
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
 
     # Step file in calculation directory (DAG model: no structure_id in step YAML)
     step_file = calculation_dir / "steps" / "scf.step.yaml"
     step_id = generate_resource_id()
     step_meta_dict = meta_from_name("step", name="scf", path="calculations/test_calculation/steps/scf.step.yaml")
-    step_meta_dict["id"] = step_id
+    step_meta_dict["ulid"] = step_id
     yaml.safe_dump(
         {
             "meta": step_meta_dict,
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "input_name": "si_step.pw.in",
             # DAG model: no structure_id or structure in step YAML
             # Add pseudopotential configuration to avoid "not configured" error
@@ -698,7 +698,7 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     )
     
     # Update calculation.yaml to include step
-    calculation_yaml_data["steps"] = [{"step_id": step_id}]
+    calculation_yaml_data["steps"] = [{"step_ulid": step_id}]
     (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
 
     # Track calls to verify the API is invoked
@@ -729,8 +729,8 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
             input_file=str(mock_input),
             output_file=str(mock_output),
             _step_details=[{
-                "step_id": step_id,
-                "step_type": "scf",
+                "step_ulid": step_id,
+                "step_type_gen": "scf",
                 "status": "completed",
                 "message": None,
                 "metrics": {},
@@ -806,7 +806,7 @@ def test_cli_step_create_and_insert(sample_project: Path):
     calculation_yaml = sample_project / "calculations" / "wf" / "calculation.yaml"
     calculation_data = yaml.safe_load(calculation_yaml.read_text())
     # With ID-only model, we use step_id (ULID), not id (legacy slug)
-    assert any(step.get("step_id") is not None for step in calculation_data["steps"])
+    assert any(step.get("step_ulid") is not None for step in calculation_data["steps"])
 
 
 def test_cli_step_set_param(tmp_path: Path):
@@ -815,13 +815,13 @@ def test_cli_step_set_param(tmp_path: Path):
     project_root.mkdir()
     structure_id = generate_resource_id()
     structure_meta_dict = meta_from_name("structure", name="si", path="structures/si.json")
-    structure_meta_dict["id"] = structure_id
+    structure_meta_dict["ulid"] = structure_id
     
     project_config = {
         "project": {"name": "test"},
         "structures": [
             {
-                "id": structure_id,
+                "ulid": structure_id,
                 "file": "structures/si.json",
                 "meta": structure_meta_dict,
             }
@@ -845,7 +845,7 @@ def test_cli_step_set_param(tmp_path: Path):
     yaml.safe_dump(
         {
             "structure": "si",  # Legacy selector - will be resolved to structure_id
-            "step_type": "scf",
+            "step_type_gen": "scf",
             "parameters": {"SYSTEM": {"ecutwfc": 40}},
         },
         step_file.open("w"),
@@ -955,7 +955,7 @@ def test_cli_show_command_import_preserves_original_parameters(
             finished_at=now,
             steps=[
                 StepResultSummary(
-                    step_id=step.meta.id,
+                    step_id=step.meta.ulid,
                     step_type=step.step_type,
                     status=StepStatus.SUCCESS,
                     working_dir=calculation.dir / "raw",
@@ -1055,7 +1055,7 @@ def test_cli_show_command_import_preserves_original_parameters(
         svc = get_service(project_root)
         config = svc.project.get_config()
         index = svc.project.build_resource_index()
-        step_id = last_step.get("step_id") or last_step.get("id")
+        step_id = last_step.get("step_ulid") or last_step.get("ulid")
         # Use API to resolve step
         step_resolved = svc.calculation.require_step_ref(calculation_slug, step_id)
         step_spec_path = step_resolved.absolute_path

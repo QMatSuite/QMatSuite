@@ -55,7 +55,7 @@ def cp2k_silicon_project(tmp_path: Path):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Si Cubic")
-    structure_id = struct_result.meta.id
+    structure_id = struct_result.meta.ulid
     
     # Create calculation
     calc_resolved = QVService.init_calculation(
@@ -63,7 +63,7 @@ def cp2k_silicon_project(tmp_path: Path):
         name="cp2k_test",
         structure_selector=structure_id,
     )
-    calc_id = calc_resolved.meta.id
+    calc_id = calc_resolved.meta.ulid
     calc_dir = calc_resolved.absolute_path
     calc_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_path, project_root=project_root)
@@ -92,7 +92,7 @@ def test_cp2k_scf_silicon(cp2k_silicon_project):
         calculation_selector=calc_id,
         step_type="scf",
     )
-    step_id = step_resolved.meta.id
+    step_id = step_resolved.meta.ulid
 
     # Configure step parameters
     svc = QVService(project_root)
@@ -128,7 +128,7 @@ def test_cp2k_scf_silicon(cp2k_silicon_project):
     )
     
     # Verify output files exist
-    working_dir = calculation.raw_dir / calculation.steps[0].meta.id
+    working_dir = calculation.raw_dir / calculation.steps[0].meta.ulid
     assert (working_dir / "input.inp").exists(), "Input file should exist"
     assert (working_dir / "output.log").exists(), "Output log should exist"
     
@@ -152,7 +152,7 @@ def test_cp2k_relax_silicon_with_cell(cp2k_silicon_project):
         calculation_selector=calc_id,
         step_type="relax",
     )
-    step_id = step_resolved.meta.id
+    step_id = step_resolved.meta.ulid
 
     # Configure step parameters
     svc = QVService(project_root)
@@ -190,7 +190,7 @@ def test_cp2k_relax_silicon_with_cell(cp2k_silicon_project):
     )
     
     # Verify output files exist
-    working_dir = calculation.raw_dir / calculation.steps[0].meta.id
+    working_dir = calculation.raw_dir / calculation.steps[0].meta.ulid
     assert (working_dir / "input.inp").exists(), "Input file should exist"
     assert (working_dir / "output.log").exists(), "Output log should exist"
     
@@ -213,7 +213,7 @@ def test_cp2k_relax_silicon_with_cell(cp2k_silicon_project):
     assert traj_content.count("Si") >= 2, "Trajectory should have multiple frames"
     
     # Verify current.json was created (relax artifact handler)
-    step_ulid = calculation.steps[0].meta.id
+    step_ulid = calculation.steps[0].meta.ulid
     current_json = calc_dir / ".analysis" / step_ulid / "current.json"
     if current_json.exists():
         # Load and verify structure has cell
@@ -237,7 +237,7 @@ def test_cp2k_md_incremental_skip_disabled(cp2k_silicon_project):
         calculation_selector=calc_id,
         step_type="md",
     )
-    step_id = step_resolved.meta.id
+    step_id = step_resolved.meta.ulid
 
     # Configure step parameters
     svc = QVService(project_root)
@@ -279,7 +279,7 @@ def test_cp2k_md_incremental_skip_disabled(cp2k_silicon_project):
     
     # MD may fail due to instability, but should attempt to run
     # The key test is that it's not skipped
-    working_dir = calculation.raw_dir / calculation.steps[0].meta.id
+    working_dir = calculation.raw_dir / calculation.steps[0].meta.ulid
     assert (working_dir / "input.inp").exists(), "Input file should exist"
     assert (working_dir / "output.log").exists(), "Output log should exist"
     

@@ -13,19 +13,19 @@ from quantumvitas.api.types.common import MetaDTO
 def test_calculation_dto_required_fields():
     """CalculationDTO has required ULID fields."""
     dto = CalculationDTO(
-        calc_id="01HX7YPVK8DQNZPMJ4GHAB1234",
+        calc_ulid="01HX7YPVK8DQNZPMJ4GHAB1234",
         engine="qe",
         status="completed"
     )
     d = dto.to_dict()
-    assert d["calc_id"] == "01HX7YPVK8DQNZPMJ4GHAB1234"
+    assert d["calc_ulid"] == "01HX7YPVK8DQNZPMJ4GHAB1234"
     assert d["engine"] == "qe"
     assert d["status"] == "completed"
 
 
 def test_calculation_dto_no_params_field():
     """CalculationDTO must NOT have params field."""
-    dto = CalculationDTO(calc_id="x", engine="qe", status="pending")
+    dto = CalculationDTO(calc_ulid="x", engine="qe", status="pending")
     d = dto.to_dict()
     assert "params" not in d
 
@@ -33,7 +33,7 @@ def test_calculation_dto_no_params_field():
 def test_calculation_dto_with_meta():
     """CalculationDTO can include MetaDTO."""
     dto = CalculationDTO(
-        calc_id="01HX7YPVK8DQNZPMJ4GHAB1234",
+        calc_ulid="01HX7YPVK8DQNZPMJ4GHAB1234",
         engine="qe",
         status="completed",
         meta=MetaDTO(
@@ -50,15 +50,15 @@ def test_calculation_dto_with_meta():
 def test_calculation_dto_with_references():
     """CalculationDTO can include structure and step references."""
     dto = CalculationDTO(
-        calc_id="01HX7YPVK8DQNZPMJ4GHAB1234",
+        calc_ulid="01HX7YPVK8DQNZPMJ4GHAB1234",
         engine="qe",
         status="completed",
-        structure_id="01HX7YPVK8DQNZPMJ4GHAB5678",
-        step_ids=["01HX7YPVK8DQNZPMJ4GHAB9012", "01HX7YPVK8DQNZPMJ4GHAB3456"]
+        structure_ulid="01HX7YPVK8DQNZPMJ4GHAB5678",
+        step_ulids=["01HX7YPVK8DQNZPMJ4GHAB9012", "01HX7YPVK8DQNZPMJ4GHAB3456"]
     )
     d = dto.to_dict()
-    assert d["structure_id"] == "01HX7YPVK8DQNZPMJ4GHAB5678"
-    assert len(d["step_ids"]) == 2
+    assert d["structure_ulid"] == "01HX7YPVK8DQNZPMJ4GHAB5678"
+    assert len(d["step_ulids"]) == 2
 
 
 def test_step_dto_required_fields():
@@ -72,12 +72,9 @@ def test_step_dto_required_fields():
     )
     d = dto.to_dict()
     assert d["step_ulid"] == "01HX7YPVK8DQNZPMJ4GHAB9012"
-    assert d["step_id"] == "01HX7YPVK8DQNZPMJ4GHAB9012"  # Backwards compat
     assert d["calc_ulid"] == "01HX7YPVK8DQNZPMJ4GHAB1234"
-    assert d["calc_id"] == "01HX7YPVK8DQNZPMJ4GHAB1234"  # Backwards compat
     assert d["step_type_spec"] == "qe_scf"
     assert d["step_type_gen"] == "scf"
-    assert d["step_type"] == "scf"  # Backwards compat
     assert d["status"] == "completed"
 
 

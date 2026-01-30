@@ -26,7 +26,7 @@ from quantumvitas.workflow.registry import normalize_step_type_to_public as _nor
 @dataclass
 class StepResult:
     """Result of executing a single QE calculation step."""
-    step_type: str
+    step_type_spec: str  # SPEC type (e.g., "qe_scf", "vasp_relax")
     input_file: Path
     output_file: Optional[Path] = None  # Primary artifact (e.g., <seed>.wout for Wannier90, scf.out for QE)
     stdout_file: Optional[Path] = None  # Stdout capture file (e.g., scf.out, w90_preproc.out)
@@ -691,7 +691,7 @@ class QECalculationRunner:
                         steps=step_results,
                         success=False,
                         total_time=time.time() - calculation_start,
-                        error=f"Calculation stopped at step {i+1} ({result.step_type}): {result.error}"
+                        error=f"Calculation stopped at step {i+1} ({result.step_type_spec}): {result.error}"
                     )
                 # Continue even on error if stop_on_error is False
         

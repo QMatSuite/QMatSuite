@@ -247,10 +247,10 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
     
     # Load raw config to check for legacy name fields in calculation entries
     raw_config = load_project_config(project_root)
-    # Build mapping from calculation ID to raw entry (handle calculation_id, id, and meta.id keys)
+    # Build mapping from calculation ID to raw entry (handle calculation_id, id, and meta.ulid keys)
     raw_calculation_entries = {}
     for entry in raw_config.get("calculations", []):
-        wf_id = entry.get("calculation_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
+        wf_id = entry.get("calculation_id") or entry.get("ulid") or (entry.get("meta") or {}).get("ulid")
         if wf_id:
             raw_calculation_entries[wf_id] = entry
     
@@ -286,8 +286,8 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         # Use calculation_model.meta for other fields (slug, path) as calculation.yaml is the source of truth for those
         calculation_meta_dict = calculation_model.meta.to_dict()
         # Check raw project.qv.yml entry for legacy name field
-        # Try both calculation_entry.meta.id and calculation_model.meta.id as keys
-        raw_entry = raw_calculation_entries.get(calculation_entry.meta.id) or raw_calculation_entries.get(calculation_model.meta.id)
+        # Try both calculation_entry.meta.ulid and calculation_model.meta.ulid as keys
+        raw_entry = raw_calculation_entries.get(calculation_entry.meta.ulid) or raw_calculation_entries.get(calculation_model.meta.ulid)
         legacy_name = None
         if raw_entry:
             # Check for legacy 'name' field at top level or in meta
@@ -299,8 +299,8 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         if legacy_name and legacy_name != calculation_model.meta.slug and legacy_name != calculation_model.meta.name:
             calculation_meta_dict["name"] = legacy_name
         # Preserve the calculation ID from calculation_entry if it's different (shouldn't happen, but be safe)
-        if calculation_entry.meta.id and calculation_entry.meta.id != calculation_model.meta.id:
-            calculation_meta_dict["id"] = calculation_entry.meta.id
+        if calculation_entry.meta.ulid and calculation_entry.meta.ulid != calculation_model.meta.ulid:
+            calculation_meta_dict["ulid"] = calculation_entry.meta.ulid
         
         calculation_dict = {
             "meta": calculation_meta_dict,
@@ -320,7 +320,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         
         # Export each step
         # Strategy: Scan step files directly and export them, matching by ID when possible
-        # This handles cases where calculation.yaml step_id doesn't match step file meta.id
+        # This handles cases where calculation.yaml step_id doesn't match step file meta.ulid
         # Create resolver for legacy structure selector normalization
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
@@ -342,7 +342,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
                 try:
                     # Load step spec to get its ID
                     step_spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolver)
-                    step_id = step_spec.meta.id
+                    step_id = step_spec.meta.ulid
                     step_file_map[step_id] = step_file
                 except Exception:
                     # Skip step files that can't be loaded
@@ -395,7 +395,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
                 from quantumvitas.core.models import migrate_species_overrides_to_calc
                 # Create a temporary calc model for migration
                 temp_calc = CalculationModel(
-                    meta=ResourceMeta(id="temp", name="temp", slug="temp", path="temp", kind="calculation"),
+                    meta=ResourceMeta(ulid="temp", name="temp", slug="temp", path="temp", kind="calculation"),
                 )
                 temp_calc = migrate_species_overrides_to_calc(temp_calc, step_species_overrides_list)
                 calc_species_map = temp_calc.species_map
@@ -567,7 +567,7 @@ def materialize_project_from_snapshot(
     id_mapping: Dict[str, str] = {}
     
     # Map project ID
-    old_project_id = project_meta.get("id")
+    old_project_id = project_meta.get("ulid")
     if old_project_id:
         new_project_id = generate_resource_id()
         id_mapping[old_project_id] = new_project_id
@@ -576,7 +576,7 @@ def materialize_project_from_snapshot(
     structure_slug_to_new_id: Dict[str, str] = {}
     for struct_data in snapshot.structures:
         struct_meta = struct_data.get("meta", {})
-        old_struct_id = struct_meta.get("id")
+        old_struct_id = struct_meta.get("ulid")
         struct_slug = struct_meta.get("slug") or slugify(struct_meta.get("name", "structure"))
         
         if old_struct_id:
@@ -588,7 +588,7 @@ def materialize_project_from_snapshot(
     calculation_slug_to_new_id: Dict[str, str] = {}
     for calculation_data in snapshot.calculations:
         calculation_meta = calculation_data.get("meta", {})
-        old_calculation_id = calculation_meta.get("id")
+        old_calculation_id = calculation_meta.get("ulid")
         calculation_slug = calculation_meta.get("slug") or slugify(calculation_meta.get("name", "calculation"))
         
         if old_calculation_id:
@@ -600,14 +600,13 @@ def materialize_project_from_snapshot(
     for calculation_data in snapshot.calculations:
         for step_data in calculation_data.get("steps", []):
             step_meta = step_data.get("meta", {})
-            old_step_id = step_meta.get("id")
+            old_step_id = step_meta.get("ulid")
             if old_step_id:
                 new_step_id = generate_resource_id()
                 id_mapping[old_step_id] = new_step_id
     
     # Create project.qv.yml
-    new_project_meta = ResourceMeta(
-        id=new_project_id,
+    new_project_meta = ResourceMeta(ulid=new_project_id,
         name=project_name,
         slug=project_slug,
         path=".",
@@ -630,7 +629,7 @@ def materialize_project_from_snapshot(
         struct_meta = struct_data.get("meta", {})
         struct_name = struct_meta.get("name", "structure")
         struct_slug = struct_meta.get("slug") or slugify(struct_name)
-        old_struct_id = struct_meta.get("id")
+        old_struct_id = struct_meta.get("ulid")
         new_struct_id = id_mapping.get(old_struct_id, generate_resource_id())
         
         # Create structure file
@@ -639,7 +638,7 @@ def materialize_project_from_snapshot(
         # Prepare structure JSON with meta wrapper
         structure_json = {
             STRUCTURE_META_KEY: {
-                "id": new_struct_id,
+                "ulid": new_struct_id,
                 "name": struct_name,
                 "slug": struct_slug,
                 "path": f"structures/{struct_slug}.json",
@@ -653,8 +652,7 @@ def materialize_project_from_snapshot(
         # Add to project model
         from quantumvitas.core.models import StructureEntry
         struct_entry = StructureEntry(
-            meta=ResourceMeta(
-                id=new_struct_id,
+            meta=ResourceMeta(ulid=new_struct_id,
                 name=struct_name,
                 slug=struct_slug,
                 path=f"structures/{struct_slug}.json",
@@ -673,7 +671,7 @@ def materialize_project_from_snapshot(
         calculation_meta = calculation_data.get("meta", {})
         calculation_name = calculation_meta.get("name") or calculation_meta.get("slug") or "calculation"
         calculation_slug = calculation_meta.get("slug") or slugify(calculation_name)
-        old_calculation_id = calculation_meta.get("id")
+        old_calculation_id = calculation_meta.get("ulid")
         new_calculation_id = id_mapping.get(old_calculation_id, generate_resource_id())
         
         # Create calculation directory
@@ -696,7 +694,7 @@ def materialize_project_from_snapshot(
             structure_found = False
             for struct_data in snapshot.structures:
                 struct_meta = struct_data.get("meta", {})
-                if struct_meta.get("id") == calculation_structure_id:
+                if struct_meta.get("ulid") == calculation_structure_id:
                     # Map to new structure ID
                     new_structure_id = id_mapping.get(calculation_structure_id)
                     if new_structure_id:
@@ -715,7 +713,7 @@ def materialize_project_from_snapshot(
                 struct_meta = struct_data.get("meta", {})
                 struct_slug = struct_meta.get("slug") or slugify(struct_meta.get("name", ""))
                 struct_name = struct_meta.get("name", "")
-                old_struct_id = struct_meta.get("id")
+                old_struct_id = struct_meta.get("ulid")
                 
                 if (struct_slug == calculation_structure_selector or 
                     struct_name.lower() == calculation_structure_selector.lower()):
@@ -739,8 +737,7 @@ def materialize_project_from_snapshot(
             from quantumvitas.core.models import migrate_species_overrides_to_calc
             # Create a temporary calc model for migration
             temp_calc_for_migration = CalculationModel(
-                meta=ResourceMeta(
-                    id=new_calculation_id,
+                meta=ResourceMeta(ulid=new_calculation_id,
                     name=calculation_name,
                     slug=calculation_slug,
                     path=f"calculations/{calculation_slug}",
@@ -770,8 +767,7 @@ def materialize_project_from_snapshot(
         
         # Create calculation.yaml
         calculation_model = CalculationModel(
-            meta=ResourceMeta(
-                id=new_calculation_id,
+            meta=ResourceMeta(ulid=new_calculation_id,
                 name=calculation_name,
                 slug=calculation_slug,
                 path=f"calculations/{calculation_slug}",
@@ -792,7 +788,7 @@ def materialize_project_from_snapshot(
             step_meta = step_data.get("meta", {})
             step_name = step_meta.get("name", step_data.get("step_type", "step"))
             step_slug = step_meta.get("slug") or slugify(step_name)
-            old_step_id = step_meta.get("id")
+            old_step_id = step_meta.get("ulid")
             new_step_id = id_mapping.get(old_step_id, generate_resource_id())
             
             # Create step spec with new IDs
@@ -813,7 +809,7 @@ def materialize_project_from_snapshot(
             # Update meta with new IDs (use ulid, not id)
             step_spec_dict["meta"] = {
                 "ulid": new_step_id,
-                "id": new_step_id,  # Keep id for backwards compat during migration
+                "ulid": new_step_id,
                 "name": step_name,
                 "slug": step_slug,
                 "path": f"calculations/{calculation_slug}/steps/{step_slug}.step.yaml",
@@ -832,7 +828,7 @@ def materialize_project_from_snapshot(
             # Add to calculation steps list using step_ulid (ULID) from step meta
             from quantumvitas.core.models import CalculationStepEntry
             step_meta = step_spec_dict.get("meta", {})
-            step_id = step_meta.get("id") or step_spec_dict.get("id")
+            step_id = step_meta.get("ulid")  # CANONICAL: ulid only, no fallback
             calculation_model.steps.append(CalculationStepEntry(
                 step_ulid=step_id,  # Use ULID from step meta (canonical reference)
                 step_type_spec=step_spec.step_type_spec,  # Use step_type_spec from StructureStepSpec
@@ -845,8 +841,7 @@ def materialize_project_from_snapshot(
         # Add to project model
         from quantumvitas.core.models import CalculationEntry
         calculation_entry = CalculationEntry(
-            meta=ResourceMeta(
-                id=new_calculation_id,
+            meta=ResourceMeta(ulid=new_calculation_id,
                 name=calculation_name,
                 slug=calculation_slug,
                 path=f"calculations/{calculation_slug}",

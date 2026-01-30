@@ -71,7 +71,7 @@ class AnalysisObjectMeta:
     source_files: List[SourceFileStat] = field(default_factory=list)
     
     # Provenance (for UI explanation only, NOT for stale detection)
-    run_id: Optional[str] = None
+    run_ulid: Optional[str] = None
     calc_ulid: Optional[str] = None
     step_ulid: Optional[str] = None
     
@@ -97,7 +97,7 @@ class AnalysisObjectMeta:
             object_type=object_type,
             created_at=datetime.now(timezone.utc).isoformat(),
             source_files=source_files,
-            run_id=run_id,
+            run_ulid=run_id,
             calc_ulid=calc_ulid,
             step_ulid=step_ulid,
             parser_name=parser_name,
@@ -110,7 +110,7 @@ class AnalysisObjectMeta:
             "object_type": self.object_type,
             "created_at": self.created_at,
             "source_files": [sf.to_dict() for sf in self.source_files],
-            "run_id": self.run_id,
+            "run_ulid": self.run_ulid,
             "calc_ulid": self.calc_ulid,
             "step_ulid": self.step_ulid,
             "parser_name": self.parser_name,
@@ -124,7 +124,7 @@ class AnalysisObjectMeta:
             object_type=data["object_type"],
             created_at=data["created_at"],
             source_files=[SourceFileStat.from_dict(sf) for sf in data.get("source_files", [])],
-            run_id=data.get("run_id"),
+            run_ulid=data.get("run_ulid", data.get("run_id")),
             calc_ulid=data.get("calc_ulid"),
             step_ulid=data.get("step_ulid"),
             parser_name=data.get("parser_name", ""),

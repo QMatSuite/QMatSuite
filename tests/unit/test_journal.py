@@ -278,7 +278,7 @@ class TestJournalIntegration:
         """Saving a Doc produces one JournalEntry."""
         path = tmp_path / "test.yaml"
         
-        doc = YamlDoc({"meta": {"id": "01TEST123"}, "value": 1})
+        doc = YamlDoc({"meta": {"ulid": "01TEST123"}, "value": 1})
         doc.set(["value"], 2)
         
         save_yaml_doc(doc, path)
@@ -292,7 +292,7 @@ class TestJournalIntegration:
         """before/after differ when mutation happens."""
         path = tmp_path / "test.yaml"
         
-        doc = YamlDoc({"meta": {"id": "01TEST456"}, "a": 1, "b": 2})
+        doc = YamlDoc({"meta": {"ulid": "01TEST456"}, "a": 1, "b": 2})
         doc.set(["a"], 99)
         doc.delete(["b"])
         doc.set(["c"], 3)
@@ -303,18 +303,18 @@ class TestJournalIntegration:
         entry = entries[0]
         
         # Before has original values
-        assert entry.before == {"meta": {"id": "01TEST456"}, "a": 1, "b": 2}
+        assert entry.before == {"meta": {"ulid": "01TEST456"}, "a": 1, "b": 2}
         
         # After has new values
-        assert entry.after == {"meta": {"id": "01TEST456"}, "a": 99, "c": 3}
+        assert entry.after == {"meta": {"ulid": "01TEST456"}, "a": 99, "c": 3}
     
     def test_step_doc_produces_entry(self, tmp_path, test_journal):
         """StepDoc save produces journal entry with correct type."""
         path = tmp_path / "step.yaml"
         
         doc = StepDoc({
-            "meta": {"id": "01STEP789", "kind": "step"},
-            "step_type": "scf",
+            "meta": {"ulid": "01STEP789", "kind": "step"},
+            "step_type_gen": "scf",
             "parameters": {"SYSTEM": {"ecutwfc": 60}},
         })
         doc.set(["parameters", "SYSTEM", "ecutrho"], 480)
@@ -342,7 +342,7 @@ class TestJournalIntegration:
         """Journal entries don't leak references to doc internals."""
         path = tmp_path / "test.yaml"
         
-        doc = YamlDoc({"meta": {"id": "01TEST"}, "list": [1, 2, 3]})
+        doc = YamlDoc({"meta": {"ulid": "01TEST"}, "list": [1, 2, 3]})
         save_yaml_doc(doc, path)
         
         entries = test_journal.list_entries()
@@ -369,7 +369,7 @@ class TestHelperFunctions:
     
     def test_infer_doc_type_step(self):
         """Infer step doc type."""
-        data = {"step_type": "scf", "parameters": {}}
+        data = {"step_type_gen": "scf", "parameters": {}}
         assert infer_doc_type(data) == "step"
         
         data2 = {"meta": {"kind": "step"}}
@@ -398,7 +398,7 @@ class TestHelperFunctions:
     
     def test_extract_target_ulid(self):
         """Extract ULID from meta.id."""
-        data = {"meta": {"id": "01ABC123"}}
+        data = {"meta": {"ulid": "01ABC123"}}
         assert extract_target_ulid(data) == "01ABC123"
     
     def test_extract_target_ulid_fallback(self):

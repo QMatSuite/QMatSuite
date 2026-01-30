@@ -126,8 +126,8 @@ class TestProjectSnapshot:
         from quantumvitas.core.resolution import build_resource_index
         index = build_resource_index(new_project_root)
         step_entry = calculation_model.steps[0]
-        step_meta = index.by_id.get(step_entry.step_id)
-        assert step_meta is not None, f"Step {step_entry.step_id} not found in registry"
+        step_meta = index.by_id.get(step_entry.step_ulid)
+        assert step_meta is not None, f"Step {step_entry.step_ulid} not found in registry"
         step_file = new_project_root / step_meta.path
         step_spec = StructureStepSpec.from_yaml(step_file)
         # DAG model: Step YAML should NOT contain structure_id or parent_calculation_id
@@ -164,8 +164,8 @@ class TestProjectSnapshot:
         )
         
         # ULIDs should be different
-        assert original_project.meta.id != new_project.meta.id
-        assert original_calculation.meta.id != new_calculation.meta.id
+        assert original_project.meta.ulid != new_project.meta.ulid
+        assert original_calculation.meta.ulid != new_calculation.meta.ulid
         
         # But names/slugs should match
         assert original_project.meta.name == new_project.meta.name
@@ -348,7 +348,7 @@ class TestSnapshotRoundtrip:
         original_steps_by_type = {}
         for step_entry in original_calculation.steps:
             # Find step file
-            step_meta = original_index.by_id.get(step_entry.step_id)
+            step_meta = original_index.by_id.get(step_entry.step_ulid)
             if step_meta:
                 step_file = project1_path / step_meta.path
                 if step_file.exists():
@@ -361,7 +361,7 @@ class TestSnapshotRoundtrip:
         new_steps_by_type = {}
         for step_entry in new_calculation.steps:
             # Find step file
-            step_meta = new_index.by_id.get(step_entry.step_id)
+            step_meta = new_index.by_id.get(step_entry.step_ulid)
             if step_meta:
                 step_file = new_project_root / step_meta.path
                 if step_file.exists():
@@ -392,7 +392,7 @@ class TestSnapshotRoundtrip:
             new_step_spec = new_steps_by_type[common_type]
             # Find the step file path
             for step_entry in new_calculation.steps:
-                step_meta = new_index.by_id.get(step_entry.step_id)
+                step_meta = new_index.by_id.get(step_entry.step_ulid)
                 if step_meta:
                     step_file = new_project_root / step_meta.path
                     if step_file.exists():
@@ -647,7 +647,7 @@ class TestSnapshotEdgeCases:
         struct = Structure(Lattice.cubic(5.43), ['Si'], [[0, 0, 0]])
         struct_file = existing_project / "structures" / "si.json"
         struct_meta = {
-            'id': generate_resource_id(),
+            "ulid": generate_resource_id(),
             'name': 'Si',
             'slug': 'si',
             'path': 'structures/si.json',
@@ -656,7 +656,7 @@ class TestSnapshotEdgeCases:
         write_structure(struct, struct_file, metadata=struct_meta)
         
         config = load_project_config(existing_project)
-        config['structures'].append({'id': struct_meta['id']})
+        config['structures'].append({"ulid": struct_meta["ulid"]})
         save_project_config(existing_project, config)
         
         # Export snapshot from project1

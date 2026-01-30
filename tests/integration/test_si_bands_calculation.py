@@ -29,10 +29,10 @@ def si_bands_dir(ci_test_data_dir):
 @pytest.fixture
 def si_bands_project(project_root_path: Path, si_bands_dir: Path) -> Path:
     steps = [
-        {"id": "scf", "input": "si.0_scf.in", "reference": "si.0_scf.out"},
-        {"id": "nscf", "input": "si.1_nscf.in", "reference": "si.1_nscf.out"},
-        {"id": "bands_pw", "input": "si.2_bands.in", "reference": "si.2_bands.out"},
-        {"id": "bands", "input": "si.3_bands.pp.in", "reference": "si.3_bands.pp.out"},
+        {"ulid": "scf", "input": "si.0_scf.in", "reference": "si.0_scf.out"},
+        {"ulid": "nscf", "input": "si.1_nscf.in", "reference": "si.1_nscf.out"},
+        {"ulid": "bands_pw", "input": "si.2_bands.in", "reference": "si.2_bands.out"},
+        {"ulid": "bands", "input": "si.3_bands.pp.in", "reference": "si.3_bands.pp.out"},
     ]
     from quantumvitas.core.paths import tmp_runs_dir
     destination = tmp_runs_dir() / "calculation_si_bands"

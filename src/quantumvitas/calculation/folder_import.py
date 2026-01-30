@@ -275,7 +275,7 @@ def materialize_project_from_qe_input_folder(
                             ref_structure = structure_from_qe_input(reference_qe_input)
                             # Generate a temporary QE input with ibrav=0 to get CELL_PARAMETERS
                             from quantumvitas.calculation.structure_steps import StructureStepSpec
-                            temp_spec = StructureStepSpec(step_type="scf", structure_id="temp")
+                            temp_spec = StructureStepSpec(step_type_spec="scf", structure_id="temp")
                             temp_qe, _ = generate_qe_input_from_structure(ref_structure, temp_spec)
                             gen_cell_card = temp_qe.get_card(QECardType.CELL_PARAMETERS)
                             if gen_cell_card:
@@ -363,7 +363,7 @@ def materialize_project_from_qe_input_folder(
                 name=structure_filename,
                 path=structure_meta_path,
             )
-            structure_meta.id = calculation_structure_id
+            structure_meta.ulid = calculation_structure_id
             
             # Write structure with meta
             write_structure(ref_structure, structure_path, format="json", metadata=structure_meta)
@@ -379,7 +379,7 @@ def materialize_project_from_qe_input_folder(
             name=calc_name,
             index=index,
         )
-        calculation_selector = calc_resolved.meta.id  # Use ID as selector
+        calculation_selector = calc_resolved.meta.ulid  # Use ID as selector
         
         # Set calculation structure_id if we determined it
         if calculation_structure_id:

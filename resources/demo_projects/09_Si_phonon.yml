@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE2M0NR9YX93KTA0MCCW6J56
+    ulid: 01KE2M0NR9YX93KTA0MCCW6J56
     name: 09_Si_phonon
     slug: 09_si_phonon
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE2M0NRMKXYSCMCHW0V7EXPF
+    ulid: 01KE2M0NRMKXYSCMCHW0V7EXPF
     name: si.1_scf
     slug: si-1_scf
     path: structures/si-1_scf.json
@@ -70,7 +70,7 @@ structures:
       - 1.3773039781619374
 calculations:
 - meta:
-    id: 01KE2M0NRBXT09Z45K2RTT6MW3
+    ulid: 01KE2M0NRBXT09Z45K2RTT6MW3
     name: Si Phonon  3 Phonon Dispersion
     slug: si-phonon-3-phonon-dispersion
     path: calculations/si-phonon-3-phonon-dispersion
@@ -175,7 +175,7 @@ pseudo:
   files:
   - Si.pbe-n-rrkjus_psl.1.0.0.UPF
 meta:
-  id: 09_Si_phonon
+  ulid: 09_Si_phonon
   title: 09 Si Phonon  3 Phonon Dispersion
   subtitle: "SCF \u2192 Phonon \u2192 q2r \u2192 matdyn \u2192 custom"
   tags:

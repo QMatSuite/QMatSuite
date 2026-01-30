@@ -2,7 +2,7 @@
   "method": "get_project_summary",
   "success": true,
   "response": {
-    "id": "<NORMALIZED_ID>",
+    "ulid": "<NORMALIZED_ID>",
     "name": "demo_project",
     "slug": "demo_project",
     "path": "<NORMALIZED_PATH>",

@@ -65,7 +65,7 @@ def temp_project(tmp_path: Path) -> Path:
     project_config = {
         "project": {
             "name": "Test Project",
-            "id": "test-project-id",
+            "ulid": "test-project-id",
         }
     }
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
@@ -87,7 +87,7 @@ def temp_calculation(temp_project: Path) -> Path:
     
     calc_yaml = {
         "meta": {
-            "id": "test-calc-id",
+            "ulid": "test-calc-id",
             "name": "Test Calculation",
             "slug": "test-calc",
             "path": "calculations/test-calc",
@@ -426,8 +426,7 @@ def test_refresh_calc_pseudo_records_missing_file(temp_project: Path) -> None:
     
     # Use correct CalculationModel constructor with ResourceMeta
     calc_model = CalculationModel(
-        meta=ResourceMeta(
-            id="test-calc-id",
+        meta=ResourceMeta(ulid="test-calc-id",
             name="Test Calc",
             slug="test-calc",
             path="calculations/test_calc",

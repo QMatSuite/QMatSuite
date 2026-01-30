@@ -46,7 +46,7 @@ class QeEngine(Engine):
 
         if hasattr(step, "resolve_input_path"):
             input_path = step.resolve_input_path(working_dir)
-            step_type = getattr(step, "step_type", None)
+            step_type = getattr(step, "step_type_spec", None)
             if step_type:
                 step_type_value = step_type
             elif hasattr(step, "type"):

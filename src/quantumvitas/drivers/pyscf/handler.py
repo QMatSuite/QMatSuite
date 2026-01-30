@@ -26,7 +26,7 @@ def _find_step_by_ulid(calculation: "Calculation", step_ulid: str) -> Optional["
     """Find a step in calculation by its ULID."""
     from quantumvitas.calculation.step import Step
     for step in calculation.steps:
-        if step.meta.id == step_ulid:
+        if step.meta.ulid == step_ulid:
             return step
     return None
 
@@ -81,7 +81,7 @@ def pyscf_chain_handler(
     for step in steps:
         if step is None:
             continue
-        step_artifacts_dir = raw_dir / "step_artifacts" / step.meta.id
+        step_artifacts_dir = raw_dir / "step_artifacts" / step.meta.ulid
         step_artifacts_dir.mkdir(parents=True, exist_ok=True)
 
         # Clear existing artifacts
@@ -122,7 +122,7 @@ def pyscf_chain_handler(
         for step in steps:
             if step is None:
                 continue
-            step_artifacts_dir = raw_dir / "step_artifacts" / step.meta.id
+            step_artifacts_dir = raw_dir / "step_artifacts" / step.meta.ulid
             step_result_data = {
                 "success": success,
                 "executed_in_chain": True,
@@ -137,11 +137,11 @@ def pyscf_chain_handler(
                     step_result_data["relax_artifact_spec"] = RelaxArtifactSpec(
                         artifact_type="pyscf_results",
                         artifact_path=results_file,
-                        step_ulid=step.meta.id,
-                        step_type=str(step_type),
+                        step_ulid=step.meta.ulid,
+                        step_type_spec=str(step_type),
                     ).to_dict()
             
-            step_results[step.meta.id] = step_result_data
+            step_results[step.meta.ulid] = step_result_data
 
         return JobResult(
             job_id=job.id,

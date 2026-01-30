@@ -261,7 +261,7 @@ class WorkflowService:
                             # Load step YAML to get step_type
                             from quantumvitas.core.yamldoc import StepDoc
                             step_doc = StepDoc.load(resolved_step.absolute_path)
-                            step_type = step_doc.get(["step_type"], default=None)
+                            step_type = step_doc.get(["step_type_spec"], default=None)
                             if debug_enabled:
                                 logger.info(
                                     f"[WORKFLOW_DETECT] Resolved step by ULID: step_id={step_ulid} -> "
@@ -312,7 +312,7 @@ class WorkflowService:
                         try:
                             from quantumvitas.core.yamldoc import StepDoc
                             step_doc = StepDoc.load(step_path)
-                            step_type = step_doc.get(["step_type"], default=None)
+                            step_type = step_doc.get(["step_type_spec"], default=None)
                             if debug_enabled:
                                 logger.info(
                                     f"[WORKFLOW_DETECT] Resolved step by file path: "
@@ -527,7 +527,7 @@ class WorkflowService:
             created_paths.append(step_path)
             
             # Collect step ULID for calc steps[] update
-            step_ulid = step_doc.get(["meta", "ulid"]) or step_doc.get(["meta", "id"])  # Fallback for legacy
+            step_ulid = step_doc.get(["meta", "ulid"])
             created_step_ulids.append(step_ulid)
         
         # Update calculation.yaml.steps[] with created steps (authoritative)

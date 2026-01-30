@@ -169,7 +169,7 @@ class Project:
             index = None
         
         for entry in entries:
-            structure_id = entry.get("structure_id") or entry.get("id")
+            structure_id = entry.get("structure_id") or entry.get("ulid")
             legacy_file = entry.get("file")
             
             struct_meta: Optional[ResourceMeta] = None
@@ -220,7 +220,7 @@ class Project:
             
             # If still no meta, construct from entry (fallback)
             if not struct_meta:
-                default_name = entry.get("name") or entry.get("id") or Path(
+                default_name = entry.get("name") or entry.get("ulid") or Path(
                     legacy_file or "structure"
                 ).stem
                 default_path = legacy_file or f"{default_dir.rstrip('/')}/{default_name}.json"
@@ -252,7 +252,7 @@ class Project:
         Resolution strategy (in order):
         1. Try registry-based resolution by calculation_id (preferred for ID-only model)
         2. Fall back to entry["path"] if available (legacy support)
-        3. Fall back to scanning calculations/*/calculation.yaml by meta.id
+        3. Fall back to scanning calculations/*/calculation.yaml by meta.ulid
         4. Raise error if calculation directory cannot be found
         
         Args:
@@ -273,7 +273,7 @@ class Project:
             registry = None
         
         for entry in entries:
-            calculation_id = entry.get("calculation_id") or entry.get("id")
+            calculation_id = entry.get("calculation_id") or entry.get("ulid")
             if not calculation_id:
                 # Skip entries without ID (should not happen in ID-only model)
                 continue
@@ -297,8 +297,7 @@ class Project:
                     entry_name = entry.get("name") or (entry.get("meta") or {}).get("name")
                     if entry_name and entry_name != calculation_meta.slug:
                         # Entry has a human-readable name - use it instead of registry name
-                        calculation_meta = ResourceMeta(
-                            id=calculation_meta.id,
+                        calculation_meta = ResourceMeta(ulid=calculation_meta.ulid,
                             name=entry_name,
                             slug=calculation_meta.slug,
                             path=calculation_meta.path,
@@ -320,7 +319,7 @@ class Project:
                             wf_data = yaml.safe_load(candidate_yaml.read_text()) or {}
                             wf_meta_dict = wf_data.get("meta") or {}
                             # Verify the ID matches
-                            if wf_meta_dict.get("id") == calculation_id:
+                            if wf_meta_dict.get("ulid") == calculation_id:
                                 calculation_dir = candidate_dir
                                 calculation_yaml_path = candidate_yaml
                                 # Prefer name from entry (project.qv.yml) over calculation.yaml if entry has a human-readable name
@@ -339,7 +338,7 @@ class Project:
                         except Exception:
                             continue
             
-            # Strategy 3: Scan calculations/*/calculation.yaml by meta.id (last resort)
+            # Strategy 3: Scan calculations/*/calculation.yaml by meta.ulid (last resort)
             if calculation_dir is None and calculations_dir.exists():
                 for wf_dir in calculations_dir.iterdir():
                     if not wf_dir.is_dir():
@@ -350,7 +349,7 @@ class Project:
                             import yaml
                             wf_data = yaml.safe_load(wf_yaml.read_text()) or {}
                             wf_meta_dict = wf_data.get("meta") or {}
-                            if wf_meta_dict.get("id") == calculation_id:
+                            if wf_meta_dict.get("ulid") == calculation_id:
                                 calculation_dir = wf_dir
                                 calculation_yaml_path = wf_yaml
                                 # Prefer name from entry (project.qv.yml) over calculation.yaml if entry has a human-readable name
@@ -373,7 +372,7 @@ class Project:
             if calculation_dir is None or calculation_yaml_path is None or not calculation_yaml_path.exists():
                 raise FileNotFoundError(
                     f"Could not locate calculation directory for id '{calculation_id}' under {calculations_dir}. "
-                    "Please ensure the calculation.yaml file exists and contains the correct meta.id."
+                    "Please ensure the calculation.yaml file exists and contains the correct meta.ulid."
                 )
             
             # Ensure calculation_meta is set (should have been set by one of the strategies above)
@@ -442,7 +441,7 @@ class Project:
             return self.structures[structure_id]
 
         for ref in self.structures.values():
-            if ref.meta.id == structure_id or ref.meta.name == structure_id:
+            if ref.meta.ulid == structure_id or ref.meta.name == structure_id:
                 return ref
         raise KeyError(f"Unknown structure '{structure_id}'")
 
@@ -453,7 +452,7 @@ class Project:
         if calculation_id in self.calculations:
             return self.calculations[calculation_id]
         for ref in self.calculations.values():
-            if ref.meta.id == calculation_id or ref.meta.name == calculation_id or ref.meta.slug == calculation_id:
+            if ref.meta.ulid == calculation_id or ref.meta.name == calculation_id or ref.meta.slug == calculation_id:
                 return ref
         raise KeyError(f"Unknown calculation '{calculation_id}'")
 

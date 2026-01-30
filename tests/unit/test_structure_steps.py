@@ -19,7 +19,7 @@ def sample_structure():
 def test_structure_step_spec_from_dict():
     data = {
         "structure": "si",
-        "step_type": "nscf",
+        "step_type_gen": "nscf",
         "parameters": {
             "SYSTEM": {"ecutwfc": 60},
             "ELECTRONS": {"conv_thr": 1e-8},
@@ -49,7 +49,7 @@ def test_generate_qe_input_from_structure_applies_step_type(sample_structure):
 def test_generate_qe_input_from_spec(sample_structure, tmp_path):
     spec_data = {
         "structure": "si",
-        "step_type": "scf",
+        "step_type_gen": "scf",
         "parameters": {
             "SYSTEM": {"ecutwfc": 50},
             "CONTROL": {"prefix": "si"},

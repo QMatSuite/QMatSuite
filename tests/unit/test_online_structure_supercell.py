@@ -569,7 +569,7 @@ def test_online_vs_project_pipeline_identical():
         )
     
     entry = entries[0]
-    entry_id = entry.get("id")
+    entry_id = entry.get("ulid")
     if not entry_id:
         pytest.fail(
             f"First entry from search_optimade has no 'id' field. "

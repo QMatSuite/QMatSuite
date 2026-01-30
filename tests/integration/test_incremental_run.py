@@ -91,7 +91,7 @@ def minimal_structure(tmp_project):
             source=cif_path,
             name="test_structure",
         )
-        structure_id = structure_resolved.meta.id
+        structure_id = structure_resolved.meta.ulid
         structure_path = structure_resolved.absolute_path
     finally:
         # Clean up temp file
@@ -118,7 +118,7 @@ def minimal_calculation(tmp_project, minimal_structure):
         name="test_calc",
         structure_selector=structure_id,
     )
-    calc_id = calc_resolved.meta.id
+    calc_id = calc_resolved.meta.ulid
     calc_dir = calc_resolved.absolute_path
     
     # Configure calculation with species_map and pseudo
@@ -187,7 +187,7 @@ def minimal_calculation(tmp_project, minimal_structure):
     # Steps are already added to calculation.yaml by init_step
     # Verify calculation.yaml has the steps
     calc_data = yaml.safe_load((calc_dir / "calculation.yaml").read_text())
-    step_ids_in_calc = [s.get("step_id") for s in calc_data.get("steps", [])]
+    step_ids_in_calc = [s.get("step_ulid") for s in calc_data.get("steps", [])]
     
     # Ensure all steps are in the calculation
     assert step1_id in step_ids_in_calc, f"Step1 {step1_id} not in calculation steps"
@@ -244,7 +244,7 @@ def test_different_calcs_run_concurrently(tmp_project, minimal_structure):
         name="calc1",
         structure_selector=structure_id,
     )
-    calc1_id = calc1_resolved.meta.id
+    calc1_id = calc1_resolved.meta.ulid
     calc1_dir = calc1_resolved.absolute_path
     
     calc2_resolved = QVService.init_calculation(
@@ -252,7 +252,7 @@ def test_different_calcs_run_concurrently(tmp_project, minimal_structure):
         name="calc2",
         structure_selector=structure_id,
     )
-    calc2_id = calc2_resolved.meta.id
+    calc2_id = calc2_resolved.meta.ulid
     calc2_dir = calc2_resolved.absolute_path
     
     # Both should be able to acquire locks simultaneously
@@ -649,7 +649,7 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     step2b_index = None
     for i, step in enumerate(calculation.steps):
         # Step may have meta.id or we need to check calculation.yaml
-        if i < len(step_list) and step_list[i].get("step_id") == step2b_id:
+        if i < len(step_list) and step_list[i].get("step_ulid") == step2b_id:
             step2b_index = i
             break
     
@@ -1218,10 +1218,10 @@ def test_step_has_no_id_property(tmp_project, minimal_calculation):
     with pytest.raises(AttributeError):
         _ = step.id
     
-    # Verify step.meta.id exists (ULID)
-    assert hasattr(step.meta, "id"), "Step.meta.id must exist (ULID)"
-    assert step.meta.id is not None, "Step.meta.id must not be None"
-    assert len(step.meta.id) == 26, f"Step.meta.id must be ULID (26 chars), got length {len(step.meta.id)}"
+    # Verify step.meta.ulid exists (ULID)
+    assert hasattr(step.meta, "id"), "Step.meta.ulid must exist (ULID)"
+    assert step.meta.ulid is not None, "Step.meta.ulid must not be None"
+    assert len(step.meta.ulid) == 26, f"Step.meta.ulid must be ULID (26 chars), got length {len(step.meta.ulid)}"
     
     # Verify step.meta.slug exists (slug for display)
     assert hasattr(step.meta, "slug"), "Step.meta.slug must exist (slug for display)"
@@ -1252,7 +1252,7 @@ def test_manifest_stores_ulid_not_slug(tmp_project, minimal_calculation, monkeyp
     
     # Get step slug (for comparison)
     step_slug = step.meta.slug
-    step_ulid = step.meta.id
+    step_ulid = step.meta.ulid
     
     # Verify slug and ULID are different (slug is typically "scf", ULID is 26 chars)
     assert step_slug != step_ulid, "Step slug and ULID must be different"

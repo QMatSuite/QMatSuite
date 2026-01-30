@@ -28,7 +28,7 @@ def minimal_project(tmp_path: Path) -> Path:
     project_config = {
         "calculations": [
             {
-                "id": calc_id,
+                "ulid": calc_id,
                 "name": "wf",
                 "slug": calc_slug,
                 "path": calc_path,
@@ -45,7 +45,7 @@ def minimal_project(tmp_path: Path) -> Path:
     calc_yaml_path = calc_dir / "calculation.yaml"
     calc_yaml_data = {
         "meta": {
-            "id": calc_id,
+            "ulid": calc_id,
             "name": "wf",
             "slug": calc_slug,
             "path": calc_path,
@@ -98,7 +98,7 @@ def test_require_calculation_ref_absolute_path(minimal_project: Path):
     
     # Verify meta information
     assert resolved.meta.slug == "wf"
-    assert resolved.meta.id is not None
+    assert resolved.meta.ulid is not None
     assert resolved.meta.path == "calculations/wf"
     
     # Verify directory structure

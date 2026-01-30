@@ -73,7 +73,7 @@ def pyscf_project_with_h2():
     structure_id = generate_resource_id()
     structure_data = {
         "__qv_meta__": {
-            "id": structure_id,
+            "ulid": structure_id,
             "name": "H2",
             "slug": "h2",
             "path": "structures/h2.json",

@@ -215,17 +215,17 @@ class TestSpecTruthPreservation:
     """Test that SPEC step types are preserved in production paths (Constitution §B)."""
 
     def test_structure_step_spec_preserves_spec_type(self, tmp_path):
-        """Loading step.yaml must preserve SPEC step_type without normalization to GEN."""
+        """Loading step.yaml must preserve SPEC step_type_spec without normalization to GEN."""
         from quantumvitas.calculation.structure_steps import StructureStepSpec
 
-        # Create a step.yaml with SPEC step_type
+        # Create a step.yaml with SPEC step_type_spec
         step_yaml = tmp_path / "test_step.yaml"
         step_yaml.write_text("""
 meta:
-  id: test123
+  ulid: test123
   name: test-step
   path: test_step.yaml
-step_type: qe_scf
+step_type_spec: qe_scf
 parameters:
   ecutwfc: 50
 """)
@@ -233,58 +233,58 @@ parameters:
         # Load the step spec
         spec = StructureStepSpec.from_yaml(step_yaml, resolve_structure_selector=None)
 
-        # CRITICAL: step_type MUST be SPEC format, not GEN
-        assert spec.step_type == "qe_scf", (
-            f"StructureStepSpec.step_type was normalized to '{spec.step_type}' but "
+        # CRITICAL: step_type_spec MUST be SPEC format, not GEN
+        assert spec.step_type_spec == "qe_scf", (
+            f"StructureStepSpec.step_type_spec was normalized to '{spec.step_type_spec}' but "
             f"Constitution §B requires persisted SPEC truth. Expected 'qe_scf'."
         )
 
     def test_structure_step_spec_preserves_orca_spec_type(self, tmp_path):
-        """Loading ORCA step.yaml must preserve SPEC step_type."""
+        """Loading ORCA step.yaml must preserve SPEC step_type_spec."""
         from quantumvitas.calculation.structure_steps import StructureStepSpec
 
         step_yaml = tmp_path / "orca_step.yaml"
         step_yaml.write_text("""
 meta:
-  id: orca123
+  ulid: orca123
   name: orca-scf
   path: orca_step.yaml
-step_type: orca_scf
+step_type_spec: orca_scf
 parameters:
   basis: def2-SVP
 """)
 
         spec = StructureStepSpec.from_yaml(step_yaml, resolve_structure_selector=None)
-        assert spec.step_type == "orca_scf", (
-            f"ORCA step_type was normalized to '{spec.step_type}'. Expected 'orca_scf'."
+        assert spec.step_type_spec == "orca_scf", (
+            f"ORCA step_type_spec was normalized to '{spec.step_type_spec}'. Expected 'orca_scf'."
         )
 
     def test_sha_computation_uses_spec_type(self, tmp_path):
-        """SHA computation must use SPEC step_type (matching YAML content)."""
+        """SHA computation must use SPEC step_type_spec (matching YAML content)."""
         from quantumvitas.calculation.hash_utils import compute_step_sha
 
         # Create step.yaml with SPEC type
         step_yaml = tmp_path / "step.yaml"
         step_yaml.write_text("""
-step_type: qe_scf
+step_type_spec: qe_scf
 parameters:
   ecutwfc: 50
 """)
 
         sha1 = compute_step_sha(step_yaml)
 
-        # If we modify step_type to GEN, SHA should change
+        # If we modify step_type_spec to different value, SHA should change
         step_yaml.write_text("""
-step_type: scf
+step_type_spec: qe_nscf
 parameters:
   ecutwfc: 50
 """)
 
         sha2 = compute_step_sha(step_yaml)
 
-        # SHA must differ because step_type is different (qe_scf vs scf)
+        # SHA must differ because step_type_spec is different (qe_scf vs qe_nscf)
         assert sha1 != sha2, (
-            "SHA computation normalized step_type before hashing. "
+            "SHA computation normalized step_type_spec before hashing. "
             "Constitution §B requires SHA to be computed on SPEC types (matching YAML truth)."
         )
 
@@ -299,7 +299,7 @@ parameters:
 
         # Create a mock step with a step_type that has GEN value (no prefix)
         mock_step = MagicMock()
-        mock_step.step_type = "scf"  # GEN type, no prefix
+        mock_step.step_type_spec= "scf"  # GEN type, no prefix
 
         # The registry has "scf" mapped to "qe" engine
         result = _get_engine_family_from_step(mock_step)
@@ -318,7 +318,7 @@ parameters:
         from unittest.mock import MagicMock
 
         mock_step = MagicMock()
-        mock_step.step_type = "pyscf_scf"
+        mock_step.step_type_spec= "pyscf_scf"
 
         result = _get_engine_family_from_step(mock_step)
         assert result == "pyscf", f"Expected 'pyscf', got '{result}'"
@@ -329,7 +329,7 @@ parameters:
         from unittest.mock import MagicMock
 
         mock_step = MagicMock()
-        mock_step.step_type = "orca_scf"
+        mock_step.step_type_spec= "orca_scf"
 
         result = _get_engine_family_from_step(mock_step)
         assert result == "orca", f"Expected 'orca', got '{result}'"

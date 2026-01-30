@@ -75,36 +75,36 @@ def temp_project_dir() -> Generator[Path, None, None]:
         project_config.write_text("""
 project:
   meta:
-    id: test-project-001
+    ulid: test-project-001
     name: Test Project
 """)
-        
+
         # Create calculations directory
         calc_dir = project_root / "calculations" / "calc-001"
         calc_dir.mkdir(parents=True)
-        
+
         # Create calculation.yaml
         calc_yaml = calc_dir / "calculation.yaml"
         calc_yaml.write_text("""
 meta:
-  id: calc-001
+  ulid: calc-001
   kind: calculation
   name: Test Calculation
-structure_id: struct-001
+structure_ulid: struct-001
 steps:
-  - id: step-001
-    type: scf
+  - step_ulid: step-001
+    step_type_spec: qe_scf
 """)
-        
+
         # Create steps directory with a step file
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir()
         step_yaml = steps_dir / "step-001.step.yaml"
         step_yaml.write_text("""
 meta:
-  id: step-001
+  ulid: step-001
   kind: step
-step_type: scf
+step_type_spec: qe_scf
 parameters:
   SYSTEM:
     ecutwfc: 30.0
@@ -174,7 +174,7 @@ class TestProjectHistoryStorage:
         assert len(lines) == 1
         data = json.loads(lines[0])
         assert data["event_type"] == EventType.BASELINE.value
-        assert data["project_id"] == "test-001"
+        assert data["project_ulid"] == "test-001"
     
     def test_append_multiple_events(self, temp_project_dir: Path):
         """Test appending multiple events."""
@@ -258,7 +258,7 @@ class TestProjectHistoryStorage:
         events = history.list_events(calc_id="calc-001")
         
         assert len(events) == 1
-        assert events[0].calc_id == "calc-001"
+        assert events[0].calc_ulid == "calc-001"
     
     def test_ensure_baseline_creates_baseline(self, temp_project_dir: Path):
         """Test that ensure_baseline creates a baseline event."""
@@ -326,9 +326,9 @@ class TestEvents:
         )
         
         assert event.event_type == EventType.BASELINE.value
-        assert event.project_id == "proj-001"
-        assert event.structure_ids == ["struct-001"]
-        assert event.calculation_ids == ["calc-001"]
+        assert event.project_ulid == "proj-001"
+        assert event.structure_ulids == ["struct-001"]
+        assert event.calculation_ulids == ["calc-001"]
         assert event.id  # Has ULID
         assert event.timestamp  # Has timestamp
     
@@ -369,7 +369,7 @@ class TestEvents:
         )
         
         assert event.event_type == EventType.RUN_STARTED.value
-        assert event.run_id == "run-001"
+        assert event.run_ulid == "run-001"
         assert event.step_ids == ["step-001", "step-002"]
     
     def test_run_finished_event_creation(self):
@@ -407,7 +407,7 @@ class TestEvents:
     def test_event_from_dict_dispatch(self):
         """Test that HistoryEvent.from_dict dispatches to correct subclass."""
         data = {
-            "id": "test-id",
+            "ulid": "test-id",
             "timestamp": "2024-01-01T00:00:00Z",
             "event_type": EventType.BASELINE.value,
             "project_id": "proj-001",
@@ -503,13 +503,13 @@ class TestRunRevision:
         
         data = revision.to_dict()
         
-        assert data["id"] == "run-001"
+        assert data["ulid"] == "run-001"
         assert data["status"] == RunStatus.SUCCESS
     
     def test_run_revision_from_dict(self):
         """Test RunRevision deserialization."""
         data = {
-            "id": "run-001",
+            "ulid": "run-001",
             "project_id": "proj-001",
             "calc_id": "calc-001",
             "status": "success",
@@ -584,33 +584,33 @@ class TestDigests:
     def test_step_digest_creation(self):
         """Test StepDigest creation."""
         digest = StepDigest(
-            step_id="step-001",
-            step_type="scf",
+            step_ulid="step-001",
+            step_type_spec="qe_scf",
             status="success",
         )
-        
+
         digest.total_energy = DigestValue.ok(-22.839, "Ry")
         digest.fermi_energy = DigestValue.ok(6.13, "eV")
-        
+
         data = digest.to_dict()
-        
-        assert data["step_id"] == "step-001"
+
+        assert data["step_ulid"] == "step-001"
         assert data["total_energy"]["value"] == -22.839
     
     def test_compute_step_digest_missing_output(self, temp_project_dir: Path):
         """Test digest computation with missing output file."""
         working_dir = temp_project_dir / "missing_output"
         working_dir.mkdir()
-        
+
         digest = compute_step_digest(
-            step_id="step-001",
-            step_type="scf",
+            step_ulid="step-001",
+            step_type_spec="qe_scf",
             working_dir=working_dir,
             step_name="SCF Step",
             step_status="failed",
         )
-        
-        assert digest.step_id == "step-001"
+
+        assert digest.step_ulid == "step-001"
         assert digest.output_exists is False
         assert digest.converged.status == "missing"
     
@@ -618,23 +618,23 @@ class TestDigests:
         """Test run digest computation."""
         step_digests = [
             StepDigest(
-                step_id="step-001",
-                step_type="scf",
+                step_ulid="step-001",
+                step_type_spec="qe_scf",
                 status="success",
                 converged=DigestValue.ok(True),
                 total_energy=DigestValue.ok(-22.839, "Ry"),
             ),
             StepDigest(
-                step_id="step-002",
-                step_type="nscf",
+                step_ulid="step-002",
+                step_type_spec="qe_nscf",
                 status="success",
                 fermi_energy=DigestValue.ok(6.13, "eV"),
             ),
         ]
-        
+
         started = datetime.now(timezone.utc)
         finished = datetime.now(timezone.utc)
-        
+
         run_digest = compute_run_digest(
             run_id="run-001",
             calc_id="calc-001",
@@ -643,7 +643,7 @@ class TestDigests:
             finished_at=finished,
             step_digests=step_digests,
         )
-        
+
         assert run_digest["run_id"] == "run-001"
         assert run_digest["status"] == "success"
         assert run_digest["step_count"] == 2
@@ -1012,8 +1012,8 @@ class TestJobHistoryIdUnification:
         
         # Verify all reference the same ID
         assert revision.id == external_id
-        assert started_event.run_id == external_id
-        assert finished_event.run_id == external_id
+        assert started_event.run_ulid == external_id
+        assert finished_event.run_ulid == external_id
         
         # Verify get_latest_run_id returns the external ID
         latest = get_latest_run_id(temp_project_dir)

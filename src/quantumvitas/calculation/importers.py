@@ -26,9 +26,9 @@ STRUCTURE_CARDS = {
 class StepImportResult:
     """Details about an imported QE input step."""
 
-    step_id: str
-    structure_id: Optional[str]  # None for structure-less steps (e.g., LR/TDDFT)
-    step_type: str
+    step_ulid: str
+    structure_ulid: Optional[str]  # None for structure-less steps (e.g., LR/TDDFT)
+    step_type_spec: str  # SPEC type (e.g., "qe_scf")
     parameters: Dict[str, Dict[str, object]]
     spec: StructureStepSpec
     spec_path: Path
@@ -39,7 +39,7 @@ class StepImportResult:
 class CalculationImportResult:
     """Summary information for a calculation import."""
 
-    calculation_id: str
+    calculation_ulid: str
     calculation_dir: Path
     calculation_file: Path
     step_results: list[StepImportResult]
@@ -181,7 +181,7 @@ def build_step_spec_from_qe_input(
             name=input_path.stem,  # Use input filename as name
             path=structure_meta_path,
         )
-        structure_meta.id = structure_id  # Set the ULID
+        structure_meta.ulid = structure_id  # Set the ULID
         
         # Write structure with meta
         write_structure(structure, structure_path, format="json", metadata=structure_meta)
@@ -230,17 +230,17 @@ def build_step_spec_from_qe_input(
 
     # Always set structure_id (ID-only model requirement)
     # For backwards compat, we can also set structure as a path selector if needed
-    if reference_structure_by == "id":
+    if reference_structure_by == "ulid":
         structure_ref_value = structure_id
         structure_selector = ""  # ID-only: no legacy selector
     else:
         structure_ref_value = _relative_path_for_spec(structure_path, destination)
         structure_selector = str(structure_ref_value)  # Legacy path selector for backwards compat
 
-    # Use step_name for filename (human-readable), step_id (ULID) for meta.id
+    # Use step_name for filename (human-readable), step_id (ULID) for meta.ulid
     step_file = destination / f"{step_name}.step.yaml"
     step_meta = meta_from_name("step", name=step_name, path=step_file.name)
-    step_meta.id = step_id  # Set ULID as meta.id
+    step_meta.ulid = step_id  # Set ULID as meta.ulid
     spec = StructureStepSpec(
         meta=step_meta,
         structure_id=structure_id,  # Always set structure_id (ID-only model)
@@ -254,9 +254,9 @@ def build_step_spec_from_qe_input(
     step_file.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
 
     return StepImportResult(
-        step_id=step_id,
-        structure_id=structure_id,
-        step_type=step_type,
+        step_ulid=step_id,
+        structure_ulid=structure_id,
+        step_type_spec=step_type,
         parameters=parameters,
         spec=spec,
         spec_path=step_file,
@@ -374,18 +374,18 @@ def build_calculation_from_qe_inputs(
     # If all steps share the same structure, we can optionally set it for convenience
     # but it's not required
     if step_results:
-        # Use the first step's structure_id as a default (for backward compatibility)
+        # Use the first step's structure_ulid as a default
         # but steps can have different structures
-        first_structure_id = step_results[0].structure_id
-        calculation_meta["structure_id"] = first_structure_id
+        first_structure_ulid = step_results[0].structure_ulid
+        calculation_meta["structure_id"] = first_structure_ulid
     # Explicitly ensure structure_name and structure are NOT written
     calculation_meta.pop("structure_name", None)
     calculation_meta.pop("structure", None)
 
     steps_section = [
         {
-            "step_id": result.step_id,  # ULID (canonical reference)
-            # step_file is NOT stored - step location resolved via registry using step_id
+            "step_id": result.step_ulid,  # ULID (canonical reference)
+            # step_file is NOT stored - step location resolved via registry using step_ulid
         }
         for result in step_results
     ]
@@ -420,7 +420,7 @@ def build_calculation_from_qe_inputs(
         calculation_meta["species_map"] = calc_species_map
 
     calculation_config = {
-        "id": calculation_id,
+        "ulid": calculation_id,
         "mode": mode,
         "calculation": calculation_meta,
         "steps": steps_section,
@@ -433,7 +433,7 @@ def build_calculation_from_qe_inputs(
     calculation_file.write_text(yaml.safe_dump(calculation_config, sort_keys=False))
 
     return CalculationImportResult(
-        calculation_id=calculation_id,
+        calculation_ulid=calculation_id,
         calculation_dir=calculation_dir,
         calculation_file=calculation_file,
         step_results=step_results,

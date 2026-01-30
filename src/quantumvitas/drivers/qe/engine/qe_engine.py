@@ -477,7 +477,7 @@ class QuantumEspressoEngine(Engine):
         # TODO: Implement full QE output parsing
         # This will use regex or specialized parsers to extract data
         results = {
-            "step_type": step_type,
+            "step_type_spec": step_type,
             "output_file": str(output_file),
             "parsed": False,  # Placeholder
         }

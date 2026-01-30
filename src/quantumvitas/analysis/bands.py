@@ -133,7 +133,7 @@ def analyze_bands(calculation: Calculation, result: CalculationResult, results_d
     2. Reciprocal lattice vectors (for proper k-point labeling)
     """
     band_steps = [
-        step for step in result.steps if step.step_type and step.step_type.startswith("bands")
+        step for step in result.steps if step.step_type_spec and step.step_type_spec.startswith("bands")
     ]
     if not band_steps:
         return
@@ -149,7 +149,7 @@ def analyze_bands(calculation: Calculation, result: CalculationResult, results_d
     
     for step in result.steps:
         step_fermi = step.metrics.get("fermi_energy_ev")
-        step_type = step.step_type.lower() if step.step_type else ""
+        step_type = step.step_type_spec.lower() if step.step_type_spec else ""
         
         if step_fermi is not None:
             if "nscf" in step_type:
@@ -169,7 +169,7 @@ def analyze_bands(calculation: Calculation, result: CalculationResult, results_d
     bands_results = []
     
     for step in band_steps:
-        step_id = step.step_id
+        step_id = step.step_ulid
         
         # Look for band files
         files = find_bands_files(raw_dir, prefix=step_id)
