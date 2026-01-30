@@ -24,10 +24,15 @@ class MockMeta:
     """Mock ResourceMeta for testing."""
 
     id: str
+    ulid: str = ""  # ULID attribute (canonical name)
     name: str = "test"
     slug: str = "test"
     path: str = "test.step.yaml"
     kind: str = "step"
+    
+    def __post_init__(self):
+        if not self.ulid:
+            self.ulid = self.id
 
 
 @dataclass
@@ -35,14 +40,18 @@ class MockStep:
     """Mock Step for testing recipes."""
 
     meta: MockMeta
-    step_type: Optional[str]
+    step_type_spec: Optional[str]  # SPEC type (e.g., "qe_scf")
+    step_type_gen: str = ""  # GEN type (e.g., "scf") - derived from spec
 
 
 def create_mock_step(ulid: str, step_type: str) -> MockStep:
     """Create a mock step with given ULID and type."""
+    # Extract GEN type from SPEC type (e.g., "qe_scf" -> "scf")
+    step_type_gen = step_type.split("_", 1)[-1] if "_" in step_type else step_type
     return MockStep(
         meta=MockMeta(id=ulid),
-        step_type=step_type,
+        step_type_spec=step_type,
+        step_type_gen=step_type_gen,
     )
 
 
@@ -60,7 +69,7 @@ class TestQERecipe:
         assert len(graph) == 1
         job = graph.jobs[0]
         assert job.id == "step_00"
-        assert job.step_ulids == ["01ABCDEF"]
+        assert job.step_ids == ["01ABCDEF"]
         assert job.working_dir == calc_raw_dir
         assert job.command == ["pw.x", "scf.in"]
         assert job.engine == "qe"
@@ -168,7 +177,7 @@ class TestORCARecipe:
         job = graph.jobs[0]
         # Job ID is from stable tokens
         assert job.id == "s"  # SCF token
-        assert job.step_ulids == ["01ABCDEF"]
+        assert job.step_ids == ["01ABCDEF"]
         # Working dir is namespaced
         assert "scf_" in str(job.working_dir)
 

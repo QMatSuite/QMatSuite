@@ -8,8 +8,11 @@ from quantumvitas.workflow.registry import get_registry
 class MockStep:
     """Mock step for testing."""
     def __init__(self, step_type: str, public_type: str = None):
+        self.step_type_spec = step_type  # SPEC type (e.g., "vasp_scf")
+        self.step_type_gen = public_type or step_type.split("_", 1)[-1] if "_" in step_type else step_type
+        # For compatibility with find_reference_scf which checks step_type or public_type
         self.step_type = step_type
-        self.step_type_gen = public_type or step_type
+        self.public_type = self.step_type_gen
 
 
 class TestReferenceSCFResolver:
@@ -26,7 +29,7 @@ class TestReferenceSCFResolver:
         assert result is not None
         idx, step = result
         assert idx == 0
-        assert step.step_type == "vasp_scf"
+        assert step.step_type_spec == "vasp_scf"
     
     def test_find_reference_scf_with_relax_barrier(self):
         """Test relax barrier: scf_1 → relax → scf_2 → bands."""
@@ -42,7 +45,7 @@ class TestReferenceSCFResolver:
         assert result is not None
         idx, step = result
         assert idx == 2
-        assert step.step_type == "vasp_scf"
+        assert step.step_type_spec == "vasp_scf"
     
     def test_find_reference_scf_no_scf_before(self):
         """Test when no SCF exists before current step."""

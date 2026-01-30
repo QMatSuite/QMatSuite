@@ -227,7 +227,7 @@ class TestWorkflowDetection:
         _save_yaml_raw({
             "ulid": "test-calc",
             "steps": [
-                {"step_type_gen": "scf", "file": "steps/scf.step.yaml"}
+                {"step_type_spec": "qe_scf", "file": "steps/scf.step.yaml"}
             ]
         }, calc_dir / "calculation.yaml")
         
@@ -252,9 +252,9 @@ class TestWorkflowDetection:
         _save_yaml_raw({
             "ulid": "test-calc",
             "steps": [
-                {"step_type_gen": "scf"},
-                {"step_type_gen": "nscf"},
-                {"step_type_gen": "dos"},
+                {"step_type_spec": "qe_scf"},
+                {"step_type_spec": "qe_nscf"},
+                {"step_type_spec": "qe_dos"},
             ]
         }, calc_dir / "calculation.yaml")
         
@@ -274,8 +274,8 @@ class TestWorkflowDetection:
         _save_yaml_raw({
             "ulid": "test-calc",
             "steps": [
-                {"step_type_gen": "scf"},
-                {"step_type_gen": "nscf"},
+                {"step_type_spec": "qe_scf"},
+                {"step_type_spec": "qe_nscf"},
             ]
         }, calc_dir / "calculation.yaml")
         
@@ -692,9 +692,9 @@ class TestWorkflowValidation:
         _save_yaml_raw({
             "ulid": "test-calc",
             "steps": [
-                {"step_type_gen": "scf"},
-                {"step_type_gen": "nscf"},
-                {"step_type_gen": "dos"},
+                {"step_type_spec": "qe_scf"},
+                {"step_type_spec": "qe_nscf"},
+                {"step_type_spec": "qe_dos"},
             ]
         }, calc_dir / "calculation.yaml")
         

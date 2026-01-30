@@ -44,13 +44,13 @@ class TestAnalysisObjectMeta:
         meta = AnalysisObjectMeta.create(
             object_type="trajectory",
             source_files=[source],
-            run_id="01JTEST",
+            run_ulid="01JTEST",
         )
         
         assert meta.schema_version == "1.0"
         assert meta.object_type == "trajectory"
         assert len(meta.source_files) == 1
-        assert meta.run_id == "01JTEST"
+        assert meta.run_ulid == "01JTEST"
     
     def test_to_dict_from_dict(self):
         """Test serialization round-trip."""

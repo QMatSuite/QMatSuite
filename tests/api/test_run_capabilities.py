@@ -175,7 +175,7 @@ def test_cancel_json_serializable(tmp_path):
     
     # Verify round-trip
     parsed = json.loads(json_str)
-    assert parsed["run_id"] == "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+    assert parsed["run_ulid"] == "01ARZ3NDEKTSV4RRFFQ69G5FAV"
     assert parsed["status"] == "CANCELLED"  # Legacy mapped status (uppercase)
-    assert parsed["calc_id"] == "calc123"
+    assert parsed["calc_ulid"] == "calc123"
 
