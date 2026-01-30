@@ -44,7 +44,7 @@ class StepTypeSpec:
     needs to know for routing and execution.
     """
 
-    id: str                          # Unique step type identifier (e.g., "vasp_scf")
+    step_type_spec: str              # Unique step type identifier (e.g., "vasp_scf")
     engine: str                      # Engine family (e.g., "vasp")
     executable: str                  # Default executable name (e.g., "vasp_std")
     description: str = ""            # Human-readable description
@@ -53,17 +53,17 @@ class StepTypeSpec:
     mpi_aware: bool = True           # Whether step can use MPI
 
     def __post_init__(self):
-        if not self.id:
-            raise ValueError("StepTypeSpec.id cannot be empty")
+        if not self.step_type_spec:
+            raise ValueError("StepTypeSpec.step_type_spec cannot be empty")
         if not self.engine:
             raise ValueError("StepTypeSpec.engine cannot be empty")
-        if not self.id.startswith(f"{self.engine}_") and self.id not in self._allowed_special_ids():
+        if not self.step_type_spec.startswith(f"{self.engine}_") and self.step_type_spec not in self._allowed_special_ids():
             raise ValueError(
-                f"StepTypeSpec.id '{self.id}' must start with engine prefix '{self.engine}_'"
+                f"StepTypeSpec.step_type_spec '{self.step_type_spec}' must start with engine prefix '{self.engine}_'"
             )
 
     def _allowed_special_ids(self) -> set[str]:
-        """IDs that don't follow the prefix convention."""
+        """Step type specs that don't follow the prefix convention."""
         return {"w90_preproc", "w90_run"}  # Wannier90 legacy names
 
 

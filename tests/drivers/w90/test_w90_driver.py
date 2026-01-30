@@ -22,7 +22,7 @@ class TestW90Driver:
         driver = W90Driver()
         specs = driver.get_step_type_specs()
 
-        spec_ids = {s.id for s in specs}
+        spec_ids = {s.step_type_spec for s in specs}
         assert "w90_run" in spec_ids
         # w90_preproc is NOT in this driver
         assert "w90_preproc" not in spec_ids

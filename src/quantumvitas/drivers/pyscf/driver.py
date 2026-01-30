@@ -43,7 +43,7 @@ class PySCFDriver(BaseEngineDriver):
         """Return PySCF step type specifications."""
         return [
             StepTypeSpec(
-                id="pyscf_scf",
+                step_type_spec="pyscf_scf",
                 engine="pyscf",
                 executable="python",  # PySCF is Python-based
                 description="PySCF HF/DFT SCF calculation",
@@ -51,56 +51,56 @@ class PySCFDriver(BaseEngineDriver):
                 mpi_aware=False,  # PySCF uses internal parallelization
             ),
             StepTypeSpec(
-                id="pyscf_dft",
+                step_type_spec="pyscf_dft",
                 engine="pyscf",
                 executable="python",
                 description="PySCF DFT calculation",
                 category="calculation",
             ),
             StepTypeSpec(
-                id="pyscf_opt",
+                step_type_spec="pyscf_opt",
                 engine="pyscf",
                 executable="python",
                 description="PySCF geometry optimization",
                 category="calculation",
             ),
             StepTypeSpec(
-                id="pyscf_freq",
+                step_type_spec="pyscf_freq",
                 engine="pyscf",
                 executable="python",
                 description="PySCF frequency calculation",
                 category="calculation",
             ),
             StepTypeSpec(
-                id="pyscf_mp2",
+                step_type_spec="pyscf_mp2",
                 engine="pyscf",
                 executable="python",
                 description="PySCF MP2 calculation",
                 category="calculation",
             ),
             StepTypeSpec(
-                id="pyscf_ccsd",
+                step_type_spec="pyscf_ccsd",
                 engine="pyscf",
                 executable="python",
                 description="PySCF CCSD calculation",
                 category="calculation",
             ),
             StepTypeSpec(
-                id="pyscf_casscf",
+                step_type_spec="pyscf_casscf",
                 engine="pyscf",
                 executable="python",
                 description="PySCF CASSCF calculation",
                 category="calculation",
             ),
             StepTypeSpec(
-                id="pyscf_casci",
+                step_type_spec="pyscf_casci",
                 engine="pyscf",
                 executable="python",
                 description="PySCF CASCI calculation",
                 category="calculation",
             ),
             StepTypeSpec(
-                id="pyscf_tddft",
+                step_type_spec="pyscf_tddft",
                 engine="pyscf",
                 executable="python",
                 description="PySCF TD-DFT calculation",
@@ -108,14 +108,14 @@ class PySCFDriver(BaseEngineDriver):
             ),
             # Also include step types that exist in registry
             StepTypeSpec(
-                id="pyscf_td",
+                step_type_spec="pyscf_td",
                 engine="pyscf",
                 executable="python",
                 description="PySCF TDDFT/CIS excited states",
                 category="calculation",
             ),
             StepTypeSpec(
-                id="pyscf_relax",
+                step_type_spec="pyscf_relax",
                 engine="pyscf",
                 executable="python",
                 description="PySCF geometry optimization",

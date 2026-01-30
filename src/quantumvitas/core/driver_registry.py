@@ -114,17 +114,16 @@ class DriverRegistry:
         self._drivers[family] = driver
         logger.info(f"Registered driver: {driver.display_name} ({family})")
 
-        # Register step types (use id as key - unique per engine)
-        # Note: driver_protocol.StepTypeSpec.id corresponds to workflow.registry.StepTypeSpec.step_type_spec
+        # Register step types (use step_type_spec as key - unique per engine)
         for spec in driver.get_step_type_specs():
-            if spec.id in self._step_types:
+            if spec.step_type_spec in self._step_types:
                 raise DuplicateStepTypeError(
-                    f"Step type '{spec.id}' already registered by engine "
-                    f"'{self._step_to_engine[spec.id]}'"
+                    f"Step type '{spec.step_type_spec}' already registered by engine "
+                    f"'{self._step_to_engine[spec.step_type_spec]}'"
                 )
-            self._step_types[spec.id] = spec
-            self._step_to_engine[spec.id] = family
-            logger.debug(f"  Registered step type: {spec.id}")
+            self._step_types[spec.step_type_spec] = spec
+            self._step_to_engine[spec.step_type_spec] = family
+            logger.debug(f"  Registered step type: {spec.step_type_spec}")
 
         # Register materialization map
         mat_map = driver.get_materialization_map()
@@ -173,7 +172,7 @@ class DriverRegistry:
         for spec in specs:
             if spec.engine != family:
                 raise EnginesMismatchError(
-                    f"Step type '{spec.id}' declares engine '{spec.engine}' "
+                    f"Step type '{spec.step_type_spec}' declares engine '{spec.engine}' "
                     f"but driver is '{family}'"
                 )
 

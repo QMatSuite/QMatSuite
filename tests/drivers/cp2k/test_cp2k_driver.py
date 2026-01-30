@@ -21,7 +21,7 @@ class TestCP2KDriver:
         driver = CP2KDriver()
         specs = driver.get_step_type_specs()
 
-        spec_ids = {s.id for s in specs}
+        spec_ids = {s.step_type_spec for s in specs}
         assert "cp2k_scf" in spec_ids
         assert "cp2k_relax" in spec_ids
         assert "cp2k_md" in spec_ids

@@ -49,14 +49,14 @@ class LAMMPSDriver(BaseEngineDriver):
         """Return LAMMPS step type specifications."""
         return [
             StepTypeSpec(
-                id="lammps_minimize",
+                step_type_spec="lammps_minimize",
                 engine="lammps",
                 executable="lmp",
                 description="LAMMPS energy minimization",
                 category="calculation",
             ),
             StepTypeSpec(
-                id="lammps_md",
+                step_type_spec="lammps_md",
                 engine="lammps",
                 executable="lmp",
                 description="LAMMPS molecular dynamics",
@@ -64,7 +64,7 @@ class LAMMPSDriver(BaseEngineDriver):
                 supports_restart=True,
             ),
             StepTypeSpec(
-                id="lammps_nve",
+                step_type_spec="lammps_nve",
                 engine="lammps",
                 executable="lmp",
                 description="LAMMPS NVE ensemble MD",
@@ -72,7 +72,7 @@ class LAMMPSDriver(BaseEngineDriver):
                 supports_restart=True,
             ),
             StepTypeSpec(
-                id="lammps_nvt",
+                step_type_spec="lammps_nvt",
                 engine="lammps",
                 executable="lmp",
                 description="LAMMPS NVT ensemble MD",
@@ -80,7 +80,7 @@ class LAMMPSDriver(BaseEngineDriver):
                 supports_restart=True,
             ),
             StepTypeSpec(
-                id="lammps_npt",
+                step_type_spec="lammps_npt",
                 engine="lammps",
                 executable="lmp",
                 description="LAMMPS NPT ensemble MD",
@@ -88,14 +88,14 @@ class LAMMPSDriver(BaseEngineDriver):
                 supports_restart=True,
             ),
             StepTypeSpec(
-                id="lammps_relax",
+                step_type_spec="lammps_relax",
                 engine="lammps",
                 executable="lmp",
                 description="LAMMPS structure relaxation",
                 category="calculation",
             ),
             StepTypeSpec(
-                id="lammps_equilibrate",
+                step_type_spec="lammps_equilibrate",
                 engine="lammps",
                 executable="lmp",
                 description="LAMMPS equilibration run",
@@ -103,7 +103,7 @@ class LAMMPSDriver(BaseEngineDriver):
                 supports_restart=True,
             ),
             StepTypeSpec(
-                id="lammps_deform",
+                step_type_spec="lammps_deform",
                 engine="lammps",
                 executable="lmp",
                 description="LAMMPS deformation study",
