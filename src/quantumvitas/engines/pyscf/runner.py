@@ -926,7 +926,7 @@ def run_job(job_path: Path) -> int:
         return 2
     
     # Determine step type
-    step_type = job.get("step_type", "pyscf_scf")
+    step_type = job.get("step_type_spec", "pyscf_scf")
     
     # Run calculation (Phase 3C: support pyscf_mp2, pyscf_relax)
     if step_type in ("pyscf_scf", "pyscf_rhf", "pyscf_uhf", "pyscf_rks", "pyscf_uks"):

@@ -445,7 +445,7 @@ def complete_run_revision(
     
     for i, step_result in enumerate(step_results):
         step_id = step_result.get("step_id", "")
-        step_type = step_result.get("step_type", "")
+        step_type = step_result.get("step_type_spec", "")
         # step_type is already a string, no conversion needed
         
         step_status = step_result.get("status", "success")

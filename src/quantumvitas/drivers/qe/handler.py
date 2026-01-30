@@ -169,7 +169,7 @@ def qe_step_handler(
                     working_dir=raw_dir,
                     project_root=calculation.project.root,
                     step_id=step_ulid,
-                    calculation_slug=calculation.id,
+                    calculation_slug=calculation.ulid,
                     engine=engine,
                     step_type=step.step_type_spec if step.step_type_spec else None,
                     timeout=step.options.get("timeout"),

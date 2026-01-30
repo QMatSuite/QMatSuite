@@ -256,11 +256,11 @@ class JobManager:
                                 # Match by step_id or step_type
                                 for job_step in job.steps:
                                     step_id = job_step.get("step_id")
-                                    step_type = job_step.get("step_type")
+                                    step_type = job_step.get("step_type_spec")
                                     # Find matching step in result
                                     for result_step in result_steps:
                                         result_step_id = result_step.get("step_id")
-                                        result_step_type = result_step.get("step_type")
+                                        result_step_type = result_step.get("step_type_spec")
                                         # Match by step_id (preferred) or step_type (fallback)
                                         if (step_id and result_step_id and step_id == result_step_id) or \
                                            (step_type and result_step_type and step_type == result_step_type):
@@ -411,10 +411,10 @@ class JobManager:
                             with self._lock:
                                 for job_step in job.steps:
                                     step_id = job_step.get("step_id")
-                                    step_type = job_step.get("step_type")
+                                    step_type = job_step.get("step_type_spec")
                                     for result_step in result_steps:
                                         result_step_id = result_step.get("step_id")
-                                        result_step_type = result_step.get("step_type")
+                                        result_step_type = result_step.get("step_type_spec")
                                         if (step_id and result_step_id and step_id == result_step_id) or \
                                            (step_type and result_step_type and step_type == result_step_type):
                                             job_step["status"] = result_step.get("status", job_step.get("status", "pending"))

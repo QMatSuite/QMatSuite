@@ -61,7 +61,7 @@ def run_chain_session(
     # Execute each step in the chain sequentially
     for step_idx, step_spec in enumerate(chain_steps):
         step_ulid = step_spec["step_ulid"]
-        step_type = step_spec["step_type"]
+        step_type = step_spec.get("step_type_spec")
         params = step_spec["parameters"]
         step_artifacts_dir = Path(step_spec.get("step_artifacts_dir", base_working_dir))
         is_target_step = (step_ulid == target_step_ulid)

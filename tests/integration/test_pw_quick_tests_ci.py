@@ -164,7 +164,7 @@ class TestPWQuickExecution:
                         "test": f"{category}/{test_name}",
                         "success": step_result.success,
                         "error": step_result.error,
-                        "message": f"Step {step_result.step_type} completed",
+                        "message": f"Step {step_result.step_type_spec} completed",
                     }
                 )
             except AssertionError as e:

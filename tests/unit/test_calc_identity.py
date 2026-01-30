@@ -10,37 +10,37 @@ from tempfile import TemporaryDirectory
 from quantumvitas.core.calc_identity import (
     infer_calculation_identity,
     ensure_calculation_identity,
-    _infer_engine_family_from_machine_types,
+    _infer_engine_family_from_spec_types,
     _infer_structure_kind_from_engine_family,
 )
 from quantumvitas.core.models import CalculationModel, CalculationStepEntry, ResourceMeta
 
 
-def test_infer_engine_family_from_machine_types_qe():
+def test_infer_engine_family_from_spec_types_qe():
     """Test inference of qe family from machine types."""
-    machine_types = ["qe_scf", "qe_nscf", "qe_dos"]
-    result = _infer_engine_family_from_machine_types(machine_types)
+    spec_types = ["qe_scf", "qe_nscf", "qe_dos"]
+    result = _infer_engine_family_from_spec_types(spec_types)
     assert result == "qe"
 
 
-def test_infer_engine_family_from_machine_types_pyscf():
+def test_infer_engine_family_from_spec_types_pyscf():
     """Test inference of pyscf family from machine types."""
-    machine_types = ["pyscf_scf"]
-    result = _infer_engine_family_from_machine_types(machine_types)
+    spec_types = ["pyscf_scf"]
+    result = _infer_engine_family_from_spec_types(spec_types)
     assert result == "pyscf"
 
 
-def test_infer_engine_family_from_machine_types_w90_separate_family():
+def test_infer_engine_family_from_spec_types_w90_separate_family():
     """Test that w90 steps are treated as separate family (no longer mapped to qe)."""
-    machine_types = ["qe_scf", "w90_run"]
-    result = _infer_engine_family_from_machine_types(machine_types)
+    spec_types = ["qe_scf", "w90_run"]
+    result = _infer_engine_family_from_spec_types(spec_types)
     assert result is None  # Mixed families: qe and w90 are separate engines
 
 
-def test_infer_engine_family_from_machine_types_mixed_returns_none():
+def test_infer_engine_family_from_spec_types_mixed_returns_none():
     """Test that mixed families return None."""
-    machine_types = ["qe_scf", "pyscf_scf"]
-    result = _infer_engine_family_from_machine_types(machine_types)
+    spec_types = ["qe_scf", "pyscf_scf"]
+    result = _infer_engine_family_from_spec_types(spec_types)
     assert result is None
 
 

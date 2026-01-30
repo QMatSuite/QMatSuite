@@ -77,13 +77,13 @@ def orca_project_with_h2(orca_available):
     calc_yaml.write_text(yaml.dump(calc_data, default_flow_style=False))
     
     # Create relax step
-    step = QVService.init_step(project_root, calc.id, "orca_relax", name="relax")
+    step = QVService.init_step(project_root, calc.ulid, "orca_relax", name="relax")
 
     # Configure with minimal parameters
     svc = QVService(project_root)
     svc.calculation.update_step_params(
-        calc_selector=calc.id,
-        step_selector=step.id,
+        calc_selector=calc.ulid,
+        step_selector=step.ulid,
         params={
             "parameters": {
                 "method": "HF",
@@ -95,8 +95,8 @@ def orca_project_with_h2(orca_available):
     
     yield {
         "project_root": project_root,
-        "calc_id": calc.id,
-        "step_ulid": step.id,
+        "calc_id": calc.ulid,
+        "step_ulid": step.ulid,
         "structure_path": project_root / "structures" / f"{struct_result.meta.ulid}.json",
         "initial_h2_distance": 0.8,
     }

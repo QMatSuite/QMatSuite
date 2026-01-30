@@ -236,7 +236,7 @@ class PySCFEngine(Engine):
             job_file.write_text(json.dumps(job_spec, indent=2))
         except Exception as e:
             return StepResult(
-                step_type="pyscf_scf",
+                step_type_spec="pyscf_scf",
                 input_file=job_file,
                 success=False,
                 error=f"Failed to write job file: {e}",
@@ -259,7 +259,7 @@ class PySCFEngine(Engine):
             return_code = result.returncode
         except subprocess.TimeoutExpired as e:
             return StepResult(
-                step_type="pyscf_scf",
+                step_type_spec="pyscf_scf",
                 input_file=job_file,
                 success=False,
                 error=f"Subprocess timeout: {e}",
@@ -267,7 +267,7 @@ class PySCFEngine(Engine):
             )
         except Exception as e:
             return StepResult(
-                step_type="pyscf_scf",
+                step_type_spec="pyscf_scf",
                 input_file=job_file,
                 success=False,
                 error=f"Subprocess execution failed: {e}",
@@ -294,7 +294,7 @@ class PySCFEngine(Engine):
         output_file = results_file if results_file.exists() else job_file
         
         return StepResult(
-            step_type="pyscf_scf",
+            step_type_spec="pyscf_scf",
             input_file=job_file,
             output_file=output_file,
             success=success,
@@ -336,7 +336,7 @@ class PySCFEngine(Engine):
         # Check platform first
         if sys.platform == "win32":
             return StepResult(
-                step_type="unknown",
+                step_type_spec="unknown",
                 input_file=calculation_raw_dir / "job_chain.json",
                 success=False,
                 error=(
@@ -350,7 +350,7 @@ class PySCFEngine(Engine):
         probe_result = self.probe()
         if not probe_result.get("available"):
             return StepResult(
-                step_type="unknown",
+                step_type_spec="unknown",
                 input_file=calculation_raw_dir / "job_chain.json",
                 success=False,
                 error=probe_result.get("reason", "PySCF not available"),
@@ -366,12 +366,12 @@ class PySCFEngine(Engine):
             if step_yaml_path.exists():
                 import yaml
                 step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
-                target_step_type = step_data.get("step_type")
+                target_step_type = step_data.get("step_type_spec")
         
         # HARD ERROR if step_type not found
         if not target_step_type:
             return StepResult(
-                step_type="unknown",
+                step_type_spec="unknown",
                 input_file=calculation_raw_dir / "job_chain.json",
                 success=False,
                 error=f"Failed to read machine step_type from step.yaml for target step. Step meta.path={getattr(target_step.meta, 'path', 'None') if hasattr(target_step, 'meta') else 'No meta'}, project_root={project_root}. Execution MUST use machine step_type from step.yaml, not Step.step_type_spec enum.",
@@ -383,7 +383,7 @@ class PySCFEngine(Engine):
         registry = get_registry()
         if not registry.has(target_step_type):
             return StepResult(
-                step_type=target_step_type,
+                step_type_spec=target_step_type,
                 input_file=calculation_raw_dir / "job_chain.json",
                 success=False,
                 error=f"Step type '{target_step_type}' not found in registry. This indicates an invalid or corrupted step.yaml file.",
@@ -394,7 +394,7 @@ class PySCFEngine(Engine):
         # Structure is required for PySCF calculations - raise error if missing
         if not structure_id:
             return StepResult(
-                step_type=target_step_type,
+                step_type_spec=target_step_type,
                 input_file=calculation_raw_dir / "job_chain.json",
                 success=False,
                 error=f"Structure ID is required for PySCF chain execution, but calculation.structure_id is None",
@@ -402,7 +402,7 @@ class PySCFEngine(Engine):
             )
         if not project_root:
             return StepResult(
-                step_type=target_step_type,
+                step_type_spec=target_step_type,
                 input_file=calculation_raw_dir / "job_chain.json",
                 success=False,
                 error=f"Project root is required for structure resolution, but project_root is None",
@@ -430,7 +430,7 @@ class PySCFEngine(Engine):
             # Assert it's a Molecule (not Structure)
             if not isinstance(structure, PMGMolecule):
                 return StepResult(
-                    step_type=target_step_type,
+                    step_type_spec=target_step_type,
                     input_file=calculation_raw_dir / "job_chain.json",
                     success=False,
                     error=f"Expected Molecule for PySCF, got {type(structure)}",
@@ -440,7 +440,7 @@ class PySCFEngine(Engine):
             # Validate structure has atoms
             if len(structure) == 0:
                 return StepResult(
-                    step_type=target_step_type,
+                    step_type_spec=target_step_type,
                     input_file=calculation_raw_dir / "job_chain.json",
                     success=False,
                     error=f"Structure has no atoms (structure_id={structure_id})",
@@ -460,7 +460,7 @@ class PySCFEngine(Engine):
             # Validate structure file exists
             if not structure_path_abs.exists():
                 return StepResult(
-                    step_type=target_step_type,
+                    step_type_spec=target_step_type,
                     input_file=calculation_raw_dir / "job_chain.json",
                     success=False,
                     error=f"Structure file does not exist: {structure_path_abs}",
@@ -469,7 +469,7 @@ class PySCFEngine(Engine):
         except Exception as e:
             import traceback
             return StepResult(
-                step_type=target_step_type,
+                step_type_spec=target_step_type,
                 input_file=calculation_raw_dir / "job_chain.json",
                 success=False,
                 error=f"Failed to load structure (structure_id={structure_id}, project_root={project_root}): {e}\n{traceback.format_exc()}",
@@ -483,19 +483,19 @@ class PySCFEngine(Engine):
             
             # Phase 3C: Read machine step_type from step.yaml (step.yaml stores machine types)
             # Step.step_type_spec is StepType enum which doesn't have all machine types (e.g., no "mp2")
-            step_type= "unknown"
+            step_type_spec= "unknown"
             if hasattr(step, 'meta') and hasattr(step.meta, 'path') and step.meta.path:
                 # step.meta.path is relative to project root
                 step_yaml_path = project_root / step.meta.path
                 if step_yaml_path.exists():
                     import yaml
                     step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
-                    step_type = step_data.get("step_type_spec") or step_data.get("step_type") or "unknown"
+                    step_type = step_data.get("step_type_spec") or "unknown"
             
             # HARD ERROR if step_type not found - no fallbacks allowed
             if step_type == "unknown" or not step_type:
                 return StepResult(
-                    step_type="unknown",
+                    step_type_spec="unknown",
                     input_file=calculation_raw_dir / "job_chain.json",
                     success=False,
                     error=f"Failed to read machine step_type from step.yaml for chain step {step_ulid}. Step meta.path={getattr(step.meta, 'path', 'None') if hasattr(step, 'meta') else 'No meta'}, project_root={project_root}. Execution MUST use machine step_type from step.yaml, not Step.step_type_spec enum.",
@@ -507,7 +507,7 @@ class PySCFEngine(Engine):
             registry = get_registry()
             if not registry.has(step_type):
                 return StepResult(
-                    step_type=step_type,
+                    step_type_spec=step_type,
                     input_file=calculation_raw_dir / "job_chain.json",
                     success=False,
                     error=f"Step type '{step_type}' not found in registry for chain step {step_ulid}. This indicates an invalid or corrupted step.yaml file.",
@@ -549,7 +549,7 @@ class PySCFEngine(Engine):
                 # For SCF steps: validate structure_path exists
                 if "structure_path" not in params:
                     return StepResult(
-                        step_type=step_type,
+                        step_type_spec=step_type,
                         input_file=calculation_raw_dir / "job_chain.json",
                         success=False,
                         error=f"SCF step ({step_ulid}) requires structure_path but it's missing from parameters",
@@ -558,7 +558,7 @@ class PySCFEngine(Engine):
                 structure_path_check = Path(params["structure_path"])
                 if not structure_path_check.exists():
                     return StepResult(
-                        step_type=step_type,
+                        step_type_spec=step_type,
                         input_file=calculation_raw_dir / "job_chain.json",
                         success=False,
                         error=f"SCF step ({step_ulid}) structure_path does not exist: {structure_path_check}",
@@ -570,7 +570,7 @@ class PySCFEngine(Engine):
                 found_structure_keys = structure_keys.intersection(params.keys())
                 if found_structure_keys:
                     return StepResult(
-                        step_type=step_type,
+                        step_type_spec=step_type,
                         input_file=calculation_raw_dir / "job_chain.json",
                         success=False,
                         error=f"Step {step_ulid} ({step_type}) must not receive structure data, but found keys: {found_structure_keys}",
@@ -609,7 +609,7 @@ class PySCFEngine(Engine):
             job_chain_file.write_text(json.dumps(job_chain_spec, indent=2))
         except Exception as e:
             return StepResult(
-                step_type=target_step_type,
+                step_type_spec=target_step_type,
                 input_file=job_chain_file,
                 success=False,
                 error=f"Failed to write job chain file: {e}",
@@ -632,7 +632,7 @@ class PySCFEngine(Engine):
             return_code = result.returncode
         except subprocess.TimeoutExpired as e:
             return StepResult(
-                step_type=target_step_type,
+                step_type_spec=target_step_type,
                 input_file=job_chain_file,
                 success=False,
                 return_code=None,
@@ -643,7 +643,7 @@ class PySCFEngine(Engine):
             )
         except Exception as e:
             return StepResult(
-                step_type=target_step_type,
+                step_type_spec=target_step_type,
                 input_file=job_chain_file,
                 success=False,
                 error=f"Subprocess execution failed: {e}",
@@ -676,7 +676,7 @@ class PySCFEngine(Engine):
         output_file = results_file if results_file.exists() else job_chain_file
         
         return StepResult(
-            step_type=target_step_type,
+            step_type_spec=target_step_type,
             input_file=job_chain_file,
             output_file=output_file,
             success=success,

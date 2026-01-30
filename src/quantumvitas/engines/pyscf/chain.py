@@ -49,42 +49,42 @@ def resolve_dependency_chain(
         return ([], f"Target step ULID '{target_step_ulid}' not found in calculation steps")
     
     # Get target step spec
-    _, target_machine_type = calculation_steps[target_idx]
-    target_spec = step_type_registry.get(target_machine_type)
-    
+    _, target_spec_type = calculation_steps[target_idx]
+    target_spec = step_type_registry.get(target_spec_type)
+
     if target_spec is None:
-        return ([], f"Step type '{target_machine_type}' not found in registry")
-    
+        return ([], f"Step type '{target_spec_type}' not found in registry")
+
     # If target has no dependency, chain is just the target
     if target_spec.consumes_state is None:
         return ([target_idx], None)
-    
+
     # Find nearest provider by scanning left
     required_state = target_spec.consumes_state
     provider_idx = None
-    
+
     for idx in range(target_idx - 1, -1, -1):  # Scan left from target
-        _, machine_type = calculation_steps[idx]
-        spec = step_type_registry.get(machine_type)
+        _, spec_type = calculation_steps[idx]
+        spec = step_type_registry.get(spec_type)
         if spec and spec.produces_state == required_state:
             provider_idx = idx
             break
-    
+
     if provider_idx is None:
         return (
             [],
-            f"No provider found for state '{required_state}' required by step '{target_machine_type}' (ULID: {target_step_ulid}). "
+            f"No provider found for state '{required_state}' required by step '{target_spec_type}' (ULID: {target_step_ulid}). "
             f"Scan left from target step but found no step with produces_state='{required_state}'."
         )
-    
+
     # Build chain: provider chain (if provider has dependencies) + provider + target
     # Since provider_idx is the nearest provider, and we scan left, the provider
     # should be the root (consumes_state=None) or we recurse to find its provider
     chain_indices = []
-    
+
     # If provider has dependencies, resolve its chain first
-    _, provider_machine_type = calculation_steps[provider_idx]
-    provider_spec = step_type_registry.get(provider_machine_type)
+    _, provider_spec_type = calculation_steps[provider_idx]
+    provider_spec = step_type_registry.get(provider_spec_type)
     if provider_spec and provider_spec.consumes_state is not None:
         # Provider also has dependencies - recurse
         provider_chain_indices, error = resolve_dependency_chain(

@@ -687,7 +687,7 @@ class TestCalculationFailureHandling:
             for i, step in enumerate(calculation.steps):
                 # Use ULID from calculation.yaml, not step.meta.slug (slug is for display only)
                 step_id = step_ulids[i] if i < len(step_ulids) else step.meta.ulid
-                step_type = step.step_type or "custom"
+                step_type = step.step_type_spec or "custom"
                 
                 # If a previous step failed, mark remaining steps as SKIPPED
                 if calculation_failed:

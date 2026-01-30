@@ -607,7 +607,7 @@ def find_step_in_calculation(
                 step_data = yaml.safe_load(step_path.read_text()) or {}
                 if step_data.get("ulid", "").lower() == ident_lower:
                     return step_path
-                if step_data.get("step_type", "").lower() == ident_lower:
+                if step_data.get("step_type_spec", "").lower() == ident_lower:
                     return step_path
             except Exception:
                 continue

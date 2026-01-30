@@ -347,7 +347,7 @@ class LammpsEngine(Engine):
             raise ValueError(
                 f"[LAMMPS-SELF-REFERENCE-ERROR] restart_from cannot reference the current step itself. "
                 f"step_ulid={current_step_ulid}, restart_from={restart_from}, "
-                f"step_type={getattr(step, 'step_type', 'unknown')}, "
+                f"step_type_spec={getattr(step, 'step_type_spec', 'unknown')}, "
                 f"calc_dir={calculation.dir}. "
                 f"This indicates a bug in step creation or configuration - restart_from should reference "
                 f"an UPSTREAM step (e.g., a previous relax or MD step)."
@@ -561,7 +561,7 @@ class LammpsEngine(Engine):
                     error = f"LAMMPS reported errors:\n" + "\n".join(error_lines[:5])
         
         return StepResult(
-            step_type=step.step_type_spec if hasattr(step, "step_type_spec") else "",
+            step_type_spec=step.step_type_spec if hasattr(step, "step_type_spec") else "",
             input_file=working_dir / "in.lammps",
             success=(result.returncode == 0 and error is None),
             error=error,

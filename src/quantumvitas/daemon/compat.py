@@ -742,8 +742,8 @@ def _shape_calculation_detail(response: Dict[str, Any]) -> Dict[str, Any]:
 
         # Remove old/ambiguous fields
         step.pop("status", None)
-        step.pop("step_type", None)  # Ambiguous - use step_type_spec or step_type_gen explicitly
-        step.pop("type", None)  # Ambiguous - use step_type_spec or step_type_gen explicitly
+        # Keep step_type_spec in response (NO backwards compat - clean canonical naming)
+        step.pop("type", None)  # Remove ambiguous 'type' field - use step_type_spec or step_type_gen explicitly
         step.pop("id", None)  # Ambiguous - use step_ulid explicitly
 
         # Ensure missing is boolean
@@ -799,7 +799,7 @@ def _shape_update_calculation_species_map(response: Dict[str, Any]) -> Dict[str,
                                 for part in step_file.split("/")):
             step["step_file"] = f"steps/{step.get('name', '')}.step.yaml"
         step.pop("status", None)
-        step.pop("step_type", None)
+        # Keep step_type_spec in response (NO backwards compat - clean canonical naming)
         step.pop("step_id", None)
         if "missing" in step:
             step["missing"] = bool(step["missing"])
@@ -941,10 +941,9 @@ def _shape_step_detail(response: Dict[str, Any]) -> Dict[str, Any]:
     response.pop("calc_id", None)
 
     # Data should already have step_type_spec from kernel
-    # Convert to GEN for v0 RPC response
+    # Add step_type_gen for API response
     if "step_type_spec" in response:
-        response["step_type"] = get_step_type_gen(response["step_type_spec"])
-        response["step_type_gen"] = response["step_type"]  # Also add for v1 compatibility
+        response["step_type_gen"] = get_step_type_gen(response["step_type_spec"])
 
     return response
 

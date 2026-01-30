@@ -93,8 +93,8 @@ def get_step_type_gen(step_type_spec: str) -> str:
     Raises:
         KeyError: If step_type_spec is not in registry
     """
-    from quantumvitas.workflow.registry import normalize_step_type_to_public
-    return normalize_step_type_to_public(step_type_spec)
+    from quantumvitas.workflow.registry import normalize_step_type_to_gen
+    return normalize_step_type_to_gen(step_type_spec)
 
 # PR10: Minimal exports - only service, errors, and DTOs
 # Utilities are available via quantumvitas.api.utils.*

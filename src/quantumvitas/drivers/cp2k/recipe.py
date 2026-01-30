@@ -81,7 +81,7 @@ class CP2KRecipe(BaseRecipe):
         for step in steps:
             step_type = step.step_type_spec
             spec = registry.get(step_type) if step_type else None
-            public_type = spec.step_type_gen if spec else "unknown"
+            gen_type = spec.step_type_gen if spec else "unknown"
 
             job_id = step.meta.ulid
             working_dir = calc_raw_dir / step.meta.ulid
@@ -93,7 +93,7 @@ class CP2KRecipe(BaseRecipe):
             expected_outputs = [working_dir / "output.log"]
 
             # Add trajectory and cell for relax/md
-            if public_type in ("relax", "md"):
+            if gen_type in ("relax", "md"):
                 expected_outputs.append(working_dir / "cp2k_calc-pos-1.xyz")
                 expected_outputs.append(working_dir / "cp2k_calc-1.cell")  # NEW
 
@@ -114,8 +114,8 @@ class CP2KRecipe(BaseRecipe):
                 fingerprint=step_sha,
                 metadata={
                     "engine": "cp2k",
-                    "spec_step_type": spec.step_type_spec if spec else None,
-                    "step_type_gen": public_type,
+                    "step_type_spec": spec.step_type_spec if spec else None,
+                    "step_type_gen": gen_type,
                 },
             )
             jobs.append(job)

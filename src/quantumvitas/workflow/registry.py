@@ -58,10 +58,10 @@ class StepTypeSpec:
 # =============================================================================
 # These tokens are used for QC chain subchain basenames.
 # IMMUTABLE ONCE PUBLISHED - do not change existing mappings.
-# Format: public_type → token
+# Format: step_type_gen → token
 # Subchain basenames: s, s_t, s_m2, s_m2_n (joined by _)
 
-PUBLIC_TYPE_TOKENS: Dict[str, str] = {
+GEN_TYPE_TOKENS: Dict[str, str] = {
     "scf": "s",     # SCF/DFT root
     "hf": "h",      # Hartree-Fock root
     "td": "t",      # TDDFT/TDHF excited states
@@ -71,43 +71,43 @@ PUBLIC_TYPE_TOKENS: Dict[str, str] = {
 }
 
 
-def get_token_for_public_type(public_type: str) -> str:
+def get_token_for_gen_type(gen_type: str) -> str:
     """
-    Get stable token for a public step type.
+    Get stable token for a gen step type.
 
     Args:
-        public_type: Public/generalized step type (e.g., "scf", "td")
+        gen_type: Generalized step type (e.g., "scf", "td")
 
     Returns:
         Stable token for subchain basename (e.g., "s", "t")
 
     Raises:
-        ValueError: If public_type has no defined token
+        ValueError: If gen_type has no defined token
     """
-    token = PUBLIC_TYPE_TOKENS.get(public_type.lower())
+    token = GEN_TYPE_TOKENS.get(gen_type.lower())
     if token is None:
         raise ValueError(
-            f"No stable token defined for public_type '{public_type}'. "
-            f"Known tokens: {list(PUBLIC_TYPE_TOKENS.keys())}"
+            f"No stable token defined for gen_type '{gen_type}'. "
+            f"Known tokens: {list(GEN_TYPE_TOKENS.keys())}"
         )
     return token
 
 
-def generate_subchain_basename(public_types: List[str]) -> str:
+def generate_subchain_basename(gen_types: List[str]) -> str:
     """
-    Generate subchain basename from sequence of public step types.
+    Generate subchain basename from sequence of gen step types.
 
     Args:
-        public_types: List of public step types in execution order
-                      e.g., ["scf", "mp2"] or ["scf", "td"]
+        gen_types: List of gen step types in execution order
+                   e.g., ["scf", "mp2"] or ["scf", "td"]
 
     Returns:
         Subchain basename using stable tokens joined by '_'
         e.g., "s_m2", "s_t", "s_m2_n"
 
     Raises:
-        ValueError: If any public_type has no defined token
-        ValueError: If public_types is empty
+        ValueError: If any gen_type has no defined token
+        ValueError: If gen_types is empty
 
     Examples:
         >>> generate_subchain_basename(["scf"])
@@ -119,10 +119,10 @@ def generate_subchain_basename(public_types: List[str]) -> str:
         >>> generate_subchain_basename(["scf", "mp2", "nmr"])
         "s_m2_n"
     """
-    if not public_types:
-        raise ValueError("public_types cannot be empty")
+    if not gen_types:
+        raise ValueError("gen_types cannot be empty")
 
-    tokens = [get_token_for_public_type(pt) for pt in public_types]
+    tokens = [get_token_for_gen_type(gt) for gt in gen_types]
     return "_".join(tokens)
 
 
@@ -625,14 +625,14 @@ class StepTypeRegistry:
     def get(self, step_type: str) -> Optional[StepTypeSpec]:
         """
         Get specification for a step type.
-        
-        Accepts either public_type (e.g., "scf") or machine_type (e.g., "qe_scf").
-        Returns the StepTypeSpec (with both public_type and id fields).
-        
+
+        Accepts either step_type_gen (e.g., "scf") or step_type_spec (e.g., "qe_scf").
+        Returns the StepTypeSpec (with both step_type_gen and step_type_spec fields).
+
         Args:
             step_type: Step type identifier (case-insensitive)
-                Can be public_type ("scf") or machine_type ("qe_scf")
-            
+                Can be step_type_gen ("scf") or step_type_spec ("qe_scf")
+
         Returns:
             StepTypeSpec or None if not found
         """
@@ -850,18 +850,18 @@ def normalize_step_type(step_type: str) -> str:
     return step_type
 
 
-def normalize_step_type_to_public(step_type: str) -> str:
+def normalize_step_type_to_gen(step_type: str) -> str:
     """
-    Normalize step_type to public (legacy) format for backward compatibility.
-    
-    Converts machine types (e.g., "qe_scf") to public types (e.g., "scf").
-    If step_type is already a public type or unknown, returns it unchanged.
-    
+    Normalize step_type_spec to step_type_gen.
+
+    Converts spec types (e.g., "qe_scf") to gen types (e.g., "scf").
+    If step_type is already a gen type or unknown, returns it unchanged.
+
     Args:
-        step_type: Step type (machine or public format)
-        
+        step_type: Step type (spec or gen format)
+
     Returns:
-        Public step type (legacy format)
+        Gen step type
     """
     if not step_type:
         return step_type
@@ -910,15 +910,15 @@ def resolve_engine_for_step(
     if machine_step_type:
         step_type_str = machine_step_type
     elif step_yaml_path:
-        # Read machine step_type directly from step.yaml (step.yaml stores machine type, not public type)
+        # Read step_type_spec directly from step.yaml
         import yaml
         step_yaml_path = Path(step_yaml_path)  # Path is imported at module level
         if not step_yaml_path.exists():
             raise FileNotFoundError(f"Step YAML file not found: {step_yaml_path}")
         step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
-        step_type_str = step_data.get("step_type_spec") or step_data.get("step_type")
+        step_type_str = step_data.get("step_type_spec")
         if not step_type_str:
-            raise ValueError(f"Step YAML file missing 'step_type_spec' or 'step_type' field: {step_yaml_path}")
+            raise ValueError(f"Step YAML file missing 'step_type_spec' field: {step_yaml_path}")
     else:
         raise ValueError("Must provide one of: step_yaml_path or machine_step_type")
     

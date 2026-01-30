@@ -79,7 +79,7 @@ def create_calculation_project(
                 qe_input = QEInputParser.parse_file(first_input)
                 structure = structure_from_qe_input(qe_input)
                 structure_meta = meta_from_name("structure", name="test_structure", path="structures/test_structure.json")
-                structure_meta.id = structure_id
+                structure_meta.ulid = structure_id
                 structure_path = structures_dir / "test_structure.json"
                 write_structure(structure, structure_path, format="json", metadata=structure_meta)
                 structure_extracted = True
@@ -89,7 +89,7 @@ def create_calculation_project(
     # Fallback to hardcoded structure if extraction failed
     if not structure_extracted:
         structure_meta = meta_from_name("structure", name="test_structure", path="structures/test_structure.json")
-        structure_meta.id = structure_id
+        structure_meta.ulid = structure_id
         from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
         import json
         structure_json = {
@@ -135,7 +135,7 @@ def create_calculation_project(
         step_ulid = generate_resource_id()
         step_file = steps_dir / f"{step_id}.step.yaml"
         step_meta = meta_from_name("step", name=step_id, path=f"calculations/{calculation_id}/steps/{step_id}.step.yaml")
-        step_meta.id = step_ulid
+        step_meta.ulid = step_ulid
         
         # Parse the reference input file to extract QE parameters
         input_file = raw_dir / step["input"]

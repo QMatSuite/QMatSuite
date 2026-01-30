@@ -28,7 +28,7 @@ class TestDeleteCalculationDaemon:
         
         # Create calculation (this registers it in project config)
         calc_resource = QVService.init_calculation(project_root, "To Delete")
-        calculation_ulid = calc_resource.id
+        calculation_ulid = calc_resource.ulid
         calculation_slug = calc_resource.meta.slug
         
         # Rebuild index to ensure calculation is discoverable
@@ -38,7 +38,7 @@ class TestDeleteCalculationDaemon:
         # Verify calculation exists
         from quantumvitas.core.resolution import resolve_calculation
         resolved = resolve_calculation(project_root, calculation_ulid, index=index)
-        assert resolved.id == calculation_ulid
+        assert resolved.ulid == calculation_ulid
         
         # Create daemon instance
         daemon = QVDaemon()

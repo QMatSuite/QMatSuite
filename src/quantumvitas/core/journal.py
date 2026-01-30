@@ -312,7 +312,7 @@ def infer_doc_type(data: dict) -> DocType:
             return "project"
     
     # Heuristics based on keys
-    if "step_type" in data or "parameters" in data:
+    if "step_type_spec" in data or "parameters" in data:
         return "step"
     if "calculations" in data or "project" in data:
         return "project"

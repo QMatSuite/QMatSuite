@@ -11,7 +11,7 @@ from typing import Any, List, Optional, Protocol, Sequence
 
 class StepLike(Protocol):
     """Protocol for step-like objects."""
-    id: str
+    ulid: str
     step_type_gen: str  # GEN type (engine-agnostic, e.g., "scf")
     step_type_spec: str  # SPEC type (engine-prefixed, e.g., "qe_scf")
 
@@ -43,17 +43,17 @@ class QCChain:
         return [self.scf_root] + self.downstream
 
     @property
-    def step_ids(self) -> List[str]:
-        """Return all step IDs in chain order."""
-        return [self.scf_root.id] + [s.id for s in self.downstream]
+    def step_ulids(self) -> List[str]:
+        """Return all step ULIDs in chain order."""
+        return [self.scf_root.ulid] + [s.ulid for s in self.downstream]
 
-    def contains_step(self, step_id: str) -> bool:
-        """Check if chain contains a step with given ID."""
-        if self.scf_root.id == step_id:
+    def contains_step(self, step_ulid: str) -> bool:
+        """Check if chain contains a step with given ULID."""
+        if self.scf_root.ulid == step_ulid:
             return True
-        return any(s.id == step_id for s in self.downstream)
+        return any(s.ulid == step_ulid for s in self.downstream)
 
-    def to_partial_chain(self, target_step_id: str) -> "QCChain":
+    def to_partial_chain(self, target_step_ulid: str) -> "QCChain":
         """
         Extract partial chain from SCF root to target step (inclusive).
 
@@ -61,7 +61,7 @@ class QCChain:
         up to and including the target step.
 
         Args:
-            target_step_id: ID of target step
+            target_step_ulid: ULID of target step
 
         Returns:
             New QCChain containing only steps up to target
@@ -70,7 +70,7 @@ class QCChain:
             ValueError: If target not in chain
         """
         # Check if target is SCF root
-        if self.scf_root.id == target_step_id:
+        if self.scf_root.ulid == target_step_ulid:
             return QCChain(
                 scf_root=self.scf_root,
                 downstream=[],
@@ -82,12 +82,12 @@ class QCChain:
         found = False
         for step in self.downstream:
             partial_downstream.append(step)
-            if step.id == target_step_id:
+            if step.ulid == target_step_ulid:
                 found = True
                 break
 
         if not found:
-            raise ValueError(f"Step {target_step_id} not found in chain {self.key}")
+            raise ValueError(f"Step {target_step_ulid} not found in chain {self.key}")
 
         return QCChain(
             scf_root=self.scf_root,
@@ -104,7 +104,7 @@ def detect_chains(steps: Sequence[Any]) -> List[QCChain]:
     an SCF root and includes all subsequent steps until the next SCF root.
 
     Args:
-        steps: Sequence of step-like objects (must have id, public_type, step_type)
+        steps: Sequence of step-like objects (must have ulid, step_type_gen, step_type_spec)
 
     Returns:
         List of QCChain objects with keys assigned
@@ -164,19 +164,19 @@ def derive_chain_key(chain: QCChain, chain_index: int) -> str:
     return f"chain{chain_index:02d}_{base_key}"
 
 
-def find_chain_for_step(step_id: str, chains: List[QCChain]) -> Optional[QCChain]:
+def find_chain_for_step(step_ulid: str, chains: List[QCChain]) -> Optional[QCChain]:
     """
     Find which chain contains a given step.
 
     Args:
-        step_id: ID of the step to find
+        step_ulid: ULID of the step to find
         chains: List of QCChain objects to search
 
     Returns:
         QCChain containing the step, or None if not found
     """
     for chain in chains:
-        if chain.contains_step(step_id):
+        if chain.contains_step(step_ulid):
             return chain
     return None
 

@@ -56,7 +56,11 @@ class RunResultDTO(BaseDTO):
         """
         if self._step_details:
             # Return step-like objects from stored details
-            return [StepResultCompat(**step_dict) for step_dict in self._step_details]
+            # Only keep keys that StepResultCompat accepts
+            allowed_keys = {"step_ulid", "step_type_spec", "step_type_gen", "status", "message", "metrics"}
+            def filter_step(s: dict) -> dict:
+                return {k: v for k, v in s.items() if k in allowed_keys}
+            return [StepResultCompat(**filter_step(step_dict)) for step_dict in self._step_details]
         
         # Fallback: create minimal step objects from step_ulids
         return [StepResultCompat(step_ulid=step_ulid) for step_ulid in self.step_ulids]

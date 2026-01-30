@@ -81,7 +81,7 @@ def vasp_calculation(vasp_project):
     
     return {
         "project_root": project_root,
-        "calc_ulid": calc_result.id,
+        "calc_ulid": calc_result.ulid,
         "calc_dir": calc_dir,
         "structure_id": structure_id,
     }

@@ -44,7 +44,7 @@ def test_cli_run_calculation(cli_si_dos_project: Path):
     assert result.exit_code == 0, result.output
     assert "Calculation si_dos status: SUCCESS" in result.output
     # Check that all steps completed successfully
-    assert "step_type: scf" in result.output
-    assert "step_type: nscf" in result.output
-    assert "step_type: dos" in result.output
+    assert "step_type_spec: qe_scf" in result.output
+    assert "step_type_spec: qe_nscf" in result.output
+    assert "step_type_spec: qe_dos" in result.output
 

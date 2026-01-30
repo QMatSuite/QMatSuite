@@ -62,7 +62,7 @@ def create_step_doc(
     slug = slugify(name)
     
     # Build step data
-    # step.yaml stores machine_type (qe_scf), not public_type (scf)
+    # step.yaml stores step_type_spec (qe_scf), not step_type_gen (scf)
     data: Dict[str, Any] = {
         "meta": {
             "ulid": step_id,
@@ -70,7 +70,7 @@ def create_step_doc(
             "slug": slug,
             "kind": "step",
         },
-        "step_type_spec": machine_step_type,  # Machine type goes to step.yaml
+        "step_type_spec": machine_step_type,  # step_type_spec goes to step.yaml
     }
     
     # DAG model: Do NOT store structure_id in step YAML

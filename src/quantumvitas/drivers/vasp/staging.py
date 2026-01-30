@@ -44,7 +44,7 @@ def is_scf_step(step: "Step", registry=None) -> bool:
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
     
-    step_type = getattr(step, 'step_type', None) or getattr(step, 'public_type', None)
+    step_type = getattr(step, 'step_type_spec', None)
     if not step_type:
         return False
     

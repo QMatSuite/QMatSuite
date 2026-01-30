@@ -129,10 +129,10 @@ def lammps_step_handler(
         working_dir.mkdir(parents=True, exist_ok=True)
         
         # Debug: Log step context before materialize
-        step_type = job.metadata.get("spec_step_type", "unknown")
-        public_type = job.metadata.get("public_type", "unknown")
-        print(f"[LAMMPS-DEBUG] lammps_step_handler: step_ulid={step_ulid}, step_type={step_type}, "
-              f"public_type={public_type}")
+        step_type = job.metadata.get("step_type_spec", "unknown")
+        gen_type = job.metadata.get("step_type_gen", "unknown")
+        print(f"[LAMMPS-DEBUG] lammps_step_handler: step_ulid={step_ulid}, step_type_spec={step_type}, "
+              f"step_type_gen={gen_type}")
         print(f"[LAMMPS-DEBUG] lammps_step_handler: calc_dir={calculation.dir}, "
               f"raw_dir={calculation.raw_dir}, working_dir={working_dir}")
         
@@ -292,10 +292,10 @@ def lammps_step_handler(
         
         # Verify expected output artifacts exist (fixes Ubuntu CI race condition)
         if success:
-            public_type = job.metadata.get("public_type")
-            
+            gen_type = job.metadata.get("step_type_gen")
+
             # Relax steps must produce final.data
-            if public_type == "relax":
+            if gen_type == "relax":
                 final_data_path = working_dir / "final.data"
                 if not final_data_path.exists():
                     success = False
@@ -304,9 +304,9 @@ def lammps_step_handler(
                         f"Contents: {list(working_dir.iterdir()) if working_dir.exists() else 'dir missing'}"
                     )
                     logger.error(f"[LAMMPS_HANDLER] {error_msg}")
-            
+
             # MD steps should produce restart.bin (or restart.*.bin)
-            elif public_type == "md":
+            elif gen_type == "md":
                 restart_patterns = list(working_dir.glob("restart*.bin"))
                 log_file = working_dir / "log.lammps"
                 # Only fail if no restart file AND log indicates completion

@@ -48,24 +48,24 @@ def find_reference_scf(
         step = steps[i]
         
         # Get step type
-        step_type = getattr(step, 'step_type', None) or getattr(step, 'public_type', None)
+        step_type = getattr(step, 'step_type_spec', None)
         if not step_type:
             continue
-        
-        # Look up spec to get public_type
+
+        # Look up spec to get step_type_gen
         spec = registry.get(str(step_type))
         if spec:
-            step_public_type = spec.step_type_gen
+            step_gen_type = spec.step_type_gen
         else:
-            # Fallback: assume step_type is already public_type
-            step_public_type = str(step_type)
-        
+            # Fallback: assume step_type is already gen type
+            step_gen_type = str(step_type)
+
         # Check if this is a relax step (barrier)
-        if step_public_type == "relax":
+        if step_gen_type == "relax":
             return None  # Barrier - no valid reference beyond this point
-        
+
         # Check if this is an SCF step
-        if step_public_type == "scf":
+        if step_gen_type == "scf":
             return (i, step)
     
     # No SCF found
@@ -86,10 +86,10 @@ def get_gen_type(step: Any, registry: Optional[StepTypeRegistry] = None) -> Opti
     if registry is None:
         registry = get_registry()
     
-    step_type = getattr(step, 'step_type', None) or getattr(step, 'public_type', None)
+    step_type = getattr(step, 'step_type_spec', None)
     if not step_type:
         return None
-    
+
     spec = registry.get(str(step_type))
     if spec:
         return spec.step_type_gen

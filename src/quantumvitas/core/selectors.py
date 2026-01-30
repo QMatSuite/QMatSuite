@@ -211,7 +211,7 @@ def match_step_selector(
                 from quantumvitas.calculation.structure_steps import StructureStepSpec
                 spec = StructureStepSpec.from_yaml(step_resolved.absolute_path)
                 if spec.step_type_spec and spec.step_type_spec.lower() == selector.lower():
-                    matches.append((step_entry, step_resolved, "step_type"))
+                    matches.append((step_entry, step_resolved, "step_type_spec"))
                     continue
             except Exception:
                 pass

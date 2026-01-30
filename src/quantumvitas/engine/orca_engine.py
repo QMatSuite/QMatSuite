@@ -494,17 +494,17 @@ class ORCAEngine(Engine):
         
         # 3. Build QCChain from chain_steps
         # For ORCA, we detect chains from steps (SCF root + downstream)
-        # detect_chains expects steps to have public_type attribute
-        # We need to add it from registry based on step_type
+        # detect_chains expects steps to have step_type_gen attribute
+        # We need to add it from registry based on step_type_spec
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
-        
-        # Add public_type to steps for detect_chains
+
+        # Add step_type_gen to steps for detect_chains
         # Also load parameters from step.yaml if not already in step object
-        steps_with_public_type = []
+        wrapped_steps = []
         for step in chain_steps:
-            # Get public_type from registry
-            step_type = getattr(step, 'step_type', None)
+            # Get step_type_spec from registry
+            step_type = getattr(step, 'step_type_spec', None)
             if not step_type:
                 # Try to read from step.yaml
                 if hasattr(step, 'meta') and hasattr(step.meta, 'path') and step.meta.path:
@@ -512,12 +512,12 @@ class ORCAEngine(Engine):
                     if step_yaml_path.exists():
                         import yaml
                         step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
-                        step_type = step_data.get("step_type")
-            
+                        step_type = step_data.get("step_type_spec")
+
             if step_type:
                 spec = registry.get(step_type)
                 step_type_gen = spec.step_type_gen if spec else step_type
-                
+
                 # Load parameters from step.yaml if not in step object
                 parameters = {}
                 if hasattr(step, 'parameters'):
@@ -528,30 +528,30 @@ class ORCAEngine(Engine):
                         import yaml
                         step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
                         parameters = step_data.get("parameters", {})
-                
+
                 # Create a wrapper object with step_type_gen and parameters
                 class StepWrapper:
                     def __init__(self, step, step_type_gen, step_type_spec, parameters):
                         self.step = step
-                        self.id = step.meta.ulid
+                        self.ulid = step.meta.ulid
                         self.step_type_gen = step_type_gen
                         self.step_type_spec = step_type_spec
                         self.parameters = parameters
                         # Forward other attributes
                         if hasattr(step, 'options'):
                             self.options = step.options
-                
-                steps_with_public_type.append(StepWrapper(step, step_type_gen, step_type, parameters))
+
+                wrapped_steps.append(StepWrapper(step, step_type_gen, step_type, parameters))
             else:
-                # No step_type, skip this step
+                # No step_type_spec, skip this step
                 continue
-        
-        chains = detect_chains(steps_with_public_type)
-        
+
+        chains = detect_chains(wrapped_steps)
+
         # If no chains detected (e.g., relax step without SCF root),
         # create a single-step chain with the first step as root
         if not chains:
-            if not steps_with_public_type:
+            if not wrapped_steps:
                 return StepResult(
                     step_type_spec="orca_relax",
                     input_file=calculation_raw_dir / "chain.inp",
@@ -561,13 +561,13 @@ class ORCAEngine(Engine):
                 )
             # Create a single-step chain for relax (or other non-SCF steps)
             from quantumvitas.engine.qc_engine_base import QCChain, derive_chain_key
-            single_step = steps_with_public_type[0]
+            single_step = wrapped_steps[0]
             chain = QCChain(scf_root=single_step, downstream=[], key="")
             chain.key = derive_chain_key(chain, chain_index=1)
         else:
             chain = chains[0]
-        
-        # Use wrapped steps directly - they have public_type and parameters
+
+        # Use wrapped steps directly - they have step_type_gen and parameters
         # run_chain will use these wrapped steps which have all needed attributes
         
         # 4. Set up working directory
@@ -579,7 +579,7 @@ class ORCAEngine(Engine):
         # 5. Execute chain
         try:
             orca_results = self.run_chain(
-                chain=chain,  # Use chain with wrapped steps (has public_type and parameters)
+                chain=chain,  # Use chain with wrapped steps (has step_type_gen and parameters)
                 working_dir=working_dir,
                 molecule=molecule,
                 fresh=True,  # Always fresh for explicit runs

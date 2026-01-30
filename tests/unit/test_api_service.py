@@ -279,7 +279,7 @@ class TestQVServiceCalculation:
         """Delete a calculation using domain API."""
         # Create calculation and get its ULID
         calc_resource = QVService.init_calculation(project, "To Delete")
-        calculation_ulid = calc_resource.id
+        calculation_ulid = calc_resource.ulid
 
         # Delete using domain API
         svc = get_service(project)

@@ -21,7 +21,7 @@ from quantumvitas.presets.variants_registry import (
     list_dimensions_for_gen_step,
     get_variant,
 )
-from quantumvitas.workflow.registry import get_registry, normalize_step_type_to_public
+from quantumvitas.workflow.registry import get_registry
 
 
 class CapabilityError(Exception):
@@ -178,10 +178,10 @@ def resolve_engine_for_step(step_path: Path) -> Optional[str]:
         with open(step_path, 'r') as f:
             step_data = yaml.safe_load(f)
         
-        if not step_data or 'step_type' not in step_data:
+        if not step_data or 'step_type_spec' not in step_data:
             return None
-        
-        step_type = step_data['step_type']
+
+        step_type = step_data['step_type_spec']
         if not step_type:
             return None
         

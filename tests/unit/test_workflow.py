@@ -495,7 +495,7 @@ class TestWorkflowInstantiation:
         
         # Check step content
         doc = StepDoc.load(paths[0])
-        assert doc.get(["step_type_spec"]) == "scf"
+        assert doc.get(["step_type_spec"]) == "qe_scf"
     
     def test_instantiate_dos_workflow(self, tmp_path, service, test_journal):
         """Instantiate DOS workflow creates three steps."""
@@ -550,7 +550,7 @@ class TestWorkflowInstantiation:
             doc = StepDoc.load(path)
             step_types.append(doc.get(["step_type_spec"]))
         
-        assert step_types == ["scf", "nscf", "dos"]
+        assert step_types == ["qe_scf", "qe_nscf", "qe_dos"]
     
     def test_instantiate_bands_workflow(self, tmp_path, service, test_journal):
         """Instantiate Bands workflow creates three steps."""
@@ -600,7 +600,7 @@ class TestWorkflowInstantiation:
         assert len(paths) == 3
         
         step_types = [StepDoc.load(p).get(["step_type_spec"]) for p in paths]
-        assert step_types == ["scf", "bands_pw", "bands"]
+        assert step_types == ["qe_scf", "qe_bands_pw", "qe_bands"]
     
     def test_instantiate_unknown_raises(self, tmp_path, service):
         """Instantiate unknown workflow raises ValueError."""
@@ -707,18 +707,18 @@ class TestWorkflowValidation:
         """Validate reports missing step."""
         calc_dir = tmp_path / "calc"
         calc_dir.mkdir()
-        
+
         _save_yaml_raw({
             "ulid": "test-calc",
             "steps": [
-                {"step_type_gen": "scf"},
-                {"step_type_gen": "nscf"},
+                {"step_type_spec": "qe_scf"},
+                {"step_type_spec": "qe_nscf"},
                 # Missing dos
             ]
         }, calc_dir / "calculation.yaml")
-        
+
         issues = service.validate_workflow(calc_dir, "dos")
-        
+
         errors = [i for i in issues if i.severity == "error"]
         assert len(errors) == 1
         assert "dos" in errors[0].message

@@ -35,7 +35,7 @@ def test_update_step_params_parameter_scan_merge(tmp_path):
 
     # Create calculation
     calc_result = QVService.init_calculation(project_root, "calc001", structure_selector="silicon")
-    calc_ulid = calc_result.id
+    calc_ulid = calc_result.ulid
 
     # Create step using domain API
     svc = get_service(project_root)
@@ -109,7 +109,7 @@ def test_update_step_params_parameter_scan_preserves_array_values(tmp_path):
 
     # Create calculation
     calc_result = QVService.init_calculation(project_root, "calc001", structure_selector="silicon")
-    calc_ulid = calc_result.id
+    calc_ulid = calc_result.ulid
 
     # Create step using domain API
     svc = get_service(project_root)
@@ -168,7 +168,7 @@ def test_update_step_params_parameter_scan_empty_preserves(tmp_path):
 
     # Create calculation
     calc_result = QVService.init_calculation(project_root, "calc001", structure_selector="silicon")
-    calc_ulid = calc_result.id
+    calc_ulid = calc_result.ulid
 
     # Create step using domain API
     svc = get_service(project_root)
@@ -229,7 +229,7 @@ def test_update_step_params_parameter_scan_multiple_scans(tmp_path):
 
     # Create calculation
     calc_result = QVService.init_calculation(project_root, "calc001", structure_selector="silicon")
-    calc_ulid = calc_result.id
+    calc_ulid = calc_result.ulid
 
     # Create step using domain API
     svc = get_service(project_root)

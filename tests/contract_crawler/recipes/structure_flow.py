@@ -78,7 +78,7 @@ class GetStepDetailRecipe(Recipe):
                 name="test_calc",
                 structure_selector=structure_id,
             )
-            self.calc_id = calc_result.id if hasattr(calc_result, 'id') else None
+            self.calc_id = calc_result.ulid if hasattr(calc_result, 'ulid') else None
         else:
             svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
             calc_dto = svc.calculation.create(
