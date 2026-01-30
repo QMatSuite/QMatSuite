@@ -133,10 +133,11 @@ def find_nscf_input_file(calculation_dir: Path, working_dir: Optional[Path] = No
         steps = calc_data.get("steps", [])
         
         # Find nscf step
+        # calculation.yaml steps use step_type_gen (GEN layer) for workflow-level representation
         nscf_step = None
         for step_entry in steps:
-            step_type = step_entry.get("type", "").lower()
-            if step_type == "nscf":
+            step_type_gen = step_entry.get("step_type_gen", "").lower()
+            if step_type_gen == "nscf":
                 nscf_step = step_entry
                 break
         

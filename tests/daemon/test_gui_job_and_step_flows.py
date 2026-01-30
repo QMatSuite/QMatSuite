@@ -744,7 +744,7 @@ class TestCalculationFailureHandling:
             finished = datetime.now(timezone.utc)
             calculation_status = StepStatus.FAILED if calculation_failed else StepStatus.SUCCESS
             return CalculationResult(
-                calculation_id=calculation.id,
+                calculation_ulid=calculation.ulid,
                 mode=calculation.mode,
                 steps=step_summaries,
                 status=calculation_status,

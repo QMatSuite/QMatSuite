@@ -49,7 +49,7 @@ class TestJournalEntry:
         assert entry.before == {"a": 1}
         assert entry.after == {"a": 2}
         assert entry.summary == "Test change"
-        assert entry.id  # ULID generated
+        assert entry.ulid  # ULID generated
         assert entry.timestamp  # Timestamp generated
     
     def test_entry_deep_copies(self):
@@ -87,7 +87,7 @@ class TestJournalEntry:
         data = entry.to_dict()
         restored = JournalEntry.from_dict(data)
         
-        assert restored.id == entry.id
+        assert restored.ulid == entry.ulid
         assert restored.target_ulid == entry.target_ulid
         assert restored.before == entry.before
         assert restored.after == entry.after
@@ -213,10 +213,10 @@ class TestJournal:
         )
         journal.record_change(entry)
         
-        retrieved = journal.get_entry(entry.id)
+        retrieved = journal.get_entry(entry.ulid)
         
         assert retrieved is not None
-        assert retrieved.id == entry.id
+        assert retrieved.ulid == entry.ulid
         assert retrieved.after == {"x": 1}
     
     def test_get_nonexistent_entry(self, journal):
@@ -355,7 +355,7 @@ class TestJournalIntegration:
         assert doc.get(["list"]) == [1, 2, 3]
         
         # Fresh entry read is also unaffected
-        fresh_entry = test_journal.get_entry(entry.id)
+        fresh_entry = test_journal.get_entry(entry.ulid)
         assert fresh_entry.after["list"] == [1, 2, 3]
 
 

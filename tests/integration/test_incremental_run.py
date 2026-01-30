@@ -975,12 +975,12 @@ def test_pseudo_preflight_update_failure_non_blocking(tmp_project, minimal_calcu
         
         def mock_run(self, calculation, *, skip_history=False, run_ulid=None, run_mode="incremental", **kwargs):
             execution_calls.append({
-                "calculation_id": calculation.id,
-                "run_id": run_id,
+                "calculation_ulid": calculation.ulid,
+                "run_ulid": run_ulid,
                 "run_mode": run_mode,
             })
             return CalculationResult(
-                calculation_id=calculation.id,
+                calculation_ulid=calculation.ulid,
                 mode=calculation.mode,
                 steps=[],
                 status=StepStatus.SUCCESS,

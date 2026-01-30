@@ -267,6 +267,7 @@ def generate_qe_input_from_structure(
 POST_PROCESSING_STEP_TYPES = {
     "dos", "bands", "projwfc", "pp", "q2r", "matdyn", "dynmat",
     "sumpdos", "band_interpolation", "ppacf", "pprism",
+    "pw2wannier90",  # pw2wannier90.x uses INPUTPP namelist (like pp.x)
 }
 
 
@@ -778,6 +779,8 @@ def materialize_step_spec(
     # Check if this is a Wannier90 step type - these need special handling
     # and should NOT go through QE input generation/validation
     step_type_lower = (spec_obj.step_type_spec or "scf").lower()
+    # Convert to GEN type for comparison (e.g., "qe_pw2wannier90" -> "pw2wannier90")
+    step_type_gen = _normalize_step_type_to_gen(step_type_lower)
     WANNIER90_STEP_TYPES = {"w90_preproc", "w90_run", "pw2wannier90"}
     
     # Phase 3C: Check if calculation is PySCF - PySCF steps should NOT go through QE input generation
@@ -828,15 +831,15 @@ def materialize_step_spec(
     import logging
     logger = logging.getLogger(__name__)
     
-    if step_type_lower in WANNIER90_STEP_TYPES:
+    if step_type_gen in WANNIER90_STEP_TYPES:
         # WANNIER90 PATH: Generate .win or .pw2wan files, skip QE input generation
         logger.info(
-            f"[MATERIALIZE_STEP_SPEC] Wannier90 step detected: step_type={step_type_lower}, "
+            f"[MATERIALIZE_STEP_SPEC] Wannier90 step detected: step_type={step_type_gen}, "
             f"skipping QE input generation and validation"
         )
-        
-        # Generate Wannier90 input file based on step type
-        if step_type_lower == "w90_preproc" or step_type_lower == "w90_run":
+
+        # Generate Wannier90 input file based on step type (using GEN type)
+        if step_type_gen == "w90_preproc" or step_type_gen == "w90_run":
             # Generate .win file
             from quantumvitas.io.wannier90_input import Wannier90Input
             
@@ -998,7 +1001,7 @@ def materialize_step_spec(
             
             return generated_input, spec_obj
         
-        elif step_type_lower == "pw2wannier90":
+        elif step_type_gen == "pw2wannier90":
             # Generate .pw2wan file
             from quantumvitas.io.wannier90_input import Pw2Wannier90Input
             
