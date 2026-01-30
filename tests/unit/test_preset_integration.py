@@ -700,13 +700,13 @@ class TestConvergencePreset:
         """Convergence preset does not apply to non-pw step types."""
         from quantumvitas.presets.integration import apply_presets_to_step
         
-        # Test non-pw step types
-        non_pw_step_types = ["dos", "bands", "projwfc", "pp"]
-        
-        for step_type in non_pw_step_types:
-            step_path = tmp_path / f"{step_type}.step.yaml"
+        # Test non-pw step types (SPEC types - step files use step_type_spec)
+        non_pw_step_types = ["qe_dos", "qe_bands", "qe_projwfc", "qe_pp"]
+
+        for step_type_spec in non_pw_step_types:
+            step_path = tmp_path / f"{step_type_spec}.step.yaml"
             step_path.write_text(yaml.safe_dump({
-                "step_type_gen": step_type,
+                "step_type_spec": step_type_spec,
                 "parameters": {"ELECTRONS": {}},
             }))
             

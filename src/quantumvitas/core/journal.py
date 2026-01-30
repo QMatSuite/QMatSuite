@@ -48,9 +48,9 @@ def _deep_copy(value: Any) -> Any:
 class JournalEntry:
     """
     A single journal entry recording a YAML document change.
-    
+
     Attributes:
-        id: ULID for this entry (unique identifier)
+        ulid: ULID for this entry (unique identifier)
         target_ulid: ULID of the target document (from meta.ulid)
         doc_type: Type of document ("step", "calc", "project")
         timestamp: When the change occurred (UTC)
@@ -59,7 +59,7 @@ class JournalEntry:
         summary: Human-readable short description
         path: Optional file path (for debugging)
     """
-    id: str
+    ulid: str
     target_ulid: str
     doc_type: DocType
     timestamp: str  # ISO 8601 format
@@ -84,7 +84,7 @@ class JournalEntry:
         Deep copies before/after to prevent reference leakage.
         """
         return cls(
-            id=str(ulid.new()),
+            ulid=str(ulid.new()),
             target_ulid=target_ulid,
             doc_type=doc_type,
             timestamp=datetime.now(timezone.utc).isoformat(),

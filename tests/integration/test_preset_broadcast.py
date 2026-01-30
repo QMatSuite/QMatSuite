@@ -127,7 +127,7 @@ class TestApplyPresetsToStep:
         """Apply presets to a non-receiver step (DOS) - should skip."""
         step_file = temp_step_dir / "2_dos.step.yaml"
         step_file.write_text(yaml.safe_dump({
-            "step_type_gen": "dos",
+            "step_type_spec": "qe_dos",  # SPEC type (step files use step_type_spec)
             "parameters": {
                 "DOS": {"fildos": "dos.dat"}
             }
@@ -179,32 +179,32 @@ class TestBroadcastApply:
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir(parents=True)
         
-        # Create calculation.yaml
+        # Create calculation.yaml (step_type_spec for YAML persistence)
         calc_yaml = calc_dir / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "meta": {"ulid": "01TEST", "name": "test_calc", "slug": "test_calc"},
             "structure_ulid": "01STRUCT",
             "steps": [
-                {"step_file": "steps/1_scf.step.yaml", "step_type_gen": "scf"},
-                {"step_file": "steps/2_nscf.step.yaml", "step_type_gen": "nscf"},
-                {"step_file": "steps/3_dos.step.yaml", "step_type_gen": "dos"},
+                {"step_file": "steps/1_scf.step.yaml", "step_type_spec": "qe_scf"},
+                {"step_file": "steps/2_nscf.step.yaml", "step_type_spec": "qe_nscf"},
+                {"step_file": "steps/3_dos.step.yaml", "step_type_spec": "qe_dos"},
             ]
         }))
-        
-        # Create receiver steps (SCF, NSCF)
+
+        # Create receiver steps (SCF, NSCF) - use step_type_spec
         (steps_dir / "1_scf.step.yaml").write_text(yaml.safe_dump({
-            "step_type_gen": "scf",
+            "step_type_spec": "qe_scf",
             "parameters": {"SYSTEM": {"ecutwfc": 40.0}}
         }))
-        
+
         (steps_dir / "2_nscf.step.yaml").write_text(yaml.safe_dump({
-            "step_type_gen": "nscf",
+            "step_type_spec": "qe_nscf",
             "parameters": {"SYSTEM": {"ecutwfc": 40.0}}
         }))
-        
-        # Create non-receiver step (DOS)
+
+        # Create non-receiver step (DOS) - use step_type_spec
         (steps_dir / "3_dos.step.yaml").write_text(yaml.safe_dump({
-            "step_type_gen": "dos",
+            "step_type_spec": "qe_dos",
             "parameters": {"DOS": {"fildos": "dos.dat"}}
         }))
         
