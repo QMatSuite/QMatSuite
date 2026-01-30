@@ -166,13 +166,65 @@ After migration:
 
 ---
 
-## Test Suite Command (Run After Each Phase)
+## Test Strategy
 
+**IMPORTANT**: Full pytest will BREAK during phases 5-11 because field names change incrementally.
+
+### Test Checkpoints
+
+| Phase | Test Strategy | Expected State |
+|-------|---------------|----------------|
+| 1-4 | Full pytest after each | GREEN |
+| 5-9 | Import checks + gate patterns ONLY | Tests will be broken |
+| 10 | Contract tests only (`tests/contract_crawler/`) | Should pass after fixture patch |
+| 11 | Gate patterns only | Tests still broken |
+| 12-13 | Gate tests only | Gate tests GREEN |
+| **14** | **FULL PYTEST** | **MUST BE GREEN** |
+
+### Validation Commands
+
+**IMPORT_CHECK**: Verify module imports without error
+```bash
+python -c "from quantumvitas.MODULE import CLASS; print('OK')"
+```
+
+**GATE_PATTERNS**: Ripgrep patterns that must return 0 matches (see Gate Patterns Reference)
+
+**CONTRACT_TESTS**: Tests that validate RPC response schema
+```bash
+source .venv/bin/activate && python -m pytest tests/contract_crawler/ -v --tb=short
+```
+
+**GATE_TESTS**: Tests that enforce vocabulary invariants
+```bash
+source .venv/bin/activate && python -m pytest tests/gates/test_gen_spec_convergence_gate.py -v --tb=short
+```
+
+**FULL_PYTEST**: Complete test suite (only at Phase 14)
 ```bash
 source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
 
-Abbreviated as `RUN_TESTS` in phase validations.
+### Critical Rules for Cursor Auto
+
+**During Phases 5-13**:
+- **DO NOT** run full pytest. It WILL fail. This is expected.
+- **DO NOT** stop and ask for help when you see import errors or test failures.
+- **DO** run only the phase-specific validation commands listed.
+- **DO** continue to next phase after phase-specific validation passes.
+
+**At Phase 10 (after patching fixtures)**:
+- **DO** run contract tests: `python -m pytest tests/contract_crawler/ -v`
+- **STOP** if contract tests fail. Fix daemon shapers before continuing.
+
+**At Phase 13 (after creating gate tests)**:
+- **DO** run gate tests: `python -m pytest tests/gates/test_gen_spec_convergence_gate.py -v`
+- **STOP** if gate tests fail. Fix the specific issue before continuing.
+
+**At Phase 14 (final validation)**:
+- **DO** run full pytest: `python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+- **STOP** and report if full pytest fails. Do not commit.
+- **ONLY** commit after all tests pass.
 
 ---
 
@@ -183,12 +235,15 @@ Abbreviated as `RUN_TESTS` in phase validations.
 ### Validation
 
 ```bash
-# Ensure tests pass before starting
+# Ensure tests pass before starting (baseline must be green)
 source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+# EXPECTED: All tests pass (this is the baseline)
 
-# Verify current state
+# Verify git state
 git status  # Should be clean or only docs changes
 ```
+
+**DO NOT proceed** if baseline tests fail. Fix baseline first.
 
 ---
 
@@ -493,21 +548,25 @@ For each file, rename `.step_type` → `.step_type_spec`
 
 ### Validation
 
+**DO NOT run full pytest** - tests will break due to field name changes.
+
 ```bash
-# Gate: No old field in factory
+# IMPORT_CHECK: Verify modules still import
+python -c "from quantumvitas.workflow.step_factory import create_step_yaml; print('OK')"
+python -c "from quantumvitas.calculation.step import Step; print('OK')"
+
+# GATE_PATTERNS: Must return 0 matches
 rg '"step_type":' src/quantumvitas/workflow/step_factory.py
 # EXPECTED: 0 matches
 
 rg '"id":' src/quantumvitas/workflow/step_factory.py | grep -v "ulid"
 # EXPECTED: 0 matches (or only unrelated uses)
 
-# Gate: No .step_type field access
 rg "\.step_type\b" src/quantumvitas/ | grep -v "step_type_spec\|step_type_gen"
 # EXPECTED: 0 matches
-
-# RUN_TESTS
-source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
+
+**Continue to Phase 6** after gate patterns pass.
 
 ---
 
@@ -595,8 +654,13 @@ For each file:
 
 ### Validation
 
+**DO NOT run full pytest** - tests will break due to field name changes.
+
 ```bash
-# Gate: No old fields in models
+# IMPORT_CHECK: Verify module still imports
+python -c "from quantumvitas.core.models import CalculationStepEntry; print('OK')"
+
+# GATE_PATTERNS: Must return 0 matches
 rg "self\.type\b" src/quantumvitas/core/models.py
 # EXPECTED: 0 matches
 
@@ -606,13 +670,11 @@ rg 'd\["type"\]' src/quantumvitas/core/models.py
 rg "\.step_id\b" src/quantumvitas/core/models.py
 # EXPECTED: 0 matches
 
-# Gate: No step_type property
 rg "def step_type\b" src/quantumvitas/core/models.py
 # EXPECTED: 0 matches
-
-# RUN_TESTS
-source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
+
+**Continue to Phase 7** after gate patterns pass.
 
 ---
 
@@ -666,18 +728,23 @@ Each shaper that outputs step data:
 
 ### Validation
 
+**DO NOT run full pytest** - tests will break due to field name changes.
+
 ```bash
-# Gate: No second-truth function
+# IMPORT_CHECK: Verify daemon compat still imports
+python -c "from quantumvitas.daemon.compat import shape_response; print('OK')"
+python -c "from quantumvitas.api import get_step_type_gen; print(get_step_type_gen('qe_scf'))"
+# EXPECTED: scf
+
+# GATE_PATTERNS: Must return 0 matches
 rg "_map_step_type_to_v0" src/quantumvitas/
 # EXPECTED: 0 matches
 
-# Gate: No hardcoded TYPE_MAP
 rg "TYPE_MAP\s*=" src/quantumvitas/daemon/
 # EXPECTED: 0 matches
-
-# RUN_TESTS
-source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
+
+**Continue to Phase 8** after gate patterns pass.
 
 ---
 
@@ -721,18 +788,24 @@ Rename fields in dataclasses/TypedDicts.
 
 ### Validation
 
+**DO NOT run full pytest** - tests will break due to field name changes.
+
 ```bash
-# Spot check - no step_id in models (should be step_ulid)
+# IMPORT_CHECK: Verify key modules still import
+python -c "from quantumvitas.core.models import CalculationStepEntry; print('OK')"
+python -c "from quantumvitas.history.storage import HistoryStorage; print('OK')"
+python -c "from quantumvitas.api.types.calculation import StepInfo; print('OK')"
+
+# GATE_PATTERNS: Must return 0 matches (resource identity)
 rg "\bstep_id\b" src/quantumvitas/core/models.py
 # EXPECTED: 0 matches
 
-# JSON-RPC id should still exist (allowed)
+# ALLOWED: JSON-RPC id should still exist
 rg '"id":' src/quantumvitas/daemon/server.py
 # EXPECTED: matches (this is protocol-level, allowed)
-
-# RUN_TESTS
-source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
+
+**Continue to Phase 9** after gate patterns pass.
 
 ---
 
@@ -825,13 +898,15 @@ GUI must use `step_type_gen` to maintain human-readable display.
 
 ### Validation
 
+**DO NOT run Python pytest** - tests will break due to fixture mismatch.
+
 ```bash
+# TypeScript type check only
 cd gui && npm run type-check
 # EXPECTED: No type errors
-
-# RUN_TESTS (Python)
-source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
+
+**Continue to Phase 10** after type-check passes.
 
 ---
 
@@ -988,21 +1063,28 @@ Verify:
 
 ### Validation
 
+**Run CONTRACT_TESTS** - fixtures are now patched, contract tests should pass.
+
 ```bash
-# Gate: No bare "step_type" in golden
+# GATE_PATTERNS: Must return 0 matches
 rg '"step_type":' tests/fixtures/golden_0873ebf/daemon/
 # EXPECTED: 0 matches
 
-# Gate: Both new fields present
+# GATE_PATTERNS: Must have new fields
 rg '"step_type_spec":' tests/fixtures/golden_0873ebf/daemon/
 # EXPECTED: Multiple matches
 
 rg '"step_type_gen":' tests/fixtures/golden_0873ebf/daemon/
 # EXPECTED: Multiple matches
 
-# RUN_TESTS
-source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+# CONTRACT_TESTS: Validate fixtures match new schema
+source .venv/bin/activate && python -m pytest tests/contract_crawler/ -v --tb=short
+# EXPECTED: All contract tests pass
 ```
+
+**If contract tests fail**: Check that all daemon shapers emit both `step_type_spec` and `step_type_gen`.
+
+**Continue to Phase 11** after contract tests pass.
 
 ---
 
@@ -1097,22 +1179,21 @@ python tools/migrate_demo_projects.py
 
 ### Validation
 
+**Gate patterns only** - do not run full pytest yet.
+
 ```bash
-# Gate: No bare step_type in demos
+# GATE_PATTERNS: Must return 0 matches
 rg "step_type:" resources/demo_projects/ | grep -v "step_type_spec"
 # EXPECTED: 0 matches
 
-# Gate: No step_type_gen persisted to YAML
 rg "step_type_gen:" resources/demo_projects/
-# EXPECTED: 0 matches
+# EXPECTED: 0 matches (GEN must not be in YAML)
 
-# Gate: All step_type_spec have SPEC values (with underscore)
 rg 'step_type_spec:\s*[a-z]+$' resources/demo_projects/
-# EXPECTED: 0 matches (all should have underscore like qe_scf)
-
-# RUN_TESTS
-source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+# EXPECTED: 0 matches (all values should have underscore like qe_scf)
 ```
+
+**Continue to Phase 12** after gate patterns pass.
 
 ---
 
@@ -1256,7 +1337,15 @@ if __name__ == "__main__":
 
 ### Validation
 
-Script created. Manual testing only.
+**Script creation only** - no automated tests needed.
+
+```bash
+# Verify script exists and is syntactically valid
+python -m py_compile tools/migrate_user_project.py
+# EXPECTED: No output (success)
+```
+
+**Continue to Phase 13** after script compiles.
 
 ---
 
@@ -1382,13 +1471,17 @@ class TestIdentityFieldsRenamed:
 
 ### Validation
 
-```bash
-python -m pytest tests/gates/test_gen_spec_convergence_gate.py -v
-# EXPECTED: All tests pass
+**Run GATE_TESTS only** - this validates all vocabulary invariants.
 
-# RUN_TESTS
-source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+```bash
+# GATE_TESTS: All gate tests must pass
+source .venv/bin/activate && python -m pytest tests/gates/test_gen_spec_convergence_gate.py -v --tb=short
+# EXPECTED: All tests pass
 ```
+
+**If gate tests fail**: Fix the specific issue indicated by the failing test before continuing.
+
+**Continue to Phase 14** after all gate tests pass.
 
 ---
 
@@ -1396,11 +1489,24 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 **Goal**: All tests pass, all gates green.
 
+**CRITICAL**: This is the ONLY phase where full pytest MUST pass.
+If full pytest fails here, DO NOT commit. Fix the issues first.
+
 ### Step 14.1: Run Full Test Suite
 
 ```bash
+# FULL_PYTEST: This MUST be GREEN
 source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+# EXPECTED: All tests pass
 ```
+
+**If tests fail**:
+1. Read the error message carefully
+2. Check if it's a field name mismatch (missed rename somewhere)
+3. Check if it's a fixture mismatch (fixture not patched)
+4. Fix the specific issue
+5. Re-run full pytest
+6. DO NOT proceed to commit until all tests pass
 
 ### Step 14.2: Run All Gate Patterns Manually
 
@@ -1428,6 +1534,8 @@ cd gui && npm run type-check
 ```
 
 ### Step 14.4: Final Commit
+
+**ONLY commit if all tests pass.** If Step 14.1 failed, do not commit.
 
 ```bash
 git add -A
