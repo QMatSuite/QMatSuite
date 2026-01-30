@@ -118,7 +118,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
                 elif hasattr(last_step, 'id'):
                     step1_id = last_step.id
                 elif hasattr(last_step, 'step_id'):
-                    step1_id = last_step.step_id
+                    step1_id = last_step.step_ulid
                 else:
                     step1_id = None
             else:
@@ -141,7 +141,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
                 elif hasattr(last_step, 'id'):
                     step2_id = last_step.id
                 elif hasattr(last_step, 'step_id'):
-                    step2_id = last_step.step_id
+                    step2_id = last_step.step_ulid
                 else:
                     step2_id = None
             else:

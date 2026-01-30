@@ -154,19 +154,19 @@ def minimal_calculation(tmp_project, minimal_structure):
         calc_selector=calc_id,
         step_type="scf",
     )
-    step1_id = step1_dto.step_id
+    step1_id = step1_dto.step_ulid
 
     step2_dto = svc.calculation.add_step(
         calc_selector=calc_id,
         step_type="nscf",
     )
-    step2_id = step2_dto.step_id
+    step2_id = step2_dto.step_ulid
 
     step3_dto = svc.calculation.add_step(
         calc_selector=calc_id,
         step_type="bands",
     )
-    step3_id = step3_dto.step_id
+    step3_id = step3_dto.step_ulid
 
     # Fix invalid K_POINTS: bands step defaults to crystal_b without data
     # Add valid K_POINTS data to make the step valid for materialization
@@ -585,7 +585,7 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
         step_type=step_type,
         name="nscf-copy",
     )
-    step2b_id = step2b_dto.step_id
+    step2b_id = step2b_dto.step_ulid
     step2b_path = calc_dir / "steps" / f"{step2b_dto.meta.slug}.step.yaml"
     
     # Copy ALL content from step1 to step2b (excluding meta.id)
@@ -623,7 +623,7 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     # Find index of step_ids[1] and replace with step2b_id
     replaced = False
     for i, step_entry in enumerate(calc_model.steps):
-        if step_entry.step_id == step_ids[1]:
+        if step_entry.step_ulid == step_ids[1]:
             calc_model.steps[i] = CalculationStepEntry(step_id=step2b_id, type=step_type)
             replaced = True
             break
@@ -633,7 +633,7 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     
     # Reload to get step list
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
-    step_list = [{"step_id": s.step_id, "type": s.type} for s in calc_model.steps]
+    step_list = [{"step_ulid": s.step_ulid, "step_type_spec": s.step_type_spec} for s in calc_model.steps]
     
     # Reconcile - should still skip because SHAs match, but ULID should be updated to step2b_id
     from quantumvitas.calculation.calculation import Calculation

@@ -86,12 +86,12 @@ def sample_project(tmp_path: Path) -> Path:
     step_id = generate_resource_id()
     step_file = calculation_dir / "steps" / "scf.step.yaml"
     step_meta_dict = meta_from_name("step", name="scf", path=f"calculations/wf/steps/scf.step.yaml")
-    step_meta_dict["id"] = step_id
+    step_meta_dict["ulid"] = step_id
     _write_yaml(
         step_file,
         {
             "meta": step_meta_dict,
-            "step_type": "scf",
+            "step_type_spec": "qe_scf",
             # DAG model: structure_id is NOT in step YAML (inherits from calculation)
         },
     )
@@ -100,7 +100,8 @@ def sample_project(tmp_path: Path) -> Path:
         calculation_dir / "calculation.yaml",
         {
             "meta": {
-                "id": calculation_ulid,
+                "ulid": calculation_ulid,
+                "id": calculation_ulid,  # Backwards compat
                 "name": "wf",
                 "slug": "wf",
                 "path": "calculations/wf",
@@ -108,7 +109,7 @@ def sample_project(tmp_path: Path) -> Path:
             },
             "calculation": {"working_dir": "raw"},
             "structure_id": structure_id,  # Calculation-level structure reference (ULID)
-            "steps": [{"step_id": step_id, "input": "raw/scf.in"}],  # Use step_id (ULID), not id (name)
+            "steps": [{"step_ulid": step_id, "step_type_spec": "qe_scf", "input": "raw/scf.in"}],  # Use step_ulid (ULID), not id (name)
         },
     )
     # Create minimal SCF input file (used for other test purposes, not just species config)

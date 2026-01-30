@@ -79,12 +79,11 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KC38NVA0NES3T6YG7DK8DP82
       name: scf
       slug: scf
       path: calculations/si-dos/steps/scf.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KC38NVA0NES3T6YG7DK8DP82
     parameters:
       CONTROL:
         calculation: scf
@@ -107,13 +106,13 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
+    step_type_spec: qe_scf
   - meta:
-      id: 01KC38P68GFY8CSNGKWZJRZ50E
       name: nscf
       slug: nscf
       path: calculations/si-dos/steps/nscf.step.yaml
       kind: step
-    step_type: nscf
+      ulid: 01KC38P68GFY8CSNGKWZJRZ50E
     parameters:
       CONTROL:
         calculation: nscf
@@ -137,18 +136,19 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
+    step_type_spec: qe_nscf
   - meta:
-      id: 01KC38PGMYFABDDE5T6CA8A2J8
       name: dos
       slug: dos
       path: calculations/si-dos/steps/dos.step.yaml
       kind: step
-    step_type: dos
+      ulid: 01KC38PGMYFABDDE5T6CA8A2J8
     parameters:
       DOS:
         emax: 16.0
         emin: -9.0
         fildos: si.dos.dat
+    step_type_spec: qe_dos
   structure_id: 01KC38MBGSS8MX3Z4ETZMXZZY4
   species_map:
     Si:

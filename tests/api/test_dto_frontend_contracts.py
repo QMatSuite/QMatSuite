@@ -135,15 +135,21 @@ class TestRunResultDTOContract:
             step_ids=["step1", "step2"],
             _step_details=[
                 {
-                    "step_id": "step1",
-                    "step_type": "scf",
+                    "step_ulid": "step1",
+                    "step_id": "step1",  # Backwards compat
+                    "step_type_spec": "qe_scf",
+                    "step_type_gen": "scf",
+                    "step_type": "scf",  # Backwards compat
                     "status": "completed",
                     "message": "Step completed",
                     "metrics": {"energy": -10.5}
                 },
                 {
-                    "step_id": "step2",
-                    "step_type": "nscf",
+                    "step_ulid": "step2",
+                    "step_id": "step2",  # Backwards compat
+                    "step_type_spec": "qe_nscf",
+                    "step_type_gen": "nscf",
+                    "step_type": "nscf",  # Backwards compat
                     "status": "completed",
                     "message": None,
                     "metrics": {}
@@ -163,15 +169,21 @@ class TestRunResultDTOContract:
         
         # Each step must have required keys
         step1 = result["steps"][0]
-        assert step1["step_id"] == "step1"
-        assert step1["step_type"] == "scf"
+        assert step1["step_ulid"] == "step1"
+        assert step1["step_id"] == "step1"  # Backwards compat
+        assert step1["step_type_spec"] == "qe_scf"
+        assert step1["step_type_gen"] == "scf"
+        assert step1["step_type"] == "scf"  # Backwards compat
         assert step1["status"] == "completed"
         assert step1["message"] == "Step completed"
         assert step1["metrics"] == {"energy": -10.5}
         
         step2 = result["steps"][1]
-        assert step2["step_id"] == "step2"
-        assert step2["step_type"] == "nscf"
+        assert step2["step_ulid"] == "step2"
+        assert step2["step_id"] == "step2"  # Backwards compat
+        assert step2["step_type_spec"] == "qe_nscf"
+        assert step2["step_type_gen"] == "nscf"
+        assert step2["step_type"] == "nscf"  # Backwards compat
         assert step2["status"] == "completed"
         assert step2["message"] is None
         assert step2["metrics"] == {}

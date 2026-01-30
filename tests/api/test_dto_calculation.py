@@ -64,24 +64,30 @@ def test_calculation_dto_with_references():
 def test_step_dto_required_fields():
     """StepDTO has required ULID fields."""
     dto = StepDTO(
-        step_id="01HX7YPVK8DQNZPMJ4GHAB9012",
-        calc_id="01HX7YPVK8DQNZPMJ4GHAB1234",
-        step_type="qe_scf",
+        step_ulid="01HX7YPVK8DQNZPMJ4GHAB9012",
+        calc_ulid="01HX7YPVK8DQNZPMJ4GHAB1234",
+        step_type_spec="qe_scf",
+        step_type_gen="scf",
         status="completed"
     )
     d = dto.to_dict()
-    assert d["step_id"] == "01HX7YPVK8DQNZPMJ4GHAB9012"
-    assert d["calc_id"] == "01HX7YPVK8DQNZPMJ4GHAB1234"
-    assert d["step_type"] == "qe_scf"
+    assert d["step_ulid"] == "01HX7YPVK8DQNZPMJ4GHAB9012"
+    assert d["step_id"] == "01HX7YPVK8DQNZPMJ4GHAB9012"  # Backwards compat
+    assert d["calc_ulid"] == "01HX7YPVK8DQNZPMJ4GHAB1234"
+    assert d["calc_id"] == "01HX7YPVK8DQNZPMJ4GHAB1234"  # Backwards compat
+    assert d["step_type_spec"] == "qe_scf"
+    assert d["step_type_gen"] == "scf"
+    assert d["step_type"] == "scf"  # Backwards compat
     assert d["status"] == "completed"
 
 
 def test_step_dto_with_execution_details():
     """StepDTO can include execution details."""
     dto = StepDTO(
-        step_id="01HX7YPVK8DQNZPMJ4GHAB9012",
-        calc_id="01HX7YPVK8DQNZPMJ4GHAB1234",
-        step_type="qe_scf",
+        step_ulid="01HX7YPVK8DQNZPMJ4GHAB9012",
+        calc_ulid="01HX7YPVK8DQNZPMJ4GHAB1234",
+        step_type_spec="qe_scf",
+        step_type_gen="scf",
         status="completed",
         started_at="2026-01-21T14:00:00Z",
         completed_at="2026-01-21T14:05:30Z",
@@ -97,9 +103,10 @@ def test_step_dto_with_execution_details():
 def test_step_dto_with_error():
     """StepDTO can include error message."""
     dto = StepDTO(
-        step_id="01HX7YPVK8DQNZPMJ4GHAB9012",
-        calc_id="01HX7YPVK8DQNZPMJ4GHAB1234",
-        step_type="qe_scf",
+        step_ulid="01HX7YPVK8DQNZPMJ4GHAB9012",
+        calc_ulid="01HX7YPVK8DQNZPMJ4GHAB1234",
+        step_type_spec="qe_scf",
+        step_type_gen="scf",
         status="failed",
         error_message="Convergence not achieved"
     )

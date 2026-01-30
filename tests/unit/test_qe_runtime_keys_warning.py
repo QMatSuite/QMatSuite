@@ -67,6 +67,7 @@ calculations:
 """)
         
         (calc_dir / "calculation.yaml").write_text(f"""meta:
+  ulid: {calculation_id}
   id: {calculation_id}
   name: wf
   slug: wf
@@ -80,18 +81,18 @@ steps: []
         step_id = generate_resource_id()
         step_file = steps_dir / "scf.step.yaml"
         step_meta = meta_from_name("step", name="scf", path="steps/scf.step.yaml")
-        step_meta.id = step_id
+        step_meta.id = step_id  # ResourceMeta still uses .id, not .ulid
         step_spec = StructureStepSpec(
             meta=step_meta,
             structure="",
-            step_type="scf",
+            step_type_spec="qe_scf",
             parameters={},
         )
         step_file.write_text(yaml.safe_dump(step_spec.to_dict(), sort_keys=False))
         
         # Update calculation.yaml to reference step
         calc_data = yaml.safe_load((calc_dir / "calculation.yaml").read_text())
-        calc_data["steps"] = [{"step_id": step_id}]
+        calc_data["steps"] = [{"step_ulid": step_id, "step_type_spec": "qe_scf"}]
         (calc_dir / "calculation.yaml").write_text(yaml.safe_dump(calc_data, sort_keys=False))
         
         yield project_root, calculation_id, step_id, step_file

@@ -117,7 +117,7 @@ def tmp_project_with_bands(tmp_path: Path):
     # Get the actual step ID that was created
     calc_model = load_calculation(calc_yaml, project_root=project_root, resolve_structure_selector=resolver)
     if calc_model.steps:
-        step_ulid = calc_model.steps[0].step_id
+        step_ulid = calc_model.steps[0].step_ulid
     
     # Update step YAML with filband parameter
     step_yaml = steps_dir / f"{step_ulid}.step.yaml"

@@ -88,12 +88,11 @@ calculations:
       pseudo_sha_family: 013161d04858e342cac75eff58755cc93c1b9ffca56a491d7b6c9abf140dedeb
   steps:
   - meta:
-      id: 01KE2K2EMCWGJKBE4KXVSDYVF9
       name: scf
       slug: scf
       path: calculations/diamond-mlwfs/steps/scf.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KE2K2EMCWGJKBE4KXVSDYVF9
     index: 0
     parameters:
       CONTROL:
@@ -117,13 +116,13 @@ calculations:
           - '0'
           - '0'
           - '0'
+    step_type_spec: qe_scf
   - meta:
-      id: 01KE2K2EMCD0Z4YSWY2NHVSZTA
       name: nscf
       slug: nscf
       path: calculations/diamond-mlwfs/steps/nscf.step.yaml
       kind: step
-    step_type: nscf
+      ulid: 01KE2K2EMCD0Z4YSWY2NHVSZTA
     index: 1
     parameters:
       CONTROL:
@@ -397,13 +396,13 @@ calculations:
           - '0.0156250'
     depends_on:
     - 01KE2K2EMCWGJKBE4KXVSDYVF9
+    step_type_spec: qe_nscf
   - meta:
-      id: 01KE2K2EME4F12EG0TC2GM95S8
       name: w90_preproc
       slug: w90_preproc
       path: calculations/diamond-mlwfs/steps/w90_preproc.step.yaml
       kind: step
-    step_type: w90_preproc
+      ulid: 01KE2K2EME4F12EG0TC2GM95S8
     index: 2
     parameters: &id001
       seedname: diamond
@@ -423,30 +422,31 @@ calculations:
       num_iter: 20
     depends_on:
     - 01KE2K2EMCD0Z4YSWY2NHVSZTA
+    step_type_spec: w90_preproc
   - meta:
-      id: 01KE2K2EMEZN4KTJJ7R4ETMF05
       name: pw2wannier90
       slug: pw2wannier90
       path: calculations/diamond-mlwfs/steps/pw2wannier90.step.yaml
       kind: step
-    step_type: pw2wannier90
+      ulid: 01KE2K2EMEZN4KTJJ7R4ETMF05
     index: 4
     parameters:
       seedname: diamond
     depends_on:
     - 01KE2K2EMCD0Z4YSWY2NHVSZTA
     - 01KE2K2EME4F12EG0TC2GM95S8
+    step_type_spec: qe_pw2wannier90
   - meta:
-      id: 01KE2K2EMEZY8C0WDH9NZDMHCA
       name: w90_run
       slug: w90_run
       path: calculations/diamond-mlwfs/steps/w90_run.step.yaml
       kind: step
-    step_type: w90_run
+      ulid: 01KE2K2EMEZY8C0WDH9NZDMHCA
     index: 4
     parameters: *id001
     depends_on:
     - 01KE2K2EMEZN4KTJJ7R4ETMF05
+    step_type_spec: w90_run
 pseudo:
   files:
   - C.pz-vbc.UPF

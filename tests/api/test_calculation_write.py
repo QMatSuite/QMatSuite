@@ -255,6 +255,7 @@ def test_add_step_persists_and_returns_step_dto(tmp_path):
     calc_dir.mkdir(parents=True)
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text("""meta:
+  ulid: 01TESTCALC1234567890123456
   id: 01TESTCALC1234567890123456
   name: Test Calculation
   slug: test_calc
@@ -277,9 +278,9 @@ steps: []
     
     # Verify DTO
     assert isinstance(step, StepDTO)
-    assert step.step_id is not None
-    assert step.calc_id == "01TESTCALC1234567890123456"
-    assert step.step_type is not None
+    assert step.step_ulid is not None
+    assert step.calc_ulid == "01TESTCALC1234567890123456"
+    assert step.step_type_spec is not None
     
     # Verify step.yaml exists
     steps_dir = calc_dir / "steps"
@@ -289,16 +290,16 @@ steps: []
     
     # Verify step.yaml content
     step_data = yaml.safe_load(step_files[0].read_text())
-    assert step_data["meta"]["id"] == step.step_id
+    assert step_data["meta"]["ulid"] == step.step_ulid
     assert step_data["meta"]["name"] == "scf1"
-    assert "step_type" in step_data
+    assert "step_type_spec" in step_data
     
     # Verify calculation.yaml was updated
     calc_data = yaml.safe_load(calc_yaml.read_text())
     steps = calc_data.get("steps", [])
     assert len(steps) == 1
-    assert steps[0]["step_id"] == step.step_id
-    assert steps[0]["type"] == "scf"  # Public type
+    assert steps[0]["step_ulid"] == step.step_ulid
+    assert steps[0]["step_type_spec"] == "qe_scf"  # SPEC type
     
     # Regression test: Ensure calculation.yaml does NOT contain python object tags
     calc_yaml_text = calc_yaml.read_text()

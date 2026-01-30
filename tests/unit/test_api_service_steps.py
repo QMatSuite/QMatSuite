@@ -100,9 +100,10 @@ def test_add_step_to_calculation_creates_valid_spec(temp_project):
 
     # Verify result is a StepDTO
     assert result is not None
-    assert result.step_id is not None, "StepDTO should have step_id (ULID)"
-    # Step type may be public ("scf") or machine ("qe_scf") depending on API
-    assert "scf" in result.step_type.lower(), f"Expected step_type to contain 'scf', got '{result.step_type}'"
+    assert result.step_ulid is not None, "StepDTO should have step_ulid (ULID)"
+    # Step type should be SPEC ("qe_scf")
+    assert result.step_type_spec == "qe_scf", f"Expected step_type_spec to be 'qe_scf', got '{result.step_type_spec}'"
+    assert result.step_type_gen == "scf", f"Expected step_type_gen to be 'scf', got '{result.step_type_gen}'"
 
     # Load the step spec file
     step_file = temp_project / "calculations" / "test-calculation" / "steps" / "test-scf.step.yaml"
@@ -116,7 +117,7 @@ def test_add_step_to_calculation_creates_valid_spec(temp_project):
 
     # Verify it can be loaded as StructureStepSpec
     spec = StructureStepSpec.from_dict(step_data, source_path=step_file)
-    assert "scf" in spec.step_type.lower(), f"Expected step_type to contain 'scf', got '{spec.step_type}'"
+    assert spec.step_type_spec == "qe_scf", f"Expected step_type_spec to be 'qe_scf', got '{spec.step_type_spec}'"
     # DAG model: Step YAML should NOT contain structure_id (inherits from calculation)
     # Verify step YAML does not contain structure_id
     assert "structure_id" not in step_data, "Step YAML should not contain structure_id (DAG model)"

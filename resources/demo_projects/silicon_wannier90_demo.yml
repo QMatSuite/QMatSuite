@@ -88,12 +88,11 @@ calculations:
       pseudo_sha_family: 5e89ad3729786ebc704f3ba033501711967d56eaefc6a2b51d186f543313c457
   steps:
   - meta:
-      id: 01KE2K2EQHG9G12T9MMDPBWKAX
       name: scf
       slug: scf
       path: calculations/silicon-mlwfs/steps/scf.step.yaml
       kind: step
-    step_type: scf
+      ulid: 01KE2K2EQHG9G12T9MMDPBWKAX
     index: 0
     parameters:
       CONTROL:
@@ -117,13 +116,13 @@ calculations:
           - '0'
           - '0'
           - '0'
+    step_type_spec: qe_scf
   - meta:
-      id: 01KE2K2EQH8DY15YV6T1RYTWQV
       name: nscf
       slug: nscf
       path: calculations/silicon-mlwfs/steps/nscf.step.yaml
       kind: step
-    step_type: nscf
+      ulid: 01KE2K2EQH8DY15YV6T1RYTWQV
     index: 1
     parameters:
       CONTROL:
@@ -401,13 +400,13 @@ calculations:
           - '1.562500e-02'
     depends_on:
     - 01KE2K2EQHG9G12T9MMDPBWKAX
+    step_type_spec: qe_nscf
   - meta:
-      id: 01KE2K2EQJ18R8PTKXAEXJJWZZ
       name: w90_preproc
       slug: w90_preproc
       path: calculations/silicon-mlwfs/steps/w90_preproc.step.yaml
       kind: step
-    step_type: w90_preproc
+      ulid: 01KE2K2EQJ18R8PTKXAEXJJWZZ
     index: 2
     parameters: &id001
       seedname: Si
@@ -421,30 +420,31 @@ calculations:
       num_iter: 500
     depends_on:
     - 01KE2K2EQH8DY15YV6T1RYTWQV
+    step_type_spec: w90_preproc
   - meta:
-      id: 01KE2K2EQJ5WQXZNWR0AEDB2KQ
       name: pw2wannier90
       slug: pw2wannier90
       path: calculations/silicon-mlwfs/steps/pw2wannier90.step.yaml
       kind: step
-    step_type: pw2wannier90
+      ulid: 01KE2K2EQJ5WQXZNWR0AEDB2KQ
     index: 4
     parameters:
       seedname: Si
     depends_on:
     - 01KE2K2EQH8DY15YV6T1RYTWQV
     - 01KE2K2EQJ18R8PTKXAEXJJWZZ
+    step_type_spec: qe_pw2wannier90
   - meta:
-      id: 01KE2K2EQJGYTH3P89P4Q0M119
       name: w90_run
       slug: w90_run
       path: calculations/silicon-mlwfs/steps/w90_run.step.yaml
       kind: step
-    step_type: w90_run
+      ulid: 01KE2K2EQJGYTH3P89P4Q0M119
     index: 4
     parameters: *id001
     depends_on:
     - 01KE2K2EQJ5WQXZNWR0AEDB2KQ
+    step_type_spec: w90_run
 pseudo:
   files:
   - Si.pbe-n-van.UPF
