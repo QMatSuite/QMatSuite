@@ -270,7 +270,7 @@ class TestTokenConsistency:
         for machine_type in ["pyscf_scf", "pyscf_mp2", "pyscf_td"]:
             spec = reg.get(machine_type)
             if spec and spec.token:
-                expected_token = PUBLIC_TYPE_TOKENS.get(spec.public_type)
+                expected_token = PUBLIC_TYPE_TOKENS.get(spec.step_type_gen)
                 assert spec.token == expected_token, (
                     f"{machine_type}: token '{spec.token}' != expected '{expected_token}'"
                 )
@@ -279,7 +279,7 @@ class TestTokenConsistency:
         for machine_type in ["orca_scf", "orca_hf", "orca_td"]:
             spec = reg.get(machine_type)
             if spec and spec.token:
-                expected_token = PUBLIC_TYPE_TOKENS.get(spec.public_type)
+                expected_token = PUBLIC_TYPE_TOKENS.get(spec.step_type_gen)
                 assert spec.token == expected_token, (
                     f"{machine_type}: token '{spec.token}' != expected '{expected_token}'"
                 )

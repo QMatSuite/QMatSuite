@@ -40,8 +40,8 @@ class TestStepTypeMappingCompleteness:
     def test_machine_type_matches_dict_key(self):
         """Every StepTypeSpec.machine_type must match its dict key."""
         for key, spec in _STEP_TYPES.items():
-            assert spec.machine_type == key, (
-                f"StepTypeSpec.machine_type '{spec.machine_type}' doesn't match "
+            assert spec.step_type_spec == key, (
+                f"StepTypeSpec.machine_type '{spec.step_type_spec}' doesn't match "
                 f"dict key '{key}'. They must be identical."
             )
 
@@ -57,7 +57,7 @@ class TestStepTypeMappingCompleteness:
 
         for key, spec in _STEP_TYPES.items():
             engine = spec.engine
-            public_type = spec.public_type
+            public_type = spec.step_type_gen
 
             if engine not in engine_public_map:
                 engine_public_map[engine] = {}
@@ -89,7 +89,7 @@ class TestStepTypeRegistryLookup:
     """Test that registry lookup works correctly for both SPEC and GEN types."""
 
     def test_lookup_by_spec_type(self):
-        """Registry should find step types when looking up by SPEC (machine_type)."""
+        """Registry should find step types when looking up by SPEC (step_type_spec)."""
         registry = get_registry()
 
         # Sample SPEC step types
@@ -98,7 +98,7 @@ class TestStepTypeRegistryLookup:
         for spec_type in spec_types:
             result = registry.get(spec_type)
             assert result is not None, f"Failed to lookup SPEC type '{spec_type}'"
-            assert result.machine_type == spec_type, (
+            assert result.step_type_spec == spec_type, (
                 f"Lookup for '{spec_type}' returned wrong machine_type: '{result.machine_type}'"
             )
 
@@ -113,8 +113,8 @@ class TestStepTypeRegistryLookup:
         for gen_type in gen_types:
             result = registry.get(gen_type)
             assert result is not None, f"Failed to lookup GEN type '{gen_type}'"
-            assert result.public_type == gen_type, (
-                f"Lookup for '{gen_type}' returned wrong public_type: '{result.public_type}'"
+            assert result.step_type_gen == gen_type, (
+                f"Lookup for '{gen_type}' returned wrong step_type_gen: '{result.step_type_gen}'"
             )
 
     def test_spec_type_preserved_in_registry(self):
@@ -369,7 +369,7 @@ class TestRelaxStepTypeConfiguration:
         gen_public_types = set()
         for spec in _STEP_TYPES.values():
             if getattr(spec, 'is_structure_transform', False):
-                gen_public_types.add(spec.public_type)
+                gen_public_types.add(spec.step_type_gen)
         
         # Should only contain "relax"
         assert gen_public_types == {"relax"}, (
@@ -394,7 +394,7 @@ class TestRelaxStepTypeConfiguration:
         registry = get_registry()
         spec = registry.get("orca_relax")
         assert spec is not None, "orca_relax should be registered"
-        assert spec.public_type == "relax", f"Expected public_type='relax', got '{spec.public_type}'"
+        assert spec.step_type_gen == "relax", f"Expected public_type='relax', got '{spec.step_type_gen}'"
         assert spec.is_structure_transform is True, "orca_relax should have is_structure_transform=True"
 
     def test_pyscf_relax_exists(self):
@@ -402,5 +402,5 @@ class TestRelaxStepTypeConfiguration:
         registry = get_registry()
         spec = registry.get("pyscf_relax")
         assert spec is not None, "pyscf_relax should be registered"
-        assert spec.public_type == "relax", f"Expected public_type='relax', got '{spec.public_type}'"
+        assert spec.step_type_gen == "relax", f"Expected public_type='relax', got '{spec.step_type_gen}'"
         assert spec.is_structure_transform is True, "pyscf_relax should have is_structure_transform=True"

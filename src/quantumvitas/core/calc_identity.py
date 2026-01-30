@@ -159,7 +159,7 @@ def _infer_identity_from_step_types(
             # First try workflow registry lookup
             spec = registry.get(step_type)
             if spec:
-                machine_types.append(spec.machine_type)
+                machine_types.append(spec.step_type_spec)
                 continue
             
             # If registry lookup fails, try DriverRegistry materialization

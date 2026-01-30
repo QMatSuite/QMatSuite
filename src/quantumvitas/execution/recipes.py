@@ -57,12 +57,12 @@ def verify_qc_topology(steps: List["Step"], registry) -> None:
         if not step_type:
             continue
         
-        # Look up spec to get public_type
+        # Look up spec to get gen type
         spec = registry.get(step_type)
         if spec:
-            step_public_type = spec.public_type
+            step_public_type = spec.step_type_gen
         else:
-            # Fallback: assume step_type is already public_type
+            # Fallback: assume step_type is already gen type
             step_public_type = step_type
         
         if step_public_type in RELAX_STEP_TYPES:
@@ -81,7 +81,7 @@ def verify_qc_topology(steps: List["Step"], registry) -> None:
             
             ancestor_spec = registry.get(ancestor_type)
             if ancestor_spec:
-                ancestor_public_type = ancestor_spec.public_type
+                ancestor_public_type = ancestor_spec.step_type_gen
             else:
                 ancestor_public_type = ancestor_type
             
@@ -152,86 +152,6 @@ class BaseRecipe(ABC):
         if step_shas is None:
             return None
         return step_shas.get(step.meta.id)
-
-
-class QERecipe(BaseRecipe):
-    """
-    QE-Recipe: Directory-state, step-run model.
-
-    Creates one job per step. Jobs share the same working directory
-    and scratch directory (outdir/).
-
-    Used by: QE, Wannier90, future VASP, ABINIT
-    """
-
-    def materialize(
-        self,
-        steps: List["Step"],
-        calc_raw_dir: Path,
-        step_shas: Optional[Dict[str, str]] = None,
-    ) -> JobGraph:
-        """
-        Materialize one job per QE step.
-
-        Args:
-            steps: List of QE steps
-            calc_raw_dir: Path to calc/raw/
-            step_shas: Optional dict for fingerprinting
-
-        Returns:
-            JobGraph with one job per step
-        """
-        registry = get_registry()
-        jobs: List[Job] = []
-
-        for idx, step in enumerate(steps):
-            job_id = f"step_{idx:02d}"
-
-            # Get step type info from registry
-            step_type = step.step_type
-            spec = registry.get(str(step_type)) if step_type else None
-
-            # Determine executable and input file
-            if spec:
-                executable = spec.executable
-                public_type = spec.public_type
-            else:
-                executable = "pw.x"
-                public_type = str(step_type) if step_type else "custom"
-
-            # Input file uses GEN naming (per Constitution §F)
-            input_file = f"{public_type}.in"
-
-            # Build command
-            command = [executable, input_file]
-
-            # Expected outputs (GEN naming)
-            expected_outputs = [calc_raw_dir / f"{public_type}.out"]
-
-            # Fingerprint
-            step_sha = self._get_step_sha(step, step_shas)
-            fingerprint = step_sha if step_sha else None
-
-            # Create job
-            job = Job(
-                id=job_id,
-                step_ids=[step.meta.id],
-                working_dir=calc_raw_dir,
-                command=command,
-                input_files=[calc_raw_dir / input_file],
-                expected_outputs=expected_outputs,
-                deps=[],  # Conservative: no explicit deps, use prefix selection
-                fingerprint=fingerprint,
-                metadata={
-                    "engine": "qe",
-                    "spec_step_type": spec.machine_type if spec else None,
-                    "public_type": public_type,
-                    "scratch_dir": calc_raw_dir / "outdir",
-                },
-            )
-            jobs.append(job)
-
-        return JobGraph(jobs=jobs)
 
 
 def get_recipe_for_engine(engine_family: str) -> BaseRecipe:

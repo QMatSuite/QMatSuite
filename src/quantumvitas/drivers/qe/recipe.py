@@ -53,7 +53,7 @@ class QERecipe(BaseRecipe):
             # Determine executable and input file
             if spec:
                 executable = spec.executable
-                public_type = spec.public_type
+                public_type = spec.step_type_gen
             else:
                 executable = "pw.x"
                 public_type = str(step_type) if step_type else "custom"
@@ -83,7 +83,7 @@ class QERecipe(BaseRecipe):
                 fingerprint=fingerprint,
                 metadata={
                     "engine": "qe",
-                    "spec_step_type": spec.machine_type if spec else None,
+                    "spec_step_type": spec.step_type_spec if spec else None,
                     "public_type": public_type,
                     "scratch_dir": calc_raw_dir / "outdir",
                 },

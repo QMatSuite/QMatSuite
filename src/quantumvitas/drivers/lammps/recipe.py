@@ -62,7 +62,7 @@ class LAMMPSRecipe(BaseRecipe):
             # Get step type info
             step_type = step.step_type
             spec = registry.get(step_type) if step_type else None
-            public_type = spec.public_type if spec else "unknown"
+            public_type = spec.step_type_gen if spec else "unknown"
             
             # Job ID = step ULID
             job_id = step.meta.id
@@ -144,7 +144,7 @@ class LAMMPSRecipe(BaseRecipe):
                 fingerprint=fingerprint,
                 metadata={
                     "engine": "lammps",
-                    "spec_step_type": spec.machine_type if spec else None,
+                    "spec_step_type": spec.step_type_spec if spec else None,
                     "public_type": public_type,
                 },
             )

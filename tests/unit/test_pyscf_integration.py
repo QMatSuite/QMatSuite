@@ -38,8 +38,8 @@ class TestPySCFStepTypeRegistration:
         spec = get_registry().get("pyscf_scf")
         
         assert spec is not None
-        assert spec.id == "scf"  # Public type (Phase 3C: pyscf_scf uses public type "scf")
-        assert spec.machine_type == "pyscf_scf"
+        assert spec.step_type_gen == "scf"  # Public type (Phase 3C: pyscf_scf uses public type "scf")
+        assert spec.step_type_spec == "pyscf_scf"
         assert spec.engine == "pyscf"
         assert spec.executable == "python"
         assert spec.requires_structure is True
@@ -65,8 +65,8 @@ class TestPySCFStepTypeRegistration:
         spec = get_registry().get("pyscf_mp2")
         
         assert spec is not None
-        assert spec.id == "mp2"  # Public type
-        assert spec.machine_type == "pyscf_mp2"
+        assert spec.step_type_gen == "mp2"  # Public type
+        assert spec.step_type_spec == "pyscf_mp2"
         assert spec.engine == "pyscf"
         assert spec.executable == "python"
         assert spec.requires_structure is False  # Phase 3C: MP2 does NOT require structure; consumes mf from state
@@ -95,9 +95,9 @@ class TestPySCFStepTypeRegistration:
         spec = get_registry().get("pyscf_td")
         
         assert spec is not None
-        assert spec.id == "td"  # Public type (generalized "td" key)
-        assert spec.machine_type == "pyscf_td"
-        assert spec.public_type == "td"
+        assert spec.step_type_gen == "td"  # Public type (generalized "td" key)
+        assert spec.step_type_spec == "pyscf_td"
+        assert spec.step_type_gen == "td"
         assert spec.engine == "pyscf"
         assert spec.executable == "python"
         assert spec.supports_incremental_skip is False  # Always rerun

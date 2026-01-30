@@ -65,7 +65,7 @@ class TestStepTypeRegistry:
         spec = registry.get("scf")
         
         assert spec is not None
-        assert spec.id == "scf"
+        assert spec.step_type_gen == "scf"
         assert spec.engine == "qe"
         assert spec.executable == "pw.x"
         # Note: accepts_presets is deprecated; use Engine.supported_presets + ParamSpace instead

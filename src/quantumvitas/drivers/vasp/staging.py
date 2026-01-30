@@ -50,7 +50,7 @@ def is_scf_step(step: "Step", registry=None) -> bool:
     
     spec = registry.get(str(step_type))
     if spec:
-        return spec.public_type == "scf"
+        return spec.step_type_gen == "scf"
     
     return str(step_type) == "scf"
 

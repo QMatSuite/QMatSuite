@@ -85,7 +85,7 @@ class PySCFRecipe(BaseRecipe):
                     if s.step_type
                     else None
                 )
-                pt = spec.public_type if spec else "scf"
+                pt = spec.step_type_gen if spec else "scf"
                 public_types.append(pt)
 
             # Generate subchain basename from stable tokens

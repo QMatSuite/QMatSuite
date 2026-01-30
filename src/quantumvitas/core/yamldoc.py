@@ -600,7 +600,7 @@ class StepDoc(YamlDoc):
                 registry = get_registry()
                 spec = registry.get(value)
                 if spec:
-                    return spec.public_type
+                    return spec.step_type_gen
         
         return value
     

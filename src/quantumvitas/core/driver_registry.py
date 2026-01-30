@@ -114,7 +114,8 @@ class DriverRegistry:
         self._drivers[family] = driver
         logger.info(f"Registered driver: {driver.display_name} ({family})")
 
-        # Register step types
+        # Register step types (use id as key - unique per engine)
+        # Note: driver_protocol.StepTypeSpec.id corresponds to workflow.registry.StepTypeSpec.step_type_spec
         for spec in driver.get_step_type_specs():
             if spec.id in self._step_types:
                 raise DuplicateStepTypeError(

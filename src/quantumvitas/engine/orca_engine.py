@@ -516,7 +516,7 @@ class ORCAEngine(Engine):
             
             if step_type:
                 spec = registry.get(step_type)
-                public_type = spec.public_type if spec else step_type
+                public_type = spec.step_type_gen if spec else step_type
                 
                 # Load parameters from step.yaml if not in step object
                 parameters = {}

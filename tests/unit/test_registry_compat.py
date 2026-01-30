@@ -76,5 +76,5 @@ class TestStepTypeAliases:
         normalized = normalize_step_type("vc-relax")
         spec = registry.get(normalized)
         assert spec is not None
-        assert spec.public_type == "relax"
+        assert spec.step_type_gen == "relax"
 

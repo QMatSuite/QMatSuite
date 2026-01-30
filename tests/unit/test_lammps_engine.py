@@ -76,8 +76,8 @@ class TestLammpsStepTypes:
         spec = registry.get("lammps_relax")
         assert spec is not None
         assert spec.engine == "lammps"
-        assert spec.machine_type == "lammps_relax"
-        assert spec.public_type == "relax"
+        assert spec.step_type_spec == "lammps_relax"
+        assert spec.step_type_gen == "relax"
         assert spec.is_structure_transform is True
     
     def test_lammps_md_registered(self):
@@ -86,8 +86,8 @@ class TestLammpsStepTypes:
         spec = registry.get("lammps_md")
         assert spec is not None
         assert spec.engine == "lammps"
-        assert spec.machine_type == "lammps_md"
-        assert spec.public_type == "md"
+        assert spec.step_type_spec == "lammps_md"
+        assert spec.step_type_gen == "md"
     
     def test_list_lammps_step_types(self):
         """Test listing LAMMPS step types."""

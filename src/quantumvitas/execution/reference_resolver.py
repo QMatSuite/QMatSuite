@@ -55,7 +55,7 @@ def find_reference_scf(
         # Look up spec to get public_type
         spec = registry.get(str(step_type))
         if spec:
-            step_public_type = spec.public_type
+            step_public_type = spec.step_type_gen
         else:
             # Fallback: assume step_type is already public_type
             step_public_type = str(step_type)
@@ -92,7 +92,7 @@ def get_gen_type(step: Any, registry: Optional[StepTypeRegistry] = None) -> Opti
     
     spec = registry.get(str(step_type))
     if spec:
-        return spec.public_type
+        return spec.step_type_gen
     
     return str(step_type)
 

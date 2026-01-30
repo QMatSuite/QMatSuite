@@ -69,8 +69,8 @@ class TestCp2kStepTypes:
         spec = registry.get("cp2k_scf")
         assert spec is not None
         assert spec.engine == "cp2k"
-        assert spec.machine_type == "cp2k_scf"
-        assert spec.public_type == "scf"
+        assert spec.step_type_spec == "cp2k_scf"
+        assert spec.step_type_gen == "scf"
         assert spec.supports_incremental_skip is True
     
     def test_cp2k_relax_registered(self):
@@ -79,8 +79,8 @@ class TestCp2kStepTypes:
         spec = registry.get("cp2k_relax")
         assert spec is not None
         assert spec.engine == "cp2k"
-        assert spec.machine_type == "cp2k_relax"
-        assert spec.public_type == "relax"
+        assert spec.step_type_spec == "cp2k_relax"
+        assert spec.step_type_gen == "relax"
         assert spec.is_structure_transform is True
         assert spec.supports_incremental_skip is True
     
@@ -90,8 +90,8 @@ class TestCp2kStepTypes:
         spec = registry.get("cp2k_md")
         assert spec is not None
         assert spec.engine == "cp2k"
-        assert spec.machine_type == "cp2k_md"
-        assert spec.public_type == "md"
+        assert spec.step_type_spec == "cp2k_md"
+        assert spec.step_type_gen == "md"
         assert spec.supports_incremental_skip is False  # CRITICAL: MD skip disabled
     
     def test_list_cp2k_step_types(self):

@@ -319,9 +319,9 @@ def get_variant(dimension: str, step_type: str) -> Optional[ParamSpaceVariant]:
     from quantumvitas.workflow.registry import get_registry
     registry = get_registry()
     spec = registry.get(step_type)
-    if spec and spec.public_type:
+    if spec and spec.step_type_gen:
         # Map machine_type to public_type
-        step_type = spec.public_type
+        step_type = spec.step_type_gen
     
     key = (step_type, dimension)
     return VARIANT_BY_STEP_AND_DIMENSION.get(key)

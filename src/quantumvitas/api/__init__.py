@@ -80,12 +80,29 @@ def get_service(project_root: Optional[Path | str] = None, **kwargs) -> QVServic
     
     return QVService(Path(project_root).resolve())
 
+
+def get_step_type_gen(step_type_spec: str) -> str:
+    """Convert SPEC to GEN via registry SSOT.
+
+    Args:
+        step_type_spec: Engine-prefixed type (e.g., "qe_scf")
+
+    Returns:
+        Engine-agnostic type (e.g., "scf")
+
+    Raises:
+        KeyError: If step_type_spec is not in registry
+    """
+    from quantumvitas.workflow.registry import normalize_step_type_to_public
+    return normalize_step_type_to_public(step_type_spec)
+
 # PR10: Minimal exports - only service, errors, and DTOs
 # Utilities are available via quantumvitas.api.utils.*
 __all__ = [
     # Service
     "QVService",
     "get_service",
+    "get_step_type_gen",
     # Errors
     "APIError",
     "NotFoundError",

@@ -70,7 +70,7 @@ class W90Recipe(BaseRecipe):
                 fingerprint=step_sha,
                 metadata={
                     "engine": "w90",
-                    "spec_step_type": spec.machine_type if spec else None,
+                    "spec_step_type": spec.step_type_spec if spec else None,
                     "public_type": "postprocess",
                 },
             )
