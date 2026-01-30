@@ -42,7 +42,7 @@ Do NOT regenerate unless updating the baseline. Document reason if doing so.
 ## Normalization
 
 Non-deterministic fields are normalized using **key-based replacement** (no content heuristics):
-- ULIDs: `<NORMALIZED_ID>` (for keys: id, structure_id, calc_id, step_id, run_id, job_id, etc.)
+- ULIDs: `<NORMALIZED_ID>` (for keys: id, structure_ulid, calc_id, step_id, run_id, job_id, etc.)
 - Timestamps: `<NORMALIZED_TIMESTAMP>` (for keys: created_at, updated_at, started_at, completed_at, timestamp)
 - Paths: `<NORMALIZED_PATH>` (for keys: project_root, log_path, io_dir)
 

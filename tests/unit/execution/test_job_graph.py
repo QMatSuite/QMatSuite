@@ -23,7 +23,7 @@ class TestJob:
         """Job can be created with minimal required fields."""
         job = Job(
             id="step_00",
-            step_ids=["ulid_001"],
+            step_ulids=["ulid_001"],
             working_dir=Path("/calc/raw"),
             command=["pw.x", "scf.in"],
         )
@@ -40,7 +40,7 @@ class TestJob:
         """Job can be created with all fields."""
         job = Job(
             id="s_m2",
-            step_ids=["ulid_001", "ulid_002"],
+            step_ulids=["ulid_001", "ulid_002"],
             working_dir=Path("/calc/raw/scf_ABCDEF"),
             command=["orca", "s_m2.inp"],
             input_files=[Path("/calc/raw/scf_ABCDEF/s_m2.inp")],
@@ -64,7 +64,7 @@ class TestJob:
         """engine property returns metadata engine value."""
         job = Job(
             id="test",
-            step_ids=["ulid"],
+            step_ulids=["ulid"],
             working_dir=Path("/tmp"),
             command=["test"],
             metadata={"engine": "pyscf"},
@@ -76,7 +76,7 @@ class TestJob:
         """engine property returns None if not set."""
         job = Job(
             id="test",
-            step_ids=["ulid"],
+            step_ulids=["ulid"],
             working_dir=Path("/tmp"),
             command=["test"],
         )
@@ -87,14 +87,14 @@ class TestJob:
         """is_internal detects PySCF internal jobs."""
         internal_job = Job(
             id="s",
-            step_ids=["ulid"],
+            step_ulids=["ulid"],
             working_dir=Path("/tmp"),
             command=["<internal>"],
         )
 
         external_job = Job(
             id="s",
-            step_ids=["ulid"],
+            step_ulids=["ulid"],
             working_dir=Path("/tmp"),
             command=["orca", "s.inp"],
         )
@@ -106,7 +106,7 @@ class TestJob:
         """spec_step_type property returns metadata value."""
         job = Job(
             id="test",
-            step_ids=["ulid"],
+            step_ulids=["ulid"],
             working_dir=Path("/tmp"),
             command=["test"],
             metadata={"spec_step_type": "qe_scf"},
@@ -123,21 +123,21 @@ class TestJobGraph:
         jobs = [
             Job(
                 id="step_00",
-                step_ids=["ulid_scf"],
+                step_ulids=["ulid_scf"],
                 working_dir=Path("/calc/raw"),
                 command=["pw.x", "scf.in"],
                 metadata={"engine": "qe"},
             ),
             Job(
                 id="step_01",
-                step_ids=["ulid_nscf"],
+                step_ulids=["ulid_nscf"],
                 working_dir=Path("/calc/raw"),
                 command=["pw.x", "nscf.in"],
                 metadata={"engine": "qe"},
             ),
             Job(
                 id="step_02",
-                step_ids=["ulid_bands"],
+                step_ulids=["ulid_bands"],
                 working_dir=Path("/calc/raw"),
                 command=["bands.x", "bands.in"],
                 metadata={"engine": "qe"},
@@ -170,18 +170,18 @@ class TestJobGraph:
         graph = self._create_sample_graph()
         assert graph.get_job("nonexistent") is None
 
-    def test_get_job_by_step_id(self):
-        """get_job_by_step_id finds job containing step."""
+    def test_get_job_by_step_ulid(self):
+        """get_job_by_step_ulid finds job containing step."""
         graph = self._create_sample_graph()
 
-        job = graph.get_job_by_step_id("ulid_nscf")
+        job = graph.get_job_by_step_ulid("ulid_nscf")
         assert job is not None
         assert job.id == "step_01"
 
-    def test_get_job_by_step_id_not_found(self):
-        """get_job_by_step_id returns None for unknown step."""
+    def test_get_job_by_step_ulid_not_found(self):
+        """get_job_by_step_ulid returns None for unknown step."""
         graph = self._create_sample_graph()
-        assert graph.get_job_by_step_id("unknown_ulid") is None
+        assert graph.get_job_by_step_ulid("unknown_ulid") is None
 
     def test_get_jobs_for_target_all_mode(self):
         """ALL mode returns all jobs."""
@@ -226,14 +226,14 @@ class TestJobGraph:
         jobs = [
             Job(
                 id="step_00",
-                step_ids=["ulid_scf"],
+                step_ulids=["ulid_scf"],
                 working_dir=Path("/calc/raw"),
                 command=["pw.x", "scf.in"],
                 deps=[],
             ),
             Job(
                 id="step_01",
-                step_ids=["ulid_nscf"],
+                step_ulids=["ulid_nscf"],
                 working_dir=Path("/calc/raw"),
                 command=["pw.x", "nscf.in"],
                 deps=["step_00"],
@@ -313,21 +313,21 @@ class TestJobGraphWithMultiStepJobs:
         jobs = [
             Job(
                 id="s",
-                step_ids=["ulid_scf"],
+                step_ulids=["ulid_scf"],
                 working_dir=Path("/calc/raw/scf_ABCDEF"),
                 command=["orca", "s.inp"],
                 metadata={"engine": "orca"},
             ),
             Job(
                 id="s_m2",
-                step_ids=["ulid_scf", "ulid_mp2"],
+                step_ulids=["ulid_scf", "ulid_mp2"],
                 working_dir=Path("/calc/raw/scf_ABCDEF"),
                 command=["orca", "s_m2.inp"],
                 metadata={"engine": "orca"},
             ),
             Job(
                 id="s_t",
-                step_ids=["ulid_scf", "ulid_td"],
+                step_ulids=["ulid_scf", "ulid_td"],
                 working_dir=Path("/calc/raw/scf_ABCDEF"),
                 command=["orca", "s_t.inp"],
                 metadata={"engine": "orca"},
@@ -335,25 +335,25 @@ class TestJobGraphWithMultiStepJobs:
         ]
         return JobGraph(jobs=jobs)
 
-    def test_get_job_by_step_id_multi_step(self):
-        """get_job_by_step_id finds job for step in multi-step job."""
+    def test_get_job_by_step_ulid_multi_step(self):
+        """get_job_by_step_ulid finds job for step in multi-step job."""
         graph = self._create_orca_style_graph()
 
         # MP2 step is in s_m2 job
-        job = graph.get_job_by_step_id("ulid_mp2")
+        job = graph.get_job_by_step_ulid("ulid_mp2")
         assert job is not None
         assert job.id == "s_m2"
 
         # TD step is in s_t job
-        job = graph.get_job_by_step_id("ulid_td")
+        job = graph.get_job_by_step_ulid("ulid_td")
         assert job is not None
         assert job.id == "s_t"
 
-    def test_get_job_by_step_id_scf_in_multiple(self):
+    def test_get_job_by_step_ulid_scf_in_multiple(self):
         """SCF step appears in multiple jobs; first match returned."""
         graph = self._create_orca_style_graph()
 
-        job = graph.get_job_by_step_id("ulid_scf")
+        job = graph.get_job_by_step_ulid("ulid_scf")
         assert job is not None
         # First job containing SCF is "s"
         assert job.id == "s"

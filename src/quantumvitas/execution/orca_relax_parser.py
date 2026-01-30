@@ -123,7 +123,7 @@ def handle_orca_relax_output(
     chain_key: str,
     calculation_ulid: str,
     input_structure_ulid: str,
-    run_id: Optional[str] = None,
+    run_ulid: Optional[str] = None,
 ) -> Path:
     """
     Handle ORCA relax output: find .xyz and write current.json.
@@ -136,7 +136,7 @@ def handle_orca_relax_output(
         chain_key: Chain key (e.g., "chain01_scf")
         calculation_ulid: ULID of the calculation
         input_structure_ulid: ULID of the input structure
-        run_id: Optional run ID
+        run_ulid: Optional run ULID
         
     Returns:
         Path to written current.json
@@ -216,7 +216,7 @@ def handle_orca_relax_output(
         calc_dir=calc_dir,
         step_ulid=step_ulid,
         step_type=step_type,
-        run_id=run_id,
+        run_ulid=run_ulid,
         calculation_ulid=calculation_ulid,
         input_structure_ulid=input_structure_ulid,
     )

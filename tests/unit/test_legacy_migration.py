@@ -27,11 +27,11 @@ def test_migrate_legacy_project_minimal(tmp_path):
     
     # Create a minimal structure file with ULID
     from quantumvitas.core.resources import generate_resource_id
-    structure_id = generate_resource_id()
+    structure_ulid = generate_resource_id()
     structure_file = structures_dir / "si.json"
     structure_data = {
         "meta": {
-            "ulid": structure_id,
+            "ulid": structure_ulid,
             "name": "Si",
             "slug": "si",
             "path": "structures/si.json",
@@ -52,7 +52,7 @@ def test_migrate_legacy_project_minimal(tmp_path):
     steps_dir = calculation_dir / "steps"
     steps_dir.mkdir()
     
-    # Create legacy calculation.yaml with structure selector (no structure_id)
+    # Create legacy calculation.yaml with structure selector (no structure_ulid)
     calculation_ulid = generate_resource_id()
     legacy_calculation = {
         "meta": {
@@ -62,7 +62,7 @@ def test_migrate_legacy_project_minimal(tmp_path):
             "path": "calculations/si_flow",
             "kind": "calculation",
         },
-        "structure": "si",  # Legacy selector, no structure_id
+        "structure": "si",  # Legacy selector, no structure_ulid
         "steps": [
             {
                 "ulid": "si_scf",  # Legacy id field, not step_id ULID
@@ -103,7 +103,7 @@ def test_migrate_legacy_project_minimal(tmp_path):
                 "name": "Si",
                 "file": "structures/si.json",
                 "meta": {
-                    "ulid": structure_id,
+                    "ulid": structure_ulid,
                     "name": "Si",
                     "slug": "si",
                     "path": "structures/si.json",
@@ -131,11 +131,11 @@ def test_migrate_legacy_project_minimal(tmp_path):
     # After migration: loading should succeed
     calculation_model = load_calculation(calculation_dir, project_root)
     
-    # Verify migrated calculation has structure_id (ULID)
-    assert calculation_model.structure_id is not None
-    assert len(calculation_model.structure_id) == 26
-    assert calculation_model.structure_id.startswith("01")
-    assert calculation_model.structure_id == structure_id
+    # Verify migrated calculation has structure_ulid (ULID)
+    assert calculation_model.structure_ulid is not None
+    assert len(calculation_model.structure_ulid) == 26
+    assert calculation_model.structure_ulid.startswith("01")
+    assert calculation_model.structure_ulid == structure_ulid
     
     # Verify steps have step_id (ULID)
     assert len(calculation_model.steps) == 1
@@ -148,15 +148,16 @@ def test_migrate_legacy_project_minimal(tmp_path):
     
     # Verify calculation.yaml no longer has legacy fields
     calculation_data = yaml.safe_load(calculation_yaml.read_text())
-    assert "structure_id" in calculation_data
+    assert "structure_ulid" in calculation_data
     assert "structure" not in calculation_data
     assert "structure_name" not in calculation_data
     
     # Verify step entry no longer has legacy fields
     step_entry_dict = calculation_data["steps"][0]
-    assert "step_id" in step_entry_dict
+    assert "step_ulid" in step_entry_dict
     assert "step_file" not in step_entry_dict
     assert "id" not in step_entry_dict
+    assert "step_id" not in step_entry_dict  # Legacy field should not exist
     
     # Verify step file exists
     migrated_step_file = steps_dir / "si-scf.step.yaml"  # May have been renamed to slug

@@ -233,7 +233,7 @@ def extract_structure_selector_from_entry(entry: dict) -> str | None:
     Extract a structure selector from a project.qv.yml entry.
 
     Priority order:
-    1. structure_id (ID-only model)
+    1. structure_ulid (ID-only model)
     2. meta.ulid (ULID)
     3. meta.slug (slug)
     4. id (legacy)
@@ -251,7 +251,7 @@ def extract_step_selector_from_entry(entry: dict) -> str | None:
     Extract a step selector from a calculation.yaml step entry.
 
     Priority order:
-    1. step_id (ID-only model)
+    1. step_ulid (ID-only model)
     2. meta.ulid (ULID)
     3. meta.slug (slug)
     4. id (legacy)
@@ -867,7 +867,7 @@ def build_structure_vis_payload(
     Args:
         structure: pymatgen Structure object
         params: DisplayModeParams with mode, supercell, box_bounds, repeat_boundary
-        structure_meta: Optional metadata dict (structure_id, structure_name, formula)
+        structure_meta: Optional metadata dict (structure_ulid, structure_name, formula)
 
     Returns:
         Dict with atoms, bonds, lattice, n_atoms, n_bonds, element_colors, etc.

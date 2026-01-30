@@ -542,7 +542,7 @@ def _materialize_project_from_input_folder_legacy(
         config=config
     )
     # Use calculation ID as selector to avoid slug conflicts
-    calculation_selector = calculation_resolved.meta.id
+    calculation_selector = calculation_resolved.meta.ulid
     
     # Rebuild index after calculation creation
     index = build_resource_index(project_root)

@@ -104,7 +104,7 @@ calculations:
       Fe:
         mass: 55.845
     step_type_spec: qe_scf
-  structure_id: 01KE2M0MTHTSNFD07R9QXG12T0
+  structure_ulid: 01KE2M0MTHTSNFD07R9QXG12T0
   species_map:
     Fe:
       mass: 55.845

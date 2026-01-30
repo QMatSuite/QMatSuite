@@ -63,10 +63,10 @@ def pick_first_candidate(
     """
     if not entries:
         return None, None, None
-    
+
     # Pick first result (as returned by search)
     entry = entries[0]
-    entry_id = entry.get("ulid")
+    entry_id = entry.get("id")
     attrs = entry.get("attributes", {})
     if entry_id:
         return None, entry_id, attrs
@@ -186,27 +186,27 @@ def test_optimade_live_fetch_si_structure_and_parse_pymatgen():
     assert len(entries) > 0, "search_optimade() returned no entries"
     
     # Pick first candidate (as returned by search)
-    _, structure_id, attrs = pick_first_candidate(entries)
-    assert structure_id is not None, "No candidate found in search results"
+    _, structure_ulid, attrs = pick_first_candidate(entries)
+    assert structure_ulid is not None, "No candidate found in search results"
     
     nsites = attrs.get("nsites") if attrs else None
     print(f"\n✓ OPTIMADE search completed")
     print(f"  Base: {base_url}")
-    print(f"  Chosen ID: {structure_id}")
+    print(f"  Chosen ID: {structure_ulid}")
     print(f"  nsites: {nsites}")
     print(f"  Search elapsed: {elapsed_search:.2f}s")
     
     # Step 2: Fetch full structure and raw data using production function
     start_fetch = time.time()
-    structure, optimade_raw = fetch_structure_from_optimade(base_url, structure_id)
+    structure, optimade_raw = fetch_structure_from_optimade(base_url, structure_ulid)
     elapsed_fetch = time.time() - start_fetch
     
     assert structure is not None, (
-        f"fetch_structure_from_optimade() returned None for {base_url}/{structure_id}\n"
+        f"fetch_structure_from_optimade() returned None for {base_url}/{structure_ulid}\n"
         f"Check that the endpoint returns valid OPTIMADE structure data."
     )
     assert optimade_raw is not None, (
-        f"fetch_structure_from_optimade() returned None raw data for {base_url}/{structure_id}"
+        f"fetch_structure_from_optimade() returned None raw data for {base_url}/{structure_ulid}"
     )
     
     # Assertions on structure
@@ -265,7 +265,7 @@ def test_optimade_live_fetch_si_structure_and_parse_pymatgen():
         provider=provider,
         database=database,
         base_url=base_url,
-        optimade_id=structure_id,
+        optimade_id=structure_ulid,
         attributes=optimade_attrs,
         raw=optimade_raw,
     )
@@ -293,8 +293,8 @@ def test_optimade_live_fetch_si_structure_and_parse_pymatgen():
             provenance["base_url"].startswith("https://optimade.materialscloud.org/")), (
         f"base_url should start with https://optimade.materialscloud.org/, got '{provenance['base_url']}'"
     )
-    assert provenance["optimade_id"] == structure_id, (
-        f"optimade_id mismatch: expected '{structure_id}', got '{provenance['optimade_id']}'"
+    assert provenance["optimade_id"] == structure_ulid, (
+        f"optimade_id mismatch: expected '{structure_ulid}', got '{provenance['optimade_id']}'"
     )
     
     # Assert overview-critical fields using same fallback priorities as Details panel
@@ -407,8 +407,8 @@ def test_optimade_live_fetch_si_structure_and_parse_pymatgen():
     assert overview["source_name"] != "", "Resolved source_name must not be empty"
     assert overview["provider"] != "", "Resolved provider must not be empty"
     assert overview["database"] != "", "Resolved database must not be empty"
-    assert overview["optimade_id"] == structure_id, (
-        f"Resolved optimade_id ({overview['optimade_id']}) != fetched id ({structure_id})"
+    assert overview["optimade_id"] == structure_ulid, (
+        f"Resolved optimade_id ({overview['optimade_id']}) != fetched id ({structure_ulid})"
     )
     
     # Verify JSON serializable
@@ -486,10 +486,10 @@ def test_optimade_live_viewer_payload_builder():
     base_url, entries = search_optimade(query, max_results=10)
     assert base_url is not None and len(entries) > 0
     
-    _, structure_id, _ = pick_first_candidate(entries)
-    assert structure_id is not None
+    _, structure_ulid, _ = pick_first_candidate(entries)
+    assert structure_ulid is not None
     
-    structure, _ = fetch_structure_from_optimade(base_url, structure_id)
+    structure, _ = fetch_structure_from_optimade(base_url, structure_ulid)
     assert structure is not None
     
     # Use shared payload builder (same as production)
@@ -584,8 +584,8 @@ def test_optimade_live_fetch_mos2_with_rich_metadata():
     assert len(entries) > 0, "search_optimade() returned no entries"
     
     # Pick first candidate (as returned by search)
-    _, structure_id, attrs = pick_first_candidate(entries)
-    assert structure_id is not None, "No candidate found in search results"
+    _, structure_ulid, attrs = pick_first_candidate(entries)
+    assert structure_ulid is not None, "No candidate found in search results"
     
     # Check formula from search metadata
     formula_from_search = attrs.get("chemical_formula_reduced", "") if attrs else ""
@@ -594,17 +594,17 @@ def test_optimade_live_fetch_mos2_with_rich_metadata():
     nsites_from_search = attrs.get("nsites") if attrs else None
     print(f"\n✓ OPTIMADE search completed for {query}")
     print(f"  Base: {base_url}")
-    print(f"  Chosen ID: {structure_id}")
+    print(f"  Chosen ID: {structure_ulid}")
     print(f"  nsites (from search): {nsites_from_search}")
     print(f"  Search elapsed: {elapsed_search:.2f}s")
     
     # Step 2: Fetch full structure and raw data
     start_fetch = time.time()
-    structure, optimade_raw = fetch_structure_from_optimade(base_url, structure_id)
+    structure, optimade_raw = fetch_structure_from_optimade(base_url, structure_ulid)
     elapsed_fetch = time.time() - start_fetch
     
     assert structure is not None, (
-        f"fetch_structure_from_optimade() returned None for {base_url}/{structure_id}"
+        f"fetch_structure_from_optimade() returned None for {base_url}/{structure_ulid}"
     )
     assert optimade_raw is not None, (
         f"fetch_structure_from_optimade() returned None raw data"
@@ -647,7 +647,7 @@ def test_optimade_live_fetch_mos2_with_rich_metadata():
         provider=provider,
         database=database,
         base_url=base_url,
-        optimade_id=structure_id,
+        optimade_id=structure_ulid,
         attributes=optimade_attrs,
         raw=optimade_raw,
     )
@@ -660,7 +660,7 @@ def test_optimade_live_fetch_mos2_with_rich_metadata():
     assert "optimade_id" in provenance, "Provenance missing 'optimade_id'"
     assert provenance["provider"] == "main", f"Expected provider='main', got '{provenance['provider']}'"
     assert provenance["database"] != "", "database is empty"
-    assert provenance["optimade_id"] == structure_id, "optimade_id mismatch"
+    assert provenance["optimade_id"] == structure_ulid, "optimade_id mismatch"
     
     # Assert formula contains Mo (structure is valid)
     assert "Mo" in reduced_formula, f"Formula should contain 'Mo', got '{reduced_formula}'"
@@ -728,8 +728,8 @@ def test_optimade_live_fetch_mos2_with_rich_metadata():
     assert overview["source_name"] != "", "Resolved source_name must not be empty"
     assert overview["provider"] != "", "Resolved provider must not be empty"
     assert overview["database"] != "", "Resolved database must not be empty"
-    assert overview["optimade_id"] == structure_id, (
-        f"Resolved optimade_id ({overview['optimade_id']}) != fetched id ({structure_id})"
+    assert overview["optimade_id"] == structure_ulid, (
+        f"Resolved optimade_id ({overview['optimade_id']}) != fetched id ({structure_ulid})"
     )
     
     # Formula should contain Mo (and preferably S if search metadata indicated MoS2)

@@ -176,7 +176,7 @@ class ArchiveToSlotAction(PostJobAction):
             self._append_slots_entry(
                 slots_file,
                 variant_key=self.variant_key,
-                run_id=context.run_ulid,
+                run_ulid=context.run_ulid,
                 ok=getattr(job_result, "success", False),
                 archived_path=str(dest_dir.relative_to(context.calc_raw_dir)),
                 copied_files=copied_files,
@@ -190,7 +190,7 @@ class ArchiveToSlotAction(PostJobAction):
         self,
         slots_file: Path,
         variant_key: str,
-        run_id: str,
+        run_ulid: str,
         ok: bool,
         archived_path: str,
         copied_files: List[str],
@@ -201,14 +201,14 @@ class ArchiveToSlotAction(PostJobAction):
         Args:
             slots_file: Path to slots.json
             variant_key: Variant key
-            run_id: Run ID
+            run_ulid: Run ULID
             ok: Whether job succeeded
             archived_path: Relative path to archived directory
             copied_files: List of files copied
         """
         entry = {
             "variant_key": variant_key,
-            "run_id": run_id,
+            "run_ulid": run_ulid,
             "ok": ok,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "archived_path": archived_path,

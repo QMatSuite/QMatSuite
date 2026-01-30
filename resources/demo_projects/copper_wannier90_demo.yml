@@ -65,7 +65,7 @@ calculations:
     kind: calculation
   mode: normal
   working_dir: raw
-  structure_id: 01KE2K2ENX56JW1A2E6VKVXTYG
+  structure_ulid: 01KE2K2ENX56JW1A2E6VKVXTYG
   species_map:
     Cu:
       mass: 63.546

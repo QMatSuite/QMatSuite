@@ -9,10 +9,7 @@ class MockStep:
     """Mock step for testing."""
     def __init__(self, step_type: str, public_type: str = None):
         self.step_type_spec = step_type  # SPEC type (e.g., "vasp_scf")
-        self.step_type_gen = public_type or step_type.split("_", 1)[-1] if "_" in step_type else step_type
-        # For compatibility with find_reference_scf which checks step_type or public_type
-        self.step_type = step_type
-        self.public_type = self.step_type_gen
+        self.step_type_gen = public_type or (step_type.split("_", 1)[-1] if "_" in step_type else step_type)
 
 
 class TestReferenceSCFResolver:

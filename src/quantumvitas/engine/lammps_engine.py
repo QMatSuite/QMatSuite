@@ -143,7 +143,7 @@ class LammpsEngine(Engine):
         if not restart_file:
             structure = self._get_structure(calculation)
             if structure is None:
-                raise ValueError("Calculation has no structure_id and restart_from not specified")
+                raise ValueError("Calculation has no structure_ulid and restart_from not specified")
             
             # Write structure.data
             step_ulid = step.meta.ulid if hasattr(step, "meta") and hasattr(step.meta, "ulid") else ""
@@ -235,12 +235,12 @@ class LammpsEngine(Engine):
 
     def _get_structure(self, calculation: "Calculation") -> Optional[Structure]:
         """Get structure from calculation."""
-        structure_id = calculation.structure_id
-        if structure_id is None:
+        structure_ulid = calculation.structure_ulid
+        if structure_ulid is None:
             return None
         
         # Load structure from project
-        structure_ref = calculation.project.get_structure(structure_id)
+        structure_ref = calculation.project.get_structure(structure_ulid)
         structure_path = structure_ref.resolve_path(calculation.project.root)
         structure = read_structure(structure_path)
         

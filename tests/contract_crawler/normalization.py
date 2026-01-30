@@ -11,13 +11,13 @@ from typing import Any
 # Non-deterministic fields to normalize (expanded for v0 compat testing)
 NORMALIZE_FIELDS = {
     # ULIDs - truly non-deterministic
-    "id", "structure_id", "calc_id", "step_id", "run_id", "job_id",
+    "id", "structure_ulid", "calc_id", "step_id", "run_id", "job_id",
     "calculation_id", "entry_id", "calculation_ulid", "target_ulid",
     "target_name", "step", "calculation", "parent_calculation_id",
     # ULID-derived fields (suffix = last 6 chars of ULID)
     "suffix",
     # Arrays of IDs
-    "structure_ids",
+    "structure_ulids",
     # Timestamps - truly non-deterministic
     "created_at", "updated_at", "started_at", "completed_at", "timestamp",
     "cached_at", "generated_at",

@@ -52,9 +52,9 @@ def temp_project(tmp_path: Path) -> Path:
     if "structures" not in config:
         config["structures"] = []
     
-    structure_id = generate_resource_id()
+    structure_ulid = generate_resource_id()
     config["structures"].append({
-        "ulid": structure_id,
+        "ulid": structure_ulid,
         "name": "H2",
         "slug": "h2",
         "file": "structures/h2.json",
@@ -74,18 +74,18 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
     # Get structure ID from project config
     from quantumvitas.core.project_utils import load_project_config
     config = load_project_config(temp_project)
-    structure_id = None
+    structure_ulid = None
     for struct in config.get("structures", []):
         if struct.get("slug") == "h2":
-            structure_id = struct.get("ulid")
+            structure_ulid = struct.get("ulid")
             break
-    assert structure_id is not None, "Structure h2 not found in project config"
+    assert structure_ulid is not None, "Structure h2 not found in project config"
     
     # Create calculation using service API
     calc_resolved = QVService.init_calculation(
         project_root=temp_project,
         name="test_calc",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_id = calc_resolved.meta.ulid
     calc_dir = calc_resolved.absolute_path
@@ -245,17 +245,17 @@ class TestPySCFPhase3CIntegration:
         from quantumvitas.core.project_utils import load_project_config
         
         config = load_project_config(temp_project)
-        structure_id = None
+        structure_ulid = None
         for struct in config.get("structures", []):
             if struct.get("slug") == "h2":
-                structure_id = struct.get("ulid")
+                structure_ulid = struct.get("ulid")
                 break
-        assert structure_id is not None, "Structure h2 not found"
+        assert structure_ulid is not None, "Structure h2 not found"
         
         calc_resolved = QVService.init_calculation(
             project_root=temp_project,
             name="test_calc_mp2",
-            structure_selector=structure_id,
+            structure_selector=structure_ulid,
         )
         calc_id = calc_resolved.meta.ulid
         calc_dir = calc_resolved.absolute_path
@@ -343,17 +343,17 @@ class TestPySCFPhase3CIntegration:
         from quantumvitas.core.project_utils import load_project_config
         
         config = load_project_config(temp_project)
-        structure_id = None
+        structure_ulid = None
         for struct in config.get("structures", []):
             if struct.get("slug") == "h2":
-                structure_id = struct.get("ulid")
+                structure_ulid = struct.get("ulid")
                 break
-        assert structure_id is not None, "Structure h2 not found"
+        assert structure_ulid is not None, "Structure h2 not found"
         
         calc_resolved = QVService.init_calculation(
             project_root=temp_project,
             name="test_calc_mp2_only",
-            structure_selector=structure_id,
+            structure_selector=structure_ulid,
         )
         calc_id = calc_resolved.meta.ulid
         calc_dir = calc_resolved.absolute_path

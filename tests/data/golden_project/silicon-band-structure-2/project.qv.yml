@@ -15,6 +15,6 @@ project:
         scf: si_bands_demo.scf.json
 settings: {}
 structures:
-- structure_id: 01KDTJYMXY21PZ4P5J5P0RCERR
+- structure_ulid: 01KDTJYMXY21PZ4P5J5P0RCERR
 calculations:
 - calculation_id: 01KDTJYMXYMMQHMDM7N3BXQAH6

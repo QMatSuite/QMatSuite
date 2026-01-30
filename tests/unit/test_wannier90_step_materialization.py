@@ -159,7 +159,7 @@ def test_pw2wannier90_generates_pw2wan_file(temp_dir, simple_structure):
     spec = StructureStepSpec(
         meta=meta,
         structure=str(structure_file),  # Use absolute path
-        step_type_spec="pw2wannier90",
+        step_type_spec="qe_pw2wannier90",
         parameters={
             "seedname": "test",
             "prefix": "pwscf",

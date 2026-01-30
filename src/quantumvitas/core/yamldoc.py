@@ -586,23 +586,13 @@ class StepDoc(YamlDoc):
     
     def get(self, path: PathType, default: Any = MISSING) -> Any:
         """
-        Get value with backward compatibility for step_type.
-        
-        If reading step_type, converts machine type (qe_scf) to public type (scf)
-        for backward compatibility with existing APIs/tests.
+        Get value at path.
+
+        Note: step_type_spec returns the actual spec type (e.g., "qe_scf"),
+        not the gen type. Use registry.get(value).step_type_gen if you need
+        the engine-agnostic type.
         """
-        value = super().get(path, default)
-        
-        # Convert machine type to public type for step_type field
-        if path == ("step_type_spec",) or path == ["step_type_spec"]:
-            if isinstance(value, str):
-                from quantumvitas.workflow.registry import get_registry
-                registry = get_registry()
-                spec = registry.get(value)
-                if spec:
-                    return spec.step_type_gen
-        
-        return value
+        return super().get(path, default)
     
     def save(self, path: Path) -> None:
         """

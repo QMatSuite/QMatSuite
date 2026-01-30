@@ -29,7 +29,7 @@ def temp_project_with_step():
         # Create a structure
         structures_dir = project_root / "structures"
         structures_dir.mkdir()
-        structure_id = generate_resource_id()
+        structure_ulid = generate_resource_id()
         structure_file = structures_dir / "si.json"
         structure_file.write_text("""{
   "__qv_meta__": {
@@ -59,11 +59,17 @@ def temp_project_with_step():
         
         (project_root / "project.qv.yml").write_text(f"""name: Test Project
 structures:
-  - id: {structure_id}
+  - ulid: {structure_ulid}
     file: structures/si.json
+    slug: si
+    name: Si
+    kind: structure
 calculations:
-  - id: {calculation_id}
+  - ulid: {calculation_id}
     path: calculations/wf
+    slug: wf
+    name: wf
+    kind: calculation
 """)
         
         (calc_dir / "calculation.yaml").write_text(f"""meta:
@@ -73,7 +79,7 @@ calculations:
   slug: wf
   path: calculations/wf
   kind: calculation
-structure_id: {structure_id}
+structure_ulid: {structure_ulid}
 steps: []
 """)
         

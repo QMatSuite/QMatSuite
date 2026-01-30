@@ -162,7 +162,7 @@ class TestJobManager:
         
         job_dict = manager.get_job_status(job_id)
         
-        assert "id" in job_dict
+        assert "ulid" in job_dict
         assert "job_type" in job_dict
         assert "status" in job_dict
         assert "created_at" in job_dict
@@ -436,17 +436,18 @@ class TestQVDaemonHandlers:
         assert len(templates) > 0  # Should have at least one template
         
         # Schema validation for each template
-        expected_keys = {"id", "name", "description", "step_sequence"}
+        expected_keys = {"id", "ulid", "name", "description", "step_sequence"}  # ulid is backwards compat alias
         for template in templates:
             # Must be a dict
             assert isinstance(template, dict)
-            
+
             # Keys must be exactly the expected set (no extras, no missing)
             actual_keys = set(template.keys())
             assert actual_keys == expected_keys, f"Template keys mismatch: got {actual_keys}, expected {expected_keys}"
-            
+
             # Type checks
-            assert isinstance(template["ulid"], str)
+            assert isinstance(template["id"], str)  # Template identifier (not a ULID)
+            assert isinstance(template["ulid"], str)  # Backwards compat alias for id
             assert isinstance(template["name"], str)
             assert template["description"] is None or isinstance(template["description"], str)
             
@@ -547,7 +548,7 @@ class TestQVDaemonHandlers:
             payload={
                 "workflow_id": "scf",  # Valid workflow ID
                 "calculation_path": str(calc_dir),
-                "structure_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+                "structure_ulid": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                 "calculation_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
             },
         ))

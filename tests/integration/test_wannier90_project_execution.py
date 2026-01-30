@@ -150,7 +150,7 @@ created: "2026-01-02"
         calc_yaml.write_text(f"""
 meta:
   name: {self.name}_w90
-structure_id: {self.name}
+structure_ulid: {self.name}
 working_dir: raw
 species_map:
   {self.element}:

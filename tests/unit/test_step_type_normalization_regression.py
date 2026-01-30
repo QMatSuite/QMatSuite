@@ -27,13 +27,13 @@ class TestExecutableResolution:
         "pw.x" because "qe_bands" was not a key (only "bands" was).
         """
         from quantumvitas.core.engines.qe import QuantumEspressoEngine
-        from quantumvitas.workflow.registry import normalize_step_type_to_public
+        from quantumvitas.workflow.registry import normalize_step_type_to_gen
         
         # Test normalization
-        assert normalize_step_type_to_public("qe_bands") == "bands"
+        assert normalize_step_type_to_gen("qe_bands") == "bands"
         
         # Test EXECUTABLE_MAP lookup with normalized type
-        step_type_public = normalize_step_type_to_public("qe_bands")
+        step_type_public = normalize_step_type_to_gen("qe_bands")
         executable = QuantumEspressoEngine.EXECUTABLE_MAP.get(step_type_public, "pw.x")
         
         assert executable == "bands.x", (
@@ -44,9 +44,9 @@ class TestExecutableResolution:
     def test_qe_dos_machine_type_resolves_to_dos_x(self):
         """Verify qe_dos (machine_type) resolves to dos.x."""
         from quantumvitas.core.engines.qe import QuantumEspressoEngine
-        from quantumvitas.workflow.registry import normalize_step_type_to_public
+        from quantumvitas.workflow.registry import normalize_step_type_to_gen
         
-        step_type_public = normalize_step_type_to_public("qe_dos")
+        step_type_public = normalize_step_type_to_gen("qe_dos")
         executable = QuantumEspressoEngine.EXECUTABLE_MAP.get(step_type_public, "pw.x")
         
         assert executable == "dos.x"
@@ -54,9 +54,9 @@ class TestExecutableResolution:
     def test_qe_scf_machine_type_resolves_to_pw_x(self):
         """Verify qe_scf (machine_type) resolves to pw.x (as expected)."""
         from quantumvitas.core.engines.qe import QuantumEspressoEngine
-        from quantumvitas.workflow.registry import normalize_step_type_to_public
+        from quantumvitas.workflow.registry import normalize_step_type_to_gen
         
-        step_type_public = normalize_step_type_to_public("qe_scf")
+        step_type_public = normalize_step_type_to_gen("qe_scf")
         executable = QuantumEspressoEngine.EXECUTABLE_MAP.get(step_type_public, "pw.x")
         
         assert executable == "pw.x"
@@ -123,20 +123,20 @@ class TestNormalizationSSOT:
     """Test that normalization uses the centralized SSOT."""
     
     def test_normalize_function_exists_in_registry(self):
-        """Verify normalize_step_type_to_public is the SSOT in registry module."""
-        from quantumvitas.workflow.registry import normalize_step_type_to_public
+        """Verify normalize_step_type_to_gen is the SSOT in registry module."""
+        from quantumvitas.workflow.registry import normalize_step_type_to_gen
         
         # Basic functionality test
-        assert normalize_step_type_to_public("qe_bands") == "bands"
-        assert normalize_step_type_to_public("bands") == "bands"
-        assert normalize_step_type_to_public("QE_BANDS") == "bands"
+        assert normalize_step_type_to_gen("qe_bands") == "bands"
+        assert normalize_step_type_to_gen("bands") == "bands"
+        assert normalize_step_type_to_gen("QE_BANDS") == "bands"
     
     def test_structure_steps_uses_registry_normalize(self):
         """Verify structure_steps imports from registry, not local copy."""
         from quantumvitas.calculation import structure_steps
         from quantumvitas.workflow import registry
         
-        # The local _normalize_step_type_to_public should be the registry's function
+        # The local _normalize_step_type_to_gen should be the registry's function
         # (imported with alias)
-        assert structure_steps._normalize_step_type_to_public is registry.normalize_step_type_to_public
+        assert structure_steps._normalize_step_type_to_gen is registry.normalize_step_type_to_gen
 

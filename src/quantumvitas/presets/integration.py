@@ -308,8 +308,15 @@ def _load_step_parameters(
         try:
             # Load via StepDoc (detector is read-only)
             doc = StepDoc.load(step_file, access_control=True, owner="detector")
-            step_type = doc.get(["step_type_spec"], default="scf")
-            
+            step_type_spec = doc.get(["step_type_spec"], default="scf")
+
+            # Convert SPEC to GEN for receiver registry lookup (receivers use GEN types)
+            from quantumvitas.api import get_step_type_gen
+            try:
+                step_type = get_step_type_gen(step_type_spec)
+            except (KeyError, ValueError):
+                step_type = step_type_spec  # Fallback if conversion fails
+
             # Filter to only receiver steps for preset detection
             if receivers_only and not is_receiver(step_type):
                 continue
@@ -364,8 +371,15 @@ def _load_step_parameters_with_types(
         try:
             # Load via StepDoc (detector is read-only)
             doc = StepDoc.load(step_file, access_control=True, owner="detector")
-            step_type = doc.get(["step_type_spec"], default="scf")
-            
+            step_type_spec = doc.get(["step_type_spec"], default="scf")
+
+            # Convert SPEC to GEN for receiver registry lookup (receivers use GEN types)
+            from quantumvitas.api import get_step_type_gen
+            try:
+                step_type = get_step_type_gen(step_type_spec)
+            except (KeyError, ValueError):
+                step_type = step_type_spec  # Fallback if conversion fails
+
             if receivers_only and not is_receiver(step_type):
                 continue
             

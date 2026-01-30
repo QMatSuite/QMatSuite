@@ -1529,14 +1529,16 @@ class QVService:
                 spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=None)
                 step_type = spec.step_type_spec
 
-                # Validate step type
-                if step_type not in ("relax", "vc-relax"):
+                # Validate step type (convert to GEN type for comparison)
+                from quantumvitas.api import get_step_type_gen
+                step_gen = get_step_type_gen(step_type)
+                if step_gen not in ("relax", "vc-relax", "vc_relax"):
                     raise ValidationError(
                         f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type})"
                     )
 
-                # Find output file
-                output_filename = CalculationFileNaming.output_filename(step_type, working_dir=raw_dir)
+                # Find output file (use GEN type for filename, e.g., "vc-relax.out" not "qe_vc-relax.out")
+                output_filename = CalculationFileNaming.output_filename(step_gen, working_dir=raw_dir)
                 output_file = raw_dir / output_filename
 
                 if not output_file.exists():
@@ -1784,7 +1786,7 @@ class QVService:
                     structure_ulid = struct_resolved.meta.ulid if struct_resolved.meta else ""
                     return {
                         "structure_ulid": structure_ulid,
-                        "structure_id": structure_ulid,  # Backwards compat
+                        "structure_ulid": structure_ulid,  # Backwards compat
                         "num_atoms": len(pmg_structure),
                         "formula": pmg_structure.formula,
                     }
@@ -1799,7 +1801,7 @@ class QVService:
                     structure_ulid = struct_resolved.meta.ulid if struct_resolved.meta else ""
                     return {
                         "structure_ulid": structure_ulid,
-                        "structure_id": structure_ulid,  # Backwards compat
+                        "structure_ulid": structure_ulid,  # Backwards compat
                         "n_atoms": result.n_atoms if hasattr(result, "n_atoms") else len(pmg_structure),
                         "format": format,
                     }
@@ -1992,7 +1994,7 @@ class QVService:
                 structure_ulid = resolved.meta.ulid if resolved.meta else None
                 structure_meta = {
                     "structure_ulid": structure_ulid,
-                    "structure_id": structure_ulid,  # Backwards compat
+                    "structure_ulid": structure_ulid,  # Backwards compat
                     "structure_name": resolved.meta.name if resolved.meta else None,
                     "formula": original_structure.composition.reduced_formula,
                     "supercell": list(supercell_normalized),
@@ -2084,10 +2086,10 @@ class QVService:
 
                 # Resolve structure
                 struct_resolved = require_structure(project_root, selector, config=config)
-                structure_id = struct_resolved.meta.ulid
+                structure_ulid = struct_resolved.meta.ulid
 
                 # Build structure entry dict for calculations_using_structure
-                struct_entry = {"structure_id": structure_id}
+                struct_entry = {"structure_ulid": structure_ulid}
 
                 # Check for dependent calculations
                 dependent = calculations_using_structure(project_root, config, struct_entry)
@@ -2102,7 +2104,7 @@ class QVService:
                 structures = config.get("structures", [])
                 config["structures"] = [
                     s for s in structures
-                    if s.get("structure_id") != structure_id and s.get("meta", {}).get("ulid") != structure_id
+                    if s.get("structure_ulid") != structure_ulid and s.get("meta", {}).get("ulid") != structure_ulid
                 ]
                 save_project_config(project_root, config)
 
@@ -2476,10 +2478,10 @@ class QVService:
                 
                 # Find matching step
                 step_obj = None
-                resolved_step_id = step_resolved.meta.ulid if step_resolved.meta else None
+                resolved_step_ulid = step_resolved.meta.ulid if step_resolved.meta else None
                 for step in calc_obj.steps:
-                    step_id = step.meta.ulid if hasattr(step, 'meta') and step.meta else None
-                    if step_id == resolved_step_id:
+                    step_ulid = step.meta.ulid if hasattr(step, 'meta') and step.meta else None
+                    if step_ulid == resolved_step_ulid:
                         step_obj = step
                         break
                 
@@ -2547,8 +2549,9 @@ class QVService:
                     result["parameters"] = spec.parameters or {}
                     result["cards"] = spec.cards or {}
                     result["species_overrides"] = spec.species_overrides or {}
-                    result["structure"] = spec.structure_id or spec.structure or ""
+                    result["structure"] = spec.structure_ulid or spec.structure or ""
                     result["parent_calculation_id"] = spec.parent_calculation_id or ""
+                    result["parent_calculation_ulid"] = spec.parent_calculation_id or ""  # Alias for backwards compat
 
                     # Add name/slug from spec meta if available
                     if spec.meta:
@@ -2569,6 +2572,7 @@ class QVService:
                     result["species_overrides"] = {}
                     result["structure"] = ""
                     result["parent_calculation_id"] = ""
+                    result["parent_calculation_ulid"] = ""  # Alias for backwards compat
 
                 return result
             except Exception as e:
@@ -2615,18 +2619,18 @@ class QVService:
                 step_map = {(step.meta.ulid if hasattr(step, 'meta') and step.meta else None): step for step in calc_obj.steps}
                 
                 results = []
-                calc_id = calc_resolved.meta.ulid if calc_resolved.meta else ""
+                calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else ""
                 
                 for step_resolved in step_resolved_list:
                     try:
-                        step_id = step_resolved.meta.ulid if step_resolved.meta else None
-                        step_obj = step_map.get(step_id) if step_id else None
+                        step_ulid = step_resolved.meta.ulid if step_resolved.meta else None
+                        step_obj = step_map.get(step_ulid) if step_ulid else None
                         
                         if step_obj:
                             dto = step_to_dto(
                                 step_resolved=step_resolved,
                                 step_obj=step_obj,
-                                calc_ulid=calc_id,
+                                calc_ulid=calc_ulid,
                             )
                             results.append(dto)
                     except Exception:
@@ -2673,7 +2677,7 @@ class QVService:
                 effective_params = {}
                 
                 for step in calc_obj.steps:
-                    step_id = step.id
+                    step_ulid = step.id
                     step_type = step.step_type_spec if hasattr(step, 'step_type_spec') else None
                     
                     if not step_type:
@@ -2693,7 +2697,7 @@ class QVService:
                         merged[section] = dict(defaults.get("parameters", {}).get(section, {}))
                         merged[section].update(step_params.get(section, {}))
                     
-                    effective_params[step_id] = {
+                    effective_params[step_ulid] = {
                         "step_type_gen": step_type,
                         "parameters": merged,
                         "cards": defaults.get("cards", {}),
@@ -2780,12 +2784,12 @@ class QVService:
                     (calculation_dir / "raw").mkdir(exist_ok=True)
                     (calculation_dir / "reference").mkdir(exist_ok=True)
 
-                    # Resolve structure selector to structure_id
-                    structure_id = None
+                    # Resolve structure selector to structure_ulid
+                    structure_ulid = None
                     structure_name = None
                     if structure_selector:
                         resolved_structure = require_structure(project_root, structure_selector, config=config)
-                        structure_id = resolved_structure.meta.ulid
+                        structure_ulid = resolved_structure.meta.ulid
                         structure_name = resolved_structure.meta.name
 
                     calculation_meta = ResourceMeta(ulid=calculation_id,
@@ -2796,7 +2800,7 @@ class QVService:
                     )
                     calculation_model = CalculationModel(
                         meta=calculation_meta,
-                        structure_id=structure_id,
+                        structure_ulid=structure_ulid,
                         structure_name=structure_name,
                     )
                     save_calculation(calculation_model, calculation_dir)
@@ -2971,8 +2975,8 @@ class QVService:
                 else:
                     calc_dir = calc_resolved.absolute_path
 
-                # Get calc_id
-                calc_id = calc_resolved.meta.ulid if calc_resolved.meta else ""
+                # Get calc_ulid
+                calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else ""
 
                 # Re-read step file for fresh data
                 import yaml
@@ -3011,7 +3015,7 @@ class QVService:
                 return step_to_dto(
                     step_resolved=step_resolved_updated,
                     step_obj=step_obj,
-                    calc_ulid=calc_id,
+                    calc_ulid=calc_ulid,
                 )
             except Exception as e:
                 if isinstance(e, APIError):
@@ -3171,8 +3175,8 @@ class QVService:
                 # Find entry in config
                 entry = None
                 for calc_entry in config.get("calculations", []):
-                    calc_id = (calc_entry.get("meta") or {}).get("ulid") or calc_entry.get("calculation_id")
-                    if calc_id == calc_resolved.meta.ulid:
+                    calc_ulid = (calc_entry.get("meta") or {}).get("ulid") or calc_entry.get("calculation_id")
+                    if calc_ulid == calc_resolved.meta.ulid:
                         entry = calc_entry
                         break
 
@@ -3216,7 +3220,7 @@ class QVService:
 
                 # Resolve calculation
                 calc_resolved = require_calculation(self._service.project_root, selector)
-                calc_id = calc_resolved.meta.ulid if calc_resolved.meta else selector
+                calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else selector
 
                 # Get calculation directory
                 if calc_resolved.absolute_path.name == "calculation.yaml":
@@ -3231,8 +3235,8 @@ class QVService:
                 entry = None
                 entry_idx = None
                 for idx, calc_entry in enumerate(config.get("calculations", [])):
-                    entry_calc_id = (calc_entry.get("meta") or {}).get("ulid") or calc_entry.get("calculation_id")
-                    if entry_calc_id == calc_id:
+                    entry_calc_ulid = (calc_entry.get("meta") or {}).get("ulid") or calc_entry.get("calculation_id")
+                    if entry_calc_ulid == calc_ulid:
                         entry = calc_entry
                         entry_idx = idx
                         break
@@ -3310,12 +3314,12 @@ class QVService:
 
                 # Get structure info
                 structure_name = None
-                structure_id = calc_model.structure_id
+                structure_ulid = calc_model.structure_ulid
                 structure_elements = []
 
-                if structure_id:
+                if structure_ulid:
                     try:
-                        struct_resolved = resolve_structure(self._service.project_root, structure_id, config=config)
+                        struct_resolved = resolve_structure(self._service.project_root, structure_ulid, config=config)
                         structure_name = struct_resolved.meta.name if struct_resolved.meta else None
                         if struct_resolved.absolute_path.exists():
                             structure = read_structure(struct_resolved.absolute_path)
@@ -3327,11 +3331,11 @@ class QVService:
                 # Use ResourceIndex to resolve step paths (step files are named by slug, not ULID)
                 from quantumvitas.core.resolution import build_resource_index, resolve_step
                 step_index = build_resource_index(self._service.project_root)
-                calc_id_for_resolve = calc_resolved.meta.ulid if calc_resolved.meta else selector
+                calc_ulid_for_resolve = calc_resolved.meta.ulid if calc_resolved.meta else selector
 
                 step_summaries = []
                 for entry in calc_model.steps:
-                    step_id = entry.step_ulid
+                    step_ulid = entry.step_ulid
 
                     # Resolve step to get actual file path
                     step_path = None
@@ -3339,8 +3343,8 @@ class QVService:
                     try:
                         step_resolved = resolve_step(
                             self._service.project_root,
-                            calc_id_for_resolve,
-                            step_id,
+                            calc_ulid_for_resolve,
+                            step_ulid,
                             config=config,
                             index=step_index,
                         )
@@ -3351,7 +3355,7 @@ class QVService:
 
                     # Use entry.step_type_spec (SPEC type from calculation.yaml) as primary
                     step_type = entry.step_type_spec
-                    step_name = step_resolved.meta.name if step_resolved and step_resolved.meta else step_id
+                    step_name = step_resolved.meta.name if step_resolved and step_resolved.meta else step_ulid
                     step_status = "pending"
 
                     if step_path and step_path.exists():
@@ -3375,25 +3379,25 @@ class QVService:
                             pass
                     
                     step_summaries.append({
-                        "ulid": step_id,  # Backwards compat
-                        "step_ulid": step_id,
+                        "ulid": step_ulid,  # Backwards compat
+                        "step_ulid": step_ulid,
                         "step_type_spec": step_type,
-                        "step_type_gen": step_type_gen,
-                        "step_type_gen": step_type_gen if step_type_gen else step_type,  # Backwards compat
+                        "step_type_gen": step_type_gen if step_type_gen else step_type,
+                        "type": step_type_gen if step_type_gen else step_type,  # Backwards compat alias
                         "name": step_name,
                         "status": step_status,
                         "missing": not (step_path and step_path.exists()),
                     })
 
-                calc_id = calc_resolved.meta.ulid if calc_resolved.meta else selector
+                calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else selector
                 return {
-                    "ulid": calc_id,
-                    "calculation_id": calc_id,
+                    "ulid": calc_ulid,
+                    "calculation_id": calc_ulid,
                     "name": calc_resolved.meta.name if calc_resolved.meta else selector,
                     "slug": calc_resolved.meta.slug if calc_resolved.meta else None,
                     "structure": structure_name,
-                    "structure_ulid": structure_id,  # structure_id is actually a ULID
-                    "structure_id": structure_id,  # Backwards compat
+                    "structure_ulid": structure_ulid,  # structure_ulid is actually a ULID
+                    "structure_ulid": structure_ulid,  # Backwards compat
                     "structure_name": structure_name,
                     "structure_elements": structure_elements,
                     "steps": step_summaries,
@@ -3452,7 +3456,7 @@ class QVService:
                 calc_model = load_calculation(calc_yaml, project_root=self._service.project_root, resolve_structure_selector=resolver)
 
                 old_structure = calc_model.structure_name or calc_model.structure
-                calc_model.structure_id = struct_resolved.meta.ulid
+                calc_model.structure_ulid = struct_resolved.meta.ulid
                 calc_model.structure_name = struct_resolved.meta.name
                 calc_model.structure = struct_resolved.meta.slug
                 save_calculation(calc_model, calc_yaml)
@@ -3467,18 +3471,18 @@ class QVService:
                             try:
                                 spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolver)
                                 step_doc = StepDoc.load(step_file)
-                                current_structure_id = step_doc.get(["structure_id"], default=None)
+                                current_structure_ulid = step_doc.get(["structure_ulid"], default=None)
 
-                                if current_structure_id != struct_resolved.meta.ulid:
-                                    old_step_struct_id = current_structure_id
-                                    step_doc.set(["structure_id"], struct_resolved.meta.ulid)
+                                if current_structure_ulid != struct_resolved.meta.ulid:
+                                    old_step_struct_id = current_structure_ulid
+                                    step_doc.set(["structure_ulid"], struct_resolved.meta.ulid)
                                     step_doc.set(["structure"], "")
                                     save_step_doc(step_doc, step_file)
                                     updated_steps.append({
                                         "step_ulid": spec.meta.ulid,
-                                        "step_id": spec.meta.ulid,  # Backwards compat
-                                        "old_structure_id": old_step_struct_id,
-                                        "new_structure_id": struct_resolved.meta.ulid,
+                                        "step_ulid": spec.meta.ulid,  # Backwards compat
+                                        "old_structure_ulid": old_step_struct_id,
+                                        "new_structure_ulid": struct_resolved.meta.ulid,
                                     })
                             except Exception as e:
                                 warnings.append(f"Failed to update step {step_file.name}: {e}")
@@ -3612,10 +3616,10 @@ class QVService:
                 calc_model = load_calculation(calc_yaml, self._service.project_root)
                 
                 # Get calculation ULID
-                calc_id = calc_resolved.meta.ulid if calc_resolved.meta else ""
+                calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else ""
                 
-                # Get structure_id from calculation
-                structure_id = calc_model.structure_id if calc_model else None
+                # Get structure_ulid from calculation
+                structure_ulid = calc_model.structure_ulid if calc_model else None
                 
                 # Determine step name
                 step_name = name or step_type
@@ -3662,15 +3666,15 @@ class QVService:
                     step_type=spec.step_type_spec,  # Use engine-specific spec type (e.g., lammps_relax)
                     name=unique_name,
                     steps_dir=steps_dir,
-                    structure_id=structure_id,
-                    parent_calculation_id=calc_id,
+                    structure_ulid=structure_ulid,
+                    parent_calculation_id=calc_ulid,
                     overrides=params,  # apply_patch will be called inside create_step_doc
                 )
                 
-                # Read step file to get step_id
+                # Read step file to get step_ulid
                 step_data = yaml.safe_load(step_path.read_text())
-                step_id = step_data.get("meta", {}).get("ulid") or step_data.get("meta", {}).get("ulid")
-                if not step_id:
+                step_ulid = step_data.get("meta", {}).get("ulid") or step_data.get("meta", {}).get("ulid")
+                if not step_ulid:
                     from quantumvitas.api.errors import InternalError
                     raise InternalError(
                         "Step created but missing ULID in meta",
@@ -3681,7 +3685,7 @@ class QVService:
                 # Use step_type_spec (SPEC value) for calculation.yaml
                 from quantumvitas.core.models import CalculationStepEntry
                 step_entry = CalculationStepEntry(
-                    step_ulid=step_id,
+                    step_ulid=step_ulid,
                     step_type_spec=spec.step_type_spec,  # SPEC type (e.g., "qe_scf")
                 )
                 
@@ -3729,7 +3733,7 @@ class QVService:
                 return step_to_dto(
                     step_resolved=step_resolved,
                     step_obj=step_obj,
-                    calc_ulid=calc_id,
+                    calc_ulid=calc_ulid,
                 )
             except Exception as e:
                 if isinstance(e, APIError):
@@ -3775,10 +3779,10 @@ class QVService:
                 calc_model = load_calculation(calc_yaml, project_root=self._service.project_root, resolve_structure_selector=resolver)
                 
                 # Find step in calculation.yaml steps array
-                step_id = step_selector
+                step_ulid = step_selector
                 step_entry = None
                 for entry in calc_model.steps:
-                    if entry.step_ulid == step_id:
+                    if entry.step_ulid == step_ulid:
                         step_entry = entry
                         break
                 
@@ -3790,7 +3794,7 @@ class QVService:
                     )
                 
                 # Remove step entry from calculation model
-                calc_model.steps = [e for e in calc_model.steps if e.step_ulid != step_id]
+                calc_model.steps = [e for e in calc_model.steps if e.step_ulid != step_ulid]
                 
                 # Save calculation.yaml
                 save_calculation(calc_model, calc_yaml)
@@ -4314,18 +4318,18 @@ class QVService:
                     input_file=input_file,
                     destination_dir=steps_dir,
                     structure_dir=self._service.project_root / "structures",
-                    step_id=step_name,
-                    structure_id=None,
+                    step_ulid=step_name,
+                    structure_ulid=None,
                     reference_structure_by="id",
                     apply_defaults=False,
                 )
 
                 spec = import_result.spec
-                step_id = spec.meta.ulid if spec.meta else import_result.step_ulid
+                step_ulid = spec.meta.ulid if spec.meta else import_result.step_ulid
 
                 # Add step to calculation.yaml
                 step_entry = CalculationStepEntry(
-                    step_ulid=step_id,
+                    step_ulid=step_ulid,
                     step_type_spec=spec.step_type_spec,
                 )
 
@@ -4384,9 +4388,9 @@ class QVService:
 
                 # Get element list from structure
                 species_list: list[str] = []
-                if wf_model.structure_id:
+                if wf_model.structure_ulid:
                     try:
-                        struct_resolved = resolve_structure(self._service.project_root, wf_model.structure_id, config=config, index=index)
+                        struct_resolved = resolve_structure(self._service.project_root, wf_model.structure_ulid, config=config, index=index)
                         if struct_resolved.absolute_path.exists():
                             structure = read_structure(struct_resolved.absolute_path)
                             species_list = sorted(set(str(el) for el in structure.composition.elements))
@@ -4561,6 +4565,7 @@ class QVService:
                 from quantumvitas.core.locking import calc_run_lock, CalculationLockError
                 from quantumvitas.core.resolution import require_calculation, build_resource_index
                 from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.api import get_step_type_gen
 
                 project_root = self._service.project_root
                 config = load_project_config(project_root)
@@ -4568,7 +4573,7 @@ class QVService:
 
                 # Resolve calculation
                 calc_resolved = require_calculation(project_root, calc_selector, config=config, index=index)
-                calc_id = calc_resolved.meta.ulid if calc_resolved.meta else ""
+                calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else ""
                 calculation_dir = calc_resolved.absolute_path
 
                 # Acquire run lock
@@ -4578,7 +4583,7 @@ class QVService:
                         project = Project.open(project_root)
                         calculation = Calculation.from_yaml(calculation_dir, project, materialize_steps=True)
 
-                        if not calculation.structure_id:
+                        if not calculation.structure_ulid:
                             from quantumvitas.api.errors import ValidationError
                             raise ValidationError(
                                 f"Calculation '{calc_selector}' has no structure. Please set a structure first."
@@ -4594,7 +4599,7 @@ class QVService:
 
                         results = runner.run(
                             calculation,
-                            run_id=None,
+                            run_ulid=None,
                             run_mode="incremental",
                         )
                 except CalculationLockError as e:
@@ -4611,9 +4616,9 @@ class QVService:
                     "steps": [
                         {
                             "step_ulid": s.step_ulid,
-                            "step_id": s.step_ulid,  # Backwards compat
+                            "step_ulid": s.step_ulid,  # Backwards compat
                             "step_type_spec": s.step_type_spec if s.step_type_spec else None,
-                            "step_type_gen": s.step_type_spec,  # Backwards compat
+                            "step_type_gen": get_step_type_gen(s.step_type_spec) if s.step_type_spec else None,  # Proper conversion
                             "status": s.status.value,
                             "message": s.message,
                             "metrics": s.metrics,
@@ -4621,10 +4626,10 @@ class QVService:
                         for s in results.steps
                     ],
                     "io_dir": str(results.io_dir) if results.io_dir else None,
-                    "run_id": results.run_ulid,
+                    "run_ulid": results.run_ulid,
                 }
 
-                return self._result_dict_to_dto(result_dict, calc_id)
+                return self._result_dict_to_dto(result_dict, calc_ulid)
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -4667,24 +4672,26 @@ class QVService:
 
                 # Resolve calculation and step
                 calc_resolved = require_calculation(project_root, calc_selector, config=config, index=index)
-                calc_id = calc_resolved.meta.ulid if calc_resolved.meta else ""
+                calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else ""
                 step_resolved = require_step(project_root, calc_selector, step_selector, config=config, index=index)
 
                 # Load calculation with materialized steps
                 project = Project.open(project_root)
                 calculation = Calculation.from_yaml(calc_resolved.absolute_path, project, materialize_steps=True)
 
-                if not calculation.structure_id:
+                if not calculation.structure_ulid:
                     from quantumvitas.api.errors import ValidationError
                     raise ValidationError(
                         f"Calculation '{calc_selector}' has no structure. Please set a structure first."
                     )
 
-                # Get step type
-                step_type_spec= "unknown"
+                # Get step type (SPEC from YAML, convert to GEN for API response)
+                step_type = "unknown"
                 try:
+                    from quantumvitas.api import get_step_type_gen
                     step_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
-                    step_type = step_data.get("step_type_spec", "unknown")
+                    step_type_spec = step_data.get("step_type_spec", "unknown")
+                    step_type = get_step_type_gen(step_type_spec) if step_type_spec else "unknown"
                 except Exception:
                     pass
 
@@ -4692,35 +4699,35 @@ class QVService:
                 engine_registry = create_default_registry()
                 runner = CalculationRunner(engine_registry)
 
-                target_step_id = step_resolved.meta.ulid
-                logger.info(f"[RUN_STEP] Running step {step_selector} (id={target_step_id})")
+                target_step_ulid = step_resolved.meta.ulid
+                logger.info(f"[RUN_STEP] Running step {step_selector} (id={target_step_ulid})")
 
                 try:
                     result = runner.run(
                         calculation,
                         skip_history=False,
-                        run_id=None,
+                        run_ulid=None,
                         run_mode="incremental",
-                        target_step_id=target_step_id,
+                        target_step_ulid=target_step_ulid,
                     )
                 except Exception as e:
                     logger.exception(f"[RUN_STEP] Execution failed: {e}")
                     result_dict = {
                         "step": step_selector,
-                        "step_id": target_step_id,
+                        "step_ulid": target_step_ulid,
                         "step_type_gen": step_type,
                         "success": False,
                         "error": str(e),
                         "output_file": None,
                         "io_dir": str(calculation.raw_dir.resolve()) if calculation.raw_dir else None,
-                        "run_id": None,
+                        "run_ulid": None,
                     }
-                    return self._result_dict_to_dto(result_dict, calc_id)
+                    return self._result_dict_to_dto(result_dict, calc_ulid)
 
                 # Find target step's result
                 target_summary = None
                 for summary in result.steps:
-                    if summary.step_ulid == target_step_id:
+                    if summary.step_ulid == target_step_ulid:
                         target_summary = summary
                         break
 
@@ -4742,7 +4749,7 @@ class QVService:
 
                 result_dict = {
                     "step": step_selector,
-                    "step_id": target_step_id,
+                    "step_ulid": target_step_ulid,
                     "step_type_gen": step_type,
                     "success": success,
                     "error": error_msg,
@@ -4750,24 +4757,24 @@ class QVService:
                     "output_file": output_file,
                     "io_dir": io_dir,
                     "working_dir": io_dir,
-                    "run_id": result.run_ulid,
+                    "run_ulid": result.run_ulid,
                 }
 
-                return self._result_dict_to_dto(result_dict, calc_id)
+                return self._result_dict_to_dto(result_dict, calc_ulid)
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
         
-        def get_status(self, run_id: str) -> RunResultDTO:
+        def get_status(self, run_ulid: str) -> RunResultDTO:
             """
-            Get run status by run_id.
+            Get run status by run_ulid.
             
             Note: This is a simplified implementation. In a full system,
             this would query job history or a job manager.
             
             Args:
-                run_id: Run ID (ULID)
+                run_ulid: Run ID (ULID)
                 
             Returns:
                 RunResultDTO
@@ -4782,15 +4789,15 @@ class QVService:
                 # This would need to query calculation history or job manager
                 # For now, raise not found
                 raise NotFoundError(
-                    f"Run status lookup not yet implemented for run_id: {run_id}",
-                    context={"run_id": run_id}
+                    f"Run status lookup not yet implemented for run_ulid: {run_ulid}",
+                    context={"run_ulid": run_ulid}
                 )
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
         
-        def cancel(self, run_id: str) -> RunResultDTO:
+        def cancel(self, run_ulid: str) -> RunResultDTO:
             """
             Cancel a running job.
             
@@ -4799,7 +4806,7 @@ class QVService:
             and returns appropriate status.
             
             Args:
-                run_id: Run ID (ULID)
+                run_ulid: Run ID (ULID)
                 
             Returns:
                 RunResultDTO with cancelled status (or current status if already terminal)
@@ -4826,22 +4833,22 @@ class QVService:
                 
                 # If JobManager is available, use it to cancel
                 if job_manager is not None:
-                    job = job_manager.get_job(run_id)
+                    job = job_manager.get_job(run_ulid)
                     if job is None:
                         raise NotFoundError(
-                            f"Run not found: {run_id}",
-                            context={"run_id": run_id}
+                            f"Run not found: {run_ulid}",
+                            context={"run_ulid": run_ulid}
                         )
                     
                     # Attempt cancellation
-                    cancelled = job_manager.cancel_job(run_id)
+                    cancelled = job_manager.cancel_job(run_ulid)
                     
                     # Get updated job status
-                    job = job_manager.get_job(run_id)
+                    job = job_manager.get_job(run_ulid)
                     if job is None:
                         raise NotFoundError(
-                            f"Run not found after cancellation attempt: {run_id}",
-                            context={"run_id": run_id}
+                            f"Run not found after cancellation attempt: {run_ulid}",
+                            context={"run_ulid": run_ulid}
                         )
                     
                     # Convert job to RunResultDTO
@@ -4854,17 +4861,17 @@ class QVService:
                     }
                     status = status_map.get(job.status.value, "submitted")
                     
-                    # Extract calc_id from job params or result
-                    calc_id = ""
+                    # Extract calc_ulid from job params or result
+                    calc_ulid = ""
                     if job.params:
-                        calc_id = job.params.get("calc_id", job.params.get("calc_selector", ""))
-                    if not calc_id and job.result:
-                        calc_id = job.result.get("calc_id", "")
+                        calc_ulid = job.params.get("calc_ulid", job.params.get("calc_selector", ""))
+                    if not calc_ulid and job.result:
+                        calc_ulid = job.result.get("calc_ulid", "")
                     
-                    # Extract step_ids
-                    step_ids = []
+                    # Extract step_ulids
+                    step_ulids = []
                     if job.steps:
-                        step_ids = [s.get("step_id", "") for s in job.steps if s.get("step_id")]
+                        step_ulids = [s.get("step_ulid", "") for s in job.steps if s.get("step_ulid")]
                     
                     # Format timestamps
                     started_at = job.started_at.isoformat() if job.started_at else None
@@ -4887,10 +4894,10 @@ class QVService:
                         )
                     
                     return RunResultDTO(
-                        run_ulid=run_id,
-                        calc_ulid=calc_id,
+                        run_ulid=run_ulid,
+                        calc_ulid=calc_ulid,
                         status=status,
-                        step_ulids=step_ids,
+                        step_ulids=step_ulids,
                         started_at=started_at,
                         completed_at=completed_at,
                         duration_seconds=duration_seconds,
@@ -4901,12 +4908,12 @@ class QVService:
                 
                 # If JobManager not available, try to find run in history
                 history = ProjectHistory(self._service.project_root)
-                run_dir = history.get_run_dir(run_id)
+                run_dir = history.get_run_dir(run_ulid)
                 
                 if run_dir is None:
                     raise NotFoundError(
-                        f"Run not found: {run_id}",
-                        context={"run_id": run_id}
+                        f"Run not found: {run_ulid}",
+                        context={"run_ulid": run_ulid}
                     )
                 
                 # Load run revision to get status
@@ -4928,10 +4935,10 @@ class QVService:
                         status = "running"  # or "submitted" depending on revision.status
                     
                     return RunResultDTO(
-                        run_ulid=run_id,
-                        calc_id=revision.calc_id,
+                        run_ulid=run_ulid,
+                        calc_ulid=revision.calc_ulid,
                         status=status,
-                        step_ids=revision.step_ids or [],
+                        step_ulids=revision.step_ulids or [],
                         started_at=revision.started_at,
                         completed_at=revision.finished_at,
                         duration_seconds=None,  # Would need to calculate from timestamps
@@ -4942,8 +4949,8 @@ class QVService:
                 except Exception as e:
                     # If we can't load revision, still raise NotFoundError
                     raise NotFoundError(
-                        f"Run not found or inaccessible: {run_id}",
-                        context={"run_id": run_id}
+                        f"Run not found or inaccessible: {run_ulid}",
+                        context={"run_ulid": run_ulid}
                     ) from e
                     
             except Exception as e:
@@ -5121,10 +5128,10 @@ class QVService:
                             resolve_structure_selector=resolver
                         )
 
-                        if calc_model.structure_id:
+                        if calc_model.structure_ulid:
                             struct_resolved = resolve_structure(
                                 self._service.project_root,
-                                calc_model.structure_id,
+                                calc_model.structure_ulid,
                                 config=config
                             )
                             if struct_resolved.absolute_path.exists():
@@ -5247,16 +5254,16 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
-        def _result_dict_to_dto(self, result_dict: dict, calc_id: str) -> RunResultDTO:
+        def _result_dict_to_dto(self, result_dict: dict, calc_ulid: str) -> RunResultDTO:
             """Convert legacy result dict to RunResultDTO."""
             from quantumvitas.api.types.error import ErrorDTO
             
             # Extract step IDs and step details
-            step_ids = []
+            step_ulids = []
             step_details = None
             if "steps" in result_dict:
                 step_details = result_dict["steps"]
-                step_ids = [s.get("step_id", "") for s in result_dict["steps"] if s.get("step_id")]
+                step_ulids = [s.get("step_ulid", "") for s in result_dict["steps"] if s.get("step_ulid")]
             
             # Map status
             status_map = {
@@ -5284,10 +5291,10 @@ class QVService:
                 )
             
             return RunResultDTO(
-                run_ulid=result_dict.get("run_id", ""),
-                calc_ulid=calc_id,
+                run_ulid=result_dict.get("run_ulid", ""),
+                calc_ulid=calc_ulid,
                 status=status,
-                step_ulids=step_ids,
+                step_ulids=step_ulids,
                 started_at=started_at,
                 completed_at=completed_at,
                 duration_seconds=duration_seconds,
@@ -6003,17 +6010,17 @@ class QVService:
         def get_timeline(
             self,
             limit: int = 100,
-            calc_id: str | None = None,
+            calc_ulid: str | None = None,
         ) -> dict:
             """
             Get project timeline (runs, edits, pins).
 
             Args:
                 limit: Maximum events (default 100)
-                calc_id: Optional filter by calculation ID
+                calc_ulid: Optional filter by calculation ID
 
             Returns:
-                Dict with timeline entries and latest_run_id
+                Dict with timeline entries and latest_run_ulid
             """
             try:
                 from quantumvitas.history.storage import ProjectHistory
@@ -6023,7 +6030,7 @@ class QVService:
                 history = ProjectHistory(self._service.project_root)
 
                 events = history.list_events(
-                    calc_ulid=calc_id,
+                    calc_ulid=calc_ulid,
                     limit=limit,
                     reverse=True,
                 )
@@ -6036,20 +6043,20 @@ class QVService:
                         "ulid": event.id,
                         "timestamp": event.timestamp,
                         "event_type": event.event_type,
-                        "calc_id": event.calc_id,
+                        "calc_ulid": event.calc_ulid,
                         "step_ulid": event.step_ulid,
-                        "step_id": event.step_ulid,  # Backwards compat
+                        "step_ulid": event.step_ulid,  # Backwards compat
                     }
 
                     if event.event_type == EventType.RUN_STARTED.value:
-                        entry["run_id"] = getattr(event, "run_ulid", "")
-                        entry["step_ids"] = getattr(event, "step_ids", [])
+                        entry["run_ulid"] = getattr(event, "run_ulid", "")
+                        entry["step_ulids"] = getattr(event, "step_ulids", [])
                         entry["step_types"] = getattr(event, "step_types", [])
                         entry["calc_name"] = getattr(event, "calc_name", "")
 
                     elif event.event_type == EventType.RUN_FINISHED.value:
-                        run_id = getattr(event, "run_ulid", "")
-                        entry["run_id"] = run_id
+                        run_ulid = getattr(event, "run_ulid", "")
+                        entry["run_ulid"] = run_ulid
                         entry["status"] = getattr(event, "status", "")
                         entry["duration_seconds"] = getattr(event, "duration_seconds", None)
                         entry["step_count"] = getattr(event, "step_count", 0)
@@ -6057,22 +6064,22 @@ class QVService:
                         entry["failure_count"] = getattr(event, "failure_count", 0)
                         entry["error_summary"] = getattr(event, "error_summary", None)
 
-                        if run_id and run_id not in run_info_cache:
-                            run_dir = history.get_run_dir(run_id)
+                        if run_ulid and run_ulid not in run_info_cache:
+                            run_dir = history.get_run_dir(run_ulid)
                             if run_dir:
                                 try:
                                     revision = load_run_revision(run_dir)
                                     revision_dict = revision.to_dict()
-                                    run_info_cache[run_id] = {
+                                    run_info_cache[run_ulid] = {
                                         "run_digest": revision_dict.get("run_digest"),
                                         "step_digests": revision_dict.get("step_digests"),
                                     }
                                 except Exception:
                                     pass
 
-                        if run_id in run_info_cache:
-                            entry["run_digest"] = run_info_cache[run_id].get("run_digest")
-                            entry["step_digests"] = run_info_cache[run_id].get("step_digests")
+                        if run_ulid in run_info_cache:
+                            entry["run_digest"] = run_info_cache[run_ulid].get("run_digest")
+                            entry["step_digests"] = run_info_cache[run_ulid].get("step_digests")
 
                     elif event.event_type == EventType.EDIT.value:
                         entry["doc_type"] = getattr(event, "doc_type", "")
@@ -6081,21 +6088,22 @@ class QVService:
                         entry["actor"] = getattr(event, "actor", "")
 
                     elif event.event_type == EventType.PIN_CREATED.value:
-                        entry["run_id"] = getattr(event, "run_ulid", "")
+                        entry["run_ulid"] = getattr(event, "run_ulid", "")
                         entry["analysis_kind"] = getattr(event, "analysis_kind", "")
                         entry["pin_path"] = getattr(event, "pin_path", "")
 
                     elif event.event_type == EventType.BASELINE.value:
-                        entry["structure_ids"] = getattr(event, "structure_ids", [])
+                        entry["structure_ulids"] = getattr(event, "structure_ulids", [])
                         entry["calculation_ids"] = getattr(event, "calculation_ids", [])
 
                     timeline.append(entry)
 
-                latest_run_id = history.get_latest_run_id()
+                latest_run_ulid = history.get_latest_run_ulid()
 
                 return {
                     "timeline": timeline,
-                    "latest_run_id": latest_run_id,
+                    "latest_run_ulid": latest_run_ulid,
+                    "latest_run_id": latest_run_ulid,  # Backwards compat alias
                     "total": len(timeline),
                 }
             except Exception as e:
@@ -6103,12 +6111,12 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
-        def get_run_revision(self, run_id: str) -> dict:
+        def get_run_revision(self, run_ulid: str) -> dict:
             """
             Get details of a specific run revision.
 
             Args:
-                run_id: Run ULID
+                run_ulid: Run ULID
 
             Returns:
                 Dict with revision or error
@@ -6118,10 +6126,10 @@ class QVService:
                 from quantumvitas.history.run_revision import load_run_revision
 
                 history = ProjectHistory(self._service.project_root)
-                run_dir = history.get_run_dir(run_id)
+                run_dir = history.get_run_dir(run_ulid)
 
                 if not run_dir:
-                    return {"revision": None, "error": f"Run not found: {run_id}"}
+                    return {"revision": None, "error": f"Run not found: {run_ulid}"}
 
                 try:
                     revision = load_run_revision(run_dir)
@@ -6135,14 +6143,14 @@ class QVService:
 
         def list_runs(
             self,
-            calc_id: str | None = None,
+            calc_ulid: str | None = None,
             limit: int = 50,
         ) -> dict:
             """
             List all runs for a project.
 
             Args:
-                calc_id: Optional filter by calculation ID
+                calc_ulid: Optional filter by calculation ID
                 limit: Maximum runs (default 50)
 
             Returns:
@@ -6153,24 +6161,24 @@ class QVService:
                 from quantumvitas.history.run_revision import load_run_revision
 
                 history = ProjectHistory(self._service.project_root)
-                run_ids = history.list_runs(calc_ulid=calc_id, limit=limit)
+                run_ulids = history.list_runs(calc_ulid=calc_ulid, limit=limit)
 
                 runs = []
-                for run_id in run_ids:
-                    run_dir = history.get_run_dir(run_id)
+                for run_ulid in run_ulids:
+                    run_dir = history.get_run_dir(run_ulid)
                     if run_dir:
                         try:
                             revision = load_run_revision(run_dir)
                             runs.append({
-                                "run_id": run_id,
-                                "calc_id": revision.calc_id,
+                                "run_ulid": run_ulid,
+                                "calc_ulid": revision.calc_ulid,
                                 "status": revision.status,
                                 "started_at": revision.started_at,
                                 "finished_at": revision.finished_at,
-                                "step_ids": revision.step_ids or [],
+                                "step_ulids": revision.step_ulids or [],
                             })
                         except Exception:
-                            runs.append({"run_id": run_id, "error": "Failed to load"})
+                            runs.append({"run_ulid": run_ulid, "error": "Failed to load"})
 
                 return {"runs": runs, "total": len(runs)}
             except Exception as e:
@@ -6180,8 +6188,8 @@ class QVService:
 
         def pin_analysis(
             self,
-            run_id: str,
-            step_id: str,
+            run_ulid: str,
+            step_ulid: str,
             analysis_kind: str,
             png_data: bytes | None = None,
             json_payload: dict | None = None,
@@ -6190,8 +6198,8 @@ class QVService:
             Pin analysis to history.
 
             Args:
-                run_id: Run ULID
-                step_id: Step ULID
+                run_ulid: Run ULID
+                step_ulid: Step ULID
                 analysis_kind: Type of analysis (e.g., "bands", "dos")
                 png_data: Optional PNG image data
                 json_payload: Optional JSON data to store
@@ -6205,8 +6213,8 @@ class QVService:
                 try:
                     result = pin_analysis_to_history(
                         project_root=self._service.project_root,
-                        run_ulid=run_id,
-                        step_id=step_id,
+                        run_ulid=run_ulid,
+                        step_ulid=step_ulid,
                         analysis_kind=analysis_kind,
                         png_data=png_data,
                         json_payload=json_payload,
@@ -6219,20 +6227,20 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
-        def can_pin(self, run_id: str, step_id: str) -> dict:
+        def can_pin(self, run_ulid: str, step_ulid: str) -> dict:
             """
             Check if pinning is allowed for a run and step.
 
             Args:
-                run_id: Run ULID
-                step_id: Step ULID
+                run_ulid: Run ULID
+                step_ulid: Step ULID
 
             Returns:
                 Dict with allowed and reason
             """
             try:
                 from quantumvitas.history.pins import can_pin_to_run
-                return can_pin_to_run(self._service.project_root, run_id, step_id)
+                return can_pin_to_run(self._service.project_root, run_ulid, step_ulid)
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -6240,16 +6248,16 @@ class QVService:
 
         def get_pin_data(
             self,
-            run_id: str,
-            step_id: str,
+            run_ulid: str,
+            step_ulid: str,
             analysis_kind: str,
         ) -> dict:
             """
             Get pinned data for a step analysis.
 
             Args:
-                run_id: Run ULID
-                step_id: Step ULID
+                run_ulid: Run ULID
+                step_ulid: Step ULID
                 analysis_kind: Type of analysis
 
             Returns:
@@ -6258,48 +6266,48 @@ class QVService:
             try:
                 from quantumvitas.history.pins import get_pin_data as _get_pin_data
                 return _get_pin_data(
-                    self._service.project_root, run_id, step_id, analysis_kind
+                    self._service.project_root, run_ulid, step_ulid, analysis_kind
                 )
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
 
-        def get_latest_run_for_step(self, step_id: str) -> dict:
+        def get_latest_run_for_step(self, step_ulid: str) -> dict:
             """
-            Get the latest run_id that includes a specific step.
+            Get the latest run_ulid that includes a specific step.
 
             Args:
-                step_id: Step ULID
+                step_ulid: Step ULID
 
             Returns:
-                Dict with run_id, can_pin, reason
+                Dict with run_ulid, can_pin, reason
             """
             try:
                 from quantumvitas.history.storage import ProjectHistory
 
                 history = ProjectHistory(self._service.project_root)
 
-                latest_run_id = history.get_latest_run_id()
+                latest_run_ulid = history.get_latest_run_ulid()
 
-                if not latest_run_id:
+                if not latest_run_ulid:
                     return {
-                        "run_id": None,
+                        "run_ulid": None,
                         "can_pin": False,
                         "reason": "No runs found in history",
                     }
 
-                step_ids_in_run = history.get_run_step_ids(latest_run_id)
+                step_ulids_in_run = history.get_run_step_ulids(latest_run_ulid)
 
-                if step_id not in step_ids_in_run:
+                if step_ulid not in step_ulids_in_run:
                     return {
-                        "run_id": None,
+                        "run_ulid": None,
                         "can_pin": False,
                         "reason": "Step not in latest run",
                     }
 
                 return {
-                    "run_id": latest_run_id,
+                    "run_ulid": latest_run_ulid,
                     "can_pin": True,
                     "reason": None,
                 }
@@ -6420,13 +6428,13 @@ class QVService:
             
             project_name = name or target_dir.name
             project_slug = slugify(project_name)
-            project_id = generate_resource_id()
-            
+            project_ulid = generate_resource_id()
+
             config = {
                 "project": {
                     "name": project_name,
                     "meta": {
-                        "ulid": project_id,  # CANONICAL: ulid not id
+                        "ulid": project_ulid,  # CANONICAL: ulid not id
                         "name": project_name,
                         "slug": project_slug,
                         "path": ".",
@@ -6557,6 +6565,7 @@ class QVService:
                 ]
             
             return {
+                "id": meta.get("ulid"),  # Backwards compat alias
                 "ulid": meta.get("ulid"),
                 "name": project_info.get("name") or meta.get("name") or project_root.name,
                 "slug": meta.get("slug"),
@@ -6688,11 +6697,11 @@ class QVService:
                             structure_ulid = calculation.structure.meta.ulid if hasattr(calculation.structure, 'meta') and calculation.structure.meta else None
                             entry["structure"] = calculation.structure.meta.name if hasattr(calculation.structure, 'meta') else str(calculation.structure)
                             entry["structure_ulid"] = structure_ulid
-                            entry["structure_id"] = structure_ulid  # Backwards compat
+                            entry["structure_ulid"] = structure_ulid  # Backwards compat
                         else:
                             entry["structure"] = None
                             entry["structure_ulid"] = None
-                            entry["structure_id"] = None
+                            entry["structure_ulid"] = None
                         
                         # Ensure mode is always present (default to "normal" if not set)
                         entry["mode"] = calculation.mode.value if hasattr(calculation.mode, 'value') else (str(calculation.mode) if calculation.mode else "normal")
@@ -6713,10 +6722,8 @@ class QVService:
                             entry["steps"].append({
                                 "step_ulid": step_ulid,
                                 "ulid": step_ulid,  # Backwards compat
-                                "step_id": step_ulid,  # Backwards compat
                                 "step_type_spec": step_type_spec,
-                                "step_type_gen": step_type_gen,
-                                "step_type_gen": step_type_gen if step_type_gen else step_type_spec,  # Backwards compat
+                                "step_type_gen": step_type_gen,  # None if conversion failed - that's correct behavior
                             })
                 except Exception:
                     pass  # Calculation metadata is optional
@@ -6784,7 +6791,7 @@ class QVService:
             final_name = name
             
             # Generate calculation ID
-            calc_id = generate_resource_id()
+            calc_ulid = generate_resource_id()
             
             # Create calculation directory
             calc_dir = project_root / "calculations" / final_slug
@@ -6794,7 +6801,7 @@ class QVService:
             calc_yaml = calc_dir / "calculation.yaml"
             calc_data = {
                 "meta": {
-                    "ulid": calc_id,
+                    "ulid": calc_ulid,
                     "name": final_name,
                     "slug": final_slug,
                     "path": f"calculations/{final_slug}",
@@ -6808,7 +6815,7 @@ class QVService:
                 if index is None:
                     index = build_resource_index(project_root)
                 struct_resolved = resolve_structure(project_root, structure_selector, index=index)
-                calc_data["structure_id"] = struct_resolved.meta.ulid
+                calc_data["structure_ulid"] = struct_resolved.meta.ulid
             
             # Write calculation.yaml
             with open(calc_yaml, "w", encoding="utf-8") as f:
@@ -6817,7 +6824,7 @@ class QVService:
             # Add to project config
             calc_entry = {
                 "meta": {
-                    "ulid": calc_id,
+                    "ulid": calc_ulid,
                     "name": final_name,
                     "slug": final_slug,
                     "path": f"calculations/{final_slug}",
@@ -6831,7 +6838,7 @@ class QVService:
             from quantumvitas.core.resolution import ResolvedResource
             from quantumvitas.core.resources import ResourceMeta
             
-            meta = ResourceMeta(ulid=calc_id,
+            meta = ResourceMeta(ulid=calc_ulid,
                 name=final_name,
                 slug=final_slug,
                 path=f"calculations/{final_slug}",
@@ -6886,7 +6893,7 @@ class QVService:
             steps_dir.mkdir(exist_ok=True)
 
             step_name = name or step_type
-            step_id = generate_resource_id()
+            step_ulid = generate_resource_id()
             step_slug = slugify(step_name)
 
             # Generate unique filename
@@ -6904,8 +6911,8 @@ class QVService:
             if calculation_yaml_path.exists():
                 wf_model = load_calculation(calculation_dir, project_root)
                 if local_structure_selector is None:
-                    if wf_model.structure_id:
-                        resolved = require_structure(project_root, wf_model.structure_id)
+                    if wf_model.structure_ulid:
+                        resolved = require_structure(project_root, wf_model.structure_ulid)
                         local_structure_selector = resolved.meta.slug
                     else:
                         local_structure_selector = wf_model.structure
@@ -6924,13 +6931,13 @@ class QVService:
             else:
                 machine_step_type = step_type
 
-            # Resolve structure selector to structure_id
-            structure_id = None
+            # Resolve structure selector to structure_ulid
+            structure_ulid = None
             if local_structure_selector:
                 from quantumvitas.core.project_utils import load_project_config
                 config = load_project_config(project_root)
                 resolved_structure = require_structure(project_root, local_structure_selector, config)
-                structure_id = resolved_structure.meta.ulid
+                structure_ulid = resolved_structure.meta.ulid
 
             # Get defaults for step type
             defaults = get_default_step_params(step_type)
@@ -6939,7 +6946,7 @@ class QVService:
             step_doc = create_step_doc(
                 step_type=machine_step_type,
                 name=step_name,
-                structure_id=structure_id,
+                structure_ulid=structure_ulid,
                 parent_calculation_id=calculation.meta.ulid if hasattr(calculation, 'meta') else None,
                 overrides={
                     "parameters": defaults.get("parameters", {}),
@@ -6948,7 +6955,7 @@ class QVService:
                 },
             )
 
-            step_doc.set(["meta", "ulid"], step_id)
+            step_doc.set(["meta", "ulid"], step_ulid)
             step_doc.set(["meta", "slug"], base_name)
 
             step_yaml_path = step_yaml_path.resolve()
@@ -6958,14 +6965,14 @@ class QVService:
             save_step_doc(step_doc, step_yaml_path)
 
             # Add step to calculation model
-            step_id_from_doc = step_doc.get(["meta", "ulid"])
+            step_ulid_from_doc = step_doc.get(["meta", "ulid"])
             if calculation_yaml_path.exists():
                 wf_model = load_calculation(calculation_dir, project_root)
-                step_entry = CalculationStepEntry(step_ulid=step_id_from_doc, step_type_spec=machine_step_type)
+                step_entry = CalculationStepEntry(step_ulid=step_ulid_from_doc, step_type_spec=machine_step_type)
                 wf_model.steps.append(step_entry)
                 save_calculation(wf_model, calculation_dir)
 
-            return require_step(project_root, calculation_selector, step_id_from_doc)
+            return require_step(project_root, calculation_selector, step_ulid_from_doc)
         except Exception as e:
             if isinstance(e, APIError):
                 raise
@@ -6981,7 +6988,7 @@ class QVService:
         *,
         index: Any = None,
         config: dict | None = None,
-        run_id: str | None = None,
+        run_ulid: str | None = None,
         run_mode: str = "incremental",
     ) -> dict[str, Any]:
         """
@@ -6994,7 +7001,7 @@ class QVService:
             verbose: If True, print detailed output
             index: Optional resource index (for performance)
             config: Optional project config (for performance)
-            run_id: External run ID to use (e.g., job_id from JobManager)
+            run_ulid: External run ID to use (e.g., job_id from JobManager)
             run_mode: Run mode ("incremental" or "full", default "incremental")
 
         Returns:
@@ -7024,7 +7031,7 @@ class QVService:
                     project = Project.open(project_root)
                     calculation = Calculation.from_yaml(calculation_dir, project, materialize_steps=True)
 
-                    if not calculation.structure_id:
+                    if not calculation.structure_ulid:
                         from quantumvitas.api.errors import ValidationError
                         raise ValidationError(
                             f"Calculation '{calculation_selector}' has no structure."
@@ -7038,7 +7045,7 @@ class QVService:
 
                     results = runner.run(
                         calculation,
-                        run_ulid=run_id,
+                        run_ulid=run_ulid,
                         run_mode=run_mode,
                     )
             except CalculationLockError as e:
@@ -7054,7 +7061,7 @@ class QVService:
                 "steps": [
                     {
                         "step_ulid": s.step_ulid,
-                        "step_id": s.step_ulid,  # Backwards compat
+                        "step_ulid": s.step_ulid,  # Backwards compat
                         "step_type_spec": s.step_type_spec,
                         "step_type_spec": s.step_type_spec,  # Backwards compat
                         "status": s.status.value,
@@ -7064,7 +7071,7 @@ class QVService:
                     for s in results.steps
                 ],
                 "io_dir": str(results.io_dir) if results.io_dir else None,
-                "run_id": results.run_ulid,
+                "run_ulid": results.run_ulid,
             }
         except Exception as e:
             if isinstance(e, APIError):
@@ -7081,7 +7088,7 @@ class QVService:
         *,
         index: Any = None,
         config: dict | None = None,
-        run_id: str | None = None,
+        run_ulid: str | None = None,
     ) -> dict[str, Any]:
         """
         Run a single step in a calculation.
@@ -7095,10 +7102,10 @@ class QVService:
             verbose: If True, print detailed output
             index: Optional resource index (for performance)
             config: Optional project config (for performance)
-            run_id: External run ID to use (e.g., job_id from JobManager)
+            run_ulid: External run ID to use (e.g., job_id from JobManager)
 
         Returns:
-            Dict with step, step_id, step_type, success, error, input_file, output_file, etc.
+            Dict with step, step_ulid, step_type, success, error, input_file, output_file, etc.
         """
         try:
             from quantumvitas.project.model import Project
@@ -7125,47 +7132,50 @@ class QVService:
             project = Project.open(project_root)
             calculation = Calculation.from_yaml(calc_resolved.absolute_path, project, materialize_steps=True)
 
-            if not calculation.structure_id:
+            if not calculation.structure_ulid:
                 from quantumvitas.api.errors import ValidationError
                 raise ValidationError(
                     f"Calculation '{calculation_selector}' has no structure."
                 )
 
-            step_type_spec= "unknown"
+            # Get step type (SPEC from YAML, convert to GEN for API response)
+            step_type = "unknown"
             try:
+                from quantumvitas.api import get_step_type_gen
                 step_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
-                step_type = step_data.get("step_type_spec", "unknown")
+                step_type_spec = step_data.get("step_type_spec", "unknown")
+                step_type = get_step_type_gen(step_type_spec) if step_type_spec else "unknown"
             except Exception:
                 pass
 
             engine_registry = create_default_registry()
             runner = CalculationRunner(engine_registry)
-            target_step_id = step_resolved.meta.ulid
+            target_step_ulid = step_resolved.meta.ulid
 
             try:
                 result = runner.run(
                     calculation,
                     skip_history=False,
-                    run_ulid=run_id,
+                    run_ulid=run_ulid,
                     run_mode="incremental",
-                    target_step_id=target_step_id,
+                    target_step_ulid=target_step_ulid,
                 )
             except Exception as e:
                 logger.exception(f"[RUN_STEP] Execution failed: {e}")
                 return {
                     "step": step_selector,
-                    "step_id": target_step_id,
+                    "step_ulid": target_step_ulid,
                     "step_type_gen": step_type,
                     "success": False,
                     "error": str(e),
                     "output_file": None,
                     "io_dir": str(calculation.raw_dir.resolve()) if calculation.raw_dir else None,
-                    "run_id": run_id,
+                    "run_ulid": run_ulid,
                 }
 
             target_summary = None
             for summary in result.steps:
-                if summary.step_ulid == target_step_id:
+                if summary.step_ulid == target_step_ulid:
                     target_summary = summary
                     break
 
@@ -7187,7 +7197,7 @@ class QVService:
 
             return {
                 "step": step_selector,
-                "step_id": target_step_id,
+                "step_ulid": target_step_ulid,
                 "step_type_gen": step_type,
                 "success": success,
                 "error": error_msg,
@@ -7195,7 +7205,7 @@ class QVService:
                 "output_file": output_file,
                 "io_dir": io_dir,
                 "working_dir": io_dir,
-                "run_id": result.run_ulid,
+                "run_ulid": result.run_ulid,
             }
         except Exception as e:
             if isinstance(e, APIError):
@@ -7211,7 +7221,7 @@ class QVService:
         *,
         index: Any = None,
         config: dict | None = None,
-        run_id: str | None = None,
+        run_ulid: str | None = None,
     ) -> dict[str, Any]:
         """
         Run a single step in a calculation by ULID (advanced feature, always runs).
@@ -7226,10 +7236,10 @@ class QVService:
             verbose: If True, print detailed output
             index: Optional resource index (for performance)
             config: Optional project config (for performance)
-            run_id: External run ID to use (e.g., job_id from JobManager)
+            run_ulid: External run ID to use (e.g., job_id from JobManager)
 
         Returns:
-            Dict with step, step_id, step_type, success, error, input_file, output_file, etc.
+            Dict with step, step_ulid, step_type, success, error, input_file, output_file, etc.
         """
         # Delegate to run_step using step_ulid as the step_selector
         return QVService.run_step(
@@ -7239,7 +7249,7 @@ class QVService:
             verbose=verbose,
             index=index,
             config=config,
-            run_ulid=run_id,
+            run_ulid=run_ulid,
         )
 
     @staticmethod
@@ -7345,7 +7355,7 @@ class QVService:
             meta_dict["fingerprint"] = fingerprint
             _write_structure(structure, dest_path, metadata=meta_dict)
 
-            entry = {"structure_id": meta.ulid}
+            entry = {"structure_ulid": meta.ulid}
             structures.append(entry)
             save_project_config(project_root, config)
 
@@ -7528,6 +7538,28 @@ class QVService:
         """
         from quantumvitas.calculation.step_defaults import get_default_step_params as _get_default_step_params
         return _get_default_step_params(step_type)
+
+    @staticmethod
+    def resolve_step_type_spec(step_type: str, engine_family: str = "qe") -> str:
+        """
+        Resolve a GEN step type to a SPEC step type for a given engine.
+
+        GEN layer: step_type (e.g., "scf") - used in UI/workflow/presets
+        SPEC layer: step_type_spec (e.g., "qe_scf") - persisted in step.yaml
+
+        Args:
+            step_type: GEN step type (e.g., "scf", "relax") or SPEC type (returned as-is if valid)
+            engine_family: Engine family (e.g., "qe", "pyscf", "lammps", "orca")
+
+        Returns:
+            SPEC step type (e.g., "qe_scf", "pyscf_scf", "lammps_relax")
+            If step_type is already a valid SPEC type, returns it as-is.
+            If no match found, returns the original step_type.
+        """
+        from quantumvitas.workflow.registry import get_registry
+        registry = get_registry()
+        spec_obj = registry.get_for_engine(step_type, engine_family)
+        return spec_obj.step_type_spec if spec_obj else step_type
 
     @staticmethod
     def generate_kpath(
@@ -7765,8 +7797,10 @@ class QVService:
         spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=None)
         step_type = spec.step_type_spec
 
-        # Validate step type
-        if step_type not in ("relax", "vc-relax"):
+        # Validate step type (convert to GEN type for comparison)
+        from quantumvitas.api import get_step_type_gen
+        step_gen = get_step_type_gen(step_type)
+        if step_gen not in ("relax", "vc-relax", "vc_relax"):
             raise ValueError(
                 f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type})"
             )
@@ -7781,12 +7815,12 @@ class QVService:
                 "already_exists": True,
             }
 
-        # Find output file
-        base_output = raw_dir / CalculationFileNaming.output_filename(step_type, working_dir=None)
+        # Find output file (use GEN type for filename, e.g., "vc-relax.out" not "qe_vc-relax.out")
+        base_output = raw_dir / CalculationFileNaming.output_filename(step_gen, working_dir=None)
         if base_output.exists():
             output_file = base_output
         else:
-            output_filename = CalculationFileNaming.output_filename(step_type, working_dir=raw_dir)
+            output_filename = CalculationFileNaming.output_filename(step_gen, working_dir=raw_dir)
             output_file = raw_dir / output_filename
 
         if not output_file.exists():
@@ -7842,7 +7876,7 @@ class QVService:
         dest_path.write_text(json.dumps(structure_data, indent=2))
 
         # Add to project config
-        entry = {"structure_id": meta.ulid}
+        entry = {"structure_ulid": meta.ulid}
         structures.append(entry)
         save_project_config(project_root, config)
 

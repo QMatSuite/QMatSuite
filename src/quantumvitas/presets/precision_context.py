@@ -114,11 +114,11 @@ def resolve_precision_context(
     
     # Resolve structure (required)
     structure = None
-    structure_id = calc_model.structure_id
+    structure_ulid = calc_model.structure_ulid
     
-    if not structure_id:
+    if not structure_ulid:
         raise PrecisionContextError(
-            f"Calculation has no structure_id: {calculation_dir}"
+            f"Calculation has no structure_ulid: {calculation_dir}"
         )
     
     try:
@@ -129,7 +129,7 @@ def resolve_precision_context(
         # Resolve structure using the same mechanism as other RPCs
         resolved = resolve_structure(
             project_root,
-            structure_id,
+            structure_ulid,
             config=config,
             index=index,
         )
@@ -139,18 +139,18 @@ def resolve_precision_context(
         
     except SelectorNotFoundError as e:
         raise PrecisionContextError(
-            f"Structure not found: structure_id={structure_id}, "
+            f"Structure not found: structure_ulid={structure_ulid}, "
             f"calculation_dir={calculation_dir}"
         ) from e
     except Exception as e:
         raise PrecisionContextError(
-            f"Failed to load structure: structure_id={structure_id}, "
+            f"Failed to load structure: structure_ulid={structure_ulid}, "
             f"calculation_dir={calculation_dir}, error={e}"
         ) from e
     
     if structure is None:
         raise PrecisionContextError(
-            f"Structure is None after resolution: structure_id={structure_id}"
+            f"Structure is None after resolution: structure_ulid={structure_ulid}"
         )
     
     # Compute lattice matrix from structure

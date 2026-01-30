@@ -66,7 +66,7 @@ class TestPrecisionRoundtrip:
         calc_yaml = calc_dir / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "name": "Test Calculation",
-            "structure_id": "test_structure",  # Must match structure file meta id
+            "structure_ulid": "test_structure",  # Must match structure file meta id
             "species_map": {
                 "Si": {
                     "pseudo_sha256": "test_sha",
@@ -88,10 +88,11 @@ class TestPrecisionRoundtrip:
         bands_pw_step = temp_calc_dir / "steps" / "bands_pw.step.yaml"
         bands_step = temp_calc_dir / "steps" / "bands.step.yaml"
         
-        # Initialize empty steps
+        # Initialize empty steps with step_type_spec (engine-prefixed)
         for step_file in [scf_step, nscf_step, bands_pw_step, bands_step]:
+            step_type_gen = step_file.stem.split(".")[0]  # e.g., "scf", "nscf"
             step_file.write_text(yaml.safe_dump({
-                "step_type_gen": step_file.stem.split(".")[0],
+                "step_type_spec": f"qe_{step_type_gen}",
                 "parameters": {},
                 "cards": {},
             }))
@@ -157,7 +158,7 @@ class TestPrecisionRoundtrip:
         # Create scf step
         scf_step = temp_calc_dir / "steps" / "scf.step.yaml"
         scf_step.write_text(yaml.safe_dump({
-            "step_type_gen": "scf",
+            "step_type_spec": "qe_scf",
             "parameters": {},
             "cards": {},
         }))

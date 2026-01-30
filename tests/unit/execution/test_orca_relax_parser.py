@@ -85,7 +85,7 @@ H    -0.757160     0.000000    -0.468000
             chain_key=chain_key,
             calculation_ulid=calculation_ulid,
             input_structure_ulid=input_structure_ulid,
-            run_id=run_id,
+            run_ulid=run_id,
         )
         
         # Verify current.json was created

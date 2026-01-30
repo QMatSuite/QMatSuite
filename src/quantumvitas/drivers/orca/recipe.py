@@ -98,7 +98,7 @@ class ORCARecipe(BaseRecipe):
                 basename = "_".join(gen_types)
 
             # Collect step IDs and SHAs for fingerprint
-            step_ids = [s.meta.ulid for s in subchain_steps]
+            step_ulids = [s.meta.ulid for s in subchain_steps]
             step_sha_list = [
                 self._get_step_sha(s, step_shas) or ""
                 for s in subchain_steps
@@ -116,7 +116,7 @@ class ORCARecipe(BaseRecipe):
             # Create job
             job = Job(
                 id=basename,
-                step_ids=step_ids,
+                step_ulids=step_ulids,
                 working_dir=working_dir,
                 command=["orca", f"{basename}.inp"],
                 input_files=[input_file],

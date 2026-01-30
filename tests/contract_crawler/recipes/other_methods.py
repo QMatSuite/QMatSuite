@@ -89,7 +89,7 @@ class OtherMethodsRecipe(Recipe):
         if self.method_name == "can_pin_to_run":
             return {
                 **base,
-                "run_id": "mock_run_id",
+                "run_ulid": "mock_run_ulid",  # canonical field name
                 "step_ulid": self.world.get("step_ids", [""])[0] if self.world.get("step_ids") else "",
             }
 
@@ -103,14 +103,14 @@ class OtherMethodsRecipe(Recipe):
             return {
                 **base,
                 "step_ulid": self.world.get("step_ids", [""])[0] if self.world.get("step_ids") else "",
-                "run_id": "test_run_id",
+                "run_ulid": "test_run_ulid",  # canonical field name
                 "analysis_kind": "scf",
             }
 
         if self.method_name == "get_run_revision":
             return {
                 **base,
-                "run_id": "test_run_id",
+                "run_ulid": "test_run_ulid",  # canonical field name
             }
 
         if self.method_name == "list_project_runs":
@@ -128,7 +128,7 @@ class OtherMethodsRecipe(Recipe):
                 **base,
                 "calculation": self.world["calculation_selector"],
                 "step": self.world["step_selector"],
-                "parent_structure_ulid": self.world["structure_id"],
+                "parent_structure_ulid": self.world["structure_ulid"],
             }
 
         if self.method_name == "set_pseudo_mapping":
@@ -156,4 +156,5 @@ class OtherMethodsRecipe(Recipe):
         except (TypeError, ValueError) as e:
             return False, f"Not JSON serializable: {e}"
         return True, None
+
 

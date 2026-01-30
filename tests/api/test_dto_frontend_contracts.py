@@ -31,7 +31,7 @@ class TestStructureDTOContract:
             path="structures/si-bulk.json"
         )
         dto = StructureDTO(
-            structure_id="01ABC123",
+            structure_ulid="01ABC123",
             formula="Si8",
             num_atoms=8,
             meta=meta
@@ -47,12 +47,12 @@ class TestStructureDTOContract:
         assert result["n_atoms"] == 8
         # Canonical field also present
         assert result["num_atoms"] == 8
-        assert result["structure_id"] == "01ABC123"
+        assert result["structure_ulid"] == "01ABC123"
     
     def test_structure_dto_has_compat_properties_without_meta(self):
         """StructureDTO.to_dict() includes id/n_atoms when meta is None (name/slug/path may be omitted if None)."""
         dto = StructureDTO(
-            structure_id="01ABC123",
+            structure_ulid="01ABC123",
             formula="Si8",
             num_atoms=8,
             meta=None
@@ -60,12 +60,12 @@ class TestStructureDTOContract:
         
         result = dto.to_dict()
         
-        # Compatibility properties must be present (fallback to structure_id for id)
-        assert result["ulid"] == "01ABC123"  # Falls back to structure_id
+        # Compatibility properties must be present (fallback to structure_ulid for id)
+        assert result["ulid"] == "01ABC123"  # Falls back to structure_ulid
         assert result["n_atoms"] == 8
         # Canonical fields still present
         assert result["num_atoms"] == 8
-        assert result["structure_id"] == "01ABC123"
+        assert result["structure_ulid"] == "01ABC123"
         # name/slug/path are only included if not None (current implementation)
         # This is acceptable for compatibility - frontends should handle missing keys
 

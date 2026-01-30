@@ -78,7 +78,7 @@ def test_optimade_fetch_structure():
     assert base_url is not None, "OPTIMADE search failed (network or provider issue)"
     assert results and len(results) > 0, "No search results available"
     
-    candidate_id = results[0]["ulid"]
+    candidate_id = results[0]["id"]
     
     # Fetch structure
     structure, raw_data = fetch_structure_from_optimade(base_url, candidate_id)
@@ -117,7 +117,7 @@ def test_optimade_structure_has_required_fields():
     assert base_url is not None, "OPTIMADE search failed (network or provider issue)"
     assert results and len(results) > 0, "No search results available"
     
-    candidate_id = results[0]["ulid"]
+    candidate_id = results[0]["id"]
     structure, raw_data = fetch_structure_from_optimade(base_url, candidate_id)
     
     # Verify structure has required fields

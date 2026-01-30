@@ -14,7 +14,7 @@ from .types import StepMode, StepStatus
 
 @dataclass(slots=True)
 class StepResultSummary:
-    step_ulid: str  # ULID (was step_id)
+    step_ulid: str  # ULID (was step_ulid)
     step_type_spec: str  # SPEC type (was step_type)
     status: StepStatus
     working_dir: Path

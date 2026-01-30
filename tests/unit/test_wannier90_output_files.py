@@ -247,7 +247,7 @@ exit 0
             )
             
             # Verify pw2wannier90 was executed
-            assert result_pw2wan.step_type == "pw2wannier90"
+            assert result_pw2wan.step_type_spec == "pw2wannier90"
             assert result_pw2wan.return_code == 0
             assert result_pw2wan.success is True
             

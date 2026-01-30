@@ -33,7 +33,7 @@ def test_k_points_card_renders_as_card_not_namelist(sample_structure, tmp_path):
             path="test.step.yaml",
             kind="step",
         ),
-        step_type="scf",
+        step_type_spec="qe_scf",
         structure="test-structure",
         parameters={
             "CONTROL": {
@@ -94,7 +94,7 @@ def test_k_points_automatic_format(sample_structure, tmp_path):
             path="test.step.yaml",
             kind="step",
         ),
-        step_type="scf",
+        step_type_spec="qe_scf",
         structure="test-structure",
         parameters={
             "CONTROL": {"calculation": "scf"},
@@ -138,7 +138,7 @@ def test_k_points_crystal_format(sample_structure, tmp_path):
             path="test.step.yaml",
             kind="step",
         ),
-        step_type="bands_pw",
+        step_type_spec="qe_bands_pw",
         structure="test-structure",
         parameters={
             "CONTROL": {"calculation": "bands"},
@@ -186,7 +186,7 @@ def test_no_k_points_in_parameters_rendered(sample_structure, tmp_path):
             path="test.step.yaml",
             kind="step",
         ),
-        step_type="scf",
+        step_type_spec="qe_scf",
         structure="test-structure",
         parameters={
             "CONTROL": {"calculation": "scf"},

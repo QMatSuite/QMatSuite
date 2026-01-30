@@ -126,7 +126,7 @@ Engine-dependent methods use minimal workflows:
 
 Only truly non-deterministic fields are normalized:
 
-- ULIDs: `id`, `structure_id`, `calc_id`, `step_id`, `run_id`, `job_id`
+- ULIDs: `id`, `structure_ulid`, `calc_id`, `step_id`, `run_id`, `job_id`
 - Timestamps: `created_at`, `updated_at`, `started_at`, `completed_at`
 - Paths: `project_root`, `log_path`, `io_dir` (temp directories)
 
@@ -174,8 +174,8 @@ Transform old (v0) payloads to new (HEAD) format:
 | Method | Transformation |
 |--------|---------------|
 | `change_calculation_structure` | Accept `structure` for `new_structure` |
-| `delete_structure` | Add `selector` from `structure_id` |
-| `get_structure_vis` | Add `selector` from `structure_id` |
+| `delete_structure` | Add `selector` from `structure_ulid` |
+| `get_structure_vis` | Add `selector` from `structure_ulid` |
 | `instantiate_workflow` | Accept `workflow` for `workflow_id` |
 | `detect_workflow` | Add `calculation_path` from `project_root` + `calculation` |
 | `reset_step_params` | Remove `calculation_ulid` (HEAD doesn't accept it) |

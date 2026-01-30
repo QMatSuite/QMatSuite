@@ -37,7 +37,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
         Dict with:
             project_root: str
             project_id: str (from project config if available)
-            structure_id: str
+            structure_ulid: str
             calc_id: str
             step_ids: list[str] (at least 2 steps)
             calculation_selector: str (can use calc_id or slug)
@@ -67,12 +67,12 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
         if is_static_api:
             # Baseline: static methods
             struct_result = QVService.import_structure(project_root, struct_file, name="silicon")
-            structure_id = struct_result.id if hasattr(struct_result, 'id') else struct_result.structure_id if hasattr(struct_result, 'structure_id') else None
+            structure_ulid = struct_result.id if hasattr(struct_result, 'id') else struct_result.structure_ulid if hasattr(struct_result, 'structure_ulid') else None
         else:
             # Current: instance methods
             svc = QVService(project_root) if get_service is None else get_service(project_root)
             struct_dto = svc.structure.import_file(source=struct_file, name="silicon")
-            structure_id = struct_dto.structure_id
+            structure_ulid = struct_dto.structure_ulid
     finally:
         struct_file.unlink()
     
@@ -82,7 +82,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
         calc_result = QVService.init_calculation(
             project_root,
             name="demo_calc",
-            structure_selector=structure_id,
+            structure_selector=structure_ulid,
         )
         calc_id = calc_result.ulid if hasattr(calc_result, 'ulid') else None
         calc_slug = calc_result.slug if hasattr(calc_result, 'slug') else "demo_calc"
@@ -91,7 +91,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
         calc_dto = svc.calculation.create(
             engine="qe",
             name="demo_calc",
-            structure_selector=structure_id,
+            structure_selector=structure_ulid,
         )
         calc_id = calc_dto.calc_id
         calc_slug = calc_dto.meta.slug if hasattr(calc_dto, 'meta') and calc_dto.meta else "demo_calc"
@@ -175,7 +175,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
     return {
         "project_root": str(project_root),
         "project_id": project_id,
-        "structure_id": structure_id,
+        "structure_ulid": structure_ulid,
         "calc_id": calc_id,
         "step_ids": step_ids,
         "calculation_selector": calc_id,  # Can use ULID

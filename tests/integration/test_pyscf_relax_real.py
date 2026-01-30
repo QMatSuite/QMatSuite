@@ -70,10 +70,10 @@ def pyscf_project_with_h2():
     structures_dir.mkdir(parents=True, exist_ok=True)
     
     from quantumvitas.core.resources import generate_resource_id
-    structure_id = generate_resource_id()
+    structure_ulid = generate_resource_id()
     structure_data = {
         "__qv_meta__": {
-            "ulid": structure_id,
+            "ulid": structure_ulid,
             "name": "H2",
             "slug": "h2",
             "path": "structures/h2.json",
@@ -85,7 +85,7 @@ def pyscf_project_with_h2():
     
     return {
         "project_root": project_root,
-        "structure_id": structure_id,
+        "structure_ulid": structure_ulid,
         "structure_path": structures_dir / "h2.json",
         "test_dir": test_dir,
     }
@@ -95,13 +95,13 @@ def pyscf_project_with_h2():
 def pyscf_calculation_with_relax(pyscf_project_with_h2):
     """Create a calculation with a relax step, configured for PySCF."""
     project_root = pyscf_project_with_h2["project_root"]
-    structure_id = pyscf_project_with_h2["structure_id"]
+    structure_ulid = pyscf_project_with_h2["structure_ulid"]
     
     # Create calculation with molecule/pyscf settings
     calc_result = QVService.init_calculation(
         project_root=project_root,
         name="h2_relax",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_ulid = calc_result.ulid
     if calc_result.absolute_path.is_dir():
@@ -145,7 +145,7 @@ def pyscf_calculation_with_relax(pyscf_project_with_h2):
         "calc_ulid": calc_ulid,
         "calc_dir": calc_dir,
         "relax_step_ulid": relax_step_ulid,
-        "structure_id": structure_id,
+        "structure_ulid": structure_ulid,
     }
 
 

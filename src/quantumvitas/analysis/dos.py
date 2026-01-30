@@ -111,12 +111,12 @@ def analyze_dos(calculation: Calculation, result: CalculationResult, results_dir
     
     for step in dos_steps:
         # Look for DOS files associated with this step
-        step_id = step.step_ulid
+        step_ulid = step.step_ulid
         
         # Common naming patterns
         possible_dos_files = [
-            raw_dir / f"{step_id}.dos.dat",
-            raw_dir / f"{step_id}_dos.dat",
+            raw_dir / f"{step_ulid}.dos.dat",
+            raw_dir / f"{step_ulid}_dos.dat",
             raw_dir / "dos.dat",
             raw_dir / f"{calculation.meta.slug}.dos.dat",
         ]
@@ -137,15 +137,15 @@ def analyze_dos(calculation: Calculation, result: CalculationResult, results_dir
                     
                     # Save plot
                     fig, ax = plot_dos(dos_data, shift_fermi=True)
-                    plot_path = results_dir / f"{step_id}_dos.png"
+                    plot_path = results_dir / f"{step_ulid}_dos.png"
                     save_figure(fig, plot_path)
                     
                     # Save data JSON
-                    data_path = results_dir / f"{step_id}_dos_data.json"
+                    data_path = results_dir / f"{step_ulid}_dos_data.json"
                     data_path.write_text(json.dumps(dos_data.to_dict(), indent=2))
                     
                     dos_results.append({
-                        "step_id": step_id,
+                        "step_ulid": step_ulid,
                         "dos_file": str(dos_file),
                         "plot_file": str(plot_path),
                         "data_file": str(data_path),
@@ -155,7 +155,7 @@ def analyze_dos(calculation: Calculation, result: CalculationResult, results_dir
                     break
                 except Exception as e:
                     dos_results.append({
-                        "step_id": step_id,
+                        "step_ulid": step_ulid,
                         "dos_file": str(dos_file),
                         "error": str(e),
                     })

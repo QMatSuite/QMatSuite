@@ -65,7 +65,7 @@ def temp_project(tmp_path: Path):
     
     (calc_dir / "calculation.yaml").write_text(yaml.safe_dump({
         "meta": calc_meta,
-        "structure_id": struct_id,
+        "structure_ulid": struct_id,
         "steps": []
     }))
     
@@ -111,13 +111,13 @@ class TestListStructuresContract:
         
         if response["structures"]:
             struct = response["structures"][0]
-            # Required compatibility keys
-            assert "id" in struct
+            # Required canonical keys
+            assert "ulid" in struct
             assert "slug" in struct or struct.get("slug") is None  # May be None
             assert "path" in struct or struct.get("path") is None  # May be None
             assert "n_atoms" in struct
             # Canonical keys also present
-            assert "structure_id" in struct
+            assert "structure_ulid" in struct
             assert "num_atoms" in struct
 
 

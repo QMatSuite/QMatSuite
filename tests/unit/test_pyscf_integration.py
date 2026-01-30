@@ -468,7 +468,7 @@ class TestPySCFDemoProject:
         calc = demo["calculations"][0]
         assert len(calc["steps"]) >= 1
         step = calc["steps"][0]
-        assert step["step_type"] == "pyscf_scf"
+        assert step["step_type_spec"] == "pyscf_scf"
         
         # Check step parameters
         params = step["parameters"]

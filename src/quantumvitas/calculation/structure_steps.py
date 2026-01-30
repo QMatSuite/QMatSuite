@@ -37,13 +37,13 @@ class StructureStepSpec:
     Declarative specification for generating a QE input from a stored structure.
     
     Structure references:
-    - structure_id: ULID of the structure (canonical reference)
+    - structure_ulid: ULID of the structure (canonical reference)
     - structure: Legacy selector field (for backwards compatibility when loading)
     """
 
     meta: ResourceMeta
     structure: str  # Legacy selector (backwards compat, not authoritative)
-    structure_id: Optional[str] = None  # Canonical structure reference (ULID)
+    structure_ulid: Optional[str] = None  # Canonical structure reference (ULID)
     step_type_spec: str = "scf"
     parameters: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     input_name: Optional[str] = None
@@ -62,41 +62,41 @@ class StructureStepSpec:
         """
         Create StructureStepSpec from dictionary.
         
-        Handles both new format (structure_id) and legacy format (structure selector).
+        Handles both new format (structure_ulid) and legacy format (structure selector).
         
         Backwards compatibility (legacy structure selector):
-        - If structure_id is missing but structure selector is present, resolve it to structure_id
+        - If structure_ulid is missing but structure selector is present, resolve it to structure_ulid
         - This resolution happens only on input (from_dict/loader), not on output (to_dict)
-        - After resolution, the structure_id is stored and the selector is dropped
+        - After resolution, the structure_ulid is stored and the selector is dropped
         
         Args:
             data: Dictionary containing step spec data
             source_path: Optional path to the step spec file
             resolve_structure_selector: Optional callable(selector: str) -> str that resolves
-                a structure selector (name/slug/path) to a structure_id (ULID).
-                If provided and structure_id is missing, legacy 'structure' selector will be resolved.
+                a structure selector (name/slug/path) to a structure_ulid (ULID).
+                If provided and structure_ulid is missing, legacy 'structure' selector will be resolved.
         """
-        # New format: structure_id (canonical)
-        structure_id = data.get("structure_id")
+        # New format: structure_ulid (canonical)
+        structure_ulid = data.get("structure_ulid")
         
         # Legacy format: structure selector (for backwards compat on input only)
         structure = data.get("structure")
         
-        # If structure_id is missing but structure selector is present, resolve it via resolver
-        if not structure_id and structure and resolve_structure_selector:
+        # If structure_ulid is missing but structure selector is present, resolve it via resolver
+        if not structure_ulid and structure and resolve_structure_selector:
             try:
                 resolved_resource = resolve_structure_selector(structure)
                 # Extract the ID from the resolved resource
-                structure_id = resolved_resource.meta.ulid if hasattr(resolved_resource, 'meta') else str(resolved_resource)
+                structure_ulid = resolved_resource.meta.ulid if hasattr(resolved_resource, 'meta') else str(resolved_resource)
                 # Drop the legacy selector after resolution
                 structure = None
             except Exception:
                 # Resolution failed - keep structure selector for now (will fail on to_dict if not resolved)
                 pass
         
-        # DAG + ID-only model: Step YAML does NOT contain structure_id.
-        # Structure is resolved from calculation.structure_id at execution time.
-        # Legacy structure_id/structure fields are accepted for backwards compatibility only.
+        # DAG + ID-only model: Step YAML does NOT contain structure_ulid.
+        # Structure is resolved from calculation.structure_ulid at execution time.
+        # Legacy structure_ulid/structure fields are accepted for backwards compatibility only.
         # If present, they are kept in memory but not written to YAML.
         
         # Step.yaml stores machine types (SPEC, e.g., "qe_scf").
@@ -143,8 +143,8 @@ class StructureStepSpec:
 
         return cls(
             meta=meta,
-            structure_id=structure_id,
-            structure=structure or "",  # Provide empty string if only structure_id present
+            structure_ulid=structure_ulid,
+            structure=structure or "",  # Provide empty string if only structure_ulid present
             step_type_spec=step_type_spec,
             parameters=parameters,
             input_name=input_name,
@@ -166,8 +166,8 @@ class StructureStepSpec:
         Args:
             path: Path to step spec YAML file
             resolve_structure_selector: Optional callable(selector: str) -> str that resolves
-                a structure selector (name/slug/path) to a structure_id (ULID).
-                If provided and structure_id is missing, legacy 'structure' selector will be resolved.
+                a structure selector (name/slug/path) to a structure_ulid (ULID).
+                If provided and structure_ulid is missing, legacy 'structure' selector will be resolved.
         """
         spec_path = Path(path)
         content = yaml.safe_load(spec_path.read_text()) or {}
@@ -181,11 +181,11 @@ class StructureStepSpec:
         
         DAG + ID-only model invariants (enforced here):
         - Step YAML contains ONLY step-local configuration (parameters, cards, species_overrides).
-        - NO cross-resource references: structure_id, parent_calculation_id, or structure selector.
-        - Structure is resolved via calculation.structure_id at execution time (calculation owns structure).
+        - NO cross-resource references: structure_ulid, parent_calculation_id, or structure selector.
+        - Structure is resolved via calculation.structure_ulid at execution time (calculation owns structure).
         - Parent calculation is implicit from step file location (calculations/<slug>/steps/<step>.step.yaml).
         
-        This method explicitly excludes structure_id, parent_calculation_id, and structure fields
+        This method explicitly excludes structure_ulid, parent_calculation_id, and structure fields
         to enforce the DAG invariant that steps do not duplicate calculation-level references.
         """
         # CANONICAL: ResourceMeta.to_dict() outputs "ulid" only
@@ -205,7 +205,7 @@ class StructureStepSpec:
             data["species_overrides"] = self.species_overrides
         if self.kpath_metadata:
             data["kpath_metadata"] = self.kpath_metadata
-        # Do NOT write structure_id (inherits from calculation)
+        # Do NOT write structure_ulid (inherits from calculation)
         # Do NOT write parent_calculation_id (parent is implicit)
         # Do NOT write structure selector (legacy field)
         return data
@@ -225,14 +225,28 @@ def generate_qe_input_from_structure(
 ) -> QEInput:
     """
     Build a QE input from a structure plus step metadata.
+
+    Args:
+        step_type: Either GEN type (e.g., "nscf") or SPEC type (e.g., "qe_nscf").
+                   Will be normalized to GEN type for QE calculation parameter.
     """
 
     qe_input = qe_input_from_structure(structure)
 
     overrides: list[ParameterOverride] = []
     if step_type:
+        step_type_lower = step_type.lower()
+        # Strip engine prefix (e.g., "qe_vc-relax" -> "vc-relax") for QE calculation parameter
+        # Note: Do NOT use normalize_step_type_to_gen here as it applies aliases (vc-relax -> relax)
+        # which would change the actual QE calculation type
+        ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_")
+        step_gen_type = step_type_lower
+        for prefix in ENGINE_PREFIXES:
+            if step_type_lower.startswith(prefix):
+                step_gen_type = step_type_lower[len(prefix):]
+                break
         # Convert step_type to QE calculation value (e.g., bands_pw -> bands)
-        calculation_value = STEP_TYPE_TO_CALCULATION.get(step_type.lower(), step_type)
+        calculation_value = STEP_TYPE_TO_CALCULATION.get(step_gen_type, step_gen_type)
         overrides.append(
             ParameterOverride(
                 name="calculation",
@@ -539,7 +553,7 @@ def generate_qe_input_from_spec(
         combined_overrides.extend(extra_overrides)
     qe_input = generate_qe_input_from_structure(
         structure=structure,
-        step_type=spec.step_type_spec,
+        step_type=step_gen_type,  # Use GEN type (e.g., "nscf"), not SPEC type (e.g., "qe_nscf")
         parameter_overrides=combined_overrides,
     )
     
@@ -1194,8 +1208,8 @@ def materialize_step_spec(
                 calculation_context["calculation_path"] = str(calc_yaml_path)
                 calculation_context["species_map"] = calc_model.species_map
                 calculation_context["prefix"] = calculation_prefix
-                if calc_model.structure_id:
-                    struct_resolved = resolve_structure(project_root_path, calc_model.structure_id, config=config)
+                if calc_model.structure_ulid:
+                    struct_resolved = resolve_structure(project_root_path, calc_model.structure_ulid, config=config)
                     calculation_context["structure_path"] = str(struct_resolved.absolute_path)
         except Exception:
             # If calculation loading fails, continue without calculation context (fallback to QE input parsing)
@@ -1392,12 +1406,12 @@ def _resolve_structure_for_spec(
     """
     Resolve structure for step spec.
     
-    DAG + ID-only model: Steps inherit structure from calculation.structure_id.
-    Legacy: Steps may have structure_id (for backwards compatibility).
+    DAG + ID-only model: Steps inherit structure from calculation.structure_ulid.
+    Legacy: Steps may have structure_ulid (for backwards compatibility).
     
     Resolution order (strict):
-    1. Step-local structure (legacy support): If spec.structure_id or spec.structure is present
-    2. Calculation-based structure (preferred): If calculation_dir exists, load calculation.yaml and use calculation.structure_id
+    1. Step-local structure (legacy support): If spec.structure_ulid or spec.structure is present
+    2. Calculation-based structure (preferred): If calculation_dir exists, load calculation.yaml and use calculation.structure_ulid
     3. Registry-based resolution: If project/registry is available, use it
     4. Last-resort filesystem search: Only when there is no calculation context
     
@@ -1411,7 +1425,7 @@ def _resolve_structure_for_spec(
     # Debug logging (can be enabled for troubleshooting)
     # import logging
     # logger = logging.getLogger(__name__)
-    # logger.debug(f"_resolve_structure_for_spec: project_root={project_root}, calculation_dir={calculation_dir}, spec.structure_id={spec.structure_id}")
+    # logger.debug(f"_resolve_structure_for_spec: project_root={project_root}, calculation_dir={calculation_dir}, spec.structure_ulid={spec.structure_ulid}")
     
     # Normalize paths
     calculation_dir_path = Path(calculation_dir).resolve() if calculation_dir else None
@@ -1430,19 +1444,19 @@ def _resolve_structure_for_spec(
     # ========================================================================
     # 1. Step-local structure (legacy support)
     # ========================================================================
-    if spec.structure_id or spec.structure:
+    if spec.structure_ulid or spec.structure:
         # logger.debug("  Attempting step-local structure resolution")
-        if spec.structure_id:
+        if spec.structure_ulid:
             # Try to resolve via project registry first
             if project:
                 try:
-                    struct_ref = project.get_structure(spec.structure_id)
+                    struct_ref = project.get_structure(spec.structure_ulid)
                     # logger.debug(f"  Found structure via project registry: {struct_ref.path}")
                     return read_structure(struct_ref.path)
                 except Exception:
                     pass
             
-            # Try filesystem search by structure_id
+            # Try filesystem search by structure_ulid
             if project_root_path:
                 structures_dir = project_root_path / "structures"
                 if structures_dir.exists():
@@ -1452,7 +1466,7 @@ def _resolve_structure_for_spec(
                         try:
                             struct_data = json.loads(struct_file.read_text())
                             struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
-                            if struct_meta.get("ulid") == spec.structure_id:
+                            if struct_meta.get("ulid") == spec.structure_ulid:
                                 return read_structure(struct_file)
                         except Exception:
                             continue
@@ -1512,9 +1526,9 @@ def _resolve_structure_for_spec(
                 
                 if wf_project_root:
                     wf_model = load_calculation(calculation_yaml, wf_project_root)
-                    # logger.debug(f"  Loaded calculation model: structure_id={wf_model.structure_id}")
+                    # logger.debug(f"  Loaded calculation model: structure_ulid={wf_model.structure_ulid}")
                     
-                    structure_to_resolve = wf_model.structure_id
+                    structure_to_resolve = wf_model.structure_ulid
                     if not structure_to_resolve and wf_model.structure:
                         # Legacy: calculation has structure path/selector, try to resolve it
                         if project:
@@ -1525,7 +1539,7 @@ def _resolve_structure_for_spec(
                                 structure_to_resolve = wf_model.structure
                     
                     if structure_to_resolve:
-                        # Resolve structure from calculation.structure_id
+                        # Resolve structure from calculation.structure_ulid
                         if project:
                             try:
                                 struct_ref = project.get_structure(structure_to_resolve)
@@ -1533,7 +1547,7 @@ def _resolve_structure_for_spec(
                             except Exception:
                                 pass
                         
-                        # Fallback: filesystem search by structure_id
+                        # Fallback: filesystem search by structure_ulid
                         structures_dir = wf_project_root / "structures"
                         if structures_dir.exists():
                             import json
@@ -1552,11 +1566,11 @@ def _resolve_structure_for_spec(
     # ========================================================================
     # 3. Registry-based resolution (if available)
     # ========================================================================
-    # This would use step_id → calculation_id → structure_id via registry
+    # This would use step_ulid → calculation_id → structure_ulid via registry
     # For now, this is handled by calculation-based resolution above
     
     # ========================================================================
-    # 4. Last-resort filesystem search (when there is no calculation context or calculation has no structure_id)
+    # 4. Last-resort filesystem search (when there is no calculation context or calculation has no structure_ulid)
     # ========================================================================
     # Try to find structure files in common locations
     import json
@@ -1579,7 +1593,7 @@ def _resolve_structure_for_spec(
             # If there's exactly one structure file, use it
             if len(struct_files) == 1:
                 return read_structure(struct_files[0])
-            # If multiple, and we have a calculation structure_id, try to match by ID
+            # If multiple, and we have a calculation structure_ulid, try to match by ID
             if calculation_dir_path:
                 try:
                     from quantumvitas.core.models import load_calculation
@@ -1595,12 +1609,12 @@ def _resolve_structure_for_spec(
                                 current = current.parent
                         if wf_project_root:
                             wf_model = load_calculation(calculation_yaml, wf_project_root)
-                            if wf_model.structure_id:
+                            if wf_model.structure_ulid:
                                 for struct_file in struct_files:
                                     try:
                                         struct_data = json.loads(struct_file.read_text())
                                         struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
-                                        if struct_meta.get("ulid") == wf_model.structure_id:
+                                        if struct_meta.get("ulid") == wf_model.structure_ulid:
                                             return read_structure(struct_file)
                                     except Exception:
                                         continue
@@ -1611,31 +1625,31 @@ def _resolve_structure_for_spec(
     # All resolution attempts failed
     # ========================================================================
     raise FileNotFoundError(
-        f"Step spec at {spec_path} has neither structure_id (current: {spec.structure_id}) nor structure field (current: {spec.structure}). "
+        f"Step spec at {spec_path} has neither structure_ulid (current: {spec.structure_ulid}) nor structure field (current: {spec.structure}). "
         f"Calculation-based resolution also failed (calculation_dir: {calculation_dir_path}). "
-        f"Please ensure the step spec has a valid structure_id or structure selector, "
-        f"or that a calculation.yaml exists with a valid structure_id."
+        f"Please ensure the step spec has a valid structure_ulid or structure selector, "
+        f"or that a calculation.yaml exists with a valid structure_ulid."
     )
-    # First, try legacy structure_id from step spec (for backwards compatibility)
-    # Note: spec.structure_id might be a string, so check it's truthy and non-empty
-    if spec.structure_id:
+    # First, try legacy structure_ulid from step spec (for backwards compatibility)
+    # Note: spec.structure_ulid might be a string, so check it's truthy and non-empty
+    if spec.structure_ulid:
         if project is not None:
             # Try to resolve via project registry
             try:
                 # Try to find structure by ID in project's structures dict
                 struct_ref = None
                 for ref in project.structures.values():
-                    if ref.meta.ulid == spec.structure_id:
+                    if ref.meta.ulid == spec.structure_ulid:
                         struct_ref = ref
                         break
                 
                 if struct_ref is None:
                     # Fall back to get_structure which might resolve by slug/name
-                    struct_ref = project.get_structure(spec.structure_id)
+                    struct_ref = project.get_structure(spec.structure_ulid)
                 
                 return read_structure(struct_ref.path)
             except (KeyError, AttributeError) as e:
-                # If structure_id doesn't resolve via project, fall through to calculation resolution
+                # If structure_ulid doesn't resolve via project, fall through to calculation resolution
                 pass
         
         # If project is None or structure not found in project, try filesystem resolution
@@ -1665,22 +1679,22 @@ def _resolve_structure_for_spec(
                     try:
                         struct_data = json.loads(struct_file.read_text())
                         struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
-                        if struct_meta.get("ulid") == spec.structure_id:
+                        if struct_meta.get("ulid") == spec.structure_ulid:
                             return read_structure(struct_file)
                     except Exception:
                         continue
         
-        # If structure_id doesn't resolve and no structure selector, raise error
+        # If structure_ulid doesn't resolve and no structure selector, raise error
         if not spec.structure:
             raise FileNotFoundError(
-                f"Step spec at {spec_path} has structure_id ({spec.structure_id}) but structure not found. "
+                f"Step spec at {spec_path} has structure_ulid ({spec.structure_ulid}) but structure not found. "
                 f"Tried project registry and filesystem search. Project: {project is not None}"
             )
         # Fall through to legacy structure selector
         pass
     
-    # DAG + ID-only model: If step doesn't have structure_id, resolve from calculation
-    if not spec.structure_id and calculation_dir:
+    # DAG + ID-only model: If step doesn't have structure_ulid, resolve from calculation
+    if not spec.structure_ulid and calculation_dir:
         # Try to load project if not provided but project_root is available
         if project is None and project_root:
             try:
@@ -1699,8 +1713,8 @@ def _resolve_structure_for_spec(
                     calculation_path = calculation_path / "calculation.yaml"
                 if calculation_path.exists():
                     wf_model = load_calculation(calculation_path, project.root)
-                    # Check both structure_id (new) and structure (legacy path selector)
-                    structure_to_resolve = wf_model.structure_id
+                    # Check both structure_ulid (new) and structure (legacy path selector)
+                    structure_to_resolve = wf_model.structure_ulid
                     if not structure_to_resolve and wf_model.structure:
                         # Legacy: calculation has structure path, try to resolve it
                         try:
@@ -1770,7 +1784,7 @@ def _resolve_structure_for_spec(
                     
                     if inferred_project_root:
                         wf_model = load_calculation(calculation_path, inferred_project_root)
-                        if wf_model.structure_id:
+                        if wf_model.structure_ulid:
                             # Try to find structure file by ID in common locations
                             import json
                             from quantumvitas.io.structure_io import STRUCTURE_META_KEY
@@ -1787,7 +1801,7 @@ def _resolve_structure_for_spec(
                                         try:
                                             struct_data = json.loads(struct_file.read_text())
                                             struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
-                                            if struct_meta.get("ulid") == wf_model.structure_id:
+                                            if struct_meta.get("ulid") == wf_model.structure_ulid:
                                                 return read_structure(struct_file)
                                         except Exception:
                                             continue
@@ -1799,7 +1813,7 @@ def _resolve_structure_for_spec(
     structure_value = spec.structure
     if not structure_value:
         # Last resort: try to find structure file in common locations
-        # This handles cases where step spec was created without structure_id/structure
+        # This handles cases where step spec was created without structure_ulid/structure
         # (e.g., by build_step_spec_from_qe_input which creates structure in structures_dir)
         import json
         from quantumvitas.io.structure_io import STRUCTURE_META_KEY
@@ -1817,8 +1831,8 @@ def _resolve_structure_for_spec(
             search_roots.append(project_root_path / "structures")
         
         # Try to find any structure JSON file in these directories
-        # First, try to get calculation structure_id if available
-        calculation_structure_id = None
+        # First, try to get calculation structure_ulid if available
+        calculation_structure_ulid = None
         if calculation_dir and project:
             try:
                 from quantumvitas.core.models import load_calculation
@@ -1827,7 +1841,7 @@ def _resolve_structure_for_spec(
                     calculation_path = calculation_path / "calculation.yaml"
                 if calculation_path.exists():
                     wf_model = load_calculation(calculation_path, project.root)
-                    calculation_structure_id = wf_model.structure_id
+                    calculation_structure_ulid = wf_model.structure_ulid
             except Exception:
                 pass
         
@@ -1838,21 +1852,21 @@ def _resolve_structure_for_spec(
                 if len(struct_files) == 1:
                     return read_structure(struct_files[0])
                 # Otherwise, try to match by ID (from spec or calculation)
-                structure_id_to_match = spec.structure_id or calculation_structure_id
-                if structure_id_to_match:
+                structure_ulid_to_match = spec.structure_ulid or calculation_structure_ulid
+                if structure_ulid_to_match:
                     for struct_file in struct_files:
                         try:
                             struct_data = json.loads(struct_file.read_text())
                             struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
-                            if struct_meta.get("ulid") == structure_id_to_match:
+                            if struct_meta.get("ulid") == structure_ulid_to_match:
                                 return read_structure(struct_file)
                         except Exception:
                             continue
         
         # If still no structure found, raise error
         raise FileNotFoundError(
-            f"Step spec at {spec_path} has neither structure_id (current: {spec.structure_id}) nor structure field (current: {spec.structure}). "
-            f"Please ensure the step spec has a valid structure_id or structure selector, or that a structure file exists in a structures/ directory."
+            f"Step spec at {spec_path} has neither structure_ulid (current: {spec.structure_ulid}) nor structure field (current: {spec.structure}). "
+            f"Please ensure the step spec has a valid structure_ulid or structure selector, or that a structure file exists in a structures/ directory."
         )
     
     candidate = Path(structure_value)

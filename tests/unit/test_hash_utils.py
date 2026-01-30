@@ -16,7 +16,7 @@ class TestBuildEffectiveEngineParamsView:
     def test_build_effective_view_resolves_scan_refs(self):
         """ScanRefs are resolved to concrete values."""
         step_doc = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": "@scan:scan001",
@@ -44,7 +44,7 @@ class TestBuildEffectiveEngineParamsView:
     def test_build_effective_view_removes_parameter_scan(self):
         """parameter_scan section is always removed."""
         step_doc = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": 50,
@@ -63,7 +63,7 @@ class TestBuildEffectiveEngineParamsView:
     def test_build_effective_view_no_mutation(self):
         """Input dict is not mutated."""
         step_doc = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": "@scan:scan001",
@@ -96,7 +96,7 @@ class TestComputeStepShaEffective:
     def test_effective_sha_resolves_scan_refs(self):
         """Step SHA with resolved ScanRefs is computed correctly."""
         step_doc = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": "@scan:scan001",
@@ -121,7 +121,7 @@ class TestComputeStepShaEffective:
     def test_effective_sha_removes_parameter_scan_section(self):
         """parameter_scan section does not affect fingerprint."""
         step_doc1 = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": 50,
@@ -130,7 +130,7 @@ class TestComputeStepShaEffective:
         }
         
         step_doc2 = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": 50,
@@ -151,7 +151,7 @@ class TestComputeStepShaEffective:
         """Step with concrete value and scan-variant with same value produce identical SHA."""
         # Step with concrete value
         step_doc_concrete = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": 50,
@@ -162,7 +162,7 @@ class TestComputeStepShaEffective:
         
         # Step with ScanRef resolved to same value
         step_doc_scan = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": "@scan:scan001",
@@ -187,7 +187,7 @@ class TestComputeStepShaEffective:
     def test_effective_sha_no_mutation(self):
         """compute_step_sha does not mutate input."""
         step_doc = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": "@scan:scan001",

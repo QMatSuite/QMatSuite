@@ -3,7 +3,7 @@
   "success": true,
   "response": {
     "success": false,
-    "error": "Run not found: mock_run_id"
+    "error": "Run not found: mock_run_ulid"
   },
   "recipe_name": "EngineMethodsRecipe(pin_analysis_to_history)",
   "baseline_commit": "0873ebf",

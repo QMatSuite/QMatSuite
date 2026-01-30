@@ -69,7 +69,7 @@ def collect_slugs(entries: list[dict], *, exclude: Optional[dict] = None, projec
     """
     Collect all slugs from a list of structure or calculation entries.
     
-    In ID-only model, entries may only have structure_id/calculation_id (ULID).
+    In ID-only model, entries may only have structure_ulid/calculation_id (ULID).
     If project_root is provided, resolves slugs from registry.
     Otherwise, falls back to legacy entry format (meta/name fields).
     """
@@ -83,8 +83,8 @@ def collect_slugs(entries: list[dict], *, exclude: Optional[dict] = None, projec
             for entry in entries:
                 if exclude is not None and entry is exclude:
                     continue
-                # Try to get resource ID (structure_id, calculation_id, or id)
-                resource_id = entry.get("structure_id") or entry.get("calculation_id") or entry.get("ulid")
+                # Try to get resource ID (structure_ulid, calculation_id, or id)
+                resource_id = entry.get("structure_ulid") or entry.get("calculation_id") or entry.get("ulid")
                 if resource_id and resource_id in index.by_id:
                     meta = index.by_id[resource_id]
                     if meta.slug:
@@ -209,16 +209,16 @@ def find_structure_entry(
             index = build_resource_index(project_root)
             resolved = resolve_structure(project_root, identifier, config, index=index)
             # Convert ResolvedResource back to entry dict format for backwards compat
-            structure_id = resolved.meta.ulid
+            structure_ulid = resolved.meta.ulid
             # Find entry by ID using centralized selector extraction
             entries = config.setdefault("structures", [])
             for entry in entries:
                 entry_id = extract_structure_selector_from_entry(entry)
-                if entry_id == structure_id:
+                if entry_id == structure_ulid:
                     return entry
             # If not found in config, create minimal entry from resolved resource
             return {
-                "ulid": structure_id,
+                "ulid": structure_ulid,
                 "meta": resolved.meta.to_dict(),
             }
         except Exception:
@@ -548,14 +548,14 @@ def find_enclosing_calculation(
 
 def find_step_in_calculation(
     calculation_dir: Path, 
-    step_identifier: str
+    step_ulidentifier: str
 ) -> Optional[Path]:
     """
     Find a step YAML file in a calculation by id, name, or path.
     
     Args:
         calculation_dir: Path to calculation directory
-        step_identifier: Step id, name, or path to .step.yaml
+        step_ulidentifier: Step id, name, or path to .step.yaml
         
     Returns:
         Path to step YAML if found, None otherwise
@@ -563,11 +563,11 @@ def find_step_in_calculation(
     steps_dir = calculation_dir / "steps"
     
     # Check if it's a direct path
-    if step_identifier.endswith(".yaml") or step_identifier.endswith(".yml"):
+    if step_ulidentifier.endswith(".yaml") or step_ulidentifier.endswith(".yml"):
         candidates = [
-            Path(step_identifier),
-            calculation_dir / step_identifier,
-            steps_dir / step_identifier,
+            Path(step_ulidentifier),
+            calculation_dir / step_ulidentifier,
+            steps_dir / step_ulidentifier,
         ]
         for candidate in candidates:
             if candidate.exists():
@@ -579,10 +579,10 @@ def find_step_in_calculation(
         try:
             wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
             for step in wf_data.get("steps", []):
-                step_id = step.get("ulid", "")
-                if step_id.lower() == step_identifier.lower():
+                step_ulid = step.get("ulid", "")
+                if step_ulid.lower() == step_ulidentifier.lower():
                     # Found step id, look for corresponding YAML
-                    step_yaml = steps_dir / f"{step_id}.step.yaml"
+                    step_yaml = steps_dir / f"{step_ulid}.step.yaml"
                     if step_yaml.exists():
                         return step_yaml
                     # Try input file path
@@ -597,7 +597,7 @@ def find_step_in_calculation(
     
     # Fallback: search all .step.yaml files
     if steps_dir.exists():
-        ident_lower = step_identifier.lower()
+        ident_lower = step_ulidentifier.lower()
         for step_path in steps_dir.glob("*.step.yaml"):
             # Match by filename stem
             if step_path.stem.replace(".step", "").lower() == ident_lower:
@@ -959,14 +959,14 @@ def apply_structure_rename(
     slug_changed = False
     previous_path = entry.get("file") or meta.get("path")
     
-    # In ID-only model, entry might only have structure_id - resolve path from registry if needed
+    # In ID-only model, entry might only have structure_ulid - resolve path from registry if needed
     if not previous_path:
-        structure_id = entry.get("structure_id") or entry.get("ulid") or meta.get("ulid")
-        if structure_id:
+        structure_ulid = entry.get("structure_ulid") or entry.get("ulid") or meta.get("ulid")
+        if structure_ulid:
             try:
                 from quantumvitas.core.resolution import build_resource_index, resolve_structure
                 index = build_resource_index(project_root)
-                resolved = resolve_structure(project_root, structure_id, config=config, index=index)
+                resolved = resolve_structure(project_root, structure_ulid, config=config, index=index)
                 # Get relative path from absolute path
                 previous_path = resolved.meta.path
                 # Also update entry and meta with path if missing

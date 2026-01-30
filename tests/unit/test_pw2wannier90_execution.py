@@ -121,7 +121,7 @@ exit 0
             
             # Verify result
             assert isinstance(result, StepResult)
-            assert result.step_type == "pw2wannier90"
+            assert result.step_type_spec == "pw2wannier90"
             
             # Verify output files exist (using step_type.out/.err naming)
             stdout_file = working_dir / "pw2wannier90.out"

@@ -181,7 +181,7 @@ class TestStructureToQEInputToStructure:
 
         for step_type in ["scf", "nscf", "relax", "vc-relax", "bands"]:
             qe_input = generate_qe_input_from_structure(
-                structure=original, step_type_spec=step_type
+                structure=original, step_type=step_type
             )
 
             # Verify step type is set correctly
@@ -211,7 +211,7 @@ class TestStructureToQEInputToStructure:
         ]
 
         qe_input = generate_qe_input_from_structure(
-            structure=original, step_type_spec="scf", parameter_overrides=overrides
+            structure=original, step_type="scf", parameter_overrides=overrides
         )
 
         # Verify parameters were applied
@@ -438,7 +438,7 @@ class TestStepSpecRoundtrip:
         spec = StructureStepSpec(
             meta=meta_from_name("step", name="nscf", path="nscf.step.yaml"),
             structure="si",
-            step_type_spec="nscf",
+            step_type_spec="qe_nscf",
             parameters={
                 "SYSTEM": {"ecutwfc": 60, "ecutrho": 240},
                 "ELECTRONS": {"mixing_beta": 0.7},
@@ -478,11 +478,11 @@ class TestStepSpecRoundtrip:
 
         original = si_diamond_structure
 
-        # Create step spec YAML (DAG model: should NOT contain structure_id)
+        # Create step spec YAML (DAG model: should NOT contain structure_ulid)
         spec = StructureStepSpec(
             meta=meta_from_name("step", name="scf", path="step.yaml"),
             structure="",  # Empty legacy field (not written to YAML)
-            step_type_spec="scf",
+            step_type_spec="qe_scf",
             parameters={
                 "SYSTEM": {"ecutwfc": 60},
             },
@@ -490,15 +490,15 @@ class TestStepSpecRoundtrip:
         )
         spec_file = tmp_path / "step.yaml"
         spec_dict = spec.to_dict()
-        # DAG model: Step YAML should NOT contain structure_id
-        assert "structure_id" not in spec_dict, "Step YAML should not contain structure_id (DAG model)"
+        # DAG model: Step YAML should NOT contain structure_ulid
+        assert "structure_ulid" not in spec_dict, "Step YAML should not contain structure_ulid (DAG model)"
         spec_file.write_text(yaml.safe_dump(spec_dict))
 
         # Load spec from YAML
         spec = StructureStepSpec.from_yaml(spec_file)
-        # Verify YAML does not contain structure_id
+        # Verify YAML does not contain structure_ulid
         spec_yaml_text = spec_file.read_text()
-        assert "structure_id:" not in spec_yaml_text, "Step YAML should not contain structure_id (DAG model)"
+        assert "structure_ulid:" not in spec_yaml_text, "Step YAML should not contain structure_ulid (DAG model)"
 
         # Generate QE input
         qe_input, _ = generate_qe_input_from_spec(original, spec)

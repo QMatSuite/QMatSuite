@@ -156,15 +156,15 @@ class TestSnapshotIDRegeneration:
                 new_project_root,
             )
             
-            if calculation.structure_id:
+            if calculation.structure_ulid:
                 # Structure ID should exist in materialized project
-                assert calculation.structure_id in materialized_index.by_id, (
-                    f"Calculation {calculation.meta.name} references structure_id {calculation.structure_id} "
+                assert calculation.structure_ulid in materialized_index.by_id, (
+                    f"Calculation {calculation.meta.name} references structure_ulid {calculation.structure_ulid} "
                     f"which does not exist in materialized project"
                 )
-                structure_meta = materialized_index.by_id[calculation.structure_id]
+                structure_meta = materialized_index.by_id[calculation.structure_ulid]
                 assert structure_meta.kind == "structure", (
-                    f"Calculation references {calculation.structure_id} but it's not a structure "
+                    f"Calculation references {calculation.structure_ulid} but it's not a structure "
                     f"(kind: {structure_meta.kind})"
                 )
             
@@ -177,58 +177,58 @@ class TestSnapshotIDRegeneration:
                     if step_meta and step_meta.kind == "step":
                         step_path = new_project_root / step_meta.path
                         if step_path.exists():
-                            # DAG model: Step YAML should NOT contain structure_id or parent_calculation_id
+                            # DAG model: Step YAML should NOT contain structure_ulid or parent_calculation_id
                             step_yaml_text = step_path.read_text()
                             assert "parent_calculation_id:" not in step_yaml_text, (
                                 f"Step {step_meta.name} YAML should not contain parent_calculation_id (DAG model)"
                             )
-                            assert "structure_id:" not in step_yaml_text, (
-                                f"Step {step_meta.name} YAML should not contain structure_id (DAG model)"
+                            assert "structure_ulid:" not in step_yaml_text, (
+                                f"Step {step_meta.name} YAML should not contain structure_ulid (DAG model)"
                             )
                             
                             # Load spec for other validations
                             step_spec = StructureStepSpec.from_yaml(step_path)
                         
-                        # Step structure is resolved via calculation.structure_id at runtime
-                        # Verify calculation has structure_id set
-                        assert calculation.structure_id is not None, (
-                            f"Calculation {calculation.meta.name} should have structure_id set"
+                        # Step structure is resolved via calculation.structure_ulid at runtime
+                        # Verify calculation has structure_ulid set
+                        assert calculation.structure_ulid is not None, (
+                            f"Calculation {calculation.meta.name} should have structure_ulid set"
                         )
                         # Verify structure exists in index
-                        if calculation.structure_id:
-                            assert calculation.structure_id in materialized_index.by_id, (
-                                f"Calculation {calculation.meta.name} references structure_id "
-                                f"{calculation.structure_id} which does not exist"
+                        if calculation.structure_ulid:
+                            assert calculation.structure_ulid in materialized_index.by_id, (
+                                f"Calculation {calculation.meta.name} references structure_ulid "
+                                f"{calculation.structure_ulid} which does not exist"
                             )
-                            structure_meta = materialized_index.by_id[calculation.structure_id]
+                            structure_meta = materialized_index.by_id[calculation.structure_ulid]
                             assert structure_meta.kind == "structure", (
-                                f"Calculation references {calculation.structure_id} but it's not a structure"
+                                f"Calculation references {calculation.structure_ulid} but it's not a structure"
                             )
-                            # DAG model: Step structure is resolved via calculation.structure_id
-                            # No need to check step_spec.structure_id as it's not persisted in YAML
+                            # DAG model: Step structure is resolved via calculation.structure_ulid
+                            # No need to check step_spec.structure_ulid as it's not persisted in YAML
         
         # Assert: Graph structure matches snapshot pattern
-        # In snapshot, each calculation has structure_id pointing to a structure
+        # In snapshot, each calculation has structure_ulid pointing to a structure
         # In materialized project, same pattern should exist
-        snapshot_calculation_structure_ids = set()
+        snapshot_calculation_structure_ulids = set()
         for calculation_data in snapshot.calculations:
-            structure_id = calculation_data.get("structure_id")
-            if structure_id:
-                snapshot_calculation_structure_ids.add(structure_id)
+            structure_ulid = calculation_data.get("structure_ulid")
+            if structure_ulid:
+                snapshot_calculation_structure_ulids.add(structure_ulid)
         
-        materialized_calculation_structure_ids = set()
+        materialized_calculation_structure_ulids = set()
         for calculation_entry in new_project.calculations:
             calculation = load_calculation(
                 new_project_root / calculation_entry.meta.path / "calculation.yaml",
                 new_project_root,
             )
-            if calculation.structure_id:
-                materialized_calculation_structure_ids.add(calculation.structure_id)
+            if calculation.structure_ulid:
+                materialized_calculation_structure_ulids.add(calculation.structure_ulid)
         
         # Number of calculations with structure references should match
-        assert len(materialized_calculation_structure_ids) == len(snapshot_calculation_structure_ids), (
+        assert len(materialized_calculation_structure_ulids) == len(snapshot_calculation_structure_ulids), (
             f"Number of calculations with structure references mismatch: "
-            f"snapshot has {len(snapshot_calculation_structure_ids)}, "
-            f"materialized has {len(materialized_calculation_structure_ids)}"
+            f"snapshot has {len(snapshot_calculation_structure_ulids)}, "
+            f"materialized has {len(materialized_calculation_structure_ulids)}"
         )
 

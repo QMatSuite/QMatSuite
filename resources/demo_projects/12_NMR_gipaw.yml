@@ -260,7 +260,7 @@ calculations:
         use_nmr_macroscopic_shape: false
     input_name: benzene.2_gipaw.in
     step_type_spec: qe_gipaw
-  structure_id: 01KE2KZ5NP2PJQWDX5K371KCZS
+  structure_ulid: 01KE2KZ5NP2PJQWDX5K371KCZS
   species_map:
     H:
       mass: 1.0

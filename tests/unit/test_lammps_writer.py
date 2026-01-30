@@ -16,7 +16,7 @@ class TestLammpsTemplateRendering:
     def test_render_minimize_template(self):
         """Test rendering minimize template."""
         context = {
-            "step_type_gen": "lammps_relax",
+            "step_type_spec": "lammps_relax",
             "step_ulid": "test123",
             "units": "metal",
             "atom_style": "atomic",
@@ -40,7 +40,7 @@ class TestLammpsTemplateRendering:
     def test_render_md_nvt_template(self):
         """Test rendering NVT MD template."""
         context = {
-            "step_type_gen": "lammps_md",
+            "step_type_spec": "lammps_md",
             "step_ulid": "test456",
             "units": "metal",
             "atom_style": "atomic",

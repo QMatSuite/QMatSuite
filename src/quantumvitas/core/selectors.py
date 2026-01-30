@@ -61,7 +61,7 @@ def extract_structure_selector_from_entry(entry: dict) -> Optional[str]:
     Extract a structure selector from a project.qv.yml entry.
     
     Priority order:
-    1. structure_id (ID-only model)
+    1. structure_ulid (ID-only model)
     2. meta.ulid (ULID)
     3. meta.slug (slug)
     4. id (legacy)
@@ -71,7 +71,7 @@ def extract_structure_selector_from_entry(entry: dict) -> Optional[str]:
         Selector string (ULID, slug, or name) or None if no valid selector found
     """
     return (
-        entry.get("structure_id") or
+        entry.get("structure_ulid") or
         (entry.get("meta") or {}).get("ulid") or
         (entry.get("meta") or {}).get("slug") or
         entry.get("ulid") or
@@ -85,7 +85,7 @@ def extract_step_selector_from_entry(entry: dict) -> Optional[str]:
     
     Priority order:
     1. step_ulid (canonical - ULID)
-    2. step_id (legacy - ULID)
+    2. step_ulid (legacy - ULID)
     3. id (legacy)
     4. name (legacy)
     
@@ -94,7 +94,7 @@ def extract_step_selector_from_entry(entry: dict) -> Optional[str]:
     """
     return (
         entry.get("step_ulid") or
-        entry.get("step_id") or  # Legacy fallback
+        entry.get("step_ulid") or  # Legacy fallback
         entry.get("ulid") or
         entry.get("name")
     )
@@ -120,7 +120,7 @@ def match_step_selector(
     return the matching step entry dict.
     
     Matching priority:
-    1. ULID (26-char alphanumeric) → match step["step_id"] == selector
+    1. ULID (26-char alphanumeric) → match step["step_ulid"] == selector
     2. Resolve via registry to get step metadata, then match by:
        - meta.slug
        - meta.name
@@ -160,11 +160,11 @@ def match_step_selector(
     # Get calculation slug for require_step
     calculation_slug = calculation_dir.name
     
-    # Strategy 1: ULID match (exact match on step_id)
+    # Strategy 1: ULID match (exact match on step_ulid)
     if _is_ulid_like(selector):
         for step_entry in steps:
-            step_id_ulid = extract_step_selector_from_entry(step_entry)
-            if step_id_ulid == selector:
+            step_ulid_ulid = extract_step_selector_from_entry(step_entry)
+            if step_ulid_ulid == selector:
                 return step_entry
         raise SelectorNotFoundError(f"Step with ULID '{selector}' not found in calculation")
     
@@ -182,8 +182,8 @@ def match_step_selector(
     matches = []
     
     for step_entry in steps:
-        step_id_ulid = extract_step_selector_from_entry(step_entry)
-        if not step_id_ulid:
+        step_ulid_ulid = extract_step_selector_from_entry(step_entry)
+        if not step_ulid_ulid:
             continue
         
         # Try to resolve step to get metadata
@@ -191,7 +191,7 @@ def match_step_selector(
             step_resolved = require_step(
                 project_root,
                 calculation_slug,
-                step_id_ulid,
+                step_ulid_ulid,
                 config=config,
                 index=index,
             )
@@ -231,13 +231,13 @@ def match_step_selector(
         # Build available identifiers for error message
         available = []
         for step_entry in steps:
-            step_id_ulid = extract_step_selector_from_entry(step_entry)
-            if step_id_ulid:
+            step_ulid_ulid = extract_step_selector_from_entry(step_entry)
+            if step_ulid_ulid:
                 try:
                     step_resolved = require_step(
                         project_root,
                         calculation_slug,
-                        step_id_ulid,
+                        step_ulid_ulid,
                         config=config,
                         index=index,
                     )
@@ -246,13 +246,13 @@ def match_step_selector(
                     elif step_resolved.meta.name:
                         available.append(step_resolved.meta.name)
                     else:
-                        available.append(step_id_ulid[:8] + "...")
+                        available.append(step_ulid_ulid[:8] + "...")
                 except Exception:
                     step_type = step_entry.get("type")
                     if step_type:
                         available.append(step_type)
                     else:
-                        available.append(step_id_ulid[:8] + "...")
+                        available.append(step_ulid_ulid[:8] + "...")
         
         raise SelectorNotFoundError(
             f"Step '{selector}' not found in calculation. "
@@ -263,12 +263,12 @@ def match_step_selector(
         # Ambiguous match - provide details
         match_details = []
         for step_entry, step_resolved, match_type in matches:
-            step_id_ulid = extract_step_selector_from_entry(step_entry)
+            step_ulid_ulid = extract_step_selector_from_entry(step_entry)
             if step_resolved:
-                identifier = step_resolved.meta.slug or step_resolved.meta.name or step_id_ulid[:8]
+                identifier = step_resolved.meta.slug or step_resolved.meta.name or step_ulid_ulid[:8]
             else:
-                identifier = step_entry.get("type") or step_id_ulid[:8]
-            match_details.append(f"{identifier} (ULID: {step_id_ulid[:8]}...)")
+                identifier = step_entry.get("type") or step_ulid_ulid[:8]
+            match_details.append(f"{identifier} (ULID: {step_ulid_ulid[:8]}...)")
         
         raise AmbiguousSelectorError(
             f"Selector '{selector}' is ambiguous: matches steps {match_details}. "
@@ -330,7 +330,7 @@ def get_structure_selector_from_entry_or_raise(entry: dict, context: str = "stru
     selector = extract_structure_selector_from_entry(entry)
     if not selector:
         raise ValueError(
-            f"Invalid {context} entry: missing structure_id, id, or name. "
+            f"Invalid {context} entry: missing structure_ulid, id, or name. "
             f"This may indicate a corrupted project.qv.yml. Entry: {entry}"
         )
     return selector
@@ -353,7 +353,7 @@ def get_step_selector_from_entry_or_raise(entry: dict, context: str = "step") ->
     selector = extract_step_selector_from_entry(entry)
     if not selector:
         raise ValueError(
-            f"Invalid {context} entry: missing step_id or id. "
+            f"Invalid {context} entry: missing step_ulid or id. "
             f"This may indicate a corrupted calculation.yaml. Entry: {entry}"
         )
     return selector

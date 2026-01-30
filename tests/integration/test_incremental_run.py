@@ -39,7 +39,7 @@ def get_calc_spec(doc: Dict[str, Any]) -> Dict[str, Any]:
     Helper to get calculation spec from calc.yaml document.
     
     Handles both formats:
-    - New format: keys at top level (structure_id, species_map, etc.)
+    - New format: keys at top level (structure_ulid, species_map, etc.)
     - Legacy format: keys under "calculation" key
     
     Returns a dict that can be used to read/write calculation fields.
@@ -91,7 +91,7 @@ def minimal_structure(tmp_project):
             source=cif_path,
             name="test_structure",
         )
-        structure_id = structure_resolved.meta.ulid
+        structure_ulid = structure_resolved.meta.ulid
         structure_path = structure_resolved.absolute_path
     finally:
         # Clean up temp file
@@ -102,13 +102,13 @@ def minimal_structure(tmp_project):
     (tmp_project / "pseudo").mkdir(parents=True, exist_ok=True)
     (tmp_project / "pseudo" / "Si.UPF").write_text("FAKE PSEUDO FILE")
     
-    return structure_id, structure_path
+    return structure_ulid, structure_path
 
 
 @pytest.fixture
 def minimal_calculation(tmp_project, minimal_structure):
     """Create a minimal calculation with steps using service APIs."""
-    structure_id, structure_path = minimal_structure
+    structure_ulid, structure_path = minimal_structure
     
     from quantumvitas.api import QVService
     
@@ -116,7 +116,7 @@ def minimal_calculation(tmp_project, minimal_structure):
     calc_resolved = QVService.init_calculation(
         project_root=tmp_project,
         name="test_calc",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_id = calc_resolved.meta.ulid
     calc_dir = calc_resolved.absolute_path
@@ -234,7 +234,7 @@ def test_run_lock_blocks_concurrent_runs(tmp_project, minimal_calculation):
 
 def test_different_calcs_run_concurrently(tmp_project, minimal_structure):
     """Test that different calculations can run concurrently."""
-    structure_id, _ = minimal_structure
+    structure_ulid, _ = minimal_structure
     
     from quantumvitas.api import QVService
     
@@ -242,7 +242,7 @@ def test_different_calcs_run_concurrently(tmp_project, minimal_structure):
     calc1_resolved = QVService.init_calculation(
         project_root=tmp_project,
         name="calc1",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc1_id = calc1_resolved.meta.ulid
     calc1_dir = calc1_resolved.absolute_path
@@ -250,7 +250,7 @@ def test_different_calcs_run_concurrently(tmp_project, minimal_structure):
     calc2_resolved = QVService.init_calculation(
         project_root=tmp_project,
         name="calc2",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc2_id = calc2_resolved.meta.ulid
     calc2_dir = calc2_resolved.absolute_path
@@ -304,8 +304,8 @@ def test_manifest_trim_on_removing_last_step(tmp_project, minimal_calculation, m
     index = build_resource_index(tmp_project)
     
     # Get structure SHA
-    structure_id = calc_model.structure_id
-    structure_resolved = require_structure(tmp_project, structure_id, config=config, index=index)
+    structure_ulid = calc_model.structure_ulid
+    structure_resolved = require_structure(tmp_project, structure_ulid, config=config, index=index)
     structure_path = structure_resolved.absolute_path
     structure_sha = compute_structure_sha(structure_path)
     
@@ -331,7 +331,7 @@ def test_manifest_trim_on_removing_last_step(tmp_project, minimal_calculation, m
             pseudo_set_sha=pseudo_sha,
             structure_sha=structure_sha,
             step_sha=step_shas[i],
-            run_id="test_run",
+            run_ulid="test_run",
             done=True,
             started_at="2024-01-01T00:00:00Z",
             done_at="2024-01-01T00:00:00Z",
@@ -366,8 +366,8 @@ def test_manifest_trim_on_removing_last_step(tmp_project, minimal_calculation, m
     
     # Use calc_model from above, or reload
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
-    structure_id = calc_model.structure_id
-    structure_resolved = require_structure(tmp_project, structure_id, config=config, index=index)
+    structure_ulid = calc_model.structure_ulid
+    structure_resolved = require_structure(tmp_project, structure_ulid, config=config, index=index)
     structure_path = structure_resolved.absolute_path
     
     structure_sha = compute_structure_sha(structure_path)
@@ -413,8 +413,8 @@ def test_reorder_forces_rerun_from_divergence(tmp_project, minimal_calculation, 
     index = build_resource_index(tmp_project)
     
     # Get structure SHA
-    structure_id = calc_model.structure_id
-    structure_resolved = require_structure(tmp_project, structure_id, config=config, index=index)
+    structure_ulid = calc_model.structure_ulid
+    structure_resolved = require_structure(tmp_project, structure_ulid, config=config, index=index)
     structure_path = structure_resolved.absolute_path
     structure_sha = compute_structure_sha(structure_path)
     
@@ -472,8 +472,8 @@ def test_reorder_forces_rerun_from_divergence(tmp_project, minimal_calculation, 
     
     # Use calc_model from above
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
-    structure_id = calc_model.structure_id
-    structure_resolved = require_structure(tmp_project, structure_id, config=config, index=index)
+    structure_ulid = calc_model.structure_ulid
+    structure_resolved = require_structure(tmp_project, structure_ulid, config=config, index=index)
     structure_path = structure_resolved.absolute_path
     
     structure_sha = compute_structure_sha(structure_path)
@@ -525,7 +525,7 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     step1_sha = compute_step_sha(step1_content_dict)
     
     # Create manifest with step done=true using step_ids[1] (old ULID) but correct SHA
-    # Load calc model to get structure_id and species_map
+    # Load calc model to get structure_ulid and species_map
     from quantumvitas.core.models import load_calculation
     from quantumvitas.core.resolution import require_structure, build_resource_index
     from quantumvitas.core.project_utils import load_project_config
@@ -534,8 +534,8 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
     config = load_project_config(tmp_project)
     index = build_resource_index(tmp_project)
-    structure_id = calc_model.structure_id
-    structure_resolved = require_structure(tmp_project, structure_id, config=config, index=index)
+    structure_ulid = calc_model.structure_ulid
+    structure_resolved = require_structure(tmp_project, structure_ulid, config=config, index=index)
     structure_path = structure_resolved.absolute_path
     structure_sha = compute_structure_sha(structure_path)
     pseudo_sha = compute_pseudo_set_sha(tmp_project / "pseudo", calc_model.species_map or {})
@@ -593,8 +593,8 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     # Copy step_type, parameters, cards, species_overrides to match step1 exactly
     # Use apply_patch for dict updates instead of set()
     patch_data = {}
-    if "step_type" in step1_content_dict:
-        patch_data["step_type"] = step1_content_dict["step_type"]
+    if "step_type_spec" in step1_content_dict:
+        patch_data["step_type_spec"] = step1_content_dict["step_type_spec"]
     if "parameters" in step1_content_dict:
         patch_data["parameters"] = step1_content_dict["parameters"]
     if "cards" in step1_content_dict:
@@ -624,7 +624,7 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     replaced = False
     for i, step_entry in enumerate(calc_model.steps):
         if step_entry.step_ulid == step_ids[1]:
-            calc_model.steps[i] = CalculationStepEntry(step_id=step2b_id, type=step_type)
+            calc_model.steps[i] = CalculationStepEntry(step_ulid=step2b_id, step_type_spec=step_type)
             replaced = True
             break
     assert replaced, f"Could not find step_ids[1]={step_ids[1]} in calculation steps"
@@ -713,7 +713,7 @@ def test_single_step_invalidates_suffix(tmp_project, minimal_calculation):
     step_data = step_doc.to_dict()
     step_sha = compute_step_sha(step_data)
     
-    # Load calc model to get structure_id and species_map
+    # Load calc model to get structure_ulid and species_map
     from quantumvitas.core.models import load_calculation
     from quantumvitas.core.resolution import require_structure, build_resource_index
     from quantumvitas.core.project_utils import load_project_config
@@ -722,8 +722,8 @@ def test_single_step_invalidates_suffix(tmp_project, minimal_calculation):
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
     config = load_project_config(tmp_project)
     index = build_resource_index(tmp_project)
-    structure_id = calc_model.structure_id
-    structure_resolved = require_structure(tmp_project, structure_id, config=config, index=index)
+    structure_ulid = calc_model.structure_ulid
+    structure_resolved = require_structure(tmp_project, structure_ulid, config=config, index=index)
     structure_path = structure_resolved.absolute_path
     structure_sha = compute_structure_sha(structure_path)
     pseudo_sha = compute_pseudo_set_sha(tmp_project / "pseudo", calc_model.species_map or {})
@@ -736,7 +736,7 @@ def test_single_step_invalidates_suffix(tmp_project, minimal_calculation):
         pseudo_set_sha=pseudo_sha,
         structure_sha=structure_sha,
         step_sha=step_sha,
-        run_id="test_run",
+        run_ulid="test_run",
         done=True,
         started_at=now_iso8601(),
         done_at=now_iso8601(),
@@ -859,7 +859,7 @@ def test_crash_recovery_incremental_rerun_from_failed_step(tmp_project, minimal_
         pseudo_set_sha="test_sha",
         structure_sha="test_sha",
         step_sha="test_sha",
-        run_id="run_001",
+        run_ulid="run_001",
         done=True,
         started_at="2024-01-01T00:00:00Z",
         done_at="2024-01-01T00:01:00Z",
@@ -870,7 +870,7 @@ def test_crash_recovery_incremental_rerun_from_failed_step(tmp_project, minimal_
         pseudo_set_sha="test_sha",
         structure_sha="test_sha",
         step_sha="test_sha",
-        run_id="run_002",  # Started but crashed
+        run_ulid="run_002",  # Started but crashed
         done=False,  # Not done - crashed
         started_at="2024-01-01T00:02:00Z",
         done_at=None,
@@ -885,7 +885,7 @@ def test_crash_recovery_incremental_rerun_from_failed_step(tmp_project, minimal_
     
     call_count = [0]
     
-    def mock_run(self, calculation, *, skip_history=False, run_id=None, run_mode="incremental", **kwargs):
+    def mock_run(self, calculation, *, skip_history=False, run_ulid=None, run_mode="incremental", **kwargs):
         call_count[0] += 1
         # Simulate crash after starting step 1
         if call_count[0] == 1:
@@ -899,7 +899,7 @@ def test_crash_recovery_incremental_rerun_from_failed_step(tmp_project, minimal_
                 pseudo_set_sha="test_sha",
                 structure_sha="test_sha",
                 step_sha="test_sha",
-                run_id=run_id or "run_003",
+                run_ulid=run_id or "run_003",
                 done=False,
                 started_at=now_iso8601(),
                 done_at=None,
@@ -973,7 +973,7 @@ def test_pseudo_preflight_update_failure_non_blocking(tmp_project, minimal_calcu
         from quantumvitas.calculation.types import StepStatus
         from datetime import datetime, timezone
         
-        def mock_run(self, calculation, *, skip_history=False, run_id=None, run_mode="incremental", **kwargs):
+        def mock_run(self, calculation, *, skip_history=False, run_ulid=None, run_mode="incremental", **kwargs):
             execution_calls.append({
                 "calculation_id": calculation.id,
                 "run_id": run_id,
@@ -1052,12 +1052,12 @@ def test_structure_sha_float_tolerance(tmp_project, minimal_structure):
     import json
     
     # Use existing structure from fixture
-    structure_id, structure_path = minimal_structure
+    structure_ulid, structure_path = minimal_structure
     
     # Resolve structure to get JSON path
     config = load_project_config(tmp_project)
     index = build_resource_index(tmp_project)
-    structure_resolved = require_structure(tmp_project, structure_id, config=config, index=index)
+    structure_resolved = require_structure(tmp_project, structure_ulid, config=config, index=index)
     structure_json_path = structure_resolved.absolute_path
     
     # Compute initial SHA
@@ -1219,7 +1219,7 @@ def test_step_has_no_id_property(tmp_project, minimal_calculation):
         _ = step.id
     
     # Verify step.meta.ulid exists (ULID)
-    assert hasattr(step.meta, "id"), "Step.meta.ulid must exist (ULID)"
+    assert hasattr(step.meta, "ulid"), "Step.meta.ulid must exist (ULID)"
     assert step.meta.ulid is not None, "Step.meta.ulid must not be None"
     assert len(step.meta.ulid) == 26, f"Step.meta.ulid must be ULID (26 chars), got length {len(step.meta.ulid)}"
     
@@ -1274,8 +1274,8 @@ def test_manifest_stores_ulid_not_slug(tmp_project, minimal_calculation, monkeyp
     config = load_project_config(tmp_project)
     index = build_resource_index(tmp_project)
     
-    structure_id = calc_model.structure_id
-    structure_resolved = require_structure(tmp_project, structure_id, config=config, index=index)
+    structure_ulid = calc_model.structure_ulid
+    structure_resolved = require_structure(tmp_project, structure_ulid, config=config, index=index)
     structure_path = structure_resolved.absolute_path
     structure_sha = compute_structure_sha(structure_path)
     pseudo_sha = compute_pseudo_set_sha(tmp_project / "pseudo", calc_model.species_map or {})

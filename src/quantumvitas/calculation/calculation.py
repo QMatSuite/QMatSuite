@@ -29,7 +29,7 @@ class Calculation:
     io: CalculationIO
     structure: Optional[StructureRef] = None
     working_dir: Path = field(default_factory=Path)
-    _structure_id: Optional[str] = field(default=None, init=False, repr=False)  # Cached structure_id from model
+    _structure_ulid: Optional[str] = field(default=None, init=False, repr=False)  # Cached structure_ulid from model
     _species_map: Optional[Dict[str, Dict[str, Any]]] = field(default=None, init=False, repr=False)  # Cached species_map
     _potential_map: Optional[Dict[str, Dict[str, Any]]] = field(default=None, init=False, repr=False)  # Cached potential_map (LAMMPS)
     _engine_family: Optional[str] = field(default=None, init=False, repr=False)  # Cached engine_family from model
@@ -47,20 +47,20 @@ class Calculation:
         return self.io.results_dir
 
     @property
-    def structure_id(self) -> Optional[str]:
+    def structure_ulid(self) -> Optional[str]:
         """
-        Get structure_id from the calculation.
+        Get structure_ulid from the calculation.
         
         DAG + ID-only model invariants:
-        - Calculation holds structure_id (ULID) as the canonical structure reference.
-        - Steps do NOT persist structure_id in their YAML (they inherit from calculation).
+        - Calculation holds structure_ulid (ULID) as the canonical structure reference.
+        - Steps do NOT persist structure_ulid in their YAML (they inherit from calculation).
         - All cross-resource relationships go through IDs + registry.
         
         This property reads from the underlying calculation.yaml model.
         """
         # If cached, return it
-        if self._structure_id is not None:
-            return self._structure_id
+        if self._structure_ulid is not None:
+            return self._structure_ulid
         
         # Otherwise, load from calculation.yaml
         calculation_yaml = self.dir / "calculation.yaml"
@@ -68,8 +68,8 @@ class Calculation:
             try:
                 from quantumvitas.core.models import load_calculation
                 wf_model = load_calculation(calculation_yaml, self.project.root)
-                self._structure_id = wf_model.structure_id
-                return self._structure_id
+                self._structure_ulid = wf_model.structure_ulid
+                return self._structure_ulid
             except Exception:
                 pass
         
@@ -173,10 +173,10 @@ class Calculation:
         Load calculation from calculation.yaml.
         
         DAG + ID-only model:
-        - Calculation.yaml contains structure_id (ULID) pointing to structure resource.
-        - Steps are referenced by step_id (ULID) in calculation.steps entries.
-        - Step YAML files do NOT contain structure_id or parent_calculation_id.
-        - Structure is resolved via calculation.structure_id at execution time.
+        - Calculation.yaml contains structure_ulid (ULID) pointing to structure resource.
+        - Steps are referenced by step_ulid (ULID) in calculation.steps entries.
+        - Step YAML files do NOT contain structure_ulid or parent_calculation_id.
+        - Structure is resolved via calculation.structure_ulid at execution time.
         """
         calculation_yaml = calculation_dir / "calculation.yaml"
         if not calculation_yaml.exists():
@@ -191,26 +191,26 @@ class Calculation:
         # Detect legacy structure selector (NOT SUPPORTED)
         from quantumvitas.core.exceptions import LegacyProjectError
         
-        structure_id = calculation_meta.get("structure_id") or data.get("structure_id")
+        structure_ulid = calculation_meta.get("structure_ulid") or data.get("structure_ulid")
         legacy_structure = calculation_meta.get("structure") or data.get("structure")
         
-        # If structure_id is missing but legacy structure selector is present, raise error
-        if not structure_id and legacy_structure:
+        # If structure_ulid is missing but legacy structure selector is present, raise error
+        if not structure_ulid and legacy_structure:
             error_msg = (
-                f"Legacy calculation detected at {calculation_dir}: has 'structure' selector but no 'structure_id' ULID. "
+                f"Legacy calculation detected at {calculation_dir}: has 'structure' selector but no 'structure_ulid' ULID. "
                 f"Please run the migration script to upgrade this calculation."
             )
             raise LegacyProjectError(project.root, error_msg)
         
         structure_ref: Optional[StructureRef] = None
-        if structure_id:
+        if structure_ulid:
             try:
                 # Try to resolve structure by ID (can be ULID, slug, or name)
-                structure_ref = project.get_structure(structure_id)
+                structure_ref = project.get_structure(structure_ulid)
             except Exception:
                 # Try to resolve by ID if direct lookup fails
                 for struct_ref in project.structures.values():
-                    if struct_ref.meta.ulid == structure_id:
+                    if struct_ref.meta.ulid == structure_ulid:
                         structure_ref = struct_ref
                         break
 
@@ -228,13 +228,13 @@ class Calculation:
         if materialize_steps:
             import logging
             logger = logging.getLogger(__name__)
-            step_ids = [step_data.get("step_id", "unknown") for step_data in data.get("steps", [])]
+            step_ulids = [step_data.get("step_ulid", "unknown") for step_data in data.get("steps", [])]
             logger.info(
                 f"[MATERIALIZE_STEPS] ENTRY "
                 f"calculation_dir={calculation_dir} "
                 f"raw_dir={working_dir} "
-                f"steps_to_materialize={step_ids} "
-                f"n_steps={len(step_ids)}"
+                f"steps_to_materialize={step_ulids} "
+                f"n_steps={len(step_ulids)}"
             )
         
         for step_data in data.get("steps", []):
@@ -262,8 +262,8 @@ class Calculation:
             structure=structure_ref,
             working_dir=working_dir,
         )
-        # Cache structure_id for quick access
-        calculation._structure_id = structure_id
+        # Cache structure_ulid for quick access
+        calculation._structure_ulid = structure_ulid
         
         # Phase 3A: Ensure calculation identity is set (best-effort recovery)
         from quantumvitas.core.calc_identity import ensure_calculation_identity
@@ -283,8 +283,8 @@ def _build_step(
     """
     Build a Step from step_data in calculation.yaml.
     
-    Uses step_id (ULID) to resolve step file via ResourceIndex.
-    step_file is no longer stored in calculation.yaml - only step_id.
+    Uses step_ulid (ULID) to resolve step file via ResourceIndex.
+    step_file is no longer stored in calculation.yaml - only step_ulid.
     
     Returns:
         Tuple of (Step, migrated_flag) where migrated_flag is True if legacy
@@ -298,31 +298,31 @@ def _build_step(
     # Require step_ulid (ULID) - no legacy fallback
     from quantumvitas.core.exceptions import LegacyProjectError
     
-    step_id = step_data.get("step_ulid") or step_data.get("step_id")
-    if not step_id:
+    step_ulid = step_data.get("step_ulid") or step_data.get("step_ulid")
+    if not step_ulid:
         # Check for legacy fields
         has_legacy_id = "id" in step_data
         has_step_file = "step_file" in step_data
         if has_legacy_id or has_step_file:
             error_msg = (
                 f"Legacy calculation step entry detected in {calculation_dir}: "
-                f"missing 'step_id' ULID. "
+                f"missing 'step_ulid' ULID. "
             )
             if has_step_file:
-                error_msg += "Field 'step_file' is not supported (use step_id ULID instead). "
+                error_msg += "Field 'step_file' is not supported (use step_ulid ULID instead). "
             if has_legacy_id:
-                error_msg += "Legacy 'id' field detected (use step_id ULID instead). "
+                error_msg += "Legacy 'id' field detected (use step_ulid ULID instead). "
             error_msg += "Please run the migration script to upgrade this calculation."
             raise LegacyProjectError(project.root, error_msg)
         else:
-            raise ValueError(f"Step entry missing 'step_id' ULID: {step_data}")
+            raise ValueError(f"Step entry missing 'step_ulid' ULID: {step_data}")
     
-    # Check if step_id is a valid ULID (26 chars starting with "01")
-    is_ulid = len(step_id) == 26 and step_id.startswith("01")
+    # Check if step_ulid is a valid ULID (26 chars starting with "01")
+    is_ulid = len(step_ulid) == 26 and step_ulid.startswith("01")
     if not is_ulid:
         error_msg = (
             f"Legacy calculation step entry detected in {calculation_dir}: "
-            f"step_id '{step_id}' is not a ULID (must be 26 chars starting with '01'). "
+            f"step_ulid '{step_ulid}' is not a ULID (must be 26 chars starting with '01'). "
             f"Please run the migration script to upgrade this calculation."
         )
         raise LegacyProjectError(project.root, error_msg)
@@ -331,7 +331,7 @@ def _build_step(
     if "step_file" in step_data:
         error_msg = (
             f"Legacy calculation step entry detected in {calculation_dir}: "
-            f"field 'step_file' is not supported (use step_id ULID instead). "
+            f"field 'step_file' is not supported (use step_ulid ULID instead). "
             f"Please run the migration script to upgrade this calculation."
         )
         raise LegacyProjectError(project.root, error_msg)
@@ -350,11 +350,11 @@ def _build_step(
         else:
             calculation_selector = calculation_dir.name
         
-        step_resolved = require_step(project.root, calculation_selector, step_id)
+        step_resolved = require_step(project.root, calculation_selector, step_ulid)
         step_file_path = step_resolved.absolute_path
     except ResourceNotFoundError as e:
         error_msg = (
-            f"Step '{step_id}' not found in registry. "
+            f"Step '{step_ulid}' not found in registry. "
             f"This may indicate a legacy calculation that needs migration. "
             f"Please run the migration script to upgrade this calculation."
         )
@@ -407,7 +407,7 @@ def _build_step(
         
         if engine_name is None:
             raise ValueError(
-                f"Cannot determine engine for step '{step_id}'. "
+                f"Cannot determine engine for step '{step_ulid}'. "
                 f"Specify 'engine' field in calculation.yaml or use a known step type."
             )
     
@@ -421,7 +421,7 @@ def _build_step(
             if parts and parts[0] == working_dir.name:
                 if len(parts) == 1:
                     raise ValueError(
-                        f"Step '{step_id}' input path must point to a file inside '{working_dir.name}'"
+                        f"Step '{step_ulid}' input path must point to a file inside '{working_dir.name}'"
                     )
                 input_path = Path(*parts[1:])
         
@@ -442,11 +442,11 @@ def _build_step(
     # instead of building metadata from calculation.yaml step_data.
     step_meta = step_resolved.meta
     
-    # Assert step_id from calculation.yaml matches step_meta.ulid from step.yaml
+    # Assert step_ulid from calculation.yaml matches step_meta.ulid from step.yaml
     # This ensures ULID consistency across calculation.yaml and step.yaml
-    if step_meta.ulid != step_id:
+    if step_meta.ulid != step_ulid:
         raise ValueError(
-            f"Step ULID mismatch: calculation.yaml step_id='{step_id}' "
+            f"Step ULID mismatch: calculation.yaml step_ulid='{step_ulid}' "
             f"does not match step.yaml meta.ulid='{step_meta.ulid}'. "
             f"This indicates a corrupted calculation or step file."
         )
@@ -459,7 +459,7 @@ def _build_step(
     # If existing_input_file is provided (legacy calculation.yaml with input: field),
     # ignore it for production run. This ensures production always uses YAML SSOT clean rewrite.
     step = _build_step_from_spec(
-        step_id=step_id,  # Use ULID from calculation.yaml (must match step_meta.ulid)
+        step_ulid=step_ulid,  # Use ULID from calculation.yaml (must match step_meta.ulid)
         engine_name=engine_name,
         step_file=str(step_file_path.relative_to(calculation_dir)) if step_file_path.is_relative_to(calculation_dir) else step_file_path.name,
         calculation_dir=calculation_dir,
@@ -496,10 +496,10 @@ def _build_step_inspection(
     from quantumvitas.core.resolution import make_structure_selector_resolver
     from quantumvitas.core.project_utils import load_project_config
     
-    # Prefer step_ulid (ULID) - canonical reference, fall back to legacy step_id/id fields
-    step_id = step_data.get("step_ulid") or step_data.get("step_id") or step_data.get("ulid")
-    if not step_id:
-        raise ValueError(f"Step entry missing both 'step_id' and 'id': {step_data}")
+    # Prefer step_ulid (ULID) - canonical reference, fall back to legacy step_ulid/id fields
+    step_ulid = step_data.get("step_ulid") or step_data.get("step_ulid") or step_data.get("ulid")
+    if not step_ulid:
+        raise ValueError(f"Step entry missing both 'step_ulid' and 'id': {step_data}")
     
     # Resolve step file early to extract step_type if not in step_data
     step_file_data = {}
@@ -515,7 +515,7 @@ def _build_step_inspection(
         else:
             calculation_selector = calculation_dir.name
         
-        step_resolved = require_step(project.root, calculation_selector, step_id)
+        step_resolved = require_step(project.root, calculation_selector, step_ulid)
         step_file_path = step_resolved.absolute_path
         
         # Load step file to extract step_type
@@ -566,19 +566,19 @@ def _build_step_inspection(
         
         if engine_name is None:
             raise ValueError(
-                f"Cannot determine engine for step '{step_id}'. "
+                f"Cannot determine engine for step '{step_ulid}'. "
                 f"Specify 'engine' field in calculation.yaml or use a known step type."
             )
     migrated = False
     step_meta: Optional[ResourceMeta] = None
     step_type: Optional[str] = None
     input_path: Optional[Path] = None
-    new_step_id = step_id  # Will be updated if legacy path is used
+    new_step_ulid = step_ulid  # Will be updated if legacy path is used
     
-    # Check if step_id is a ULID (26 chars starting with "01")
-    is_ulid = len(step_id) == 26 and step_id.startswith("01")
+    # Check if step_ulid is a ULID (26 chars starting with "01")
+    is_ulid = len(step_ulid) == 26 and step_ulid.startswith("01")
     
-    # Try ID-first via registry (only if step_id is a ULID)
+    # Try ID-first via registry (only if step_ulid is a ULID)
     if is_ulid:
         try:
             # Try to get calculation from project by matching directory
@@ -593,10 +593,10 @@ def _build_step_inspection(
             else:
                 calculation_selector = calculation_dir.name
             
-            step_resolved = require_step(project.root, calculation_selector, step_id)
+            step_resolved = require_step(project.root, calculation_selector, step_ulid)
             step_file_path = step_resolved.absolute_path
             step_meta = step_resolved.meta
-            new_step_id = step_meta.ulid  # Use the ULID from registry
+            new_step_ulid = step_meta.ulid  # Use the ULID from registry
             
             # Load step spec just to get metadata (no materialization)
             try:
@@ -614,9 +614,9 @@ def _build_step_inspection(
             # ULID not found in registry - treat as legacy
             is_ulid = False
     
-    # Legacy fallback: step_id is not a ULID or ULID not found
+    # Legacy fallback: step_ulid is not a ULID or ULID not found
     if not is_ulid:
-        # Legacy fallback: step_id might be a name, not a ULID
+        # Legacy fallback: step_ulid might be a name, not a ULID
         migrated = True
         
         # Check for legacy step_file
@@ -624,7 +624,7 @@ def _build_step_inspection(
         
         # If legacy_step_file is not specified, try to find step file by name
         if not legacy_step_file:
-            candidate = (calculation_dir / "steps" / f"{step_id}.step.yaml").resolve()
+            candidate = (calculation_dir / "steps" / f"{step_ulid}.step.yaml").resolve()
             if candidate.exists():
                 legacy_step_file = str(candidate.relative_to(calculation_dir))
         
@@ -645,14 +645,14 @@ def _build_step_inspection(
                 step_meta = spec.meta  # This contains the ULID from the step file
                 step_type = spec.step_type_spec
                 # Store the real ULID for migration
-                new_step_id = step_meta.ulid
+                new_step_ulid = step_meta.ulid
             else:
                 # Create minimal meta if file doesn't exist
                 step_meta = ResourceMeta(
                     ulid=generate_resource_id(),
-                    name=step_id,
-                    slug=step_id,
-                    path=f"calculations/{calculation_dir.name}/steps/{step_id}.step.yaml",
+                    name=step_ulid,
+                    slug=step_ulid,
+                    path=f"calculations/{calculation_dir.name}/steps/{step_ulid}.step.yaml",
                     kind="step",
                 )
                 step_type_spec= "custom"
@@ -660,9 +660,9 @@ def _build_step_inspection(
             # Create minimal meta if no file found
             step_meta = ResourceMeta(
                 ulid=generate_resource_id(),
-                name=step_id,
-                slug=step_id,
-                path=f"calculations/{calculation_dir.name}/steps/{step_id}.step.yaml",
+                name=step_ulid,
+                slug=step_ulid,
+                path=f"calculations/{calculation_dir.name}/steps/{step_ulid}.step.yaml",
                 kind="step",
             )
             step_type_spec= "custom"
@@ -688,12 +688,12 @@ def _build_step_inspection(
     
     # Create lightweight step (no materialization, no input file generation)
     # Use a dummy input file path if needed (won't be used in inspection mode)
-    dummy_input = input_path or (working_dir / f"{step_id}.in")
+    dummy_input = input_path or (working_dir / f"{step_ulid}.in")
     
     # step_meta should be set from spec above
     if not step_meta:
         # This should not happen if step was resolved correctly
-        raise ValueError(f"Step meta not found for step_id '{step_id}'")
+        raise ValueError(f"Step meta not found for step_ulid '{step_ulid}'")
     
     return Step(
         meta=step_meta,
@@ -707,7 +707,7 @@ def _build_step_inspection(
 
 def _build_step_from_spec(
     *,
-    step_id: str,
+    step_ulid: str,
     engine_name: str,
     step_file: str,
     calculation_dir: Path,
@@ -736,7 +736,7 @@ def _build_step_from_spec(
     # Load step spec (no legacy structure selector resolution needed - DAG + ULID only)
     spec_preview = StructureStepSpec.from_yaml(
         spec_path,
-        resolve_structure_selector=None,  # DAG + ULID model: structure_id is already in spec
+        resolve_structure_selector=None,  # DAG + ULID model: structure_ulid is already in spec
     )
     
     # IMPORT-ONLY: If existing_input_file is provided, it's for import workflows only.
@@ -754,7 +754,7 @@ def _build_step_from_spec(
             # Extract structure from existing input file and update the structure JSON file
             # This ensures the structure matches what's in the input file (e.g., correct number of atoms)
             # Only do this for steps that have structure (not post-processing steps like dos/bands)
-            if spec_preview.structure_id and project:
+            if spec_preview.structure_ulid and project:
                 try:
                     # Check if this input file has structure cards (ATOMIC_POSITIONS)
                     # Post-processing steps (dos, bands, etc.) don't have structure
@@ -763,7 +763,7 @@ def _build_step_from_spec(
                     
                     if has_structure:
                         structure_from_input = structure_from_qe_input(existing_qe_input)
-                        structure_ref = project.get_structure(spec_preview.structure_id)
+                        structure_ref = project.get_structure(spec_preview.structure_ulid)
                         structure_path = structure_ref.absolute_path
                         
                         # Update the structure file with the structure from the input file

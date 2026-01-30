@@ -234,7 +234,7 @@ def test_cli_show_command_executes_against_references(
 
         step_type = qe_engine.detect_step_type(input_path)
         step_result = StepResult(
-            step_type=step_type,
+            step_type_spec=step_type,
             input_file=generated_input,
             output_file=output_file,
             success=True,

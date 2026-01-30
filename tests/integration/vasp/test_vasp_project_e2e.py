@@ -45,7 +45,7 @@ def vasp_project(use_fake_vasp, tmp_path):
     
     return {
         "root": project_root,
-        "structure_id": struct_result.meta.ulid,
+        "structure_ulid": struct_result.meta.ulid,
     }
 
 
@@ -53,13 +53,13 @@ def vasp_project(use_fake_vasp, tmp_path):
 def vasp_calculation(vasp_project):
     """Create a VASP calculation with engine_family=vasp."""
     project_root = vasp_project["root"]
-    structure_id = vasp_project["structure_id"]
+    structure_ulid = vasp_project["structure_ulid"]
     
     # Create calculation
     calc_result = QVService.init_calculation(
         project_root=project_root,
         name="vasp_test",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     
     # Set engine_family to vasp and add species_map
@@ -83,7 +83,7 @@ def vasp_calculation(vasp_project):
         "project_root": project_root,
         "calc_ulid": calc_result.ulid,
         "calc_dir": calc_dir,
-        "structure_id": structure_id,
+        "structure_ulid": structure_ulid,
     }
 
 

@@ -132,7 +132,7 @@ class Step:
             # Create a failed StepResult from the exception
             from quantumvitas.engine.base import StepResult as StepResultClass
             return StepResultClass(
-                step_type=self.step_type_spec or "unknown",
+                step_type_spec=self.step_type_spec or "unknown",
                 input_file=getattr(self, 'input_file', Path()),
                 success=False,
                 error=f"{type(e).__name__}: {str(e)}\n\nTraceback (first 500 chars):\n{tb_str[:500]}",

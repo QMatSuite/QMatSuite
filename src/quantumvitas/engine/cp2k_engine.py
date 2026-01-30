@@ -111,7 +111,7 @@ class Cp2kEngine(Engine):
         # Get structure from calculation
         structure = self._get_structure(calculation)
         if structure is None:
-            raise ValueError("Calculation has no structure_id")
+            raise ValueError("Calculation has no structure_ulid")
 
         # Generate input file
         input_path = working_dir / "input.inp"
@@ -125,12 +125,12 @@ class Cp2kEngine(Engine):
         """Get structure from calculation."""
         from quantumvitas.io.structure_io import read_structure
         
-        structure_id = calculation.structure_id
-        if structure_id is None:
+        structure_ulid = calculation.structure_ulid
+        if structure_ulid is None:
             return None
         
         # Load structure from project
-        structure_ref = calculation.project.get_structure(structure_id)
+        structure_ref = calculation.project.get_structure(structure_ulid)
         structure_path = structure_ref.resolve_path(calculation.project.root)
         structure = read_structure(structure_path)
         

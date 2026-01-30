@@ -3,7 +3,7 @@
   "success": true,
   "response": {
     "allowed": false,
-    "reason": "Run not found: mock_run_id"
+    "reason": "Run not found: mock_run_ulid"
   },
   "recipe_name": "OtherMethodsRecipe(can_pin_to_run)",
   "baseline_commit": "0873ebf",

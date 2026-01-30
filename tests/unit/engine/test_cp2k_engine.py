@@ -235,7 +235,7 @@ class TestCp2kInputGeneration:
                 path=tmp_path / "test.step.yaml",
             ),
             structure="test",
-            step_type="cp2k_relax",
+            step_type_spec="cp2k_relax",
             parameters={
                 "functional": "PBE",
                 "cutoff": 300,
@@ -275,7 +275,7 @@ class TestCp2kInputGeneration:
                 path=tmp_path / "test.step.yaml",
             ),
             structure="test",
-            step_type="cp2k_scf",
+            step_type_spec="cp2k_scf",
             parameters={"functional": "PBE"},
         )
         
@@ -304,7 +304,7 @@ class TestCp2kInputGeneration:
                 path=tmp_path / "test.step.yaml",
             ),
             structure="test",
-            step_type="cp2k_md",
+            step_type_spec="cp2k_md",
             parameters={
                 "functional": "PBE",
                 "ensemble": "NVT",

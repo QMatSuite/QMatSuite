@@ -227,3 +227,4 @@ def get_recorder() -> HTTPRecorder:
     """Get the global HTTP recorder instance."""
     return _recorder
 
+

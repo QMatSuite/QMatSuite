@@ -150,8 +150,8 @@ class Project:
         Load structures from project entries.
         
         In the new DAG + ID-only model:
-        - Entries have structure_id (ULID), not file path
-        - Structure file location is resolved via ResourceIndex using structure_id
+        - Entries have structure_ulid (ULID), not file path
+        - Structure file location is resolved via ResourceIndex using structure_ulid
         - Structure meta (name, slug, path) is loaded from the structure file itself
         
         Args:
@@ -169,23 +169,23 @@ class Project:
             index = None
         
         for entry in entries:
-            structure_id = entry.get("structure_id") or entry.get("ulid")
+            structure_ulid = entry.get("structure_ulid") or entry.get("ulid")
             legacy_file = entry.get("file")
             
             struct_meta: Optional[ResourceMeta] = None
             absolute_path: Optional[Path] = None
             
-            # New DAG model: resolve structure_id via ResourceIndex
-            if structure_id and index:
+            # New DAG model: resolve structure_ulid via ResourceIndex
+            if structure_ulid and index:
                 try:
                     # Find structure in index by ID
-                    if structure_id in index.by_id:
-                        meta = index.by_id[structure_id]
+                    if structure_ulid in index.by_id:
+                        meta = index.by_id[structure_ulid]
                         if meta.kind == "structure":
                             struct_meta = meta
                             # Find absolute path from index
                             for path, path_id in index.by_path.items():
-                                if path_id == structure_id:
+                                if path_id == structure_ulid:
                                     absolute_path = path
                                     break
                 except Exception:
@@ -435,15 +435,15 @@ class Project:
     def list_structures(self) -> list[str]:
         return [ref.meta.name for ref in self.structures.values()]
 
-    def get_structure(self, structure_id: str) -> StructureRef:
+    def get_structure(self, structure_ulid: str) -> StructureRef:
         # Accept slug, name, or meta id for ergonomics
-        if structure_id in self.structures:
-            return self.structures[structure_id]
+        if structure_ulid in self.structures:
+            return self.structures[structure_ulid]
 
         for ref in self.structures.values():
-            if ref.meta.ulid == structure_id or ref.meta.name == structure_id:
+            if ref.meta.ulid == structure_ulid or ref.meta.name == structure_ulid:
                 return ref
-        raise KeyError(f"Unknown structure '{structure_id}'")
+        raise KeyError(f"Unknown structure '{structure_ulid}'")
 
     def list_calculations(self) -> list[str]:
         return [ref.meta.name for ref in self.calculations.values()]

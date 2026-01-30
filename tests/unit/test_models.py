@@ -81,7 +81,7 @@ class TestCalculationModel:
         
         assert model.meta.ulid == "01ABCDEFGHIJKLMNOPQRSTUV"
         assert model.meta.name == "Test"
-        assert model.structure_id is None
+        assert model.structure_ulid is None
         assert model.steps == []
     
     def test_from_dict_with_steps(self):
@@ -94,7 +94,7 @@ class TestCalculationModel:
         
         data = {
             "meta": {"ulid": "01ABCDEFGHIJKLMNOPQRSTUV", "name": "DOS Calc", "slug": "dos-calc"},
-            "structure_id": structure_ulid,
+            "structure_ulid": structure_ulid,
             "steps": [
                 {"step_ulid": step1_ulid, "step_type_spec": "qe_scf"},
                 {"step_ulid": step2_ulid, "step_type_spec": "qe_nscf"},
@@ -102,19 +102,19 @@ class TestCalculationModel:
         }
         model = CalculationModel.from_dict(data, default_name="DOS Calc", default_path="calculations/dos-calc")
         
-        assert model.structure_id == structure_ulid
+        assert model.structure_ulid == structure_ulid
         assert len(model.steps) == 2
         assert model.steps[0].step_ulid == step1_ulid
         assert model.steps[1].step_ulid == step2_ulid
     
     def test_from_dict_legacy_format_raises_error(self):
-        """Legacy format (structure selector without structure_id) should raise LegacyProjectError."""
+        """Legacy format (structure selector without structure_ulid) should raise LegacyProjectError."""
         from quantumvitas.core.exceptions import LegacyProjectError
         
         data = {
             "ulid": "si-dos",
             "calculation": {
-                "structure": "si",  # Legacy selector without structure_id
+                "structure": "si",  # Legacy selector without structure_ulid
                 "working_dir": "raw",
             },
             "steps": [],
@@ -135,14 +135,14 @@ class TestCalculationModel:
         )
         model = CalculationModel(
             meta=meta,
-            structure_id="01STRUCTURE_ID_HERE_____",
+            structure_ulid="01STRUCTURE_ID_HERE_____",
             structure_name="Graphene",
             steps=[CalculationStepEntry(step_ulid=step_ulid, step_type_spec="qe_scf")],
         )
         
         d = model.to_dict()
         assert d["meta"]["ulid"] == "01CALCULATION_ID_HERE______"
-        assert d["structure_id"] == "01STRUCTURE_ID_HERE_____"
+        assert d["structure_ulid"] == "01STRUCTURE_ID_HERE_____"
         # DAG + ID-only model: structure_name is NOT written to YAML (cosmetic only)
         assert "structure_name" not in d
         # Legacy structure selector is NOT written (ID-only model)
@@ -152,9 +152,9 @@ class TestCalculationModel:
         # Roundtrip
         model2 = CalculationModel.from_dict(d, default_name="fallback", default_path="calculations/fallback")
         assert model2.meta.ulid == model.meta.ulid
-        assert model2.structure_id == model.structure_id
+        assert model2.structure_ulid == model.structure_ulid
         # structure_name is not persisted, so it will be None after roundtrip
-        # (it's cosmetic only, structure_id is the canonical reference)
+        # (it's cosmetic only, structure_ulid is the canonical reference)
 
 
 class TestCalculationIO:
@@ -169,7 +169,7 @@ class TestCalculationIO:
         wf_dir.mkdir(parents=True)
         (wf_dir / "steps").mkdir()
         
-        structure_id = generate_resource_id()
+        structure_ulid = generate_resource_id()
         step_ulid = generate_resource_id()
         
         calculation_yaml = {
@@ -180,9 +180,9 @@ class TestCalculationIO:
                 "path": "calculations/test-calculation",
                 "kind": "calculation",
             },
-            "structure_id": structure_id,  # DAG + ULID format
+            "structure_ulid": structure_ulid,  # DAG + ULID format
             "steps": [
-                {"step_ulid": step_ulid, "step_type_spec": "scf"},  # DAG + ULID format
+                {"step_ulid": step_ulid, "step_type_spec": "qe_scf"},  # DAG + ULID format
             ],
         }
         (wf_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml))
@@ -198,7 +198,7 @@ class TestCalculationIO:
         
         assert model.meta.ulid == "01CALCULATION_TEST_________"
         assert model.meta.name == "Test Calculation"
-        assert model.structure_id is not None  # Should have structure_id from YAML
+        assert model.structure_ulid is not None  # Should have structure_ulid from YAML
         assert len(model.steps) == 1
         assert model.steps[0].step_ulid is not None  # Should have step_id ULID
         assert len(model.steps[0].step_ulid) == 26  # ULID length
@@ -209,7 +209,7 @@ class TestCalculationIO:
         model = load_calculation(wf_dir / "calculation.yaml", project_root)
         
         assert model.meta.name == "Test Calculation"
-        assert model.structure_id is not None  # Should have structure_id from YAML
+        assert model.structure_ulid is not None  # Should have structure_ulid from YAML
         assert len(model.steps) == 1
         assert model.steps[0].step_ulid is not None  # Should have step_id ULID
     
@@ -226,7 +226,7 @@ class TestCalculationIO:
         )
         model = CalculationModel(
             meta=meta,
-            structure_id="01STRUCTURE_ID_HERE_____",
+            structure_ulid="01STRUCTURE_ID_HERE_____",
             structure_name="Graphene",
         )
         
@@ -237,7 +237,7 @@ class TestCalculationIO:
         
         loaded = yaml.safe_load(yaml_path.read_text())
         assert loaded["meta"]["ulid"] == "01NEW_CALCULATION_______"
-        assert loaded["structure_id"] == "01STRUCTURE_ID_HERE_____"
+        assert loaded["structure_ulid"] == "01STRUCTURE_ID_HERE_____"
         # DAG + ID-only constitution: structure_name and structure selector are NOT persisted
         assert "structure_name" not in loaded, "structure_name should not be written to calculation.yaml"
         assert "structure" not in loaded, "structure selector should not be written to calculation.yaml"
@@ -260,7 +260,7 @@ class TestCalculationIO:
         )
         original = CalculationModel(
             meta=meta,
-            structure_id="01STRUCTURE_ID_HERE_____",
+            structure_ulid="01STRUCTURE_ID_HERE_____",
             structure_name="Silicon",
             mode="normal",
             working_dir="raw",
@@ -275,15 +275,15 @@ class TestCalculationIO:
         
         assert loaded.meta.ulid == original.meta.ulid
         assert loaded.meta.name == original.meta.name
-        assert loaded.structure_id == original.structure_id
+        assert loaded.structure_ulid == original.structure_ulid
         # structure_name is in-memory only (not persisted)
         # It may be None after roundtrip if not provided in YAML
         assert len(loaded.steps) == len(original.steps)
         
-        # Verify on-disk YAML only contains structure_id (DAG + ID-only constitution)
+        # Verify on-disk YAML only contains structure_ulid (DAG + ID-only constitution)
         yaml_path = wf_dir / "calculation.yaml"
         on_disk = yaml.safe_load(yaml_path.read_text())
-        assert "structure_id" in on_disk
+        assert "structure_ulid" in on_disk
         assert "structure_name" not in on_disk, "structure_name should not be persisted to calculation.yaml"
         assert "structure" not in on_disk, "structure selector should not be persisted to calculation.yaml"
 
@@ -494,7 +494,7 @@ class TestEnsureCalculationMeta:
                 "path": "calculations/existing",
                 "kind": "calculation",
             },
-            "structure_id": structure_ulid,  # DAG + ULID format
+            "structure_ulid": structure_ulid,  # DAG + ULID format
             "steps": [],  # Empty steps list
         }
         (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(existing_yaml))

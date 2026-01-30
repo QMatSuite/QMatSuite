@@ -23,7 +23,7 @@ def run_qe_step_from_existing_input_compat(
     existing_input_path: Path,
     working_dir: Path,
     project_root: Path,
-    step_id: str,
+    step_ulid: str,
     calculation_slug: str,
     engine,
     step_type: Optional[str] = None,
@@ -40,7 +40,7 @@ def run_qe_step_from_existing_input_compat(
         existing_input_path: Path to the existing .in file (from calculation.yaml steps[].input)
         working_dir: Working directory for execution (calculation raw_dir)
         project_root: Project root path
-        step_id: Step ULID or identifier
+        step_ulid: Step ULID or identifier
         calculation_slug: Calculation slug/name (used for prefix if step spec doesn't provide)
         engine: QE engine instance
         step_type: Optional step type (e.g., "scf", "nscf")
@@ -121,7 +121,7 @@ def run_qe_step_from_existing_input_compat(
         )
         return result
     except Exception as e:
-        logger.exception(f"[COMPAT_EXECUTOR] Step {step_id} execution failed")
+        logger.exception(f"[COMPAT_EXECUTOR] Step {step_ulid} execution failed")
         from quantumvitas.engine.base import StepResult
         return StepResult(
             success=False,

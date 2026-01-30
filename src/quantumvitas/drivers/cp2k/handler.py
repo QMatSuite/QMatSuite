@@ -53,16 +53,16 @@ def cp2k_step_handler(
     started = datetime.now(timezone.utc)
 
     # 1. Validate single-step job
-    if len(job.step_ids) != 1:
+    if len(job.step_ulids) != 1:
         return JobResult(
             job_id=job.id,
             success=False,
-            error=f"CP2K handler expects single-step job, got {len(job.step_ids)} steps",
+            error=f"CP2K handler expects single-step job, got {len(job.step_ulids)} steps",
             started_at=started,
             finished_at=datetime.now(timezone.utc),
         )
 
-    step_ulid = job.step_ids[0]
+    step_ulid = job.step_ulids[0]
     step = _find_step_by_ulid(calculation, step_ulid)
     if step is None:
         return JobResult(

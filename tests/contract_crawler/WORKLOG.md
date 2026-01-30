@@ -62,8 +62,8 @@ Created `src/quantumvitas/daemon/compat.py`:
 
 **Payload Adapters (11 methods)**:
 - `change_calculation_structure`: Accept 'structure' for 'new_structure'
-- `delete_structure`: Add selector from structure_id
-- `get_structure_vis`: Add selector from structure_id
+- `delete_structure`: Add selector from structure_ulid
+- `get_structure_vis`: Add selector from structure_ulid
 - `instantiate_workflow`: Accept 'workflow' for 'workflow_id'
 - `detect_workflow`: Add calculation_path from project_root + calculation
 - `reset_step_params`: Remove calculation_ulid (0873ebf doesn't accept it)
@@ -235,7 +235,7 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ## v0 Payload Schema Implementation (2026-01-29)
 
 ### Problem
-Recipe payloads were oscillating between different key names (`selector` vs `structure_id` vs `structure`)
+Recipe payloads were oscillating between different key names (`selector` vs `structure_ulid` vs `structure`)
 due to trial-and-error guessing, corrupting the v0 contract.
 
 ### Solution
@@ -323,7 +323,7 @@ Created centralized v0 payload schema definitions in `tests/contract_crawler/v0_
 
 6. **Fixed API utils**
    - Fixed `rename_structure` parameter name mismatch (`name` -> `new_name`)
-   - Fixed `StructureStepSpec` attribute access (`structure_selector` -> `structure_id or structure`)
+   - Fixed `StructureStepSpec` attribute access (`structure_selector` -> `structure_ulid or structure`)
 
 ### Current Status (Final)
 
@@ -339,7 +339,7 @@ Created centralized v0 payload schema definitions in `tests/contract_crawler/v0_
 7. **Updated daemon `_handle_get_step_detail`** - Uses `svc.calculation.get_step_detail()`
 8. **Updated daemon `_handle_update_step_params`** - Returns full step detail
 9. **Added `_shape_step_detail` shaper** - Removes extra keys (meta, status, step_id, calc_id)
-10. **Fixed `StructureStepSpec` access** - structure_selector → structure_id/structure
+10. **Fixed `StructureStepSpec` access** - structure_selector → structure_ulid/structure
 
 **Categories of Remaining Failures (26)**:
 1. **Environment-dependent** (4): detect_qe, find_project_root, preflight_check, rebuild_project_registry

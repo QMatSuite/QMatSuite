@@ -120,7 +120,7 @@ def _handle_qe_output(
         calc_dir=calc_dir,
         step_ulid=spec.step_ulid,
         step_type=spec.step_type_spec,
-        run_id=run_context.get("run_id"),
+        run_ulid=run_context.get("run_ulid"),
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
     )
@@ -163,7 +163,7 @@ def _handle_pyscf_results(
         calc_dir=calc_dir,
         step_ulid=spec.step_ulid,
         step_type=spec.step_type_spec,
-        run_id=run_context.get("run_id"),
+        run_ulid=run_context.get("run_ulid"),
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
     )
@@ -232,7 +232,7 @@ def _handle_orca_xyz(
         calc_dir=calc_dir,
         step_ulid=spec.step_ulid,
         step_type=spec.step_type_spec,
-        run_id=run_context.get("run_id"),
+        run_ulid=run_context.get("run_ulid"),
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
     )
@@ -261,7 +261,7 @@ def _handle_lammps_data(
         calc_dir=calc_dir,
         step_ulid=spec.step_ulid,
         step_type=spec.step_type_spec,
-        run_id=run_context.get("run_id"),
+        run_ulid=run_context.get("run_ulid"),
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
     )
@@ -284,7 +284,7 @@ def _handle_cp2k_trajectory_artifact(
     Args:
         spec: RelaxArtifactSpec with artifact_path and optional cell_path in extra
         calc_dir: Calculation directory
-        run_context: Context with initial_structure, run_id, etc.
+        run_context: Context with initial_structure, run_ulid, etc.
 
     Returns:
         Path to current.json
@@ -325,7 +325,7 @@ def _handle_cp2k_trajectory_artifact(
         calc_dir=calc_dir,
         step_ulid=spec.step_ulid,
         step_type=spec.step_type_spec,
-        run_id=run_context.get("run_id"),
+        run_ulid=run_context.get("run_ulid"),
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
     )
@@ -354,7 +354,7 @@ def process_relax_artifact(
     Args:
         spec: RelaxArtifactSpec or dict representation
         calc_dir: Calculation directory
-        run_context: Context with run_id, calculation_ulid, input_structure_ulid
+        run_context: Context with run_ulid, calculation_ulid, input_structure_ulid
         
     Returns:
         Path to current.json if processed, None if no handler found
@@ -393,7 +393,7 @@ def write_generated_structure(
     calc_dir: Path,
     step_ulid: str,
     step_type: str,
-    run_id: Optional[str] = None,
+    run_ulid: Optional[str] = None,
     calculation_ulid: Optional[str] = None,
     input_structure_ulid: Optional[str] = None,
 ) -> Path:
@@ -405,7 +405,7 @@ def write_generated_structure(
         calc_dir: Path to calculation directory
         step_ulid: ULID of the relax step
         step_type: Step type (e.g., "qe_relax", "qe_vc_relax")
-        run_id: Optional run ID for provenance
+        run_ulid: Optional run ULID for provenance
         calculation_ulid: Optional calculation ULID for provenance
         input_structure_ulid: Optional input structure ULID for provenance
         
@@ -418,9 +418,9 @@ def write_generated_structure(
     # Build structure dict with metadata
     structure_dict = structure.as_dict()
     structure_dict["__qv_meta__"] = {
-        "step_type_gen": "generated_structure",
+        "type": "generated_structure",  # Artifact type, not step_type
         "source_step_ulid": step_ulid,
-        "source_run_id": run_id,
+        "source_run_ulid": run_ulid,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "provenance": {
             "method": step_type,

@@ -22,7 +22,7 @@ class StructureDTO(BaseDTO):
     NOTE: No positions or species arrays. Use svc.structure.get_atoms() for full data.
     """
     # Identity (required)
-    structure_id: str         # ULID
+    structure_ulid: str         # ULID
     formula: str              # Chemical formula
     num_atoms: int
 
@@ -41,8 +41,8 @@ class StructureDTO(BaseDTO):
     # Compatibility properties for historical API contract
     @property
     def id(self) -> str:
-        """Compatibility: return structure_id or meta.ulid."""
-        return self.meta.ulid if self.meta and self.meta.ulid else self.structure_id
+        """Compatibility: return structure_ulid or meta.ulid."""
+        return self.meta.ulid if self.meta and self.meta.ulid else self.structure_ulid
     
     @property
     def name(self) -> str | None:

@@ -74,7 +74,7 @@ class TestPrecisionScfNscf:
         calc_yaml = calc_dir / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "name": "Test Calculation",
-            "structure_id": "test_structure",
+            "structure_ulid": "test_structure",
             "species_map": {
                 "Si": {
                     "pseudo_sha256": "test_sha",
@@ -100,19 +100,19 @@ class TestPrecisionScfNscf:
         si_lattice = Lattice.cubic(a)
         si_structure = Structure(si_lattice, ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
         
-        # calculation.yaml already has structure_id="test_structure" from fixture
+        # calculation.yaml already has structure_ulid="test_structure" from fixture
         
         # Create scf step
         scf_step = temp_calc_dir / "steps" / "1_scf.step.yaml"
         scf_step.write_text(yaml.safe_dump({
-            "step_type_gen": "scf",
+            "step_type_spec": "qe_scf",
             "parameters": {},
         }))
-        
+
         # Create nscf step
         nscf_step = temp_calc_dir / "steps" / "2_nscf.step.yaml"
         nscf_step.write_text(yaml.safe_dump({
-            "step_type_gen": "nscf",
+            "step_type_spec": "qe_nscf",
             "parameters": {},
         }))
         
@@ -164,7 +164,7 @@ class TestPrecisionScfNscf:
         assert nscf_nk3 == scf_nk3 * NSCF_KMESH_FACTOR
         
         # Verify detection returns med (not Custom)
-        # No need to mock - unified resolver will load structure from structure_id
+        # No need to mock - unified resolver will load structure from structure_ulid
         detected = detect_presets_from_calculation(temp_calc_dir)
         assert detected["precision"] == "med", f"Expected 'med', got {detected.get('precision')}"
 
@@ -211,7 +211,7 @@ class TestPrecisionBandsPw:
             ],
         }
         bands_step.write_text(yaml.safe_dump({
-            "step_type_gen": "bands_pw",
+            "step_type_spec": "qe_bands_pw",
             "parameters": {},
             "cards": {
                 "K_POINTS": original_kpoints,
@@ -296,7 +296,7 @@ class TestPrecisionCustomOnMismatch:
         calc_yaml = calc_dir / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "name": "Test Calculation",
-            "structure_id": "test_structure",
+            "structure_ulid": "test_structure",
             "species_map": {"Si": {"pseudo_sha256": "test_sha"}},
         }))
         
@@ -310,7 +310,7 @@ class TestPrecisionCustomOnMismatch:
         # Create scf step
         scf_step = temp_calc_dir / "steps" / "scf.step.yaml"
         scf_step.write_text(yaml.safe_dump({
-            "step_type_gen": "scf",
+            "step_type_spec": "qe_scf",
             "parameters": {},
         }))
         

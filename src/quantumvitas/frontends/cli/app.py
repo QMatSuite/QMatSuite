@@ -215,7 +215,7 @@ def _determine_project_directory(
     return _next_project_directory(base_dir)
 
 
-def _derive_step_identity(base_name: str, existing_ids: Sequence[str]) -> tuple[str, str]:
+def _derive_step_ulidentity(base_name: str, existing_ids: Sequence[str]) -> tuple[str, str]:
     preferred = (base_name or "step").strip() or "step"
     slug_candidate = QVService.slugify(preferred)
     display = preferred
@@ -782,9 +782,9 @@ def init_calculation_command(
                     struct_path = copy_structure_template(struct_name, structures_dir)
                     struct_rel_path = QVService.ensure_relative_path(struct_path, base=project_root)
                     struct_meta = QVService.meta_from_name("structure", name=struct_name, path=struct_rel_path)
-                    # DAG + ID-only: only structure_id, no meta duplication
+                    # DAG + ID-only: only structure_ulid, no meta duplication
                     structures_section.append({
-                        "structure_id": struct_meta.ulid,  # ID-only reference (ULID)
+                        "structure_ulid": struct_meta.ulid,  # ID-only reference (ULID)
                     })
                     typer.echo(f"Copied structure '{struct_name}' from template")
                 except ValueError:
@@ -811,10 +811,10 @@ def init_calculation_command(
             "--structure is required when not using --template"
         )
 
-    # Resolve structure selector to structure_id (ULID)
+    # Resolve structure selector to structure_ulid (ULID)
     # TODO: Use QVService API
     resolved_structure = require_structure(project_root, structure, config)
-    structure_id = resolved_structure.meta.ulid
+    structure_ulid = resolved_structure.meta.ulid
     structure_name = resolved_structure.meta.name
 
     raw_dir = calculation_dir / "raw"
@@ -848,11 +848,11 @@ def init_calculation_command(
             engine_family = "qe"  # Default for periodic structures
     
     # Write calculation.yaml with proper meta section (contains ULID)
-    # DAG + ID-only model: use structure_id (ULID) as canonical reference
+    # DAG + ID-only model: use structure_ulid (ULID) as canonical reference
     # Do NOT write structure_name or structure selector (violates DAG + ID-only constitution)
     calculation_payload = {
         "meta": calculation_meta_dict,
-        "structure_id": structure_id,  # Canonical reference (ULID only)
+        "structure_ulid": structure_ulid,  # Canonical reference (ULID only)
         "mode": "normal",
         "working_dir": "raw",
         "steps": [],
@@ -973,7 +973,7 @@ def init_step_command(
     calculation_dir: Optional[Path] = None
     calculation_steps: list[dict] | None = None
     calculation_data = None
-    existing_step_ids: list[str] = []
+    existing_step_ulids: list[str] = []
     parent_calculation_id: Optional[str] = None
     calculation_structure: Optional[str] = None
 
@@ -1042,7 +1042,7 @@ def init_step_command(
             raise typer.BadParameter(f"calculation.yaml not found under {calculation_dir}")
         calculation_data = yaml.safe_load(calculation_yaml.read_text()) or {}
         calculation_steps = calculation_data.setdefault("steps", [])
-        existing_step_ids = [
+        existing_step_ulids = [
             extract_step_selector_from_entry(step) 
             for step in calculation_steps 
             if extract_step_selector_from_entry(step)
@@ -1053,11 +1053,11 @@ def init_step_command(
         if not parent_calculation_id:
             # Fallback to calculation.yaml meta.ulid
             parent_calculation_id = calculation_data.get("meta", {}).get("ulid") or calculation_data.get("ulid")
-        # Structure: prefer structure_id (canonical), fall back to structure selector (legacy)
-        calculation_structure_id = calculation_data.get("structure_id")
+        # Structure: prefer structure_ulid (canonical), fall back to structure selector (legacy)
+        calculation_structure_ulid = calculation_data.get("structure_ulid")
         calculation_structure = calculation_data.get("structure") or calculation_data.get("calculation", {}).get("structure")
     else:
-        calculation_structure_id = None
+        calculation_structure_ulid = None
         calculation_structure = None
 
     # Resolve structure: use provided, or inherit from parent calculation
@@ -1065,15 +1065,15 @@ def init_step_command(
         structure_value = _resolve_structure_reference(
             structure, project_root, config if project_root else None
         )
-    elif calculation_structure_id:
-        # Calculation has structure_id - resolve it to get the selector for display
+    elif calculation_structure_ulid:
+        # Calculation has structure_ulid - resolve it to get the selector for display
         try:
             svc = QVService(project_root) if project_root else None
-            resolved = svc.require_structure(calculation_structure_id) if svc else None
+            resolved = svc.require_structure(calculation_structure_ulid) if svc else None
             structure_value = resolved.meta.slug or resolved.meta.name
             typer.echo(f"Using structure '{structure_value}' from calculation")
         except ResourceNotFoundError as e:
-            raise typer.BadParameter(f"Calculation references structure_id '{calculation_structure_id}' which cannot be resolved: {e}") from e
+            raise typer.BadParameter(f"Calculation references structure_ulid '{calculation_structure_ulid}' which cannot be resolved: {e}") from e
     elif calculation_structure:
         structure_value = calculation_structure
         typer.echo(f"Using structure '{structure_value}' from calculation")
@@ -1085,7 +1085,7 @@ def init_step_command(
             "  - Use --calculation to specify a calculation that has a structure"
         )
 
-    step_display_name, step_slug = _derive_step_identity(name or step_type, existing_step_ids)
+    step_display_name, step_slug = _derive_step_ulidentity(name or step_type, existing_step_ulids)
 
     if calculation_dir is not None:
         spec_path = (calculation_dir / "steps" / f"{step_slug}.step.yaml").resolve()
@@ -1176,18 +1176,18 @@ def init_step_command(
             stacklevel=2,
         )
     
-    # Resolve structure selector to structure_id
-    # If calculation has structure_id, use that directly (canonical)
-    structure_id = None
-    if calculation_structure_id and project_root:
-        # Calculation already has structure_id - use it directly (canonical reference)
-        structure_id = calculation_structure_id
+    # Resolve structure selector to structure_ulid
+    # If calculation has structure_ulid, use that directly (canonical)
+    structure_ulid = None
+    if calculation_structure_ulid and project_root:
+        # Calculation already has structure_ulid - use it directly (canonical reference)
+        structure_ulid = calculation_structure_ulid
     elif structure_value and project_root:
-        # Resolve structure selector to structure_id
+        # Resolve structure selector to structure_ulid
         try:
             svc = QVService(project_root) if project_root else None
             resolved_structure = svc.require_structure(structure_value) if svc else None
-            structure_id = resolved_structure.meta.ulid
+            structure_ulid = resolved_structure.meta.ulid
         except ResourceNotFoundError as e:
             # Structure is required - fail clearly
             raise typer.BadParameter(f"Structure not found: {e}")
@@ -1195,7 +1195,7 @@ def init_step_command(
     spec = StructureStepSpec(
         meta=QVService.meta_from_name("step", name=step_display_name, path=""),
         structure=structure_value,  # Keep for backwards compat
-        structure_id=structure_id,  # Canonical reference (ULID)
+        structure_ulid=structure_ulid,  # Canonical reference (ULID)
         step_type_spec=step_type,
         parameters=params,
         cards=cards,
@@ -1361,9 +1361,9 @@ def import_structure_command(
     metadata = QVService.meta_from_name("structure", name=structure_name, path=write_rel)
     write_structure(struct, out_path, format=output_format, metadata=metadata)
 
-    # DAG + ID-only: only structure_id, no meta duplication
+    # DAG + ID-only: only structure_ulid, no meta duplication
     structures_section.append({
-        "structure_id": metadata.ulid,  # ID-only reference (ULID)
+        "structure_ulid": metadata.ulid,  # ID-only reference (ULID)
     })
     save_project_config(project_root, config)
 
@@ -1448,11 +1448,11 @@ def run_step_command(
     
     1. Project mode (default):
        - Requires: --project (or auto-detect) + --calculation + --step selectors
-       - Uses registry-based resolution: calculation → step → structure (via calculation.structure_id)
-       - Structure is resolved from calculation.structure_id (DAG model: calculation owns structure)
+       - Uses registry-based resolution: calculation → step → structure (via calculation.structure_ulid)
+       - Structure is resolved from calculation.structure_ulid (DAG model: calculation owns structure)
        - Deprecated: bare step YAML file path (target argument)
          - When provided, calculation is inferred from step path via registry
-         - Structure is still resolved from calculation.structure_id (not from step YAML)
+         - Structure is still resolved from calculation.structure_ulid (not from step YAML)
     
     2. Standalone mode (--standalone):
        - Requires: --standalone + --input (QE input file)
@@ -1584,7 +1584,7 @@ def run_step_command(
         except ResourceNotFoundError as e:
             raise typer.BadParameter(str(e)) from e
     
-    # Run step via QVService (registry-based, uses calculation.structure_id)
+    # Run step via QVService (registry-based, uses calculation.structure_ulid)
     from quantumvitas.api import QVService
     
     try:
@@ -1679,8 +1679,8 @@ def _run_standalone_step(
             input_file=input_path,
             destination_dir=temp_import_dir,
             structure_dir=temp_structure_dir,
-            step_id=None,  # Will generate ULID
-            structure_id=None,  # Will be auto-generated from input
+            step_ulid=None,  # Will generate ULID
+            structure_ulid=None,  # Will be auto-generated from input
             reference_structure_by="id",
             apply_defaults=False,  # Preserve original parameters
         )
@@ -1886,8 +1886,8 @@ def list_resources(
         for step_display_name, rel_path, step_meta in step_summaries:
             # Display: step name [ULID] -> step_file
             # ULID is the canonical identifier for qv delete step
-            step_id_display = step_meta.ulid if step_meta else "-"
-            step_line = f"    - {step_display_name} [{step_id_display}] -> {rel_path or '(inline)'}"
+            step_ulid_display = step_meta.ulid if step_meta else "-"
+            step_line = f"    - {step_display_name} [{step_ulid_display}] -> {rel_path or '(inline)'}"
             if verbose and step_meta:
                 # In verbose mode, also show slug if different from name
                 if step_meta.slug and step_meta.slug != step_meta.name:
@@ -1901,21 +1901,21 @@ def _find_calculation_structures(calculation_dir: Path, proj: Project) -> list[s
     """
     Find all structures referenced by a calculation.
     
-    In the new DAG model, structure is resolved via calculation.structure_id,
+    In the new DAG model, structure is resolved via calculation.structure_ulid,
     not from individual step files.
     """
     structures: set[str] = set()
     
-    # First, check calculation.yaml for structure_id (canonical reference)
+    # First, check calculation.yaml for structure_ulid (canonical reference)
     calculation_yaml = calculation_dir / "calculation.yaml"
     if calculation_yaml.exists():
         try:
             data = yaml.safe_load(calculation_yaml.read_text()) or {}
-            structure_id = data.get("structure_id")
-            if structure_id:
-                # Resolve structure_id to structure name/slug
+            structure_ulid = data.get("structure_ulid")
+            if structure_ulid:
+                # Resolve structure_ulid to structure name/slug
                 for struct_ref in proj.structures.values():
-                    if struct_ref.meta.ulid == structure_id:
+                    if struct_ref.meta.ulid == structure_ulid:
                         structures.add(struct_ref.name)
                         break
         except Exception:
@@ -1943,8 +1943,8 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
     step_meta: ResourceMeta from step file (contains ULID)
     
     In the new DAG + ID-only model:
-    - Steps in calculation.yaml have step_id (ULID), not step_file
-    - Step file location is resolved via ResourceIndex using step_id
+    - Steps in calculation.yaml have step_ulid (ULID), not step_file
+    - Step file location is resolved via ResourceIndex using step_ulid
     """
     calculation_yaml = calculation_dir / "calculation.yaml"
     if not calculation_yaml.exists():
@@ -1962,7 +1962,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
         if not (project_root / "project.qv.yml").exists():
             project_root = None
     
-    # Build ResourceIndex to resolve step_id (ULID) to step files
+    # Build ResourceIndex to resolve step_ulid (ULID) to step files
     index = None
     config = None
     if project_root:
@@ -1985,14 +1985,14 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
         step_meta: Optional[ResourceMeta] = None
         step_display_name = "(unnamed)"
         
-        # New DAG model: step_id (ULID) is the canonical reference
-        step_id_ulid = extract_step_selector_from_entry(step_entry)
+        # New DAG model: step_ulid (ULID) is the canonical reference
+        step_ulid_ulid = extract_step_selector_from_entry(step_entry)
         
         # Legacy: step_file (for backwards compatibility)
         legacy_step_file = step_entry.get("step_file")
         
         # Try to resolve step file using ResourceIndex
-        if step_id_ulid and index and project_root:
+        if step_ulid_ulid and index and project_root:
             try:
                 # Use resolve_step directly (it accepts index parameter)
                 # TODO: Use QVService API
@@ -2014,7 +2014,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
                         step_display_name = step_resolved.absolute_path.stem.replace(".step", "") or "(unnamed)"
             except Exception as e:
                 # Resolution failed - mark as missing
-                step_display_name = f"(missing: {step_id_ulid[:8]}...)"
+                step_display_name = f"(missing: {step_ulid_ulid[:8]}...)"
         elif legacy_step_file:
             # Legacy: use step_file if available
             spec_path = (calculation_dir / legacy_step_file).resolve()
@@ -2027,12 +2027,12 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
                 except Exception:
                     step_display_name = spec_path.stem.replace(".step", "") or "(unnamed)"
                     rel_path = legacy_step_file
-        elif step_id_ulid:
+        elif step_ulid_ulid:
             # Have ULID but couldn't resolve - mark as missing
-            step_display_name = f"(missing: {step_id_ulid[:8]}...)"
+            step_display_name = f"(missing: {step_ulid_ulid[:8]}...)"
         else:
             # Legacy: try old id field (already handled by extract_step_selector_from_entry)
-            # If we got here, step_id_ulid is None, so no valid selector found
+            # If we got here, step_ulid_ulid is None, so no valid selector found
             step_display_name = "(invalid entry)"
         
         summaries.append((step_display_name, rel_path, step_meta))
@@ -2193,7 +2193,7 @@ def rename_project_command(
 @rename_app.command("step")
 def rename_step_command(
     calculation: str = typer.Argument(..., help="Calculation name/slug/path containing the step"),
-    step_id: str = typer.Argument(..., help="Existing step id within the calculation"),
+    step_ulid: str = typer.Argument(..., help="Existing step id within the calculation"),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
@@ -2225,27 +2225,27 @@ def rename_step_command(
     data = yaml.safe_load(calculation_yaml.read_text()) or {}
     steps: list[dict] = data.get("steps") or []
     
-    # Find step by matching selector (ID-only model uses step_id)
+    # Find step by matching selector (ID-only model uses step_ulid)
     target_step = None
     for step in steps:
         step_selector = extract_step_selector_from_entry(step)
-        if step_selector == step_id:
+        if step_selector == step_ulid:
             target_step = step
             break
     
     if not target_step:
         raise typer.BadParameter(
-            f"Step '{step_id}' not found in calculation '{calculation_entry.get('name')}'."
+            f"Step '{step_ulid}' not found in calculation '{calculation_entry.get('name')}'."
         )
 
     if new_id:
-        # Check for duplicate step_id
+        # Check for duplicate step_ulid
         if any(extract_step_selector_from_entry(step) == new_id for step in steps if step is not target_step):
             raise typer.BadParameter(
                 f"Step id '{new_id}' already exists in calculation '{calculation_entry.get('name')}'."
             )
-        # Update step_id (ID-only model)
-        target_step["step_id"] = new_id
+        # Update step_ulid (ID-only model)
+        target_step["step_ulid"] = new_id
         # Also update legacy id for backwards compatibility
         target_step["ulid"] = new_id
 
@@ -2346,7 +2346,7 @@ def delete_structure_command(
     # TODO: Use QVService API
     registry = build_resource_index(project_root)
     resolved = require_structure(project_root, identifier, config=config, index=registry)
-    structure_id = resolved.meta.ulid
+    structure_ulid = resolved.meta.ulid
     
     # Move file to trash
     file_rel = entry.get("file") or (entry.get("meta") or {}).get("path") or resolved.meta.path
@@ -2355,11 +2355,11 @@ def delete_structure_command(
         if file_path.exists():
             move_to_trash(file_path, trash_dir)
 
-    # Remove from config by structure_id (ID-only model)
+    # Remove from config by structure_ulid (ID-only model)
     structures = config.setdefault("structures", [])
     structures[:] = [
         e for e in structures
-        if (e.get("structure_id") or e.get("ulid") or (e.get("meta") or {}).get("ulid")) != structure_id
+        if (e.get("structure_ulid") or e.get("ulid") or (e.get("meta") or {}).get("ulid")) != structure_ulid
     ]
     save_project_config(project_root, config)
     typer.secho(f"Structure '{entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
@@ -2426,7 +2426,7 @@ def delete_calculation_command(
 
 @delete_app.command("step")
 def delete_step_command(
-    step_id: str = typer.Argument(..., help="Step id to remove"),
+    step_ulid: str = typer.Argument(..., help="Step id to remove"),
     calculation: Optional[str] = typer.Option(
         None, "--calculation", help="Calculation id/name/slug/path (auto-detects from pwd if omitted)"
     ),
@@ -2438,7 +2438,7 @@ def delete_step_command(
     Remove a calculation step and move its step spec file to trash.
     
     The calculation is auto-detected from pwd if not specified with --calculation.
-    Step can be identified by ULID (step_id), step filename, or legacy slug.
+    Step can be identified by ULID (step_ulid), step filename, or legacy slug.
     """
     # Determine project root
     if project:
@@ -2477,7 +2477,7 @@ def delete_step_command(
     
     # Use require_step to find the step (handles ULID, filename, legacy slug)
     try:
-        step_resolved = require_step(project_root, calculation_selector, step_id, config)
+        step_resolved = require_step(project_root, calculation_selector, step_ulid, config)
     except ResourceNotFoundError as e:
         raise typer.BadParameter(str(e)) from e
     
@@ -2492,23 +2492,23 @@ def delete_step_command(
     data = yaml.safe_load(calculation_yaml.read_text()) or {}
     steps: list[dict] = data.get("steps") or []
     
-    # Find step by step_id (ULID) - this is the canonical reference
-    step_id_to_find = step_resolved.meta.ulid
+    # Find step by step_ulid (ULID) - this is the canonical reference
+    step_ulid_to_find = step_resolved.meta.ulid
     target_step = None
     for step in steps:
-        # Use centralized selector extraction to get step_id
-        step_id = extract_step_selector_from_entry(step)
-        if step_id == step_id_to_find:
+        # Use centralized selector extraction to get step_ulid
+        step_ulid = extract_step_selector_from_entry(step)
+        if step_ulid == step_ulid_to_find:
             target_step = step
             break
     
     if not target_step:
         wf_name = entry_display_name(calculation_entry)
-        raise typer.BadParameter(f"Step '{step_id}' not found in calculation '{wf_name}'.")
+        raise typer.BadParameter(f"Step '{step_ulid}' not found in calculation '{wf_name}'.")
 
     trash_dir = (project_root / "trash").resolve()
     # In ID-only model, step_resolved.absolute_path is the canonical step file location
-    # (step entries in calculation.yaml only have step_id, not step_file)
+    # (step entries in calculation.yaml only have step_ulid, not step_file)
     spec_path = step_resolved.absolute_path
     if spec_path.exists():
         move_to_trash(spec_path, trash_dir)
@@ -2522,7 +2522,7 @@ def delete_step_command(
         data["calculation"].pop("structure", None)
     calculation_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
     typer.secho(
-        f"Step '{step_id}' removed from calculation '{entry_display_name(calculation_entry)}'.",
+        f"Step '{step_ulid}' removed from calculation '{entry_display_name(calculation_entry)}'.",
         fg=typer.colors.GREEN,
     )
 
@@ -2638,7 +2638,7 @@ def delete_trash_command(
 )
 def configure_step_command(
     ctx: typer.Context,
-    step_identifier: str = typer.Argument(
+    step_ulidentifier: str = typer.Argument(
         ..., help="Step id, name, or path to .step.yaml"
     ),
     calculation: Optional[str] = typer.Option(
@@ -2669,7 +2669,7 @@ def configure_step_command(
         raise typer.BadParameter("Provide --name or at least one parameter override.")
 
     # Check if it's a direct path first
-    step_file = Path(step_identifier)
+    step_file = Path(step_ulidentifier)
     calculation_yaml = None
     calculation_dir = None
     project_root_resolved = project
@@ -2687,7 +2687,7 @@ def configure_step_command(
         try:
             ctx_res = resolve_resource(
                 "step",
-                identifier=step_identifier,
+                identifier=step_ulidentifier,
                 parent_identifier=calculation,
                 project_path=project,
             )
@@ -2749,7 +2749,7 @@ def configure_step_command(
         if calculation_yaml and calculation_yaml.exists():
             wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
             for step_entry in wf_data.get("steps", []):
-                if step_entry.get("ulid") == step_identifier or step_entry.get("ulid") == old_name:
+                if step_entry.get("ulid") == step_ulidentifier or step_entry.get("ulid") == old_name:
                     step_entry["ulid"] = new_slug
                     break
             # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
@@ -2936,13 +2936,13 @@ def configure_calculation_command(
         index = svc.build_resource_index()
         
         for step_entry in calculation_data.get("steps", []):
-            # With ID-only model, resolve step file via step_id
-            step_id = extract_step_selector_from_entry(step_entry)
-            if not step_id:
+            # With ID-only model, resolve step file via step_ulid
+            step_ulid = extract_step_selector_from_entry(step_entry)
+            if not step_ulid:
                 continue
             
             try:
-                # Resolve step file path via step_id
+                # Resolve step file path via step_ulid
                 # Use centralized selector extraction for calculation selector
                 calculation_selector = extract_calculation_selector_from_entry(calculation_entry)
                 if not calculation_selector:
@@ -2957,14 +2957,14 @@ def configure_calculation_command(
                 resolve_structure_selector = make_structure_selector_resolver(project_root, config=config)
                 spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolve_structure_selector)
                 
-                # Update structure_id (canonical reference) - structure selector is not written
-                spec.structure_id = resolved.meta.ulid
+                # Update structure_ulid (canonical reference) - structure selector is not written
+                spec.structure_ulid = resolved.meta.ulid
                 # Clear legacy structure field (not written to YAML)
                 spec.structure = ""
                 step_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
                 steps_updated += 1
             except Exception as e:
-                typer.secho(f"  Warning: Could not update step {step_id}: {e}", fg=typer.colors.YELLOW)
+                typer.secho(f"  Warning: Could not update step {step_ulid}: {e}", fg=typer.colors.YELLOW)
         
         typer.secho(
             f"Structure changed from '{old_structure}' to '{structure}' ({steps_updated} steps updated)",
@@ -3306,7 +3306,7 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
         )
         # For pw.x bands calculation, use bands_pw to distinguish from bands.x
         if calculation == "bands":
-            step_type_spec= "bands_pw"
+            step_type_spec= "qe_bands_pw"
         else:
             step_type = str(calculation)
 
@@ -3442,7 +3442,7 @@ def run_calculation_command(
     typer.echo(f"Calculation {wf.ulid} status: StepStatus.{result.status.name}")
     if verbose:
         for step in result.steps:
-            line = f"- {step.step_id}: {step.status.value}"
+            line = f"- {step.step_ulid}: {step.status.value}"
             if step.reference_file:
                 line += f" (ref: {step.reference_file.name})"
             if step.message:
@@ -4722,26 +4722,26 @@ def _execute_step_spec(
             spec_copy.species_overrides or {}, bundle.species_overrides, remove=False
         )
 
-    # Resolve structure: prefer structure_id (canonical), fall back to structure selector (legacy)
-    structure_identifier = None
-    if spec_copy.structure_id:
-        # Use structure_id to resolve structure
+    # Resolve structure: prefer structure_ulid (canonical), fall back to structure selector (legacy)
+    structure_ulidentifier = None
+    if spec_copy.structure_ulid:
+        # Use structure_ulid to resolve structure
         try:
-            resolved = require_structure(project_root, spec_copy.structure_id)
-            structure_identifier = resolved.meta.slug or resolved.meta.name
+            resolved = require_structure(project_root, spec_copy.structure_ulid)
+            structure_ulidentifier = resolved.meta.slug or resolved.meta.name
         except ResourceNotFoundError:
-            # Fall back to structure selector if structure_id resolution fails
-            structure_identifier = spec_copy.structure
+            # Fall back to structure selector if structure_ulid resolution fails
+            structure_ulidentifier = spec_copy.structure
     else:
-        structure_identifier = spec_copy.structure
+        structure_ulidentifier = spec_copy.structure
     
-    if not structure_identifier:
+    if not structure_ulidentifier:
         raise typer.BadParameter(
             f"Step spec at {spec_path} has no structure defined. "
             "Please set a structure for the step or its parent calculation."
         )
     
-    structure, struct_name = _resolve_structure_input(project_root, structure_identifier)
+    structure, struct_name = _resolve_structure_input(project_root, structure_ulidentifier)
     qe_input, _ = generate_qe_input_from_spec(
         structure=structure,
         spec=spec_copy,

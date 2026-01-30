@@ -152,14 +152,14 @@ class TestQVServiceDedup:
         
         # Both should resolve to the same structure (deduplicated by fingerprint)
         assert resolved1.meta.ulid == resolved2.meta.ulid, \
-            "Identical structures should be deduplicated to same structure_id when dedup enabled"
+            "Identical structures should be deduplicated to same structure_ulid when dedup enabled"
         
         # Project should have only 1 structure
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
         structures = config.get("structures", [])
-        unique_structure_ids = {entry.get("structure_id") for entry in structures}
-        assert len(unique_structure_ids) == 1, \
+        unique_structure_ulids = {entry.get("structure_ulid") for entry in structures}
+        assert len(unique_structure_ulids) == 1, \
             "Project should have only 1 unique structure after deduplication"
     
     def test_import_different_structures_no_dedup(self, si_structure, si_structure_different, tmp_path):
@@ -178,16 +178,16 @@ class TestQVServiceDedup:
         resolved1 = QVService.import_structure(project_root, struct_file1, name="struct1")
         resolved2 = QVService.import_structure(project_root, struct_file2, name="struct2")
         
-        # They should have different structure_ids
+        # They should have different structure_ulids
         assert resolved1.meta.ulid != resolved2.meta.ulid, \
-            "Different structures should have different structure_ids"
+            "Different structures should have different structure_ulids"
         
         # Project should have 2 structures
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
         structures = config.get("structures", [])
-        unique_structure_ids = {entry.get("structure_id") for entry in structures}
-        assert len(unique_structure_ids) == 2, \
+        unique_structure_ulids = {entry.get("structure_ulid") for entry in structures}
+        assert len(unique_structure_ulids) == 2, \
             "Project should have 2 structures for different structures"
     
     def test_fingerprint_stored_in_metadata(self, si_structure, tmp_path):
@@ -221,7 +221,7 @@ class TestMultiStructureCalculation:
     """Test that calculations can have steps with different structures."""
     
     def test_build_calculation_allows_different_structures(self, tmp_path):
-        """Test that build_calculation_from_qe_inputs no longer enforces single structure_id."""
+        """Test that build_calculation_from_qe_inputs no longer enforces single structure_ulid."""
         # This test verifies that the assertion was removed
         # We'll create a simple test that doesn't fail when steps have different structures
         
@@ -293,7 +293,7 @@ class TestMultiStructureCalculation:
         calculation_dir = tmp_path / "calculation"
         from quantumvitas.calculation.importers import build_calculation_from_qe_inputs
         
-        # This should not raise an assertion error about structure_id mismatch
+        # This should not raise an assertion error about structure_ulid mismatch
         result = build_calculation_from_qe_inputs(
             input_files=[input1, input2],
             calculation_dir=calculation_dir,
@@ -303,11 +303,11 @@ class TestMultiStructureCalculation:
         # Verify steps were created
         assert len(result.step_results) == 2, "Should have 2 steps"
         
-        # Steps may have different structure_ids (this is now allowed)
-        structure_ids = [r.structure_id for r in result.step_results]
+        # Steps may have different structure_ulids (this is now allowed)
+        structure_ulids = [r.structure_ulid for r in result.step_results]
         # Both should be valid ULIDs
-        assert all(sid and len(sid) == 26 for sid in structure_ids), \
-            "All structure_ids should be valid ULIDs"
+        assert all(sid and len(sid) == 26 for sid in structure_ulids), \
+            "All structure_ulids should be valid ULIDs"
 
 
 # =============================================================================
@@ -816,7 +816,7 @@ class TestImportStructureUnifiedFingerprint:
         
         # Should be same structure (deduped)
         assert resolved1.meta.ulid == resolved2.meta.ulid, (
-            "Translated molecules should dedup to same structure_id"
+            "Translated molecules should dedup to same structure_ulid"
         )
 
 

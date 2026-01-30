@@ -90,7 +90,7 @@ def test_cancel_happy_path(tmp_path):
     mock_job.status = JobStatus.CANCELLED
     mock_job.started_at = None
     mock_job.completed_at = datetime.now(timezone.utc)
-    mock_job.params = {"calc_id": "calc123"}
+    mock_job.params = {"calc_ulid": "calc123"}
     mock_job.steps = [{"step_ulid": "step1"}]
     mock_job.output_file = None
     mock_job.error = None
@@ -134,7 +134,7 @@ def test_cancel_not_found(tmp_path):
     
     assert "not found" in str(exc_info.value).lower()
     assert exc_info.value.context is not None
-    assert exc_info.value.context.get("run_id") == "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+    assert exc_info.value.context.get("run_ulid") == "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 
 
 def test_cancel_json_serializable(tmp_path):
@@ -154,7 +154,7 @@ def test_cancel_json_serializable(tmp_path):
     mock_job.status = JobStatus.CANCELLED
     mock_job.started_at = datetime.now(timezone.utc)
     mock_job.completed_at = datetime.now(timezone.utc)
-    mock_job.params = {"calc_id": "calc123"}
+    mock_job.params = {"calc_ulid": "calc123"}
     mock_job.steps = [{"step_ulid": "step1"}]
     mock_job.output_file = "/path/to/log.txt"
     mock_job.error = None

@@ -486,7 +486,7 @@ class TestWorkflowInstantiation:
         paths = service.instantiate_workflow(
             workflow_id="scf",
             calc_dir=calc_dir,
-            structure_id=struct_ulid,
+            structure_ulid=struct_ulid,
             parent_calculation_id=calc_ulid,
         )
         
@@ -538,7 +538,7 @@ class TestWorkflowInstantiation:
         paths = service.instantiate_workflow(
             workflow_id="dos",
             calc_dir=calc_dir,
-            structure_id=struct_ulid,
+            structure_ulid=struct_ulid,
             parent_calculation_id=calc_ulid,
         )
         
@@ -593,7 +593,7 @@ class TestWorkflowInstantiation:
         paths = service.instantiate_workflow(
             workflow_id="bands",
             calc_dir=calc_dir,
-            structure_id=struct_ulid,
+            structure_ulid=struct_ulid,
             parent_calculation_id=calc_ulid,
         )
         
@@ -613,7 +613,7 @@ class TestWorkflowInstantiation:
             service.instantiate_workflow(
                 workflow_id="nonexistent",
                 calc_dir=calc_dir,
-                structure_id=generate_resource_id(),
+                structure_ulid=generate_resource_id(),
                 parent_calculation_id=generate_resource_id(),
             )
     
@@ -658,7 +658,7 @@ class TestWorkflowInstantiation:
         service.instantiate_workflow(
             workflow_id="dos",
             calc_dir=calc_dir,
-            structure_id=struct_ulid,
+            structure_ulid=struct_ulid,
             parent_calculation_id=calc_ulid,
         )
         

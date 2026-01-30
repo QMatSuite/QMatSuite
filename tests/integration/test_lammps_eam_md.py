@@ -53,7 +53,7 @@ def eam_md_project(tmp_path: Path):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC")
-    structure_id = struct_result.meta.ulid
+    structure_ulid = struct_result.meta.ulid
     
     # Copy potential file if available
     potential_src = Path(__file__).parent.parent / "data" / "lammps" / "eam_md" / "potentials" / "Cu_u3.eam"
@@ -74,7 +74,7 @@ def eam_md_project(tmp_path: Path):
     calc_resolved = QVService.init_calculation(
         project_root=project_root,
         name="eam_md",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_id = calc_resolved.meta.ulid
     calc_dir = calc_resolved.absolute_path

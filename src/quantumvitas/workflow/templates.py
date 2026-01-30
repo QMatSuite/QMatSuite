@@ -66,7 +66,7 @@ class WorkflowIssue:
     """A workflow validation issue."""
     severity: str  # "error", "warning"
     message: str
-    step_type: Optional[str] = None
+    step_type_gen: Optional[str] = None  # GEN step type that caused the issue
 
 
 # =============================================================================
@@ -231,10 +231,10 @@ class WorkflowService:
             
             logger.info(
                 f"[WORKFLOW_DETECT] Processing step entry {i+1}/{len(steps)}: "
-                f"step_id={step_ulid}, type_in_entry={step_entry_type}"
+                f"step_ulid={step_ulid}, type_in_entry={step_entry_type}"
             )
             
-            # Try new format first: step_id (ULID) -> resolve step -> get step_type
+            # Try new format first: step_ulid (ULID) -> resolve step -> get step_type
             # This requires project_root to be available
             if step_ulid and project_root:
                 try:
@@ -264,7 +264,7 @@ class WorkflowService:
                             step_type = step_doc.get(["step_type_spec"], default=None)
                             if debug_enabled:
                                 logger.info(
-                                    f"[WORKFLOW_DETECT] Resolved step by ULID: step_id={step_ulid} -> "
+                                    f"[WORKFLOW_DETECT] Resolved step by ULID: step_ulid={step_ulid} -> "
                                     f"step_type={step_type} (from step YAML)"
                                 )
                         else:
@@ -281,7 +281,7 @@ class WorkflowService:
                     # Step file missing or invalid - skip it (ghost step)
                     if debug_enabled:
                         logger.warning(
-                            f"[WORKFLOW_DETECT] Failed to resolve step by ULID: step_id={step_ulid}, "
+                            f"[WORKFLOW_DETECT] Failed to resolve step by ULID: step_ulid={step_ulid}, "
                             f"error={type(e).__name__}: {e}"
                         )
                     pass
@@ -293,13 +293,13 @@ class WorkflowService:
                     if debug_enabled:
                         logger.info(
                             f"[WORKFLOW_DETECT] Using type from calculation.yaml.steps[] entry: "
-                            f"step_id={step_ulid}, type={step_type}"
+                            f"step_ulid={step_ulid}, type={step_type}"
                         )
                 else:
                     # Always log warnings about missing type field (not gated)
                     logger.warning(
                         f"[WORKFLOW_DETECT] WARNING: Step entry has no type field! "
-                        f"step_id={step_ulid}, entry_keys={list(step_entry.keys())}. "
+                        f"step_ulid={step_ulid}, entry_keys={list(step_entry.keys())}. "
                         f"Workflow detection may fail or be inaccurate."
                     )
             
@@ -349,7 +349,7 @@ class WorkflowService:
                 if debug_enabled:
                     logger.warning(
                         f"[WORKFLOW_DETECT] Step {i+1} could not be resolved: "
-                        f"step_id={step_ulid}, no step_type found"
+                        f"step_ulid={step_ulid}, no step_type found"
                     )
         
         if debug_enabled:
@@ -435,7 +435,7 @@ class WorkflowService:
         self,
         workflow_id: str,
         calc_dir: Path,
-        structure_id: str,
+        structure_ulid: str,
         parent_calculation_id: str,
         *,
         engine_family: Optional[str] = None,
@@ -448,7 +448,7 @@ class WorkflowService:
         Args:
             workflow_id: Workflow template id
             calc_dir: Path to calculation directory
-            structure_id: Structure ULID
+            structure_ulid: Structure ULID
             parent_calculation_id: Parent calculation ULID
             engine_family: Engine family identifier (e.g., "qe", "pyscf")
                 If None, attempts to load from calculation.yaml
@@ -514,7 +514,7 @@ class WorkflowService:
             step_doc = create_step_doc(
                 step_type=machine_step,  # Machine type goes to step.yaml
                 name=machine_step,  # TODO: Use public step name for display
-                structure_id=structure_id,
+                structure_ulid=structure_ulid,
                 parent_calculation_id=parent_calculation_id,
             )
             
@@ -592,7 +592,7 @@ class WorkflowService:
                 issues.append(WorkflowIssue(
                     severity="error",
                     message=f"Missing required step: {step}",
-                    step_type=step,
+                    step_type_gen=step,
                 ))
             
             # Check for ordering
@@ -611,7 +611,7 @@ class WorkflowService:
                 issues.append(WorkflowIssue(
                     severity="warning",
                     message=f"Unknown step type: {step_type}",
-                    step_type=step_type,
+                    step_type_gen=step_type,
                 ))
         
         return issues

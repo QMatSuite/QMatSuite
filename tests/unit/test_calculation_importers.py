@@ -157,10 +157,10 @@ def test_build_step_spec_from_qe_input_creates_structure_and_yaml(tmp_path: Path
     assert result.spec_path.exists()
     assert result.structure_path.exists()
     spec_text = result.spec_path.read_text()
-    # ID-only model: check for structure_id instead of structure
-    # DAG + ID-only model: Step YAML does NOT contain structure_id (inherits from calculation)
-    # Legacy structure_id field is not written to YAML
-    assert "structure_id:" not in spec_text, "Step YAML should not contain structure_id (DAG model)"
+    # ID-only model: check for structure_ulid instead of structure
+    # DAG + ID-only model: Step YAML does NOT contain structure_ulid (inherits from calculation)
+    # Legacy structure_ulid field is not written to YAML
+    assert "structure_ulid:" not in spec_text, "Step YAML should not contain structure_ulid (DAG model)"
     assert "K_POINTS" in spec_text  # cards captured
     # Pseudo mapping stored in species_overrides, NOT as ATOMIC_SPECIES card
     # ATOMIC_SPECIES should NOT be in cards (it's a structure card, excluded)
@@ -220,7 +220,7 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
         [scf_file, nscf_file],
         calculation_dir=calculation_dir,
         calculation_id="si_flow",
-        structure_id="si",
+        structure_ulid="si",
         reference_structure_by="id",
         project_root=project_root,
     )
@@ -240,7 +240,7 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
     # Create minimal project manifest referencing generated files
     # Need to use the actual structure_ulid from the step result, not "si"
     # Get the structure_ulid from the first step result (all steps share the same structure)
-    actual_structure_id = result.step_results[0].structure_ulid
+    actual_structure_ulid = result.step_results[0].structure_ulid
     
     # Verify structure file exists and has correct meta
     assert result.structure_path.exists(), f"Structure file should exist: {result.structure_path}"
@@ -248,7 +248,7 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
     import json
     structure_data = json.loads(result.structure_path.read_text())
     structure_meta = structure_data.get(STRUCTURE_META_KEY, {})
-    assert structure_meta.get("ulid") == actual_structure_id, "Structure file should have matching ID"
+    assert structure_meta.get("ulid") == actual_structure_ulid, "Structure file should have matching ID"
     
     # Get relative path properly (handle both absolute and relative paths)
     try:
@@ -295,7 +295,7 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
     project_config = {
         "project": {"name": "si_project"},
         "structures": [{
-            "ulid": actual_structure_id,
+            "ulid": actual_structure_ulid,
             "file": str(structures_rel),
             "format": "json",
         }],

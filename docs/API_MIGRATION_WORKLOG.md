@@ -360,3 +360,68 @@ The daemon is NOT a console script - it's used programmatically by GUI.
 - Add deprecation warning
 - Add gate test to prevent future divergence
 
+---
+
+## Phase C: GEN/SPEC Convergence Cleanup (2026-01-30)
+
+### Overview
+Complete cleanup to enforce canonical field naming across the codebase:
+- **ULID fields**: `id` → `ulid`, `*_id` → `*_ulid`
+- **Step types**: `step_type` → `step_type_spec` (SPEC) or `step_type_gen` (GEN)
+- **YAML SSOT**: `step_type_spec` is the Single Source of Truth in YAML files
+
+### Gate A: No Legacy Identity Fields
+**Status: ✅ PASS (0 violations)**
+
+Created `tests/gates/test_no_legacy_identity_fields.py`:
+- Scans YAML/JSON resources for forbidden keys (`id` in meta, `*_id` patterns, `step_type`)
+- Scans Python source for forbidden field names in dataclasses/DTOs
+- Allowlist for legitimate non-ULID `id` usages (JSON-RPC, Job graph)
+
+### Gate B: Schema Self-Consistency
+**Status: ✅ ALL PASS (B3-B6)**
+
+Created `tests/gates/test_schema_self_consistency.py`:
+- B3: No legacy keyword arguments (`id=`, `step_id=`, `step_type=` in class calls) ✅
+- B4: No unsafe dict-unpack (`**meta` into sensitive classes) ✅
+- B5: No legacy key assertions in tests (`"id"`, `"calc_id"`, `"step_type"`, etc.) ✅
+- B6: No legacy keys in golden fixtures ✅
+- Allowlist for legitimate non-ULID classes: `RPCRequest`, `RPCResponse`, `Job`, `WorkflowTemplate`, etc.
+- Allowlist for non-ULID contexts: OPTIMADE API, QE parameter metadata, v0 request payloads
+
+### GEN/SPEC Convergence Audit
+**Status: ✅ PASS (21 tests)**
+
+Added `TestGenSpecBoundary` class to `tests/gates/test_gen_spec_convergence_gate.py`:
+- Verified presets correctly map `step_type_spec` → `step_type_gen` for variant lookup
+- Verified workflow templates use `step_type_gen` for workflow detection
+- Verified registry provides both gen→spec and spec→gen mappings
+- Verified step_factory writes `step_type_spec` to YAML (SPEC layer)
+
+### Key Fixes Applied
+
+#### Source Code Renames
+1. `RunRevision.id` → `RunRevision.ulid`
+2. `RunRevision.to_dict()` and `from_dict()` updated for `ulid` field
+3. `StepResult(step_type=...)` → `StepResult(step_type_spec=...)`
+4. `calc_identity.py`: Look for `step_type_spec` or `step_type_gen` instead of `type`
+
+#### Test File Fixes
+1. MockStep in ORCA tests: `id` → `ulid`, `step_type` → `step_type_spec`
+2. StepResultSummary calls: `step_id` → `step_ulid`, `step_type` → `step_type_spec`
+3. CalculationStepEntry calls: `step_id` → `step_ulid`
+4. Various dict keys: `run_id` → `run_ulid`, `calc_id` → `calc_ulid`
+
+### Test Results
+- **Before:** 107+ failures
+- **After Gate A+B:** 28 failures (unit/gates)
+- Remaining failures are semantic issues requiring individual investigation
+
+### Remaining Work
+The 28 remaining failures are NOT schema violations. They are semantic test failures:
+- History digest tests (output_exists checks)
+- Wannier90 demo/kpoints tests
+- Workflow detection tests
+- Capability enforcement tests
+
+These require individual investigation after the schema cleanup is complete.

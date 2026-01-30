@@ -63,11 +63,11 @@ class GetStepDetailRecipe(Recipe):
         try:
             if is_static_api:
                 struct_result = QVService.import_structure(self.project_root, struct_file, name="silicon")
-                structure_id = struct_result.id if hasattr(struct_result, 'id') else struct_result.structure_id if hasattr(struct_result, 'structure_id') else None
+                structure_ulid = struct_result.id if hasattr(struct_result, 'id') else struct_result.structure_ulid if hasattr(struct_result, 'structure_ulid') else None
             else:
                 svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
                 struct_dto = svc.structure.import_file(source=struct_file, name="silicon")
-                structure_id = struct_dto.structure_id
+                structure_ulid = struct_dto.structure_ulid
         finally:
             struct_file.unlink()
 
@@ -76,7 +76,7 @@ class GetStepDetailRecipe(Recipe):
             calc_result = QVService.init_calculation(
                 self.project_root,
                 name="test_calc",
-                structure_selector=structure_id,
+                structure_selector=structure_ulid,
             )
             self.calc_id = calc_result.ulid if hasattr(calc_result, 'ulid') else None
         else:
@@ -84,7 +84,7 @@ class GetStepDetailRecipe(Recipe):
             calc_dto = svc.calculation.create(
                 engine="qe",
                 name="test_calc",
-                structure_selector=structure_id,
+                structure_selector=structure_ulid,
             )
             self.calc_id = calc_dto.calc_id
 

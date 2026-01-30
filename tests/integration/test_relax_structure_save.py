@@ -11,7 +11,7 @@ from quantumvitas.calculation.structure_steps import StructureStepSpec
 from quantumvitas.core.resources import meta_from_name, generate_resource_id
 
 
-def test_save_relax_structure_idempotency(tmp_path: Path):
+def test_save_relax_structure_ulidempotency(tmp_path: Path):
     """Test that save_relax_final_structure is idempotent (returns same ULID on repeated calls)."""
 
     project_root = tmp_path / "test_project"
@@ -39,11 +39,11 @@ def test_save_relax_structure_idempotency(tmp_path: Path):
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
     
     # Create a parent structure
-    parent_structure_id = generate_resource_id()
+    parent_structure_ulid = generate_resource_id()
     parent_structure_path = project_root / "structures" / "si-bulk.json"
     parent_structure_data = {
         "__qv_meta__": {
-            "ulid": parent_structure_id,
+            "ulid": parent_structure_ulid,
             "name": "Si bulk",
             "slug": "si-bulk",
             "path": "structures/si-bulk.json",
@@ -66,7 +66,7 @@ def test_save_relax_structure_idempotency(tmp_path: Path):
         ],
     }
     parent_structure_path.write_text(json.dumps(parent_structure_data, indent=2))
-    project_config["structures"].append({"structure_id": parent_structure_id})
+    project_config["structures"].append({"structure_ulid": parent_structure_ulid})
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
     
     # Create a calculation with a relax step
@@ -83,8 +83,8 @@ def test_save_relax_structure_idempotency(tmp_path: Path):
     step_spec = StructureStepSpec(
         meta=step_meta,
         structure="si-bulk",  # Legacy selector
-        structure_id=parent_structure_id,
-        step_type_spec="vc-relax",
+        structure_ulid=parent_structure_ulid,
+        step_type_spec="qe_vc-relax",
         parameters={},
     )
     step_path.write_text(yaml.safe_dump(step_spec.to_dict(), sort_keys=False))
@@ -99,7 +99,7 @@ def test_save_relax_structure_idempotency(tmp_path: Path):
             "kind": "calculation",
         },
         "calculation": {
-            "structure_id": parent_structure_id,
+            "structure_ulid": parent_structure_ulid,
             "working_dir": "raw",
         },
         "steps": [
@@ -133,7 +133,7 @@ End final coordinates
         project_root=project_root,
         calculation_selector="relax-test",
         step_selector=step_id,
-        parent_structure_ulid=parent_structure_id,
+        parent_structure_ulid=parent_structure_ulid,
         slug_hint="relaxed",
     )
     
@@ -161,7 +161,7 @@ End final coordinates
         project_root=project_root,
         calculation_selector="relax-test",
         step_selector=step_id,
-        parent_structure_ulid=parent_structure_id,
+        parent_structure_ulid=parent_structure_ulid,
         slug_hint="relaxed",
     )
     

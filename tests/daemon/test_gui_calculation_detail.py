@@ -117,21 +117,21 @@ class TestGetCalculationDetail:
         })
         
         # Verify response structure
-        assert "id" in result
+        assert "ulid" in result
         assert "name" in result
         assert "slug" in result
         assert "steps" in result
         assert "n_steps" in result
-        
+
         # Verify steps are present
         assert isinstance(result["steps"], list), "steps should be a list"
         assert len(result["steps"]) > 0, "Calculation should have at least one step"
         assert result["n_steps"] == len(result["steps"]), "n_steps should match steps list length"
-        
+
         # Verify step structure
         for step in result["steps"]:
-            assert "step_id" in step or "id" in step, "Step should have step_id or id"
-            assert "type" in step, "Step should have type"
+            assert "step_ulid" in step or "ulid" in step, "Step should have step_ulid or ulid"
+            assert "step_type_spec" in step or "step_type_gen" in step, "Step should have step_type_spec or step_type_gen"
             # step_file is now included for convenience (relative path from calculation directory)
             # This helps GUI display step file paths without needing to resolve via registry
             if "step_file" in step:
@@ -201,7 +201,7 @@ class TestGetCalculationDetail:
         # We can't verify exact types without loading the step files, but we can verify
         # that the order is consistent (same order as calculation.yaml)
         expected_types = ["scf", "nscf", "bands_pw", "bands"]
-        actual_types = [step.get("type") for step in result["steps"]]
+        actual_types = [step.get("step_type_gen") for step in result["steps"]]
 
         # Verify we have the expected step types (order may vary slightly, but all should be present)
         # Step types may have qe_ prefix (e.g., qe_scf, qe_nscf) or not
@@ -218,7 +218,7 @@ class TestGetCalculationDetail:
         # This ensures the ULID-based resolution works for every step in the calculation
         for idx, step in enumerate(result["steps"]):
             step_id = step.get("ulid") or step.get("step_ulid")
-            step_type = step.get("type")
+            step_type = step.get("step_type_gen")
             
             # Call get_step_detail via daemon with the ULID
             step_detail = send_request(daemon, "get_step_detail", {
@@ -228,15 +228,15 @@ class TestGetCalculationDetail:
             })
             
             # Verify response structure
-            assert "id" in step_detail, f"Step {idx} detail should have id field"
+            assert "ulid" in step_detail, f"Step {idx} detail should have ulid field"
             assert step_detail["ulid"] == step_id, \
-                f"Step {idx} detail id should match calculation step id. Expected {step_id}, got {step_detail["ulid"]}"
-            assert "step_type" in step_detail, f"Step {idx} detail should have step_type field"
-            
-            # Verify step_type is related (calculation.yaml may store public type, step.yaml stores machine type)
+                f"Step {idx} detail ulid should match calculation step ulid. Expected {step_id}, got {step_detail['ulid']}"
+            assert "step_type_spec" in step_detail, f"Step {idx} detail should have step_type_spec field"
+
+            # Verify step_type_spec is related (calculation.yaml may store gen type, step.yaml stores spec type)
             # e.g., calculation.yaml: "scf", step.yaml: "qe_scf" - both are valid representations
             if step_type:
-                detail_step_type = step_detail["step_type"]
+                detail_step_type = step_detail["step_type_spec"]
                 # Allow either exact match or public/machine type equivalence
                 matches = (
                     detail_step_type == step_type or
@@ -302,7 +302,7 @@ class TestChangeCalculationStructure:
         })
         
         # Verify response structure
-        assert "id" in result
+        assert "ulid" in result
         assert "name" in result
         assert "slug" in result
         assert "structure" in result

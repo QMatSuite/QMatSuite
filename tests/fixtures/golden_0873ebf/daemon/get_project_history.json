@@ -7,8 +7,8 @@
         "ulid": "<NORMALIZED_ID>",
         "timestamp": "<NORMALIZED_TIMESTAMP>",
         "event_type": "baseline",
-        "step_id": "<NORMALIZED_ID>",
-        "structure_ids": "<NORMALIZED_ID>",
+        "step_ulid": "<NORMALIZED_ID>",
+        "structure_ulids": "<NORMALIZED_ID>",
         "calculation_ids": [],
         "calc_ulid": "<NORMALIZED_ID>"
       }

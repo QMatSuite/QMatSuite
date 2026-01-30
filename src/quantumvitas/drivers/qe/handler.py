@@ -53,7 +53,7 @@ def _get_step_input_from_calculation_yaml(
     steps_data = data.get("steps", [])
     
     for step_data in steps_data:
-        if step_data.get("step_id") == step_ulid:
+        if step_data.get("step_ulid") == step_ulid:
             input_path_value = step_data.get("input") or step_data.get("file")
             if input_path_value:
                 input_path = Path(input_path_value)
@@ -91,19 +91,19 @@ def qe_step_handler(
         job: The Job to execute (single step)
         calculation: Calculation context
         engine_registry: Engine registry for engine lookup
-        context: Additional context (run_id, run_mode, etc.)
+        context: Additional context (run_ulid, run_mode, etc.)
 
     Returns:
         JobResult with execution status
     """
-    if len(job.step_ids) != 1:
+    if len(job.step_ulids) != 1:
         return JobResult(
             job_id=job.id,
             success=False,
-            error=f"QE handler expects single-step job, got {len(job.step_ids)} steps",
+            error=f"QE handler expects single-step job, got {len(job.step_ulids)} steps",
         )
 
-    step_ulid = job.step_ids[0]
+    step_ulid = job.step_ulids[0]
 
     # Find the step in calculation
     step = _find_step_by_ulid(calculation, step_ulid)
@@ -168,7 +168,7 @@ def qe_step_handler(
                     existing_input_path=existing_input_path,
                     working_dir=raw_dir,
                     project_root=calculation.project.root,
-                    step_id=step_ulid,
+                    step_ulid=step_ulid,
                     calculation_slug=calculation.ulid,
                     engine=engine,
                     step_type=step.step_type_spec if step.step_type_spec else None,
@@ -236,7 +236,7 @@ def handle_qe_relax_output(
     output_path: Path,
     calculation_ulid: str,
     input_structure_ulid: str,
-    run_id: Optional[str] = None,
+    run_ulid: Optional[str] = None,
 ) -> Path:
     """
     Handle QE relax step output: parse and write current.json.
@@ -248,7 +248,7 @@ def handle_qe_relax_output(
         output_path: Path to QE output file (.out)
         calculation_ulid: ULID of the calculation
         input_structure_ulid: ULID of the input structure
-        run_id: Optional run ID for provenance
+        run_ulid: Optional run ULID for provenance
         
     Returns:
         Path to written current.json
@@ -281,7 +281,7 @@ def handle_qe_relax_output(
         calc_dir=calc_dir,
         step_ulid=step_ulid,
         step_type=step_type,
-        run_id=run_id,
+        run_ulid=run_ulid,
         calculation_ulid=calculation_ulid,
         input_structure_ulid=input_structure_ulid,
     )

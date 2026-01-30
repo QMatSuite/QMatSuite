@@ -2,7 +2,7 @@
 Manifest system for incremental run tracking.
 
 Minimal manifest schema tracking step completion state and input identity (three SHAs).
-Stored at calculations/<calc_id>/.run_tmp_info/manifest.json
+Stored at calculations/<calc_ulid>/.run_tmp_info/manifest.json
 """
 
 from __future__ import annotations
@@ -167,7 +167,7 @@ def update_manifest_step(
     pseudo_set_sha: str,
     structure_sha: str,
     step_sha: str,
-    run_id: Optional[str] = None,
+    run_ulid: Optional[str] = None,
     done: bool = False,
     started_at: Optional[str] = None,
     done_at: Optional[str] = None,
@@ -186,7 +186,7 @@ def update_manifest_step(
         pseudo_set_sha: Pseudo set SHA
         structure_sha: Structure SHA
         step_sha: Step YAML SHA
-        run_id: Optional run ID
+        run_ulid: Optional run ULID
         done: Whether step is done
         started_at: Optional started timestamp (ISO8601)
         done_at: Optional done timestamp (ISO8601)
@@ -214,7 +214,7 @@ def update_manifest_step(
         structure_sha=structure_sha,
         step_sha=step_sha,
         effective_structure_sha=effective_structure_sha,
-        run_ulid=run_id,  # Parameter is run_id, field is run_ulid
+        run_ulid=run_ulid,
         done=done,
         started_at=started_at,
         done_at=done_at,
@@ -249,7 +249,7 @@ def clear_manifest_from_step(calc_dir: Path, from_step_index: int) -> None:
         entry = manifest.steps[i]
         entry.done = False
         entry.done_at = None
-        # Keep run_id and started_at for traceability (per spec)
+        # Keep run_ulid and started_at for traceability (per spec)
         # Keep SHAs as they are
     
     save_manifest_atomic(calc_dir, manifest)

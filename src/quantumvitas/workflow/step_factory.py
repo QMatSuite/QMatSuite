@@ -24,7 +24,7 @@ from quantumvitas.core.yaml_io import save_yaml_doc
 def create_step_doc(
     step_type: str,
     name: str,
-    structure_id: Optional[str] = None,
+    structure_ulid: Optional[str] = None,
     parent_calculation_id: Optional[str] = None,
     overrides: Optional[Dict[str, Any]] = None,
 ) -> StepDoc:
@@ -34,7 +34,7 @@ def create_step_doc(
     Args:
         step_type: Step type (e.g., "scf", "nscf", "dos")
         name: Step name (used for display and slug)
-        structure_id: Optional structure ULID (for backwards compat, not authoritative)
+        structure_ulid: Optional structure ULID (for backwards compat, not authoritative)
         parent_calculation_id: Parent calculation ULID
         overrides: Optional parameter overrides to apply
         
@@ -58,14 +58,14 @@ def create_step_doc(
     defaults = registry.get_defaults(step_type)
     
     # Generate meta
-    step_id = generate_resource_id()
+    step_ulid = generate_resource_id()
     slug = slugify(name)
     
     # Build step data
     # step.yaml stores step_type_spec (qe_scf), not step_type_gen (scf)
     data: Dict[str, Any] = {
         "meta": {
-            "ulid": step_id,
+            "ulid": step_ulid,
             "name": name,
             "slug": slug,
             "kind": "step",
@@ -73,9 +73,9 @@ def create_step_doc(
         "step_type_spec": machine_step_type,  # step_type_spec goes to step.yaml
     }
     
-    # DAG model: Do NOT store structure_id in step YAML
+    # DAG model: Do NOT store structure_ulid in step YAML
     # Step inherits structure from its parent calculation at runtime
-    # structure_id and parent_calculation_id are NOT stored in step.yaml
+    # structure_ulid and parent_calculation_id are NOT stored in step.yaml
     # The association is via calculation.yaml's steps array
     
     # Add parameters from defaults
@@ -192,7 +192,7 @@ def create_and_save_step(
     step_type: str,
     name: str,
     steps_dir: Path,
-    structure_id: Optional[str] = None,
+    structure_ulid: Optional[str] = None,
     parent_calculation_id: Optional[str] = None,
     overrides: Optional[Dict[str, Any]] = None,
 ) -> Path:
@@ -205,7 +205,7 @@ def create_and_save_step(
         step_type: Step type
         name: Step name
         steps_dir: Directory to save step in
-        structure_id: Optional structure ULID
+        structure_ulid: Optional structure ULID
         parent_calculation_id: Parent calculation ULID
         overrides: Optional parameter overrides
         
@@ -215,7 +215,7 @@ def create_and_save_step(
     step_doc = create_step_doc(
         step_type=step_type,
         name=name,
-        structure_id=structure_id,
+        structure_ulid=structure_ulid,
         parent_calculation_id=parent_calculation_id,
         overrides=overrides,
     )

@@ -4,7 +4,7 @@ meta:
   slug: si-bands
   path: calculations/si-bands
   kind: calculation
-structure_id: 01KC38ZCMZZQ8DAA61A6SC8X23
+structure_ulid: 01KC38ZCMZZQ8DAA61A6SC8X23
 mode: normal
 working_dir: raw
 steps:

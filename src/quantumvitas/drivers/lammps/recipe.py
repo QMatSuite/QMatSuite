@@ -120,7 +120,7 @@ class LAMMPSRecipe(BaseRecipe):
             if restart_from:
                 # Find the job that contains the restart_from step
                 for existing_job in jobs:
-                    if restart_from in existing_job.step_ids:
+                    if restart_from in existing_job.step_ulids:
                         if existing_job.id not in deps:
                             deps.append(existing_job.id)
                         break
@@ -135,7 +135,7 @@ class LAMMPSRecipe(BaseRecipe):
             # Create job
             job = Job(
                 id=job_id,
-                step_ids=[step.meta.ulid],
+                step_ulids=[step.meta.ulid],
                 working_dir=working_dir,
                 command=command,
                 input_files=input_files,

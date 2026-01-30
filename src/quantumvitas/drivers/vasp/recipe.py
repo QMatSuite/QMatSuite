@@ -101,7 +101,7 @@ class VASPRecipe(BaseRecipe):
             # Create job
             job = Job(
                 id=job_id,
-                step_ids=[step.meta.ulid],
+                step_ulids=[step.meta.ulid],
                 working_dir=working_dir,
                 command=command,
                 input_files=input_files,

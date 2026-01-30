@@ -72,23 +72,23 @@ class TestSSOTEnforcement:
         step_path = tmp_path / "test.step.yaml"
         
         initial_content = {
-            "step_type_gen": "scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {"ecutwfc": 30.0},
             },
             "some_other_field": "should_persist",
         }
         step_path.write_text(yaml.safe_dump(initial_content))
-        
+
         # Apply preset
         options = {"magnetism": MagnetismOption.NONMAGNETIC}
         apply_presets_to_step(step_path, options, validate_physics=False)
-        
+
         # Read back
         result_content = yaml.safe_load(step_path.read_text())
-        
+
         # Other fields should persist
-        assert result_content["step_type"] == "scf"
+        assert result_content["step_type_spec"] == "qe_scf"
         assert result_content["some_other_field"] == "should_persist"
         
         # Parameters should be updated

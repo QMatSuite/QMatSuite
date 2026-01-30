@@ -15,7 +15,7 @@ Storage layout:
             ├── run_revision.json
             ├── snapshot.tar.zst (optional)
             └── pins/
-                └── <step_id>/
+                └── <step_ulid>/
                     ├── <analysis_kind>.png
                     └── <analysis_kind>.json
 """
@@ -73,7 +73,7 @@ def ensure_history_dir(project_root: Path) -> Path:
     return history_dir
 
 
-def get_latest_run_id(project_root: Path) -> Optional[str]:
+def get_latest_run_ulid(project_root: Path) -> Optional[str]:
     """
     Get the ULID of the most recent run for a project.
     
@@ -86,7 +86,7 @@ def get_latest_run_id(project_root: Path) -> Optional[str]:
         ULID of latest run, or None if no runs exist
     """
     history = ProjectHistory(project_root)
-    return history.get_latest_run_id()
+    return history.get_latest_run_ulid()
 
 
 @dataclass
@@ -152,8 +152,8 @@ class ProjectHistory:
         calculation_ulids = self._get_calculation_ulids()
         
         baseline = BaselineEvent.create(
-            project_id=project_ulid,
-            structure_ids=structure_ulids,
+            project_ulid=project_ulid,
+            structure_ulids=structure_ulids,
             calculation_ids=calculation_ulids,
         )
         
@@ -201,8 +201,8 @@ class ProjectHistory:
         self,
         *,
         event_types: Optional[List[str]] = None,
-        calc_id: Optional[str] = None,
-        run_id: Optional[str] = None,
+        calc_ulid: Optional[str] = None,
+        run_ulid: Optional[str] = None,
         since: Optional[str] = None,
         until: Optional[str] = None,
         limit: Optional[int] = None,
@@ -214,8 +214,8 @@ class ProjectHistory:
         
         Args:
             event_types: Filter by event type(s)
-            calc_id: Filter by calculation ID
-            run_id: Filter by run ID
+            calc_ulid: Filter by calculation ID
+            run_ulid: Filter by run ID
             since: ISO timestamp - events after this time
             until: ISO timestamp - events before this time
             limit: Maximum number of events to return
@@ -243,12 +243,12 @@ class ProjectHistory:
                     # Apply filters
                     if event_types and event.event_type not in event_types:
                         continue
-                    if calc_id and event.calc_ulid != calc_id:
+                    if calc_ulid and event.calc_ulid != calc_ulid:
                         continue
-                    if run_id:
-                        # Check run_id field for run events
-                        event_run_id = getattr(event, "run_ulid", None)
-                        if event_run_id != run_id:
+                    if run_ulid:
+                        # Check run_ulid field for run events
+                        event_run_ulid = getattr(event, "run_ulid", None)
+                        if event_run_ulid != run_ulid:
                             continue
                     if since and event.timestamp < since:
                         continue
@@ -300,7 +300,7 @@ class ProjectHistory:
         
         return None
     
-    def get_latest_run_id(self) -> Optional[str]:
+    def get_latest_run_ulid(self) -> Optional[str]:
         """
         Get the ULID of the most recent run.
         
@@ -323,56 +323,56 @@ class ProjectHistory:
         
         return None
     
-    def get_run_step_ids(self, run_id: str) -> List[str]:
+    def get_run_step_ulids(self, run_ulid: str) -> List[str]:
         """
         Get the list of step IDs that were executed in a run.
         
         Args:
-            run_id: ULID of the run
+            run_ulid: ULID of the run
             
         Returns:
             List of step IDs, or empty list if not found
         """
-        # Find run_started event with this run_id
+        # Find run_started event with this run_ulid
         events = self.list_events(
             event_types=[EventType.RUN_STARTED.value],
-            run_id=run_id,
+            run_ulid=run_ulid,
             limit=1,
         )
         
         if events:
             event = events[0]
             if isinstance(event, RunStartedEvent):
-                return event.step_ids
-            return getattr(event, "step_ids", [])
+                return event.step_ulids
+            return getattr(event, "step_ulids", [])
         
         return []
     
-    def create_run_dir(self, run_id: str) -> Path:
+    def create_run_dir(self, run_ulid: str) -> Path:
         """
         Create directory for a run.
         
         Args:
-            run_id: ULID for the run
+            run_ulid: ULID for the run
             
         Returns:
             Path to run directory
         """
-        run_dir = self.runs_dir / f"run_{run_id}"
+        run_dir = self.runs_dir / f"run_{run_ulid}"
         run_dir.mkdir(parents=True, exist_ok=True)
         return run_dir
     
-    def get_run_dir(self, run_id: str) -> Optional[Path]:
+    def get_run_dir(self, run_ulid: str) -> Optional[Path]:
         """
         Get directory for a run if it exists.
         
         Args:
-            run_id: ULID of the run
+            run_ulid: ULID of the run
             
         Returns:
             Path to run directory, or None if not found
         """
-        run_dir = self.runs_dir / f"run_{run_id}"
+        run_dir = self.runs_dir / f"run_{run_ulid}"
         if run_dir.exists():
             return run_dir
         return None
@@ -380,14 +380,14 @@ class ProjectHistory:
     def list_runs(
         self,
         *,
-        calc_id: Optional[str] = None,
+        calc_ulid: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> List[str]:
         """
         List run IDs, newest first.
         
         Args:
-            calc_id: Optional filter by calculation ID
+            calc_ulid: Optional filter by calculation ID
             limit: Maximum number of runs to return
             
         Returns:
@@ -395,43 +395,43 @@ class ProjectHistory:
         """
         events = self.list_events(
             event_types=[EventType.RUN_FINISHED.value],
-            calc_id=calc_id,
+            calc_ulid=calc_ulid,
             reverse=True,
         )
         
-        run_ids = []
+        run_ulids = []
         seen = set()
 
         for event in events:
-            run_id = getattr(event, "run_ulid", None)
-            if run_id and run_id not in seen:
-                seen.add(run_id)
-                run_ids.append(run_id)
-                if limit and len(run_ids) >= limit:
+            run_ulid = getattr(event, "run_ulid", None)
+            if run_ulid and run_ulid not in seen:
+                seen.add(run_ulid)
+                run_ulids.append(run_ulid)
+                if limit and len(run_ulids) >= limit:
                     break
 
-        return run_ids
+        return run_ulids
     
-    def get_pins_for_run(self, run_id: str) -> List[Dict[str, Any]]:
+    def get_pins_for_run(self, run_ulid: str) -> List[Dict[str, Any]]:
         """
         Get all pins for a run.
         
         Args:
-            run_id: ULID of the run
+            run_ulid: ULID of the run
             
         Returns:
-            List of pin info dicts with step_id, analysis_kind, paths
+            List of pin info dicts with step_ulid, analysis_kind, paths
         """
         events = self.list_events(
             event_types=[EventType.PIN_CREATED.value],
-            run_id=run_id,
+            run_ulid=run_ulid,
         )
         
         pins = []
         for event in events:
             if isinstance(event, PinCreatedEvent):
                 pins.append({
-                    "step_id": event.step_ulid,
+                    "step_ulid": event.step_ulid,
                     "analysis_kind": event.analysis_kind,
                     "pin_path": event.pin_path,
                     "timestamp": event.timestamp,
@@ -439,13 +439,13 @@ class ProjectHistory:
 
         return pins
     
-    def pin_exists(self, run_id: str, step_id: str, analysis_kind: str) -> bool:
+    def pin_exists(self, run_ulid: str, step_ulid: str, analysis_kind: str) -> bool:
         """
         Check if a pin already exists.
         
         Args:
-            run_id: ULID of the run
-            step_id: ULID of the step
+            run_ulid: ULID of the run
+            step_ulid: ULID of the step
             analysis_kind: Type of analysis (e.g., "bands", "dos")
             
         Returns:
@@ -453,12 +453,12 @@ class ProjectHistory:
         """
         events = self.list_events(
             event_types=[EventType.PIN_CREATED.value],
-            run_id=run_id,
+            run_ulid=run_ulid,
         )
         
         for event in events:
             if (isinstance(event, PinCreatedEvent) and
-                event.step_ulid == step_id and
+                event.step_ulid == step_ulid and
                 event.analysis_kind == analysis_kind):
                 return True
 
@@ -480,7 +480,7 @@ class ProjectHistory:
             from quantumvitas.core.project_utils import load_project_config
             config = load_project_config(self.project_root)
             structures = config.get("structures", [])
-            return [s.get("structure_ulid", s.get("structure_id", s.get("ulid", ""))) for s in structures if s]
+            return [s.get("structure_ulid", s.get("structure_ulid", s.get("ulid", ""))) for s in structures if s]
         except Exception:
             return []
     
@@ -495,7 +495,7 @@ class ProjectHistory:
             return []
 
 
-def generate_run_id() -> str:
+def generate_run_ulid() -> str:
     """Generate a new ULID for a run."""
     return str(ulid.new())
 

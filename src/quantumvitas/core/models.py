@@ -127,8 +127,8 @@ class CalculationStepEntry:
         # HARD ERROR if old keys exist
         if "type" in data and "step_type_spec" not in data:
             raise ValueError("Legacy 'type' key in calculation.yaml. Run migration script.")
-        if "step_id" in data and "step_ulid" not in data:
-            raise ValueError("Legacy 'step_id' key in calculation.yaml. Run migration script.")
+        if "step_ulid" in data and "step_ulid" not in data:
+            raise ValueError("Legacy 'step_ulid' key in calculation.yaml. Run migration script.")
         
         # New format: step_ulid (ULID) - REQUIRED
         step_ulid = data.get("step_ulid")
@@ -176,7 +176,7 @@ class CalculationModel:
     All calculations have a meta section with id, name, slug, path.
     
     Structure references:
-    - structure_id: ULID of the structure (canonical reference)
+    - structure_ulid: ULID of the structure (canonical reference)
     - structure_name: Optional display name (cosmetic only, not used for resolution)
     
     Structure and engine metadata:
@@ -189,9 +189,9 @@ class CalculationModel:
       This is the authoritative source for pseudo mapping (not step-level).
     """
     meta: ResourceMeta
-    structure_id: Optional[str] = None  # Canonical structure reference (ULID)
+    structure_ulid: Optional[str] = None  # Canonical structure reference (ULID)
     structure_name: Optional[str] = None  # Optional display name (cosmetic)
-    # Legacy structure selector field removed - use structure_id (ULID) only
+    # Legacy structure selector field removed - use structure_ulid (ULID) only
     mode: str = "normal"
     working_dir: str = "raw"
     steps: List[CalculationStepEntry] = field(default_factory=list)
@@ -238,10 +238,10 @@ class CalculationModel:
             "working_dir": self.working_dir,
             "steps": [s.to_dict() for s in self.steps],
         }
-        # Write structure_id (canonical reference - ID only)
+        # Write structure_ulid (canonical reference - ID only)
         # Do NOT write structure_name (cosmetic only, not used for resolution)
-        if self.structure_id:
-            result["structure_id"] = self.structure_id
+        if self.structure_ulid:
+            result["structure_ulid"] = self.structure_ulid
         # Phase 2: Write structure_kind and engine_family (immutable metadata)
         if self.structure_kind:
             result["structure_kind"] = self.structure_kind
@@ -269,7 +269,7 @@ class CalculationModel:
         Create CalculationModel from dictionary.
         
         This method only supports the DAG + ULID model. Legacy calculations
-        (with structure selector instead of structure_id) must be migrated first.
+        (with structure selector instead of structure_ulid) must be migrated first.
         
         Args:
             data: Dictionary containing calculation data
@@ -279,7 +279,7 @@ class CalculationModel:
             project_root: Optional project root for error messages
         
         Raises:
-            LegacyProjectError: If legacy fields are detected (structure selector without structure_id)
+            LegacyProjectError: If legacy fields are detected (structure selector without structure_ulid)
         """
         from quantumvitas.core.exceptions import LegacyProjectError
         
@@ -287,17 +287,17 @@ class CalculationModel:
         calculation_section = data.get("calculation", {})
         working_dir = data.get("working_dir") or calculation_section.get("working_dir", "raw")
         
-        # New format: structure_id (canonical) - REQUIRED if structure is referenced
-        structure_id = data.get("structure_id") or calculation_section.get("structure_id")
+        # New format: structure_ulid (canonical) - REQUIRED if structure is referenced
+        structure_ulid = data.get("structure_ulid") or calculation_section.get("structure_ulid")
         structure_name = data.get("structure_name") or calculation_section.get("structure_name")
         
         # Legacy format: structure selector (NOT SUPPORTED)
         structure = data.get("structure") or calculation_section.get("structure")
         
-        # Detect legacy pattern: structure selector without structure_id
-        if structure and not structure_id:
+        # Detect legacy pattern: structure selector without structure_ulid
+        if structure and not structure_ulid:
             error_msg = (
-                "Legacy calculation detected: has 'structure' selector but no 'structure_id' ULID. "
+                "Legacy calculation detected: has 'structure' selector but no 'structure_ulid' ULID. "
                 "Please run the migration script to upgrade this calculation."
             )
             if project_root:
@@ -367,7 +367,7 @@ class CalculationModel:
         
         return cls(
             meta=meta,
-            structure_id=structure_id,
+            structure_ulid=structure_ulid,
             structure_name=structure_name,
             mode=data.get("mode", "normal"),
             working_dir=working_dir,
@@ -378,7 +378,7 @@ class CalculationModel:
             potential_map=potential_map,
         )
     
-    # Legacy resolve_step_ids method removed - all steps must have step_ulid (ULID) at load time
+    # Legacy resolve_step_ulids method removed - all steps must have step_ulid (ULID) at load time
 
 
 def load_calculation(
@@ -390,7 +390,7 @@ def load_calculation(
     Load a CalculationModel from a calculation.yaml file.
     
     This function only supports the DAG + ULID model. Legacy calculations
-    (with structure selector instead of structure_id) will raise LegacyProjectError.
+    (with structure selector instead of structure_ulid) will raise LegacyProjectError.
     
     Args:
         path: Path to calculation.yaml or calculation directory
@@ -447,13 +447,13 @@ def load_calculation(
         project_root=project_root or calculation_dir,
     )
     
-    # If structure_id exists but structure_name is missing, look it up for display
-    if model.structure_id and not model.structure_name and project_root:
+    # If structure_ulid exists but structure_name is missing, look it up for display
+    if model.structure_ulid and not model.structure_name and project_root:
         try:
             from quantumvitas.core.resolution import resolve_structure
             from quantumvitas.core.project_utils import load_project_config
             config = load_project_config(project_root)
-            resolved = resolve_structure(project_root, model.structure_id, config=config)
+            resolved = resolve_structure(project_root, model.structure_ulid, config=config)
             model.structure_name = resolved.meta.name
         except Exception:
             # If lookup fails, structure_name remains None (cosmetic field)
@@ -614,12 +614,12 @@ class StructureEntry:
         """
         Convert to dictionary for YAML serialization.
         
-        DAG + ID-only model: Stores only structure_id (ULID) for cross-resource reference.
+        DAG + ID-only model: Stores only structure_ulid (ULID) for cross-resource reference.
         No duplicated name/slug/path - structure's own meta lives in structure JSON file.
-        No file path - structure location resolved via ResourceIndex using structure_id.
+        No file path - structure location resolved via ResourceIndex using structure_ulid.
         """
         result = {
-            "structure_id": self.meta.ulid,  # ID-only reference (ULID)
+            "structure_ulid": self.meta.ulid,  # ID-only reference (ULID)
         }
         # Format is optional metadata, not a cross-reference
         if self.format != "auto":
@@ -631,13 +631,13 @@ class StructureEntry:
         """
         Create StructureEntry from dictionary.
         
-        DAG + ID-only model: Requires structure_id (ULID).
-        Structure file location is resolved via ResourceIndex using structure_id.
+        DAG + ID-only model: Requires structure_ulid (ULID).
+        Structure file location is resolved via ResourceIndex using structure_ulid.
         """
-        # structure_id (ULID) is required
-        structure_id = data.get("structure_id")
-        if not structure_id:
-            structure_id = data.get("ulid")  # Fallback to 'id' field if structure_id missing
+        # structure_ulid (ULID) is required
+        structure_ulid = data.get("structure_ulid")
+        if not structure_ulid:
+            structure_ulid = data.get("ulid")  # Fallback to 'id' field if structure_ulid missing
         
         # Extract name/slug/path from meta for display
         meta_dict = data.get("meta") or {}
@@ -645,7 +645,7 @@ class StructureEntry:
         file_path = data.get("file") or meta_dict.get("path")
         
         # If we have an ID, try to load meta from the structure file
-        if structure_id:
+        if structure_ulid:
             # Try to find structure file and load its meta
             structures_dir = project_root / "structures"
             if structures_dir.exists():
@@ -654,7 +654,7 @@ class StructureEntry:
                         import json
                         struct_data = json.loads(struct_file.read_text())
                         struct_meta_dict = struct_data.get("__qv_meta__") or struct_data.get("meta")
-                        if struct_meta_dict and struct_meta_dict.get("ulid") == structure_id:
+                        if struct_meta_dict and struct_meta_dict.get("ulid") == structure_ulid:
                             # Found matching structure file - use its meta
                             meta = ResourceMeta.from_dict(
                                 struct_meta_dict,
@@ -697,7 +697,7 @@ class StructureEntry:
         
         # Last resort: create meta from provided/defaults
         meta = ResourceMeta(
-            ulid=meta_dict.get("ulid") or structure_id or generate_resource_id(),
+            ulid=meta_dict.get("ulid") or structure_ulid or generate_resource_id(),
             name=name,
             slug=meta_dict.get("slug") or slugify(name),
             path=file_path,

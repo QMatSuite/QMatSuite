@@ -105,9 +105,9 @@ class CalculationRunner:
         calculation: Calculation,
         *,
         skip_history: bool = False,
-        run_id: Optional[str] = None,
+        run_ulid: Optional[str] = None,
         run_mode: str = "incremental",  # "incremental" or "full"
-        target_step_id: Optional[str] = None,  # For Run Step mode (TARGET selection)
+        target_step_ulid: Optional[str] = None,  # For Run Step mode (TARGET selection)
         compat_input_playback: bool = False,  # For tutorial playback tests: use existing .in files
     ) -> CalculationResult:
         """
@@ -118,13 +118,13 @@ class CalculationRunner:
         Args:
             calculation: The calculation to execute
             skip_history: If True, skip history recording (for testing)
-            run_id: External run ID to use (e.g., job_id from JobManager).
+            run_ulid: External run ID to use (e.g., job_id from JobManager).
                     If provided, this ID will be used for history recording
-                    to ensure job_id == run_id identity.
+                    to ensure job_id == run_ulid identity.
             run_mode: Run mode ("incremental" or "full"). Default "incremental".
                      Incremental skips steps that are already done and unchanged.
                      Full reruns all steps from step0.
-            target_step_id: If provided, only run steps up to and including this target
+            target_step_ulid: If provided, only run steps up to and including this target
                            (Run Step mode with TARGET selection). Target step always runs.
 
         Returns:
@@ -136,17 +136,17 @@ class CalculationRunner:
         status = StepStatus.SUCCESS
         calculation_failed = False
         
-        # Generate run_id if not provided
-        if run_id is None:
+        # Generate run_ulid if not provided
+        if run_ulid is None:
             import ulid
-            run_id = str(ulid.new())
+            run_ulid = str(ulid.new())
         
         # History: Create run revision and record run_started event
         run_revision = None
-        actual_run_id = run_id  # Use external run_id if provided
+        actual_run_ulid = run_ulid  # Use external run_ulid if provided
         if not skip_history:
-            run_revision, actual_run_id = self._start_history_recording(
-                calculation, started, run_id=run_id
+            run_revision, actual_run_ulid = self._start_history_recording(
+                calculation, started, run_ulid=run_ulid
             )
 
         # Step0: Prepare pseudos in project/pseudo (constitution-compliant)
@@ -217,7 +217,7 @@ class CalculationRunner:
                     finished=datetime.now(timezone.utc),
                     step_summaries=step_summaries,
                     io_dir=calculation.raw_dir.resolve() if calculation.raw_dir else None,
-                    run_ulid=actual_run_id,
+                    run_ulid=actual_run_ulid,
                 )
             
             # Log warnings if any
@@ -266,10 +266,10 @@ class CalculationRunner:
                 current_pseudo_set_sha = compute_pseudo_set_sha(project_pseudo_dir, species_map)
                 
                 # Resolve structure path
-                if calculation.structure_id:
+                if calculation.structure_ulid:
                     structure_resolved = require_structure(
                         calculation.project.root,
-                        calculation.structure_id,
+                        calculation.structure_ulid,
                         config=None,
                         index=None,
                     )
@@ -294,7 +294,7 @@ class CalculationRunner:
                 logger.warning(f"[CALCULATION_RUNNER] Manifest reconciliation failed: {e}, starting from beginning")
                 start_idx = 0
         elif run_mode == "full":
-            # Full run: reconcile manifest first, then mark all entries as done=False and clear run_id/timestamps
+            # Full run: reconcile manifest first, then mark all entries as done=False and clear run_ulid/timestamps
             try:
                 from quantumvitas.calculation.manifest_reconcile import reconcile_manifest
                 from quantumvitas.calculation.hash_utils import compute_pseudo_set_sha
@@ -304,10 +304,10 @@ class CalculationRunner:
                 species_map = calculation.species_map or {}
                 current_pseudo_set_sha = compute_pseudo_set_sha(project_pseudo_dir, species_map) if species_map else ""
                 
-                if calculation.structure_id:
+                if calculation.structure_ulid:
                     structure_resolved = require_structure(
                         calculation.project.root,
-                        calculation.structure_id,
+                        calculation.structure_ulid,
                         config=None,
                         index=None,
                     )
@@ -325,15 +325,15 @@ class CalculationRunner:
                         structure_path=structure_path,
                     )
                     
-                    # Step 2: Mark all entries as done=False and clear run_id/timestamps for full run
+                    # Step 2: Mark all entries as done=False and clear run_ulid/timestamps for full run
                     from quantumvitas.calculation.manifest import save_manifest_atomic
                     for entry in manifest.steps:
                         entry.done = False
                         entry.done_at = None
-                        entry.run_ulid = None  # Clear run_id for full run
+                        entry.run_ulid = None  # Clear run_ulid for full run
                         entry.started_at = None  # Clear started_at for full run
                     save_manifest_atomic(calculation.dir, manifest)
-                    logger.info(f"[CALCULATION_RUNNER] Full run mode: reconciled manifest, marked all entries as done=False, cleared run_id/timestamps")
+                    logger.info(f"[CALCULATION_RUNNER] Full run mode: reconciled manifest, marked all entries as done=False, cleared run_ulid/timestamps")
                 else:
                     logger.warning(f"[CALCULATION_RUNNER] Structure path not found for full run, proceeding without reconciliation")
                 
@@ -384,11 +384,11 @@ class CalculationRunner:
                 pseudo_sha_computed = compute_pseudo_set_sha(project_pseudo_dir, species_map) if species_map else ""
 
             # Compute structure_sha
-            if calculation.structure_id:
+            if calculation.structure_ulid:
                 try:
                     structure_resolved = require_structure(
                         calculation.project.root,
-                        calculation.structure_id,
+                        calculation.structure_ulid,
                         config=None,
                         index=None,
                     )
@@ -420,9 +420,9 @@ class CalculationRunner:
         try:
             step_summaries = self._execute_with_jobgraph(
                 calculation,
-                run_id=run_id,
+                run_ulid=run_ulid,
                 run_mode=run_mode,
-                target_step_id=target_step_id,
+                target_step_ulid=target_step_ulid,
                 manifest=manifest,
                 step_shas=step_shas,
                 structure_sha=structure_sha_computed,
@@ -441,10 +441,10 @@ class CalculationRunner:
             io_dir = calculation.raw_dir.resolve() if calculation.raw_dir else None
 
             # History: Complete run revision
-            if not skip_history and actual_run_id:
+            if not skip_history and actual_run_ulid:
                 self._complete_history_recording(
                     calculation=calculation,
-                    run_id=actual_run_id,
+                    run_ulid=actual_run_ulid,
                     status=status,
                     step_summaries=step_summaries,
                     working_dir=io_dir,
@@ -458,7 +458,7 @@ class CalculationRunner:
                 started_at=started,
                 finished_at=finished,
                 io_dir=io_dir,
-                run_ulid=actual_run_id,
+                run_ulid=actual_run_ulid,
             )
 
         except Exception as e:
@@ -471,9 +471,9 @@ class CalculationRunner:
         self,
         calculation: Calculation,
         *,
-        run_id: str,
+        run_ulid: str,
         run_mode: str,
-        target_step_id: Optional[str],
+        target_step_ulid: Optional[str],
         manifest: Optional[Any],
         step_shas: Dict[str, str],
         structure_sha: str,
@@ -487,9 +487,9 @@ class CalculationRunner:
 
         Args:
             calculation: Calculation to execute
-            run_id: Run ID for manifest tracking
+            run_ulid: Run ID for manifest tracking
             run_mode: "incremental" or "full"
-            target_step_id: If provided, TARGET selection mode
+            target_step_ulid: If provided, TARGET selection mode
             manifest: Current manifest (for incremental skip logic)
             step_shas: Dict of step_ulid -> SHA for fingerprinting
             structure_sha: Structure SHA for manifest
@@ -532,11 +532,11 @@ class CalculationRunner:
         logger.info(f"[CALCULATION_RUNNER] Materialized JobGraph with {len(job_graph)} jobs")
 
         # Determine selection mode
-        selection = SelectionMode.TARGET if target_step_id else SelectionMode.ALL
+        selection = SelectionMode.TARGET if target_step_ulid else SelectionMode.ALL
 
         # Create execution context
         context = {
-            "run_id": run_id,
+            "run_ulid": run_ulid,
             "run_mode": run_mode,
             "compat_input_playback": compat_input_playback,
         }
@@ -555,7 +555,7 @@ class CalculationRunner:
             job_graph=job_graph,
             calculation=calculation,
             selection=selection,
-            target_step_id=target_step_id,
+            target_step_ulid=target_step_ulid,
             manifest=manifest_for_executor,
             step_shas=step_shas,
         )
@@ -567,7 +567,7 @@ class CalculationRunner:
                 continue
 
             # For each step in this job, create a summary and update manifest
-            for step_idx, step_ulid in enumerate(job.step_ids):
+            for step_idx, step_ulid in enumerate(job.step_ulids):
                 step = self._find_step_by_ulid(calculation, step_ulid)
                 if step is None:
                     continue
@@ -618,7 +618,7 @@ class CalculationRunner:
                             pseudo_set_sha=pseudo_set_sha,
                             structure_sha=structure_sha,
                             step_sha=step_sha,
-                            run_id=run_id,
+                            run_ulid=run_ulid,
                             done=step_success,
                             started_at=now_iso8601() if not job_result.started_at else job_result.started_at.isoformat(),
                             done_at=now_iso8601() if step_success else None,
@@ -632,7 +632,7 @@ class CalculationRunner:
                                 raise ValueError(f"Step {step_ulid} missing engine field")
                             update_provenance_after_step(
                                 calc_dir=calculation.dir,
-                                run_id=run_id,
+                                run_ulid=run_ulid,
                                 step_ulid=step_ulid,
                                 engine=engine_name,
                             )
@@ -675,7 +675,7 @@ class CalculationRunner:
         calculation: Calculation,
         started: datetime,
         *,
-        run_id: Optional[str] = None,
+        run_ulid: Optional[str] = None,
     ) -> tuple:
         """
         Create run revision and record run_started event.
@@ -683,11 +683,11 @@ class CalculationRunner:
         Args:
             calculation: The calculation being run
             started: Start timestamp
-            run_id: External run ID to use (e.g., job_id from JobManager).
+            run_ulid: External run ID to use (e.g., job_id from JobManager).
                     If provided, this ID will be used instead of generating a new one.
         
         Returns:
-            Tuple of (run_revision, run_id) or (None, None) on error
+            Tuple of (run_revision, run_ulid) or (None, None) on error
         """
         try:
             from quantumvitas.history.run_revision import create_run_revision
@@ -695,7 +695,7 @@ class CalculationRunner:
             from quantumvitas.history.events import RunStartedEvent
             
             # Gather step info
-            step_ids = [s.meta.ulid for s in calculation.steps]
+            step_ulids = [s.meta.ulid for s in calculation.steps]
             step_types = [
                 str(s.step_type_spec) if s.step_type_spec else "unknown"
                 for s in calculation.steps
@@ -735,14 +735,14 @@ class CalculationRunner:
                 if not engine_family:
                     raise ValueError("Calculation requires explicit engine_family")
             
-            # Create run revision (use external run_id if provided)
+            # Create run revision (use external run_ulid if provided)
             run_revision = create_run_revision(
                 project_root=calculation.project.root,
-                calc_id=calculation.ulid,
+                calc_ulid=calculation.ulid,
                 calc_name=calculation.name if hasattr(calculation, "name") else None,
-                step_ids=step_ids,
+                step_ulids=step_ulids,
                 step_types=step_types,
-                structure_id=getattr(calculation, "structure_id", None),
+                structure_ulid=getattr(calculation, "structure_ulid", None),
                 structure_name=getattr(calculation, "structure_name", None),
                 engine=engine_family,
                 engine_version=engine_version,
@@ -751,30 +751,30 @@ class CalculationRunner:
                 species_map=calculation.species_map,
                 working_dir=calculation.raw_dir,
                 create_snapshot=True,
-                run_id=run_id,  # Use external run_id (job_id) if provided
+                run_ulid=run_ulid,  # Use external run_ulid (job_id) if provided
             )
             
-            actual_run_id = run_revision.id
+            actual_run_ulid = run_revision.ulid
             
             # Record run_started event
             history = ProjectHistory(calculation.project.root)
-            project_id = run_revision.project_id
+            project_ulid = run_revision.project_ulid
             
             event = RunStartedEvent.create(
-                project_id=project_id,
-                calc_id=calculation.ulid,
-                run_id=actual_run_id,
+                project_ulid=project_ulid,
+                calc_ulid=calculation.ulid,
+                run_ulid=actual_run_ulid,
                 calc_name=calculation.name if hasattr(calculation, "name") else None,
-                step_ids=step_ids,
+                step_ulids=step_ulids,
                 step_types=step_types,
                 engine=engine_family,
-                structure_id=getattr(calculation, "structure_id", None),
+                structure_ulid=getattr(calculation, "structure_ulid", None),
                 snapshot_path=run_revision.snapshot_path,
             )
             history.append_event(event)
             
-            logger.debug(f"[HISTORY] Created run revision: {actual_run_id}")
-            return run_revision, actual_run_id
+            logger.debug(f"[HISTORY] Created run revision: {actual_run_ulid}")
+            return run_revision, actual_run_ulid
             
         except Exception as e:
             logger.warning(f"[HISTORY] Failed to start history recording: {e}")
@@ -783,7 +783,7 @@ class CalculationRunner:
     def _complete_history_recording(
         self,
         calculation: Calculation,
-        run_id: str,
+        run_ulid: str,
         status: StepStatus,
         step_summaries: List[StepResultSummary],
         working_dir: Optional[Path],
@@ -822,7 +822,7 @@ class CalculationRunner:
             # Complete run revision with digests
             run_revision = complete_run_revision(
                 project_root=calculation.project.root,
-                run_id=run_id,
+                run_ulid=run_ulid,
                 status=status_str,
                 step_results=step_results,
                 working_dir=working_dir or calculation.raw_dir,
@@ -838,9 +838,9 @@ class CalculationRunner:
             failure_count = run_digest.get("failed_count", 0)
             
             event = RunFinishedEvent.create(
-                project_id=run_revision.project_id,
-                calc_id=calculation.ulid,
-                run_id=run_id,
+                project_ulid=run_revision.project_ulid,
+                calc_ulid=calculation.ulid,
+                run_ulid=run_ulid,
                 status=status_str,
                 duration_seconds=duration,
                 step_count=len(step_summaries),
@@ -850,7 +850,7 @@ class CalculationRunner:
             )
             history.append_event(event)
             
-            logger.debug(f"[HISTORY] Completed run revision: {run_id} ({status_str})")
+            logger.debug(f"[HISTORY] Completed run revision: {run_ulid} ({status_str})")
             
         except Exception as e:
             logger.warning(f"[HISTORY] Failed to complete history recording: {e}")

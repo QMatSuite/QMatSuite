@@ -3,7 +3,7 @@
   "success": true,
   "response": {
     "project_root": "<NORMALIZED_PATH>",
-    "project_id": "<NORMALIZED_ID>",
+    "project_ulid": "<NORMALIZED_ID>",
     "project_name": "demo-si-project",
     "structure": {
       "ulid": "<NORMALIZED_ID>",

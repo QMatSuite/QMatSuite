@@ -257,10 +257,10 @@ def ensure_qe_pseudos(
                                             elem: entry.get("pseudopot", "") if isinstance(entry, dict) else ""
                                             for elem, entry in calc_model.species_map.items()
                                         }
-                                    if calc_model.structure_id:
+                                    if calc_model.structure_ulid:
                                         from quantumvitas.core.resolution import resolve_structure
                                         try:
-                                            struct_resolved = resolve_structure(project_root, calc_model.structure_id, config=config)
+                                            struct_resolved = resolve_structure(project_root, calc_model.structure_ulid, config=config)
                                             calc_context["structure_path"] = str(struct_resolved.absolute_path)
                                         except Exception:
                                             pass

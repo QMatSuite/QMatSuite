@@ -47,7 +47,7 @@ class TestHandlePySCFRelaxOutput:
             results=results,
             calculation_ulid=calculation_ulid,
             input_structure_ulid=input_structure_ulid,
-            run_id=run_id,
+            run_ulid=run_id,
         )
         
         # Verify current.json was created

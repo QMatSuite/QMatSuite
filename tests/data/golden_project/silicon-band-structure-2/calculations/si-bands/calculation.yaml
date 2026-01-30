@@ -15,7 +15,7 @@ steps:
   step_type_spec: bands_pw
 - step_ulid: 01KDTJYMXYCM2E6AGA3RZPJRG3
   step_type_spec: bands
-structure_id: 01KDTJYMXY21PZ4P5J5P0RCERR
+structure_ulid: 01KDTJYMXY21PZ4P5J5P0RCERR
 species_map:
   Si:
     mass: 28.0855

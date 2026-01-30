@@ -30,9 +30,9 @@ class TestNoSilentQEFallback:
 
     def test_unknown_type_returns_none_not_qe(self):
         """Unknown type should return None, not 'qe'."""
-        from quantumvitas.core.calc_identity import _infer_engine_family_from_machine_types
+        from quantumvitas.core.calc_identity import _infer_engine_family_from_spec_types
 
-        result = _infer_engine_family_from_machine_types(["totally_unknown_xyz_123"])
+        result = _infer_engine_family_from_spec_types(["totally_unknown_xyz_123"])
 
         # After fix: should be None (not "qe")
         assert result is None, (
