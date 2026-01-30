@@ -11,8 +11,17 @@ class MockStep:
     """Mock step for testing."""
     id: str
     public_type: str
-    step_type: str
+    step_type_spec: str  # SPEC type (e.g., "orca_scf")
+    step_type_gen: str = ""  # GEN type (e.g., "scf") - derived from spec
     parameters: Dict[str, Any] = field(default_factory=dict)
+    
+    @property
+    def meta(self):
+        """Mock meta attribute for compatibility."""
+        class MockMeta:
+            def __init__(self, ulid):
+                self.ulid = ulid
+        return MockMeta(self.id)
 
 
 @dataclass
@@ -160,7 +169,8 @@ class TestORCAEngineChainExecution:
         scf_step = MockStep(
             id="s1",
             public_type="scf",
-            step_type="orca_scf",
+            step_type_spec="orca_scf",
+            step_type_gen="scf",
             parameters={"functional": "B3LYP", "basis": "def2-SVP"},
         )
         chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
@@ -191,13 +201,15 @@ class TestORCAEngineChainExecution:
         scf_step = MockStep(
             id="s1",
             public_type="scf",
-            step_type="orca_scf",
+            step_type_spec="orca_scf",
+            step_type_gen="scf",
             parameters={"functional": "HF", "basis": "def2-SVP"},
         )
         td_step = MockStep(
             id="s2",
             public_type="td",
-            step_type="orca_td",
+            step_type_spec="orca_td",
+            step_type_gen="td",
             parameters={"nroots": 3, "tda": True},
         )
         chain = QCChain(scf_root=scf_step, downstream=[td_step], key="chain01_scf_td")

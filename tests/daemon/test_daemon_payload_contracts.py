@@ -137,15 +137,15 @@ class TestListCalculationsContract:
         
         if response["calculations"]:
             calc = response["calculations"][0]
-            # Required compatibility keys
-            assert "id" in calc
+            # Required compatibility keys (ulid is the canonical name)
+            assert "ulid" in calc
             assert "slug" in calc or calc.get("slug") is None  # May be None
             assert "path" in calc or calc.get("path") is None  # May be None
             # n_steps is only included if step_count is not None
             if calc.get("step_count") is not None:
                 assert "n_steps" in calc
             # Canonical keys also present
-            assert "calc_id" in calc
+            assert "calc_ulid" in calc
             # step_count may be None for new calculations
 
 

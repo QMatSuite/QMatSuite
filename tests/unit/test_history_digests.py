@@ -36,14 +36,14 @@ class TestSCFDigest:
             pytest.skip(f"Reference directory not found: {ref_dir}")
         
         digest = compute_step_digest(
-            step_id="test-scf-001",
-            step_type="scf",
+            step_ulid="test-scf-001",
+            step_type_spec="qe_scf",
             working_dir=ref_dir,
             step_name="Test SCF",
             step_status="success",
         )
         
-        assert digest.step_type == "scf"
+        assert digest.step_type_spec == "qe_scf"
         assert digest.output_exists
         
         # Check converged
@@ -69,8 +69,8 @@ class TestSCFDigest:
             pytest.skip("Si DOS reference not found")
         
         digest = compute_step_digest(
-            step_id="test-scf-002",
-            step_type="scf",
+            step_ulid="test-scf-002",
+            step_type_spec="qe_scf",
             working_dir=ref_dir,
         )
         
@@ -98,12 +98,12 @@ class TestNSCFDigest:
             pytest.skip("Si band structure reference not found")
         
         digest = compute_step_digest(
-            step_id="test-nscf-001",
-            step_type="nscf",
+            step_ulid="test-nscf-001",
+            step_type_spec="qe_nscf",
             working_dir=ref_dir,
         )
         
-        assert digest.step_type == "nscf"
+        assert digest.step_type_spec == "qe_nscf"
         
         # Check Fermi energy (should be present for NSCF)
         if digest.fermi_energy and digest.fermi_energy.status == "ok":
@@ -123,12 +123,12 @@ class TestBandsDigest:
             pytest.skip("Si band structure reference not found")
         
         digest = compute_step_digest(
-            step_id="test-bands-001",
-            step_type="bands",
+            step_ulid="test-bands-001",
+            step_type_spec="qe_bands",
             working_dir=ref_dir,
         )
         
-        assert digest.step_type == "bands"
+        assert digest.step_type_spec == "qe_bands"
         
         # Should parse n_bands and n_kpoints from bands.dat.gnu
         if digest.n_bands and digest.n_bands.status == "ok":
@@ -149,12 +149,12 @@ class TestDOSDigest:
             pytest.skip("Si DOS reference not found")
         
         digest = compute_step_digest(
-            step_id="test-dos-001",
-            step_type="dos",
+            step_ulid="test-dos-001",
+            step_type_spec="qe_dos",
             working_dir=ref_dir,
         )
         
-        assert digest.step_type == "dos"
+        assert digest.step_type_spec == "qe_dos"
         
         # Should parse energy range
         if digest.dos_energy_range and digest.dos_energy_range.status == "ok":
@@ -175,12 +175,12 @@ class TestRelaxDigest:
             pytest.skip("H2O reference not found")
         
         digest = compute_step_digest(
-            step_id="test-relax-001",
-            step_type="relax",
+            step_ulid="test-relax-001",
+            step_type_spec="qe_relax",
             working_dir=ref_dir,
         )
         
-        assert digest.step_type == "relax"
+        assert digest.step_type_spec == "qe_relax"
         
         # Should have converged
         if digest.converged and digest.converged.status == "ok":
@@ -193,8 +193,8 @@ class TestDigestRobustness:
     def test_missing_output_file(self, tmp_path: Path):
         """Test digest handles missing output file gracefully."""
         digest = compute_step_digest(
-            step_id="test-missing",
-            step_type="scf",
+            step_ulid="test-missing",
+            step_type_spec="qe_scf",
             working_dir=tmp_path,
         )
         
@@ -208,8 +208,8 @@ class TestDigestRobustness:
         output_file.write_text("")
         
         digest = compute_step_digest(
-            step_id="test-empty",
-            step_type="scf",
+            step_ulid="test-empty",
+            step_type_spec="qe_scf",
             working_dir=tmp_path,
         )
         
@@ -223,8 +223,8 @@ class TestDigestRobustness:
         output_file.write_text("This is not valid QE output")
         
         digest = compute_step_digest(
-            step_id="test-malformed",
-            step_type="scf",
+            step_ulid="test-malformed",
+            step_type_spec="qe_scf",
             working_dir=tmp_path,
         )
         
@@ -250,8 +250,8 @@ class TestDigestRobustness:
 """)
         
         digest = compute_step_digest(
-            step_id="test-partial",
-            step_type="scf",
+            step_ulid="test-partial",
+            step_type_spec="qe_scf",
             working_dir=tmp_path,
         )
         
@@ -280,8 +280,8 @@ class TestDigestRobustness:
 """)
         
         digest = compute_step_digest(
-            step_id="test-success",
-            step_type="scf",
+            step_ulid="test-success",
+            step_type_spec="qe_scf",
             working_dir=tmp_path,
         )
         
@@ -301,13 +301,13 @@ class TestDigestRobustness:
         output_file.write_text("JOB DONE.")
         
         digest = compute_step_digest(
-            step_id="test-unknown",
-            step_type="custom_unknown",
+            step_ulid="test-unknown",
+            step_type_spec="custom_unknown",
             working_dir=tmp_path,
         )
         
         # Should not crash
-        assert digest.step_type == "custom_unknown"
+        assert digest.step_type_spec == "custom_unknown"
     
     def test_all_metrics_independent(self, tmp_path: Path):
         """Test that failure to parse one metric doesn't affect others."""
@@ -321,8 +321,8 @@ class TestDigestRobustness:
 """)
         
         digest = compute_step_digest(
-            step_id="test-partial-metrics",
-            step_type="scf",
+            step_ulid="test-partial-metrics",
+            step_type_spec="qe_scf",
             working_dir=tmp_path,
         )
         
@@ -349,8 +349,8 @@ class TestProjectExamplesDigest:
             pytest.skip("project2_bands reference not found")
         
         digest = compute_step_digest(
-            step_id="test-proj-scf",
-            step_type="scf",
+            step_ulid="test-proj-scf",
+            step_type_spec="qe_scf",
             working_dir=ref_dir,
         )
         
@@ -372,8 +372,8 @@ class TestProjectExamplesDigest:
             pytest.skip("project2_bands reference not found")
         
         digest = compute_step_digest(
-            step_id="test-proj-nscf",
-            step_type="nscf",
+            step_ulid="test-proj-nscf",
+            step_type_spec="qe_nscf",
             working_dir=ref_dir,
         )
         

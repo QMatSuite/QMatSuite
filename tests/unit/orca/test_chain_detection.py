@@ -9,7 +9,8 @@ class MockStep:
     """Mock step for testing."""
     id: str
     public_type: str
-    step_type: str
+    step_type_spec: str  # SPEC type (e.g., "orca_scf")
+    step_type_gen: str = ""  # GEN type (e.g., "scf") - derived from spec
     parameters: Dict[str, Any] = None
 
     def __post_init__(self):
@@ -24,7 +25,7 @@ class TestChainDetection:
         """Single SCF step forms one chain."""
         from quantumvitas.engine.qc_engine_base import detect_chains
 
-        steps = [MockStep(id="s1", public_type="scf", step_type="orca_scf")]
+        steps = [MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf")]
         chains = detect_chains(steps)
 
         assert len(chains) == 1
@@ -36,8 +37,8 @@ class TestChainDetection:
         from quantumvitas.engine.qc_engine_base import detect_chains
 
         steps = [
-            MockStep(id="s1", public_type="scf", step_type="orca_scf"),
-            MockStep(id="s2", public_type="td", step_type="orca_td"),
+            MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
+            MockStep(id="s2", public_type="td", step_type_spec="orca_td", step_type_gen="td"),
         ]
         chains = detect_chains(steps)
 
@@ -51,10 +52,10 @@ class TestChainDetection:
         from quantumvitas.engine.qc_engine_base import detect_chains
 
         steps = [
-            MockStep(id="s1", public_type="scf", step_type="orca_scf"),
-            MockStep(id="s2", public_type="td", step_type="orca_td"),
-            MockStep(id="s3", public_type="scf", step_type="orca_scf"),
-            MockStep(id="s4", public_type="td", step_type="orca_td"),
+            MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
+            MockStep(id="s2", public_type="td", step_type_spec="orca_td", step_type_gen="td"),
+            MockStep(id="s3", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
+            MockStep(id="s4", public_type="td", step_type_spec="orca_td", step_type_gen="td"),
         ]
         chains = detect_chains(steps)
 
@@ -67,8 +68,8 @@ class TestChainDetection:
         from quantumvitas.engine.qc_engine_base import detect_chains
 
         steps = [
-            MockStep(id="s1", public_type="hf", step_type="orca_hf"),
-            MockStep(id="s2", public_type="td", step_type="orca_td"),
+            MockStep(id="s1", public_type="hf", step_type_spec="orca_hf", step_type_gen="hf"),
+            MockStep(id="s2", public_type="td", step_type_spec="orca_td", step_type_gen="td"),
         ]
         chains = detect_chains(steps)
 
@@ -80,8 +81,8 @@ class TestChainDetection:
         from quantumvitas.engine.qc_engine_base import QCChain, derive_chain_key
 
         chain = QCChain(
-            scf_root=MockStep(id="s1", public_type="scf", step_type="orca_scf"),
-            downstream=[MockStep(id="s2", public_type="td", step_type="orca_td")],
+            scf_root=MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
+            downstream=[MockStep(id="s2", public_type="td", step_type_spec="orca_td", step_type_gen="td")],
         )
 
         key = derive_chain_key(chain, chain_index=1)
@@ -92,7 +93,7 @@ class TestChainDetection:
         from quantumvitas.engine.qc_engine_base import QCChain, derive_chain_key
 
         chain = QCChain(
-            scf_root=MockStep(id="s1", public_type="scf", step_type="orca_scf"),
+            scf_root=MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
             downstream=[],
         )
 
@@ -104,10 +105,10 @@ class TestChainDetection:
         from quantumvitas.engine.qc_engine_base import detect_chains
 
         steps = [
-            MockStep(id="s1", public_type="scf", step_type="orca_scf"),
-            MockStep(id="s2", public_type="td", step_type="orca_td"),
-            MockStep(id="s3", public_type="scf", step_type="orca_scf"),
-            MockStep(id="s4", public_type="td", step_type="orca_td"),
+            MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
+            MockStep(id="s2", public_type="td", step_type_spec="orca_td", step_type_gen="td"),
+            MockStep(id="s3", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
+            MockStep(id="s4", public_type="td", step_type_spec="orca_td", step_type_gen="td"),
         ]
         chains = detect_chains(steps)
 
@@ -119,10 +120,10 @@ class TestChainDetection:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         chain = QCChain(
-            scf_root=MockStep(id="s1", public_type="scf", step_type="orca_scf"),
+            scf_root=MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
             downstream=[
-                MockStep(id="s2", public_type="td", step_type="orca_td"),
-                MockStep(id="s3", public_type="freq", step_type="orca_freq"),
+                MockStep(id="s2", public_type="td", step_type_spec="orca_td", step_type_gen="td"),
+                MockStep(id="s3", public_type="freq", step_type_spec="orca_freq", step_type_gen="freq"),
             ],
             key="chain01_scf_td_freq",
         )
@@ -142,10 +143,10 @@ class TestPartialChain:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         chain = QCChain(
-            scf_root=MockStep(id="s1", public_type="scf", step_type="orca_scf"),
+            scf_root=MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
             downstream=[
-                MockStep(id="s2", public_type="td", step_type="orca_td"),
-                MockStep(id="s3", public_type="freq", step_type="orca_freq"),
+                MockStep(id="s2", public_type="td", step_type_spec="orca_td", step_type_gen="td"),
+                MockStep(id="s3", public_type="freq", step_type_spec="orca_freq", step_type_gen="freq"),
             ],
             key="chain01_scf_td_freq",
         )
@@ -161,8 +162,8 @@ class TestPartialChain:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         chain = QCChain(
-            scf_root=MockStep(id="s1", public_type="scf", step_type="orca_scf"),
-            downstream=[MockStep(id="s2", public_type="td", step_type="orca_td")],
+            scf_root=MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
+            downstream=[MockStep(id="s2", public_type="td", step_type_spec="orca_td", step_type_gen="td")],
             key="chain01_scf_td",
         )
 
@@ -176,7 +177,7 @@ class TestPartialChain:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         chain = QCChain(
-            scf_root=MockStep(id="s1", public_type="scf", step_type="orca_scf"),
+            scf_root=MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
             downstream=[],
             key="chain01_scf",
         )
@@ -193,8 +194,8 @@ class TestFindChainForStep:
         from quantumvitas.engine.qc_engine_base import detect_chains, find_chain_for_step
 
         steps = [
-            MockStep(id="s1", public_type="scf", step_type="orca_scf"),
-            MockStep(id="s2", public_type="td", step_type="orca_td"),
+            MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
+            MockStep(id="s2", public_type="td", step_type_spec="orca_td", step_type_gen="td"),
         ]
         chains = detect_chains(steps)
 
@@ -208,8 +209,8 @@ class TestFindChainForStep:
         from quantumvitas.engine.qc_engine_base import detect_chains, find_chain_for_step
 
         steps = [
-            MockStep(id="s1", public_type="scf", step_type="orca_scf"),
-            MockStep(id="s2", public_type="td", step_type="orca_td"),
+            MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf"),
+            MockStep(id="s2", public_type="td", step_type_spec="orca_td", step_type_gen="td"),
         ]
         chains = detect_chains(steps)
 
@@ -222,7 +223,7 @@ class TestFindChainForStep:
         """Find chain for nonexistent step returns None."""
         from quantumvitas.engine.qc_engine_base import detect_chains, find_chain_for_step
 
-        steps = [MockStep(id="s1", public_type="scf", step_type="orca_scf")]
+        steps = [MockStep(id="s1", public_type="scf", step_type_spec="orca_scf", step_type_gen="scf")]
         chains = detect_chains(steps)
 
         chain = find_chain_for_step("nonexistent", chains)
