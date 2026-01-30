@@ -58,13 +58,14 @@ jobs:
           wget \
           make \
           ccache \
-          lammps
+          lammps \
+          ripgrep
     
     - name: Install system dependencies and setup compilers (macOS)
       if: matrix.os == 'macos-14'
       run: |
         brew update
-        brew install gcc gfortran openmpi fftw wget make ccache lammps
+        brew install gcc gfortran openmpi fftw wget make ccache lammps ripgrep
         
         # Get gcc prefix and detect versioned gcc
         GCC_PREFIX=$(brew --prefix gcc)
