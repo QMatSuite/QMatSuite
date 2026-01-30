@@ -230,7 +230,7 @@ calculations:
         emax: 35
     input_name: al.4_dos.in
     step_type_spec: qe_dos
-  structure_id: 01KE2M0K7SPR71FVHYJVHX8QZ2
+  structure_ulid: 01KE2M0K7SPR71FVHYJVHX8QZ2
   species_map:
     Al:
       mass: 26.981539

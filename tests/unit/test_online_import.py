@@ -32,7 +32,7 @@ def test_import_online_candidate_unique_slug():
             "name": "test_project",
             "structures": [
                 {
-                    "structure_id": "test-id-1",
+                    "structure_ulid": "test-id-1",
                     "meta": {
                         "name": "Silicon",
                         "slug": "silicon",

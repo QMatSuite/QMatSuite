@@ -124,7 +124,7 @@ def map_kernel_exception(exc: Exception) -> APIError:
             context={
                 "expected_mode": getattr(exc, "expected_mode", ""),
                 "actual_mode": getattr(exc, "actual_mode", ""),
-                "calc_id": getattr(exc, "calc_id", ""),
+                "calc_ulid": getattr(exc, "calc_id", ""),
             },
             cause=_make_cause(exc, trace_id),
         )
@@ -177,8 +177,8 @@ def map_kernel_exception(exc: Exception) -> APIError:
                 message=str(exc),
                 code="RUN_LOCK_HELD",
                 context={
-                    "calc_id": getattr(exc, "calc_id", ""),
-                    "run_id": getattr(exc, "run_id", ""),
+                    "calc_ulid": getattr(exc, "calc_id", ""),
+                    "run_ulid": getattr(exc, "run_id", ""),
                 },
                 cause=_make_cause(exc, trace_id),
             )
@@ -187,7 +187,7 @@ def map_kernel_exception(exc: Exception) -> APIError:
                 message=str(exc),
                 code="EDIT_LOCK_HELD",
                 context={
-                    "calc_id": getattr(exc, "calc_id", ""),
+                    "calc_ulid": getattr(exc, "calc_id", ""),
                     "holder": getattr(exc, "holder", None),
                     "since": getattr(exc, "since", None),
                 },
@@ -202,8 +202,8 @@ def map_kernel_exception(exc: Exception) -> APIError:
             retryable=True,
             context={
                 "engine": getattr(exc, "engine", "unknown"),
-                "calc_id": getattr(exc, "calc_id", ""),
-                "step_id": getattr(exc, "step_id", ""),
+                "calc_ulid": getattr(exc, "calc_id", ""),
+                "step_ulid": getattr(exc, "step_ulid", ""),
                 "exit_code": getattr(exc, "exit_code", -1),
                 "log_path": str(getattr(exc, "log_path", "")) if hasattr(exc, "log_path") else None,
             },
@@ -217,8 +217,8 @@ def map_kernel_exception(exc: Exception) -> APIError:
             retryable=False,
             context={
                 "engine": getattr(exc, "engine", "unknown"),
-                "calc_id": getattr(exc, "calc_id", ""),
-                "step_id": getattr(exc, "step_id", ""),
+                "calc_ulid": getattr(exc, "calc_id", ""),
+                "step_ulid": getattr(exc, "step_ulid", ""),
                 "parser": getattr(exc, "parser", "unknown"),
                 "file_path": str(getattr(exc, "file_path", "")) if hasattr(exc, "file_path") else None,
             },

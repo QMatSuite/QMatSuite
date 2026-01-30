@@ -64,16 +64,9 @@ class CalculationDTO(BaseDTO):
     def calc_id(self) -> str:
         """Compatibility: return calc_ulid."""
         return self.calc_ulid
-    
-    @property
-    def structure_id(self) -> str | None:
-        """Compatibility: return structure_ulid."""
-        return self.structure_ulid
-    
-    @property
-    def step_ids(self) -> list[str] | None:
-        """Compatibility: return step_ulids."""
-        return self.step_ulids
+
+    # Note: structure_ulid and step_ulids are dataclass fields, not properties
+    # Removed duplicate property definitions that shadowed the fields
     
     @property
     def name(self) -> str | None:

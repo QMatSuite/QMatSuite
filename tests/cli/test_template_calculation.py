@@ -151,14 +151,14 @@ def test_template_structure_copied(template_project):
     calculation_yaml = project_dir / "calculations" / "si-dos" / "calculation.yaml"
     calculation_data = yaml.safe_load(calculation_yaml.read_text())
     
-    # ID-only model: check for structure_id instead of structure
-    structure_id = calculation_data.get("structure_id")
-    assert structure_id, "Calculation should reference a structure via structure_id"
+    # ID-only model: check for structure_ulid instead of structure
+    structure_ulid = calculation_data.get("structure_ulid")
+    assert structure_ulid, "Calculation should reference a structure via structure_ulid"
     
     # Check structure file exists by resolving via project
     from quantumvitas.project.model import Project
     project = Project.open(project_dir)
-    structure_ref = project.get_structure(structure_id)
+    structure_ref = project.get_structure(structure_ulid)
     assert structure_ref.absolute_path.exists(), f"Structure file {structure_ref.absolute_path} should exist"
 
 
@@ -220,7 +220,7 @@ def test_init_calculation_from_template_with_custom_structure(tmp_path):
     # Register structure in project
     config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
     config.setdefault("structures", []).append({
-        "structure_id": structure_ulid,  # ID-only reference (ULID)
+        "structure_ulid": structure_ulid,  # ID-only reference (ULID)
     })
     with open(project_dir / "project.qv.yml", "w") as f:
         yaml.safe_dump(config, f)
@@ -237,23 +237,23 @@ def test_init_calculation_from_template_with_custom_structure(tmp_path):
     # Check calculation uses custom structure
     calculation_yaml = project_dir / "calculations" / "my-calculation" / "calculation.yaml"
     calculation_data = yaml.safe_load(calculation_yaml.read_text())
-    # ID-only model: calculation should reference structure via structure_id (ULID)
-    structure_id = calculation_data.get("structure_id")
-    assert structure_id is not None, "Calculation should reference structure via structure_id (ULID)"
-    # Verify structure_id is a ULID (26 chars), not a human-readable name
-    assert len(structure_id) == 26, "structure_id should be a ULID, not a human-readable name"
+    # ID-only model: calculation should reference structure via structure_ulid (ULID)
+    structure_ulid = calculation_data.get("structure_ulid")
+    assert structure_ulid is not None, "Calculation should reference structure via structure_ulid (ULID)"
+    # Verify structure_ulid is a ULID (26 chars), not a human-readable name
+    assert len(structure_ulid) == 26, "structure_ulid should be a ULID, not a human-readable name"
     # Verify it resolves to the custom structure
     from quantumvitas.core.resolution import resolve_structure
-    resolved_structure = resolve_structure(project_dir, structure_id)
+    resolved_structure = resolve_structure(project_dir, structure_ulid)
     assert resolved_structure.meta.slug == "custom_si", "Calculation should reference custom_si structure"
     
-    # DAG model: Step YAML should NOT contain structure_id (inherits from calculation)
-    # Verify step files do not contain structure_id
+    # DAG model: Step YAML should NOT contain structure_ulid (inherits from calculation)
+    # Verify step files do not contain structure_ulid
     steps_dir = project_dir / "calculations" / "my-calculation" / "steps"
     for step_file in steps_dir.glob("*.step.yaml"):
         step_data = yaml.safe_load(step_file.read_text())
-        assert "structure_id" not in step_data, (
-            f"Step {step_file.name} should not contain structure_id (DAG model)"
+        assert "structure_ulid" not in step_data, (
+            f"Step {step_file.name} should not contain structure_ulid (DAG model)"
         )
         assert "structure" not in step_data, (
             f"Step {step_file.name} should not contain structure selector (DAG model)"

@@ -143,7 +143,7 @@ class TestArchiveToSlotAction:
         context = PostJobContext(
             calc_raw_dir=raw_dir,
             variant_key="scan_abc123",
-            run_id="run001",
+            run_ulid="run001",
         )
         
         job_result = Mock()
@@ -169,7 +169,7 @@ class TestArchiveToSlotAction:
         context = PostJobContext(
             calc_raw_dir=raw_dir,
             variant_key="scan_abc123",
-            run_id="run001",
+            run_ulid="run001",
         )
         
         job_result = Mock()
@@ -195,7 +195,7 @@ class TestArchiveToSlotAction:
         context = PostJobContext(
             calc_raw_dir=raw_dir,
             variant_key="scan_abc123",
-            run_id="run001",
+            run_ulid="run001",
         )
         
         # First archive
@@ -234,7 +234,7 @@ class TestArchiveToSlotAction:
         context = PostJobContext(
             calc_raw_dir=raw_dir,
             variant_key="scan_abc123",
-            run_id="run001",
+            run_ulid="run001",
         )
         
         job_result = Mock()
@@ -258,7 +258,7 @@ class TestArchiveToSlotAction:
         context = PostJobContext(
             calc_raw_dir=raw_dir,
             variant_key="scan_abc123",
-            run_id="run001",
+            run_ulid="run001",
         )
         
         job_result = Mock()
@@ -273,7 +273,7 @@ class TestArchiveToSlotAction:
         entries = json.loads(slots_file.read_text())
         assert len(entries) == 1
         assert entries[0]["variant_key"] == "scan_abc123"
-        assert entries[0]["run_id"] == "run001"
+        assert entries[0]["run_ulid"] == "run001"
         assert entries[0]["ok"] is True
         assert "timestamp" in entries[0]
         assert "archived_path" in entries[0]

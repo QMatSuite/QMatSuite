@@ -67,10 +67,10 @@ def orca_project(tmp_path):
     structures_dir.mkdir(parents=True, exist_ok=True)
 
     from quantumvitas.core.resources import generate_resource_id
-    structure_id = generate_resource_id()
+    structure_ulid = generate_resource_id()
     structure_data = {
         "__qv_meta__": {
-            "ulid": structure_id,
+            "ulid": structure_ulid,
             "name": "H2O",
             "slug": "h2o",
             "path": "structures/h2o.json",
@@ -84,7 +84,7 @@ def orca_project(tmp_path):
     calc_resolved = QVService.init_calculation(
         project_root=project_root,
         name="h2o-scf",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_id = calc_resolved.meta.ulid
     calc_dir = calc_resolved.absolute_path
@@ -114,7 +114,7 @@ def orca_project(tmp_path):
 
     return {
         "root": project_root,
-        "structure_id": structure_id,
+        "structure_ulid": structure_ulid,
         "calc_id": calc_id,
         "calc_dir": calc_dir,
         "step_ulid": step_id,
@@ -156,7 +156,7 @@ class TestORCAProjectLevelExecution:
         )
 
         # Should complete (success or failure based on ORCA availability)
-        assert "step_id" in result
+        assert "step_ulid" in result
         assert result["step_ulid"] == orca_project["step_ulid"]
 
     def test_spec_step_type_preserved_in_step_yaml(self, orca_project):
@@ -172,12 +172,12 @@ class TestORCAProjectLevelExecution:
         step_files = list(steps_dir.glob("*.yaml")) + list(steps_dir.glob("*.yml"))
         assert len(step_files) > 0, "No step files found"
 
-        # Check that step_type is SPEC format
+        # Check that step_type_spec is SPEC format (YAML persists SPEC, not GEN)
         for step_file in step_files:
             step_data = yaml.safe_load(step_file.read_text())
-            step_type = step_data.get("step_type", "")
-            assert step_type.startswith("orca_"), (
-                f"Step type '{step_type}' is not SPEC format (should start with 'orca_')"
+            step_type_spec = step_data.get("step_type_spec", "")
+            assert step_type_spec.startswith("orca_"), (
+                f"Step type '{step_type_spec}' is not SPEC format (should start with 'orca_')"
             )
 
     def test_no_run_step_legacy_attribute(self, orca_project):

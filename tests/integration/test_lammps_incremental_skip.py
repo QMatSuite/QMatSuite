@@ -66,13 +66,13 @@ def inline_lj_project(tmp_path: Path, lammps_binary):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Ar FCC")
-    structure_id = struct_result.meta.ulid
+    structure_ulid = struct_result.meta.ulid
     
     # Create calculation
     calc_result = QVService.init_calculation(
         project_root=project_root,
         name="inline_lj",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path
@@ -161,7 +161,7 @@ def test_inline_lj_potential_affects_skip(inline_lj_project, lammps_binary):
     
     step_entry = manifest.steps[0]
     assert step_entry.done, "Step should be marked done after first run"
-    first_run_id = step_entry.run_id
+    first_run_id = step_entry.run_ulid
     first_done_at = step_entry.done_at
     first_step_sha = step_entry.step_sha
     
@@ -218,7 +218,7 @@ def test_inline_lj_potential_affects_skip(inline_lj_project, lammps_binary):
     
     # Check that step actually executed (log file should be newer or run_id different)
     # If step was skipped, done_at would be same; if rerun, done_at should be newer
-    assert step_entry2.done_at != first_done_at or step_entry2.run_id != first_run_id, \
+    assert step_entry2.done_at != first_done_at or step_entry2.run_ulid != first_run_id, \
         "Step should have been rerun (done_at or run_id should change)"
     
     # Verify new step_sha is recorded
@@ -248,7 +248,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC")
-    structure_id = struct_result.meta.ulid
+    structure_ulid = struct_result.meta.ulid
     
     # Copy potential file from resources
     repo_root = Path(__file__).parent.parent.parent
@@ -266,7 +266,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     calc_result = QVService.init_calculation(
         project_root=project_root,
         name="external_pot",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path
@@ -363,7 +363,7 @@ def test_external_potential_file_content_affects_skip(external_potential_project
     
     step_entry = manifest.steps[0]
     assert step_entry.done, "Step should be marked done after first run"
-    first_run_id = step_entry.run_id
+    first_run_id = step_entry.run_ulid
     first_done_at = step_entry.done_at
     first_pseudo_sha = step_entry.pseudo_set_sha  # For LAMMPS, this is potential_assets_sha
     
@@ -406,7 +406,7 @@ def test_external_potential_file_content_affects_skip(external_potential_project
     assert step_entry2.done, "Step should be done after second run"
     
     # Verify step was rerun (done_at should be newer or run_id different)
-    assert step_entry2.done_at != first_done_at or step_entry2.run_id != first_run_id, \
+    assert step_entry2.done_at != first_done_at or step_entry2.run_ulid != first_run_id, \
         "Step should have been rerun (done_at or run_id should change)"
     
     # Verify new potential_assets_sha is recorded

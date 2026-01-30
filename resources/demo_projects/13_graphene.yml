@@ -341,7 +341,7 @@ calculations:
       ulid: 01KE2KZ62DG5C1GH9ZX0GBN97V
     input_name: graphene.5_plotband.in
     step_type_spec: qe_custom
-  structure_id: 01KE2KZ5WDGPM4AJAG40SF9MZ0
+  structure_ulid: 01KE2KZ5WDGPM4AJAG40SF9MZ0
   species_map:
     C:
       mass: 12.0107

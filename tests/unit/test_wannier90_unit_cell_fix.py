@@ -54,8 +54,8 @@ def test_w90_unit_cell_cart_in_angstrom(diamond_structure, tmp_path):
             path="test",
             kind="step"
         ),
-        step_type="w90_preproc",
-        structure_id=None,
+        step_type_spec="w90_preproc",
+        structure_ulid=None,
         structure=diamond_structure,
         parameters={
             "seedname": "diamond",
@@ -127,8 +127,8 @@ def test_w90_atoms_frac_from_structure(diamond_structure, tmp_path):
             path="test",
             kind="step"
         ),
-        step_type="w90_preproc",
-        structure_id=None,
+        step_type_spec="w90_preproc",
+        structure_ulid=None,
         structure=str(structure_file),
         parameters={
             "seedname": "diamond",

@@ -61,9 +61,9 @@ def orca_chain_handler(
         )
 
     # Get the steps in this chain
-    steps = [_find_step_by_ulid(calculation, ulid) for ulid in job.step_ids]
+    steps = [_find_step_by_ulid(calculation, ulid) for ulid in job.step_ulids]
     if None in steps:
-        missing = [ulid for ulid, s in zip(job.step_ids, steps) if s is None]
+        missing = [ulid for ulid, s in zip(job.step_ulids, steps) if s is None]
         return JobResult(
             job_id=job.id,
             success=False,
@@ -103,7 +103,7 @@ def orca_chain_handler(
             target_step=target_step,
             chain_steps=steps,
             calculation_raw_dir=working_dir,  # Use job.working_dir directly
-            structure_id=calculation.structure_id if hasattr(calculation, 'structure_id') else None,
+            structure_ulid=calculation.structure_ulid if hasattr(calculation, 'structure_ulid') else None,
             project_root=calculation.project.root,
         )
 

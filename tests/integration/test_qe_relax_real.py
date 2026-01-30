@@ -88,7 +88,7 @@ def qe_project_with_si():
     
     return {
         "project_root": project_root,
-        "structure_id": struct_result.meta.ulid,
+        "structure_ulid": struct_result.meta.ulid,
         "structure_path": struct_result.absolute_path,
         "test_dir": test_dir,  # Keep test_dir for cleanup if needed
     }
@@ -98,13 +98,13 @@ def qe_project_with_si():
 def qe_calculation_with_relax(qe_project_with_si):
     """Create a calculation with a relax step, configured for QE."""
     project_root = qe_project_with_si["project_root"]
-    structure_id = qe_project_with_si["structure_id"]
+    structure_ulid = qe_project_with_si["structure_ulid"]
     
     # Create calculation
     calc_result = QVService.init_calculation(
         project_root=project_root,
         name="si_relax",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_ulid = calc_result.ulid
     # calc_dir should be the calculation directory (where calculation.yaml is)
@@ -173,7 +173,7 @@ def qe_calculation_with_relax(qe_project_with_si):
         "calc_ulid": calc_ulid,
         "calc_dir": calc_dir,
         "relax_step_ulid": relax_step_ulid,
-        "structure_id": structure_id,
+        "structure_ulid": structure_ulid,
     }
 
 

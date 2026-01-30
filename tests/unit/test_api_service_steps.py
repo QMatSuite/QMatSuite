@@ -118,14 +118,14 @@ def test_add_step_to_calculation_creates_valid_spec(temp_project):
     # Verify it can be loaded as StructureStepSpec
     spec = StructureStepSpec.from_dict(step_data, source_path=step_file)
     assert spec.step_type_spec == "qe_scf", f"Expected step_type_spec to be 'qe_scf', got '{spec.step_type_spec}'"
-    # DAG model: Step YAML should NOT contain structure_id (inherits from calculation)
-    # Verify step YAML does not contain structure_id
-    assert "structure_id" not in step_data, "Step YAML should not contain structure_id (DAG model)"
-    # Structure is resolved via calculation.structure_id at runtime
-    # The calculation should have structure_id set
+    # DAG model: Step YAML should NOT contain structure_ulid (inherits from calculation)
+    # Verify step YAML does not contain structure_ulid
+    assert "structure_ulid" not in step_data, "Step YAML should not contain structure_ulid (DAG model)"
+    # Structure is resolved via calculation.structure_ulid at runtime
+    # The calculation should have structure_ulid set
     calculation_yaml = temp_project / "calculations" / "test-calculation" / "calculation.yaml"
     calculation_data = yaml.safe_load(calculation_yaml.read_text())
-    assert calculation_data.get("structure_id") == "01TESTSTRUCTUREID123456789", "Calculation should reference structure via structure_id"
+    assert calculation_data.get("structure_ulid") == "01TESTSTRUCTUREID123456789", "Calculation should reference structure via structure_ulid"
 
     # Verify defaults are present (from-scratch mode uses defaults)
     assert "CONTROL" in spec.parameters

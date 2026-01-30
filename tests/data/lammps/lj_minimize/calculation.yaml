@@ -1,5 +1,5 @@
 engine: lammps
-structure_id: 01KFCH7N4BPY2WJQCNK5HE7X30
+structure_ulid: 01KFCH7N4BPY2WJQCNK5HE7X30
 steps:
 - type: relax
   parameters:

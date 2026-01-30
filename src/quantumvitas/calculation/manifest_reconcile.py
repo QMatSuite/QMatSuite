@@ -144,14 +144,14 @@ def reconcile_manifest(
                         actually_done = is_step_done(calc_dir, step_kind, calc_raw_dir=calc_raw_dir, step_doc=step_doc_dict)
                         
                         if actually_done:
-                            # All match and actually done: keep old entry (update ULID and SHAs but keep done/run_id/timestamps)
+                            # All match and actually done: keep old entry (update ULID and SHAs but keep done/run_ulid/timestamps)
                             new_entry = ManifestStepEntry(
                                 kind=step_kind,
                                 step_ulid=step_ulid,  # Update ULID to current
                                 pseudo_set_sha=current_pseudo_set_sha,
                                 structure_sha=structure_sha,
                                 step_sha=step_sha,
-                                run_ulid=old_entry.run_ulid,  # Keep old run_id
+                                run_ulid=old_entry.run_ulid,  # Keep old run_ulid
                                 done=True,  # Verified as done
                                 started_at=old_entry.started_at,  # Keep timestamps
                                 done_at=old_entry.done_at,
@@ -202,7 +202,7 @@ def reconcile_manifest(
                         pseudo_set_sha=current_pseudo_set_sha,
                         structure_sha=structure_sha,
                         step_sha=step_sha,
-                        run_ulid=old_entry.run_ulid,  # Keep run_id but done=false
+                        run_ulid=old_entry.run_ulid,  # Keep run_ulid but done=false
                         done=False,  # Force rerun
                         started_at=None,
                         done_at=None,
@@ -216,7 +216,7 @@ def reconcile_manifest(
                 if first_changed_idx > i:
                     first_changed_idx = i
                 # Continue to create fresh entries for remaining steps (don't break)
-                # Clear run_id and timestamps on kind mismatch
+                # Clear run_ulid and timestamps on kind mismatch
                 new_entry = ManifestStepEntry(
                     kind=step_kind,
                     step_ulid=step_ulid,

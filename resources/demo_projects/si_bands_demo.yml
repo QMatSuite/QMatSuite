@@ -197,7 +197,7 @@ calculations:
       BANDS:
         filband: si.bands.dat
     step_type_spec: qe_bands
-  structure_id: 01KC38ZCMZZQ8DAA61A6SC8X23
+  structure_ulid: 01KC38ZCMZZQ8DAA61A6SC8X23
   species_map:
     Si:
       mass: 28.0855

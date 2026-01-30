@@ -209,7 +209,7 @@ calculations:
       ulid: 01KE2M0KWRJVHD1A86AF1G62GT
     input_name: si.4_plotband.in
     step_type_spec: qe_custom
-  structure_id: 01KE2M0KQPMSQQF6KAF80VY7K6
+  structure_ulid: 01KE2M0KQPMSQQF6KAF80VY7K6
   species_map:
     Si:
       mass: 28.0855

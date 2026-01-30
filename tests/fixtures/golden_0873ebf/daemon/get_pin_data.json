@@ -2,7 +2,7 @@
   "method": "get_pin_data",
   "success": true,
   "response": {
-    "error": "Run not found: test_run_id"
+    "error": "Run not found: test_run_ulid"
   },
   "recipe_name": "OtherMethodsRecipe(get_pin_data)",
   "baseline_commit": "0873ebf",

@@ -18,7 +18,7 @@ Design invariants (DO NOT VIOLATE):
 from quantumvitas.history.storage import (
     ProjectHistory,
     ensure_history_dir,
-    get_latest_run_id,
+    get_latest_run_ulid,
 )
 
 from quantumvitas.history.events import (
@@ -55,7 +55,7 @@ __all__ = [
     # Storage
     "ProjectHistory",
     "ensure_history_dir",
-    "get_latest_run_id",
+    "get_latest_run_ulid",
     # Events
     "HistoryEvent",
     "EditEvent",

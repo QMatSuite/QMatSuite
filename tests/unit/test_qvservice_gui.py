@@ -21,7 +21,7 @@ class TestGetProjectSummary:
         
         summary = QVService.get_project_summary(project_root)
         
-        assert "id" in summary
+        assert "ulid" in summary
         assert summary["name"] == "Test Project"
         assert "slug" in summary
         assert summary["path"] == str(project_root)
@@ -70,7 +70,7 @@ class TestListStructuresData:
         entry = structures[0]
         
         # Required fields
-        assert "id" in entry
+        assert "ulid" in entry
         assert "name" in entry
         assert "slug" in entry
         assert "path" in entry
@@ -105,7 +105,7 @@ class TestListCalculationsData:
         entry = calculations[0]
         
         # Required fields
-        assert "id" in entry
+        assert "ulid" in entry
         assert "name" in entry
         assert "slug" in entry
         assert "path" in entry
@@ -129,7 +129,7 @@ class TestGetStructureVisData:
         vis_data = svc.structure.get_vis_data("si")
         
         # Core fields
-        assert "structure_id" in vis_data
+        assert "structure_ulid" in vis_data
         assert "structure_name" in vis_data
         assert "formula" in vis_data
         assert "n_atoms" in vis_data

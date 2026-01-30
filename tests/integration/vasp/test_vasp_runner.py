@@ -27,7 +27,7 @@ class MockStep:
     """Mock step for testing."""
     def __init__(self, step_id: str, step_type: str, public_type: str, parameters: Dict[str, Any] = None):
         self.id = step_id
-        self.step_type = step_type
+        self.step_type_spec = step_type
         self.step_type_gen = public_type
         self.parameters = parameters or {}
         self.options = {}
@@ -37,9 +37,9 @@ class MockStep:
 
 class MockCalculation:
     """Mock calculation for testing."""
-    def __init__(self, project_root: Path, structure_id: str = "test_structure"):
+    def __init__(self, project_root: Path, structure_ulid: str = "test_structure"):
         self.project = MockProject(project_root)
-        self.structure_id = structure_id
+        self.structure_ulid = structure_ulid
         self.species_map = {"Si": {"pseudopot": "Si.UPF"}}
 
 
@@ -48,9 +48,9 @@ class MockProject:
     def __init__(self, root: Path):
         self.root = root
     
-    def get_structure(self, structure_id: str):
+    def get_structure(self, structure_ulid: str):
         """Return mock structure reference."""
-        return MockStructureRef(self.root / "structures" / f"{structure_id}.yaml")
+        return MockStructureRef(self.root / "structures" / f"{structure_ulid}.yaml")
 
 
 class MockStructureRef:

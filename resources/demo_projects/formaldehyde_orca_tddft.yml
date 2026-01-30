@@ -70,7 +70,7 @@ calculations:
     kind: calculation
   mode: normal
   working_dir: raw
-  structure_id: 01KEX4RTDH8MB2RF2P2XQ4ZZ9T
+  structure_ulid: 01KEX4RTDH8MB2RF2P2XQ4ZZ9T
   structure_kind: molecule
   engine_family: orca
   steps:

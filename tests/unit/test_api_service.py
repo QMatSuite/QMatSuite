@@ -219,8 +219,8 @@ class TestQVServiceCalculation:
         result = QVService.init_calculation(project, "SCF Calc", structure_selector="silicon")
 
         wf_yaml = yaml.safe_load((result.absolute_path / "calculation.yaml").read_text())
-        # With ID-only references, calculation.yaml stores structure_id (ULID), not structure selector
-        assert wf_yaml.get("structure_id") is not None
+        # With ID-only references, calculation.yaml stores structure_ulid (ULID), not structure selector
+        assert wf_yaml.get("structure_ulid") is not None
         # DAG + ID-only model: structure_name is NOT written to YAML (cosmetic only)
         assert "structure_name" not in wf_yaml
 
@@ -273,7 +273,7 @@ class TestQVServiceCalculation:
 
         # Verify structure was changed
         calc_yaml = yaml.safe_load((calc.absolute_path / "calculation.yaml").read_text())
-        assert calc_yaml.get("structure_id") == struct2.meta.ulid
+        assert calc_yaml.get("structure_ulid") == struct2.meta.ulid
 
     def test_delete_calculation(self, project):
         """Delete a calculation using domain API."""
@@ -338,27 +338,27 @@ class TestQVServiceStep:
             step_type="nscf",
         )
 
-        # Read step file to verify no structure_id
+        # Read step file to verify no structure_ulid
         from quantumvitas.core.resolution import require_step
         step_resolved = require_step(project_with_calculation, "test-calculation", result.step_ulid)
         step_data = yaml.safe_load(step_resolved.absolute_path.read_text())
-        # DAG model: Step YAML should NOT contain structure_id (inherits from calculation)
-        assert "structure_id" not in step_data, "Step YAML should not contain structure_id (DAG model)"
+        # DAG model: Step YAML should NOT contain structure_ulid (inherits from calculation)
+        assert "structure_ulid" not in step_data, "Step YAML should not contain structure_ulid (DAG model)"
 
-        # Verify calculation has structure_id set and it points to the silicon structure
+        # Verify calculation has structure_ulid set and it points to the silicon structure
         # Read calculation.yaml directly to avoid materializing steps (which requires pseudos)
         from quantumvitas.core.resolution import build_resource_index, require_structure, resolve_calculation
 
         index = build_resource_index(project_with_calculation)
         calculation_resolved = resolve_calculation(project_with_calculation, "test-calculation", index=index)
 
-        # Read calculation.yaml directly to check structure_id without materializing steps
+        # Read calculation.yaml directly to check structure_ulid without materializing steps
         calculation_yaml = calculation_resolved.absolute_path / "calculation.yaml"
         calculation_data = yaml.safe_load(calculation_yaml.read_text())
-        structure_id = calculation_data.get("structure_id")
+        structure_ulid = calculation_data.get("structure_ulid")
 
-        assert structure_id is not None, "Calculation should have structure_id set"
-        structure_resolved = require_structure(project_with_calculation, structure_id, index=index)
+        assert structure_ulid is not None, "Calculation should have structure_ulid set"
+        structure_resolved = require_structure(project_with_calculation, structure_ulid, index=index)
         assert structure_resolved.meta.name.lower() == "silicon" or structure_resolved.meta.slug == "silicon"
 
     def test_list_steps(self, project_with_calculation):

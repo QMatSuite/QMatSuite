@@ -37,14 +37,14 @@
     "old_structure": "silicon",
     "updated_steps": [
       {
-        "step_id": "<NORMALIZED_ID>",
-        "old_structure_id": null,
-        "new_structure_id": "<NORMALIZED_ID>"
+        "step_ulid": "<NORMALIZED_ID>",
+        "old_structure_ulid": null,
+        "new_structure_ulid": "<NORMALIZED_ID>"
       },
       {
-        "step_id": "<NORMALIZED_ID>",
-        "old_structure_id": null,
-        "new_structure_id": "<NORMALIZED_ID>"
+        "step_ulid": "<NORMALIZED_ID>",
+        "old_structure_ulid": null,
+        "new_structure_ulid": "<NORMALIZED_ID>"
       }
     ],
     "warnings": [],

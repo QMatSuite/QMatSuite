@@ -62,14 +62,14 @@ def vasp_step_handler(
     
     try:
         # Get step
-        if len(job.step_ids) != 1:
+        if len(job.step_ulids) != 1:
             return JobResult(
                 job_id=job.id,
                 success=False,
-                error=f"VASP handler expects exactly one step, got {len(job.step_ids)}",
+                error=f"VASP handler expects exactly one step, got {len(job.step_ulids)}",
             )
         
-        step_ulid = job.step_ids[0]
+        step_ulid = job.step_ulids[0]
         step = _find_step_by_ulid(calculation, step_ulid)
         if step is None:
             return JobResult(

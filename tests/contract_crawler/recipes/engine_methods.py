@@ -93,7 +93,7 @@ class EngineMethodsRecipe(Recipe):
         super().__init__(tmp_path)
         self.method_name = method_name
         self.world: dict[str, Any] | None = None
-        self.run_id: str | None = None
+        self.run_ulid: str | None = None
         self.bands_step_id: str | None = None
         self.dos_step_id: str | None = None
 
@@ -296,7 +296,7 @@ class EngineMethodsRecipe(Recipe):
                 **base,
                 "calculation": self.world["calculation_selector"],
                 "step_ulid": self.world["step_selector"],
-                "run_id": "mock_run_id",
+                "run_ulid": "mock_run_ulid",  # canonical field name
                 "analysis_kind": "scf",
             }
 

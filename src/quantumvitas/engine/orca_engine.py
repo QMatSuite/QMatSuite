@@ -191,7 +191,7 @@ class ORCAEngine(Engine):
         project_root = None
         
         if hasattr(step, 'options'):
-            structure_ulid = step.options.get('structure_ulid') or step.options.get('structure_id')
+            structure_ulid = step.options.get('structure_ulid') or step.options.get('structure_ulid')
             project_root_str = step.options.get('project_root')
             if project_root_str:
                 project_root = Path(project_root_str)
@@ -534,6 +534,7 @@ class ORCAEngine(Engine):
                     def __init__(self, step, step_type_gen, step_type_spec, parameters):
                         self.step = step
                         self.ulid = step.meta.ulid
+                        self.meta = step.meta  # Forward meta for compatibility
                         self.step_type_gen = step_type_gen
                         self.step_type_spec = step_type_spec
                         self.parameters = parameters
@@ -624,7 +625,7 @@ class ORCAEngine(Engine):
         }
         
         return StepResult(
-            step_type=target_step.step_type_spec or "orca_relax",
+            step_type_spec=target_step.step_type_spec or "orca_relax",
             input_file=Path(target_result.artifacts.get("input", working_dir / f"{chain.key}.inp")),
             output_file=Path(target_result.artifacts.get("output", working_dir / f"{chain.key}.out")),
             success=target_result.success,

@@ -58,7 +58,7 @@ class TestPseudopotentialResolution:
                 "kind": "step",
             },
             "step_type_gen": "scf",
-            "structure_id": generate_resource_id(),
+            "structure_ulid": generate_resource_id(),
             "species_overrides": {
                 "Si": {
                     "pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF",
@@ -110,8 +110,8 @@ class TestPseudopotentialResolution:
         step_spec = StructureStepSpec(
             meta=meta_from_name("step", name="test", path="test.step.yaml"),
             structure="test_structure",  # Required field
-            structure_id=generate_resource_id(),
-            step_type_spec="scf",
+            structure_ulid=generate_resource_id(),
+            step_type_spec="qe_scf",
             species_overrides={},  # Empty initially
         )
         

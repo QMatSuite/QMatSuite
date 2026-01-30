@@ -2,7 +2,7 @@
   "method": "get_latest_run_for_step",
   "success": true,
   "response": {
-    "run_id": "<NORMALIZED_ID>",
+    "run_ulid": "<NORMALIZED_ID>",
     "can_pin": false,
     "reason": "No runs found in history"
   },

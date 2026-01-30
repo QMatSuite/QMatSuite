@@ -100,7 +100,7 @@ class TestPrecisionVariantsBandsPw:
             ],
         }
         bands_step.write_text(yaml.safe_dump({
-            "step_type_gen": "bands_pw",
+            "step_type_spec": "qe_bands_pw",
             "parameters": {},
             "cards": {
                 "K_POINTS": original_kpoints,

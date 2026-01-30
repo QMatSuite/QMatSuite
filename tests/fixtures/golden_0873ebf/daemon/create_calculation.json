@@ -2,7 +2,7 @@
   "method": "create_calculation",
   "success": true,
   "response": {
-    "calculation_id": "<NORMALIZED_ID>",
+    "calc_ulid": "<NORMALIZED_ID>",
     "calculation_ulid": "<NORMALIZED_ID>",
     "name": "new_calc",
     "slug": "new_calc",

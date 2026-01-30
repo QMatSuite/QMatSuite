@@ -5,7 +5,7 @@ Allows users to persist analysis results (plots, data) to history.
 
 Invariants:
 1. Pins are only allowed for steps included in the MOST RECENT run.
-2. De-duplicated: (run_id, step_id, analysis_kind) is unique.
+2. De-duplicated: (run_ulid, step_ulid, analysis_kind) is unique.
 3. Backend writes files; UI must not write directly.
 """
 
@@ -56,8 +56,8 @@ class PinResult:
 
 def pin_analysis_to_history(
     project_root: Path,
-    run_id: str,
-    step_id: str,
+    run_ulid: str,
+    step_ulid: str,
     analysis_kind: str,
     *,
     png_data: Optional[bytes] = None,
@@ -72,8 +72,8 @@ def pin_analysis_to_history(
     
     Args:
         project_root: Path to project root
-        run_id: ULID of the run
-        step_id: ULID of the step
+        run_ulid: ULID of the run
+        step_ulid: ULID of the step
         analysis_kind: Type of analysis (e.g., "bands", "dos", "scf_convergence")
         png_data: Optional PNG image data
         json_payload: Optional JSON data payload
@@ -89,38 +89,38 @@ def pin_analysis_to_history(
     history = ProjectHistory(project_root)
     
     # Check 1: Run must exist
-    run_dir = history.get_run_dir(run_id)
+    run_dir = history.get_run_dir(run_ulid)
     if not run_dir:
-        raise PinError(f"Run not found: {run_id}")
+        raise PinError(f"Run not found: {run_ulid}")
     
     # Check 2: Only allow pins for latest run (unless force=True)
     if not force:
-        latest_run_id = history.get_latest_run_id()
-        if latest_run_id and latest_run_id != run_id:
+        latest_run_ulid = history.get_latest_run_ulid()
+        if latest_run_ulid and latest_run_ulid != run_ulid:
             raise PinError(
                 f"Pins are only allowed for the most recent run. "
-                f"Latest run is {latest_run_id}, but trying to pin to {run_id}."
+                f"Latest run is {latest_run_ulid}, but trying to pin to {run_ulid}."
             )
     
     # Check 3: Step must be part of the run
-    run_step_ids = history.get_run_step_ids(run_id)
-    if run_step_ids and step_id not in run_step_ids:
+    run_step_ulids = history.get_run_step_ulids(run_ulid)
+    if run_step_ulids and step_ulid not in run_step_ulids:
         raise PinError(
-            f"Step {step_id} was not part of run {run_id}. "
-            f"Run steps: {run_step_ids}"
+            f"Step {step_ulid} was not part of run {run_ulid}. "
+            f"Run steps: {run_step_ulids}"
         )
     
     # Check 4: De-duplicate - skip if pin already exists
-    if history.pin_exists(run_id, step_id, analysis_kind):
-        logger.info(f"Pin already exists for ({run_id}, {step_id}, {analysis_kind})")
+    if history.pin_exists(run_ulid, step_ulid, analysis_kind):
+        logger.info(f"Pin already exists for ({run_ulid}, {step_ulid}, {analysis_kind})")
         # Return success without creating duplicate
-        existing_pins = history.get_pins_for_run(run_id)
+        existing_pins = history.get_pins_for_run(run_ulid)
         for pin in existing_pins:
-            if pin["step_id"] == step_id and pin["analysis_kind"] == analysis_kind:
+            if pin["step_ulid"] == step_ulid and pin["analysis_kind"] == analysis_kind:
                 return PinResult(
                     success=True,
-                    run_ulid=run_id,
-                    step_ulid=step_id,
+                    run_ulid=run_ulid,
+                    step_ulid=step_ulid,
                     analysis_kind=analysis_kind,
                     png_path=pin.get("pin_path"),
                     error="Pin already exists (de-duplicated)",
@@ -128,14 +128,14 @@ def pin_analysis_to_history(
         # Shouldn't reach here, but return success anyway
         return PinResult(
             success=True,
-            run_ulid=run_id,
-            step_ulid=step_id,
+            run_ulid=run_ulid,
+            step_ulid=step_ulid,
             analysis_kind=analysis_kind,
             error="Pin already exists",
         )
     
     # Create pin directory
-    pins_dir = run_dir / "pins" / step_id
+    pins_dir = run_dir / "pins" / step_ulid
     pins_dir.mkdir(parents=True, exist_ok=True)
     
     png_path = None
@@ -159,25 +159,25 @@ def pin_analysis_to_history(
     try:
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
-        project_id = config.get("project", {}).get("meta", {}).get("ulid", "")
+        project_ulid = config.get("project", {}).get("meta", {}).get("ulid", "")
     except Exception:
-        project_id = ""
+        project_ulid = ""
     
-    # Get calc_id from run revision
-    calc_id = ""
+    # Get calc_ulid from run revision
+    calc_ulid = ""
     try:
         from quantumvitas.history.run_revision import load_run_revision
         revision = load_run_revision(run_dir)
-        calc_id = revision.calc_id
+        calc_ulid = revision.calc_ulid
     except Exception:
         pass
     
     # Record pin event
     event = PinCreatedEvent.create(
-        project_id=project_id,
-        calc_id=calc_id,
-        step_id=step_id,
-        run_id=run_id,
+        project_ulid=project_ulid,
+        calc_ulid=calc_ulid,
+        step_ulid=step_ulid,
+        run_ulid=run_ulid,
         analysis_kind=analysis_kind,
         pin_path=png_path or json_path,
     )
@@ -185,8 +185,8 @@ def pin_analysis_to_history(
     
     return PinResult(
         success=True,
-        run_ulid=run_id,
-        step_ulid=step_id,
+        run_ulid=run_ulid,
+        step_ulid=step_ulid,
         analysis_kind=analysis_kind,
         png_path=png_path,
         json_path=json_path,
@@ -279,8 +279,8 @@ def _downsample_payload(payload: Dict[str, Any], max_points: int = 2000) -> Dict
 
 def get_pin_data(
     project_root: Path,
-    run_id: str,
-    step_id: str,
+    run_ulid: str,
+    step_ulid: str,
     analysis_kind: str,
 ) -> Dict[str, Any]:
     """
@@ -288,24 +288,24 @@ def get_pin_data(
     
     Args:
         project_root: Path to project root
-        run_id: ULID of the run
-        step_id: ULID of the step
+        run_ulid: ULID of the run
+        step_ulid: ULID of the step
         analysis_kind: Type of analysis
         
     Returns:
         Dict with 'png_path', 'json_path', 'json_data' if available
     """
     history = ProjectHistory(project_root)
-    run_dir = history.get_run_dir(run_id)
+    run_dir = history.get_run_dir(run_ulid)
     
     if not run_dir:
-        return {"error": f"Run not found: {run_id}"}
+        return {"error": f"Run not found: {run_ulid}"}
     
-    pins_dir = run_dir / "pins" / step_id
+    pins_dir = run_dir / "pins" / step_ulid
     
     result: Dict[str, Any] = {
-        "run_id": run_id,
-        "step_id": step_id,
+        "run_ulid": run_ulid,
+        "step_ulid": step_ulid,
         "analysis_kind": analysis_kind,
     }
     
@@ -327,27 +327,27 @@ def get_pin_data(
 
 def list_pins_for_step(
     project_root: Path,
-    run_id: str,
-    step_id: str,
+    run_ulid: str,
+    step_ulid: str,
 ) -> List[str]:
     """
     List analysis kinds that have been pinned for a step.
     
     Args:
         project_root: Path to project root
-        run_id: ULID of the run
-        step_id: ULID of the step
+        run_ulid: ULID of the run
+        step_ulid: ULID of the step
         
     Returns:
         List of analysis_kind values
     """
     history = ProjectHistory(project_root)
-    run_dir = history.get_run_dir(run_id)
+    run_dir = history.get_run_dir(run_ulid)
     
     if not run_dir:
         return []
     
-    pins_dir = run_dir / "pins" / step_id
+    pins_dir = run_dir / "pins" / step_ulid
     
     if not pins_dir.exists():
         return []
@@ -360,14 +360,14 @@ def list_pins_for_step(
     return sorted(kinds)
 
 
-def can_pin_to_run(project_root: Path, run_id: str, step_id: str) -> Dict[str, Any]:
+def can_pin_to_run(project_root: Path, run_ulid: str, step_ulid: str) -> Dict[str, Any]:
     """
     Check if pinning is allowed for a specific run and step.
     
     Args:
         project_root: Path to project root
-        run_id: ULID of the run to check
-        step_id: ULID of the step
+        run_ulid: ULID of the run to check
+        step_ulid: ULID of the step
         
     Returns:
         Dict with 'allowed' bool and 'reason' if not allowed
@@ -375,26 +375,26 @@ def can_pin_to_run(project_root: Path, run_id: str, step_id: str) -> Dict[str, A
     history = ProjectHistory(project_root)
     
     # Check run exists
-    run_dir = history.get_run_dir(run_id)
+    run_dir = history.get_run_dir(run_ulid)
     if not run_dir:
-        return {"allowed": False, "reason": f"Run not found: {run_id}"}
+        return {"allowed": False, "reason": f"Run not found: {run_ulid}"}
     
     # Check if this is the latest run
-    latest_run_id = history.get_latest_run_id()
-    if latest_run_id and latest_run_id != run_id:
+    latest_run_ulid = history.get_latest_run_ulid()
+    if latest_run_ulid and latest_run_ulid != run_ulid:
         return {
             "allowed": False,
-            "reason": f"Only the latest run can be pinned. Latest: {latest_run_id}",
-            "latest_run_id": latest_run_id,
+            "reason": f"Only the latest run can be pinned. Latest: {latest_run_ulid}",
+            "latest_run_ulid": latest_run_ulid,
         }
     
     # Check if step was part of the run
-    run_step_ids = history.get_run_step_ids(run_id)
-    if run_step_ids and step_id not in run_step_ids:
+    run_step_ulids = history.get_run_step_ulids(run_ulid)
+    if run_step_ulids and step_ulid not in run_step_ulids:
         return {
             "allowed": False,
-            "reason": f"Step {step_id} was not part of this run",
-            "run_step_ids": run_step_ids,
+            "reason": f"Step {step_ulid} was not part of this run",
+            "run_step_ulids": run_step_ulids,
         }
     
     return {"allowed": True}

@@ -275,7 +275,7 @@ def materialize_project_from_qe_input_folder(
                             ref_structure = structure_from_qe_input(reference_qe_input)
                             # Generate a temporary QE input with ibrav=0 to get CELL_PARAMETERS
                             from quantumvitas.calculation.structure_steps import StructureStepSpec
-                            temp_spec = StructureStepSpec(step_type_spec="scf", structure_id="temp")
+                            temp_spec = StructureStepSpec(step_type_spec="qe_scf", structure_ulid="temp")
                             temp_qe, _ = generate_qe_input_from_structure(ref_structure, temp_spec)
                             gen_cell_card = temp_qe.get_card(QECardType.CELL_PARAMETERS)
                             if gen_cell_card:
@@ -334,9 +334,9 @@ def materialize_project_from_qe_input_folder(
         # Build resource index
         index = build_resource_index(project_root)
         
-        # Determine calculation structure_id from first file with explicit structure
+        # Determine calculation structure_ulid from first file with explicit structure
         # This structure will be used for all steps (calc-level structure semantics)
-        calculation_structure_id = None
+        calculation_structure_ulid = None
         if reference_structure_file:
             # Import structure from reference file to get its ID
             from quantumvitas.io.structure_io import structure_from_qe_input
@@ -348,7 +348,7 @@ def materialize_project_from_qe_input_folder(
             structures_dir.mkdir(parents=True, exist_ok=True)
             
             # Generate ULID for structure
-            calculation_structure_id = generate_resource_id()
+            calculation_structure_ulid = generate_resource_id()
             structure_filename = reference_structure_file.stem
             structure_path = structures_dir / f"{structure_filename}.json"
             
@@ -363,7 +363,7 @@ def materialize_project_from_qe_input_folder(
                 name=structure_filename,
                 path=structure_meta_path,
             )
-            structure_meta.ulid = calculation_structure_id
+            structure_meta.ulid = calculation_structure_ulid
             
             # Write structure with meta
             write_structure(ref_structure, structure_path, format="json", metadata=structure_meta)
@@ -381,14 +381,14 @@ def materialize_project_from_qe_input_folder(
         )
         calculation_selector = calc_resolved.meta.ulid  # Use ID as selector
         
-        # Set calculation structure_id if we determined it
-        if calculation_structure_id:
+        # Set calculation structure_ulid if we determined it
+        if calculation_structure_ulid:
             from quantumvitas.core.models import load_calculation, save_calculation
             calculation_yaml = calc_resolved.absolute_path / "calculation.yaml"
             calc_model = load_calculation(calculation_yaml, project_root)
-            calc_model.structure_id = calculation_structure_id
+            calc_model.structure_ulid = calculation_structure_ulid
             save_calculation(calc_model, calculation_yaml)
-            index = build_resource_index(project_root)  # Rebuild index after setting structure_id
+            index = build_resource_index(project_root)  # Rebuild index after setting structure_ulid
         
         # Build species_map from all input files BEFORE importing steps
         # This allows us to fail fast if there are conflicting pseudopotential mappings

@@ -242,8 +242,14 @@ def compute_step_digest(
         digest.output_exists = False
     
     # Dispatch to type-specific parser
+    # Normalize SPEC type to GEN type by stripping engine prefix (qe_, vasp_, etc.)
     step_type_lower = step_type_spec.lower() if step_type_spec else ""
-    
+    # Strip known engine prefixes to get the GEN type for dispatch
+    for prefix in ("qe_", "vasp_", "abinit_", "siesta_"):
+        if step_type_lower.startswith(prefix):
+            step_type_lower = step_type_lower[len(prefix):]
+            break
+
     try:
         if step_type_lower in ("scf", "relax", "vc-relax", "vc_relax", "md", "vc-md"):
             _parse_scf_digest(digest, output_file)
@@ -277,27 +283,35 @@ def _find_output_file(working_dir: Path, step_type_spec: str) -> Optional[Path]:
     """
     if not working_dir.exists():
         return None
-    
+
     step_type_lower = step_type_spec.lower() if step_type_spec else ""
-    
-    # Try exact matches first
+    # Also normalize to GEN type for file patterns
+    step_type_gen = step_type_lower
+    for prefix in ("qe_", "vasp_", "abinit_", "siesta_"):
+        if step_type_gen.startswith(prefix):
+            step_type_gen = step_type_gen[len(prefix):]
+            break
+
+    # Try exact matches first - try both SPEC type and GEN type
     candidates = [
         working_dir / f"{step_type_lower}.out",
         working_dir / f"{step_type_lower}.pw_run.out",
+        working_dir / f"{step_type_gen}.out",
+        working_dir / f"{step_type_gen}.pw_run.out",
     ]
-    
+
     for candidate in candidates:
         if candidate.exists():
             return candidate
-    
-    # Try pattern matching
+
+    # Try pattern matching with both SPEC and GEN types
     for f in working_dir.glob("*.out"):
         name_lower = f.name.lower()
-        if step_type_lower in name_lower:
+        if step_type_lower in name_lower or step_type_gen in name_lower:
             return f
-    
+
     # For bands, also check for bands.x output
-    if step_type_lower in ("bands", "bands_pw"):
+    if step_type_gen in ("bands", "bands_pw"):
         for f in working_dir.glob("*bands*.out"):
             return f
     
@@ -347,8 +361,13 @@ def _parse_scf_digest(digest: StepDigest, output_file: Optional[Path]) -> None:
         if result.total_cpu_time is not None:
             digest.cpu_time = DigestValue.ok(result.total_cpu_time, "s")
         
-        # Check for relax-specific info
-        if digest.step_type_spec in ("relax", "vc-relax", "vc_relax"):
+        # Check for relax-specific info - check both SPEC and GEN types
+        step_type_for_relax = digest.step_type_spec.lower() if digest.step_type_spec else ""
+        for prefix in ("qe_", "vasp_", "abinit_", "siesta_"):
+            if step_type_for_relax.startswith(prefix):
+                step_type_for_relax = step_type_for_relax[len(prefix):]
+                break
+        if step_type_for_relax in ("relax", "vc-relax", "vc_relax"):
             _parse_relax_specific(digest, output_file)
         
     except Exception as e:
@@ -535,8 +554,8 @@ def _parse_generic_digest(digest: StepDigest, output_file: Path) -> None:
 
 
 def compute_run_digest(
-    run_id: str,
-    calc_id: str,
+    run_ulid: str,
+    calc_ulid: str,
     status: str,
     started_at: datetime,
     finished_at: datetime,
@@ -547,8 +566,8 @@ def compute_run_digest(
     Compute overall run digest from step digests.
     
     Args:
-        run_id: ULID of the run
-        calc_id: ULID of the calculation
+        run_ulid: ULID of the run
+        calc_ulid: ULID of the calculation
         status: Overall run status ("success", "failed", "cancelled")
         started_at: Run start time
         finished_at: Run end time
@@ -579,8 +598,8 @@ def compute_run_digest(
                 converged = False
     
     return {
-        "run_id": run_id,
-        "calc_id": calc_id,
+        "run_ulid": run_ulid,
+        "calc_ulid": calc_ulid,
         "status": status,
         "started_at": started_at.isoformat(),
         "finished_at": finished_at.isoformat(),

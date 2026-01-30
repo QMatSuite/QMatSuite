@@ -371,7 +371,7 @@ class CalculationMutationsRecipe(Recipe):
         super().__init__(tmp_path)
         self.method_name = method_name
         self.world: dict[str, Any] | None = None
-        self.second_structure_id: str | None = None
+        self.second_structure_ulid: str | None = None
 
     def setup(self) -> bool:
         """Create minimal project world."""
@@ -398,10 +398,10 @@ class CalculationMutationsRecipe(Recipe):
                 try:
                     svc = QVService(self.project_root)
                     struct_dto = svc.structure.import_file(source=struct_file, name="germanium")
-                    self.second_structure_id = struct_dto.structure_id
+                    self.second_structure_ulid = struct_dto.structure_ulid
                 except (TypeError, AttributeError):
                     result = QVService.import_structure(self.project_root, struct_file, name="germanium")
-                    self.second_structure_id = result.id if hasattr(result, 'id') else result.structure_id
+                    self.second_structure_ulid = result.id if hasattr(result, 'id') else result.structure_ulid
             finally:
                 struct_file.unlink()
 
@@ -424,14 +424,14 @@ class CalculationMutationsRecipe(Recipe):
                 **base,
                 "engine": "qe",
                 "name": "new_calc",
-                "structure_selector": self.world["structure_id"],
+                "structure_selector": self.world["structure_ulid"],
             }
 
         if self.method_name == "add_step_to_calculation":
             return {
                 **base,
                 "calculation": self.world["calculation_selector"],
-                "step_type_gen": "qe_bands",
+                "step_type_spec": "qe_bands",
                 "step_name": "bands",
             }
 
@@ -453,7 +453,7 @@ class CalculationMutationsRecipe(Recipe):
             return {
                 **base,
                 "calculation": self.world["calculation_selector"],
-                "new_structure": self.second_structure_id,
+                "new_structure": self.second_structure_ulid,
             }
 
         return base
@@ -584,7 +584,7 @@ class WorkflowRecipe(Recipe):
         # Methods without v0 payload definitions
         base = {
             "project_root": self.world["project_root"],
-            "structure": self.world["structure_id"],
+            "structure": self.world["structure_ulid"],
         }
 
         if self.method_name == "detect_workflow":

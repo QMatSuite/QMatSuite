@@ -38,13 +38,13 @@ class MockManifest:
 
 def create_test_job(
     job_id: str,
-    step_ids: list,
+    step_ulids: list,
     engine: str = "qe",
 ) -> Job:
     """Create a test job."""
     return Job(
         id=job_id,
-        step_ids=step_ids,
+        step_ulids=step_ulids,
         working_dir=Path("/calc/raw"),
         command=["pw.x", "scf.in"],
         metadata={"engine": engine},
@@ -110,7 +110,7 @@ class TestExecutorExecute:
             graph,
             MagicMock(),
             selection=SelectionMode.TARGET,
-            target_step_id="ulid_1",
+            target_step_ulid="ulid_1",
         )
 
         assert result.success is True
@@ -123,7 +123,7 @@ class TestExecutorExecute:
         graph = JobGraph(jobs=[create_test_job("step_00", ["ulid_0"])])
         executor = JobExecutor()
 
-        with pytest.raises(ValueError, match="target_step_id required"):
+        with pytest.raises(ValueError, match="target_step_ulid required"):
             executor.execute(graph, MagicMock(), selection=SelectionMode.TARGET)
 
     def test_execute_empty_graph(self):
@@ -258,7 +258,7 @@ class TestExecutorSkipLogic:
             graph,
             MagicMock(),
             selection=SelectionMode.TARGET,
-            target_step_id="ulid_1",
+            target_step_ulid="ulid_1",
             manifest=manifest,
             step_shas=step_shas,
         )
@@ -287,7 +287,7 @@ class TestExecutorMultiStepJobs:
         jobs = [
             Job(
                 id="s_m2",
-                step_ids=["ulid_scf", "ulid_mp2"],
+                step_ulids=["ulid_scf", "ulid_mp2"],
                 working_dir=Path("/calc/raw/scf_ABCDEF"),
                 command=["orca", "s_m2.inp"],
                 metadata={"engine": "orca"},
@@ -312,7 +312,7 @@ class TestExecutorMultiStepJobs:
         jobs = [
             Job(
                 id="s_m2",
-                step_ids=["ulid_scf", "ulid_mp2"],
+                step_ulids=["ulid_scf", "ulid_mp2"],
                 working_dir=Path("/calc/raw/scf_ABCDEF"),
                 command=["orca", "s_m2.inp"],
                 metadata={"engine": "orca"},

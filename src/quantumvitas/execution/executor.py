@@ -100,7 +100,7 @@ class JobExecutor:
         job_graph: JobGraph,
         calculation: "Calculation",
         selection: SelectionMode = SelectionMode.ALL,
-        target_step_id: Optional[str] = None,
+        target_step_ulid: Optional[str] = None,
         manifest: Optional["RunManifest"] = None,
         step_shas: Optional[Dict[str, str]] = None,
     ) -> ExecutionResult:
@@ -111,7 +111,7 @@ class JobExecutor:
             job_graph: The materialized JobGraph
             calculation: Calculation context
             selection: Selection mode (ALL for Run Calc, TARGET for Run Step)
-            target_step_id: Required when selection=TARGET
+            target_step_ulid: Required when selection=TARGET
             manifest: Optional manifest for incremental skip logic
             step_shas: Optional step SHA map for fingerprint comparison
 
@@ -120,9 +120,9 @@ class JobExecutor:
         """
         # Get jobs to execute based on selection mode
         if selection == SelectionMode.TARGET:
-            if target_step_id is None:
-                raise ValueError("target_step_id required for TARGET selection mode")
-            jobs_to_execute = job_graph.get_jobs_for_target(target_step_id, selection)
+            if target_step_ulid is None:
+                raise ValueError("target_step_ulid required for TARGET selection mode")
+            jobs_to_execute = job_graph.get_jobs_for_target(target_step_ulid, selection)
         else:
             jobs_to_execute = list(job_graph.jobs)
 
@@ -136,8 +136,8 @@ class JobExecutor:
 
         # Determine which job contains the target step (for "target must run" rule)
         target_job_id = None
-        if selection == SelectionMode.TARGET and target_step_id:
-            target_job = job_graph.get_job_by_step_id(target_step_id)
+        if selection == SelectionMode.TARGET and target_step_ulid:
+            target_job = job_graph.get_job_by_step_ulid(target_step_ulid)
             if target_job:
                 target_job_id = target_job.id
 
@@ -172,9 +172,9 @@ class JobExecutor:
                 
                 # Post-process: handle relax output if job succeeded
                 if job_result.success:
-                    # Generate run_id from timestamp if not available
-                    run_id = datetime.now(timezone.utc).isoformat()
-                    self._post_process_relax_steps(job, job_result, calculation, {"run_id": run_id})
+                    # Generate run_ulid from timestamp if not available
+                    run_ulid = datetime.now(timezone.utc).isoformat()
+                    self._post_process_relax_steps(job, job_result, calculation, {"run_ulid": run_ulid})
                 
                 results.append(job_result)
 
@@ -223,7 +223,7 @@ class JobExecutor:
                         calculation,
                         variant_assignments,
                         variant_key,
-                        run_id=run_id,
+                        run_ulid=run_ulid,
                     )
                     variant_result.pre_snapshot = pre_snapshot
                     variant_results.append(variant_result)
@@ -276,8 +276,8 @@ class JobExecutor:
             return False
 
         # Check all steps in this job
-        for step_id in job.step_ids:
-            entry = self._get_manifest_entry_for_step(manifest, step_id)
+        for step_ulid in job.step_ulids:
+            entry = self._get_manifest_entry_for_step(manifest, step_ulid)
             if entry is None:
                 return False
             if not entry.done:
@@ -285,18 +285,18 @@ class JobExecutor:
 
             # Check fingerprint if we have step SHAs
             if step_shas:
-                current_sha = step_shas.get(step_id)
+                current_sha = step_shas.get(step_ulid)
                 if current_sha and entry.step_sha != current_sha:
                     return False
 
         return True
 
     def _get_manifest_entry_for_step(
-        self, manifest: "RunManifest", step_id: str
+        self, manifest: "RunManifest", step_ulid: str
     ) -> Optional["ManifestStepEntry"]:
         """Find manifest entry for a step by ULID."""
         for entry in manifest.steps:
-            if entry.step_ulid == step_id:
+            if entry.step_ulid == step_ulid:
                 return entry
         return None
 
@@ -320,7 +320,7 @@ class JobExecutor:
         calc_dir = calculation.dir
         steps_dir = calc_dir / "steps"
         
-        for step_ulid in job.step_ids:
+        for step_ulid in job.step_ulids:
             # Try to find step file by ULID
             step_file = None
             if steps_dir.exists():
@@ -348,7 +348,7 @@ class JobExecutor:
         
         # Collect scan dimensions
         try:
-            dimensions = collect_scan_dimensions(job.step_ids, step_docs)
+            dimensions = collect_scan_dimensions(job.step_ulids, step_docs)
             return dimensions
         except Exception as e:
             logger.warning(f"Failed to collect scan dimensions for job {job.id}: {e}")
@@ -391,7 +391,7 @@ class JobExecutor:
         }
         
         # Check all steps in this job
-        for step_ulid in job.step_ids:
+        for step_ulid in job.step_ulids:
             entry = self._get_manifest_entry_for_step(manifest, step_ulid)
             if entry is None:
                 return False
@@ -443,7 +443,7 @@ class JobExecutor:
         calculation: "Calculation",
         variant_assignments: List[VariantAssignment],
         variant_key: str,
-        run_id: str,
+        run_ulid: str,
     ) -> JobResult:
         """
         Execute a job with variant assignments (scan variant).
@@ -453,7 +453,7 @@ class JobExecutor:
             calculation: Calculation context
             variant_assignments: Variant assignments
             variant_key: Variant key for archiving
-            run_id: Run ID
+            run_ulid: Run ID
             
         Returns:
             JobResult
@@ -477,7 +477,7 @@ class JobExecutor:
                 context = PostJobContext(
                     calc_raw_dir=raw_dir,
                     variant_key=variant_key,
-                    run_ulid=run_id,
+                    run_ulid=run_ulid,
                 )
                 
                 archive_action = ArchiveToSlotAction(variant_key=variant_key)
@@ -507,7 +507,7 @@ class JobExecutor:
         calc_dir = calculation.dir
         
         # Clean current.json for each relax step in this job
-        for step_ulid in job.step_ids:
+        for step_ulid in job.step_ulids:
             step = self._find_step_by_ulid(calculation, step_ulid)
             if step is None:
                 continue
@@ -543,25 +543,25 @@ class JobExecutor:
             job: The executed job
             job_result: Result from job execution
             calculation: Calculation context
-            context: Execution context (run_id, etc.)
+            context: Execution context (run_ulid, etc.)
         """
-        # Get run_id from context
-        run_id = context.get("run_id")
+        # Get run_ulid from context
+        run_ulid = context.get("run_ulid")
         
         # Get calculation directory and ULIDs
         calc_dir = calculation.dir
         calculation_ulid = calculation.meta.ulid if hasattr(calculation, 'meta') else None
-        input_structure_ulid = calculation.structure_id if hasattr(calculation, 'structure_id') else None
+        input_structure_ulid = calculation.structure_ulid if hasattr(calculation, 'structure_ulid') else None
         
         # Build run context for artifact processing
         run_context = {
-            "run_id": run_id,
+            "run_ulid": run_ulid,
             "calculation_ulid": calculation_ulid or "",
             "input_structure_ulid": input_structure_ulid or "",
         }
         
         # Process each step in the job using capability-based approach
-        for step_ulid in job.step_ids:
+        for step_ulid in job.step_ulids:
             step_result = job_result.step_results.get(step_ulid, {})
             
             # Check for relax_artifact_spec (capability-based)

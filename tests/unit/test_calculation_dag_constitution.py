@@ -1,7 +1,7 @@
 """
 Test DAG + ID-only constitution for calculation.yaml files.
 
-This test ensures that calculation.yaml files only persist structure_id (ULID)
+This test ensures that calculation.yaml files only persist structure_ulid (ULID)
 and do NOT persist structure_name or structure selector fields.
 """
 import json
@@ -15,16 +15,16 @@ from quantumvitas.core.resources import generate_resource_id
 from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
 
 
-def test_calculation_yaml_only_persists_structure_id(tmp_path):
-    """Test that calculation.yaml only contains structure_id, not structure_name or structure."""
+def test_calculation_yaml_only_persists_structure_ulid(tmp_path):
+    """Test that calculation.yaml only contains structure_ulid, not structure_name or structure."""
     calc_dir = tmp_path / "calculations" / "test-calculation"
     calc_dir.mkdir(parents=True)
     
-    structure_id = generate_resource_id()
+    structure_ulid = generate_resource_id()
     structure_name = "Test Structure"
     structure_selector = "test-structure"
     
-    # Create calculation model with structure_id only (DAG + ULID model)
+    # Create calculation model with structure_ulid only (DAG + ULID model)
     model = CalculationModel(
         meta=ResourceMeta(ulid=generate_resource_id(),
             name="Test Calculation",
@@ -32,7 +32,7 @@ def test_calculation_yaml_only_persists_structure_id(tmp_path):
             path="calculations/test-calculation",
             kind="calculation",
         ),
-        structure_id=structure_id,
+        structure_ulid=structure_ulid,
         structure_name=structure_name,  # In-memory only (cosmetic)
         mode="normal",
         working_dir="raw",
@@ -48,9 +48,9 @@ def test_calculation_yaml_only_persists_structure_id(tmp_path):
     
     on_disk = yaml.safe_load(yaml_path.read_text())
     
-    # DAG + ID-only constitution: only structure_id is persisted
-    assert "structure_id" in on_disk, "calculation.yaml must contain structure_id"
-    assert on_disk["structure_id"] == structure_id
+    # DAG + ID-only constitution: only structure_ulid is persisted
+    assert "structure_ulid" in on_disk, "calculation.yaml must contain structure_ulid"
+    assert on_disk["structure_ulid"] == structure_ulid
     
     # These fields must NOT be persisted
     assert "structure_name" not in on_disk, "calculation.yaml must NOT contain structure_name"
@@ -58,7 +58,7 @@ def test_calculation_yaml_only_persists_structure_id(tmp_path):
     
     # Verify we can still load the model (structure_name/structure are in-memory only)
     loaded = load_calculation(calc_dir, tmp_path)
-    assert loaded.structure_id == structure_id
+    assert loaded.structure_ulid == structure_ulid
     # structure_name and structure may be None after loading (not persisted)
     # but that's OK - they're in-memory convenience fields
 
@@ -68,7 +68,7 @@ def test_calculation_roundtrip_strips_legacy_fields(tmp_path):
     calc_dir = tmp_path / "calculations" / "roundtrip"
     calc_dir.mkdir(parents=True)
     
-    structure_id = generate_resource_id()
+    structure_ulid = generate_resource_id()
     
     # Create calculation.yaml with legacy fields (simulating old format)
     legacy_yaml = {
@@ -79,7 +79,7 @@ def test_calculation_roundtrip_strips_legacy_fields(tmp_path):
             "path": "calculations/roundtrip",
             "kind": "calculation",
         },
-        "structure_id": structure_id,
+        "structure_ulid": structure_ulid,
         "structure_name": "Legacy Structure Name",  # Should be stripped
         "structure": "legacy-structure",  # Should be stripped
         "mode": "normal",
@@ -92,20 +92,20 @@ def test_calculation_roundtrip_strips_legacy_fields(tmp_path):
     
     # Load calculation
     model = load_calculation(calc_dir, tmp_path)
-    assert model.structure_id == structure_id
+    assert model.structure_ulid == structure_ulid
     
     # Save calculation (should strip legacy fields)
     save_calculation(model, calc_dir)
     
     # Verify legacy fields are gone
     on_disk = yaml.safe_load(yaml_path.read_text())
-    assert "structure_id" in on_disk
+    assert "structure_ulid" in on_disk
     assert "structure_name" not in on_disk, "Legacy structure_name should be stripped"
     assert "structure" not in on_disk, "Legacy structure selector should be stripped"
 
 
 def test_calculation_legacy_selector_raises_error(tmp_path):
-    """Test that legacy structure selector (without structure_id) raises LegacyProjectError."""
+    """Test that legacy structure selector (without structure_ulid) raises LegacyProjectError."""
     from quantumvitas.core.exceptions import LegacyProjectError
     
     calc_dir = tmp_path / "calculations" / "legacy"
@@ -116,13 +116,13 @@ def test_calculation_legacy_selector_raises_error(tmp_path):
     structures_dir = project_root / "structures"
     structures_dir.mkdir(parents=True)
     
-    structure_id = generate_resource_id()
+    structure_ulid = generate_resource_id()
     structure_file = structures_dir / "test-structure.json"
     import json
     from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
     structure_file.write_text(json.dumps({
         STRUCTURE_META_KEY: {
-            "ulid": structure_id,
+            "ulid": structure_ulid,
             "name": "Test Structure",
             "slug": "test-structure",
             "path": "structures/test-structure.json",
@@ -140,7 +140,7 @@ def test_calculation_legacy_selector_raises_error(tmp_path):
     project_config = {
         "project": {"name": "Test Project"},
         "structures": [{
-            "ulid": structure_id,
+            "ulid": structure_ulid,
             "file": "structures/test-structure.json",
             "format": "json",
         }],
@@ -148,7 +148,7 @@ def test_calculation_legacy_selector_raises_error(tmp_path):
     }
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
     
-    # Create calculation.yaml with legacy structure selector (no structure_id)
+    # Create calculation.yaml with legacy structure selector (no structure_ulid)
     legacy_yaml = {
         "meta": {
             "ulid": generate_resource_id(),
@@ -157,7 +157,7 @@ def test_calculation_legacy_selector_raises_error(tmp_path):
             "path": "calculations/legacy-test",
             "kind": "calculation",
         },
-        "structure": "test-structure",  # Legacy selector without structure_id
+        "structure": "test-structure",  # Legacy selector without structure_ulid
         "mode": "normal",
         "working_dir": "raw",
         "steps": [],

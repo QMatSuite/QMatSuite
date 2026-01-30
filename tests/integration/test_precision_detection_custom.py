@@ -63,7 +63,7 @@ class TestPrecisionDetectionCustom:
         calc_yaml = calc_dir / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "name": "Test Calculation",
-            "structure_id": "test_structure",
+            "structure_ulid": "test_structure",
             "species_map": {
                 "Si": {
                     "pseudo_sha256": "test_sha",
@@ -83,7 +83,7 @@ class TestPrecisionDetectionCustom:
         si_lattice = Lattice.cubic(5.43)
         si_structure = Structure(si_lattice, ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
         
-        # calculation.yaml already has structure_id="test_structure" from fixture
+        # calculation.yaml already has structure_ulid="test_structure" from fixture
         
         # Create scf step
         scf_step = temp_calc_dir / "steps" / "scf.step.yaml"

@@ -97,8 +97,8 @@ def build_step_spec_from_qe_input(
     *,
     destination_dir: Path | str,
     structure_dir: Path | str | None = None,
-    step_id: Optional[str] = None,
-    structure_id: Optional[str] = None,
+    step_ulid: Optional[str] = None,
+    structure_ulid: Optional[str] = None,
     reference_structure_by: str = "path",
     apply_defaults: bool = False,
 ) -> StepImportResult:
@@ -110,8 +110,8 @@ def build_step_spec_from_qe_input(
         destination_dir: Where to place the generated step YAML.
         structure_dir: Directory used to store the extracted structure JSON.
                        Defaults to ``destination_dir / 'structures'``.
-        step_id: Optional explicit step id; defaults to ``input_file.stem``.
-        structure_id: Optional structure id; defaults to ``input_file.stem``.
+        step_ulid: Optional explicit step id; defaults to ``input_file.stem``.
+        structure_ulid: Optional structure id; defaults to ``input_file.stem``.
         reference_structure_by: Either ``'path'`` or ``'id'``. Controls how the
                                 step spec references the structure. When ``id``
                                 is used you are responsible for ensuring the
@@ -139,15 +139,15 @@ def build_step_spec_from_qe_input(
     # Check if input has structure information
     has_structure = qe_input_has_structure(qe_input)
     
-    # Generate ULID for step_id (DAG + ULID model requirement)
+    # Generate ULID for step_ulid (DAG + ULID model requirement)
     from quantumvitas.core.resources import generate_resource_id
-    if step_id:
-        # If step_id is provided but not a ULID, generate one
-        if len(step_id) != 26 or not step_id.startswith("01"):
-            step_id = generate_resource_id()
+    if step_ulid:
+        # If step_ulid is provided but not a ULID, generate one
+        if len(step_ulid) != 26 or not step_ulid.startswith("01"):
+            step_ulid = generate_resource_id()
     else:
-        # Generate new ULID for step_id
-        step_id = generate_resource_id()
+        # Generate new ULID for step_ulid
+        step_ulid = generate_resource_id()
     
     # Use input_path.stem for step name/slug (human-readable identifier)
     step_name = input_path.stem
@@ -157,14 +157,14 @@ def build_step_spec_from_qe_input(
     if has_structure:
         structure = structure_from_qe_input(qe_input)
         
-        # Generate a proper ULID for structure_id if not provided
-        if not structure_id:
-            structure_id = generate_resource_id()
+        # Generate a proper ULID for structure_ulid if not provided
+        if not structure_ulid:
+            structure_ulid = generate_resource_id()
         else:
-            # If structure_id is provided but not a ULID, generate one
-            # (structure_id should be a ULID, not a name)
-            if len(structure_id) != 26 or not structure_id.startswith("01"):
-                structure_id = generate_resource_id()
+            # If structure_ulid is provided but not a ULID, generate one
+            # (structure_ulid should be a ULID, not a name)
+            if len(structure_ulid) != 26 or not structure_ulid.startswith("01"):
+                structure_ulid = generate_resource_id()
         
         # Use a filename based on the input stem for the structure file
         structure_filename = input_path.stem
@@ -181,14 +181,14 @@ def build_step_spec_from_qe_input(
             name=input_path.stem,  # Use input filename as name
             path=structure_meta_path,
         )
-        structure_meta.ulid = structure_id  # Set the ULID
+        structure_meta.ulid = structure_ulid  # Set the ULID
         
         # Write structure with meta
         write_structure(structure, structure_path, format="json", metadata=structure_meta)
     else:
         # Structure-less step (e.g., LR/TDDFT post-processing)
-        # structure_id will be None or set by caller (fallback to last structure)
-        structure_id = structure_id  # Keep provided value or None
+        # structure_ulid will be None or set by caller (fallback to last structure)
+        structure_ulid = structure_ulid  # Keep provided value or None
 
     step_type = _infer_step_type(qe_input)
     parameters, cards = _build_step_spec_from_qe_input_data(
@@ -228,22 +228,22 @@ def build_step_spec_from_qe_input(
     if reference_structure_by not in {"path", "id"}:
         raise ValueError("reference_structure_by must be either 'path' or 'id'")
 
-    # Always set structure_id (ID-only model requirement)
+    # Always set structure_ulid (ID-only model requirement)
     # For backwards compat, we can also set structure as a path selector if needed
     if reference_structure_by == "ulid":
-        structure_ref_value = structure_id
+        structure_ref_value = structure_ulid
         structure_selector = ""  # ID-only: no legacy selector
     else:
         structure_ref_value = _relative_path_for_spec(structure_path, destination)
         structure_selector = str(structure_ref_value)  # Legacy path selector for backwards compat
 
-    # Use step_name for filename (human-readable), step_id (ULID) for meta.ulid
+    # Use step_name for filename (human-readable), step_ulid (ULID) for meta.ulid
     step_file = destination / f"{step_name}.step.yaml"
     step_meta = meta_from_name("step", name=step_name, path=step_file.name)
-    step_meta.ulid = step_id  # Set ULID as meta.ulid
+    step_meta.ulid = step_ulid  # Set ULID as meta.ulid
     spec = StructureStepSpec(
         meta=step_meta,
-        structure_id=structure_id,  # Always set structure_id (ID-only model)
+        structure_ulid=structure_ulid,  # Always set structure_ulid (ID-only model)
         structure=structure_selector,  # Legacy selector (empty if using ID-only)
         step_type_spec=step_type,
         parameters=parameters,
@@ -254,8 +254,8 @@ def build_step_spec_from_qe_input(
     step_file.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
 
     return StepImportResult(
-        step_ulid=step_id,
-        structure_ulid=structure_id,
+        step_ulid=step_ulid,
+        structure_ulid=structure_ulid,
         step_type_spec=step_type,
         parameters=parameters,
         spec=spec,
@@ -269,7 +269,7 @@ def build_calculation_from_qe_inputs(
     *,
     calculation_dir: Path | str,
     calculation_id: Optional[str] = None,
-    structure_id: Optional[str] = None,
+    structure_ulid: Optional[str] = None,
     reference_structure_by: str = "path",
     working_dir_name: str = "raw",
     mode: str = "normal",
@@ -280,15 +280,15 @@ def build_calculation_from_qe_inputs(
 
     The calculation will contain:
     - ``calculation.yaml`` referencing generated step specs
-    - ``steps/<step_id>.step.yaml`` files
-    - ``structures/<structure_id>.json`` (unless already present)
+    - ``steps/<step_ulid>.step.yaml`` files
+    - ``structures/<structure_ulid>.json`` (unless already present)
     - Optional copies of the original QE inputs under ``<working_dir_name>/original/``
 
     Args:
         input_files: Iterable of QE input files in execution order.
         calculation_dir: Destination directory for the calculation.
         calculation_id: Optional calculation identifier (defaults to destination name).
-        structure_id: Optional structure id shared by all steps (defaults to stem of first input).
+        structure_ulid: Optional structure id shared by all steps (defaults to stem of first input).
         reference_structure_by: ``'path'`` or ``'id'`` (propagated to step specs).
         working_dir_name: Name of the calculation raw directory.
         mode: Calculation mode (e.g., ``normal`` or ``strict``).
@@ -321,43 +321,43 @@ def build_calculation_from_qe_inputs(
 
     calculation_id = calculation_id or calculation_dir.name
     
-    # Handle structure_id parameter:
+    # Handle structure_ulid parameter:
     # - If it's a ULID and reference_structure_by="id", treat it as a selector for existing structure
     # - Otherwise, we're creating a new structure, so generate a ULID upfront
     from quantumvitas.core.resources import generate_resource_id
     
-    # Check if structure_id is a valid ULID
-    is_ulid = structure_id and len(structure_id) == 26 and structure_id.startswith("01")
+    # Check if structure_ulid is a valid ULID
+    is_ulid = structure_ulid and len(structure_ulid) == 26 and structure_ulid.startswith("01")
     
-    # If structure_id is provided but not a ULID, and we're creating new structures,
+    # If structure_ulid is provided but not a ULID, and we're creating new structures,
     # generate a ULID upfront (the parameter is treated as a legacy name/selector, not used)
-    if structure_id and not is_ulid:
+    if structure_ulid and not is_ulid:
         # This is a legacy name/selector - we'll create a new structure with a ULID
-        # The structure_id parameter is ignored when creating new structures
-        structure_id = None
+        # The structure_ulid parameter is ignored when creating new structures
+        structure_ulid = None
     
     # Generate ULID if not provided (we're creating a new structure)
-    if not structure_id:
-        structure_id = generate_resource_id()
+    if not structure_ulid:
+        structure_ulid = generate_resource_id()
     
-    # Allow each step to have its own structure_id (multi-structure support)
+    # Allow each step to have its own structure_ulid (multi-structure support)
     # Steps will dedup structures by fingerprint via QVService.import_step_from_qe_input()
     step_results: list[StepImportResult] = []
     for input_path in files:
-        # Generate ULID for step_id (DAG + ULID model)
-        # step_id will be generated inside build_step_spec_from_qe_input if not provided
-        # structure_id=None allows each step to extract its own structure from the input
+        # Generate ULID for step_ulid (DAG + ULID model)
+        # step_ulid will be generated inside build_step_spec_from_qe_input if not provided
+        # structure_ulid=None allows each step to extract its own structure from the input
         step_result = build_step_spec_from_qe_input(
             input_path,
             destination_dir=steps_dir,
             structure_dir=structure_store,
-            step_id=None,  # Let function generate ULID
-            structure_id=None,  # Let each step extract its own structure (will dedup by fingerprint)
+            step_ulid=None,  # Let function generate ULID
+            structure_ulid=None,  # Let each step extract its own structure (will dedup by fingerprint)
             reference_structure_by=reference_structure_by,
         )
         step_results.append(step_result)
     
-    # Note: Steps may have different structure_ids if inputs contain different structures
+    # Note: Steps may have different structure_ulids if inputs contain different structures
     # This is intentional to support relax/vc-relax flows where later steps have updated structures
 
     raw_dir = (calculation_dir / working_dir_name).resolve()
@@ -369,22 +369,22 @@ def build_calculation_from_qe_inputs(
         shutil.copy2(input_path, originals_dir / input_path.name)
 
     calculation_meta: Dict[str, object] = {"working_dir": working_dir_name}
-    # For multi-structure support, we don't enforce a single structure_id at calculation level
-    # Each step references its own structure_id
+    # For multi-structure support, we don't enforce a single structure_ulid at calculation level
+    # Each step references its own structure_ulid
     # If all steps share the same structure, we can optionally set it for convenience
     # but it's not required
     if step_results:
         # Use the first step's structure_ulid as a default
         # but steps can have different structures
         first_structure_ulid = step_results[0].structure_ulid
-        calculation_meta["structure_id"] = first_structure_ulid
+        calculation_meta["structure_ulid"] = first_structure_ulid
     # Explicitly ensure structure_name and structure are NOT written
     calculation_meta.pop("structure_name", None)
     calculation_meta.pop("structure", None)
 
     steps_section = [
         {
-            "step_id": result.step_ulid,  # ULID (canonical reference)
+            "step_ulid": result.step_ulid,  # ULID (canonical reference)
             # step_file is NOT stored - step location resolved via registry using step_ulid
         }
         for result in step_results

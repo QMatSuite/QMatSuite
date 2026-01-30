@@ -70,7 +70,7 @@ class TestRelaxExecutorIntegration:
         
         job = Job(
             id="test_job",
-            step_ids=[step_ulid],
+            step_ulids=[step_ulid],
             working_dir=tmp_path / "work",
             command=["pw.x", "relax.in"],
             input_files=[],
@@ -130,11 +130,11 @@ class TestRelaxExecutorIntegration:
         mock_calculation.dir = calc_dir
         mock_calculation.steps = [mock_step]
         mock_calculation.meta.ulid = "calc001"
-        mock_calculation.structure_id = "struct001"
+        mock_calculation.structure_ulid = "struct001"
         
         job = Job(
             id="test_job",
-            step_ids=[step_ulid],
+            step_ulids=[step_ulid],
             working_dir=tmp_path / "work",
             command=["pw.x", "relax.in"],
             input_files=[],
@@ -208,7 +208,7 @@ class TestRelaxExecutorIntegration:
         
         job = Job(
             id="test_job",
-            step_ids=[step_ulid],
+            step_ulids=[step_ulid],
             working_dir=tmp_path / "work",
             command=["pw.x", "relax.in"],
             input_files=[],
@@ -285,7 +285,7 @@ class TestRelaxExecutorIntegration:
         
         job = Job(
             id="test_job",
-            step_ids=[step1_ulid],  # Only step1 in this job
+            step_ulids=[step1_ulid],  # Only step1 in this job
             working_dir=tmp_path / "work",
             command=["pw.x", "relax.in"],
             input_files=[],

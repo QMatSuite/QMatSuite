@@ -75,8 +75,8 @@ class TestDaemonQEUIParameters:
         """Test that missing step_type raises error."""
         daemon = QVDaemon()
         payload = {"module": "pw"}
-        
-        with pytest.raises(ValueError, match="'step_type' is required"):
+
+        with pytest.raises(ValueError, match="'step_type_gen' is required"):
             daemon._handle_list_qe_ui_parameters(payload)
     
     def test_list_qe_ui_parameters_parameters_exist_in_qe_params(self):

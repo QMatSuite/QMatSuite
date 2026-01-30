@@ -171,12 +171,12 @@ class PySCFEngine(Engine):
             StepResult with calculation results
         """
         # Phase 3C: Unify execution path - single step is now a chain of length 1
-        # Extract structure_id and project_root from step.options (set by CalculationRunner)
-        structure_id = None
+        # Extract structure_ulid and project_root from step.options (set by CalculationRunner)
+        structure_ulid = None
         resolved_project_root = None
         
         if hasattr(step, 'options'):
-            structure_id = step.options.get('structure_id')
+            structure_ulid = step.options.get('structure_ulid')
             project_root_str = step.options.get('project_root')
             if project_root_str:
                 resolved_project_root = Path(project_root_str)
@@ -195,7 +195,7 @@ class PySCFEngine(Engine):
             target_step=step,
             chain_steps=[step],  # Chain of length 1
             calculation_raw_dir=working_dir,
-            structure_id=structure_id,
+            structure_ulid=structure_ulid,
             project_root=resolved_project_root,
         )
     
@@ -311,7 +311,7 @@ class PySCFEngine(Engine):
         target_step,
         chain_steps: List[Any],  # List of Step objects
         calculation_raw_dir: Path,
-        structure_id: Optional[str] = None,
+        structure_ulid: Optional[str] = None,
         project_root: Optional[Path] = None,
     ) -> StepResult:
         """
@@ -392,12 +392,12 @@ class PySCFEngine(Engine):
         
         # Phase 3C: Resolve structure once for all chain steps (structure is calc-level)
         # Structure is required for PySCF calculations - raise error if missing
-        if not structure_id:
+        if not structure_ulid:
             return StepResult(
                 step_type_spec=target_step_type,
                 input_file=calculation_raw_dir / "job_chain.json",
                 success=False,
-                error=f"Structure ID is required for PySCF chain execution, but calculation.structure_id is None",
+                error=f"Structure ID is required for PySCF chain execution, but calculation.structure_ulid is None",
                 execution_time=time.time() - start_time,
             )
         if not project_root:
@@ -418,7 +418,7 @@ class PySCFEngine(Engine):
             # Resolve structure using canonical resolver
             structure_resolved = require_structure(
                 project_root,
-                structure_id,
+                structure_ulid,
                 config=None,
                 index=None,
             )
@@ -443,7 +443,7 @@ class PySCFEngine(Engine):
                     step_type_spec=target_step_type,
                     input_file=calculation_raw_dir / "job_chain.json",
                     success=False,
-                    error=f"Structure has no atoms (structure_id={structure_id})",
+                    error=f"Structure has no atoms (structure_ulid={structure_ulid})",
                     execution_time=time.time() - start_time,
                 )
             
@@ -472,18 +472,18 @@ class PySCFEngine(Engine):
                 step_type_spec=target_step_type,
                 input_file=calculation_raw_dir / "job_chain.json",
                 success=False,
-                error=f"Failed to load structure (structure_id={structure_id}, project_root={project_root}): {e}\n{traceback.format_exc()}",
+                error=f"Failed to load structure (structure_ulid={structure_ulid}, project_root={project_root}): {e}\n{traceback.format_exc()}",
                 execution_time=time.time() - start_time,
             )
         
         # Build chain step specs
         chain_step_specs = []
         for step in chain_steps:
-            step_ulid = step.meta.ulid if hasattr(step, 'meta') and hasattr(step.meta, 'id') else "unknown"
-            
+            step_ulid = step.meta.ulid if hasattr(step, 'meta') and hasattr(step.meta, 'ulid') else "unknown"
+
             # Phase 3C: Read machine step_type from step.yaml (step.yaml stores machine types)
             # Step.step_type_spec is StepType enum which doesn't have all machine types (e.g., no "mp2")
-            step_type_spec= "unknown"
+            step_type = "unknown"
             if hasattr(step, 'meta') and hasattr(step.meta, 'path') and step.meta.path:
                 # step.meta.path is relative to project root
                 step_yaml_path = project_root / step.meta.path
@@ -491,7 +491,7 @@ class PySCFEngine(Engine):
                     import yaml
                     step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
                     step_type = step_data.get("step_type_spec") or "unknown"
-            
+
             # HARD ERROR if step_type not found - no fallbacks allowed
             if step_type == "unknown" or not step_type:
                 return StepResult(

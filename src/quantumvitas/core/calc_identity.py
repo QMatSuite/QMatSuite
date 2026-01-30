@@ -52,7 +52,8 @@ def ensure_calculation_identity(calc_dir: Path, project_root: Optional[Path] = N
         # For inference, we only need step types, not full CalculationStepEntry objects
         step_types = []
         for step_data in data.get("steps", []):
-            step_type = step_data.get("type")
+            # Look for step_type_spec (SPEC type, SSOT) first, then step_type_gen (GEN type)
+            step_type = step_data.get("step_type_spec") or step_data.get("step_type_gen")
             if step_type:
                 step_types.append(step_type)
         

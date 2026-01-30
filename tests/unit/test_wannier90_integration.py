@@ -296,8 +296,10 @@ class TestDemoGeneration:
         assert "steps" in calc
         assert len(calc["steps"]) == 5
         
-        step_types = [s["step_type"] for s in calc["steps"]]
-        assert step_types == ["scf", "nscf", "w90_preproc", "pw2wannier90", "w90_run"]
+        # YAML files use step_type_spec (SPEC layer); convert to GEN for comparison
+        from quantumvitas.workflow.registry import normalize_step_type_to_gen
+        step_types_gen = [normalize_step_type_to_gen(s["step_type_spec"]) for s in calc["steps"]]
+        assert step_types_gen == ["scf", "nscf", "w90_preproc", "pw2wannier90", "w90_run"]
     
     def test_demo_has_pseudo_triple(self, demo_path):
         """Test that demo has complete pseudo identity triple."""

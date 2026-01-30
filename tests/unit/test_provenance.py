@@ -29,7 +29,7 @@ class TestProvenanceMap:
         
         prov = ProvenanceMap()
         prov.files["raw/scf.out"] = ProvenanceEntry(
-            run_id="01JTEST",
+            run_ulid="01JTEST",
             step_ulid="01JSTEP",
             produced_at="2026-01-19T10:00:00Z",
             size_bytes=1234,
@@ -40,7 +40,7 @@ class TestProvenanceMap:
         loaded = load_provenance(calc_dir)
         
         assert "raw/scf.out" in loaded.files
-        assert loaded.files["raw/scf.out"].run_id == "01JTEST"
+        assert loaded.files["raw/scf.out"].run_ulid == "01JTEST"
 
 
 class TestUpdateProvenance:
@@ -56,7 +56,7 @@ class TestUpdateProvenance:
         # Update provenance
         changes = update_provenance_after_step(
             calc_dir=calc_dir,
-            run_id="01JRUN1",
+            run_ulid="01JRUN1",
             step_ulid="01JSTEP1",
             engine="qe",
         )
@@ -67,7 +67,7 @@ class TestUpdateProvenance:
         # Check provenance
         entry = get_file_provenance(calc_dir, "raw/scf.out")
         assert entry is not None
-        assert entry.run_id == "01JRUN1"
+        assert entry.run_ulid == "01JRUN1"
     
     def test_tracks_modified_files(self, tmp_path):
         """Provenance updates when files are modified."""
@@ -92,7 +92,7 @@ class TestUpdateProvenance:
         assert changes["raw/scf.out"] == "modified"
         
         entry = get_file_provenance(calc_dir, "raw/scf.out")
-        assert entry.run_id == "01JRUN2"
+        assert entry.run_ulid == "01JRUN2"
     
     def test_ignores_outdir(self, tmp_path):
         """QE outdir/ is now tracked by provenance (philosophy change)."""

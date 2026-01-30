@@ -11,5 +11,5 @@ project:
 calculations:
 - calculation_id: 01KC38MFJZ7RF3SB7SHVYDQ4J8
 structures:
-- structure_id: 01KC38MBGSS8MX3Z4ETZMXZZY4
+- structure_ulid: 01KC38MBGSS8MX3Z4ETZMXZZY4
 settings: {}

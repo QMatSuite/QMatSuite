@@ -544,10 +544,10 @@ class TestStepDocAccessControl:
         """Without access control, all writes allowed."""
         doc = StepDoc(access_control=False)
         
-        doc.set(["meta", "id"], "test")
+        doc.set(["meta", "ulid"], "test")
         doc.set(["parameters", "SYSTEM", "ecutwfc"], 60)
         
-        assert doc.get(["meta", "id"]) == "test"
+        assert doc.get(["meta", "ulid"]) == "test"
     
     def test_compiler_can_write_parameters(self):
         """Compiler can write to parameters."""
@@ -572,7 +572,7 @@ class TestStepDocAccessControl:
         doc = StepDoc(access_control=True, owner="compiler")
         
         with pytest.raises(AccessControlError):
-            doc.set(["meta", "id"], "new_id")
+            doc.set(["meta", "ulid"], "new_id")
     
     def test_detector_is_read_only(self):
         """Detector cannot write anything."""
@@ -585,11 +585,11 @@ class TestStepDocAccessControl:
         """User can write to all paths."""
         doc = StepDoc(access_control=True, owner="user")
         
-        doc.set(["meta", "id"], "test")
+        doc.set(["meta", "ulid"], "test")
         doc.set(["parameters", "SYSTEM", "ecutwfc"], 60)
         doc.set(["custom_field"], "value")
         
-        assert doc.get(["meta", "id"]) == "test"
+        assert doc.get(["meta", "ulid"]) == "test"
 
 
 # =============================================================================
@@ -666,7 +666,7 @@ class TestYamlIO:
         
         loaded = StepDoc.load(path)
         
-        assert loaded.get(["step_type"]) == "scf"
+        assert loaded.get(["step_type_gen"]) == "scf"
         assert loaded.get(["parameters", "SYSTEM", "ecutwfc"]) == 60
 
 

@@ -294,45 +294,45 @@ def _copy_calculation_from_path(
     calculation_section = calculation_data.get("calculation", {})
     template_structure = calculation_data.get("structure") or calculation_section.get("structure")
     
-    # Resolve structure to structure_id (ULID) if structure selector is provided
-    structure_id = None
+    # Resolve structure to structure_ulid (ULID) if structure selector is provided
+    structure_ulid = None
     if structure:
-        # Resolve structure selector to structure_id (ULID)
+        # Resolve structure selector to structure_ulid (ULID)
         from quantumvitas.core.resolution import resolve_structure
         from quantumvitas.core.project_utils import load_project_config
         try:
             config = load_project_config(project_root)
             resolved = resolve_structure(project_root, structure, config)
-            structure_id = resolved.meta.ulid
+            structure_ulid = resolved.meta.ulid
         except Exception:
-            # If resolution fails, structure_id remains None (will be set later if structure is added)
+            # If resolution fails, structure_ulid remains None (will be set later if structure is added)
             pass
     elif template_structure:
         structures_needed.add(template_structure)
-        # Try to resolve template structure to structure_id if it exists in project
+        # Try to resolve template structure to structure_ulid if it exists in project
         from quantumvitas.core.resolution import resolve_structure
         from quantumvitas.core.project_utils import load_project_config
         try:
             config = load_project_config(project_root)
             resolved = resolve_structure(project_root, template_structure, config)
-            structure_id = resolved.meta.ulid
+            structure_ulid = resolved.meta.ulid
         except Exception:
             # Structure not found in project yet - will be copied from template
             pass
     
-    # Set structure_id (ULID) if we have it
+    # Set structure_ulid (ULID) if we have it
     # Remove any legacy structure selector fields (violates DAG + ID-only constitution)
-    if structure_id:
-        calculation_data["structure_id"] = structure_id
+    if structure_ulid:
+        calculation_data["structure_ulid"] = structure_ulid
         # Remove legacy structure selector fields (DAG + ID-only constitution)
         calculation_data.pop("structure", None)
         calculation_data.pop("structure_name", None)
         if "calculation" in calculation_data:
-            calculation_data["calculation"]["structure_id"] = structure_id
+            calculation_data["calculation"]["structure_ulid"] = structure_ulid
             calculation_data["calculation"].pop("structure", None)
             calculation_data["calculation"].pop("structure_name", None)
     else:
-        # If no structure_id, remove any structure selector fields
+        # If no structure_ulid, remove any structure selector fields
         calculation_data.pop("structure", None)
         calculation_data.pop("structure_name", None)
         if "calculation" in calculation_data:
@@ -356,10 +356,10 @@ def _copy_calculation_from_path(
             if structure_name:
                 structures_needed.add(structure_name)
             
-            # DAG + ID-only model: Step YAML must NOT contain structure, structure_id, or parent_calculation_id
+            # DAG + ID-only model: Step YAML must NOT contain structure, structure_ulid, or parent_calculation_id
             # Remove these fields before writing
             step_data.pop("parent_calculation_id", None)
-            step_data.pop("structure_id", None)
+            step_data.pop("structure_ulid", None)
             step_data.pop("structure", None)
             
             # Update path in meta

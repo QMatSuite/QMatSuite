@@ -4,7 +4,7 @@ meta:
   slug: si-dos
   path: calculations/si-dos
   kind: calculation
-structure_id: 01KC38MBGSS8MX3Z4ETZMXZZY4
+structure_ulid: 01KC38MBGSS8MX3Z4ETZMXZZY4
 mode: normal
 working_dir: raw
 steps:

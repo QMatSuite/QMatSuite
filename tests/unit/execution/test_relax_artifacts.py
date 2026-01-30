@@ -49,7 +49,7 @@ class TestWriteGeneratedStructure:
             calc_dir=calc_dir,
             step_ulid=step_ulid,
             step_type="qe_relax",
-            run_id="run001",
+            run_ulid="run001",
             calculation_ulid="calc001",
             input_structure_ulid="struct001",
         )
@@ -59,7 +59,7 @@ class TestWriteGeneratedStructure:
         # Check content
         data = json.loads(result_path.read_text())
         assert "__qv_meta__" in data
-        assert data["__qv_meta__"]["type"] == "generated_structure"
+        assert data["__qv_meta__"]["type"] == "generated_structure"  # artifact type, not step_type
         assert data["__qv_meta__"]["source_step_ulid"] == step_ulid
         assert data["__qv_meta__"]["provenance"]["method"] == "qe_relax"
 
@@ -220,7 +220,7 @@ Si   0.250000000   0.250000000   0.250000000
             output_path=output_path,
             calculation_ulid=calculation_ulid,
             input_structure_ulid=input_structure_ulid,
-            run_id=run_id,
+            run_ulid=run_id,
         )
         
         # Verify current.json was created
@@ -283,7 +283,7 @@ class TestScopedCleanup:
         
         job = Job(
             id="test_job",
-            step_ids=[step_ulid],
+            step_ulids=[step_ulid],
             working_dir=tmp_path / "work",
             command=["pw.x", "relax.in"],
             input_files=[],
@@ -348,7 +348,7 @@ class TestScopedCleanup:
         
         job = Job(
             id="test_job",
-            step_ids=[step1_ulid],  # Only step1
+            step_ulids=[step1_ulid],  # Only step1
             working_dir=tmp_path / "work",
             command=["pw.x", "relax.in"],
             input_files=[],

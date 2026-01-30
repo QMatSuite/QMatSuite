@@ -24,7 +24,7 @@ class TestV0PayloadSchemas:
         return {
             "project_root": "/test/project",
             "project_id": "01TEST00000000000000000001",
-            "structure_id": "01TEST00000000000000000002",
+            "structure_ulid": "01TEST00000000000000000002",
             "calc_id": "01TEST00000000000000000003",
             "step_ids": ["01TEST00000000000000000004", "01TEST00000000000000000005"],
             "calculation_selector": "01TEST00000000000000000003",
@@ -42,7 +42,7 @@ class TestV0PayloadSchemas:
 
         assert "selector" in payload
         assert isinstance(payload["selector"], str), "selector must be str, not dict"
-        assert payload["selector"] == mock_world["structure_id"]
+        assert payload["selector"] == mock_world["structure_ulid"]
         assert "project_root" in payload
 
     def test_rename_structure_selector_is_string(self, mock_world):
@@ -51,7 +51,7 @@ class TestV0PayloadSchemas:
 
         assert "selector" in payload
         assert isinstance(payload["selector"], str), "selector must be str, not dict"
-        assert payload["selector"] == mock_world["structure_id"]
+        assert payload["selector"] == mock_world["structure_ulid"]
         assert payload["new_name"] == "new_name"
 
     def test_can_delete_structure_selector_is_string(self, mock_world):
@@ -60,7 +60,7 @@ class TestV0PayloadSchemas:
 
         assert "selector" in payload
         assert isinstance(payload["selector"], str), "selector must be str, not dict"
-        assert payload["selector"] == mock_world["structure_id"]
+        assert payload["selector"] == mock_world["structure_ulid"]
 
     def test_get_structure_vis_selector_is_string(self, mock_world):
         """get_structure_vis: selector must be a plain string, NOT a dict."""
@@ -68,7 +68,7 @@ class TestV0PayloadSchemas:
 
         assert "selector" in payload
         assert isinstance(payload["selector"], str), "selector must be str, not dict"
-        assert payload["selector"] == mock_world["structure_id"]
+        assert payload["selector"] == mock_world["structure_ulid"]
 
     def test_import_structure_uses_source_file_key(self, mock_world):
         """import_structure: key is 'source_file', NOT 'source'."""
@@ -126,12 +126,12 @@ class TestV0PayloadSchemas:
     # -------------------------------------------------------------------------
 
     def test_instantiate_workflow_requires_all_fields(self, mock_world):
-        """instantiate_workflow: requires workflow_id, calculation_path, structure_id, calculation_id."""
+        """instantiate_workflow: requires workflow_id, calculation_path, structure_ulid, calculation_id."""
         payload = build_v0_payload("instantiate_workflow", mock_world, workflow_id="scf")
 
         assert "workflow_id" in payload
         assert "calculation_path" in payload
-        assert "structure_id" in payload
+        assert "structure_ulid" in payload
         assert "calculation_id" in payload
 
         # calculation_path must use calc_slug for filesystem path

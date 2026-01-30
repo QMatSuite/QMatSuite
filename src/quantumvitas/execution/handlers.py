@@ -114,7 +114,7 @@ def _get_step_input_from_calculation_yaml(
     steps_data = data.get("steps", [])
     
     for step_data in steps_data:
-        if step_data.get("step_id") == step_ulid:
+        if step_data.get("step_ulid") == step_ulid:
             input_path_value = step_data.get("input") or step_data.get("file")
             if input_path_value:
                 input_path = Path(input_path_value)
@@ -160,7 +160,7 @@ def handle_qe_relax_output(
     output_path: Path,
     calculation_ulid: str,
     input_structure_ulid: str,
-    run_id: Optional[str] = None,
+    run_ulid: Optional[str] = None,
 ) -> Path:
     """
     DEPRECATED: Use quantumvitas.drivers.qe.handler.handle_qe_relax_output
@@ -175,7 +175,7 @@ def handle_qe_relax_output(
         output_path=output_path,
         calculation_ulid=calculation_ulid,
         input_structure_ulid=input_structure_ulid,
-        run_id=run_id,
+        run_ulid=run_ulid,
     )
 
 
@@ -191,7 +191,7 @@ def create_handler_map(
 
     Args:
         engine_registry: Engine registry
-        context: Execution context (run_id, run_mode, etc.)
+        context: Execution context (run_ulid, run_mode, etc.)
 
     Returns:
         Dict mapping engine name to handler function

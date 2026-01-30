@@ -199,6 +199,6 @@ class TestPromoteRelaxStructureDaemonRPC:
         # Verify response - send_request already checks response.ok and returns response.data
         assert "structure" in response
         assert response["structure"]["name"] == "promoted_silicon"
-        assert "id" in response["structure"]
+        assert "ulid" in response["structure"]
         assert "path" in response["structure"]
 

@@ -23,7 +23,7 @@ class ScanDimension:
     """A single scan dimension (one parameter being scanned)."""
     
     step_ulid: str
-    step_index: int  # Index of step in job's step_ids list
+    step_index: int  # Index of step in job's step_ulids list
     param_path: str  # Runtime-only deterministic path (e.g., "parameters.SYSTEM.ecutwfc")
     scan_id: str  # scan_id from parameter_scan section
     values: List[Any]  # List of values to scan over
@@ -59,7 +59,7 @@ def _traverse_and_collect_scan_refs(
     Args:
         data: Step document dict (parameters or cards section)
         step_ulid: ULID of the step
-        step_index: Index of step in job's step_ids list
+        step_index: Index of step in job's step_ulids list
         base_path: Base path prefix (e.g., "parameters" or "cards")
         parameter_scan: parameter_scan section from step.yaml
         
@@ -113,14 +113,14 @@ def _traverse_and_collect_scan_refs(
 
 
 def collect_scan_dimensions(
-    step_ids: List[str],  # Ordered list of step ULIDs in job
+    step_ulids: List[str],  # Ordered list of step ULIDs in job
     step_docs: Dict[str, dict],  # step_ulid -> step.yaml dict
 ) -> List[ScanDimension]:
     """
     Collect all scan dimensions from a job's steps.
     
     Args:
-        step_ids: Ordered list of step ULIDs in the job
+        step_ulids: Ordered list of step ULIDs in the job
         step_docs: Mapping from step ULID to step document dict
         
     Returns:
@@ -128,7 +128,7 @@ def collect_scan_dimensions(
     """
     all_dimensions: List[ScanDimension] = []
     
-    for step_index, step_ulid in enumerate(step_ids):
+    for step_index, step_ulid in enumerate(step_ulids):
         step_doc = step_docs.get(step_ulid)
         if step_doc is None:
             continue

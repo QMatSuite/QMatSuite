@@ -85,9 +85,9 @@ class RunRevision:
     - Step digests (computed results)
     - Run digest (overall summary)
     """
-    id: str  # Run ULID
-    project_id: str
-    calc_id: str
+    ulid: str  # Run ULID
+    project_ulid: str
+    calc_ulid: str
     calc_name: Optional[str] = None
     
     # Timestamps
@@ -105,9 +105,9 @@ class RunRevision:
     engine_path: Optional[str] = None
     
     # Intention record
-    step_ids: List[str] = field(default_factory=list)
+    step_ulids: List[str] = field(default_factory=list)
     step_types: List[str] = field(default_factory=list)
-    structure_id: Optional[str] = None
+    structure_ulid: Optional[str] = None
     structure_name: Optional[str] = None
     preset_options: Optional[Dict[str, str]] = None
     
@@ -127,9 +127,9 @@ class RunRevision:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
-            "ulid": self.id,
-            "project_id": self.project_id,
-            "calc_id": self.calc_id,
+            "ulid": self.ulid,
+            "project_ulid": self.project_ulid,
+            "calc_ulid": self.calc_ulid,
             "calc_name": self.calc_name,
             "created_at": self.created_at,
             "started_at": self.started_at,
@@ -139,9 +139,9 @@ class RunRevision:
             "engine": self.engine,
             "engine_version": self.engine_version,
             "engine_path": self.engine_path,
-            "step_ids": self.step_ids,
+            "step_ulids": self.step_ulids,
             "step_types": self.step_types,
-            "structure_id": self.structure_id,
+            "structure_ulid": self.structure_ulid,
             "structure_name": self.structure_name,
             "preset_options": self.preset_options,
             "pseudo_refs": self.pseudo_refs,
@@ -155,9 +155,9 @@ class RunRevision:
     def from_dict(cls, data: Dict[str, Any]) -> "RunRevision":
         """Create from dictionary."""
         return cls(
-            id=data.get("ulid", ""),
-            project_id=data.get("project_id", ""),
-            calc_id=data.get("calc_id", ""),
+            ulid=data.get("ulid", ""),
+            project_ulid=data.get("project_ulid") or data.get("project_id", ""),
+            calc_ulid=data.get("calc_ulid", ""),
             calc_name=data.get("calc_name"),
             created_at=data.get("created_at", ""),
             started_at=data.get("started_at"),
@@ -167,9 +167,9 @@ class RunRevision:
             engine=_infer_engine_from_data(data),
             engine_version=data.get("engine_version"),
             engine_path=data.get("engine_path"),
-            step_ids=data.get("step_ids", []),
+            step_ulids=data.get("step_ulids", []),
             step_types=data.get("step_types", []),
-            structure_id=data.get("structure_id"),
+            structure_ulid=data.get("structure_ulid"),
             structure_name=data.get("structure_name"),
             preset_options=data.get("preset_options"),
             pseudo_refs=data.get("pseudo_refs", {}),
@@ -211,11 +211,11 @@ class RunRevision:
 
 def create_run_revision(
     project_root: Path,
-    calc_id: str,
+    calc_ulid: str,
     calc_name: Optional[str] = None,
-    step_ids: Optional[List[str]] = None,
+    step_ulids: Optional[List[str]] = None,
     step_types: Optional[List[str]] = None,
-    structure_id: Optional[str] = None,
+    structure_ulid: Optional[str] = None,
     structure_name: Optional[str] = None,
     engine: str = "qe",
     engine_version: Optional[str] = None,
@@ -224,7 +224,7 @@ def create_run_revision(
     species_map: Optional[Dict[str, Dict[str, Any]]] = None,
     working_dir: Optional[Path] = None,
     create_snapshot: bool = True,
-    run_id: Optional[str] = None,
+    run_ulid: Optional[str] = None,
 ) -> RunRevision:
     """
     Create a new run revision at the start of a run.
@@ -233,11 +233,11 @@ def create_run_revision(
     
     Args:
         project_root: Path to project root
-        calc_id: Calculation ULID
+        calc_ulid: Calculation ULID
         calc_name: Human-readable calculation name
-        step_ids: List of step ULIDs to execute
+        step_ulids: List of step ULIDs to execute
         step_types: List of step types
-        structure_id: Structure ULID
+        structure_ulid: Structure ULID
         structure_name: Structure name
         engine: Engine name (default "qe")
         engine_version: Engine version string
@@ -246,32 +246,32 @@ def create_run_revision(
         species_map: Pseudopotential mapping
         working_dir: Working directory path
         create_snapshot: Whether to create a snapshot tar
-        run_id: External run ID to use (e.g., job_id from JobManager).
+        run_ulid: External run ID to use (e.g., job_id from JobManager).
                 If provided, this ID will be used instead of generating a new one,
-                ensuring job_id == run_id identity.
+                ensuring job_id == run_ulid identity.
         
     Returns:
         Initialized RunRevision
     """
-    from quantumvitas.history.storage import ProjectHistory, generate_run_id
+    from quantumvitas.history.storage import ProjectHistory, generate_run_ulid
     
     project_root = Path(project_root).resolve()
     
-    # Use external run_id if provided, otherwise generate one
-    if run_id is None:
-        run_id = generate_run_id()
+    # Use external run_ulid if provided, otherwise generate one
+    if run_ulid is None:
+        run_ulid = generate_run_ulid()
     
     # Get project ID
     try:
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
-        project_id = config.get("project", {}).get("meta", {}).get("ulid", "")
+        project_ulid = config.get("project", {}).get("meta", {}).get("ulid", "")
     except Exception:
-        project_id = ""
+        project_ulid = ""
     
     # Create run directory
     history = ProjectHistory(project_root)
-    run_dir = history.create_run_dir(run_id)
+    run_dir = history.create_run_dir(run_ulid)
     
     # Build pseudo refs from species_map
     pseudo_refs = {}
@@ -286,9 +286,9 @@ def create_run_revision(
     now = datetime.now(timezone.utc).isoformat()
     
     revision = RunRevision(
-        id=run_id,
-        project_id=project_id,
-        calc_id=calc_id,
+        ulid=run_ulid,
+        project_ulid=project_ulid,
+        calc_ulid=calc_ulid,
         calc_name=calc_name,
         created_at=now,
         started_at=now,
@@ -296,9 +296,9 @@ def create_run_revision(
         engine=engine,
         engine_version=engine_version,
         engine_path=engine_path,
-        step_ids=step_ids or [],
+        step_ulids=step_ulids or [],
         step_types=step_types or [],
-        structure_id=structure_id,
+        structure_ulid=structure_ulid,
         structure_name=structure_name,
         preset_options=preset_options,
         pseudo_refs=pseudo_refs,
@@ -308,7 +308,7 @@ def create_run_revision(
     # Create snapshot
     if create_snapshot:
         try:
-            snapshot_path = _create_snapshot(project_root, calc_id, run_dir)
+            snapshot_path = _create_snapshot(project_root, calc_ulid, run_dir)
             revision.snapshot_path = str(snapshot_path.relative_to(run_dir))
         except Exception as e:
             logger.warning(f"Failed to create run snapshot: {e}")
@@ -321,7 +321,7 @@ def create_run_revision(
 
 def _create_snapshot(
     project_root: Path,
-    calc_id: str,
+    calc_ulid: str,
     run_dir: Path,
 ) -> Path:
     """
@@ -359,7 +359,7 @@ def _create_snapshot(
                     import yaml
                     data = yaml.safe_load(calc_yaml.read_text()) or {}
                     meta_id = data.get("meta", {}).get("ulid", "")
-                    if meta_id == calc_id:
+                    if meta_id == calc_ulid:
                         calc_dir = d
                         break
                 except Exception:
@@ -401,7 +401,7 @@ def _create_snapshot(
 
 def complete_run_revision(
     project_root: Path,
-    run_id: str,
+    run_ulid: str,
     status: str,
     step_results: List[Dict[str, Any]],
     working_dir: Path,
@@ -414,7 +414,7 @@ def complete_run_revision(
     
     Args:
         project_root: Path to project root
-        run_id: Run ULID
+        run_ulid: Run ULID
         status: Final status ("success", "failed", "cancelled")
         step_results: List of step result summaries from runner
         working_dir: Working directory with outputs
@@ -426,10 +426,10 @@ def complete_run_revision(
     from quantumvitas.history.storage import ProjectHistory
     
     history = ProjectHistory(project_root)
-    run_dir = history.get_run_dir(run_id)
+    run_dir = history.get_run_dir(run_ulid)
     
     if not run_dir:
-        raise ValueError(f"Run directory not found for run_id: {run_id}")
+        raise ValueError(f"Run directory not found for run_ulid: {run_ulid}")
     
     # Load existing revision
     revision = load_run_revision(run_dir)
@@ -444,7 +444,7 @@ def complete_run_revision(
     step_digests: List[StepDigest] = []
     
     for i, step_result in enumerate(step_results):
-        step_id = step_result.get("step_id", "")
+        step_ulid = step_result.get("step_ulid", "")
         step_type = step_result.get("step_type_spec", "")
         # step_type is already a string, no conversion needed
         
@@ -456,7 +456,7 @@ def complete_run_revision(
         error_msg = step_result.get("message") if step_status == "failed" else None
         
         digest = compute_step_digest(
-            step_ulid=step_id,
+            step_ulid=step_ulid,
             step_type_spec=step_type,
             working_dir=working_dir,
             step_name=step_name,
@@ -472,8 +472,8 @@ def complete_run_revision(
     started_at = datetime.fromisoformat(revision.started_at) if revision.started_at else finished_at
     
     revision.run_digest = compute_run_digest(
-        run_id=run_id,
-        calc_id=revision.calc_id,
+        run_ulid=run_ulid,
+        calc_ulid=revision.calc_ulid,
         status=status,
         started_at=started_at,
         finished_at=finished_at,

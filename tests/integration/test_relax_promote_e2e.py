@@ -87,10 +87,10 @@ def promote_test_project():
     structures_dir.mkdir(parents=True, exist_ok=True)
     
     from quantumvitas.core.resources import generate_resource_id
-    structure_id = generate_resource_id()
+    structure_ulid = generate_resource_id()
     structure_data = {
         "__qv_meta__": {
-            "ulid": structure_id,
+            "ulid": structure_ulid,
             "name": "H2",
             "slug": "h2",
             "path": "structures/h2.json",
@@ -102,7 +102,7 @@ def promote_test_project():
     
     return {
         "project_root": project_root,
-        "structure_id": structure_id,
+        "structure_ulid": structure_ulid,
         "structure_path": structures_dir / "h2.json",
         "test_dir": test_dir,
     }
@@ -112,13 +112,13 @@ def promote_test_project():
 def promote_test_calculation_with_relax(promote_test_project):
     """Create a calculation with a relax step, configured for PySCF."""
     project_root = promote_test_project["project_root"]
-    structure_id = promote_test_project["structure_id"]
+    structure_ulid = promote_test_project["structure_ulid"]
     
     # Create calculation with molecule/pyscf settings
     calc_result = QVService.init_calculation(
         project_root=project_root,
         name="h2_relax",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_ulid = calc_result.ulid
     if calc_result.absolute_path.is_dir():
@@ -160,7 +160,7 @@ def promote_test_calculation_with_relax(promote_test_project):
         "calc_ulid": calc_ulid,
         "calc_dir": calc_dir,
         "relax_step_ulid": relax_step_ulid,
-        "structure_id": structure_id,
+        "structure_ulid": structure_ulid,
     }
 
 
@@ -177,7 +177,7 @@ class TestRelaxPromoteE2E:
         calc_ulid = promote_test_calculation_with_relax["calc_ulid"]
         relax_step_ulid = promote_test_calculation_with_relax["relax_step_ulid"]
         project_root = promote_test_calculation_with_relax["project_root"]
-        initial_structure_id = promote_test_calculation_with_relax["structure_id"]
+        initial_structure_ulid = promote_test_calculation_with_relax["structure_ulid"]
         
         # Get initial structure count
         initial_structures = QVService.list_structures_data(project_root)
@@ -211,7 +211,7 @@ class TestRelaxPromoteE2E:
         assert len(all_structures) == initial_count + 1, "Should have one more structure"
         
         # Verify promoted structure has different ULID
-        assert promoted_result.meta.ulid != initial_structure_id, "Promoted structure should have different ULID"
+        assert promoted_result.meta.ulid != initial_structure_ulid, "Promoted structure should have different ULID"
         assert promoted_result.meta.name == "relaxed_h2", "Promoted structure should have correct name"
         assert promoted_result.absolute_path.exists(), "Promoted structure file should exist"
         
@@ -254,13 +254,13 @@ class TestRelaxPromoteE2E:
         Test that promote fails if the selected step is not a relax step.
         """
         project_root = promote_test_project["project_root"]
-        structure_id = promote_test_project["structure_id"]
+        structure_ulid = promote_test_project["structure_ulid"]
         
         # Create calculation
         calc_result = QVService.init_calculation(
             project_root=project_root,
             name="h2_scf",
-            structure_selector=structure_id,
+            structure_selector=structure_ulid,
         )
         calc_ulid = calc_result.ulid
         
@@ -336,5 +336,5 @@ class TestRelaxPromoteE2E:
         new_calc_dir = new_calc_result.absolute_path.parent if new_calc_result.absolute_path.name == "calculation.yaml" else new_calc_result.absolute_path
         new_calc_yaml = new_calc_dir / "calculation.yaml"
         new_calc_data = yaml.safe_load(new_calc_yaml.read_text())
-        assert new_calc_data["structure_id"] == promoted_result.meta.ulid, "New calculation should use promoted structure"
+        assert new_calc_data["structure_ulid"] == promoted_result.meta.ulid, "New calculation should use promoted structure"
 

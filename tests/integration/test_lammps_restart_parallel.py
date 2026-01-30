@@ -73,7 +73,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC")
-    structure_id = struct_result.meta.ulid
+    structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
     repo_root = Path(__file__).parent.parent.parent
@@ -91,7 +91,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     calc_result = QVService.init_calculation(
         project_root=project_root,
         name="parallel_test",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path

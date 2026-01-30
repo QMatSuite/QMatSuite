@@ -74,7 +74,7 @@ class QERecipe(BaseRecipe):
             # Create job
             job = Job(
                 id=job_id,
-                step_ids=[step.meta.ulid],
+                step_ulids=[step.meta.ulid],
                 working_dir=calc_raw_dir,
                 command=command,
                 input_files=[calc_raw_dir / input_file],

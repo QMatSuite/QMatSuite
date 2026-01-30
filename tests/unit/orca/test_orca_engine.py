@@ -9,8 +9,8 @@ from typing import Dict, Any
 @dataclass
 class MockStep:
     """Mock step for testing."""
-    id: str
-    public_type: str
+    ulid: str
+    # public_type removed - use step_type_gen
     step_type_spec: str  # SPEC type (e.g., "orca_scf")
     step_type_gen: str = ""  # GEN type (e.g., "scf") - derived from spec
     parameters: Dict[str, Any] = field(default_factory=dict)
@@ -21,7 +21,7 @@ class MockStep:
         class MockMeta:
             def __init__(self, ulid):
                 self.ulid = ulid
-        return MockMeta(self.id)
+        return MockMeta(self.ulid)
 
 
 @dataclass
@@ -167,10 +167,10 @@ class TestORCAEngineChainExecution:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
-            id="s1",
-            public_type="scf",
-            step_type_spec="orca_scf",
+            ulid="s1",
             step_type_gen="scf",
+            step_type_spec="orca_scf",
+            
             parameters={"functional": "B3LYP", "basis": "def2-SVP"},
         )
         chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
@@ -199,17 +199,17 @@ class TestORCAEngineChainExecution:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
-            id="s1",
-            public_type="scf",
-            step_type_spec="orca_scf",
+            ulid="s1",
             step_type_gen="scf",
+            step_type_spec="orca_scf",
+            
             parameters={"functional": "HF", "basis": "def2-SVP"},
         )
         td_step = MockStep(
-            id="s2",
-            public_type="td",
-            step_type_spec="orca_td",
+            ulid="s2",
             step_type_gen="td",
+            step_type_spec="orca_td",
+            
             parameters={"nroots": 3, "tda": True},
         )
         chain = QCChain(scf_root=scf_step, downstream=[td_step], key="chain01_scf_td")

@@ -308,10 +308,10 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
             "working_dir": calculation_model.working_dir,
             "steps": [],
         }
-        # Export structure_id (canonical reference - ID only)
+        # Export structure_ulid (canonical reference - ID only)
         # Do NOT export structure_name or structure selector (violates DAG + ID-only constitution)
-        if calculation_model.structure_id:
-            calculation_dict["structure_id"] = calculation_model.structure_id
+        if calculation_model.structure_ulid:
+            calculation_dict["structure_ulid"] = calculation_model.structure_ulid
         
         # Export species_map (calc-level pseudo mapping)
         # If species_map is already set on the calculation model, use it
@@ -320,7 +320,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         
         # Export each step
         # Strategy: Scan step files directly and export them, matching by ID when possible
-        # This handles cases where calculation.yaml step_id doesn't match step file meta.ulid
+        # This handles cases where calculation.yaml step_ulid doesn't match step file meta.ulid
         # Create resolver for legacy structure selector normalization
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
@@ -333,17 +333,17 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         # Export steps in the order specified in calculation.yaml
         # Use calculation_model.steps to get the correct order (from calculation.yaml)
         steps_dir = calculation_dir / "steps"
-        exported_step_ids = set()
+        exported_step_ulids = set()
         
-        # Build a map of step_id -> step_file_path for quick lookup
+        # Build a map of step_ulid -> step_file_path for quick lookup
         step_file_map = {}
         if steps_dir.exists():
             for step_file in steps_dir.glob("*.step.yaml"):
                 try:
                     # Load step spec to get its ID
                     step_spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolver)
-                    step_id = step_spec.meta.ulid
-                    step_file_map[step_id] = step_file
+                    step_ulid = step_spec.meta.ulid
+                    step_file_map[step_ulid] = step_file
                 except Exception:
                     # Skip step files that can't be loaded
                     continue
@@ -351,25 +351,25 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         # Export steps in the order from calculation.yaml
         # Use calculation_model.steps which preserves the order from calculation.yaml
         for step_entry in calculation_model.steps:
-            step_id = step_entry.step_ulid  # DAG + ULID model: only step_ulid (ULID) is used
-            if not step_id:
+            step_ulid = step_entry.step_ulid  # DAG + ULID model: only step_ulid (ULID) is used
+            if not step_ulid:
                 continue
             
-            # Find the step file for this step_id
-            step_file = step_file_map.get(step_id)
+            # Find the step file for this step_ulid
+            step_file = step_file_map.get(step_ulid)
             if not step_file:
                 # Step file not found - skip this step
                 continue
             
             # Skip if already exported (shouldn't happen, but be safe)
-            if step_id in exported_step_ids:
+            if step_ulid in exported_step_ulids:
                 continue
             
             try:
-                # Load step spec (DAG + ULID model: structure_id is already in spec)
+                # Load step spec (DAG + ULID model: structure_ulid is already in spec)
                 step_spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolver)
                 
-                # Export step data (ID-only model: structure_id, no structure selector)
+                # Export step data (ID-only model: structure_ulid, no structure selector)
                 step_dict = step_spec.to_dict()
                 
                 # R4: Remove prefix/outdir from step parameters (injected from calculation.meta.slug)
@@ -381,7 +381,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
                             section_params.pop("outdir", None)
                 
                 calculation_dict["steps"].append(step_dict)
-                exported_step_ids.add(step_id)
+                exported_step_ulids.add(step_ulid)
             except Exception:
                 # Skip step files that can't be loaded
                 continue
@@ -567,10 +567,10 @@ def materialize_project_from_snapshot(
     id_mapping: Dict[str, str] = {}
     
     # Map project ID
-    old_project_id = project_meta.get("ulid")
-    if old_project_id:
-        new_project_id = generate_resource_id()
-        id_mapping[old_project_id] = new_project_id
+    old_project_ulid = project_meta.get("ulid")
+    if old_project_ulid:
+        new_project_ulid = generate_resource_id()
+        id_mapping[old_project_ulid] = new_project_ulid
     
     # Map structure IDs
     structure_slug_to_new_id: Dict[str, str] = {}
@@ -600,13 +600,13 @@ def materialize_project_from_snapshot(
     for calculation_data in snapshot.calculations:
         for step_data in calculation_data.get("steps", []):
             step_meta = step_data.get("meta", {})
-            old_step_id = step_meta.get("ulid")
-            if old_step_id:
-                new_step_id = generate_resource_id()
-                id_mapping[old_step_id] = new_step_id
+            old_step_ulid = step_meta.get("ulid")
+            if old_step_ulid:
+                new_step_ulid = generate_resource_id()
+                id_mapping[old_step_ulid] = new_step_ulid
     
     # Create project.qv.yml
-    new_project_meta = ResourceMeta(ulid=new_project_id,
+    new_project_meta = ResourceMeta(ulid=new_project_ulid,
         name=project_name,
         slug=project_slug,
         path=".",
@@ -682,31 +682,31 @@ def materialize_project_from_snapshot(
         (calculation_path / "raw").mkdir(exist_ok=True)
         
         # Resolve structure reference from snapshot
-        # New format: structure_id (canonical)
-        calculation_structure_id = calculation_data.get("structure_id")
+        # New format: structure_ulid (canonical)
+        calculation_structure_ulid = calculation_data.get("structure_ulid")
         calculation_structure_name = calculation_data.get("structure_name")
         # Legacy format: structure selector
         calculation_structure_selector = calculation_data.get("structure")
         
-        # If structure_id is present, map it to the new structure ID
-        if calculation_structure_id:
+        # If structure_ulid is present, map it to the new structure ID
+        if calculation_structure_ulid:
             # Find the structure in the snapshot by old ID
             structure_found = False
             for struct_data in snapshot.structures:
                 struct_meta = struct_data.get("meta", {})
-                if struct_meta.get("ulid") == calculation_structure_id:
+                if struct_meta.get("ulid") == calculation_structure_ulid:
                     # Map to new structure ID
-                    new_structure_id = id_mapping.get(calculation_structure_id)
-                    if new_structure_id:
-                        calculation_structure_id = new_structure_id
+                    new_structure_ulid = id_mapping.get(calculation_structure_ulid)
+                    if new_structure_ulid:
+                        calculation_structure_ulid = new_structure_ulid
                         calculation_structure_name = struct_meta.get("name")
                     structure_found = True
                     break
             if not structure_found:
                 # Structure ID not found in snapshot - this shouldn't happen, but handle gracefully
-                calculation_structure_id = None
+                calculation_structure_ulid = None
         
-        # If only structure selector is present, try to resolve it to structure_id
+        # If only structure selector is present, try to resolve it to structure_ulid
         elif calculation_structure_selector:
             # Try to find structure by slug/name in the snapshot
             for struct_data in snapshot.structures:
@@ -719,7 +719,7 @@ def materialize_project_from_snapshot(
                     struct_name.lower() == calculation_structure_selector.lower()):
                     # Found matching structure - use its new ID
                     if old_struct_id:
-                        calculation_structure_id = id_mapping.get(old_struct_id)
+                        calculation_structure_ulid = id_mapping.get(old_struct_id)
                         calculation_structure_name = struct_name
                     break
         
@@ -773,10 +773,10 @@ def materialize_project_from_snapshot(
                 path=f"calculations/{calculation_slug}",
                 kind="calculation",
             ),
-            structure_id=calculation_structure_id,
+            structure_ulid=calculation_structure_ulid,
             # structure_name and structure are in-memory only (not persisted to YAML)
             structure_name=calculation_structure_name,
-            # structure selector field removed - use structure_id (ULID) only
+            # structure selector field removed - use structure_ulid (ULID) only
             mode=calculation_data.get("mode", "normal"),
             working_dir=calculation_data.get("working_dir", "raw"),
             steps=[],
@@ -788,17 +788,17 @@ def materialize_project_from_snapshot(
             step_meta = step_data.get("meta", {})
             step_name = step_meta.get("name") or step_data.get("step_type_spec", "step")
             step_slug = step_meta.get("slug") or slugify(step_name)
-            old_step_id = step_meta.get("ulid")
-            new_step_id = id_mapping.get(old_step_id, generate_resource_id())
+            old_step_ulid = step_meta.get("ulid")
+            new_step_ulid = id_mapping.get(old_step_ulid, generate_resource_id())
             
             # Create step spec with new IDs
-            # DAG + ID-only model: Step YAML must NOT contain structure_id or parent_calculation_id
-            # Structure is resolved via calculation.structure_id at runtime
+            # DAG + ID-only model: Step YAML must NOT contain structure_ulid or parent_calculation_id
+            # Structure is resolved via calculation.structure_ulid at runtime
             # Parent calculation is implicit from step file location
             step_spec_dict = dict(step_data)
             
-            # Remove structure_id and parent_calculation_id from dict (DAG invariant)
-            step_spec_dict.pop("structure_id", None)
+            # Remove structure_ulid and parent_calculation_id from dict (DAG invariant)
+            step_spec_dict.pop("structure_ulid", None)
             step_spec_dict.pop("parent_calculation_id", None)
             step_spec_dict.pop("structure", None)  # Also remove legacy structure selector
 
@@ -808,8 +808,8 @@ def materialize_project_from_snapshot(
 
             # Update meta with new IDs (use ulid, not id)
             step_spec_dict["meta"] = {
-                "ulid": new_step_id,
-                "ulid": new_step_id,
+                "ulid": new_step_ulid,
+                "ulid": new_step_ulid,
                 "name": step_name,
                 "slug": step_slug,
                 "path": f"calculations/{calculation_slug}/steps/{step_slug}.step.yaml",
@@ -817,7 +817,7 @@ def materialize_project_from_snapshot(
             }
             
             # Create StructureStepSpec object to ensure proper serialization
-            # This will strip any remaining structure_id/parent_calculation_id via to_dict()
+            # This will strip any remaining structure_ulid/parent_calculation_id via to_dict()
             from quantumvitas.calculation.structure_steps import StructureStepSpec
             step_spec = StructureStepSpec.from_dict(step_spec_dict)
             
@@ -828,9 +828,9 @@ def materialize_project_from_snapshot(
             # Add to calculation steps list using step_ulid (ULID) from step meta
             from quantumvitas.core.models import CalculationStepEntry
             step_meta = step_spec_dict.get("meta", {})
-            step_id = step_meta.get("ulid")  # CANONICAL: ulid only, no fallback
+            step_ulid = step_meta.get("ulid")  # CANONICAL: ulid only, no fallback
             calculation_model.steps.append(CalculationStepEntry(
-                step_ulid=step_id,  # Use ULID from step meta (canonical reference)
+                step_ulid=step_ulid,  # Use ULID from step meta (canonical reference)
                 step_type_spec=step_spec.step_type_spec,  # Use step_type_spec from StructureStepSpec
                 # step_file is NOT stored - step location resolved via registry using step_ulid
             ))

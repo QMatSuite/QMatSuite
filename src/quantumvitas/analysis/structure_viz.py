@@ -1927,7 +1927,7 @@ def build_structure_vis_payload(
     Args:
         structure: pymatgen Structure object
         params: DisplayModeParams with mode, supercell, box_bounds, repeat_boundary
-        structure_meta: Optional metadata dict (structure_id, structure_name, formula)
+        structure_meta: Optional metadata dict (structure_ulid, structure_name, formula)
             Used only for populating result fields, not for any computation.
 
     Returns:
@@ -1937,7 +1937,7 @@ def build_structure_vis_payload(
             - lattice: Dict with matrix, a, b, c, alpha, beta, gamma, volume
             - n_atoms, n_bonds: Counts
             - element_colors: Color mapping dict
-            - Optional: structure_id, structure_name, formula, supercell, display_mode
+            - Optional: structure_ulid, structure_name, formula, supercell, display_mode
 
     Note:
         - This is a pure transformation with no side effects (except logging)
@@ -2038,9 +2038,9 @@ def build_structure_vis_payload(
 
     # Ensure required fields exist
     if "structure_ulid" not in result:
-        result["structure_ulid"] = structure_meta.get("structure_ulid") or structure_meta.get("structure_id", "unknown") if structure_meta else "unknown"
-    if "structure_id" not in result:
-        result["structure_id"] = structure_meta.get("structure_id") or structure_meta.get("structure_ulid", "unknown") if structure_meta else "unknown"
+        result["structure_ulid"] = structure_meta.get("structure_ulid") or structure_meta.get("structure_ulid", "unknown") if structure_meta else "unknown"
+    if "structure_ulid" not in result:
+        result["structure_ulid"] = structure_meta.get("structure_ulid") or structure_meta.get("structure_ulid", "unknown") if structure_meta else "unknown"
     if "structure_name" not in result:
         result["structure_name"] = structure_meta.get("structure_name", "") if structure_meta else ""
     if "formula" not in result:

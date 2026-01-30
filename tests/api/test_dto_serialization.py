@@ -151,7 +151,7 @@ def test_fail_closed_on_function():
 def test_nested_structures():
     """Nested lists and dicts work correctly."""
     data = {
-        "calc_id": "01HX7YPVK8DQNZPMJ4GHAB1234",
+        "calc_ulid": "01HX7YPVK8DQNZPMJ4GHAB1234",
         "steps": [
             {"step_ulid": "01HX7YPVK8DQNZPMJ4GHAB5678", "status": "completed"},
             {"step_ulid": "01HX7YPVK8DQNZPMJ4GHAB9012", "status": "pending"},
@@ -162,7 +162,7 @@ def test_nested_structures():
         }
     }
     result = to_json_value(data)
-    assert result["calc_id"] == "01HX7YPVK8DQNZPMJ4GHAB1234"
+    assert result["calc_ulid"] == "01HX7YPVK8DQNZPMJ4GHAB1234"
     assert len(result["steps"]) == 2
     assert result["meta"]["created_at"] == "2026-01-23T10:00:00"
     assert result["meta"]["tags"] == ["test", "example"]

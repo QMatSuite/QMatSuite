@@ -63,15 +63,15 @@ class TestProjectSnapshot:
         # Check calculation
         calculation_data = snapshot.calculations[0]
         assert calculation_data["meta"]["name"] == "Si dos"
-        # Structure reference: should use structure_id (ULID), not structure selector
-        # New exports should have structure_id (ULID), old snapshots may have structure (selector)
-        structure_id = calculation_data.get("structure_id")
+        # Structure reference: should use structure_ulid (ULID), not structure selector
+        # New exports should have structure_ulid (ULID), old snapshots may have structure (selector)
+        structure_ulid = calculation_data.get("structure_ulid")
         structure_selector = calculation_data.get("structure")
-        # Either structure_id (ULID) or structure (selector) should be present
-        assert structure_id is not None or structure_selector is not None
-        # If structure_id is present, it should be a ULID (26 chars), not a human-readable name
-        if structure_id:
-            assert len(structure_id) == 26, "structure_id should be a ULID, not a human-readable name"
+        # Either structure_ulid (ULID) or structure (selector) should be present
+        assert structure_ulid is not None or structure_selector is not None
+        # If structure_ulid is present, it should be a ULID (26 chars), not a human-readable name
+        if structure_ulid:
+            assert len(structure_ulid) == 26, "structure_ulid should be a ULID, not a human-readable name"
         assert len(calculation_data["steps"]) > 0
     
     def test_materialize_project_from_snapshot(
@@ -116,8 +116,8 @@ class TestProjectSnapshot:
             new_project_root / calculation_entry.meta.path / "calculation.yaml",
             new_project_root,
         )
-        # Structure reference uses ID (structure_id is canonical)
-        assert calculation_model.structure_id is not None
+        # Structure reference uses ID (structure_ulid is canonical)
+        assert calculation_model.structure_ulid is not None
         assert calculation_model.structure_name == "Si"
         assert len(calculation_model.steps) > 0
         
@@ -130,14 +130,14 @@ class TestProjectSnapshot:
         assert step_meta is not None, f"Step {step_entry.step_ulid} not found in registry"
         step_file = new_project_root / step_meta.path
         step_spec = StructureStepSpec.from_yaml(step_file)
-        # DAG model: Step YAML should NOT contain structure_id or parent_calculation_id
-        # Structure is resolved via calculation.structure_id at runtime
+        # DAG model: Step YAML should NOT contain structure_ulid or parent_calculation_id
+        # Structure is resolved via calculation.structure_ulid at runtime
         # Verify step YAML does not contain these fields
         step_yaml_text = step_file.read_text()
-        assert "structure_id:" not in step_yaml_text, "Step YAML should not contain structure_id (DAG model)"
+        assert "structure_ulid:" not in step_yaml_text, "Step YAML should not contain structure_ulid (DAG model)"
         assert "parent_calculation_id:" not in step_yaml_text, "Step YAML should not contain parent_calculation_id (DAG model)"
         # Runtime structure resolution: step should resolve structure via calculation
-        # The step spec may have structure_id in memory (for backward compatibility), but it's not persisted
+        # The step spec may have structure_ulid in memory (for backward compatibility), but it's not persisted
     
     def test_snapshot_ulid_regeneration(
         self, project1_path: Path, temp_dir: Path
@@ -329,10 +329,10 @@ class TestSnapshotRoundtrip:
             new_project_root,
         )
         
-        # Structure references use ID (structure_id is canonical)
+        # Structure references use ID (structure_ulid is canonical)
         # IDs are remapped during materialization, so we just check they exist
-        assert original_calculation.structure_id is not None
-        assert new_calculation.structure_id is not None
+        assert original_calculation.structure_ulid is not None
+        assert new_calculation.structure_ulid is not None
         assert len(original_calculation.steps) == len(new_calculation.steps)
         
         # Verify step content
@@ -383,7 +383,7 @@ class TestSnapshotRoundtrip:
             new_step = new_steps_by_type[common_type]
             assert original_step.step_type_spec == new_step.step_type_spec
         
-        # DAG model: Step YAML should NOT contain structure_id or parent_calculation_id
+        # DAG model: Step YAML should NOT contain structure_ulid or parent_calculation_id
         # Verify new step YAML does not contain these fields
         # Get any step file to check
         if new_steps_by_type:
@@ -411,9 +411,9 @@ class TestSnapshotRoundtrip:
                     pytest.skip("Steps directory not found")
         else:
             pytest.skip("No steps found to verify")
-        assert "structure_id:" not in new_step_yaml_text, "Step YAML should not contain structure_id (DAG model)"
+        assert "structure_ulid:" not in new_step_yaml_text, "Step YAML should not contain structure_ulid (DAG model)"
         assert "parent_calculation_id:" not in new_step_yaml_text, "Step YAML should not contain parent_calculation_id (DAG model)"
-        # Structure is resolved via calculation.structure_id at runtime
+        # Structure is resolved via calculation.structure_ulid at runtime
     
     def test_complete_roundtrip_project2_bands(
         self, project2_bands_path: Path, temp_dir: Path
@@ -458,10 +458,10 @@ class TestSnapshotRoundtrip:
                 new_project_root,
             )
             
-            # Structure references use ID (structure_id is canonical)
+            # Structure references use ID (structure_ulid is canonical)
             # IDs are remapped during materialization, so we just check they exist
-            assert original_calculation.structure_id is not None
-            assert new_calculation.structure_id is not None
+            assert original_calculation.structure_ulid is not None
+            assert new_calculation.structure_ulid is not None
             assert len(original_calculation.steps) == len(new_calculation.steps)
     
     def test_create_demo_project_defaults_to_bands(self, temp_dir: Path):

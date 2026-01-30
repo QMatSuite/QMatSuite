@@ -84,18 +84,18 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             assert len(structure_files) > 0, "Structure file should be created"
             
             # Verify structure is registered in project config
-            # ID-only model: project.qv.yml only has structure_id, not name
+            # ID-only model: project.qv.yml only has structure_ulid, not name
             # Resolve structure from registry to get its name
             project_config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
             structures = project_config.get("structures", [])
             assert len(structures) > 0, "Structure should be registered"
-            # In ID-only model, entries have structure_id (ULID), not name
+            # In ID-only model, entries have structure_ulid (ULID), not name
             # Resolve the structure to get its meta.name
             from quantumvitas.core.resolution import build_resource_index, require_structure
             index = build_resource_index(project_dir)
-            structure_id = structures[0].get("structure_id")
-            assert structure_id is not None, "Structure entry should have structure_id"
-            resolved = require_structure(project_dir, structure_id, index=index)
+            structure_ulid = structures[0].get("structure_ulid")
+            assert structure_ulid is not None, "Structure entry should have structure_ulid"
+            resolved = require_structure(project_dir, structure_ulid, index=index)
             assert resolved.meta.name == "C", f"Structure name should be 'C'. Found: {resolved.meta.name}"
             
             # Step 4: Create calculation
@@ -119,12 +119,12 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             
             # Verify calculation.yaml content
             calculation_data = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())
-            # Structure reference uses ID (structure_id is canonical)
-            # Note: structure_id may be set even if structure selector is also present (backwards compat)
-            assert "structure_id" in calculation_data or "structure" in calculation_data, \
-                "Calculation should have structure_id or structure (for backwards compat)"
-            if "structure_id" not in calculation_data:
-                # If only structure selector is present, it should be resolved to structure_id on next load
+            # Structure reference uses ID (structure_ulid is canonical)
+            # Note: structure_ulid may be set even if structure selector is also present (backwards compat)
+            assert "structure_ulid" in calculation_data or "structure" in calculation_data, \
+                "Calculation should have structure_ulid or structure (for backwards compat)"
+            if "structure_ulid" not in calculation_data:
+                # If only structure selector is present, it should be resolved to structure_ulid on next load
                 # For now, just verify structure is present
                 assert calculation_data.get("structure") == "C"
             assert calculation_data["steps"] == []
@@ -161,14 +161,14 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             
             # Verify step content
             step_data = yaml.safe_load(scf_step_file.read_text())
-            assert step_data["step_type"] == "scf"
-            # DAG model: Step YAML should NOT contain structure_id or parent_calculation_id
-            # Structure is resolved via calculation.structure_id at runtime
-            assert "structure_id" not in step_data, "Step YAML should not contain structure_id (DAG model)"
+            assert step_data["step_type_spec"] == "qe_scf"
+            # DAG model: Step YAML should NOT contain structure_ulid or parent_calculation_id
+            # Structure is resolved via calculation.structure_ulid at runtime
+            assert "structure_ulid" not in step_data, "Step YAML should not contain structure_ulid (DAG model)"
             assert "parent_calculation_id" not in step_data, "Step YAML should not contain parent_calculation_id (DAG model)"
-            # Verify calculation has structure_id set
+            # Verify calculation has structure_ulid set
             calculation_data = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())
-            assert calculation_data.get("structure_id") is not None, "Calculation should have structure_id set"
+            assert calculation_data.get("structure_ulid") is not None, "Calculation should have structure_ulid set"
             
             # Verify step is in calculation.yaml
             calculation_data = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())

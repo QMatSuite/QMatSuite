@@ -58,7 +58,7 @@ def _build_delete_structure(world: Dict[str, Any], **extra) -> Dict[str, Any]:
     """
     return {
         "project_root": world["project_root"],
-        "selector": world["structure_id"],  # PLAIN STRING, not dict
+        "selector": world["structure_ulid"],  # PLAIN STRING, not dict
         "force": extra.get("force", False),
     }
 
@@ -75,7 +75,7 @@ def _build_rename_structure(world: Dict[str, Any], **extra) -> Dict[str, Any]:
     """
     return {
         "project_root": world["project_root"],
-        "selector": world["structure_id"],  # PLAIN STRING
+        "selector": world["structure_ulid"],  # PLAIN STRING
         "new_name": extra.get("new_name", "renamed_structure"),
     }
 
@@ -91,7 +91,7 @@ def _build_can_delete_structure(world: Dict[str, Any], **extra) -> Dict[str, Any
     """
     return {
         "project_root": world["project_root"],
-        "selector": world["structure_id"],  # PLAIN STRING
+        "selector": world["structure_ulid"],  # PLAIN STRING
     }
 
 
@@ -109,7 +109,7 @@ def _build_get_structure_vis(world: Dict[str, Any], **extra) -> Dict[str, Any]:
     """
     return {
         "project_root": world["project_root"],
-        "selector": world["structure_id"],  # PLAIN STRING
+        "selector": world["structure_ulid"],  # PLAIN STRING
     }
 
 
@@ -145,7 +145,7 @@ def _build_list_qe_ui_parameters(world: Dict[str, Any], **extra) -> Dict[str, An
     """
     return {
         "module": extra.get("module", "pw"),
-        "step_type_gen": extra.get("step_type", "scf"),
+        "step_type": extra.get("step_type", "scf"),  # v0 used step_type, HEAD uses step_type_gen
     }
 
 
@@ -243,14 +243,14 @@ def _build_instantiate_workflow(world: Dict[str, Any], **extra) -> Dict[str, Any
     Fields:
         workflow_id: str
         calculation_path: str (path to calculation directory)
-        structure_id: str
+        structure_ulid: str
         calculation_id: str (parent calculation ULID)
     """
     calc_path = f"{world['project_root']}/calculations/{world['calc_slug']}"
     return {
         "workflow_id": extra.get("workflow_id", "scf"),
         "calculation_path": calc_path,
-        "structure_id": world["structure_id"],
+        "structure_ulid": world["structure_ulid"],
         "calculation_id": world["calculation_selector"],  # calc_id ULID
     }
 

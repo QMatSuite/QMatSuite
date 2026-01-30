@@ -202,7 +202,7 @@ def run_and_verify_step(
     except RuntimeError as exc:
         message = str(exc)
         return StepResult(
-            step_type=step_type or "unknown",
+            step_type_spec=step_type or "unknown",
             input_file=input_file,
             success=False,
             error=message,

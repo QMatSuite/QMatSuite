@@ -813,7 +813,9 @@ def reset_registry() -> None:
 
 
 # Compatibility aliases for deprecated step types
-# These map old step types to the unified "relax" type
+# These map old step types to the unified "relax" type for workflow purposes.
+# NOTE: This aliasing is for workflow/registry lookup only. When generating QE input,
+# the actual calculation parameter (vc-relax, relax, etc.) should be preserved.
 STEP_TYPE_ALIASES = {
     "vc-relax": "relax",
     "qe_vc_relax": "qe_relax",
@@ -865,14 +867,22 @@ def normalize_step_type_to_gen(step_type: str) -> str:
     """
     if not step_type:
         return step_type
-    
+
     # First apply compatibility aliases
     step_type = normalize_step_type(step_type)
-    
+
     registry = get_registry()
     spec = registry.get(step_type)
     if spec:
         return spec.step_type_gen
+
+    # Fallback: strip known engine prefixes (e.g., "qe_vc-relax" -> "vc-relax")
+    ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_")
+    lower = step_type.lower()
+    for prefix in ENGINE_PREFIXES:
+        if lower.startswith(prefix):
+            return step_type[len(prefix):]
+
     return step_type
 
 

@@ -30,7 +30,7 @@ PROVENANCE_SCHEMA_VERSION = 1
 @dataclass
 class ProvenanceEntry:
     """Provenance entry for a single file."""
-    run_id: str
+    run_ulid: str
     step_ulid: str
     produced_at: str                # ISO 8601
     size_bytes: int
@@ -146,7 +146,7 @@ def save_provenance(calc_dir: Path, provenance: ProvenanceMap) -> None:
 
 def update_provenance_after_step(
     calc_dir: Path,
-    run_id: str,
+    run_ulid: str,
     step_ulid: str,
     engine: str,
     additional_ignore: Optional[List[str]] = None,
@@ -158,7 +158,7 @@ def update_provenance_after_step(
     
     Args:
         calc_dir: Calculation directory
-        run_id: Current run ULID
+        run_ulid: Current run ULID
         step_ulid: Step that just completed
         engine: Engine name (for ignore patterns)
         additional_ignore: Additional ignore patterns from config
@@ -183,7 +183,7 @@ def update_provenance_after_step(
         if change_type in ("added", "modified"):
             stat = current_scan[path]
             provenance.files[path] = ProvenanceEntry(
-                run_id=run_id,
+                run_ulid=run_ulid,
                 step_ulid=step_ulid,
                 produced_at=now,
                 size_bytes=stat.size_bytes,

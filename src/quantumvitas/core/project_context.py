@@ -30,7 +30,7 @@ class ProjectContext:
     registry: ResourceIndex
     config: dict
     current_calculation_id: Optional[str] = None
-    current_step_id: Optional[str] = None
+    current_step_ulid: Optional[str] = None
     
     @classmethod
     def load(
@@ -75,7 +75,7 @@ class ProjectContext:
         
         # Try to detect current calculation/step from cwd
         current_calculation_id = None
-        current_step_id = None
+        current_step_ulid = None
         
         try:
             rel_path = cwd.resolve().relative_to(project_root)
@@ -99,7 +99,7 @@ class ProjectContext:
                                     if len(parts) >= 4:
                                         step_file_name = parts[3]
                                         if step_file_name.endswith(".step.yaml"):
-                                            step_id = step_file_name.replace(".step.yaml", "")
+                                            step_ulid = step_file_name.replace(".step.yaml", "")
                                             # Try to resolve step to get its ULID
                                             try:
                                                 # require_step takes calculation_selector (string), not calculation_id
@@ -108,10 +108,10 @@ class ProjectContext:
                                                 step_resolved = require_step(
                                                     project_root,
                                                     calculation_slug,
-                                                    step_id,
+                                                    step_ulid,
                                                     config=config,
                                                 )
-                                                current_step_id = step_resolved.meta.ulid
+                                                current_step_ulid = step_resolved.meta.ulid
                                             except Exception:
                                                 pass  # Step not found, that's OK
                             except Exception:
@@ -124,7 +124,7 @@ class ProjectContext:
             registry=registry,
             config=config,
             current_calculation_id=current_calculation_id,
-            current_step_id=current_step_id,
+            current_step_ulid=current_step_ulid,
         )
 
 
@@ -231,7 +231,7 @@ def resolve_step_for_cli(
        - If ULID → resolve by ID
        - Otherwise → resolve by selector (slug/name/type)
     2. If no step_option:
-       - If ctx.current_step_id → use that
+       - If ctx.current_step_ulid → use that
        - If calculation has exactly one step → use that
        - Otherwise → raise error
     
@@ -272,12 +272,12 @@ def resolve_step_for_cli(
         )
     
     # No step_option provided - try auto-detection
-    if ctx.current_step_id:
+    if ctx.current_step_ulid:
         calculation_selector = calculation_resolved.meta.slug or calculation_resolved.meta.name or calculation_id
         return require_step(
             ctx.project_root,
             calculation_selector,
-            ctx.current_step_id,
+            ctx.current_step_ulid,
             config=ctx.config,
         )
     

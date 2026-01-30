@@ -59,10 +59,11 @@ def test_online_vs_project_pipeline_bit_aligned():
     
     # Get first entry
     entry = entries[0]
-    entry_id = entry.get("ulid")
+    # OPTIMADE standard uses "id" for record identifier (not a QMatSuite ULID)
+    entry_id = entry.get("id")
     if not entry_id:
         pytest.fail(
-            f"Entry has no 'id' field. Entry keys: {list(entry.keys())}. "
+            f"Entry has no 'id' field (OPTIMADE standard). Entry keys: {list(entry.keys())}. "
             f"This test must not be skipped."
         )
     
@@ -89,7 +90,7 @@ def test_online_vs_project_pipeline_bit_aligned():
     payload_online = build_structure_vis_payload(
         structure_online,
         params,
-        structure_meta={"structure_id": f"online:{entry_id}"},
+        structure_meta={"structure_ulid": f"online:{entry_id}"},
     )
     
     # Path B: Project pipeline (write to file, then load and call shared builder)
@@ -109,7 +110,7 @@ def test_online_vs_project_pipeline_bit_aligned():
         payload_project = build_structure_vis_payload(
             structure_project,
             params,
-            structure_meta={"structure_id": "test_project"},
+            structure_meta={"structure_ulid": "test_project"},
         )
     
     # Step 4: Compare outputs (must be identical within tolerance)

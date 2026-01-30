@@ -99,7 +99,7 @@ def test_optimade_online_pipeline_payload_contract():
     payload = build_structure_vis_payload(
         structure_primitive,
         params,
-        structure_meta={"structure_id": "online:test_candidate"},
+        structure_meta={"structure_ulid": "online:test_candidate"},
     )
     
     # Verify contract
@@ -115,7 +115,7 @@ def test_optimade_online_pipeline_payload_contract():
         assert "idx2" in payload["bonds"][0], "Bonds must use idx1/idx2 schema"
 
 
-def test_optimade_vs_project_same_structure_identical_payload():
+def test_optimade_vs_project_same_structure_ulidentical_payload():
     """
     Test that same structure via OPTIMADE (online) vs project produces identical payload.
     
@@ -158,14 +158,14 @@ def test_optimade_vs_project_same_structure_identical_payload():
     online_payload = build_structure_vis_payload(
         structure_online,
         params,
-        structure_meta={"structure_id": "online:test"},
+        structure_meta={"structure_ulid": "online:test"},
     )
 
     # PROJECT payload
     project_payload = build_structure_vis_payload(
         structure_project,
         params,
-        structure_meta={"structure_id": "project:test"},
+        structure_meta={"structure_ulid": "project:test"},
     )
     
     # ASSERT: Identical payload metrics

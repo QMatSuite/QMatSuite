@@ -22,8 +22,8 @@ import ulid
 from quantumvitas.history.storage import (
     ProjectHistory,
     ensure_history_dir,
-    get_latest_run_id,
-    generate_run_id,
+    get_latest_run_ulid,
+    generate_run_ulid,
     HISTORY_DIR_NAME,
     EVENTS_FILE_NAME,
     RUNS_DIR_NAME,
@@ -147,7 +147,7 @@ class TestProjectHistoryStorage:
         """Test that is_initialized returns True after appending an event."""
         history = ProjectHistory(temp_project_dir)
         
-        event = BaselineEvent.create(project_id="test-001")
+        event = BaselineEvent.create(project_ulid="test-001")
         history.append_event(event)
         
         assert history.is_initialized()
@@ -156,7 +156,7 @@ class TestProjectHistoryStorage:
         """Test that append_event creates events.jsonl if it doesn't exist."""
         history = ProjectHistory(temp_project_dir)
         
-        event = BaselineEvent.create(project_id="test-001")
+        event = BaselineEvent.create(project_ulid="test-001")
         history.append_event(event)
         
         assert history.events_file.exists()
@@ -165,7 +165,7 @@ class TestProjectHistoryStorage:
         """Test that appended events are valid JSON lines."""
         history = ProjectHistory(temp_project_dir)
         
-        event = BaselineEvent.create(project_id="test-001")
+        event = BaselineEvent.create(project_ulid="test-001")
         history.append_event(event)
         
         content = history.events_file.read_text()
@@ -181,11 +181,11 @@ class TestProjectHistoryStorage:
         history = ProjectHistory(temp_project_dir)
         
         events = [
-            BaselineEvent.create(project_id="test-001"),
+            BaselineEvent.create(project_ulid="test-001"),
             EditEvent.create(
-                project_id="test-001",
-                calc_id="calc-001",
-                step_id="step-001",
+                project_ulid="test-001",
+                calc_ulid="calc-001",
+                step_ulid="step-001",
                 doc_type="step",
                 doc_path="steps/step-001.step.yaml",
                 changes=[],
@@ -210,11 +210,11 @@ class TestProjectHistoryStorage:
         """Test list_events returns appended events."""
         history = ProjectHistory(temp_project_dir)
         
-        event1 = BaselineEvent.create(project_id="test-001")
+        event1 = BaselineEvent.create(project_ulid="test-001")
         event2 = EditEvent.create(
-            project_id="test-001",
-            calc_id="calc-001",
-            step_id="step-001",
+            project_ulid="test-001",
+            calc_ulid="calc-001",
+            step_ulid="step-001",
             doc_type="step",
             doc_path="test.yaml",
             changes=[],
@@ -231,9 +231,9 @@ class TestProjectHistoryStorage:
         """Test filtering events by type."""
         history = ProjectHistory(temp_project_dir)
         
-        history.append_event(BaselineEvent.create(project_id="test-001"))
+        history.append_event(BaselineEvent.create(project_ulid="test-001"))
         history.append_event(EditEvent.create(
-            project_id="test-001", calc_id=None, step_id=None,
+            project_ulid="test-001", calc_ulid=None, step_ulid=None,
             doc_type="step", doc_path="test.yaml", changes=[],
         ))
         
@@ -247,15 +247,15 @@ class TestProjectHistoryStorage:
         history = ProjectHistory(temp_project_dir)
         
         history.append_event(EditEvent.create(
-            project_id="test-001", calc_id="calc-001", step_id=None,
+            project_ulid="test-001", calc_ulid="calc-001", step_ulid=None,
             doc_type="calc", doc_path="calc1.yaml", changes=[],
         ))
         history.append_event(EditEvent.create(
-            project_id="test-001", calc_id="calc-002", step_id=None,
+            project_ulid="test-001", calc_ulid="calc-002", step_ulid=None,
             doc_type="calc", doc_path="calc2.yaml", changes=[],
         ))
         
-        events = history.list_events(calc_id="calc-001")
+        events = history.list_events(calc_ulid="calc-001")
         
         assert len(events) == 1
         assert events[0].calc_ulid == "calc-001"
@@ -286,7 +286,7 @@ class TestProjectHistoryStorage:
     def test_create_run_dir(self, temp_project_dir: Path):
         """Test run directory creation."""
         history = ProjectHistory(temp_project_dir)
-        run_id = generate_run_id()
+        run_id = generate_run_ulid()
         
         run_dir = history.create_run_dir(run_id)
         
@@ -296,7 +296,7 @@ class TestProjectHistoryStorage:
     def test_get_run_dir_exists(self, temp_project_dir: Path):
         """Test getting existing run directory."""
         history = ProjectHistory(temp_project_dir)
-        run_id = generate_run_id()
+        run_id = generate_run_ulid()
         
         history.create_run_dir(run_id)
         
@@ -320,8 +320,8 @@ class TestEvents:
     def test_baseline_event_creation(self):
         """Test BaselineEvent creation."""
         event = BaselineEvent.create(
-            project_id="proj-001",
-            structure_ids=["struct-001"],
+            project_ulid="proj-001",
+            structure_ulids=["struct-001"],
             calculation_ids=["calc-001"],
         )
         
@@ -342,9 +342,9 @@ class TestEvents:
         )]
         
         event = EditEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            step_id="step-001",
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            step_ulid="step-001",
             doc_type="step",
             doc_path="steps/step-001.step.yaml",
             changes=changes,
@@ -360,24 +360,24 @@ class TestEvents:
     def test_run_started_event_creation(self):
         """Test RunStartedEvent creation."""
         event = RunStartedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id="run-001",
-            step_ids=["step-001", "step-002"],
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid="run-001",
+            step_ulids=["step-001", "step-002"],
             step_types=["scf", "nscf"],
             engine="qe",
         )
         
         assert event.event_type == EventType.RUN_STARTED.value
         assert event.run_ulid == "run-001"
-        assert event.step_ids == ["step-001", "step-002"]
+        assert event.step_ulids == ["step-001", "step-002"]
     
     def test_run_finished_event_creation(self):
         """Test RunFinishedEvent creation."""
         event = RunFinishedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id="run-001",
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid="run-001",
             status="success",
             duration_seconds=123.5,
             step_count=2,
@@ -392,10 +392,10 @@ class TestEvents:
     def test_pin_created_event_creation(self):
         """Test PinCreatedEvent creation."""
         event = PinCreatedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            step_id="step-001",
-            run_id="run-001",
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            step_ulid="step-001",
+            run_ulid="run-001",
             analysis_kind="bands",
             pin_path="pins/step-001/bands.png",
         )
@@ -410,7 +410,7 @@ class TestEvents:
             "ulid": "test-id",
             "timestamp": "2024-01-01T00:00:00Z",
             "event_type": EventType.BASELINE.value,
-            "project_id": "proj-001",
+            "project_ulid": "proj-001",
         }
         
         event = HistoryEvent.from_dict(data)
@@ -419,7 +419,7 @@ class TestEvents:
     
     def test_event_to_json_line(self):
         """Test event serialization to JSON line."""
-        event = BaselineEvent.create(project_id="proj-001")
+        event = BaselineEvent.create(project_ulid="proj-001")
         
         json_line = event.to_json_line()
         
@@ -493,11 +493,11 @@ class TestRunRevision:
     def test_run_revision_to_dict(self):
         """Test RunRevision serialization."""
         revision = RunRevision(
-            id="run-001",
-            project_id="proj-001",
-            calc_id="calc-001",
+            ulid="run-001",
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
             status=RunStatus.SUCCESS,
-            step_ids=["step-001"],
+            step_ulids=["step-001"],
             step_types=["scf"],
         )
         
@@ -510,30 +510,30 @@ class TestRunRevision:
         """Test RunRevision deserialization."""
         data = {
             "ulid": "run-001",
-            "project_id": "proj-001",
-            "calc_id": "calc-001",
+            "project_ulid": "proj-001",
+            "calc_ulid": "calc-001",
             "status": "success",
-            "step_ids": ["step-001"],
+            "step_ulids": ["step-001"],
             "step_types": ["scf"],
         }
         
         revision = RunRevision.from_dict(data)
         
-        assert revision.id == "run-001"
+        assert revision.ulid == "run-001"
         assert revision.status == "success"
     
     def test_run_revision_save_and_load(self, temp_project_dir: Path):
         """Test saving and loading run revision."""
         history = ProjectHistory(temp_project_dir)
-        run_id = generate_run_id()
+        run_id = generate_run_ulid()
         run_dir = history.create_run_dir(run_id)
         
         revision = RunRevision(
-            id=run_id,
-            project_id="proj-001",
-            calc_id="calc-001",
+            ulid=run_id,
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
             status=RunStatus.SUCCESS,
-            step_ids=["step-001"],
+            step_ulids=["step-001"],
             step_types=["scf"],
         )
         
@@ -541,7 +541,7 @@ class TestRunRevision:
         
         loaded = load_run_revision(run_dir)
         
-        assert loaded.id == run_id
+        assert loaded.ulid == run_id
         assert loaded.status == RunStatus.SUCCESS
 
 
@@ -636,15 +636,15 @@ class TestDigests:
         finished = datetime.now(timezone.utc)
 
         run_digest = compute_run_digest(
-            run_id="run-001",
-            calc_id="calc-001",
+            run_ulid="run-001",
+            calc_ulid="calc-001",
             status="success",
             started_at=started,
             finished_at=finished,
             step_digests=step_digests,
         )
 
-        assert run_digest["run_id"] == "run-001"
+        assert run_digest["run_ulid"] == "run-001"
         assert run_digest["status"] == "success"
         assert run_digest["step_count"] == 2
         assert run_digest["success_count"] == 2
@@ -658,8 +658,8 @@ class TestPins:
         with pytest.raises(PinError) as exc_info:
             pin_analysis_to_history(
                 project_root=temp_project_dir,
-                run_id="nonexistent-run",
-                step_id="step-001",
+                run_ulid="nonexistent-run",
+                step_ulid="step-001",
                 analysis_kind="bands",
             )
         
@@ -670,35 +670,35 @@ class TestPins:
         history = ProjectHistory(temp_project_dir)
         
         # Create two runs
-        run1_id = generate_run_id()
-        run2_id = generate_run_id()
+        run1_id = generate_run_ulid()
+        run2_id = generate_run_ulid()
         
         history.create_run_dir(run1_id)
         history.create_run_dir(run2_id)
         
         # Record run events to establish run2 as latest
         history.append_event(RunStartedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id=run1_id,
-            step_ids=["step-001"],
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid=run1_id,
+            step_ulids=["step-001"],
         ))
         history.append_event(RunFinishedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id=run1_id,
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid=run1_id,
             status="success",
         ))
         history.append_event(RunStartedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id=run2_id,
-            step_ids=["step-001"],
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid=run2_id,
+            step_ulids=["step-001"],
         ))
         history.append_event(RunFinishedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id=run2_id,
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid=run2_id,
             status="success",
         ))
         
@@ -706,8 +706,8 @@ class TestPins:
         with pytest.raises(PinError) as exc_info:
             pin_analysis_to_history(
                 project_root=temp_project_dir,
-                run_id=run1_id,
-                step_id="step-001",
+                run_ulid=run1_id,
+                step_ulid="step-001",
                 analysis_kind="bands",
             )
         
@@ -717,28 +717,28 @@ class TestPins:
         """Test that duplicate pins are de-duplicated."""
         history = ProjectHistory(temp_project_dir)
         
-        run_id = generate_run_id()
+        run_id = generate_run_ulid()
         history.create_run_dir(run_id)
         
         # Record run events
         history.append_event(RunStartedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id=run_id,
-            step_ids=["step-001"],
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid=run_id,
+            step_ulids=["step-001"],
         ))
         history.append_event(RunFinishedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id=run_id,
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid=run_id,
             status="success",
         ))
         
         # Pin first time
         result1 = pin_analysis_to_history(
             project_root=temp_project_dir,
-            run_id=run_id,
-            step_id="step-001",
+            run_ulid=run_id,
+            step_ulid="step-001",
             analysis_kind="bands",
             json_payload={"test": "data"},
         )
@@ -748,8 +748,8 @@ class TestPins:
         # Pin second time (should be de-duplicated)
         result2 = pin_analysis_to_history(
             project_root=temp_project_dir,
-            run_id=run_id,
-            step_id="step-001",
+            run_ulid=run_id,
+            step_ulid="step-001",
             analysis_kind="bands",
             json_payload={"test": "data2"},  # Different data
         )
@@ -765,19 +765,19 @@ class TestPins:
         """Test can_pin_to_run returns allowed for latest run."""
         history = ProjectHistory(temp_project_dir)
         
-        run_id = generate_run_id()
+        run_id = generate_run_ulid()
         history.create_run_dir(run_id)
         
         history.append_event(RunStartedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id=run_id,
-            step_ids=["step-001"],
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid=run_id,
+            step_ulids=["step-001"],
         ))
         history.append_event(RunFinishedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id=run_id,
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid=run_id,
             status="success",
         ))
         
@@ -790,8 +790,8 @@ class TestPins:
         history = ProjectHistory(temp_project_dir)
         
         # Create two runs
-        run1_id = generate_run_id()
-        run2_id = generate_run_id()
+        run1_id = generate_run_ulid()
+        run2_id = generate_run_ulid()
         
         history.create_run_dir(run1_id)
         history.create_run_dir(run2_id)
@@ -799,15 +799,15 @@ class TestPins:
         # Record events
         for run_id in [run1_id, run2_id]:
             history.append_event(RunStartedEvent.create(
-                project_id="proj-001",
-                calc_id="calc-001",
-                run_id=run_id,
-                step_ids=["step-001"],
+                project_ulid="proj-001",
+                calc_ulid="calc-001",
+                run_ulid=run_id,
+                step_ulids=["step-001"],
             ))
             history.append_event(RunFinishedEvent.create(
-                project_id="proj-001",
-                calc_id="calc-001",
-                run_id=run_id,
+                project_ulid="proj-001",
+                calc_ulid="calc-001",
+                run_ulid=run_id,
                 status="success",
             ))
         
@@ -818,51 +818,51 @@ class TestPins:
 
 
 class TestGetLatestRunId:
-    """Tests for get_latest_run_id function."""
+    """Tests for get_latest_run_ulid function."""
     
     def test_no_runs(self, temp_project_dir: Path):
-        """Test get_latest_run_id with no runs."""
-        result = get_latest_run_id(temp_project_dir)
+        """Test get_latest_run_ulid with no runs."""
+        result = get_latest_run_ulid(temp_project_dir)
         assert result is None
     
     def test_single_run(self, temp_project_dir: Path):
-        """Test get_latest_run_id with single run."""
+        """Test get_latest_run_ulid with single run."""
         history = ProjectHistory(temp_project_dir)
-        run_id = generate_run_id()
+        run_id = generate_run_ulid()
         
         history.append_event(RunFinishedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id=run_id,
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid=run_id,
             status="success",
         ))
         
-        result = get_latest_run_id(temp_project_dir)
+        result = get_latest_run_ulid(temp_project_dir)
         
         assert result == run_id
     
     def test_multiple_runs_returns_latest(self, temp_project_dir: Path):
-        """Test get_latest_run_id returns most recent run."""
+        """Test get_latest_run_ulid returns most recent run."""
         history = ProjectHistory(temp_project_dir)
         
-        run1_id = generate_run_id()
-        run2_id = generate_run_id()
+        run1_id = generate_run_ulid()
+        run2_id = generate_run_ulid()
         
         # Add in order
         history.append_event(RunFinishedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id=run1_id,
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid=run1_id,
             status="success",
         ))
         history.append_event(RunFinishedEvent.create(
-            project_id="proj-001",
-            calc_id="calc-001",
-            run_id=run2_id,
+            project_ulid="proj-001",
+            calc_ulid="calc-001",
+            run_ulid=run2_id,
             status="success",
         ))
         
-        result = get_latest_run_id(temp_project_dir)
+        result = get_latest_run_ulid(temp_project_dir)
         
         # Should return the latest (run2)
         assert result == run2_id
@@ -872,16 +872,16 @@ class TestGenerateRunId:
     """Tests for run ID generation."""
     
     def test_generates_valid_ulid(self):
-        """Test that generate_run_id produces valid ULIDs."""
-        run_id = generate_run_id()
+        """Test that generate_run_ulid produces valid ULIDs."""
+        run_id = generate_run_ulid()
         
         # Should be parseable as ULID
         parsed = ulid.parse(run_id)
         assert parsed is not None
     
     def test_generates_unique_ids(self):
-        """Test that generate_run_id produces unique IDs."""
-        ids = [generate_run_id() for _ in range(100)]
+        """Test that generate_run_ulid produces unique IDs."""
+        ids = [generate_run_ulid() for _ in range(100)]
         
         assert len(set(ids)) == 100  # All unique
 
@@ -901,14 +901,14 @@ class TestJobHistoryIdUnification:
         
         revision = create_run_revision(
             project_root=temp_project_dir,
-            calc_id="calc-001",
+            calc_ulid="calc-001",
             calc_name="Test Calc",
-            step_ids=["step-001"],
+            step_ulids=["step-001"],
             step_types=["scf"],
-            run_id=external_id,  # Provide external ID
+            run_ulid=external_id,  # Provide external ID
         )
         
-        assert revision.id == external_id
+        assert revision.ulid == external_id
         
         # Verify run directory uses the external ID
         history = ProjectHistory(temp_project_dir)
@@ -920,16 +920,16 @@ class TestJobHistoryIdUnification:
         """Test that create_run_revision generates new ID if not provided."""
         revision = create_run_revision(
             project_root=temp_project_dir,
-            calc_id="calc-001",
+            calc_ulid="calc-001",
             calc_name="Test Calc",
-            step_ids=["step-001"],
+            step_ulids=["step-001"],
             step_types=["scf"],
             # No run_id provided
         )
         
         # Should have generated a valid ULID
-        assert revision.id is not None
-        parsed = ulid.parse(revision.id)
+        assert revision.ulid is not None
+        parsed = ulid.parse(revision.ulid)
         assert parsed is not None
     
     def test_job_manager_generates_ulid(self):
@@ -983,39 +983,39 @@ class TestJobHistoryIdUnification:
         # Create revision with external ID
         revision = create_run_revision(
             project_root=temp_project_dir,
-            calc_id="calc-001",
+            calc_ulid="calc-001",
             calc_name="Test Calc",
-            step_ids=["step-001"],
+            step_ulids=["step-001"],
             step_types=["scf"],
-            run_id=external_id,
+            run_ulid=external_id,
         )
         
         # Create run events (simulating what runner does)
         history = ProjectHistory(temp_project_dir)
         
         started_event = RunStartedEvent.create(
-            project_id=revision.project_id,
-            calc_id="calc-001",
-            run_id=external_id,  # Same ID
-            step_ids=["step-001"],
+            project_ulid=revision.project_ulid,
+            calc_ulid="calc-001",
+            run_ulid=external_id,  # Same ID
+            step_ulids=["step-001"],
             step_types=["scf"],
         )
         history.append_event(started_event)
         
         finished_event = RunFinishedEvent.create(
-            project_id=revision.project_id,
-            calc_id="calc-001",
-            run_id=external_id,  # Same ID
+            project_ulid=revision.project_ulid,
+            calc_ulid="calc-001",
+            run_ulid=external_id,  # Same ID
             status="success",
         )
         history.append_event(finished_event)
         
         # Verify all reference the same ID
-        assert revision.id == external_id
+        assert revision.ulid == external_id
         assert started_event.run_ulid == external_id
         assert finished_event.run_ulid == external_id
         
-        # Verify get_latest_run_id returns the external ID
-        latest = get_latest_run_id(temp_project_dir)
+        # Verify get_latest_run_ulid returns the external ID
+        latest = get_latest_run_ulid(temp_project_dir)
         assert latest == external_id
 

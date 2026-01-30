@@ -67,7 +67,7 @@ class TestRelaxE2E:
             calc_dir=calc_dir,
             step_ulid=step_ulid,
             step_type="qe_relax",
-            run_id="run001",
+            run_ulid="run001",
             calculation_ulid="calc001",
             input_structure_ulid="struct001",
         )
@@ -221,7 +221,7 @@ class TestRelaxE2E:
             calc_dir=calc_dir,
             step_ulid=step_ulid,
             step_type="qe_relax",  # Use unified type instead of deprecated qe_vc_relax
-            run_id=run_id,
+            run_ulid=run_id,
             calculation_ulid=calc_ulid,
             input_structure_ulid=input_ulid,
         )
@@ -232,7 +232,7 @@ class TestRelaxE2E:
         
         assert meta["type"] == "generated_structure"
         assert meta["source_step_ulid"] == step_ulid
-        assert meta["source_run_id"] == run_id
+        assert meta["source_run_ulid"] == run_id
         assert meta["provenance"]["method"] == "qe_relax"
         assert meta["provenance"]["calculation_ulid"] == calc_ulid
         assert meta["provenance"]["input_structure_ulid"] == input_ulid

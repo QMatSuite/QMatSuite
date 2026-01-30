@@ -253,16 +253,16 @@ class JobManager:
                         if isinstance(result_steps, list):
                             with self._lock:
                                 # Update existing steps with status from result
-                                # Match by step_id or step_type
+                                # Match by step_ulid or step_type
                                 for job_step in job.steps:
-                                    step_id = job_step.get("step_id")
+                                    step_ulid = job_step.get("step_ulid")
                                     step_type = job_step.get("step_type_spec")
                                     # Find matching step in result
                                     for result_step in result_steps:
-                                        result_step_id = result_step.get("step_id")
+                                        result_step_ulid = result_step.get("step_ulid")
                                         result_step_type = result_step.get("step_type_spec")
-                                        # Match by step_id (preferred) or step_type (fallback)
-                                        if (step_id and result_step_id and step_id == result_step_id) or \
+                                        # Match by step_ulid (preferred) or step_type (fallback)
+                                        if (step_ulid and result_step_ulid and step_ulid == result_step_ulid) or \
                                            (step_type and result_step_type and step_type == result_step_type):
                                             # Update status and timestamps
                                             job_step["status"] = result_step.get("status", job_step.get("status", "pending"))
@@ -308,8 +308,8 @@ class JobManager:
         """
         Submit a job with a specific ID for background execution.
         
-        This method is used when the job_id must equal a history run_id,
-        ensuring job_id == run_id identity for the Jobs ↔ History unification.
+        This method is used when the job_id must equal a history run_ulid,
+        ensuring job_id == run_ulid identity for the Jobs ↔ History unification.
         
         Args:
             job_id: The specific job ID to use (typically a ULID)
@@ -410,12 +410,12 @@ class JobManager:
                         if isinstance(result_steps, list):
                             with self._lock:
                                 for job_step in job.steps:
-                                    step_id = job_step.get("step_id")
+                                    step_ulid = job_step.get("step_ulid")
                                     step_type = job_step.get("step_type_spec")
                                     for result_step in result_steps:
-                                        result_step_id = result_step.get("step_id")
+                                        result_step_ulid = result_step.get("step_ulid")
                                         result_step_type = result_step.get("step_type_spec")
-                                        if (step_id and result_step_id and step_id == result_step_id) or \
+                                        if (step_ulid and result_step_ulid and step_ulid == result_step_ulid) or \
                                            (step_type and result_step_type and step_type == result_step_type):
                                             job_step["status"] = result_step.get("status", job_step.get("status", "pending"))
                                             if "started_at" in result_step:

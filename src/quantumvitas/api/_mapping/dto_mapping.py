@@ -97,8 +97,8 @@ def analysis_ref_to_dto(
     Map analysis artifact to AnalysisRefDTO.
     
     Args:
-        calc_id: Calculation ULID
-        step_id: Step ULID
+        calc_ulid: Calculation ULID
+        step_ulid: Step ULID
         property_name: Property name (e.g., "band_structure", "dos")
         artifact_path: Relative path to artifact file
         artifact_format: Artifact format ("json", "hdf5", etc.)
@@ -191,7 +191,7 @@ def structure_to_dto(
         )
     
     # Get structure ID
-    structure_id = struct_resolved.meta.ulid if struct_resolved.meta else ""
+    structure_ulid = struct_resolved.meta.ulid if struct_resolved.meta else ""
     
     # Extract crystallographic data (if periodic)
     space_group = None
@@ -218,7 +218,7 @@ def structure_to_dto(
             pass
     
     return StructureDTO(
-        structure_id=structure_id,
+        structure_ulid=structure_ulid,
         formula=pmg_structure.formula,
         num_atoms=len(pmg_structure),
         meta=meta,
@@ -512,13 +512,11 @@ def step_to_dict(step_dto: StepDTO) -> dict[str, Any]:
         Dictionary representation of the step
     """
     result = {
-        "ulid": step_dto.step_ulid,  # New field name
         "ulid": step_dto.step_ulid,  # Backwards compat field for GUI
         "step_ulid": step_dto.step_ulid,
         "calc_ulid": step_dto.calc_ulid,
         "step_type_spec": step_dto.step_type_spec,
-        "step_type_gen": step_dto.step_type_gen,
-        "step_type_gen": step_dto.step_type_gen if step_dto.step_type_gen else step_dto.step_type_spec,  # Backwards compat
+        "step_type_gen": step_dto.step_type_gen,  # Never fallback to step_type_spec - they're semantically different
         "status": step_dto.status,
     }
 

@@ -34,9 +34,9 @@ def sample_project(tmp_path: Path) -> Path:
     project_root.mkdir()
     
     # Create structure with proper meta
-    structure_id = generate_resource_id()
+    structure_ulid = generate_resource_id()
     structure_meta_dict = meta_from_name("structure", name="si", path="structures/si.json")
-    structure_meta_dict["ulid"] = structure_id
+    structure_meta_dict["ulid"] = structure_ulid
     
     # Generate calculation ULID (ID-only model)
     calculation_ulid = generate_resource_id()
@@ -46,7 +46,7 @@ def sample_project(tmp_path: Path) -> Path:
         "calculations": [{"ulid": calculation_ulid, "path": "calculations/wf"}],  # Use ULID, not human-readable name
         "structures": [
             {
-                "ulid": structure_id,
+                "ulid": structure_ulid,
                 "file": "structures/si.json",
                 "meta": structure_meta_dict,
             }
@@ -82,7 +82,7 @@ def sample_project(tmp_path: Path) -> Path:
     (calculation_dir / "raw").mkdir(parents=True)
     (calculation_dir / "steps").mkdir(parents=True)
     
-    # Create a minimal step file (DAG model: no structure_id in step YAML)
+    # Create a minimal step file (DAG model: no structure_ulid in step YAML)
     step_id = generate_resource_id()
     step_file = calculation_dir / "steps" / "scf.step.yaml"
     step_meta_dict = meta_from_name("step", name="scf", path=f"calculations/wf/steps/scf.step.yaml")
@@ -92,7 +92,7 @@ def sample_project(tmp_path: Path) -> Path:
         {
             "meta": step_meta_dict,
             "step_type_spec": "qe_scf",
-            # DAG model: structure_id is NOT in step YAML (inherits from calculation)
+            # DAG model: structure_ulid is NOT in step YAML (inherits from calculation)
         },
     )
     
@@ -108,7 +108,7 @@ def sample_project(tmp_path: Path) -> Path:
                 "kind": "calculation",
             },
             "calculation": {"working_dir": "raw"},
-            "structure_id": structure_id,  # Calculation-level structure reference (ULID)
+            "structure_ulid": structure_ulid,  # Calculation-level structure reference (ULID)
             "steps": [{"step_ulid": step_id, "step_type_spec": "qe_scf", "input": "raw/scf.in"}],  # Use step_ulid (ULID), not id (name)
         },
     )
@@ -159,7 +159,7 @@ def test_project_open(sample_project: Path):
     try:
         structure = svc.structure.get("si")
         assert structure.meta.slug == "si"
-        assert structure.structure_id == struct_id
+        assert structure.structure_ulid == struct_id
     except Exception:
         # If structure.get() fails (e.g., file loading issues), that's OK - config is source of truth
         # The test verifies that project config can be read and structures are registered
@@ -256,10 +256,10 @@ def test_cli_import_structure_registers_json(tmp_path: Path):
     assert loaded.composition.reduced_formula == "Si"
 
     data = yaml.safe_load((dest / "project.qv.yml").read_text())
-    # In ID-only model, structures entries only have structure_id, not meta
-    # Verify structure was registered by checking structure_id exists
+    # In ID-only model, structures entries only have structure_ulid, not meta
+    # Verify structure was registered by checking structure_ulid exists
     assert len(data["structures"]) == 1
-    assert "structure_id" in data["structures"][0]
+    assert "structure_ulid" in data["structures"][0]
     # Verify structure file exists and has correct name in its meta
     structure_file = dest / "structures" / "si_struct.json"
     assert structure_file.exists()
@@ -523,17 +523,17 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     calculation_dir.mkdir(parents=True)
     (calculation_dir / "steps").mkdir()
     
-    # Get structure_id from API
+    # Get structure_ulid from API
     from quantumvitas.api import get_service
     svc = get_service(project_root)
     struct_resolved = svc.structure.require_ref("si")
     
-    # Create calculation.yaml with structure_id
+    # Create calculation.yaml with structure_ulid
     calculation_meta_dict = meta_from_name("calculation", name="test_calculation", path="calculations/test_calculation")
     calculation_meta_dict["ulid"] = calculation_id
     calculation_yaml_data = {
         "meta": calculation_meta_dict,
-        "structure_id": struct_resolved.meta.ulid if struct_resolved.meta else None,
+        "structure_ulid": struct_resolved.meta.ulid if struct_resolved.meta else None,
         "steps": [],
     }
     (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
@@ -543,7 +543,7 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     config["calculations"] = [{"ulid": calculation_id}]
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
 
-    # Step file in calculation directory (DAG model: no structure_id in step YAML)
+    # Step file in calculation directory (DAG model: no structure_ulid in step YAML)
     step_file = calculation_dir / "steps" / "scf.step.yaml"
     step_id = generate_resource_id()
     step_meta_dict = meta_from_name("step", name="scf", path="calculations/test_calculation/steps/scf.step.yaml")
@@ -560,7 +560,7 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
             "species_overrides": {
                 "Si": {"pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"}
             },
-            # DAG model: no structure_id or structure in step YAML
+            # DAG model: no structure_ulid or structure in step YAML
         },
         step_file.open("w"),
     )
@@ -589,10 +589,10 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
         captured["output_file"] = mock_output
         # Return RunResultDTO with compatibility fields
         return RunResultDTO(
-            run_id="test_run_id",
-            calc_id=calculation_id,
+            run_ulid="test_run_id",
+            calc_ulid=calculation_id,
             status="completed",
-            step_ids=[step_id],
+            step_ulids=[step_id],
             io_dir=str(raw_dir),
             input_file=str(mock_input),
             output_file=str(mock_output),
@@ -658,17 +658,17 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     calculation_dir.mkdir(parents=True)
     (calculation_dir / "steps").mkdir()
     
-    # Get structure_id from API
+    # Get structure_ulid from API
     from quantumvitas.api import get_service
     svc = get_service(project_root)
     struct_resolved = svc.structure.require_ref("si")
     
-    # Create calculation.yaml with structure_id
+    # Create calculation.yaml with structure_ulid
     calculation_meta_dict = meta_from_name("calculation", name="test_calculation", path="calculations/test_calculation")
     calculation_meta_dict["ulid"] = calculation_id
     calculation_yaml_data = {
         "meta": calculation_meta_dict,
-        "structure_id": struct_resolved.meta.ulid if struct_resolved.meta else None,
+        "structure_ulid": struct_resolved.meta.ulid if struct_resolved.meta else None,
         "steps": [],
     }
     (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
@@ -678,7 +678,7 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     config["calculations"] = [{"ulid": calculation_id}]
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
 
-    # Step file in calculation directory (DAG model: no structure_id in step YAML)
+    # Step file in calculation directory (DAG model: no structure_ulid in step YAML)
     step_file = calculation_dir / "steps" / "scf.step.yaml"
     step_id = generate_resource_id()
     step_meta_dict = meta_from_name("step", name="scf", path="calculations/test_calculation/steps/scf.step.yaml")
@@ -688,7 +688,7 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
             "meta": step_meta_dict,
             "step_type_gen": "scf",
             "input_name": "si_step.pw.in",
-            # DAG model: no structure_id or structure in step YAML
+            # DAG model: no structure_ulid or structure in step YAML
             # Add pseudopotential configuration to avoid "not configured" error
             "species_overrides": {
                 "Si": {"pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"}
@@ -721,10 +721,10 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
         captured["output_file"] = mock_output
         # Return RunResultDTO with compatibility fields
         return RunResultDTO(
-            run_id="test_run_id",
-            calc_id=calculation_id,
+            run_ulid="test_run_id",
+            calc_ulid=calculation_id,
             status="completed",
-            step_ids=[step_id],
+            step_ulids=[step_id],
             io_dir=str(raw_dir),
             input_file=str(mock_input),
             output_file=str(mock_output),
@@ -789,9 +789,9 @@ def test_cli_step_create_and_insert(sample_project: Path):
     spec_path = steps_dir / "nscf.step.yaml"
     assert spec_path.exists()
     spec_data = yaml.safe_load(spec_path.read_text())
-    # DAG + ID-only model: Step YAML must NOT contain structure_id or parent_calculation_id
-    # Structure is resolved via calculation.structure_id at runtime
-    assert "structure_id" not in spec_data, "Step YAML should NOT contain structure_id (DAG model: inherits from calculation)"
+    # DAG + ID-only model: Step YAML must NOT contain structure_ulid or parent_calculation_id
+    # Structure is resolved via calculation.structure_ulid at runtime
+    assert "structure_ulid" not in spec_data, "Step YAML should NOT contain structure_ulid (DAG model: inherits from calculation)"
     assert "parent_calculation_id" not in spec_data, "Step YAML should NOT contain parent_calculation_id (DAG model: parent is implicit)"
     assert "structure" not in spec_data, "Step YAML should NOT contain structure selector (DAG model)"
     assert spec_data["parameters"]["SYSTEM"]["ecutwfc"] == 60
@@ -813,15 +813,15 @@ def test_cli_step_set_param(tmp_path: Path):
     # Create a minimal project so structure can be resolved
     project_root = tmp_path / "project"
     project_root.mkdir()
-    structure_id = generate_resource_id()
+    structure_ulid = generate_resource_id()
     structure_meta_dict = meta_from_name("structure", name="si", path="structures/si.json")
-    structure_meta_dict["ulid"] = structure_id
+    structure_meta_dict["ulid"] = structure_ulid
     
     project_config = {
         "project": {"name": "test"},
         "structures": [
             {
-                "ulid": structure_id,
+                "ulid": structure_ulid,
                 "file": "structures/si.json",
                 "meta": structure_meta_dict,
             }
@@ -844,7 +844,7 @@ def test_cli_step_set_param(tmp_path: Path):
     step_file = project_root / "custom.step.yaml"
     yaml.safe_dump(
         {
-            "structure": "si",  # Legacy selector - will be resolved to structure_id
+            "structure": "si",  # Legacy selector - will be resolved to structure_ulid
             "step_type_gen": "scf",
             "parameters": {"SYSTEM": {"ecutwfc": 40}},
         },
@@ -948,15 +948,15 @@ def test_cli_show_command_import_preserves_original_parameters(
         now = datetime.now()
         # Return mock result with all required fields
         return CalculationResult(
-            calculation_id=calculation.id,
+            calculation_id=calculation.ulid,
             mode=StepMode.NORMAL,
             status=StepStatus.SUCCESS,
             started_at=now,
             finished_at=now,
             steps=[
                 StepResultSummary(
-                    step_id=step.meta.ulid,
-                    step_type=step.step_type_spec,
+                    step_ulid=step.meta.ulid,
+                    step_type_spec=step.step_type_spec,
                     status=StepStatus.SUCCESS,
                     working_dir=calculation.dir / "raw",
                     input_file=step.input_file or calculation.dir / "raw" / "mock.in",
@@ -1044,8 +1044,8 @@ def test_cli_show_command_import_preserves_original_parameters(
         assert result.exit_code == 0, f"Failed to configure species: {result.stdout}\n{result.stderr}"
         
         calculation_yaml = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())
-        # Verify DAG + ID-only constitution: only structure_id is persisted
-        assert "structure_id" in calculation_yaml, "calculation.yaml should contain structure_id"
+        # Verify DAG + ID-only constitution: only structure_ulid is persisted
+        assert "structure_ulid" in calculation_yaml, "calculation.yaml should contain structure_ulid"
         assert "structure_name" not in calculation_yaml, "calculation.yaml should NOT contain structure_name"
         assert "structure" not in calculation_yaml, "calculation.yaml should NOT contain structure selector"
         
@@ -1163,7 +1163,7 @@ def test_cli_delete_structure(tmp_path: Path):
     assert result.exit_code == 0, result.stdout
     assert not structure_file.exists()
     data = yaml.safe_load((project_root / "project.qv.yml").read_text())
-    # In ID-only model, structures entries only have structure_id, not name
+    # In ID-only model, structures entries only have structure_ulid, not name
     # Verify structure was deleted by checking structures list is empty
     assert len(data.get("structures", [])) == 0, "Structure should be deleted from project.qv.yml"
 

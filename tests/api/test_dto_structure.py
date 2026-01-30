@@ -13,12 +13,12 @@ from quantumvitas.api.types.structure import StructureDTO
 def test_structure_dto_required_fields():
     """StructureDTO has required fields."""
     dto = StructureDTO(
-        structure_id="01HX7YPVK8DQNZPMJ4GHAB5678",
+        structure_ulid="01HX7YPVK8DQNZPMJ4GHAB5678",
         formula="Si8",
         num_atoms=8
     )
     d = dto.to_dict()
-    assert d["structure_id"] == "01HX7YPVK8DQNZPMJ4GHAB5678"
+    assert d["structure_ulid"] == "01HX7YPVK8DQNZPMJ4GHAB5678"
     assert d["formula"] == "Si8"
     assert d["num_atoms"] == 8
 
@@ -26,7 +26,7 @@ def test_structure_dto_required_fields():
 def test_structure_dto_no_positions_field():
     """StructureDTO must NOT have positions or species arrays."""
     dto = StructureDTO(
-        structure_id="01HX7YPVK8DQNZPMJ4GHAB5678",
+        structure_ulid="01HX7YPVK8DQNZPMJ4GHAB5678",
         formula="Si8",
         num_atoms=8
     )
@@ -38,7 +38,7 @@ def test_structure_dto_no_positions_field():
 def test_structure_dto_with_crystallographic():
     """StructureDTO can include crystallographic info."""
     dto = StructureDTO(
-        structure_id="01HX7YPVK8DQNZPMJ4GHAB5678",
+        structure_ulid="01HX7YPVK8DQNZPMJ4GHAB5678",
         formula="Si8",
         num_atoms=8,
         space_group="Fd-3m",
@@ -56,7 +56,7 @@ def test_structure_dto_with_crystallographic():
 def test_structure_dto_with_meta():
     """StructureDTO can include MetaDTO."""
     dto = StructureDTO(
-        structure_id="01HX7YPVK8DQNZPMJ4GHAB5678",
+        structure_ulid="01HX7YPVK8DQNZPMJ4GHAB5678",
         formula="Si8",
         num_atoms=8,
         meta=MetaDTO(

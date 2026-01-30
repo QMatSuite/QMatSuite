@@ -169,10 +169,10 @@ def analyze_bands(calculation: Calculation, result: CalculationResult, results_d
     bands_results = []
     
     for step in band_steps:
-        step_id = step.step_ulid
+        step_ulid = step.step_ulid
         
         # Look for band files
-        files = find_bands_files(raw_dir, prefix=step_id)
+        files = find_bands_files(raw_dir, prefix=step_ulid)
         
         # Also try without prefix
         if files['bands_gnu'] is None:
@@ -192,15 +192,15 @@ def analyze_bands(calculation: Calculation, result: CalculationResult, results_d
                 
                 # Save plot
                 fig, ax = plot_bands(band_data, shift_fermi=True)
-                plot_path = results_dir / f"{step_id}_bands.png"
+                plot_path = results_dir / f"{step_ulid}_bands.png"
                 save_figure(fig, plot_path)
                 
                 # Save data JSON
-                data_path = results_dir / f"{step_id}_bands_data.json"
+                data_path = results_dir / f"{step_ulid}_bands_data.json"
                 data_path.write_text(json.dumps(band_data.to_dict(), indent=2))
                 
                 bands_results.append({
-                    "step_id": step_id,
+                    "step_ulid": step_ulid,
                     "bands_file": str(bands_file),
                     "symmetry_file": str(symmetry_file) if symmetry_file else None,
                     "plot_file": str(plot_path),
@@ -212,7 +212,7 @@ def analyze_bands(calculation: Calculation, result: CalculationResult, results_d
                 })
             except Exception as e:
                 bands_results.append({
-                    "step_id": step_id,
+                    "step_ulid": step_ulid,
                     "bands_file": str(bands_file),
                     "error": str(e),
                 })

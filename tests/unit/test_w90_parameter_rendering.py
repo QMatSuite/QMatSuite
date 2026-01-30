@@ -32,13 +32,15 @@ class TestW90ParameterStructure:
             demo = yaml.safe_load(f)
         
         # Find w90_preproc step
+        # Note: demo uses step_type_spec (canonical SPEC type), not step_type
         w90_preproc = None
         for calc in demo.get("calculations", []):
             for step in calc.get("steps", []):
-                if step.get("step_type") == "w90_preproc":
+                step_type = step.get("step_type_spec") or step.get("step_type")
+                if step_type == "w90_preproc":
                     w90_preproc = step
                     break
-        
+
         assert w90_preproc is not None, "w90_preproc step not found in demo"
         
         params = w90_preproc.get("parameters", {})
@@ -66,13 +68,16 @@ class TestW90ParameterStructure:
             demo = yaml.safe_load(f)
         
         # Find pw2wannier90 step
+        # Note: demo uses step_type_spec (canonical SPEC type), not step_type
         pw2wannier90 = None
         for calc in demo.get("calculations", []):
             for step in calc.get("steps", []):
-                if step.get("step_type") == "pw2wannier90":
+                step_type = step.get("step_type_spec") or step.get("step_type")
+                # pw2wannier90 can be step_type_spec: qe_pw2wannier90 or step_type: pw2wannier90
+                if step_type in ("pw2wannier90", "qe_pw2wannier90"):
                     pw2wannier90 = step
                     break
-        
+
         assert pw2wannier90 is not None, "pw2wannier90 step not found in demo"
         
         params = pw2wannier90.get("parameters", {})

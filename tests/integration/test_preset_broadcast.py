@@ -183,7 +183,7 @@ class TestBroadcastApply:
         calc_yaml = calc_dir / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "meta": {"ulid": "01TEST", "name": "test_calc", "slug": "test_calc"},
-            "structure_id": "01STRUCT",
+            "structure_ulid": "01STRUCT",
             "steps": [
                 {"step_file": "steps/1_scf.step.yaml", "step_type_gen": "scf"},
                 {"step_file": "steps/2_nscf.step.yaml", "step_type_gen": "nscf"},

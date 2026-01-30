@@ -7,13 +7,13 @@ This module tests the exact same daemon endpoints that the GUI uses:
 - Step detail retrieval (get_step_detail)
 
 These tests simulate what the GUI does but in pure Python, ensuring:
-- DAG + ID-only model is respected (calculation.structure_id ULID, step.step_ulid ULID)
+- DAG + ID-only model is respected (calculation.structure_ulid ULID, step.step_ulid ULID)
 - Selectors work correctly (calculation slug, step ULID)
 - Path normalization is consistent (project_root matching)
 
 Key invariants:
-- Calculation YAML: structure_id (ULID), steps with step_id (ULID)
-- Step YAML: NO structure_id, NO parent_calculation_id
+- Calculation YAML: structure_ulid (ULID), steps with step_id (ULID)
+- Step YAML: NO structure_ulid, NO parent_calculation_id
 - Job filtering: project_root must match exactly (normalized paths)
 """
 
@@ -64,7 +64,7 @@ def temp_project(tmp_path: Path) -> Path:
                 source=scf_in,
                 name="Si",
             )
-            structure_id = structure_resolved.meta.ulid
+            structure_ulid = structure_resolved.meta.ulid
         else:
             # Skip if no test data
             pytest.skip("Test data not available")
@@ -76,7 +76,7 @@ def temp_project(tmp_path: Path) -> Path:
     calculation_result = QVService.init_calculation(
         project_root=project_dir,
         name="test_calculation",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calculation_id = calculation_result.meta.ulid
     
@@ -234,9 +234,9 @@ class TestStepDetailRetrieval:
             "step": step_id_ulid,
         })
         
-        assert "id" in detail_response
+        assert "ulid" in detail_response
         assert detail_response["ulid"] == step_id_ulid
-        assert "step_type" in detail_response
+        assert "step_type_spec" in detail_response
         assert "parameters" in detail_response
         assert "cards" in detail_response
     
@@ -280,14 +280,14 @@ class TestStepDetailRetrieval:
 
         # Domain API accepts slug selectors
         assert response.ok, f"get_step_detail with slug should succeed with domain API: {response.error}"
-        assert "id" in response.data, "Step detail should have id field"
+        assert "ulid" in response.data, "Step detail should have ulid field"
 
 
 class TestDAGInvariants:
     """Test that DAG + ID-only invariants are maintained."""
     
-    def test_calculation_has_structure_id_ulid(self, temp_project: Path):
-        """Verify calculation.yaml has structure_id (ULID), not structure selector."""
+    def test_calculation_has_structure_ulid_ulid(self, temp_project: Path):
+        """Verify calculation.yaml has structure_ulid (ULID), not structure selector."""
         from quantumvitas.core.models import load_calculation
         index = build_resource_index(temp_project)
         calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
@@ -296,16 +296,16 @@ class TestDAGInvariants:
         
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         
-        # Should have structure_id (ULID)
-        assert wf_model.structure_id, "Calculation should have structure_id"
-        assert len(wf_model.structure_id) == 26, \
-            f"structure_id should be ULID (26 chars), got: {wf_model.structure_id}"
+        # Should have structure_ulid (ULID)
+        assert wf_model.structure_ulid, "Calculation should have structure_ulid"
+        assert len(wf_model.structure_ulid) == 26, \
+            f"structure_ulid should be ULID (26 chars), got: {wf_model.structure_ulid}"
         
         # Should NOT have structure selector in YAML (but may be present in-memory for compat)
         # The to_dict() should not write it
     
-    def test_step_yaml_no_structure_id(self, temp_project: Path):
-        """Verify step YAML does NOT contain structure_id or parent_calculation_id."""
+    def test_step_yaml_no_structure_ulid(self, temp_project: Path):
+        """Verify step YAML does NOT contain structure_ulid or parent_calculation_id."""
         from quantumvitas.calculation.structure_steps import StructureStepSpec
         index = build_resource_index(temp_project)
         calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
@@ -326,8 +326,8 @@ class TestDAGInvariants:
         
         # Verify step YAML does NOT contain these fields
         step_dict = spec.to_dict()
-        assert "structure_id" not in step_dict, \
-            "Step YAML should NOT contain structure_id (DAG invariant)"
+        assert "structure_ulid" not in step_dict, \
+            "Step YAML should NOT contain structure_ulid (DAG invariant)"
         assert "parent_calculation_id" not in step_dict, \
             "Step YAML should NOT contain parent_calculation_id (DAG invariant)"
         assert "structure" not in step_dict or step_dict["structure"] == "", \
@@ -375,8 +375,11 @@ class TestStepCreationRaceCondition:
         # Note: step type may be prefixed with engine (e.g., "qe_nscf")
         new_step = None
         for step in steps:
-            step_type = step.get("type", "")
-            if step_type and "nscf" in step_type.lower():
+            # Check both step_type_gen (GEN) and step_type_spec (SPEC) for nscf
+            step_type_gen = step.get("step_type_gen", "")
+            step_type_spec = step.get("step_type_spec", "")
+            if (step_type_gen and "nscf" in step_type_gen.lower()) or \
+               (step_type_spec and "nscf" in step_type_spec.lower()):
                 new_step = step
                 break
 
@@ -398,7 +401,7 @@ class TestStepCreationRaceCondition:
         # Verify step detail was retrieved successfully
         assert step_detail is not None, "Step detail should be retrieved"
         assert step_detail.get("ulid") == new_step_id, "Step detail ID should match"
-        assert "nscf" in step_detail.get("step_type", "").lower(), f"Step type should contain nscf, got: {step_detail.get('step_type')}"
+        assert "nscf" in step_detail.get("step_type_spec", "").lower(), f"Step type should contain nscf, got: {step_detail.get('step_type_spec')}"
         
         # Verify no ResourceNotFoundError was raised (would indicate stale index)
         # The step should be found even though it was just created
@@ -434,8 +437,8 @@ class TestStepCreationRaceCondition:
         assert "meta" in step_data, "Step file should have meta block"
         assert step_data["meta"]["ulid"] == new_step_id, "Step file meta.id should match calculation entry step_id"
         
-        # Verify DAG invariants: step file should NOT contain structure_id or parent_calculation_id
-        assert "structure_id" not in step_data, "Step YAML should NOT contain structure_id (DAG invariant)"
+        # Verify DAG invariants: step file should NOT contain structure_ulid or parent_calculation_id
+        assert "structure_ulid" not in step_data, "Step YAML should NOT contain structure_ulid (DAG invariant)"
         assert "parent_calculation_id" not in step_data, "Step YAML should NOT contain parent_calculation_id (DAG invariant)"
 
 
@@ -692,8 +695,8 @@ class TestCalculationFailureHandling:
                 # If a previous step failed, mark remaining steps as SKIPPED
                 if calculation_failed:
                     summary = StepResultSummary(
-                        step_id=step_id,
-                        step_type=step_type,
+                        step_ulid=step_id,
+                        step_type_spec=step_type,
                         status=StepStatus.SKIPPED,
                         working_dir=calculation.raw_dir,
                         input_file=step.input_file if hasattr(step, 'input_file') else Path(),
@@ -721,8 +724,8 @@ class TestCalculationFailureHandling:
                     message = "Step skipped because a previous step failed"
                 
                 summary = StepResultSummary(
-                    step_id=step_id,
-                    step_type=step_type,
+                    step_ulid=step_id,
+                    step_type_spec=step_type,
                     status=step_status,
                     working_dir=calculation.raw_dir,
                     input_file=step.input_file if hasattr(step, 'input_file') else Path(),

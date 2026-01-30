@@ -19,9 +19,6 @@ class MockStep:
         self.step_type_spec = step_type  # SPEC type (e.g., "vasp_scf")
         # Extract GEN type from SPEC type
         self.step_type_gen = step_type.split("_", 1)[-1] if "_" in step_type else step_type
-        # For compatibility with is_scf_step which checks step_type or public_type
-        self.step_type = step_type  # Keep for backward compatibility
-        self.public_type = self.step_type_gen
         self.meta = Mock()
         self.meta.ulid = step_id
 

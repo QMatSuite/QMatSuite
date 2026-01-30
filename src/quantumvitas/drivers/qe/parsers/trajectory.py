@@ -44,7 +44,7 @@ class QETrajectoryParser:
         raw_dir: Path,
         calc_dir: Path,
         *,
-        run_id: Optional[str] = None,
+        run_ulid: Optional[str] = None,
         step_ulid: Optional[str] = None,
         calc_ulid: Optional[str] = None,
     ) -> Trajectory:
@@ -78,7 +78,7 @@ class QETrajectoryParser:
         meta = AnalysisObjectMeta.create(
             object_type="trajectory",
             source_files=source_files,
-            run_id=run_id,
+            run_ulid=run_ulid,
             calc_ulid=calc_ulid,
             step_ulid=step_ulid,
             parser_name="qe_trajectory",

@@ -58,8 +58,8 @@ def test_infer_calculation_identity_from_qe_steps():
         calc_dir.mkdir()
         
         steps = [
-            CalculationStepEntry(step_id="step1", type="scf"),
-            CalculationStepEntry(step_id="step2", type="nscf"),
+            CalculationStepEntry(step_ulid="step1", step_type_spec="qe_scf"),
+            CalculationStepEntry(step_ulid="step2", step_type_spec="qe_nscf"),
         ]
         
         structure_kind, engine_family = infer_calculation_identity(calc_dir, steps)
@@ -74,7 +74,7 @@ def test_infer_calculation_identity_from_pyscf_steps():
         calc_dir.mkdir()
         
         steps = [
-            CalculationStepEntry(step_id="step1", type="pyscf_scf"),
+            CalculationStepEntry(step_ulid="step1", step_type_spec="pyscf_scf"),
         ]
         
         structure_kind, engine_family = infer_calculation_identity(calc_dir, steps)
@@ -93,13 +93,13 @@ def test_infer_calculation_identity_from_step_yaml_files():
         # Create step.yaml files with machine types
         step1_yaml = steps_dir / "step1.step.yaml"
         step1_yaml.write_text(yaml.safe_dump({
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "meta": {"ulid": "step1"},
         }))
-        
+
         step2_yaml = steps_dir / "step2.step.yaml"
         step2_yaml.write_text(yaml.safe_dump({
-            "step_type_gen": "qe_nscf",
+            "step_type_spec": "qe_nscf",
             "meta": {"ulid": "step2"},
         }))
         
@@ -124,8 +124,8 @@ def test_ensure_calculation_identity_writes_back():
         calc_data = {
             "meta": {"ulid": "calc1", "name": "Test Calc", "slug": "test-calc"},
             "steps": [
-                {"step_ulid": "step1", "step_type_gen": "scf"},
-                {"step_ulid": "step2", "step_type_gen": "nscf"},
+                {"step_ulid": "step1", "step_type_spec": "qe_scf"},
+                {"step_ulid": "step2", "step_type_spec": "qe_nscf"},
             ],
         }
         calc_yaml.write_text(yaml.safe_dump(calc_data))

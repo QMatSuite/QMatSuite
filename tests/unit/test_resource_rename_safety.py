@@ -21,7 +21,7 @@ class TestResourceRenameSafety:
     """Test that resource renames don't break ID-based cross-references."""
 
     def test_calculation_rename_preserves_structure_reference(self, tmp_path: Path):
-        """Test that renaming a calculation preserves structure_id reference."""
+        """Test that renaming a calculation preserves structure_ulid reference."""
         project_root = tmp_path / "test_project"
         QVService.init_project(project_root, name="Test Project")
 
@@ -50,12 +50,12 @@ class TestResourceRenameSafety:
         # Create calculation with structure
         calculation = QVService.init_calculation(project_root, "Test Calculation", structure_selector="Si")
         original_calculation_id = calculation.meta.ulid
-        original_structure_id = struct_meta["ulid"]
+        original_structure_ulid = struct_meta["ulid"]
 
-        # Verify calculation has structure_id
+        # Verify calculation has structure_ulid
         calculation_yaml = project_root / calculation.meta.path / "calculation.yaml"
         calculation_data = yaml.safe_load(calculation_yaml.read_text())
-        assert calculation_data["structure_id"] == original_structure_id
+        assert calculation_data["structure_ulid"] == original_structure_ulid
 
         # Rename calculation using domain API
         svc = get_service(project_root)
@@ -71,17 +71,17 @@ class TestResourceRenameSafety:
         renamed_calculation_yaml = project_root / renamed_calculation.meta.path / "calculation.yaml"
         renamed_calculation_data = yaml.safe_load(renamed_calculation_yaml.read_text())
 
-        # Verify structure_id is unchanged (key invariant: ID-based references persist)
-        assert renamed_calculation_data["structure_id"] == original_structure_id
+        # Verify structure_ulid is unchanged (key invariant: ID-based references persist)
+        assert renamed_calculation_data["structure_ulid"] == original_structure_ulid
         assert renamed_calculation_data["meta"]["ulid"] == original_calculation_id  # ID unchanged
 
         # Verify structure reference still resolves
         from quantumvitas.core.resolution import resolve_structure
-        resolved_structure = resolve_structure(project_root, original_structure_id)
-        assert resolved_structure.meta.ulid == original_structure_id
+        resolved_structure = resolve_structure(project_root, original_structure_ulid)
+        assert resolved_structure.meta.ulid == original_structure_ulid
 
     def test_structure_rename_preserves_calculation_reference(self, tmp_path: Path):
-        """Test that renaming a structure preserves calculation structure_id reference."""
+        """Test that renaming a structure preserves calculation structure_ulid reference."""
         project_root = tmp_path / "test_project"
         QVService.init_project(project_root, name="Test Project")
 
@@ -109,12 +109,12 @@ class TestResourceRenameSafety:
 
         # Create calculation with structure
         calculation = QVService.init_calculation(project_root, "Test Calculation", structure_selector="Si")
-        original_structure_id = struct_meta["ulid"]
+        original_structure_ulid = struct_meta["ulid"]
 
-        # Verify calculation has structure_id
+        # Verify calculation has structure_ulid
         calculation_yaml = project_root / calculation.meta.path / "calculation.yaml"
         calculation_data = yaml.safe_load(calculation_yaml.read_text())
-        assert calculation_data["structure_id"] == original_structure_id
+        assert calculation_data["structure_ulid"] == original_structure_ulid
 
         # Rename structure using domain API
         svc = get_service(project_root)
@@ -123,14 +123,14 @@ class TestResourceRenameSafety:
         # Reload calculation
         calculation_data = yaml.safe_load(calculation_yaml.read_text())
 
-        # Verify structure_id is unchanged
-        assert calculation_data["structure_id"] == original_structure_id
+        # Verify structure_ulid is unchanged
+        assert calculation_data["structure_ulid"] == original_structure_ulid
 
         # Verify structure reference still resolves
         from quantumvitas.core.resolution import resolve_structure, build_resource_index
         index = build_resource_index(project_root)
-        resolved_structure = resolve_structure(project_root, original_structure_id, index=index)
-        assert resolved_structure.meta.ulid == original_structure_id
+        resolved_structure = resolve_structure(project_root, original_structure_ulid, index=index)
+        assert resolved_structure.meta.ulid == original_structure_ulid
 
     def test_step_rename_preserves_calculation_reference(self, tmp_path: Path):
         """Test that renaming a step preserves parent_calculation_id reference."""
@@ -221,7 +221,7 @@ class TestResourceIndexAfterRename:
         # Verify ID unchanged, name/slug updated
         assert original_id in index.by_id
         calculation_meta = index.by_id[original_id]
-        assert calculation_meta.id == original_id  # ID unchanged
+        assert calculation_meta.ulid == original_id  # ULID unchanged
         # Name should be updated in calculation.yaml (and thus in index)
         assert calculation_meta.name == "New Name" or calculation_meta.name == "Original Name"  # May take a moment to propagate
         # New slug should be in index
@@ -372,10 +372,10 @@ class TestResourceRenameEdgeCases:
             f"calculation.yaml should exist. Tried: {calculation_dir / 'calculation.yaml'}. " \
             f"Calculation entry: {calculation_entry}"
 
-        # Verify calculation.yaml has correct structure_id reference
+        # Verify calculation.yaml has correct structure_ulid reference
         calculation_data = yaml.safe_load(calculation_yaml.read_text())
-        assert calculation_data.get("structure_id") == struct_meta["ulid"], \
-            "Calculation should still reference the same structure_id"
+        assert calculation_data.get("structure_ulid") == struct_meta["ulid"], \
+            "Calculation should still reference the same structure_ulid"
 
     def test_multiple_consecutive_renames_keep_selector_stable(self, tmp_path: Path):
         """Test that multiple consecutive renames keep the stable ID/ULID selector working."""

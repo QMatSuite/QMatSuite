@@ -1,5 +1,5 @@
 engine: lammps
-structure_id: 01KFCH7N4GWCCPS4K1NRS77QDW
+structure_ulid: 01KFCH7N4GWCCPS4K1NRS77QDW
 potential_map:
   eam_cu:
     style: eam

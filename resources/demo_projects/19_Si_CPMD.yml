@@ -257,7 +257,7 @@ calculations:
       Si:
         mass: 28.0855
     step_type_spec: qe_custom
-  structure_id: 01KE2KZXC3KDRFMED4BX6PHSMD
+  structure_ulid: 01KE2KZXC3KDRFMED4BX6PHSMD
   species_map:
     Si:
       mass: 28.0855

@@ -23,9 +23,9 @@ class MockMolecule:
 @dataclass
 class MockStep:
     """Mock step for testing."""
-    public_type: str
+    step_type_gen: str  # Canonical: GEN step type (e.g., "scf")
     parameters: Dict[str, Any]
-    id: str = "test_step"
+    ulid: str = "test_step"  # Canonical: ULID instead of id
 
 
 @dataclass
@@ -51,7 +51,7 @@ def test_tightscf_macro_materialization():
     
     # Create step with engine.orca.scf.macro = "tightscf"
     step = MockStep(
-        public_type="scf",
+        step_type_gen="scf",
         parameters={
             "functional": "B3LYP",
             "basis": "def2-SVP",
@@ -84,7 +84,7 @@ def test_normal_macro_no_keyword():
     
     # Create step with engine.orca.scf.macro = "normal"
     step = MockStep(
-        public_type="scf",
+        step_type_gen="scf",
         parameters={
             "functional": "B3LYP",
             "basis": "def2-SVP",
@@ -114,7 +114,7 @@ def test_loose_macro_materialization():
     
     # Create step with engine.orca.scf.macro = "loose"
     step = MockStep(
-        public_type="scf",
+        step_type_gen="scf",
         parameters={
             "functional": "B3LYP",
             "basis": "def2-SVP",
@@ -145,7 +145,7 @@ def test_no_macro_defaults_to_no_keyword():
     
     # Create step without engine.orca.scf.macro
     step = MockStep(
-        public_type="scf",
+        step_type_gen="scf",
         parameters={
             "functional": "B3LYP",
             "basis": "def2-SVP",
@@ -168,7 +168,7 @@ def test_macro_validation_lowercase():
     
     # Create step with uppercase macro (should raise error)
     step = MockStep(
-        public_type="scf",
+        step_type_gen="scf",
         parameters={
             "functional": "B3LYP",
             "basis": "def2-SVP",
@@ -196,7 +196,7 @@ def test_unknown_macro_raises_error():
     
     # Create step with unknown macro
     step = MockStep(
-        public_type="scf",
+        step_type_gen="scf",
         parameters={
             "functional": "B3LYP",
             "basis": "def2-SVP",
@@ -224,7 +224,7 @@ def test_macro_with_other_keywords():
     
     # Create step with macro and other SCF settings
     step = MockStep(
-        public_type="scf",
+        step_type_gen="scf",
         parameters={
             "functional": "B3LYP",
             "basis": "def2-SVP",

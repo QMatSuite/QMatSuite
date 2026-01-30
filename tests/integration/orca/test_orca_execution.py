@@ -43,12 +43,25 @@ H   0.000000  -0.756950  -0.469200""",
 
 
 @dataclass
+class MockMeta:
+    """Mock meta for MockStep."""
+    ulid: str
+    name: str = ""
+    slug: str = ""
+
+
+@dataclass
 class MockStep:
     """Mock step for testing."""
-    id: str
-    public_type: str
-    step_type: str
+    ulid: str
+    step_type_gen: str  # GEN type (e.g., "scf")
+    step_type_spec: str  # SPEC type (e.g., "orca_scf")
     parameters: Dict[str, Any] = field(default_factory=dict)
+    meta: MockMeta = None
+
+    def __post_init__(self):
+        if self.meta is None:
+            self.meta = MockMeta(ulid=self.ulid)
 
 
 @pytest.fixture
@@ -75,9 +88,9 @@ class TestORCAExecution:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
-            id="s1",
-            public_type="scf",
-            step_type="orca_scf",
+            ulid="s1",
+            step_type_gen="scf",
+            step_type_spec="orca_scf",
             parameters={"functional": "HF", "basis": "def2-SVP"},  # HF is faster
         )
         chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
@@ -96,15 +109,15 @@ class TestORCAExecution:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
-            id="s1",
-            public_type="scf",
-            step_type="orca_scf",
+            ulid="s1",
+            step_type_gen="scf",
+            step_type_spec="orca_scf",
             parameters={"functional": "HF", "basis": "def2-SVP"},
         )
         td_step = MockStep(
-            id="s2",
-            public_type="td",
-            step_type="orca_td",
+            ulid="s2",
+            step_type_gen="td",
+            step_type_spec="orca_td",
             parameters={"nroots": 3, "tda": True},
         )
         chain = QCChain(scf_root=scf_step, downstream=[td_step], key="chain01_scf_td")
@@ -122,9 +135,9 @@ class TestORCAExecution:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
-            id="s1",
-            public_type="scf",
-            step_type="orca_scf",
+            ulid="s1",
+            step_type_gen="scf",
+            step_type_spec="orca_scf",
             parameters={"functional": "HF", "basis": "def2-SVP"},
         )
         chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
@@ -142,9 +155,9 @@ class TestORCAExecution:
         from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
 
         scf_step = MockStep(
-            id="s1",
-            public_type="scf",
-            step_type="orca_scf",
+            ulid="s1",
+            step_type_gen="scf",
+            step_type_spec="orca_scf",
             parameters={"functional": "HF", "basis": "def2-SVP"},
         )
         chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
@@ -159,9 +172,9 @@ class TestORCAExecution:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
-            id="s1",
-            public_type="scf",
-            step_type="orca_scf",
+            ulid="s1",
+            step_type_gen="scf",
+            step_type_spec="orca_scf",
             parameters={"functional": "HF", "basis": "def2-SVP"},
         )
         chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
@@ -179,9 +192,9 @@ class TestORCAExecution:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
-            id="s1",
-            public_type="scf",
-            step_type="orca_scf",
+            ulid="s1",
+            step_type_gen="scf",
+            step_type_spec="orca_scf",
             parameters={"functional": "B3LYP", "basis": "def2-SVP"},
         )
         chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
@@ -197,9 +210,9 @@ class TestORCAExecution:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
-            id="s1",
-            public_type="scf",
-            step_type="orca_scf",
+            ulid="s1",
+            step_type_gen="scf",
+            step_type_spec="orca_scf",
             parameters={"functional": "HF", "basis": "def2-SVP"},
         )
         chain = QCChain(scf_root=scf_step, downstream=[], key="chain01_scf")
@@ -217,15 +230,15 @@ class TestORCAExecution:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
-            id="s1",
-            public_type="scf",
-            step_type="orca_scf",
+            ulid="s1",
+            step_type_gen="scf",
+            step_type_spec="orca_scf",
             parameters={"functional": "HF", "basis": "def2-SVP"},
         )
         td_step = MockStep(
-            id="s2",
-            public_type="td",
-            step_type="orca_td",
+            ulid="s2",
+            step_type_gen="td",
+            step_type_spec="orca_td",
             parameters={"nroots": 3, "tda": True},
         )
         chain = QCChain(scf_root=scf_step, downstream=[td_step], key="chain01_scf_td")
@@ -251,9 +264,9 @@ class TestORCAChainBehavior:
         from quantumvitas.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
-            id="s1",
-            public_type="scf",
-            step_type="orca_scf",
+            ulid="s1",
+            step_type_gen="scf",
+            step_type_spec="orca_scf",
             parameters={"functional": "HF", "basis": "def2-SVP"},
         )
         chain = QCChain(scf_root=scf_step, downstream=[], key="test_chain_key")
@@ -270,9 +283,9 @@ class TestORCAChainBehavior:
         # Create two chains
         chain1 = QCChain(
             scf_root=MockStep(
-                id="s1",
-                public_type="scf",
-                step_type="orca_scf",
+                ulid="s1",
+                step_type_gen="scf",
+                step_type_spec="orca_scf",
                 parameters={"functional": "HF", "basis": "def2-SVP"},
             ),
             downstream=[],
@@ -280,9 +293,9 @@ class TestORCAChainBehavior:
         )
         chain2 = QCChain(
             scf_root=MockStep(
-                id="s2",
-                public_type="scf",
-                step_type="orca_scf",
+                ulid="s2",
+                step_type_gen="scf",
+                step_type_spec="orca_scf",
                 parameters={"functional": "HF", "basis": "STO-3G"},  # Different basis
             ),
             downstream=[],

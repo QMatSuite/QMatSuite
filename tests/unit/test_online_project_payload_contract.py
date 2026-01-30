@@ -52,14 +52,14 @@ def test_online_project_payload_contract_identical():
     online_payload = build_structure_vis_payload(
         structure,
         params,
-        structure_meta={"structure_id": "online:test_candidate"},
+        structure_meta={"structure_ulid": "online:test_candidate"},
     )
 
     # PROJECT path payload
     project_payload = build_structure_vis_payload(
         structure,
         params,
-        structure_meta={"structure_id": "project:test_structure"},
+        structure_meta={"structure_ulid": "project:test_structure"},
     )
     
     # Extract payload metrics
@@ -167,7 +167,7 @@ def test_payload_contract_atoms_contains_all_display_atoms():
     payload = build_structure_vis_payload(
         structure,
         params,
-        structure_meta={"structure_id": "test"},
+        structure_meta={"structure_ulid": "test"},
     )
     
     atoms_len = len(payload["atoms"])

@@ -104,11 +104,11 @@ class TestCalculationULIDContracts:
             "mode": "normal",
             "working_dir": "raw",
             "steps": [
-                {"step_ulid": step_id, "step_type_gen": "bands"},
+                {"step_ulid": step_id, "step_type_spec": "qe_bands"},  # canonical SPEC type
             ],
         }
         calc_yaml.write_text(yaml.safe_dump(calc_data, sort_keys=False))
-        
+
         # Create step.yaml with slug "bands" (collision!)
         step_yaml = steps_dir / "bands.step.yaml"
         step_data = {
@@ -118,7 +118,7 @@ class TestCalculationULIDContracts:
                 "slug": "bands",  # Same slug as calculation!
                 "kind": "step",
             },
-            "step_type_gen": "bands",
+            "step_type_spec": "qe_bands",  # canonical SPEC type
             "parameters": {},
             "cards": {},
         }
@@ -205,6 +205,8 @@ class TestCalculationULIDContracts:
             step_id = generate_resource_id()
             step_ids.append(step_id)
             
+            # step.yaml uses step_type_spec (SPEC type) but for QE we use qe_ prefix
+            step_type_spec = f"qe_{step_type}"
             step_yaml = steps_dir / f"{step_type}.step.yaml"
             step_data = {
                 "meta": {
@@ -213,12 +215,12 @@ class TestCalculationULIDContracts:
                     "slug": step_type,
                     "kind": "step",
                 },
-                "step_type_gen": step_type,
+                "step_type_spec": step_type_spec,  # canonical SPEC type
                 "parameters": {},
                 "cards": {},
             }
             step_yaml.write_text(yaml.safe_dump(step_data, sort_keys=False))
-        
+
         # Create calculation.yaml with step types
         calc_yaml = calc_dir / "calculation.yaml"
         calc_data = {
@@ -232,7 +234,7 @@ class TestCalculationULIDContracts:
             "mode": "normal",
             "working_dir": "raw",
             "steps": [
-                {"step_ulid": step_id, "step_type_gen": step_type}
+                {"step_ulid": step_id, "step_type_spec": f"qe_{step_type}"}  # canonical SPEC type
                 for step_id, step_type in zip(step_ids, step_types)
             ],
         }
@@ -270,7 +272,9 @@ class TestCalculationULIDContracts:
         for step_type in step_types:
             step_id = generate_resource_id()
             step_ids.append(step_id)
-            
+
+            # step.yaml uses step_type_spec (SPEC type)
+            step_type_spec = f"qe_{step_type}"
             step_yaml = steps_dir / f"{step_type}.step.yaml"
             step_data = {
                 "meta": {
@@ -279,12 +283,12 @@ class TestCalculationULIDContracts:
                     "slug": step_type,
                     "kind": "step",
                 },
-                "step_type_gen": step_type,
+                "step_type_spec": step_type_spec,  # canonical SPEC type
                 "parameters": {},
                 "cards": {},
             }
             step_yaml.write_text(yaml.safe_dump(step_data, sort_keys=False))
-        
+
         # Create calculation.yaml WITHOUT step types (simulating factory bug)
         calc_yaml = calc_dir / "calculation.yaml"
         calc_data = {

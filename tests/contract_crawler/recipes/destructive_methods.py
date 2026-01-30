@@ -98,3 +98,4 @@ class DestructiveMethodsRecipe(Recipe):
             return False, f"Not JSON serializable: {e}"
         return True, None
 
+

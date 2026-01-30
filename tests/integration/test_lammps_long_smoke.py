@@ -126,13 +126,13 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="LJ FCC 108")
-    structure_id = struct_result.meta.ulid
+    structure_ulid = struct_result.meta.ulid
     
     # Create calculation
     calc_result = QVService.init_calculation(
         project_root=project_root,
         name="lj_relax",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path
@@ -242,7 +242,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC 32")
-    structure_id = struct_result.meta.ulid
+    structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
     potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
@@ -259,7 +259,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     calc_result = QVService.init_calculation(
         project_root=project_root,
         name="eam_md",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path
@@ -376,7 +376,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC 32")
-    structure_id = struct_result.meta.ulid
+    structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
     potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
@@ -393,7 +393,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     calc_result = QVService.init_calculation(
         project_root=project_root,
         name="chain",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path
@@ -572,7 +572,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC 32")
-    structure_id = struct_result.meta.ulid
+    structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
     potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
@@ -589,7 +589,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     calc_result = QVService.init_calculation(
         project_root=project_root,
         name="restart",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_id = calc_result.meta.ulid
     calc_dir = calc_result.absolute_path

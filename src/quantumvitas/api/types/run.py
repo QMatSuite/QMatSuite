@@ -39,7 +39,7 @@ class RunResultDTO(BaseDTO):
     error: ErrorDTO | None = None
     
     # Compatibility: store step details for historical CLI contract
-    # This is a list of dicts with step_id, step_type, status, message, metrics
+    # This is a list of dicts with step_ulid, step_type, status, message, metrics
     _step_details: list[dict[str, Any]] | None = field(default=None, repr=False)
     
     # Compatibility: store io_dir, input_file, output_file for historical CLI contract
@@ -50,7 +50,7 @@ class RunResultDTO(BaseDTO):
     @property
     def steps(self) -> list[Any]:
         """
-        Compatibility property: return step objects with step_id, step_type, status, message, metrics.
+        Compatibility property: return step objects with step_ulid, step_type, status, message, metrics.
         
         Returns a list of simple objects that have these attributes.
         """

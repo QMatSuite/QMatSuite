@@ -118,7 +118,7 @@ class RegistryOutOfSyncError(Exception):
         project_root: Project root path where the resource was expected
         expected_path: Expected file path from registry (if known)
         actual_state: Description of what was wrong ("file does not exist", "step not in calculation DAG", etc.)
-        details: Additional context (calculation_path, step_id, etc.)
+        details: Additional context (calculation_path, step_ulid, etc.)
     """
     def __init__(
         self,
@@ -455,7 +455,12 @@ class ResolvedResource:
     @property
     def ulid(self) -> str:
         return self.meta.ulid
-    
+
+    @property
+    def id(self) -> str:
+        """Alias for ulid for backwards compatibility."""
+        return self.meta.ulid
+
     @property
     def name(self) -> str:
         return self.meta.name
@@ -696,16 +701,16 @@ def update_registry_add_step(
 
 def update_registry_remove_step(
     index: ResourceIndex,
-    step_id: str,
+    step_ulid: str,
 ) -> None:
     """
     Remove a step from the registry in-place (after step deletion).
     
     Args:
         index: ResourceIndex to update
-        step_id: Step ID (ULID) to remove
+        step_ulid: Step ID (ULID) to remove
     """
-    index.remove_resource(step_id)
+    index.remove_resource(step_ulid)
 
 
 def update_registry_add_calculation(
@@ -777,21 +782,21 @@ def update_registry_add_structure(
 
 def update_registry_remove_structure(
     index: ResourceIndex,
-    structure_id: str,
+    structure_ulid: str,
 ) -> None:
     """
     Remove a structure from the registry in-place (after structure deletion).
     
     Args:
         index: ResourceIndex to update
-        structure_id: Structure ID (ULID) to remove
+        structure_ulid: Structure ID (ULID) to remove
     """
-    index.remove_resource(structure_id)
+    index.remove_resource(structure_ulid)
 
 
 def update_registry_rename_structure(
     index: ResourceIndex,
-    structure_id: str,
+    structure_ulid: str,
     new_meta: "ResourceMeta",
     old_path: Path,
     new_path: Path,
@@ -801,13 +806,13 @@ def update_registry_rename_structure(
     
     Args:
         index: ResourceIndex to update
-        structure_id: Structure ID (ULID)
+        structure_ulid: Structure ID (ULID)
         new_meta: Updated ResourceMeta
         old_path: Old absolute path to structure file
         new_path: New absolute path to structure file
     """
-    index.update_resource_meta(structure_id, new_meta)
-    index.update_resource_path(structure_id, old_path, new_path)
+    index.update_resource_meta(structure_ulid, new_meta)
+    index.update_resource_path(structure_ulid, old_path, new_path)
 
 
 # ---------------------------------------------------------------------------
@@ -1006,9 +1011,9 @@ def make_structure_selector_resolver(
     index: Optional[ResourceIndex] = None,
 ) -> callable:
     """
-    Create a resolver function that converts structure selectors to structure_id (ULID).
+    Create a resolver function that converts structure selectors to structure_ulid (ULID).
     
-    This is used for normalizing legacy 'structure' selectors in step specs to structure_id.
+    This is used for normalizing legacy 'structure' selectors in step specs to structure_ulid.
     
     Args:
         project_root: Project root path
@@ -1016,7 +1021,7 @@ def make_structure_selector_resolver(
         index: Optional ResourceIndex (built if None)
         
     Returns:
-        A callable(selector: str) -> str that resolves a structure selector to structure_id.
+        A callable(selector: str) -> str that resolves a structure selector to structure_ulid.
         Raises ResourceNotFoundError if selector cannot be resolved.
     """
     def resolver(selector: str) -> str:
@@ -1027,18 +1032,18 @@ def make_structure_selector_resolver(
 
 def _structure_to_resolved(project_root: Path, entry: dict) -> ResolvedResource:
     """Convert a structure entry to ResolvedResource."""
-    # ID-only model: entry only has structure_id, need to load structure file to get meta
-    structure_id = entry.get("structure_id") or entry.get("ulid")
+    # ID-only model: entry only has structure_ulid, need to load structure file to get meta
+    structure_ulid = entry.get("structure_ulid") or entry.get("ulid")
     
     # Try to find and load structure file by ID
     structures_dir = project_root / "structures"
-    if structures_dir.exists() and structure_id:
+    if structures_dir.exists() and structure_ulid:
         for struct_file in structures_dir.glob("*.json"):
             try:
                 import json
                 struct_data = json.loads(struct_file.read_text())
                 struct_meta_dict = struct_data.get("__qv_meta__") or struct_data.get("meta")
-                if struct_meta_dict and struct_meta_dict.get("ulid") == structure_id:
+                if struct_meta_dict and struct_meta_dict.get("ulid") == structure_ulid:
                     # Found matching structure file - use its meta
                     from quantumvitas.core.resources import ResourceMeta
                     resource_meta = ResourceMeta.from_dict(
@@ -1362,7 +1367,7 @@ def resolve_step(
                     else:
                         logger.error(
                             f"[RESOLVE_STEP] ERROR: Cannot construct step path - meta.path is missing. "
-                            f"step_id={resource_id}, slug={meta.slug}"
+                            f"step_ulid={resource_id}, slug={meta.slug}"
                         )
                         raise SelectorNotFoundError(
                             f"Step '{step_selector}' resolved but meta.path is missing. "
@@ -1445,12 +1450,12 @@ def resolve_step(
     
     # Strategy 6: step id field from step YAML (exact match) - check both top-level and meta
     for step_file, data in step_entries:
-        step_id = data.get("ulid", "")
+        step_ulid = data.get("ulid", "")
         meta = data.get("meta") or {}
         meta_ulid = meta.get("ulid", "")
         meta_id = meta.get("ulid", "")  # Legacy fallback
         # Check both top-level id and meta.ulid (canonical) and meta.ulid (legacy)
-        if step_id.lower() == step_selector.lower() or meta_ulid.lower() == step_selector.lower() or meta_id.lower() == step_selector.lower():
+        if step_ulid.lower() == step_selector.lower() or meta_ulid.lower() == step_selector.lower() or meta_id.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
     
     # Strategy 7: step_type_spec (exact match)
@@ -1500,8 +1505,8 @@ def _step_path_to_resolved(step_path: Path, project_root: Path) -> ResolvedResou
         data = {}
     
     meta_dict = data.get("meta") or {}
-    step_id = meta_dict.get("ulid") or data.get("ulid") or step_path.stem.replace(".step", "")
-    step_name = meta_dict.get("name") or data.get("step_type_spec") or step_id
+    step_ulid = meta_dict.get("ulid") or data.get("ulid") or step_path.stem.replace(".step", "")
+    step_name = meta_dict.get("name") or data.get("step_type_spec") or step_ulid
     # CRITICAL FIX: Use meta.slug from YAML (authoritative), fallback to slugify(name)
     # Previously: slug=slugify(step_name) - this caused inconsistency when step_name="md"
     # but YAML meta.slug="md-1"

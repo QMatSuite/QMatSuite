@@ -43,7 +43,7 @@ calculations:
     kind: calculation
   mode: normal
   working_dir: raw
-  structure_id: 01KE3PTDXGQSDTBKQ4GEZTCX7B
+  structure_ulid: 01KE3PTDXGQSDTBKQ4GEZTCX7B
   steps:
   - meta:
       name: pyscf_scf

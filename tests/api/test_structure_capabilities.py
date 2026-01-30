@@ -51,7 +51,7 @@ def test_structure_dto_no_positions(tmp_path):
     
     # Update project config
     import yaml
-    config = {"name": "test", "structures": [{"structure_id": "01HX7YPVK8DQNZPMJ4GHAB5678"}]}
+    config = {"name": "test", "structures": [{"structure_ulid": "01HX7YPVK8DQNZPMJ4GHAB5678"}]}
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
     
     svc = QVService(project_root)

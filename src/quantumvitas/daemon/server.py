@@ -1446,21 +1446,22 @@ class QVDaemon:
     def _handle_list_qe_ui_parameters(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get UI parameter metadata for a QE module and step type.
-        
+
         Payload:
             module: str (required) - QE module name (e.g., "pw", "bands")
-            step_type: str (required) - Step type (e.g., "scf", "nscf", "dos", "bands")
-        
+            step_type_gen: str (required) - GEN step type (e.g., "scf", "nscf", "dos", "bands")
+
         Returns:
             List of UI parameter descriptors with namelist, name, label, type, unit, etc.
         """
         module = payload.get("module", "").strip().lower()
-        step_type = payload.get("step_type_spec", "").strip().lower()
+        # Accept both step_type_gen (canonical) and step_type (v0 compat)
+        step_type = (payload.get("step_type_gen") or payload.get("step_type", "")).strip().lower()
 
         if not module:
             raise ValueError("'module' is required in payload")
         if not step_type:
-            raise ValueError("'step_type_spec' is required in payload")
+            raise ValueError("'step_type_gen' is required in payload (or 'step_type' for v0 compat)")
         
         # Validate module is supported
         supported_modules = list_supported_modules()
@@ -1486,12 +1487,7 @@ class QVDaemon:
                 "namelist": param.namelist,
                 "name": param.name,
                 "label": param.label,
-                "step_type_gen": param.type,
-                # Note: step_type fields were incorrectly added by patch script
-                # Parameter "type" is the parameter type (number, select, bool), not step type
-                # These fields should not be here, but keeping for golden fixture compatibility
-                "step_type_gen": param.type,  # Parameter type, not step type
-                "step_type_spec": f"qe_{param.type}",  # Parameter type with prefix
+                "type": param.type,  # Parameter type (number, select, bool), NOT step type
             }
             if param.unit:
                 param_dict["unit"] = param.unit
@@ -1501,8 +1497,11 @@ class QVDaemon:
                 param_dict["options"] = param.options
             if param.importance:
                 param_dict["importance"] = param.importance
+            # Add GEN/SPEC type fields for parameter input type (GUI compat)
+            param_dict["step_type_gen"] = param.type  # GEN type (e.g., "number")
+            param_dict["step_type_spec"] = f"qe_{param.type}"  # SPEC type (e.g., "qe_number")
             result.append(param_dict)
-        
+
         return {"parameters": result}
     
     def _handle_list_qe_parameter_metadata(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -1560,6 +1559,7 @@ class QVDaemon:
                     doc_url = get_module_doc_url(module_id)
                     label = f"{module_id}.x" if module_id else module_id
                     result.append({
+                        "id": module_id,  # Backwards compat alias
                         "ulid": module_id,
                         "label": label,
                         "doc_url": doc_url,
@@ -1637,6 +1637,7 @@ class QVDaemon:
                     if section_normalized in card_names_upper:
                         # This is a card
                         result.append({
+                            "id": section_normalized,  # Backwards compat alias
                             "ulid": section_normalized,  # For lookups
                             "name": section_normalized,  # Clean name without '&'
                             "label": section_normalized,  # Label is same as name for cards (no '&')
@@ -1645,6 +1646,7 @@ class QVDaemon:
                     elif section_part.startswith("&"):
                         # This is a namelist
                         result.append({
+                            "id": section_part,  # Backwards compat alias
                             "ulid": section_part,  # Keep original for backward compatibility (with '&')
                             "name": section_normalized,  # Clean name without '&'
                             "label": section_part,  # Label includes '&' prefix for namelists
@@ -1655,6 +1657,7 @@ class QVDaemon:
                         # If it's in card_metadata, it's a card; otherwise, treat as namelist
                         if section_normalized in card_names_upper:
                             result.append({
+                                "id": section_normalized,  # Backwards compat alias
                                 "ulid": section_normalized,
                                 "name": section_normalized,
                                 "label": section_normalized,
@@ -1663,6 +1666,7 @@ class QVDaemon:
                         else:
                             # Treat as namelist (add '&' prefix for label)
                             result.append({
+                                "id": f"&{section_normalized}",  # Backwards compat alias
                                 "ulid": f"&{section_normalized}",
                                 "name": section_normalized,
                                 "label": f"&{section_normalized}",
@@ -1675,6 +1679,7 @@ class QVDaemon:
                     card_name_upper = card_name.upper()
                     if card_name_upper not in [s["name"] for s in result]:
                         result.append({
+                            "id": card_name_upper,  # Backwards compat alias
                             "ulid": card_name_upper,
                             "name": card_name_upper,
                             "label": card_name_upper,
@@ -1948,11 +1953,12 @@ class QVDaemon:
                 doc_url = get_module_doc_url(module_id)
                 label = f"{module_id}.x" if module_id else module_id
                 result.append({
+                    "id": module_id,  # Backwards compat alias
                     "ulid": module_id,
                     "label": label,
                     "doc_url": doc_url,
                 })
-            
+
             self.log(f"[RPC] reload_qe_parameter_metadata: cache cleared, {len(result)} modules available")
             return {
                 "modules": result,
@@ -2036,7 +2042,7 @@ class QVDaemon:
         svc = get_service(project_root)
         calculation_dtos = svc.calculation.list()
         # Convert DTOs to dicts for JSON serialization
-        # Note: DTOs have step_ids but not full steps; compat layer expands these
+        # Note: DTOs have step_ulids but not full steps; compat layer expands these
         calculations = [dto.to_dict() for dto in calculation_dtos]
         return {
             "calculations": calculations,
@@ -2146,7 +2152,7 @@ class QVDaemon:
         new_struct_dto = next((s for s in structure_dtos if s.id == result_dto.id), None)
         
         return {
-            "structure_id": result_dto.id,
+            "structure_ulid": result_dto.id,
             "name": result_dto.name,
             "slug": result_dto.slug,
             "formula": new_struct_dto.formula if new_struct_dto else "?",
@@ -2454,7 +2460,7 @@ class QVDaemon:
         vis_payload = build_structure_vis_payload(
             structure,
             params,
-            structure_meta={"structure_id": f"online:{candidate_id}"},
+            structure_meta={"structure_ulid": f"online:{candidate_id}"},
         )
         
         # CRITICAL: Payload contract - atoms contains ALL display atoms
@@ -2658,7 +2664,7 @@ class QVDaemon:
         
         # Add to project config
         entry = {
-            "structure_id": meta.ulid,
+            "structure_ulid": meta.ulid,
         }
         structures.append(entry)
         cache.svc.save_project_config(config)
@@ -2670,7 +2676,7 @@ class QVDaemon:
             cache_state.svc.update_registry_add_structure(cache_state.index, resolved.meta, dest_path)
         
         return {
-            "new_structure_id": meta.ulid,
+            "new_structure_ulid": meta.ulid,
             "name": meta.name,
             "slug": meta.slug,
         }
@@ -2798,6 +2804,7 @@ class QVDaemon:
         new_wf_dto = next((w for w in calculation_dtos if w.id == result.meta.ulid), None)
         
         return {
+            "calc_ulid": result.meta.ulid,  # Short alias used by GUI
             "calculation_id": result.meta.ulid,
             "calculation_ulid": result.meta.ulid,  # Explicit ULID for UI to use
             "name": result.meta.name,
@@ -3909,9 +3916,11 @@ class QVDaemon:
         for step_path in step_files:
             step_name = step_path.name
             try:
-                # Load step to get step_type for result
+                # Load step to get step_type for result (convert SPEC→GEN)
                 content = yaml.safe_load(step_path.read_text()) or {}
-                step_type = content.get("step_type_spec", "scf")
+                step_type_spec = content.get("step_type_spec", "scf")
+                from quantumvitas.api import get_step_type_gen
+                step_type = get_step_type_gen(step_type_spec)
                 
                 # Get step-type-aware precision advice if applicable
                 precision_advice = None
@@ -4126,7 +4135,10 @@ class QVDaemon:
         """
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
-        step_type = self._require_str(payload, "step_type_spec")
+        # Accept both step_type_spec (canonical) and step_type_gen (backwards compat)
+        step_type = payload.get("step_type_spec") or payload.get("step_type_gen") or payload.get("step_type")
+        if not step_type:
+            raise ValueError("Missing required field: step_type_spec (or step_type_gen for backwards compat)")
         step_name = payload.get("step_name", step_type)
         
         # Resolve with fallback to ensure cache is up-to-date
@@ -4147,19 +4159,28 @@ class QVDaemon:
 
         # Use dataclasses.asdict for proper serialization (hand-serialization violation fix)
         # Extract only needed fields from StepDTO using asdict
+        from quantumvitas.api import get_step_type_gen
+
+        def _to_step_dict(s):
+            """Convert StepDTO to dict with proper GEN/SPEC type conversion."""
+            s_dict = asdict(s)
+            step_type_spec = s_dict.get("step_type_spec")
+            # Convert SPEC to GEN using the canonical conversion function
+            # CRITICAL: Never fallback to SPEC value - that violates SPEC/GEN separation
+            step_type_gen_val = get_step_type_gen(step_type_spec) if step_type_spec else None
+            return {
+                "step_ulid": s_dict.get("step_ulid"),
+                "step_type_spec": step_type_spec,  # canonical SPEC type
+                "step_type_gen": step_type_gen_val,  # canonical GEN type via conversion
+                "status": s_dict.get("status"),
+            }
+
         return {
-            "calculation_id": calc_detail.calc_id if calc_detail else None,
+            "calculation_id": calc_detail.calc_ulid if calc_detail else None,
             "calculation_name": calc_detail.name if calc_detail else "",
             "calculation_slug": calc_detail.slug if calc_detail else "",
-            "structure": calc_detail.structure_id if calc_detail else None,
-            "steps": [
-                {
-                    "step_id": asdict(s).get("step_id"),
-                    "step_type_gen": asdict(s).get("step_type_spec"),
-                    "status": asdict(s).get("status"),
-                }
-                for s in steps
-            ]
+            "structure": calc_detail.structure_ulid if calc_detail else None,
+            "steps": [_to_step_dict(s) for s in steps]
         }
     
     def _handle_import_step_from_qe_input(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -4530,11 +4551,11 @@ class QVDaemon:
 
         # Extract elements from structure
         elements: List[str] = []
-        structure_id = calc_detail.get("structure_id")
-        if structure_id:
+        structure_ulid = calc_detail.get("structure_ulid")
+        if structure_ulid:
             try:
                 struct_resolved = self._require_structure_ref(
-                    cache.svc, structure_id, config=cache.config
+                    cache.svc, structure_ulid, config=cache.config
                 )
                 if struct_resolved.absolute_path.exists():
                     structure = read_structure(struct_resolved.absolute_path)
@@ -5272,7 +5293,7 @@ class QVDaemon:
                     d["ended_at"] = None
                     # Remove everything else to avoid schema widening
                     for k in list(d.keys()):
-                        if k not in {"step_id", "step_type_spec", "status", "started_at", "ended_at"}:
+                        if k not in {"step_ulid", "step_type_spec", "status", "started_at", "ended_at"}:
                             d.pop(k, None)
                     initial_steps.append(d)
                 # Compute planned_io_dir using the same logic the runner uses (single source of truth)
@@ -5284,12 +5305,12 @@ class QVDaemon:
             # If we can't load calculation, just use empty steps and no io_dir
             pass
         
-        # Generate job_id using ULID (shared with history run_id)
+        # Generate job_id using ULID (shared with history run_ulid)
         import ulid as ulid_module
         job_id = str(ulid_module.new())
         
         # Submit job with target info for display
-        # Note: job_id is passed to run_calculation as run_id for history unification
+        # Note: job_id is passed to run_calculation as run_ulid for history unification
         # Create wrapper function that uses instance method
         def run_calculation_wrapper(**kwargs):
             project_root = Path(kwargs.pop("project_root"))
@@ -5320,7 +5341,7 @@ class QVDaemon:
             verbose=verbose,
             index=cache.index,
             config=cache.config,
-            run_id=job_id,  # Pass job_id as run_id for history unification
+            run_ulid=job_id,  # Pass job_id as run_ulid for history unification
             run_mode=run_mode,  # Pass run_mode ("incremental" or "full")
         )
         
@@ -5365,12 +5386,12 @@ class QVDaemon:
         except Exception:
             pass
         
-        # Generate job_id using ULID (shared with history run_id)
+        # Generate job_id using ULID (shared with history run_ulid)
         import ulid as ulid_module
         job_id = str(ulid_module.new())
         
         # Submit job with target info for display
-        # Note: job_id is passed to run_step as run_id for history unification
+        # Note: job_id is passed to run_step as run_ulid for history unification
         # Create wrapper function that uses instance method
         def run_step_wrapper(**kwargs):
             project_root = Path(kwargs.pop("project_root"))
@@ -5396,10 +5417,10 @@ class QVDaemon:
             calculation_selector=calculation,
             step_selector=step,
             verbose=verbose,
-            run_id=job_id,  # Pass job_id as run_id for history unification
+            run_ulid=job_id,  # Pass job_id as run_ulid for history unification
         )
         
-        return {"job_id": job_id, "status": "pending", "target_name": target_name}
+        return {"job_id": job_id, "job_ulid": job_id, "status": "pending", "target_name": target_name}
     
     def _handle_run_single_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -5452,10 +5473,10 @@ class QVDaemon:
             verbose=verbose,
             index=cache.index,
             config=cache.config,
-            run_id=job_id,  # Pass job_id as run_id
+            run_ulid=job_id,  # Pass job_id as run_ulid
         )
         
-        return {"job_id": job_id, "status": "pending", "target_name": target_name}
+        return {"job_id": job_id, "job_ulid": job_id, "status": "pending", "target_name": target_name}
     
     def _handle_get_job_status(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -5863,12 +5884,12 @@ class QVDaemon:
             
         Returns:
             {
-                "structures": { structure_id: { "slug": ..., "name": ... } },
+                "structures": { structure_ulid: { "slug": ..., "name": ... } },
                 "calculations": {
                     calculation_id: {
                         "slug": ...,
                         "name": ...,
-                        "steps": [step_id1, step_id2, ...]   # in order
+                        "steps": [step_ulid1, step_ulid2, ...]   # in order
                     },
                     ...
                 }
@@ -5908,17 +5929,17 @@ class QVDaemon:
                         project_root = calculation_path.parent.parent.parent
                         # Load calculation model to get steps
                         wf_model = load_calculation(calculation_path, project_root=project_root)
-                        step_ids = [entry.step_ulid for entry in wf_model.steps if entry.step_ulid]
+                        step_ulids = [entry.step_ulid for entry in wf_model.steps if entry.step_ulid]
                     except Exception:
                         # If we can't load the calculation, just use empty steps
-                        step_ids = []
+                        step_ulids = []
                 else:
-                    step_ids = []
+                    step_ulids = []
                 
                 snapshot["calculations"][resource_id] = {
                     "slug": meta.slug,
                     "name": meta.name,
-                    "steps": step_ids,
+                    "steps": step_ulids,
                 }
         
         return snapshot
@@ -6094,19 +6115,19 @@ class QVDaemon:
         Payload:
             project_root: str - Path to project root
             limit: Optional[int] - Maximum events (default 100)
-            calc_id: Optional[str] - Filter by calculation ID
+            calc_ulid: Optional[str] - Filter by calculation ID
 
         Returns:
             timeline: List of timeline entries (runs, edits, pins)
-            latest_run_id: Latest run ULID or null
+            latest_run_ulid: Latest run ULID or null
         """
         project_root = Path(self._require_str(payload, "project_root"))
         limit = payload.get("limit", 100)
-        calc_id = payload.get("calc_id")
+        calc_ulid = payload.get("calc_ulid")
 
         # Use domain API
         svc = get_service(project_root)
-        return svc.history.get_timeline(limit=limit, calc_id=calc_id)
+        return svc.history.get_timeline(limit=limit, calc_ulid=calc_ulid)
     
     def _handle_get_run_revision(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -6114,17 +6135,17 @@ class QVDaemon:
 
         Payload:
             project_root: str - Path to project root
-            run_id: str - Run ULID
+            run_ulid: str - Run ULID
 
         Returns:
             revision: Run revision dict or null
         """
         project_root = Path(self._require_str(payload, "project_root"))
-        run_id = self._require_str(payload, "run_id")
+        run_ulid = self._require_str(payload, "run_ulid")
 
         # Use domain API
         svc = get_service(project_root)
-        return svc.history.get_run_revision(run_id)
+        return svc.history.get_run_revision(run_ulid)
     
     def _handle_list_project_runs(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -6132,19 +6153,19 @@ class QVDaemon:
 
         Payload:
             project_root: str - Path to project root
-            calc_id: Optional[str] - Filter by calculation ID
+            calc_ulid: Optional[str] - Filter by calculation ID
             limit: Optional[int] - Maximum runs (default 50)
 
         Returns:
             runs: List of run summaries
         """
         project_root = Path(self._require_str(payload, "project_root"))
-        calc_id = payload.get("calc_id")
+        calc_ulid = payload.get("calc_ulid")
         limit = payload.get("limit", 50)
 
         # Use domain API
         svc = get_service(project_root)
-        return svc.history.list_runs(calc_id=calc_id, limit=limit)
+        return svc.history.list_runs(calc_ulid=calc_ulid, limit=limit)
     
     def _handle_pin_analysis_to_history(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -6152,8 +6173,8 @@ class QVDaemon:
 
         Payload:
             project_root: str - Path to project root
-            run_id: str - Run ULID
-            step_id: str - Step ULID
+            run_ulid: str - Run ULID
+            step_ulid: str - Step ULID
             analysis_kind: str - Type of analysis (e.g., "bands", "dos")
             png_data_base64: Optional[str] - Base64-encoded PNG data
             json_payload: Optional[dict] - JSON data to store
@@ -6164,8 +6185,8 @@ class QVDaemon:
         import base64
 
         project_root = Path(self._require_str(payload, "project_root"))
-        run_id = self._require_str(payload, "run_id")
-        step_id = self._require_str(payload, "step_id")
+        run_ulid = self._require_str(payload, "run_ulid")
+        step_ulid = self._require_str(payload, "step_ulid")
         analysis_kind = self._require_str(payload, "analysis_kind")
 
         # Decode PNG if provided
@@ -6182,8 +6203,8 @@ class QVDaemon:
         # Use domain API
         svc = get_service(project_root)
         return svc.history.pin_analysis(
-            run_id=run_id,
-            step_id=step_id,
+            run_ulid=run_ulid,
+            step_ulid=step_ulid,
             analysis_kind=analysis_kind,
             png_data=png_data,
             json_payload=json_payload,
@@ -6195,20 +6216,20 @@ class QVDaemon:
 
         Payload:
             project_root: str - Path to project root
-            run_id: str - Run ULID
-            step_id: str - Step ULID
+            run_ulid: str - Run ULID
+            step_ulid: str - Step ULID
 
         Returns:
             allowed: bool
             reason: Optional[str] - Reason if not allowed
         """
         project_root = Path(self._require_str(payload, "project_root"))
-        run_id = self._require_str(payload, "run_id")
-        step_id = self._require_str(payload, "step_id")
+        run_ulid = self._require_str(payload, "run_ulid")
+        step_ulid = self._require_str(payload, "step_ulid")
 
         # Use domain API
         svc = get_service(project_root)
-        return svc.history.can_pin(run_id, step_id)
+        return svc.history.can_pin(run_ulid, step_ulid)
     
     def _handle_get_pin_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -6216,8 +6237,8 @@ class QVDaemon:
 
         Payload:
             project_root: str - Path to project root
-            run_id: str - Run ULID
-            step_id: str - Step ULID
+            run_ulid: str - Run ULID
+            step_ulid: str - Step ULID
             analysis_kind: str - Type of analysis
 
         Returns:
@@ -6226,35 +6247,35 @@ class QVDaemon:
             json_data: Optional[dict] - Parsed JSON data
         """
         project_root = Path(self._require_str(payload, "project_root"))
-        run_id = self._require_str(payload, "run_id")
-        step_id = self._require_str(payload, "step_id")
+        run_ulid = self._require_str(payload, "run_ulid")
+        step_ulid = self._require_str(payload, "step_ulid")
         analysis_kind = self._require_str(payload, "analysis_kind")
 
         # Use domain API
         svc = get_service(project_root)
-        return svc.history.get_pin_data(run_id, step_id, analysis_kind)
+        return svc.history.get_pin_data(run_ulid, step_ulid, analysis_kind)
 
     def _handle_get_latest_run_for_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Get the latest run_id that includes a specific step.
+        Get the latest run_ulid that includes a specific step.
 
         Used by the Analysis panel to determine if "Pin to History" should be enabled.
 
         Payload:
             project_root: str - Path to project root
-            step_id: str - Step ULID
+            step_ulid: str - Step ULID
 
         Returns:
-            run_id: Optional[str] - Latest run ULID containing this step
+            run_ulid: Optional[str] - Latest run ULID containing this step
             can_pin: bool - Whether pinning is allowed
             reason: Optional[str] - Reason if cannot pin
         """
         project_root = Path(self._require_str(payload, "project_root"))
-        step_id = self._require_str(payload, "step_id")
+        step_ulid = self._require_str(payload, "step_ulid")
 
         # Use domain API
         svc = get_service(project_root)
-        return svc.history.get_latest_run_for_step(step_id)
+        return svc.history.get_latest_run_for_step(step_ulid)
     
     def _handle_delete_project_history(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -6303,7 +6324,8 @@ class QVDaemon:
             template_dict["step_sequence"] = list(template_dict["step_sequence"])
             # Filter to only required keys (prevent schema widening)
             filtered_dict = {
-                "ulid": template_dict["ulid"],
+                "id": template_dict["id"],  # Template identifier (not a ULID)
+                "ulid": template_dict["id"],  # Backwards compat alias
                 "name": template_dict["name"],
                 "description": template_dict["description"],
                 "step_sequence": template_dict["step_sequence"],
@@ -6469,7 +6491,7 @@ class QVDaemon:
         Payload:
             workflow_id: str - Workflow template id
             calculation_path: str - Path to calculation directory
-            structure_id: str - Structure ULID
+            structure_ulid: str - Structure ULID
             calculation_id: str - Parent calculation ULID
             
         Returns:
@@ -6477,7 +6499,7 @@ class QVDaemon:
         """
         workflow_id = self._require_str(payload, "workflow_id")
         calc_path = self._require_path(payload, "calculation_path")
-        structure_id = self._require_str(payload, "structure_id")
+        structure_ulid = self._require_str(payload, "structure_ulid")
         calculation_id = self._require_str(payload, "calculation_id")
         
         service = QVService.get_workflow_service()
@@ -6485,7 +6507,7 @@ class QVDaemon:
         paths = service.instantiate_workflow(
             workflow_id=workflow_id,
             calc_dir=calc_path,
-            structure_id=structure_id,
+            structure_ulid=structure_ulid,
             parent_calculation_id=calculation_id,
         )
         

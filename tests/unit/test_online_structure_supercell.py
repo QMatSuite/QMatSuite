@@ -429,14 +429,14 @@ def test_online_project_shared_pipeline():
     online_payload = build_structure_vis_payload(
         structure,
         params,
-        structure_meta={"structure_id": "online:test_candidate"},
+        structure_meta={"structure_ulid": "online:test_candidate"},
     )
 
     # Test PROJECT path payload (marked as project)
     project_payload = build_structure_vis_payload(
         structure,
         params,
-        structure_meta={"structure_id": "project:test_structure"},
+        structure_meta={"structure_ulid": "project:test_structure"},
     )
     
     # EVIDENCE: Compare payload schemas
@@ -569,7 +569,7 @@ def test_online_vs_project_pipeline_identical():
         )
     
     entry = entries[0]
-    entry_id = entry.get("ulid")
+    entry_id = entry.get("id")
     if not entry_id:
         pytest.fail(
             f"First entry from search_optimade has no 'id' field. "
@@ -610,14 +610,14 @@ def test_online_vs_project_pipeline_identical():
         payload_project = build_structure_vis_payload(
             structure_project,
             params,
-            structure_meta={"structure_id": "test_project"},
+            structure_meta={"structure_ulid": "test_project"},
         )
 
         # Online path: call build_structure_vis_payload directly (same as online handler does)
         payload_online = build_structure_vis_payload(
             structure_online,
             params,
-            structure_meta={"structure_id": "online:test"},
+            structure_meta={"structure_ulid": "online:test"},
         )
         
         # Assertions: outputs must be identical

@@ -250,9 +250,9 @@ def _record_history_edit_event(
     
     # Determine doc type and IDs
     doc_type = _infer_history_doc_type(after)
-    project_id = _extract_project_id(project_root)
-    calc_id = _extract_calc_id(after, resolved_path)
-    step_id = _extract_step_id(after)
+    project_ulid = _extract_project_ulid(project_root)
+    calc_ulid = _extract_calc_ulid(after, resolved_path)
+    step_ulid = _extract_step_ulid(after)
     
     # Compute semantic diff
     changes = compute_semantic_diff(before, after)
@@ -272,9 +272,9 @@ def _record_history_edit_event(
     
     # Create and append event
     event = EditEvent.create(
-        project_id=project_id,
-        calc_id=calc_id,
-        step_id=step_id,
+        project_ulid=project_ulid,
+        calc_ulid=calc_ulid,
+        step_ulid=step_ulid,
         doc_type=doc_type,
         doc_path=rel_path,
         changes=[c.__dict__ if hasattr(c, "__dict__") else c for c in changes],
@@ -318,7 +318,7 @@ def _infer_history_doc_type(data: dict) -> str:
     # Heuristics
     if "step_type_spec" in data or "parameters" in data:
         return "step"
-    if "steps" in data or "structure_id" in data:
+    if "steps" in data or "structure_ulid" in data:
         return "calc"
     if "calculations" in data or "structures" in data:
         return "project"
@@ -326,8 +326,8 @@ def _infer_history_doc_type(data: dict) -> str:
     return "unknown"
 
 
-def _extract_project_id(project_root: Path) -> str:
-    """Extract project ID from project.qv.yml."""
+def _extract_project_ulid(project_root: Path) -> str:
+    """Extract project ULID from project.qv.yml."""
     try:
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
@@ -336,8 +336,8 @@ def _extract_project_id(project_root: Path) -> str:
         return ""
 
 
-def _extract_calc_id(data: dict, path: Path) -> Optional[str]:
-    """Extract calculation ID from data or path context."""
+def _extract_calc_ulid(data: dict, path: Path) -> Optional[str]:
+    """Extract calculation ULID from data or path context."""
     # From data meta
     meta = data.get("meta", {})
     if meta.get("kind") == "calculation":
@@ -361,7 +361,7 @@ def _extract_calc_id(data: dict, path: Path) -> Optional[str]:
     return None
 
 
-def _extract_step_id(data: dict) -> Optional[str]:
+def _extract_step_ulid(data: dict) -> Optional[str]:
     """Extract step ID from data."""
     meta = data.get("meta", {})
     if meta.get("kind") == "step":

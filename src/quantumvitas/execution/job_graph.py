@@ -40,7 +40,7 @@ class Job:
             - QE: "step_00", "step_01", etc.
             - ORCA/PySCF: Stable token path like "s", "s_t", "s_m2"
 
-        step_ids: List of step ULIDs covered by this job.
+        step_ulids: List of step ULIDs covered by this job.
             - QE: Single step [step_ulid]
             - ORCA/PySCF: Chain from SCF root [scf_ulid, ..., target_ulid]
 
@@ -74,7 +74,7 @@ class Job:
     """
 
     id: str
-    step_ids: List[str]
+    step_ulids: List[str]
     working_dir: Path
     command: List[str]
     input_files: List[Path] = field(default_factory=list)
@@ -119,15 +119,15 @@ class JobGraph:
                 return job
         return None
 
-    def get_job_by_step_id(self, step_id: str) -> Optional[Job]:
+    def get_job_by_step_ulid(self, step_ulid: str) -> Optional[Job]:
         """Get the job that contains a given step ID."""
         for job in self.jobs:
-            if step_id in job.step_ids:
+            if step_ulid in job.step_ulids:
                 return job
         return None
 
     def get_jobs_for_target(
-        self, target_step_id: str, mode: SelectionMode = SelectionMode.TARGET
+        self, target_step_ulid: str, mode: SelectionMode = SelectionMode.TARGET
     ) -> List[Job]:
         """
         Get jobs to execute for a target step.
@@ -141,7 +141,7 @@ class JobGraph:
         - Returns all jobs.
 
         Args:
-            target_step_id: ULID of the target step
+            target_step_ulid: ULID of the target step
             mode: Selection mode (ALL or TARGET)
 
         Returns:
@@ -151,7 +151,7 @@ class JobGraph:
             return list(self.jobs)
 
         # Find job containing target step
-        target_job = self.get_job_by_step_id(target_step_id)
+        target_job = self.get_job_by_step_ulid(target_step_ulid)
         if target_job is None:
             return []
 

@@ -93,7 +93,7 @@ def temp_calculation(temp_project: Path) -> Path:
             "path": "calculations/test-calc",
             "kind": "calculation",
         },
-        "structure_id": "test-structure-id",
+        "structure_ulid": "test-structure-id",
         "species_map": {
             "Si": {
                 "pseudopot": "Si.upf",

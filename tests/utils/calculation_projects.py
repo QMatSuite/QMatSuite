@@ -66,7 +66,7 @@ def create_calculation_project(
     from quantumvitas.io.parser.qe_parser import QEInputParser
     from quantumvitas.io.structure_io import structure_from_qe_input, write_structure
     
-    structure_id = generate_resource_id()
+    structure_ulid = generate_resource_id()
     structures_dir = project_root / "structures"
     structures_dir.mkdir(parents=True, exist_ok=True)
     
@@ -79,7 +79,7 @@ def create_calculation_project(
                 qe_input = QEInputParser.parse_file(first_input)
                 structure = structure_from_qe_input(qe_input)
                 structure_meta = meta_from_name("structure", name="test_structure", path="structures/test_structure.json")
-                structure_meta.ulid = structure_id
+                structure_meta.ulid = structure_ulid
                 structure_path = structures_dir / "test_structure.json"
                 write_structure(structure, structure_path, format="json", metadata=structure_meta)
                 structure_extracted = True
@@ -89,7 +89,7 @@ def create_calculation_project(
     # Fallback to hardcoded structure if extraction failed
     if not structure_extracted:
         structure_meta = meta_from_name("structure", name="test_structure", path="structures/test_structure.json")
-        structure_meta.ulid = structure_id
+        structure_meta.ulid = structure_ulid
         from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
         import json
         structure_json = {
@@ -111,7 +111,7 @@ def create_calculation_project(
         "calculations": [{"ulid": calculation_ulid, "path": f"calculations/{calculation_id}"}],  # Use ULID, not human-readable name
         "structures": [
             {
-                "ulid": structure_id,
+                "ulid": structure_ulid,
                 "file": "structures/test_structure.json",
                 "meta": structure_meta.to_dict(),
             }
@@ -181,13 +181,13 @@ def create_calculation_project(
                 # If parsing fails, fall back to minimal spec
                 print(f"Warning: Failed to parse {input_file}: {e}")
         
-        # DAG model: Step YAML should NOT contain structure_id (inherits from calculation)
+        # DAG model: Step YAML should NOT contain structure_ulid (inherits from calculation)
         # Convert step_id (e.g., "scf") to step_type_spec (e.g., "qe_scf")
         step_type_spec = step.get("step_type_spec", f"qe_{step_id}")  # Default to qe_<step_id>
         step_spec = {
             "meta": step_meta.to_dict(),
             "step_type_spec": step_type_spec,  # SPEC type (e.g., "qe_scf")
-            # structure_id is NOT written to step YAML (DAG model)
+            # structure_ulid is NOT written to step YAML (DAG model)
         }
         # Add extracted parameters and cards if available
         if parameters:
@@ -239,7 +239,7 @@ def create_calculation_project(
         },
         "mode": "strict",
         "calculation": {"working_dir": "raw"},
-        "structure_id": structure_id,  # Calculation-level structure reference (ULID)
+        "structure_ulid": structure_ulid,  # Calculation-level structure reference (ULID)
         "steps": step_entries,
     }
     

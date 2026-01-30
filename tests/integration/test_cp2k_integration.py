@@ -55,13 +55,13 @@ def cp2k_silicon_project(tmp_path: Path):
     
     # Import structure
     struct_result = QVService.import_structure(project_root, struct_file, name="Si Cubic")
-    structure_id = struct_result.meta.ulid
+    structure_ulid = struct_result.meta.ulid
     
     # Create calculation
     calc_resolved = QVService.init_calculation(
         project_root=project_root,
         name="cp2k_test",
-        structure_selector=structure_id,
+        structure_selector=structure_ulid,
     )
     calc_id = calc_resolved.meta.ulid
     calc_dir = calc_resolved.absolute_path

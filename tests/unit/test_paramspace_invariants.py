@@ -73,7 +73,7 @@ class TestInvariantEnforcement:
         calc_yaml = calc_dir / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "name": "Test Calculation",
-            "structure_id": "test_structure",
+            "structure_ulid": "test_structure",
             "species_map": {
                 "Si": {
                     "pseudo_sha256": "test_sha",

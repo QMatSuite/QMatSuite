@@ -5,8 +5,8 @@ Events are append-only and immutable. Each event has:
 - id: ULID for the event
 - timestamp: ISO 8601 timestamp
 - event_type: discriminator for event kind
-- project_id: optional project ULID
-- calc_id: optional calculation ULID
+- project_ulid: optional project ULID
+- calc_ulid: optional calculation ULID
 - step_ulid: optional step ULID
 """
 
@@ -49,9 +49,9 @@ class HistoryEvent:
     id: str  # ULID for this event
     timestamp: str  # ISO 8601 format
     event_type: str
-    project_ulid: Optional[str] = None  # ULID (was project_id)
-    calc_ulid: Optional[str] = None  # Calculation ULID (was calc_id)
-    step_ulid: Optional[str] = None  # ULID (was step_id)
+    project_ulid: Optional[str] = None  # ULID (was project_ulid)
+    calc_ulid: Optional[str] = None  # Calculation ULID (was calc_ulid)
+    step_ulid: Optional[str] = None  # ULID (was step_ulid)
     
     @classmethod
     def generate_id(cls) -> str:
@@ -111,8 +111,8 @@ class BaselineEvent(HistoryEvent):
     @classmethod
     def create(
         cls,
-        project_id: str,
-        structure_ids: Optional[List[str]] = None,
+        project_ulid: str,
+        structure_ulids: Optional[List[str]] = None,
         calculation_ids: Optional[List[str]] = None,
         snapshot_path: Optional[str] = None,
     ) -> "BaselineEvent":
@@ -120,8 +120,8 @@ class BaselineEvent(HistoryEvent):
         return cls(
             id=cls.generate_id(),
             timestamp=cls.now_timestamp(),
-            project_ulid=project_id,
-            structure_ulids=structure_ids or [],
+            project_ulid=project_ulid,
+            structure_ulids=structure_ulids or [],
             calculation_ulids=calculation_ids or [],
             snapshot_path=snapshot_path,
         )
@@ -132,11 +132,11 @@ class BaselineEvent(HistoryEvent):
             id=data.get("id", data.get("ulid")),
             timestamp=data["timestamp"],
             event_type=data.get("event_type", EventType.BASELINE.value),
-            project_ulid=data.get("project_ulid", data.get("project_id")),
-            calc_ulid=data.get("calc_ulid", data.get("calc_id")),
-            step_ulid=data.get("step_ulid", data.get("step_id")),
+            project_ulid=data.get("project_ulid", data.get("project_ulid")),
+            calc_ulid=data.get("calc_ulid", data.get("calc_ulid")),
+            step_ulid=data.get("step_ulid", data.get("step_ulid")),
             snapshot_path=data.get("snapshot_path"),
-            structure_ulids=data.get("structure_ulids", data.get("structure_ids", [])),
+            structure_ulids=data.get("structure_ulids", data.get("structure_ulids", [])),
             calculation_ulids=data.get("calculation_ulids", data.get("calculation_ids", [])),
         )
 
@@ -172,9 +172,9 @@ class EditEvent(HistoryEvent):
     @classmethod
     def create(
         cls,
-        project_id: Optional[str],
-        calc_id: Optional[str],
-        step_id: Optional[str],
+        project_ulid: Optional[str],
+        calc_ulid: Optional[str],
+        step_ulid: Optional[str],
         doc_type: str,
         doc_path: str,
         changes: List[EditChange],
@@ -185,9 +185,9 @@ class EditEvent(HistoryEvent):
         return cls(
             id=cls.generate_id(),
             timestamp=cls.now_timestamp(),
-            project_ulid=project_id,
-            calc_ulid=calc_id,
-            step_ulid=step_id,
+            project_ulid=project_ulid,
+            calc_ulid=calc_ulid,
+            step_ulid=step_ulid,
             doc_type=doc_type,
             doc_path=doc_path,
             changes=[asdict(c) if hasattr(c, "__dataclass_fields__") else c for c in changes],
@@ -201,9 +201,9 @@ class EditEvent(HistoryEvent):
             id=data.get("id", data.get("ulid")),
             timestamp=data["timestamp"],
             event_type=data.get("event_type", EventType.EDIT.value),
-            project_ulid=data.get("project_ulid", data.get("project_id")),
-            calc_ulid=data.get("calc_ulid", data.get("calc_id")),
-            step_ulid=data.get("step_ulid", data.get("step_id")),
+            project_ulid=data.get("project_ulid", data.get("project_ulid")),
+            calc_ulid=data.get("calc_ulid", data.get("calc_ulid")),
+            step_ulid=data.get("step_ulid", data.get("step_ulid")),
             doc_type=data.get("doc_type"),
             doc_path=data.get("doc_path"),
             changes=data.get("changes", []),
@@ -222,37 +222,37 @@ class RunStartedEvent(HistoryEvent):
     event_type: str = field(default=EventType.RUN_STARTED.value)
     run_ulid: str = ""  # ULID for this run
     calc_name: Optional[str] = None
-    step_ids: List[str] = field(default_factory=list)  # Steps to be executed
+    step_ulids: List[str] = field(default_factory=list)  # Steps to be executed
     step_types: List[str] = field(default_factory=list)  # Step types for display
     engine: Optional[str] = None
-    structure_id: Optional[str] = None
+    structure_ulid: Optional[str] = None
     snapshot_path: Optional[str] = None  # Path to run snapshot
     
     @classmethod
     def create(
         cls,
-        project_id: str,
-        calc_id: str,
-        run_id: str,
+        project_ulid: str,
+        calc_ulid: str,
+        run_ulid: str,
         calc_name: Optional[str] = None,
-        step_ids: Optional[List[str]] = None,
+        step_ulids: Optional[List[str]] = None,
         step_types: Optional[List[str]] = None,
         engine: Optional[str] = None,
-        structure_id: Optional[str] = None,
+        structure_ulid: Optional[str] = None,
         snapshot_path: Optional[str] = None,
     ) -> "RunStartedEvent":
         """Create a new run started event."""
         return cls(
             id=cls.generate_id(),
             timestamp=cls.now_timestamp(),
-            project_ulid=project_id,
-            calc_ulid=calc_id,
-            run_ulid=run_id,
+            project_ulid=project_ulid,
+            calc_ulid=calc_ulid,
+            run_ulid=run_ulid,
             calc_name=calc_name,
-            step_ids=step_ids or [],
+            step_ulids=step_ulids or [],
             step_types=step_types or [],
             engine=engine,
-            structure_id=structure_id,
+            structure_ulid=structure_ulid,
             snapshot_path=snapshot_path,
         )
 
@@ -262,15 +262,15 @@ class RunStartedEvent(HistoryEvent):
             id=data.get("id", data.get("ulid")),
             timestamp=data["timestamp"],
             event_type=data.get("event_type", EventType.RUN_STARTED.value),
-            project_ulid=data.get("project_ulid", data.get("project_id")),
-            calc_ulid=data.get("calc_ulid", data.get("calc_id")),
-            step_ulid=data.get("step_ulid", data.get("step_id")),
-            run_ulid=data.get("run_ulid", data.get("run_id", "")),
+            project_ulid=data.get("project_ulid", data.get("project_ulid")),
+            calc_ulid=data.get("calc_ulid", data.get("calc_ulid")),
+            step_ulid=data.get("step_ulid", data.get("step_ulid")),
+            run_ulid=data.get("run_ulid", data.get("run_ulid", "")),
             calc_name=data.get("calc_name"),
-            step_ids=data.get("step_ids", []),
+            step_ulids=data.get("step_ulids", []),
             step_types=data.get("step_types", []),
             engine=data.get("engine"),
-            structure_id=data.get("structure_id"),
+            structure_ulid=data.get("structure_ulid"),
             snapshot_path=data.get("snapshot_path"),
         )
 
@@ -294,9 +294,9 @@ class RunFinishedEvent(HistoryEvent):
     @classmethod
     def create(
         cls,
-        project_id: str,
-        calc_id: str,
-        run_id: str,
+        project_ulid: str,
+        calc_ulid: str,
+        run_ulid: str,
         status: str,
         duration_seconds: Optional[float] = None,
         step_count: int = 0,
@@ -308,9 +308,9 @@ class RunFinishedEvent(HistoryEvent):
         return cls(
             id=cls.generate_id(),
             timestamp=cls.now_timestamp(),
-            project_ulid=project_id,
-            calc_ulid=calc_id,
-            run_ulid=run_id,
+            project_ulid=project_ulid,
+            calc_ulid=calc_ulid,
+            run_ulid=run_ulid,
             status=status,
             duration_seconds=duration_seconds,
             step_count=step_count,
@@ -325,10 +325,10 @@ class RunFinishedEvent(HistoryEvent):
             id=data.get("id", data.get("ulid")),
             timestamp=data["timestamp"],
             event_type=data.get("event_type", EventType.RUN_FINISHED.value),
-            project_ulid=data.get("project_ulid", data.get("project_id")),
-            calc_ulid=data.get("calc_ulid", data.get("calc_id")),
-            step_ulid=data.get("step_ulid", data.get("step_id")),
-            run_ulid=data.get("run_ulid", data.get("run_id", "")),
+            project_ulid=data.get("project_ulid", data.get("project_ulid")),
+            calc_ulid=data.get("calc_ulid", data.get("calc_ulid")),
+            step_ulid=data.get("step_ulid", data.get("step_ulid")),
+            run_ulid=data.get("run_ulid", data.get("run_ulid", "")),
             status=data.get("status", ""),
             duration_seconds=data.get("duration_seconds"),
             step_count=data.get("step_count", 0),
@@ -353,10 +353,10 @@ class PinCreatedEvent(HistoryEvent):
     @classmethod
     def create(
         cls,
-        project_id: str,
-        calc_id: str,
-        step_id: str,
-        run_id: str,
+        project_ulid: str,
+        calc_ulid: str,
+        step_ulid: str,
+        run_ulid: str,
         analysis_kind: str,
         pin_path: Optional[str] = None,
     ) -> "PinCreatedEvent":
@@ -364,10 +364,10 @@ class PinCreatedEvent(HistoryEvent):
         return cls(
             id=cls.generate_id(),
             timestamp=cls.now_timestamp(),
-            project_ulid=project_id,
-            calc_ulid=calc_id,
-            step_ulid=step_id,
-            run_ulid=run_id,
+            project_ulid=project_ulid,
+            calc_ulid=calc_ulid,
+            step_ulid=step_ulid,
+            run_ulid=run_ulid,
             analysis_kind=analysis_kind,
             pin_path=pin_path,
         )
@@ -378,10 +378,10 @@ class PinCreatedEvent(HistoryEvent):
             id=data.get("id", data.get("ulid")),
             timestamp=data["timestamp"],
             event_type=data.get("event_type", EventType.PIN_CREATED.value),
-            project_ulid=data.get("project_ulid", data.get("project_id")),
-            calc_ulid=data.get("calc_ulid", data.get("calc_id")),
-            step_ulid=data.get("step_ulid", data.get("step_id")),
-            run_ulid=data.get("run_ulid", data.get("run_id", "")),
+            project_ulid=data.get("project_ulid", data.get("project_ulid")),
+            calc_ulid=data.get("calc_ulid", data.get("calc_ulid")),
+            step_ulid=data.get("step_ulid", data.get("step_ulid")),
+            run_ulid=data.get("run_ulid", data.get("run_ulid", "")),
             analysis_kind=data.get("analysis_kind", ""),
             pin_path=data.get("pin_path"),
         )

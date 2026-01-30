@@ -72,7 +72,7 @@ class TestValidateStepScanRefs:
     def test_validate_step_scan_refs_valid(self):
         """Valid step with scan refs passes."""
         step_doc = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": "@scan:scan001",
@@ -91,7 +91,7 @@ class TestValidateStepScanRefs:
     def test_dangling_scan_ref_error(self):
         """Dangling ScanRef (missing scan_id) raises error."""
         step_doc = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": "@scan:scan001",
@@ -109,7 +109,7 @@ class TestValidateStepScanRefs:
     def test_orphan_scan_definition_warning(self):
         """Orphan scan definitions emit warning but don't error."""
         step_doc = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": "@scan:scan001",
@@ -130,7 +130,7 @@ class TestValidateStepScanRefs:
         """ScanRef at non-leaf position raises error."""
         # ScanRef as value for entire section
         step_doc = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": "@scan:scan001",  # Invalid: SYSTEM is not a leaf
             },
@@ -146,7 +146,7 @@ class TestValidateStepScanRefs:
         """Scalar and simple list leaves are accepted."""
         # Scalar leaf - OK
         step_doc1 = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": "@scan:scan001",  # Scalar leaf - OK
@@ -162,7 +162,7 @@ class TestValidateStepScanRefs:
         # Simple list leaf - OK (though ScanRefs in lists not yet implemented)
         # For now, we just verify the structure doesn't error
         step_doc2 = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "cards": {
                 "K_POINTS": {
                     "kpoints": [4, 4, 4],  # Simple list - would be OK if ScanRef supported
@@ -176,7 +176,7 @@ class TestValidateStepScanRefs:
     def test_round_trip_with_parameter_scan(self):
         """Step with parameter_scan round-trips correctly."""
         step_doc = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "meta": {
                 "ulid": "01HXYZ",
                 "name": "SCF",
@@ -204,7 +204,7 @@ class TestValidateStepScanRefs:
     def test_multiple_scan_refs_same_scan_id(self):
         """Multiple ScanRefs can reference same scan_id."""
         step_doc = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": "@scan:scan001",
@@ -221,7 +221,7 @@ class TestValidateStepScanRefs:
     def test_parameter_scan_not_dict_error(self):
         """parameter_scan must be a dict."""
         step_doc = {
-            "step_type_gen": "qe_scf",
+            "step_type_spec": "qe_scf",
             "parameters": {
                 "SYSTEM": {
                     "ecutwfc": "@scan:scan001",

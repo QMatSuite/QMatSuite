@@ -105,3 +105,4 @@ def test_coverage_status_values():
         status = method["coverage_status"]
         assert status in allowed_statuses, f"Invalid coverage_status for {method['method_name']}: {status}"
 
+
