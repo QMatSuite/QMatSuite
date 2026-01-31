@@ -1,7 +1,7 @@
 """
 Unit tests for Wannier90 step materialization.
 
-These tests verify that Wannier90 steps (w90_preproc, w90_run, pw2wannier90)
+These tests verify that Wannier90 steps (wannierprep, wannier, pw2wannier)
 are materialized correctly using Wannier90 input generation, NOT QE input generation.
 """
 
@@ -33,16 +33,16 @@ def simple_structure():
 
 def test_w90_preproc_does_not_use_qe_validation(temp_dir, simple_structure):
     """
-    Test that w90_preproc step materialization does NOT invoke QE pw schema validation.
+    Test that wannierprep step materialization does NOT invoke QE pw schema validation.
     
-    This is the core fix: w90_preproc parameters (seedname, num_wann, projections)
+    This is the core fix: wannierprep parameters (seedname, num_wann, projections)
     should NOT be validated against QE 'pw' module schema.
     """
     # Create step spec with Wannier90 parameters
     meta = ResourceMeta(ulid="01TEST",
-        name="w90_preproc",
-        slug="w90_preproc",
-        path="steps/w90_preproc.step.yaml",
+        name="wannierprep",
+        slug="wannierprep",
+        path="steps/wannierprep.step.yaml",
         kind="step",
     )
     
@@ -90,16 +90,16 @@ def test_w90_preproc_does_not_use_qe_validation(temp_dir, simple_structure):
         
     except ValueError as e:
         if "not defined for module 'pw'" in str(e):
-            pytest.fail(f"w90_preproc incorrectly validated against QE pw schema: {e}")
+            pytest.fail(f"wannierprep incorrectly validated against QE pw schema: {e}")
         raise
 
 
-def test_w90_preproc_generates_win_file(temp_dir, simple_structure):
-    """Test that w90_preproc generates a proper .win file."""
+def test_wannierprep_generates_win_file(temp_dir, simple_structure):
+    """Test that wannierprep generates a proper .win file."""
     meta = ResourceMeta(ulid="01TEST",
-        name="w90_preproc",
-        slug="w90_preproc",
-        path="steps/w90_preproc.step.yaml",
+        name="wannierprep",
+        slug="wannierprep",
+        path="steps/wannierprep.step.yaml",
         kind="step",
     )
     

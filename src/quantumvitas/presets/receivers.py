@@ -54,10 +54,8 @@ PW_STEP_TYPES: FrozenSet[str] = frozenset({
     "scf",
     "nscf", 
     "bandspw",  # pw.x calculation='bands'
-    "relax",
-    "vc-relax",
-    "md",
-    "vc-md",
+    "relax",  # VC is a parameter, not a separate gen step
+    "md",  # VC is a parameter, not a separate gen step
 })
 
 # Step types that do NOT accept presets (post-processing and other utilities)
@@ -116,7 +114,8 @@ class PrecisionReceiverSpec:
 
 # Default precision receiver specs for each step type
 PRECISION_RECEIVER_SPECS: Dict[str, PrecisionReceiverSpec] = {
-    # pw.x: scf/relax/vc-relax/md/vc-md - accept all subparts, default kmesh
+    # pw.x: scf/relax/md - accept all subparts, default kmesh
+    # VC is a parameter, not a separate gen step
     "scf": PrecisionReceiverSpec(
         accepts_kmesh=True,
         accepts_cutoffs=True,
@@ -129,19 +128,7 @@ PRECISION_RECEIVER_SPECS: Dict[str, PrecisionReceiverSpec] = {
         accepts_conv_thr=True,
         kmesh_strategy="default",
     ),
-    "vc-relax": PrecisionReceiverSpec(
-        accepts_kmesh=True,
-        accepts_cutoffs=True,
-        accepts_conv_thr=True,
-        kmesh_strategy="default",
-    ),
     "md": PrecisionReceiverSpec(
-        accepts_kmesh=True,
-        accepts_cutoffs=True,
-        accepts_conv_thr=True,
-        kmesh_strategy="default",
-    ),
-    "vc-md": PrecisionReceiverSpec(
         accepts_kmesh=True,
         accepts_cutoffs=True,
         accepts_conv_thr=True,
@@ -164,17 +151,17 @@ PRECISION_RECEIVER_SPECS: Dict[str, PrecisionReceiverSpec] = {
 }
 
 
-def get_precision_receiver_spec(step_type: str) -> Optional[PrecisionReceiverSpec]:
+def get_precision_receiver_spec(step_type_gen: str) -> Optional[PrecisionReceiverSpec]:
     """
     Get precision receiver specification for a step type.
     
     Args:
-        step_type: Step type string
+        step_type_gen: Gen step type string (e.g., "scf", "nscf")
         
     Returns:
         PrecisionReceiverSpec if step accepts precision, None otherwise
     """
-    step_type_lower = step_type.lower() if step_type else ""
+    step_type_lower = step_type_gen.lower() if step_type_gen else ""
     return PRECISION_RECEIVER_SPECS.get(step_type_lower)
 
 
@@ -218,36 +205,36 @@ class PresetReceiverRegistry:
         # Custom step type - accepts none by default
         self._registry["custom"] = frozenset()
     
-    def get_accepted_dimensions(self, step_type: str) -> FrozenSet[str]:
+    def get_accepted_dimensions(self, step_type_gen: str) -> FrozenSet[str]:
         """
         Get the set of preset dimensions accepted by a step type.
         
         Args:
-            step_type: Step type string (e.g., "scf", "nscf", "dos")
+            step_type_gen: Gen step type string (e.g., "scf", "nscf", "dos")
             
         Returns:
             FrozenSet of dimension names this step type accepts.
             Empty set means the step accepts no presets (no-op).
         """
-        step_type_lower = step_type.lower() if step_type else ""
+        step_type_lower = step_type_gen.lower() if step_type_gen else ""
         return self._registry.get(step_type_lower, frozenset())
     
-    def accepts_preset(self, step_type: str, dimension: str) -> bool:
+    def accepts_preset(self, step_type_gen: str, dimension: str) -> bool:
         """
         Check if a step type accepts a specific preset dimension.
         
         Args:
-            step_type: Step type string
+            step_type_gen: Gen step type string (e.g., "scf", "nscf")
             dimension: Preset dimension name (e.g., "magnetism", "occupations_scheme", "precision")
             
         Returns:
             True if step type accepts this dimension, False otherwise.
         """
-        return dimension in self.get_accepted_dimensions(step_type)
+        return dimension in self.get_accepted_dimensions(step_type_gen)
     
     def filter_presets_for_step(
         self, 
-        step_type: str, 
+        step_type_gen: str, 
         presets: Dict[str, str],
     ) -> Dict[str, str]:
         """
@@ -257,28 +244,28 @@ class PresetReceiverRegistry:
         a step will actually process.
         
         Args:
-            step_type: Step type string
+            step_type_gen: Gen step type string (e.g., "scf", "nscf")
             presets: Dict of preset options (dimension -> value)
             
         Returns:
             Filtered dict containing only accepted dimensions.
         """
-        accepted = self.get_accepted_dimensions(step_type)
+        accepted = self.get_accepted_dimensions(step_type_gen)
         return {k: v for k, v in presets.items() if k in accepted}
     
-    def is_receiver(self, step_type: str) -> bool:
+    def is_receiver(self, step_type_gen: str) -> bool:
         """
         Check if a step type is a preset receiver (accepts any presets).
         
         Args:
-            step_type: Step type string
+            step_type_gen: Gen step type string (e.g., "scf", "nscf")
             
         Returns:
             True if step type accepts at least one preset dimension.
         """
-        return len(self.get_accepted_dimensions(step_type)) > 0
+        return len(self.get_accepted_dimensions(step_type_gen)) > 0
     
-    def register_step_type(self, step_type: str, dimensions: Set[str]):
+    def register_step_type(self, step_type_gen: str, dimensions: Set[str]):
         """
         Register or update a step type's accepted dimensions.
         
@@ -314,22 +301,22 @@ def reset_receiver_registry():
 
 # Convenience functions that use the global registry
 
-def get_accepted_dimensions(step_type: str) -> FrozenSet[str]:
+def get_accepted_dimensions(step_type_gen: str) -> FrozenSet[str]:
     """Get preset dimensions accepted by a step type."""
-    return get_receiver_registry().get_accepted_dimensions(step_type)
+    return get_receiver_registry().get_accepted_dimensions(step_type_gen)
 
 
-def accepts_preset(step_type: str, dimension: str) -> bool:
+def accepts_preset(step_type_gen: str, dimension: str) -> bool:
     """Check if a step type accepts a preset dimension."""
-    return get_receiver_registry().accepts_preset(step_type, dimension)
+    return get_receiver_registry().accepts_preset(step_type_gen, dimension)
 
 
-def filter_presets_for_step(step_type: str, presets: Dict[str, str]) -> Dict[str, str]:
+def filter_presets_for_step(step_type_gen: str, presets: Dict[str, str]) -> Dict[str, str]:
     """Filter presets to only those accepted by step type."""
-    return get_receiver_registry().filter_presets_for_step(step_type, presets)
+    return get_receiver_registry().filter_presets_for_step(step_type_gen, presets)
 
 
-def is_receiver(step_type: str) -> bool:
+def is_receiver(step_type_gen: str) -> bool:
     """Check if a step type is a preset receiver."""
-    return get_receiver_registry().is_receiver(step_type)
+    return get_receiver_registry().is_receiver(step_type_gen)
 

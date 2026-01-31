@@ -46,13 +46,13 @@ class TestVASPDriver:
         assert hasattr(recipe_class, "materialize")
 
     def test_materialization_map(self):
-        """Test GEN→SPEC mappings."""
+        """Test gen→spec mappings."""
         driver = VASPDriver()
         mat_map = driver.get_materialization_map()
 
-        assert mat_map["GEN_SCF"] == "vasp_scf"
-        assert mat_map["GEN_RELAX"] == "vasp_relax"
-        assert mat_map["GEN_MD"] == "vasp_md"
+        assert mat_map["scf"] == "vasp_scf"
+        assert mat_map["relax"] == "vasp_relax"
+        assert mat_map["md"] == "vasp_md"
 
     def test_workdir_policy_cleanup(self):
         """VASP should use CLEANUP policy."""

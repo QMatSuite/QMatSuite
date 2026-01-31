@@ -216,16 +216,8 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=False,
         produces_charge_density=False,
     ),
-    "qe_vc_md": StepTypeSpec(
-        step_type_spec="qe_vc_md",
-        step_type_gen="vc-md",
-        engine="qe",
-        executable="pw.x",
-        description="Variable-cell molecular dynamics",
-        requires_structure=True,
-        requires_charge_density=False,
-        produces_charge_density=False,
-    ),
+    # Removed: qe_vc_md - VC is a parameter, not a separate step type
+    # Use qe_md with calculation='vc-md' parameter instead
     
     # -------------------------------------------------------------------------
     # QE post-processing step types (no presets)
@@ -813,8 +805,7 @@ def reset_registry() -> None:
 # NOTE: This aliasing is for workflow/registry lookup only. When generating QE input,
 # the actual calculation parameter (vc-relax, relax, etc.) should be preserved.
 STEP_TYPE_ALIASES = {
-    "vc-relax": "relax",
-    "qe_vc_relax": "qe_relax",
+    "vc-relax": "relax",  # Legacy alias - VC is a parameter, not a step type
     "opt": "relax",
     "geomopt": "relax",
 }
@@ -848,38 +839,38 @@ def normalize_step_type(step_type: str) -> str:
     return step_type
 
 
-def normalize_step_type_to_gen(step_type: str) -> str:
+def normalize_step_type_to_gen(step_type_spec: str) -> str:
     """
     Normalize step_type_spec to step_type_gen.
 
     Converts spec types (e.g., "qe_scf") to gen types (e.g., "scf").
-    If step_type is already a gen type or unknown, returns it unchanged.
+    If step_type_spec is already a gen type or unknown, returns it unchanged.
 
     Args:
-        step_type: Step type (spec or gen format)
+        step_type_spec: Step type (spec or gen format)
 
     Returns:
         Gen step type
     """
-    if not step_type:
-        return step_type
+    if not step_type_spec:
+        return step_type_spec
 
     # First apply compatibility aliases
-    step_type = normalize_step_type(step_type)
+    normalized = normalize_step_type(step_type_spec)
 
     registry = get_registry()
-    spec = registry.get(step_type)
+    spec = registry.get(normalized)
     if spec:
         return spec.step_type_gen
 
     # Fallback: strip known engine prefixes (e.g., "qe_vc-relax" -> "vc-relax")
     ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_")
-    lower = step_type.lower()
+    lower = normalized.lower()
     for prefix in ENGINE_PREFIXES:
         if lower.startswith(prefix):
-            return step_type[len(prefix):]
+            return normalized[len(prefix):]
 
-    return step_type
+    return normalized
 
 
 def resolve_engine_for_step(

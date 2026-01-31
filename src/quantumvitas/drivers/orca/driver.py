@@ -19,7 +19,7 @@ class ORCADriver(BaseEngineDriver):
 
     PREFIX: str = "orca"
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
-        "scf", "hf", "opt", "relax", "freq", "sp", "td", "tddft", "mp2", "ccsd", "casscf", "nevpt2"
+        "scf", "hf", "relax", "td"
     })
 
     # ─────────────────────────────────────────────────────────────────────
@@ -160,7 +160,7 @@ class ORCADriver(BaseEngineDriver):
             "chain",  # Supports chain execution
         }
 
-    def supports_incremental_skip(self, step_type: str) -> bool:
+    def supports_incremental_skip(self, step_type_spec: str) -> bool:
         """All ORCA steps can be skipped if done."""
         return True
 

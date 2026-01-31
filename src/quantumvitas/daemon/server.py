@@ -1456,11 +1456,11 @@ class QVDaemon:
         """
         module = payload.get("module", "").strip().lower()
         # Accept both step_type_gen (canonical) and step_type (v0 compat)
-        step_type = (payload.get("step_type_gen") or payload.get("step_type", "")).strip().lower()
+        step_type_gen = (payload.get("step_type_gen") or payload.get("step_type", "")).strip().lower()
 
         if not module:
             raise ValueError("'module' is required in payload")
-        if not step_type:
+        if not step_type_gen:
             raise ValueError("'step_type_gen' is required in payload (or 'step_type' for v0 compat)")
         
         # Validate module is supported
@@ -1472,13 +1472,13 @@ class QVDaemon:
         
         # Log at info level for visibility (short log line)
         self.logger.info(
-            "[RPC] list_qe_ui_parameters (module: %s, step_type: %s)",
+            "[RPC] list_qe_ui_parameters (module: %s, step_type_gen: %s)",
             module,
-            step_type,
+            step_type_gen,
         )
         
         # Get UI parameters
-        ui_params = get_ui_parameters(module, step_type)
+        ui_params = get_ui_parameters(module, step_type_gen)
         
         # Convert QEUIParam objects to dicts for JSON serialization
         result = []
@@ -3920,14 +3920,14 @@ class QVDaemon:
                 content = yaml.safe_load(step_path.read_text()) or {}
                 step_type_spec = content.get("step_type_spec", "scf")
                 from quantumvitas.api import get_step_type_gen
-                step_type = get_step_type_gen(step_type_spec)
+                step_type_gen = get_step_type_gen(step_type_spec)
                 
                 # Get step-type-aware precision advice if applicable
                 precision_advice = None
                 if precision_advisor and precision_option:
                     try:
                         precision_level = PrecisionOption(precision_option)
-                        precision_advice = precision_advisor.advise_for_step(precision_level, step_type)
+                        precision_advice = precision_advisor.advise_for_step(precision_level, step_type_gen)
                     except (ValueError, KeyError) as e:
                         self.logger.warning(f"Invalid precision level '{precision_option}': {e}")
                 
@@ -3941,7 +3941,7 @@ class QVDaemon:
                     steps_updated += 1
                     step_results.append({
                         "step_file": step_name,
-                        "step_type_gen": step_type,
+                        "step_type_gen": step_type_gen,
                         "status": "updated",
                         "applied_presets": list(result["filtered_options"].keys()),
                         "updated_fields": result.get("updated_fields", []),
@@ -3951,7 +3951,7 @@ class QVDaemon:
                     steps_skipped += 1
                     step_results.append({
                         "step_file": step_name,
-                        "step_type_gen": step_type,
+                        "step_type_gen": step_type_gen,
                         "status": "skipped",
                         "reason": "non-receiver",
                         "updated_fields": [],
@@ -3964,7 +3964,7 @@ class QVDaemon:
                 steps_skipped += 1
                 step_results.append({
                     "step_file": step_name,
-                    "step_type_gen": step_type if 'step_type' in dir() else "unknown",
+                    "step_type_gen": step_type_gen if 'step_type_gen' in dir() else "unknown",
                     "status": "error",
                     "reason": str(e),
                     "updated_fields": [],
@@ -4136,10 +4136,10 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
         # Accept both step_type_spec (canonical) and step_type_gen (backwards compat)
-        step_type = payload.get("step_type_spec") or payload.get("step_type_gen") or payload.get("step_type")
-        if not step_type:
+        step_type_gen = payload.get("step_type_spec") or payload.get("step_type_gen") or payload.get("step_type")
+        if not step_type_gen:
             raise ValueError("Missing required field: step_type_spec (or step_type_gen for backwards compat)")
-        step_name = payload.get("step_name", step_type)
+        step_name = payload.get("step_name", step_type_gen)
         
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_calculation_with_fallback(project_root, calculation)
@@ -4147,7 +4147,7 @@ class QVDaemon:
         svc = get_service(project_root)
         step_dto = svc.calculation.add_step(
             calc_selector=calculation,
-            step_type=step_type,
+            step_type_gen=step_type_gen,
             name=step_name,
         )
         

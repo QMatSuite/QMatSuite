@@ -194,7 +194,7 @@ def create_step_spec(step_type: str, index: int, seedname: str, params: Optional
     GEN types are converted to SPEC types for persistence.
 
     Args:
-        step_type: Step type (scf, nscf, w90_preproc, etc.) - may be GEN or SPEC
+        step_type: Step type (scf, nscf, w90_wannierprep, etc.) - may be GEN or SPEC
         index: Step index in calculation
         seedname: Seedname for input files
         params: Step parameters (namelist sections) - NO prefix/outdir, NO pseudo mapping
@@ -208,7 +208,7 @@ def create_step_spec(step_type: str, index: int, seedname: str, params: Optional
         "scf": "qe_scf",
         "nscf": "qe_nscf",
         "pw2wannier90": "qe_pw2wannier90",
-        # w90_preproc and w90_run are already SPEC format
+        # w90_wannierprep and w90_wannier are already SPEC format
     }
     machine_type = gen_to_spec.get(step_type, step_type)
 
@@ -217,11 +217,11 @@ def create_step_spec(step_type: str, index: int, seedname: str, params: Optional
         input_name = f"{seedname}.scf"
     elif step_type == "nscf":
         input_name = f"{seedname}.nscf"
-    elif step_type == "w90_preproc":
+    elif step_type == "w90_wannierprep":
         input_name = f"{seedname}.win"
     elif step_type == "pw2wannier90":
         input_name = f"{seedname}.pw2wan"
-    elif step_type == "w90_run":
+    elif step_type == "w90_wannier":
         input_name = f"{seedname}.win"
     else:
         input_name = f"{seedname}.{step_type}"
@@ -337,7 +337,7 @@ def generate_demo_snapshot(name: str, config: Dict[str, Any]) -> Dict[str, Any]:
         steps.append(nscf_step)
     
     # Wannier90 steps (no QE input, use Wannier90 input files)
-    # Read .win file for w90_preproc and w90_run
+    # Read .win file for w90_wannierprep and w90_wannier
     win_file = example_dir / f"{seedname}.win"
     if win_file.exists():
         from quantumvitas.io.wannier90_input import Wannier90Input
@@ -353,15 +353,15 @@ def generate_demo_snapshot(name: str, config: Dict[str, Any]) -> Dict[str, Any]:
         if win_input.num_iter:
             w90_params["num_iter"] = win_input.num_iter
         
-        w90_preproc_step = create_step_spec("w90_preproc", len(steps), seedname, params=w90_params, calc_name=calc_slug)
-        w90_preproc_step["depends_on"] = [steps[-1]["meta"]["id"]] if steps else []
-        steps.append(w90_preproc_step)
+        w90_wannierprep_step = create_step_spec("w90_wannierprep", len(steps), seedname, params=w90_params, calc_name=calc_slug)
+        w90_wannierprep_step["depends_on"] = [steps[-1]["meta"]["id"]] if steps else []
+        steps.append(w90_wannierprep_step)
         
-        # w90_run uses same parameters
-        w90_run_step = create_step_spec("w90_run", len(steps) + 1, seedname, params=w90_params, calc_name=calc_slug)
-        steps.append(w90_run_step)
+        # w90_wannier uses same parameters
+        w90_wannier_step = create_step_spec("w90_wannier", len(steps) + 1, seedname, params=w90_params, calc_name=calc_slug)
+        steps.append(w90_wannier_step)
     
-    # pw2wannier90 step (depends on NSCF and w90_preproc, must run before w90_run)
+    # pw2wannier90 step (depends on NSCF and w90_wannierprep, must run before w90_wannier)
     pw2wan_file = example_dir / f"{seedname}.pw2wan"
     pw2wan_step = None
     if pw2wan_file.exists():
@@ -370,24 +370,24 @@ def generate_demo_snapshot(name: str, config: Dict[str, Any]) -> Dict[str, Any]:
             # prefix/outdir will be injected from calculation.meta.slug
             # Do NOT include them in step parameters
         }
-        # Find w90_preproc step index
-        w90_preproc_idx = next((i for i, s in enumerate(steps) if s["step_type"] == "w90_preproc"), None)
+        # Find w90_wannierprep step index
+        w90_wannierprep_idx = next((i for i, s in enumerate(steps) if s["step_type"] == "w90_wannierprep"), None)
         nscf_idx = next((i for i, s in enumerate(steps) if s["step_type"] == "nscf"), None)
         
-        if w90_preproc_idx is not None and nscf_idx is not None:
+        if w90_wannierprep_idx is not None and nscf_idx is not None:
             pw2wan_step = create_step_spec("pw2wannier90", len(steps), seedname, params=pw2wan_params, calc_name=calc_slug)
-            pw2wan_step["depends_on"] = [steps[nscf_idx]["meta"]["id"], steps[w90_preproc_idx]["meta"]["id"]]
-            # Insert before w90_run
-            w90_run_idx = next((i for i, s in enumerate(steps) if s["step_type"] == "w90_run"), None)
-            if w90_run_idx is not None:
-                steps.insert(w90_run_idx, pw2wan_step)
+            pw2wan_step["depends_on"] = [steps[nscf_idx]["meta"]["id"], steps[w90_wannierprep_idx]["meta"]["id"]]
+            # Insert before w90_wannier
+            w90_wannier_idx = next((i for i, s in enumerate(steps) if s["step_type"] == "w90_wannier"), None)
+            if w90_wannier_idx is not None:
+                steps.insert(w90_wannier_idx, pw2wan_step)
             else:
                 steps.append(pw2wan_step)
     
-    # Update w90_run dependency to depend on pw2wannier90
-    w90_run_idx = next((i for i, s in enumerate(steps) if s["step_type"] == "w90_run"), None)
-    if w90_run_idx is not None and pw2wan_step:
-        steps[w90_run_idx]["depends_on"] = [pw2wan_step["meta"]["id"]]
+    # Update w90_wannier dependency to depend on pw2wannier90
+    w90_wannier_idx = next((i for i, s in enumerate(steps) if s["step_type"] == "w90_wannier"), None)
+    if w90_wannier_idx is not None and pw2wan_step:
+        steps[w90_wannier_idx]["depends_on"] = [pw2wan_step["meta"]["id"]]
     
     # Build snapshot
     snapshot = {

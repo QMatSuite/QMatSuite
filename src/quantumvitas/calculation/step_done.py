@@ -18,24 +18,24 @@ logger = logging.getLogger(__name__)
 WANNIER90_STEP_TYPES = {"wannierprep", "wannier", "pw2wannier", "wannier90", "postw90"}
 
 
-def is_vasp_step(step_type: str) -> bool:
+def is_vasp_step(step_type_spec: str) -> bool:
     """Check if step type belongs to VASP."""
     import quantumvitas.drivers
     from quantumvitas.core.driver_registry import DriverRegistry
     
-    if not DriverRegistry.is_step_type_registered(step_type):
+    if not DriverRegistry.is_step_type_registered(step_type_spec):
         return False
-    return DriverRegistry.get_engine_for_step_type(step_type) == "vasp"
+    return DriverRegistry.get_engine_for_step_type(step_type_spec) == "vasp"
 
 
-def is_lammps_step(step_type: str) -> bool:
+def is_lammps_step(step_type_spec: str) -> bool:
     """Check if step type belongs to LAMMPS."""
     import quantumvitas.drivers
     from quantumvitas.core.driver_registry import DriverRegistry
     
-    if not DriverRegistry.is_step_type_registered(step_type):
+    if not DriverRegistry.is_step_type_registered(step_type_spec):
         return False
-    return DriverRegistry.get_engine_for_step_type(step_type) == "lammps"
+    return DriverRegistry.get_engine_for_step_type(step_type_spec) == "lammps"
 
 
 def primary_output_path(calc_raw_dir: Path, step_kind: str, step_doc: Optional[dict] = None) -> Optional[Path]:
@@ -133,7 +133,7 @@ def is_step_done(calc_dir: Path, step_kind: str, calc_raw_dir: Optional[Path] = 
     step_kind_lower = step_kind.lower()
     
     # VASP steps: check for OUTCAR and OSZICAR
-    if is_vasp_step(step_kind_lower):
+    if is_vasp_step(step_kind_lower):  # step_kind is spec type in execution context
         # VASP: check for OUTCAR (primary output) and OSZICAR (iteration log)
         # VASP steps use step-specific workdirs: calc_raw_dir / step_ulid / OUTCAR
         
@@ -178,7 +178,7 @@ def is_step_done(calc_dir: Path, step_kind: str, calc_raw_dir: Optional[Path] = 
         return False
     
     # LAMMPS steps: check for log.lammps and step-specific outputs
-    if is_lammps_step(step_kind_lower):
+    if is_lammps_step(step_kind_lower):  # step_kind is spec type in execution context
         # LAMMPS uses isolated workdirs: calc_raw_dir / step_ulid / log.lammps
         step_ulid = None
         if step_doc:

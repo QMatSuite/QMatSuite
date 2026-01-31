@@ -210,7 +210,7 @@ def prepare_input_step(
     species_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
     keep_original: bool = True,
     output_name: Optional[str] = None,
-    step_type: Optional[str] = None,
+    step_type_spec: Optional[str] = None,
 ) -> PreparedInputStep:
     """
     Prepare a QE input file for execution inside a working directory.
@@ -225,7 +225,8 @@ def prepare_input_step(
         keep_original: If True and input comes from outside working_dir, 
                        save a copy as <name>_original.in
         output_name: Optional name for the generated input file (default: use input name)
-        step_type: Optional step type (if wannierprep, wannier, or pw2wannier, skip QE processing)
+        step_type_spec: Optional spec step type (e.g., "w90_wannierprep", "w90_wannier", "qe_pw2wannier")
+                       If wannier90 step types, skip QE processing
     
     Returns:
         PreparedInputStep with paths to working directory and input files
@@ -236,12 +237,16 @@ def prepare_input_step(
           input is from outside working_dir)
     """
     # Wannier90 steps: skip QE input processing, just copy/move the file
-    WANNIER90_STEP_TYPES = {"wannierprep", "wannier", "pw2wannier"}
-    if step_type and step_type.lower() in WANNIER90_STEP_TYPES:
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        logger.info(f"[PREPARE_INPUT_STEP] Wannier90 step detected: step_type={step_type}")
+    # Convert spec types to gen types for comparison
+    from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+    WANNIER90_GEN_STEPS = {"wannierprep", "wannier", "pw2wannier"}
+    if step_type_spec:
+        step_type_gen = gen_from(step_type_spec) if is_spec(step_type_spec) else step_type_spec
+        if step_type_gen.lower() in WANNIER90_GEN_STEPS:
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            logger.info(f"[PREPARE_INPUT_STEP] Wannier90 step detected: step_type_spec={step_type_spec}")
         logger.debug(f"[PREPARE_INPUT_STEP] input_file: {input_file}")
         logger.debug(f"[PREPARE_INPUT_STEP] working_dir: {working_dir}")
         
@@ -408,27 +413,35 @@ def prepare_input_step(
 def run_prepared_step(
     engine: QuantumEspressoEngine,
     prepared_step: PreparedInputStep,
-    step_type: Optional[str] = None,
+    step_type_spec: Optional[str] = None,
     timeout: Optional[float] = None,
 ) -> StepResult:
     """
     Execute a prepared input step via QE engine.
+    
+    Args:
+        step_type_spec: Optional spec step type (e.g., "qe_scf", "qe_nscf").
+                       If None, will be detected from input file.
     """
     import logging
     logger = logging.getLogger(__name__)
     
-    if step_type is None:
-        step_type = engine.detect_step_type(prepared_step.modified_input)
+    if step_type_spec is None:
+        # detect_step_type returns gen type, convert to spec
+        step_type_gen = engine.detect_step_type(prepared_step.modified_input)
+        from quantumvitas.workflow.step_type_convert import spec_from
+        # QE engine always uses "qe" prefix
+        step_type_spec = spec_from("qe", step_type_gen)
     
     # E. Logging: Details at DEBUG level
     logger.debug(
-        f"[RUN_PREPARED_STEP] step_type={step_type}, "
+        f"[RUN_PREPARED_STEP] step_type_spec={step_type_spec}, "
         f"input={prepared_step.modified_input.name if hasattr(prepared_step.modified_input, 'name') else prepared_step.modified_input}, "
         f"working_dir={prepared_step.working_dir}"
     )
     
     # For pw2wannier, ensure input file path is correct
-    if step_type == "pw2wannier":
+    if step_type_spec == "qe_pw2wannier":
         # Use filename relative to working_dir for -i flag
         if prepared_step.modified_input.is_absolute():
             try:
@@ -448,7 +461,7 @@ def run_prepared_step(
     step_result = engine.run_step(
         input_file=input_file_for_command,
         working_dir=prepared_step.working_dir,
-        step_type=step_type,
+        step_type_spec=step_type_spec,
         timeout=timeout,
     )
 
@@ -465,7 +478,7 @@ def run_input_step(
     input_file: Path,
     working_dir: Path,
     project_root: Optional[Path] = None,
-    step_type: Optional[str] = None,
+    step_type_spec: Optional[str] = None,
     timeout: Optional[float] = None,
     parameter_overrides: Optional[Sequence[ParameterOverride]] = None,
     card_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
@@ -482,7 +495,7 @@ def run_input_step(
         input_file: Path to the QE input file (or Wannier90 .win/.pw2wan file)
         working_dir: Working directory for execution
         project_root: Project root for pseudo_dir resolution
-        step_type: Optional step type override (used to skip QE processing for Wannier90 steps)
+        step_type_spec: Optional spec step type override (e.g., "qe_scf", "w90_wannier")
         timeout: Optional execution timeout
         parameter_overrides: Optional parameter overrides
         card_overrides: Optional card overrides
@@ -508,12 +521,12 @@ def run_input_step(
         species_overrides=species_overrides,
         keep_original=keep_original,
         output_name=output_name,
-        step_type=step_type,  # Pass step_type so Wannier90 steps skip QE processing
+        step_type_spec=step_type_spec,  # Pass step_type_spec so Wannier90 steps skip QE processing
     )
     result = run_prepared_step(
         engine=engine,
         prepared_step=prepared,
-        step_type=step_type,
+        step_type_spec=step_type_spec,
         timeout=timeout,
     )
     return result, prepared

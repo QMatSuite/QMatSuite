@@ -42,12 +42,12 @@ def _get_bands_filband(params: Dict[str, Any]) -> Optional[str]:
     return flat_params.get("filband")
 
 
-# Artifact rule functions: (step_type, params, raw_dir) -> List[str]
+# Artifact rule functions: (step_type_spec, params, raw_dir) -> List[str]
 # Returns list of artifact filenames (just names, not paths)
 ArtifactRule = Callable[[str, Dict[str, Any], Path], List[str]]
 
 
-def _wannierprep_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
+def _wannierprep_artifacts(step_type_spec: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
     """Artifacts for wannierprep step."""
     seedname = _get_wannier90_seedname(params)
     if not seedname:
@@ -57,7 +57,7 @@ def _wannierprep_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path
     return [f"{seedname}.nnkp"]
 
 
-def _pw2wannier_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
+def _pw2wannier_artifacts(step_type_spec: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
     """Artifacts for pw2wannier step."""
     seedname = _get_wannier90_seedname(params)
     if not seedname:
@@ -75,7 +75,7 @@ def _pw2wannier_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path)
     return existing
 
 
-def _wannier_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
+def _wannier_artifacts(step_type_spec: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
     """Artifacts for wannier step."""
     seedname = _get_wannier90_seedname(params)
     if not seedname:
@@ -85,7 +85,7 @@ def _wannier_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path) ->
     return [f"{seedname}.wout"]
 
 
-def _bands_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
+def _bands_artifacts(step_type_spec: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
     """Artifacts for bands step."""
     filband = _get_bands_filband(params)
     if not filband:
@@ -124,7 +124,7 @@ STEP_ARTIFACT_RULES: Dict[str, ArtifactRule] = {
 
 
 def get_step_artifacts(
-    step_type: str,
+    step_type_spec: str,
     params: Dict[str, Any],
     raw_dir: Path,
 ) -> List[str]:
@@ -132,26 +132,26 @@ def get_step_artifacts(
     Get list of artifact filenames for a step type.
     
     Args:
-        step_type: Step type (e.g., "wannier", "bands")
+        step_type_spec: Spec step type (e.g., "w90_wannier", "qe_bands")
         params: Step parameters (may be nested or flat)
         raw_dir: Raw directory where artifacts are stored
         
     Returns:
         List of artifact filenames (just names, not full paths)
     """
-    rule = STEP_ARTIFACT_RULES.get(step_type.lower())
+    rule = STEP_ARTIFACT_RULES.get(step_type_spec.lower())
     if not rule:
         return []
     
     try:
-        return rule(step_type, params, raw_dir)
+        return rule(step_type_spec, params, raw_dir)
     except Exception:
         # If rule fails, return empty list (graceful degradation)
         return []
 
 
 def get_default_artifact(
-    step_type: str,
+    step_type_spec: str,
     params: Dict[str, Any],
     raw_dir: Path,
     artifacts_list: List[str],
@@ -161,11 +161,11 @@ def get_default_artifact(
     
     Priority:
     1. Primary artifact from step-specific rule (e.g., wannier's .wout, bands' .gnu)
-    2. Fallback to {step_type}.out if it exists
+    2. Fallback to {step_type_spec}.out if it exists
     3. None if no suitable default
     
     Args:
-        step_type: Step type
+        step_type_spec: Spec step type (e.g., "qe_scf", "w90_wannier")
         params: Step parameters
         raw_dir: Raw directory
         artifacts_list: List of artifact filenames that exist
@@ -174,13 +174,13 @@ def get_default_artifact(
         Default artifact filename (or None)
     """
     # Step 1: Get primary artifacts from rule
-    rule = STEP_ARTIFACT_RULES.get(step_type.lower())
+    rule = STEP_ARTIFACT_RULES.get(step_type_spec.lower())
     if rule:
         try:
-            primary_artifacts = rule(step_type, params, raw_dir)
+            primary_artifacts = rule(step_type_spec, params, raw_dir)
             
             # Special handling for bands: prefer .gnu over .dat
-            if step_type.lower() == "bands":
+            if step_type_spec.lower() == "bands":
                 # First, try to find .gnu file
                 for artifact in primary_artifacts:
                     if artifact.endswith(".gnu") and artifact in artifacts_list:
@@ -218,7 +218,7 @@ def get_default_artifact(
                                 non_empty_primary = artifact
                 
                 # If we have a primary artifact (even if empty), use it only if no stdout available
-                stdout_file = f"{step_type}.out"
+                stdout_file = f"{step_type_spec}.out"
                 if stdout_file in artifacts_list:
                     stdout_path = raw_dir / stdout_file
                     if stdout_path.exists() and stdout_path.stat().st_size > 0:
@@ -231,8 +231,8 @@ def get_default_artifact(
         except Exception:
             pass
     
-    # Step 2: Fallback to {step_type}.out
-    stdout_file = f"{step_type}.out"
+    # Step 2: Fallback to {step_type_spec}.out
+    stdout_file = f"{step_type_spec}.out"
     if stdout_file in artifacts_list:
         stdout_path = raw_dir / stdout_file
         if stdout_path.exists() and stdout_path.stat().st_size > 0:

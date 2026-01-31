@@ -1093,10 +1093,11 @@ def detect_workflow_type(calculation_dir: Path) -> str:
                 step_types.add(step_type.lower())
     
     # Workflow detection rules (order matters - more specific first)
-    if "md" in step_types or "vc-md" in step_types:
+    # VC is a parameter, not a separate gen step
+    if "md" in step_types:
         return "MD"
     
-    if "relax" in step_types or "vc-relax" in step_types:
+    if "relax" in step_types:
         return "Relaxation"
     
     if "ph" in step_types:

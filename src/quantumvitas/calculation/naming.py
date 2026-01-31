@@ -51,7 +51,7 @@ class CalculationFileNaming:
     })
     
     @classmethod
-    def input_extension(cls, step_type: str) -> str:
+    def input_extension(cls, step_type_gen: str) -> str:
         """
         Get appropriate input file extension for a step type.
         
@@ -59,7 +59,7 @@ class CalculationFileNaming:
         pw.x steps get simple .in extension.
         Special case: pw2wannier uses .in (not .pw2wannier.in) for brevity.
         """
-        step_lower = step_type.lower()
+        step_lower = step_type_gen.lower()
         if step_lower == "pw2wannier":
             # Special case: use .in (pw2wan.in) instead of .pw2wannier.in
             return ".in"
@@ -68,9 +68,9 @@ class CalculationFileNaming:
         return ".in"
     
     @classmethod
-    def output_extension(cls, step_type: str) -> str:
+    def output_extension(cls, step_type_gen: str) -> str:
         """Get output file extension for a step type."""
-        step_lower = step_type.lower()
+        step_lower = step_type_gen.lower()
         if step_lower == "pw2wannier":
             # Special case: use .out (pw2wan.out) instead of .pw2wannier.out
             return ".out"
@@ -79,31 +79,31 @@ class CalculationFileNaming:
         return ".out"
     
     @classmethod
-    def input_filename(cls, step_type: str, working_dir: Optional[Path] = None) -> str:
+    def input_filename(cls, step_type_gen: str, working_dir: Optional[Path] = None) -> str:
         """
-        Generate human-readable input filename for a step based on step_type.
+        Generate human-readable input filename for a step based on step_type_gen.
         
-        Uses step_type (e.g., "scf", "nscf") instead of ULID for human readability.
+        Uses step_type_gen (e.g., "scf", "nscf") instead of ULID for human readability.
         If multiple steps of the same type exist, numbers them (e.g., "scf-1.in", "scf-2.in").
         
         Args:
-            step_type: Step type (e.g., "scf", "nscf", "dos")
+            step_type_gen: Gen step type (e.g., "scf", "nscf", "dos")
             working_dir: Optional working directory to check for existing files
             
         Returns:
             Filename like "scf.in" or "scf-1.in" if duplicates exist
         """
-        step_lower = step_type.lower()
+        step_lower = step_type_gen.lower()
         if step_lower == "pw2wannier":
             # Special case: use "pw2wan.in" instead of "pw2wannier.in"
             return "pw2wan.in"
         
-        ext = cls.input_extension(step_type)
-        base_name = f"{step_type}{ext}"
+        ext = cls.input_extension(step_type_gen)
+        base_name = f"{step_type_gen}{ext}"
         
         # If working_dir is provided, check for duplicates and number them
         if working_dir and working_dir.exists():
-            base_stem = step_type
+            base_stem = step_type_gen
             existing_files = list(working_dir.glob(f"{base_stem}*{ext}"))
             
             # Count how many files with this step_type already exist
@@ -133,29 +133,29 @@ class CalculationFileNaming:
         return base_name
     
     @classmethod
-    def output_filename(cls, step_type: str, working_dir: Optional[Path] = None) -> str:
+    def output_filename(cls, step_type_gen: str, working_dir: Optional[Path] = None) -> str:
         """
-        Generate expected output filename for a step based on step_type.
+        Generate expected output filename for a step based on step_type_gen.
         
-        Uses step_type (e.g., "scf", "nscf") instead of ULID for human readability.
+        Uses step_type_gen (e.g., "scf", "nscf") instead of ULID for human readability.
         If multiple steps of the same type exist, numbers them (e.g., "scf-1.out", "scf-2.out").
         
         Args:
-            step_type: Step type (e.g., "scf", "nscf", "dos")
+            step_type_gen: Gen step type (e.g., "scf", "nscf", "dos")
             working_dir: Optional working directory to check for existing files
             
         Returns:
             Filename like "scf.out" or "scf-1.out" if duplicates exist
         """
-        ext = cls.output_extension(step_type)
-        base_name = f"{step_type}{ext}"
+        ext = cls.output_extension(step_type_gen)
+        base_name = f"{step_type_gen}{ext}"
         
         # If working_dir is provided, check for duplicates and number them
         if working_dir and working_dir.exists():
-            base_stem = step_type
+            base_stem = step_type_gen
             existing_files = list(working_dir.glob(f"{base_stem}*{ext}"))
             
-            # Count how many files with this step_type already exist
+            # Count how many files with this step_type_gen already exist
             existing_numbers = set()
             for file in existing_files:
                 stem = file.stem

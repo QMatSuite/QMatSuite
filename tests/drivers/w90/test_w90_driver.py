@@ -48,10 +48,10 @@ class TestW90Driver:
         assert "cross_engine" in driver.get_capabilities()
 
     def test_materialization_map(self):
-        """W90 has GEN_WANNIER mapping (SSOT for Wannier steps)."""
+        """W90 has wannier mapping (SSOT for Wannier steps)."""
         driver = W90Driver()
         mat_map = driver.get_materialization_map()
-        assert mat_map == {"GEN_WANNIERPREP": "w90_wannierprep", "GEN_WANNIER": "w90_wannier"}
+        assert mat_map == {"wannierprep": "w90_wannierprep", "wannier": "w90_wannier"}
 
 
 class TestW90Registration:

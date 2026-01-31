@@ -105,7 +105,7 @@ class W90Driver(BaseEngineDriver):
             "cross_engine",  # Requires DFT output
         }
 
-    def supports_incremental_skip(self, step_type: str) -> bool:
+    def supports_incremental_skip(self, step_type_spec: str) -> bool:
         """All W90 steps can be skipped if done."""
         return True
 

@@ -141,12 +141,12 @@ def test_w90_kpoints_match_nscf_order(diamond_nscf_input, tmp_path):
     structure_file = structures_dir / "diamond.json"
     structure.to(fmt="json", filename=str(structure_file))
     
-    # Create w90_preproc step spec
+    # Create wannierprep step spec
     spec = StructureStepSpec(
         meta=ResourceMeta(ulid="01W90",
-            name="w90_preproc",
-            slug="w90_preproc",
-            path="steps/w90_preproc.step.yaml",
+            name="wannierprep",
+            slug="wannierprep",
+            path="steps/wannierprep.step.yaml",
             kind="step"
         ),
         step_type_spec="w90_wannierprep",

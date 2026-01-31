@@ -245,9 +245,9 @@ def generate_demo_snapshot() -> Dict[str, Any]:
         "wannier_plot": win_input.wannier_plot,
         "wannier_plot_supercell": win_input.wannier_plot_supercell,
     }
-    w90_preproc_step = create_step_spec("w90_preproc", 2, seedname, params=w90_preproc_params)
-    w90_preproc_step["depends_on"] = [steps[1]["meta"]["id"]]  # Depends on NSCF
-    steps.append(w90_preproc_step)
+    w90_wannierprep_step = create_step_spec("w90_wannierprep", 2, seedname, params=w90_preproc_params)
+    w90_wannierprep_step["depends_on"] = [steps[1]["meta"]["id"]]  # Depends on NSCF
+    steps.append(w90_wannierprep_step)
     
     # pw2wannier90 step: remove prefix/outdir (injected from calculation level)
     pw2wan_params = {
@@ -259,11 +259,11 @@ def generate_demo_snapshot() -> Dict[str, Any]:
         "spin_component": pw2wan_input.spin_component,
     }
     pw2wan_step = create_step_spec("pw2wannier90", 3, seedname, params=pw2wan_params)
-    pw2wan_step["depends_on"] = [steps[1]["meta"]["id"], steps[2]["meta"]["id"]]  # Depends on NSCF and w90_preproc
+    pw2wan_step["depends_on"] = [steps[1]["meta"]["id"], steps[2]["meta"]["id"]]  # Depends on NSCF and w90_wannierprep
     steps.append(pw2wan_step)
     
-    # W90 run step: generate .win file (same structure as w90_preproc)
-    w90_run_params = {
+    # W90 wannier step: generate .win file (same structure as w90_wannierprep)
+    w90_wannier_params = {
         "seedname": seedname,
         "num_wann": win_input.num_wann,
         "num_iter": win_input.num_iter,
@@ -275,9 +275,9 @@ def generate_demo_snapshot() -> Dict[str, Any]:
         "wannier_plot": win_input.wannier_plot,
         "wannier_plot_supercell": win_input.wannier_plot_supercell,
     }
-    w90_run_step = create_step_spec("w90_run", 4, seedname, params=w90_run_params)
-    w90_run_step["depends_on"] = [steps[3]["meta"]["id"]]  # Depends on pw2wannier90
-    steps.append(w90_run_step)
+    w90_wannier_step = create_step_spec("w90_wannier", 4, seedname, params=w90_wannier_params)
+    w90_wannier_step["depends_on"] = [steps[3]["meta"]["id"]]  # Depends on pw2wannier90
+    steps.append(w90_wannier_step)
     
     # Build the full snapshot (canonical format)
     project_id = generate_ulid()
@@ -357,16 +357,16 @@ def main():
         print(f"    2. nscf (pw.x, uniform k-grid)")
         print(f"    3. w90_preproc (wannier90.x -pp)")
         print(f"    4. pw2wannier90 (pw2wannier90.x)")
-        print(f"    5. w90_run (wannier90.x)")
+        print(f"    5. wannier (wannier90.x)")
         print()
         print("To run the demo:")
         print(f"  1. Load project in QMatSuite UI")
         print(f"  2. Or use CLI: qv run --project <demo_project_path>")
         print()
         print("Expected outputs:")
-        print(f"  - diamond.nnkp (from w90_preproc)")
+        print(f"  - diamond.nnkp (from wannierprep)")
         print(f"  - diamond.mmn, diamond.amn, diamond.eig (from pw2wannier90)")
-        print(f"  - diamond.wout, diamond.chk (from w90_run)")
+        print(f"  - diamond.wout, diamond.chk (from wannier)")
         
         return 0
         

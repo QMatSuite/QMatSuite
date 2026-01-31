@@ -27,39 +27,39 @@ import quantumvitas.drivers
 class TestDriverMaterializationCompleteness:
     """Test that all drivers define complete materialization maps."""
 
-    # Expected GEN types for each engine (minimum required)
+    # Expected gen types for each engine (minimum required)
     EXPECTED_GEN_TYPES = {
         "qe": [
-            "GEN_SCF",
-            "GEN_NSCF",
-            "GEN_RELAX",
-            "GEN_BANDS",
-            "GEN_DOS",
+            "scf",
+            "nscf",
+            "relax",
+            "bandspw",
+            "dos",
         ],
         "vasp": [
-            "GEN_SCF",
-            "GEN_NSCF",
-            "GEN_RELAX",
-            "GEN_BANDS",
+            "scf",
+            "nscf",
+            "relax",
+            "bandspw",
         ],
         "pyscf": [
-            "GEN_SCF",
-            "GEN_MP2",
-            "GEN_TD",
+            "scf",
+            "mp2",
+            "td",
         ],
         "orca": [
-            "GEN_SCF",
-            "GEN_HF",
-            "GEN_TD",
+            "scf",
+            "hf",
+            "td",
         ],
         "lammps": [
-            "GEN_MD",
-            "GEN_RELAX",
+            "md",
+            "relax",
         ],
         "cp2k": [
-            "GEN_SCF",
-            "GEN_RELAX",
-            "GEN_MD",
+            "scf",
+            "relax",
+            "md",
         ],
     }
 
@@ -105,18 +105,15 @@ class TestMaterializeStep:
     @pytest.mark.parametrize(
         "gen_step,engine,expected",
         [
-            ("SCF", "qe", "qe_scf"),
-            ("GEN_SCF", "qe", "qe_scf"),
-            ("scf", "qe", "qe_scf"),  # lowercase
-            ("NSCF", "qe", "qe_nscf"),
-            ("RELAX", "qe", "qe_relax"),
-            ("VC_RELAX", "qe", "qe_relax"),  # Maps to same step type
-            ("SCF", "vasp", "vasp_scf"),
-            ("SCF", "pyscf", "pyscf_scf"),
-            ("TD", "pyscf", "pyscf_td"),
-            ("MD", "lammps", "lammps_md"),
-            ("RELAX", "lammps", "lammps_relax"),
-            ("SCF", "cp2k", "cp2k_scf"),
+            ("scf", "qe", "qe_scf"),
+            ("nscf", "qe", "qe_nscf"),
+            ("relax", "qe", "qe_relax"),
+            ("scf", "vasp", "vasp_scf"),
+            ("scf", "pyscf", "pyscf_scf"),
+            ("td", "pyscf", "pyscf_td"),
+            ("md", "lammps", "lammps_md"),
+            ("relax", "lammps", "lammps_relax"),
+            ("scf", "cp2k", "cp2k_scf"),
         ],
     )
     def test_materialize_step_success(self, gen_step: str, engine: str, expected: str):
@@ -171,7 +168,7 @@ class TestDematerializeStep:
         assert result is None
 
 
-class TestDematerializeToGeneralizedStep:
+class TestDematerializeToGenStep:
     """Test the dematerialize_to_generalized_step() function."""
 
     @pytest.mark.parametrize(
@@ -194,7 +191,7 @@ class TestDematerializeToGeneralizedStep:
         assert result == expected_gen
 
 
-class TestGetSupportedGeneralizedSteps:
+class TestGetSupportedGenSteps:
     """Test the get_supported_generalized_steps() function."""
 
     def test_qe_has_expected_steps(self):
@@ -223,11 +220,11 @@ class TestGetEngineFamiliesForStep:
         # Should include at least QE and PySCF
         assert "qe" in engines or len(engines) > 0
 
-    def test_gen_prefix_handled(self):
-        """Test that GEN_ prefix is handled correctly."""
-        engines_no_prefix = get_engine_families_for_step("SCF")
-        engines_with_prefix = get_engine_families_for_step("GEN_SCF")
-        assert engines_no_prefix == engines_with_prefix
+    def test_gen_step_lookup(self):
+        """Test that gen step lookup works correctly."""
+        engines = get_engine_families_for_step("scf")
+        assert "qe" in engines
+        assert "pyscf" in engines
 
 
 class TestZeroMappings:
@@ -239,8 +236,7 @@ class TestZeroMappings:
             pytest.skip("VASP not registered")
 
         # VASP DOS is integrated in NSCF output
-        assert _is_zero_mapping("DOS", "vasp") is True
-        assert _is_zero_mapping("GEN_DOS", "vasp") is True
+        assert _is_zero_mapping("dos", "vasp") is True
 
     def test_qe_dos_is_not_zero_mapping(self):
         """Test that QE DOS is NOT a zero-mapping (it has a real step)."""

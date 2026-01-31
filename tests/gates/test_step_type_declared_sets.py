@@ -268,7 +268,7 @@ class StepTypeLiteralVisitor(ast.NodeVisitor):
                     line=lineno,
                     key=key,
                     value=value_node.value,
-                    expected_set="GEN_SET",
+                    expected_set="gen_set",
                 ))
         elif key == "step_type_spec":
             if value not in self.spec_set:
@@ -375,11 +375,11 @@ class TestStepTypeDeclaredSets:
             pytest.fail(report)
 
     def test_gen_set_not_empty(self):
-        """Verify GEN_SET is populated from SSOT."""
+        """Verify gen_set is populated from SSOT."""
         gen_set = get_gen_set()
-        assert len(gen_set) > 0, "GEN_SET should not be empty"
-        assert "scf" in gen_set, "GEN_SET should contain 'scf'"
-        assert "nscf" in gen_set, "GEN_SET should contain 'nscf'"
+        assert len(gen_set) > 0, "gen_set should not be empty"
+        assert "scf" in gen_set, "gen_set should contain 'scf'"
+        assert "nscf" in gen_set, "gen_set should contain 'nscf'"
 
     def test_spec_set_not_empty(self):
         """Verify SPEC_SET is populated from SSOT."""
@@ -395,7 +395,7 @@ class TestStepTypeDeclaredSets:
 
 if __name__ == "__main__":
     print("=== Gate C1: Declared StepType Enforcement (SSOT-based) ===")
-    print(f"GEN_SET ({len(get_gen_set())} types): {sorted(get_gen_set())}")
+    print(f"gen_set ({len(get_gen_set())} types): {sorted(get_gen_set())}")
     print(f"SPEC_SET ({len(get_spec_set())} types): {sorted(get_spec_set())[:30]}...")
 
     violations, files_scanned = scan_all_files()

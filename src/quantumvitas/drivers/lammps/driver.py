@@ -27,7 +27,8 @@ class LAMMPSDriver(BaseEngineDriver):
 
     PREFIX: str = "lammps"
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
-        "minimize", "md", "relax", "nvt", "npt"
+        "minimize", "md", "relax"
+        # nvt and npt are MD ensemble parameters, not separate gen steps
     })
 
     # ─────────────────────────────────────────────────────────────────────
@@ -145,10 +146,10 @@ class LAMMPSDriver(BaseEngineDriver):
             "trajectory",  # Produces trajectory files
         }
 
-    def supports_incremental_skip(self, step_type: str) -> bool:
+    def supports_incremental_skip(self, step_type_spec: str) -> bool:
         """MD steps should not be skipped (continuation matters)."""
         md_steps = {"lammps_md", "lammps_nve", "lammps_nvt", "lammps_npt", "lammps_equilibrate"}
-        if step_type in md_steps:
+        if step_type_spec in md_steps:
             return False
         return True
 

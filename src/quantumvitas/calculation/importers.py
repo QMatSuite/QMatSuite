@@ -48,7 +48,7 @@ class CalculationImportResult:
 
 def _build_step_spec_from_qe_input_data(
     qe_input: QEInput,
-    step_type: str,
+    step_type_gen: str,
     *,
     apply_defaults: bool = False,
 ) -> tuple[Dict[str, Dict[str, object]], Dict[str, Dict[str, object]]]:
@@ -57,7 +57,7 @@ def _build_step_spec_from_qe_input_data(
     
     Args:
         qe_input: Parsed QE input
-        step_type: Step type (scf, nscf, etc.)
+        step_type_gen: Gen step type (e.g., "scf", "nscf", "bandspw")
         apply_defaults: If True, merge extracted parameters with in-code defaults.
                        If False, use only what's in the input file.
     
@@ -72,7 +72,7 @@ def _build_step_spec_from_qe_input_data(
         # Merge with in-code defaults (defaults provide base, extracted params override)
         from quantumvitas.calculation.step_defaults import get_default_step_params
         
-        defaults = get_default_step_params(step_type)
+        defaults = get_default_step_params(step_type_gen)
         default_params = defaults.get("parameters", {})
         default_cards = defaults.get("cards", {})
         
@@ -190,10 +190,14 @@ def build_step_spec_from_qe_input(
         # structure_ulid will be None or set by caller (fallback to last structure)
         structure_ulid = structure_ulid  # Keep provided value or None
 
-    step_type = _infer_step_type(qe_input)
+    step_type_gen = _infer_step_type(qe_input)  # Returns gen type (e.g., "scf", "bandspw")
     parameters, cards = _build_step_spec_from_qe_input_data(
-        qe_input, step_type, apply_defaults=apply_defaults
+        qe_input, step_type_gen, apply_defaults=apply_defaults
     )
+    
+    # Convert gen type to spec type (QE import always uses "qe" engine)
+    from quantumvitas.workflow.step_type_convert import spec_from
+    step_type_spec = spec_from("qe", step_type_gen)
     
     # Extract species_overrides from ATOMIC_SPECIES card (if present)
     # ATOMIC_SPECIES should not be in cards - it should be in species_overrides
@@ -245,7 +249,7 @@ def build_step_spec_from_qe_input(
         meta=step_meta,
         structure_ulid=structure_ulid,  # Always set structure_ulid (ID-only model)
         structure=structure_selector,  # Legacy selector (empty if using ID-only)
-        step_type_spec=step_type,
+        step_type_spec=step_type_spec,
         parameters=parameters,
         input_name=input_path.name,
         cards=cards,
@@ -256,7 +260,7 @@ def build_step_spec_from_qe_input(
     return StepImportResult(
         step_ulid=step_ulid,
         structure_ulid=structure_ulid,
-        step_type_spec=step_type,
+        step_type_spec=step_type_spec,
         parameters=parameters,
         spec=spec,
         spec_path=step_file,
@@ -612,10 +616,10 @@ def _infer_step_type(qe_input: QEInput) -> str:
             "scf": "scf",
             "nscf": "nscf",
             "bands": "bandspw",
-            "relax": "relax",
-            "vc-relax": "vc-relax",
-            "md": "md",
-            "vc-md": "vc-md",
+            "relax": "relax",  # VC is a parameter, not a separate gen step
+            "vc-relax": "relax",  # Map to unified "relax" gen step
+            "md": "md",  # VC is a parameter, not a separate gen step
+            "vc-md": "md",  # Map to unified "md" gen step
         }
         return mapping.get(calculation, calculation)
 

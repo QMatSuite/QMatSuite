@@ -892,13 +892,13 @@ class QVService:
                 # Resolve step to get step_type
                 step = require_step(project_root, calculation_selector, step_selector)
 
-                # Get step_type and parameters from step spec
+                # Get step_type_spec and parameters from step spec
                 spec = None
                 step_params = {}
-                step_type = None
+                step_type_spec = None
                 try:
                     spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=None)
-                    step_type = spec.step_type_spec
+                    step_type_spec = spec.step_type_spec
                     step_params = spec.parameters or {}
                 except Exception:
                     # Fallback: try to get from calculation.yaml step entry
@@ -910,19 +910,19 @@ class QVService:
                     calc_yaml_path = calculation_dir / "calculation.yaml"
                     wf_model = load_calculation(calc_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
                     step_entry = next((e for e in wf_model.steps if e.step_ulid == step_selector), None)
-                    step_type = step_entry.step_type_spec if step_entry and step_entry.step_type_spec else None
+                    step_type_spec = step_entry.step_type_spec if step_entry and step_entry.step_type_spec else None
                     if step_entry and hasattr(step_entry, 'parameters'):
                         step_params = step_entry.parameters or {}
 
                 # Get raw directory
                 raw_dir = find_calculation_raw_dir(calculation_dir)
 
-                if not step_type or not raw_dir.exists():
+                if not step_type_spec or not raw_dir.exists():
                     raw_dir_rel = raw_dir.relative_to(project_root) if raw_dir.is_relative_to(project_root) else str(raw_dir)
                     return {"raw_dir": str(raw_dir_rel), "artifacts": []}
 
                 # Use gen type for filenames
-                gen_step_type = normalize_step_type_to_gen(step_type)
+                gen_step_type = normalize_step_type_to_gen(step_type_spec)
                 output_ext = CalculationFileNaming.output_extension(gen_step_type)
                 step_type_lower = gen_step_type.lower()
 
@@ -1527,14 +1527,14 @@ class QVService:
                     self._service.project_root, calc_selector, step_selector, config=config, index=index
                 )
                 spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=None)
-                step_type = spec.step_type_spec
+                step_type_spec = spec.step_type_spec
 
                 # Validate step type (convert to GEN type for comparison)
                 from quantumvitas.api import get_step_type_gen
-                step_gen = get_step_type_gen(step_type)
+                step_gen = get_step_type_gen(step_type_spec)
                 if step_gen not in ("relax", "vc-relax", "vc_relax"):
                     raise ValidationError(
-                        f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type})"
+                        f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type_spec})"
                     )
 
                 # Find output file (use GEN type for filename, e.g., "vc-relax.out" not "qe_vc-relax.out")
@@ -2678,13 +2678,17 @@ class QVService:
                 
                 for step in calc_obj.steps:
                     step_ulid = step.id
-                    step_type = step.step_type_spec if hasattr(step, 'step_type_spec') else None
+                    step_type_spec = step.step_type_spec if hasattr(step, 'step_type_spec') else None
                     
-                    if not step_type:
+                    if not step_type_spec:
                         continue
                     
-                    # Get defaults for step type
-                    defaults = get_default_step_params(step_type)
+                    # Convert spec to gen for get_default_step_params (which expects gen type)
+                    from quantumvitas.workflow.step_type_convert import gen_from
+                    step_type_gen = gen_from(step_type_spec)
+                    
+                    # Get defaults for step type (using gen type)
+                    defaults = get_default_step_params(step_type_gen)
                     
                     # Get step params (if available)
                     step_params = {}
@@ -2698,7 +2702,7 @@ class QVService:
                         merged[section].update(step_params.get(section, {}))
                     
                     effective_params[step_ulid] = {
-                        "step_type_gen": step_type,
+                        "step_type_gen": step_type_gen,
                         "parameters": merged,
                         "cards": defaults.get("cards", {}),
                     }
@@ -3354,7 +3358,7 @@ class QVService:
                         pass
 
                     # Use entry.step_type_spec (SPEC type from calculation.yaml) as primary
-                    step_type = entry.step_type_spec
+                    step_type_spec = entry.step_type_spec
                     step_name = step_resolved.meta.name if step_resolved and step_resolved.meta else step_ulid
                     step_status = "pending"
 
@@ -3362,8 +3366,8 @@ class QVService:
                         try:
                             spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolver)
                             # Only use spec.step_type_spec if entry didn't have one
-                            if not step_type:
-                                step_type = spec.step_type_spec
+                            if not step_type_spec:
+                                step_type_spec = spec.step_type_spec
                             step_name = spec.meta.name if spec.meta else step_name
                             step_status = spec.status if hasattr(spec, "status") else "pending"
                         except Exception:
@@ -3371,19 +3375,19 @@ class QVService:
 
                     # Convert step_type_spec to step_type_gen for response
                     step_type_gen = None
-                    if step_type:
+                    if step_type_spec:
                         try:
                             from quantumvitas.api import get_step_type_gen
-                            step_type_gen = get_step_type_gen(step_type)
+                            step_type_gen = get_step_type_gen(step_type_spec)
                         except (KeyError, ValueError):
                             pass
                     
                     step_summaries.append({
                         "ulid": step_ulid,  # Backwards compat
                         "step_ulid": step_ulid,
-                        "step_type_spec": step_type,
-                        "step_type_gen": step_type_gen if step_type_gen else step_type,
-                        "type": step_type_gen if step_type_gen else step_type,  # Backwards compat alias
+                        "step_type_spec": step_type_spec,
+                        "step_type_gen": step_type_gen if step_type_gen else step_type_spec,
+                        "type": step_type_gen if step_type_gen else step_type_spec,  # Backwards compat alias
                         "name": step_name,
                         "status": step_status,
                         "missing": not (step_path and step_path.exists()),
@@ -3571,7 +3575,7 @@ class QVService:
         def add_step(
             self,
             calc_selector: str,
-            step_type: str,
+            step_type_gen: str,
             *,
             name: str | None = None,
             params: dict | None = None,
@@ -3581,8 +3585,8 @@ class QVService:
             
             Args:
                 calc_selector: Calculation selector
-                step_type: Step type (e.g., "scf", "nscf", "qe_scf" - accepts both public and machine types)
-                name: Optional step name (defaults to step_type)
+                step_type_gen: Step type (e.g., "scf", "nscf" - gen type, or "qe_scf" - spec type, accepts both)
+                name: Optional step name (defaults to step_type_gen)
                 params: Optional parameter overrides (applied via apply_patch, respects managed keys)
                 
             Returns:
@@ -3590,7 +3594,7 @@ class QVService:
                 
             Raises:
                 NotFoundError: If calculation not found
-                ValidationError: If step_type is invalid or unmapped
+                ValidationError: If step_type_gen is invalid or unmapped
                 APIError: For other step creation failures
             """
             try:
@@ -3622,23 +3626,23 @@ class QVService:
                 structure_ulid = calc_model.structure_ulid if calc_model else None
                 
                 # Determine step name
-                step_name = name or step_type
+                step_name = name or step_type_gen
 
-                # Validate step_type and get public type for calculation.yaml
+                # Validate step_type_gen and get spec type for calculation.yaml
                 # Use engine_family to pick the correct engine-specific step type
                 registry = get_registry()
                 engine_family = getattr(calc_model, 'engine_family', None) or "qe"
-                spec = registry.get_for_engine(step_type, engine_family)
+                spec = registry.get_for_engine(step_type_gen, engine_family)
                 if not spec:
                     # Try generic lookup as fallback
-                    spec = registry.get(step_type)
+                    spec = registry.get(step_type_gen)
                 if not spec:
-                    # Unknown step_type
+                    # Unknown step_type_gen
                     from quantumvitas.api.errors import ValidationError
                     raise ValidationError(
-                        f"Unknown step type: {step_type}",
+                        f"Unknown step type: {step_type_gen}",
                         code="VALIDATION_FAILED",
-                        context={"step_type_gen": step_type}
+                        context={"step_type_gen": step_type_gen}
                     )
                 
                 # Use gen type for calculation.yaml (registry.get() accepts both gen and spec types)
@@ -6860,7 +6864,7 @@ class QVService:
     def init_step(
         project_root: Path | str,
         calculation_selector: str,
-        step_type: str,
+        step_type_gen: str,
         name: str | None = None,
         structure_selector: str | None = None,
     ) -> Any:
@@ -6872,8 +6876,8 @@ class QVService:
         Args:
             project_root: Project root path
             calculation_selector: Parent calculation selector
-            step_type: Step type (scf, nscf, dos, bands, etc.)
-            name: Optional step name (defaults to step_type)
+            step_type_gen: Step type (scf, nscf, dos, bands, etc.)
+            name: Optional step name (defaults to step_type_gen)
             structure_selector: Optional structure (defaults to calculation's structure)
 
         Returns:
@@ -6892,7 +6896,7 @@ class QVService:
             steps_dir = calculation_dir / "steps"
             steps_dir.mkdir(exist_ok=True)
 
-            step_name = name or step_type
+            step_name = name or step_type_gen
             step_ulid = generate_resource_id()
             step_slug = slugify(step_name)
 
@@ -6922,14 +6926,14 @@ class QVService:
                     structure=local_structure_selector,
                 )
 
-            # Phase 3C: Materialize step_type using engine_family
+            # Phase 3C: Materialize step_type_gen using engine_family
             engine_family = getattr(wf_model, 'engine_family', None) if calculation_yaml_path.exists() else None
             if engine_family:
                 from quantumvitas.workflow.generalized_steps import materialize_public_step_key
-                materialized_type = materialize_public_step_key(step_type, engine_family)
-                machine_step_type = materialized_type if materialized_type else step_type
+                materialized_type = materialize_public_step_key(step_type_gen, engine_family)
+                machine_step_type = materialized_type if materialized_type else step_type_gen
             else:
-                machine_step_type = step_type
+                machine_step_type = step_type_gen
 
             # Resolve structure selector to structure_ulid
             structure_ulid = None
@@ -6940,7 +6944,7 @@ class QVService:
                 structure_ulid = resolved_structure.meta.ulid
 
             # Get defaults for step type
-            defaults = get_default_step_params(step_type)
+            defaults = get_default_step_params(step_type_gen)
 
             # Create step doc
             step_doc = create_step_doc(
@@ -7416,12 +7420,12 @@ class QVService:
 
             # Get step type to verify it's a relax step
             step_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
-            step_type = step_data.get("step_type_spec", "")
+            step_type_spec = step_data.get("step_type_spec", "")
 
-            if "relax" not in step_type.lower() and "vc-" not in step_type.lower() and "md" not in step_type.lower():
+            if "relax" not in step_type_spec.lower() and "vc-" not in step_type_spec.lower() and "md" not in step_type_spec.lower():
                 from quantumvitas.api.errors import ValidationError
                 raise ValidationError(
-                    f"Step '{step_selector}' is not a relax step (type: {step_type})"
+                    f"Step '{step_selector}' is not a relax step (type: {step_type_spec})"
                 )
 
             # Find generated structure (uses step ULID for path)
@@ -7523,43 +7527,43 @@ class QVService:
         return _extract(entry)
     
     @staticmethod
-    def get_default_step_params(step_type: str) -> dict[str, Any]:
+    def get_default_step_params(step_type_gen: str) -> dict[str, Any]:
         """
         Get default parameters for a step type.
         
         This is a backwards-compatibility wrapper for the legacy QVService.get_default_step_params().
         
         Args:
-            step_type: Step type (e.g., "qe_scf", "qe_nscf", "scf", "nscf")
+            step_type_gen: Step type (e.g., "scf", "nscf" - gen type, or "qe_scf", "qe_nscf" - spec type, accepts both)
             
         Returns:
             Dict with "parameters", "cards", and "species_overrides" keys.
-            Returns empty dicts if step_type is not recognized.
+            Returns empty dicts if step_type_gen is not recognized.
         """
         from quantumvitas.calculation.step_defaults import get_default_step_params as _get_default_step_params
-        return _get_default_step_params(step_type)
+        return _get_default_step_params(step_type_gen)
 
     @staticmethod
-    def resolve_step_type_spec(step_type: str, engine_family: str = "qe") -> str:
+    def resolve_step_type_spec(step_type_gen: str, engine_family: str = "qe") -> str:
         """
         Resolve a GEN step type to a SPEC step type for a given engine.
 
-        GEN layer: step_type (e.g., "scf") - used in UI/workflow/presets
+        GEN layer: step_type_gen (e.g., "scf") - used in UI/workflow/presets
         SPEC layer: step_type_spec (e.g., "qe_scf") - persisted in step.yaml
 
         Args:
-            step_type: GEN step type (e.g., "scf", "relax") or SPEC type (returned as-is if valid)
+            step_type_gen: GEN step type (e.g., "scf", "relax") or SPEC type (returned as-is if valid)
             engine_family: Engine family (e.g., "qe", "pyscf", "lammps", "orca")
 
         Returns:
             SPEC step type (e.g., "qe_scf", "pyscf_scf", "lammps_relax")
-            If step_type is already a valid SPEC type, returns it as-is.
-            If no match found, returns the original step_type.
+            If step_type_gen is already a valid SPEC type, returns it as-is.
+            If no match found, returns the original step_type_gen.
         """
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
-        spec_obj = registry.get_for_engine(step_type, engine_family)
-        return spec_obj.step_type_spec if spec_obj else step_type
+        spec_obj = registry.get_for_engine(step_type_gen, engine_family)
+        return spec_obj.step_type_spec if spec_obj else step_type_gen
 
     @staticmethod
     def generate_kpath(
@@ -7795,14 +7799,14 @@ class QVService:
 
         # Load step spec
         spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=None)
-        step_type = spec.step_type_spec
+        step_type_spec = spec.step_type_spec
 
         # Validate step type (convert to GEN type for comparison)
         from quantumvitas.api import get_step_type_gen
-        step_gen = get_step_type_gen(step_type)
+        step_gen = get_step_type_gen(step_type_spec)
         if step_gen not in ("relax", "vc-relax", "vc_relax"):
             raise ValueError(
-                f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type})"
+                f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type_spec})"
             )
 
         # Check if structure already created (idempotency check)

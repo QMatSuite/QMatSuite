@@ -145,11 +145,14 @@ class EngineDriver(Protocol):
         ...
 
     def get_materialization_map(self) -> dict[str, str]:
-        """Return GEN→SPEC mapping for generalized steps.
+        """Return gen→spec mapping for generalized steps.
 
-        Keys are generalized types (e.g., 'GEN_SCF').
+        Keys are gen step names (e.g., 'scf').
         Values are engine-specific types (e.g., 'vasp_scf').
         Return empty dict if engine doesn't support generalized steps.
+        
+        Note: This method MUST return purely derived mappings:
+        {gen: f"{PREFIX}_{gen}"} for gen in SUPPORTED_GEN_STEPS.
         """
         ...
 
@@ -182,7 +185,7 @@ class BaseEngineDriver:
         """
         return set()
 
-    def supports_incremental_skip(self, step_type: str) -> bool:
+    def supports_incremental_skip(self, step_type_spec: str) -> bool:
         """Default: all steps can be skipped if already done.
 
         Override to return False for steps that should always run
@@ -236,7 +239,7 @@ class BaseEngineDriver:
         """
         return None
 
-    def resolve_executable(self, step_type: str) -> Path | None:
+    def resolve_executable(self, step_type_spec: str) -> Path | None:
         """Default: use PATH lookup.
 
         Override to implement custom executable resolution.
