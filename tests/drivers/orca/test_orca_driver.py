@@ -42,12 +42,12 @@ class TestORCADriver:
         assert recipe_class is not None
 
     def test_materialization_map(self):
-        """Test GEN→SPEC mappings."""
+        """Test gen→spec mappings."""
         driver = ORCADriver()
         mat_map = driver.get_materialization_map()
 
-        assert mat_map["GEN_SCF"] == "orca_scf"
-        assert mat_map["GEN_OPT"] == "orca_opt"
+        assert mat_map["scf"] == "orca_scf"
+        assert mat_map["relax"] == "orca_relax"
 
     def test_workdir_policy_isolated(self):
         """ORCA should use ISOLATED policy (default)."""

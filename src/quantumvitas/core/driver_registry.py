@@ -181,14 +181,14 @@ class DriverRegistry:
     def _build_materialization_map(self, driver: EngineDriver) -> dict[str, str]:
         """Build materialization map from PREFIX + SUPPORTED_GEN_STEPS.
         
-        If driver has PREFIX and SUPPORTED_GEN_STEPS, builds map using spec_from().
-        Applies special case overrides for drivers that need them.
+        Pure derivation only: {gen: f"{PREFIX}_{gen}"} for supported gens.
+        No exceptions, no special cases, no overrides.
         
         Args:
             driver: Driver instance
             
         Returns:
-            Materialization map: {GEN_*: spec_type}
+            Materialization map: {gen: spec_type} where spec_type = f"{prefix}_{gen}"
         """
         mat_map: dict[str, str] = {}
         
@@ -197,46 +197,11 @@ class DriverRegistry:
             prefix = driver.PREFIX
             supported_gen_steps = driver.SUPPORTED_GEN_STEPS
             for gen_step in supported_gen_steps:
-                gen_type = f"GEN_{gen_step.upper().replace('-', '_')}"
+                # Pure derivation: gen (lowercase) → spec = f"{prefix}_{gen}"
                 spec_type = spec_from(prefix, gen_step)
-                mat_map[gen_type] = spec_type
-        
-        # Apply special case overrides
-        self._apply_special_case_overrides(driver, mat_map)
+                mat_map[gen_step] = spec_type
         
         return mat_map
-    
-    def _apply_special_case_overrides(self, driver: EngineDriver, mat_map: dict[str, str]) -> None:
-        """Apply special case overrides for drivers that need them.
-        
-        This handles cases where GEN_* types don't map 1:1 to spec_from(prefix, gen_step).
-        For example: GEN_VC_RELAX -> qe_relax (not qe_vc_relax).
-        
-        Args:
-            driver: Driver instance
-            mat_map: Materialization map to modify in-place
-        """
-        family = driver.engine_family
-        
-        # QE special cases
-        if family == "qe":
-            mat_map["GEN_VC_RELAX"] = "qe_relax"  # Not qe_vc_relax
-            mat_map["GEN_BANDS_POST"] = "qe_bands"  # Not qe_bands_post
-            mat_map["GEN_WANNIER_CONVERT"] = "qe_pw2wannier"  # Not qe_wannier_convert
-            mat_map["GEN_BANDS"] = "qe_bandspw"  # Not qe_bands
-            mat_map["GEN_PHONON"] = "qe_ph"  # Not qe_phonon - ph.x uses "ph" not "phonon"
-            mat_map["GEN_VC_MD"] = "qe_vc_md"  # Underscore not hyphen
-
-        # VASP special cases
-        if family == "vasp":
-            mat_map["GEN_VC_RELAX"] = "vasp_relax"  # Not vasp_vc-relax
-
-        # CP2K special cases
-        if family == "cp2k":
-            mat_map["GEN_VC_RELAX"] = "cp2k_relax"  # Not cp2k_vc_relax
-            mat_map["GEN_VC_MD"] = "cp2k_md"  # Not cp2k_vc_md
-            mat_map["GEN_OPT"] = "cp2k_geo_opt"  # Not cp2k_opt
-            mat_map["GEN_CELL_OPT"] = "cp2k_cell_opt"  # Not cp2k_cell_opt
 
     @classmethod
     def get_driver(cls, engine_family: str) -> EngineDriver:
@@ -257,11 +222,11 @@ class DriverRegistry:
         return instance._drivers[engine_family]
 
     @classmethod
-    def get_handler(cls, step_type: str) -> Callable[["Job", dict[str, Any]], "JobResult"]:
+    def get_handler(cls, step_type_spec: str) -> Callable[["Job", dict[str, Any]], "JobResult"]:
         """Get handler for step type.
 
         Args:
-            step_type: Step type identifier (e.g., 'vasp_scf')
+            step_type_spec: Spec step type identifier (e.g., 'vasp_scf', 'qe_scf')
 
         Returns:
             Handler function
@@ -270,10 +235,10 @@ class DriverRegistry:
             UnknownStepTypeError: If step type not registered
         """
         instance = cls.get_instance()
-        if step_type not in instance._step_to_engine:
-            raise UnknownStepTypeError(step_type, list(instance._step_types.keys()))
+        if step_type_spec not in instance._step_to_engine:
+            raise UnknownStepTypeError(step_type_spec, list(instance._step_types.keys()))
 
-        engine = instance._step_to_engine[step_type]
+        engine = instance._step_to_engine[step_type_spec]
         driver = instance._drivers[engine]
         return driver.get_handler()
 
@@ -294,11 +259,11 @@ class DriverRegistry:
         return driver.get_recipe_class()
 
     @classmethod
-    def get_step_type_spec(cls, step_type: str) -> StepTypeSpec:
+    def get_step_type_spec(cls, step_type_spec: str) -> StepTypeSpec:
         """Get specification for step type.
 
         Args:
-            step_type: Step type identifier (e.g., 'vasp_scf')
+            step_type_spec: Spec step type identifier (e.g., 'vasp_scf', 'qe_scf')
 
         Returns:
             StepTypeSpec instance
@@ -307,16 +272,16 @@ class DriverRegistry:
             UnknownStepTypeError: If step type not registered
         """
         instance = cls.get_instance()
-        if step_type not in instance._step_types:
-            raise UnknownStepTypeError(step_type, list(instance._step_types.keys()))
-        return instance._step_types[step_type]
+        if step_type_spec not in instance._step_types:
+            raise UnknownStepTypeError(step_type_spec, list(instance._step_types.keys()))
+        return instance._step_types[step_type_spec]
 
     @classmethod
-    def get_engine_for_step_type(cls, step_type: str) -> str:
+    def get_engine_for_step_type(cls, step_type_spec: str) -> str:
         """Get engine family for step type.
 
         Args:
-            step_type: Step type identifier (e.g., 'vasp_scf')
+            step_type_spec: Spec step type identifier (e.g., 'vasp_scf', 'qe_scf')
 
         Returns:
             Engine family string
@@ -325,9 +290,9 @@ class DriverRegistry:
             UnknownStepTypeError: If step type not registered
         """
         instance = cls.get_instance()
-        if step_type not in instance._step_to_engine:
-            raise UnknownStepTypeError(step_type, list(instance._step_types.keys()))
-        return instance._step_to_engine[step_type]
+        if step_type_spec not in instance._step_to_engine:
+            raise UnknownStepTypeError(step_type_spec, list(instance._step_types.keys()))
+        return instance._step_to_engine[step_type_spec]
 
     @classmethod
     def materialize_step_type(cls, engine_family: str, gen_type: str) -> str:
@@ -335,7 +300,7 @@ class DriverRegistry:
 
         Args:
             engine_family: Engine identifier (e.g., 'vasp')
-            gen_type: Generalized type (e.g., 'GEN_SCF')
+            gen_type: Generalized type (e.g., 'scf') - lowercase gen step name, NOT GEN_* format
 
         Returns:
             Engine-specific step type (e.g., 'vasp_scf')
@@ -349,19 +314,24 @@ class DriverRegistry:
         if engine_family not in instance._drivers:
             raise UnknownEngineError(engine_family, list(instance._drivers.keys()))
 
+        # Normalize gen_type to lowercase (remove GEN_ prefix if present for backward compat during migration)
+        gen_type_lower = gen_type.lower()
+        if gen_type_lower.startswith("gen_"):
+            gen_type_lower = gen_type_lower[4:]
+
         mat_map = instance._materialization_maps.get(engine_family, {})
-        if gen_type not in mat_map:
+        if gen_type_lower not in mat_map:
             raise UnknownMaterializationError(
-                engine_family, gen_type, list(mat_map.keys())
+                engine_family, gen_type_lower, list(mat_map.keys())
             )
 
-        return mat_map[gen_type]
+        return mat_map[gen_type_lower]
 
     @classmethod
-    def is_step_type_registered(cls, step_type: str) -> bool:
+    def is_step_type_registered(cls, step_type_spec: str) -> bool:
         """Check if step type is registered."""
         instance = cls.get_instance()
-        return step_type in instance._step_types
+        return step_type_spec in instance._step_types
 
     @classmethod
     def is_engine_registered(cls, engine_family: str) -> bool:

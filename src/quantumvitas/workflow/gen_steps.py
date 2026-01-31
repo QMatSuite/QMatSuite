@@ -12,16 +12,17 @@ class GenStepRegistry:
     """Central registry of all valid GEN step names."""
 
     # All valid GEN steps (NO underscores allowed by constitution)
+    # VC is a parameter, NOT a gen step (see constitution §7.1, §7.2)
     GEN_STEPS: FrozenSet[str] = frozenset({
         # SCF-family (PBC and molecular)
         "scf",
         "hf",
         "nscf",
         # Optimization
-        "relax",
-        # Electronic structure (QE post-processing)
-        "bands",
-        "bandspw",
+        "relax",  # VC vs non-VC is a parameter, not a separate gen step
+        # Electronic structure
+        "bands",  # Post-processing (bands.x)
+        "bandspw",  # Computation (pw.x with calculation='bands')
         "dos",
         "projwfc",
         "pp",
@@ -30,13 +31,13 @@ class GenStepRegistry:
         "pw2wannier",
         "wannier",
         # Phonon
-        "ph",
+        "ph",  # ph.x uses "ph" not "phonon"
         "q2r",
         "matdyn",
         "dynmat",
         # Dynamics
-        "md",
-        "vc-md",
+        "md",  # VC vs non-VC is a parameter, not a separate gen step
+        "minimize",  # Energy minimization (LAMMPS, etc.)
         # Post-HF (molecular)
         "mp2",
         "td",

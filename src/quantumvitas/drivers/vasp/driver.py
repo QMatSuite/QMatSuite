@@ -21,7 +21,7 @@ class VASPDriver(BaseEngineDriver):
 
     PREFIX: str = "vasp"
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
-        "scf", "nscf", "relax", "vc-relax", "md", "bands"
+        "scf", "nscf", "relax", "md", "bandspw"
     })
 
     # ─────────────────────────────────────────────────────────────────────
@@ -68,13 +68,8 @@ class VASPDriver(BaseEngineDriver):
                 description="VASP ionic relaxation",
                 category="calculation",
             ),
-            StepTypeSpec(
-                step_type_spec="vasp_vc_relax",
-                engine="vasp",
-                executable="vasp_std",
-                description="VASP variable-cell relaxation",
-                category="calculation",
-            ),
+            # Removed: vasp_vc_relax - VC is a parameter, not a separate step type
+            # Use vasp_relax with ISIF=3 parameter instead
             StepTypeSpec(
                 step_type_spec="vasp_md",
                 engine="vasp",
@@ -94,7 +89,7 @@ class VASPDriver(BaseEngineDriver):
                 step_type_spec="vasp_dos",
                 engine="vasp",
                 executable="vasp_std",
-                description="VASP density of states (explicit step type, not mapped from GEN_DOS)",
+                description="VASP density of states (explicit step type, not mapped from gen step 'dos')",
                 category="calculation",
             ),
             StepTypeSpec(
@@ -147,15 +142,15 @@ class VASPDriver(BaseEngineDriver):
 
 
     def _get_zero_mappings(self) -> set[str]:
-        """Return GEN types that are explicit zero-mappings (no step needed).
+        """Return gen steps that are explicit zero-mappings (no step needed).
 
         These are operations that VASP handles implicitly in other steps.
+        Note: This method is deprecated. Zero-mappings are now determined by
+        absence from SUPPORTED_GEN_STEPS.
         """
         return {
-            "GEN_DOS",        # DOS integrated in NSCF output
-            "GEN_DOSPP",      # DOS integrated in NSCF output (PUBLIC key alias)
-            "GEN_BANDS_POST", # VASP doesn't need post-processing
-            "GEN_BANDSPP",    # VASP doesn't need post-processing (PUBLIC key alias)
+            "dos",        # DOS integrated in NSCF output
+            "bands",      # VASP doesn't need post-processing (bands.x equivalent)
         }
 
     # ─────────────────────────────────────────────────────────────────────
@@ -175,9 +170,9 @@ class VASPDriver(BaseEngineDriver):
             "charge_continuation", "wfn_continuation",
         }
 
-    def supports_incremental_skip(self, step_type: str) -> bool:
+    def supports_incremental_skip(self, step_type_spec: str) -> bool:
         """MD steps should not be skipped."""
-        if step_type == "vasp_md":
+        if step_type_spec == "vasp_md":
             return False
         return True
 

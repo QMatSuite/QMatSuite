@@ -269,7 +269,7 @@ def _is_ulid(value: str) -> bool:
     return value.startswith("01") and value.isalnum()
 
 
-def _derive_step_name_from_type(step_type: str) -> str:
+def _derive_step_name_from_type(step_type_spec: str) -> str:
     """Derive semantic step name from step type."""
     # Map qe_ prefixed types back to semantic names
     TYPE_TO_NAME = {
@@ -285,7 +285,7 @@ def _derive_step_name_from_type(step_type: str) -> str:
         "qe_projwfc": "projwfc",
         "bandspw": "bands",
     }
-    return TYPE_TO_NAME.get(step_type, step_type.replace("qe_", ""))
+    return TYPE_TO_NAME.get(step_type_spec, step_type_spec.replace("qe_", ""))
 
 
 def _should_derive_step_name(name: str) -> bool:
@@ -417,10 +417,10 @@ def _shape_change_calculation_structure(response: Dict[str, Any]) -> Dict[str, A
 
     # Shape steps
     for step in response.get("steps", []):
-        step_type = step.get("type", "")
+        step_type_spec = step.get("type", "")
         # Derive name from type if missing
         if _should_derive_step_name(step.get("name", "")):
-            step["name"] = _derive_step_name_from_type(step_type)
+            step["name"] = _derive_step_name_from_type(step_type_spec)
         # Data should already have step_type_spec from kernel
         # Convert to GEN for v0 RPC response
         if "step_type_spec" in step:
@@ -788,10 +788,10 @@ def _shape_update_calculation_species_map(response: Dict[str, Any]) -> Dict[str,
 
     # Shape steps
     for step in response.get("steps", []):
-        step_type = step.get("type", "")
+        step_type_spec = step.get("type", "")
         # Derive name from type if missing
         if _should_derive_step_name(step.get("name", "")):
-            step["name"] = _derive_step_name_from_type(step_type)
+            step["name"] = _derive_step_name_from_type(step_type_spec)
         # Data should already have step_type_spec from kernel
         # Convert to GEN for v0 RPC response
         if "step_type_spec" in step:

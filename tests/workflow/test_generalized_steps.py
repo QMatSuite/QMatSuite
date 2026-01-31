@@ -9,7 +9,6 @@ See test_materialization_ssot.py for comprehensive SSOT tests.
 import pytest
 
 from quantumvitas.workflow.generalized_steps import (
-    GeneralizedStep,
     materialize_step,
     materialize_workflow,
     dematerialize_step,
@@ -21,46 +20,46 @@ from quantumvitas.core.driver_registry import DriverRegistry
 import quantumvitas.drivers  # Ensure drivers are loaded
 
 
-class TestGeneralizedStepMaterialization:
+class TestGenStepMaterialization:
     """Test materialization of generalized steps to engine-specific steps."""
     
     def test_materialize_scf_qe(self):
-        """SCF materializes to qe_scf for qe family."""
-        result = materialize_step("SCF", "qe")
+        """scf materializes to qe_scf for qe family."""
+        result = materialize_step("scf", "qe")
         assert result == "qe_scf"
     
     def test_materialize_scf_pyscf(self):
-        """SCF materializes to pyscf_scf for pyscf family."""
-        result = materialize_step("SCF", "pyscf")
+        """scf materializes to pyscf_scf for pyscf family."""
+        result = materialize_step("scf", "pyscf")
         assert result == "pyscf_scf"
     
     def test_materialize_unsupported_combination(self):
         """Unsupported combinations return None."""
-        result = materialize_step("WANNIER", "pyscf")
+        result = materialize_step("wannier", "pyscf")
         assert result is None
     
     def test_materialize_workflow_basic(self):
         """Materialize a simple workflow."""
-        result = materialize_workflow(["SCF", "NSCF", "DOS"], "qe")
+        result = materialize_workflow(["scf", "nscf", "dos"], "qe")
         assert result == ["qe_scf", "qe_nscf", "qe_dos"]
     
     def test_materialize_workflow_qe_bands(self):
         """Materialize QE bands workflow.
 
-        Note: "BANDS" maps to qe_bands (bands.x post-processing) via StepTypeRegistry.
-        For pw.x bands calculation, use "BANDS_PW" or direct GEN_BANDS.
+        Note: "bands" maps to qe_bands (bands.x post-processing).
+        For pw.x bands calculation, use "bandspw".
         """
         result = materialize_workflow(
-            ["SCF", "NSCF", "BANDS"],
+            ["scf", "nscf", "bands"],
             "qe"
         )
-        # BANDS maps to qe_bands (bands.x), not qe_bands_pw (pw.x)
+        # bands maps to qe_bands (bands.x), not qe_bandspw (pw.x)
         assert result == ["qe_scf", "qe_nscf", "qe_bands"]
 
-    def test_materialize_workflow_wannier_convert(self):
-        """Materialize QE Wannier convert step."""
+    def test_materialize_workflow_pw2wannier(self):
+        """Materialize QE pw2wannier step."""
         result = materialize_workflow(
-            ["SCF", "NSCF", "WANNIER_CONVERT"],
+            ["scf", "nscf", "pw2wannier"],
             "qe"
         )
         assert result == ["qe_scf", "qe_nscf", "qe_pw2wannier"]
@@ -75,20 +74,20 @@ class TestDematerialization:
     """Test reverse materialization (engine-specific → generalized)."""
 
     def test_dematerialize_qe_scf(self):
-        """qe_scf dematerializes to (qe, GEN_SCF)."""
+        """qe_scf dematerializes to (qe, scf)."""
         result = dematerialize_step("qe_scf")
-        assert result == ("qe", "GEN_SCF")
+        assert result == ("qe", "scf")
 
     def test_dematerialize_to_generalized_step(self):
-        """Dematerialize to generalized step only (GEN_ prefix stripped)."""
+        """Dematerialize to generalized step only."""
         result = dematerialize_to_generalized_step("qe_scf")
-        assert result == "SCF"
+        assert result == "scf"
 
         result = dematerialize_to_generalized_step("pyscf_scf")
-        assert result == "SCF"
+        assert result == "scf"
 
         result = dematerialize_to_generalized_step("w90_wannier")
-        assert result == "WANNIER"
+        assert result == "wannier"
 
     def test_dematerialize_unknown_step(self):
         """Unknown steps return None."""
@@ -128,41 +127,29 @@ class TestSupportedSteps:
     def test_get_supported_generalized_steps_qe(self):
         """Get generalized steps supported by qe family."""
         supported = get_supported_generalized_steps("qe")
-        assert "SCF" in supported
-        assert "NSCF" in supported
-        assert "DOS" in supported
-        # WANNIER is now in w90 driver, not QE
-        assert "WANNIER_CONVERT" in supported  # QE has pw2wannier90
+        assert "scf" in supported
+        assert "nscf" in supported
+        assert "dos" in supported
+        # wannier is now in w90 driver, not QE
+        assert "pw2wannier" in supported  # QE has pw2wannier90
 
     def test_get_supported_generalized_steps_pyscf(self):
         """Get generalized steps supported by pyscf family."""
         supported = get_supported_generalized_steps("pyscf")
-        assert "SCF" in supported
-        assert len(supported) >= 1  # At least SCF
+        assert "scf" in supported
+        assert len(supported) >= 1  # At least scf
 
     def test_get_supported_generalized_steps_w90(self):
         """Get generalized steps supported by w90 family."""
         supported = get_supported_generalized_steps("w90")
-        assert "WANNIER" in supported
+        assert "wannier" in supported
 
     def test_get_engine_families_for_step(self):
         """Get engine families that support a generalized step."""
-        families = get_engine_families_for_step("SCF")
+        families = get_engine_families_for_step("scf")
         assert "qe" in families
         assert "pyscf" in families
 
-        families = get_engine_families_for_step("WANNIER")
-        assert "w90" in families  # WANNIER is now in w90 driver
-
-
-class TestGeneralizedStepEnum:
-    """Test GeneralizedStep enum."""
-    
-    def test_enum_values(self):
-        """Generalized step enum has expected values."""
-        assert GeneralizedStep.SCF == "SCF"
-        assert GeneralizedStep.NSCF == "NSCF"
-        assert GeneralizedStep.BANDS == "BANDS"
-        assert GeneralizedStep.BANDS_POST == "BANDS_POST"
-        assert GeneralizedStep.WANNIER == "WANNIER"
+        families = get_engine_families_for_step("wannier")
+        assert "w90" in families  # wannier is now in w90 driver
 

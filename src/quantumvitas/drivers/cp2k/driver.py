@@ -23,7 +23,7 @@ class CP2KDriver(BaseEngineDriver):
 
     PREFIX: str = "cp2k"
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
-        "scf", "relax", "vc-relax", "opt", "cell_opt", "md", "vc-md", "bands", "dos"
+        "scf", "relax", "md", "bandspw", "dos"
     })
 
     # ─────────────────────────────────────────────────────────────────────
@@ -136,7 +136,7 @@ class CP2KDriver(BaseEngineDriver):
             "restart", "wfn_continuation",
         }
 
-    def supports_incremental_skip(self, step_type: str) -> bool:
+    def supports_incremental_skip(self, step_type_spec: str) -> bool:
         """MD steps should not be skipped."""
         if step_type == "cp2k_md":
             return False

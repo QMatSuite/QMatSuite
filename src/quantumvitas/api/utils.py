@@ -1818,7 +1818,7 @@ def run_input_step(
     input_file,
     working_dir,
     project_root=None,
-    step_type=None,
+    step_type_spec=None,
     parameter_overrides=None,
     card_overrides=None,
     species_overrides=None,
@@ -1832,7 +1832,7 @@ def run_input_step(
         input_file: Path to input file
         working_dir: Working directory
         project_root: Project root (for pseudo resolution)
-        step_type: Step type hint
+        step_type_spec: Step type spec hint (e.g., "qe_scf")
         parameter_overrides: Parameter overrides dict
         card_overrides: Card overrides dict
         species_overrides: Species overrides dict
@@ -1847,7 +1847,7 @@ def run_input_step(
         input_file=input_file,
         working_dir=working_dir,
         project_root=project_root,
-        step_type=step_type,
+        step_type_spec=step_type_spec,
         parameter_overrides=parameter_overrides,
         card_overrides=card_overrides,
         species_overrides=species_overrides,

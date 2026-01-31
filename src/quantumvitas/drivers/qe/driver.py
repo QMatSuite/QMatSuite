@@ -8,8 +8,8 @@ class QEDriver(BaseEngineDriver):
 
     PREFIX: str = "qe"
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
-        "scf", "nscf", "relax", "vc-relax", "bands", "bands_post", "dos",
-        "wannier_convert", "phonon", "md", "vc-md", "custom"
+        "scf", "nscf", "relax", "bands", "bandspw", "dos",
+        "pw2wannier", "ph", "md", "custom"
     })
 
     @property

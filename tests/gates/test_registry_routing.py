@@ -91,7 +91,7 @@ class TestMaterialization:
         import quantumvitas.drivers
 
         from quantumvitas.core.driver_registry import DriverRegistry
-        spec_type = DriverRegistry.materialize_step_type("qe", "GEN_SCF")
+        spec_type = DriverRegistry.materialize_step_type("qe", "scf")
         assert spec_type == "qe_scf"
 
     def test_materialize_unknown_gen_type_raises(self):
@@ -102,9 +102,9 @@ class TestMaterialization:
         from quantumvitas.core.driver_exceptions import UnknownMaterializationError
 
         with pytest.raises(UnknownMaterializationError) as exc_info:
-            DriverRegistry.materialize_step_type("qe", "GEN_NONEXISTENT")
+            DriverRegistry.materialize_step_type("qe", "nonexistent")
 
-        assert "GEN_NONEXISTENT" in str(exc_info.value)
+        assert "nonexistent" in str(exc_info.value)
 
     def test_materialize_unknown_engine_raises(self):
         """Unknown engine should raise UnknownEngineError."""
@@ -112,7 +112,7 @@ class TestMaterialization:
         from quantumvitas.core.driver_exceptions import UnknownEngineError
 
         with pytest.raises(UnknownEngineError):
-            DriverRegistry.materialize_step_type("nonexistent", "GEN_SCF")
+            DriverRegistry.materialize_step_type("nonexistent", "scf")
 
 
 class TestRecipeRouting:

@@ -16,7 +16,7 @@ class TestGenTypeTokens:
     """Tests for stable token mapping (immutable contract)."""
 
     def test_token_mapping_exists(self):
-        """GEN_TYPE_TOKENS constant should exist."""
+        """GEN_TYPE_TOKENS constant should exist (legitimate constant name, not step type)."""
         from quantumvitas.workflow.registry import GEN_TYPE_TOKENS
 
         assert isinstance(GEN_TYPE_TOKENS, dict)

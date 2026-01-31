@@ -42,12 +42,12 @@ class TestPySCFDriver:
         assert recipe_class is not None
 
     def test_materialization_map(self):
-        """Test GEN→SPEC mappings."""
+        """Test gen→spec mappings."""
         driver = PySCFDriver()
         mat_map = driver.get_materialization_map()
 
-        assert mat_map["GEN_SCF"] == "pyscf_scf"
-        assert mat_map["GEN_OPT"] == "pyscf_opt"
+        assert mat_map["scf"] == "pyscf_scf"
+        assert mat_map["relax"] == "pyscf_relax"
 
     def test_python_native_capability(self):
         """PySCF should have python_native capability."""

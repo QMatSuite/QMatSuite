@@ -220,33 +220,26 @@ STEP_TYPE_TO_CALCULATION = {
 
 def generate_qe_input_from_structure(
     structure: PMGStructure | PMGMolecule,
-    step_type: str,
+    step_type_gen: str,
     parameter_overrides: Sequence[ParameterOverride] | None = None,
 ) -> QEInput:
     """
     Build a QE input from a structure plus step metadata.
 
     Args:
-        step_type: Either GEN type (e.g., "nscf") or SPEC type (e.g., "qe_nscf").
-                   Will be normalized to GEN type for QE calculation parameter.
+        step_type_gen: Gen step type (e.g., "scf", "nscf", "relax", "md").
+                      Will be converted to QE calculation parameter value.
     """
 
     qe_input = qe_input_from_structure(structure)
 
     overrides: list[ParameterOverride] = []
-    if step_type:
-        step_type_lower = step_type.lower()
-        # Strip engine prefix (e.g., "qe_vc-relax" -> "vc-relax") for QE calculation parameter
+    if step_type_gen:
+        step_type_lower = step_type_gen.lower()
+        # Convert gen step type to QE calculation value (e.g., bandspw -> bands)
         # Note: Do NOT use normalize_step_type_to_gen here as it applies aliases (vc-relax -> relax)
         # which would change the actual QE calculation type
-        ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_")
-        step_gen_type = step_type_lower
-        for prefix in ENGINE_PREFIXES:
-            if step_type_lower.startswith(prefix):
-                step_gen_type = step_type_lower[len(prefix):]
-                break
-        # Convert step_type to QE calculation value (e.g., bandspw -> bands)
-        calculation_value = STEP_TYPE_TO_CALCULATION.get(step_gen_type, step_gen_type)
+        calculation_value = STEP_TYPE_TO_CALCULATION.get(step_type_lower, step_type_lower)
         overrides.append(
             ParameterOverride(
                 name="calculation",
@@ -364,7 +357,7 @@ def stable_short_calc_prefix(ulid: str) -> str:
 
 def _inject_calculation_prefix_outdir(
     qe_input: QEInput,
-    step_type: str,
+    step_type_spec: str,
     calculation_prefix: Optional[str],
     calculation_outdir: str,
     spec_params: Dict[str, Any],
@@ -381,14 +374,14 @@ def _inject_calculation_prefix_outdir(
     
     Args:
         qe_input: QEInput object to modify
-        step_type: Step type (e.g., "scf", "pw2wannier")
+        step_type_spec: Spec step type (e.g., "qe_scf", "qe_pw2wannier")
         calculation_prefix: Calculation-level prefix (stable id-derived prefix from calc ULID)
         calculation_outdir: Calculation-level outdir (defaults to "./outdir")
         spec_params: Step spec parameters (to detect ignored step-level prefix/outdir)
         logger: Logger instance for diagnostic messages
     """
     # Determine which QE module this step uses
-    step_type_lower = step_type.lower()
+    step_type_lower = step_type_spec.lower()
     # Convert step_type_spec (e.g., 'qe_scf') to step_type_gen (e.g., 'scf') for lookup
     step_gen_type = _normalize_step_type_to_gen(step_type_lower)
     module = STEP_TYPE_MODULE_MAP.get(step_gen_type)
@@ -449,7 +442,7 @@ def _inject_calculation_prefix_outdir(
             namelist.parameters["prefix"] = calculation_prefix
             logger.info(
                 f"[PREFIX_INJECTION] Injected stable id-derived prefix '{calculation_prefix}' "
-                f"into {target_section}.prefix (step_type={step_type}, module={module.value})"
+                f"into {target_section}.prefix (step_type_spec={step_type_spec}, module={module.value})"
             )
     
     # R2: Inject outdir if schema defines it
@@ -467,7 +460,7 @@ def _inject_calculation_prefix_outdir(
             namelist.parameters["outdir"] = calculation_outdir
             logger.info(
                 f"[PREFIX_INJECTION] Injected calculation outdir '{calculation_outdir}' "
-                f"into {target_section}.outdir (step_type={step_type}, module={module.value})"
+                f"into {target_section}.outdir (step_type_spec={step_type_spec}, module={module.value})"
             )
 
 
@@ -554,7 +547,7 @@ def generate_qe_input_from_spec(
         combined_overrides.extend(extra_overrides)
     qe_input = generate_qe_input_from_structure(
         structure=structure,
-        step_type=step_gen_type,  # Use GEN type (e.g., "nscf"), not SPEC type (e.g., "qe_nscf")
+        step_type_gen=step_gen_type,  # Use GEN type (e.g., "nscf"), not SPEC type (e.g., "qe_nscf")
         parameter_overrides=combined_overrides,
     )
     
@@ -834,7 +827,7 @@ def materialize_step_spec(
     if step_type_gen in WANNIER90_STEP_TYPES:
         # WANNIER90 PATH: Generate .win or .pw2wan files, skip QE input generation
         logger.info(
-            f"[MATERIALIZE_STEP_SPEC] Wannier90 step detected: step_type={step_type_gen}, "
+            f"[MATERIALIZE_STEP_SPEC] Wannier90 step detected: step_type_gen={step_type_gen}, "
             f"skipping QE input generation and validation"
         )
 
@@ -1098,7 +1091,7 @@ def materialize_step_spec(
     # Phase 3C: PySCF steps - no input file generation (PySCF engine builds input dynamically)
     if is_pyscf_step:
         logger.info(
-            f"[MATERIALIZE_STEP_SPEC] PySCF step detected: step_type={step_type_lower}, "
+            f"[MATERIALIZE_STEP_SPEC] PySCF step detected: step_type_spec={step_type_lower}, "
             f"engine_family={calculation_engine_family}, skipping QE input generation. "
             f"PySCF engine will build input dynamically from structure + parameters."
         )
@@ -1120,7 +1113,7 @@ def materialize_step_spec(
     # ORCA uses molecular systems (Molecule), not periodic structures - cannot use qe_input_from_structure()
     if is_orca_step:
         logger.info(
-            f"[MATERIALIZE_STEP_SPEC] ORCA step detected: step_type={step_type_lower}, "
+            f"[MATERIALIZE_STEP_SPEC] ORCA step detected: step_type_spec={step_type_lower}, "
             f"engine_family={calculation_engine_family}, skipping QE input generation. "
             f"ORCA engine will build input dynamically from structure + parameters."
         )
@@ -1141,7 +1134,7 @@ def materialize_step_spec(
     # LAMMPS steps - no QE input file generation (LAMMPS engine builds input dynamically)
     if is_lammps_step:
         logger.info(
-            f"[MATERIALIZE_STEP_SPEC] LAMMPS step detected: step_type={step_type_lower}, "
+            f"[MATERIALIZE_STEP_SPEC] LAMMPS step detected: step_type_spec={step_type_lower}, "
             f"engine_family={calculation_engine_family}, skipping QE input generation. "
             f"LAMMPS engine will build input dynamically from structure + parameters."
         )
@@ -1162,7 +1155,7 @@ def materialize_step_spec(
     # CP2K steps - no QE input file generation (CP2K engine builds input dynamically)
     if is_cp2k_step:
         logger.info(
-            f"[MATERIALIZE_STEP_SPEC] CP2K step detected: step_type={step_type_lower}, "
+            f"[MATERIALIZE_STEP_SPEC] CP2K step detected: step_type_spec={step_type_lower}, "
             f"engine_family={calculation_engine_family}, skipping QE input generation. "
             f"CP2K engine will build input dynamically from structure + parameters."
         )
@@ -1219,7 +1212,7 @@ def materialize_step_spec(
             pass
     
     logger.info(
-        f"[MATERIALIZE_STEP_SPEC] QE step detected: step_type={step_type_lower}, "
+        f"[MATERIALIZE_STEP_SPEC] QE step detected: step_type_spec={step_type_lower}, "
         f"using QE input generation and validation"
     )
     
@@ -1306,7 +1299,7 @@ def materialize_step_spec(
     if calculation_prefix or calculation_outdir:
         _inject_calculation_prefix_outdir(
             qe_input=qe_input,
-            step_type=step_type_lower,
+            step_type_spec=step_type_lower,
             calculation_prefix=calculation_prefix,
             calculation_outdir=calculation_outdir,
             spec_params=spec_obj.parameters or {},

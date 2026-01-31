@@ -47,8 +47,9 @@ OCCUPATIONS_SCHEME_VARIANT = ParamSpaceVariant(
     dimension="occupations_scheme",
     space=OCCUPATIONS_SCHEME_SPACE,
     applies_to_step_types=frozenset({
-        "scf", "nscf", "relax", "vc-relax", "md", "vc-md",
+        "scf", "nscf", "relax", "md",
         # Note: bandspw excluded (uses kpath, not occupations)
+        # VC is a parameter, not a separate gen step
     }),
 )
 
@@ -59,7 +60,8 @@ MAGNETISM_VARIANT = ParamSpaceVariant(
     dimension="magnetism",
     space=MAGNETISM_SPACE,
     applies_to_step_types=frozenset({
-        "scf", "nscf", "bandspw", "relax", "vc-relax", "md", "vc-md",
+        "scf", "nscf", "bandspw", "relax", "md",
+        # VC is a parameter, not a separate gen step
     }),
 )
 
@@ -70,7 +72,8 @@ PRECISION_PW_DEFAULT_VARIANT = ParamSpaceVariant(
     dimension="precision",
     space=PRECISION_PW_DEFAULT_SPACE,
     applies_to_step_types=frozenset({
-        "scf", "relax", "vc-relax", "md", "vc-md",
+        "scf", "relax", "md",
+        # VC is a parameter, not a separate gen step
     }),
 )
 
@@ -97,7 +100,8 @@ CONVERGENCE_VARIANT = ParamSpaceVariant(
     dimension="convergence",
     space=CONVERGENCE_SPACE,
     applies_to_step_types=frozenset({
-        "scf", "nscf", "relax", "vc-relax", "bandspw", "md", "vc-md",
+        "scf", "nscf", "relax", "bandspw", "md",
+        # VC is a parameter, not a separate gen step
     }),
 )
 
@@ -301,14 +305,14 @@ ENUM_TO_PROFILE: Dict[str, Dict[Any, str]] = {
 # Public APIs
 # ============================================================================
 
-def get_variant(dimension: str, step_type: str) -> Optional[ParamSpaceVariant]:
+def get_variant(dimension: str, step_type_gen: str) -> Optional[ParamSpaceVariant]:
     """
     Get the variant that applies to a given dimension and step type.
 
     Args:
         dimension: Dimension name (e.g., "precision", "magnetism")
-        step_type: Step type string (e.g., "scf", "bandspw", or "qe_scf" for step_type_spec)
-                   If step_type_spec is provided, it will be mapped to step_type_gen automatically.
+        step_type_gen: Gen step type string (e.g., "scf", "bandspw")
+                       Can also accept spec type which will be mapped to gen automatically.
 
     Returns:
         ParamSpaceVariant if one applies, None otherwise
@@ -318,19 +322,21 @@ def get_variant(dimension: str, step_type: str) -> Optional[ParamSpaceVariant]:
     # This is the single mapping point - all preset/paramspace lookups go through here
     from quantumvitas.workflow.registry import get_registry
     registry = get_registry()
-    spec = registry.get(step_type)
+    spec = registry.get(step_type_gen)
     if spec and spec.step_type_gen:
         # Map step_type_spec to step_type_gen
-        step_type = spec.step_type_gen
+        actual_gen_type = spec.step_type_gen
+    else:
+        actual_gen_type = step_type_gen  # Already gen type
     
-    key = (step_type, dimension)
+    key = (actual_gen_type, dimension)
     return VARIANT_BY_STEP_AND_DIMENSION.get(key)
 
 
 def compile_dimension_patch_for_step(
     dimension: str,
     option_enum: Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption, ConvergenceOption],
-    step_type: str,
+    step_type_gen: str,
     step_yaml: Dict[str, Dict[str, Any]],
     *,
     explicit_defaults: bool = True,
@@ -359,7 +365,7 @@ def compile_dimension_patch_for_step(
         ValueError: If dimension/option not supported
     """
     # Get variant
-    variant = get_variant(dimension, step_type)
+    variant = get_variant(dimension, step_type_gen)
     if variant is None:
         # No variant applies - return empty patch
         return ({}, set())
@@ -377,7 +383,7 @@ def compile_dimension_patch_for_step(
         precision_context = precision_context or {}
         precision_context["step_yaml"] = step_yaml
         return _compile_precision_patch_for_step(
-            variant, profile_name, step_type, precision_context
+            variant, profile_name, step_type_gen, precision_context
         )
 
     # Standard ParamSpace compilation
@@ -413,7 +419,7 @@ def compile_dimension_patch_for_step(
         from quantumvitas.presets.compiler import PresetCompilationError
         raise PresetCompilationError(
             f"Multiple engine-specific patches found for dimension '{dimension}', "
-            f"profile '{profile_name}', step_type '{step_type}': {sorted(engine_names)}. "
+            f"profile '{profile_name}', step_type_gen '{step_type_gen}': {sorted(engine_names)}. "
             f"This is not allowed - only one engine-specific patch may apply."
         )
     
@@ -428,7 +434,7 @@ def compile_dimension_patch_for_step(
 def _compile_precision_patch_for_step(
     variant: ParamSpaceVariant,
     profile_name: str,
-    step_type: str,
+    step_type_gen: str,
     context: Dict[str, Any],
 ) -> Tuple[Dict[str, Dict[str, Any]], set[Tuple[str, str]]]:
     """
@@ -476,7 +482,7 @@ def _compile_precision_patch_for_step(
         if lattice_matrix is None:
             from quantumvitas.presets.compiler import PresetCompilationError
             raise PresetCompilationError(
-                f"Precision compilation for {step_type} requires lattice_matrix in context "
+                f"Precision compilation for {step_type_gen} requires lattice_matrix in context "
                 f"(variant {variant.name} includes K_POINTS)"
             )
 
@@ -546,7 +552,7 @@ def _compile_precision_patch_for_step(
 
 def detect_dimension_for_step(
     dimension: str,
-    step_type: str,
+    step_type_gen: str,
     step_yaml: Dict[str, Dict[str, Any]],
     *,
     # Precision-specific context
@@ -559,7 +565,7 @@ def detect_dimension_for_step(
 
     Args:
         dimension: Dimension name
-        step_type: Step type string
+        step_type_gen: Gen step type string (e.g., "scf", "nscf")
         step_yaml: Step YAML dict
         precision_context: Optional context for precision
 
@@ -567,7 +573,7 @@ def detect_dimension_for_step(
         Detected enum option, None if no variant applies, or CUSTOM if no match
     """
     # Get variant
-    variant = get_variant(dimension, step_type)
+    variant = get_variant(dimension, step_type_gen)
     if variant is None:
         # No variant applies - return None (not CUSTOM, dimension is N/A)
         return None
@@ -575,7 +581,7 @@ def detect_dimension_for_step(
     # Special handling for precision (uses resolver + canonical matching)
     if dimension == "precision":
         return _detect_precision_for_step(
-            variant, step_type, step_yaml, precision_context or {}
+            variant, step_type_gen, step_yaml, precision_context or {}
         )
 
     # Standard ParamSpace matching (with key-access enforcement from baac796)
@@ -599,7 +605,7 @@ def detect_dimension_for_step(
 
 def _detect_precision_for_step(
     variant: ParamSpaceVariant,
-    step_type: str,
+    step_type_gen: str,
     step_yaml: Dict[str, Dict[str, Any]],
     context: Dict[str, Any],
 ) -> Optional[PrecisionOption]:
@@ -608,7 +614,7 @@ def _detect_precision_for_step(
 
     Args:
         variant: Precision variant
-        step_type: Step type
+        step_type_gen: Gen step type (e.g., "scf", "nscf")
         step_yaml: Step YAML dict
         context: Context dict with lattice_matrix, base_ecutwfc, base_ecutrho
 

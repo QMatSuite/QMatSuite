@@ -308,17 +308,17 @@ steps: []
         if wout_file.exists() and "Final State" in wout_file.read_text():
             return True
         
-        print(f"w90_run failed. returncode={returncode}, stderr: {stderr[:500]}")
+        print(f"wannier failed. returncode={returncode}, stderr: {stderr[:500]}")
         return False
     
     def run_full_workflow(self) -> bool:
-        """Run complete SCF → NSCF → wannierprep → pw2wannier90 → w90_run workflow."""
+        """Run complete SCF → NSCF → wannierprep → pw2wannier → wannier workflow."""
         steps = [
             ("SCF", self.run_scf),
             ("NSCF", self.run_nscf),
             ("wannierprep", self.run_wannierprep),
             ("pw2wannier90", self.run_pw2wannier90),
-            ("w90_run", self.run_w90),
+            ("wannier", self.run_w90),
         ]
         
         for name, fn in steps:

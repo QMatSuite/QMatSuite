@@ -971,7 +971,7 @@ KNOWN_STEP_TYPES = {
 )
 def init_step_command(
     ctx: typer.Context,
-    step_type: str = typer.Argument(..., help="QE calculation type (scf, nscf, relax, dos, etc.)"),
+    step_type_gen: str = typer.Argument(..., help="QE calculation type (scf, nscf, relax, dos, etc.)"),
     structure: Optional[str] = typer.Option(
         None, "--structure", "-s", help="Structure id (optional if inside a calculation)"
     ),
@@ -1025,9 +1025,9 @@ def init_step_command(
         qv init step scf --no-defaults --CONTROL.calculation=scf  # Import mode, no defaults
     """
     # Validate step type
-    if step_type.lower() not in KNOWN_STEP_TYPES:
+    if step_type_gen.lower() not in KNOWN_STEP_TYPES:
         raise typer.BadParameter(
-            f"Unknown step type '{step_type}'. "
+            f"Unknown step type '{step_type_gen}'. "
             f"Known types: {', '.join(sorted(KNOWN_STEP_TYPES))}"
         )
 
@@ -1218,7 +1218,7 @@ def init_step_command(
             "  - Use --calculation to specify a calculation that has a structure"
         )
 
-    step_display_name, step_slug = _derive_step_ulidentity(name or step_type, existing_step_ulids)
+    step_display_name, step_slug = _derive_step_ulidentity(name or step_type_gen, existing_step_ulids)
 
     if calculation_dir is not None:
         spec_path = (calculation_dir / "steps" / f"{step_slug}.step.yaml").resolve()
@@ -1237,9 +1237,9 @@ def init_step_command(
     kpath_result = None
     kpath_card_overrides = {}
     if auto_kpath:
-        if step_type.lower() not in ("bands", "bandspw"):
+        if step_type_gen.lower() not in ("bands", "bandspw"):
             typer.secho(
-                f"Warning: --auto-kpath is intended for band structure steps, not '{step_type}'",
+                f"Warning: --auto-kpath is intended for band structure steps, not '{step_type_gen}'",
                 fg=typer.colors.YELLOW
             )
         
@@ -1273,7 +1273,7 @@ def init_step_command(
     apply_defaults = not no_defaults
     
     if apply_defaults:
-        defaults = QVService.get_default_step_params(step_type)
+        defaults = QVService.get_default_step_params(step_type_gen)
         default_params = defaults.get("parameters", {})
         default_cards = defaults.get("cards", {})
         default_species = defaults.get("species_overrides", {})
@@ -1341,7 +1341,7 @@ def init_step_command(
         engine_family = calculation_data.get("engine_family", "qe")
 
     # Resolve to engine-specific SPEC type
-    step_type_spec_resolved = QVService.resolve_step_type_spec(step_type, engine_family)
+    step_type_spec_resolved = QVService.resolve_step_type_spec(step_type_gen, engine_family)
 
     # Build step spec as dict (no StructureStepSpec dependency)
     # DAG model: Step YAML does NOT contain structure_ulid or parent_calculation_id
@@ -1375,7 +1375,7 @@ def init_step_command(
         # Create step entry with only step_ulid (ULID) - no step_file (resolved via registry)
         step_entry = {
             "step_ulid": spec.get("meta", {}).get("ulid"),  # Use ULID from step spec meta (canonical reference)
-            "step_type_gen": step_type,
+            "step_type_gen": step_type_gen,
             # step_file is NOT stored - step location resolved via registry using step_ulid
         }
         calculation_steps.insert(
@@ -1916,7 +1916,7 @@ def _run_standalone_step(
             input_file=generated_input,
             working_dir=workdir_path,
             project_root=workdir_path,  # Standalone: use workdir as pseudo base (workdir/pseudo)
-            step_type=spec.get("step_type_spec"),
+            step_type_spec=spec.get("step_type_spec"),
             keep_original=False,
         )
         
@@ -1948,7 +1948,7 @@ def run_structure_command(
         "--input-name",
         help="Filename for the generated QE input (defaults to <structure>.pw.in)",
     ),
-    step_type: str = typer.Option(
+    step_type_gen: str = typer.Option(
         "scf",
         "--type",
         help="QE calculation type (scf, nscf, relax, etc.).",
@@ -1980,14 +1980,14 @@ def run_structure_command(
     svc = get_service(project_root)
     qe_input = svc.generate_qe_input_from_structure(
         structure=struct,
-        step_type=step_type,
+        step_type=step_type_gen,
         parameter_overrides=bundle.parameters,
     )
     from quantumvitas.api.utils import apply_card_overrides_to_qe_input, apply_species_overrides_to_qe_input
     apply_card_overrides_to_qe_input(qe_input, bundle.card_overrides)
     apply_species_overrides_to_qe_input(qe_input, bundle.species_overrides)
 
-    generated_name = input_name or f"{struct_name}_{step_type}.pw.in"
+    generated_name = input_name or f"{struct_name}_{step_type_gen}.pw.in"
     generated_input = workdir / generated_name
     write_qe_input_file(qe_input, generated_input)
 
@@ -3852,10 +3852,10 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
         QEModule.PH: "ph",            # ph.x
     }
     
-    step_type: str
+    step_type_gen: str
     if detected_module in MODULE_TO_STEP_TYPE:
         # Post-processing or phonon module
-        step_type = MODULE_TO_STEP_TYPE[detected_module]
+        step_type_gen = MODULE_TO_STEP_TYPE[detected_module]
     else:
         # pw.x or cp.x - use calculation type
         calculation = (
@@ -3865,16 +3865,16 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
         )
         # For pw.x bands calculation, use bandspw to distinguish from bands.x
         if calculation == "bands":
-            step_type_spec= "qe_bandspw"
+            step_type_gen = "bandspw"  # Use gen type for CLI command
         else:
-            step_type = str(calculation)
+            step_type_gen = str(calculation)
 
     step_file = f"{input_file.stem}.step.yaml"
     base_cmd = [
         "qv",
         "init",
         "step",
-        step_type,
+        step_type_gen,
         "--no-defaults",  # Preserve original parameters, don't inject QV defaults
     ] + cli_args
 
@@ -5446,7 +5446,7 @@ def _execute_step_spec(
         input_file=generated_input,
         working_dir=workdir,
         project_root=project_root,
-        step_type=None,
+        step_type_spec=None,
         keep_original=False,  # Step spec serves as the source of truth
     )
     return result, prepared, generated_input

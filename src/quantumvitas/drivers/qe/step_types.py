@@ -14,13 +14,7 @@ QE_STEP_TYPE_SPECS: list[StepTypeSpec] = [
         step_type_spec="qe_relax",
         engine="qe",
         executable="pw.x",
-        description="QE relaxation",
-    ),
-    StepTypeSpec(
-        step_type_spec="qe_vc_relax",
-        engine="qe",
-        executable="pw.x",
-        description="QE variable-cell relaxation",
+        description="QE relaxation (VC is a parameter, not a separate step type)",
     ),
     StepTypeSpec(
         step_type_spec="qe_bands",
@@ -98,13 +92,7 @@ QE_STEP_TYPE_SPECS: list[StepTypeSpec] = [
         step_type_spec="qe_md",
         engine="qe",
         executable="pw.x",
-        description="QE molecular dynamics",
-    ),
-    StepTypeSpec(
-        step_type_spec="qe_vc_md",
-        engine="qe",
-        executable="pw.x",
-        description="QE variable-cell molecular dynamics",
+        description="QE molecular dynamics (VC is a parameter, not a separate step type)",
     ),
     StepTypeSpec(
         step_type_spec="qe_pw2wannier",

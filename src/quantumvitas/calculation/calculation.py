@@ -222,7 +222,7 @@ class Calculation:
         
         # Track step types to generate unique filenames (only number if duplicates exist)
         # Count is incremented inside _build_step_from_spec when generating filename
-        step_type_counts: Dict[str, int] = {}  # step_type -> count of steps with this type seen so far
+        step_type_counts: Dict[str, int] = {}  # step_type_gen -> count of steps with this type seen so far
         
         # Log materialization entry
         if materialize_steps:
@@ -533,13 +533,13 @@ def _build_step_inspection(
     if engine_name is None:
         # Try to infer from step type (from step_data or step file)
         # Check step_type_spec first (canonical), then type field
-        step_type = (step_data.get("step_type_spec") or step_file_data.get("step_type_spec") or
-                     step_data.get("type") or step_file_data.get("type"))
-        if step_type:
+        step_type_spec = (step_data.get("step_type_spec") or step_file_data.get("step_type_spec") or
+                          step_data.get("type") or step_file_data.get("type"))
+        if step_type_spec:
             # First try workflow registry lookup
             from quantumvitas.workflow.registry import get_registry
             registry = get_registry()
-            spec = registry.get(step_type)
+            spec = registry.get(step_type_spec)
             if spec:
                 engine_name = spec.engine
             
@@ -548,21 +548,27 @@ def _build_step_inspection(
                 import quantumvitas.drivers
                 from quantumvitas.core.driver_registry import DriverRegistry
                 
-                # Check if step_type is already a machine type
-                if DriverRegistry.is_step_type_registered(step_type):
-                    engine_name = DriverRegistry.get_engine_for_step_type(step_type)
+                # Check if step_type_spec is already a spec type
+                if DriverRegistry.is_step_type_registered(step_type_spec):
+                    engine_name = DriverRegistry.get_engine_for_step_type(step_type_spec)
                 else:
-                    # Try materializing public types (e.g., "scf" -> "qe_scf")
-                    # Try all registered engine families
-                    gen_type = f"GEN_{step_type.upper()}" if not step_type.upper().startswith("GEN_") else step_type.upper()
-                    for engine_family in DriverRegistry.get_all_engines():
-                        try:
-                            materialized = DriverRegistry.materialize_step_type(engine_family, gen_type)
-                            if materialized:
-                                engine_name = engine_family
-                                break
-                        except Exception:
-                            continue
+                    # Try materializing gen types (e.g., "scf" -> "qe_scf")
+                    # step_type_spec might be a gen type, try materialization
+                    from quantumvitas.workflow.step_type_convert import is_spec, gen_from
+                    if is_spec(step_type_spec):
+                        # Already spec type, skip materialization
+                        pass
+                    else:
+                        # Assume gen type, try materialization
+                        gen_type = step_type_spec
+                        for engine_family in DriverRegistry.get_all_engines():
+                            try:
+                                materialized = DriverRegistry.materialize_step_type(engine_family, gen_type)
+                                if materialized:
+                                    engine_name = engine_family
+                                    break
+                            except Exception:
+                                continue
         
         if engine_name is None:
             raise ValueError(
@@ -609,7 +615,7 @@ def _build_step_inspection(
                 step_file_path,
                 resolve_structure_selector=resolver,
             )
-            step_type = spec.step_type_spec
+            step_type_spec = spec.step_type_spec
         except ResourceNotFoundError:
             # ULID not found in registry - treat as legacy
             is_ulid = False
@@ -643,7 +649,7 @@ def _build_step_inspection(
                     resolve_structure_selector=resolver,
                 )
                 step_meta = spec.meta  # This contains the ULID from the step file
-                step_type = spec.step_type_spec
+                step_type_spec = spec.step_type_spec
                 # Store the real ULID for migration
                 new_step_ulid = step_meta.ulid
             else:
@@ -699,7 +705,7 @@ def _build_step_inspection(
         meta=step_meta,
         input_file=dummy_input,
         engine=engine_name,
-        step_type_spec=step_type or "custom",
+        step_type_spec=step_type_spec or "custom",
         options={},
         reference_output=reference_path,
     ), False  # No migration needed (legacy calculations raise errors)
@@ -794,9 +800,12 @@ def _build_step_from_spec(
             
             # Extract all parameters and cards from the existing input file
             # Use apply_defaults=False to get only what's in the input file
+            # Convert spec type to gen type for the function
+            from quantumvitas.workflow.step_type_convert import gen_from
+            step_type_gen = gen_from(spec_preview.step_type_spec) if spec_preview.step_type_spec else "scf"
             extracted_params, extracted_cards = _build_step_spec_from_qe_input_data(
                 existing_qe_input,
-                spec_preview.step_type_spec or "scf",
+                step_type_gen,
                 apply_defaults=False,
             )
             
@@ -844,36 +853,37 @@ def _build_step_from_spec(
             logger = logging.getLogger(__name__)
             logger.warning(f"Failed to extract parameters from existing input file {existing_input_file}: {e}")
     
-    # Generate human-readable filename based on step_type
-    # Use step_type (e.g., "scf", "nscf") instead of ULID for readability
+    # Generate human-readable filename based on step_type_gen
+    # Use step_type_gen (e.g., "scf", "nscf") instead of ULID for readability
     # If multiple steps of same type exist, number them (e.g., "scf-1.in", "scf-2.in")
     if spec_preview.input_name:
         # Use explicit input_name if provided
         input_override = spec_preview.input_name
     else:
-        # Generate filename from step_type
-        step_type = spec_preview.step_type_spec or "scf"
+        # Generate filename from step_type_gen (naming functions use gen types)
+        from quantumvitas.workflow.step_type_convert import gen_from
+        step_type_gen = gen_from(spec_preview.step_type_spec) if spec_preview.step_type_spec else "scf"
         
         # Use step_type_counts to determine if we need numbering
         # Count how many steps of this type we've already processed
         if step_type_counts is not None:
-            count = step_type_counts.get(step_type, 0)
+            count = step_type_counts.get(step_type_gen, 0)
             # Increment count for this step type (will be used for next step of same type)
-            step_type_counts[step_type] = count + 1
+            step_type_counts[step_type_gen] = count + 1
             
             # If this is the first step of this type, use base name (e.g., "scf.in")
             # If there are already steps of this type, number it (e.g., "scf-1.in", "scf-2.in")
             if count == 0:
                 # First occurrence - use base name
-                ext = CalculationFileNaming.input_extension(step_type)
-                input_override = f"{step_type}{ext}"
+                ext = CalculationFileNaming.input_extension(step_type_gen)
+                input_override = f"{step_type_gen}{ext}"
             else:
                 # Duplicate step type - number it (count is already incremented, so use count)
-                ext = CalculationFileNaming.input_extension(step_type)
-                input_override = f"{step_type}-{count}{ext}"
+                ext = CalculationFileNaming.input_extension(step_type_gen)
+                input_override = f"{step_type_gen}-{count}{ext}"
         else:
             # Fallback: check working_dir for existing files (for backwards compatibility)
-            input_override = CalculationFileNaming.input_filename(step_type, working_dir=working_dir)
+            input_override = CalculationFileNaming.input_filename(step_type_gen, working_dir=working_dir)
     generated_input, spec = materialize_step_spec(
         spec_preview,
         output_dir=working_dir,
@@ -884,7 +894,7 @@ def _build_step_from_spec(
         project_root=project.root if project else None,
     )
 
-    step_type = spec.step_type_spec
+    step_type_spec = spec.step_type_spec
 
     # Ensure generated_input is a valid file path (not directory, not '.')
     if generated_input.exists() and generated_input.is_dir():
@@ -910,7 +920,7 @@ def _build_step_from_spec(
         meta=step_meta,
         input_file=input_file_value,
         engine=engine_name,
-        step_type_spec=step_type,
+        step_type_spec=step_type_spec,
         options=options,
         reference_output=reference,
     )

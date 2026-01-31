@@ -183,8 +183,8 @@ def get_preset_catalog() -> Dict[str, Any]:
             scope = {
                 "step_type_gen": "variants",
                 "variants": variant_details,
-                "step_type_spec": "qe_variants",  # Scope type indicator
-                "step_type_gen": "variants",  # Scope type indicator
+                # Note: "qe_variants" is a scope identifier, not a step type
+                # step_type_spec field omitted - this is not a real step type
             }
         else:
             # Single variant or simple case - show step types (as strings, GEN types)

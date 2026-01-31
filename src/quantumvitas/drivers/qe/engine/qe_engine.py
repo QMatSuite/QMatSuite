@@ -300,7 +300,7 @@ class QuantumEspressoEngine(Engine):
         Generate QE input file from structured input data.
         
         Args:
-            step_type: Type of calculation step
+            step_type: Step type (gen or spec - will be converted to gen for filename)
             input_data: Dictionary containing:
                 - 'namelists': Dict of namelist_name -> parameters
                 - 'cards': List of card data
@@ -311,7 +311,10 @@ class QuantumEspressoEngine(Engine):
             Path to generated input file
         """
         if input_filename is None:
-            input_filename = self.get_default_input_filename(step_type)
+            # Convert to gen type for filename generation
+            from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+            step_type_gen_for_filename = gen_from(step_type) if is_spec(step_type) else step_type
+            input_filename = self.get_default_input_filename(step_type_gen_for_filename)
         
         input_path = working_dir / input_filename
         working_dir.mkdir(parents=True, exist_ok=True)
@@ -424,7 +427,7 @@ class QuantumEspressoEngine(Engine):
         
         return command
     
-    def uses_stdin(self, step_type: str) -> bool:
+    def uses_stdin(self, step_type_gen: str) -> bool:
         """
         Check if step type uses stdin for input (vs command-line arguments).
         
@@ -432,7 +435,7 @@ class QuantumEspressoEngine(Engine):
         while most QE steps use stdin redirection.
         
         Args:
-            step_type: Type of calculation step
+            step_type_gen: Gen step type (e.g., "scf", "nscf", "wannierprep")
             
         Returns:
             True if step uses stdin, False if uses command-line arguments
@@ -440,7 +443,7 @@ class QuantumEspressoEngine(Engine):
         # These Wannier90 steps use command-line arguments, not stdin
         # pw2wannier uses -i flag to avoid Errno 21 issues with stdin redirection
         no_stdin_steps = {"wannierprep", "wannier", "pw2wannier"}
-        return step_type not in no_stdin_steps
+        return step_type_gen not in no_stdin_steps
     
     def detect_module_from_input(self, input_file: Path) -> QEModule:
         """
@@ -532,12 +535,12 @@ class QuantumEspressoEngine(Engine):
         QEInputGenerator.write_file(qe_input, output_file)
         return output_file
     
-    def get_default_input_filename(self, step_type: str) -> str:
+    def get_default_input_filename(self, step_type_gen: str) -> str:
         """Get default QE input filename."""
         # QE typically uses .in or .pwi for input files
-        return f"{step_type}.in"
+        return f"{step_type_gen}.in"
     
-    def get_default_output_filename(self, step_type: str, input_filename: str) -> str:
+    def get_default_output_filename(self, step_type_gen: str, input_filename: str) -> str:
         """Get default QE output filename."""
         # QE typically uses .out or .pwo for output files
         base = Path(input_filename).stem
@@ -561,7 +564,7 @@ class QuantumEspressoEngine(Engine):
         self,
         input_file: Path,
         working_dir: Path,
-        step_type: Optional[str] = None,
+        step_type_spec: Optional[str] = None,
         timeout: Optional[float] = None,
         environment: Optional[Dict[str, str]] = None
     ) -> StepResult:
@@ -573,7 +576,8 @@ class QuantumEspressoEngine(Engine):
         Args:
             input_file: Path to QE input file
             working_dir: Working directory for execution
-            step_type: Optional step type (auto-detected if not provided)
+            step_type_spec: Optional spec step type (e.g., "qe_scf", "qe_nscf")
+                           Auto-detected if not provided
             timeout: Optional timeout in seconds
             environment: Optional environment variables dict
             
@@ -583,7 +587,7 @@ class QuantumEspressoEngine(Engine):
         return self.calculation_runner.run_step(
             input_file=input_file,
             working_dir=working_dir,
-            step_type=step_type,
+            step_type_spec=step_type_spec,
             timeout=timeout,
             environment=environment
         )

@@ -192,7 +192,7 @@ exit 1
             result = runner.run_step(
                 input_file=input_file,
                 working_dir=working_dir,
-                step_type="w90_preproc",
+                step_type="w90_wannierprep",
             )
             
             # Verify failure

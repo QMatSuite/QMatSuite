@@ -42,12 +42,12 @@ class TestLAMMPSDriver:
         assert recipe_class is not None
 
     def test_materialization_map(self):
-        """Test GEN→SPEC mappings."""
+        """Test gen→spec mappings."""
         driver = LAMMPSDriver()
         mat_map = driver.get_materialization_map()
 
-        assert mat_map["GEN_MD"] == "lammps_md"
-        assert mat_map["GEN_MINIMIZE"] == "lammps_minimize"
+        assert mat_map["md"] == "lammps_md"
+        assert mat_map["relax"] == "lammps_relax"
 
     def test_md_not_skippable(self):
         """MD steps should not be skippable."""

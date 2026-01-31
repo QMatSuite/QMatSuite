@@ -49,26 +49,26 @@ class CalculationResult:
     error: Optional[str] = None
 
 
-def get_capture_paths(raw_dir: Path, step_type: str) -> Tuple[Path, Path]:
+def get_capture_paths(raw_dir: Path, step_type_gen: str) -> Tuple[Path, Path]:
     """
     Get stdout and stderr capture file paths for a step.
     
     This function centralizes the naming convention for capture files:
-    - stdout: {step_type}.out
-    - stderr: {step_type}.err
+    - stdout: {step_type_gen}.out
+    - stderr: {step_type_gen}.err
     
     These files are always overwritten (mode="w") and never versioned,
     regardless of input file versioning (e.g., scf.in vs scf-1.in).
     
     Args:
         raw_dir: Working directory where capture files are written
-        step_type: Step type (e.g., "scf", "nscf", "wannierprep")
+        step_type_gen: Gen step type (e.g., "scf", "nscf", "wannierprep")
         
     Returns:
         Tuple of (stdout_path, stderr_path)
     """
-    stdout_path = raw_dir / f"{step_type}.out"
-    stderr_path = raw_dir / f"{step_type}.err"
+    stdout_path = raw_dir / f"{step_type_gen}.out"
+    stderr_path = raw_dir / f"{step_type_gen}.err"
     return stdout_path, stderr_path
 
 
@@ -151,7 +151,7 @@ class QECalculationRunner:
         self,
         input_file: Path,
         working_dir: Path,
-        step_type: Optional[str] = None,
+        step_type_spec: Optional[str] = None,
         timeout: Optional[float] = None,
         environment: Optional[Dict[str, str]] = None
     ) -> StepResult:
@@ -161,7 +161,8 @@ class QECalculationRunner:
         Args:
             input_file: Path to QE input file
             working_dir: Working directory for execution
-            step_type: Optional step type (auto-detected if not provided)
+            step_type_spec: Optional spec step type (e.g., "qe_scf", "qe_nscf")
+                           Auto-detected if not provided
             timeout: Optional timeout in seconds
             environment: Optional environment variables dict
             
@@ -215,19 +216,22 @@ class QECalculationRunner:
             return path_resolved
         
         # Log entry point
-        logger.info(f"[RUN_STEP] Starting step execution: step_type={step_type}, input_file={input_file}, working_dir={working_dir}")
+        logger.info(f"[RUN_STEP] Starting step execution: step_type_spec={step_type_spec}, input_file={input_file}, working_dir={working_dir}")
         logger.debug(f"[RUN_STEP] input_file type: {type(input_file)}, is_absolute: {input_file.is_absolute() if isinstance(input_file, Path) else 'N/A'}")
         logger.debug(f"[RUN_STEP] input_file exists: {input_file.exists() if isinstance(input_file, Path) else 'N/A'}")
         logger.debug(f"[RUN_STEP] input_file is_dir: {input_file.is_dir() if isinstance(input_file, Path) else 'N/A'}")
         
-        # Detect step type if not provided
-        if step_type is None:
-            step_type = self.detect_step_type(input_file)
-            logger.info(f"[RUN_STEP] Auto-detected step_type: {step_type}")
+        # Detect step type if not provided (detect_step_type returns gen type)
+        if step_type_spec is None:
+            step_type_gen_detected = self.detect_step_type(input_file)
+            from quantumvitas.workflow.step_type_convert import spec_from
+            step_type_spec = spec_from("qe", step_type_gen_detected)
+            logger.info(f"[RUN_STEP] Auto-detected step_type_spec: {step_type_spec} (from gen: {step_type_gen_detected})")
         
         # Convert step_type_spec (e.g., 'qe_bands') to step_type_gen (e.g., 'bands') for lookup
-        step_gen_type = _normalize_step_type_to_gen(step_type)
-        logger.debug(f"[RUN_STEP] step_gen_type: {step_gen_type} (from {step_type})")
+        from quantumvitas.workflow.step_type_convert import gen_from
+        step_gen_type = gen_from(step_type_spec)
+        logger.debug(f"[RUN_STEP] step_gen_type: {step_gen_type} (from {step_type_spec})")
 
         # Get executable for this step type (using step_type_gen)
         executable = self.engine.EXECUTABLE_MAP.get(step_gen_type, "pw.x")
@@ -241,7 +245,8 @@ class QECalculationRunner:
         logger.debug(f"[RUN_STEP] input_file_abs is_file: {input_file_abs.is_file()}")
         
         # Build command (this may modify input_file path for relative resolution)
-        command = self.engine.build_command(step_type, input_file, working_dir)
+        # build_command expects gen type
+        command = self.engine.build_command(step_gen_type, input_file, working_dir)
         logger.info(f"[RUN_STEP] Built command: {' '.join(command)}")
         
         # Prepare environment
@@ -296,7 +301,7 @@ class QECalculationRunner:
         # by checking if working_dir has the pseudopotentials
         
         # A. Unified stdout/stderr file naming: step_gen_type.out / step_gen_type.err (overwrite, never versioned)
-        stdout_capture_path, stderr_capture_path = get_capture_paths(working_dir, step_gen_type)
+        stdout_capture_path, stderr_capture_path = get_capture_paths(working_dir, step_gen_type)  # step_gen_type is already gen
 
         # B. Determine primary output file (artifact) semantics
         input_stem = input_file.stem if isinstance(input_file, Path) else Path(input_file).stem
@@ -318,7 +323,7 @@ class QECalculationRunner:
         uses_stdin = self.engine.uses_stdin(step_gen_type)
         
         # E. Logging: Only essential info at INFO level
-        logger.info(f"[RUN_STEP] Starting {step_type}: {input_file.name if hasattr(input_file, 'name') else input_file}")
+        logger.info(f"[RUN_STEP] Starting {step_type_spec}: {input_file.name if hasattr(input_file, 'name') else input_file}")
         logger.info(f"[RUN_STEP] Capturing stdout/stderr to {step_gen_type}.out/.err (overwrite)")
         
         # Execute command
@@ -375,14 +380,14 @@ class QECalculationRunner:
                                 output_handle.flush()
                                 stderr_handle.flush()
                             except subprocess.TimeoutExpired:
-                                logger.error(f"[RUN_STEP] {step_type} timed out after {timeout}s (see {stderr_capture_path.name})")
+                                logger.error(f"[RUN_STEP] {step_type_spec} timed out after {timeout}s (see {stderr_capture_path.name})")
                                 process.kill()
                                 output_handle.flush()
                                 stderr_handle.flush()
                                 # Read stderr from file
                                 stderr = stderr_capture_path.read_text() if stderr_capture_path.exists() else ""
                                 return StepResult(
-                                    step_type_spec=step_type,
+                                    step_type_spec=step_type_spec,
                                     input_file=input_file,
                                     success=False,
                                     error=f"Step execution timed out after {timeout}s",
@@ -399,12 +404,12 @@ class QECalculationRunner:
                 # wannierprep: wannier90.x -pp seedname
                 # wannier: wannier90.x seedname
                 # pw2wannier: pw2wannier90.x -i pw2wan.in
-                logger.debug(f"[RUN_STEP] Using command-line arguments for {step_type} (no stdin)")
+                logger.debug(f"[RUN_STEP] Using command-line arguments for {step_type_spec} (no stdin)")
                 logger.debug(f"[RUN_STEP] Command: {' '.join(command)}")
                 logger.debug(f"[RUN_STEP] Working dir: {working_dir}")
                 
                 # For pw2wannier, verify input file exists BEFORE running
-                if step_type == "pw2wannier":
+                if step_gen_type == "pw2wannier":
                     # Command is: pw2wannier90.x -i <input_file>
                     # Input file should be relative to working_dir or absolute
                     # Find the input file path from command
@@ -474,14 +479,14 @@ class QECalculationRunner:
                             output_handle.flush()
                             stderr_handle.flush()
                         except subprocess.TimeoutExpired:
-                            logger.error(f"[RUN_STEP] {step_type} timed out after {timeout}s (see {stderr_capture_path.name})")
+                            logger.error(f"[RUN_STEP] {step_type_spec} timed out after {timeout}s (see {stderr_capture_path.name})")
                             process.kill()
                             output_handle.flush()
                             stderr_handle.flush()
                             # Read stderr from file
                             stderr = stderr_capture_path.read_text() if stderr_capture_path.exists() else ""
                             return StepResult(
-                                step_type_spec=step_type,
+                                step_type_spec=step_type_spec,
                                 input_file=input_file,
                                 success=False,
                                 error=f"Step execution timed out after {timeout}s",
@@ -503,14 +508,14 @@ class QECalculationRunner:
             
             # E. Logging: Essential info only at INFO level
             if return_code == 0:
-                logger.info(f"[RUN_STEP] {step_type} finished (returncode=0): output={primary_output_file.name if primary_output_file else 'N/A'}, stdout={stdout_capture_path.name}, stderr={stderr_capture_path.name}")
+                logger.info(f"[RUN_STEP] {step_type_spec} finished (returncode=0): output={primary_output_file.name if primary_output_file else 'N/A'}, stdout={stdout_capture_path.name}, stderr={stderr_capture_path.name}")
             else:
                 # E. Failure logging: concise error with reference to stderr file
                 stderr_preview = ""
                 if stderr:
                     stderr_lines = stderr.split('\n')
                     stderr_preview = '\n'.join(stderr_lines[-50:]) if len(stderr_lines) > 50 else stderr
-                logger.error(f"[RUN_STEP] {step_type} failed (returncode={return_code}): see {stderr_capture_path.name}")
+                logger.error(f"[RUN_STEP] {step_type_spec} failed (returncode={return_code}): see {stderr_capture_path.name}")
                 logger.debug(f"[RUN_STEP] Stderr preview:\n{stderr_preview}")
             
             logger.debug(f"[RUN_STEP] Read stdout: {len(stdout)} chars, stderr: {len(stderr)} chars")
@@ -617,11 +622,11 @@ class QECalculationRunner:
                         f"success={success}, return_code={return_code}")
             
             return StepResult(
-                step_type_spec=step_type,
+                step_type_spec=step_type_spec,
                 input_file=input_file,
                 output_file=result_output_file,  # Primary artifact
-                stdout_file=stdout_capture_path,  # Always step_type.out
-                stderr_file=stderr_capture_path,  # Always step_type.err
+                stdout_file=stdout_capture_path,  # Always step_type_gen.out
+                stderr_file=stderr_capture_path,  # Always step_type_gen.err
                 success=success,
                 return_code=return_code,
                 stdout=stdout,  # Content from stdout_file
@@ -633,7 +638,7 @@ class QECalculationRunner:
         
         except Exception as e:
             return StepResult(
-                step_type_spec=step_type,
+                step_type_spec=step_type_spec,
                 input_file=input_file,
                 success=False,
                 error=f"Step execution failed: {str(e)}",
@@ -668,16 +673,16 @@ class QECalculationRunner:
         
         for i, step_input in enumerate(steps):
             if isinstance(step_input, tuple):
-                input_file, step_type = step_input
+                input_file, step_type_spec = step_input
             else:
                 input_file = step_input
-                step_type = None
+                step_type_spec = None
             
             # Run step
             result = self.run_step(
                 input_file=input_file,
                 working_dir=working_dir,
-                step_type_spec=step_type,
+                step_type_spec=step_type_spec,
                 timeout=timeout,
                 environment=environment
             )

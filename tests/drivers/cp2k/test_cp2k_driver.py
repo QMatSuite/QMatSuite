@@ -42,12 +42,12 @@ class TestCP2KDriver:
         assert recipe_class is not None
 
     def test_materialization_map(self):
-        """Test GEN→SPEC mappings."""
+        """Test gen→spec mappings."""
         driver = CP2KDriver()
         mat_map = driver.get_materialization_map()
 
-        assert mat_map["GEN_SCF"] == "cp2k_scf"
-        assert mat_map["GEN_MD"] == "cp2k_md"
+        assert mat_map["scf"] == "cp2k_scf"
+        assert mat_map["md"] == "cp2k_md"
 
     def test_md_not_skippable(self):
         """MD steps should not be skippable."""

@@ -21,7 +21,7 @@ class PySCFDriver(BaseEngineDriver):
 
     PREFIX: str = "pyscf"
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
-        "scf", "dft", "opt", "relax", "freq", "mp2", "td"
+        "scf", "relax", "mp2", "td"
     })
 
     # ─────────────────────────────────────────────────────────────────────
@@ -156,7 +156,7 @@ class PySCFDriver(BaseEngineDriver):
             "python_native",  # Python-based, no external executable
         }
 
-    def supports_incremental_skip(self, step_type: str) -> bool:
+    def supports_incremental_skip(self, step_type_spec: str) -> bool:
         """All PySCF steps can be skipped if done."""
         return True
 

@@ -171,11 +171,11 @@ def test_build_step_spec_from_qe_input_creates_structure_and_yaml(tmp_path: Path
     assert "celldm(1)" not in spec_text
     assert "nat" not in spec_text
     assert "ntyp" not in spec_text
-    assert result.step_type_spec == "scf"
+    assert result.step_type_spec == "qe_scf"
 
 
 def test_build_step_spec_from_qe_input_detects_vc_relax(tmp_path: Path):
-    """Test that vc-relax calculation type is correctly detected and preserved."""
+    """Test that vc-relax calculation type is correctly detected and converted to qe_relax."""
     input_path = _write_input(tmp_path, "si_vc_relax.in", SIMPLE_VC_RELAX)
     destination = tmp_path / "steps"
     result = build_step_spec_from_qe_input(
@@ -185,15 +185,21 @@ def test_build_step_spec_from_qe_input_detects_vc_relax(tmp_path: Path):
     )
 
     assert result.spec_path.exists()
-    assert result.step_type_spec == "vc-relax", f"Expected 'vc-relax', got '{result.step_type_spec}'"
+    # VC is a parameter, not a separate step type - should be qe_relax
+    assert result.step_type_spec == "qe_relax", f"Expected 'qe_relax', got '{result.step_type_spec}'"
     
-    # Verify step_type is preserved in YAML
+    # Verify step_type_spec is qe_relax in YAML
     spec_data = yaml.safe_load(result.spec_path.read_text())
-    assert spec_data.get("step_type_spec") == "vc-relax"
+    assert spec_data.get("step_type_spec") == "qe_relax"
+    
+    # Verify VC is preserved in parameters (calculation='vc-relax')
+    params = spec_data.get("parameters", {})
+    control = params.get("CONTROL", {}) or params.get("control", {})
+    assert control.get("calculation") == "vc-relax", "VC should be preserved in parameters"
 
 
 def test_build_step_spec_from_qe_input_detects_relax(tmp_path: Path):
-    """Test that relax calculation type is correctly detected and preserved."""
+    """Test that relax calculation type is correctly detected and converted to qe_relax."""
     input_path = _write_input(tmp_path, "si_relax.in", SIMPLE_RELAX)
     destination = tmp_path / "steps"
     result = build_step_spec_from_qe_input(
@@ -203,11 +209,12 @@ def test_build_step_spec_from_qe_input_detects_relax(tmp_path: Path):
     )
 
     assert result.spec_path.exists()
-    assert result.step_type_spec == "relax", f"Expected 'relax', got '{result.step_type_spec}'"
+    # Should be qe_relax (spec type), not just "relax" (gen type)
+    assert result.step_type_spec == "qe_relax", f"Expected 'qe_relax', got '{result.step_type_spec}'"
     
-    # Verify step_type is preserved in YAML
+    # Verify step_type_spec is qe_relax in YAML
     spec_data = yaml.safe_load(result.spec_path.read_text())
-    assert spec_data.get("step_type_spec") == "relax"
+    assert spec_data.get("step_type_spec") == "qe_relax"
 
 
 def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
