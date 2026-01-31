@@ -225,7 +225,7 @@ def prepare_input_step(
         keep_original: If True and input comes from outside working_dir, 
                        save a copy as <name>_original.in
         output_name: Optional name for the generated input file (default: use input name)
-        step_type: Optional step type (if w90_preproc, w90_run, or pw2wannier90, skip QE processing)
+        step_type: Optional step type (if wannierprep, wannier, or pw2wannier, skip QE processing)
     
     Returns:
         PreparedInputStep with paths to working directory and input files
@@ -236,7 +236,7 @@ def prepare_input_step(
           input is from outside working_dir)
     """
     # Wannier90 steps: skip QE input processing, just copy/move the file
-    WANNIER90_STEP_TYPES = {"w90_preproc", "w90_run", "pw2wannier90"}
+    WANNIER90_STEP_TYPES = {"wannierprep", "wannier", "pw2wannier"}
     if step_type and step_type.lower() in WANNIER90_STEP_TYPES:
         import logging
         logger = logging.getLogger(__name__)
@@ -427,19 +427,19 @@ def run_prepared_step(
         f"working_dir={prepared_step.working_dir}"
     )
     
-    # For pw2wannier90, ensure input file path is correct
-    if step_type == "pw2wannier90":
+    # For pw2wannier, ensure input file path is correct
+    if step_type == "pw2wannier":
         # Use filename relative to working_dir for -i flag
         if prepared_step.modified_input.is_absolute():
             try:
                 # Try to make it relative to working_dir
                 rel_path = prepared_step.modified_input.relative_to(prepared_step.working_dir.resolve())
-                logger.debug(f"[RUN_PREPARED_STEP] pw2wannier90: converted to relative: {rel_path}")
+                logger.debug(f"[RUN_PREPARED_STEP] pw2wannier: converted to relative: {rel_path}")
                 input_file_for_command = rel_path
             except ValueError:
                 # Not relative, keep absolute
                 input_file_for_command = prepared_step.modified_input
-                logger.debug(f"[RUN_PREPARED_STEP] pw2wannier90: using absolute path")
+                logger.debug(f"[RUN_PREPARED_STEP] pw2wannier: using absolute path")
         else:
             input_file_for_command = prepared_step.modified_input
     else:

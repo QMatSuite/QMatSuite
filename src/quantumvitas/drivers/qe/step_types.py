@@ -29,7 +29,7 @@ QE_STEP_TYPE_SPECS: list[StepTypeSpec] = [
         description="QE band structure",
     ),
     StepTypeSpec(
-        step_type_spec="qe_bands_pw",
+        step_type_spec="qe_bandspw",
         engine="qe",
         executable="pw.x",
         description="QE band structure (pw.x)",
@@ -107,7 +107,7 @@ QE_STEP_TYPE_SPECS: list[StepTypeSpec] = [
         description="QE variable-cell molecular dynamics",
     ),
     StepTypeSpec(
-        step_type_spec="qe_pw2wannier90",
+        step_type_spec="qe_pw2wannier",
         engine="qe",
         executable="pw2wannier90.x",
         description="QE to Wannier90 interface",
@@ -117,13 +117,5 @@ QE_STEP_TYPE_SPECS: list[StepTypeSpec] = [
         engine="qe",
         executable="pw.x",
         description="Custom step type (escape hatch)",
-    ),
-    # Wannier90 preprocessing (runs within QE context)
-    # Note: w90_run is now handled by w90 driver, only w90_preproc remains here
-    StepTypeSpec(
-        step_type_spec="w90_preproc",
-        engine="qe",
-        executable="pw2wannier90.x",
-        description="Wannier90 preprocessing",
     ),
 ]

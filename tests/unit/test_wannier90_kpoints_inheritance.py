@@ -149,7 +149,7 @@ def test_w90_kpoints_match_nscf_order(diamond_nscf_input, tmp_path):
             path="steps/w90_preproc.step.yaml",
             kind="step"
         ),
-        step_type_spec="w90_preproc",
+        step_type_spec="w90_wannierprep",
         structure_ulid=None,
         structure=str(structure_file),
         parameters={

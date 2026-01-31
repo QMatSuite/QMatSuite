@@ -166,12 +166,12 @@ class TestGetCalculationDetail:
         calculation = calculations[0]
         calculation_slug = calculation["slug"]
         
-        # Add more steps to create a multi-step calculation (scf, nscf, bands_pw, bands)
-        # The temp_project fixture already has scf and nscf, so add bands_pw and bands
+        # Add more steps to create a multi-step calculation (scf, nscf, bandspw, bands)
+        # The temp_project fixture already has scf and nscf, so add bandspw and bands
         svc = QVService(temp_project)
         svc.calculation.add_step(
             calc_selector=calculation_slug,
-            step_type="bands_pw",
+            step_type="bandspw",
         )
         svc.calculation.add_step(
             calc_selector=calculation_slug,
@@ -197,10 +197,10 @@ class TestGetCalculationDetail:
             assert len(step_id) == 26, f"Step id must be a ULID (26 chars), got '{step_id}' (length {len(step_id)})"
             step_ids.append(step_id)
         
-        # Verify steps are in expected order (scf, nscf, bands_pw, bands)
+        # Verify steps are in expected order (scf, nscf, bandspw, bands)
         # We can't verify exact types without loading the step files, but we can verify
         # that the order is consistent (same order as calculation.yaml)
-        expected_types = ["scf", "nscf", "bands_pw", "bands"]
+        expected_types = ["scf", "nscf", "bandspw", "bands"]
         actual_types = [step.get("step_type_gen") for step in result["steps"]]
 
         # Verify we have the expected step types (order may vary slightly, but all should be present)

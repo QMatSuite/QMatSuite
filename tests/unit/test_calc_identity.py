@@ -32,7 +32,7 @@ def test_infer_engine_family_from_spec_types_pyscf():
 
 def test_infer_engine_family_from_spec_types_w90_separate_family():
     """Test that w90 steps are treated as separate family (no longer mapped to qe)."""
-    spec_types = ["qe_scf", "w90_run"]
+    spec_types = ["qe_scf", "w90_wannier"]
     result = _infer_engine_family_from_spec_types(spec_types)
     assert result is None  # Mixed families: qe and w90 are separate engines
 

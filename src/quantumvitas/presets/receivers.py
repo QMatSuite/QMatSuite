@@ -53,7 +53,7 @@ V1_DIMENSIONS: FrozenSet[str] = frozenset({
 PW_STEP_TYPES: FrozenSet[str] = frozenset({
     "scf",
     "nscf", 
-    "bands_pw",  # pw.x calculation='bands'
+    "bandspw",  # pw.x calculation='bands'
     "relax",
     "vc-relax",
     "md",
@@ -101,7 +101,7 @@ class PrecisionReceiverSpec:
     kmesh_strategy:
     - "default": Use base mesh from PrecisionAdvisor (scf canonical)
     - "nscf": Use base mesh × NSCF_KMESH_FACTOR (nscf denser)
-    - "none": Do not apply kmesh (e.g., bands_pw uses k-path)
+    - "none": Do not apply kmesh (e.g., bandspw uses k-path)
     """
     accepts_kmesh: bool
     accepts_cutoffs: bool
@@ -154,8 +154,8 @@ PRECISION_RECEIVER_SPECS: Dict[str, PrecisionReceiverSpec] = {
         accepts_conv_thr=True,
         kmesh_strategy="nscf",
     ),
-    # pw.x: bands_pw - accept cutoffs/conv_thr, but NOT kmesh (uses k-path)
-    "bands_pw": PrecisionReceiverSpec(
+    # pw.x: bandspw - accept cutoffs/conv_thr, but NOT kmesh (uses k-path)
+    "bandspw": PrecisionReceiverSpec(
         accepts_kmesh=False,
         accepts_cutoffs=True,
         accepts_conv_thr=True,
@@ -199,9 +199,9 @@ class PresetReceiverRegistry:
         for step_type in PW_STEP_TYPES:
             self._registry[step_type] = V1_DIMENSIONS
         
-        # bands_pw is a special case: accepts magnetism/precision but NOT occupations_scheme (uses k-path)
-        # Override the default V1_DIMENSIONS assignment for bands_pw
-        self._registry["bands_pw"] = frozenset({
+        # bandspw is a special case: accepts magnetism/precision but NOT occupations_scheme (uses k-path)
+        # Override the default V1_DIMENSIONS assignment for bandspw
+        self._registry["bandspw"] = frozenset({
             DIMENSION_MAGNETISM,
             DIMENSION_PRECISION,
             # Note: DIMENSION_OCCUPATIONS_SCHEME is excluded (k-path step, not k-mesh)

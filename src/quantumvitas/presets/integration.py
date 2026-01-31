@@ -415,7 +415,7 @@ DIMENSION_OWNED_KEYS: dict[str, dict[str, set[str]]] = {
         "SYSTEM": {"ecutwfc", "ecutrho"},
         "ELECTRONS": {"conv_thr"},
         # NOTE: cards.K_POINTS is NOT included here because it's variant-dependent
-        # bands_pw variant does NOT own K_POINTS
+        # bandspw variant does NOT own K_POINTS
     },
     DIMENSION_CONVERGENCE: {
         "ELECTRONS": {"mixing_beta", "electron_maxstep", "mixing_mode", "mixing_ndim", "diagonalization"},
@@ -1105,7 +1105,7 @@ def detect_workflow_type(calculation_dir: Path) -> str:
     if "dos" in step_types:
         return "DOS"
     
-    if "bands" in step_types or "bands_pw" in step_types:
+    if "bands" in step_types or "bandspw" in step_types:
         return "BandStructure"
     
     if "scf" in step_types and len(step_types) == 1:

@@ -104,7 +104,7 @@ _WORKFLOWS: Dict[str, WorkflowTemplate] = {
         id="bands",
         name="Band Structure",
         description="Electronic band structure along k-path",
-        step_sequence=("scf", "bands_pw", "bands"),  # Public generalized step keys
+        step_sequence=("scf", "bandspw", "bands"),  # Public generalized step keys
     ),
     "pdos": WorkflowTemplate(
         id="pdos",
@@ -116,7 +116,7 @@ _WORKFLOWS: Dict[str, WorkflowTemplate] = {
         id="wannier",
         name="Wannierization",
         description="Maximally localized Wannier functions",
-        step_sequence=("scf", "nscf", "pw2wannier90", "w90_run"),  # Public generalized step keys
+        step_sequence=("scf", "nscf", "pw2wannier", "wannier"),  # Public generalized step keys
     ),
     "scf_mp2": WorkflowTemplate(
         id="scf_mp2",

@@ -46,7 +46,7 @@ def create_step_doc(
     registry = get_registry()
     
     # Phase 2: Normalize step_type to spec type for step.yaml
-    # step.yaml stores spec types only (qe_scf, w90_run, etc.)
+    # step.yaml stores spec types only (qe_scf, w90_wannier, etc.)
     spec = registry.get(step_type)  # Accepts both gen and spec types
     if spec:
         machine_step_type = spec.step_type_spec  # Use spec type for step.yaml

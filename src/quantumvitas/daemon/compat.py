@@ -283,7 +283,7 @@ def _derive_step_name_from_type(step_type: str) -> str:
         "qe_q2r": "q2r",
         "qe_matdyn": "matdyn",
         "qe_projwfc": "projwfc",
-        "bands_pw": "bands",
+        "bandspw": "bands",
     }
     return TYPE_TO_NAME.get(step_type, step_type.replace("qe_", ""))
 

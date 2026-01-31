@@ -136,12 +136,12 @@ exit 0
             result_1 = runner.run_step(
                 input_file=input_file_1,
                 working_dir=working_dir,
-                step_type="w90_preproc",
+                step_type="wannierprep",
             )
             
             # Verify output files use step_type.out/.err
-            assert (working_dir / "w90_preproc.out").exists()
-            assert (working_dir / "w90_preproc.err").exists()
+            assert (working_dir / "wannierprep.out").exists()
+            assert (working_dir / "wannierprep.err").exists()
             
             # Run 2: diamond-1.win (versioned input)
             input_file_2 = working_dir / "diamond-1.win"
@@ -150,18 +150,18 @@ exit 0
             result_2 = runner.run_step(
                 input_file=input_file_2,
                 working_dir=working_dir,
-                step_type="w90_preproc",
+                step_type="wannierprep",
             )
             
-            # Verify output files are still w90_preproc.out/.err (overwritten, not versioned)
-            assert (working_dir / "w90_preproc.out").exists()
-            assert (working_dir / "w90_preproc.err").exists()
+            # Verify output files are still wannierprep.out/.err (overwritten, not versioned)
+            assert (working_dir / "wannierprep.out").exists()
+            assert (working_dir / "wannierprep.err").exists()
             
-            assert result_1.stdout_file is not None and result_1.stdout_file.name == "w90_preproc.out"
-            assert result_2.stdout_file is not None and result_2.stdout_file.name == "w90_preproc.out"
+            assert result_1.stdout_file is not None and result_1.stdout_file.name == "wannierprep.out"
+            assert result_2.stdout_file is not None and result_2.stdout_file.name == "wannierprep.out"
             
             # Verify primary artifact is still diamond.wout (same for both)
-            # Note: output_file may be None if w90_preproc didn't create .wout (that's OK for preproc)
+            # Note: output_file may be None if wannierprep didn't create .wout (that's OK for preproc)
             # But for w90_run, output_file should be diamond.wout
             if result_1.output_file:
                 assert result_1.output_file.name == "diamond.wout"
@@ -169,7 +169,7 @@ exit 0
                 assert result_2.output_file.name == "diamond.wout"
             
             # No versioned output files
-            versioned_outputs = list(working_dir.glob("w90_preproc-*.out"))
+            versioned_outputs = list(working_dir.glob("wannierprep-*.out"))
             assert len(versioned_outputs) == 0, f"Should not have versioned output files: {versioned_outputs}"
 
 

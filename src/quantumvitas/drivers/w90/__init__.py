@@ -4,8 +4,7 @@ This package provides the Wannier90 engine driver for QuantumVitas.
 It handles Wannier90 calculations for constructing maximally
 localized Wannier functions from DFT output.
 
-Note: The w90_preproc step is registered with the DFT engine
-(QE, VASP) that executes it, not with this driver.
+Note: The wannierprep step is registered with the W90 engine.
 """
 
 from quantumvitas.core.driver_registry import DriverRegistry

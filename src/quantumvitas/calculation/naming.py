@@ -42,12 +42,12 @@ class CalculationFileNaming:
     POST_PROCESSING_TYPES = frozenset({
         "dos", "bands", "pp", "projwfc", "ph", "q2r", 
         "matdyn", "dynmat", "sumpdos", "band_interpolation",
-        "pw2wannier90",  # pw2wannier90.x uses pw2wan.in / pw2wan.out naming
+        "pw2wannier",  # pw2wannier90.x uses pw2wan.in / pw2wan.out naming
     })
     
     # pw.x calculation types
     PW_CALCULATION_TYPES = frozenset({
-        "scf", "nscf", "relax", "vc-relax", "md", "vc-md", "bands_pw",
+        "scf", "nscf", "relax", "vc-relax", "md", "vc-md", "bandspw",
     })
     
     @classmethod
@@ -57,11 +57,11 @@ class CalculationFileNaming:
         
         Post-processing steps get .<type>.in extension for clarity.
         pw.x steps get simple .in extension.
-        Special case: pw2wannier90 uses .in (not .pw2wannier90.in) for brevity.
+        Special case: pw2wannier uses .in (not .pw2wannier.in) for brevity.
         """
         step_lower = step_type.lower()
-        if step_lower == "pw2wannier90":
-            # Special case: use .in (pw2wan.in) instead of .pw2wannier90.in
+        if step_lower == "pw2wannier":
+            # Special case: use .in (pw2wan.in) instead of .pw2wannier.in
             return ".in"
         if step_lower in cls.POST_PROCESSING_TYPES:
             return f".{step_lower}.in"
@@ -71,8 +71,8 @@ class CalculationFileNaming:
     def output_extension(cls, step_type: str) -> str:
         """Get output file extension for a step type."""
         step_lower = step_type.lower()
-        if step_lower == "pw2wannier90":
-            # Special case: use .out (pw2wan.out) instead of .pw2wannier90.out
+        if step_lower == "pw2wannier":
+            # Special case: use .out (pw2wan.out) instead of .pw2wannier.out
             return ".out"
         if step_lower in cls.POST_PROCESSING_TYPES:
             return f".{step_lower}.out"
@@ -94,8 +94,8 @@ class CalculationFileNaming:
             Filename like "scf.in" or "scf-1.in" if duplicates exist
         """
         step_lower = step_type.lower()
-        if step_lower == "pw2wannier90":
-            # Special case: use "pw2wan.in" instead of "pw2wannier90.in"
+        if step_lower == "pw2wannier":
+            # Special case: use "pw2wan.in" instead of "pw2wannier.in"
             return "pw2wan.in"
         
         ext = cls.input_extension(step_type)
@@ -246,7 +246,7 @@ def find_band_analysis_files(
     bands_pp_out_candidates: List[Tuple[int, Path]] = []
     nscf_out_candidates: List[Tuple[int, Path]] = []
     scf_out_candidates: List[Tuple[int, Path]] = []
-    bands_pw_out_candidates: List[Tuple[int, Path]] = []
+    bandspw_out_candidates: List[Tuple[int, Path]] = []
     
     for file in directory.iterdir():
         if not file.is_file():
@@ -275,7 +275,7 @@ def find_band_analysis_files(
                 scf_out_candidates.append((0, file))
             # pw.x bands calculation output (calc='bands')
             elif 'bands' in name and '.bands.out' not in name and 'bandspp' not in name:
-                bands_pw_out_candidates.append((0, file))
+                bandspw_out_candidates.append((0, file))
     
     # Select best candidate for each
     if bands_gnu_candidates:
@@ -294,8 +294,8 @@ def find_band_analysis_files(
     
     # If we have bands.x output but no pw.x output for lattice,
     # try the pw.x bands calculation output
-    if result.pw_output is None and bands_pw_out_candidates:
-        result.pw_output = sorted(bands_pw_out_candidates)[0][1]
+    if result.pw_output is None and bandspw_out_candidates:
+        result.pw_output = sorted(bandspw_out_candidates)[0][1]
     
     return result
 

@@ -212,9 +212,9 @@ class StructureStepSpec:
 
 
 # Mapping from step type to QE calculation parameter
-# Most step types map directly, but some like 'bands_pw' need translation
+# Most step types map directly, but some like 'bandspw' need translation
 STEP_TYPE_TO_CALCULATION = {
-    "bands_pw": "bands",  # bands_pw is our internal name for pw.x bands calculation
+    "bandspw": "bands",  # bandspw is our internal name for pw.x bands calculation
 }
 
 
@@ -245,7 +245,7 @@ def generate_qe_input_from_structure(
             if step_type_lower.startswith(prefix):
                 step_gen_type = step_type_lower[len(prefix):]
                 break
-        # Convert step_type to QE calculation value (e.g., bands_pw -> bands)
+        # Convert step_type to QE calculation value (e.g., bandspw -> bands)
         calculation_value = STEP_TYPE_TO_CALCULATION.get(step_gen_type, step_gen_type)
         overrides.append(
             ParameterOverride(
@@ -267,7 +267,7 @@ def generate_qe_input_from_structure(
 POST_PROCESSING_STEP_TYPES = {
     "dos", "bands", "projwfc", "pp", "q2r", "matdyn", "dynmat",
     "sumpdos", "band_interpolation", "ppacf", "pprism",
-    "pw2wannier90",  # pw2wannier90.x uses INPUTPP namelist (like pp.x)
+    "pw2wannier",  # pw2wannier90.x uses INPUTPP namelist (like pp.x)
 }
 
 
@@ -280,7 +280,7 @@ STEP_TYPE_NAMELIST_MAP = {
     "bands": "BANDS",
     "projwfc": "PROJWFC",
     "pp": "INPUTPP",
-    "pw2wannier90": "INPUTPP",  # pw2wannier90.x uses INPUTPP namelist
+    "pw2wannier": "INPUTPP",  # pw2wannier90.x uses INPUTPP namelist
     "q2r": "INPUT",
     "matdyn": "INPUT",
     "dynmat": "INPUT",
@@ -294,12 +294,12 @@ STEP_TYPE_MODULE_MAP = {
     "vc-relax": QEModule.PW,
     "md": QEModule.PW,
     "vc-md": QEModule.PW,
-    "bands_pw": QEModule.PW,
+    "bandspw": QEModule.PW,
     "dos": QEModule.DOS,
     "bands": QEModule.BANDS,
     "projwfc": QEModule.PROJWFC,
     "pp": QEModule.PP,
-    "pw2wannier90": QEModule.PP,  # pw2wannier90.x uses INPUTPP namelist (same as pp.x)
+    "pw2wannier": QEModule.PP,  # pw2wannier90.x uses INPUTPP namelist (same as pp.x)
     "q2r": QEModule.Q2R,
     "matdyn": QEModule.MATDYN,
     "dynmat": QEModule.DYNMAT,
@@ -381,7 +381,7 @@ def _inject_calculation_prefix_outdir(
     
     Args:
         qe_input: QEInput object to modify
-        step_type: Step type (e.g., "scf", "pw2wannier90")
+        step_type: Step type (e.g., "scf", "pw2wannier")
         calculation_prefix: Calculation-level prefix (stable id-derived prefix from calc ULID)
         calculation_outdir: Calculation-level outdir (defaults to "./outdir")
         spec_params: Step spec parameters (to detect ignored step-level prefix/outdir)
@@ -779,9 +779,9 @@ def materialize_step_spec(
     # Check if this is a Wannier90 step type - these need special handling
     # and should NOT go through QE input generation/validation
     step_type_lower = (spec_obj.step_type_spec or "scf").lower()
-    # Convert to GEN type for comparison (e.g., "qe_pw2wannier90" -> "pw2wannier90")
+    # Convert to GEN type for comparison (e.g., "qe_pw2wannier" -> "pw2wannier")
     step_type_gen = _normalize_step_type_to_gen(step_type_lower)
-    WANNIER90_STEP_TYPES = {"w90_preproc", "w90_run", "pw2wannier90"}
+    WANNIER90_STEP_TYPES = {"wannierprep", "wannier", "pw2wannier"}
     
     # Phase 3C: Check if calculation is PySCF - PySCF steps should NOT go through QE input generation
     # PySCF engine builds input dynamically from structure + parameters
@@ -839,7 +839,7 @@ def materialize_step_spec(
         )
 
         # Generate Wannier90 input file based on step type (using GEN type)
-        if step_type_gen == "w90_preproc" or step_type_gen == "w90_run":
+        if step_type_gen == "wannierprep" or step_type_gen == "wannier":
             # Generate .win file
             from quantumvitas.io.wannier90_input import Wannier90Input
             
@@ -879,7 +879,7 @@ def materialize_step_spec(
                     w90_input.mp_grid = [int(x) for x in mp_grid if x is not None]
             
             # CRITICAL: Extract kpoints from nscf step input (preserve exact order)
-            # Do NOT generate from mp_grid - order must match nscf to avoid pw2wannier90 errors
+            # Do NOT generate from mp_grid - order must match nscf to avoid pw2wannier errors
             from quantumvitas.calculation.wannier90_kpoints import extract_kpoints_from_nscf_step
             nscf_kpoints = extract_kpoints_from_nscf_step(
                 calculation_dir=calculation_dir if calculation_dir else Path("."),
@@ -891,7 +891,7 @@ def materialize_step_spec(
                 w90_input.kpoints = nscf_kpoints
                 logger.info(
                     f"[MATERIALIZE_STEP_SPEC] Extracted {len(nscf_kpoints)} kpoints from nscf step "
-                    f"(preserving order for pw2wannier90 compatibility)"
+                    f"(preserving order for pw2wannier compatibility)"
                 )
                 
                 # Consistency check: verify count matches mp_grid if mp_grid is set
@@ -901,7 +901,7 @@ def materialize_step_spec(
                         logger.warning(
                             f"[MATERIALIZE_STEP_SPEC] Kpoints count mismatch: "
                             f"nscf has {len(nscf_kpoints)} kpoints, but mp_grid={w90_input.mp_grid} "
-                            f"expects {expected_count}. This may cause pw2wannier90 errors."
+                            f"expects {expected_count}. This may cause pw2wannier errors."
                         )
             elif w90_input.mp_grid:
                 # Fallback: generate from mp_grid if nscf kpoints not found (but log warning)
@@ -1001,7 +1001,7 @@ def materialize_step_spec(
             
             return generated_input, spec_obj
         
-        elif step_type_gen == "pw2wannier90":
+        elif step_type_gen == "pw2wannier":
             # Generate .pw2wan file
             from quantumvitas.io.wannier90_input import Pw2Wannier90Input
             
@@ -1041,7 +1041,7 @@ def materialize_step_spec(
                 if "prefix" in flat_params and flat_params["prefix"] != calc_prefix:
                     logger.info(
                         f"[PREFIX_INJECTION] Step-level prefix '{flat_params['prefix']}' ignored, "
-                        f"using stable id-derived prefix '{calc_prefix}' for pw2wannier90"
+                        f"using stable id-derived prefix '{calc_prefix}' for pw2wannier"
                     )
             else:
                 pw2wan_input.prefix = flat_params.get("prefix", "pwscf")
@@ -1055,12 +1055,12 @@ def materialize_step_spec(
                 filename = input_name
             else:
                 # Use standard naming convention: pw2wan.in
-                filename = CalculationFileNaming.input_filename("pw2wannier90")
+                filename = CalculationFileNaming.input_filename("pw2wannier")
             
             # Ensure filename is not empty or '.' (safety check)
             if not filename or filename == '.' or filename == './':
                 raise ValueError(
-                    f"Invalid pw2wannier90 input filename: '{filename}'. "
+                    f"Invalid pw2wannier input filename: '{filename}'. "
                     f"Must be a valid filename like 'pw2wan.in'."
                 )
             
@@ -1078,7 +1078,7 @@ def materialize_step_spec(
             generated_input.parent.mkdir(parents=True, exist_ok=True)
             generated_input.write_text(pw2wan_input.to_string())
             logger.info(
-                f"[MATERIALIZE_STEP_SPEC] Generated pw2wannier90 input file: {generated_input} "
+                f"[MATERIALIZE_STEP_SPEC] Generated pw2wannier input file: {generated_input} "
                 f"(seedname={pw2wan_input.seedname} in content)"
             )
             

@@ -93,7 +93,7 @@ class TestStepTypeRegistryLookup:
         registry = get_registry()
 
         # Sample SPEC step types
-        spec_types = ["qe_scf", "pyscf_scf", "orca_scf", "w90_run"]
+        spec_types = ["qe_scf", "pyscf_scf", "orca_scf", "w90_wannier"]
 
         for spec_type in spec_types:
             result = registry.get(spec_type)

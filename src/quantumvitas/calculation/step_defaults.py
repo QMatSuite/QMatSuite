@@ -82,14 +82,14 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
         },
         "cards": {
             # K_POINTS is not needed for bands.x post-processing step
-            # (bands.x reads from bands_pw output, not from input)
+            # (bands.x reads from bandspw output, not from input)
         },
         "species_overrides": {},
     },
-    "bands_pw": {
+    "bandspw": {
         "parameters": {
             "CONTROL": {
-                "calculation": "bands",  # bands_pw step uses calculation='bands' (not 'nscf')
+                "calculation": "bands",  # bandspw step uses calculation='bands' (not 'nscf')
                 "outdir": "./outdir",
                 "restart_mode": "from_scratch",
             },
@@ -245,7 +245,7 @@ def get_default_step_params(step_type: str) -> Dict[str, Any]:
             "qe_vc_md": "vc-md",
             "qe_dos": "dos",
             "qe_bands": "bands",
-            "qe_bands_pw": "bands_pw",
+            "qe_bandspw": "bandspw",
             # PySCF step types
             "pyscf_scf": "pyscf_scf",
             "pyscf_mp2": "pyscf_mp2",

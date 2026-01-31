@@ -29,7 +29,7 @@
         "default": "nonmagnetic",
         "scope": {
           "step_types": [
-            "bands_pw",
+            "bandspw",
             "md",
             "nscf",
             "relax",
@@ -115,9 +115,9 @@
               "notes": "mesh K_POINTS"
             },
             {
-              "name": "PRECISION_PW_BANDS_PW",
+              "name": "PRECISION_PW_BANDSPW",
               "step_types": [
-                "bands_pw"
+                "bandspw"
               ],
               "notes": "no K_POINTS (kpath preserved)"
             }
@@ -152,7 +152,7 @@
         "default": "normal",
         "scope": {
           "step_types": [
-            "bands_pw",
+            "bandspw",
             "md",
             "nscf",
             "relax",

@@ -420,7 +420,7 @@ calculations:
       num_iter: 500
     depends_on:
     - 01KE2K2EQH8DY15YV6T1RYTWQV
-    step_type_spec: w90_preproc
+    step_type_spec: w90_wannierprep
   - meta:
       name: pw2wannier90
       slug: pw2wannier90
@@ -433,7 +433,7 @@ calculations:
     depends_on:
     - 01KE2K2EQH8DY15YV6T1RYTWQV
     - 01KE2K2EQJ18R8PTKXAEXJJWZZ
-    step_type_spec: qe_pw2wannier90
+    step_type_spec: qe_pw2wannier
   - meta:
       name: w90_run
       slug: w90_run
@@ -444,7 +444,7 @@ calculations:
     parameters: *id001
     depends_on:
     - 01KE2K2EQJ5WQXZNWR0AEDB2KQ
-    step_type_spec: w90_run
+    step_type_spec: w90_wannier
 pseudo:
   files:
   - Si.pbe-n-van.UPF

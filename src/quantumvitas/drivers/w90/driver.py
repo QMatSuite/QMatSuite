@@ -3,9 +3,8 @@
 This driver handles Wannier90 calculations for constructing
 maximally localized Wannier functions (MLWFs) from DFT output.
 
-Note: The preprocessing step (w90_preproc) is registered with
-the DFT engine (QE, VASP) that produces it. This driver handles
-only the main Wannier90 execution (w90_run).
+Note: The preprocessing step (wannierprep) is registered with
+the W90 engine. This driver handles the main Wannier90 execution (wannier).
 """
 
 from pathlib import Path
@@ -24,11 +23,15 @@ class W90Driver(BaseEngineDriver):
     """Wannier90 driver bundle implementing the EngineDriver protocol.
 
     This driver handles:
-    - w90_run: Main Wannier90 execution using wannier90.x
+    - wannier: Main Wannier90 execution using wannier90.x
 
-    The w90_preproc step is handled by the DFT engine driver because
-    it uses the DFT engine's executable (pw2wannier90.x for QE).
+    The wannierprep step is handled by the W90 engine driver.
     """
+
+    PREFIX: str = "w90"
+    SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
+        "wannierprep", "wannier"
+    })
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties
@@ -53,12 +56,19 @@ class W90Driver(BaseEngineDriver):
     def get_step_type_specs(self) -> list[StepTypeSpec]:
         """Return Wannier90 step type specifications.
 
-        Note: w90_preproc is NOT included here - it's registered
-        with the DFT engine (QE) that executes it.
+        Note: wannierprep is included in the W90 engine registry.
         """
         return [
             StepTypeSpec(
-                step_type_spec="w90_run",
+                step_type_spec="w90_wannierprep",
+                engine="w90",
+                executable="wannier90.x",
+                description="Wannier90 preprocessing (generate .nnkp)",
+                category="postprocess",
+                mpi_aware=False,  # wannier90.x is typically serial
+            ),
+            StepTypeSpec(
+                step_type_spec="w90_wannier",
                 engine="w90",
                 executable="wannier90.x",
                 description="Wannier90 MLWF construction",
@@ -69,22 +79,13 @@ class W90Driver(BaseEngineDriver):
 
     def get_handler(self):
         """Return Wannier90 step handler."""
-        from .handler import w90_run_handler
-        return w90_run_handler
+        from .handler import wannier_handler
+        return wannier_handler
 
     def get_recipe_class(self):
         """Return Wannier90 recipe class."""
         from .recipe import W90Recipe
         return W90Recipe
-
-    def get_materialization_map(self) -> dict[str, str]:
-        """Return W90 GEN→SPEC mappings.
-
-        This is the SSOT for Wannier90 step-type mappings.
-        """
-        return {
-            "GEN_WANNIER": "w90_run",
-        }
 
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Override defaults where W90 differs
@@ -111,13 +112,13 @@ class W90Driver(BaseEngineDriver):
     def get_preflight_requirements(self, step) -> list[PreflightRequirement]:
         """Wannier90 preflight requirements.
 
-        w90_run requires output from w90_preproc step.
+        wannier requires output from wannierprep step.
         """
-        if step.step_type_spec == "w90_run":
+        if step.step_type_spec == "w90_wannier":
             return [
                 PreflightRequirement(
                     artifact_type="w90_amn",
-                    source_step=None,  # Auto-resolve from w90_preproc
+                    source_step=None,  # Auto-resolve from wannierprep
                     required=True,
                     description="Wannier90 .amn file from preprocessing",
                 ),

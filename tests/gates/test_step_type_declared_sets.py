@@ -2,7 +2,7 @@
 Gate C1: Declared StepType Enforcement
 
 Rule C1 (no engine logic):
-- Build GEN_SET and SPEC_SET from all declared step types in registries
+- Build GEN_SET and SPEC_SET from SSOT (registry + engine recipes)
 - Scan code for literal assignments of step_type_gen="X" and step_type_spec="Y"
 - Validate X is in GEN_SET and Y is in SPEC_SET
 - Fail with clear message: file:line, key, value, "not declared"
@@ -40,90 +40,156 @@ ALLOWLIST_PATTERNS = [
 ]
 
 # ============================================================================
-# Build declared sets from registries
+# Build declared sets from SSOT (registry + engine recipes)
 # ============================================================================
 
 def _build_gen_set() -> Set[str]:
-    """Build set of all declared GEN step types."""
+    """
+    Build set of all declared GEN step types from SSOT.
+
+    SSOT sources:
+    1. Registry: Get step_type_gen from all StepTypeSpec objects
+    2. Engine recipes: Get SUPPORTED_GEN_STEPS from each engine's recipe
+    """
     gen_types = set()
 
+    # Source 1: Registry (primary SSOT for step type specs)
     try:
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
 
-        # Get all registered step types and extract their GEN types
-        for spec in registry._specs.values():
+        # registry._types is keyed by step_type_spec, values are StepTypeSpec
+        for spec in registry._types.values():
             if hasattr(spec, 'step_type_gen') and spec.step_type_gen:
                 gen_types.add(spec.step_type_gen.lower())
-    except Exception:
-        pass
+    except Exception as e:
+        import sys
+        print(f"Warning: Failed to load registry for GEN_SET: {e}", file=sys.stderr)
 
-    # Add common GEN types that may not be in registry
-    # GEN types are engine-agnostic (no engine prefix)
-    common_gen_types = {
-        # QE core types
-        "scf", "nscf", "relax", "vc_relax", "vc-relax", "bands", "bands_pw", "dos", "pdos",
-        "md", "vc_md", "vc-md", "pp", "wannier90", "pw2wannier90", "matdyn", "q2r",
-        "phonon", "ph", "neb", "turbo_lanczos", "turbo_spectrum", "hp",
-        "projwfc", "dynmat", "plotband",
-        # Wannier90 types
-        "w90_preproc", "w90_run", "postprocess",
-        # Engine-agnostic calculation types
-        "optimization", "freq", "sp", "mp2", "cc", "hf",
-        "opt", "dft", "ccsd", "casscf", "casci", "tddft", "td",
-        # LAMMPS types
-        "minimize", "nve", "nvt", "npt", "equilibrate", "deform",
-        # VASP types
-        "static", "elastic", "dielectric",
-        # CP2K types
-        "geo_opt", "cell_opt", "vibrational",
-        # ORCA types
-        "nevpt2",
-        # Placeholder/fallback types (valid defaults in code)
+    # Source 2: DriverRegistry registered step types (from drivers)
+    try:
+        from quantumvitas.core.driver_registry import DriverRegistry
+        import quantumvitas.drivers  # Ensure drivers are registered
+
+        # Get all registered step types from drivers
+        for step_type_spec in DriverRegistry.get_all_step_types():
+            spec = DriverRegistry.get_step_type_spec(step_type_spec)
+            if hasattr(spec, 'step_type_gen') and spec.step_type_gen:
+                gen_types.add(spec.step_type_gen.lower())
+    except Exception as e:
+        import sys
+        print(f"Warning: Failed to load driver step types for GEN_SET: {e}", file=sys.stderr)
+
+    # Source 3: Engine recipes (SUPPORTED_GEN_STEPS) - fallback if driver registry failed
+    try:
+        from quantumvitas.core.driver_registry import DriverRegistry
+        import quantumvitas.drivers  # Ensure drivers are registered
+
+        for engine in DriverRegistry.get_all_engines():
+            driver = DriverRegistry.get_driver(engine)
+            recipe_class = driver.get_recipe_class()
+            if hasattr(recipe_class, 'SUPPORTED_GEN_STEPS'):
+                gen_types.update(s.lower() for s in recipe_class.SUPPORTED_GEN_STEPS)
+    except Exception as e:
+        import sys
+        print(f"Warning: Failed to load driver recipes for GEN_SET: {e}", file=sys.stderr)
+
+    # Minimal fallback types (valid placeholders in code, not domain-specific)
+    fallback_types = {
+        # Placeholder/fallback types
         "custom", "unknown", "",
-        # Preset catalog meta types
+        # Preset catalog meta types (not step types but used in code)
         "variants", "variant_step_types",
+        # Valid GEN types used in drivers/tests but not in workflow registry
+        "freq",  # Frequency/vibrational analysis (ORCA, PySCF)
+        "postprocess",  # Post-processing metadata (W90)
     }
-    gen_types.update(common_gen_types)
+    gen_types.update(fallback_types)
 
     return gen_types
 
 
 def _build_spec_set() -> Set[str]:
-    """Build set of all declared SPEC step types."""
+    """
+    Build set of all declared SPEC step types from SSOT.
+
+    SSOT sources:
+    1. Registry: Get step_type_spec keys
+    2. Engine recipes: Compute {PREFIX}_{gen} for all supported GEN steps
+    """
     spec_types = set()
 
+    # Source 1: Registry (primary SSOT for SPEC types)
     try:
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
 
-        # Get all registered step types (SPEC format)
-        for step_type_spec in registry._specs.keys():
+        # registry._types is keyed by step_type_spec
+        for step_type_spec in registry._types.keys():
             spec_types.add(step_type_spec.lower())
-    except Exception:
-        pass
+    except Exception as e:
+        import sys
+        print(f"Warning: Failed to load registry for SPEC_SET: {e}", file=sys.stderr)
 
-    # Add common SPEC types by engine prefix
-    # SPEC types are engine-prefixed (e.g., "qe_scf", "pyscf_dft")
-    engine_prefixes = ["qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_"]
-    gen_types = _build_gen_set()
+    # Source 2: DriverRegistry registered step types (from drivers)
+    try:
+        from quantumvitas.core.driver_registry import DriverRegistry
+        import quantumvitas.drivers  # Ensure drivers are registered
 
-    for prefix in engine_prefixes:
-        for gen in gen_types:
-            spec_types.add(f"{prefix}{gen}")
+        # Get all registered step types from drivers
+        for step_type_spec in DriverRegistry.get_all_step_types():
+            spec_types.add(step_type_spec.lower())
+    except Exception as e:
+        import sys
+        print(f"Warning: Failed to load driver step types for SPEC_SET: {e}", file=sys.stderr)
 
-    # Add explicit SPEC types that don't follow prefix+gen pattern
-    explicit_spec_types = {
-        # Wannier90 SPEC types (use "w90_" prefix)
-        "w90_preproc", "w90_run",
-        # Placeholder/fallback types
+    # Source 3: Engine recipes (compute SPEC = PREFIX + "_" + GEN)
+    try:
+        from quantumvitas.core.driver_registry import DriverRegistry
+        import quantumvitas.drivers
+
+        for engine in DriverRegistry.get_all_engines():
+            driver = DriverRegistry.get_driver(engine)
+            recipe_class = driver.get_recipe_class()
+
+            # Get PREFIX from recipe
+            prefix = getattr(recipe_class, 'PREFIX', engine).lower()
+
+            # Get supported GEN steps
+            if hasattr(recipe_class, 'SUPPORTED_GEN_STEPS'):
+                for gen in recipe_class.SUPPORTED_GEN_STEPS:
+                    spec_types.add(f"{prefix}_{gen}".lower())
+    except Exception as e:
+        import sys
+        print(f"Warning: Failed to load drivers for SPEC_SET (recipes): {e}", file=sys.stderr)
+
+    # Also add all possible {prefix}_{gen} combinations for known prefixes
+    # This ensures we don't miss any valid combinations
+    try:
+        from quantumvitas.core.driver_registry import DriverRegistry
+        import quantumvitas.drivers
+
+        gen_types = _build_gen_set()
+        for engine in DriverRegistry.get_all_engines():
+            driver = DriverRegistry.get_driver(engine)
+            recipe_class = driver.get_recipe_class()
+            prefix = getattr(recipe_class, 'PREFIX', engine).lower()
+
+            for gen in gen_types:
+                if gen:  # Skip empty string
+                    spec_types.add(f"{prefix}_{gen}".lower())
+    except Exception as e:
+        import sys
+        print(f"Warning: Failed to load drivers for SPEC_SET (2): {e}", file=sys.stderr)
+
+    # Minimal fallback types
+    fallback_types = {
         "unknown", "custom", "custom_unknown",
-        # QE special types
-        "qe_vc-relax",
-        # Preset catalog meta types
-        "qe_variants", "variant_step_types",
+        "variant_step_types",
+        # Preset catalog scope type indicator (not an actual step type)
+        "qe_variants",
     }
-    spec_types.update(explicit_spec_types)
+    spec_types.update(fallback_types)
 
     return spec_types
 
@@ -309,14 +375,14 @@ class TestStepTypeDeclaredSets:
             pytest.fail(report)
 
     def test_gen_set_not_empty(self):
-        """Verify GEN_SET is populated."""
+        """Verify GEN_SET is populated from SSOT."""
         gen_set = get_gen_set()
         assert len(gen_set) > 0, "GEN_SET should not be empty"
         assert "scf" in gen_set, "GEN_SET should contain 'scf'"
         assert "nscf" in gen_set, "GEN_SET should contain 'nscf'"
 
     def test_spec_set_not_empty(self):
-        """Verify SPEC_SET is populated."""
+        """Verify SPEC_SET is populated from SSOT."""
         spec_set = get_spec_set()
         assert len(spec_set) > 0, "SPEC_SET should not be empty"
         assert "qe_scf" in spec_set, "SPEC_SET should contain 'qe_scf'"
@@ -328,9 +394,9 @@ class TestStepTypeDeclaredSets:
 # ============================================================================
 
 if __name__ == "__main__":
-    print("=== Gate C1: Declared StepType Enforcement ===")
-    print(f"GEN_SET: {sorted(get_gen_set())}")
-    print(f"SPEC_SET: {sorted(get_spec_set())[:30]}...")
+    print("=== Gate C1: Declared StepType Enforcement (SSOT-based) ===")
+    print(f"GEN_SET ({len(get_gen_set())} types): {sorted(get_gen_set())}")
+    print(f"SPEC_SET ({len(get_spec_set())} types): {sorted(get_spec_set())[:30]}...")
 
     violations, files_scanned = scan_all_files()
     print(f"\nScanned {files_scanned} files")

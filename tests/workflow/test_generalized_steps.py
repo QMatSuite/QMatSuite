@@ -63,7 +63,7 @@ class TestGeneralizedStepMaterialization:
             ["SCF", "NSCF", "WANNIER_CONVERT"],
             "qe"
         )
-        assert result == ["qe_scf", "qe_nscf", "qe_pw2wannier90"]
+        assert result == ["qe_scf", "qe_nscf", "qe_pw2wannier"]
     
     def test_materialize_workflow_fails_on_unsupported(self):
         """Materialization fails if step is unsupported."""
@@ -87,7 +87,7 @@ class TestDematerialization:
         result = dematerialize_to_generalized_step("pyscf_scf")
         assert result == "SCF"
 
-        result = dematerialize_to_generalized_step("w90_run")
+        result = dematerialize_to_generalized_step("w90_wannier")
         assert result == "WANNIER"
 
     def test_dematerialize_unknown_step(self):

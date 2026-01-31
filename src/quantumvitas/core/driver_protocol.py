@@ -64,7 +64,7 @@ class StepTypeSpec:
 
     def _allowed_special_ids(self) -> set[str]:
         """Step type specs that don't follow the prefix convention."""
-        return {"w90_preproc", "w90_run"}  # Wannier90 legacy names
+        return {"w90_wannierprep", "w90_wannier"}  # Wannier90 legacy names
 
 
 @dataclass
@@ -196,6 +196,19 @@ class BaseEngineDriver:
         Override to declare requirements like CHGCAR/WAVECAR for VASP.
         """
         return []
+
+    def get_materialization_map(self) -> dict[str, str]:
+        """Default: Build materialization map from PREFIX + SUPPORTED_GEN_STEPS.
+        
+        Delegates to DriverRegistry which builds the map from driver attributes.
+        This method is kept for backward compatibility with code that calls it directly.
+        Drivers should not override this - use PREFIX + SUPPORTED_GEN_STEPS instead.
+        """
+        from quantumvitas.core.driver_registry import DriverRegistry
+        registry = DriverRegistry.get_instance()
+        # Get from registry's stored map (built during registration)
+        family = self.engine_family
+        return registry._materialization_maps.get(family, {})
 
     def classify_error(self, stderr: str, exit_code: int) -> ErrorClass:
         """Default: unknown error class.

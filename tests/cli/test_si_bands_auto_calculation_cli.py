@@ -174,7 +174,7 @@ class TestSiBandsCalculationAutoKpath:
         # Step 3: Bands calculation with AUTO k-path
         # --auto-kpath will generate K_POINTS crystal_b from structure symmetry
         run_qv([
-            "init", "step", "bands_pw",
+            "init", "step", "bandspw",
             "--structure", "si",
             "--calculation", "bands_auto",
             "--name", "bands",

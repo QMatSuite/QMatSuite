@@ -9,7 +9,7 @@
         "description": "Electronic band structure along k-path",
         "step_sequence": [
           "scf",
-          "bands_pw",
+          "bandspw",
           "bands"
         ]
       },
@@ -82,8 +82,8 @@
         "step_sequence": [
           "scf",
           "nscf",
-          "pw2wannier90",
-          "w90_run"
+          "pw2wannier",
+          "wannier"
         ]
       }
     ]

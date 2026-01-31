@@ -255,7 +255,7 @@ def compute_step_digest(
             _parse_scf_digest(digest, output_file)
         elif step_type_lower == "nscf":
             _parse_nscf_digest(digest, output_file)
-        elif step_type_lower in ("bands", "bands_pw"):
+        elif step_type_lower in ("bands", "bandspw"):
             _parse_bands_digest(digest, working_dir, output_file)
         elif step_type_lower == "dos":
             _parse_dos_digest(digest, working_dir, output_file)
@@ -311,7 +311,7 @@ def _find_output_file(working_dir: Path, step_type_spec: str) -> Optional[Path]:
             return f
 
     # For bands, also check for bands.x output
-    if step_type_gen in ("bands", "bands_pw"):
+    if step_type_gen in ("bands", "bandspw"):
         for f in working_dir.glob("*bands*.out"):
             return f
     

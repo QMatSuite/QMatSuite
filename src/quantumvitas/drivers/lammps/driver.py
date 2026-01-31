@@ -25,6 +25,11 @@ from quantumvitas.core.driver_protocol import (
 class LAMMPSDriver(BaseEngineDriver):
     """LAMMPS driver bundle implementing the EngineDriver protocol."""
 
+    PREFIX: str = "lammps"
+    SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
+        "minimize", "md", "relax", "nvt", "npt"
+    })
+
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties
     # ─────────────────────────────────────────────────────────────────────
@@ -120,16 +125,6 @@ class LAMMPSDriver(BaseEngineDriver):
         """Return LAMMPS recipe class."""
         from .recipe import LAMMPSRecipe
         return LAMMPSRecipe
-
-    def get_materialization_map(self) -> dict[str, str]:
-        """Return LAMMPS GEN→SPEC mappings."""
-        return {
-            "GEN_MINIMIZE": "lammps_minimize",
-            "GEN_MD": "lammps_md",
-            "GEN_RELAX": "lammps_relax",
-            "GEN_NVT": "lammps_nvt",
-            "GEN_NPT": "lammps_npt",
-        }
 
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Override defaults where LAMMPS differs

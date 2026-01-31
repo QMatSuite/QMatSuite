@@ -47,8 +47,8 @@ def _get_bands_filband(params: Dict[str, Any]) -> Optional[str]:
 ArtifactRule = Callable[[str, Dict[str, Any], Path], List[str]]
 
 
-def _w90_preproc_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
-    """Artifacts for w90_preproc step."""
+def _wannierprep_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
+    """Artifacts for wannierprep step."""
     seedname = _get_wannier90_seedname(params)
     if not seedname:
         return []
@@ -57,8 +57,8 @@ def _w90_preproc_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path
     return [f"{seedname}.nnkp"]
 
 
-def _pw2wannier90_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
-    """Artifacts for pw2wannier90 step."""
+def _pw2wannier_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
+    """Artifacts for pw2wannier step."""
     seedname = _get_wannier90_seedname(params)
     if not seedname:
         return []
@@ -75,8 +75,8 @@ def _pw2wannier90_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Pat
     return existing
 
 
-def _w90_run_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
-    """Artifacts for w90_run step."""
+def _wannier_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
+    """Artifacts for wannier step."""
     seedname = _get_wannier90_seedname(params)
     if not seedname:
         return []
@@ -116,9 +116,9 @@ def _bands_artifacts(step_type: str, params: Dict[str, Any], raw_dir: Path) -> L
 
 # Registry of artifact rules by step_type
 STEP_ARTIFACT_RULES: Dict[str, ArtifactRule] = {
-    "w90_preproc": _w90_preproc_artifacts,
-    "pw2wannier90": _pw2wannier90_artifacts,
-    "w90_run": _w90_run_artifacts,
+    "wannierprep": _wannierprep_artifacts,
+    "pw2wannier": _pw2wannier_artifacts,
+    "wannier": _wannier_artifacts,
     "bands": _bands_artifacts,
 }
 
@@ -132,7 +132,7 @@ def get_step_artifacts(
     Get list of artifact filenames for a step type.
     
     Args:
-        step_type: Step type (e.g., "w90_run", "bands")
+        step_type: Step type (e.g., "wannier", "bands")
         params: Step parameters (may be nested or flat)
         raw_dir: Raw directory where artifacts are stored
         
@@ -160,7 +160,7 @@ def get_default_artifact(
     Determine the default artifact for GUI display.
     
     Priority:
-    1. Primary artifact from step-specific rule (e.g., w90_run's .wout, bands' .gnu)
+    1. Primary artifact from step-specific rule (e.g., wannier's .wout, bands' .gnu)
     2. Fallback to {step_type}.out if it exists
     3. None if no suitable default
     

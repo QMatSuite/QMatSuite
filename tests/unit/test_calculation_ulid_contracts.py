@@ -200,7 +200,7 @@ class TestCalculationULIDContracts:
         
         # Create step files
         step_ids = []
-        step_types = ["scf", "bands_pw", "bands"]
+        step_types = ["scf", "bandspw", "bands"]
         for step_type in step_types:
             step_id = generate_resource_id()
             step_ids.append(step_id)
@@ -252,7 +252,7 @@ class TestCalculationULIDContracts:
         # Should detect "bands" workflow
         assert match.workflow_id == "bands"
         assert "scf" in match.present_steps
-        assert "bands_pw" in match.present_steps
+        assert "bandspw" in match.present_steps
         assert "bands" in match.present_steps
     
     def test_workflow_detection_fallback_to_step_yaml_when_type_missing(self, project_root):
@@ -268,7 +268,7 @@ class TestCalculationULIDContracts:
         
         # Create step files
         step_ids = []
-        step_types = ["scf", "bands_pw", "bands"]
+        step_types = ["scf", "bandspw", "bands"]
         for step_type in step_types:
             step_id = generate_resource_id()
             step_ids.append(step_id)
@@ -320,6 +320,6 @@ class TestCalculationULIDContracts:
         # Should still detect "bands" workflow by reading step YAML files
         assert match.workflow_id == "bands"
         assert "scf" in match.present_steps
-        assert "bands_pw" in match.present_steps
+        assert "bandspw" in match.present_steps
         assert "bands" in match.present_steps
 

@@ -32,10 +32,10 @@ class TestWannier90StepsDoNotParseEnergy:
             mock_extract
         )
         
-        # Test w90_preproc
+        # Test w90_wannierprep
         step_status, message, metrics = evaluate_step_result(
             mode=StepMode.NORMAL,
-            step_type="w90_preproc",
+            step_type="w90_wannierprep",
             output_text="",  # Empty output (typical for Wannier90)
             reference_file=None,
             step_result_return_code=0,
@@ -46,11 +46,11 @@ class TestWannier90StepsDoNotParseEnergy:
         assert step_status == StepStatus.SUCCESS
         assert metrics == {}
         
-        # Test w90_run
+        # Test w90_wannier
         call_count["count"] = 0
         step_status, message, metrics = evaluate_step_result(
             mode=StepMode.NORMAL,
-            step_type="w90_run",
+            step_type="w90_wannier",
             output_text="",
             reference_file=None,
             step_result_return_code=0,
@@ -60,11 +60,11 @@ class TestWannier90StepsDoNotParseEnergy:
         assert step_status == StepStatus.SUCCESS
         assert metrics == {}
         
-        # Test pw2wannier90
+        # Test qe_pw2wannier
         call_count["count"] = 0
         step_status, message, metrics = evaluate_step_result(
             mode=StepMode.NORMAL,
-            step_type="pw2wannier90",
+            step_type="qe_pw2wannier",
             output_text="",
             reference_file=None,
             step_result_return_code=0,

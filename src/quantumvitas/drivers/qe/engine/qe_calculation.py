@@ -29,8 +29,8 @@ class StepResult:
     step_type_spec: str  # SPEC type (e.g., "qe_scf", "vasp_relax")
     input_file: Path
     output_file: Optional[Path] = None  # Primary artifact (e.g., <seed>.wout for Wannier90, scf.out for QE)
-    stdout_file: Optional[Path] = None  # Stdout capture file (e.g., scf.out, w90_preproc.out)
-    stderr_file: Optional[Path] = None  # Stderr capture file (e.g., scf.err, w90_preproc.err)
+    stdout_file: Optional[Path] = None  # Stdout capture file (e.g., scf.out, wannierprep.out)
+    stderr_file: Optional[Path] = None  # Stderr capture file (e.g., scf.err, wannierprep.err)
     success: bool = False
     return_code: Optional[int] = None
     stdout: str = ""  # Content from stdout_file (for in-memory access)
@@ -62,7 +62,7 @@ def get_capture_paths(raw_dir: Path, step_type: str) -> Tuple[Path, Path]:
     
     Args:
         raw_dir: Working directory where capture files are written
-        step_type: Step type (e.g., "scf", "nscf", "w90_preproc")
+        step_type: Step type (e.g., "scf", "nscf", "wannierprep")
         
     Returns:
         Tuple of (stdout_path, stderr_path)
@@ -118,7 +118,7 @@ class QECalculationRunner:
                 calculation_map = {
                     'scf': 'scf',
                     'nscf': 'nscf',
-                    'bands': 'bands_pw',  # pw.x bands calculation (not bands.x)
+                    'bands': 'bandspw',  # pw.x bands calculation (not bands.x)
                     'relax': 'opt',
                     'vc-relax': 'opt',
                     'md': 'md',
@@ -295,31 +295,31 @@ class QECalculationRunner:
         # This is handled by run_and_verify_step, but we ensure it here as well
         # by checking if working_dir has the pseudopotentials
         
-        # A. Unified stdout/stderr file naming: step_type.out / step_type.err (overwrite, never versioned)
-        stdout_capture_path, stderr_capture_path = get_capture_paths(working_dir, step_type)
-        
+        # A. Unified stdout/stderr file naming: step_gen_type.out / step_gen_type.err (overwrite, never versioned)
+        stdout_capture_path, stderr_capture_path = get_capture_paths(working_dir, step_gen_type)
+
         # B. Determine primary output file (artifact) semantics
         input_stem = input_file.stem if isinstance(input_file, Path) else Path(input_file).stem
-        
-        if step_type in ("w90_preproc", "w90_run"):
+
+        if step_gen_type in ("wannierprep", "wannier"):
             # Wannier90 steps:
             # - Primary artifact: <seed>.wout (for GUI display of main output)
-            # - Stdout capture: w90_preproc.out / w90_run.out (may be empty, but always written)
+            # - Stdout capture: wannierprep.out / wannier.out (may be empty, but always written)
             primary_output_file = working_dir / f"{input_stem}.wout"
-        elif step_type == "pw2wannier90":
+        elif step_gen_type == "pw2wannier":
             # pw2wannier90: primary output is the stdout capture
             primary_output_file = stdout_capture_path
         else:
             # QE steps (scf, nscf, etc.): primary output is the stdout capture
             # This matches QE convention where scf.out is both the stdout and the main output
             primary_output_file = stdout_capture_path
-        
+
         # Check if step uses stdin or command-line arguments
-        uses_stdin = self.engine.uses_stdin(step_type)
+        uses_stdin = self.engine.uses_stdin(step_gen_type)
         
         # E. Logging: Only essential info at INFO level
         logger.info(f"[RUN_STEP] Starting {step_type}: {input_file.name if hasattr(input_file, 'name') else input_file}")
-        logger.info(f"[RUN_STEP] Capturing stdout/stderr to {step_type}.out/.err (overwrite)")
+        logger.info(f"[RUN_STEP] Capturing stdout/stderr to {step_gen_type}.out/.err (overwrite)")
         
         # Execute command
         try:
@@ -396,15 +396,15 @@ class QECalculationRunner:
                                 )
             else:
                 # Wannier90 execution without stdin (uses command-line arguments: seedname or -i flag)
-                # w90_preproc: wannier90.x -pp seedname
-                # w90_run: wannier90.x seedname
-                # pw2wannier90: pw2wannier90.x -i pw2wan.in
+                # wannierprep: wannier90.x -pp seedname
+                # wannier: wannier90.x seedname
+                # pw2wannier: pw2wannier90.x -i pw2wan.in
                 logger.debug(f"[RUN_STEP] Using command-line arguments for {step_type} (no stdin)")
                 logger.debug(f"[RUN_STEP] Command: {' '.join(command)}")
                 logger.debug(f"[RUN_STEP] Working dir: {working_dir}")
                 
-                # For pw2wannier90, verify input file exists BEFORE running
-                if step_type == "pw2wannier90":
+                # For pw2wannier, verify input file exists BEFORE running
+                if step_type == "pw2wannier":
                     # Command is: pw2wannier90.x -i <input_file>
                     # Input file should be relative to working_dir or absolute
                     # Find the input file path from command
@@ -420,36 +420,36 @@ class QECalculationRunner:
                                 cmd_input_file_resolved = cmd_input_file_path.resolve()
                             
                             # E. Validation details at DEBUG level
-                            logger.debug(f"[RUN_STEP] pw2wannier90 input validation: arg='{cmd_input_file_str}', resolved={cmd_input_file_resolved}, exists={cmd_input_file_resolved.exists()}, is_dir={cmd_input_file_resolved.is_dir()}")
+                            logger.debug(f"[RUN_STEP] pw2wannier input validation: arg='{cmd_input_file_str}', resolved={cmd_input_file_resolved}, exists={cmd_input_file_resolved.exists()}, is_dir={cmd_input_file_resolved.is_dir()}")
                             
                             # Safety checks
                             if cmd_input_file_str in (".", "./", ".."):
-                                logger.error(f"[RUN_STEP] pw2wannier90 input file is invalid: '{cmd_input_file_str}' (see {stderr_capture_path.name})")
+                                logger.error(f"[RUN_STEP] pw2wannier input file is invalid: '{cmd_input_file_str}' (see {stderr_capture_path.name})")
                                 raise ValueError(
-                                    f"pw2wannier90 input file path is invalid: '{cmd_input_file_str}'. "
+                                    f"pw2wannier input file path is invalid: '{cmd_input_file_str}'. "
                                     f"Command was: {' '.join(command)}"
                                 )
                             
                             if cmd_input_file_resolved.exists() and cmd_input_file_resolved.is_dir():
-                                logger.error(f"[RUN_STEP] pw2wannier90 input file is a directory: {cmd_input_file_resolved} (see {stderr_capture_path.name})")
+                                logger.error(f"[RUN_STEP] pw2wannier input file is a directory: {cmd_input_file_resolved} (see {stderr_capture_path.name})")
                                 raise ValueError(
-                                    f"pw2wannier90 input file path is a directory: {cmd_input_file_resolved}."
+                                    f"pw2wannier input file path is a directory: {cmd_input_file_resolved}."
                                 )
                             
                             if not cmd_input_file_resolved.exists():
-                                logger.error(f"[RUN_STEP] pw2wannier90 input file not found: {cmd_input_file_resolved} (see {stderr_capture_path.name})")
+                                logger.error(f"[RUN_STEP] pw2wannier input file not found: {cmd_input_file_resolved} (see {stderr_capture_path.name})")
                                 if working_dir.exists():
                                     files_in_workdir = [f.name for f in working_dir.glob("*")]
                                     logger.debug(f"[RUN_STEP] Files in working_dir: {files_in_workdir}")
                                 raise FileNotFoundError(
-                                    f"pw2wannier90 input file not found: {cmd_input_file_resolved}."
+                                    f"pw2wannier input file not found: {cmd_input_file_resolved}."
                                 )
                         else:
-                            logger.error(f"[RUN_STEP] ERROR: pw2wannier90 command missing input file after -i flag: {' '.join(command)}")
-                            raise ValueError(f"pw2wannier90 command missing input file: {' '.join(command)}")
+                            logger.error(f"[RUN_STEP] ERROR: pw2wannier command missing input file after -i flag: {' '.join(command)}")
+                            raise ValueError(f"pw2wannier command missing input file: {' '.join(command)}")
                     else:
-                        logger.error(f"[RUN_STEP] ERROR: pw2wannier90 command missing -i flag: {' '.join(command)}")
-                        raise ValueError(f"pw2wannier90 command must include -i flag: {' '.join(command)}")
+                        logger.error(f"[RUN_STEP] ERROR: pw2wannier command missing -i flag: {' '.join(command)}")
+                        raise ValueError(f"pw2wannier command must include -i flag: {' '.join(command)}")
                 
                 # C. cwd must be raw_dir (working_dir) - wannier90 writes <seed>.nnkp/.wout there
                 # Ensure parent directories exist and open files with mode="w" to overwrite
@@ -525,47 +525,47 @@ class QECalculationRunner:
             success = (return_code == 0)
             error_msg = None
             
-            if step_type == "w90_preproc":
-                # w90_preproc: returncode==0 AND <seed>.nnkp must exist
+            if step_gen_type == "wannierprep":
+                # wannierprep: returncode==0 AND <seed>.nnkp must exist
                 input_stem = input_file.stem if isinstance(input_file, Path) else Path(input_file).stem
                 nnkp_file = working_dir / f"{input_stem}.nnkp"
                 if return_code == 0:
                     if not nnkp_file.exists():
                         success = False
-                        error_msg = f"w90_preproc return_code=0 but required artifact {nnkp_file.name} does not exist"
+                        error_msg = f"wannierprep return_code=0 but required artifact {nnkp_file.name} does not exist"
                         logger.error(f"[RUN_STEP] {error_msg}")
                     else:
-                        logger.info(f"[RUN_STEP] w90_preproc succeeded: {nnkp_file} exists")
+                        logger.info(f"[RUN_STEP] wannierprep succeeded: {nnkp_file} exists")
                 else:
                     success = False
-                    error_msg = f"w90_preproc failed with return code {return_code}"
+                    error_msg = f"wannierprep failed with return code {return_code}"
                     if stderr:
                         stderr_preview = stderr[-500:] if len(stderr) > 500 else stderr
                         error_msg += f"\n\nStderr:\n{stderr_preview}"
-            
-            elif step_type == "w90_run":
-                # w90_run: returncode==0 AND <seed>.wout must exist
+
+            elif step_gen_type == "wannier":
+                # wannier: returncode==0 AND <seed>.wout must exist
                 input_stem = input_file.stem if isinstance(input_file, Path) else Path(input_file).stem
                 wout_file = working_dir / f"{input_stem}.wout"
                 if return_code == 0:
                     if not wout_file.exists():
                         success = False
-                        error_msg = f"w90_run return_code=0 but required artifact {wout_file.name} does not exist"
+                        error_msg = f"wannier return_code=0 but required artifact {wout_file.name} does not exist"
                         logger.error(f"[RUN_STEP] {error_msg}")
                     else:
-                        logger.debug(f"[RUN_STEP] w90_run succeeded: {wout_file.name} exists")
+                        logger.debug(f"[RUN_STEP] wannier succeeded: {wout_file.name} exists")
                 else:
                     success = False
-                    error_msg = f"w90_run failed with return code {return_code}"
+                    error_msg = f"wannier failed with return code {return_code}"
                     if stderr:
                         stderr_preview = stderr[-500:] if len(stderr) > 500 else stderr
                         error_msg += f"\n\nStderr:\n{stderr_preview}"
-            
-            elif step_type == "pw2wannier90":
-                # pw2wannier90: returncode==0 means success
+
+            elif step_gen_type == "pw2wannier":
+                # pw2wannier: returncode==0 means success
                 if return_code != 0:
                     success = False
-                    error_msg = f"pw2wannier90 failed with return code {return_code}"
+                    error_msg = f"pw2wannier failed with return code {return_code}"
                     if stderr:
                         # Include last 50 lines of stderr
                         stderr_lines = stderr.split('\n')
@@ -573,7 +573,7 @@ class QECalculationRunner:
                         error_msg += f"\n\nStderr (last 50 lines):\n{stderr_preview}"
                     logger.error(f"[RUN_STEP] {error_msg}")
                 else:
-                    logger.info(f"[RUN_STEP] pw2wannier90 succeeded (return_code=0)")
+                    logger.info(f"[RUN_STEP] pw2wannier succeeded (return_code=0)")
             
             else:
                 # QE steps: use return_code and optional parsing
@@ -586,26 +586,26 @@ class QECalculationRunner:
             
             # Parse output if successful (only for QE steps that support it)
             parsed_output = None
-            if success and step_type not in ("w90_preproc", "w90_run", "pw2wannier90"):
+            if success and step_gen_type not in ("wannierprep", "wannier", "pw2wannier"):
                 # Only parse QE output files, not Wannier90
                 if primary_output_file.exists():
                     try:
-                        parsed_output = self.engine.parse_output(primary_output_file, step_type)
+                        parsed_output = self.engine.parse_output(primary_output_file, step_gen_type)
                     except Exception:
                         pass  # Parsing is optional
-            
+
             # B. Set StepResult fields:
             # - output_file: Primary artifact (<seed>.wout for Wannier90, scf.out for QE)
-            # - stdout_file: Stdout capture file (always step_type.out)
-            # - stderr_file: Stderr capture file (always step_type.err)
+            # - stdout_file: Stdout capture file (always step_gen_type.out)
+            # - stderr_file: Stderr capture file (always step_gen_type.err)
             # Note: output_file should always be set to the expected path, even if file doesn't exist (e.g., execution failed)
             result_output_file = None
-            if step_type in ("w90_preproc", "w90_run"):
+            if step_gen_type in ("wannierprep", "wannier"):
                 # Wannier90: primary artifact is <seed>.wout (only if exists, otherwise None)
                 if primary_output_file.exists():
                     result_output_file = primary_output_file
-            elif step_type == "pw2wannier90":
-                # pw2wannier90: primary output is the stdout capture (always set, even if empty)
+            elif step_gen_type == "pw2wannier":
+                # pw2wannier: primary output is the stdout capture (always set, even if empty)
                 result_output_file = stdout_capture_path
             else:
                 # QE steps: primary output is the stdout capture (scf.out, nscf.out, etc.)

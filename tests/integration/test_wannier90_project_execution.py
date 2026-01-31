@@ -260,7 +260,7 @@ steps: []
         print(f"NSCF failed. stderr: {stderr[:500]}")
         return False
     
-    def run_w90_preproc(self) -> bool:
+    def run_wannierprep(self) -> bool:
         """Run wannier90.x -pp (preprocessing) - no stdin, uses seedname arg."""
         # wannier90.x -pp seedname (reads seedname.win, writes seedname.nnkp)
         command = [str(self.wannier90_x), "-pp", self.seedname]
@@ -271,7 +271,7 @@ steps: []
         if nnkp_file.exists():
             return True
         
-        print(f"w90_preproc failed. returncode={returncode}, stderr: {stderr[:500]}")
+        print(f"wannierprep failed. returncode={returncode}, stderr: {stderr[:500]}")
         return False
     
     def run_pw2wannier90(self) -> bool:
@@ -312,11 +312,11 @@ steps: []
         return False
     
     def run_full_workflow(self) -> bool:
-        """Run complete SCF → NSCF → w90_preproc → pw2wannier90 → w90_run workflow."""
+        """Run complete SCF → NSCF → wannierprep → pw2wannier90 → w90_run workflow."""
         steps = [
             ("SCF", self.run_scf),
             ("NSCF", self.run_nscf),
-            ("w90_preproc", self.run_w90_preproc),
+            ("wannierprep", self.run_wannierprep),
             ("pw2wannier90", self.run_pw2wannier90),
             ("w90_run", self.run_w90),
         ]

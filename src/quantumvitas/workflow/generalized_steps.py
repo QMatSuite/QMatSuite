@@ -147,7 +147,7 @@ def materialize_workflow(
     """
     Materialize a list of generalized steps to engine-specific step types.
     
-    Phase 3B: Accepts PUBLIC step keys (like "scf", "bands_pw") from workflow templates.
+    Phase 3B: Accepts PUBLIC step keys (like "scf", "bandspw") from workflow templates.
     Also supports GeneralizedStep enum values (uppercase like "SCF") for backward compatibility.
     
     Per VASP integration plan v2.0:
@@ -202,7 +202,7 @@ def materialize_public_step_key(
     engine_family: str,
 ) -> Optional[str]:
     """
-    Materialize a PUBLIC step key (like "scf", "bands_pw", "td") to MACHINE step type.
+    Materialize a PUBLIC step key (like "scf", "bandspw", "td") to MACHINE step type.
 
     Phase 3B/3C: Helper for materializing PUBLIC step keys from workflow templates.
 
@@ -214,7 +214,7 @@ def materialize_public_step_key(
     3. Verify the machine type's engine matches engine_family
 
     Args:
-        public_step_key: PUBLIC step key (e.g., "scf", "bands_pw", "td", "mp2")
+        public_step_key: PUBLIC step key (e.g., "scf", "bandspw", "td", "mp2")
         engine_family: Engine family identifier (e.g., "qe", "pyscf")
 
     Returns:
@@ -227,7 +227,7 @@ def materialize_public_step_key(
         "pyscf_td"
     """
     # Strategy: Prioritize StepTypeRegistry lookup for PUBLIC keys
-    # This ensures PUBLIC keys like "bands" map correctly (qe_bands, not qe_bands_pw)
+    # This ensures PUBLIC keys like "bands" map correctly (qe_bands, not qe_bandspw)
     from quantumvitas.workflow.registry import get_registry
     registry = get_registry()
     spec = registry.get(public_step_key)  # Lookup by PUBLIC key (also accepts machine types)
