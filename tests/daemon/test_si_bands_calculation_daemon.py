@@ -282,7 +282,7 @@ class TestDaemonCalculationExecution:
         # Create bands calculation step (pw.x with calculation='bands')
         svc.calculation.add_step(
             calc_selector="bands_daemon",
-            step_type="bands_pw",
+            step_type="bandspw",
             name="bands",
         )
         

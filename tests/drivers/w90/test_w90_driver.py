@@ -23,9 +23,9 @@ class TestW90Driver:
         specs = driver.get_step_type_specs()
 
         spec_ids = {s.step_type_spec for s in specs}
-        assert "w90_run" in spec_ids
-        # w90_preproc is NOT in this driver
-        assert "w90_preproc" not in spec_ids
+        assert "w90_wannier" in spec_ids
+        # wannierprep IS in this driver (W90 engine)
+        assert "w90_wannierprep" in spec_ids
 
         for spec in specs:
             assert spec.engine == "w90"
@@ -51,7 +51,7 @@ class TestW90Driver:
         """W90 has GEN_WANNIER mapping (SSOT for Wannier steps)."""
         driver = W90Driver()
         mat_map = driver.get_materialization_map()
-        assert mat_map == {"GEN_WANNIER": "w90_run"}
+        assert mat_map == {"GEN_WANNIERPREP": "w90_wannierprep", "GEN_WANNIER": "w90_wannier"}
 
 
 class TestW90Registration:
@@ -65,19 +65,19 @@ class TestW90Registration:
         driver = DriverRegistry.get_driver("w90")
         assert driver.engine_family == "w90"
 
-    def test_w90_run_registered(self):
-        """w90_run step type should be in registry."""
+    def test_w90_wannier_registered(self):
+        """w90_wannier step type should be in registry."""
         import quantumvitas.drivers
 
-        assert DriverRegistry.is_step_type_registered("w90_run")
+        assert DriverRegistry.is_step_type_registered("w90_wannier")
 
-    def test_w90_preproc_in_qe(self):
-        """w90_preproc should be registered with QE."""
+    def test_wannierprep_in_w90(self):
+        """wannierprep should be registered with W90 engine."""
         import quantumvitas.drivers
 
-        assert DriverRegistry.is_step_type_registered("w90_preproc")
-        engine = DriverRegistry.get_engine_for_step_type("w90_preproc")
-        assert engine == "qe"  # Preprocessing runs via QE
+        assert DriverRegistry.is_step_type_registered("w90_wannierprep")
+        engine = DriverRegistry.get_engine_for_step_type("w90_wannierprep")
+        assert engine == "w90"  # Preprocessing runs via W90 engine
 
 
 class TestW90Isolation:

@@ -19,6 +19,11 @@ from quantumvitas.core.driver_protocol import (
 class PySCFDriver(BaseEngineDriver):
     """PySCF driver bundle implementing the EngineDriver protocol."""
 
+    PREFIX: str = "pyscf"
+    SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
+        "scf", "dft", "opt", "relax", "freq", "mp2", "td"
+    })
+
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties
     # ─────────────────────────────────────────────────────────────────────
@@ -132,21 +137,6 @@ class PySCFDriver(BaseEngineDriver):
         """Return PySCF recipe class."""
         from .recipe import PySCFRecipe
         return PySCFRecipe
-
-    def get_materialization_map(self) -> dict[str, str]:
-        """Return PySCF GEN→SPEC mappings.
-
-        This is the SSOT for PySCF step-type mappings.
-        """
-        return {
-            "GEN_SCF": "pyscf_scf",
-            "GEN_DFT": "pyscf_dft",
-            "GEN_OPT": "pyscf_opt",
-            "GEN_RELAX": "pyscf_relax",
-            "GEN_FREQ": "pyscf_freq",
-            "GEN_MP2": "pyscf_mp2",
-            "GEN_TD": "pyscf_td",
-        }
 
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Override defaults where PySCF differs

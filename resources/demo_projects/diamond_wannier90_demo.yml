@@ -422,7 +422,7 @@ calculations:
       num_iter: 20
     depends_on:
     - 01KE2K2EMCD0Z4YSWY2NHVSZTA
-    step_type_spec: w90_preproc
+    step_type_spec: w90_wannierprep
   - meta:
       name: pw2wannier90
       slug: pw2wannier90
@@ -435,7 +435,7 @@ calculations:
     depends_on:
     - 01KE2K2EMCD0Z4YSWY2NHVSZTA
     - 01KE2K2EME4F12EG0TC2GM95S8
-    step_type_spec: qe_pw2wannier90
+    step_type_spec: qe_pw2wannier
   - meta:
       name: w90_run
       slug: w90_run
@@ -446,7 +446,7 @@ calculations:
     parameters: *id001
     depends_on:
     - 01KE2K2EMEZN4KTJJ7R4ETMF05
-    step_type_spec: w90_run
+    step_type_spec: w90_wannier
 pseudo:
   files:
   - C.pz-vbc.UPF

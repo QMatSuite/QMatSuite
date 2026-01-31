@@ -517,12 +517,12 @@ class PrecisionAdvisor:
         
         Uses PrecisionReceiverSpec to determine step-type-specific adjustments:
         - nscf: K-mesh multiplied by NSCF_KMESH_FACTOR (2x denser)
-        - bands_pw: Returns base advice (K_POINTS filtering done in integration)
+        - bandspw: Returns base advice (K_POINTS filtering done in integration)
         - scf/relax/etc: Standard advice
         
         Args:
             precision: Desired precision level
-            step_type: Step type string (e.g., "scf", "nscf", "bands_pw")
+            step_type: Step type string (e.g., "scf", "nscf", "bandspw")
             
         Returns:
             PrecisionAdvice adjusted for step type
@@ -558,8 +558,8 @@ class PrecisionAdvisor:
                 reciprocal_lengths=advice.reciprocal_lengths,
             )
         
-        # For other steps (scf, bands_pw, etc.), return base advice
-        # (bands_pw K_POINTS filtering is done in integration layer via receiver spec)
+        # For other steps (scf, bandspw, etc.), return base advice
+        # (bandspw K_POINTS filtering is done in integration layer via receiver spec)
         return advice
 
 

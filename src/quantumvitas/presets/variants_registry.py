@@ -29,7 +29,7 @@ from quantumvitas.presets.paramspace import (
 from quantumvitas.presets.precision_variants import (
     build_precision_pw_default_space,
     build_precision_pw_nscf_space,
-    build_precision_pw_bands_pw_space,
+    build_precision_pw_bandspw_space,
     get_precision_policy,
     PrecisionPolicy,
 )
@@ -48,7 +48,7 @@ OCCUPATIONS_SCHEME_VARIANT = ParamSpaceVariant(
     space=OCCUPATIONS_SCHEME_SPACE,
     applies_to_step_types=frozenset({
         "scf", "nscf", "relax", "vc-relax", "md", "vc-md",
-        # Note: bands_pw excluded (uses kpath, not occupations)
+        # Note: bandspw excluded (uses kpath, not occupations)
     }),
 )
 
@@ -59,7 +59,7 @@ MAGNETISM_VARIANT = ParamSpaceVariant(
     dimension="magnetism",
     space=MAGNETISM_SPACE,
     applies_to_step_types=frozenset({
-        "scf", "nscf", "bands_pw", "relax", "vc-relax", "md", "vc-md",
+        "scf", "nscf", "bandspw", "relax", "vc-relax", "md", "vc-md",
     }),
 )
 
@@ -82,12 +82,12 @@ PRECISION_PW_NSCF_VARIANT = ParamSpaceVariant(
     applies_to_step_types=frozenset({"nscf"}),
 )
 
-PRECISION_PW_BANDS_PW_SPACE = build_precision_pw_bands_pw_space()
-PRECISION_PW_BANDS_PW_VARIANT = ParamSpaceVariant(
-    name="PRECISION_PW_BANDS_PW",
+PRECISION_PW_BANDSPW_SPACE = build_precision_pw_bandspw_space()
+PRECISION_PW_BANDSPW_VARIANT = ParamSpaceVariant(
+    name="PRECISION_PW_BANDSPW",
     dimension="precision",
-    space=PRECISION_PW_BANDS_PW_SPACE,
-    applies_to_step_types=frozenset({"bands_pw"}),
+    space=PRECISION_PW_BANDSPW_SPACE,
+    applies_to_step_types=frozenset({"bandspw"}),
 )
 
 # Convergence: single variant for all pw-based steps
@@ -97,7 +97,7 @@ CONVERGENCE_VARIANT = ParamSpaceVariant(
     dimension="convergence",
     space=CONVERGENCE_SPACE,
     applies_to_step_types=frozenset({
-        "scf", "nscf", "relax", "vc-relax", "bands_pw", "md", "vc-md",
+        "scf", "nscf", "relax", "vc-relax", "bandspw", "md", "vc-md",
     }),
 )
 
@@ -116,7 +116,7 @@ VARIANTS: tuple[ParamSpaceVariant, ...] = (
     MAGNETISM_VARIANT,
     PRECISION_PW_DEFAULT_VARIANT,
     PRECISION_PW_NSCF_VARIANT,
-    PRECISION_PW_BANDS_PW_VARIANT,
+    PRECISION_PW_BANDSPW_VARIANT,
     CONVERGENCE_VARIANT,
     QC_PRECISION_VARIANT,
 )
@@ -307,7 +307,7 @@ def get_variant(dimension: str, step_type: str) -> Optional[ParamSpaceVariant]:
 
     Args:
         dimension: Dimension name (e.g., "precision", "magnetism")
-        step_type: Step type string (e.g., "scf", "bands_pw", or "qe_scf" for step_type_spec)
+        step_type: Step type string (e.g., "scf", "bandspw", or "qe_scf" for step_type_spec)
                    If step_type_spec is provided, it will be mapped to step_type_gen automatically.
 
     Returns:
@@ -658,7 +658,7 @@ def _detect_precision_for_step(
 
             canonical_kmesh = (canonical_nk1, canonical_nk2, canonical_nk3, sk1, sk2, sk3)
         else:
-            # bands_pw variant - no kmesh
+            # bandspw variant - no kmesh
             canonical_kmesh = None
 
         canonical_values = {
@@ -677,7 +677,7 @@ def _detect_precision_for_step(
             with ParamSpaceContext(variant.space):
                 matched_profile = match_precision_profile(step_yaml, canonical_values)
         else:
-            # Match without K_POINTS (bands_pw) - need to set context manually
+            # Match without K_POINTS (bandspw) - need to set context manually
             with ParamSpaceContext(variant.space):
                 matched_profile = _match_precision_without_kpoints(step_yaml, canonical_values)
 
@@ -726,7 +726,7 @@ def _match_precision_without_kpoints(
     canonical_values: Dict[str, Any],
 ) -> Optional[str]:
     """
-    Match precision profile without requiring K_POINTS (for bands_pw variant).
+    Match precision profile without requiring K_POINTS (for bandspw variant).
 
     Only matches on ecutwfc, ecutrho, and conv_thr.
 
@@ -734,9 +734,9 @@ def _match_precision_without_kpoints(
     """
     from quantumvitas.presets.paramspace import get_yaml_value
 
-    # Use bands_pw variant's space to get key parsers
+    # Use bandspw variant's space to get key parsers
     # Get variant directly (avoid circular import)
-    paramspace = PRECISION_PW_BANDS_PW_VARIANT.space
+    paramspace = PRECISION_PW_BANDSPW_VARIANT.space
 
     # Extract actual values (context should be set by caller)
     ecutwfc_present, ecutwfc_raw = get_yaml_value(step_yaml, "SYSTEM", "ecutwfc")

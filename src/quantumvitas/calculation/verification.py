@@ -13,8 +13,8 @@ from .types import StepMode, StepStatus
 ENERGY_TOLERANCE = 1e-5  # Rydberg
 FERMI_TOLERANCE = 1e-2  # eV (QE reports Fermi in eV)
 
-ENERGY_STEP_TYPES = {"scf", "nscf", "dos", "bands_pw"}
-FERMI_STEP_TYPES = {"nscf", "dos", "bands_pw"}
+ENERGY_STEP_TYPES = {"scf", "nscf", "dos", "bandspw"}
+FERMI_STEP_TYPES = {"nscf", "dos", "bandspw"}
 
 
 def basic_job_done_check(output_text: str) -> Tuple[bool, str]:
@@ -94,10 +94,16 @@ def evaluate_step_result(
         Tuple of (StepStatus, message, metrics)
     """
     # A. Wannier90 steps should NOT extract energy metrics (no QE output format)
-    wannier90_step_types = {"w90_preproc", "w90_run", "pw2wannier90", "wannier90", "postw90"}
+    # Handle both GEN types (wannierprep) and SPEC types (w90_wannierprep, qe_pw2wannier)
+    wannier90_gen_types = {"wannierprep", "wannier", "pw2wannier", "wannier90", "postw90"}
     step_type_str = step_type.lower() if step_type else ""
-    
-    if step_type_str in wannier90_step_types:
+    # Strip engine prefix if present (e.g., "w90_wannierprep" -> "wannierprep")
+    if "_" in step_type_str:
+        step_type_gen = step_type_str.split("_", 1)[1]
+    else:
+        step_type_gen = step_type_str
+
+    if step_type_gen in wannier90_gen_types:
         # For Wannier90 steps, don't extract energy metrics
         # Message is based on return_code/result.success + artifact checks (done in run_step())
         metrics: Dict[str, float | None] = {}

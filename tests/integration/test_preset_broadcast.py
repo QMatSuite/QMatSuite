@@ -45,8 +45,8 @@ class TestReceiverRegistry:
         
         for step_type in PW_STEP_TYPES:
             accepted = registry.get_accepted_dimensions(step_type)
-            # bands_pw is a special case: accepts magnetism/precision but NOT occupations_scheme
-            if step_type == "bands_pw":
+            # bandspw is a special case: accepts magnetism/precision but NOT occupations_scheme
+            if step_type == "bandspw":
                 expected = V1_DIMENSIONS - {DIMENSION_OCCUPATIONS_SCHEME}
                 assert accepted == expected, f"{step_type} should accept v1 dimensions except occupations_scheme"
             else:

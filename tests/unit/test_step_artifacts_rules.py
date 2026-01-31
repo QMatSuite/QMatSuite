@@ -14,8 +14,8 @@ from quantumvitas.calculation.step_artifacts import (
 class TestWannier90Artifacts:
     """Tests for Wannier90 step artifacts recognition."""
     
-    def test_w90_preproc_artifacts(self, tmp_path):
-        """Test w90_preproc step artifacts."""
+    def test_wannierprep_artifacts(self, tmp_path):
+        """Test wannierprep step artifacts."""
         params = {"seedname": "diamond"}
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
@@ -23,15 +23,15 @@ class TestWannier90Artifacts:
         # Create .nnkp file
         (raw_dir / "diamond.nnkp").write_text("test content")
         
-        artifacts = get_step_artifacts("w90_preproc", params, raw_dir)
+        artifacts = get_step_artifacts("wannierprep", params, raw_dir)
         assert "diamond.nnkp" in artifacts
         
         # Test default selection
-        default = get_default_artifact("w90_preproc", params, raw_dir, artifacts)
+        default = get_default_artifact("wannierprep", params, raw_dir, artifacts)
         assert default == "diamond.nnkp"
     
-    def test_w90_run_artifacts(self, tmp_path):
-        """Test w90_run step artifacts."""
+    def test_wannier_artifacts(self, tmp_path):
+        """Test wannier step artifacts."""
         params = {"seedname": "Si"}
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
@@ -39,17 +39,17 @@ class TestWannier90Artifacts:
         # Create .wout file
         (raw_dir / "Si.wout").write_text("Wannier90 output")
         
-        artifacts = get_step_artifacts("w90_run", params, raw_dir)
+        artifacts = get_step_artifacts("wannier", params, raw_dir)
         assert "Si.wout" in artifacts
         
         # Test default selection (should prefer .wout over .out)
-        (raw_dir / "w90_run.out").write_text("stdout")
-        all_artifacts = artifacts + ["w90_run.out"]
-        default = get_default_artifact("w90_run", params, raw_dir, all_artifacts)
+        (raw_dir / "wannier.out").write_text("stdout")
+        all_artifacts = artifacts + ["wannier.out"]
+        default = get_default_artifact("wannier", params, raw_dir, all_artifacts)
         assert default == "Si.wout"
     
-    def test_pw2wannier90_artifacts(self, tmp_path):
-        """Test pw2wannier90 step artifacts."""
+    def test_pw2wannier_artifacts(self, tmp_path):
+        """Test pw2wannier step artifacts."""
         params = {"seedname": "test"}
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
@@ -59,7 +59,7 @@ class TestWannier90Artifacts:
         (raw_dir / "test.mmn").write_text("mmn content")
         (raw_dir / "test.eig").write_text("eig content")
         
-        artifacts = get_step_artifacts("pw2wannier90", params, raw_dir)
+        artifacts = get_step_artifacts("pw2wannier", params, raw_dir)
         assert "test.amn" in artifacts
         assert "test.mmn" in artifacts
         assert "test.eig" in artifacts
@@ -77,7 +77,7 @@ class TestWannier90Artifacts:
         
         (raw_dir / "nested_seed.wout").write_text("output")
         
-        artifacts = get_step_artifacts("w90_run", params, raw_dir)
+        artifacts = get_step_artifacts("wannier", params, raw_dir)
         assert "nested_seed.wout" in artifacts
     
     def test_wannier90_seedname_extraction(self):
@@ -173,10 +173,10 @@ class TestDefaultArtifactSelection:
         raw_dir.mkdir()
         
         (raw_dir / "test.wout").write_text("primary output")
-        (raw_dir / "w90_run.out").write_text("stdout")
+        (raw_dir / "wannier.out").write_text("stdout")
         
-        artifacts = ["test.wout", "w90_run.out"]
-        default = get_default_artifact("w90_run", params, raw_dir, artifacts)
+        artifacts = ["test.wout", "wannier.out"]
+        default = get_default_artifact("wannier", params, raw_dir, artifacts)
         assert default == "test.wout"
     
     def test_default_fallback_to_stdout(self, tmp_path):
@@ -185,11 +185,11 @@ class TestDefaultArtifactSelection:
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
         
-        (raw_dir / "w90_run.out").write_text("stdout only")
+        (raw_dir / "wannier.out").write_text("stdout only")
         
-        artifacts = ["w90_run.out"]
-        default = get_default_artifact("w90_run", params, raw_dir, artifacts)
-        assert default == "w90_run.out"
+        artifacts = ["wannier.out"]
+        default = get_default_artifact("wannier", params, raw_dir, artifacts)
+        assert default == "wannier.out"
     
     def test_default_skips_empty_files(self, tmp_path):
         """Test that empty files are skipped in default selection."""
@@ -199,12 +199,12 @@ class TestDefaultArtifactSelection:
         
         # Create empty primary artifact
         (raw_dir / "test.wout").write_text("")  # Empty file
-        (raw_dir / "w90_run.out").write_text("stdout content")
+        (raw_dir / "wannier.out").write_text("stdout content")
         
-        artifacts = ["test.wout", "w90_run.out"]
-        default = get_default_artifact("w90_run", params, raw_dir, artifacts)
+        artifacts = ["test.wout", "wannier.out"]
+        default = get_default_artifact("wannier", params, raw_dir, artifacts)
         # Should fallback to stdout if primary is empty
-        assert default == "w90_run.out"
+        assert default == "wannier.out"
     
     def test_default_none_when_no_artifacts(self):
         """Test that None is returned when no artifacts exist."""
@@ -227,30 +227,30 @@ class TestStepArtifactsIntegration:
         # Preproc step
         preproc_params = {"seedname": "diamond"}
         (raw_dir / "diamond.nnkp").write_text("nnkp")
-        (raw_dir / "w90_preproc.out").write_text("preproc stdout")
+        (raw_dir / "wannierprep.out").write_text("preproc stdout")
         
-        preproc_artifacts = get_step_artifacts("w90_preproc", preproc_params, raw_dir)
+        preproc_artifacts = get_step_artifacts("wannierprep", preproc_params, raw_dir)
         assert "diamond.nnkp" in preproc_artifacts
         
-        # pw2wannier90 step
+        # pw2wannier step
         pw2w_params = {"seedname": "diamond"}
         (raw_dir / "diamond.amn").write_text("amn")
         (raw_dir / "diamond.mmn").write_text("mmn")
         (raw_dir / "diamond.eig").write_text("eig")
         
-        pw2w_artifacts = get_step_artifacts("pw2wannier90", pw2w_params, raw_dir)
+        pw2w_artifacts = get_step_artifacts("pw2wannier", pw2w_params, raw_dir)
         assert all(f"diamond.{ext}" in pw2w_artifacts for ext in ["amn", "mmn", "eig"])
         
         # w90_run step
         w90_params = {"seedname": "diamond"}
         (raw_dir / "diamond.wout").write_text("wout output")
         
-        w90_artifacts = get_step_artifacts("w90_run", w90_params, raw_dir)
+        w90_artifacts = get_step_artifacts("wannier", w90_params, raw_dir)
         assert "diamond.wout" in w90_artifacts
         
         # Default should be .wout, not .out
-        all_artifacts = w90_artifacts + ["w90_run.out"]
-        default = get_default_artifact("w90_run", w90_params, raw_dir, all_artifacts)
+        all_artifacts = w90_artifacts + ["wannier.out"]
+        default = get_default_artifact("wannier", w90_params, raw_dir, all_artifacts)
         assert default == "diamond.wout"
 
 

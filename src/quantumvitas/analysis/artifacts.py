@@ -283,7 +283,7 @@ def get_required_files_for_analysis(
         # Priority: 1) bands.out (new convention), 2) legacy patterns from find_bands_files
         bands_stdout_candidates = [
             raw_dir / "bands.out",  # New naming convention: step_type.out
-            raw_dir / "bands_pw.out",  # Alternative step type
+            raw_dir / "bandspw.out",  # Alternative step type
         ]
         
         bands_out_found = None

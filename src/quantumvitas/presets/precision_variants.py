@@ -4,7 +4,7 @@ Precision ParamSpace Variants.
 Defines three variants for precision:
 - PRECISION_PW_DEFAULT: scf, relax, vc-relax, md, vc-md (with K_POINTS)
 - PRECISION_PW_NSCF: nscf (with K_POINTS, denser mesh)
-- PRECISION_PW_BANDS_PW: bands_pw (NO K_POINTS, only cutoffs + conv_thr)
+- PRECISION_PW_BANDSPW: bandspw (NO K_POINTS, only cutoffs + conv_thr)
 """
 
 from dataclasses import dataclass
@@ -198,9 +198,9 @@ def build_precision_pw_nscf_space() -> ParamSpace:
     )
 
 
-def build_precision_pw_bands_pw_space() -> ParamSpace:
+def build_precision_pw_bandspw_space() -> ParamSpace:
     """
-    Build ParamSpace for precision bands_pw variant.
+    Build ParamSpace for precision bandspw variant.
     
     IMPORTANT: Does NOT include K_POINTS key.
     Only: ecutwfc, ecutrho, conv_thr
@@ -230,7 +230,7 @@ def build_precision_pw_bands_pw_space() -> ParamSpace:
         default=None,
     )
     
-    # NO K_POINTS key for bands_pw variant
+    # NO K_POINTS key for bandspw variant
     
     keys = [key_ecutwfc, key_ecutrho, key_conv_thr]
     
@@ -253,7 +253,7 @@ def build_precision_pw_bands_pw_space() -> ParamSpace:
     }
     
     return ParamSpace(
-        name="precision_pw_bands_pw",
+        name="precision_pw_bandspw",
         keys=keys,
         profiles=profiles,
     )
@@ -265,7 +265,7 @@ def get_precision_policy(profile_name: str, variant_name: str) -> PrecisionPolic
     
     Args:
         profile_name: "LOW", "MED", or "HIGH"
-        variant_name: "PRECISION_PW_DEFAULT", "PRECISION_PW_NSCF", or "PRECISION_PW_BANDS_PW"
+        variant_name: "PRECISION_PW_DEFAULT", "PRECISION_PW_NSCF", or "PRECISION_PW_BANDSPW"
     
     Returns:
         PrecisionPolicy with appropriate nscf_factor

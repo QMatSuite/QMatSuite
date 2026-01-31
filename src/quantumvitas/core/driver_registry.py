@@ -27,6 +27,7 @@ from quantumvitas.core.driver_exceptions import (
     UnknownStepTypeError,
 )
 from quantumvitas.core.driver_protocol import EngineDriver, StepTypeSpec
+from quantumvitas.workflow.step_type_convert import spec_from
 
 if TYPE_CHECKING:
     from quantumvitas.execution.job_graph import Job
@@ -126,7 +127,8 @@ class DriverRegistry:
             logger.debug(f"  Registered step type: {spec.step_type_spec}")
 
         # Register materialization map
-        mat_map = driver.get_materialization_map()
+        # Build from PREFIX + SUPPORTED_GEN_STEPS if available, otherwise use get_materialization_map()
+        mat_map = self._build_materialization_map(driver)
         if mat_map:
             self._materialization_maps[family] = mat_map
             logger.debug(f"  Registered {len(mat_map)} materialization mappings")
@@ -175,6 +177,66 @@ class DriverRegistry:
                     f"Step type '{spec.step_type_spec}' declares engine '{spec.engine}' "
                     f"but driver is '{family}'"
                 )
+
+    def _build_materialization_map(self, driver: EngineDriver) -> dict[str, str]:
+        """Build materialization map from PREFIX + SUPPORTED_GEN_STEPS.
+        
+        If driver has PREFIX and SUPPORTED_GEN_STEPS, builds map using spec_from().
+        Applies special case overrides for drivers that need them.
+        
+        Args:
+            driver: Driver instance
+            
+        Returns:
+            Materialization map: {GEN_*: spec_type}
+        """
+        mat_map: dict[str, str] = {}
+        
+        # Build from PREFIX + SUPPORTED_GEN_STEPS if available
+        if hasattr(driver, 'PREFIX') and hasattr(driver, 'SUPPORTED_GEN_STEPS'):
+            prefix = driver.PREFIX
+            supported_gen_steps = driver.SUPPORTED_GEN_STEPS
+            for gen_step in supported_gen_steps:
+                gen_type = f"GEN_{gen_step.upper().replace('-', '_')}"
+                spec_type = spec_from(prefix, gen_step)
+                mat_map[gen_type] = spec_type
+        
+        # Apply special case overrides
+        self._apply_special_case_overrides(driver, mat_map)
+        
+        return mat_map
+    
+    def _apply_special_case_overrides(self, driver: EngineDriver, mat_map: dict[str, str]) -> None:
+        """Apply special case overrides for drivers that need them.
+        
+        This handles cases where GEN_* types don't map 1:1 to spec_from(prefix, gen_step).
+        For example: GEN_VC_RELAX -> qe_relax (not qe_vc_relax).
+        
+        Args:
+            driver: Driver instance
+            mat_map: Materialization map to modify in-place
+        """
+        family = driver.engine_family
+        
+        # QE special cases
+        if family == "qe":
+            mat_map["GEN_VC_RELAX"] = "qe_relax"  # Not qe_vc_relax
+            mat_map["GEN_BANDS_POST"] = "qe_bands"  # Not qe_bands_post
+            mat_map["GEN_WANNIER_CONVERT"] = "qe_pw2wannier"  # Not qe_wannier_convert
+            mat_map["GEN_BANDS"] = "qe_bandspw"  # Not qe_bands
+            mat_map["GEN_PHONON"] = "qe_ph"  # Not qe_phonon - ph.x uses "ph" not "phonon"
+            mat_map["GEN_VC_MD"] = "qe_vc_md"  # Underscore not hyphen
+
+        # VASP special cases
+        if family == "vasp":
+            mat_map["GEN_VC_RELAX"] = "vasp_relax"  # Not vasp_vc-relax
+
+        # CP2K special cases
+        if family == "cp2k":
+            mat_map["GEN_VC_RELAX"] = "cp2k_relax"  # Not cp2k_vc_relax
+            mat_map["GEN_VC_MD"] = "cp2k_md"  # Not cp2k_vc_md
+            mat_map["GEN_OPT"] = "cp2k_geo_opt"  # Not cp2k_opt
+            mat_map["GEN_CELL_OPT"] = "cp2k_cell_opt"  # Not cp2k_cell_opt
 
     @classmethod
     def get_driver(cls, engine_family: str) -> EngineDriver:

@@ -22,7 +22,7 @@ def resolve_w90_inputs(
 ) -> Dict[str, Path]:
     """Resolve Wannier90 input artifacts from preprocessing.
 
-    Searches for .amn, .mmn, .eig files from w90_preproc step
+    Searches for .amn, .mmn, .eig files from wannierprep step
     or any other step that produces them.
 
     Args:
@@ -49,7 +49,7 @@ def resolve_w90_inputs(
                 f"Not all artifacts found in explicit source '{explicit_source}'"
             )
 
-    # Search completed steps for w90_preproc or any step with artifacts
+    # Search completed steps for wannierprep or any step with artifacts
     for prev_step in reversed(context.completed_steps):
         step_dir = context.get_step_dir(prev_step)
         if not step_dir:
@@ -71,7 +71,7 @@ def resolve_w90_inputs(
     if missing:
         raise FileNotFoundError(
             f"Missing Wannier90 artifacts: {', '.join(missing)}. "
-            "Ensure w90_preproc step completed successfully."
+            "Ensure wannierprep step completed successfully."
         )
 
     return found

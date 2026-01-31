@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Step types that don't have "JOB DONE" markers but have other success indicators
 # Wannier90 types are kept as hardcoded set since they're legacy and will be migrated later
-WANNIER90_STEP_TYPES = {"w90_preproc", "w90_run", "pw2wannier90", "wannier90", "postw90"}
+WANNIER90_STEP_TYPES = {"wannierprep", "wannier", "pw2wannier", "wannier90", "postw90"}
 
 
 def is_vasp_step(step_type: str) -> bool:
@@ -44,7 +44,7 @@ def primary_output_path(calc_raw_dir: Path, step_kind: str, step_doc: Optional[d
     
     Args:
         calc_raw_dir: Calculation raw directory (calc/raw)
-        step_kind: Step type (e.g., "scf", "nscf", "w90_run")
+        step_kind: Step type (e.g., "scf", "nscf", "wannier")
         step_doc: Optional step document (for Wannier90 seedname extraction)
         
     Returns:
@@ -117,7 +117,7 @@ def is_step_done(calc_dir: Path, step_kind: str, calc_raw_dir: Optional[Path] = 
     
     Args:
         calc_dir: Calculation directory
-        step_kind: Step type (e.g., "scf", "nscf", "w90_run")
+        step_kind: Step type (e.g., "scf", "nscf", "wannier")
         calc_raw_dir: Optional raw directory (defaults to calc_dir / "raw")
         step_doc: Optional step document (for extracting input/output info)
         

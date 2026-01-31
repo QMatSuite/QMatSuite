@@ -31,7 +31,7 @@ def _find_step_by_ulid(calculation: "Calculation", step_ulid: str):
     return None
 
 
-def w90_run_handler(
+def wannier_handler(
     job: Job,
     calculation: "Calculation",
     engine_registry: "EngineRegistry",
@@ -40,7 +40,7 @@ def w90_run_handler(
     """Handle Wannier90 execution.
 
     This handler:
-    1. Resolves required input files (.amn, .mmn, .eig) from w90_preproc
+    1. Resolves required input files (.amn, .mmn, .eig) from wannierprep
     2. Stages the .win input file
     3. Runs wannier90.x
     4. Collects output files
@@ -91,7 +91,7 @@ def w90_run_handler(
         # would need to use StepContext which may not be available here
         # For now, we'll search in calculation.raw_dir for previous steps
         try:
-            # Find w90_preproc step or any step with .amn, .mmn, .eig files
+            # Find wannierprep step or any step with .amn, .mmn, .eig files
             inputs = {}
             for prev_step in calculation.steps:
                 if prev_step.meta.ulid == step_ulid:

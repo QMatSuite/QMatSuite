@@ -54,7 +54,7 @@ def test_w90_unit_cell_cart_in_angstrom(diamond_structure, tmp_path):
             path="test",
             kind="step"
         ),
-        step_type_spec="w90_preproc",
+        step_type_spec="w90_wannierprep",
         structure_ulid=None,
         structure=diamond_structure,
         parameters={
@@ -127,7 +127,7 @@ def test_w90_atoms_frac_from_structure(diamond_structure, tmp_path):
             path="test",
             kind="step"
         ),
-        step_type_spec="w90_preproc",
+        step_type_spec="w90_wannierprep",
         structure_ulid=None,
         structure=str(structure_file),
         parameters={

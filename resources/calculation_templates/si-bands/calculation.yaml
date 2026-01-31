@@ -16,7 +16,7 @@ steps:
   step_type_spec: nscf
   step_file: steps/nscf.step.yaml
 - step_ulid: bands
-  step_type_spec: bands_pw
+  step_type_spec: qe_bandspw
   step_file: steps/bands.step.yaml
 - step_ulid: bands-pp
   step_type_spec: bands

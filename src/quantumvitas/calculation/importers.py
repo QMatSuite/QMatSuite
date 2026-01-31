@@ -611,7 +611,7 @@ def _infer_step_type(qe_input: QEInput) -> str:
         mapping = {
             "scf": "scf",
             "nscf": "nscf",
-            "bands": "bands_pw",
+            "bands": "bandspw",
             "relax": "relax",
             "vc-relax": "vc-relax",
             "md": "md",

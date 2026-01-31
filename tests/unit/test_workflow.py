@@ -53,7 +53,7 @@ class TestStepTypeRegistry:
         """Registry has all v0 required step types."""
         from quantumvitas.workflow.registry import normalize_step_type
         
-        required = ["scf", "nscf", "relax", "vc-relax", "bands_pw", "dos", "bands"]
+        required = ["scf", "nscf", "relax", "vc-relax", "bandspw", "dos", "bands"]
         
         for step_type in required:
             # Normalize deprecated types (vc-relax maps to relax)
@@ -134,7 +134,7 @@ class TestStepTypeRegistry:
         # For each PW gen step, check that ParamSpace dimensions match engine capability
         from quantumvitas.workflow.registry import normalize_step_type
         
-        for step_type in ["scf", "nscf", "relax", "vc-relax", "bands_pw"]:
+        for step_type in ["scf", "nscf", "relax", "vc-relax", "bandspw"]:
             # Normalize deprecated types (vc-relax maps to relax)
             normalized = normalize_step_type(step_type)
             spec = registry.get(normalized)
@@ -200,7 +200,7 @@ class TestWorkflowService:
         
         assert template is not None
         assert template.id == "bands"
-        assert template.step_sequence == ("scf", "bands_pw", "bands")
+        assert template.step_sequence == ("scf", "bandspw", "bands")
     
     def test_get_template_unknown_returns_none(self, service):
         """get_template returns None for unknown workflow."""
@@ -600,7 +600,7 @@ class TestWorkflowInstantiation:
         assert len(paths) == 3
         
         step_types = [StepDoc.load(p).get(["step_type_spec"]) for p in paths]
-        assert step_types == ["qe_scf", "qe_bands_pw", "qe_bands"]
+        assert step_types == ["qe_scf", "qe_bandspw", "qe_bands"]
     
     def test_instantiate_unknown_raises(self, tmp_path, service):
         """Instantiate unknown workflow raises ValueError."""

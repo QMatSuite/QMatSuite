@@ -32,7 +32,7 @@ class QuantumEspressoEngine(Engine):
         "nscf": "pw.x",
         "opt": "pw.x",
         "md": "pw.x",
-        "bands_pw": "pw.x",  # pw.x bands calculation (calculation='bands')
+        "bandspw": "pw.x",  # pw.x bands calculation (calculation='bands')
         "ph": "ph.x",
         "q2r": "q2r.x",
         "matdyn": "matdyn.x",
@@ -59,9 +59,9 @@ class QuantumEspressoEngine(Engine):
         "ppacf": "ppacf.x",
         "pprism": "pprism.x",
         # Wannier90 step types
-        "w90_preproc": "wannier90.x",
-        "pw2wannier90": "pw2wannier90.x",
-        "w90_run": "wannier90.x",
+        "wannierprep": "wannier90.x",
+        "pw2wannier": "pw2wannier90.x",
+        "wannier": "wannier90.x",
     }
     
     # Mapping of QE modules to their primary namelists.
@@ -376,17 +376,17 @@ class QuantumEspressoEngine(Engine):
         command = [str(exe_path)]
 
         # Wannier90-specific command building (use step_type_gen for comparisons)
-        if step_gen_type == "w90_preproc":
+        if step_gen_type == "wannierprep":
             # wannier90.x -pp seedname
             # Extract seedname from input file (e.g., diamond.win -> diamond)
             seedname = input_file.stem
             command.append("-pp")
             command.append(seedname)
-        elif step_gen_type == "w90_run":
+        elif step_gen_type == "wannier":
             # wannier90.x seedname
             seedname = input_file.stem
             command.append(seedname)
-        elif step_gen_type == "pw2wannier90":
+        elif step_gen_type == "pw2wannier":
             # pw2wannier90.x -i input.in (use -i flag, NOT stdin)
             # IMPORTANT: Use relative path from working_dir to avoid path issues
             # Always use relative path from working_dir (pw2wannier90.x runs with cwd=working_dir)
@@ -395,7 +395,7 @@ class QuantumEspressoEngine(Engine):
             # Safety check: prevent '.' or directory paths
             if str(input_file_resolved) in (".", "./", ".."):
                 raise ValueError(
-                    f"Invalid input_file for pw2wannier90: '{input_file_resolved}'. "
+                    f"Invalid input_file for pw2wannier: '{input_file_resolved}'. "
                     f"Cannot be '.' or a directory. Must be a valid file path."
                 )
             
@@ -428,7 +428,7 @@ class QuantumEspressoEngine(Engine):
         """
         Check if step type uses stdin for input (vs command-line arguments).
         
-        Wannier90 steps (w90_preproc, w90_run) use command-line seedname,
+        Wannier90 steps (wannierprep, wannier) use command-line seedname,
         while most QE steps use stdin redirection.
         
         Args:
@@ -438,8 +438,8 @@ class QuantumEspressoEngine(Engine):
             True if step uses stdin, False if uses command-line arguments
         """
         # These Wannier90 steps use command-line arguments, not stdin
-        # pw2wannier90 uses -i flag to avoid Errno 21 issues with stdin redirection
-        no_stdin_steps = {"w90_preproc", "w90_run", "pw2wannier90"}
+        # pw2wannier uses -i flag to avoid Errno 21 issues with stdin redirection
+        no_stdin_steps = {"wannierprep", "wannier", "pw2wannier"}
         return step_type not in no_stdin_steps
     
     def detect_module_from_input(self, input_file: Path) -> QEModule:

@@ -26,7 +26,7 @@ class StepTypeSpec:
     Specification for a step type.
 
     Attributes:
-        step_type_spec: Engine-prefixed type (e.g., "qe_scf", "w90_run") - used in step.yaml
+        step_type_spec: Engine-prefixed type (e.g., "qe_scf", "w90_wannier") - used in step.yaml
         step_type_gen: Engine-agnostic type (e.g., "scf", "nscf") - used in APIs/UI
         engine: Engine identifier (e.g., "qe", "w90", "pyscf")
         executable: QE executable name (e.g., "pw.x", "dos.x")
@@ -196,9 +196,9 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         produces_charge_density=False,  # CHANGED: Relax doesn't produce reusable electronic state
         is_structure_transform=True,     # NEW: Marks step as structure transform
     ),
-    "qe_bands_pw": StepTypeSpec(
-        step_type_spec="qe_bands_pw",
-        step_type_gen="bands_pw",
+    "qe_bandspw": StepTypeSpec(
+        step_type_spec="qe_bandspw",
+        step_type_gen="bandspw",
         engine="qe",
         executable="pw.x",
         description="Band structure calculation along k-path (pw.x)",
@@ -318,19 +318,19 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     # -------------------------------------------------------------------------
     # Wannier90 step types (w90_ prefix for Wannier90 tools)
     # -------------------------------------------------------------------------
-    "w90_preproc": StepTypeSpec(
-        step_type_spec="w90_preproc",
-        step_type_gen="w90_preproc",
-        engine="qe",
+    "w90_wannierprep": StepTypeSpec(
+        step_type_spec="w90_wannierprep",
+        step_type_gen="wannierprep",
+        engine="w90",
         executable="wannier90.x",
         description="Wannier90 preprocessing (generate .nnkp)",
         requires_structure=True,
         requires_charge_density=False,  # Needs .win file, not charge density
         produces_charge_density=False,
     ),
-    "qe_pw2wannier90": StepTypeSpec(
-        step_type_spec="qe_pw2wannier90",
-        step_type_gen="pw2wannier90",
+    "qe_pw2wannier": StepTypeSpec(
+        step_type_spec="qe_pw2wannier",
+        step_type_gen="pw2wannier",
         engine="qe",
         executable="pw2wannier90.x",
         description="QE to Wannier90 interface (compute overlaps)",
@@ -338,10 +338,10 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=True,  # Needs NSCF wavefunctions
         produces_charge_density=False,
     ),
-    "w90_run": StepTypeSpec(
-        step_type_spec="w90_run",
-        step_type_gen="w90_run",
-        engine="qe",
+    "w90_wannier": StepTypeSpec(
+        step_type_spec="w90_wannier",
+        step_type_gen="wannier",
+        engine="w90",
         executable="wannier90.x",
         description="Wannier90 MLWF optimization",
         requires_structure=True,
@@ -613,11 +613,7 @@ class StepTypeRegistry:
             step_types: Optional custom step types (for testing)
         """
         self._types = step_types if step_types is not None else _STEP_TYPES.copy()
-        # Build gen -> spec mapping for fast lookup
-        self._gen_to_spec: Dict[str, str] = {
-            spec.step_type_gen: spec.step_type_spec for spec in self._types.values()
-        }
-        # Also build spec -> spec object mapping
+        # Build spec -> spec object mapping for fast lookup
         self._spec_to_obj: Dict[str, StepTypeSpec] = {
             spec.step_type_spec: spec for spec in self._types.values()
         }

@@ -394,12 +394,12 @@ class TestDetectWorkflowType:
         assert result == "DOS"
     
     def test_bandstructure_workflow(self, tmp_path):
-        """Steps with bands_pw detected as BandStructure."""
+        """Steps with bandspw detected as BandStructure."""
         calc_yaml = tmp_path / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "steps": [
                 {"step_type_spec": "qe_scf"},
-                {"step_type_spec": "qe_bands_pw"},
+                {"step_type_spec": "qe_bandspw"},
                 {"step_type_spec": "qe_bands"},
             ],
         }))
@@ -669,7 +669,7 @@ class TestConvergencePreset:
         from quantumvitas.presets.dimensions import ConvergenceOption
         
         # Test all pw-based step types
-        pw_step_types = ["scf", "nscf", "relax", "vc-relax", "bands_pw", "md", "vc-md"]
+        pw_step_types = ["scf", "nscf", "relax", "vc-relax", "bandspw", "md", "vc-md"]
         
         for step_type in pw_step_types:
             step_path = tmp_path / f"{step_type}.step.yaml"

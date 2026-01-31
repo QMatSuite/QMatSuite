@@ -84,7 +84,7 @@ def test_save_relax_structure_ulidempotency(tmp_path: Path):
         meta=step_meta,
         structure="si-bulk",  # Legacy selector
         structure_ulid=parent_structure_ulid,
-        step_type_spec="qe_vc-relax",
+        step_type_spec="qe_relax",
         parameters={},
     )
     step_path.write_text(yaml.safe_dump(step_spec.to_dict(), sort_keys=False))
@@ -113,9 +113,9 @@ def test_save_relax_structure_ulidempotency(tmp_path: Path):
     # Create mock output file with final coordinates
     raw_dir = calc_dir / "raw"
     raw_dir.mkdir()
-    # Create the output file with the base name
-    # The API code will first try the base name, then numbered versions if needed
-    output_file = raw_dir / "vc-relax.out"
+    # Create the output file with the GEN step type name (relax.out)
+    # The API code uses GEN step types for file naming
+    output_file = raw_dir / "relax.out"
     output_file.write_text("""
 Begin final coordinates
 CELL_PARAMETERS (alat= 14.00000000)

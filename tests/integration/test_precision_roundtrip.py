@@ -2,7 +2,7 @@
 Integration test for precision preset roundtrip safety.
 
 Tests that:
-1. Applying precision=Medium to a calc with scf, nscf, bands_pw, bands
+1. Applying precision=Medium to a calc with scf, nscf, bandspw, bands
 2. Detection returns Medium (NOT CUSTOM) after apply
 3. Manual parameter changes cause detection to return CUSTOM
 """
@@ -77,19 +77,19 @@ class TestPrecisionRoundtrip:
         yield calc_dir
         shutil.rmtree(temp_dir)
     
-    def test_roundtrip_scf_nscf_bands_pw_bands(self, temp_calc_dir):
+    def test_roundtrip_scf_nscf_bandspw_bands(self, temp_calc_dir):
         """
-        Apply precision=Medium to calc with scf, nscf, bands_pw, bands.
+        Apply precision=Medium to calc with scf, nscf, bandspw, bands.
         Detection should return Medium (not CUSTOM).
         """
-        # Create steps: scf, nscf, bands_pw, bands
+        # Create steps: scf, nscf, bandspw, bands
         scf_step = temp_calc_dir / "steps" / "scf.step.yaml"
         nscf_step = temp_calc_dir / "steps" / "nscf.step.yaml"
-        bands_pw_step = temp_calc_dir / "steps" / "bands_pw.step.yaml"
+        bandspw_step = temp_calc_dir / "steps" / "bandspw.step.yaml"
         bands_step = temp_calc_dir / "steps" / "bands.step.yaml"
         
         # Initialize empty steps with step_type_spec (engine-prefixed)
-        for step_file in [scf_step, nscf_step, bands_pw_step, bands_step]:
+        for step_file in [scf_step, nscf_step, bandspw_step, bands_step]:
             step_type_gen = step_file.stem.split(".")[0]  # e.g., "scf", "nscf"
             step_file.write_text(yaml.safe_dump({
                 "step_type_spec": f"qe_{step_type_gen}",
@@ -106,22 +106,22 @@ class TestPrecisionRoundtrip:
         for step_file, step_type in [
             (scf_step, "scf"),
             (nscf_step, "nscf"),
-            (bands_pw_step, "bands_pw"),
+            (bandspw_step, "bandspw"),
             (bands_step, "bands"),
         ]:
             precision_advice = advisor.advise_for_step(PrecisionOption.MED, step_type)
-            # bands_pw doesn't need lattice_matrix (variant doesn't include K_POINTS)
+            # bandspw doesn't need lattice_matrix (variant doesn't include K_POINTS)
             apply_presets_to_step(
                 step_file,
                 {"precision": "med"},
                 precision_advice=precision_advice,
-                precision_lattice_matrix=lattice if step_type != "bands_pw" else None,
+                precision_lattice_matrix=lattice if step_type != "bandspw" else None,
             )
         
         # Verify YAML structure
         scf_content = yaml.safe_load(scf_step.read_text())
         nscf_content = yaml.safe_load(nscf_step.read_text())
-        bands_pw_content = yaml.safe_load(bands_pw_step.read_text())
+        bandspw_content = yaml.safe_load(bandspw_step.read_text())
         
         # scf should have K_POINTS with base mesh (6×6×6 for Si med)
         assert "cards" in scf_content
@@ -137,13 +137,13 @@ class TestPrecisionRoundtrip:
         assert nscf_kpoints["option"] == "automatic"
         assert nscf_kpoints["data"] == [[12, 12, 12, 0, 0, 0]]
         
-        # bands_pw should have cutoffs but no K_POINTS (k-path preserved)
-        assert "cards" in bands_pw_content
-        # bands_pw may or may not have K_POINTS depending on receiver design
+        # bandspw should have cutoffs but no K_POINTS (k-path preserved)
+        assert "cards" in bandspw_content
+        # bandspw may or may not have K_POINTS depending on receiver design
         # But it should have cutoffs
-        assert "parameters" in bands_pw_content
-        assert "SYSTEM" in bands_pw_content["parameters"]
-        assert "ecutwfc" in bands_pw_content["parameters"]["SYSTEM"]
+        assert "parameters" in bandspw_content
+        assert "SYSTEM" in bandspw_content["parameters"]
+        assert "ecutwfc" in bandspw_content["parameters"]["SYSTEM"]
         
         # Run detection - should return MED (not CUSTOM)
         detected = detect_presets_from_calculation(temp_calc_dir)

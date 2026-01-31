@@ -211,7 +211,7 @@ class TestPrecisionBandsPw:
             ],
         }
         bands_step.write_text(yaml.safe_dump({
-            "step_type_spec": "qe_bands_pw",
+            "step_type_spec": "qe_bandspw",
             "parameters": {},
             "cards": {
                 "K_POINTS": original_kpoints,
@@ -224,7 +224,7 @@ class TestPrecisionBandsPw:
         advisor = PrecisionAdvisor(species_map, lattice_matrix=lattice)
         
         # Apply precision=med
-        precision_advice = advisor.advise_for_step(PrecisionOption.MED, "bands_pw")
+        precision_advice = advisor.advise_for_step(PrecisionOption.MED, "bandspw")
         apply_presets_to_step(
             bands_step,
             {"precision": "med"},

@@ -20,67 +20,66 @@ import pytest
 class TestW90ParameterStructure:
     """Test that W90 step parameters are correctly structured."""
     
-    def test_diamond_w90_preproc_has_flat_params(self, project_root_path):
-        """Verify diamond demo w90_preproc step has flat parameters."""
+    def test_diamond_w90_wannierprep_has_flat_params(self, project_root_path):
+        """Verify diamond demo w90_wannierprep step has flat parameters."""
         import yaml
-        
+
         demo_file = project_root_path / "resources" / "demo_projects" / "diamond_wannier90_demo.yml"
         if not demo_file.exists():
             pytest.skip("Diamond demo not found")
-        
+
         with open(demo_file) as f:
             demo = yaml.safe_load(f)
-        
-        # Find w90_preproc step
-        # Note: demo uses step_type_spec (canonical SPEC type), not step_type
-        w90_preproc = None
+
+        # Find w90_wannierprep step
+        # Note: demo uses step_type_spec (canonical SPEC type)
+        w90_wannierprep = None
         for calc in demo.get("calculations", []):
             for step in calc.get("steps", []):
                 step_type = step.get("step_type_spec") or step.get("step_type")
-                if step_type == "w90_preproc":
-                    w90_preproc = step
+                if step_type == "w90_wannierprep":
+                    w90_wannierprep = step
                     break
 
-        assert w90_preproc is not None, "w90_preproc step not found in demo"
+        assert w90_wannierprep is not None, "w90_wannierprep step not found in demo"
         
-        params = w90_preproc.get("parameters", {})
-        
+        params = w90_wannierprep.get("parameters", {})
+
         # These should be flat parameters (not wrapped in namelists)
         assert "seedname" in params, "seedname not in parameters"
         assert "num_wann" in params, "num_wann not in parameters"
-        
+
         # Verify they are scalar values, not nested dicts
         assert isinstance(params["seedname"], str), f"seedname should be string, got {type(params['seedname'])}"
         assert isinstance(params["num_wann"], int), f"num_wann should be int, got {type(params['num_wann'])}"
-        
+
         # seedname should be "diamond", not a list of chars
         assert params["seedname"] == "diamond", f"seedname should be 'diamond', got '{params['seedname']}'"
     
-    def test_diamond_pw2wannier90_has_flat_params(self, project_root_path):
-        """Verify diamond demo pw2wannier90 step has flat parameters."""
+    def test_diamond_pw2wannier_has_flat_params(self, project_root_path):
+        """Verify diamond demo qe_pw2wannier step has flat parameters."""
         import yaml
-        
+
         demo_file = project_root_path / "resources" / "demo_projects" / "diamond_wannier90_demo.yml"
         if not demo_file.exists():
             pytest.skip("Diamond demo not found")
-        
+
         with open(demo_file) as f:
             demo = yaml.safe_load(f)
-        
-        # Find pw2wannier90 step
-        # Note: demo uses step_type_spec (canonical SPEC type), not step_type
-        pw2wannier90 = None
+
+        # Find qe_pw2wannier step
+        # Note: demo uses step_type_spec (canonical SPEC type)
+        pw2wannier = None
         for calc in demo.get("calculations", []):
             for step in calc.get("steps", []):
                 step_type = step.get("step_type_spec") or step.get("step_type")
-                # pw2wannier90 can be step_type_spec: qe_pw2wannier90 or step_type: pw2wannier90
-                if step_type in ("pw2wannier90", "qe_pw2wannier90"):
-                    pw2wannier90 = step
+                if step_type in ("pw2wannier", "qe_pw2wannier"):
+                    pw2wannier = step
                     break
 
-        assert pw2wannier90 is not None, "pw2wannier90 step not found in demo"
-        
-        params = pw2wannier90.get("parameters", {})
+        assert pw2wannier is not None, "qe_pw2wannier step not found in demo"
+
+        params = pw2wannier.get("parameters", {})
         
         # E1: prefix/outdir are injected at execution time (from calculation.meta.slug), not in user parameters
         # They should NOT be in step YAML parameters (they're injected via effective_parameters)

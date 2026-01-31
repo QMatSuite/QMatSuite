@@ -19,6 +19,11 @@ from quantumvitas.core.driver_protocol import (
 class VASPDriver(BaseEngineDriver):
     """VASP driver bundle implementing the EngineDriver protocol."""
 
+    PREFIX: str = "vasp"
+    SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
+        "scf", "nscf", "relax", "vc-relax", "md", "bands"
+    })
+
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties
     # ─────────────────────────────────────────────────────────────────────
@@ -140,22 +145,6 @@ class VASPDriver(BaseEngineDriver):
         from .recipe import VASPRecipe
         return VASPRecipe
 
-    def get_materialization_map(self) -> dict[str, str]:
-        """Return VASP GEN→SPEC mappings.
-
-        This is the SSOT for VASP step-type mappings.
-        Note: GEN_DOS, GEN_BANDS_POST, GEN_DOSPP, GEN_BANDSPP are zero-mappings
-        (integrated in NSCF output, no separate step needed).
-        """
-        return {
-            "GEN_SCF": "vasp_scf",
-            "GEN_NSCF": "vasp_nscf",
-            "GEN_RELAX": "vasp_relax",
-            "GEN_VC_RELAX": "vasp_vc_relax",
-            "GEN_MD": "vasp_md",
-            "GEN_BANDS": "vasp_bands",
-            # Zero-mappings are handled by _get_zero_mappings()
-        }
 
     def _get_zero_mappings(self) -> set[str]:
         """Return GEN types that are explicit zero-mappings (no step needed).

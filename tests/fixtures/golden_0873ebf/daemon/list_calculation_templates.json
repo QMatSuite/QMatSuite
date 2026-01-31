@@ -22,7 +22,7 @@
         "step_types": [
           "scf",
           "nscf",
-          "bands_pw",
+          "bandspw",
           "bands"
         ]
       }

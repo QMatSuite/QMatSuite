@@ -176,7 +176,7 @@ class TestSiBandsCalculationManualKpath:
         ]
         
         run_qv([
-            "init", "step", "bands_pw",
+            "init", "step", "bandspw",
             "--structure", "si",
             "--calculation", "bands_manual",
             "--name", "bands",

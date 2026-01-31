@@ -20,32 +20,32 @@ from quantumvitas.io.wannier90_input import (
 class TestStepTypeRegistration:
     """Test that Wannier90 step types are properly registered."""
     
-    def test_w90_preproc_in_registry(self):
-        """w90_preproc should be in step type registry."""
+    def test_wannierprep_in_registry(self):
+        """wannierprep should be in step type registry."""
         registry = StepTypeRegistry()
-        spec = registry.get("w90_preproc")
+        spec = registry.get("w90_wannierprep")
         assert spec is not None
-        assert spec.step_type_gen == "w90_preproc"
+        assert spec.step_type_gen == "wannierprep"
         assert spec.executable == "wannier90.x"
-        assert spec.engine == "qe"
-    
-    def test_pw2wannier90_in_registry(self):
-        """pw2wannier90 should be in step type registry."""
+        assert spec.engine == "w90"
+
+    def test_pw2wannier_in_registry(self):
+        """pw2wannier should be in step type registry."""
         registry = StepTypeRegistry()
-        spec = registry.get("pw2wannier90")
+        spec = registry.get("qe_pw2wannier")
         assert spec is not None
-        assert spec.step_type_gen == "pw2wannier90"
+        assert spec.step_type_gen == "pw2wannier"
         assert spec.executable == "pw2wannier90.x"
         assert spec.engine == "qe"
-    
-    def test_w90_run_in_registry(self):
-        """w90_run should be in step type registry."""
+
+    def test_wannier_in_registry(self):
+        """wannier should be in step type registry."""
         registry = StepTypeRegistry()
-        spec = registry.get("w90_run")
+        spec = registry.get("w90_wannier")
         assert spec is not None
-        assert spec.step_type_gen == "w90_run"
+        assert spec.step_type_gen == "wannier"
         assert spec.executable == "wannier90.x"
-        assert spec.engine == "qe"
+        assert spec.engine == "w90"
 
 
 class TestWannier90Input:
@@ -251,14 +251,14 @@ class TestEngineExecutableMap:
     def test_w90_executables_in_map(self):
         """Test W90 executables are in EXECUTABLE_MAP."""
         from quantumvitas.core.engines.qe import QuantumEspressoEngine
-        
-        assert "w90_preproc" in QuantumEspressoEngine.EXECUTABLE_MAP
-        assert "pw2wannier90" in QuantumEspressoEngine.EXECUTABLE_MAP
-        assert "w90_run" in QuantumEspressoEngine.EXECUTABLE_MAP
-        
-        assert QuantumEspressoEngine.EXECUTABLE_MAP["w90_preproc"] == "wannier90.x"
-        assert QuantumEspressoEngine.EXECUTABLE_MAP["pw2wannier90"] == "pw2wannier90.x"
-        assert QuantumEspressoEngine.EXECUTABLE_MAP["w90_run"] == "wannier90.x"
+
+        assert "wannierprep" in QuantumEspressoEngine.EXECUTABLE_MAP
+        assert "pw2wannier" in QuantumEspressoEngine.EXECUTABLE_MAP
+        assert "wannier" in QuantumEspressoEngine.EXECUTABLE_MAP
+
+        assert QuantumEspressoEngine.EXECUTABLE_MAP["wannierprep"] == "wannier90.x"
+        assert QuantumEspressoEngine.EXECUTABLE_MAP["pw2wannier"] == "pw2wannier90.x"
+        assert QuantumEspressoEngine.EXECUTABLE_MAP["wannier"] == "wannier90.x"
 
 
 class TestDemoGeneration:
@@ -299,7 +299,7 @@ class TestDemoGeneration:
         # YAML files use step_type_spec (SPEC layer); convert to GEN for comparison
         from quantumvitas.workflow.registry import normalize_step_type_to_gen
         step_types_gen = [normalize_step_type_to_gen(s["step_type_spec"]) for s in calc["steps"]]
-        assert step_types_gen == ["scf", "nscf", "w90_preproc", "pw2wannier90", "w90_run"]
+        assert step_types_gen == ["scf", "nscf", "wannierprep", "pw2wannier", "wannier"]
     
     def test_demo_has_pseudo_triple(self, demo_path):
         """Test that demo has complete pseudo identity triple."""

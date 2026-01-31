@@ -177,7 +177,7 @@
         "importance": "core"
       }
     ],
-    "bands_pw": [
+    "bandspw": [
       {
         "namelist": "SYSTEM",
         "name": "ecutwfc",

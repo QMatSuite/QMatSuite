@@ -530,10 +530,10 @@ class TestStepTypeAwareAdvice:
         assert NSCF_KMESH_FACTOR == 2
     
     def test_no_kpoints_step_types_includes_bands(self):
-        """bands_pw does not accept kmesh via receiver spec."""
+        """bandspw does not accept kmesh via receiver spec."""
         from quantumvitas.presets.receivers import get_precision_receiver_spec
-        
-        spec = get_precision_receiver_spec("bands_pw")
+
+        spec = get_precision_receiver_spec("bandspw")
         assert spec is not None
         assert spec.accepts_kmesh is False
         assert spec.kmesh_strategy == "none"

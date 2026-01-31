@@ -35,20 +35,20 @@ class TestQEFamilyMaterialization:
         result = materialize_public_step_key("dos", "qe")
         assert result == "qe_dos"
     
-    def test_bands_pw_materializes_to_qe_bands_pw(self):
-        """PUBLIC key 'bands_pw' materializes to 'qe_bands_pw' for QE family."""
-        result = materialize_public_step_key("bands_pw", "qe")
-        assert result == "qe_bands_pw"
+    def test_bandspw_materializes_to_qe_bandspw(self):
+        """PUBLIC key 'bandspw' materializes to 'qe_bandspw' for QE family."""
+        result = materialize_public_step_key("bandspw", "qe")
+        assert result == "qe_bandspw"
     
     def test_bands_materializes_to_qe_bands(self):
         """PUBLIC key 'bands' materializes to 'qe_bands' for QE family."""
         result = materialize_public_step_key("bands", "qe")
         assert result == "qe_bands"
     
-    def test_pw2wannier90_materializes_to_qe_pw2wannier90(self):
-        """PUBLIC key 'pw2wannier90' materializes to 'qe_pw2wannier90' for QE family."""
-        result = materialize_public_step_key("pw2wannier90", "qe")
-        assert result == "qe_pw2wannier90"
+    def test_pw2wannier_materializes_to_qe_pw2wannier(self):
+        """PUBLIC key 'pw2wannier' materializes to 'qe_pw2wannier' for QE family."""
+        result = materialize_public_step_key("pw2wannier", "qe")
+        assert result == "qe_pw2wannier"
     
     def test_workflow_template_scf_materializes(self):
         """Workflow template 'scf' materializes correctly for QE family."""
@@ -61,19 +61,24 @@ class TestQEFamilyMaterialization:
         assert result == ["qe_scf", "qe_nscf", "qe_dos"]
     
     def test_workflow_template_bands_materializes(self):
-        """Workflow template 'bands' (scf, bands_pw, bands) materializes correctly for QE family."""
-        result = materialize_workflow(["scf", "bands_pw", "bands"], "qe")
-        assert result == ["qe_scf", "qe_bands_pw", "qe_bands"]
+        """Workflow template 'bands' (scf, bandspw, bands) materializes correctly for QE family."""
+        result = materialize_workflow(["scf", "bandspw", "bands"], "qe")
+        assert result == ["qe_scf", "qe_bandspw", "qe_bands"]
     
-    def test_workflow_template_wannier_materializes(self):
-        """Workflow template 'wannier' materializes correctly for QE family."""
-        result = materialize_workflow(["scf", "nscf", "pw2wannier90", "w90_run"], "qe")
-        assert result == ["qe_scf", "qe_nscf", "qe_pw2wannier90", "w90_run"]
+    def test_workflow_template_wannier_qe_parts_materialize(self):
+        """QE parts of Wannier workflow materialize correctly for QE family.
+
+        Note: 'wannier' step belongs to w90 engine, not qe.
+        Only qe-native steps (scf, nscf, pw2wannier) can be materialized with qe.
+        """
+        result = materialize_workflow(["scf", "nscf", "pw2wannier"], "qe")
+        assert result == ["qe_scf", "qe_nscf", "qe_pw2wannier"]
     
     def test_zero_one_mapping_invariant(self):
         """Each PUBLIC step key maps to at most one MACHINE step type for QE family (0-1 rule)."""
         # Test that each PUBLIC key maps to exactly one MACHINE type or None
-        public_keys = ["scf", "nscf", "dos", "bands_pw", "bands", "pw2wannier90", "w90_run"]
+        # Note: 'wannier' belongs to w90 engine, not qe
+        public_keys = ["scf", "nscf", "dos", "bandspw", "bands", "pw2wannier"]
         for public_key in public_keys:
             result = materialize_public_step_key(public_key, "qe")
             # Result should be a single machine type string or None (not a list)

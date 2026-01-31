@@ -876,18 +876,18 @@ def init_calculation_command(
 KNOWN_STEP_TYPES = {
     # Engine-prefixed step types (Phase 2)
     "qe_scf", "qe_nscf", "qe_relax", "qe_vc_relax", "qe_md", "qe_vc_md",  # QE pw.x
-    "qe_dos", "qe_bands", "qe_bands_pw",  # QE post-processing
+    "qe_dos", "qe_bands", "qe_bandspw",  # QE post-processing
     "qe_ph", "qe_q2r", "qe_matdyn", "qe_dynmat",  # QE phonon
     "qe_pp", "qe_projwfc",  # QE other post-processing
-    "qe_pw2wannier90", "qe_custom",  # QE other
-    "w90_preproc", "w90_run",  # Wannier90
+    "qe_pw2wannier", "qe_custom",  # QE other
+    "w90_wannierprep", "w90_wannier",  # Wannier90
     "pyscf_scf",  # PySCF molecular QC
     # Legacy step types (backward compatibility)
     "scf", "nscf", "relax", "vc-relax", "md", "vc-md",  # pw.x calculation types
-    "dos", "bands", "bands_pw",  # post-processing
+    "dos", "bands", "bandspw",  # post-processing
     "ph", "q2r", "matdyn", "dynmat",  # phonon
     "pp", "projwfc",  # other post-processing
-    "pw2wannier90", "custom",  # escape hatch for unsupported types
+    "pw2wannier", "custom",  # escape hatch for unsupported types
 }
 
 
@@ -1104,7 +1104,7 @@ def init_step_command(
     kpath_result = None
     kpath_card_overrides = {}
     if auto_kpath:
-        if step_type.lower() not in ("bands", "bands_pw"):
+        if step_type.lower() not in ("bands", "bandspw"):
             typer.secho(
                 f"Warning: --auto-kpath is intended for band structure steps, not '{step_type}'",
                 fg=typer.colors.YELLOW
@@ -3304,9 +3304,9 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
             or parameter_dict.get("CONTROL", {}).get("CALCULATION")
             or "scf"
         )
-        # For pw.x bands calculation, use bands_pw to distinguish from bands.x
+        # For pw.x bands calculation, use bandspw to distinguish from bands.x
         if calculation == "bands":
-            step_type_spec= "qe_bands_pw"
+            step_type_spec= "qe_bandspw"
         else:
             step_type = str(calculation)
 
