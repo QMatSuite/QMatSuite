@@ -1930,34 +1930,4 @@ def create_precision_advisor(
     )
 
 
-def load_project_config(project_root: Path) -> dict:
-    """
-    Load project configuration from project.qv.yml.
-
-    Transparent wrapper around core.project_utils.load_project_config().
-
-    Args:
-        project_root: Path to project root directory
-
-    Returns:
-        Project configuration dict
-    """
-    from quantumvitas.core.project_utils import load_project_config as _load_project_config
-    return _load_project_config(project_root)
-
-
-def build_resource_index(project_root: Path):
-    """
-    Build resource index for a project.
-
-    Transparent wrapper around core.resolution.build_resource_index().
-
-    Args:
-        project_root: Path to project root directory
-
-    Returns:
-        ResourceIndex instance
-    """
-    from quantumvitas.core.resolution import build_resource_index as _build_resource_index
-    return _build_resource_index(project_root)
 
