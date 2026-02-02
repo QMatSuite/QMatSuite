@@ -42,8 +42,9 @@ def find_reference_scf(
     """
     if registry is None:
         registry = get_registry()
-    
-    from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+
+    from quantumvitas.workflow.step_type_convert import is_spec
+    from quantumvitas.execution.step_type_unpack import unpack_step_type, unpack_step_type_safe
 
     # Walk backwards from current step
     for i in range(current_step_idx - 1, -1, -1):
@@ -56,16 +57,12 @@ def find_reference_scf(
 
         step_type_str = str(step_type_spec)
 
-        # Convert SPEC to GEN and look up in registry
+        # Convert SPEC to GEN and look up in registry via centralized choke point (Constitution §4.3)
         # Per constitution, registry.get() only accepts GEN types
         if is_spec(step_type_str):
-            # Extract engine prefix and gen type from SPEC
-            parts = step_type_str.split("_", 1)
-            if len(parts) == 2:
-                engine_prefix, gen_type = parts
-                spec = registry.get_for_engine(gen_type, engine_prefix)
-            else:
-                spec = None
+            # Unpack SPEC to (prefix, gen) via centralized choke point
+            unpacked = unpack_step_type(step_type_str)
+            spec = registry.get_for_engine(unpacked.gen, unpacked.prefix)
         else:
             # Already GEN type
             spec = registry.get(step_type_str)
@@ -73,8 +70,9 @@ def find_reference_scf(
         if spec:
             step_gen_type = spec.step_type_gen
         else:
-            # Fallback: use gen_from for SPEC, or raw value for GEN
-            step_gen_type = gen_from(step_type_str) if is_spec(step_type_str) else step_type_str
+            # Fallback: use unpack_step_type_safe for either SPEC or GEN
+            unpacked = unpack_step_type_safe(step_type_str)
+            step_gen_type = unpacked.gen
 
         # Check if this is a relax step (barrier)
         if step_gen_type == "relax":

@@ -6,9 +6,9 @@ This script creates a complete Wannier90 tutorial demo based on the diamond
 example from the bundled Wannier90 distribution. The demo includes:
 - SCF step (pw.x)
 - NSCF step (pw.x with uniform k-grid)
-- w90_preproc step (wannier90.x -pp)
+- w90_wannierprep step (wannier90.x -pp)
 - pw2wannier90 step (pw2wannier90.x)
-- w90_run step (wannier90.x)
+- w90_wannier step (wannier90.x)
 
 Usage:
     python tools/generate_wannier90_demo.py
@@ -178,18 +178,21 @@ def generate_demo_snapshot() -> Dict[str, Any]:
         """Create a step specification dictionary.
 
         Constitution §B: Persisted truth must be SPEC format (machine type).
+        Uses canonical spec_from() for GEN→SPEC conversion.
         """
+        from quantumvitas.workflow.step_type_convert import spec_from, is_spec
+
         step_id = generate_ulid()
         calc_slug = "diamond-mlwfs"
 
         # Convert GEN types to SPEC types for persistence (Constitution §B)
-        gen_to_spec = {
-            "scf": "qe_scf",
-            "nscf": "qe_nscf",
-            "pw2wannier90": "qe_pw2wannier90",
-            # w90_preproc and w90_run are already SPEC format
-        }
-        machine_type = gen_to_spec.get(step_type, step_type)
+        # Use canonical spec_from() - no hardcoded mappings
+        if is_spec(step_type):
+            # Already SPEC format (e.g., w90_wannierprep)
+            machine_type = step_type
+        else:
+            # GEN type - convert to SPEC using canonical function
+            machine_type = spec_from("qe", step_type)
 
         spec = {
             "meta": {
@@ -355,7 +358,7 @@ def main():
         print(f"  - 1 calculation with 5 steps:")
         print(f"    1. scf (pw.x)")
         print(f"    2. nscf (pw.x, uniform k-grid)")
-        print(f"    3. w90_preproc (wannier90.x -pp)")
+        print(f"    3. w90_wannierprep (wannier90.x -pp)")
         print(f"    4. pw2wannier90 (pw2wannier90.x)")
         print(f"    5. wannier (wannier90.x)")
         print()

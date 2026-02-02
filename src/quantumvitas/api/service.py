@@ -6959,11 +6959,12 @@ class QVService:
                 step_type_gen = machine_step_type  # Fallback
             # Determine engine_family: use calculation's engine_family if available,
             # otherwise infer from machine_step_type (if SPEC), default to "qe"
+            from quantumvitas.workflow.step_type_convert import prefix_from, is_spec
             calc_engine_family = getattr(wf_model, 'engine_family', None) if calculation_yaml_path.exists() else None
             if calc_engine_family:
                 engine_family = calc_engine_family
-            elif "_" in machine_step_type:
-                engine_family = machine_step_type.split("_", 1)[0]
+            elif is_spec(machine_step_type):
+                engine_family = prefix_from(machine_step_type)
             else:
                 engine_family = "qe"  # Default
             step_doc = create_step_doc(

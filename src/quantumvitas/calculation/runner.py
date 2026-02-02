@@ -72,17 +72,14 @@ def _get_engine_family_from_step(step) -> Optional[str]:
     # SPEC format is "{engine}_{gen}", so we extract engine from SPEC and use get_for_engine
     try:
         from quantumvitas.workflow.registry import get_registry
-        from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+        from quantumvitas.workflow.step_type_convert import is_spec
+        from quantumvitas.execution.step_type_unpack import unpack_step_type
         reg = get_registry()
 
         if is_spec(step_type_spec):
-            # Extract engine prefix and gen type from SPEC
-            parts = step_type_spec.split("_", 1)
-            if len(parts) == 2:
-                engine_prefix, gen_type = parts
-                spec = reg.get_for_engine(gen_type, engine_prefix)
-            else:
-                spec = None
+            # Unpack SPEC to (prefix, gen) via centralized choke point (Constitution §4.3)
+            unpacked = unpack_step_type(step_type_spec)
+            spec = reg.get_for_engine(unpacked.gen, unpacked.prefix)
         else:
             # Already GEN type
             spec = reg.get(step_type_spec)

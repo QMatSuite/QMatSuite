@@ -22,9 +22,10 @@ def _get_spec_from_registry(registry, step_type_spec: str):
         registry: StepTypeRegistry instance
         step_type_spec: SPEC step type (e.g., "pyscf_scf", "pyscf_mp2")
     """
-    # Extract engine prefix and gen type from SPEC
+    # Extract engine prefix and gen type from SPEC using canonical functions
+    from quantumvitas.workflow.step_type_convert import prefix_from, is_spec
     step_type_gen = gen_from(step_type_spec)
-    engine_prefix = step_type_spec.split("_", 1)[0] if "_" in step_type_spec else "pyscf"
+    engine_prefix = prefix_from(step_type_spec) if is_spec(step_type_spec) else "pyscf"
     return registry.get_for_engine(step_type_gen, engine_prefix)
 
 

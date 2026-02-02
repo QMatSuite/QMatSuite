@@ -734,7 +734,9 @@ def _shape_calculation_detail(response: Dict[str, Any]) -> Dict[str, Any]:
 
         # Derive name from step_type_gen if missing
         if _should_derive_step_name(step.get("name", "")):
-            step["name"] = step.get("step_type_gen", step.get("step_type_spec", "").split("_", 1)[-1])
+            from quantumvitas.api.utils import step_type_gen_from_spec
+            spec_val = step.get("step_type_spec", "")
+            step["name"] = step.get("step_type_gen", step_type_gen_from_spec(spec_val) if spec_val else "")
 
         # Derive slug from name if missing
         if _should_derive_step_name(step.get("slug", "")):
