@@ -138,7 +138,7 @@ def promote_test_calculation_with_relax(promote_test_project):
     relax_step_result = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_ulid,
-        step_type="pyscf_relax",
+        step_type_gen="relax",  # GEN type for UI layer
         name="relax",
     )
     relax_step_ulid = relax_step_result.ulid
@@ -277,7 +277,7 @@ class TestRelaxPromoteE2E:
         scf_step_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
-            step_type="pyscf_scf",
+            step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
         scf_step_ulid = scf_step_result.ulid

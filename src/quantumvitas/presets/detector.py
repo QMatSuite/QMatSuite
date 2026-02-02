@@ -103,21 +103,21 @@ def _parse_int(value: Any, default: int = 0) -> int:
 
 def detect_magnetism(
     params: Dict[str, Dict[str, Any]],
-    step_type: str = "scf",
+    step_type_gen: str = "scf",
 ) -> MagnetismOption:
     """
     Detect magnetism treatment from step parameters using variants API.
     
     Args:
         params: Step parameters dict with section -> params structure
-        step_type: Step type (default "scf" for backward compatibility)
+        step_type_gen: Step type gen (default "scf" for backward compatibility)
         
     Returns:
         Detected MagnetismOption or CUSTOM
     """
     from quantumvitas.presets.variants_registry import detect_dimension_for_step
     
-    detected = detect_dimension_for_step("magnetism", step_type, params)
+    detected = detect_dimension_for_step("magnetism", step_type_gen, params)
     
     # If None (no variant applies) or CUSTOM, return CUSTOM
     if detected is None or detected == CUSTOM:
@@ -128,21 +128,21 @@ def detect_magnetism(
 
 def detect_occupations_scheme(
     params: Dict[str, Dict[str, Any]],
-    step_type: str = "scf",
+    step_type_gen: str = "scf",
 ) -> Union[OccupationsSchemeOption, _CustomType]:
     """
     Detect occupations_scheme from step parameters using variants API.
     
     Args:
         params: Step parameters dict with section -> params structure
-        step_type: Step type (default "scf" for backward compatibility)
+        step_type_gen: Step type gen (default "scf" for backward compatibility)
         
     Returns:
         Detected OccupationsSchemeOption or CUSTOM
     """
     from quantumvitas.presets.variants_registry import detect_dimension_for_step
     
-    detected = detect_dimension_for_step("occupations_scheme", step_type, params)
+    detected = detect_dimension_for_step("occupations_scheme", step_type_gen, params)
     
     # If None (no variant applies) or CUSTOM, return CUSTOM
     if detected is None or detected == CUSTOM:
@@ -364,9 +364,9 @@ def detect_dimension_from_steps(
     
     # Use variants-based detection
     values = []
-    for step_params, step_type in zip(steps, step_types):
+    for step_params, step_type_gen in zip(steps, step_types):
         # Check if variant applies
-        variant = get_variant(dimension, step_type)
+        variant = get_variant(dimension, step_type_gen)
         if variant is None:
             # No variant applies - skip this step (dimension is N/A for this step)
             continue
@@ -395,7 +395,7 @@ def detect_dimension_from_steps(
         # Detect using variant
         detected = detect_dimension_for_step(
             dimension,
-            step_type,
+            step_type_gen,
             step_params,
             precision_context=precision_context,
         )
@@ -478,8 +478,8 @@ def _detect_precision_from_steps_strict(
     # Collect detected precision for each receiver step
     receiver_values = []
     
-    for step_params, step_type in zip(steps, step_types):
-        spec = get_precision_receiver_spec(step_type)
+    for step_params, step_type_gen in zip(steps, step_types):
+        spec = get_precision_receiver_spec(step_type_gen)
         
         # Non-receiver steps are wildcards (don't contribute)
         if not spec or not spec.accepts_any:
@@ -494,7 +494,7 @@ def _detect_precision_from_steps_strict(
         from quantumvitas.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step(
             "precision",
-            step_type,
+            step_type_gen,
             step_params,
             precision_context=precision_context,
         )
@@ -523,7 +523,7 @@ def _detect_precision_from_steps_strict(
 
 def detect_precision_strict_for_step_type(
     params: Dict[str, Dict[str, Any]],
-    step_type: str,
+    step_type_gen: str,
     lattice_matrix: List[List[float]],
     base_ecutwfc: float,
     base_ecutrho: float,
@@ -535,7 +535,7 @@ def detect_precision_strict_for_step_type(
     
     Args:
         params: Step parameters dict
-        step_type: Step type string
+        step_type_gen: Step type gen string
         lattice_matrix: 3x3 lattice vectors in Angstrom
         base_ecutwfc: Base ecutwfc from pseudos
         base_ecutrho: Base ecutrho from pseudos
@@ -555,7 +555,7 @@ def detect_precision_strict_for_step_type(
     # Use variants API
     detected = detect_dimension_for_step(
         "precision",
-        step_type,
+        step_type_gen,
         params,
         precision_context=precision_context,
     )

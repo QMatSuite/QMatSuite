@@ -71,7 +71,7 @@ H    -0.757160     0.000000    -0.468000
         xyz_path.write_text(xyz_content)
         
         step_ulid = "01ORCARELAX"
-        step_type= "orca_relax"
+        step_type_spec = "orca_relax"  # SPEC type for execution layer
         calculation_ulid = "01CALCTEST"
         input_structure_ulid = "01STRUCTEST"
         run_id = "run001"
@@ -79,7 +79,7 @@ H    -0.757160     0.000000    -0.468000
         # Call handler
         artifact_path = handle_orca_relax_output(
             step_ulid=step_ulid,
-            step_type=step_type,
+            step_type_spec=step_type_spec,
             calc_dir=calc_dir,
             working_dir=working_dir,
             chain_key=chain_key,
@@ -96,7 +96,7 @@ H    -0.757160     0.000000    -0.468000
         data = json.loads(artifact_path.read_text())
         assert "__qv_meta__" in data
         assert data["__qv_meta__"]["source_step_ulid"] == step_ulid
-        assert data["__qv_meta__"]["provenance"]["method"] == step_type
+        assert data["__qv_meta__"]["provenance"]["method"] == step_type_spec
         assert data["__qv_meta__"]["provenance"]["calculation_ulid"] == calculation_ulid
         assert data["__qv_meta__"]["provenance"]["input_structure_ulid"] == input_structure_ulid
         
@@ -122,7 +122,7 @@ H    -0.757160     0.000000    -0.468000
         with pytest.raises(FileNotFoundError, match="ORCA optimized structure not found"):
             handle_orca_relax_output(
                 step_ulid="01TEST",
-                step_type="orca_relax",
+                step_type_spec="orca_relax",
                 calc_dir=calc_dir,
                 working_dir=working_dir,
                 chain_key=chain_key,

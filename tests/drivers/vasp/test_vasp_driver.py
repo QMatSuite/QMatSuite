@@ -26,7 +26,7 @@ class TestVASPDriver:
         assert "vasp_scf" in spec_ids
         assert "vasp_relax" in spec_ids
         assert "vasp_md" in spec_ids
-        assert "vasp_bands" in spec_ids
+        assert "vasp_bandspw" in spec_ids
 
         # Check all specs have correct engine
         for spec in specs:

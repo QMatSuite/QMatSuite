@@ -119,7 +119,7 @@ def _handle_qe_output(
         structure=structure,
         calc_dir=calc_dir,
         step_ulid=spec.step_ulid,
-        step_type=spec.step_type_spec,
+        step_type_spec=spec.step_type_spec,
         run_ulid=run_context.get("run_ulid"),
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
@@ -162,7 +162,7 @@ def _handle_pyscf_results(
         structure=mol,
         calc_dir=calc_dir,
         step_ulid=spec.step_ulid,
-        step_type=spec.step_type_spec,
+        step_type_spec=spec.step_type_spec,
         run_ulid=run_context.get("run_ulid"),
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
@@ -231,7 +231,7 @@ def _handle_orca_xyz(
         structure=molecule,
         calc_dir=calc_dir,
         step_ulid=spec.step_ulid,
-        step_type=spec.step_type_spec,
+        step_type_spec=spec.step_type_spec,
         run_ulid=run_context.get("run_ulid"),
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
@@ -260,7 +260,7 @@ def _handle_lammps_data(
         structure=structure,
         calc_dir=calc_dir,
         step_ulid=spec.step_ulid,
-        step_type=spec.step_type_spec,
+        step_type_spec=spec.step_type_spec,
         run_ulid=run_context.get("run_ulid"),
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
@@ -324,7 +324,7 @@ def _handle_cp2k_trajectory_artifact(
         structure=structure,
         calc_dir=calc_dir,
         step_ulid=spec.step_ulid,
-        step_type=spec.step_type_spec,
+        step_type_spec=spec.step_type_spec,
         run_ulid=run_context.get("run_ulid"),
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
@@ -392,19 +392,19 @@ def write_generated_structure(
     structure: "PMGStructure",
     calc_dir: Path,
     step_ulid: str,
-    step_type: str,
+    step_type_spec: str,
     run_ulid: Optional[str] = None,
     calculation_ulid: Optional[str] = None,
     input_structure_ulid: Optional[str] = None,
 ) -> Path:
     """
     Write a relaxed structure to generated_structures directory.
-    
+
     Args:
         structure: pymatgen Structure to write
         calc_dir: Path to calculation directory
         step_ulid: ULID of the relax step
-        step_type: Step type (e.g., "qe_relax", "qe_vc_relax")
+        step_type_spec: Step type spec (e.g., "qe_relax")
         run_ulid: Optional run ULID for provenance
         calculation_ulid: Optional calculation ULID for provenance
         input_structure_ulid: Optional input structure ULID for provenance
@@ -423,7 +423,7 @@ def write_generated_structure(
         "source_run_ulid": run_ulid,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "provenance": {
-            "method": step_type,
+            "method": step_type_spec,
             "input_structure_ulid": input_structure_ulid,
             "calculation_ulid": calculation_ulid,
         },
@@ -488,18 +488,27 @@ def clean_generated_structure(calc_dir: Path, step_ulid: str) -> bool:
     return False
 
 
-def is_relax_step_type(step_type: str) -> bool:
+def is_relax_step_type(step_type_spec: str) -> bool:
     """
     Check if a step type is a relax type.
-    
-    Uses registry lookup to check is_structure_transform flag.
-    Normalizes deprecated step types (vc-relax, qe_vc_relax, opt, geomopt) first.
+
+    Args:
+        step_type_spec: Step type in SPEC format (e.g., "qe_relax"). Also accepts
+            GEN format (e.g., "relax") for convenience - will be handled internally.
+
+    Returns:
+        True if the step type is a structure-transforming relax type.
     """
     from quantumvitas.workflow.registry import get_registry, normalize_step_type
-    
-    # Normalize deprecated types (vc-relax, qe_vc_relax, opt, geomopt) to unified types
-    normalized = normalize_step_type(step_type)
-    
+    from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+
+    # Convert to GEN first (registry expects GEN)
+    # If SPEC format (has underscore), extract GEN; otherwise use as-is (already GEN)
+    gen_value = gen_from(step_type_spec) if is_spec(step_type_spec) else step_type_spec
+
+    # Normalize step type (no aliases exist - this is for case normalization only)
+    normalized = normalize_step_type(gen_value)
+
     registry = get_registry()
     spec = registry.get(normalized)
     if spec is None:

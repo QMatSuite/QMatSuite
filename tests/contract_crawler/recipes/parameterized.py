@@ -431,7 +431,7 @@ class CalculationMutationsRecipe(Recipe):
             return {
                 **base,
                 "calculation": self.world["calculation_selector"],
-                "step_type_spec": "qe_bands",
+                "step_type_gen": "bands",  # GEN type for UI layer
                 "step_name": "bands",
             }
 

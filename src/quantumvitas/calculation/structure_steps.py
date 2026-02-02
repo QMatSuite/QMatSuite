@@ -279,14 +279,13 @@ STEP_TYPE_NAMELIST_MAP = {
     "dynmat": "INPUT",
 }
 
-# Mapping of step type to QE module
+# Mapping of GEN step type to QE module
+# Note: VC (variable-cell) is a PARAMETER for relax/md, NOT a separate step type
 STEP_TYPE_MODULE_MAP = {
     "scf": QEModule.PW,
     "nscf": QEModule.PW,
-    "relax": QEModule.PW,
-    "vc-relax": QEModule.PW,
-    "md": QEModule.PW,
-    "vc-md": QEModule.PW,
+    "relax": QEModule.PW,  # Covers both fixed-cell and VC relaxation
+    "md": QEModule.PW,  # Covers both fixed-cell and VC MD
     "bandspw": QEModule.PW,
     "dos": QEModule.DOS,
     "bands": QEModule.BANDS,

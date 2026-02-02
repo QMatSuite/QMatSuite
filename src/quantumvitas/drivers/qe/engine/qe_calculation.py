@@ -115,14 +115,16 @@ class QECalculationRunner:
                 calculation = control.get('calculation', 'scf').lower()
                 # Map QE calculation types to step types
                 # Note: 'bands' in pw.x is still pw.x, not bands.x
+                # Map QE calculation parameter to GEN step type
+                # Note: 'vc-relax' and 'vc-md' are QE parameter values, mapped to unified GEN types
                 calculation_map = {
                     'scf': 'scf',
                     'nscf': 'nscf',
                     'bands': 'bandspw',  # pw.x bands calculation (not bands.x)
-                    'relax': 'opt',
-                    'vc-relax': 'opt',
+                    'relax': 'relax',
+                    'vc-relax': 'relax',  # VC is a parameter, maps to unified 'relax'
                     'md': 'md',
-                    'vc-md': 'md',
+                    'vc-md': 'md',  # VC is a parameter, maps to unified 'md'
                 }
                 return calculation_map.get(calculation, 'scf')
             return 'scf'  # Default for pw.x
@@ -245,8 +247,8 @@ class QECalculationRunner:
         logger.debug(f"[RUN_STEP] input_file_abs is_file: {input_file_abs.is_file()}")
         
         # Build command (this may modify input_file path for relative resolution)
-        # build_command expects gen type
-        command = self.engine.build_command(step_gen_type, input_file, working_dir)
+        # build_command expects spec type
+        command = self.engine.build_command(step_type_spec, input_file, working_dir)
         logger.info(f"[RUN_STEP] Built command: {' '.join(command)}")
         
         # Prepare environment
@@ -595,7 +597,7 @@ class QECalculationRunner:
                 # Only parse QE output files, not Wannier90
                 if primary_output_file.exists():
                     try:
-                        parsed_output = self.engine.parse_output(primary_output_file, step_gen_type)
+                        parsed_output = self.engine.parse_output(primary_output_file, step_type_spec)
                     except Exception:
                         pass  # Parsing is optional
 

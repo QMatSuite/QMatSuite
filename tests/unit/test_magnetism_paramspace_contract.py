@@ -25,7 +25,7 @@ class TestMagnetismRoundtrip:
         
         # Create YAML from compiled (compiled is now {"SYSTEM": {...}})
         yaml_tree = compiled
-        detected = detect_magnetism(yaml_tree, step_type="scf")
+        detected = detect_magnetism(yaml_tree, step_type_gen="scf")
         
         assert detected == option, f"Roundtrip failed: {option} → {detected}"
     
@@ -35,7 +35,7 @@ class TestMagnetismRoundtrip:
         compiled = compile_magnetism(option)
         
         yaml_tree = compiled
-        detected = detect_magnetism(yaml_tree, step_type="scf")
+        detected = detect_magnetism(yaml_tree, step_type_gen="scf")
         
         assert detected == option, f"Roundtrip failed: {option} → {detected}"
     
@@ -45,7 +45,7 @@ class TestMagnetismRoundtrip:
         compiled = compile_magnetism(option)
         
         yaml_tree = compiled
-        detected = detect_magnetism(yaml_tree, step_type="scf")
+        detected = detect_magnetism(yaml_tree, step_type_gen="scf")
         
         assert detected == option, f"Roundtrip failed: {option} → {detected}"
     
@@ -55,7 +55,7 @@ class TestMagnetismRoundtrip:
         compiled = compile_magnetism(option)
         
         yaml_tree = compiled
-        detected = detect_magnetism(yaml_tree, step_type="scf")
+        detected = detect_magnetism(yaml_tree, step_type_gen="scf")
         
         assert detected == option, f"Roundtrip failed: {option} → {detected}"
 

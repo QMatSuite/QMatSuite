@@ -72,8 +72,8 @@ def test_step_slug_uniqueness_and_consistency(lammps_project):
 
     # Create two MD steps (same step_type) using domain API
     svc = QVService(project_root)
-    s1 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
-    s2 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
+    s1 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
+    s2 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
 
     # === Assertion 1: IDs are unique ===
     assert s1.step_ulid != s2.step_ulid, f"ULID collision: {s1.step_ulid}"
@@ -123,8 +123,8 @@ def test_require_step_by_ulid_returns_correct_slug(lammps_project):
 
     # Create two MD steps using domain API
     svc = QVService(project_root)
-    s1 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
-    s2 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
+    s1 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
+    s2 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
 
     # Look up s2 by its ULID
     s2_by_id = require_step(project_root, calc_id, s2.step_ulid)
@@ -146,8 +146,8 @@ def test_require_step_by_slug_returns_correct_step(lammps_project):
 
     # Create two MD steps using domain API
     svc = QVService(project_root)
-    s1 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
-    s2 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
+    s1 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
+    s2 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
 
     # Look up by slug
     s1_by_slug = require_step(project_root, calc_id, "md")
@@ -173,8 +173,8 @@ def test_resource_index_matches_yaml(lammps_project):
 
     # Create steps using domain API
     svc = QVService(project_root)
-    s1 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
-    s2 = svc.calculation.add_step(calc_selector=calc_id, step_type="md")
+    s1 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
+    s2 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
 
     # Build fresh index
     index = build_resource_index(project_root)
@@ -205,7 +205,7 @@ def test_three_steps_same_type(lammps_project):
 
     # Create three MD steps using domain API
     svc = QVService(project_root)
-    steps = [svc.calculation.add_step(calc_selector=calc_id, step_type="md") for _ in range(3)]
+    steps = [svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md") for _ in range(3)]
 
     # Verify IDs are unique
     ids = [s.step_ulid for s in steps]

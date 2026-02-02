@@ -82,7 +82,7 @@ fi
             result_preproc = runner.run_step(
                 input_file=input_file_preproc,
                 working_dir=working_dir,
-                step_type="w90_wannierprep",
+                step_type_spec="w90_wannierprep",  # Execution layer uses SPEC type
             )
 
             # Step 2: w90_wannier (SPEC type)
@@ -90,7 +90,7 @@ fi
             result_run = runner.run_step(
                 input_file=input_file_run,
                 working_dir=working_dir,
-                step_type="w90_wannier",
+                step_type_spec="w90_wannier",  # Execution layer uses SPEC type
             )
 
             # Verify stdout/stderr files exist and are different
@@ -159,7 +159,7 @@ exit 0
             result = runner.run_step(
                 input_file=input_file,
                 working_dir=working_dir,
-                step_type="w90_wannierprep",  # SPEC type
+                step_type_spec="w90_wannierprep",  # Execution layer uses SPEC type
             )
 
             # Verify primary output is <seed>.wout
@@ -233,7 +233,7 @@ exit 0
             result_preproc = runner.run_step(
                 input_file=input_file_preproc,
                 working_dir=working_dir,
-                step_type="w90_wannierprep",  # SPEC type
+                step_type_spec="w90_wannierprep",  # Execution layer uses SPEC type
             )
 
             assert result_preproc.success is True, "wannierprep should succeed"
@@ -245,7 +245,7 @@ exit 0
             result_pw2wan = runner.run_step(
                 input_file=input_file_pw2wan,
                 working_dir=working_dir,
-                step_type="qe_pw2wannier",  # SPEC type
+                step_type_spec="qe_pw2wannier",  # Execution layer uses SPEC type
             )
 
             # Verify pw2wannier was executed (step_type_spec is returned as passed)

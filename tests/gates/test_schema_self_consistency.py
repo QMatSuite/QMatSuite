@@ -730,7 +730,7 @@ class TestSchemaConsistency:
         """
         B3: No legacy keyword argument names in constructors.
 
-        Forbidden: id=, calc_id=, step_id=, structure_id=, project_id=, run_id=, step_type=
+        Forbidden: id=, calc_id=, step_id=, structure_id=, project_id=, run_id=, step_type_gen=
         """
         results = scan_all_files()
         violations = results["B3"]

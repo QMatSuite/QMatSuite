@@ -102,7 +102,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
         step1_result = QVService.add_step_to_calculation(
             project_root,
             calculation_selector=calc_id,
-            step_type="qe_scf",
+            step_type_gen="scf",  # GEN type for UI layer
             step_name="scf",
         )
         # Result is calculation dict, steps are in "steps" list
@@ -124,7 +124,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
         step2_result = QVService.add_step_to_calculation(
             project_root,
             calculation_selector=calc_id,
-            step_type="qe_nscf",
+            step_type_gen="nscf",  # GEN type for UI layer
             step_name="nscf",
         )
         if isinstance(step2_result, dict) and "steps" in step2_result:
@@ -143,14 +143,14 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
         svc = QVService(project_root) if get_service is None else get_service(project_root)
         step1_dto = svc.calculation.add_step(
             calc_selector=calc_id,
-            step_type="qe_scf",
+            step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
         step1_id = step1_dto.step_ulid
 
         step2_dto = svc.calculation.add_step(
             calc_selector=calc_id,
-            step_type="qe_nscf",
+            step_type_gen="nscf",  # GEN type for UI layer
             name="nscf",
         )
         step2_id = step2_dto.step_ulid

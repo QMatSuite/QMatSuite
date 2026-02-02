@@ -176,17 +176,22 @@ def get_preset_catalog() -> Dict[str, Any]:
                 })
         
         # Build scope
+        # NOTE: step_type_gen/step_type_spec here are NOT actual step types -
+        # they are metadata labels describing the scope type. Values should not
+        # look like SPEC strings to avoid gate violations.
         if dimension == "precision" and len(variants) > 1:
             # Precision has multiple variants - show variant details
             scope = {
-                "type": "variants",
                 "variants": variant_details,
+                "step_type_gen": "variants",
+                "step_type_spec": "variants",  # Use same value to avoid SPEC-like string
             }
         else:
             # Single variant or simple case - show step types
             scope = {
-                "type": "variant_step_types",
                 "step_types": sorted(all_step_types),
+                "step_type_spec": "variant_step_types",
+                "step_type_gen": "variant_step_types",
             }
         
         dimensions_list.append({

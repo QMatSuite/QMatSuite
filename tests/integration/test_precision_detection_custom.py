@@ -97,7 +97,7 @@ class TestPrecisionDetectionCustom:
         lattice = [[5.43, 0, 0], [0, 5.43, 0], [0, 0, 5.43]]
         advisor = PrecisionAdvisor(species_map, lattice_matrix=lattice)
         
-        precision_advice = advisor.advise_for_step(PrecisionOption.MED, "scf")
+        precision_advice = advisor.advise_for_step(PrecisionOption.MED, "scf")  # Use explicit GEN type
         apply_presets_to_step(
             scf_step,
             {"precision": "med"},

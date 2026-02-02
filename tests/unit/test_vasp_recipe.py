@@ -8,10 +8,10 @@ from quantumvitas.execution.job_graph import JobGraph
 
 class MockStep:
     """Mock step for testing."""
-    def __init__(self, step_type: str, step_id: str = "01TEST"):
-        self.step_type_spec = step_type  # SPEC type (e.g., "vasp_scf")
+    def __init__(self, step_type_spec: str, step_id: str = "01TEST"):
+        self.step_type_spec = step_type_spec  # SPEC type (e.g., "vasp_scf")
         # Extract GEN type from SPEC type
-        self.step_type_gen = step_type.split("_", 1)[-1] if "_" in step_type else step_type
+        self.step_type_gen = step_type_spec.split("_", 1)[-1] if "_" in step_type_spec else step_type_spec
         self.meta = type('meta', (), {"ulid": step_id})()
 
 
@@ -25,7 +25,7 @@ class TestVASPRecipe:
         
         steps = [
             MockStep("vasp_scf", "01SCF"),
-            MockStep("vasp_bands", "02BANDS"),
+            MockStep("vasp_bandspw", "02BANDS"),
         ]
         
         recipe = VASPRecipe()
@@ -48,7 +48,7 @@ class TestVASPRecipe:
         
         steps = [
             MockStep("vasp_scf", "01SCF"),
-            MockStep("vasp_bands", "02BANDS"),
+            MockStep("vasp_bandspw", "02BANDS"),
             MockStep("vasp_nscf", "03NSCF"),
         ]
         

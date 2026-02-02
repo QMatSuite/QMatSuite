@@ -36,7 +36,7 @@ class TestW90ParameterStructure:
         w90_wannierprep = None
         for calc in demo.get("calculations", []):
             for step in calc.get("steps", []):
-                step_type = step.get("step_type_spec") or step.get("step_type")
+                step_type = step.get("step_type_spec")
                 if step_type == "w90_wannierprep":
                     w90_wannierprep = step
                     break
@@ -72,7 +72,7 @@ class TestW90ParameterStructure:
         pw2wannier = None
         for calc in demo.get("calculations", []):
             for step in calc.get("steps", []):
-                step_type = step.get("step_type_spec") or step.get("step_type")
+                step_type = step.get("step_type_spec")
                 if step_type in ("pw2wannier", "qe_pw2wannier"):
                     pw2wannier = step
                     break

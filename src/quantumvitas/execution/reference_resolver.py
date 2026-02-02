@@ -43,22 +43,38 @@ def find_reference_scf(
     if registry is None:
         registry = get_registry()
     
+    from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+
     # Walk backwards from current step
     for i in range(current_step_idx - 1, -1, -1):
         step = steps[i]
-        
-        # Get step type
-        step_type = getattr(step, 'step_type_spec', None)
-        if not step_type:
+
+        # Get step type (SPEC type like "vasp_scf")
+        step_type_spec = getattr(step, 'step_type_spec', None)
+        if not step_type_spec:
             continue
 
-        # Look up spec to get step_type_gen
-        spec = registry.get(str(step_type))
+        step_type_str = str(step_type_spec)
+
+        # Convert SPEC to GEN and look up in registry
+        # Per constitution, registry.get() only accepts GEN types
+        if is_spec(step_type_str):
+            # Extract engine prefix and gen type from SPEC
+            parts = step_type_str.split("_", 1)
+            if len(parts) == 2:
+                engine_prefix, gen_type = parts
+                spec = registry.get_for_engine(gen_type, engine_prefix)
+            else:
+                spec = None
+        else:
+            # Already GEN type
+            spec = registry.get(step_type_str)
+
         if spec:
             step_gen_type = spec.step_type_gen
         else:
-            # Fallback: assume step_type is already gen type
-            step_gen_type = str(step_type)
+            # Fallback: use gen_from for SPEC, or raw value for GEN
+            step_gen_type = gen_from(step_type_str) if is_spec(step_type_str) else step_type_str
 
         # Check if this is a relax step (barrier)
         if step_gen_type == "relax":
@@ -75,24 +91,39 @@ def find_reference_scf(
 def get_gen_type(step: Any, registry: Optional[StepTypeRegistry] = None) -> Optional[str]:
     """
     Get generalized step type for a step.
-    
+
     Args:
         step: Step object
         registry: Optional StepTypeRegistry
-    
+
     Returns:
         Public type (e.g., "scf", "relax", "bands") or None
     """
     if registry is None:
         registry = get_registry()
-    
-    step_type = getattr(step, 'step_type_spec', None)
-    if not step_type:
+
+    # First try step_type_gen if available (preferred)
+    step_type_gen = getattr(step, 'step_type_gen', None)
+    if step_type_gen:
+        return str(step_type_gen)
+
+    # Fallback: extract GEN from step_type_spec
+    step_type_spec = getattr(step, 'step_type_spec', None)
+    if not step_type_spec:
         return None
 
-    spec = registry.get(str(step_type))
+    # Convert SPEC to GEN (registry expects GEN)
+    from quantumvitas.api.utils import is_step_type_spec, step_type_gen_from_spec
+    step_type_spec_str = str(step_type_spec)
+    if is_step_type_spec(step_type_spec_str):
+        gen_type = step_type_gen_from_spec(step_type_spec_str)
+    else:
+        gen_type = step_type_spec_str
+
+    # Verify in registry
+    spec = registry.get(gen_type)
     if spec:
         return spec.step_type_gen
-    
-    return str(step_type)
+
+    return gen_type
 

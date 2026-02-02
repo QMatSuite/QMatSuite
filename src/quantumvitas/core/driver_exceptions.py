@@ -11,12 +11,12 @@ class DriverError(Exception):
 class UnknownStepTypeError(DriverError):
     """Raised when step type is not registered."""
 
-    def __init__(self, step_type: str, known_types: Optional[List[str]] = None):
-        self.step_type_spec = step_type
+    def __init__(self, step_type_spec: str, known_types: Optional[List[str]] = None):
+        self.step_type_spec = step_type_spec
         self.known_types = known_types or []
         similar = self._find_similar()
 
-        msg = f"Step type '{step_type}' is not registered."
+        msg = f"Step type '{step_type_spec}' is not registered."
         if similar:
             msg += f"\nDid you mean: {', '.join(similar[:3])}?"
         if self.known_types:

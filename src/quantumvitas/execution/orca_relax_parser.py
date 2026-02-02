@@ -117,7 +117,7 @@ def parse_orca_optimized_xyz(xyz_path: Path) -> "Molecule":
 
 def handle_orca_relax_output(
     step_ulid: str,
-    step_type: str,
+    step_type_spec: str,
     calc_dir: Path,
     working_dir: Path,
     chain_key: str,
@@ -130,7 +130,7 @@ def handle_orca_relax_output(
     
     Args:
         step_ulid: ULID of the relax step
-        step_type: Machine step type (e.g., "orca_relax")
+        step_type_spec: Machine step type (e.g., "orca_relax")
         calc_dir: Path to calculation directory
         working_dir: Path to ORCA working directory (contains .xyz)
         chain_key: Chain key (e.g., "chain01_scf")
@@ -215,7 +215,7 @@ def handle_orca_relax_output(
         structure=molecule,  # pymatgen Molecule is a SiteCollection
         calc_dir=calc_dir,
         step_ulid=step_ulid,
-        step_type=step_type,
+        step_type_spec=step_type_spec,
         run_ulid=run_ulid,
         calculation_ulid=calculation_ulid,
         input_structure_ulid=input_structure_ulid,

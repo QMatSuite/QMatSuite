@@ -34,7 +34,7 @@ class TestHandlePySCFRelaxOutput:
         }
         
         step_ulid = "01PYSCFRELAX"
-        step_type= "pyscf_relax"
+        step_type_spec = "pyscf_relax"  # SPEC type for execution layer
         calculation_ulid = "01CALCTEST"
         input_structure_ulid = "01STRUCTEST"
         run_id = "run001"
@@ -42,7 +42,7 @@ class TestHandlePySCFRelaxOutput:
         # Call handler
         artifact_path = handle_pyscf_relax_output(
             step_ulid=step_ulid,
-            step_type=step_type,
+            step_type_spec=step_type_spec,
             calc_dir=calc_dir,
             results=results,
             calculation_ulid=calculation_ulid,
@@ -58,7 +58,7 @@ class TestHandlePySCFRelaxOutput:
         data = json.loads(artifact_path.read_text())
         assert "__qv_meta__" in data
         assert data["__qv_meta__"]["source_step_ulid"] == step_ulid
-        assert data["__qv_meta__"]["provenance"]["method"] == step_type
+        assert data["__qv_meta__"]["provenance"]["method"] == step_type_spec
         assert data["__qv_meta__"]["provenance"]["calculation_ulid"] == calculation_ulid
         assert data["__qv_meta__"]["provenance"]["input_structure_ulid"] == input_structure_ulid
         
@@ -85,7 +85,7 @@ class TestHandlePySCFRelaxOutput:
         with pytest.raises(ValueError, match="Results dict missing 'optimized_atoms' key"):
             handle_pyscf_relax_output(
                 step_ulid="01TEST",
-                step_type="pyscf_relax",
+                step_type_spec="pyscf_relax",
                 calc_dir=calc_dir,
                 results=results,
                 calculation_ulid="01CALC",

@@ -8,14 +8,17 @@ import pytest
 
 
 class TestORCAStepTypeRegistration:
-    """Tests for ORCA step type registration in workflow registry."""
+    """Tests for ORCA step type registration in workflow registry.
+
+    Uses get_for_engine(gen_type, engine) per constitution: registry.get() takes GEN only.
+    """
 
     def test_orca_scf_registered(self):
         """Verify orca_scf step type is registered."""
         from quantumvitas.workflow.registry import get_registry
 
         registry = get_registry()
-        spec = registry.get("orca_scf")
+        spec = registry.get_for_engine("scf", "orca")
 
         assert spec is not None
         assert spec.step_type_gen == "scf"
@@ -27,7 +30,7 @@ class TestORCAStepTypeRegistration:
         from quantumvitas.workflow.registry import get_registry
 
         registry = get_registry()
-        spec = registry.get("orca_hf")
+        spec = registry.get_for_engine("hf", "orca")
 
         assert spec is not None
         assert spec.step_type_gen == "hf"
@@ -39,7 +42,7 @@ class TestORCAStepTypeRegistration:
         from quantumvitas.workflow.registry import get_registry
 
         registry = get_registry()
-        spec = registry.get("orca_td")
+        spec = registry.get_for_engine("td", "orca")
 
         assert spec is not None
         assert spec.step_type_gen == "td"
@@ -51,7 +54,7 @@ class TestORCAStepTypeRegistration:
         from quantumvitas.workflow.registry import get_registry
 
         registry = get_registry()
-        spec = registry.get("orca_scf")
+        spec = registry.get_for_engine("scf", "orca")
 
         assert spec.produces_state == "gbw"
         assert spec.consumes_state is None
@@ -61,7 +64,7 @@ class TestORCAStepTypeRegistration:
         from quantumvitas.workflow.registry import get_registry
 
         registry = get_registry()
-        spec = registry.get("orca_td")
+        spec = registry.get_for_engine("td", "orca")
 
         assert spec.consumes_state == "gbw"
         assert spec.produces_state is None

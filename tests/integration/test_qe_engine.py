@@ -57,7 +57,7 @@ class TestQEEngineInputGeneration:
         }
         
         input_file = engine.generate_input(
-            step_type='scf',
+            step_type_gen='scf',
             input_data=input_data,
             working_dir=tmp_path
         )

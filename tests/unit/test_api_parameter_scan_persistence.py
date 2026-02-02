@@ -39,7 +39,7 @@ def test_update_step_params_parameter_scan_merge(tmp_path):
 
     # Create step using domain API
     svc = get_service(project_root)
-    step_result = svc.calculation.add_step(calc_selector="calc001", step_type="scf", name="step001")
+    step_result = svc.calculation.add_step(calc_selector="calc001", step_type_gen="scf", name="step001")
     step_yaml = project_root / "calculations" / "calc001" / "steps" / "step001.step.yaml"
 
     # Set initial parameter_scan via direct YAML edit (for test setup)
@@ -113,7 +113,7 @@ def test_update_step_params_parameter_scan_preserves_array_values(tmp_path):
 
     # Create step using domain API
     svc = get_service(project_root)
-    step_result = svc.calculation.add_step(calc_selector="calc001", step_type="scf", name="step001")
+    step_result = svc.calculation.add_step(calc_selector="calc001", step_type_gen="scf", name="step001")
     step_yaml = project_root / "calculations" / "calc001" / "steps" / "step001.step.yaml"
 
     # Update with scan values array of length 3
@@ -172,7 +172,7 @@ def test_update_step_params_parameter_scan_empty_preserves(tmp_path):
 
     # Create step using domain API
     svc = get_service(project_root)
-    step_result = svc.calculation.add_step(calc_selector="calc001", step_type="scf", name="step001")
+    step_result = svc.calculation.add_step(calc_selector="calc001", step_type_gen="scf", name="step001")
     step_yaml = project_root / "calculations" / "calc001" / "steps" / "step001.step.yaml"
 
     # Set initial parameter_scan via direct YAML edit (for test setup)
@@ -233,7 +233,7 @@ def test_update_step_params_parameter_scan_multiple_scans(tmp_path):
 
     # Create step using domain API
     svc = get_service(project_root)
-    step_result = svc.calculation.add_step(calc_selector="calc001", step_type="scf", name="step001")
+    step_result = svc.calculation.add_step(calc_selector="calc001", step_type_gen="scf", name="step001")
     step_yaml = project_root / "calculations" / "calc001" / "steps" / "step001.step.yaml"
 
     # Update with multiple scans

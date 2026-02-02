@@ -83,7 +83,7 @@ def is_gen(s: str) -> bool:
     return bool(s) and "_" not in s
 
 
-def normalize_to_gen(step_type: str) -> str:
+def normalize_to_gen(step_type_spec: str) -> str:
     """
     Normalize any step type to GEN format.
 
@@ -91,10 +91,10 @@ def normalize_to_gen(step_type: str) -> str:
     This is the canonical replacement for normalize_step_type_to_gen().
 
     Args:
-        step_type: Any step type string
+        step_type_spec: Any step type string (spec or gen)
 
     Returns:
         GEN step name
     """
-    return gen_from(step_type)
+    return gen_from(step_type_spec)
 

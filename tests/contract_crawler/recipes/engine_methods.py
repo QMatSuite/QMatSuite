@@ -137,7 +137,7 @@ class EngineMethodsRecipe(Recipe):
                     result = QVService.add_step_to_calculation(
                         self.project_root,
                         calculation_selector=self.world["calc_id"],
-                        step_type="qe_bands",
+                        step_type_gen="bands",  # GEN type for UI layer
                         step_name="bands",
                     )
                     if isinstance(result, dict) and "steps" in result and result["steps"]:
@@ -154,7 +154,7 @@ class EngineMethodsRecipe(Recipe):
                 try:
                     step_dto = svc.calculation.add_step(
                         calc_selector=self.world["calc_id"],
-                        step_type="bands",
+                        step_type_gen="bands",
                         name="bands",
                     )
                     self.bands_step_id = step_dto.step_ulid
@@ -184,7 +184,7 @@ class EngineMethodsRecipe(Recipe):
                     result = QVService.add_step_to_calculation(
                         self.project_root,
                         calculation_selector=self.world["calc_id"],
-                        step_type="qe_dos",
+                        step_type_gen="dos",  # GEN type for UI layer
                         step_name="dos",
                     )
                     if isinstance(result, dict) and "steps" in result and result["steps"]:
@@ -201,7 +201,7 @@ class EngineMethodsRecipe(Recipe):
                 try:
                     step_dto = svc.calculation.add_step(
                         calc_selector=self.world["calc_id"],
-                        step_type="dos",
+                        step_type_gen="dos",
                         name="dos",
                     )
                     self.dos_step_id = step_dto.step_ulid

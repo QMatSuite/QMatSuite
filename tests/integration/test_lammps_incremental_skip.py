@@ -89,7 +89,7 @@ def inline_lj_project(tmp_path: Path, lammps_binary):
     svc = QVService(project_root)
     step = svc.calculation.add_step(
         calc_selector=calc_id,
-        step_type="relax",
+        step_type_gen="relax",
     )
     step_id = step.step_ulid
 
@@ -291,7 +291,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     svc = QVService(project_root)
     step = svc.calculation.add_step(
         calc_selector=calc_id,
-        step_type="md",
+        step_type_gen="md",
     )
     step_id = step.step_ulid
 

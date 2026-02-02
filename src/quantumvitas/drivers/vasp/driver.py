@@ -79,10 +79,10 @@ class VASPDriver(BaseEngineDriver):
                 supports_restart=True,
             ),
             StepTypeSpec(
-                step_type_spec="vasp_bands",
+                step_type_spec="vasp_bandspw",
                 engine="vasp",
                 executable="vasp_std",
-                description="VASP band structure calculation",
+                description="VASP band structure calculation (eigenstates along k-path)",
                 category="calculation",
             ),
             StepTypeSpec(
@@ -151,6 +151,8 @@ class VASPDriver(BaseEngineDriver):
         return {
             "dos",        # DOS integrated in NSCF output
             "bands",      # VASP doesn't need post-processing (bands.x equivalent)
+            "dospp",      # VASP doesn't need dos.x post-processing
+            "bandspp",    # VASP doesn't need bands.x post-processing
         }
 
     # ─────────────────────────────────────────────────────────────────────

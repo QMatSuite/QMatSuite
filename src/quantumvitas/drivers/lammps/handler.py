@@ -329,15 +329,15 @@ def lammps_step_handler(
         }
         
         # If this is a relax step and succeeded, add artifact spec for post-processing
-        step_type = step_spec.step_type_spec if hasattr(step_spec, "step_type_spec") else None
-        if success and step_type and is_relax_step_type(step_type):
+        step_type_spec = step_spec.step_type_spec if hasattr(step_spec, "step_type_spec") else None
+        if success and step_type_spec and is_relax_step_type(step_type_spec):
             final_data_path = working_dir / "final.data"
             if final_data_path.exists():
                 step_result_data["relax_artifact_spec"] = RelaxArtifactSpec(
                     artifact_type="lammps_data",
                     artifact_path=final_data_path,
                     step_ulid=step_ulid,
-                    step_type_spec=str(step_type),
+                    step_type_spec=str(step_type_spec),
                 ).to_dict()
         
         return JobResult(

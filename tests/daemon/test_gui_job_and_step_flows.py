@@ -86,7 +86,7 @@ def temp_project(tmp_path: Path) -> Path:
     # Add a simple SCF step
     step_result = svc.calculation.add_step(
         calc_selector=calculation_id,
-        step_type="scf",
+        step_type_gen="scf",
     )
     
     return project_dir
@@ -616,9 +616,9 @@ class TestCalculationFailureHandling:
         later dependent steps are not executed and are marked as SKIPPED.
         
         Scenario:
-        - Calculation chain: scf → nscf → projwfc
+        - Calculation chain: scf → nscf → dos
         - Simulate that nscf step fails
-        - Expected: scf succeeds, nscf fails, projwfc is SKIPPED, calculation is FAILED
+        - Expected: scf succeeds, nscf fails, dos is SKIPPED, calculation is FAILED
         """
         # Create a calculation with multiple steps
         project_root_str = str(temp_project.resolve())
@@ -637,11 +637,11 @@ class TestCalculationFailureHandling:
             "step_type_gen": "nscf",
         })
         
-        # Add projwfc step
+        # Add dos step (use registered step type instead of projwfc which is not registered)
         send_request(daemon, "add_step_to_calculation", {
             "project_root": project_root_str,
             "calculation": calculation_slug,
-            "step_type_gen": "projwfc",
+            "step_type_gen": "dos",
         })
         
         # Verify calculation has 3 steps now
@@ -662,7 +662,7 @@ class TestCalculationFailureHandling:
         step_ids = [s.step_ulid for s in wf_model.steps]
         scf_step_id = step_ids[0]
         nscf_step_id = step_ids[1]
-        projwfc_step_id = step_ids[2]
+        dos_step_id = step_ids[2]
         
         # Mock the calculation runner to simulate nscf failure
         from quantumvitas.calculation.runner import CalculationRunner
@@ -718,7 +718,7 @@ class TestCalculationFailureHandling:
                     step_status = StepStatus.FAILED
                     message = "NSCF calculation failed"
                     calculation_failed = True
-                # Third step (projwfc) should be skipped
+                # Third step (dos) should be skipped
                 else:
                     step_status = StepStatus.SKIPPED
                     message = "Step skipped because a previous step failed"
@@ -816,10 +816,10 @@ class TestCalculationFailureHandling:
         nscf_step = next(s for s in steps if s["step_ulid"] == nscf_step_id)
         assert nscf_step["status"] == "failed", f"NSCF step should be FAILED, got {nscf_step['status']}"
         
-        # Third step (projwfc) should be SKIPPED
-        projwfc_step = next(s for s in steps if s["step_ulid"] == projwfc_step_id)
-        assert projwfc_step["status"] == "skipped", \
-            f"PROJWFC step should be SKIPPED, got {projwfc_step['status']}"
-        assert "skipped because a previous step failed" in projwfc_step.get("message", "").lower(), \
+        # Third step (dos) should be SKIPPED
+        dos_step = next(s for s in steps if s["step_ulid"] == dos_step_id)
+        assert dos_step["status"] == "skipped", \
+            f"DOS step should be SKIPPED, got {dos_step['status']}"
+        assert "skipped because a previous step failed" in dos_step.get("message", "").lower(), \
             "SKIPPED step should have appropriate message"
 

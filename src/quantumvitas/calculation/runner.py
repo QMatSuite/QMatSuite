@@ -56,7 +56,7 @@ def _get_engine_family_from_step(step) -> Optional[str]:
     Uses StepTypeSpec.engine to determine family.
 
     Args:
-        step: A Step object with step_type attribute
+        step: A Step object with step_type_spec attribute
 
     Returns:
         Engine family string ("qe", "pyscf", "orca") or None if unknown
@@ -64,14 +64,29 @@ def _get_engine_family_from_step(step) -> Optional[str]:
     if not step or not step.step_type_spec:
         return None
 
-    # Get the step type string
-    step_type_str = str(step.step_type_spec) if step.step_type_spec else "unknown"
+    # Get the step type string (SPEC type like "qe_scf", "pyscf_mp2")
+    step_type_spec = str(step.step_type_spec) if step.step_type_spec else "unknown"
 
     # Look up in registry to get the engine
+    # Per constitution, registry.get() only accepts GEN types
+    # SPEC format is "{engine}_{gen}", so we extract engine from SPEC and use get_for_engine
     try:
         from quantumvitas.workflow.registry import get_registry
+        from quantumvitas.workflow.step_type_convert import gen_from, is_spec
         reg = get_registry()
-        spec = reg.get(step_type_str)
+
+        if is_spec(step_type_spec):
+            # Extract engine prefix and gen type from SPEC
+            parts = step_type_spec.split("_", 1)
+            if len(parts) == 2:
+                engine_prefix, gen_type = parts
+                spec = reg.get_for_engine(gen_type, engine_prefix)
+            else:
+                spec = None
+        else:
+            # Already GEN type
+            spec = reg.get(step_type_spec)
+
         if spec and spec.engine:
             # Map engine member to engine family
             engine = spec.engine.lower()

@@ -149,7 +149,7 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
     step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="relax",
+        step_type_gen="relax",
     )
     step_id = step.meta.ulid
     
@@ -284,7 +284,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="md",
+        step_type_gen="md",
     )
     step_id = step.meta.ulid
     
@@ -418,7 +418,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     relax_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="relax",
+        step_type_gen="relax",
     )
     relax_step_id = relax_step.meta.ulid
     
@@ -442,7 +442,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     md_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="md",
+        step_type_gen="md",
     )
     md_step_id = md_step.meta.ulid
     
@@ -614,7 +614,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     relax_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="relax",
+        step_type_gen="relax",
     )
     relax_step_id = relax_step.meta.ulid
     
@@ -638,7 +638,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     md1_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="md",
+        step_type_gen="md",
     )
     md1_step_id = md1_step.meta.ulid
     
@@ -664,7 +664,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     md2_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="md",
+        step_type_gen="md",
     )
     md2_step_id = md2_step.meta.ulid
     

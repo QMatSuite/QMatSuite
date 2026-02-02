@@ -121,7 +121,7 @@ def pyscf_calculation_with_relax(pyscf_project_with_h2):
     relax_step_result = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_ulid,
-        step_type="pyscf_relax",
+        step_type_gen="relax",  # GEN type for UI layer
         name="relax",
     )
     relax_step_ulid = relax_step_result.ulid

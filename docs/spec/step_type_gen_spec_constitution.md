@@ -52,18 +52,93 @@ Examples:
 The **only valid derivation** from gen to spec is:
 
 ```
-step_type_spec = f"{engine_prefix}_{step_type_gen}"
+step_type_spec = join(engine_prefix, step_type_gen)
 ```
 
-This derivation MUST be implemented using `spec_from(prefix, gen)` from `src/quantumvitas/workflow/step_type_convert.py`.
+Where `join(prefix, gen)` is implemented as `f"{prefix}_{gen}"`.
 
-**Reverse derivation** (spec → gen) MUST use `gen_from(spec)` from the same module, which splits on the first underscore.
+**Reverse derivation** (spec → gen) MUST use `split(spec)`, which returns `(prefix, gen)` by splitting on the first underscore.
+
+**Canonical Implementation**: These operations MUST be implemented using:
+- `spec_from(prefix, gen)` from `src/quantumvitas/workflow/step_type_convert.py` for join
+- `gen_from(spec)` from the same module for split (returns gen only)
+- `prefix_from(spec)` from the same module for split (returns prefix only)
 
 **No exceptions**. No special cases. No overrides. If an engine needs a different mapping, the gen step name in `GenStepRegistry` MUST be chosen to make the derivation valid.
 
+### 3.1 Conversion API Law (Repo-Wide Ban)
+
+**The entire repository is ONLY allowed to perform step type conversions via the canonical functions above.**
+
+**FORBIDDEN everywhere else**:
+- `spec.split("_", 1)` or any manual underscore parsing
+- `f"{prefix}_{gen}"` or any manual concatenation for step type derivation
+- `startswith(prefix+"_")`, strip-prefix helpers, custom `is_spec` checks that reimplement the underscore rule
+- Any ad-hoc parsing or string manipulation for step type conversion
+
+**Helper predicates** (e.g., `is_step_type_spec(s)`, `is_step_type_gen(s)`) MAY exist, but:
+- MUST be implemented internally in terms of the canonical join/split + underscore rule
+- MUST NOT be reimplemented elsewhere
+- MUST call the canonical functions, not duplicate their logic
+
+**Rationale**: Scattered ad-hoc parsing creates inconsistency and violates the single source of truth. All conversion logic MUST flow through the canonical functions.
+
 ---
 
-## 4. Underscore Ban (Disambiguation Law)
+## 4. Execution Layering (Route A - Required)
+
+### 4.1 Persistence SSOT
+
+**`step.yaml` files store ONLY `step_type_spec`** (SSOT for execution).
+
+Runner/dispatch/driver_registry external lookup keys remain SPEC-centric because `step.yaml` provides SPEC.
+
+### 4.2 Engine Recipe Structure
+
+**Engine recipes MUST NOT maintain a spec→handler/executable mapping table** (avoids "second truth").
+
+Engine recipes store only:
+- `engine_prefix` (required, from `PREFIX` class attribute)
+- `supported_gen_steps` (subset of global `GenStepRegistry.GEN_STEPS`)
+- `handlers_by_gen` / `executables_by_gen` (keys are GEN only, not SPEC)
+
+### 4.3 Execution Conversion Choke Point
+
+**Runner/dispatch performs exactly ONE spec→(prefix, gen) "unpack" at a SINGLE choke point** before recipe lookup:
+
+```
+(prefix, gen) = split(spec)  # Canonical split function
+recipe = recipe_registry[prefix]
+handler/executable = recipe.handlers_by_gen[gen]
+```
+
+**This is the ONLY permitted place where spec→gen conversion happens in execution.** It MUST NOT spread to other execution-layer code.
+
+**Rationale**: Centralizing the conversion at a single choke point ensures consistency and prevents drift. Execution layer code after this point uses GEN keys for recipe lookup, but the input (from `step.yaml`) remains SPEC.
+
+### 4.4 Driver Registry Responsibility
+
+- **DriverRegistry/runner accepts SPEC inputs** (because `step.yaml` SSOT is SPEC)
+- **Engine recipes accept GEN keys internally** (handlers/executables keyed by GEN)
+- **No per-driver "override maps" or special-case spec↔gen mapping tables are allowed**
+
+Any such overrides violate the derived law and MUST be deleted (no compatibility layer).
+
+### 4.5 Conversion Layering (Architecture Decision)
+
+**Default rule**: Daemon/CLI MUST NOT perform gen/spec conversions.
+
+**Data flow**:
+- **UI → API**: Sends `step_type_gen`
+- **Kernel/API**: Creates step by deriving `step_type_spec` using calculation engine prefix and persists ONLY `step_type_spec` in `step.yaml`
+- **Step/DTO objects**: MAY carry both `step_type_gen` + `step_type_spec` (to avoid daemon/CLI doing conversions)
+- **Runner**: Reads `step_type_spec` from `step.yaml` and performs exactly one `split(spec)` at a single choke point to `(prefix, gen)` for recipe lookup
+
+**Rationale**: Centralizing conversion at kernel/API boundaries prevents daemon/CLI from needing conversion logic and ensures consistency.
+
+---
+
+## 5. Underscore Ban (Disambiguation Law)
 
 To enable unambiguous string classification:
 
@@ -78,11 +153,11 @@ This is a **property of the system**, not a recommendation. Code MUST NOT pass a
 - ✅ Valid gen: `"scf"`, `"relax"`, `"wannierprep"`, `"bandspw"`
 - ❌ Invalid gen: `"w90_preproc"`, `"bands_post"` (contains underscore)
 - ✅ Valid spec: `"qe_scf"`, `"w90_wannierprep"` (contains exactly one underscore)
-- ❌ Invalid spec: `"qe_vc_relax"` (contains two underscores; should be `"qe_relax"` with gen=`"relax"`)
+- ❌ Invalid spec: `"qe_vc_relax"` (contains two underscores; violates §8 - VC is a parameter, not a step type)
 
 ---
 
-## 5. Mapping Cardinality Law
+## 6. Mapping Cardinality Law
 
 For a given engine:
 
@@ -99,7 +174,7 @@ For a given engine:
 
 ---
 
-## 6. Alias Policy (Hard Ban)
+## 7. Alias Policy (Hard Ban)
 
 **No alias step type values anywhere in system state.**
 
@@ -114,9 +189,32 @@ The following legacy values are **FORBIDDEN** as step type values in code, tests
 
 ---
 
-## 7. Key Semantic Decisions
+## 8. VC/OPT are Parameters, Never Step Types (Hard Ban)
 
-### 7.1 Relax Unification
+**`step_type_gen` MUST NOT encode cell/volume control, optimization style, or MD ensemble style.**
+
+The allowed GEN step types include `"relax"` and `"md"` (and any other already-registered GEN steps), but it is **FORBIDDEN** to create GEN step types:
+- `"vcrelax"`, `"vcmd"`, `"opt"`, `"geomopt"`, `"geomeopt"`, `"vc-relax"`, `"vc-md"`, `"vc_relax"`, `"vc_md"`, or any `vc-*` / `*_md` variants
+
+**VC vs non-VC is expressed ONLY via step parameters** (engine parameters), never via step types.
+
+**Examples**:
+- QE `CONTROL.calculation` may be `"relax"` / `"vc-relax"` / `"md"` / `"vc-md"` etc — but `step_type_gen` remains `"relax"` or `"md"`.
+- ORCA: Even if ORCA manual says `"opt"`, QMatSuite step types are `step_type_gen = "relax"` and `step_type_spec = "orca_relax"`. The token `"opt"` is never a step type value.
+
+**Consequently**, SPEC step types like `"qe_vc_relax"`, `"qe_vc_md"` (and any `engine_prefix + vcrelax/vcmd` variants) are **FORBIDDEN** because they violate the derivation rule `spec = {engine_prefix}_{step_type_gen}`.
+
+**Any third-namespace enums or symbols** like `"GEN_VC_*"` are **FORBIDDEN**.
+
+**There is NO alias / compatibility mapping layer for step types anywhere in mainline code.**
+
+**Enforcement**: Gate tests MUST scan for these banned values in step type contexts and fail if found.
+
+---
+
+## 9. Key Semantic Decisions
+
+### 9.1 Relax Unification
 
 **Gen layer**: There is only one gen step: `"relax"`.
 
@@ -130,9 +228,15 @@ Engine-specific parameters (e.g., `calculation = "vc-relax"` in QE, `ISIF = 3` i
 - `"lammps_relax"` (LAMMPS)
 - `"pyscf_relax"` (PySCF)
 
+**ORCA naming clarification**: Even if ORCA documentation calls geometry optimization `"opt"`, QMatSuite step types are still:
+- `step_type_gen = "relax"`
+- `step_type_spec = "orca_relax"`
+
+The token `"opt"` may appear only as human-facing documentation/log/executable context, never as a step type value or alias.
+
 **Legacy aliases FORBIDDEN**: `"vc-relax"`, `"opt"`, `"geomopt"` MUST NOT appear as step type values. They are parameter values only.
 
-### 7.2 Wannier Workflow Naming
+### 9.2 Wannier Workflow Naming
 
 **Gen steps** (in execution order):
 1. `"wannierprep"` → Wannier90 preprocessing (generate .nnkp)
@@ -146,26 +250,38 @@ Engine-specific parameters (e.g., `calculation = "vc-relax"` in QE, `ISIF = 3` i
 
 **Note**: `"pw2wannier"` is a QE step (uses `pw2wannier90.x`), so its spec is `"qe_pw2wannier"`, not `"w90_pw2wannier"`.
 
-### 7.3 Bands Semantics
+### 9.3 Bands Semantics
 
 Two distinct gen steps exist:
 
-- **`"bandspw"`**: Band structure computation step (pw.x with `calculation = "bands"`)
-  - May exist for multiple engines: `"qe_bandspw"`, `"vasp_bands"` (VASP uses same executable)
+- **`"bandspw"`**: Compute k-path eigenvalues (engine run)
   - This is the "compute" step
 
-- **`"bands"`**: Band structure post-processing step (bands.x)
-  - May be missing for some engines (gen → spec = 0 is allowed)
-  - Example: `"qe_bands"` exists, but VASP has no separate post-processing step
+- **`"bands"`**: Post-processing step
   - This is the "postprocess" step
+
+**Mapping cardinality**:
+
+- **QE has both**:
+  - `"qe_bandspw"` (compute) and `"qe_bands"` (postprocess)
+
+- **VASP has `"vasp_bandspw"` ONLY**:
+  - `"vasp_bandspw"` exists
+  - `"vasp_bands"` MUST NOT exist (gen `"bands"` maps to 0 spec steps for VASP; gen→spec=0 is valid)
 
 **Naming note**: The gen step for computation is `"bandspw"` (not `"bands_pw"` or `"bands-pw"`) to avoid underscores.
 
 ---
 
-## 8. UI vs Persistence Rule
+## 10. UI vs Persistence Rule
 
-### 8.1 UI/User-Facing Layer
+### 10.1 Output Naming
+
+**UI and user-facing filenames use GEN names by default** (e.g., `relax.out`, `wannierprep.out`).
+
+**Persisted YAML/dispatch SSOT uses SPEC names** (e.g., `step_type_spec="qe_relax"` in `step.yaml`).
+
+### 10.2 UI/User-Facing Layer
 
 **MUST use gen names**:
 - User-visible step type labels
@@ -174,7 +290,7 @@ Two distinct gen steps exist:
 - Preset variant `applies_to_step_types` declarations
 - ParamSpace dimension declarations
 
-### 8.2 Persistence/Execution Layer
+### 10.3 Persistence/Execution Layer
 
 **MUST use spec names** (SSOT):
 - `step.yaml` files: `step_type_spec` field
@@ -182,11 +298,11 @@ Two distinct gen steps exist:
 - Calculation step entries (if used for execution routing)
 - RPC payloads that specify engine context
 
-**Conversion**: Code that bridges UI and persistence MUST convert gen → spec before writing to disk, and spec → gen before displaying to users.
+**Conversion**: Code that bridges UI and persistence MUST convert gen → spec before writing to disk, and spec → gen before displaying to users. Conversions MUST use canonical `join()`/`split()` functions (§3.1).
 
 ---
 
-## 9. "No Bare step_type" Rule
+## 11. "No Bare step_type" Rule
 
 **The repository MUST NOT have any DTO/dataclass fields or function parameters named `step_type` (bare).**
 
@@ -200,15 +316,15 @@ Everything MUST be explicitly:
 
 ---
 
-## 10. SSOT Boundaries
+## 12. SSOT Boundaries
 
-### 10.1 Gen Step Registry
+### 12.1 Gen Step Registry
 
 **`GenStepRegistry.GEN_STEPS`** (`src/quantumvitas/workflow/gen_steps.py`) is the **only SSOT** of valid gen step names.
 
 No other code, test, or tool MAY maintain a list of valid gen steps. All validation MUST query `GenStepRegistry.is_valid(gen)`.
 
-### 10.2 Engine Recipe Declarations
+### 12.2 Engine Recipe Declarations
 
 **Engine recipe classes** (`src/quantumvitas/drivers/*/driver.py`) are the **only SSOT** of:
 - `engine_prefix` (via `PREFIX` class attribute)
@@ -216,7 +332,7 @@ No other code, test, or tool MAY maintain a list of valid gen steps. All validat
 
 No other code MAY hardcode engine prefixes or supported step lists.
 
-### 10.3 Derived Mappings
+### 12.3 Derived Mappings
 
 **Mapping tables** (e.g., materialization maps) MAY exist **only if** they are **purely derived** from:
 - `engine_prefix` (from recipe `PREFIX`)
@@ -233,9 +349,22 @@ No other code MAY hardcode engine prefixes or supported step lists.
 
 **Rationale**: If mappings are derived, they cannot drift from SSOT. If they are hardcoded, they can. Special-case overrides create "second truth" that contradicts the SSOT and enables drift.
 
+### 12.4 No Legacy/Compatibility Layers (Hard Ban)
+
+**No compatibility layers, no alias tables, no "accept legacy then normalize" in mainline runtime/API/UI/tests.**
+
+Legacy step type strings may appear **ONLY** in one-off migration/import tooling (if such tooling exists), not in execution paths.
+
+**Mainline code MUST**:
+- Reject any step type value that is not a valid `step_type_gen` or `step_type_spec` according to this constitution
+- Use only canonical `join()`/`split()` functions for conversion (§3.1)
+- Never maintain alias tables or normalization layers that accept legacy values
+
+**Rationale**: Compatibility layers create drift and violate the single source of truth. Legacy values must be converted at import/migration boundaries, not accepted in mainline execution.
+
 ---
 
-## 11. Gates / Enforcement
+## 13. Gates / Enforcement
 
 Gates exist to prevent whack-a-mole regressions. Each gate MUST be implemented as an automated test that runs in CI.
 
@@ -289,7 +418,7 @@ Any value assigned to a field/kwarg named exactly `step_type_spec` MUST:
 
 **Test**: `tests/gates/test_step_type_constitution.py` (or equivalent)
 
-**Rationale**: Enforces disambiguation law (§4).
+**Rationale**: Enforces disambiguation law (§5).
 
 ---
 
@@ -303,13 +432,61 @@ Any value assigned to a field/kwarg named exactly `step_type_spec` MUST:
 
 ---
 
+### Gate: No Manual Join/Split
+
+**Condition**: Runtime code paths MUST NOT perform manual string parsing/concatenation for step type conversion:
+- ❌ `spec.split("_", 1)` or any manual underscore parsing
+- ❌ `f"{prefix}_{gen}"` or any manual concatenation for step type derivation
+- ❌ `startswith(prefix+"_")`, strip-prefix helpers, custom `is_spec` checks that reimplement the underscore rule
+
+**Required**: All conversions MUST use canonical functions:
+- ✅ `spec_from(prefix, gen)` for join
+- ✅ `gen_from(spec)` for split (returns gen)
+- ✅ `prefix_from(spec)` for split (returns prefix)
+
+**Scope note**: This gate applies to runtime code paths. Tests/docs may contain literal spec strings but MUST NOT implement conversion logic.
+
+**Test**: `tests/gates/test_no_manual_join_split.py` (or equivalent)
+
+**Rationale**: Enforces §3.1 (Conversion API Law). Prevents scattered ad-hoc parsing that creates inconsistency.
+
+---
+
+### Gate: Recipe Roundtrip Invariant
+
+**Condition**: For every engine recipe and every gen in `supported_gen_steps`:
+```
+spec = join(prefix, gen)
+split(spec) == (prefix, gen)
+```
+
+**Test**: `tests/gates/test_recipe_roundtrip.py` (or equivalent)
+
+**Rationale**: Ensures canonical join/split functions are inverse operations for all valid engine/gen combinations.
+
+---
+
+### Gate: Declared-Only Invariants
+
+**Condition**:
+- Every `step_type_gen` MUST be in global `GenStepRegistry.GEN_STEPS`
+- Every `step_type_spec` MUST split to `(prefix, gen)` where:
+  - `prefix` is a registered `engine_prefix` (from recipe `PREFIX`)
+  - `gen` is in `GenStepRegistry.GEN_STEPS`
+
+**Test**: `tests/gates/test_step_type_declared_sets.py` (extends Gate C1)
+
+**Rationale**: Prevents typos, unregistered steps, and drift from SSOT. Ensures all step types are declared-only.
+
+---
+
 ### Gate: No Bare step_type Fields/Parameters
 
 **Condition**: No function parameter, dataclass field, or dict key named `step_type` (must be `step_type_gen` or `step_type_spec`)
 
 **Test**: `tests/gates/test_no_legacy_identity_fields.py` (extends Gate A)
 
-**Rationale**: Enforces §9 (no bare step_type rule).
+**Rationale**: Enforces §11 (no bare step_type rule).
 
 ---
 
@@ -321,7 +498,7 @@ Any value assigned to a field/kwarg named exactly `step_type_spec` MUST:
 
 **Test**: New gate test (or extend existing)
 
-**Rationale**: Enforces §6 (alias policy).
+**Rationale**: Enforces §7 (alias policy).
 
 ---
 
@@ -348,7 +525,7 @@ Any value assigned to a field/kwarg named exactly `step_type_spec` MUST:
 
 **Test**: Scan for dict literals, mapping tables, or override methods that contain step type mappings not derivable from `PREFIX + SUPPORTED_GEN_STEPS + spec_from()`
 
-**Rationale**: Enforces §10.3 (derived mappings only). Prevents "second truth" mapping tables that can drift from SSOT. Makes non-derived overrides impossible to justify.
+**Rationale**: Enforces §12.3 (derived mappings only). Prevents "second truth" mapping tables that can drift from SSOT. Makes non-derived overrides impossible to justify.
 
 ---
 
@@ -364,7 +541,7 @@ Gates catch these violations immediately, before they propagate through the code
 
 ---
 
-## 12. Migration Notes
+## 14. Migration Notes
 
 When migrating step type names or adding new engines:
 
@@ -404,13 +581,17 @@ The repository is compliant with this constitution when:
 
 - ✅ **No bare `step_type` fields/parameters anywhere** (Gate A + extension)
 - ✅ **No underscores in gen names or engine prefixes** (Underscore ban gate)
-- ✅ **All step types are declared-only** (Gate C1 passes)
+- ✅ **All step types are declared-only** (Gate C1 + Declared-Only Invariants gate)
 - ✅ **No legacy alias step type values** (`w90_preproc`, `w90_run` banned)
 - ✅ **`step.yaml` uses spec only; UI/output uses gen only** (verified by inspection + gates)
 - ✅ **No third namespaces** (`GEN_*`, enum values, etc.)
 - ✅ **All mappings are derived from SSOT** (no hardcoded override tables)
 - ✅ **No gen/spec cross-assignment** (Gate C2 passes)
 - ✅ **No non-derived mapping tables** (Gate: No Non-Derived Mapping Tables passes)
+- ✅ **No manual join/split** (Gate: No Manual Join/Split passes)
+- ✅ **Recipe roundtrip invariant holds** (Gate: Recipe Roundtrip Invariant passes)
+- ✅ **Execution conversion at single choke point** (verified by inspection)
+- ✅ **Engine recipes use GEN keys internally** (verified by inspection)
 
 ---
 

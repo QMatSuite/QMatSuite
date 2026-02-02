@@ -165,11 +165,16 @@ def _infer_identity_from_step_types(
 
             # If registry lookup fails, try DriverRegistry materialization
             # Try common engine families (qe is most common for legacy imports)
+            # Normalize step_type to lowercase gen step name (remove GEN_ prefix if present for backward compat)
+            gen_step = step_type.lower()
+            if gen_step.startswith("gen_"):
+                gen_step = gen_step[4:]
+            
             for engine_family in ["qe", "vasp", "orca", "pyscf", "cp2k", "lammps", "w90"]:
                 try:
                     materialized = DriverRegistry.materialize_step_type(
                         engine_family,
-                        f"GEN_{step_type.upper()}" if not step_type.upper().startswith("GEN_") else step_type.upper()
+                        gen_step
                     )
                     if materialized:
                         spec_types.append(materialized)

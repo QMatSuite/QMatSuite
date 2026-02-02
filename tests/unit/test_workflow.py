@@ -53,10 +53,10 @@ class TestStepTypeRegistry:
         """Registry has all v0 required step types."""
         from quantumvitas.workflow.registry import normalize_step_type
         
-        required = ["scf", "nscf", "relax", "vc-relax", "bandspw", "dos", "bands"]
-        
+        # VC is a parameter, not a step type. No vc-relax.
+        required = ["scf", "nscf", "relax", "bandspw", "dos", "bands"]
+
         for step_type in required:
-            # Normalize deprecated types (vc-relax maps to relax)
             normalized = normalize_step_type(step_type)
             assert registry.has(normalized), f"Missing step type: {step_type} (normalized: {normalized})"
     
@@ -134,8 +134,8 @@ class TestStepTypeRegistry:
         # For each PW gen step, check that ParamSpace dimensions match engine capability
         from quantumvitas.workflow.registry import normalize_step_type
         
-        for step_type in ["scf", "nscf", "relax", "vc-relax", "bandspw"]:
-            # Normalize deprecated types (vc-relax maps to relax)
+        # VC is a parameter, not a step type. No vc-relax.
+        for step_type in ["scf", "nscf", "relax", "bandspw"]:
             normalized = normalize_step_type(step_type)
             spec = registry.get(normalized)
             assert spec is not None
@@ -307,7 +307,7 @@ class TestStepFactory:
     def test_create_step_doc_scf(self):
         """create_step_doc creates valid SCF step."""
         doc = create_step_doc(
-            step_type="scf",
+            step_type_gen="scf",
             name="my_scf",
         )
         
@@ -324,7 +324,7 @@ class TestStepFactory:
     def test_create_step_doc_has_defaults(self):
         """create_step_doc includes default parameters."""
         doc = create_step_doc(
-            step_type="scf",
+            step_type_gen="scf",
             name="scf",
         )
         
@@ -336,7 +336,7 @@ class TestStepFactory:
     def test_create_step_doc_with_overrides(self):
         """create_step_doc applies overrides."""
         doc = create_step_doc(
-            step_type="scf",
+            step_type_gen="scf",
             name="scf",
             overrides={"parameters": {"SYSTEM": {"ecutwfc": 100}}},
         )
@@ -347,7 +347,7 @@ class TestStepFactory:
     def test_save_step_doc_creates_file(self, tmp_path):
         """save_step_doc creates YAML file."""
         doc = create_step_doc(
-            step_type="scf",
+            step_type_gen="scf",
             name="scf",
         )
         
@@ -366,7 +366,7 @@ class TestStepFactory:
         steps_dir.mkdir()
         
         path = create_and_save_step(
-            step_type="dos",
+            step_type_gen="dos",
             name="dos",
             steps_dir=steps_dir,
         )
@@ -392,7 +392,7 @@ class TestStepFactoryJournal:
     def test_save_step_doc_journaled(self, tmp_path, test_journal):
         """save_step_doc produces journal entry."""
         doc = create_step_doc(
-            step_type="scf",
+            step_type_gen="scf",
             name="scf",
         )
         
@@ -410,7 +410,7 @@ class TestStepFactoryJournal:
         steps_dir.mkdir()
         
         create_and_save_step(
-            step_type="nscf",
+            step_type_gen="nscf",
             name="nscf",
             steps_dir=steps_dir,
         )

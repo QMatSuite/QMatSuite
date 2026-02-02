@@ -27,36 +27,36 @@ def write_cp2k_input(
         structure: Pymatgen Structure object
         output_path: Path to write input.inp
     """
-    step_type = getattr(step, "step_type_spec", None) or ""
+    step_type_spec = getattr(step, "step_type_spec", None) or ""
     params = getattr(step, "parameters", None) or {}
 
     with open(output_path, "w") as f:
         # GLOBAL section (needs params to check for cell optimization)
-        _write_global_section(f, step_type, params)
+        _write_global_section(f, step_type_spec, params)
 
         # MOTION section (for relax/md)
-        if step_type in ("cp2k_relax", "cp2k_md"):
-            _write_motion_section(f, step_type, params)
+        if step_type_spec in ("cp2k_relax", "cp2k_md"):
+            _write_motion_section(f, step_type_spec, params)
 
         # FORCE_EVAL section
-        _write_force_eval_section(f, params, structure, step_type)
+        _write_force_eval_section(f, params, structure, step_type_spec)
 
     logger.debug(f"Generated CP2K input file: {output_path}")
 
 
-def _write_global_section(f, step_type: str, params: Dict[str, Any]) -> None:
+def _write_global_section(f, step_type_spec: str, params: Dict[str, Any]) -> None:
     """Write &GLOBAL section."""
     f.write("&GLOBAL\n")
     f.write("  PROJECT cp2k_calc\n")
 
-    # RUN_TYPE based on step_type
-    if step_type == "cp2k_scf":
+    # RUN_TYPE based on step_type_spec
+    if step_type_spec == "cp2k_scf":
         run_type = "ENERGY_FORCE"
-    elif step_type == "cp2k_relax":
+    elif step_type_spec == "cp2k_relax":
         # Check if cell optimization is requested
         optimize_cell = params.get("optimize_cell", False)
         run_type = "CELL_OPT" if optimize_cell else "GEO_OPT"
-    elif step_type == "cp2k_md":
+    elif step_type_spec == "cp2k_md":
         run_type = "MD"
     else:
         run_type = "ENERGY_FORCE"  # Default
@@ -71,7 +71,7 @@ def _write_force_eval_section(
     f,
     params: Dict[str, Any],
     structure: Structure,
-    step_type: str,
+    step_type_spec: str,
 ) -> None:
     """Write &FORCE_EVAL section."""
     f.write("&FORCE_EVAL\n")
@@ -285,17 +285,17 @@ def _write_force_eval_print_section(f, params: Dict[str, Any]) -> None:
         f.write("  &END PRINT\n")
 
 
-def _write_motion_section(f, step_type: str, params: Dict[str, Any]) -> None:
+def _write_motion_section(f, step_type_spec: str, params: Dict[str, Any]) -> None:
     """Write &MOTION section for relax/md."""
     f.write("&MOTION\n")
 
-    if step_type == "cp2k_relax":
+    if step_type_spec == "cp2k_relax":
         _write_geo_opt_section(f, params)
-    elif step_type == "cp2k_md":
+    elif step_type_spec == "cp2k_md":
         _write_md_section(f, params)
 
     # PRINT subsection (trajectory, cell, restart, energy)
-    _write_print_section(f, step_type, params)
+    _write_print_section(f, step_type_spec, params)
 
     f.write("&END MOTION\n")
     f.write("\n")
@@ -387,7 +387,7 @@ def _write_barostat_section(f, params: Dict[str, Any]) -> None:
     f.write("    &END BAROSTAT\n")
 
 
-def _write_print_section(f, step_type: str, params: Dict[str, Any]) -> None:
+def _write_print_section(f, step_type_spec: str, params: Dict[str, Any]) -> None:
     """Write MOTION/PRINT section."""
     f.write("  &PRINT\n")
 
@@ -396,22 +396,22 @@ def _write_print_section(f, step_type: str, params: Dict[str, Any]) -> None:
     f.write("      FORMAT XYZ\n")
     # Frequency
     traj_freq = params.get("trajectory_freq", 1)
-    if step_type == "cp2k_md":
+    if step_type_spec == "cp2k_md":
         f.write("      &EACH\n")
         f.write(f"        MD {traj_freq}\n")
         f.write("      &END EACH\n")
-    elif step_type == "cp2k_relax":
+    elif step_type_spec == "cp2k_relax":
         f.write("      &EACH\n")
         f.write(f"        GEO_OPT {traj_freq}\n")
         f.write("      &END EACH\n")
     f.write("    &END TRAJECTORY\n")
 
     # CELL - ALWAYS enabled for relax/md
-    if step_type in ("cp2k_relax", "cp2k_md"):
+    if step_type_spec in ("cp2k_relax", "cp2k_md"):
         f.write("    &CELL\n")
         f.write("      &EACH\n")
         cell_freq = params.get("cell_freq", 1)
-        if step_type == "cp2k_md":
+        if step_type_spec == "cp2k_md":
             f.write(f"        MD {cell_freq}\n")
         else:
             f.write(f"        GEO_OPT {cell_freq}\n")
@@ -423,7 +423,7 @@ def _write_print_section(f, step_type: str, params: Dict[str, Any]) -> None:
     if restart_freq is not None:
         f.write("    &RESTART\n")
         f.write("      &EACH\n")
-        if step_type == "cp2k_md":
+        if step_type_spec == "cp2k_md":
             f.write(f"        MD {restart_freq}\n")
         else:
             f.write(f"        GEO_OPT {restart_freq}\n")
@@ -431,7 +431,7 @@ def _write_print_section(f, step_type: str, params: Dict[str, Any]) -> None:
         f.write("    &END RESTART\n")
 
     # ENERGY (for MD)
-    if step_type == "cp2k_md":
+    if step_type_spec == "cp2k_md":
         energy_freq = params.get("energy_freq", 1)
         f.write("    &ENERGY\n")
         f.write("      &EACH\n")

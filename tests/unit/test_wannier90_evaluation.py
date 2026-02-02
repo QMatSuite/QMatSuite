@@ -35,7 +35,7 @@ class TestWannier90StepsDoNotParseEnergy:
         # Test w90_wannierprep
         step_status, message, metrics = evaluate_step_result(
             mode=StepMode.NORMAL,
-            step_type="w90_wannierprep",
+            step_type_spec="w90_wannierprep",  # Execution layer uses SPEC type
             output_text="",  # Empty output (typical for Wannier90)
             reference_file=None,
             step_result_return_code=0,
@@ -50,7 +50,7 @@ class TestWannier90StepsDoNotParseEnergy:
         call_count["count"] = 0
         step_status, message, metrics = evaluate_step_result(
             mode=StepMode.NORMAL,
-            step_type="w90_wannier",
+            step_type_spec="w90_wannier",  # Execution layer uses SPEC type
             output_text="",
             reference_file=None,
             step_result_return_code=0,
@@ -64,7 +64,7 @@ class TestWannier90StepsDoNotParseEnergy:
         call_count["count"] = 0
         step_status, message, metrics = evaluate_step_result(
             mode=StepMode.NORMAL,
-            step_type="qe_pw2wannier",
+            step_type_spec="qe_pw2wannier",  # Execution layer uses SPEC type
             output_text="",
             reference_file=None,
             step_result_return_code=0,
@@ -78,7 +78,7 @@ class TestWannier90StepsDoNotParseEnergy:
         call_count["count"] = 0
         step_status, message, metrics = evaluate_step_result(
             mode=StepMode.NORMAL,
-            step_type="scf",
+            step_type_spec="qe_scf",
             output_text="JOB DONE",
             reference_file=None,
             step_result_return_code=0,

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def handle_pyscf_relax_output(
     step_ulid: str,
-    step_type: str,
+    step_type_spec: str,
     calc_dir: Path,
     results: Dict[str, Any],
     calculation_ulid: str,
@@ -30,7 +30,7 @@ def handle_pyscf_relax_output(
     
     Args:
         step_ulid: ULID of the relax step
-        step_type: Machine step type (e.g., "pyscf_relax")
+        step_type_spec: Machine step type (e.g., "pyscf_relax")
         calc_dir: Path to calculation directory
         results: Results dict from run_pyscf_relax (must contain "optimized_atoms")
         calculation_ulid: ULID of the calculation
@@ -69,7 +69,7 @@ def handle_pyscf_relax_output(
         structure=mol,
         calc_dir=calc_dir,
         step_ulid=step_ulid,
-        step_type=step_type,
+        step_type_spec=step_type_spec,
         run_ulid=run_ulid,
         calculation_ulid=calculation_ulid,
         input_structure_ulid=input_structure_ulid,

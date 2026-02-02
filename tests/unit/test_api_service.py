@@ -319,7 +319,7 @@ class TestQVServiceStep:
         svc = get_service(project_with_calculation)
         result = svc.calculation.add_step(
             calc_selector="test-calculation",
-            step_type="scf",
+            step_type_gen="scf",
         )
 
         # StepDTO has step_id and meta
@@ -335,7 +335,7 @@ class TestQVServiceStep:
         svc = get_service(project_with_calculation)
         result = svc.calculation.add_step(
             calc_selector="test-calculation",
-            step_type="nscf",
+            step_type_gen="nscf",
         )
 
         # Read step file to verify no structure_ulid
@@ -364,8 +364,8 @@ class TestQVServiceStep:
     def test_list_steps(self, project_with_calculation):
         """List steps in a calculation using domain API."""
         svc = get_service(project_with_calculation)
-        svc.calculation.add_step(calc_selector="test-calculation", step_type="scf")
-        svc.calculation.add_step(calc_selector="test-calculation", step_type="nscf")
+        svc.calculation.add_step(calc_selector="test-calculation", step_type_gen="scf")
+        svc.calculation.add_step(calc_selector="test-calculation", step_type_gen="nscf")
 
         # Use calculation.get() which includes step_ids
         calc_dto = svc.calculation.get("test-calculation")
@@ -376,7 +376,7 @@ class TestQVServiceStep:
     def test_delete_step(self, project_with_calculation):
         """Delete a step using domain API."""
         svc = get_service(project_with_calculation)
-        step_result = svc.calculation.add_step(calc_selector="test-calculation", step_type="scf")
+        step_result = svc.calculation.add_step(calc_selector="test-calculation", step_type_gen="scf")
         step_id = step_result.step_ulid
 
         # Delete the step

@@ -374,28 +374,31 @@ def _build_step(
     if engine_name is None:
         # Try to infer from step type (from step_data or step file)
         # Check step_type_spec first (canonical), then type field
-        step_type = (step_data.get("step_type_spec") or step_file_data.get("step_type_spec") or
+        step_type_spec = (step_data.get("step_type_spec") or step_file_data.get("step_type_spec") or
                      step_data.get("type") or step_file_data.get("type"))
-        if step_type:
-            # First try workflow registry lookup
+        if step_type_spec:
+            # First try workflow registry lookup (registry.get expects GEN)
             from quantumvitas.workflow.registry import get_registry
+            from quantumvitas.workflow.step_type_convert import gen_from
             registry = get_registry()
-            spec = registry.get(step_type)
+            step_type_gen = gen_from(step_type_spec)  # Convert SPEC to GEN
+            spec = registry.get(step_type_gen)
             if spec:
                 engine_name = spec.engine
-            
+
             # If registry lookup fails, try DriverRegistry materialization
             if engine_name is None:
                 import quantumvitas.drivers
                 from quantumvitas.core.driver_registry import DriverRegistry
-                
-                # Check if step_type is already a machine type
-                if DriverRegistry.is_step_type_registered(step_type):
-                    engine_name = DriverRegistry.get_engine_for_step_type(step_type)
+
+                # Check if step_type_spec is already a machine type
+                if DriverRegistry.is_step_type_registered(step_type_spec):
+                    engine_name = DriverRegistry.get_engine_for_step_type(step_type_spec)
                 else:
-                    # Try materializing public types (e.g., "scf" -> "qe_scf")
+                    # Try materializing gen types (e.g., "scf" -> "qe_scf")
                     # Try all registered engine families
-                    gen_type = f"GEN_{step_type.upper()}" if not step_type.upper().startswith("GEN_") else step_type.upper()
+                    # step_type_gen already computed above
+                    gen_type = step_type_gen
                     for engine_family in DriverRegistry.get_all_engines():
                         try:
                             materialized = DriverRegistry.materialize_step_type(engine_family, gen_type)
@@ -536,39 +539,35 @@ def _build_step_inspection(
         step_type_spec = (step_data.get("step_type_spec") or step_file_data.get("step_type_spec") or
                           step_data.get("type") or step_file_data.get("type"))
         if step_type_spec:
-            # First try workflow registry lookup
+            # First try workflow registry lookup (registry.get expects GEN)
             from quantumvitas.workflow.registry import get_registry
+            from quantumvitas.workflow.step_type_convert import gen_from
             registry = get_registry()
-            spec = registry.get(step_type_spec)
+            step_type_gen = gen_from(step_type_spec)  # Convert SPEC to GEN
+            spec = registry.get(step_type_gen)
             if spec:
                 engine_name = spec.engine
-            
+
             # If registry lookup fails, try DriverRegistry materialization
             if engine_name is None:
                 import quantumvitas.drivers
                 from quantumvitas.core.driver_registry import DriverRegistry
-                
+
                 # Check if step_type_spec is already a spec type
                 if DriverRegistry.is_step_type_registered(step_type_spec):
                     engine_name = DriverRegistry.get_engine_for_step_type(step_type_spec)
                 else:
                     # Try materializing gen types (e.g., "scf" -> "qe_scf")
-                    # step_type_spec might be a gen type, try materialization
-                    from quantumvitas.workflow.step_type_convert import is_spec, gen_from
-                    if is_spec(step_type_spec):
-                        # Already spec type, skip materialization
-                        pass
-                    else:
-                        # Assume gen type, try materialization
-                        gen_type = step_type_spec
-                        for engine_family in DriverRegistry.get_all_engines():
-                            try:
-                                materialized = DriverRegistry.materialize_step_type(engine_family, gen_type)
-                                if materialized:
-                                    engine_name = engine_family
-                                    break
-                            except Exception:
-                                continue
+                    # step_type_gen already computed above
+                    gen_type = step_type_gen
+                    for engine_family in DriverRegistry.get_all_engines():
+                        try:
+                            materialized = DriverRegistry.materialize_step_type(engine_family, gen_type)
+                            if materialized:
+                                engine_name = engine_family
+                                break
+                        except Exception:
+                            continue
         
         if engine_name is None:
             raise ValueError(
@@ -577,7 +576,7 @@ def _build_step_inspection(
             )
     migrated = False
     step_meta: Optional[ResourceMeta] = None
-    step_type: Optional[str] = None
+    step_type_spec: Optional[str] = None
     input_path: Optional[Path] = None
     new_step_ulid = step_ulid  # Will be updated if legacy path is used
     

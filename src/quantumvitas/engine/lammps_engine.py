@@ -125,7 +125,7 @@ class LammpsEngine(Engine):
         # StructureStepSpec has .parameters as a dict
         # Step dataclass doesn't have parameters (need to load from step.yaml)
         params = getattr(step, "parameters", None) or {}
-        step_type = getattr(step, "step_type_spec", None) or ""
+        step_type_spec = getattr(step, "step_type_spec", None) or ""
         
         # Validate custom_script assets if present
         validate_custom_script_assets(params)
@@ -202,11 +202,11 @@ class LammpsEngine(Engine):
                 structure=structure,
             )
         
-        # Generate input script
-        template_name = get_template_for_step_type(step_type)
+        # Generate input script - pass SPEC type directly to template lookup
+        template_name = get_template_for_step_type(step_type_spec)
         
         # Adjust template for ensemble
-        if step_type == "lammps_md":
+        if step_type_spec == "lammps_md":
             ensemble = params.get("ensemble", "nvt")
             if ensemble == "npt":
                 template_name = "md_npt.in.j2"

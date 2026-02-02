@@ -114,23 +114,29 @@ class TestWannier90EngineOwnership:
         """wannierprep must be owned by w90 engine."""
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
-        spec = registry.get("w90_wannierprep")
-        assert spec is not None, "w90_wannierprep must be registered"
+        # get() expects GEN type, not SPEC type
+        spec = registry.get("wannierprep")
+        assert spec is not None, "wannierprep must be registered"
+        assert spec.step_type_spec == "w90_wannierprep", f"wannierprep must have spec type w90_wannierprep, got {spec.step_type_spec}"
         assert spec.engine == "w90", f"wannierprep must be owned by w90 engine, got {spec.engine}"
 
     def test_wannier_owned_by_w90(self):
         """wannier must be owned by w90 engine."""
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
-        spec = registry.get("w90_wannier")
-        assert spec is not None, "w90_wannier must be registered"
+        # get() expects GEN type, not SPEC type
+        spec = registry.get("wannier")
+        assert spec is not None, "wannier must be registered"
+        assert spec.step_type_spec == "w90_wannier", f"wannier must have spec type w90_wannier, got {spec.step_type_spec}"
         assert spec.engine == "w90", f"wannier must be owned by w90 engine, got {spec.engine}"
 
     def test_pw2wannier_owned_by_qe(self):
         """pw2wannier must be owned by qe engine (not w90)."""
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
-        spec = registry.get("qe_pw2wannier")
-        assert spec is not None, "qe_pw2wannier must be registered"
+        # get() expects GEN type, not SPEC type
+        spec = registry.get("pw2wannier")
+        assert spec is not None, "pw2wannier must be registered"
+        assert spec.step_type_spec == "qe_pw2wannier", f"pw2wannier must have spec type qe_pw2wannier, got {spec.step_type_spec}"
         assert spec.engine == "qe", f"pw2wannier must be owned by qe engine, got {spec.engine}"
 

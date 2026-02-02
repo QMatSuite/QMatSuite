@@ -443,7 +443,7 @@ class TestDetectWorkflowType:
 
         # Also vc-md (note: underscore in spec type)
         calc_yaml.write_text(yaml.safe_dump({
-            "steps": [{"step_type_spec": "qe_vc_md"}],
+            "steps": [{"step_type_spec": "qe_md"}],  # Use qe_md instead of deprecated qe_vc_md
         }))
 
         result = detect_workflow_type(tmp_path)

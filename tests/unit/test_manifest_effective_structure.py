@@ -214,7 +214,7 @@ class TestLoadEffectiveStructure:
             structure=structure,
             calc_dir=calc.dir,
             step_ulid="01RELAX",
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
         )
         
         # Load effective structure for step 1 (SCF step)

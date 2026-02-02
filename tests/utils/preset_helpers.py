@@ -43,7 +43,7 @@ def is_orca_available() -> bool:
 
 
 def build_test_step_yaml(
-    step_type: str,
+    step_type_gen: str,
     parameters: Optional[Dict[str, Dict[str, Any]]] = None,
     cards: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -51,7 +51,7 @@ def build_test_step_yaml(
     Build a test step YAML structure.
     
     Args:
-        step_type: Step type (e.g., "scf", "qe_scf", "pyscf_scf")
+        step_type_gen: Gen step type (e.g., "scf", "nscf", "relax") - GEN only
         parameters: Optional parameters dict (e.g., {"SYSTEM": {...}})
         cards: Optional cards dict (e.g., {"K_POINTS": {...}})
         
@@ -59,7 +59,7 @@ def build_test_step_yaml(
         Dict representing step YAML structure
     """
     result: Dict[str, Any] = {
-        "step_type_gen": step_type,
+        "step_type_gen": step_type_gen,
     }
     
     if parameters:
@@ -123,7 +123,7 @@ def _apply_patch_to_yaml(
 def apply_and_detect_roundtrip(
     dimension: str,
     option_enum: Any,
-    step_type: str,
+    step_type_gen: str,
     step_yaml: Dict[str, Dict[str, Any]],
     *,
     precision_context: Optional[Dict[str, Any]] = None,
@@ -140,7 +140,7 @@ def apply_and_detect_roundtrip(
     Args:
         dimension: Dimension name (e.g., "magnetism", "precision", "qc_precision")
         option_enum: Enum option (e.g., MagnetismOption.NONMAGNETIC)
-        step_type: Step type (gen/public step, e.g., "scf")
+        step_type_gen: Gen step type (e.g., "scf", "nscf", "relax") - GEN only
         step_yaml: Current step YAML structure
         precision_context: Optional context for precision (lattice, base cutoffs)
         
@@ -156,7 +156,7 @@ def apply_and_detect_roundtrip(
     patch, deletions = compile_dimension_patch_for_step(
         dimension,
         option_enum,
-        step_type,
+        step_type_gen,
         step_yaml,
         explicit_defaults=True,
         precision_context=precision_context,
@@ -168,7 +168,7 @@ def apply_and_detect_roundtrip(
     # Detect preset from modified YAML
     detected = detect_dimension_for_step(
         dimension,
-        step_type,
+        step_type_gen,
         modified_yaml,
         precision_context=precision_context,
     )
@@ -179,7 +179,7 @@ def apply_and_detect_roundtrip(
 def apply_preset_to_yaml(
     dimension: str,
     option_enum: Any,
-    step_type: str,
+    step_type_gen: str,
     step_yaml: Dict[str, Dict[str, Any]],
     *,
     precision_context: Optional[Dict[str, Any]] = None,
@@ -195,7 +195,7 @@ def apply_preset_to_yaml(
     Args:
         dimension: Dimension name (e.g., "magnetism", "precision", "qc_precision")
         option_enum: Enum option (e.g., MagnetismOption.NONMAGNETIC)
-        step_type: Step type (gen/public step, e.g., "scf")
+        step_type_gen: Gen step type (e.g., "scf", "nscf", "relax") - GEN only
         step_yaml: Current step YAML structure
         precision_context: Optional context for precision (lattice, base cutoffs)
         
@@ -208,7 +208,7 @@ def apply_preset_to_yaml(
     patch, deletions = compile_dimension_patch_for_step(
         dimension,
         option_enum,
-        step_type,
+        step_type_gen,
         step_yaml,
         explicit_defaults=True,
         precision_context=precision_context,

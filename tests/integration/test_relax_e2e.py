@@ -30,13 +30,16 @@ class TestRelaxE2E:
     def test_relax_step_type_detection(self):
         """Verify relax step types are correctly identified."""
         assert is_relax_step_type("qe_relax") is True
-        # qe_vc_relax is deprecated and normalizes to qe_relax
-        assert is_relax_step_type("qe_vc_relax") is True  # Should normalize and return True
+        assert is_relax_step_type("relax") is True  # GEN type
         assert is_relax_step_type("qe_scf") is False
+        assert is_relax_step_type("scf") is False  # GEN type
+        # Note: VC is a PARAMETER for relax, NOT a separate step type.
+        # There is no vc-relax, opt, geomopt, qe_vc_relax, etc.
         
         # Verify registry configuration
+        # Use get_for_engine per constitution: registry.get() takes GEN only
         registry = get_registry()
-        relax_spec = registry.get("qe_relax")
+        relax_spec = registry.get_for_engine("relax", "qe")
         assert relax_spec is not None
         assert relax_spec.is_structure_transform is True
         assert relax_spec.produces_charge_density is False
@@ -66,7 +69,7 @@ class TestRelaxE2E:
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
             run_ulid="run001",
             calculation_ulid="calc001",
             input_structure_ulid="struct001",
@@ -108,7 +111,7 @@ class TestRelaxE2E:
         calc_ulid = calc_result.ulid
         
         # Create relax step
-        step_result = QVService.init_step(project_root, calc_ulid, step_type="qe_relax", name="relax")
+        step_result = QVService.init_step(project_root, calc_ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         step_ulid = step_result.ulid
         
         # Write generated structure (simulating relax execution)
@@ -120,7 +123,7 @@ class TestRelaxE2E:
             structure=relaxed_structure,
             calc_dir=calc_dir,
             step_ulid=step_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
             calculation_ulid=calc_ulid,
             input_structure_ulid=struct_result.meta.ulid,
         )
@@ -163,7 +166,7 @@ class TestRelaxE2E:
         
         # Create calculation and relax step
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
-        step_result = QVService.init_step(project_root, calc_result.ulid, step_type="qe_relax", name="relax")
+        step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Try to promote without current.json
         with pytest.raises(APIError) as exc_info:
@@ -191,7 +194,7 @@ class TestRelaxE2E:
         
         # Create calculation and SCF step (not relax)
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
-        step_result = QVService.init_step(project_root, calc_result.ulid, step_type="qe_scf", name="scf")
+        step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
         
         # Try to promote non-relax step
         with pytest.raises(APIError) as exc_info:
@@ -220,7 +223,7 @@ class TestRelaxE2E:
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step_ulid,
-            step_type="qe_relax",  # Use unified type instead of deprecated qe_vc_relax
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
             run_ulid=run_id,
             calculation_ulid=calc_ulid,
             input_structure_ulid=input_ulid,

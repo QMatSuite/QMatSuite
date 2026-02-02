@@ -45,7 +45,7 @@ class ParamSpaceVariant:
         if not isinstance(self.space, ParamSpace):
             raise ValueError(f"Variant {self.name} must have a ParamSpace instance")
     
-    def applies_to(self, step_type: str) -> bool:
+    def applies_to(self, step_type_gen: str) -> bool:
         """Check if this variant applies to a given step type."""
-        return step_type in self.applies_to_step_types
+        return step_type_gen in self.applies_to_step_types
 

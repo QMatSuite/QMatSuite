@@ -113,7 +113,7 @@ def run_and_verify_step(
     reference_file: Optional[Path] = None,
     category: Optional[str] = None,
     timeout: Optional[float] = None,
-    step_type: Optional[str] = None,
+    step_type_spec: Optional[str] = None,
     tolerance: Optional[float] = None,
     project_root: Optional[Path] = None,
     step_index: int = 1,
@@ -134,7 +134,7 @@ def run_and_verify_step(
         reference_file: Optional reference output file for comparison
         category: Test category name (e.g., "pw_scf", "ph_1d") for threshold selection
         timeout: Optional timeout in seconds
-        step_type: Optional step type (auto-detected if not provided)
+        step_type_spec: Optional spec step type (e.g., "qe_scf", "qe_nscf") - auto-detected if not provided
         tolerance: Optional custom tolerance (overrides category-based threshold)
         project_root: Project root directory (auto-detected if not provided)
     
@@ -202,20 +202,23 @@ def run_and_verify_step(
     except RuntimeError as exc:
         message = str(exc)
         return StepResult(
-            step_type_spec=step_type or "unknown",
+            step_type_spec=step_type_spec or "unknown",
             input_file=input_file,
             success=False,
             error=message,
         ), False, message
     
     # Auto-detect step type if not provided
-    if step_type is None:
-        step_type = qe_engine.detect_step_type(prepared.modified_input)
+    if step_type_spec is None:
+        step_type_gen = qe_engine.detect_step_type(prepared.modified_input)
+        # Convert GEN to SPEC using pure derivation
+        from quantumvitas.workflow.step_type_convert import spec_from
+        step_type_spec = spec_from("qe", step_type_gen)
     
     step_result = run_prepared_step(
         engine=qe_engine,
         prepared_step=prepared,
-        step_type=step_type,
+        step_type_spec=step_type_spec,
         timeout=timeout,
     )
     
@@ -237,7 +240,7 @@ def run_and_verify_step_with_assert(
     reference_file: Optional[Path] = None,
     category: Optional[str] = None,
     timeout: Optional[float] = None,
-    step_type: Optional[str] = None,
+    step_type_spec: Optional[str] = None,
     tolerance: Optional[float] = None,
     project_root: Optional[Path] = None,
     step_index: int = 1,
@@ -254,7 +257,7 @@ def run_and_verify_step_with_assert(
         reference_file: Optional reference output file for comparison
         category: Test category name for threshold selection
         timeout: Optional timeout in seconds
-        step_type: Optional step type (auto-detected if not provided)
+        step_type_spec: Optional spec step type (e.g., "qe_scf", "qe_nscf") - auto-detected if not provided
         tolerance: Optional custom tolerance
         project_root: Project root directory (auto-detected if not provided)
     
@@ -271,7 +274,7 @@ def run_and_verify_step_with_assert(
         reference_file=reference_file,
         category=category,
         timeout=timeout,
-        step_type=step_type,
+        step_type_spec=step_type_spec,
         tolerance=tolerance,
         project_root=project_root,
         step_index=step_index,

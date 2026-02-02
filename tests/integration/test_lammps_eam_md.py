@@ -98,7 +98,7 @@ def eam_md_project(tmp_path: Path):
     svc = QVService(project_root)
     step_dto = svc.calculation.add_step(
         calc_selector=calc_id,
-        step_type="md",
+        step_type_gen="md",
     )
     step_id = step_dto.step_ulid
 

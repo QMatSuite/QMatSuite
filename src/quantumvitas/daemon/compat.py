@@ -272,13 +272,13 @@ def _is_ulid(value: str) -> bool:
 def _derive_step_name_from_type(step_type_spec: str) -> str:
     """Derive semantic step name from step type."""
     # Map qe_ prefixed types back to semantic names
+    # Note: VC is a PARAMETER for relax, not a separate step type
     TYPE_TO_NAME = {
         "qe_scf": "scf",
         "qe_nscf": "nscf",
         "qe_bands": "bands",
         "qe_dos": "dos",
         "qe_relax": "relax",
-        "qe_vc_relax": "vc-relax",
         "qe_ph": "ph",
         "qe_q2r": "q2r",
         "qe_matdyn": "matdyn",

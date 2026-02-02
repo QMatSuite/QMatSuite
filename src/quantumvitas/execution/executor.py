@@ -513,8 +513,8 @@ class JobExecutor:
                 continue
             
             # Check if this is a relax step
-            step_type = getattr(step, 'step_type_spec', None)
-            if step_type and is_relax_step_type(step_type):
+            step_type_spec = getattr(step, 'step_type_spec', None)
+            if step_type_spec and is_relax_step_type(step_type_spec):
                 cleaned = clean_generated_structure(calc_dir, step_ulid)
                 if cleaned:
                     logger.info(f"[EXECUTOR] Pre-cleaned generated structure for relax step {step_ulid} in job {job.id}")
@@ -615,8 +615,8 @@ class JobExecutor:
             step = calculation.steps[j]
             
             # Check if this step is a relax step
-            step_type = getattr(step, 'step_type_spec', None)
-            if not step_type:
+            step_type_spec = getattr(step, 'step_type_spec', None)
+            if not step_type_spec:
                 # Try to get from step doc if available
                 try:
                     calc_dir = calculation.dir
@@ -627,14 +627,14 @@ class JobExecutor:
                                 from quantumvitas.core.yamldoc import StepDoc
                                 step_doc = StepDoc.load(candidate)
                                 if step_doc.get(["meta", "ulid"]) == step.meta.ulid:
-                                    step_type = step_doc.get(["step_type_spec"])
+                                    step_type_spec = step_doc.get(["step_type_spec"])
                                     break
                             except Exception:
                                 continue
                 except Exception:
                     pass
             
-            if step_type and is_relax_step_type(step_type):
+            if step_type_spec and is_relax_step_type(step_type_spec):
                 # Check for current.json
                 calc_dir = calculation.dir
                 artifact_path = get_generated_structure_path(calc_dir, step.meta.ulid)

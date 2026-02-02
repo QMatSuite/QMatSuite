@@ -478,12 +478,12 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=True,
         produces_charge_density=False,
     ),
-    "vasp_bands": StepTypeSpec(
-        step_type_spec="vasp_bands",
-        step_type_gen="bands",
+    "vasp_bandspw": StepTypeSpec(
+        step_type_spec="vasp_bandspw",
+        step_type_gen="bandspw",
         engine="vasp",
         executable="vasp_std",
-        description="VASP band structure calculation along k-path",
+        description="VASP band structure calculation (eigenstates along k-path)",
         requires_structure=True,
         requires_charge_density=True,
         produces_charge_density=False,
@@ -610,37 +610,31 @@ class StepTypeRegistry:
             spec.step_type_spec: spec for spec in self._types.values()
         }
     
-    def get(self, step_type: str) -> Optional[StepTypeSpec]:
+    def get(self, step_type_gen: str) -> Optional[StepTypeSpec]:
         """
         Get specification for a step type.
 
-        Accepts either step_type_gen (e.g., "scf") or step_type_spec (e.g., "qe_scf").
-        Returns the StepTypeSpec (with both step_type_gen and step_type_spec fields).
-
         Args:
-            step_type: Step type identifier (case-insensitive)
-                Can be step_type_gen ("scf") or step_type_spec ("qe_scf")
+            step_type_gen: Gen step type (e.g., "scf", "relax") - GEN ONLY.
+                Callers MUST convert SPEC to GEN using gen_from() before calling.
 
         Returns:
             StepTypeSpec or None if not found
         """
-        step_type_lower = step_type.lower()
-        # Try direct lookup by spec type first
-        if step_type_lower in self._spec_to_obj:
-            return self._spec_to_obj[step_type_lower]
-        
-        # Try lookup by gen type
+        step_type_lower = step_type_gen.lower()
+
+        # Lookup by gen type only (returns first match)
         for spec in self._types.values():
             if spec.step_type_gen.lower() == step_type_lower:
                 return spec
-        
+
         return None
     
-    def has(self, step_type: str) -> bool:
-        """Check if step type exists in registry (supports both public and machine types)."""
-        return self.get(step_type) is not None
+    def has(self, step_type_gen: str) -> bool:
+        """Check if step type exists in registry (GEN only)."""
+        return self.get(step_type_gen) is not None
 
-    def get_for_engine(self, step_type: str, engine: str) -> Optional[StepTypeSpec]:
+    def get_for_engine(self, step_type_gen: str, engine: str) -> Optional[StepTypeSpec]:
         """
         Get specification for a step type within a specific engine.
 
@@ -649,21 +643,14 @@ class StepTypeRegistry:
         while get_for_engine("relax", "qe") returns qe_relax spec.
 
         Args:
-            step_type: Step type identifier (public or machine type)
+            step_type_gen: Gen step type (e.g., "relax", "scf") - GEN only
             engine: Engine identifier (e.g., "qe", "lammps", "pyscf")
 
         Returns:
             StepTypeSpec for the engine-specific step type, or None if not found
         """
-        step_type_lower = step_type.lower()
+        step_type_lower = step_type_gen.lower()
         engine_lower = engine.lower()
-
-        # First try direct lookup (if step_type is already spec type like "lammps_relax")
-        if step_type_lower in self._spec_to_obj:
-            spec = self._spec_to_obj[step_type_lower]
-            # Verify it matches the requested engine
-            if spec.engine.lower() == engine_lower:
-                return spec
 
         # Search for matching gen type + engine combination
         for spec in self._types.values():
@@ -671,9 +658,7 @@ class StepTypeRegistry:
                 if spec.step_type_gen.lower() == step_type_lower:
                     return spec
 
-        # Fallback: return any match if no engine-specific match found
-        # This handles cases where engine doesn't have that step type but qe does
-        return self.get(step_type)
+        return None
 
     def list_all(self) -> List[str]:
         """List all registered step types (returns gen types)."""
@@ -742,35 +727,42 @@ class StepTypeRegistry:
         
         return result
     
-    def get_defaults(self, step_type: str) -> Dict[str, Any]:
+    def get_defaults(self, step_type_gen: str) -> Dict[str, Any]:
         """
         Get default parameters for a step type.
         
         Merges from step_defaults.py.
+        
+        Args:
+            step_type_gen: Gen step type (e.g., "scf", "relax") - GEN only
         
         Returns:
             Dict with "parameters", "cards", "species_overrides" keys
         """
         from quantumvitas.calculation.step_defaults import get_default_step_params
         
-        return get_default_step_params(step_type)
+        return get_default_step_params(step_type_gen)
     
     def validate_step_type(
         self,
-        step_type: str,
+        step_type_gen: str,
         params: Optional[Dict[str, Any]] = None,
     ) -> List[str]:
         """
         Validate step type and parameters.
+        
+        Args:
+            step_type_gen: Gen step type (e.g., "scf", "relax") - GEN only
+            params: Optional parameters to validate
         
         Returns:
             List of validation issues (empty if valid)
         """
         issues: List[str] = []
         
-        spec = self.get(step_type)
+        spec = self.get(step_type_gen)
         if spec is None:
-            issues.append(f"Unknown step type: {step_type}")
+            issues.append(f"Unknown step type: {step_type_gen}")
             return issues
         
         # Basic validation can be extended later
@@ -804,14 +796,13 @@ def reset_registry() -> None:
 # These map old step types to the unified "relax" type for workflow purposes.
 # NOTE: This aliasing is for workflow/registry lookup only. When generating QE input,
 # the actual calculation parameter (vc-relax, relax, etc.) should be preserved.
-STEP_TYPE_ALIASES = {
-    "vc-relax": "relax",  # Legacy alias - VC is a parameter, not a step type
-    "opt": "relax",
-    "geomopt": "relax",
-}
+# No step type aliases - all code MUST use canonical GEN types directly.
+# There is ONLY "relax" - no opt, geomopt, vc-relax, vcrelax, etc.
+# VC (variable-cell) is a PARAMETER for relax/md, NOT a separate step type.
+STEP_TYPE_ALIASES = {}
 
 
-def normalize_step_type(step_type: str) -> str:
+def normalize_step_type(step_type_gen: str) -> str:
     """
     Normalize step type, applying compatibility aliases.
     
@@ -819,24 +810,24 @@ def normalize_step_type(step_type: str) -> str:
     Issues a deprecation warning when an alias is used.
     
     Args:
-        step_type: Step type (may be deprecated alias)
+        step_type_gen: Gen step type (may be deprecated alias) - GEN only
         
     Returns:
-        Normalized step type (e.g., "relax" instead of "vc-relax")
+        Normalized gen step type (e.g., "relax" instead of "vc-relax")
     """
-    if not step_type:
-        return step_type
+    if not step_type_gen:
+        return step_type_gen
     
-    if step_type in STEP_TYPE_ALIASES:
+    if step_type_gen in STEP_TYPE_ALIASES:
         import warnings
         warnings.warn(
-            f"Step type '{step_type}' is deprecated. Use 'relax' instead.",
+            f"Step type '{step_type_gen}' is deprecated. Use 'relax' instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        return STEP_TYPE_ALIASES[step_type]
+        return STEP_TYPE_ALIASES[step_type_gen]
     
-    return step_type
+    return step_type_gen
 
 
 def normalize_step_type_to_gen(step_type_spec: str) -> str:
@@ -855,8 +846,11 @@ def normalize_step_type_to_gen(step_type_spec: str) -> str:
     if not step_type_spec:
         return step_type_spec
 
-    # First apply compatibility aliases
-    normalized = normalize_step_type(step_type_spec)
+    # First apply compatibility aliases (normalize_step_type expects gen type)
+    # If step_type_spec is already a spec type, convert to gen first
+    from quantumvitas.workflow.step_type_convert import gen_from
+    gen_type = gen_from(step_type_spec) if "_" in step_type_spec else step_type_spec
+    normalized = normalize_step_type(gen_type)
 
     registry = get_registry()
     spec = registry.get(normalized)
@@ -922,8 +916,15 @@ def resolve_engine_for_step(
     if not step_type_str:
         raise ValueError("Machine step_type is empty or None")
     
-    # Look up machine step_type in registry (registry.get() accepts machine type directly)
-    spec = registry.get(step_type_str)
+    # Look up step_type in registry (convert spec to gen if needed)
+    from quantumvitas.api import get_step_type_gen
+    from quantumvitas.workflow.step_type_convert import gen_from
+    try:
+        step_type_gen = get_step_type_gen(step_type_str) if "_" in step_type_str else step_type_str
+    except (KeyError, ValueError):
+        # Fallback: use explicit conversion function (handles both SPEC and GEN)
+        step_type_gen = gen_from(step_type_str)  # gen_from() handles both SPEC and GEN inputs
+    spec = registry.get(step_type_gen)
     if spec is None:
         # List some known types for error message (limit to avoid huge error messages)
         # Access internal _types dict directly (registry implementation detail)

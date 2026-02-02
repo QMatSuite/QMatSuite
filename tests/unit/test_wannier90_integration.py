@@ -18,12 +18,15 @@ from quantumvitas.io.wannier90_input import (
 
 
 class TestStepTypeRegistration:
-    """Test that Wannier90 step types are properly registered."""
-    
+    """Test that Wannier90 step types are properly registered.
+
+    Uses get_for_engine(gen_type, engine) per constitution: registry.get() takes GEN only.
+    """
+
     def test_wannierprep_in_registry(self):
         """wannierprep should be in step type registry."""
         registry = StepTypeRegistry()
-        spec = registry.get("w90_wannierprep")
+        spec = registry.get_for_engine("wannierprep", "w90")
         assert spec is not None
         assert spec.step_type_gen == "wannierprep"
         assert spec.executable == "wannier90.x"
@@ -32,7 +35,7 @@ class TestStepTypeRegistration:
     def test_pw2wannier_in_registry(self):
         """pw2wannier should be in step type registry."""
         registry = StepTypeRegistry()
-        spec = registry.get("qe_pw2wannier")
+        spec = registry.get_for_engine("pw2wannier", "qe")
         assert spec is not None
         assert spec.step_type_gen == "pw2wannier"
         assert spec.executable == "pw2wannier90.x"
@@ -41,7 +44,7 @@ class TestStepTypeRegistration:
     def test_wannier_in_registry(self):
         """wannier should be in step type registry."""
         registry = StepTypeRegistry()
-        spec = registry.get("w90_wannier")
+        spec = registry.get_for_engine("wannier", "w90")
         assert spec is not None
         assert spec.step_type_gen == "wannier"
         assert spec.executable == "wannier90.x"

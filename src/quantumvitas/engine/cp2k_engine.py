@@ -172,7 +172,7 @@ class Cp2kEngine(Engine):
             env["CP2K_DATA_DIR"] = str(data_dir)
 
         # Get step type for timeout/threads
-        step_type = getattr(step, "step_type_spec", None) or ""
+        step_type_spec = getattr(step, "step_type_spec", None) or ""
         params = getattr(step, "parameters", None) or {}
 
         # Execute CP2K
@@ -190,7 +190,7 @@ class Cp2kEngine(Engine):
             )
         except subprocess.TimeoutExpired:
             return Cp2kStepResult(
-                step_type_spec=step_type,
+                step_type_spec=step_type_spec,
                 input_file=working_dir / input_file,
                 success=False,
                 error="CP2K execution timed out",
@@ -198,7 +198,7 @@ class Cp2kEngine(Engine):
             )
         except Exception as e:
             return Cp2kStepResult(
-                step_type_spec=step_type,
+                step_type_spec=step_type_spec,
                 input_file=working_dir / input_file,
                 success=False,
                 error=f"CP2K execution failed: {e}",
@@ -216,10 +216,10 @@ class Cp2kEngine(Engine):
         # Check success
         success = result.returncode == 0
         if success and output_path.exists():
-            success = self._check_success(output_path, step_type)
+            success = self._check_success(output_path, step_type_spec)
 
         return Cp2kStepResult(
-            step_type_spec=step_type,
+            step_type_spec=step_type_spec,
             input_file=working_dir / input_file,
             success=success,
             error=result.stderr if not success else None,
@@ -257,11 +257,11 @@ class Cp2kEngine(Engine):
         from quantumvitas.execution.latest_selector import find_latest_by_mtime
         return find_latest_by_mtime(workdir, "cp2k_calc-*.ener")
 
-    def _check_success(self, output_path: Path, step_type: str) -> bool:
+    def _check_success(self, output_path: Path, step_type_spec: str) -> bool:
         """Check if CP2K run succeeded based on output."""
         content = output_path.read_text()
 
-        if step_type == "cp2k_scf":
+        if step_type_spec == "cp2k_scf":
             # Check for SCF convergence first
             if "SCF run converged" in content:
                 return True
@@ -271,7 +271,7 @@ class Cp2kEngine(Engine):
                 return True
             return False
 
-        elif step_type == "cp2k_relax":
+        elif step_type_spec == "cp2k_relax":
             # Check for successful geometry optimization
             if "GEOMETRY OPTIMIZATION COMPLETED" in content:
                 return True
@@ -281,7 +281,7 @@ class Cp2kEngine(Engine):
                 return True
             return False
 
-        elif step_type == "cp2k_md":
+        elif step_type_spec == "cp2k_md":
             # MD doesn't have explicit completion message
             # Check for energy output or normal termination
             return "PROGRAM ENDED" in content or "Total wall" in content

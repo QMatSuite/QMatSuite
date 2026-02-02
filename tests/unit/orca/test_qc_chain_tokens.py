@@ -195,7 +195,8 @@ class TestStepTypeSpecToken:
         from quantumvitas.workflow.registry import get_registry
 
         reg = get_registry()
-        spec = reg.get("pyscf_scf")
+        # Per constitution: get() only accepts GEN types
+        spec = reg.get_for_engine("scf", "pyscf")
         assert spec is not None
         assert spec.token == "s"
 
@@ -204,7 +205,7 @@ class TestStepTypeSpecToken:
         from quantumvitas.workflow.registry import get_registry
 
         reg = get_registry()
-        spec = reg.get("pyscf_mp2")
+        spec = reg.get_for_engine("mp2", "pyscf")
         assert spec is not None
         assert spec.token == "m2"
 
@@ -213,7 +214,7 @@ class TestStepTypeSpecToken:
         from quantumvitas.workflow.registry import get_registry
 
         reg = get_registry()
-        spec = reg.get("pyscf_td")
+        spec = reg.get_for_engine("td", "pyscf")
         assert spec is not None
         assert spec.token == "t"
 
@@ -222,7 +223,7 @@ class TestStepTypeSpecToken:
         from quantumvitas.workflow.registry import get_registry
 
         reg = get_registry()
-        spec = reg.get("orca_scf")
+        spec = reg.get_for_engine("scf", "orca")
         assert spec is not None
         assert spec.token == "s"
 
@@ -231,7 +232,7 @@ class TestStepTypeSpecToken:
         from quantumvitas.workflow.registry import get_registry
 
         reg = get_registry()
-        spec = reg.get("orca_hf")
+        spec = reg.get_for_engine("hf", "orca")
         assert spec is not None
         assert spec.token == "h"
 
@@ -240,7 +241,7 @@ class TestStepTypeSpecToken:
         from quantumvitas.workflow.registry import get_registry
 
         reg = get_registry()
-        spec = reg.get("orca_td")
+        spec = reg.get_for_engine("td", "orca")
         assert spec is not None
         assert spec.token == "t"
 
@@ -249,7 +250,8 @@ class TestStepTypeSpecToken:
         from quantumvitas.workflow.registry import get_registry
 
         reg = get_registry()
-        spec = reg.get("qe_scf")
+        # Per constitution: get() only accepts GEN types
+        spec = reg.get_for_engine("scf", "qe")
         assert spec is not None
         assert spec.token is None  # QE steps don't use tokens
 
@@ -266,13 +268,14 @@ class TestTokenConsistency:
 
         reg = get_registry()
 
-        # Check PySCF step types
-        for machine_type in ["pyscf_scf", "pyscf_mp2", "pyscf_td"]:
-            spec = reg.get(machine_type)
+        # Check PySCF step types - use get_for_engine per constitution
+        pyscf_gen_types = ["scf", "mp2", "td"]
+        for gen_type in pyscf_gen_types:
+            spec = reg.get_for_engine(gen_type, "pyscf")
             if spec and spec.token:
                 expected_token = GEN_TYPE_TOKENS.get(spec.step_type_gen)
                 assert spec.token == expected_token, (
-                    f"{machine_type}: token '{spec.token}' != expected '{expected_token}'"
+                    f"pyscf_{gen_type}: token '{spec.token}' != expected '{expected_token}'"
                 )
 
         # Check ORCA step types

@@ -152,19 +152,19 @@ def minimal_calculation(tmp_project, minimal_structure):
     svc = QVService(tmp_project)
     step1_dto = svc.calculation.add_step(
         calc_selector=calc_id,
-        step_type="scf",
+        step_type_gen="scf",
     )
     step1_id = step1_dto.step_ulid
 
     step2_dto = svc.calculation.add_step(
         calc_selector=calc_id,
-        step_type="nscf",
+        step_type_gen="nscf",
     )
     step2_id = step2_dto.step_ulid
 
     step3_dto = svc.calculation.add_step(
         calc_selector=calc_id,
-        step_type="bands",
+        step_type_gen="bands",
     )
     step3_id = step3_dto.step_ulid
 
@@ -519,7 +519,7 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     step1_resolved = require_step(tmp_project, calc_id, step_ids[1], config=config)
     step1_doc = StepDoc.load(step1_resolved.absolute_path)
     step1_content_dict = step1_doc.to_dict()
-    step_type = step1_content_dict.get("step_type", "nscf")
+    step_type = step1_content_dict.get("step_type_spec", "qe_nscf")
     
     # Compute step SHA for step1
     step1_sha = compute_step_sha(step1_content_dict)
@@ -582,7 +582,7 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     svc = QVService(tmp_project)
     step2b_dto = svc.calculation.add_step(
         calc_selector=calc_id,
-        step_type=step_type,
+        step_type_gen="nscf",  # GEN type for UI layer (step_ids[1] is nscf step)
         name="nscf-copy",
     )
     step2b_id = step2b_dto.step_ulid

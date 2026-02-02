@@ -100,7 +100,7 @@ def chain_project(tmp_path: Path):
     # Create relax step
     relax_step = svc.calculation.add_step(
         calc_selector=calc_id,
-        step_type="relax",
+        step_type_gen="relax",
     )
     relax_step_id = relax_step.step_ulid
 
@@ -125,7 +125,7 @@ def chain_project(tmp_path: Path):
     # Create first MD step (restart_from relax)
     md_step = svc.calculation.add_step(
         calc_selector=calc_id,
-        step_type="md",
+        step_type_gen="md",
     )
     md_step_id = md_step.step_ulid
 
@@ -151,7 +151,7 @@ def chain_project(tmp_path: Path):
     # Create second MD step (restart_from first MD)
     continue_md = svc.calculation.add_step(
         calc_selector=calc_id,
-        step_type="md",
+        step_type_gen="md",
     )
     continue_md_id = continue_md.step_ulid
     

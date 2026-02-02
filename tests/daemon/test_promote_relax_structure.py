@@ -57,7 +57,7 @@ class TestPromoteRelaxStructureAPI:
         calc_ulid = calc_result.ulid
         
         # Create relax step
-        step_result = QVService.init_step(project_root, calc_ulid, step_type="qe_relax", name="relax")
+        step_result = QVService.init_step(project_root, calc_ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         step_ulid = step_result.ulid
         
         # Write generated structure
@@ -69,7 +69,7 @@ class TestPromoteRelaxStructureAPI:
             structure=relaxed_structure,
             calc_dir=calc_dir,
             step_ulid=step_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
             calculation_ulid=calc_ulid,
             input_structure_ulid=struct_result.meta.ulid,
         )
@@ -109,7 +109,7 @@ class TestPromoteRelaxStructureAPI:
         
         # Create calculation and step
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
-        step_result = QVService.init_step(project_root, calc_result.ulid, step_type="qe_relax", name="relax")
+        step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Try to promote without current.json
         with pytest.raises(APIError) as exc_info:
@@ -138,7 +138,7 @@ class TestPromoteRelaxStructureAPI:
         
         # Create calculation and SCF step (not relax)
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
-        step_result = QVService.init_step(project_root, calc_result.ulid, step_type="qe_scf", name="scf")
+        step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
         
         # Try to promote non-relax step
         with pytest.raises(APIError) as exc_info:
@@ -173,7 +173,7 @@ class TestPromoteRelaxStructureDaemonRPC:
         
         # Create calculation and relax step
         calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
-        step_result = QVService.init_step(project_root, calc_result.ulid, step_type="qe_relax", name="relax")
+        step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Write generated structure
         lattice = Lattice.cubic(5.5)
@@ -184,7 +184,7 @@ class TestPromoteRelaxStructureDaemonRPC:
             structure=relaxed_structure,
             calc_dir=calc_dir,
             step_ulid=step_result.ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
         )
         
         # Call via daemon

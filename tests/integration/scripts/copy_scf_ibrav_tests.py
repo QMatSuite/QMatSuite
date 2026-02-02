@@ -62,7 +62,7 @@ def main() -> int:
     copied_count, skipped_count, copied_files = copy_test_files(
         test_suite_dir,
         args.output,  # Pass full output path
-        step_type="scf",
+        step_type_gen="scf",
         filename_filter=filename_filter,
         verbose=not args.quiet,
     )

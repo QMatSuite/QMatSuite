@@ -27,7 +27,7 @@ def project_with_step(tmp_path):
 
     # Use domain API for add_step
     svc = get_service(project_dir)
-    step_result = svc.calculation.add_step(calc_selector=calc_slug, step_type="scf", name="scf")
+    step_result = svc.calculation.add_step(calc_selector=calc_slug, step_type_gen="scf", name="scf")
     step_id = step_result.step_ulid
 
     calc_dir = project_dir / "calculations" / calc_slug

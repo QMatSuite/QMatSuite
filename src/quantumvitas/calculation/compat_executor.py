@@ -26,7 +26,7 @@ def run_qe_step_from_existing_input_compat(
     step_ulid: str,
     calculation_slug: str,
     engine,
-    step_type: Optional[str] = None,
+    step_type_gen: Optional[str] = None,
     timeout: Optional[int] = None,
 ) -> StepResult:
     """
@@ -43,7 +43,7 @@ def run_qe_step_from_existing_input_compat(
         step_ulid: Step ULID or identifier
         calculation_slug: Calculation slug/name (used for prefix if step spec doesn't provide)
         engine: QE engine instance
-        step_type: Optional step type (e.g., "scf", "nscf")
+        step_type_gen: Optional step type (gen type, e.g., "scf", "nscf")
         timeout: Optional execution timeout
         
     Returns:
@@ -112,11 +112,14 @@ def run_qe_step_from_existing_input_compat(
     )
     
     # Execute using engine
+    # Convert gen to spec for run_step (which expects spec type)
+    from quantumvitas.workflow.step_type_convert import spec_from
+    step_type_spec = spec_from("qe", step_type_gen) if step_type_gen else None
     try:
         result = engine.backend.run_step(
             input_file=output_input_path,
             working_dir=working_dir,
-            step_type=step_type,
+            step_type_spec=step_type_spec,
             timeout=timeout,
         )
         return result

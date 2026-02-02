@@ -44,13 +44,13 @@ class MockStep:
     step_type_gen: str = ""  # GEN type (e.g., "scf") - derived from spec
 
 
-def create_mock_step(ulid: str, step_type: str) -> MockStep:
+def create_mock_step(ulid: str, step_type_spec: str) -> MockStep:
     """Create a mock step with given ULID and type."""
     # Extract GEN type from SPEC type (e.g., "qe_scf" -> "scf")
-    step_type_gen = step_type.split("_", 1)[-1] if "_" in step_type else step_type
+    step_type_gen = step_type_spec.split("_", 1)[-1] if "_" in step_type_spec else step_type_spec
     return MockStep(
         meta=MockMeta(id=ulid),
-        step_type_spec=step_type,
+        step_type_spec=step_type_spec,
         step_type_gen=step_type_gen,
     )
 

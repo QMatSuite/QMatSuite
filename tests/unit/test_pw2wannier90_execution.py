@@ -54,7 +54,7 @@ class TestOutputPathDirectoryHandling:
             result = runner.run_step(
                 input_file=input_file,
                 working_dir=working_dir,
-                step_type="pw2wannier90",
+                step_type_spec="qe_pw2wannier",  # Execution layer uses SPEC type
             )
             # If we get here, no IsADirectoryError was raised
             assert isinstance(result, StepResult)
@@ -116,16 +116,17 @@ exit 0
             result = runner.run_step(
                 input_file=input_file,
                 working_dir=working_dir,
-                step_type="pw2wannier90",
+                step_type_spec="qe_pw2wannier",  # Execution layer uses SPEC type
             )
             
             # Verify result
             assert isinstance(result, StepResult)
-            assert result.step_type_spec == "pw2wannier90"
+            assert result.step_type_spec == "qe_pw2wannier"
             
-            # Verify output files exist (using step_type.out/.err naming)
-            stdout_file = working_dir / "pw2wannier90.out"
-            stderr_file = working_dir / "pw2wannier90.err"
+            # Verify output files exist (using step_type_gen.out/.err naming)
+            # For step_type_spec="qe_pw2wannier", gen type is "pw2wannier"
+            stdout_file = working_dir / "pw2wannier.out"
+            stderr_file = working_dir / "pw2wannier.err"
             
             assert stdout_file.exists(), f"stdout file {stdout_file} should exist"
             assert stderr_file.exists(), f"stderr file {stderr_file} should exist"
@@ -192,7 +193,7 @@ exit 1
             result = runner.run_step(
                 input_file=input_file,
                 working_dir=working_dir,
-                step_type="w90_wannierprep",
+                step_type_spec="w90_wannierprep",  # Execution layer uses SPEC type
             )
             
             # Verify failure

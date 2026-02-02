@@ -99,7 +99,7 @@ def orca_project(tmp_path):
     step_resolved = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="orca_scf",  # SPEC type per Constitution §B
+        step_type_gen="scf",  # GEN type for UI layer (Constitution §A)
     )
     step_id = step_resolved.meta.ulid
 
@@ -212,17 +212,28 @@ class TestORCARegistryLookup:
         assert result == "orca", f"Expected 'orca', got '{result}'"
 
     def test_registry_resolves_orca_types(self):
-        """Verify all ORCA step types are in registry."""
+        """Verify all ORCA step types are in registry.
+
+        Per constitution, registry.get() only accepts GEN types.
+        Use get_for_engine(gen_type, engine) for engine-specific lookups.
+        """
         from quantumvitas.workflow.registry import get_registry
 
         registry = get_registry()
 
-        # ORCA SPEC types that should be registered
-        orca_types = ["orca_scf", "orca_hf", "orca_td"]
+        # ORCA step types: (gen_type, expected_spec_type)
+        orca_types = [
+            ("scf", "orca_scf"),
+            ("hf", "orca_hf"),
+            ("td", "orca_td"),
+        ]
 
-        for spec_type in orca_types:
-            spec = registry.get(spec_type)
-            assert spec is not None, f"SPEC type '{spec_type}' not in registry"
+        for gen_type, expected_spec in orca_types:
+            spec = registry.get_for_engine(gen_type, "orca")
+            assert spec is not None, f"GEN type '{gen_type}' for orca not in registry"
+            assert spec.step_type_spec == expected_spec, (
+                f"Expected spec_type '{expected_spec}', got '{spec.step_type_spec}'"
+            )
             assert spec.engine == "orca", (
-                f"SPEC type '{spec_type}' has wrong engine: {spec.engine}"
+                f"GEN type '{gen_type}' has wrong engine: {spec.engine}"
             )

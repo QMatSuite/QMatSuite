@@ -154,7 +154,7 @@ class ORCADriver(BaseEngineDriver):
     def get_capabilities(self) -> set[str]:
         """ORCA capabilities."""
         return {
-            "scf", "opt", "freq", "sp",
+            "scf", "relax", "freq", "sp",
             "tddft", "mp2", "ccsd", "casscf", "nevpt2",
             "molecular", "mpi",
             "chain",  # Supports chain execution

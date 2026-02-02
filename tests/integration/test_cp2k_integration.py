@@ -90,7 +90,7 @@ def test_cp2k_scf_silicon(cp2k_silicon_project):
     step_resolved = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="scf",
+        step_type_gen="scf",
     )
     step_id = step_resolved.meta.ulid
 
@@ -150,7 +150,7 @@ def test_cp2k_relax_silicon_with_cell(cp2k_silicon_project):
     step_resolved = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="relax",
+        step_type_gen="relax",
     )
     step_id = step_resolved.meta.ulid
 
@@ -235,7 +235,7 @@ def test_cp2k_md_incremental_skip_disabled(cp2k_silicon_project):
     step_resolved = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="md",
+        step_type_gen="md",
     )
     step_id = step_resolved.meta.ulid
 
@@ -268,7 +268,8 @@ def test_cp2k_md_incremental_skip_disabled(cp2k_silicon_project):
     # Verify MD step has supports_incremental_skip=False
     from quantumvitas.workflow.registry import get_registry
     registry = get_registry()
-    md_spec = registry.get("cp2k_md")
+    # Use get_for_engine per constitution: registry.get() takes GEN only
+    md_spec = registry.get_for_engine("md", "cp2k")
     assert md_spec.supports_incremental_skip is False, "MD should have incremental skip disabled"
     
     # Run calculation

@@ -86,19 +86,28 @@ class TestStepTypeMappingCompleteness:
 
 
 class TestStepTypeRegistryLookup:
-    """Test that registry lookup works correctly for both SPEC and GEN types."""
+    """Test that registry lookup works correctly.
+
+    Per constitution, registry.get() only accepts GEN types.
+    For SPEC-based lookups, use get_for_engine(gen_type, engine) or _STEP_TYPES[spec].
+    """
 
     def test_lookup_by_spec_type(self):
-        """Registry should find step types when looking up by SPEC (step_type_spec)."""
+        """Registry can find step types using get_for_engine(gen, engine)."""
         registry = get_registry()
 
-        # Sample SPEC step types
-        spec_types = ["qe_scf", "pyscf_scf", "orca_scf", "w90_wannier"]
+        # Test cases: (gen_type, engine, expected_spec_type)
+        test_cases = [
+            ("scf", "qe", "qe_scf"),
+            ("scf", "pyscf", "pyscf_scf"),
+            ("scf", "orca", "orca_scf"),
+            ("wannier", "w90", "w90_wannier"),
+        ]
 
-        for spec_type in spec_types:
-            result = registry.get(spec_type)
-            assert result is not None, f"Failed to lookup SPEC type '{spec_type}'"
-            assert result.step_type_spec == spec_type, (
+        for gen_type, engine, expected_spec in test_cases:
+            result = registry.get_for_engine(gen_type, engine)
+            assert result is not None, f"Failed to lookup gen='{gen_type}' engine='{engine}'"
+            assert result.step_type_spec == expected_spec, (
                 f"Lookup for '{spec_type}' returned wrong machine_type: '{result.machine_type}'"
             )
 
@@ -392,15 +401,19 @@ class TestRelaxStepTypeConfiguration:
     def test_orca_relax_exists(self):
         """orca_relax should be registered."""
         registry = get_registry()
-        spec = registry.get("orca_relax")
+        # Use get_for_engine per constitution: registry.get() takes GEN only
+        spec = registry.get_for_engine("relax", "orca")
         assert spec is not None, "orca_relax should be registered"
+        assert spec.engine == "orca"
         assert spec.step_type_gen == "relax", f"Expected public_type='relax', got '{spec.step_type_gen}'"
         assert spec.is_structure_transform is True, "orca_relax should have is_structure_transform=True"
 
     def test_pyscf_relax_exists(self):
         """pyscf_relax should be registered."""
         registry = get_registry()
-        spec = registry.get("pyscf_relax")
+        # Use get_for_engine per constitution: registry.get() takes GEN only
+        spec = registry.get_for_engine("relax", "pyscf")
         assert spec is not None, "pyscf_relax should be registered"
+        assert spec.engine == "pyscf"
         assert spec.step_type_gen == "relax", f"Expected public_type='relax', got '{spec.step_type_gen}'"
         assert spec.is_structure_transform is True, "pyscf_relax should have is_structure_transform=True"

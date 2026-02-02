@@ -45,9 +45,11 @@ class CalculationFileNaming:
         "pw2wannier",  # pw2wannier90.x uses pw2wan.in / pw2wan.out naming
     })
     
-    # pw.x calculation types
-    PW_CALCULATION_TYPES = frozenset({
-        "scf", "nscf", "relax", "vc-relax", "md", "vc-md", "bandspw",
+    # pw.x GEN step types (for file naming)
+    # Note: VC (variable-cell) is a parameter, not a separate step type.
+    # Files use "relax.in" for both fixed-cell and VC relaxation.
+    PW_STEP_TYPES_GEN = frozenset({
+        "scf", "nscf", "relax", "md", "bandspw",
     })
     
     @classmethod
