@@ -200,13 +200,12 @@ class TestRelaxPromoteE2E:
         assert artifact_path.exists(), "current.json should exist after relax step"
         
         # Promote the relaxed structure
-        promoted_result = QVService.promote_relax_structure(
-            project_root=project_root,
+        promoted_result = svc.structure.promote_relax_structure(
             calculation_selector=calc_ulid,
             step_selector=relax_step_ulid,
             name="relaxed_h2",
         )
-        
+
         # Verify new structure was created via nested service method (DTO)
         all_structures = svc.structure.list()
         assert len(all_structures) == initial_count + 1, "Should have one more structure"
@@ -238,9 +237,9 @@ class TestRelaxPromoteE2E:
         project_root = promote_test_calculation_with_relax["project_root"]
         
         # Try to promote without running relax step (no current.json)
+        svc = QVService(project_root)
         with pytest.raises(APIError) as exc_info:
-            QVService.promote_relax_structure(
-                project_root=project_root,
+            svc.structure.promote_relax_structure(
                 calculation_selector=calc_ulid,
                 step_selector=relax_step_ulid,
             )
@@ -284,13 +283,13 @@ class TestRelaxPromoteE2E:
         scf_step_ulid = scf_step_result.ulid
         
         # Try to promote non-relax step
+        svc = QVService(project_root)
         with pytest.raises(APIError) as exc_info:
-            QVService.promote_relax_structure(
-                project_root=project_root,
+            svc.structure.promote_relax_structure(
                 calculation_selector=calc_ulid,
                 step_selector=scf_step_ulid,
             )
-        
+
         assert "not a relax step" in str(exc_info.value)
     
     def test_promoted_structure_can_be_used_for_new_calculation(
@@ -315,13 +314,13 @@ class TestRelaxPromoteE2E:
         assert result.get("success") is True, f"Step failed: {result.get('error')}"
         
         # Promote the relaxed structure
-        promoted_result = QVService.promote_relax_structure(
-            project_root=project_root,
+        svc = QVService(project_root)
+        promoted_result = svc.structure.promote_relax_structure(
             calculation_selector=calc_ulid,
             step_selector=relax_step_ulid,
             name="relaxed_h2",
         )
-        
+
         # Create a new calculation using the promoted structure
         new_calc_result = QVService.init_calculation(
             project_root=project_root,

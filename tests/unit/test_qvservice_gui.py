@@ -12,15 +12,16 @@ from quantumvitas.api import QVService, APIError
 
 
 class TestGetProjectSummary:
-    """Tests for QVService.get_project_summary()."""
-    
+    """Tests for QVService.project.get_summary()."""
+
     def test_returns_project_info(self, tmp_path):
-        """Test that get_project_summary returns correct structure."""
+        """Test that project.get_summary returns correct structure."""
         # Create a minimal project
         project_root = QVService.init_project(tmp_path / "test_project", name="Test Project")
-        
-        summary = QVService.get_project_summary(project_root)
-        
+
+        svc = QVService(project_root)
+        summary = svc.project.get_summary()
+
         assert "ulid" in summary
         assert summary["name"] == "Test Project"
         assert "slug" in summary
@@ -29,17 +30,18 @@ class TestGetProjectSummary:
         assert summary["n_calculations"] == 0
         assert isinstance(summary["structure_names"], list)
         assert isinstance(summary["calculation_names"], list)
-    
+
     def test_counts_resources(self, tmp_path):
         """Test that resource counts are accurate."""
         project_root = QVService.init_project(tmp_path / "test_project")
-        
+
         # Create some calculations
         QVService.init_calculation(project_root, "calculation1")
         QVService.init_calculation(project_root, "calculation2")
-        
-        summary = QVService.get_project_summary(project_root)
-        
+
+        svc = QVService(project_root)
+        summary = svc.project.get_summary()
+
         assert summary["n_calculations"] == 2
         assert "calculation1" in summary["calculation_names"]
         assert "calculation2" in summary["calculation_names"]
@@ -171,9 +173,10 @@ class TestJSONSerializability:
         """Test that project summary is JSON-serializable."""
         import json
         project_root = QVService.init_project(tmp_path / "test_project")
-        
-        summary = QVService.get_project_summary(project_root)
-        
+
+        svc = QVService(project_root)
+        summary = svc.project.get_summary()
+
         # Should not raise
         json_str = json.dumps(summary)
         assert json_str

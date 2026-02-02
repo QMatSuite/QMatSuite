@@ -75,8 +75,8 @@ class TestPromoteRelaxStructureAPI:
         )
         
         # Promote
-        result = QVService.promote_relax_structure(
-            project_root=project_root,
+        svc = QVService(project_root)
+        result = svc.structure.promote_relax_structure(
             calculation_selector=calc_ulid,
             step_selector=step_ulid,
             name="relaxed_silicon",
@@ -112,9 +112,9 @@ class TestPromoteRelaxStructureAPI:
         step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Try to promote without current.json
+        svc = QVService(project_root)
         with pytest.raises(APIError) as exc_info:
-            QVService.promote_relax_structure(
-                project_root=project_root,
+            svc.structure.promote_relax_structure(
                 calculation_selector=calc_result.ulid,
                 step_selector=step_result.ulid,
             )
@@ -141,9 +141,9 @@ class TestPromoteRelaxStructureAPI:
         step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
         
         # Try to promote non-relax step
+        svc = QVService(project_root)
         with pytest.raises(APIError) as exc_info:
-            QVService.promote_relax_structure(
-                project_root=project_root,
+            svc.structure.promote_relax_structure(
                 calculation_selector=calc_result.ulid,
                 step_selector=step_result.ulid,
             )

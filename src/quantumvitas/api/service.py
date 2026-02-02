@@ -2129,26 +2129,71 @@ class QVService:
         ) -> Any:
             """
             Promote a relax step's generated structure to a project resource.
-            
+
             Args:
                 calculation_selector: Calculation selector (ULID, slug, or name)
                 step_selector: Step selector (ULID, slug, or name)
                 name: Optional name for the new structure (defaults to calc_step_relaxed)
                 index: Optional resource index
                 config: Optional project config
-                
+
             Returns:
                 ResolvedResource for the newly created structure
+
+            Raises:
+                APIError: If step not found, not a relax step, or no generated structure
             """
-            # TEMP SHIM: Delegate to static method for now
-            return QVService.promote_relax_structure(
-                project_root=self._service.project_root,
-                calculation_selector=calculation_selector,
-                step_selector=step_selector,
-                name=name,
-                index=index,
-                config=config,
-            )
+            try:
+                from quantumvitas.core.resolution import require_calculation, require_step
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.execution.relax_artifacts import get_generated_structure_path
+                import yaml
+
+                project_root = self._service.project_root
+
+                if config is None:
+                    config = load_project_config(project_root)
+
+                calc_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
+                step_resolved = require_step(project_root, calculation_selector, step_selector, config=config, index=index)
+
+                # Get step type to verify it's a relax step
+                step_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
+                step_type_spec = step_data.get("step_type_spec", "")
+
+                if "relax" not in step_type_spec.lower() and "vc-" not in step_type_spec.lower() and "md" not in step_type_spec.lower():
+                    from quantumvitas.api.errors import ValidationError
+                    raise ValidationError(
+                        f"Step '{step_selector}' is not a relax step (type: {step_type_spec})"
+                    )
+
+                # Find generated structure (uses step ULID for path)
+                calculation_dir = calc_resolved.absolute_path
+                generated_path = get_generated_structure_path(calculation_dir, step_resolved.meta.ulid)
+
+                if generated_path is None or not generated_path.exists():
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(
+                        f"No generated structure found for step '{step_selector}'. "
+                        f"Make sure the step has completed successfully."
+                    )
+
+                # Generate structure name
+                calc_slug = calc_resolved.meta.slug or calc_resolved.meta.ulid[:8]
+                step_slug = step_resolved.meta.slug or step_resolved.meta.ulid[:8]
+                structure_name = name or f"{calc_slug}_{step_slug}_relaxed"
+
+                # Import the generated structure
+                return QVService.import_structure(
+                    project_root=project_root,
+                    source=generated_path,
+                    name=structure_name,
+                    index=index,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
         
         def save_relax_final_structure(
             self,
@@ -2161,10 +2206,10 @@ class QVService:
         ) -> dict[str, Any]:
             """
             Save the final structure from a relax/vc-relax step as a new Structure resource.
-            
+
             IDEMPOTENT: For a given (calculation_ulid, step_ulid), at most ONE structure
             may ever be created. Repeated calls return the existing structure ULID.
-            
+
             Args:
                 calculation_selector: Calculation selector
                 step_selector: Step selector (ULID)
@@ -2172,20 +2217,155 @@ class QVService:
                 slug_hint: Optional hint for structure slug/name
                 index: Optional ResourceIndex
                 config: Optional project config
-                
+
             Returns:
                 Dict with structure_ulid and already_exists flag
+
+            Raises:
+                ValueError: If step is not a relax/vc-relax step
+                FileNotFoundError: If output file not found
             """
-            # TEMP SHIM: Delegate to static method for now
-            return QVService.save_relax_final_structure(
-                project_root=self._service.project_root,
-                calculation_selector=calculation_selector,
-                step_selector=step_selector,
-                parent_structure_ulid=parent_structure_ulid,
-                slug_hint=slug_hint,
-                index=index,
-                config=config,
+            from quantumvitas.calculation.geometry import (
+                read_final_geometry_from_output_text,
+                structure_from_qe_geometry_snapshot,
             )
+            from quantumvitas.calculation.naming import CalculationFileNaming, find_calculation_raw_dir
+            from quantumvitas.calculation.structure_steps import StructureStepSpec
+            from quantumvitas.core.models import load_calculation
+            from quantumvitas.core.project_utils import load_project_config, save_project_config, collect_slugs
+            from quantumvitas.core.resolution import resolve_calculation, resolve_step
+            from quantumvitas.core.resources import (
+                ensure_relative_path,
+                generate_unique_name_and_slug,
+                meta_from_name,
+            )
+            from quantumvitas.io.structure_io import write_structure
+            import yaml
+            import json
+
+            project_root = self._service.project_root
+
+            # Resolve calculation and step
+            calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+            calculation_dir = calculation_resolved.absolute_path.parent if calculation_resolved.absolute_path.name == "calculation.yaml" else calculation_resolved.absolute_path
+            calculation_ulid = calculation_resolved.meta.ulid
+
+            if config is None:
+                config = load_project_config(project_root)
+
+            # Load calculation to get working_dir
+            wf_model = load_calculation(calculation_dir / "calculation.yaml", project_root=project_root)
+            working_dir_name = wf_model.working_dir
+            raw_dir = find_calculation_raw_dir(calculation_dir, working_dir_name)
+
+            # Resolve step
+            step_resolved = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
+            step_ulid = step_resolved.meta.ulid
+
+            # Load step spec
+            spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=None)
+            step_type_spec = spec.step_type_spec
+
+            # Validate step type (convert to GEN type for comparison)
+            from quantumvitas.api import get_step_type_gen
+            step_gen = get_step_type_gen(step_type_spec)
+            if step_gen != "relax":
+                raise ValueError(
+                    f"Step '{step_selector}' is not a relax step (type: {step_type_spec})"
+                )
+
+            # Check if structure already created (idempotency check)
+            step_yaml_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
+            existing_structure_ulid = step_yaml_data.get("produced_structure_ulid")
+
+            if existing_structure_ulid:
+                return {
+                    "structure_ulid": existing_structure_ulid,
+                    "already_exists": True,
+                }
+
+            # Find output file
+            base_output = raw_dir / CalculationFileNaming.output_filename(step_gen, working_dir=None)
+            if base_output.exists():
+                output_file = base_output
+            else:
+                output_filename = CalculationFileNaming.output_filename(step_gen, working_dir=raw_dir)
+                output_file = raw_dir / output_filename
+
+            if not output_file.exists():
+                raise FileNotFoundError(
+                    f"Output file not found for step '{step_selector}': {output_file}. "
+                    f"Step may not have completed successfully."
+                )
+
+            # Parse final geometry
+            output_text = output_file.read_text()
+            snapshot, species = read_final_geometry_from_output_text(output_text)
+
+            # Convert to structure
+            structure = structure_from_qe_geometry_snapshot(snapshot, species)
+
+            # Generate structure name/slug
+            structures = config.setdefault("structures", [])
+            existing_slugs = collect_slugs(structures, project_root=project_root)
+
+            if slug_hint:
+                preferred_name = slug_hint
+            else:
+                step_name = spec.meta.name or step_type_spec
+                preferred_name = f"{step_name} relaxed"
+
+            final_name, final_slug = generate_unique_name_and_slug(
+                kind="structure",
+                preferred_name=preferred_name,
+                existing_slugs=existing_slugs,
+            )
+
+            # Write structure file
+            dest_path = project_root / "structures" / f"{final_slug}.json"
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+            meta = meta_from_name(
+                "structure",
+                name=final_name,
+                path=ensure_relative_path(dest_path, base=project_root),
+            )
+
+            write_structure(structure, dest_path, metadata=meta)
+
+            # Add provenance
+            structure_data = json.loads(dest_path.read_text())
+            if "extra" not in structure_data:
+                structure_data["extra"] = {}
+            structure_data["extra"]["relax_provenance"] = {
+                "parent_structure_ulid": parent_structure_ulid,
+                "source_calculation_ulid": calculation_ulid,
+                "source_step_ulid": step_ulid,
+            }
+            dest_path.write_text(json.dumps(structure_data, indent=2))
+
+            # Add to project config
+            entry = {"structure_ulid": meta.ulid}
+            structures.append(entry)
+            save_project_config(project_root, config)
+
+            # Update step YAML with produced_structure_ulid
+            from quantumvitas.core.yamldoc import StepDoc
+            from quantumvitas.workflow.step_factory import save_step_doc
+
+            step_doc = StepDoc.load(step_resolved.absolute_path)
+            step_doc.set(["produced_structure_ulid"], meta.ulid)
+            save_step_doc(step_doc, step_resolved.absolute_path)
+
+            # Update registry in-place if index is provided
+            if index is not None:
+                from quantumvitas.core.resolution import update_registry_add_structure
+                update_registry_add_structure(index, meta, dest_path)
+
+            return {
+                "structure_ulid": meta.ulid,
+                "already_exists": False,
+            }
 
     @property
     def structure(self) -> Structure:
@@ -4516,24 +4696,43 @@ class QVService:
         ) -> dict[str, dict[str, Any]]:
             """
             Configure calculation-level species_map.
-            
+
             Args:
                 calculation: Calculation selector (id/name/slug/path)
                 from_qe_input: Optional QE input file to extract ATOMIC_SPECIES from
                 set_entries: Optional list of explicit (element, mass, pseudopot) triples
                 merge: If True (default), merge with existing species_map. If False, replace.
-                
+
             Returns:
                 Updated species_map dictionary (element -> {mass, pseudopot, ...})
             """
-            # TEMP SHIM: Delegate to static method for now
-            return QVService.configure_species_map(
-                project_root=self._service.project_root,
-                calculation=calculation,
-                from_qe_input=from_qe_input,
-                set_entries=set_entries,
-                merge=merge,
-            )
+            try:
+                from quantumvitas.calculation.species_config import configure_species_map as _configure_species_map
+
+                project_root = self._service.project_root
+                if from_qe_input:
+                    from_qe_input = Path(from_qe_input).resolve()
+
+                # Use shared API
+                return _configure_species_map(
+                    project_root=project_root,
+                    calculation=calculation,
+                    from_qe_input=from_qe_input,
+                    set_entries=set_entries,
+                    merge=merge,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                # Map ValueError to ValidationError for API consistency
+                if isinstance(e, ValueError):
+                    from quantumvitas.api.errors import ValidationError
+                    raise ValidationError(
+                        str(e),
+                        code="VALIDATION_FAILED",
+                        context={"calculation": calculation}
+                    )
+                raise map_kernel_exception(e)
 
     @property
     def calculation(self) -> Calculation:
@@ -5646,12 +5845,60 @@ class QVService:
         def get_summary(self) -> dict[str, Any]:
             """
             Get a high-level summary of the project.
-            
+
             Returns:
                 Dict with project name, id, structure count, calculation count, etc.
             """
-            # TEMP SHIM: Delegate to static method for now
-            return QVService.get_project_summary(self._service.project_root)
+            try:
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.core.resolution import list_structures, list_calculations
+
+                project_root = self._service.project_root
+                config = load_project_config(project_root)
+
+                project_info = config.get("project", {})
+                meta = project_info.get("meta", {})
+                structures = config.get("structures", [])
+                calculations = config.get("calculations", [])
+
+                # Use registry to resolve structure/calculation names (ID-only model)
+                structure_names = []
+                try:
+                    resolved_structures = list_structures(project_root)
+                    structure_names = [res.meta.name for res in resolved_structures]
+                except Exception:
+                    # Fallback: try to get names from structure entries if they have meta
+                    structure_names = [
+                        s.get("meta", {}).get("name") or s.get("name", "?")
+                        for s in structures
+                    ]
+
+                calculation_names = []
+                try:
+                    resolved_calculations = list_calculations(project_root)
+                    calculation_names = [res.meta.name for res in resolved_calculations]
+                except Exception:
+                    # Fallback: try to get names from calculation entries if they have meta
+                    calculation_names = [
+                        w.get("meta", {}).get("name") or w.get("name", "?")
+                        for w in calculations
+                    ]
+
+                return {
+                    "id": meta.get("ulid"),  # Backwards compat alias
+                    "ulid": meta.get("ulid"),
+                    "name": project_info.get("name") or meta.get("name") or project_root.name,
+                    "slug": meta.get("slug"),
+                    "path": str(project_root),
+                    "n_structures": len(structures),
+                    "n_calculations": len(calculations),
+                    "structure_names": structure_names,
+                    "calculation_names": calculation_names,
+                }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
         
         def init_calculation(
             self,
@@ -5691,18 +5938,52 @@ class QVService:
         ) -> dict[str, Any]:
             """
             Analyze what would happen if pseudo selections were applied (read-only).
-            
+
             Args:
                 selections: List of PseudoSelection objects or dicts
-                
+
             Returns:
                 PseudoPrepareReport as dict
             """
-            # TEMP SHIM: Delegate to static method for now
-            return QVService.analyze_project_pseudo_effects(
-                project_root=self._service.project_root,
-                selections=selections,
+            from quantumvitas.core.pseudo_runtime import (
+                analyze_project_pseudo_effects as _analyze_project_pseudo_effects,
+                PseudoSelection,
             )
+
+            # Convert dicts to PseudoSelection if needed
+            converted_selections = []
+            for sel in selections:
+                if isinstance(sel, dict):
+                    converted_selections.append(PseudoSelection(
+                        element=sel["element"],
+                        requested_basename=sel["requested_basename"],
+                        requested_sha256=sel.get("requested_sha256"),
+                        requested_sha_family=sel.get("requested_sha_family"),
+                        source_kind=sel.get("source_kind", "project"),
+                        source_path=Path(sel["source_path"]) if sel.get("source_path") else None,
+                    ))
+                else:
+                    converted_selections.append(sel)
+
+            report = _analyze_project_pseudo_effects(self._service.project_root, converted_selections)
+
+            # Convert report to dict
+            return {
+                "actions": [
+                    {
+                        "action": a.action,
+                        "element": a.element,
+                        "detail": a.detail,
+                        "source_path": str(a.source_path) if a.source_path else None,
+                        "dest_path": str(a.dest_path) if a.dest_path else None,
+                        "renamed_from": str(a.renamed_from) if a.renamed_from else None,
+                        "renamed_to": str(a.renamed_to) if a.renamed_to else None,
+                    }
+                    for a in report.actions
+                ],
+                "warnings": report.warnings,
+                "errors": report.errors,
+            }
         
         def materialize_pseudo_file(
             self,
@@ -5712,17 +5993,17 @@ class QVService:
         ) -> dict[str, Any]:
             """
             Materialize a pseudo file from sha256 selection to actual file path.
-            
+
             Args:
                 element: Element symbol
                 sha256: SHA256 hash of the pseudo file
                 preferred_basename: Preferred basename (for display/filename)
-                
+
             Returns:
                 Dict with success, file_path, source, error, needs_install, archive_asset
             """
-            # TEMP SHIM: Delegate to static method for now
-            return QVService.materialize_pseudo_file(
+            from quantumvitas.core.pseudo_options import materialize_pseudo_file as _materialize_pseudo_file
+            return _materialize_pseudo_file(
                 project_root=self._service.project_root,
                 element=element,
                 sha256=sha256,
@@ -5736,20 +6017,39 @@ class QVService:
         ) -> dict[str, list[dict[str, Any]]]:
             """
             Get deduplicated pseudo options for a list of elements.
-            
+
             Args:
                 elements: List of element symbols
                 config: Optional PseudoConfig dict (loads if not provided)
-                
+
             Returns:
                 Dict mapping element -> List[PseudoVariant dict] (sha256-keyed)
             """
-            # TEMP SHIM: Delegate to static method for now
-            return QVService.get_pseudo_options_for_elements(
+            from quantumvitas.core.pseudo_options import get_pseudo_options_for_elements as _get_pseudo_options_for_elements
+            from quantumvitas.core.pseudo_config import PseudoConfig
+
+            # Convert config dict to PseudoConfig if needed
+            pseudo_config = None
+            if config is not None:
+                if isinstance(config, dict):
+                    pseudo_config = PseudoConfig.from_dict(config) if hasattr(PseudoConfig, 'from_dict') else None
+                else:
+                    pseudo_config = config
+
+            options = _get_pseudo_options_for_elements(
                 project_root=self._service.project_root,
                 elements=elements,
-                config=config,
+                config=pseudo_config,
             )
+
+            # Convert PseudoVariant objects to dicts
+            result = {}
+            for element, variants in options.items():
+                result[element] = [
+                    v.to_dict() if hasattr(v, 'to_dict') else v
+                    for v in variants
+                ]
+            return result
 
     @property
     def project(self) -> Project:
@@ -6525,71 +6825,6 @@ class QVService:
         return _get_workflow_service()
     
     @staticmethod
-    def get_project_summary(project_root: Path | str) -> dict[str, Any]:
-        """
-        Get a high-level summary of a project.
-        
-        # TEMP SHIM for PR; TODO relocate to Project.get_summary()
-        This is a backwards-compatibility wrapper. Frontends should use get_service(project_root).project.get_summary() instead.
-        
-        Args:
-            project_root: Project root path
-            
-        Returns:
-            Dict with project name, id, structure count, calculation count, etc.
-        """
-        try:
-            from quantumvitas.core.project_utils import load_project_config
-            from quantumvitas.core.resolution import list_structures, list_calculations
-            
-            project_root = Path(project_root).resolve()
-            config = load_project_config(project_root)
-            
-            project_info = config.get("project", {})
-            meta = project_info.get("meta", {})
-            structures = config.get("structures", [])
-            calculations = config.get("calculations", [])
-            
-            # Use registry to resolve structure/calculation names (ID-only model)
-            structure_names = []
-            try:
-                resolved_structures = list_structures(project_root)
-                structure_names = [res.meta.name for res in resolved_structures]
-            except Exception:
-                # Fallback: try to get names from structure entries if they have meta
-                structure_names = [
-                    s.get("meta", {}).get("name") or s.get("name", "?")
-                    for s in structures
-                ]
-            
-            calculation_names = []
-            try:
-                resolved_calculations = list_calculations(project_root)
-                calculation_names = [res.meta.name for res in resolved_calculations]
-            except Exception:
-                # Fallback: try to get names from calculation entries if they have meta
-                calculation_names = [
-                    w.get("meta", {}).get("name") or w.get("name", "?")
-                    for w in calculations
-                ]
-            
-            return {
-                "id": meta.get("ulid"),  # Backwards compat alias
-                "ulid": meta.get("ulid"),
-                "name": project_info.get("name") or meta.get("name") or project_root.name,
-                "slug": meta.get("slug"),
-                "path": str(project_root),
-                "n_structures": len(structures),
-                "n_calculations": len(calculations),
-                "structure_names": structure_names,
-                "calculation_names": calculation_names,
-            }
-        except Exception as e:
-            if isinstance(e, APIError):
-                raise
-            raise map_kernel_exception(e)
-    
-    @staticmethod
     # TEMP SHIM for PR; TODO relocate to Project.init_calculation()
     def init_calculation(
         project_root: Path | str,
@@ -7250,140 +7485,6 @@ class QVService:
             raise map_kernel_exception(e)
 
     @staticmethod
-    # TEMP SHIM for PR; TODO relocate to Structure.promote_relax_structure()
-    def promote_relax_structure(
-        project_root: Path | str,
-        calculation_selector: str,
-        step_selector: str,
-        name: str | None = None,
-        *,
-        index: Any = None,
-        config: dict | None = None,
-    ) -> Any:
-        """
-        Promote a relax step's generated structure to a project resource.
-
-        Args:
-            project_root: Project root path
-            calculation_selector: Calculation selector (ULID, slug, or name)
-            step_selector: Step selector (ULID, slug, or name)
-            name: Optional name for the new structure (defaults to calc_step_relaxed)
-            index: Optional resource index
-            config: Optional project config
-
-        Returns:
-            ResolvedResource for the newly created structure
-
-        Raises:
-            APIError: If step not found, not a relax step, or no generated structure
-        """
-        try:
-            from quantumvitas.core.resolution import require_calculation, require_step
-            from quantumvitas.core.project_utils import load_project_config
-            from quantumvitas.execution.relax_artifacts import get_generated_structure_path
-            import yaml
-
-            project_root = Path(project_root).resolve()
-
-            if config is None:
-                config = load_project_config(project_root)
-
-            calc_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
-            step_resolved = require_step(project_root, calculation_selector, step_selector, config=config, index=index)
-
-            # Get step type to verify it's a relax step
-            step_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
-            step_type_spec = step_data.get("step_type_spec", "")
-
-            if "relax" not in step_type_spec.lower() and "vc-" not in step_type_spec.lower() and "md" not in step_type_spec.lower():
-                from quantumvitas.api.errors import ValidationError
-                raise ValidationError(
-                    f"Step '{step_selector}' is not a relax step (type: {step_type_spec})"
-                )
-
-            # Find generated structure (uses step ULID for path)
-            calculation_dir = calc_resolved.absolute_path
-            generated_path = get_generated_structure_path(calculation_dir, step_resolved.meta.ulid)
-
-            if generated_path is None or not generated_path.exists():
-                from quantumvitas.api.errors import NotFoundError
-                raise NotFoundError(
-                    f"No generated structure found for step '{step_selector}'. "
-                    f"Make sure the step has completed successfully."
-                )
-
-            # Generate structure name
-            calc_slug = calc_resolved.meta.slug or calc_resolved.meta.ulid[:8]
-            step_slug = step_resolved.meta.slug or step_resolved.meta.ulid[:8]
-            structure_name = name or f"{calc_slug}_{step_slug}_relaxed"
-
-            # Import the generated structure
-            return QVService.import_structure(
-                project_root=project_root,
-                source=generated_path,
-                name=structure_name,
-                index=index,
-            )
-        except Exception as e:
-            if isinstance(e, APIError):
-                raise
-            raise map_kernel_exception(e)
-
-    @staticmethod
-    # TEMP SHIM for PR; TODO relocate to Calculation.configure_species_map()
-    def configure_species_map(
-        project_root: Path | str,
-        calculation: str,
-        *,
-        from_qe_input: Path | str | None = None,
-        set_entries: list[tuple[str, float, str]] | None = None,
-        merge: bool = True,
-    ) -> dict[str, dict[str, Any]]:
-        """
-        Configure calculation-level species_map.
-        
-        This is a backwards-compatibility wrapper for the legacy QVService.configure_species_map().
-        Uses the shared API from quantumvitas.calculation.species_config.
-        
-        Args:
-            project_root: Project root directory
-            calculation: Calculation selector (id/name/slug/path)
-            from_qe_input: Optional QE input file to extract ATOMIC_SPECIES from
-            set_entries: Optional list of explicit (element, mass, pseudopot) triples
-            merge: If True (default), merge with existing species_map. If False, replace.
-            
-        Returns:
-            Updated species_map dictionary (element -> {mass, pseudopot, ...})
-        """
-        try:
-            from quantumvitas.calculation.species_config import configure_species_map as _configure_species_map
-            
-            project_root = Path(project_root).resolve()
-            if from_qe_input:
-                from_qe_input = Path(from_qe_input).resolve()
-            
-            # Use shared API
-            return _configure_species_map(
-                project_root=project_root,
-                calculation=calculation,
-                from_qe_input=from_qe_input,
-                set_entries=set_entries,
-                merge=merge,
-            )
-        except Exception as e:
-            if isinstance(e, APIError):
-                raise
-            # Map ValueError to ValidationError for API consistency
-            if isinstance(e, ValueError):
-                from quantumvitas.api.errors import ValidationError
-                raise ValidationError(
-                    str(e),
-                    code="VALIDATION_FAILED",
-                    context={"calculation": calculation}
-                )
-            raise map_kernel_exception(e)
-    
-    @staticmethod
     def get_default_step_params(step_type_gen: str) -> dict[str, Any]:
         """
         Get default parameters for a step type.
@@ -7579,185 +7680,6 @@ class QVService:
                 continue
 
         return demos
-
-    # -------------------------------------------------------------------------
-    # Relax Structure Save (Execution)
-    # -------------------------------------------------------------------------
-
-    @staticmethod
-    # TEMP SHIM for PR; TODO relocate to Structure.save_relax_final_structure()
-    def save_relax_final_structure(
-        project_root: Path | str,
-        calculation_selector: str,
-        step_selector: str,
-        parent_structure_ulid: str,
-        slug_hint: str | None = None,
-        index: Any | None = None,
-        config: dict | None = None,
-    ) -> dict[str, Any]:
-        """
-        Save the final structure from a relax/vc-relax step as a new Structure resource.
-
-        IDEMPOTENT: For a given (calculation_ulid, step_ulid), at most ONE structure
-        may ever be created. Repeated calls return the existing structure ULID.
-
-        Args:
-            project_root: Project root path
-            calculation_selector: Calculation selector
-            step_selector: Step selector (ULID)
-            parent_structure_ulid: ULID of the input structure (for provenance)
-            slug_hint: Optional hint for structure slug/name
-            index: Optional ResourceIndex
-            config: Optional project config
-
-        Returns:
-            Dict with structure_ulid and already_exists flag
-
-        Raises:
-            ValueError: If step is not a relax/vc-relax step
-            FileNotFoundError: If output file not found
-        """
-        from quantumvitas.calculation.geometry import (
-            read_final_geometry_from_output_text,
-            structure_from_qe_geometry_snapshot,
-        )
-        from quantumvitas.calculation.naming import CalculationFileNaming, find_calculation_raw_dir
-        from quantumvitas.calculation.structure_steps import StructureStepSpec
-        from quantumvitas.core.models import load_calculation
-        from quantumvitas.core.project_utils import load_project_config, save_project_config, collect_slugs
-        from quantumvitas.core.resolution import resolve_calculation, resolve_step
-        from quantumvitas.core.resources import (
-            ensure_relative_path,
-            generate_unique_name_and_slug,
-            meta_from_name,
-        )
-        from quantumvitas.io.structure_io import write_structure
-        import yaml
-        import json
-
-        project_root = Path(project_root).resolve()
-
-        # Resolve calculation and step
-        calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)
-        calculation_dir = calculation_resolved.absolute_path.parent if calculation_resolved.absolute_path.name == "calculation.yaml" else calculation_resolved.absolute_path
-        calculation_ulid = calculation_resolved.meta.ulid
-
-        if config is None:
-            config = load_project_config(project_root)
-
-        # Load calculation to get working_dir
-        wf_model = load_calculation(calculation_dir / "calculation.yaml", project_root=project_root)
-        working_dir_name = wf_model.working_dir
-        raw_dir = find_calculation_raw_dir(calculation_dir, working_dir_name)
-
-        # Resolve step
-        step_resolved = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
-        step_ulid = step_resolved.meta.ulid
-
-        # Load step spec
-        spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=None)
-        step_type_spec = spec.step_type_spec
-
-        # Validate step type (convert to GEN type for comparison)
-        from quantumvitas.api import get_step_type_gen
-        step_gen = get_step_type_gen(step_type_spec)
-        if step_gen != "relax":
-            raise ValueError(
-                f"Step '{step_selector}' is not a relax step (type: {step_type_spec})"
-            )
-
-        # Check if structure already created (idempotency check)
-        step_yaml_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
-        existing_structure_ulid = step_yaml_data.get("produced_structure_ulid")
-
-        if existing_structure_ulid:
-            return {
-                "structure_ulid": existing_structure_ulid,
-                "already_exists": True,
-            }
-
-        # Find output file
-        base_output = raw_dir / CalculationFileNaming.output_filename(step_gen, working_dir=None)
-        if base_output.exists():
-            output_file = base_output
-        else:
-            output_filename = CalculationFileNaming.output_filename(step_gen, working_dir=raw_dir)
-            output_file = raw_dir / output_filename
-
-        if not output_file.exists():
-            raise FileNotFoundError(
-                f"Output file not found for step '{step_selector}': {output_file}. "
-                f"Step may not have completed successfully."
-            )
-
-        # Parse final geometry
-        output_text = output_file.read_text()
-        snapshot, species = read_final_geometry_from_output_text(output_text)
-
-        # Convert to structure
-        structure = structure_from_qe_geometry_snapshot(snapshot, species)
-
-        # Generate structure name/slug
-        structures = config.setdefault("structures", [])
-        existing_slugs = collect_slugs(structures, project_root=project_root)
-
-        if slug_hint:
-            preferred_name = slug_hint
-        else:
-            step_name = spec.meta.name or step_type
-            preferred_name = f"{step_name} relaxed"
-
-        final_name, final_slug = generate_unique_name_and_slug(
-            kind="structure",
-            preferred_name=preferred_name,
-            existing_slugs=existing_slugs,
-        )
-
-        # Write structure file
-        dest_path = project_root / "structures" / f"{final_slug}.json"
-        dest_path.parent.mkdir(parents=True, exist_ok=True)
-
-        meta = meta_from_name(
-            "structure",
-            name=final_name,
-            path=ensure_relative_path(dest_path, base=project_root),
-        )
-
-        write_structure(structure, dest_path, metadata=meta)
-
-        # Add provenance
-        structure_data = json.loads(dest_path.read_text())
-        if "extra" not in structure_data:
-            structure_data["extra"] = {}
-        structure_data["extra"]["relax_provenance"] = {
-            "parent_structure_ulid": parent_structure_ulid,
-            "source_calculation_ulid": calculation_ulid,
-            "source_step_ulid": step_ulid,
-        }
-        dest_path.write_text(json.dumps(structure_data, indent=2))
-
-        # Add to project config
-        entry = {"structure_ulid": meta.ulid}
-        structures.append(entry)
-        save_project_config(project_root, config)
-
-        # Update step YAML with produced_structure_ulid
-        from quantumvitas.core.yamldoc import StepDoc
-        from quantumvitas.workflow.step_factory import save_step_doc
-
-        step_doc = StepDoc.load(step_resolved.absolute_path)
-        step_doc.set(["produced_structure_ulid"], meta.ulid)
-        save_step_doc(step_doc, step_resolved.absolute_path)
-
-        # Update registry in-place if index is provided
-        if index is not None:
-            from quantumvitas.core.resolution import update_registry_add_structure
-            update_registry_add_structure(index, meta, dest_path)
-
-        return {
-            "structure_ulid": meta.ulid,
-            "already_exists": False,
-        }
 
     # -------------------------------------------------------------------------
     # Pseudo Management (Global Operations)
@@ -8075,131 +7997,3 @@ class QVService:
         from quantumvitas.core.pseudo_config import import_seed_archives as _import_seed_archives
 
         return _import_seed_archives(Path(seed_dir), [Path(p) for p in archive_paths])
-
-    @staticmethod
-    # TEMP SHIM for PR; TODO relocate to Project.analyze_pseudo_effects()
-    def analyze_project_pseudo_effects(
-        project_root: Path | str,
-        selections: list[Any],
-    ) -> dict[str, Any]:
-        """
-        Analyze what would happen if pseudo selections were applied (read-only).
-
-        Args:
-            project_root: Project root path
-            selections: List of PseudoSelection objects or dicts
-
-        Returns:
-            PseudoPrepareReport as dict
-        """
-        from quantumvitas.core.pseudo_runtime import (
-            analyze_project_pseudo_effects as _analyze_project_pseudo_effects,
-            PseudoSelection,
-        )
-
-        # Convert dicts to PseudoSelection if needed
-        converted_selections = []
-        for sel in selections:
-            if isinstance(sel, dict):
-                converted_selections.append(PseudoSelection(
-                    element=sel["element"],
-                    requested_basename=sel["requested_basename"],
-                    requested_sha256=sel.get("requested_sha256"),
-                    requested_sha_family=sel.get("requested_sha_family"),
-                    source_kind=sel.get("source_kind", "project"),
-                    source_path=Path(sel["source_path"]) if sel.get("source_path") else None,
-                ))
-            else:
-                converted_selections.append(sel)
-
-        report = _analyze_project_pseudo_effects(Path(project_root), converted_selections)
-
-        # Convert report to dict
-        return {
-            "actions": [
-                {
-                    "action": a.action,
-                    "element": a.element,
-                    "detail": a.detail,
-                    "source_path": str(a.source_path) if a.source_path else None,
-                    "dest_path": str(a.dest_path) if a.dest_path else None,
-                    "renamed_from": str(a.renamed_from) if a.renamed_from else None,
-                    "renamed_to": str(a.renamed_to) if a.renamed_to else None,
-                }
-                for a in report.actions
-            ],
-            "warnings": report.warnings,
-            "errors": report.errors,
-        }
-
-    @staticmethod
-    # TEMP SHIM for PR; TODO relocate to Project.materialize_pseudo_file()
-    def materialize_pseudo_file(
-        project_root: Path | str,
-        element: str,
-        sha256: str,
-        preferred_basename: str | None = None,
-    ) -> dict[str, Any]:
-        """
-        Materialize a pseudo file from sha256 selection to actual file path.
-
-        Args:
-            project_root: Project root path
-            element: Element symbol
-            sha256: SHA256 hash of the pseudo file
-            preferred_basename: Preferred basename (for display/filename)
-
-        Returns:
-            Dict with success, file_path, source, error, needs_install, archive_asset
-        """
-        from quantumvitas.core.pseudo_options import materialize_pseudo_file as _materialize_pseudo_file
-        return _materialize_pseudo_file(
-            project_root=Path(project_root),
-            element=element,
-            sha256=sha256,
-            preferred_basename=preferred_basename,
-        )
-
-    @staticmethod
-    # TEMP SHIM for PR; TODO relocate to Project.get_pseudo_options()
-    def get_pseudo_options_for_elements(
-        project_root: Path | str,
-        elements: list[str],
-        config: dict[str, Any] | None = None,
-    ) -> dict[str, list[dict[str, Any]]]:
-        """
-        Get deduplicated pseudo options for a list of elements.
-
-        Args:
-            project_root: Project root path
-            elements: List of element symbols
-            config: Optional PseudoConfig dict (loads if not provided)
-
-        Returns:
-            Dict mapping element -> List[PseudoVariant dict] (sha256-keyed)
-        """
-        from quantumvitas.core.pseudo_options import get_pseudo_options_for_elements as _get_pseudo_options_for_elements
-        from quantumvitas.core.pseudo_config import PseudoConfig
-
-        # Convert config dict to PseudoConfig if needed
-        pseudo_config = None
-        if config is not None:
-            if isinstance(config, dict):
-                pseudo_config = PseudoConfig.from_dict(config) if hasattr(PseudoConfig, 'from_dict') else None
-            else:
-                pseudo_config = config
-
-        options = _get_pseudo_options_for_elements(
-            project_root=Path(project_root),
-            elements=elements,
-            config=pseudo_config,
-        )
-
-        # Convert PseudoVariant objects to dicts
-        result = {}
-        for element, variants in options.items():
-            result[element] = [
-                v.to_dict() if hasattr(v, 'to_dict') else v
-                for v in variants
-            ]
-        return result

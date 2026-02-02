@@ -137,7 +137,8 @@ class TestDemoSnapshotRestore:
             assert len(calculation_yamls) > 0, f"At least one calculation.yaml should exist"
 
             # Verify project can be opened by QVService
-            summary = QVService.get_project_summary(project_root)
+            svc = QVService(project_root)
+            summary = svc.project.get_summary()
             assert summary is not None, "Project summary should be available"
             assert summary["n_structures"] > 0, "Project should have at least one structure"
             assert summary["n_calculations"] > 0, "Project should have at least one calculation"

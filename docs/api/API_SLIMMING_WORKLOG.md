@@ -122,7 +122,75 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ---
 
-### Batch 7: [PENDING]
+### Batch 7: Inline get_project_summary into nested method
+- **Time**: 2026-02-02
+- **Action**: Inlined `get_project_summary` static into `project.get_summary()` nested, deleted static
+- **Deleted**: 1 static method
+- **Delta**: 237 → 236 entrypoints, static 35 → 34
+- **Tests**: 3012 passed, 18 skipped
+- **Notes**: Migrated 4 test usages to nested method
+
+---
+
+### Batch 8: Inline materialize_pseudo_file into nested method
+- **Time**: 2026-02-02
+- **Action**: Inlined `materialize_pseudo_file` static into `project.materialize_pseudo_file()` nested, deleted static
+- **Deleted**: 1 static method
+- **Delta**: 236 → 235 entrypoints, static 34 → 33
+- **Tests**: 3012 passed, 18 skipped
+
+---
+
+### Batch 9: Inline get_pseudo_options_for_elements into nested method
+- **Time**: 2026-02-02
+- **Action**: Inlined `get_pseudo_options_for_elements` static into `project.get_pseudo_options()` nested, deleted static
+- **Deleted**: 1 static method
+- **Delta**: 235 → 234 entrypoints, static 33 → 32
+- **Tests**: 3012 passed, 18 skipped
+
+---
+
+### Batch 10: Inline analyze_project_pseudo_effects into nested method
+- **Time**: 2026-02-02
+- **Action**: Inlined `analyze_project_pseudo_effects` static into `project.analyze_pseudo_effects()` nested, deleted static
+- **Deleted**: 1 static method
+- **Delta**: 234 → 233 entrypoints, static 32 → 31
+- **Tests**: 3012 passed, 18 skipped
+- **Notes**: Daemon caller already migrated in previous session
+
+---
+
+### Batch 11: Inline save_relax_final_structure into nested method
+- **Time**: 2026-02-02
+- **Action**: Inlined `save_relax_final_structure` static into `structure.save_relax_final_structure()` nested, deleted static
+- **Deleted**: 1 static method
+- **Delta**: 233 → 232 entrypoints, static 31 → 30
+- **Tests**: 3012 passed, 18 skipped
+- **Notes**: Migrated 2 test usages in test_relax_structure_save.py to nested method
+
+---
+
+### Batch 12: Inline promote_relax_structure into nested method
+- **Time**: 2026-02-02
+- **Action**: Inlined `promote_relax_structure` static into `structure.promote_relax_structure()` nested, deleted static
+- **Deleted**: 1 static method
+- **Delta**: 232 → 231 entrypoints, static 30 → 29
+- **Tests**: 3012 passed, 18 skipped
+- **Notes**: Migrated 10 test usages across 3 test files to nested method
+
+---
+
+### Batch 13: Inline configure_species_map into nested method
+- **Time**: 2026-02-02
+- **Action**: Inlined `configure_species_map` static into `calculation.configure_species_map()` nested, deleted static
+- **Deleted**: 1 static method
+- **Delta**: 231 → 230 entrypoints, static 29 → 28
+- **Tests**: 3012 passed, 18 skipped
+- **Notes**: Migrated 3 test usages across 3 test files to nested method
+
+---
+
+### Batch 14: [PENDING]
 - **Time**:
 - **Action**:
 - **Deleted**:
@@ -142,27 +210,34 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 | 4 | 2026-02-02 | Migrate compat.py to nested methods | 0 | 239 | PASS |
 | 5 | 2026-02-02 | Migrate consumer tests to DTO methods | 0 | 239 | PASS |
 | 6 | 2026-02-02 | Delete list_structures/calculations_data | 2 | 237 | PASS |
+| 7 | 2026-02-02 | Inline get_project_summary | 1 | 236 | PASS |
+| 8 | 2026-02-02 | Inline materialize_pseudo_file | 1 | 235 | PASS |
+| 9 | 2026-02-02 | Inline get_pseudo_options_for_elements | 1 | 234 | PASS |
+| 10 | 2026-02-02 | Inline analyze_project_pseudo_effects | 1 | 233 | PASS |
+| 11 | 2026-02-02 | Inline save_relax_final_structure | 1 | 232 | PASS |
+| 12 | 2026-02-02 | Inline promote_relax_structure | 1 | 231 | PASS |
+| 13 | 2026-02-02 | Inline configure_species_map | 1 | 230 | PASS |
 
 ---
 
-## Current State (After Batch 6)
+## Current State (After Batch 13)
 
 | Category | Count |
 |----------|-------|
 | utils | 88 |
-| service_static | 35 |
+| service_static | 28 |
 | service_nested | 91 |
 | errors | 10 |
 | dtos | 11 |
 | api_init | 2 |
-| **TOTAL** | **237** |
+| **TOTAL** | **230** |
 
 | Usage Status | Count |
 |--------------|-------|
-| Daemon only | 113 |
-| CLI only | 50 |
-| Both | 44 |
-| **UNUSED** | **30** |
+| Daemon only | ~110 |
+| CLI only | ~50 |
+| Both | ~44 |
+| **UNUSED** | ~30 |
 
 ---
 

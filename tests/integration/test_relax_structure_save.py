@@ -129,8 +129,8 @@ End final coordinates
 """)
     
     # First call: should create structure
-    result1 = QVService.save_relax_final_structure(
-        project_root=project_root,
+    svc = QVService(project_root)
+    result1 = svc.structure.save_relax_final_structure(
         calculation_selector="relax-test",
         step_selector=step_id,
         parent_structure_ulid=parent_structure_ulid,
@@ -157,8 +157,7 @@ End final coordinates
     assert step_data.get("produced_structure_ulid") == structure_ulid_1
     
     # Second call: should return existing structure (idempotent)
-    result2 = QVService.save_relax_final_structure(
-        project_root=project_root,
+    result2 = svc.structure.save_relax_final_structure(
         calculation_selector="relax-test",
         step_selector=step_id,
         parent_structure_ulid=parent_structure_ulid,
