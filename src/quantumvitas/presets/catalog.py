@@ -13,8 +13,6 @@ Per requirements:
 from __future__ import annotations
 
 from typing import Dict, List, Any
-
-from quantumvitas.workflow.registry import get_registry
 from collections import defaultdict
 
 from quantumvitas.presets.variants_registry import (
@@ -112,7 +110,7 @@ def get_preset_catalog() -> Dict[str, Any]:
                     ],
                     "default": str,
                     "scope": {
-                        "step_type_gen": "variant_step_types" | "variants",
+                        "type": "variant_step_types" | "variants",
                         "step_types": List[str] | None,
                         "variants": List[Dict] | None,
                     }
@@ -181,18 +179,14 @@ def get_preset_catalog() -> Dict[str, Any]:
         if dimension == "precision" and len(variants) > 1:
             # Precision has multiple variants - show variant details
             scope = {
-                "step_type_gen": "variants",
+                "type": "variants",
                 "variants": variant_details,
-                # Note: "qe_variants" is a scope identifier, not a step type
-                # step_type_spec field omitted - this is not a real step type
             }
         else:
-            # Single variant or simple case - show step types (as strings, GEN types)
+            # Single variant or simple case - show step types
             scope = {
-                "step_type_gen": "variant_step_types",
-                "step_types": sorted(all_step_types),  # List of strings (GEN types)
-                "step_type_spec": "variant_step_types",  # Scope type indicator
-                "step_type_gen": "variant_step_types",  # Scope type indicator
+                "type": "variant_step_types",
+                "step_types": sorted(all_step_types),
             }
         
         dimensions_list.append({
