@@ -54,8 +54,7 @@ def lj_project(tmp_path: Path):
     structure_ulid = struct_result.meta.ulid
     
     # Create calculation
-    calc_resolved = QVService.init_calculation(
-        project_root=project_root,
+    calc_resolved = QVService(project_root).project.init_calculation(
         name="lj_minimize",
         structure_selector=structure_ulid,
     )

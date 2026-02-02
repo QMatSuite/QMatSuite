@@ -101,8 +101,7 @@ def qe_calculation_with_relax(qe_project_with_si):
     structure_ulid = qe_project_with_si["structure_ulid"]
     
     # Create calculation
-    calc_result = QVService.init_calculation(
-        project_root=project_root,
+    calc_result = QVService(project_root).project.init_calculation(
         name="si_relax",
         structure_selector=structure_ulid,
     )

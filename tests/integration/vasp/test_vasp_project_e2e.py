@@ -56,8 +56,7 @@ def vasp_calculation(vasp_project):
     structure_ulid = vasp_project["structure_ulid"]
     
     # Create calculation
-    calc_result = QVService.init_calculation(
-        project_root=project_root,
+    calc_result = QVService(project_root).project.init_calculation(
         name="vasp_test",
         structure_selector=structure_ulid,
     )

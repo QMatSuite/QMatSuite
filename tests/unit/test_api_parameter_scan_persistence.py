@@ -34,7 +34,7 @@ def test_update_step_params_parameter_scan_merge(tmp_path):
     QVService.import_structure(project_root, source, name="Silicon")
 
     # Create calculation
-    calc_result = QVService.init_calculation(project_root, "calc001", structure_selector="silicon")
+    calc_result = QVService(project_root).project.init_calculation("calc001", structure_selector="silicon")
     calc_ulid = calc_result.ulid
 
     # Create step using domain API
@@ -108,7 +108,7 @@ def test_update_step_params_parameter_scan_preserves_array_values(tmp_path):
     QVService.import_structure(project_root, source, name="Silicon")
 
     # Create calculation
-    calc_result = QVService.init_calculation(project_root, "calc001", structure_selector="silicon")
+    calc_result = QVService(project_root).project.init_calculation("calc001", structure_selector="silicon")
     calc_ulid = calc_result.ulid
 
     # Create step using domain API
@@ -167,7 +167,7 @@ def test_update_step_params_parameter_scan_empty_preserves(tmp_path):
     QVService.import_structure(project_root, source, name="Silicon")
 
     # Create calculation
-    calc_result = QVService.init_calculation(project_root, "calc001", structure_selector="silicon")
+    calc_result = QVService(project_root).project.init_calculation("calc001", structure_selector="silicon")
     calc_ulid = calc_result.ulid
 
     # Create step using domain API
@@ -228,7 +228,7 @@ def test_update_step_params_parameter_scan_multiple_scans(tmp_path):
     QVService.import_structure(project_root, source, name="Silicon")
 
     # Create calculation
-    calc_result = QVService.init_calculation(project_root, "calc001", structure_selector="silicon")
+    calc_result = QVService(project_root).project.init_calculation("calc001", structure_selector="silicon")
     calc_ulid = calc_result.ulid
 
     # Create step using domain API

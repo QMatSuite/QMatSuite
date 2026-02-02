@@ -69,8 +69,7 @@ def inline_lj_project(tmp_path: Path, lammps_binary):
     structure_ulid = struct_result.meta.ulid
     
     # Create calculation
-    calc_result = QVService.init_calculation(
-        project_root=project_root,
+    calc_result = QVService(project_root).project.init_calculation(
         name="inline_lj",
         structure_selector=structure_ulid,
     )
@@ -263,8 +262,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     initial_sha = compute_sha256_file(potential_dst)
     
     # Create calculation
-    calc_result = QVService.init_calculation(
-        project_root=project_root,
+    calc_result = QVService(project_root).project.init_calculation(
         name="external_pot",
         structure_selector=structure_ulid,
     )

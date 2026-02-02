@@ -113,8 +113,7 @@ def minimal_calculation(tmp_project, minimal_structure):
     from quantumvitas.api import QVService
     
     # Create calculation using service API
-    calc_resolved = QVService.init_calculation(
-        project_root=tmp_project,
+    calc_resolved = QVService(tmp_project).project.init_calculation(
         name="test_calc",
         structure_selector=structure_ulid,
     )
@@ -239,16 +238,14 @@ def test_different_calcs_run_concurrently(tmp_project, minimal_structure):
     from quantumvitas.api import QVService
     
     # Create two calculations using service API
-    calc1_resolved = QVService.init_calculation(
-        project_root=tmp_project,
+    calc1_resolved = QVService(tmp_project).project.init_calculation(
         name="calc1",
         structure_selector=structure_ulid,
     )
     calc1_id = calc1_resolved.meta.ulid
     calc1_dir = calc1_resolved.absolute_path
-    
-    calc2_resolved = QVService.init_calculation(
-        project_root=tmp_project,
+
+    calc2_resolved = QVService(tmp_project).project.init_calculation(
         name="calc2",
         structure_selector=structure_ulid,
     )

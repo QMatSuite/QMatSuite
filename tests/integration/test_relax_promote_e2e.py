@@ -115,8 +115,7 @@ def promote_test_calculation_with_relax(promote_test_project):
     structure_ulid = promote_test_project["structure_ulid"]
     
     # Create calculation with molecule/pyscf settings
-    calc_result = QVService.init_calculation(
-        project_root=project_root,
+    calc_result = QVService(project_root).project.init_calculation(
         name="h2_relax",
         structure_selector=structure_ulid,
     )
@@ -255,8 +254,7 @@ class TestRelaxPromoteE2E:
         structure_ulid = promote_test_project["structure_ulid"]
         
         # Create calculation
-        calc_result = QVService.init_calculation(
-            project_root=project_root,
+        calc_result = QVService(project_root).project.init_calculation(
             name="h2_scf",
             structure_selector=structure_ulid,
         )
@@ -318,8 +316,7 @@ class TestRelaxPromoteE2E:
         )
 
         # Create a new calculation using the promoted structure
-        new_calc_result = QVService.init_calculation(
-            project_root=project_root,
+        new_calc_result = QVService(project_root).project.init_calculation(
             name="h2_relaxed_scf",
             structure_selector=promoted_result.meta.ulid,
         )

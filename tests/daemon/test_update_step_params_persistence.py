@@ -60,7 +60,7 @@ def temp_project(tmp_path: Path) -> tuple[Path, str, str]:
     QVService.import_structure(project_root, source, name="Silicon")
 
     # Create calculation and get ULID
-    calc_result = QVService.init_calculation(project_root, "calc001", structure_selector="silicon")
+    calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector="silicon")
     calc_ulid = calc_result.ulid
 
     # Create step and get ULID

@@ -36,8 +36,8 @@ class TestGetProjectSummary:
         project_root = QVService.init_project(tmp_path / "test_project")
 
         # Create some calculations
-        QVService.init_calculation(project_root, "calculation1")
-        QVService.init_calculation(project_root, "calculation2")
+        QVService(project_root).project.init_calculation("calculation1")
+        QVService(project_root).project.init_calculation("calculation2")
 
         svc = QVService(project_root)
         summary = svc.project.get_summary()

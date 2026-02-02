@@ -81,8 +81,7 @@ def orca_project(tmp_path):
     (structures_dir / "h2o.json").write_text(json.dumps(structure_data))
 
     # Create calculation for ORCA
-    calc_resolved = QVService.init_calculation(
-        project_root=project_root,
+    calc_resolved = QVService(project_root).project.init_calculation(
         name="h2o-scf",
         structure_selector=structure_ulid,
     )

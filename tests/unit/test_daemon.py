@@ -322,7 +322,7 @@ class TestQVDaemonHandlers:
         from quantumvitas.api import QVService
         
         project_root = QVService.init_project(tmp_path / "test_proj")
-        QVService.init_calculation(project_root, "wf1")
+        QVService(project_root).project.init_calculation("wf1")
         
         stdin = StringIO("")
         stdout = StringIO()
@@ -361,7 +361,7 @@ class TestQVDaemonHandlers:
         from quantumvitas.api import QVService
         
         project_root = QVService.init_project(tmp_path / "test_proj")
-        QVService.init_calculation(project_root, "test-wf")
+        QVService(project_root).project.init_calculation("test-wf")
         
         stdin = StringIO("")
         stdout = StringIO()
@@ -387,7 +387,7 @@ class TestQVDaemonHandlers:
         from quantumvitas.api import QVService
         
         project_root = QVService.init_project(tmp_path / "test_proj")
-        QVService.init_calculation(project_root, "test-wf")
+        QVService(project_root).project.init_calculation("test-wf")
         
         stdin = StringIO("")
         stdout = StringIO()

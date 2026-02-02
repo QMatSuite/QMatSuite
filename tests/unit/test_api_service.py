@@ -196,7 +196,7 @@ class TestQVServiceCalculation:
 
     def test_init_calculation(self, project):
         """Create a new calculation."""
-        result = QVService.init_calculation(project, "My Calculation")
+        result = QVService(project).project.init_calculation("My Calculation")
 
         assert result.name == "My Calculation"
         assert result.slug == "my-calculation"
@@ -216,7 +216,7 @@ class TestQVServiceCalculation:
         }""")
         QVService.import_structure(project, source, name="Silicon")
 
-        result = QVService.init_calculation(project, "SCF Calc", structure_selector="silicon")
+        result = QVService(project).project.init_calculation("SCF Calc", structure_selector="silicon")
 
         wf_yaml = yaml.safe_load((result.absolute_path / "calculation.yaml").read_text())
         # With ID-only references, calculation.yaml stores structure_ulid (ULID), not structure selector
@@ -226,8 +226,8 @@ class TestQVServiceCalculation:
 
     def test_list_calculations(self, project):
         """List calculations using domain API."""
-        QVService.init_calculation(project, "Calculation 1")
-        QVService.init_calculation(project, "Calculation 2")
+        QVService(project).project.init_calculation("Calculation 1")
+        QVService(project).project.init_calculation("Calculation 2")
 
         svc = get_service(project)
         results = svc.calculation.list()
@@ -238,7 +238,7 @@ class TestQVServiceCalculation:
 
     def test_get_calculation(self, project):
         """Get calculation by selector using domain API."""
-        QVService.init_calculation(project, "My Calculation")
+        QVService(project).project.init_calculation("My Calculation")
 
         svc = get_service(project)
         result = svc.calculation.get("my-calculation")
@@ -265,7 +265,7 @@ class TestQVServiceCalculation:
         struct2 = QVService.import_structure(project, source2, name="Silicon2")
 
         # Create calculation with first structure
-        calc = QVService.init_calculation(project, "Test Calc", structure_selector=struct1.meta.ulid)
+        calc = QVService(project).project.init_calculation("Test Calc", structure_selector=struct1.meta.ulid)
 
         # Change calculation structure via domain accessor
         svc = get_service(project)
@@ -278,7 +278,7 @@ class TestQVServiceCalculation:
     def test_delete_calculation(self, project):
         """Delete a calculation using domain API."""
         # Create calculation and get its ULID
-        calc_resource = QVService.init_calculation(project, "To Delete")
+        calc_resource = QVService(project).project.init_calculation("To Delete")
         calculation_ulid = calc_resource.ulid
 
         # Delete using domain API
@@ -310,7 +310,7 @@ class TestQVServiceStep:
         }""")
         QVService.import_structure(project_dir, source, name="Silicon")
 
-        QVService.init_calculation(project_dir, "Test Calculation", structure_selector="silicon")
+        QVService(project_dir).project.init_calculation("Test Calculation", structure_selector="silicon")
 
         return project_dir
 

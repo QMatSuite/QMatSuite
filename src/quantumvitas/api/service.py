@@ -6928,25 +6928,6 @@ class QVService:
         return _get_workflow_service()
     
     @staticmethod
-    def init_calculation(
-        project_root: Path | str,
-        name: str,
-        structure_selector: str | None = None,
-        template: str | None = None,
-        *,
-        index: Any = None,
-        config: dict | None = None,
-    ) -> Any:
-        """Create a new calculation. Delegates to project.init_calculation()."""
-        return QVService(project_root).project.init_calculation(
-            name=name,
-            structure_selector=structure_selector,
-            template=template,
-            index=index,
-            config=config,
-        )
-
-    @staticmethod
     def init_step(
         project_root: Path | str,
         calculation_selector: str,
