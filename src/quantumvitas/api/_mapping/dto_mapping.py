@@ -377,10 +377,11 @@ def calculation_to_dto(
         if hasattr(first_step, 'engine'):
             engine = first_step.engine
         elif hasattr(first_step, 'step_type_spec'):
-            # Extract engine from step_type_spec (e.g., "qe_scf" -> "qe")
+            # Extract engine from step_type_spec using canonical function
+            from quantumvitas.workflow.step_type_convert import prefix_from, is_spec
             step_type_spec = first_step.step_type_spec
-            if step_type_spec and "_" in step_type_spec:
-                engine = step_type_spec.split("_")[0]
+            if step_type_spec and is_spec(step_type_spec):
+                engine = prefix_from(step_type_spec)
     
     # Derive status
     status = _derive_calculation_status(calc_obj)

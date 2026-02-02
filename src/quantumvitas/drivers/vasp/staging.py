@@ -44,7 +44,8 @@ def is_scf_step(step: "Step", registry=None) -> bool:
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
 
-    from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+    from quantumvitas.workflow.step_type_convert import is_spec
+    from quantumvitas.execution.step_type_unpack import unpack_step_type, unpack_step_type_safe
 
     step_type_spec = getattr(step, 'step_type_spec', None)
     if not step_type_spec:
@@ -53,23 +54,19 @@ def is_scf_step(step: "Step", registry=None) -> bool:
     step_type_str = str(step_type_spec)
 
     # Per constitution, registry.get() only accepts GEN types
-    # Convert SPEC to GEN and use get_for_engine for lookup
+    # Convert SPEC to GEN via centralized choke point (Constitution §4.3)
     if is_spec(step_type_str):
-        parts = step_type_str.split("_", 1)
-        if len(parts) == 2:
-            engine_prefix, gen_type = parts
-            spec = registry.get_for_engine(gen_type, engine_prefix)
-        else:
-            spec = None
+        unpacked = unpack_step_type(step_type_str)
+        spec = registry.get_for_engine(unpacked.gen, unpacked.prefix)
     else:
         spec = registry.get(step_type_str)
 
     if spec:
         return spec.step_type_gen == "scf"
 
-    # Fallback: extract GEN from SPEC and compare directly
-    gen_type = gen_from(step_type_str) if is_spec(step_type_str) else step_type_str
-    return gen_type == "scf"
+    # Fallback: use unpack_step_type_safe for either SPEC or GEN
+    unpacked = unpack_step_type_safe(step_type_str)
+    return unpacked.gen == "scf"
 
 
 def stage_chgcar(
