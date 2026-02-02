@@ -37,8 +37,7 @@ from quantumvitas.api.utils import (
     entry_display_name,
     entry_matches,
     extract_alat_bohr,
-    extract_calculation_selector_from_entry,
-    extract_step_selector_from_entry,
+    extract_selector_from_entry,
     find_path_context_ref,
     find_project_root,
     move_to_trash,
@@ -265,9 +264,9 @@ def _find_entry_by_structure_ulid(config: dict, structure_ulid: str) -> dict:
     Raises:
         ValueError: If entry not found
     """
-    from quantumvitas.api.utils import extract_structure_selector_from_entry
+    from quantumvitas.api.utils import extract_selector_from_entry
     for entry in config.get("structures", []):
-        entry_id = extract_structure_selector_from_entry(entry)
+        entry_id = extract_selector_from_entry(entry, "structure")
         if entry_id == structure_ulid:
             return entry
     raise ValueError(f"Structure entry with id '{structure_ulid}' not found in config")
@@ -287,9 +286,9 @@ def _find_entry_by_calc_ulid(config: dict, calc_ulid: str) -> dict:
     Raises:
         ValueError: If entry not found
     """
-    from quantumvitas.api.utils import extract_calculation_selector_from_entry
+    from quantumvitas.api.utils import extract_selector_from_entry
     for entry in config.get("calculations", []):
-        entry_id = extract_calculation_selector_from_entry(entry)
+        entry_id = extract_selector_from_entry(entry, "calculation")
         if entry_id == calc_ulid:
             return entry
     raise ValueError(f"Calculation entry with id '{calc_ulid}' not found in config")
@@ -305,8 +304,8 @@ def _get_calc_ulid_from_entry(entry: dict) -> str:
     Returns:
         Calculation ULID
     """
-    from quantumvitas.api.utils import extract_calculation_selector_from_entry
-    return extract_calculation_selector_from_entry(entry)
+    from quantumvitas.api.utils import extract_selector_from_entry
+    return extract_selector_from_entry(entry, "calculation")
 
 
 # Removed: _get_calculation_dir_from_entry - use ref.path from CalculationRefDTO instead
@@ -1167,13 +1166,13 @@ def init_step_command(
         calculation_data = yaml.safe_load(calculation_yaml.read_text()) or {}
         calculation_steps = calculation_data.setdefault("steps", [])
         existing_step_ulids = [
-            extract_step_selector_from_entry(step) 
+            extract_selector_from_entry(step, "step") 
             for step in calculation_steps 
-            if extract_step_selector_from_entry(step)
+            if extract_selector_from_entry(step, "step")
         ]
         
         # Get parent calculation id and structure
-        parent_calculation_id = extract_calculation_selector_from_entry(calculation_entry)
+        parent_calculation_id = extract_selector_from_entry(calculation_entry)
         if not parent_calculation_id:
             # Fallback to calculation.yaml meta.ulid
             parent_calculation_id = calculation_data.get("meta", {}).get("ulid") or calculation_data.get("ulid")
@@ -1188,9 +1187,9 @@ def init_step_command(
         # Set calculation_steps and existing_step_ulids for step creation
         calculation_steps = calculation_data.setdefault("steps", [])
         existing_step_ulids = [
-            extract_step_selector_from_entry(step) 
+            extract_selector_from_entry(step, "step") 
             for step in calculation_steps 
-            if extract_step_selector_from_entry(step)
+            if extract_selector_from_entry(step, "step")
         ]
     else:
         calculation_structure_ulid = None
@@ -2204,7 +2203,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
         step_display_name = "(unnamed)"
         
         # New DAG model: step_ulid (ULID) is the canonical reference
-        step_ulid_ulid = extract_step_selector_from_entry(step_entry)
+        step_ulid_ulid = extract_selector_from_entry(step_entry, "step")
         
         # Legacy: step_file (for backwards compatibility)
         legacy_step_file = step_entry.get("step_file")
@@ -2257,7 +2256,7 @@ def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Option
             # Have ULID but couldn't resolve - mark as missing
             step_display_name = f"(missing: {step_ulid_ulid[:8]}...)"
         else:
-            # Legacy: try old id field (already handled by extract_step_selector_from_entry)
+            # Legacy: try old id field (already handled by extract_selector_from_entry)
             # If we got here, step_ulid_ulid is None, so no valid selector found
             step_display_name = "(invalid entry)"
         
@@ -2501,7 +2500,7 @@ def rename_step_command(
     # Find step by matching selector (ID-only model uses step_ulid)
     target_step = None
     for step in steps:
-        step_selector = extract_step_selector_from_entry(step)
+        step_selector = extract_selector_from_entry(step, "step")
         if step_selector == step_ulid:
             target_step = step
             break
@@ -2513,7 +2512,7 @@ def rename_step_command(
 
     if new_id:
         # Check for duplicate step_ulid
-        if any(extract_step_selector_from_entry(step) == new_id for step in steps if step is not target_step):
+        if any(extract_selector_from_entry(step, "step") == new_id for step in steps if step is not target_step):
             raise typer.BadParameter(
                 f"Step id '{new_id}' already exists in calculation '{calculation_entry.get('name')}'."
             )
@@ -2898,7 +2897,7 @@ def delete_step_command(
                 wf_entry = None
             if wf_entry:
                 # Use centralized selector extraction - single selector, single resolution pattern
-                calculation_selector = extract_calculation_selector_from_entry(wf_entry)
+                calculation_selector = extract_selector_from_entry(wf_entry)
                 if not calculation_selector:
                     raise typer.BadParameter(
                         "Calculation entry found but no valid identifier. "
@@ -2942,7 +2941,7 @@ def delete_step_command(
     target_step = None
     for step in steps:
         # Use centralized selector extraction to get step_ulid
-        step_ulid = extract_step_selector_from_entry(step)
+        step_ulid = extract_selector_from_entry(step, "step")
         if step_ulid == step_ulid_to_find:
             target_step = step
             break
@@ -3414,7 +3413,7 @@ def configure_calculation_command(
                 calculation_dir = calc_resolved.absolute_path
         except ConfigError:
             # Entry might not have path yet - try to resolve via registry
-            calculation_id = extract_calculation_selector_from_entry(calculation_entry)
+            calculation_id = extract_selector_from_entry(calculation_entry)
             if calculation_id:
                 resolved = svc.calculation.require_ref(calculation_id)
                 calculation_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "calculation.yaml" else resolved.absolute_path
@@ -3474,14 +3473,14 @@ def configure_calculation_command(
         
         for step_entry in calculation_data.get("steps", []):
             # With ID-only model, resolve step file via step_ulid
-            step_ulid = extract_step_selector_from_entry(step_entry)
+            step_ulid = extract_selector_from_entry(step_entry, "step")
             if not step_ulid:
                 continue
             
             try:
                 # Resolve step file path via step_ulid
                 # Use centralized selector extraction for calculation selector
-                calculation_selector = extract_calculation_selector_from_entry(calculation_entry)
+                calculation_selector = extract_selector_from_entry(calculation_entry)
                 if not calculation_selector:
                     continue  # Skip if no valid selector
                 step_resolved = svc.calculation.require_step_ref(calculation_selector, step_ulid, config=config)
@@ -3538,7 +3537,7 @@ def configure_calculation_command(
                     index=index,
                     config=config,
                 )
-                step_ulid = extract_step_selector_from_entry(step_entry)
+                step_ulid = extract_selector_from_entry(step_entry, "step")
                 if step_ulid and step_ulid not in seen_ulids:
                     reordered_entries.append(step_entry)
                     seen_ulids.add(step_ulid)
@@ -3552,9 +3551,9 @@ def configure_calculation_command(
         
         # Check if all current steps are accounted for
         current_ulids = {
-            extract_step_selector_from_entry(step) 
+            extract_selector_from_entry(step, "step") 
             for step in current_steps 
-            if extract_step_selector_from_entry(step)
+            if extract_selector_from_entry(step, "step")
         }
         if seen_ulids != current_ulids:
             missing_ulids = current_ulids - seen_ulids
@@ -3644,7 +3643,7 @@ def configure_species_command(
                 "No calculation specified and not inside a calculation directory. "
                 "Specify calculation id/name/slug/path or cd into a calculation folder."
             )
-        calculation = extract_calculation_selector_from_entry(calculation_entry)
+        calculation = extract_selector_from_entry(calculation_entry)
     
     # Parse --set entries into triples
     set_entries = None
@@ -4002,7 +4001,7 @@ def run_calculation_command(
                 "Specify calculation name/slug/path or cd into a calculation folder."
             )
         # Use centralized selector extraction - single selector, single resolution pattern
-        calc_selector = extract_calculation_selector_from_entry(wf_entry)
+        calc_selector = extract_selector_from_entry(wf_entry)
         if not calc_selector:
             raise typer.BadParameter(
                 "Calculation entry found but no valid identifier. "

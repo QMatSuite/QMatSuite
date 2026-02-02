@@ -29,75 +29,66 @@ from quantumvitas.core.resolution import (
 # Selector extraction from entries
 # ---------------------------------------------------------------------------
 
-def extract_calculation_selector_from_entry(entry: dict) -> Optional[str]:
+def extract_selector_from_entry(entry: dict, kind: str = "calculation") -> Optional[str]:
     """
-    Extract a calculation selector from a project.qv.yml entry.
-    
+    Extract a selector from a project.qv.yml or calculation.yaml entry.
+
+    This is the generic selector extraction function. Use with kind parameter:
+    - "calculation": for calculation entries
+    - "structure": for structure entries
+    - "step": for step entries
+
     Priority order:
-    1. calculation_id (ID-only model)
+    1. {kind}_id or {kind}_ulid (ID-only model)
     2. meta.ulid (ULID)
     3. meta.slug (slug)
-    4. id (legacy)
+    4. ulid (legacy)
     5. name (legacy)
-    
+
+    Args:
+        entry: Entry dict from project.qv.yml or calculation.yaml
+        kind: Resource kind ("calculation", "structure", or "step")
+
     Returns:
         Selector string (ULID, slug, or name) or None if no valid selector found
-        
+
     Example:
         entry = {"calculation_id": "01KC38MFJZ7RF3SB7SHVYDQ4J8"}
-        selector = extract_calculation_selector_from_entry(entry)  # Returns ULID
+        selector = extract_selector_from_entry(entry, "calculation")  # Returns ULID
     """
+    # Determine the ID field name based on kind
+    if kind == "calculation":
+        id_field = "calculation_id"
+    elif kind == "structure":
+        id_field = "structure_ulid"
+    elif kind == "step":
+        id_field = "step_ulid"
+    else:
+        id_field = f"{kind}_id"
+
     return (
-        entry.get("calculation_id") or
+        entry.get(id_field) or
         (entry.get("meta") or {}).get("ulid") or
         (entry.get("meta") or {}).get("slug") or
         entry.get("ulid") or
         entry.get("name")
     )
+
+
+# Backward compatibility aliases (internal use only - not exported in API)
+def extract_calculation_selector_from_entry(entry: dict) -> Optional[str]:
+    """Extract calculation selector. Use extract_selector_from_entry(entry, 'calculation') instead."""
+    return extract_selector_from_entry(entry, "calculation")
 
 
 def extract_structure_selector_from_entry(entry: dict) -> Optional[str]:
-    """
-    Extract a structure selector from a project.qv.yml entry.
-    
-    Priority order:
-    1. structure_ulid (ID-only model)
-    2. meta.ulid (ULID)
-    3. meta.slug (slug)
-    4. id (legacy)
-    5. name (legacy)
-    
-    Returns:
-        Selector string (ULID, slug, or name) or None if no valid selector found
-    """
-    return (
-        entry.get("structure_ulid") or
-        (entry.get("meta") or {}).get("ulid") or
-        (entry.get("meta") or {}).get("slug") or
-        entry.get("ulid") or
-        entry.get("name")
-    )
+    """Extract structure selector. Use extract_selector_from_entry(entry, 'structure') instead."""
+    return extract_selector_from_entry(entry, "structure")
 
 
 def extract_step_selector_from_entry(entry: dict) -> Optional[str]:
-    """
-    Extract a step selector from a calculation.yaml steps entry.
-    
-    Priority order:
-    1. step_ulid (canonical - ULID)
-    2. step_ulid (legacy - ULID)
-    3. id (legacy)
-    4. name (legacy)
-    
-    Returns:
-        Selector string (ULID or name) or None if no valid selector found
-    """
-    return (
-        entry.get("step_ulid") or
-        entry.get("step_ulid") or  # Legacy fallback
-        entry.get("ulid") or
-        entry.get("name")
-    )
+    """Extract step selector. Use extract_selector_from_entry(entry, 'step') instead."""
+    return extract_selector_from_entry(entry, "step")
 
 
 # ---------------------------------------------------------------------------

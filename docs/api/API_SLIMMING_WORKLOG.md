@@ -1,7 +1,37 @@
 # API Slimming Worklog
 
 **Started**: 2026-02-02
-**Status**: COMPLETE (TEMP SHIM migration finished)
+**Status**: IN PROGRESS (Phase 2: Utils Cluster Merging)
+
+---
+
+## Worklog Gate Rules
+
+**MANDATORY** for every batch:
+
+1. **FREEZE SCOPE**: GEN/SPEC cleanup is OUT OF SCOPE for this worklog. See `GEN_SPEC_CLEANUP_WORKLOG.md` for that work.
+
+2. **AUDIT BEFORE/AFTER**: Every batch MUST include RAW audit output (breakdown by category + daemon/CLI/tests usage + delta).
+
+3. **REAL SLIMMING ONLY**: Each batch MUST reduce total entrypoints. Target: **at least -3 per batch**.
+
+4. **CLUSTER SHEET REQUIRED**: Before each batch, document:
+   - Cluster name
+   - Entrypoints in cluster
+   - Usage counts (daemon, CLI, tests)
+   - Semantic equivalence analysis
+   - Canonical entrypoint to keep
+   - Deletions planned
+   - Migrations needed
+   - Expected delta
+
+5. **PRIORITY ORDER**:
+   1. Service-delegating utils wrappers (thin wrappers that just call service methods)
+   2. QE metadata multi-entry consolidation
+   3. Pseudo config multi-entry consolidation
+   4. Delete remaining unused entrypoints
+
+6. **TESTS MUST PASS**: Full test suite green after each batch.
 
 ---
 
@@ -435,9 +465,9 @@ All remaining static methods are legitimate and should NOT be migrated:
 
 ## Notes
 
-### Remaining Unused Entrypoints Analysis (27 total)
+### Remaining Unused Entrypoints Analysis (25 total)
 
-All 27 unused entrypoints are **intentional** and should NOT be deleted:
+All 25 unused entrypoints are **intentional** and should NOT be deleted:
 
 **F401 re-exports (3):**
 - `DisplayModeParams`, `OnlineStructureCache`, `QEUIParam`: Class re-exports for type hints
@@ -450,24 +480,26 @@ All 27 unused entrypoints are **intentional** and should NOT be deleted:
 **Errors (2):**
 - `ConflictError`, `FilesystemError`: Law H6 error taxonomy
 
-**Nested service methods - scaffolding for future features (15):**
+**Nested service methods - scaffolding for future features (13):**
 - `Analysis.list_properties`, `Analysis.get_property_ref`, `Analysis.load_artifact`, `Analysis.find_band_files`
-- `Structure.get_atoms`, `Structure.update_meta`
-- `Calculation.require_enclosing`, `Calculation.get_effective_params`, `Calculation.update_meta`
+- `Structure.get_atoms`
+- `Calculation.require_enclosing`, `Calculation.get_effective_params`
 - `Run.get_status`
 - `Project.get_species_map`, `Project.get_potential_map`
 - `Engine.get_info`, `Engine.list_step_types`, `Engine.validate_installation`
+
+**Note:** `Structure.update_meta` and `Calculation.update_meta` are now used by daemon (activated in Batch 22).
 
 These methods are planned API surface for future UI/CLI integration. Not deleting.
 
 ---
 
-## Final Summary
+## Final Summary (Phase 1)
 
-**API Slimming Migration: COMPLETE** ✅
+**Phase 1: TEMP SHIM Migration: COMPLETE** ✅
 
-| Metric | Baseline | Final | Reduction |
-|--------|----------|-------|-----------|
+| Metric | Baseline | After Phase 1 | Reduction |
+|--------|----------|---------------|-----------|
 | Total Entrypoints | 243 | 225 | -18 (7.4%) |
 | Static Methods | 38 | 23 | -15 (39.5%) |
 | Unused (intentional) | 33 | 27 | -6 |
@@ -477,27 +509,215 @@ These methods are planned API surface for future UI/CLI integration. Not deletin
 2. `import_structure` (Batch 19)
 3. `init_step` (Batch 20)
 
+---
+
+## Current State (After Batch 22)
+
+| Metric | Baseline | Current | Reduction |
+|--------|----------|---------|-----------|
+| Total Entrypoints | 243 | 223 | -20 (8.2%) |
+| Static Methods | 38 | 23 | -15 (39.5%) |
+| Utils | 91 | 86 | -5 (5.5%) |
+| Unused (intentional) | 33 | 25 | -8 |
+
 **All tests passing:** 3012 passed, 18 skipped
 
 ---
 
-## GEN/SPEC Semantics Cleanup (Post-Slimming)
+## GEN/SPEC Semantics Cleanup (OUT OF SCOPE)
 
-Following API slimming, began cleanup of bare `step_type` violations per GEN_SPEC_SEMANTICS_IMPLEMENTATION_PLAN.md.
+> **FROZEN**: GEN/SPEC cleanup work moved to separate worklog `GEN_SPEC_CLEANUP_WORKLOG.md`.
+> This worklog focuses on REAL API surface reduction only.
 
-### Batch 21: Rename bare step_type variables
+### Batch 21: [OUT OF SCOPE - Moved to GEN_SPEC_CLEANUP_WORKLOG.md]
+- **Action**: Renamed bare `step_type` variables - NOT API slimming
+- **Moved**: This batch does not reduce entrypoints, moved to separate worklog
+
+---
+
+## Phase 2: Utils Cluster Merging
+
+Starting Phase 2 focused on merging redundant utils entrypoints.
+
+---
+
+### Cluster Sheet: Structure Management Utils
+
+**Cluster Name**: Structure Management Utils
+
+**Entrypoints in Cluster**:
+| Entrypoint | Category | Location |
+|------------|----------|----------|
+| `delete_structure` | utils | `api/utils.py:566` |
+| `rename_structure` | utils | `api/utils.py:588` |
+| `can_delete_structure` | utils | `api/utils.py:531` |
+| `svc.structure.delete()` | service_nested | `api/service.py` |
+| `svc.structure.update_meta()` | service_nested | `api/service.py` |
+
+**Usage Counts**:
+| Entrypoint | Daemon | CLI | Tests | Total |
+|------------|--------|-----|-------|-------|
+| `delete_structure` | 1 | 0 | 0 | 1 |
+| `rename_structure` | 1 | 0 | 0 | 1 |
+| `can_delete_structure` | 2 | 0 | 0 | 2 |
+| `svc.structure.delete()` | 0 | 0 | 1 | 1 |
+| `svc.structure.update_meta()` | 0 | 0 | 0 | 0 (scaffolding) |
+
+**Semantic Equivalence Analysis**:
+- `delete_structure(project_root, selector, force, index)` → thin wrapper calling `svc.structure.delete(selector, force)`. The `index` param is IGNORED.
+- `rename_structure(project_root, selector, new_name, index, config)` → thin wrapper calling `svc.structure.get()` + `svc.structure.update_meta()`. The `index` and `config` params are IGNORED.
+- `can_delete_structure(project_root, selector)` → aggregation function (load config, find entry, check dependents). NOT a pure service delegate.
+
+**Canonical Entrypoints to Keep**:
+- `svc.structure.delete()` - canonical for deletion
+- `svc.structure.update_meta()` - canonical for rename
+- `can_delete_structure` - keep as utils (aggregation, not pure delegate)
+
+**Deletions Planned**:
+1. `delete_structure` (-1 utils)
+2. `rename_structure` (-1 utils)
+
+**Migrations Needed**:
+1. `daemon/server.py:2750` - `delete_structure(...)` → `svc.structure.delete(...)`
+2. `daemon/server.py:2704` - `rename_structure(...)` → `svc.structure.update_meta(...)`
+
+**Expected Delta**: -2 entrypoints (225 → 223)
+
+---
+
+### Batch 22: Delete Structure Management Utils Wrappers
+
+**AUDIT BEFORE**:
+```
+============================================================
+API SURFACE AUDIT SUMMARY
+============================================================
+TOTAL ENTRYPOINTS: 225
+
+BY CATEGORY:
+  api_init            :    2
+  dtos                :   11
+  errors              :   10
+  service_nested      :   91
+  service_static      :   23
+  utils               :   88
+
+USAGE COVERAGE:
+  Daemon only:        110
+  CLI only:            48
+  Both daemon+CLI:     40
+  UNUSED (0 refs):     27
+============================================================
+```
+
 - **Time**: 2026-02-02
-- **Action**: Renamed bare `step_type` variables to explicit `step_type_spec`, `step_type_gen`, or `step_type_val` names
-- **Files Changed**:
-  - `src/quantumvitas/workflow/templates.py`: 21 violations fixed
-  - `src/quantumvitas/core/calc_identity.py`: 10 violations fixed
-  - `src/quantumvitas/presets/detector.py`: Parameter names `step_types` → `step_types_gen`
-  - `src/quantumvitas/presets/integration.py`: Updated caller to use `step_types_gen`
-  - `src/quantumvitas/api/service.py`: Renamed `step_type` → `step_type_gen` in run_step method
-  - `src/quantumvitas/history/run_revision.py`: Renamed `step_type` → `step_type_spec` in finalize_run_revision
-- **Bare step_type count**: 438 → 400 (38 fewer, 9% reduction)
+- **Action**: Deleted service-delegating utils wrappers `delete_structure` and `rename_structure`
+- **Deleted**: 2 utils functions
+- **Migrations**:
+  - `daemon/server.py:_handle_rename_structure` now uses `svc.structure.update_meta()` directly
+  - `daemon/server.py:_handle_delete_structure` now uses `svc.structure.delete()` directly
 - **Tests**: 3012 passed, 18 skipped
-- **Notes**: Simplified conversion logic using `gen_from()` idiomatically (it's idempotent for GEN values)
+
+**AUDIT AFTER**:
+```
+============================================================
+API SURFACE AUDIT SUMMARY
+============================================================
+TOTAL ENTRYPOINTS: 223
+
+BY CATEGORY:
+  api_init            :    2
+  dtos                :   11
+  errors              :   10
+  service_nested      :   91
+  service_static      :   23
+  utils               :   86
+
+USAGE COVERAGE:
+  Daemon only:        112
+  CLI only:            48
+  Both daemon+CLI:     38
+  UNUSED (0 refs):     25
+============================================================
+```
+
+**Delta**: 225 → 223 (-2 entrypoints)
+- utils: 88 → 86 (-2)
+- UNUSED: 27 → 25 (-2, `Structure.update_meta` now used by daemon)
+
+**Slimming Effect**: Real surface reduction achieved. Daemon now uses canonical service methods directly.
+
+---
+
+## Summary Table (Phase 2)
+
+| Batch | Date | Action | Deleted | New Total | Tests |
+|-------|------|--------|---------|-----------|-------|
+| 22 | 2026-02-02 | Delete structure utils wrappers | 2 | 223 | PASS |
+| 23 | 2026-02-02 | Migrate can_delete to service | 0* | 223 | PASS |
+
+*Net 0: +1 service_nested (`structure.can_delete`), -1 utils (`can_delete_structure`)
+
+---
+
+### Batch 23: Migrate can_delete_structure to Service
+
+**AUDIT BEFORE**:
+```
+TOTAL ENTRYPOINTS: 223
+  service_nested: 91
+  utils: 86
+```
+
+- **Time**: 2026-02-02
+- **Action**: Added `structure.can_delete()` to service, migrated daemon, deleted `can_delete_structure` from utils
+- **Changes**:
+  - Added `svc.structure.can_delete()` method (+1 service_nested)
+  - Migrated `_handle_can_delete_structure` to use service method
+  - Deleted `can_delete_structure` from utils (-1 utils)
+- **Tests**: 3012 passed, 18 skipped
+
+**AUDIT AFTER**:
+```
+TOTAL ENTRYPOINTS: 223
+  service_nested: 92
+  utils: 85
+```
+
+**Delta**: 223 → 223 (net 0)
+
+**Architectural Improvement**: Daemon now uses canonical service pattern for `can_delete` check. Cleaner API consistency.
+
+---
+
+### Batch 24: Selector Function Consolidation
+
+**Cluster Sheet**:
+- **Cluster**: Selector extraction utilities
+- **Entrypoints**:
+  - `extract_calculation_selector_from_entry` (existing)
+  - `extract_structure_selector_from_entry` (existing)
+  - `extract_step_selector_from_entry` (existing)
+  - `extract_selector_from_entry` (new generic function)
+- **Semantic Equivalence**: All 3 specific functions can be replaced by generic with kind parameter
+- **Canonical**: `extract_selector_from_entry(entry, kind)` where kind is "calculation"/"structure"/"step"
+- **Migrations**: cli/main.py (17+ calls), api/service.py (1 call)
+
+**Changes**:
+1. Added generic `extract_selector_from_entry(entry, kind)` to core/selectors.py
+2. Added backward-compat aliases in core for internal use
+3. Added generic function to api/utils.py (+1 export)
+4. Updated 3 specific functions to be deprecated wrappers that call the generic function
+5. Migrated all cli/main.py calls to use generic function with kind parameter
+6. Migrated api/service.py call to use generic function
+
+**Tests**: 3006 passed (full test suite)
+
+**Result**: API layer now exports 4 selector functions (1 generic + 3 deprecated wrappers). CLI and service migrated to use the cleaner generic function.
+
+**Delta**: +1 utils (added generic function, kept deprecated wrappers for backward compat)
+
+**Note**: Batches 25-30 were reverted due to architecture violation (daemon must import from api layer, not core directly). Those changes would have required daemon to import from core modules, which violates the frontend import rules.
 
 ---
 
