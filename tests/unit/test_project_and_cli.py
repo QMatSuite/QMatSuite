@@ -8,7 +8,8 @@ from pymatgen.core import Lattice, Structure
 from typer.testing import CliRunner
 
 from quantumvitas.cli.main import app, _parse_override_args
-from quantumvitas.api.utils import slugify, generate_resource_id, meta_from_name, read_structure
+from quantumvitas.api.utils import slugify, meta_from_name, read_structure
+from quantumvitas.core.resources import generate_resource_id
 from quantumvitas.calculation.input_runner import PreparedInputStep
 from quantumvitas.calculation.geometry import read_geometry_from_input, compare_geometries
 # StepResult removed - use API types if needed

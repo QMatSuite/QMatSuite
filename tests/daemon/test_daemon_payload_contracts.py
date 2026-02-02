@@ -30,7 +30,8 @@ def temp_project(tmp_path: Path):
     
     # Create a structure
     from pymatgen.core import Structure, Lattice
-    from quantumvitas.api.utils import generate_resource_id, meta_from_name
+    from quantumvitas.api.utils import meta_from_name
+    from quantumvitas.core.resources import generate_resource_id
     import yaml
     
     structures_dir = project_root / "structures"

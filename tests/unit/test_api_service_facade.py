@@ -224,7 +224,6 @@ class TestAPIUtils:
         """api.utils functions are importable."""
         from quantumvitas.api.utils import (
             slugify,
-            generate_resource_id,
             ensure_relative_path,
             read_structure,
             write_structure,
@@ -234,7 +233,6 @@ class TestAPIUtils:
 
         # Basic smoke tests
         assert callable(slugify)
-        assert callable(generate_resource_id)
         assert callable(ensure_relative_path)
         assert callable(read_structure)
         assert callable(write_structure)
@@ -248,18 +246,6 @@ class TestAPIUtils:
         assert slugify("Test Name") == "test-name"
         assert slugify("UPPER_CASE") == "upper_case"  # underscores preserved
         assert slugify("with  spaces") == "with-spaces"
-
-    def test_generate_resource_id(self):
-        """generate_resource_id generates unique IDs."""
-        from quantumvitas.api.utils import generate_resource_id
-
-        id1 = generate_resource_id()
-        id2 = generate_resource_id()
-
-        assert isinstance(id1, str)
-        assert isinstance(id2, str)
-        assert len(id1) == 26  # ULID length
-        assert id1 != id2  # Should be unique
 
     def test_is_ulid_like(self):
         """is_ulid_like correctly identifies ULID strings."""

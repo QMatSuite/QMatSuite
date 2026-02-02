@@ -130,17 +130,6 @@ def write_structure(
     return _write_structure(structure, filepath, format=format, metadata=metadata)
 
 
-def generate_resource_id() -> str:
-    """
-    Generate a unique resource ID (ULID).
-    
-    Returns:
-        ULID string
-    """
-    from quantumvitas.core.resources import generate_resource_id as _generate_resource_id
-    return _generate_resource_id()
-
-
 def generate_unique_name_and_slug(
     kind: str,
     preferred_name: str,
@@ -855,19 +844,6 @@ def load_manifest_archives() -> list[dict]:
 # Visualization utilities (re-exports from analysis layer)
 # =============================================================================
 
-def get_display_mode_params_class():
-    """
-    Get the DisplayModeParams class for constructing display mode parameters.
-
-    This is the proper way for frontends to access the DisplayModeParams type.
-
-    Returns:
-        DisplayModeParams class
-    """
-    from quantumvitas.analysis.structure_viz import DisplayModeParams
-    return DisplayModeParams
-
-
 # Re-export DisplayModeParams directly for type hints and direct construction
 from quantumvitas.analysis.structure_viz import DisplayModeParams  # noqa: E402, F401
 
@@ -897,24 +873,6 @@ def build_structure_vis_payload(
         build_structure_vis_payload as _build_structure_vis_payload
     )
     return _build_structure_vis_payload(structure, params, structure_meta)
-
-
-# =============================================================================
-# Online structure cache (re-export from IO layer)
-# =============================================================================
-
-def create_online_structure_cache(cache_dir: Path):
-    """
-    Create an OnlineStructureCache instance for managing online structure search results.
-
-    Args:
-        cache_dir: Directory for cache storage (typically project_root/structures/cache/)
-
-    Returns:
-        OnlineStructureCache instance
-    """
-    from quantumvitas.io.online_cache import OnlineStructureCache
-    return OnlineStructureCache(cache_dir)
 
 
 # Re-export OnlineStructureCache class for type hints
