@@ -74,7 +74,7 @@ function StepStepper({ steps, currentStepIndex }: StepStepperProps) {
                   isPending ? 'job-step-stepper__dot--pending' :
                   'job-step-stepper__dot--pending'
                 }`}
-                title={`${step.step_type}: ${step.status}`}
+                title={`${step.step_type_gen}: ${step.status}`}
               />
               {idx < steps.length - 1 && (
                 <div
@@ -91,8 +91,8 @@ function StepStepper({ steps, currentStepIndex }: StepStepperProps) {
       </div>
       <div className="job-step-stepper__labels">
         {steps.map((step, idx) => (
-          <div key={idx} className="job-step-stepper__label" title={step.step_type}>
-            {step.step_type}
+          <div key={idx} className="job-step-stepper__label" title={step.step_type_gen}>
+            {step.step_type_gen}
           </div>
         ))}
       </div>
@@ -106,7 +106,7 @@ function StepStepper({ steps, currentStepIndex }: StepStepperProps) {
             const currentStep = steps[currentStepIndex];
             
             if (runningCount > 0) {
-              return `${completedCount + runningCount}/${total} running: ${currentStep?.step_type || '...'}`;
+              return `${completedCount + runningCount}/${total} running: ${currentStep?.step_type_gen || '...'}`;
             } else if (completedCount === total) {
               return `${total}/${total} completed`;
             } else {
@@ -120,7 +120,7 @@ function StepStepper({ steps, currentStepIndex }: StepStepperProps) {
 }
 
 function JobListItem({ job, isSelected, onSelect }: JobListItemProps) {
-  const shortId = job.id.slice(0, 8);
+  const shortId = job.ulid.slice(0, 8);
   const createdDate = new Date(job.created_at);
   const timeStr = createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   
@@ -154,7 +154,7 @@ function JobListItem({ job, isSelected, onSelect }: JobListItemProps) {
       className={`job-list-item ${isSelected ? 'job-list-item--selected' : ''}`}
       onClick={() => onSelect(job)}
       data-testid="qv-job-row"
-      data-job-id={job.id}
+      data-job-id={job.ulid}
     >
       <div className="job-list-item__header">
         <code className="job-list-item__id">#{shortId}</code>
@@ -238,7 +238,7 @@ function JobDetailPanel({ jobId, onClose, onViewAnalysis, onJobUpdate }: JobDeta
     );
   }
   
-  const shortId = job.id.slice(0, 8);
+  const shortId = job.ulid.slice(0, 8);
   const isActive = job.status === 'pending' || job.status === 'running';
   
   const formatTime = (isoStr: string | null) => {
@@ -476,14 +476,14 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
       })[0];
       
       if (mostRecent) {
-        setSelectedJobId(mostRecent.id);
+        setSelectedJobId(mostRecent.ulid);
         didAutoSelectRef.current = true;
       }
     }
     
     // If selected job disappeared from list, fall back to most recent
     // D) Loop prevention: This only runs when selectedJobId exists but job is missing from list
-    if (selectedJobId && !jobs.find(j => j.id === selectedJobId)) {
+    if (selectedJobId && !jobs.find(j => j.ulid === selectedJobId)) {
       if (jobs.length > 0) {
         const mostRecent = [...jobs].sort((a, b) => {
           const aTime = a.started_at ? new Date(a.started_at).getTime() : new Date(a.created_at).getTime();
@@ -491,7 +491,7 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
           return bTime - aTime;
         })[0];
         if (mostRecent) {
-          setSelectedJobId(mostRecent.id);
+          setSelectedJobId(mostRecent.ulid);
         }
       } else {
         setSelectedJobId(null);
@@ -500,7 +500,7 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
   }, [jobs, selectedJobId]);
   
   const handleSelectJob = (job: JobSummary) => {
-    setSelectedJobId(job.id);
+    setSelectedJobId(job.ulid);
     // Mark that user has manually selected (prevent auto-select override)
     didAutoSelectRef.current = true;
   };
@@ -584,7 +584,7 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
             jobs.map((job) => {
               // C) Merge detail steps into list job for selected job to show live updates
               let jobWithSteps = job;
-              if (selectedJobId === job.id && selectedJobDetail) {
+              if (selectedJobId === job.ulid && selectedJobDetail) {
                 // Extract steps from detail (may be in steps or result.steps)
                 const detailSteps = selectedJobDetail.steps && selectedJobDetail.steps.length > 0
                   ? selectedJobDetail.steps
@@ -597,9 +597,9 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
               }
               return (
                 <JobListItem
-                  key={job.id}
+                  key={job.ulid}
                   job={jobWithSteps}
-                  isSelected={selectedJobId === job.id}
+                  isSelected={selectedJobId === job.ulid}
                   onSelect={handleSelectJob}
                 />
               );

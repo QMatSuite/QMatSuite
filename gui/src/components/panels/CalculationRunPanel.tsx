@@ -56,7 +56,7 @@ export function CalculationRunPanel({ projectRoot, calculation }: CalculationRun
     if (!calculation) return [];
     
     const calculationSlug = calculation.slug || calculation.name;
-    const calculationId = calculation.id;
+    const calculationId = calculation.calc_ulid;
     
     return jobs.filter(job => {
       // Match by target_name (slug) or target_calculation_id
@@ -80,7 +80,7 @@ export function CalculationRunPanel({ projectRoot, calculation }: CalculationRun
   // Auto-select most recent job
   useEffect(() => {
     if (calculationJobs.length > 0 && !selectedJobId) {
-      setSelectedJobId(calculationJobs[0].id);
+      setSelectedJobId(calculationJobs[0].ulid);
     }
   }, [calculationJobs, selectedJobId]);
   
@@ -127,14 +127,14 @@ export function CalculationRunPanel({ projectRoot, calculation }: CalculationRun
           ) : (
             calculationJobs.map(job => (
               <div
-                key={job.id}
+                key={job.ulid}
                 className={`calculation-run-panel__job-item ${
-                  selectedJobId === job.id ? 'calculation-run-panel__job-item--selected' : ''
+                  selectedJobId === job.ulid ? 'calculation-run-panel__job-item--selected' : ''
                 }`}
-                onClick={() => setSelectedJobId(job.id)}
+                onClick={() => setSelectedJobId(job.ulid)}
               >
                 <div className="calculation-run-panel__job-header">
-                  <code className="calculation-run-panel__job-id">#{job.id.slice(0, 8)}</code>
+                  <code className="calculation-run-panel__job-id">#{job.ulid.slice(0, 8)}</code>
                   <StatusBadge status={job.status} size="small" />
                 </div>
                 <div className="calculation-run-panel__job-meta">
@@ -201,7 +201,7 @@ function CalculationJobDetail({ jobId, onClose }: CalculationJobDetailProps) {
     );
   }
   
-  const shortId = job.id.slice(0, 8);
+  const shortId = job.ulid.slice(0, 8);
   const isActive = job.status === 'pending' || job.status === 'running';
   
   const formatTime = (isoStr: string | null) => {

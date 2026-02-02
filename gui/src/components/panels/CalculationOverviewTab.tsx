@@ -59,8 +59,8 @@ export function CalculationOverviewTab({
 
   // Compute step index and count for breadcrumb
   const steps = calculationDetail?.steps ?? [];
-  const selectedStep = selectedStepId ? steps.find(step => step.id === selectedStepId) : null;
-  const stepIndex = selectedStep ? steps.findIndex(step => step.id === selectedStepId) : -1;
+  const selectedStep = selectedStepId ? steps.find(step => step.ulid === selectedStepId) : null;
+  const stepIndex = selectedStep ? steps.findIndex(step => step.ulid === selectedStepId) : -1;
   const stepCount = steps.length;
   const calculationName = calculationDetail?.name || calculationSummary?.name || null;
 
@@ -245,7 +245,7 @@ export function CalculationOverviewTab({
 // Compact Step List Component for Focus Mode
 interface CompactStepListProps {
   calculation: CalculationInfo | CalculationDetailResult | null;
-  steps: Array<{ id: string; slug: string; type: string; step_file: string }>;
+  steps: Array<{ ulid: string; slug: string; step_type_gen: string; step_type_spec: string; step_file: string }>;
   selectedStepId: string | null;
   stepIndex: number;
   stepCount: number;
@@ -293,7 +293,7 @@ function CompactStepList({
       const response = await window.qv.request('add_step', {
         project_root: normalizedProjectRoot,
         calculation: calculation.slug,
-        step_type: newStepType,
+        step_type_gen: newStepType,
         step_name: newStepName || undefined,
       });
 
@@ -492,19 +492,19 @@ function CompactStepList({
       <div className="compact-step-list__steps">
         {steps.map((step, idx) => (
           <button
-            key={step.id}
+            key={step.ulid}
             className={`compact-step-list__step-item ${
-              selectedStepId === step.id ? 'compact-step-list__step-item--selected' : ''
+              selectedStepId === step.ulid ? 'compact-step-list__step-item--selected' : ''
             }`}
             onClick={(e) => {
               e.stopPropagation(); // Prevent background click handler from firing
-              onSelectStep(step.id);
+              onSelectStep(step.ulid);
             }}
-            title={step.step_file ? `${step.type} - ${step.step_file}` : `${step.type} - ${step.id.substring(0, 8)}`}
-            aria-label={step.step_file ? `Step ${idx + 1}: ${step.type} (${step.step_file})` : `Step ${idx + 1}: ${step.type}`}
+            title={step.step_file ? `${step.step_type_gen} - ${step.step_file}` : `${step.step_type_gen} - ${step.ulid.substring(0, 8)}`}
+            aria-label={step.step_file ? `Step ${idx + 1}: ${step.step_type_gen} (${step.step_file})` : `Step ${idx + 1}: ${step.step_type_gen}`}
           >
             <span className="compact-step-list__step-number">{idx + 1}</span>
-            <span className="compact-step-list__step-type">{step.type}</span>
+            <span className="compact-step-list__step-type">{step.step_type_gen}</span>
           </button>
         ))}
       </div>

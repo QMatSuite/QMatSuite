@@ -37,7 +37,7 @@ export interface QVError {
     calculation_path?: string;
     expected_step_path?: string;
     expected_path?: string;
-    step_id?: string;
+    step_ulid?: string;
     structure_id?: string;
     reason?: string;  // e.g., "step_file_missing", "step_not_in_calculation_dag"
     actual_state?: string;
@@ -199,7 +199,7 @@ export interface StepInfo {
 }
 
 export interface CalculationInfo {
-  id: string;
+  calc_ulid: string;
   name: string;
   slug: string;
   path: string;
@@ -324,15 +324,16 @@ export interface BandStructureData {
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 export interface JobStepInfo {
-  step_id?: string;
-  step_type: string;
+  step_ulid?: string;
+  step_type_gen: string;
+  step_type_spec?: string;
   status: JobStatus;
   started_at?: string | null;
   ended_at?: string | null;
 }
 
 export interface JobInfo {
-  id: string;  // Job ID (ULID) - equals run_id in History for unified identity
+  ulid: string;  // Job's own identity (daemon sends 'ulid')
   job_type: string;
   status: JobStatus;
   created_at: string;
@@ -351,7 +352,7 @@ export interface JobInfo {
 }
 
 export interface JobSummary {
-  id: string;
+  ulid: string;  // Job's own identity (daemon sends 'ulid')
   job_type: string;
   status: JobStatus;
   created_at: string;
@@ -695,7 +696,7 @@ export interface QVCommandMap {
   list_qe_ui_parameters: {
     payload: {
       module: string;
-      step_type: string;
+      step_type_gen: string;
     };
     result: {
       parameters: Array<{
@@ -1359,7 +1360,7 @@ export interface QVCommandMap {
     payload: {
       project_root: string;
       calculation: string;
-      step_type: string;
+      step_type_gen: string;
       step_name?: string;
     };
     result: CalculationDetailResult;
@@ -1573,11 +1574,11 @@ export interface QVCommandMap {
         options: Array<{ value: string; label: string }>;
         default: string;
         scope: {
-          type: 'variant_step_types' | 'variants';
-          step_types?: string[];
+          type: 'variant_step_type_gens' | 'variants';
+          step_type_gens?: string[];
           variants?: Array<{
             name: string;
-            step_types: string[];
+            step_type_gens: string[];
             notes: string;
           }>;
         };
@@ -1666,11 +1667,11 @@ export interface QVCommandMap {
     payload: {
       project_root: string;
       limit?: number;
-      calc_id?: string;
+      calc_ulid?: string;
     };
     result: {
       timeline: HistoryTimelineEntry[];
-      latest_run_id: string | null;
+      latest_run_ulid: string | null;
       total: number;
     };
   };
@@ -1678,10 +1679,10 @@ export interface QVCommandMap {
   get_latest_run_for_step: {
     payload: {
       project_root: string;
-      step_id: string;
+      step_ulid: string;
     };
     result: {
-      run_id: string | null;
+      run_ulid: string | null;
       can_pin: boolean;
       reason: string | null;
     };
@@ -1690,20 +1691,20 @@ export interface QVCommandMap {
   can_pin_to_run: {
     payload: {
       project_root: string;
-      run_id: string;
-      step_id: string;
+      run_ulid: string;
+      step_ulid: string;
     };
     result: {
       allowed: boolean;
       reason: string | null;
     };
   };
-  
+
   pin_analysis_to_history: {
     payload: {
       project_root: string;
-      run_id: string;
-      step_id: string;
+      run_ulid: string;
+      step_ulid: string;
       analysis_kind: string;
       png_data_base64?: string;
       json_payload?: Record<string, unknown>;
@@ -1734,20 +1735,21 @@ export interface QVCommandMap {
 // =============================================================================
 
 export interface CalculationDetailResult {
-  id: string;
+  calc_ulid: string;
   name: string;
   slug: string;
   path: string;
   absolute_path: string;
   structure: string | null;
-  structure_id: string | null;
+  structure_ulid: string | null;
   structure_elements: string[];  // Element symbols from structure composition
   mode: string;
   n_steps: number;
   steps: Array<{
-    id: string;
+    ulid: string;
     slug: string;
-    type: string;
+    step_type_gen: string;
+    step_type_spec: string;
     step_file: string;
   }>;
   // Calculation-level pseudo mapping (authoritative source)
@@ -1785,7 +1787,7 @@ export interface CalculationPseudoMappingResult {
 export interface CalculationStructureChangeResult extends CalculationDetailResult {
   old_structure: string | null;
   updated_steps: Array<{
-    step_id: string;
+    step_ulid: string;
     old_structure: string;
     new_structure: string;
   }>;
@@ -1806,7 +1808,7 @@ export interface PreflightCheckResult {
 }
 
 export interface DemoProjectInfo {
-  id: string;
+  ulid: string;
   name: string;
   title?: string;
   subtitle?: string;
@@ -1820,14 +1822,14 @@ export interface DemoProjectInfo {
 
 // History types (for get_project_history)
 export interface HistoryTimelineEntry {
-  id: string;
+  ulid: string;
   timestamp: string;
   event_type: string;
-  calc_id?: string;
-  step_id?: string;
-  run_id?: string;
-  step_ids?: string[];
-  step_types?: string[];
+  calc_ulid?: string;
+  step_ulid?: string;
+  run_ulid?: string;
+  step_ulids?: string[];
+  step_type_gens?: string[];
   calc_name?: string;
   status?: string;
   duration_seconds?: number;
@@ -1841,8 +1843,8 @@ export interface HistoryTimelineEntry {
     converged?: boolean;
   };
   step_digests?: Array<{
-    step_id: string;
-    step_type: string;
+    step_ulid: string;
+    step_type_gen: string;
     status: string;
     total_energy?: { value: number | null; status: string };
     fermi_energy?: { value: number | null; status: string };

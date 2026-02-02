@@ -110,7 +110,8 @@ class RPCResponse:
     
     def to_json(self) -> str:
         """Convert to JSON string."""
-        result = {"ulid": self.id, "ok": self.ok}
+        # Note: 'id' here is a request correlation ID, not a resource ULID
+        result = {"id": self.id, "ok": self.ok}
         if self.ok:
             result["data"] = self.data or {}
         else:

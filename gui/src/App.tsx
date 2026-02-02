@@ -1260,7 +1260,7 @@ function App() {
   const handleSelectCalculation = useCallback((calculation: CalculationInfo) => {
     console.log('[App] handleSelectCalculation called', {
       calculationSlug: calculation.slug,
-      calculationId: calculation.id,
+      calculationId: calculation.calc_ulid,
       stepCount: calculation.steps?.length ?? 0,
     });
     
@@ -1284,12 +1284,12 @@ function App() {
         
         console.log('[App] fetching calculation detail', {
           calculationSlug: calculation.slug,
-          calculationId: calculation.id,
+          calculationId: calculation.calc_ulid,
         });
         
         const response = await qv.call('get_calculation_detail', {
           project_root: normalizedRoot,
-          calculation: calculation.id,  // Use ULID to avoid slug collisions
+          calculation: calculation.calc_ulid,  // Use ULID to avoid slug collisions
         });
         
         if (response.ok && response.data) {
@@ -1297,8 +1297,8 @@ function App() {
           console.log('[App] got calculation detail', {
             calculationSlug: detail.slug,
             stepCount: detail.steps?.length ?? 0,
-            stepIds: detail.steps?.map(s => s.id) ?? [],
-            stepOrder: detail.steps?.map((s, i) => ({ index: i, id: s.id, type: s.type })) ?? [],
+            stepUlids: detail.steps?.map(s => s.ulid) ?? [],
+            stepOrder: detail.steps?.map((s, i) => ({ index: i, ulid: s.ulid, step_type_gen: s.step_type_gen })) ?? [],
           });
           setSelectedCalculationDetail(detail);
         } else {
@@ -1317,7 +1317,7 @@ function App() {
               // Retry once after a short delay
               const retryResponse = await qv.call('get_calculation_detail', {
                 project_root: normalizedRoot,
-                calculation: calculation.id,  // Use ULID to avoid slug collisions
+                calculation: calculation.calc_ulid,  // Use ULID to avoid slug collisions
               });
               if (retryResponse.ok && retryResponse.data) {
                 setSelectedCalculationDetail(retryResponse.data as CalculationDetailResult);
@@ -1661,7 +1661,7 @@ function App() {
     }
     
     // If selected calculation disappeared from list, fall back to first element
-    if (selectedCalculationSummary && calculations && !calculations.find(w => w.id === selectedCalculationSummary.id)) {
+    if (selectedCalculationSummary && calculations && !calculations.find(w => w.calc_ulid === selectedCalculationSummary.calc_ulid)) {
       if (calculations.length > 0) {
         const firstCalculation = calculations[0];
         handleSelectCalculation(firstCalculation);
@@ -1688,14 +1688,14 @@ function App() {
     const calculationsList = await fetchCalculations();
     
     // Find the newly created calculation by ID from the fresh list
-    let newWf = calculationsList?.find(w => w.id === calculationId);
+    let newWf = calculationsList?.find(w => w.calc_ulid === calculationId);
     
     // If not found immediately, wait a bit for registry to update (max 3 retries)
     if (!newWf) {
       for (let i = 0; i < 3; i++) {
         await new Promise(resolve => setTimeout(resolve, 100));
         const retryList = await fetchCalculations();
-        newWf = retryList?.find(w => w.id === calculationId);
+        newWf = retryList?.find(w => w.calc_ulid === calculationId);
         if (newWf) break;
       }
     }
@@ -1897,7 +1897,7 @@ function App() {
     setIsRenaming(true);
     const response = await qv.call('rename_calculation', {
       project_root: projectRoot,
-      calculation_ulid: renameCalculation.id,  // Use ULID, not slug
+      calculation_ulid: renameCalculation.calc_ulid,  // Use ULID, not slug
       new_name: newName,
     });
     setIsRenaming(false);
@@ -1906,7 +1906,7 @@ function App() {
       showNotification(`Renamed calculation to "${newName}"`, 'success');
       await fetchCalculations();
       // Update selected calculation if it was the one being renamed
-      if (selectedCalculation?.id === renameCalculation.id) {
+      if (selectedCalculation?.calc_ulid === renameCalculation.calc_ulid) {
         setSelectedCalculationSummary(null);
         setSelectedCalculationDetail(null);
         setSelectedStepId(null);
@@ -1924,7 +1924,7 @@ function App() {
     setIsDeleting(true);
     const response = await qv.call('delete_calculation', {
       project_root: projectRoot,
-      calculation_ulid: deleteCalculation.id,  // Use ULID, not slug
+      calculation_ulid: deleteCalculation.calc_ulid,  // Use ULID, not slug
       force: force,
     });
     setIsDeleting(false);
@@ -1934,7 +1934,7 @@ function App() {
       await fetchCalculations();
       await refreshSummary();
       // Clear selection if the deleted calculation was selected
-      if (selectedCalculation?.id === deleteCalculation.id) {
+      if (selectedCalculation?.calc_ulid === deleteCalculation.calc_ulid) {
         setSelectedCalculationSummary(null);
         setSelectedCalculationDetail(null);
         setSelectedStepId(null);
@@ -2335,7 +2335,7 @@ function App() {
                 onRefreshProjectRegistry={handleRefreshProjectRegistry}
                 calculations={calculations}
                 isLoading={isLoadingCalculations}
-                selectedId={selectedCalculation?.id}
+                selectedId={selectedCalculation?.calc_ulid}
                 onSelect={handleSelectCalculation}
                 onRename={setRenameCalculation}
                 onDelete={setDeleteCalculation}
@@ -2400,15 +2400,15 @@ function App() {
                         // Use calculation ULID (id) instead of slug for subsequent calls
                         const response = await qv.call('get_calculation_detail', {
                           project_root: projectRoot,
-                          calculation: selectedCalculationSummary.id,  // Use ULID, not slug
+                          calculation: selectedCalculationSummary.calc_ulid,  // Use ULID, not slug
                         });
                         if (response.ok && response.data) {
                           const updatedDetail = response.data as CalculationDetailResult;
                           console.log('[App] Calculation detail refreshed', {
                             calculationSlug: updatedDetail.slug,
-                            stepCount: updatedDetail.steps.length,
-                            stepIds: updatedDetail.steps.map(s => s.id),
-                            stepOrder: updatedDetail.steps.map((s, i) => ({ index: i, id: s.id, type: s.type })),
+                            stepCount: updatedDetail.steps?.length ?? 0,
+                            stepUlids: (updatedDetail.steps ?? []).map(s => s.ulid),
+                            stepOrder: (updatedDetail.steps ?? []).map((s, i) => ({ index: i, ulid: s.ulid, step_type_gen: s.step_type_gen })),
                           });
                           setSelectedCalculationDetail(updatedDetail);
                         } else {
@@ -2419,8 +2419,8 @@ function App() {
                     onCalculationDetailUpdated={(detail) => {
                       console.log('[App] Calculation detail updated from reorder', {
                         calculationSlug: detail.slug,
-                        stepCount: detail.steps.length,
-                        stepOrder: detail.steps.map((s, i) => ({ index: i, id: s.id, type: s.type })),
+                        stepCount: detail.steps?.length ?? 0,
+                        stepOrder: (detail.steps ?? []).map((s, i) => ({ index: i, ulid: s.ulid, step_type_gen: s.step_type_gen })),
                       });
                       setSelectedCalculationDetail(detail);
                     }}

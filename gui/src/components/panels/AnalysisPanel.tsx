@@ -828,7 +828,7 @@ export function AnalysisPanel({
   const scfSteps = useMemo(() => {
     if (!selectedCalculation?.steps) return [];
     return selectedCalculation.steps.filter(step => {
-      const t = step.type?.toLowerCase() || '';
+      const t = step.step_type_gen?.toLowerCase() || '';
       // Include scf, relax, vc-relax, etc. (pw.x based calculations with SCF data)
       return t === 'scf' || t === 'relax' || t === 'vc-relax' || t === 'nscf';
     });
@@ -886,7 +886,7 @@ export function AnalysisPanel({
     
     // Check last step type
     const lastStep = calculation.steps[calculation.steps.length - 1];
-    const stepType = lastStep.type?.toLowerCase() || '';
+    const stepType = lastStep.step_type_gen?.toLowerCase() || '';
     
     if (stepType === 'dos' || stepType.includes('dos')) {
       return 'dos';
@@ -895,9 +895,9 @@ export function AnalysisPanel({
     }
     
     // Also check if calculation has dos or bands steps at all
-    const hasDoStep = calculation.steps.some(s => s.type?.toLowerCase() === 'dos');
+    const hasDoStep = calculation.steps.some(s => s.step_type_gen?.toLowerCase() === 'dos');
     const hasBandsStep = calculation.steps.some(s => 
-      s.type?.toLowerCase() === 'bands' || s.type?.toLowerCase() === 'bands_pw'
+      s.step_type_gen?.toLowerCase() === 'bands' || s.step_type_gen?.toLowerCase() === 'bands_pw'
     );
     
     if (hasDoStep) return 'dos';
@@ -983,9 +983,9 @@ export function AnalysisPanel({
   useEffect(() => {
     if (analysisType === 'scf' && scfSteps.length > 0) {
       // Auto-select first SCF step if current selection is invalid
-      const currentValid = scfSteps.some(s => s.id === selectedStep);
+      const currentValid = scfSteps.some(s => s.ulid === selectedStep);
       if (!currentValid) {
-        setSelectedStep(scfSteps[0].id);
+        setSelectedStep(scfSteps[0].ulid);
       }
     }
   }, [analysisType, scfSteps, selectedStep]);
@@ -1011,10 +1011,10 @@ export function AnalysisPanel({
   useEffect(() => {
     if (selectedCalculation && autoAnalysis) {
       // Only auto-load if we haven't already loaded for this calculation
-      if (lastAutoLoadedRef.current !== selectedCalculation.id) {
+      if (lastAutoLoadedRef.current !== selectedCalculation.calc_ulid) {
         const detectedType = detectAnalysisType(selectedCalculation);
         setAnalysisType(detectedType);
-        lastAutoLoadedRef.current = selectedCalculation.id;
+        lastAutoLoadedRef.current = selectedCalculation.calc_ulid;
         lastAnalysisTypeRef.current = detectedType;
         
         // Reset previous data
@@ -1068,8 +1068,8 @@ export function AnalysisPanel({
             <div className="calculation-select">
               {calculations.map((wf) => (
                 <button
-                  key={wf.id}
-                  className={`calculation-option ${selectedCalculation?.id === wf.id ? 'calculation-option--selected' : ''}`}
+                  key={wf.calc_ulid}
+                  className={`calculation-option ${selectedCalculation?.calc_ulid === wf.calc_ulid ? 'calculation-option--selected' : ''}`}
                   onClick={() => onSelectCalculation(wf)}
                 >
                   <span className="calculation-name">{wf.name}</span>
@@ -1091,8 +1091,8 @@ export function AnalysisPanel({
               className="step-select"
             >
               {scfSteps.map((step) => (
-                <option key={step.id} value={step.id}>
-                  {step.id} ({step.type})
+                <option key={step.ulid} value={step.ulid}>
+                  {step.ulid} ({step.step_type_gen})
                 </option>
               ))}
             </select>

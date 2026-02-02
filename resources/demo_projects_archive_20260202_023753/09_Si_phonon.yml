@@ -1,0 +1,189 @@
+version: 1
+project:
+  meta:
+    ulid: 01KE2M0NR9YX93KTA0MCCW6J56
+    name: 09_Si_phonon
+    slug: 09_si_phonon
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KE2M0NRMKXYSCMCHW0V7EXPF
+    name: si.1_scf
+    slug: si-1_scf
+    path: structures/si-1_scf.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.7546079563238743
+        - 0.0
+        - 2.7546079563238743
+      - - 0.0
+        - 2.7546079563238743
+        - 2.7546079563238743
+      - - -2.7546079563238743
+        - 2.7546079563238743
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.8956039308540573
+      b: 3.8956039308540573
+      c: 3.8956039308540573
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 41.803186562694144
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - -0.25
+      - 0.75
+      - -0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.3773039781619372
+      - 1.3773039781619374
+      - 1.3773039781619374
+calculations:
+- meta:
+    ulid: 01KE2M0NRBXT09Z45K2RTT6MW3
+    name: Si Phonon  3 Phonon Dispersion
+    slug: si-phonon-3-phonon-dispersion
+    path: calculations/si-phonon-3-phonon-dispersion
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  steps:
+  - meta:
+      name: si.1_scf
+      slug: si-1_scf
+      path: si.1_scf.step.yaml
+      kind: step
+      ulid: 01KE2M0NRHFQT6M4YM27SBG85J
+    parameters:
+      CONTROL:
+        calculation: scf
+        restart_mode: from_scratch
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ecutwfc: 50
+      ELECTRONS:
+        conv_thr: 1.0e-10
+    input_name: si.1_scf.in
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '6'
+          - '6'
+          - '6'
+          - '1'
+          - '1'
+          - '1'
+    species_overrides:
+      Si:
+        mass: 28.0855
+    step_type_spec: qe_scf
+  - meta:
+      name: si.2_ph
+      slug: si-2_ph
+      path: si.2_ph.step.yaml
+      kind: step
+      ulid: 01KE2M0NS6GYYB67EC029EQW5W
+    parameters:
+      INPUTPH:
+        tr2_ph: 1.0e-14
+        ldisp: true
+        amass(1): 28.0855
+        nq1: 4
+        nq2: 4
+        nq3: 4
+        fildyn: si.dyn
+    input_name: si.2_ph.in
+    step_type_spec: qe_ph
+  - meta:
+      name: si.3_q2r
+      slug: si-3_q2r
+      path: si.3_q2r.step.yaml
+      kind: step
+      ulid: 01KE2M0NSYWRAEY6JDKJBJ93VZ
+    parameters:
+      INPUT:
+        fildyn: si.dyn
+        zasr: simple
+        flfrc: si.k444.fc
+    input_name: si.3_q2r.in
+    step_type_spec: qe_q2r
+  - meta:
+      name: si.4_matdyn_2_dispersion
+      slug: si-4_matdyn_2_dispersion
+      path: si.4_matdyn_2_dispersion.step.yaml
+      kind: step
+      ulid: 01KE2M0NTXH60QDECBV84QXQE0
+    parameters:
+      INPUT:
+        asr: simple
+        amass(1): 28.0855
+        flfrc: si.k444.fc
+        flfrq: si.freq
+        q_in_band_form: true
+        q_in_cryst_coord: true
+    input_name: si.4_matdyn_2_dispersion.in
+    step_type_spec: qe_matdyn
+  - meta:
+      name: si.5_plotband
+      slug: si-5_plotband
+      path: si.5_plotband.step.yaml
+      kind: step
+      ulid: 01KE2M0NW5KNVTA3VPK714H72N
+    input_name: si.5_plotband.in
+    step_type_spec: qe_custom
+  structure_ulid: 01KE2M0NRA366E93CACJ3DG2EQ
+  species_map:
+    Si:
+      mass: 28.0855
+      pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+      pseudo_basename: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+pseudo:
+  directory: pseudo
+  files:
+  - Si.pbe-n-rrkjus_psl.1.0.0.UPF
+meta:
+  ulid: 09_Si_phonon
+  title: 09 Si Phonon  3 Phonon Dispersion
+  subtitle: "SCF \u2192 Phonon \u2192 q2r \u2192 matdyn \u2192 custom"
+  tags:
+  - tutorial
+  - qe
+  - scf
+  - ph
+  recommended_analysis: scf
+  difficulty: beginner
+  reference_artifacts:
+    scf: 09_Si_phonon.scf.json

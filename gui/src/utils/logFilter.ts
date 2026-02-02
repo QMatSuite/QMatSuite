@@ -35,6 +35,10 @@ function isPollingRpcLog(line: string): boolean {
  * @returns Filtered array of log lines
  */
 export function getVisibleLogLines(allLines: string[], showPolling: boolean): string[] {
+  // Defensive check: ensure allLines is an array
+  if (!allLines || !Array.isArray(allLines)) {
+    return [];
+  }
   if (showPolling) {
     return allLines;
   }

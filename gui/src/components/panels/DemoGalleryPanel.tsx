@@ -77,19 +77,19 @@ export function DemoGalleryPanel({
       return; // User cancelled
     }
     
-    setCreatingDemoId(demo.id);
+    setCreatingDemoId(demo.ulid);
     setCreateError(null);
     
     try {
       // Generate project name from demo title or id
-      const projectName = (demo.title || demo.id).toLowerCase()
+      const projectName = (demo.title || demo.ulid).toLowerCase()
         .replace(/\s+/g, '-')
         .replace(/[^a-z0-9-]/g, '');
       
       const response = await qv.call('create_demo_project', {
         target_dir: parentDir,
         name: projectName,
-        demo_id: demo.id,
+        demo_id: demo.ulid,
       });
       
       if (response.ok && response.data) {
@@ -173,9 +173,9 @@ export function DemoGalleryPanel({
             <div className="demo-gallery-panel__demos" data-testid="qv-demo-gallery-cards">
               {demos.map((demo) => (
                 <div
-                  key={demo.id}
+                  key={demo.ulid}
                   className="demo-card"
-                  data-testid={`qv-demo-card-${demo.id.replace(/_/g, '-')}`}
+                  data-testid={`qv-demo-card-${demo.ulid.replace(/_/g, '-')}`}
                 >
                   <div className="demo-card__header">
                     <div className="demo-card__title-section">
@@ -187,7 +187,7 @@ export function DemoGalleryPanel({
                     <div className="demo-card__tags">
                       {demo.tags && demo.tags.length > 0 ? (
                         demo.tags.map((tag, idx) => (
-                          <span key={idx} className="demo-tag" data-testid={`qv-demo-tag-${demo.id.replace(/_/g, '-')}-${tag}`}>
+                          <span key={idx} className="demo-tag" data-testid={`qv-demo-tag-${demo.ulid.replace(/_/g, '-')}-${tag}`}>
                             {tag}
                           </span>
                         ))
@@ -198,7 +198,7 @@ export function DemoGalleryPanel({
                         </>
                       )}
                       {demo.difficulty && (
-                        <span className="demo-tag demo-tag--difficulty" data-testid={`qv-demo-difficulty-${demo.id.replace(/_/g, '-')}`}>
+                        <span className="demo-tag demo-tag--difficulty" data-testid={`qv-demo-difficulty-${demo.ulid.replace(/_/g, '-')}`}>
                           {demo.difficulty}
                         </span>
                       )}
@@ -209,9 +209,9 @@ export function DemoGalleryPanel({
                     className="demo-card__create-btn"
                     onClick={() => handleCreateProject(demo)}
                     disabled={creatingDemoId !== null}
-                    data-testid={`qv-demo-card-btn-create-${demo.id.replace(/_/g, '-')}`}
+                    data-testid={`qv-demo-card-btn-create-${demo.ulid.replace(/_/g, '-')}`}
                   >
-                    {creatingDemoId === demo.id ? 'Creating...' : 'Create Project'}
+                    {creatingDemoId === demo.ulid ? 'Creating...' : 'Create Project'}
                   </button>
                 </div>
               ))}

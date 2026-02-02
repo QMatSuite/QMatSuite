@@ -28,12 +28,12 @@ export function ScanSummary({
     let totalCombinations = 0;
     
     for (const step of calculationDetail.steps || []) {
-      const stepDetail = stepDetails.get(step.id);
+      const stepDetail = stepDetails.get(step.ulid);
       if (stepDetail?.parameter_scan && Object.keys(stepDetail.parameter_scan).length > 0) {
         const scanIds = Object.keys(stepDetail.parameter_scan);
         stepsWithScans.push({
-          stepId: step.id,
-          stepType: step.type || 'unknown',
+          stepId: step.ulid,
+          stepType: step.step_type_gen || 'unknown',
           scanIds,
         });
         // Naive product (upper bound - doesn't account for job scoping)

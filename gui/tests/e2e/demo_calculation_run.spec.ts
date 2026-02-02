@@ -263,14 +263,14 @@ test.describe('E2E Test 3: Run calculation → Run & Logs → Analysis (within c
     // 2. Click the "Plot" view mode tab
     // 3. Wait for the bands chart to appear
     
-    // Find and click the 'bands' step chip (step_type is "qe_bands" in v0 format, not "bands_pw")
-    // Use the specific testid for the bands step tab (v0 format uses qe_ prefix)
-    const bandsStepChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-qe_bands"]');
+    // Find and click the 'bands' step chip (step_type_gen is "bands", not "bands_pw")
+    // Constitution v1.1: test IDs use step_type_gen format (e.g., "bands" not "qe_bands")
+    const bandsStepChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-bands"]');
     await expect(bandsStepChip).toBeVisible({ timeout: 5000 });
 
     // Verify it's the correct step (not bands_pw)
-    const stepType = await bandsStepChip.getAttribute('data-step-type');
-    expect(stepType?.toLowerCase()).toBe('qe_bands');
+    const stepTypeGen = await bandsStepChip.getAttribute('data-step-type-gen');
+    expect(stepTypeGen?.toLowerCase()).toBe('bands');
     
     await bandsStepChip.click();
     

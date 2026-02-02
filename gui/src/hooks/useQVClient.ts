@@ -379,7 +379,7 @@ export function useQVClient(): QVClient {
   );
   
   const listQeUiParameters = useCallback(
-    (module: string, stepType: string) => call('list_qe_ui_parameters', { module, step_type: stepType }),
+    (module: string, stepType: string) => call('list_qe_ui_parameters', { module, step_type_gen: stepType }),
     [call]
   );
   

@@ -54,7 +54,7 @@ export function CalculationRunTab({ projectRoot, calculation }: CalculationRunTa
     if (!calculation || !jobs.length) return null;
     
     const calculationSlug = calculation.slug || calculation.name;
-    const calculationId = calculation.id;
+    const calculationId = calculation.calc_ulid;
     
     // Filter jobs for this calculation
     const calculationJobs = jobs.filter(job => {
@@ -80,7 +80,7 @@ export function CalculationRunTab({ projectRoot, calculation }: CalculationRunTa
   
   // Use useJobDetail for the latest job
   const { job, logs, isLoading: isLoadingDetail, refresh: refreshJob, refreshLogs, cancelJob } = useJobDetail({
-    jobId: latestJob?.id || null,
+    jobId: latestJob?.ulid || null,
     pollInterval: 2000,
     autoStart: true,
   });
@@ -161,7 +161,7 @@ export function CalculationRunTab({ projectRoot, calculation }: CalculationRunTa
     );
   }
   
-  const shortId = job.id.slice(0, 8);
+  const shortId = job.ulid.slice(0, 8);
   const isActive = job.status === 'pending' || job.status === 'running';
   
   const formatTime = (isoStr: string | null) => {
@@ -242,7 +242,7 @@ export function CalculationRunTab({ projectRoot, calculation }: CalculationRunTa
                     <span className="calculation-run-tab__step-icon">
                       {isRunning ? '⚡' : isCompleted ? '✓' : isFailed ? '✗' : '⏳'}
                     </span>
-                    <span className="calculation-run-tab__step-type">{step.step_type || step.type || 'Unknown'}</span>
+                    <span className="calculation-run-tab__step-type">{step.step_type_gen || 'Unknown'}</span>
                     <span className="calculation-run-tab__step-status">{step.status}</span>
                   </div>
                 );
