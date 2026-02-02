@@ -104,11 +104,12 @@ class TestGetCalculationDetail:
     
     def test_get_calculation_detail_has_steps(self, temp_project: Path, daemon: QVDaemon):
         """Test that get_calculation_detail returns a calculation with non-empty steps list."""
-        # Get calculation slug from list_calculations_data
-        calculations = QVService.list_calculations_data(temp_project)
+        # Get calculation slug via nested service method (DTO)
+        svc = QVService(temp_project)
+        calculations = svc.calculation.list()
         assert len(calculations) > 0, "Project should have at least one calculation"
         calculation = calculations[0]
-        calculation_slug = calculation["slug"]
+        calculation_slug = calculation.slug
         
         # Call get_calculation_detail via daemon
         result = send_request(daemon, "get_calculation_detail", {
@@ -160,12 +161,13 @@ class TestGetCalculationDetail:
         - get_step_detail works for ALL steps (not just the first)
         - The entire chain (calculation.yaml → API → GUI → daemon → API) is ULID-based
         """
-        # Get calculation slug
-        calculations = QVService.list_calculations_data(temp_project)
+        # Get calculation slug via nested service method (DTO)
+        svc = QVService(temp_project)
+        calculations = svc.calculation.list()
         assert len(calculations) > 0, "Project should have at least one calculation"
         calculation = calculations[0]
-        calculation_slug = calculation["slug"]
-        
+        calculation_slug = calculation.slug
+
         # Add more steps to create a multi-step calculation (scf, nscf, bandspw, bands)
         # The temp_project fixture already has scf and nscf, so add bandspw and bands
         svc = QVService(temp_project)
@@ -281,13 +283,16 @@ class TestChangeCalculationStructure:
         """Test that change_calculation_structure correctly updates calculation structure."""
         # Load structure IDs
         structures = json.loads((temp_project / ".test_structures.json").read_text())
-        
-        # Get calculation slug
-        calculations = QVService.list_calculations_data(temp_project)
+
+        # Get calculation slug via nested service method (DTO)
+        svc = QVService(temp_project)
+        calculations = svc.calculation.list()
         assert len(calculations) > 0, "Project should have at least one calculation"
         calculation = calculations[0]
-        calculation_slug = calculation["slug"]
-        original_structure = calculation.get("structure")
+        calculation_slug = calculation.slug
+        # Get original structure name from calculation detail
+        calc_detail = svc.calculation.get_detail(calculation_slug)
+        original_structure = calc_detail.get("structure")
         
         # Verify we have a different structure to change to
         assert "Si2" in structures, "Should have Si2 structure for testing"
@@ -329,9 +334,10 @@ class TestChangeCalculationStructure:
         self, temp_project: Path, daemon: QVDaemon
     ):
         """Test that change_calculation_structure rejects project_root as structure selector."""
-        calculations = QVService.list_calculations_data(temp_project)
+        svc = QVService(temp_project)
+        calculations = svc.calculation.list()
         assert len(calculations) > 0
-        calculation_slug = calculations[0]["slug"]
+        calculation_slug = calculations[0].slug
         
         # Try to pass project_root as new_structure (should fail)
         project_root_str = str(temp_project.resolve())

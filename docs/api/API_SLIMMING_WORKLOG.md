@@ -76,7 +76,53 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ---
 
-### Batch 3: [PENDING]
+### Batch 3: Delete unused static method
+- **Time**: 2026-02-02
+- **Action**: Deleted `QVService.extract_calculation_selector_from_entry` (0 callers, just wrapped utils)
+- **Deleted**: 1 static method
+- **Delta**: 240 → 239 entrypoints, static 38 → 37
+- **Tests**: 3018 passed, 18 skipped
+
+---
+
+### Batch 4: Migrate compat.py to nested service methods
+- **Time**: 2026-02-02
+- **Action**: Migrated `daemon/compat.py` from static methods to nested service methods
+- **Changes**:
+  - `QVService.get_project_summary(path)` → `QVService(path).project.get_summary()`
+  - `QVService.list_structures_data(path)` → `QVService(path).structure.list()` (DTO)
+  - `QVService.list_calculations_data(path)` → `QVService(path).calculation.list()` (DTO)
+- **Delta**: No entrypoint change (call site migration only)
+- **Tests**: 3018 passed, 18 skipped
+- **Notes**: Prepares for static method deletion once test usages are migrated
+
+---
+
+### Batch 5: Migrate consumer tests to nested service methods
+- **Time**: 2026-02-02
+- **Action**: Migrated test files from static methods to nested DTO methods
+- **Files changed**:
+  - `tests/daemon/test_gui_calculation_detail.py`: 3 usages migrated (lines 108, 164, 332)
+  - `tests/integration/test_relax_promote_e2e.py`: 2 usages migrated (lines 183, 210)
+- **Remaining callers**:
+  - `test_gui_calculation_detail.py:288`: Needs `structure` name field (DTO has ulid only)
+  - `test_qvservice_gui.py`: 6 usages - tests OF the static methods (delete with methods)
+- **Delta**: No entrypoint change (call site migration only)
+- **Tests**: 3018 passed, 18 skipped
+
+---
+
+### Batch 6: Delete list_structures_data and list_calculations_data
+- **Time**: 2026-02-02
+- **Action**: Deleted static methods `list_structures_data`, `list_calculations_data`
+- **Deleted**: 2 static methods, 6 tests
+- **Delta**: 239 → 237 entrypoints, static 37 → 35
+- **Tests**: 3012 passed, 18 skipped
+- **Notes**: Migrated last consumer test (test_gui_calculation_detail.py) to use `get_detail()`
+
+---
+
+### Batch 7: [PENDING]
 - **Time**:
 - **Action**:
 - **Deleted**:
@@ -92,25 +138,29 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 | 0 | 2026-02-02 | Baseline | 0 | 243 | N/A |
 | 1 | 2026-02-02 | Delete generate_resource_id | 1 | 242 | PASS |
 | 2 | 2026-02-02 | Delete viz/cache factory fns | 2 | 240 | PASS |
+| 3 | 2026-02-02 | Delete extract_calculation_selector_from_entry | 1 | 239 | PASS |
+| 4 | 2026-02-02 | Migrate compat.py to nested methods | 0 | 239 | PASS |
+| 5 | 2026-02-02 | Migrate consumer tests to DTO methods | 0 | 239 | PASS |
+| 6 | 2026-02-02 | Delete list_structures/calculations_data | 2 | 237 | PASS |
 
 ---
 
-## Current State (After Batch 2)
+## Current State (After Batch 6)
 
 | Category | Count |
 |----------|-------|
 | utils | 88 |
-| service_static | 38 |
+| service_static | 35 |
 | service_nested | 91 |
 | errors | 10 |
 | dtos | 11 |
 | api_init | 2 |
-| **TOTAL** | **240** |
+| **TOTAL** | **237** |
 
 | Usage Status | Count |
 |--------------|-------|
-| Daemon only | 115 |
-| CLI only | 51 |
+| Daemon only | 113 |
+| CLI only | 50 |
 | Both | 44 |
 | **UNUSED** | **30** |
 
