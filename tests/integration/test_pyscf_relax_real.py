@@ -167,15 +167,14 @@ class TestPySCFRelaxReal:
         project_root = pyscf_calculation_with_relax["project_root"]
         
         # Run the relax step
-        result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        svc = QVService(project_root)
+        result = svc.run.run_step(
+            calc_selector=calc_ulid,
             step_selector=relax_step_ulid,
-            verbose=False,
         )
 
         # Verify step completed
-        assert result.get("success") is True, f"Step failed: {result.get('error')}"
+        assert result.status == "completed", f"Step failed: {result.error.message if result.error else None}"
 
         # Verify current.json was created
         artifact_path = get_generated_structure_path(calc_dir, relax_step_ulid)
@@ -219,14 +218,13 @@ class TestPySCFRelaxReal:
         initial_distance = initial_structure.get_distance(0, 1)
         
         # Run the relax step
-        result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        svc = QVService(project_root)
+        result = svc.run.run_step(
+            calc_selector=calc_ulid,
             step_selector=relax_step_ulid,
-            verbose=False,
         )
 
-        assert result.get("success") is True, f"Step failed: {result.get('error')}"
+        assert result.status == "completed", f"Step failed: {result.error.message if result.error else None}"
 
         # Load relaxed structure
         relaxed_structure = read_generated_structure(calc_dir, relax_step_ulid)

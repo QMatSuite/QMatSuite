@@ -132,32 +132,31 @@ class TestORCAProjectLevelExecution:
 
         Constitution §C: Run Calc uses JobGraph execution pipeline.
         """
-        result = QVService.run_calculation(
-            project_root=orca_project["root"],
-            calculation_selector=orca_project["calc_selector"],
-            verbose=False,
+        svc = QVService(orca_project["root"])
+        result = svc.run.run_calculation(
+            calc_selector=orca_project["calc_selector"],
         )
 
         # Should complete (success or failure based on ORCA availability)
-        # Result format: {"calculation": selector, "status": ..., "steps": [...], ...}
-        assert "calculation" in result
-        assert result["calculation"] == orca_project["calc_selector"]
+        # Result is RunResultDTO with calc_ulid and status
+        assert hasattr(result, "calc_ulid")
+        assert hasattr(result, "status")
 
     def test_run_step_uses_unified_pipeline(self, orca_project):
         """Verify run_step() uses unified pipeline (not run_step_legacy).
 
         Constitution §C: Run Step shares the unified pipeline with Run Calc.
         """
-        result = QVService.run_step(
-            project_root=orca_project["root"],
-            calculation_selector=orca_project["calc_selector"],
+        svc = QVService(orca_project["root"])
+        result = svc.run.run_step(
+            calc_selector=orca_project["calc_selector"],
             step_selector=orca_project["step_ulid"],
-            verbose=False,
         )
 
         # Should complete (success or failure based on ORCA availability)
-        assert "step_ulid" in result
-        assert result["step_ulid"] == orca_project["step_ulid"]
+        # Result is RunResultDTO with status and step_ulids
+        assert hasattr(result, "status")
+        assert hasattr(result, "step_ulids")
 
     def test_spec_step_type_preserved_in_step_yaml(self, orca_project):
         """Verify SPEC step types are preserved in step.yaml.

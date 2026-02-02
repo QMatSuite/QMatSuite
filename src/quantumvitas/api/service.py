@@ -4750,17 +4750,22 @@ class QVService:
             self,
             calc_selector: str,
             steps: list[str] | None = None,
+            *,
+            run_mode: str = "incremental",
+            run_ulid: str | None = None,
         ) -> RunResultDTO:
             """
             Run a calculation.
-            
+
             Args:
                 calc_selector: Calculation selector
                 steps: Optional list of step selectors to run (None = all steps)
-                
+                run_mode: Run mode ("incremental" or "full", default "incremental")
+                run_ulid: External run ID to use (e.g., job_id from JobManager)
+
             Returns:
                 RunResultDTO
-                
+
             Raises:
                 APIError: If calculation not found or run fails
             """
@@ -4807,8 +4812,8 @@ class QVService:
 
                         results = runner.run(
                             calculation,
-                            run_ulid=None,
-                            run_mode="incremental",
+                            run_ulid=run_ulid,
+                            run_mode=run_mode,
                         )
                 except CalculationLockError as e:
                     from quantumvitas.api.errors import EngineError
@@ -4847,6 +4852,8 @@ class QVService:
             self,
             calc_selector: str,
             step_selector: str,
+            *,
+            run_ulid: str | None = None,
         ) -> RunResultDTO:
             """
             Run a single step.
@@ -4854,6 +4861,7 @@ class QVService:
             Args:
                 calc_selector: Calculation selector
                 step_selector: Step selector
+                run_ulid: Optional external run ID (e.g., job_id from daemon)
 
             Returns:
                 RunResultDTO
@@ -4914,7 +4922,7 @@ class QVService:
                     result = runner.run(
                         calculation,
                         skip_history=False,
-                        run_ulid=None,
+                        run_ulid=run_ulid,
                         run_mode="incremental",
                         target_step_ulid=target_step_ulid,
                     )
@@ -4928,7 +4936,7 @@ class QVService:
                         "error": str(e),
                         "output_file": None,
                         "io_dir": str(calculation.raw_dir.resolve()) if calculation.raw_dir else None,
-                        "run_ulid": None,
+                        "run_ulid": run_ulid,
                     }
                     return self._result_dict_to_dto(result_dict, calc_ulid)
 
@@ -5472,15 +5480,27 @@ class QVService:
             if "steps" in result_dict:
                 step_details = result_dict["steps"]
                 step_ulids = [s.get("step_ulid", "") for s in result_dict["steps"] if s.get("step_ulid")]
+            # Handle single step_ulid (from run_step)
+            elif "step_ulid" in result_dict and result_dict["step_ulid"]:
+                step_ulids = [result_dict["step_ulid"]]
             
-            # Map status
+            # Map status - handle both "status" key and "success" boolean
             status_map = {
                 "success": "completed",
                 "failed": "failed",
                 "pending": "submitted",
                 "running": "running",
+                "completed": "completed",
             }
-            status = status_map.get(result_dict.get("status", "").lower(), "submitted")
+            # First check for explicit "status" key
+            raw_status = result_dict.get("status", "")
+            if raw_status:
+                status = status_map.get(raw_status.lower() if isinstance(raw_status, str) else str(raw_status), "submitted")
+            # Fall back to "success" boolean
+            elif "success" in result_dict:
+                status = "completed" if result_dict["success"] else "failed"
+            else:
+                status = "submitted"
             
             # Extract timing (if available)
             started_at = None
@@ -5911,26 +5931,109 @@ class QVService:
         ) -> Any:
             """
             Create a new calculation.
-            
+
             Args:
                 name: Calculation name
                 structure_selector: Optional structure selector for calculation
                 template: Optional template name
                 index: Optional resource index (for performance)
                 config: Optional project config (for performance)
-                
+
             Returns:
                 ResolvedResource for the new calculation
             """
-            # TEMP SHIM: Delegate to static method for now
-            return QVService.init_calculation(
-                project_root=self._service.project_root,
-                name=name,
-                structure_selector=structure_selector,
-                template=template,
-                index=index,
-                config=config,
-            )
+            try:
+                from quantumvitas.core.project_utils import load_project_config, save_project_config
+                from quantumvitas.core.resources import generate_resource_id, slugify
+                from quantumvitas.core.resolution import resolve_structure, build_resource_index
+                import yaml
+
+                project_root = self._service.project_root
+
+                # Load project config
+                if config is None:
+                    config = load_project_config(project_root)
+
+                calculations = config.setdefault("calculations", [])
+
+                # Collect existing slugs
+                existing_slugs = {calc.get("meta", {}).get("slug") or calc.get("slug") for calc in calculations if calc.get("meta", {}).get("slug") or calc.get("slug")}
+
+                # Generate unique name and slug
+                base_slug = slugify(name)
+                final_slug = base_slug
+                counter = 1
+                while final_slug in existing_slugs:
+                    final_slug = f"{base_slug}-{counter}"
+                    counter += 1
+
+                final_name = name
+
+                # Generate calculation ID
+                calc_ulid = generate_resource_id()
+
+                # Create calculation directory
+                calc_dir = project_root / "calculations" / final_slug
+                calc_dir.mkdir(parents=True, exist_ok=True)
+
+                # Create calculation.yaml
+                calc_yaml = calc_dir / "calculation.yaml"
+                calc_data = {
+                    "meta": {
+                        "ulid": calc_ulid,
+                        "name": final_name,
+                        "slug": final_slug,
+                        "path": f"calculations/{final_slug}",
+                        "kind": "calculation",
+                    },
+                    "steps": [],
+                }
+
+                # Add structure reference if provided
+                if structure_selector:
+                    if index is None:
+                        index = build_resource_index(project_root)
+                    struct_resolved = resolve_structure(project_root, structure_selector, index=index)
+                    calc_data["structure_ulid"] = struct_resolved.meta.ulid
+
+                # Write calculation.yaml
+                with open(calc_yaml, "w", encoding="utf-8") as f:
+                    yaml.dump(calc_data, f, default_flow_style=False, sort_keys=False)
+
+                # Add to project config
+                calc_entry = {
+                    "meta": {
+                        "ulid": calc_ulid,
+                        "name": final_name,
+                        "slug": final_slug,
+                        "path": f"calculations/{final_slug}",
+                        "kind": "calculation",
+                    }
+                }
+                calculations.append(calc_entry)
+                save_project_config(project_root, config)
+
+                # Return ResolvedResource
+                from quantumvitas.core.resolution import ResolvedResource
+                from quantumvitas.core.resources import ResourceMeta
+
+                meta = ResourceMeta(ulid=calc_ulid,
+                    name=final_name,
+                    slug=final_slug,
+                    path=f"calculations/{final_slug}",
+                    kind="calculation",
+                )
+
+                # absolute_path must point to the calculation directory, not the file
+                return ResolvedResource(
+                    meta=meta,
+                    entry=calc_entry,
+                    absolute_path=calc_dir,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
         
         def analyze_pseudo_effects(
             self,
@@ -6825,7 +6928,6 @@ class QVService:
         return _get_workflow_service()
     
     @staticmethod
-    # TEMP SHIM for PR; TODO relocate to Project.init_calculation()
     def init_calculation(
         project_root: Path | str,
         name: str,
@@ -6835,114 +6937,14 @@ class QVService:
         index: Any = None,
         config: dict | None = None,
     ) -> Any:
-        """
-        Create a new calculation.
-        
-        This is a backwards-compatibility wrapper for the legacy QVService.init_calculation().
-        
-        Args:
-            project_root: Project root path
-            name: Calculation name
-            structure_selector: Optional structure selector for calculation
-            template: Optional template name
-            index: Optional resource index (for performance)
-            config: Optional project config (for performance)
-            
-        Returns:
-            ResolvedResource for the new calculation
-        """
-        try:
-            from quantumvitas.core.project_utils import load_project_config, save_project_config
-            from quantumvitas.core.resources import generate_resource_id, slugify
-            from quantumvitas.core.resolution import resolve_structure, build_resource_index
-            import yaml
-            
-            project_root = Path(project_root).resolve()
-            
-            # Load project config
-            if config is None:
-                config = load_project_config(project_root)
-            
-            calculations = config.setdefault("calculations", [])
-            
-            # Collect existing slugs
-            existing_slugs = {calc.get("meta", {}).get("slug") or calc.get("slug") for calc in calculations if calc.get("meta", {}).get("slug") or calc.get("slug")}
-            
-            # Generate unique name and slug
-            base_slug = slugify(name)
-            final_slug = base_slug
-            counter = 1
-            while final_slug in existing_slugs:
-                final_slug = f"{base_slug}-{counter}"
-                counter += 1
-            
-            final_name = name
-            
-            # Generate calculation ID
-            calc_ulid = generate_resource_id()
-            
-            # Create calculation directory
-            calc_dir = project_root / "calculations" / final_slug
-            calc_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Create calculation.yaml
-            calc_yaml = calc_dir / "calculation.yaml"
-            calc_data = {
-                "meta": {
-                    "ulid": calc_ulid,
-                    "name": final_name,
-                    "slug": final_slug,
-                    "path": f"calculations/{final_slug}",
-                    "kind": "calculation",
-                },
-                "steps": [],
-            }
-            
-            # Add structure reference if provided
-            if structure_selector:
-                if index is None:
-                    index = build_resource_index(project_root)
-                struct_resolved = resolve_structure(project_root, structure_selector, index=index)
-                calc_data["structure_ulid"] = struct_resolved.meta.ulid
-            
-            # Write calculation.yaml
-            with open(calc_yaml, "w", encoding="utf-8") as f:
-                yaml.dump(calc_data, f, default_flow_style=False, sort_keys=False)
-            
-            # Add to project config
-            calc_entry = {
-                "meta": {
-                    "ulid": calc_ulid,
-                    "name": final_name,
-                    "slug": final_slug,
-                    "path": f"calculations/{final_slug}",
-                    "kind": "calculation",
-                }
-            }
-            calculations.append(calc_entry)
-            save_project_config(project_root, config)
-            
-            # Return ResolvedResource
-            from quantumvitas.core.resolution import ResolvedResource
-            from quantumvitas.core.resources import ResourceMeta
-            
-            meta = ResourceMeta(ulid=calc_ulid,
-                name=final_name,
-                slug=final_slug,
-                path=f"calculations/{final_slug}",
-                kind="calculation",
-            )
-            
-            # absolute_path must point to the calculation directory, not the file
-            return ResolvedResource(
-                meta=meta,
-                entry=calc_entry,
-                absolute_path=calc_dir,
-            )
-        except Exception as e:
-            if isinstance(e, APIError):
-                raise
-            raise map_kernel_exception(e)
+        """Create a new calculation. Delegates to project.init_calculation()."""
+        return QVService(project_root).project.init_calculation(
+            name=name,
+            structure_selector=structure_selector,
+            template=template,
+            index=index,
+            config=config,
+        )
 
     @staticmethod
     def init_step(
@@ -7091,240 +7093,6 @@ class QVService:
             raise map_kernel_exception(e)
 
     @staticmethod
-    # TEMP SHIM for PR; TODO relocate to Run.run_calculation()
-    def run_calculation(
-        project_root: Path | str,
-        calculation_selector: str,
-        strict: bool = False,
-        verbose: bool = False,
-        *,
-        index: Any = None,
-        config: dict | None = None,
-        run_ulid: str | None = None,
-        run_mode: str = "incremental",
-    ) -> dict[str, Any]:
-        """
-        Run all steps in a calculation.
-
-        Args:
-            project_root: Project root path
-            calculation_selector: Calculation selector
-            strict: If True, fail on first error
-            verbose: If True, print detailed output
-            index: Optional resource index (for performance)
-            config: Optional project config (for performance)
-            run_ulid: External run ID to use (e.g., job_id from JobManager)
-            run_mode: Run mode ("incremental" or "full", default "incremental")
-
-        Returns:
-            Dict with run results
-        """
-        try:
-            from quantumvitas.project.model import Project
-            from quantumvitas.calculation.calculation import Calculation
-            from quantumvitas.calculation.runner import CalculationRunner
-            from quantumvitas.engine.registry import create_default_registry
-            from quantumvitas.analysis.artifacts import clear_analysis_artifacts
-            from quantumvitas.core.locking import calc_run_lock, CalculationLockError
-            from quantumvitas.core.resolution import require_calculation, build_resource_index
-            from quantumvitas.core.project_utils import load_project_config
-
-            project_root = Path(project_root).resolve()
-            if config is None:
-                config = load_project_config(project_root)
-            if index is None:
-                index = build_resource_index(project_root)
-
-            calc_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
-            calculation_dir = calc_resolved.absolute_path
-
-            try:
-                with calc_run_lock(calculation_dir, fail_fast=True):
-                    project = Project.open(project_root)
-                    calculation = Calculation.from_yaml(calculation_dir, project, materialize_steps=True)
-
-                    if not calculation.structure_ulid:
-                        from quantumvitas.api.errors import ValidationError
-                        raise ValidationError(
-                            f"Calculation '{calculation_selector}' has no structure."
-                        )
-
-                    if calculation_dir.exists():
-                        clear_analysis_artifacts(calculation_dir)
-
-                    registry = create_default_registry()
-                    runner = CalculationRunner(registry)
-
-                    results = runner.run(
-                        calculation,
-                        run_ulid=run_ulid,
-                        run_mode=run_mode,
-                    )
-            except CalculationLockError as e:
-                from quantumvitas.api.errors import EngineError
-                error = EngineError(str(e))
-                error.code = "CALCULATION_LOCKED"
-                raise error
-
-            return {
-                "calculation": calculation_selector,
-                "status": results.status.value,
-                "n_steps": len(results.steps),
-                "steps": [
-                    {
-                        "step_ulid": s.step_ulid,
-                        "step_ulid": s.step_ulid,  # Backwards compat
-                        "step_type_spec": s.step_type_spec,
-                        "step_type_spec": s.step_type_spec,  # Backwards compat
-                        "status": s.status.value,
-                        "message": s.message,
-                        "metrics": s.metrics,
-                    }
-                    for s in results.steps
-                ],
-                "io_dir": str(results.io_dir) if results.io_dir else None,
-                "run_ulid": results.run_ulid,
-            }
-        except Exception as e:
-            if isinstance(e, APIError):
-                raise
-            raise map_kernel_exception(e)
-
-    @staticmethod
-    # TEMP SHIM for PR; TODO relocate to Run.run_step()
-    def run_step(
-        project_root: Path | str,
-        calculation_selector: str,
-        step_selector: str,
-        verbose: bool = False,
-        *,
-        index: Any = None,
-        config: dict | None = None,
-        run_ulid: str | None = None,
-    ) -> dict[str, Any]:
-        """
-        Run a single step in a calculation.
-
-        Uses TARGET selection mode - the target step always runs.
-
-        Args:
-            project_root: Project root path
-            calculation_selector: Calculation selector
-            step_selector: Step selector
-            verbose: If True, print detailed output
-            index: Optional resource index (for performance)
-            config: Optional project config (for performance)
-            run_ulid: External run ID to use (e.g., job_id from JobManager)
-
-        Returns:
-            Dict with step, step_ulid, step_type, success, error, input_file, output_file, etc.
-        """
-        try:
-            from quantumvitas.project.model import Project
-            from quantumvitas.calculation.calculation import Calculation
-            from quantumvitas.calculation.runner import CalculationRunner
-            from quantumvitas.calculation.types import StepStatus
-            from quantumvitas.engine.registry import create_default_registry
-            from quantumvitas.core.resolution import require_calculation, require_step, build_resource_index
-            from quantumvitas.core.project_utils import load_project_config
-            import yaml
-            import logging
-
-            logger = logging.getLogger(__name__)
-            project_root = Path(project_root).resolve()
-
-            if config is None:
-                config = load_project_config(project_root)
-            if index is None:
-                index = build_resource_index(project_root)
-
-            calc_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
-            step_resolved = require_step(project_root, calculation_selector, step_selector, config=config, index=index)
-
-            project = Project.open(project_root)
-            calculation = Calculation.from_yaml(calc_resolved.absolute_path, project, materialize_steps=True)
-
-            if not calculation.structure_ulid:
-                from quantumvitas.api.errors import ValidationError
-                raise ValidationError(
-                    f"Calculation '{calculation_selector}' has no structure."
-                )
-
-            # Get step type (SPEC from YAML, convert to GEN for API response)
-            step_type = "unknown"
-            try:
-                from quantumvitas.api import get_step_type_gen
-                step_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
-                step_type_spec = step_data.get("step_type_spec", "unknown")
-                step_type = get_step_type_gen(step_type_spec) if step_type_spec else "unknown"
-            except Exception:
-                pass
-
-            engine_registry = create_default_registry()
-            runner = CalculationRunner(engine_registry)
-            target_step_ulid = step_resolved.meta.ulid
-
-            try:
-                result = runner.run(
-                    calculation,
-                    skip_history=False,
-                    run_ulid=run_ulid,
-                    run_mode="incremental",
-                    target_step_ulid=target_step_ulid,
-                )
-            except Exception as e:
-                logger.exception(f"[RUN_STEP] Execution failed: {e}")
-                return {
-                    "step": step_selector,
-                    "step_ulid": target_step_ulid,
-                    "step_type_gen": step_type,
-                    "success": False,
-                    "error": str(e),
-                    "output_file": None,
-                    "io_dir": str(calculation.raw_dir.resolve()) if calculation.raw_dir else None,
-                    "run_ulid": run_ulid,
-                }
-
-            target_summary = None
-            for summary in result.steps:
-                if summary.step_ulid == target_step_ulid:
-                    target_summary = summary
-                    break
-
-            success = result.status == StepStatus.SUCCESS
-            error_msg = None
-            if target_summary and target_summary.status == StepStatus.FAILED:
-                success = False
-                error_msg = target_summary.message
-
-            io_dir = str(result.io_dir.resolve()) if result.io_dir else str(calculation.raw_dir.resolve())
-
-            input_file = None
-            output_file = None
-            if target_summary:
-                if target_summary.input_file and target_summary.input_file != Path():
-                    input_file = str(target_summary.input_file)
-                if target_summary.output_file and target_summary.output_file != Path():
-                    output_file = str(target_summary.output_file)
-
-            return {
-                "step": step_selector,
-                "step_ulid": target_step_ulid,
-                "step_type_gen": step_type,
-                "success": success,
-                "error": error_msg,
-                "input_file": input_file,
-                "output_file": output_file,
-                "io_dir": io_dir,
-                "working_dir": io_dir,
-                "run_ulid": result.run_ulid,
-            }
-        except Exception as e:
-            if isinstance(e, APIError):
-                raise
-            raise map_kernel_exception(e)
-
-    @staticmethod
     def run_single_step(
         project_root: Path | str,
         calculation_selector: str,
@@ -7353,16 +7121,26 @@ class QVService:
         Returns:
             Dict with step, step_ulid, step_type, success, error, input_file, output_file, etc.
         """
-        # Delegate to run_step using step_ulid as the step_selector
-        return QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calculation_selector,
+        # Delegate to nested run_step using step_ulid as the step_selector
+        svc = QVService(project_root)
+        dto = svc.run.run_step(
+            calc_selector=calculation_selector,
             step_selector=step_ulid,  # step_ulid works as a step selector
-            verbose=verbose,
-            index=index,
-            config=config,
             run_ulid=run_ulid,
         )
+        # Convert DTO to dict for backward compatibility with daemon
+        return {
+            "step": step_ulid,
+            "step_ulid": dto.step_ulids[0] if dto.step_ulids else step_ulid,
+            "step_type_gen": "unknown",  # DTO doesn't carry this, fallback
+            "success": dto.status == "completed",
+            "error": dto.error.message if dto.error else None,
+            "input_file": dto.input_file,
+            "output_file": dto.output_file,
+            "io_dir": dto.io_dir,
+            "working_dir": dto.io_dir,
+            "run_ulid": dto.run_ulid,
+        }
 
     @staticmethod
     # TEMP SHIM for PR; TODO relocate to Structure.import_file()

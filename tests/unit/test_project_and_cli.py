@@ -425,14 +425,21 @@ def test_cli_run_calculation_strict_option(sample_project: Path, monkeypatch):
     """Test that --strict flag sets calculation mode to STRICT."""
     runner = CliRunner()
 
-    def fake_run_calculation(*args, **kwargs):
-        # Return dict matching QVService.run_calculation return format
-        calculation_selector = kwargs.get("calculation_selector") or (args[1] if len(args) > 1 else "wf")
-        return {
-            "calculation": calculation_selector,
-            "status": "success",
-            "n_steps": 1,
-            "steps": [
+    def fake_run_calculation(self, calc_selector, steps=None, **kwargs):
+        # Return RunResultDTO matching nested method return format
+        from quantumvitas.api.types.run import RunResultDTO
+        return RunResultDTO(
+            run_ulid="test-run-ulid",
+            calc_ulid="test-calc-ulid",
+            status="completed",
+            step_ulids=["scf"],
+            started_at=None,
+            completed_at=None,
+            duration_seconds=None,
+            exit_code=0,
+            log_path=None,
+            error=None,
+            _step_details=[
                 {
                     "step_ulid": "scf",
                     "step_type_gen": "scf",
@@ -442,12 +449,13 @@ def test_cli_run_calculation_strict_option(sample_project: Path, monkeypatch):
                     "reference_file": None,
                 }
             ],
-            "io_dir": None,
-            "run_id": None,
-        }
+            io_dir=None,
+            input_file=None,
+            output_file=None,
+        )
 
-    # Mock QVService.run_calculation to avoid actual QE execution
-    monkeypatch.setattr("quantumvitas.api.QVService.run_calculation", fake_run_calculation)
+    # Mock the nested run_calculation method to avoid actual QE execution
+    monkeypatch.setattr("quantumvitas.api.service.QVService.Run.run_calculation", fake_run_calculation)
     
     # Mock pseudopotential resolution to avoid pseudo requirements
     def fake_ensure_qe_pseudos(*args, **kwargs):

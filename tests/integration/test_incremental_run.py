@@ -805,11 +805,11 @@ def test_pseudo_preflight_warning_and_update(tmp_project, minimal_calculation, c
     
     # Run calculation - manifest should be updated with fresh pseudo_set_sha
     import logging
+    svc = QVService(tmp_project)
     with caplog.at_level(logging.WARNING):
         try:
-            QVService.run_calculation(
-                project_root=tmp_project,
-                calculation_selector=calc_id,
+            svc.run.run_calculation(
+                calc_selector=calc_id,
                 run_mode="incremental",
             )
         except Exception as e:
@@ -920,10 +920,10 @@ def test_crash_recovery_incremental_rerun_from_failed_step(tmp_project, minimal_
     monkeypatch.setattr(CalculationRunner, "run", mock_run)
     
     # First run - should crash
+    svc = QVService(tmp_project)
     try:
-        QVService.run_calculation(
-            project_root=tmp_project,
-            calculation_selector=calc_id,
+        svc.run.run_calculation(
+            calc_selector=calc_id,
             run_mode="incremental",
         )
     except (RuntimeError, Exception):
@@ -1004,16 +1004,16 @@ def test_pseudo_preflight_update_failure_non_blocking(tmp_project, minimal_calcu
         
         # Run calculation - should continue despite write failure
         import logging
+        svc = QVService(tmp_project)
         with caplog.at_level(logging.WARNING):
-            result = QVService.run_calculation(
-                project_root=tmp_project,
-                calculation_selector=calc_id,  # Use real calc_id from service
+            result = svc.run.run_calculation(
+                calc_selector=calc_id,  # Use real calc_id from service
                 run_mode="incremental",
             )
         
         # Should succeed (not blocked by preflight update failure)
         assert result is not None
-        assert result["status"] == "success"
+        assert result.status in ["completed", "success"]
         
         # Verify runner was called (run still proceeded)
         assert len(execution_calls) > 0, "Run should have proceeded despite calc.yaml update failure"

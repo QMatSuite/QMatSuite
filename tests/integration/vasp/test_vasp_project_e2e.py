@@ -116,30 +116,27 @@ class TestVASPProjectE2E:
         bands_ulid = bands_result.id
         
         # Run SCF
-        scf_run_result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        svc = QVService(project_root)
+        scf_run_result = svc.run.run_step(
+            calc_selector=calc_ulid,
             step_selector=scf_ulid,
-            verbose=False,
         )
-        
-        assert scf_run_result.get("success") is True, f"SCF failed: {scf_run_result.get('error')}"
-        
+
+        assert (scf_run_result.status == "completed") is True, f"SCF failed: {(scf_run_result.error.message if scf_run_result.error else None)}"
+
         # Verify SCF artifacts
         scf_workdir = calc_dir / "raw" / scf_ulid
         assert (scf_workdir / "OSZICAR").exists()
         assert (scf_workdir / "OUTCAR").exists()
         assert (scf_workdir / "CHGCAR").exists()
-        
+
         # Run Bands
-        bands_run_result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        bands_run_result = svc.run.run_step(
+            calc_selector=calc_ulid,
             step_selector=bands_ulid,
-            verbose=False,
         )
         
-        assert bands_run_result.get("success") is True, f"Bands failed: {bands_run_result.get('error')}"
+        assert (bands_run_result.status == "completed") is True, f"Bands failed: {(bands_run_result.error.message if bands_run_result.error else None)}"
         
         # Verify Bands artifacts
         bands_workdir = calc_dir / "raw" / bands_ulid
@@ -171,28 +168,25 @@ class TestVASPProjectE2E:
         dos_ulid = dos_result.id
         
         # Run SCF
-        scf_run_result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        svc = QVService(project_root)
+        scf_run_result = svc.run.run_step(
+            calc_selector=calc_ulid,
             step_selector=scf_ulid,
-            verbose=False,
         )
-        
-        assert scf_run_result.get("success") is True, f"SCF failed: {scf_run_result.get('error')}"
-        
+
+        assert (scf_run_result.status == "completed") is True, f"SCF failed: {(scf_run_result.error.message if scf_run_result.error else None)}"
+
         # Verify SCF artifacts
         scf_workdir = calc_dir / "raw" / scf_ulid
         assert (scf_workdir / "CHGCAR").exists()
-        
+
         # Run DOS
-        dos_run_result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        dos_run_result = svc.run.run_step(
+            calc_selector=calc_ulid,
             step_selector=dos_ulid,
-            verbose=False,
         )
         
-        assert dos_run_result.get("success") is True, f"DOS failed: {dos_run_result.get('error')}"
+        assert (dos_run_result.status == "completed") is True, f"DOS failed: {(dos_run_result.error.message if dos_run_result.error else None)}"
         
         # Verify DOS artifacts
         dos_workdir = calc_dir / "raw" / dos_ulid
@@ -224,43 +218,40 @@ class TestVASPProjectE2E:
         bands_ulid = bands_result.id
         
         # Run calculation (should run both steps)
-        first_run = QVService.run_calculation(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
-            verbose=False,
+        svc = QVService(project_root)
+        first_run = svc.run.run_calculation(
+            calc_selector=calc_ulid,
         )
         
-        assert first_run.get("status") in ["completed", "partial", "success"], f"First run failed: {first_run}"
-        
+        assert first_run.status in ["completed", "partial", "success"], f"First run failed: {first_run}"
+
         # Get timestamps from first run
         scf_workdir = calc_dir / "raw" / scf_ulid
         bands_workdir = calc_dir / "raw" / bands_ulid
-        
+
         scf_mtime_before = (scf_workdir / "OSZICAR").stat().st_mtime if (scf_workdir / "OSZICAR").exists() else 0
         bands_mtime_before = (bands_workdir / "EIGENVAL").stat().st_mtime if (bands_workdir / "EIGENVAL").exists() else 0
-        
+
         # Run calculation again (incremental - should skip completed steps)
         import time
         time.sleep(0.5)  # Ensure timestamp difference
-        
-        second_run = QVService.run_calculation(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
-            verbose=False,
+
+        second_run = svc.run.run_calculation(
+            calc_selector=calc_ulid,
         )
-        
-        assert second_run.get("status") in ["completed", "partial", "success"], f"Second run failed: {second_run}"
-        
+
+        assert second_run.status in ["completed", "partial", "success"], f"Second run failed: {second_run}"
+
         # Verify files weren't regenerated (timestamps should be same or older)
         # Note: VASP handler cleans workdir completely (rm -rf) before running,
         # so files will be regenerated even if step is skipped.
         # Instead, check that steps are marked as skipped in the result
-        steps_run = second_run.get("steps", [])
+        steps_run = second_run.steps if hasattr(second_run, 'steps') else []
         # In incremental mode, completed steps should be skipped
         # Check that at least one step was skipped (status might be "skipped" or not in steps list)
         # For now, just verify the run completed successfully
         # The actual skip logic is tested in unit tests
-        assert second_run.get("status") in ["completed", "partial", "success"]
+        assert second_run.status in ["completed", "partial", "success"]
     
     def test_manifest_tracks_vasp_steps(self, vasp_calculation, use_fake_vasp):
         """Test manifest correctly tracks VASP steps."""
@@ -286,15 +277,14 @@ class TestVASPProjectE2E:
             assert manifest.steps[0].done is False
         
         # Run SCF
-        scf_run_result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        svc = QVService(project_root)
+        scf_run_result = svc.run.run_step(
+            calc_selector=calc_ulid,
             step_selector=scf_ulid,
-            verbose=False,
         )
-        
-        assert scf_run_result.get("success") is True, f"SCF failed: {scf_run_result.get('error')}"
-        
+
+        assert (scf_run_result.status == "completed") is True, f"SCF failed: {(scf_run_result.error.message if scf_run_result.error else None)}"
+
         # After run, manifest should show step as done
         manifest = load_manifest(calc_dir)
         assert manifest is not None, "Manifest should exist after step run"

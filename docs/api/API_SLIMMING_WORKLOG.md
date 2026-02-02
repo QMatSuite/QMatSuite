@@ -190,9 +190,46 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ---
 
-### Batch 14: [PENDING]
+### Batch 14: Inline run_calculation into nested method
+- **Time**: 2026-02-02
+- **Action**: Extended `run.run_calculation()` nested method with `run_mode` and `run_ulid` params, deleted static
+- **Deleted**: 1 static method
+- **Delta**: 230 → 229 entrypoints, static 28 → 27
+- **Tests**: 3012 passed, 18 skipped
+- **Notes**: Migrated 10+ test usages across 4 test files to nested method. CLI and daemon already used nested method.
+
+---
+
+### Batch 15: Inline run_step into nested method
+- **Time**: 2026-02-02
+- **Action**: Extended `run.run_step()` nested method with `run_ulid` param, deleted static
+- **Deleted**: 1 static method
+- **Delta**: 229 → 228 entrypoints, static 27 → 26
+- **Tests**: 3012 passed, 18 skipped
+- **Notes**:
+  - Migrated 19 test usages across 7 test files to nested method
+  - Updated `_result_dict_to_dto` to handle `success` boolean and `step_ulid` for run_step results
+  - Updated `run_single_step` to delegate to nested method (daemon backward compat)
+  - Tests now use DTO attributes (`.status`, `.error.message`) instead of dict `.get()`
+
+---
+
+### Batch 16: Inline init_calculation into nested method
+- **Time**: 2026-02-02
+- **Action**: Inlined `init_calculation` static into `project.init_calculation()` nested, converted static to thin wrapper
+- **Deleted**: 0 (static now delegates to nested - needs caller migration to fully delete)
+- **Delta**: No change (228 entrypoints, 26 static)
+- **Tests**: 3012 passed, 18 skipped
+- **Notes**:
+  - Full implementation inlined into `project.init_calculation()`
+  - Static method now thin wrapper (~10 lines) pending caller migration (80 callers across 37 files)
+  - Constitution requires: migrate callers → delete static for real surface reduction
+
+---
+
+### Batch 17: [PENDING]
 - **Time**:
-- **Action**:
+- **Action**: Migrate init_calculation callers and delete static
 - **Deleted**:
 - **Delta**:
 - **Tests**:
@@ -217,27 +254,37 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 | 11 | 2026-02-02 | Inline save_relax_final_structure | 1 | 232 | PASS |
 | 12 | 2026-02-02 | Inline promote_relax_structure | 1 | 231 | PASS |
 | 13 | 2026-02-02 | Inline configure_species_map | 1 | 230 | PASS |
+| 14 | 2026-02-02 | Inline run_calculation | 1 | 229 | PASS |
+| 15 | 2026-02-02 | Inline run_step | 1 | 228 | PASS |
+| 16 | 2026-02-02 | Inline init_calculation | 0* | 228 | PASS |
+
+*Static now delegates to nested - needs caller migration for actual deletion
 
 ---
 
-## Current State (After Batch 13)
+## Current State (After Batch 15)
 
 | Category | Count |
 |----------|-------|
 | utils | 88 |
-| service_static | 28 |
+| service_static | 26 |
 | service_nested | 91 |
 | errors | 10 |
 | dtos | 11 |
 | api_init | 2 |
-| **TOTAL** | **230** |
+| **TOTAL** | **228** |
 
 | Usage Status | Count |
 |--------------|-------|
-| Daemon only | ~110 |
+| Daemon only | ~108 |
 | CLI only | ~50 |
 | Both | ~44 |
-| **UNUSED** | ~30 |
+| **UNUSED** | ~28 |
+
+### Remaining TEMP SHIM Static Methods
+- `init_calculation` (73 callers) - next target
+- `import_structure` (62 callers) - after init_calculation
+- `run_single_step` (daemon) - delegates to nested `run_step`
 
 ---
 

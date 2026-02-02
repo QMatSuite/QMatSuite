@@ -116,10 +116,11 @@ class TestORCARelaxReal:
         step_id = orca_project_with_h2["step_ulid"]
         
         # Run relax
-        result = QVService.run_step(project_root, calc_id, step_id)
+        svc = QVService(project_root)
+        result = svc.run.run_step(calc_selector=calc_id, step_selector=step_id)
         
         # Verify success
-        assert result.get("success"), f"Step failed: {result.get('error')}"
+        assert result.status == "completed", f"Step failed: {result.error.message if result.error else None}"
         
         # Verify current.json exists
         calc_dir = project_root / "calculations" / "h2_relax"
@@ -138,8 +139,9 @@ class TestORCARelaxReal:
         initial_distance = orca_project_with_h2["initial_h2_distance"]
         
         # Run relax
-        result = QVService.run_step(project_root, calc_id, step_id)
-        assert result.get("success"), f"Step failed: {result.get('error')}"
+        svc = QVService(project_root)
+        result = svc.run.run_step(calc_selector=calc_id, step_selector=step_id)
+        assert result.status == "completed", f"Step failed: {result.error.message if result.error else None}"
         
         # Read relaxed structure
         calc_dir = project_root / "calculations" / "h2_relax"
@@ -171,8 +173,9 @@ class TestORCARelaxReal:
         step_id = orca_project_with_h2["step_ulid"]
         
         # Run relax
-        result = QVService.run_step(project_root, calc_id, step_id)
-        assert result.get("success"), f"Step failed: {result.get('error')}"
+        svc = QVService(project_root)
+        result = svc.run.run_step(calc_selector=calc_id, step_selector=step_id)
+        assert result.status == "completed", f"Step failed: {result.error.message if result.error else None}"
         
         # Read relaxed structure
         calc_dir = project_root / "calculations" / "h2_relax"
