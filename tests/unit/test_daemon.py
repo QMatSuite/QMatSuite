@@ -246,14 +246,15 @@ class TestQVDaemonProtocol:
             ok=True,
             data={"key": "value", "number": 42},
         )
-        
+
         json_str = response.to_json()
         parsed = json.loads(json_str)
-        
-        assert parsed["ulid"] == "test-1"
+
+        # RPC response uses "id" for request correlation, not "ulid" (which is for resource IDs)
+        assert parsed["id"] == "test-1"  # rpc correlation id
         assert parsed["ok"] is True
         assert parsed["data"]["key"] == "value"
-    
+
     def test_error_response_serialization(self):
         """Test that error responses serialize correctly."""
         response = RPCResponse(
@@ -261,11 +262,12 @@ class TestQVDaemonProtocol:
             ok=False,
             error={"code": "test_error", "message": "Something went wrong"},
         )
-        
+
         json_str = response.to_json()
         parsed = json.loads(json_str)
-        
-        assert parsed["ulid"] == "test-1"
+
+        # RPC response uses "id" for request correlation, not "ulid" (which is for resource IDs)
+        assert parsed["id"] == "test-1"  # rpc correlation id
         assert parsed["ok"] is False
         assert parsed["error"]["code"] == "test_error"
 
