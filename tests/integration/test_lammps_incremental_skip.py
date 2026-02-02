@@ -65,7 +65,7 @@ def inline_lj_project(tmp_path: Path, lammps_binary):
     struct_file.write_text(json.dumps(structure.as_dict()))
     
     # Import structure
-    struct_result = QVService.import_structure(project_root, struct_file, name="Ar FCC")
+    struct_result = QVService(project_root).structure.import_file(struct_file, name="Ar FCC")
     structure_ulid = struct_result.meta.ulid
     
     # Create calculation
@@ -246,7 +246,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     struct_file.write_text(json.dumps(structure.as_dict()))
     
     # Import structure
-    struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC")
+    struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC")
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file from resources

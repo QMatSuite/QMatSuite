@@ -54,7 +54,7 @@ def cp2k_silicon_project(tmp_path: Path):
     struct_file.write_text(json.dumps(structure.as_dict()))
     
     # Import structure
-    struct_result = QVService.import_structure(project_root, struct_file, name="Si Cubic")
+    struct_result = QVService(project_root).structure.import_file(struct_file, name="Si Cubic")
     structure_ulid = struct_result.meta.ulid
     
     # Create calculation
@@ -86,12 +86,8 @@ def test_cp2k_scf_silicon(cp2k_silicon_project):
     calc_id = cp2k_silicon_project["calc_id"]
     
     # Create SCF step
-    step_resolved = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
-        step_type_gen="scf",
-    )
-    step_id = step_resolved.meta.ulid
+    step_dto = QVService(project_root).calculation.add_step(calc_id, step_type_gen="scf")
+    step_id = step_dto.meta.ulid
 
     # Configure step parameters
     svc = QVService(project_root)
@@ -146,12 +142,8 @@ def test_cp2k_relax_silicon_with_cell(cp2k_silicon_project):
     calc_id = cp2k_silicon_project["calc_id"]
     
     # Create relax step
-    step_resolved = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
-        step_type_gen="relax",
-    )
-    step_id = step_resolved.meta.ulid
+    step_dto = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
+    step_id = step_dto.meta.ulid
 
     # Configure step parameters
     svc = QVService(project_root)
@@ -231,12 +223,8 @@ def test_cp2k_md_incremental_skip_disabled(cp2k_silicon_project):
     calc_id = cp2k_silicon_project["calc_id"]
     
     # Create MD step
-    step_resolved = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
-        step_type_gen="md",
-    )
-    step_id = step_resolved.meta.ulid
+    step_dto = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
+    step_id = step_dto.meta.ulid
 
     # Configure step parameters
     svc = QVService(project_root)

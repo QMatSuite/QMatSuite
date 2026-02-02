@@ -97,13 +97,8 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
     save_yaml_doc(calc_doc, calc_data_path)
     
     # Create SCF step using service API
-    step_resolved = QVService.init_step(
-        project_root=temp_project,
-        calculation_selector=calc_id,
-        step_type_gen="scf",
-        name="scf",
-    )
-    step_id = step_resolved.meta.ulid
+    step_dto = QVService(temp_project).calculation.add_step(calc_id, step_type_gen="scf", name="scf")
+    step_id = step_dto.meta.ulid
 
     # Configure step parameters using domain accessor
     svc = QVService(temp_project)
@@ -262,13 +257,8 @@ class TestPySCFPhase3CIntegration:
         save_yaml_doc(calc_doc, calc_data_path)
         
         # Create SCF step
-        scf_step_resolved = QVService.init_step(
-            project_root=temp_project,
-            calculation_selector=calc_id,
-            step_type_gen="scf",
-            name="scf",
-        )
-        scf_step_id = scf_step_resolved.meta.ulid
+        scf_step_dto = QVService(temp_project).calculation.add_step(calc_id, step_type_gen="scf", name="scf")
+        scf_step_id = scf_step_dto.meta.ulid
         svc = QVService(temp_project)
         svc.calculation.update_step_params(
             calc_selector=calc_id,
@@ -284,13 +274,8 @@ class TestPySCFPhase3CIntegration:
         )
 
         # Create MP2 step
-        mp2_step_resolved = QVService.init_step(
-            project_root=temp_project,
-            calculation_selector=calc_id,
-            step_type_gen="mp2",
-            name="mp2",
-        )
-        mp2_step_id = mp2_step_resolved.meta.ulid
+        mp2_step_dto = QVService(temp_project).calculation.add_step(calc_id, step_type_gen="mp2", name="mp2")
+        mp2_step_id = mp2_step_dto.meta.ulid
         svc.calculation.update_step_params(
             calc_selector=calc_id,
             step_selector=mp2_step_id,
@@ -359,13 +344,8 @@ class TestPySCFPhase3CIntegration:
         save_yaml_doc(calc_doc, calc_data_path)
         
         # Create MP2 step (no SCF dependency)
-        mp2_step_resolved = QVService.init_step(
-            project_root=temp_project,
-            calculation_selector=calc_id,
-            step_type_gen="mp2",
-            name="mp2",
-        )
-        mp2_step_id = mp2_step_resolved.meta.ulid
+        mp2_step_dto = QVService(temp_project).calculation.add_step(calc_id, step_type_gen="mp2", name="mp2")
+        mp2_step_id = mp2_step_dto.meta.ulid
         svc = QVService(temp_project)
         svc.calculation.update_step_params(
             calc_selector=calc_id,

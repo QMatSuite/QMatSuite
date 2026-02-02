@@ -98,7 +98,7 @@ def project_with_structure(test_project_dir: Path, project_root_path: Path) -> P
         shutil.copy2(pp_file, pseudo_dst / pp_file.name)
     
     # Import structure using QVService
-    QVService.import_structure(project_dir, scf_in, name="si")
+    QVService(project_dir).structure.import_file(scf_in, name="si")
     
     return project_dir
 

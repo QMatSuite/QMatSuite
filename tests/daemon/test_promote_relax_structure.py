@@ -50,14 +50,14 @@ class TestPromoteRelaxStructureAPI:
         
         source = tmp_path / "si.json"
         source.write_text(json.dumps(structure.as_dict()))
-        struct_result = QVService.import_structure(project_root, source, name="Silicon")
+        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation
         calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
         calc_ulid = calc_result.ulid
         
         # Create relax step
-        step_result = QVService.init_step(project_root, calc_ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
+        step_result = QVService(project_root).calculation.add_step(calc_ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         step_ulid = step_result.ulid
         
         # Write generated structure
@@ -85,11 +85,13 @@ class TestPromoteRelaxStructureAPI:
         # Verify new structure was created
         assert result.meta.ulid != struct_result.meta.ulid  # Different ULID
         assert result.meta.name == "relaxed_silicon"
-        assert result.absolute_path.exists()
-        
+        # StructureDTO doesn't have absolute_path, compute from slug
+        structure_path = project_root / "structures" / f"{result.meta.slug}.json"
+        assert structure_path.exists()
+
         # Verify structure content - read back using pymatgen
         from quantumvitas.io import read_structure
-        loaded_structure = read_structure(result.absolute_path)
+        loaded_structure = read_structure(structure_path)
         assert loaded_structure.lattice.a == pytest.approx(5.5)
 
     def test_promote_requires_current_json(self, tmp_path):
@@ -105,11 +107,11 @@ class TestPromoteRelaxStructureAPI:
         
         source = tmp_path / "si.json"
         source.write_text(json.dumps(structure.as_dict()))
-        struct_result = QVService.import_structure(project_root, source, name="Silicon")
+        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and step
         calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
-        step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
+        step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Try to promote without current.json
         svc = QVService(project_root)
@@ -134,11 +136,11 @@ class TestPromoteRelaxStructureAPI:
         
         source = tmp_path / "si.json"
         source.write_text(json.dumps(structure.as_dict()))
-        struct_result = QVService.import_structure(project_root, source, name="Silicon")
+        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and SCF step (not relax)
         calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
-        step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
+        step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
         
         # Try to promote non-relax step
         svc = QVService(project_root)
@@ -169,11 +171,11 @@ class TestPromoteRelaxStructureDaemonRPC:
         
         source = tmp_path / "si.json"
         source.write_text(json.dumps(structure.as_dict()))
-        struct_result = QVService.import_structure(project_root, source, name="Silicon")
+        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and relax step
         calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
-        step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
+        step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Write generated structure
         lattice = Lattice.cubic(5.5)

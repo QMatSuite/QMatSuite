@@ -125,7 +125,7 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
         pytest.skip(f"Structure file not found: {struct_file}")
     
     # Import structure
-    struct_result = QVService.import_structure(project_root, struct_file, name="LJ FCC 108")
+    struct_result = QVService(project_root).structure.import_file(struct_file, name="LJ FCC 108")
     structure_ulid = struct_result.meta.ulid
     
     # Create calculation
@@ -145,11 +145,7 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    step = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
-        step_type_gen="relax",
-    )
+    step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
     step_id = step.meta.ulid
     
     # Configure step with inline LJ potential
@@ -240,7 +236,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
         pytest.skip(f"Structure file not found: {struct_file}")
     
     # Import structure
-    struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC 32")
+    struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
@@ -279,11 +275,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create MD step
-    step = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
-        step_type_gen="md",
-    )
+    step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
     step_id = step.meta.ulid
     
     # Configure step
@@ -373,7 +365,7 @@ def chain_project(tmp_path: Path, lammps_binary):
         pytest.skip(f"Structure file not found: {struct_file}")
     
     # Import structure
-    struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC 32")
+    struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
@@ -412,11 +404,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
-        step_type_gen="relax",
-    )
+    relax_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
     relax_step_id = relax_step.meta.ulid
     
     configure_step(
@@ -436,11 +424,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     )
     
     # Create MD step
-    md_step = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
-        step_type_gen="md",
-    )
+    md_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
     md_step_id = md_step.meta.ulid
     
     configure_step(
@@ -568,7 +552,7 @@ def restart_project(tmp_path: Path, lammps_binary):
         pytest.skip(f"Structure file not found: {struct_file}")
     
     # Import structure
-    struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC 32")
+    struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
@@ -607,11 +591,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
-        step_type_gen="relax",
-    )
+    relax_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
     relax_step_id = relax_step.meta.ulid
     
     configure_step(
@@ -631,11 +611,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     )
     
     # Create first MD step
-    md1_step = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
-        step_type_gen="md",
-    )
+    md1_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
     md1_step_id = md1_step.meta.ulid
     
     configure_step(
@@ -657,11 +633,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     )
     
     # Create second MD step (restart from first MD)
-    md2_step = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
-        step_type_gen="md",
-    )
+    md2_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
     md2_step_id = md2_step.meta.ulid
     
     # ========== ULID UNIQUENESS ASSERTIONS (detect Ubuntu CI root cause) ==========
@@ -697,12 +669,13 @@ def restart_project(tmp_path: Path, lammps_binary):
     # ========== RESTART_FROM VERIFICATION ==========
     # Verify restart_from was correctly set (not self-reference)
     import yaml
-    md1_step_path = md1_step.absolute_path
+    # StepDTO doesn't have absolute_path, compute from meta.path
+    md1_step_path = project_root / md1_step.meta.path
     with open(md1_step_path) as f:
         md1_data = yaml.safe_load(f)
     md1_restart_from = md1_data.get("parameters", {}).get("restart_from")
-    
-    md2_step_path = md2_step.absolute_path
+
+    md2_step_path = project_root / md2_step.meta.path
     with open(md2_step_path) as f:
         md2_data = yaml.safe_load(f)
     md2_restart_from = md2_data.get("parameters", {}).get("restart_from")

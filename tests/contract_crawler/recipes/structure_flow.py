@@ -61,13 +61,10 @@ class GetStepDetailRecipe(Recipe):
             struct_file = Path(f.name)
 
         try:
-            if is_static_api:
-                struct_result = QVService.import_structure(self.project_root, struct_file, name="silicon")
-                structure_ulid = struct_result.id if hasattr(struct_result, 'id') else struct_result.structure_ulid if hasattr(struct_result, 'structure_ulid') else None
-            else:
-                svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
-                struct_dto = svc.structure.import_file(source=struct_file, name="silicon")
-                structure_ulid = struct_dto.structure_ulid
+            # Import structure using nested service method
+            svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
+            struct_dto = svc.structure.import_file(source=struct_file, name="silicon")
+            structure_ulid = struct_dto.structure_ulid
         finally:
             struct_file.unlink()
 

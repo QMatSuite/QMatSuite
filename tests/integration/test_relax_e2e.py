@@ -104,14 +104,14 @@ class TestRelaxE2E:
         initial_structure = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
         source.write_text(json.dumps(initial_structure.as_dict()))
         
-        struct_result = QVService.import_structure(project_root, source, name="Silicon")
+        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation
         calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
         calc_ulid = calc_result.ulid
         
         # Create relax step
-        step_result = QVService.init_step(project_root, calc_ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
+        step_result = QVService(project_root).calculation.add_step(calc_ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         step_ulid = step_result.ulid
         
         # Write generated structure (simulating relax execution)
@@ -143,11 +143,13 @@ class TestRelaxE2E:
         # Verify new structure created
         assert promoted_result.meta.ulid != struct_result.meta.ulid
         assert promoted_result.meta.name == "relaxed_silicon"
-        assert promoted_result.absolute_path.exists()
-        
+        # StructureDTO doesn't have absolute_path, compute from slug
+        structure_path = project_root / "structures" / f"{promoted_result.meta.slug}.json"
+        assert structure_path.exists()
+
         # Verify structure content
         from quantumvitas.io import read_structure
-        loaded = read_structure(promoted_result.absolute_path)
+        loaded = read_structure(structure_path)
         assert loaded.lattice.a == pytest.approx(5.5)
 
     def test_promote_requires_current_json(self, tmp_path):
@@ -162,11 +164,11 @@ class TestRelaxE2E:
         structure = Structure(lattice, ["Si"], [[0, 0, 0]])
         source.write_text(json.dumps(structure.as_dict()))
         
-        struct_result = QVService.import_structure(project_root, source, name="Silicon")
+        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and relax step
         calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
-        step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
+        step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Try to promote without current.json
         svc = QVService(project_root)
@@ -190,11 +192,11 @@ class TestRelaxE2E:
         structure = Structure(lattice, ["Si"], [[0, 0, 0]])
         source.write_text(json.dumps(structure.as_dict()))
         
-        struct_result = QVService.import_structure(project_root, source, name="Silicon")
+        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and SCF step (not relax)
         calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
-        step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
+        step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
         
         # Try to promote non-relax step
         svc = QVService(project_root)

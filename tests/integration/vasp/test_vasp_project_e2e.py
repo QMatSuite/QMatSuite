@@ -41,7 +41,7 @@ def vasp_project(use_fake_vasp, tmp_path):
     # Import structure
     struct_file = tmp_path / "si.json"
     struct_file.write_text(json.dumps(structure.as_dict()))
-    struct_result = QVService.import_structure(project_root, struct_file, name="Silicon")
+    struct_result = QVService(project_root).structure.import_file(struct_file, name="Silicon")
     
     return {
         "root": project_root,
@@ -97,18 +97,14 @@ class TestVASPProjectE2E:
         calc_dir = vasp_calculation["calc_dir"]
         
         # Add SCF step
-        scf_result = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        scf_result = QVService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
         scf_ulid = scf_result.id
         
         # Add Bands step (bandspw = band structure calculation, not bands = post-processing)
-        bands_result = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        bands_result = QVService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="bandspw",  # GEN type for UI layer (bandspw for band calculation)
             name="bands",
         )
@@ -149,18 +145,14 @@ class TestVASPProjectE2E:
         calc_dir = vasp_calculation["calc_dir"]
         
         # Add SCF step
-        scf_result = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        scf_result = QVService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
         scf_ulid = scf_result.id
         
         # Add DOS step
-        dos_result = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        dos_result = QVService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="dos",  # GEN type for UI layer
             name="dos",
         )
@@ -199,18 +191,14 @@ class TestVASPProjectE2E:
         calc_dir = vasp_calculation["calc_dir"]
         
         # Add SCF step
-        scf_result = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        scf_result = QVService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
         scf_ulid = scf_result.id
         
         # Add Bands step (bandspw = band structure calculation, not bands = post-processing)
-        bands_result = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        bands_result = QVService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="bandspw",  # GEN type for UI layer (bandspw for band calculation)
             name="bands",
         )
@@ -259,9 +247,7 @@ class TestVASPProjectE2E:
         calc_dir = vasp_calculation["calc_dir"]
         
         # Add SCF step
-        scf_result = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        scf_result = QVService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )

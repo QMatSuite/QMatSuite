@@ -499,6 +499,16 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         produces_charge_density=False,
         is_structure_transform=True,
     ),
+    "vasp_dos": StepTypeSpec(
+        step_type_spec="vasp_dos",
+        step_type_gen="dos",
+        engine="vasp",
+        executable="vasp_std",
+        description="VASP density of states calculation (explicit DOS step)",
+        requires_structure=True,
+        requires_charge_density=True,
+        produces_charge_density=False,
+    ),
 
     # -------------------------------------------------------------------------
     # LAMMPS step types (Classical Molecular Dynamics)

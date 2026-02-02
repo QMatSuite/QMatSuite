@@ -60,7 +60,7 @@ def orca_project_with_h2(orca_available):
     h2.to(filename=h2_file, fmt="xyz")
     
     # Import structure
-    struct_result = QVService.import_structure(project_root, h2_file, name="H2")
+    struct_result = QVService(project_root).structure.import_file(h2_file, name="H2")
     
     # Create calculation
     calc = QVService(project_root).project.init_calculation(
@@ -76,8 +76,8 @@ def orca_project_with_h2(orca_available):
     calc_data["structure_kind"] = "molecule"
     calc_yaml.write_text(yaml.dump(calc_data, default_flow_style=False))
     
-    # Create relax step
-    step = QVService.init_step(project_root, calc.ulid, "orca_relax", name="relax")
+    # Create relax step (use GEN type, engine_family will materialize to orca_relax)
+    step = QVService(project_root).calculation.add_step(calc.ulid, "relax", name="relax")
 
     # Configure with minimal parameters
     svc = QVService(project_root)

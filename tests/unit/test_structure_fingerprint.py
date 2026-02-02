@@ -147,8 +147,8 @@ class TestQVServiceDedup:
         
         # Import both structures WITH dedup enabled
         # Note: dedup is opt-in (default=False) to allow users to import same structure multiple times
-        resolved1 = QVService.import_structure(project_root, struct_file1, name="struct1", dedup_by_fingerprint=True)
-        resolved2 = QVService.import_structure(project_root, struct_file2, name="struct2", dedup_by_fingerprint=True)
+        resolved1 = QVService(project_root).structure.import_file(struct_file1, name="struct1", dedup_by_fingerprint=True)
+        resolved2 = QVService(project_root).structure.import_file(struct_file2, name="struct2", dedup_by_fingerprint=True)
         
         # Both should resolve to the same structure (deduplicated by fingerprint)
         assert resolved1.meta.ulid == resolved2.meta.ulid, \
@@ -175,8 +175,8 @@ class TestQVServiceDedup:
         write_structure(si_structure_different, struct_file2)
         
         # Import both structures
-        resolved1 = QVService.import_structure(project_root, struct_file1, name="struct1")
-        resolved2 = QVService.import_structure(project_root, struct_file2, name="struct2")
+        resolved1 = QVService(project_root).structure.import_file(struct_file1, name="struct1")
+        resolved2 = QVService(project_root).structure.import_file(struct_file2, name="struct2")
         
         # They should have different structure_ulids
         assert resolved1.meta.ulid != resolved2.meta.ulid, \
@@ -199,7 +199,7 @@ class TestQVServiceDedup:
         write_structure(si_structure, struct_file)
         
         # Import structure
-        resolved = QVService.import_structure(project_root, struct_file, name="struct")
+        resolved = QVService(project_root).structure.import_file(struct_file, name="struct")
         
         # Read structure file and check fingerprint in metadata
         import json
@@ -778,7 +778,7 @@ class TestImportStructureUnifiedFingerprint:
         write_structure(h2, mol_file)
         
         # Import molecule
-        resolved = QVService.import_structure(project_root, mol_file, name="h2")
+        resolved = QVService(project_root).structure.import_file(mol_file, name="h2")
         
         # Read stored fingerprint from structure file
         structure_path = project_root / resolved.meta.path
@@ -811,8 +811,8 @@ class TestImportStructureUnifiedFingerprint:
         write_structure(h2_translated, mol_file2)
         
         # Import both with dedup enabled
-        resolved1 = QVService.import_structure(project_root, mol_file1, name="h2_1", dedup_by_fingerprint=True)
-        resolved2 = QVService.import_structure(project_root, mol_file2, name="h2_2", dedup_by_fingerprint=True)
+        resolved1 = QVService(project_root).structure.import_file(mol_file1, name="h2_1", dedup_by_fingerprint=True)
+        resolved2 = QVService(project_root).structure.import_file(mol_file2, name="h2_2", dedup_by_fingerprint=True)
         
         # Should be same structure (deduped)
         assert resolved1.meta.ulid == resolved2.meta.ulid, (

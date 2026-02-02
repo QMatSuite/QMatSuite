@@ -32,8 +32,7 @@ def test_project(tmp_path: Path):
     try:
         structure.to(filename=str(cif_path), fmt="cif")
         
-        QVService.import_structure(
-            project_root=project_root,
+        QVService(project_root).structure.import_file(
             source=cif_path,
             name="test_structure",
         )

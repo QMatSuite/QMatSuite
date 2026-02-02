@@ -394,14 +394,9 @@ class CalculationMutationsRecipe(Recipe):
                 struct_file = Path(f.name)
 
             try:
-                # Check for static vs instance API
-                try:
-                    svc = QVService(self.project_root)
-                    struct_dto = svc.structure.import_file(source=struct_file, name="germanium")
-                    self.second_structure_ulid = struct_dto.structure_ulid
-                except (TypeError, AttributeError):
-                    result = QVService.import_structure(self.project_root, struct_file, name="germanium")
-                    self.second_structure_ulid = result.id if hasattr(result, 'id') else result.structure_ulid
+                svc = QVService(self.project_root)
+                struct_dto = svc.structure.import_file(source=struct_file, name="germanium")
+                self.second_structure_ulid = struct_dto.structure_ulid
             finally:
                 struct_file.unlink()
 

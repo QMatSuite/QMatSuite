@@ -1815,18 +1815,21 @@ class QVService:
             source: Path | str,
             name: str | None = None,
             format: str = "auto",
+            *,
+            dedup_by_fingerprint: bool = False,
         ) -> StructureDTO:
             """
             Import a structure file into the project.
-            
+
             Args:
                 source: Path to source structure file
                 name: Optional name for the structure (defaults to filename stem)
                 format: File format hint ("auto" to detect)
-                
+                dedup_by_fingerprint: If True, reuse existing structure with same content fingerprint
+
             Returns:
                 StructureDTO for the imported structure
-                
+
             Raises:
                 APIError: If import fails
             """
@@ -1877,8 +1880,35 @@ class QVService:
                 # Read and convert structure
                 structure = _read_structure(source_path)
 
-                # Canonicalize and compute fingerprint
-                canonicalize_structure_like_in_place(structure)
+                # Dedup by fingerprint if requested
+                if dedup_by_fingerprint:
+                    canonicalize_structure_like_in_place(structure)
+                    fingerprint = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
+
+                    if structures_dir.exists():
+                        for struct_file in structures_dir.glob("*.json"):
+                            try:
+                                struct_data = json.loads(struct_file.read_text())
+                                struct_meta = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
+                                existing_fingerprint = struct_meta.get("fingerprint")
+                                if existing_fingerprint == fingerprint:
+                                    existing_id = struct_meta.get("ulid")
+                                    if existing_id:
+                                        # Return existing structure DTO
+                                        struct_resolved = require_structure(project_root, existing_id, config=config)
+                                        struct_model = load_structure_model(struct_resolved.absolute_path, project_root)
+                                        pmg_structure = read_structure(struct_resolved.absolute_path)
+                                        return structure_to_dto(
+                                            struct_resolved=struct_resolved,
+                                            struct_model=struct_model,
+                                            pmg_structure=pmg_structure,
+                                        )
+                            except Exception:
+                                pass
+
+                if not dedup_by_fingerprint:
+                    canonicalize_structure_like_in_place(structure)
+
                 fingerprint = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
 
                 # Write to structures directory
@@ -2183,13 +2213,13 @@ class QVService:
                 step_slug = step_resolved.meta.slug or step_resolved.meta.ulid[:8]
                 structure_name = name or f"{calc_slug}_{step_slug}_relaxed"
 
-                # Import the generated structure
-                return QVService.import_structure(
-                    project_root=project_root,
+                # Import the generated structure using nested accessor
+                struct_dto = self._service.structure.import_file(
                     source=generated_path,
                     name=structure_name,
-                    index=index,
                 )
+                # Return the StructureDTO directly (callers may need to adapt to the new return type)
+                return struct_dto
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -6928,152 +6958,6 @@ class QVService:
         return _get_workflow_service()
     
     @staticmethod
-    def init_step(
-        project_root: Path | str,
-        calculation_selector: str,
-        step_type_gen: str,
-        name: str | None = None,
-        structure_selector: str | None = None,
-    ) -> Any:
-        """
-        Create a new step in a calculation.
-
-        This is a backwards-compatibility wrapper for the legacy QVService.init_step().
-
-        Args:
-            project_root: Project root path
-            calculation_selector: Parent calculation selector
-            step_type_gen: Step type (scf, nscf, dos, bands, etc.)
-            name: Optional step name (defaults to step_type_gen)
-            structure_selector: Optional structure (defaults to calculation's structure)
-
-        Returns:
-            ResolvedResource for the new step
-        """
-        try:
-            from quantumvitas.core.resolution import resolve_calculation, require_structure, require_step
-            from quantumvitas.core.models import load_calculation, save_calculation, CalculationStepEntry, CalculationModel
-            from quantumvitas.core.resources import ResourceMeta, generate_resource_id, slugify
-            from quantumvitas.workflow.step_factory import create_step_doc, save_step_doc
-            from quantumvitas.calculation.step_defaults import get_default_step_params
-
-            project_root = Path(project_root).resolve()
-            calculation = resolve_calculation(project_root, calculation_selector)
-            calculation_dir = calculation.absolute_path
-            steps_dir = calculation_dir / "steps"
-            steps_dir.mkdir(exist_ok=True)
-
-            step_name = name or step_type_gen
-            step_ulid = generate_resource_id()
-            step_slug = slugify(step_name)
-
-            # Generate unique filename
-            base_name = step_slug
-            suffix = 1
-            while (steps_dir / f"{base_name}.step.yaml").exists():
-                base_name = f"{step_slug}-{suffix}"
-                suffix += 1
-
-            step_yaml_path = steps_dir / f"{base_name}.step.yaml"
-
-            # Determine structure from calculation if not specified
-            calculation_yaml_path = calculation_dir / "calculation.yaml"
-            local_structure_selector = structure_selector
-            if calculation_yaml_path.exists():
-                wf_model = load_calculation(calculation_dir, project_root)
-                if local_structure_selector is None:
-                    if wf_model.structure_ulid:
-                        resolved = require_structure(project_root, wf_model.structure_ulid)
-                        local_structure_selector = resolved.meta.slug
-                    else:
-                        local_structure_selector = wf_model.structure
-            else:
-                wf_model = CalculationModel(
-                    meta=calculation.meta,
-                    structure=local_structure_selector,
-                )
-
-            # Phase 3C: Materialize step_type_gen using engine_family
-            engine_family = getattr(wf_model, 'engine_family', None) if calculation_yaml_path.exists() else None
-            if engine_family:
-                from quantumvitas.workflow.generalized_steps import materialize_public_step_key
-                materialized_type = materialize_public_step_key(step_type_gen, engine_family)
-                machine_step_type = materialized_type if materialized_type else step_type_gen
-            else:
-                machine_step_type = step_type_gen
-
-            # Resolve structure selector to structure_ulid
-            structure_ulid = None
-            if local_structure_selector:
-                from quantumvitas.core.project_utils import load_project_config
-                config = load_project_config(project_root)
-                resolved_structure = require_structure(project_root, local_structure_selector, config)
-                structure_ulid = resolved_structure.meta.ulid
-
-            # Get defaults for step type
-            defaults = get_default_step_params(step_type_gen)
-
-            # Create step doc - convert spec to gen
-            from quantumvitas.api import get_step_type_gen
-            try:
-                step_type_gen = get_step_type_gen(machine_step_type) if "_" in machine_step_type else machine_step_type
-            except (KeyError, ValueError):
-                step_type_gen = machine_step_type  # Fallback
-            # Determine engine_family: use calculation's engine_family if available,
-            # otherwise infer from machine_step_type (if SPEC), default to "qe"
-            from quantumvitas.workflow.step_type_convert import prefix_from, is_spec
-            calc_engine_family = getattr(wf_model, 'engine_family', None) if calculation_yaml_path.exists() else None
-            if calc_engine_family:
-                engine_family = calc_engine_family
-            elif is_spec(machine_step_type):
-                engine_family = prefix_from(machine_step_type)
-            else:
-                engine_family = "qe"  # Default
-            step_doc = create_step_doc(
-                step_type_gen=step_type_gen,
-                engine_family=engine_family,
-                name=step_name,
-                structure_ulid=structure_ulid,
-                parent_calculation_id=calculation.meta.ulid if hasattr(calculation, 'meta') else None,
-                overrides={
-                    "parameters": defaults.get("parameters", {}),
-                    "cards": defaults.get("cards", {}),
-                    "species_overrides": defaults.get("species_overrides", {}),
-                },
-            )
-
-            step_doc.set(["meta", "ulid"], step_ulid)
-            step_doc.set(["meta", "slug"], base_name)
-
-            step_yaml_path = step_yaml_path.resolve()
-            rel_path = step_yaml_path.relative_to(project_root)
-            step_doc.set(["meta", "path"], str(rel_path.as_posix()))
-
-            save_step_doc(step_doc, step_yaml_path)
-
-            # Add step to calculation model
-            step_ulid_from_doc = step_doc.get(["meta", "ulid"])
-            if calculation_yaml_path.exists():
-                wf_model = load_calculation(calculation_dir, project_root)
-                # Ensure machine_step_type is SPEC before assignment
-                from quantumvitas.workflow.step_type_convert import is_spec, spec_from
-                if is_spec(machine_step_type):
-                    step_type_spec_value = machine_step_type  # Already SPEC
-                else:
-                    # It's GEN, convert to SPEC using engine_family
-                    engine_prefix = engine_family if engine_family else "qe"  # Default to qe if no engine_family
-                    step_type_spec_value = spec_from(engine_prefix, machine_step_type)
-                step_entry = CalculationStepEntry(step_ulid=step_ulid_from_doc, step_type_spec=step_type_spec_value)
-                wf_model.steps.append(step_entry)
-                save_calculation(wf_model, calculation_dir)
-
-            return require_step(project_root, calculation_selector, step_ulid_from_doc)
-        except Exception as e:
-            if isinstance(e, APIError):
-                raise
-            raise map_kernel_exception(e)
-
-    @staticmethod
     def run_single_step(
         project_root: Path | str,
         calculation_selector: str,
@@ -7122,126 +7006,6 @@ class QVService:
             "working_dir": dto.io_dir,
             "run_ulid": dto.run_ulid,
         }
-
-    @staticmethod
-    # TEMP SHIM for PR; TODO relocate to Structure.import_file()
-    def import_structure(
-        project_root: Path | str,
-        source: Path | str,
-        name: str | None = None,
-        format: str = "auto",
-        *,
-        index: Any = None,
-        dedup_by_fingerprint: bool = False,
-    ) -> Any:
-        """
-        Import a structure file into the project.
-
-        Args:
-            project_root: Project root path
-            source: Path to source file (CIF, QE input, JSON, etc.)
-            name: Name for the structure (defaults to filename stem)
-            format: File format hint
-            index: Optional resource index for registry update
-            dedup_by_fingerprint: If True, reuse existing structure with same content fingerprint
-
-        Returns:
-            ResolvedResource for the imported structure
-        """
-        try:
-            from quantumvitas.io import read_structure as _read_structure, write_structure as _write_structure
-            from quantumvitas.core.project_utils import load_project_config, save_project_config, collect_slugs
-            from quantumvitas.core.resolution import require_structure, update_registry_add_structure
-            from quantumvitas.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
-            from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
-            from quantumvitas.core.resources import (
-                generate_unique_name_and_slug,
-                meta_from_name,
-                ensure_relative_path,
-            )
-            import json
-
-            project_root = Path(project_root).resolve()
-            source = Path(source).resolve()
-            if not source.exists():
-                from quantumvitas.api.errors import NotFoundError
-                raise NotFoundError(f"Source file not found: {source}")
-
-            config = load_project_config(project_root)
-            structures = config.setdefault("structures", [])
-            existing_slugs = collect_slugs(structures, project_root=project_root)
-
-            structures_dir = project_root / "structures"
-            if structures_dir.exists():
-                for struct_file in structures_dir.glob("*.json"):
-                    try:
-                        struct_data = json.loads(struct_file.read_text())
-                        struct_meta = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
-                        if struct_meta.get("slug"):
-                            existing_slugs.append(struct_meta["slug"])
-                    except Exception:
-                        pass
-
-            structure_name = name or source.stem
-            final_name, final_slug = generate_unique_name_and_slug(
-                kind="structure",
-                preferred_name=structure_name,
-                existing_slugs=existing_slugs,
-            )
-
-            structure = _read_structure(source)
-
-            # Dedup by fingerprint if requested
-            if dedup_by_fingerprint:
-                canonicalize_structure_like_in_place(structure)
-                fingerprint = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
-
-                if structures_dir.exists():
-                    for struct_file in structures_dir.glob("*.json"):
-                        try:
-                            struct_data = json.loads(struct_file.read_text())
-                            struct_meta = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
-                            existing_fingerprint = struct_meta.get("fingerprint")
-                            if existing_fingerprint == fingerprint:
-                                existing_id = struct_meta.get("ulid")
-                                if existing_id:
-                                    return require_structure(project_root, existing_id, config=config, index=index)
-                        except Exception:
-                            pass
-
-            if not dedup_by_fingerprint:
-                canonicalize_structure_like_in_place(structure)
-
-            fingerprint = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
-
-            dest_path = project_root / "structures" / f"{final_slug}.json"
-            dest_path.parent.mkdir(parents=True, exist_ok=True)
-
-            meta = meta_from_name(
-                "structure",
-                name=final_name,
-                path=ensure_relative_path(dest_path, base=project_root),
-            )
-            meta_dict = meta.to_dict()
-            meta_dict["fingerprint"] = fingerprint
-            _write_structure(structure, dest_path, metadata=meta_dict)
-
-            entry = {"structure_ulid": meta.ulid}
-            structures.append(entry)
-            save_project_config(project_root, config)
-
-            # Update the index BEFORE calling require_structure if index is provided,
-            # otherwise require_structure won't find the newly added structure
-            if index is not None:
-                update_registry_add_structure(index, meta, dest_path)
-
-            resolved = require_structure(project_root, final_slug, config=config, index=index)
-
-            return resolved
-        except Exception as e:
-            if isinstance(e, APIError):
-                raise
-            raise map_kernel_exception(e)
 
     @staticmethod
     def get_default_step_params(step_type_gen: str) -> dict[str, Any]:
