@@ -435,19 +435,69 @@ All remaining static methods are legitimate and should NOT be migrated:
 
 ## Notes
 
-### Remaining Unused Entrypoints Analysis
+### Remaining Unused Entrypoints Analysis (27 total)
 
-**Cannot delete (part of Constitution or base classes):**
-- `ConflictError`, `FilesystemError`: Law H6 error taxonomy - keep
-- `BaseDTO`: Base class for all DTOs - keep
-- `StructureDTO`, `CalculationDTO`, `MetaDTO`: Core DTOs used in type hints - keep
+All 27 unused entrypoints are **intentional** and should NOT be deleted:
 
-**F401 entries (noqa imports):**
-- `DisplayModeParams`, `OnlineStructureCache`, `QEUIParam`: Class re-exports, needed for type hints
+**F401 re-exports (3):**
+- `DisplayModeParams`, `OnlineStructureCache`, `QEUIParam`: Class re-exports for type hints
 
-**Service methods (unused nested services):**
-- Analysis.*, Structure.*, Calculation.*, Run.*, Project.*, Engine.*: 16 unused methods
-- Require service.py changes - future batch
+**DTOs (7):**
+- `BaseDTO`: Base class for all DTOs
+- `MetaDTO`, `CalculationDTO`, `RunResultDTO`, `ErrorDTO`: Core DTOs
+- `AnalysisRefDTO`, `AnalysisSummaryDTO`: Return types for Analysis methods
+
+**Errors (2):**
+- `ConflictError`, `FilesystemError`: Law H6 error taxonomy
+
+**Nested service methods - scaffolding for future features (15):**
+- `Analysis.list_properties`, `Analysis.get_property_ref`, `Analysis.load_artifact`, `Analysis.find_band_files`
+- `Structure.get_atoms`, `Structure.update_meta`
+- `Calculation.require_enclosing`, `Calculation.get_effective_params`, `Calculation.update_meta`
+- `Run.get_status`
+- `Project.get_species_map`, `Project.get_potential_map`
+- `Engine.get_info`, `Engine.list_step_types`, `Engine.validate_installation`
+
+These methods are planned API surface for future UI/CLI integration. Not deleting.
+
+---
+
+## Final Summary
+
+**API Slimming Migration: COMPLETE** ✅
+
+| Metric | Baseline | Final | Reduction |
+|--------|----------|-------|-----------|
+| Total Entrypoints | 243 | 225 | -18 (7.4%) |
+| Static Methods | 38 | 23 | -15 (39.5%) |
+| Unused (intentional) | 33 | 27 | -6 |
+
+**Deleted TEMP SHIM methods:**
+1. `init_calculation` (Batch 18)
+2. `import_structure` (Batch 19)
+3. `init_step` (Batch 20)
+
+**All tests passing:** 3012 passed, 18 skipped
+
+---
+
+## GEN/SPEC Semantics Cleanup (Post-Slimming)
+
+Following API slimming, began cleanup of bare `step_type` violations per GEN_SPEC_SEMANTICS_IMPLEMENTATION_PLAN.md.
+
+### Batch 21: Rename bare step_type variables
+- **Time**: 2026-02-02
+- **Action**: Renamed bare `step_type` variables to explicit `step_type_spec`, `step_type_gen`, or `step_type_val` names
+- **Files Changed**:
+  - `src/quantumvitas/workflow/templates.py`: 21 violations fixed
+  - `src/quantumvitas/core/calc_identity.py`: 10 violations fixed
+  - `src/quantumvitas/presets/detector.py`: Parameter names `step_types` → `step_types_gen`
+  - `src/quantumvitas/presets/integration.py`: Updated caller to use `step_types_gen`
+  - `src/quantumvitas/api/service.py`: Renamed `step_type` → `step_type_gen` in run_step method
+  - `src/quantumvitas/history/run_revision.py`: Renamed `step_type` → `step_type_spec` in finalize_run_revision
+- **Bare step_type count**: 438 → 400 (38 fewer, 9% reduction)
+- **Tests**: 3012 passed, 18 skipped
+- **Notes**: Simplified conversion logic using `gen_from()` idiomatically (it's idempotent for GEN values)
 
 ---
 

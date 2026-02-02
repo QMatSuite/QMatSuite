@@ -4932,12 +4932,12 @@ class QVService:
                     )
 
                 # Get step type (SPEC from YAML, convert to GEN for API response)
-                step_type = "unknown"
+                step_type_gen = "unknown"
                 try:
                     from quantumvitas.api import get_step_type_gen
                     step_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
                     step_type_spec = step_data.get("step_type_spec", "unknown")
-                    step_type = get_step_type_gen(step_type_spec) if step_type_spec else "unknown"
+                    step_type_gen = get_step_type_gen(step_type_spec) if step_type_spec else "unknown"
                 except Exception:
                     pass
 
@@ -4961,7 +4961,7 @@ class QVService:
                     result_dict = {
                         "step": step_selector,
                         "step_ulid": target_step_ulid,
-                        "step_type_gen": step_type,
+                        "step_type_gen": step_type_gen,
                         "success": False,
                         "error": str(e),
                         "output_file": None,
@@ -4996,7 +4996,7 @@ class QVService:
                 result_dict = {
                     "step": step_selector,
                     "step_ulid": target_step_ulid,
-                    "step_type_gen": step_type,
+                    "step_type_gen": step_type_gen,
                     "success": success,
                     "error": error_msg,
                     "input_file": input_file,

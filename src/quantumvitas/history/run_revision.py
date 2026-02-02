@@ -445,19 +445,18 @@ def complete_run_revision(
     
     for i, step_result in enumerate(step_results):
         step_ulid = step_result.get("step_ulid", "")
-        step_type = step_result.get("step_type_spec", "")
-        # step_type is already a string, no conversion needed
-        
+        step_type_spec = step_result.get("step_type_spec", "")
+
         step_status = step_result.get("status", "success")
         if hasattr(step_status, "value"):
             step_status = step_status.value
-        
+
         step_name = step_result.get("step_name")
         error_msg = step_result.get("message") if step_status == "failed" else None
-        
+
         digest = compute_step_digest(
             step_ulid=step_ulid,
-            step_type_spec=step_type,
+            step_type_spec=step_type_spec,
             working_dir=working_dir,
             step_name=step_name,
             step_status=step_status,

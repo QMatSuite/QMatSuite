@@ -182,7 +182,7 @@ def detect_presets_from_calculation(
     # (don't catch it here - let it bubble up to daemon handler)
     detected = detect_all_presets(
         step_params_list,
-        step_types=step_types_list if enable_precision else None,
+        step_types_gen=step_types_list if enable_precision else None,
         calculation_dir=calculation_dir if enable_precision else None,
     )
     
