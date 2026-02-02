@@ -142,18 +142,17 @@ class TestPySCFPhase3CIntegration:
         calc_id = pyscf_calculation["calc_id"]
         
         # First run: create checkpoint
-        result1 = QVService.run_calculation(
-            project_root=project_root,
-            calculation_selector=calc_id,
+        svc = QVService(project_root)
+        result1 = svc.run.run_calculation(
+            calc_selector=calc_id,
             run_mode="full",  # Full run first to create checkpoint
         )
-        assert result1.get("status") == "success", f"First run failed: {result1.get('error')}"
-        
-        # Get step_id from the result (steps are executed, so use first step from result)
-        # The result.steps list contains StepResultSummary with step_id
-        step_summaries = result1.get("steps", [])
+        assert result1.status == "completed", f"First run failed: {result1.error.message if result1.error else None}"
+
+        # Get step_id from the result (steps are executed, so use first step from step_ulids)
+        step_summaries = result1.step_ulids
         assert len(step_summaries) > 0, "No steps were executed"
-        executed_step_id = step_summaries[0]["step_ulid"]
+        executed_step_id = step_summaries[0]
         
         # Check that checkpoint was created
         calc_dir = pyscf_calculation["calc_dir"]
@@ -163,12 +162,11 @@ class TestPySCFPhase3CIntegration:
         assert checkpoint_file.exists(), f"Checkpoint file should exist after first run at {checkpoint_file}"
         
         # Second run: incremental (should use chkfile init_guess)
-        result2 = QVService.run_calculation(
-            project_root=project_root,
-            calculation_selector=calc_id,
+        result2 = svc.run.run_calculation(
+            calc_selector=calc_id,
             run_mode="incremental",  # Incremental: should use chkfile
         )
-        assert result2.get("status") == "success", f"Second run failed: {result2.get('error')}"
+        assert result2.status == "completed", f"Second run failed: {result2.error.message if result2.error else None}"
         
         # Verify checkpoint still exists (was reused)
         assert checkpoint_file.exists(), "Checkpoint should still exist after incremental run"
@@ -179,27 +177,26 @@ class TestPySCFPhase3CIntegration:
         calc_id = pyscf_calculation["calc_id"]
         
         # First run: create checkpoint
-        result1 = QVService.run_calculation(
-            project_root=project_root,
-            calculation_selector=calc_id,
+        svc = QVService(project_root)
+        result1 = svc.run.run_calculation(
+            calc_selector=calc_id,
             run_mode="full",
         )
-        assert result1.get("status") == "success"
-        
+        assert result1.status == "completed"
+
         # Verify checkpoint exists
         calc_dir = pyscf_calculation["calc_dir"]
         raw_dir = calc_dir / "raw"
         step_artifacts_dir = raw_dir / "step_artifacts" / pyscf_calculation["step_ulid"]
         checkpoint_file = step_artifacts_dir / "checkpoint.chk"
         assert checkpoint_file.exists()
-        
+
         # Second run: full (should NOT use chkfile init_guess, but checkpoint will be overwritten)
-        result2 = QVService.run_calculation(
-            project_root=project_root,
-            calculation_selector=calc_id,
+        result2 = svc.run.run_calculation(
+            calc_selector=calc_id,
             run_mode="full",  # Full: should NOT use chkfile init_guess
         )
-        assert result2.get("status") == "success"
+        assert result2.status == "completed"
         
         # Checkpoint should still exist (was overwritten with new run)
         assert checkpoint_file.exists()
@@ -211,12 +208,12 @@ class TestPySCFPhase3CIntegration:
         step_id = pyscf_calculation["step_ulid"]
         
         # First run: create checkpoint
-        result1 = QVService.run_calculation(
-            project_root=project_root,
-            calculation_selector=calc_id,
+        svc = QVService(project_root)
+        result1 = svc.run.run_calculation(
+            calc_selector=calc_id,
             run_mode="full",
         )
-        assert result1.get("status") == "success"
+        assert result1.status == "completed"
         
         # Verify checkpoint exists
         calc_dir = pyscf_calculation["calc_dir"]
@@ -226,12 +223,11 @@ class TestPySCFPhase3CIntegration:
         assert checkpoint_file.exists()
         
         # RunStep(scf): should NOT use chkfile init_guess (target step always full rerun)
-        result2 = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_id,
+        result2 = svc.run.run_step(
+            calc_selector=calc_id,
             step_selector=step_id,
         )
-        assert result2.get("success"), f"RunStep failed: {result2.get('error')}"
+        assert result2.status == "completed", f"RunStep failed: {result2.error.message if result2.error else None}"
         
         # Checkpoint should still exist (was overwritten)
         assert checkpoint_file.exists()
@@ -308,12 +304,12 @@ class TestPySCFPhase3CIntegration:
         )
 
         # Run Step(MP2): should execute SCF then MP2 in one session
-        result = QVService.run_step(
-            project_root=temp_project,
-            calculation_selector=calc_id,
+        svc = QVService(temp_project)
+        result = svc.run.run_step(
+            calc_selector=calc_id,
             step_selector=mp2_step_id,
         )
-        assert result.get("success"), f"RunStep(mp2) failed: {result.get('error')}"
+        assert result.status == "completed", f"RunStep(mp2) failed: {result.error.message if result.error else None}"
         
         # Verify both steps' artifacts exist
         raw_dir = calc_dir / "raw"
@@ -386,16 +382,16 @@ class TestPySCFPhase3CIntegration:
 
         # Run Step(MP2): should fail because no SCF provider exists
         # Note: The unified pipeline returns errors in the result dict rather than raising exceptions
-        result = QVService.run_step(
-            project_root=temp_project,
-            calculation_selector=calc_id,
+        svc = QVService(temp_project)
+        result = svc.run.run_step(
+            calc_selector=calc_id,
             step_selector=mp2_step_id,
         )
 
         # Verify execution failed
-        assert result.get("success") is False, "RunStep(mp2) without SCF should fail"
+        assert result.status != "completed", "RunStep(mp2) without SCF should fail"
 
         # Verify error message mentions missing dependency
-        error_msg = result.get("error", "")
+        error_msg = result.error.message if result.error else ""
         assert "dependency" in error_msg.lower() or "provider" in error_msg.lower() or "mf" in error_msg.lower() or "scf" in error_msg.lower(), \
             f"Error should mention missing dependency, got: {error_msg}"

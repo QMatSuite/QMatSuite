@@ -185,20 +185,18 @@ class TestRelaxPromoteE2E:
         initial_count = len(initial_structures)
         
         # Run the relax step
-        result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        result = svc.run.run_step(
+            calc_selector=calc_ulid,
             step_selector=relax_step_ulid,
-            verbose=False,
         )
-        
-        assert result.get("success") is True, f"Step failed: {result.get('error')}"
-        
+
+        assert result.status == "completed", f"Step failed: {result.error.message if result.error else None}"
+
         # Verify current.json exists
         calc_dir = promote_test_calculation_with_relax["calc_dir"]
         artifact_path = get_generated_structure_path(calc_dir, relax_step_ulid)
         assert artifact_path.exists(), "current.json should exist after relax step"
-        
+
         # Promote the relaxed structure
         promoted_result = svc.structure.promote_relax_structure(
             calculation_selector=calc_ulid,
@@ -304,17 +302,15 @@ class TestRelaxPromoteE2E:
         project_root = promote_test_calculation_with_relax["project_root"]
         
         # Run the relax step
-        result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
-            step_selector=relax_step_ulid,
-            verbose=False,
-        )
-        
-        assert result.get("success") is True, f"Step failed: {result.get('error')}"
-        
-        # Promote the relaxed structure
         svc = QVService(project_root)
+        result = svc.run.run_step(
+            calc_selector=calc_ulid,
+            step_selector=relax_step_ulid,
+        )
+
+        assert result.status == "completed", f"Step failed: {result.error.message if result.error else None}"
+
+        # Promote the relaxed structure
         promoted_result = svc.structure.promote_relax_structure(
             calculation_selector=calc_ulid,
             step_selector=relax_step_ulid,

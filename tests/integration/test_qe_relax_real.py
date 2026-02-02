@@ -198,20 +198,19 @@ class TestQERelaxReal:
         project_root = qe_calculation_with_relax["project_root"]
         
         # Run the relax step
-        result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        svc = QVService(project_root)
+        result = svc.run.run_step(
+            calc_selector=calc_ulid,
             step_selector=relax_step_ulid,
-            verbose=False,
         )
-        
+
         # Verify step completed
-        step_succeeded = result.get("success") is True
-        
+        step_succeeded = result.status == "completed"
+
         # Save output file for analysis if step succeeded but post-processing failed
         output_file_path = None
-        if step_succeeded and result.get("output_file"):
-            output_file_path = Path(result["output_file"])
+        if step_succeeded and result.output_file:
+            output_file_path = Path(result.output_file)
             if output_file_path.exists():
                 # Save a copy for analysis
                 analysis_file = Path("/tmp/qe_relax_output_analysis.out")
@@ -291,15 +290,14 @@ class TestQERelaxReal:
         initial_structure = read_structure(structure_path)
         
         # Run the relax step
-        result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        svc = QVService(project_root)
+        result = svc.run.run_step(
+            calc_selector=calc_ulid,
             step_selector=relax_step_ulid,
-            verbose=False,
         )
-        
-        assert result.get("success") is True, f"Step failed: {result.get('error')}"
-        
+
+        assert result.status == "completed", f"Step failed: {result.error.message if result.error else None}"
+
         # Load relaxed structure
         relaxed_structure = read_generated_structure(calc_dir, relax_step_ulid)
         assert relaxed_structure is not None
@@ -328,15 +326,14 @@ class TestQERelaxReal:
         project_root = qe_calculation_with_relax["project_root"]
         
         # Run the relax step
-        result = QVService.run_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        svc = QVService(project_root)
+        result = svc.run.run_step(
+            calc_selector=calc_ulid,
             step_selector=relax_step_ulid,
-            verbose=False,
         )
-        
-        assert result.get("success") is True, f"Step failed: {result.get('error')}"
-        
+
+        assert result.status == "completed", f"Step failed: {result.error.message if result.error else None}"
+
         # Load manifest
         from quantumvitas.calculation.manifest import load_manifest
         manifest = load_manifest(calc_dir)
