@@ -111,28 +111,30 @@ class TestQVServiceStructure:
         """Import a structure file."""
         project_dir, source_file = project_with_struct_source
 
-        result = QVService.import_structure(project_dir, source_file, name="Silicon")
+        result = QVService(project_dir).structure.import_file(source_file, name="Silicon")
 
-        assert result.name == "Silicon"
-        assert result.slug == "silicon"
-        assert result.absolute_path.exists()
+        assert result.meta.name == "Silicon"
+        assert result.meta.slug == "silicon"
+        # Verify structure file exists using slug (StructureDTO doesn't have absolute_path)
+        structure_path = project_dir / "structures" / f"{result.meta.slug}.json"
+        assert structure_path.exists()
 
     def test_import_structure_unique_name(self, project_with_struct_source):
         """Import generates unique names for duplicates."""
         project_dir, source_file = project_with_struct_source
 
-        QVService.import_structure(project_dir, source_file, name="Silicon")
-        result2 = QVService.import_structure(project_dir, source_file, name="Silicon")
+        QVService(project_dir).structure.import_file(source_file, name="Silicon")
+        result2 = QVService(project_dir).structure.import_file(source_file, name="Silicon")
 
         # Second import should get unique name
-        assert result2.slug != "silicon"
+        assert result2.meta.slug != "silicon"
 
     def test_list_structures(self, project_with_struct_source):
         """List imported structures using domain API."""
         project_dir, source_file = project_with_struct_source
 
-        QVService.import_structure(project_dir, source_file, name="Silicon")
-        QVService.import_structure(project_dir, source_file, name="Graphene")
+        QVService(project_dir).structure.import_file(source_file, name="Silicon")
+        QVService(project_dir).structure.import_file(source_file, name="Graphene")
 
         svc = get_service(project_dir)
         results = svc.structure.list()
@@ -145,7 +147,7 @@ class TestQVServiceStructure:
         """Get structure by selector using domain API."""
         project_dir, source_file = project_with_struct_source
 
-        QVService.import_structure(project_dir, source_file, name="Silicon")
+        QVService(project_dir).structure.import_file(source_file, name="Silicon")
 
         svc = get_service(project_dir)
         result = svc.structure.get("silicon")
@@ -155,7 +157,7 @@ class TestQVServiceStructure:
         """Rename a structure using domain API."""
         project_dir, source_file = project_with_struct_source
 
-        QVService.import_structure(project_dir, source_file, name="Silicon")
+        QVService(project_dir).structure.import_file(source_file, name="Silicon")
 
         svc = get_service(project_dir)
         svc.structure.update_meta("silicon", new_name="Si Crystal")
@@ -168,7 +170,7 @@ class TestQVServiceStructure:
         project_dir, source_file = project_with_struct_source
 
         # Import a structure
-        result = QVService.import_structure(project_dir, source_file, name="To Delete")
+        result = QVService(project_dir).structure.import_file(source_file, name="To Delete")
         structure_ulid = result.meta.ulid
 
         # Verify structure exists
@@ -214,7 +216,7 @@ class TestQVServiceCalculation:
             "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
             "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
         }""")
-        QVService.import_structure(project, source, name="Silicon")
+        QVService(project).structure.import_file(source, name="Silicon")
 
         result = QVService(project).project.init_calculation("SCF Calc", structure_selector="silicon")
 
@@ -261,8 +263,8 @@ class TestQVServiceCalculation:
             "lattice": {"matrix": [[5.5,0,0],[0,5.5,0],[0,0,5.5]], "a": 5.5, "b": 5.5, "c": 5.5, "alpha": 90, "beta": 90, "gamma": 90},
             "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
         }""")
-        struct1 = QVService.import_structure(project, source1, name="Silicon1")
-        struct2 = QVService.import_structure(project, source2, name="Silicon2")
+        struct1 = QVService(project).structure.import_file(source1, name="Silicon1")
+        struct2 = QVService(project).structure.import_file(source2, name="Silicon2")
 
         # Create calculation with first structure
         calc = QVService(project).project.init_calculation("Test Calc", structure_selector=struct1.meta.ulid)
@@ -308,7 +310,7 @@ class TestQVServiceStep:
             "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
             "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
         }""")
-        QVService.import_structure(project_dir, source, name="Silicon")
+        QVService(project_dir).structure.import_file(source, name="Silicon")
 
         QVService(project_dir).project.init_calculation("Test Calculation", structure_selector="silicon")
 

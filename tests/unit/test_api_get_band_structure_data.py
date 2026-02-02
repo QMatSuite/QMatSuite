@@ -82,7 +82,7 @@ def tmp_project_with_bands(tmp_path: Path):
         "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
-    QVService.import_structure(project_root, struct_file, name="Silicon")
+    QVService(project_root).structure.import_file(struct_file, name="Silicon")
     
     # Create calculation
     calc_slug = "si-bands"

@@ -126,3 +126,13 @@ class StepDTO(BaseDTO):
     exit_code: int | None = None
     error_message: str | None = None
 
+    @property
+    def ulid(self) -> str:
+        """Compatibility: alias for step_ulid."""
+        return self.step_ulid
+
+    @property
+    def id(self) -> str:
+        """Compatibility: alias for step_ulid (some tests use .id)."""
+        return self.step_ulid
+

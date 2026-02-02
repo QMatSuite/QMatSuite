@@ -72,7 +72,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     struct_file.write_text(json.dumps(structure.as_dict()))
     
     # Import structure
-    struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC")
+    struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC")
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
@@ -112,12 +112,8 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
-        step_type_gen="relax",
-    )
-    relax_step_id = relax_step.meta.ulid
+    relax_step_dto = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
+    relax_step_id = relax_step_dto.meta.ulid
     
     configure_step(
         project_root=project_root,
@@ -136,12 +132,8 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     )
     
     # Create MD step with restart_from
-    md_step = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
-        step_type_gen="md",
-    )
-    md_step_id = md_step.meta.ulid
+    md_step_dto = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
+    md_step_id = md_step_dto.meta.ulid
     
     configure_step(
         project_root=project_root,

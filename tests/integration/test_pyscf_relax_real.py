@@ -117,13 +117,12 @@ def pyscf_calculation_with_relax(pyscf_project_with_h2):
     calc_yaml.write_text(yaml.dump(calc_data))
     
     # Create relax step
-    relax_step_result = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_ulid,
+    relax_step_dto = QVService(project_root).calculation.add_step(
+        calc_ulid,
         step_type_gen="relax",  # GEN type for UI layer
         name="relax",
     )
-    relax_step_ulid = relax_step_result.ulid
+    relax_step_ulid = relax_step_dto.ulid
 
     # Configure relax step with minimal parameters for quick test
     svc = QVService(project_root)

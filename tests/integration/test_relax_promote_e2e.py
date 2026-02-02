@@ -134,9 +134,8 @@ def promote_test_calculation_with_relax(promote_test_project):
     calc_yaml.write_text(yaml.dump(calc_data))
     
     # Create relax step
-    relax_step_result = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_ulid,
+    relax_step_result = QVService(project_root).calculation.add_step(
+        calc_ulid,
         step_type_gen="relax",  # GEN type for UI layer
         name="relax",
     )
@@ -210,11 +209,13 @@ class TestRelaxPromoteE2E:
         # Verify promoted structure has different ULID
         assert promoted_result.meta.ulid != initial_structure_ulid, "Promoted structure should have different ULID"
         assert promoted_result.meta.name == "relaxed_h2", "Promoted structure should have correct name"
-        assert promoted_result.absolute_path.exists(), "Promoted structure file should exist"
-        
+        # StructureDTO doesn't have absolute_path, compute from slug
+        structure_path = project_root / "structures" / f"{promoted_result.meta.slug}.json"
+        assert structure_path.exists(), "Promoted structure file should exist"
+
         # Verify structure content
         from quantumvitas.io import read_structure
-        promoted_structure = read_structure(promoted_result.absolute_path)
+        promoted_structure = read_structure(structure_path)
         assert promoted_structure is not None
         assert len(promoted_structure) == 2, "Should have 2 H atoms"
         
@@ -270,9 +271,8 @@ class TestRelaxPromoteE2E:
         calc_yaml.write_text(yaml.dump(calc_data))
         
         # Create SCF step (not relax)
-        scf_step_result = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_ulid,
+        scf_step_result = QVService(project_root).calculation.add_step(
+            calc_ulid,
             step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )

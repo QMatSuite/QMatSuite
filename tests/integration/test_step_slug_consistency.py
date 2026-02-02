@@ -36,7 +36,7 @@ def lammps_project(tmp_path: Path):
     s.to(filename=structure_path, fmt="json")
     
     # Import structure
-    struct_result = QVService.import_structure(project_root, structure_path)
+    struct_result = QVService(project_root).structure.import_file(structure_path)
     
     # Init calculation
     calc_result = QVService(project_root).project.init_calculation(

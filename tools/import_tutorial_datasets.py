@@ -517,12 +517,10 @@ def _materialize_project_from_input_folder_legacy(
     except Exception:
         pass  # If preprocessing fails, use original file
     
-    structure_resolved = QVService.import_structure(
-        project_root=project_root,
+    structure_resolved = QVService(project_root).structure.import_file(
         source=first_input,
         name=None,  # Use default name from file
         format="auto",
-        index=None  # Let it rebuild internally
     )
     structure_selector = structure_resolved.meta.slug
     

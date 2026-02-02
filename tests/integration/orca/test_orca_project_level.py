@@ -95,15 +95,14 @@ def orca_project(tmp_path):
     calc_yaml.write_text(yaml.dump(calc_data, default_flow_style=False))
 
     # Add SCF step with SPEC step type
-    step_resolved = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_id,
+    step_dto = QVService(project_root).calculation.add_step(
+        calc_id,
         step_type_gen="scf",  # GEN type for UI layer (Constitution §A)
     )
-    step_id = step_resolved.meta.ulid
+    step_id = step_dto.meta.ulid
 
     # Update step parameters
-    step_yaml = step_resolved.absolute_path
+    step_yaml = project_root / step_dto.meta.path
     step_data = yaml.safe_load(step_yaml.read_text())
     step_data["parameters"] = {
         "functional": "HF",

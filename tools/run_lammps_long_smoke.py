@@ -111,16 +111,15 @@ def run_workflow_a_lj_relax(base_dir: Path) -> Dict[str, Any]:
             return evidence
         
         # Import structure
-        struct_result = QVService.import_structure(project_root, struct_file, name="LJ FCC 108")
+        struct_result = QVService(project_root).structure.import_file(struct_file, name="LJ FCC 108")
         structure_id = struct_result.meta.ulid
         
         # Create calculation
-        calc_result = QVService.init_calculation(
-            project_root=project_root,
+        calc_result = QVService(project_root).project.init_calculation(
             name="lj_relax",
             structure_selector=structure_id,
         )
-        calc_id = calc_result.meta.ulid
+        calc_id = calc_result.ulid
         calc_dir = calc_result.absolute_path
         
         # Configure calculation
@@ -132,11 +131,7 @@ def run_workflow_a_lj_relax(base_dir: Path) -> Dict[str, Any]:
         save_yaml_doc(calc_doc, calc_path)
         
         # Create relax step
-        relax_step = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_id,
-            step_type="relax",
-        )
+        relax_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
         relax_step_id = relax_step.meta.ulid
         
         # Configure step
@@ -286,31 +281,30 @@ def run_workflow_b_eam_md(base_dir: Path) -> Dict[str, Any]:
             return evidence
         
         # Import structure
-        struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC 32")
+        struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
         structure_id = struct_result.meta.ulid
-        
+
         # Copy potential file
         potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
         if not potential_src.exists():
             print(f"ERROR: Potential file not found: {potential_src}")
             evidence["result"] = "FAIL"
             return evidence
-        
+
         potentials_dir = project_root / "potentials"
         potentials_dir.mkdir(exist_ok=True)
         potential_dst = potentials_dir / "Cu_u3.eam"
         shutil.copy2(potential_src, potential_dst)
         potential_sha = compute_sha256_file(potential_dst)
-        
+
         # Create calculation
-        calc_result = QVService.init_calculation(
-            project_root=project_root,
+        calc_result = QVService(project_root).project.init_calculation(
             name="eam_md",
             structure_selector=structure_id,
         )
-        calc_id = calc_result.meta.ulid
+        calc_id = calc_result.ulid
         calc_dir = calc_result.absolute_path
-        
+
         # Configure calculation with potential_map
         calc_path = calc_dir / "calculation.yaml"
         calc_model = load_calculation(calc_path, project_root=project_root)
@@ -328,11 +322,7 @@ def run_workflow_b_eam_md(base_dir: Path) -> Dict[str, Any]:
         save_yaml_doc(calc_doc, calc_path)
         
         # Create MD step
-        md_step = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_id,
-            step_type="md",
-        )
+        md_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
         md_step_id = md_step.meta.ulid
         
         # Configure step
@@ -486,29 +476,28 @@ def run_workflow_c_chain(base_dir: Path) -> Dict[str, Any]:
             return evidence
         
         # Import structure
-        struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC 32")
+        struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
         structure_id = struct_result.meta.ulid
-        
+
         # Copy potential file
         potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
         if not potential_src.exists():
             print(f"ERROR: Potential file not found: {potential_src}")
             evidence["result"] = "FAIL"
             return evidence
-        
+
         potentials_dir = project_root / "potentials"
         potentials_dir.mkdir(exist_ok=True)
         potential_dst = potentials_dir / "Cu_u3.eam"
         shutil.copy2(potential_src, potential_dst)
         potential_sha = compute_sha256_file(potential_dst)
-        
+
         # Create calculation
-        calc_result = QVService.init_calculation(
-            project_root=project_root,
+        calc_result = QVService(project_root).project.init_calculation(
             name="chain",
             structure_selector=structure_id,
         )
-        calc_id = calc_result.meta.ulid
+        calc_id = calc_result.ulid
         calc_dir = calc_result.absolute_path
         
         # Configure calculation
@@ -528,11 +517,7 @@ def run_workflow_c_chain(base_dir: Path) -> Dict[str, Any]:
         save_yaml_doc(calc_doc, calc_path)
         
         # Create relax step
-        relax_step = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_id,
-            step_type="relax",
-        )
+        relax_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
         relax_step_id = relax_step.meta.ulid
         
         QVService.configure_step(
@@ -552,11 +537,7 @@ def run_workflow_c_chain(base_dir: Path) -> Dict[str, Any]:
         )
         
         # Create MD step
-        md_step = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_id,
-            step_type="md",
-        )
+        md_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
         md_step_id = md_step.meta.ulid
         
         QVService.configure_step(
@@ -694,29 +675,28 @@ def run_workflow_d_restart(base_dir: Path) -> Dict[str, Any]:
             return evidence
         
         # Import structure
-        struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC 32")
+        struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
         structure_id = struct_result.meta.ulid
-        
+
         # Copy potential file
         potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
         if not potential_src.exists():
             print(f"ERROR: Potential file not found: {potential_src}")
             evidence["result"] = "FAIL"
             return evidence
-        
+
         potentials_dir = project_root / "potentials"
         potentials_dir.mkdir(exist_ok=True)
         potential_dst = potentials_dir / "Cu_u3.eam"
         shutil.copy2(potential_src, potential_dst)
         potential_sha = compute_sha256_file(potential_dst)
-        
+
         # Create calculation
-        calc_result = QVService.init_calculation(
-            project_root=project_root,
+        calc_result = QVService(project_root).project.init_calculation(
             name="restart",
             structure_selector=structure_id,
         )
-        calc_id = calc_result.meta.ulid
+        calc_id = calc_result.ulid
         calc_dir = calc_result.absolute_path
         
         # Configure calculation
@@ -736,11 +716,7 @@ def run_workflow_d_restart(base_dir: Path) -> Dict[str, Any]:
         save_yaml_doc(calc_doc, calc_path)
         
         # Create relax step
-        relax_step = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_id,
-            step_type="relax",
-        )
+        relax_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
         relax_step_id = relax_step.meta.ulid
         
         QVService.configure_step(
@@ -760,11 +736,7 @@ def run_workflow_d_restart(base_dir: Path) -> Dict[str, Any]:
         )
         
         # Create first MD step
-        md1_step = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_id,
-            step_type="md",
-        )
+        md1_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
         md1_step_id = md1_step.meta.ulid
         
         QVService.configure_step(
@@ -786,11 +758,7 @@ def run_workflow_d_restart(base_dir: Path) -> Dict[str, Any]:
         )
         
         # Create second MD step (restart from first MD)
-        md2_step = QVService.init_step(
-            project_root=project_root,
-            calculation_selector=calc_id,
-            step_type="md",
-        )
+        md2_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
         md2_step_id = md2_step.meta.ulid
         
         QVService.configure_step(

@@ -53,7 +53,7 @@ class TestGetStructureVisData:
     def test_returns_visualization_data(self, tmp_path, sample_structure_file):
         """Test that get_structure_vis_data returns complete data."""
         project_root = QVService.init_project(tmp_path / "test_project")
-        QVService.import_structure(project_root, sample_structure_file, name="si")
+        QVService(project_root).structure.import_file(sample_structure_file, name="si")
         
         svc = QVService(project_root)
         vis_data = svc.structure.get_vis_data("si")
@@ -96,7 +96,7 @@ class TestGetStructureVisData:
     def test_supercell_increases_atoms(self, tmp_path, sample_structure_file):
         """Test that supercell parameter increases atom count."""
         project_root = QVService.init_project(tmp_path / "test_project")
-        QVService.import_structure(project_root, sample_structure_file, name="si")
+        QVService(project_root).structure.import_file(sample_structure_file, name="si")
         
         svc = QVService(project_root)
         vis_1x1x1 = svc.structure.get_vis_data("si", supercell=(1, 1, 1))
@@ -108,7 +108,7 @@ class TestGetStructureVisData:
     def test_boundary_repeat_adds_image_atoms(self, tmp_path, sample_structure_file):
         """Test that boundary repeat generates image atoms for primitive cell."""
         project_root = QVService.init_project(tmp_path / "test_project")
-        QVService.import_structure(project_root, sample_structure_file, name="si")
+        QVService(project_root).structure.import_file(sample_structure_file, name="si")
         
         svc = QVService(project_root)
         vis_plain = svc.structure.get_vis_data(
@@ -185,7 +185,7 @@ class TestJSONSerializability:
         """Test that structure vis data is JSON-serializable."""
         import json
         project_root = QVService.init_project(tmp_path / "test_project")
-        QVService.import_structure(project_root, sample_structure_file, name="si")
+        QVService(project_root).structure.import_file(sample_structure_file, name="si")
         
         svc = QVService(project_root)
         vis_data = svc.structure.get_vis_data("si")

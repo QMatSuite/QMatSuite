@@ -31,7 +31,7 @@ def test_update_step_params_parameter_scan_merge(tmp_path):
         "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
-    QVService.import_structure(project_root, source, name="Silicon")
+    QVService(project_root).structure.import_file(source, name="Silicon")
 
     # Create calculation
     calc_result = QVService(project_root).project.init_calculation("calc001", structure_selector="silicon")
@@ -105,7 +105,7 @@ def test_update_step_params_parameter_scan_preserves_array_values(tmp_path):
         "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
-    QVService.import_structure(project_root, source, name="Silicon")
+    QVService(project_root).structure.import_file(source, name="Silicon")
 
     # Create calculation
     calc_result = QVService(project_root).project.init_calculation("calc001", structure_selector="silicon")
@@ -164,7 +164,7 @@ def test_update_step_params_parameter_scan_empty_preserves(tmp_path):
         "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
-    QVService.import_structure(project_root, source, name="Silicon")
+    QVService(project_root).structure.import_file(source, name="Silicon")
 
     # Create calculation
     calc_result = QVService(project_root).project.init_calculation("calc001", structure_selector="silicon")
@@ -225,7 +225,7 @@ def test_update_step_params_parameter_scan_multiple_scans(tmp_path):
         "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
-    QVService.import_structure(project_root, source, name="Silicon")
+    QVService(project_root).structure.import_file(source, name="Silicon")
 
     # Create calculation
     calc_result = QVService(project_root).project.init_calculation("calc001", structure_selector="silicon")

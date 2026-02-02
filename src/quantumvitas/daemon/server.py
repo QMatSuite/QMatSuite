@@ -3204,13 +3204,16 @@ class QVDaemon:
         
         # Invalidate cache since we added a new structure
         self.state.invalidate_cache(project_root)
-        
+
+        # StructureDTO doesn't have absolute_path, compute relative path from slug
+        structure_rel_path = f"structures/{result.meta.slug}.json"
+
         return {
             "success": True,
             "structure": {
                 "ulid": result.meta.ulid,
                 "name": result.meta.name,
-                "path": str(result.absolute_path.relative_to(project_root)),
+                "path": structure_rel_path,
             },
         }
     

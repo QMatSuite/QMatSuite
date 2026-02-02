@@ -1,7 +1,7 @@
 # API Slimming Worklog
 
 **Started**: 2026-02-02
-**Status**: IN PROGRESS
+**Status**: COMPLETE (TEMP SHIM migration finished)
 
 ---
 
@@ -308,6 +308,64 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ---
 
+### Batch 19: Delete import_structure static method
+- **Time**: 2026-02-02
+- **Action**: Migrated all callers from `QVService.import_structure()` to `QVService(project_root).structure.import_file()` and deleted the static method
+- **Deleted**: 1 static method (TEMP SHIM)
+- **Delta**: 227 → 226 entrypoints, static 25 → 24
+- **Tests**: 3012 passed, 18 skipped
+- **Migrated Files**:
+  - `tests/unit/test_api_service.py` (3 usages)
+  - `tests/unit/test_api_get_band_structure_data.py` (1 usage)
+  - `tests/unit/test_api_parameter_scan_persistence.py` (4 usages)
+  - `tests/unit/test_api_step_artifacts.py` (1 usage)
+  - `tests/unit/test_qvservice_gui.py` (5 usages)
+  - `tests/cli/test_calculation_structure_kind_engine_family.py` (1 usage)
+  - `tests/contract_crawler/recipes/parameterized.py` (1 usage)
+  - `tests/unit/test_structure_fingerprint.py` (5 usages)
+  - `tools/run_lammps_long_smoke.py` (1 usage)
+  - `tools/import_tutorial_datasets.py` (1 usage)
+  - `src/quantumvitas/api/service.py:promote_relax_structure` internal call (1 usage)
+  - `src/quantumvitas/daemon/server.py:_handle_promote_relax_structure` (return type adjustment)
+- **Notes**:
+  - Added `dedup_by_fingerprint` parameter to nested `import_file` method for full migration
+  - Return type changed: `ResolvedResource` → `StructureDTO`
+  - Tests updated to compute structure path from `result.meta.slug` instead of `result.absolute_path`
+  - Daemon handler updated to compute relative path from slug
+- **Slimming Effect**: Removed `import_structure` TEMP SHIM. Real surface reduction: -1 static method.
+
+---
+
+### Batch 20: Delete init_step static method
+- **Time**: 2026-02-02
+- **Action**: Migrated all callers from `QVService.init_step()` to `QVService(project_root).calculation.add_step()` and deleted the static method
+- **Deleted**: 1 static method (TEMP SHIM)
+- **Delta**: 226 → 225 entrypoints, static 24 → 23
+- **Tests**: 3012 passed, 18 skipped
+- **Migrated Files** (14 files, 44 usages):
+  - `tests/integration/orca/test_orca_project_level.py` (1 usage)
+  - `tests/integration/test_orca_relax_real.py` (1 usage)
+  - `tests/integration/test_pyscf_relax_real.py` (1 usage)
+  - `tests/integration/test_qe_relax_real.py` (1 usage)
+  - `tests/integration/test_relax_promote_e2e.py` (2 usages)
+  - `tests/integration/test_relax_e2e.py` (3 usages)
+  - `tests/daemon/test_promote_relax_structure.py` (4 usages)
+  - `tests/integration/test_cp2k_integration.py` (3 usages)
+  - `tests/integration/test_pyscf_phase3c.py` (4 usages)
+  - `tests/integration/vasp/test_vasp_project_e2e.py` (7 usages)
+  - `tests/integration/test_lammps_restart_parallel.py` (2 usages)
+  - `tests/integration/test_lammps_long_smoke.py` (7 usages)
+  - `tools/run_lammps_long_smoke.py` (7 usages)
+- **Code Changes**:
+  - Added `ulid` and `id` properties to `StepDTO` for compatibility
+  - Added `ulid` and `path` fields to `MetaDTO` population in `step_to_dto()`
+  - Fixed test accessing `.absolute_path` to compute path from `project_root / step.meta.path`
+  - Changed `"orca_relax"` to `"relax"` (GEN type) in test - `add_step` materializes via engine_family
+  - **Fix**: Added `vasp_dos` StepTypeSpec to workflow registry (was missing, causing VASP DOS test to create QE step instead)
+- **Slimming Effect**: Removed `init_step` TEMP SHIM. Real surface reduction: -1 static method.
+
+---
+
 ## Summary Table
 
 | Batch | Date | Action | Deleted | New Total | Tests |
@@ -331,35 +389,47 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 | 16 | 2026-02-02 | Inline init_calculation | 0* | 228 | PASS |
 | 17 | 2026-02-02 | Migrate init_calculation test callers | 0 | 228 | PASS |
 | 18 | 2026-02-02 | Delete init_calculation static | 1 | 227 | PASS |
+| 19 | 2026-02-02 | Delete import_structure static | 1 | 226 | PASS |
+| 20 | 2026-02-02 | Delete init_step static | 1 | 225 | PASS |
 
-*init_calculation TEMP SHIM deleted - real surface reduction achieved
+*init_step TEMP SHIM deleted - real surface reduction achieved
 
 ---
 
-## Current State (After Batch 18)
+## Current State (After Batch 20)
 
 | Category | Count |
 |----------|-------|
 | utils | 88 |
-| service_static | 25 |
+| service_static | 23 |
 | service_nested | 91 |
 | errors | 10 |
 | dtos | 11 |
 | api_init | 2 |
-| **TOTAL** | **227** |
+| **TOTAL** | **225** |
 
 | Usage Status | Count |
 |--------------|-------|
-| Daemon only | ~109 |
-| CLI only | ~49 |
+| Daemon only | ~107 |
+| CLI only | ~47 |
 | Both | ~42 |
-| **UNUSED** | ~27 |
+| **UNUSED** | ~29 |
 
 ### Remaining TEMP SHIM Static Methods
 - ~~`init_calculation`~~ ✓ DELETED (Batch 18)
-- `import_structure` (62 callers) - next target
-- `init_step` (many callers) - after import_structure
-- `run_single_step` (daemon) - delegates to nested `run_step`
+- ~~`import_structure`~~ ✓ DELETED (Batch 19)
+- ~~`init_step`~~ ✓ DELETED (Batch 20)
+
+**ALL TEMP SHIM METHODS DELETED** ✅
+
+The `run_single_step` method is kept as a thin daemon wrapper (not a TEMP SHIM).
+
+### Remaining Static Methods (23 total)
+All remaining static methods are legitimate and should NOT be migrated:
+- **Entry points**: `init_project` (creates project, can't use nested pattern)
+- **Global utilities**: `get_settings`, `get_workflow_service`, `resolve_step_type_spec`, etc.
+- **Pseudo library management**: 13 methods operating on global installation (not per-project)
+- **Daemon compat**: `run_single_step` - thin wrapper kept for backward compat
 
 ---
 

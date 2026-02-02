@@ -57,7 +57,7 @@ def temp_project(tmp_path: Path) -> tuple[Path, str, str]:
         "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
-    QVService.import_structure(project_root, source, name="Silicon")
+    QVService(project_root).structure.import_file(source, name="Silicon")
 
     # Create calculation and get ULID
     calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector="silicon")

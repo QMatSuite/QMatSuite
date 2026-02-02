@@ -59,8 +59,7 @@ def temp_project(tmp_path: Path) -> Path:
     if test_data.exists():
         scf_in = test_data / "si.0_scf.in"
         if scf_in.exists():
-            structure_resolved = QVService.import_structure(
-                project_root=project_dir,
+            structure_resolved = QVService(project_dir).structure.import_file(
                 source=scf_in,
                 name="Si",
             )

@@ -86,13 +86,12 @@ def minimal_structure(tmp_project):
         structure.to(filename=str(cif_path), fmt="cif")
         
         # Import structure using service API
-        structure_resolved = QVService.import_structure(
-            project_root=tmp_project,
+        structure_resolved = QVService(tmp_project).structure.import_file(
             source=cif_path,
             name="test_structure",
         )
         structure_ulid = structure_resolved.meta.ulid
-        structure_path = structure_resolved.absolute_path
+        structure_path = tmp_project / "structures" / f"{structure_resolved.meta.slug}.json"
     finally:
         # Clean up temp file
         if cif_path.exists():

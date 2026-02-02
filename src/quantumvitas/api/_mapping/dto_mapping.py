@@ -446,8 +446,10 @@ def step_to_dto(
         # ResourceMeta only has id, name, slug, path, kind
         # Optional fields (description, tags, created_at, updated_at) may not exist
         meta = MetaDTO(
+            ulid=step_resolved.meta.ulid,
             slug=step_resolved.meta.slug,
             name=step_resolved.meta.name,
+            path=getattr(step_resolved.meta, 'path', None),
             description=getattr(step_resolved.meta, 'description', None),
             tags=list(step_resolved.meta.tags) if hasattr(step_resolved.meta, 'tags') and step_resolved.meta.tags else None,
             created_at=step_resolved.meta.created_at.isoformat() if hasattr(step_resolved.meta, 'created_at') and step_resolved.meta.created_at else None,

@@ -84,12 +84,12 @@ def qe_project_with_si():
     si_structure.to(filename=si_file, fmt="json")
     
     # Import structure
-    struct_result = QVService.import_structure(project_root, si_file, name="Silicon")
-    
+    struct_result = QVService(project_root).structure.import_file(si_file, name="Silicon")
+
     return {
         "project_root": project_root,
         "structure_ulid": struct_result.meta.ulid,
-        "structure_path": struct_result.absolute_path,
+        "structure_path": project_root / "structures" / f"{struct_result.meta.slug}.json",
         "test_dir": test_dir,  # Keep test_dir for cleanup if needed
     }
 
@@ -122,13 +122,12 @@ def qe_calculation_with_relax(qe_project_with_si):
     )
     
     # Create relax step
-    relax_step_result = QVService.init_step(
-        project_root=project_root,
-        calculation_selector=calc_ulid,
+    relax_step_dto = QVService(project_root).calculation.add_step(
+        calc_ulid,
         step_type_gen="relax",  # GEN type for UI layer
         name="relax",
     )
-    relax_step_ulid = relax_step_result.ulid
+    relax_step_ulid = relax_step_dto.ulid
     
     # Configure relax step with minimal parameters for quick test
     configure_step(
