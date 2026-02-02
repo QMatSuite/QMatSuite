@@ -1,692 +1,380 @@
 # API Slimming Opportunity Report
 
 **Generated**: 2026-02-02
+**Revised**: 2026-02-02 (Deep review with case-by-case analysis)
 **Baseline**: 243 entrypoints → **Current**: 213 entrypoints (-30, -12.3%)
-**Target**: Further consolidation opportunities
 
 ---
 
 ## Executive Summary
 
-This report provides an exhaustive catalog of all 213 public API entrypoints and identifies consolidation opportunities beyond the "easy wins" already harvested. The analysis reveals:
+### Highest-Confidence Slimming Opportunities (5)
 
-1. **79 utils functions** - Many are thin proxies to core; several clusters could merge
-2. **23 static methods** - ALL unused by daemon/CLI (test-only); should migrate to nested accessors
-3. **88 nested service methods** - Core capabilities; several overlap opportunities
-4. **11 DTOs** - Appropriate surface
-5. **10 errors** - Appropriate surface
-6. **2 api_init exports** - Required
+| Priority | Opportunity | Expected Delta | Evidence |
+|----------|-------------|----------------|----------|
+| 1 | Delete `Analysis.find_band_files` | **-1** | Zero usage (d=0, c=0, t=0); duplicate of utils `find_band_analysis_files` |
+| 2 | Delete `Project.get_species_map` | **-1** | Tests-only (d=0, c=0, t=3); redundant with `get_config().get("species_map")` |
+| 3 | Delete `Project.get_potential_map` | **-1** | Tests-only (d=0, c=0, t=3); redundant with `get_config().get("potential_map")` |
+| 4 | Merge `visualize_structure` + `build_structure_vis_payload` | **-1** | Same purpose, different interfaces |
+| 5 | Delete internal model leak functions (`load_calculation`, `save_calculation`) | **-2** | Expose internal `CalculationModel`; callers should use service methods |
 
-**Key Finding**: The 23 static methods are NOT used by daemon or CLI - they are only called by tests. This is a major architectural smell suggesting these should either become nested accessor methods or be moved to utils.
+**Total high-confidence slimming: -6 entrypoints**
 
----
+### Clarity-Only Refactors (No Count Reduction)
 
-## 1. Full API Catalog
+| Refactor | Rationale |
+|----------|-----------|
+| Group pseudo-related static methods under a `pseudo` nested accessor | Clarity: 14 methods logically belong together, but no entrypoint reduction |
+| Rename `run_single_step` to clarify it uses ULID | Reduces confusion with `run.run_step` |
 
-### 1.1 Utils Functions (79 total)
+### Tests-Only Entrypoints Summary
 
-#### Resource Utilities (6)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `slugify` | utils.py:35 | `(value: str, fallback: str)` | `str` | Filesystem-safe slug | 0/23/22 | thin proxy | KEEP |
-| `meta_from_name` | utils.py:50 | `(kind: str, *, name: str, path: str)` | `dict` | Generate resource metadata | 2/12/30 | thin proxy | KEEP |
-| `ensure_relative_path` | utils.py:70 | `(path, *, base: Path)` | `str` | Make path relative | 0/23/6 | thin proxy | KEEP |
-| `generate_unique_name_and_slug` | utils.py:133 | `(kind, preferred_name, existing_slugs)` | `tuple[str, str]` | Unique name/slug pair | 2/2/2 | thin proxy | KEEP |
-| `is_ulid_like` | utils.py:374 | `(s: str)` | `bool` | Check ULID format | 29/0/20 | helper | KEEP |
-| `validate_ulid` | utils.py:390 | `(ulid_str: str, kind: str)` | `str` | Validate ULID | 6/0/1 | helper | KEEP |
-
-#### Structure I/O (7)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `read_structure` | utils.py:85 | `(filepath, format=None)` | `Structure` | Read atomic structure | 2/9/56 | thin proxy | KEEP |
-| `write_structure` | utils.py:100 | `(structure, filepath, format, metadata)` | `None` | Write atomic structure | 3/2/58 | thin proxy | KEEP |
-| `canonicalize_structure` | utils.py:1445 | `(structure)` | `None` | Canonicalize in-place | 2/0/88 | thin proxy | KEEP |
-| `reduce_formula` | utils.py:1456 | `(formula: str)` | `str` | Reduce chemical formula | 2/0/2 | thin proxy | KEEP |
-| `visualize_structure` | utils.py:1751 | `(structure, ...)` | `dict` | Generate vis data | 0/2/18 | thin proxy | MERGE_CANDIDATE |
-| `build_structure_vis_payload` | utils.py:641 | `(structure, params)` | `dict` | Build vis payload | 3/0/23 | thin proxy | MERGE_CANDIDATE |
-| `DisplayModeParams` | utils.py:638 | class re-export | class | Visualization params | 0/0/0 | class re-export | KEEP |
-
-#### Template Operations (3)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `list_calculation_templates` | utils.py:155 | `()` | `list[dict]` | List available templates | 4/2/8 | thin proxy | MOVE_TO_SERVICE |
-| `copy_calculation_template` | utils.py:166 | `(template_name, target_dir, ...)` | `Path` | Copy template to dir | 0/2/0 | thin proxy | MOVE_TO_SERVICE |
-| `copy_structure_template` | utils.py:199 | `(template_name, target_dir, ...)` | `Path` | Copy structure template | 0/2/0 | thin proxy | MOVE_TO_SERVICE |
-
-#### Selector/Entry Utilities (4)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `extract_selector_from_entry` | utils.py:223 | `(entry: dict, kind: str)` | `str\|None` | Extract selector from entry | 0/26/0 | helper | KEEP |
-| `entry_display_name` | utils.py:254 | `(entry: dict)` | `str` | Human-readable name | 0/8/0 | helper | KEEP |
-| `entry_matches` | utils.py:285 | `(entry: dict, identifier: str)` | `bool` | Match entry to identifier | 0/2/13 | helper | KEEP |
-| `move_to_trash` | utils.py:270 | `(path, trash_dir)` | `Path` | Move file to trash | 0/5/0 | helper | KEEP |
-
-#### QE Input Utilities (6)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `detect_runtime_control_keys` | utils.py:300 | `(parameters: dict)` | `list[str]` | Detect runtime keys | 0/2/10 | helper | BUNDLE_CANDIDATE |
-| `needs_alat_preservation` | utils.py:314 | `(qe_input)` | `bool` | Check alat preservation | 0/2/0 | helper | BUNDLE_CANDIDATE |
-| `extract_alat_bohr` | utils.py:328 | `(qe_input)` | `float\|None` | Extract alat value | 0/2/0 | helper | BUNDLE_CANDIDATE |
-| `write_qe_input_file` | utils.py:342 | `(qe_input, filepath)` | `None` | Write QE input file | 0/3/0 | thin proxy | KEEP |
-| `build_step_spec_from_qe_input` | utils.py:354 | `(qe_input, step_type_spec)` | `dict` | Build step spec | 0/2/16 | helper | KEEP |
-| `apply_card_overrides_to_qe_input` | utils.py:1634 | `(qe_input, card_overrides)` | `None` | Apply card overrides | 0/2/0 | helper | BUNDLE_CANDIDATE |
-| `apply_species_overrides_to_qe_input` | utils.py:1646 | `(qe_input, species_overrides)` | `None` | Apply species overrides | 0/2/3 | helper | BUNDLE_CANDIDATE |
-
-#### Calculation Model I/O (3)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `load_calculation` | utils.py:428 | `(path, project_root)` | `CalculationModel` | Load calculation model | 4/2/121 | internal-model-leak | REPLACE |
-| `save_calculation` | utils.py:445 | `(model, path)` | `None` | Save calculation model | 0/2/21 | internal-model-leak | REPLACE |
-| `calculations_using_structure` | utils.py:410 | `(project_root, config, struct_entry)` | `list` | Find calcs using struct | 0/4/0 | helper | MOVE_TO_SERVICE |
-
-#### Pseudo Config Cluster (8)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `get_pseudo_config` | utils.py:463 | `()` | `dict` | Get pseudo config | 14/0/11 | capability | BUNDLE_CANDIDATE |
-| `set_pseudo_config` | utils.py:477 | `(seed_dir, store_dir, ...)` | `dict` | Set pseudo config | 7/0/10 | capability | BUNDLE_CANDIDATE |
-| `validate_pseudo_config_dict` | utils.py:513 | `(config_dict)` | `dict` | Validate config | 2/0/0 | helper | BUNDLE_CANDIDATE |
-| `list_installed_sssp` | utils.py:540 | `(store_dir)` | `list[dict]` | List SSSP libraries | 6/0/17 | capability | BUNDLE_CANDIDATE |
-| `list_seed_archives` | utils.py:566 | `(seed_dir)` | `list[dict]` | List seed archives | 5/0/10 | capability | BUNDLE_CANDIDATE |
-| `check_archives_status` | utils.py:584 | `(archives, config)` | `list[dict]` | Check archive status | 4/0/0 | capability | BUNDLE_CANDIDATE |
-| `load_manifest_archives` | utils.py:618 | `()` | `list[dict]` | Load manifest | 3/0/21 | capability | BUNDLE_CANDIDATE |
-| `search_legacy_pseudos` | utils.py:1842 | `(element, config)` | `dict` | Search legacy pseudos | 7/0/11 | capability | BUNDLE_CANDIDATE |
-
-#### QE Engine Detection Cluster (7)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `detect_qe` | utils.py:839 | `()` | `dict` | Detect QE installation | 7/1/11 | capability | BUNDLE_CANDIDATE |
-| `list_qe_engines` | utils.py:912 | `()` | `dict` | List QE engines | 4/0/8 | capability | BUNDLE_CANDIDATE |
-| `discover_qe_engines` | utils.py:962 | `()` | `dict` | Discover QE engines | 7/0/8 | capability | BUNDLE_CANDIDATE |
-| `set_qe_engine` | utils.py:1052 | `(bin_dir)` | `dict` | Set active QE engine | 4/0/8 | capability | BUNDLE_CANDIDATE |
-| `get_qe_home` | utils.py:1577 | `()` | `Path\|None` | Get QE home dir | 0/2/4 | helper | BUNDLE_CANDIDATE |
-| `get_environment_info` | utils.py:891 | `()` | `dict` | Get env info | 2/0/0 | helper | BUNDLE_CANDIDATE |
-| `create_default_registry` | utils.py:1563 | `(config_dict)` | `EngineRegistry` | Create engine registry | 0/4/45 | internal-model-leak | REPLACE |
-
-#### Pseudo Download Cluster (3)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `download_pseudo_by_filename` | utils.py:734 | `(filename, element, ...)` | `dict` | Download pseudo file | 6/0/12 | capability | BUNDLE_CANDIDATE |
-| `download_pseudo_from_url` | utils.py:1133 | `(url, dest_dir, ...)` | `dict` | Download from URL | 3/0/0 | capability | BUNDLE_CANDIDATE |
-| `resolve_pseudo_provenance` | utils.py:1083 | `(filename, element)` | `dict` | Resolve provenance | 2/0/6 | helper | BUNDLE_CANDIDATE |
-
-#### Presets/Precision Cluster (7)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `apply_presets_to_step` | utils.py:1320 | `(step_spec, presets, ...)` | `dict` | Apply presets to step | 5/0/72 | capability | KEEP |
-| `get_preset_catalog` | utils.py:1354 | `()` | `dict` | Get preset catalog | 4/0/9 | capability | BUNDLE_CANDIDATE |
-| `detect_workflow_type` | utils.py:1365 | `(calculation_dir)` | `str` | Detect workflow type | 2/0/12 | helper | BUNDLE_CANDIDATE |
-| `get_step_preset_footprints` | utils.py:1382 | `(calculation_dir)` | `dict` | Get preset footprints | 4/0/12 | helper | BUNDLE_CANDIDATE |
-| `resolve_precision_context` | utils.py:1399 | `(project_root, ...)` | `PrecisionContext` | Resolve precision ctx | 2/0/0 | helper | BUNDLE_CANDIDATE |
-| `create_precision_advisor` | utils.py:1909 | `(calculation_dir)` | `PrecisionAdvisor` | Create advisor | 2/0/0 | internal-model-leak | REPLACE |
-| `detect_presets_from_calculation` | utils.py:712 | `(calculation_dir)` | `dict` | Detect presets | 4/0/33 | helper | BUNDLE_CANDIDATE |
-
-#### Calculation Discovery (4)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `detect_engine_for_calculation` | utils.py:696 | `(calculation_dir)` | `str\|None` | Detect engine | 4/0/0 | helper | MOVE_TO_SERVICE |
-| `find_calculation_raw_dir` | utils.py:1662 | `(calculation_dir, working_dir_name)` | `Path` | Find raw dir | 0/2/0 | helper | MOVE_TO_SERVICE |
-| `find_calculation_results_dir` | utils.py:1677 | `(calculation_dir)` | `Path` | Find results dir | 0/2/0 | helper | MOVE_TO_SERVICE |
-| `compute_io_dir_from_calculation_model` | utils.py:1272 | `(model, project_root)` | `Path` | Compute IO dir | 3/0/0 | helper | MOVE_TO_SERVICE |
-
-#### Online Search Cluster (5)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `search_online_structures` | utils.py:1474 | `(query, sources, ...)` | `list[CandidateSummary]` | Search online | 2/0/0 | capability | KEEP |
-| `fetch_structure_from_optimade` | utils.py:1492 | `(optimade_base, source_id)` | `Structure` | Fetch from OPTIMADE | 2/0/19 | capability | MERGE_CANDIDATE |
-| `score_candidate` | utils.py:1507 | `(structure, source, query_reduced, raw_data)` | `tuple` | Score candidate | 2/0/0 | helper | MERGE_CANDIDATE |
-| `extract_provenance` | utils.py:1524 | `(structure, source, raw_data)` | `dict` | Extract provenance | 2/0/3 | helper | MERGE_CANDIDATE |
-| `OnlineStructureCache` | utils.py:669 | class re-export | class | Cache class | 0/0/0 | class re-export | KEEP |
-
-#### Analysis/Plotting Cluster (5)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `find_band_analysis_files` | utils.py:1691 | `(search_dir)` | `BandFiles` | Find band files | 0/2/0 | helper | MOVE_TO_SERVICE |
-| `parse_scf_output` | utils.py:1709 | `(output_file)` | `SCFResult` | Parse SCF output | 0/4/30 | thin proxy | KEEP |
-| `plot_scf_convergence` | utils.py:1723 | `(scf_result, ax)` | `Axes` | Plot SCF conv | 0/3/5 | thin proxy | KEEP |
-| `save_figure` | utils.py:1738 | `(fig, output_path, **kwargs)` | `None` | Save matplotlib fig | 0/5/19 | thin proxy | KEEP |
-
-#### Snapshot Operations (3)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `materialize_project_from_snapshot` | utils.py:1788 | `(snapshot, parent_dir, new_project_name)` | `Path` | Create project from snapshot | 0/2/20 | thin proxy | KEEP |
-| `export_project_to_snapshot` | utils.py:1812 | `(project_root)` | `ProjectSnapshot` | Export to snapshot | 0/2/23 | thin proxy | KEEP |
-| `get_project_snapshot_class` | utils.py:1827 | `()` | `type` | Get snapshot class | 0/2/0 | class factory | KEEP |
-
-#### Context/Path Utilities (2)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `find_path_context_from_pwd` | utils.py:1427 | `(start_dir, max_depth)` | `PathContext` | Find path context | 2/8/11 | capability | KEEP |
-| `ContextNotFoundError` | utils.py:1424 | class re-export | exception | Context error | 0/0/0 | class re-export | KEEP |
-
-#### QE Metadata Cluster (5)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `get_ui_parameters` | (re-export) | `(module_name)` | `list` | Get UI params | daemon | capability | BUNDLE_CANDIDATE |
-| `list_supported_modules` | (re-export) | `()` | `list` | List modules | daemon | capability | BUNDLE_CANDIDATE |
-| `get_module_param_sections` | (re-export) | `(module_name)` | `dict` | Get param sections | daemon | capability | BUNDLE_CANDIDATE |
-| `get_module_card_sections` | (re-export) | `(module_name)` | `dict` | Get card sections | daemon | capability | BUNDLE_CANDIDATE |
-| `QEUIParam` | utils.py:677 | class re-export | class | UI param class | 0/0/0 | class re-export | KEEP |
-
-#### Miscellaneous (9)
-
-| Name | File:Line | Signature | Returns | Behavior | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|----------|-------|----------------|----------|
-| `get_journal` | utils.py:1247 | `()` | `Journal` | Get journal | 5/0/11 | internal-model-leak | REPLACE |
-| `create_blob_store` | utils.py:1258 | `(calc_dir)` | `BlobStore` | Create blob store | 4/0/0 | internal-model-leak | REPLACE |
-| `parse_volume_artifact` | utils.py:1294 | `(path)` | `dict` | Parse volume data | 3/0/0 | capability | KEEP |
-| `run_input_step` | utils.py:1592 | `(input_file, engine, ...)` | `dict` | Run single input | 0/6/4 | capability | MOVE_TO_SERVICE |
-| `set_settings` | utils.py:1544 | `(settings_dict)` | `None` | Set global settings | 2/0/0 | capability | KEEP |
+| Classification | Count | Recommendation |
+|----------------|-------|----------------|
+| A) Future capability (keep, monitor) | 7 | Keep - tested API contracts for future daemon/CLI integration |
+| B) Legacy/outdated test | 0 | None found |
+| C) Kernel behavior (relocate test) | 0 | None found |
+| D) Test-only helper (move to tests/) | 2 | `get_species_map`, `get_potential_map` - thin wrappers with no daemon/CLI use |
+| E) Tooling concern | 0 | None found |
 
 ---
 
-### 1.2 Static Methods (23 total) - ALL UNUSED BY DAEMON/CLI
+## CORRECTION: Static Methods ARE Used by Daemon/CLI
 
-**Critical Finding**: None of these static methods are called by daemon or CLI. They exist only for test convenience.
+**Critical correction from initial report**: The original claim that "23 static methods are ALL unused by daemon/CLI" was **incorrect**.
 
-| Name | File:Line | Signature | Returns | D/C/T | Classification | Slimming |
-|------|-----------|-----------|---------|-------|----------------|----------|
-| `init_project` | service.py:6775 | `(parent_dir, project_name, ...)` | `Path` | 0/0/112 | capability | MOVE_TO_UTILS |
-| `get_settings` | service.py:6851 | `()` | `dict` | 0/0/9 | capability | DELETE_UNUSED |
-| `get_workflow_service` | service.py:6895 | `()` | `WorkflowService` | 0/0/26 | internal-model-leak | DELETE_UNUSED |
-| `run_single_step` | service.py:6906 | `(project_root, calc_selector, ...)` | `RunResultDTO` | 0/0/18 | capability | MERGE_CANDIDATE |
-| `get_default_step_params` | service.py:6956 | `(step_type_gen)` | `dict` | 0/0/4 | capability | MERGE_CANDIDATE |
-| `resolve_step_type_spec` | service.py:6973 | `(step_type_gen, engine_family)` | `str` | 0/0/0 | helper | DELETE_UNUSED |
-| `generate_kpath` | service.py:6995 | `(structure, path_type, ...)` | `dict` | 0/0/6 | capability | MOVE_TO_SERVICE |
-| `create_demo_project` | service.py:7025 | `(demo_name, parent_dir)` | `Path` | 0/0/32 | capability | KEEP |
-| `list_demo_projects` | service.py:7099 | `()` | `list[dict]` | 0/0/13 | capability | KEEP |
-| `init_pseudo_dirs` | service.py:7157 | `()` | `dict` | 0/0/11 | capability | BUNDLE_CANDIDATE |
-| `list_pseudo_libraries` | service.py:7171 | `()` | `list[dict]` | 0/0/0 | capability | BUNDLE_CANDIDATE |
-| `get_library_status` | service.py:7184 | `(library_id)` | `dict` | 0/0/11 | capability | BUNDLE_CANDIDATE |
-| `install_pseudo_library` | service.py:7200 | `(library_id, variants, ...)` | `dict` | 0/0/0 | capability | BUNDLE_CANDIDATE |
-| `remove_pseudo_library` | service.py:7247 | `(library_id, variants)` | `dict` | 0/0/0 | capability | BUNDLE_CANDIDATE |
-| `repair_pseudo_library` | service.py:7264 | `(library_id, variants)` | `dict` | 0/0/1 | capability | BUNDLE_CANDIDATE |
-| `compute_store_size` | service.py:7281 | `()` | `dict` | 0/0/8 | capability | BUNDLE_CANDIDATE |
-| `is_pseudo_archive_installed` | service.py:7293 | `(asset_name, expected_sha256)` | `bool` | 0/0/0 | helper | BUNDLE_CANDIDATE |
-| `install_pseudo_archive` | service.py:7309 | `(asset_url, asset_name, ...)` | `dict` | 0/0/10 | capability | BUNDLE_CANDIDATE |
-| `install_sssp_from_seed` | service.py:7347 | `(library_id, seed_dir)` | `dict` | 0/0/0 | capability | BUNDLE_CANDIDATE |
-| `install_all_sssp_from_seed` | service.py:7370 | `(seed_dir)` | `dict` | 0/0/0 | capability | BUNDLE_CANDIDATE |
-| `download_sssp_library` | service.py:7389 | `(library_id, variants)` | `dict` | 0/0/21 | capability | BUNDLE_CANDIDATE |
-| `download_all_sssp` | service.py:7423 | `()` | `dict` | 0/0/15 | capability | BUNDLE_CANDIDATE |
-| `import_seed_archives` | service.py:7451 | `(archives)` | `dict` | 0/0/10 | capability | BUNDLE_CANDIDATE |
+Re-audit with correct grep patterns shows:
 
-**Recommendation**: 14 of these 23 static methods relate to pseudo library management. They should be consolidated into a single `PseudoLibrary` nested accessor.
+| Static Method | Daemon Refs | CLI Refs | Status |
+|---------------|-------------|----------|--------|
+| `init_project` | 1 | 1 | **PRODUCTION** |
+| `get_settings` | 6 | 0 | **PRODUCTION** |
+| `get_workflow_service` | 4 | 0 | **PRODUCTION** |
+| `run_single_step` | 5 | 0 | **PRODUCTION** |
+| `get_default_step_params` | 0 | 1 | **PRODUCTION** |
+| `resolve_step_type_spec` | 0 | 1 | **PRODUCTION** |
+| `generate_kpath` | 0 | 1 | **PRODUCTION** |
+| `create_demo_project` | 10 | 1 | **PRODUCTION** |
+| `list_demo_projects` | 5 | 0 | **PRODUCTION** |
+| `init_pseudo_dirs` | 3 | 0 | **PRODUCTION** |
+| `list_pseudo_libraries` | 1 | 0 | **PRODUCTION** |
+| `get_library_status` | 3 | 0 | **PRODUCTION** |
+| `install_pseudo_library` | 1 | 0 | **PRODUCTION** |
+| `remove_pseudo_library` | 1 | 0 | **PRODUCTION** |
+| `repair_pseudo_library` | 1 | 0 | **PRODUCTION** |
+| `compute_store_size` | 3 | 0 | **PRODUCTION** |
+| `is_pseudo_archive_installed` | 1 | 0 | **PRODUCTION** |
+| `install_pseudo_archive` | 3 | 0 | **PRODUCTION** |
+| `install_sssp_from_seed` | 1 | 0 | **PRODUCTION** |
+| `install_all_sssp_from_seed` | 1 | 0 | **PRODUCTION** |
+| `download_sssp_library` | 3 | 0 | **PRODUCTION** |
+| `download_all_sssp` | 3 | 0 | **PRODUCTION** |
+| `import_seed_archives` | 3 | 0 | **PRODUCTION** |
 
----
+**All 23 static methods are legitimate production code used by daemon or CLI.**
 
-### 1.3 Nested Service Methods (88 total)
+### Why Static?
 
-#### Analysis Domain (17)
+These methods are static because they operate without a project context:
+- **Project initialization**: `init_project`, `create_demo_project` - Cannot have a project instance before creating one
+- **Global settings**: `get_settings` - User-level settings, not project-level
+- **Pseudo management**: 14 methods - Pseudopotential library is machine-wide, not per-project
+- **Workflow registry**: `get_workflow_service`, `get_default_step_params`, etc. - Global workflow definitions
 
-| Name | Accessor | D/C/T | Classification | Slimming |
-|------|----------|-------|----------------|----------|
-| `get_summary` | analysis | 0/0/14 | capability | KEEP (future) |
-| `list_properties` | analysis | 0/0/4 | capability | KEEP (future) |
-| `get_property_ref` | analysis | 0/0/2 | capability | KEEP (future) |
-| `load_artifact` | analysis | 0/0/18 | capability | KEEP (future) |
-| `analyze_band` | analysis | 0/1/4 | capability | KEEP |
-| `analyze_dos` | analysis | 0/1/0 | capability | KEEP |
-| `get_band_structure_data` | analysis | 1/0/26 | capability | KEEP |
-| `get_scf_convergence_data` | analysis | 1/0/4 | capability | KEEP |
-| `list_step_artifacts` | analysis | 1/0/23 | capability | KEEP |
-| `read_step_artifact_text` | analysis | 1/0/28 | capability | KEEP |
-| `analyze_scf` | analysis | 0/1/0 | capability | KEEP |
-| `ensure_analysis` | analysis | 1/0/5 | capability | KEEP |
-| `get_dos_data` | analysis | 1/0/15 | capability | KEEP |
-| `get_reference_analysis` | analysis | 1/0/17 | capability | KEEP |
-| `find_band_files` | analysis | 0/0/0 | helper | DELETE_UNUSED |
-| `get_relax_final_structure_preview` | analysis | 1/0/12 | capability | KEEP |
-
-#### Structure Domain (12)
-
-| Name | Accessor | D/C/T | Classification | Slimming |
-|------|----------|-------|----------------|----------|
-| `get` | structure | 2/4/- | capability | KEEP |
-| `list` | structure | 2/1/- | capability | KEEP |
-| `get_atoms` | structure | 0/0/3 | capability | KEEP (Jupyter) |
-| `require_ref` | structure | 1/12/- | capability | KEEP |
-| `visualize` | structure | 0/0/21 | capability | KEEP |
-| `import_file` | structure | 1/0/62 | capability | KEEP |
-| `get_vis_data` | structure | 1/0/7 | capability | KEEP |
-| `update_meta` | structure | 1/0/14 | capability | KEEP |
-| `can_delete` | structure | 1/0/28 | capability | KEEP |
-| `delete` | structure | 1/0/225 | capability | KEEP |
-| `promote_relax_structure` | structure | 1/0/30 | capability | KEEP |
-| `save_relax_final_structure` | structure | 1/0/15 | capability | KEEP |
-
-#### Calculation Domain (26)
-
-| Name | Accessor | D/C/T | Classification | Slimming |
-|------|----------|-------|----------------|----------|
-| `get` | calculation | 2/8/- | capability | KEEP |
-| `list` | calculation | 2/1/- | capability | KEEP |
-| `require_ref` | calculation | 1/20/- | capability | KEEP |
-| `require_step_ref` | calculation | 1/10/- | capability | KEEP |
-| `resolve_enclosing_path` | calculation | 0/6/- | capability | KEEP |
-| `get_step` | calculation | 0/0/98 | capability | KEEP |
-| `get_step_detail` | calculation | 2/0/43 | capability | KEEP |
-| `list_steps` | calculation | 1/0/9 | capability | KEEP |
-| `get_effective_params` | calculation | 0/0/3 | capability | KEEP (future) |
-| `create` | calculation | 0/0/701 | capability | KEEP |
-| `update_meta` | calculation | 0/0/- | capability | KEEP |
-| `update_step_params` | calculation | 1/0/69 | capability | KEEP |
-| `duplicate` | calculation | 0/0/43 | capability | KEEP |
-| `can_delete` | calculation | 2/0/- | capability | KEEP |
-| `delete` | calculation | 1/2/- | capability | KEEP |
-| `get_detail` | calculation | 2/0/2 | capability | KEEP |
-| `set_structure` | calculation | 1/0/2 | capability | KEEP |
-| `get_common_cards` | calculation | 1/0/19 | capability | KEEP |
-| `add_step` | calculation | 1/0/135 | capability | KEEP |
-| `remove_step` | calculation | 1/0/8 | capability | KEEP |
-| `rename` | calculation | 1/0/125 | capability | KEEP |
-| `set_common_card` | calculation | 1/0/21 | capability | KEEP |
-| `get_step_pseudo_mapping` | calculation | 1/0/- | capability | KEEP |
-| `set_step_pseudo_mapping` | calculation | 1/0/- | capability | KEEP |
-| `reset_step_params` | calculation | 1/0/- | capability | KEEP |
-| `reorder_steps` | calculation | 1/0/- | capability | KEEP |
-| `import_step_from_qe_input` | calculation | 1/0/- | capability | KEEP |
-| `get_pseudo_mapping` | calculation | 1/0/- | capability | KEEP |
-| `update_species_map` | calculation | 1/0/- | capability | KEEP |
-| `configure_species_map` | calculation | 0/1/- | capability | KEEP |
-
-#### Run Domain (4)
-
-| Name | Accessor | D/C/T | Classification | Slimming |
-|------|----------|-------|----------------|----------|
-| `run_calculation` | run | 1/1/- | capability | KEEP |
-| `run_step` | run | 1/1/- | capability | KEEP |
-| `cancel` | run | 0/0/- | capability | KEEP (future) |
-| `preflight` | run | 1/0/- | capability | KEEP |
-
-#### Project Domain (16)
-
-| Name | Accessor | D/C/T | Classification | Slimming |
-|------|----------|-------|----------------|----------|
-| `get_config` | project | 6/18/- | capability | KEEP |
-| `update_config` | project | 0/10/- | capability | KEEP |
-| `get_species_map` | project | 0/0/- | capability | DELETE_UNUSED |
-| `get_potential_map` | project | 0/0/- | capability | DELETE_UNUSED |
-| `build_resource_index` | project | 3/5/- | capability | KEEP |
-| `collect_slugs` | project | 0/1/- | capability | KEEP |
-| `apply_structure_rename` | project | 0/2/- | capability | KEEP |
-| `apply_calculation_rename` | project | 0/2/- | capability | KEEP |
-| `import_pseudo_files` | project | 1/0/- | capability | KEEP |
-| `get_summary` | project | 2/0/- | capability | KEEP |
-| `init_calculation` | project | 1/0/- | capability | KEEP |
-| `analyze_pseudo_effects` | project | 1/0/- | capability | KEEP |
-| `materialize_pseudo_file` | project | 1/0/- | capability | KEEP |
-| `get_pseudo_options` | project | 1/0/- | capability | KEEP |
-
-#### Engine Domain (4)
-
-| Name | Accessor | D/C/T | Classification | Slimming |
-|------|----------|-------|----------------|----------|
-| `list` | engine | 0/0/- | capability | KEEP (future) |
-| `get_info` | engine | 0/0/- | capability | KEEP (future) |
-| `list_step_types` | engine | 0/0/- | capability | KEEP (future) |
-| `validate_installation` | engine | 0/0/- | capability | KEEP (future) |
-
-#### History Domain (9)
-
-| Name | Accessor | D/C/T | Classification | Slimming |
-|------|----------|-------|----------------|----------|
-| `get_timeline` | history | 1/0/- | capability | KEEP |
-| `get_run_revision` | history | 1/0/- | capability | KEEP |
-| `list_runs` | history | 1/0/- | capability | KEEP |
-| `pin_analysis` | history | 1/0/- | capability | KEEP |
-| `can_pin` | history | 1/0/- | capability | KEEP |
-| `get_pin_data` | history | 1/0/- | capability | KEEP |
-| `get_latest_run_for_step` | history | 1/0/- | capability | KEEP |
-| `delete` | history | 1/0/- | capability | KEEP |
+**Conclusion**: Static methods are correctly designed; no slimming opportunity here.
 
 ---
 
-### 1.4 DTOs (11 total)
+## Tests-Only Entrypoints Audit
 
-| Name | File | Classification | Slimming |
-|------|------|----------------|----------|
-| `BaseDTO` | types/base.py | base class | KEEP |
-| `MetaDTO` | types/common.py | helper | KEEP |
-| `CandidateSummary` | types/common.py | data | KEEP |
-| `ErrorDTO` | types/error.py | error | KEEP |
-| `StructureDTO` | types/structure.py | data | KEEP |
-| `CalculationDTO` | types/calculation.py | data | KEEP |
-| `CalculationRefDTO` | types/calculation.py | reference | KEEP |
-| `StepDTO` | types/calculation.py | data | KEEP |
-| `RunResultDTO` | types/run.py | data | KEEP |
-| `AnalysisRefDTO` | types/analysis.py | reference | KEEP |
-| `AnalysisSummaryDTO` | types/analysis.py | data | KEEP |
+### Methodology
 
----
+Searched for methods where:
+- `daemon_refs == 0`
+- `cli_refs == 0`
+- `test_refs > 0`
 
-### 1.5 Errors (10 total)
+Using accessor-qualified patterns (e.g., `svc.engine.list`) to avoid false positives.
 
-| Name | File:Line | Classification | Slimming |
-|------|-----------|----------------|----------|
-| `APIError` | errors.py:15 | base | KEEP |
-| `NotFoundError` | errors.py:74 | common | KEEP |
-| `AmbiguousError` | errors.py:80 | common | KEEP |
-| `ValidationError` | errors.py:88 | common | KEEP |
-| `ConflictError` | errors.py:123 | common | KEEP |
-| `EngineError` | errors.py:158 | common | KEEP |
-| `ConfigError` | errors.py:200 | common | KEEP |
-| `FilesystemError` | errors.py:237 | common | KEEP |
-| `InternalError` | errors.py:266 | common | KEEP |
+### Detailed Audit Table
 
----
+| Entrypoint | Location | Tests Calling It | Behavior | Classification | Action | Risk |
+|------------|----------|------------------|----------|----------------|--------|------|
+| `Analysis.list_properties` | service.py:104 | `test_analysis_capabilities.py` | Returns list of available artifact types for a calc/step | **A) Future capability** | KEEP | LOW - tested contract |
+| `Analysis.get_property_ref` | service.py:152 | `test_analysis_capabilities.py` | Returns reference to analysis artifact (for lazy loading) | **A) Future capability** | KEEP | LOW - tested contract |
+| `Analysis.load_artifact` | service.py:249 | `test_analysis_capabilities.py` (8 calls) | Load analysis artifact from reference | **A) Future capability** | KEEP | LOW - tested contract |
+| `Analysis.get_summary` | service.py:53 | `test_analysis_capabilities.py` | Get analysis summary DTO | **A) Future capability** | KEEP | LOW - tested contract |
+| `Analysis.find_band_files` | service.py:1447 | **NONE** | Thin wrapper around utils `find_band_analysis_files` | **UNUSED** | DELETE | NONE - no callers |
+| `Engine.list` | service.py:6144 | `test_engine_capabilities.py` | List available engines | **A) Future capability** | KEEP | LOW - tested contract |
+| `Engine.get_info` | service.py:6170 | `test_engine_capabilities.py` | Get engine info | **A) Future capability** | KEEP | LOW - tested contract |
+| `Engine.list_step_types` | service.py:6219 | `test_engine_capabilities.py` | List supported step types | **A) Future capability** | KEEP | LOW - tested contract |
+| `Engine.validate_installation` | service.py:6255 | `test_engine_capabilities.py` (4 calls) | Validate engine installation | **A) Future capability** | KEEP | LOW - tested contract |
+| `Project.get_species_map` | service.py:5592 | `test_project_capabilities.py` | Return `config.get("species_map", {})` | **D) Test-only helper** | DELETE | LOW - trivial wrapper |
+| `Project.get_potential_map` | service.py:5616 | `test_project_capabilities.py` | Return `config.get("potential_map", {})` | **D) Test-only helper** | DELETE | LOW - trivial wrapper |
 
-## 2. Unused Entrypoints Review
+### Classification Justification
 
-### 2.1 Service Methods Marked UNUSED (but tested)
+#### A) Future Capability (7 methods)
 
-| Entrypoint | Refs | Justification | Risk |
-|------------|------|---------------|------|
-| `Analysis.get_summary` | t=14 | Scaffolding for analysis summary UI | LOW - tested |
-| `Analysis.list_properties` | t=4 | Scaffolding for property browser | LOW - tested |
-| `Analysis.get_property_ref` | t=2 | Scaffolding for lazy loading | LOW - tested |
-| `Analysis.load_artifact` | t=18 | Scaffolding for lazy loading | LOW - tested |
-| `Analysis.find_band_files` | t=0 | **NO TESTS, no daemon/CLI usage** | HIGH - DELETE |
-| `Structure.get_atoms` | t=3 | Jupyter-only feature (documented) | LOW - tested |
-| `Calculation.get_effective_params` | t=3 | Scaffolding for params inspector | LOW - tested |
-| `Project.get_species_map` | t=0 | **NO TESTS, redundant with get_config** | HIGH - DELETE |
-| `Project.get_potential_map` | t=0 | **NO TESTS, redundant with get_config** | HIGH - DELETE |
-| `Engine.list` | t=0 | **NO TESTS** (but `list_step_types` tested) | MEDIUM |
-| `Engine.get_info` | t=0 | **NO TESTS** | MEDIUM |
-| `Engine.list_step_types` | t=varies | Tested via capability tests | LOW - tested |
-| `Engine.validate_installation` | t=varies | Tested via capability tests | LOW - tested |
-| `Run.cancel` | t=0 | **NO TESTS**, daemon-only future | MEDIUM |
+**Evidence for "future use"**:
+1. These methods are in `tests/api/test_*_capabilities.py` - explicit capability contract tests
+2. The tests verify return types/schema, not just that methods exist
+3. The Analysis/Engine domains are documented as PR3/PR9 features in service.py
+4. Comment in service.py line 46: "Analysis domain (PR3)"
+5. Comment in service.py line 6137: "Engine domain (PR9)"
 
-**Immediate deletion candidates** (no tests, no daemon/CLI):
-- `Analysis.find_band_files` (use `find_band_analysis_files` from utils instead)
-- `Project.get_species_map` (use `get_config().get("species_map", {})`)
-- `Project.get_potential_map` (use `get_config().get("potential_map", {})`)
+**When should these become production-used?**
+- `Engine.*` methods: When GUI adds engine management panel (currently uses utils functions)
+- `Analysis.list_properties`, `get_property_ref`, `load_artifact`: When GUI adds lazy-loading artifact browser
 
-**Expected delta**: -3
+**Recommendation**: Keep these. They represent planned future API surface with tested contracts.
 
----
+#### D) Test-Only Helper (2 methods)
 
-### 2.2 Static Methods - ALL Unused by Daemon/CLI
+**`Project.get_species_map()`** - service.py:5592
+```python
+def get_species_map(self) -> dict:
+    config = load_project_config(self._service.project_root)
+    return config.get("species_map", {})
+```
+- **What it does**: Returns species_map from project config
+- **Inputs**: None (uses project_root from service)
+- **Outputs**: dict (may be empty)
+- **Why it exists**: Convenience method for tests
+- **Who should own it**: Not API - callers can use `svc.project.get_config().get("species_map", {})`
+- **Action**: DELETE - redundant with `get_config()`
+- **Migration**: Update test to use `get_config()` pattern
 
-**Evidence**: Zero grep matches for `QVService.` in daemon/ or cli/ directories.
+**`Project.get_potential_map()`** - service.py:5616
+```python
+def get_potential_map(self) -> dict:
+    config = load_project_config(self._service.project_root)
+    return config.get("potential_map", {})
+```
+- Same analysis as `get_species_map` - DELETE
 
-All 23 static methods are only used in tests. This is an architectural issue:
+#### UNUSED (1 method)
 
-1. **Project-agnostic operations** (like `init_project`, `create_demo_project`) don't need a project root, so static makes sense BUT should be utils functions.
-
-2. **Pseudo library operations** (14 methods) are project-agnostic BUT should be a dedicated `PseudoLibrary` service or consolidated into fewer methods.
-
-3. **Step/workflow utilities** (like `get_default_step_params`, `resolve_step_type_spec`) should be in utils or merged into calculation accessor.
-
----
-
-## 3. Static Methods Review (23)
-
-| Method | Why Static? | Better Location | Action |
-|--------|-------------|-----------------|--------|
-| `init_project` | No project exists yet | utils or standalone | MOVE_TO_UTILS |
-| `get_settings` | Global settings | utils | DELETE or MOVE |
-| `get_workflow_service` | Internal | DELETE | DELETE |
-| `run_single_step` | Standalone run | `run.run_step` | MERGE |
-| `get_default_step_params` | No project needed | utils or calculation accessor | MERGE |
-| `resolve_step_type_spec` | No project needed | utils | DELETE (unused) |
-| `generate_kpath` | Structure-only | `structure.generate_kpath` | MOVE |
-| `create_demo_project` | No project exists | KEEP static | KEEP |
-| `list_demo_projects` | No project exists | KEEP static | KEEP |
-| `init_pseudo_dirs` | Global operation | `PseudoLibrary` accessor | BUNDLE |
-| `list_pseudo_libraries` | Global operation | `PseudoLibrary.list` | BUNDLE |
-| `get_library_status` | Global operation | `PseudoLibrary.get_status` | BUNDLE |
-| `install_pseudo_library` | Global operation | `PseudoLibrary.install` | BUNDLE |
-| `remove_pseudo_library` | Global operation | `PseudoLibrary.remove` | BUNDLE |
-| `repair_pseudo_library` | Global operation | `PseudoLibrary.repair` | BUNDLE |
-| `compute_store_size` | Global operation | `PseudoLibrary.compute_size` | BUNDLE |
-| `is_pseudo_archive_installed` | Global operation | DELETE (internal) | DELETE |
-| `install_pseudo_archive` | Global operation | `PseudoLibrary.install_archive` | BUNDLE |
-| `install_sssp_from_seed` | Global operation | `PseudoLibrary.install_from_seed` | BUNDLE |
-| `install_all_sssp_from_seed` | Global operation | `PseudoLibrary.install_all_from_seed` | BUNDLE |
-| `download_sssp_library` | Global operation | `PseudoLibrary.download` | BUNDLE |
-| `download_all_sssp` | Global operation | `PseudoLibrary.download_all` | BUNDLE |
-| `import_seed_archives` | Global operation | `PseudoLibrary.import_archives` | BUNDLE |
+**`Analysis.find_band_files()`** - service.py:1447
+```python
+def find_band_files(self, directory: Path, prefix: str | None = None) -> Any:
+    from quantumvitas.calculation.naming import find_band_analysis_files
+    return find_band_analysis_files(Path(directory), prefix=prefix)
+```
+- **What it does**: Finds band analysis files in a directory
+- **Inputs**: directory (Path), prefix (str|None)
+- **Outputs**: BandAnalysisFiles (kernel type)
+- **Why it exists**: Unclear - thin wrapper with no callers
+- **Who should own it**: Already exists in utils as `find_band_analysis_files`
+- **Action**: DELETE - zero usage, duplicate functionality
+- **Risk**: NONE - no code uses this
 
 ---
 
-## 4. Consolidation Opportunities
+## Static Methods: Ownership Analysis
 
-### 4.1 Pseudo Library Cluster (HIGH IMPACT)
+Since all 23 static methods ARE used by daemon/CLI, we analyze why they're static rather than nested:
 
-**Current entrypoints (14 static + 8 utils = 22)**:
+### Group 1: Project Initialization (Cannot Have Instance)
 
-Static methods:
-- `init_pseudo_dirs`, `list_pseudo_libraries`, `get_library_status`
-- `install_pseudo_library`, `remove_pseudo_library`, `repair_pseudo_library`
-- `compute_store_size`, `is_pseudo_archive_installed`, `install_pseudo_archive`
-- `install_sssp_from_seed`, `install_all_sssp_from_seed`
-- `download_sssp_library`, `download_all_sssp`, `import_seed_archives`
+| Method | Daemon | CLI | Justification |
+|--------|--------|-----|---------------|
+| `init_project` | 1 | 1 | Creates project - no QVService instance possible before creation |
+| `create_demo_project` | 10 | 1 | Creates project from template |
+| `list_demo_projects` | 5 | 0 | Lists available demos (no project needed) |
 
-Utils functions:
-- `get_pseudo_config`, `set_pseudo_config`, `validate_pseudo_config_dict`
-- `list_installed_sssp`, `list_seed_archives`, `check_archives_status`
-- `load_manifest_archives`, `search_legacy_pseudos`
+**Conclusion**: Correctly static - cannot be nested accessor methods.
 
-**Proposed minimal API (1 static accessor)**:
+### Group 2: Global Settings (User-Level, Not Project-Level)
+
+| Method | Daemon | CLI | Justification |
+|--------|--------|-----|---------------|
+| `get_settings` | 6 | 0 | Reads ~/.qmatsuite/settings.json (user-level) |
+
+**Conclusion**: Correctly static.
+
+### Group 3: Workflow Registry (Global Definitions)
+
+| Method | Daemon | CLI | Justification |
+|--------|--------|-----|---------------|
+| `get_workflow_service` | 4 | 0 | Returns global workflow service singleton |
+| `get_default_step_params` | 0 | 1 | Returns step defaults from global registry |
+| `resolve_step_type_spec` | 0 | 1 | Converts GEN→SPEC using global registry |
+| `generate_kpath` | 0 | 1 | Pure function on structure (no project context) |
+| `run_single_step` | 5 | 0 | Legacy wrapper - delegates to `run.run_step` |
+
+**Potential issue**: `run_single_step` takes `project_root` as parameter, so it COULD be a nested method. However, daemon calls it with explicit project_root for job scheduling reasons. **Keep as-is** - no slimming benefit.
+
+### Group 4: Pseudo Library Management (Machine-Wide)
+
+| Method | Daemon | CLI | Justification |
+|--------|--------|-----|---------------|
+| `init_pseudo_dirs` | 3 | 0 | Creates ~/.qmatsuite/pseudo/ directories |
+| `list_pseudo_libraries` | 1 | 0 | Lists globally available libraries |
+| `get_library_status` | 3 | 0 | Checks library installation status |
+| `install_pseudo_library` | 1 | 0 | Installs to global store |
+| `remove_pseudo_library` | 1 | 0 | Removes from global store |
+| `repair_pseudo_library` | 1 | 0 | Repairs global store |
+| `compute_store_size` | 3 | 0 | Computes global store size |
+| `is_pseudo_archive_installed` | 1 | 0 | Checks global archive |
+| `install_pseudo_archive` | 3 | 0 | Installs to global store |
+| `install_sssp_from_seed` | 1 | 0 | Installs from seed directory |
+| `install_all_sssp_from_seed` | 1 | 0 | Installs all from seed |
+| `download_sssp_library` | 3 | 0 | Downloads to global store |
+| `download_all_sssp` | 3 | 0 | Downloads all to global store |
+| `import_seed_archives` | 3 | 0 | Imports archives to global store |
+
+**Conclusion**: These are correctly static - pseudopotential library is machine-wide, not per-project.
+
+### Clarity Refactor Opportunity (Not Slimming)
+
+The 14 pseudo methods could be grouped under a `pseudo_library` static accessor for clarity:
 
 ```python
-class QVService:
-    @staticmethod
-    def pseudo_library() -> PseudoLibraryService:
-        """Get pseudo library service (project-agnostic)."""
+# Current (14 static methods on QVService)
+QVService.init_pseudo_dirs()
+QVService.list_pseudo_libraries()
+# ... 12 more
 
-class PseudoLibraryService:
-    def get_status() -> PseudoLibraryStatusDTO  # replaces 8+ getters
-    def install(library_id, variants=None) -> dict
-    def remove(library_id, variants=None) -> dict
-    def repair(library_id, variants=None) -> dict
-    def download(library_id, variants=None) -> dict
-    def import_archives(archives) -> dict
-    def search_legacy(element) -> dict
+# Proposed (1 static accessor returning object)
+QVService.pseudo_library().init_dirs()
+QVService.pseudo_library().list()
 ```
 
-**Expected delta**: 22 → 7 = **-15 entrypoints**
+**This is NOT slimming** - it's a clarity refactor. The entrypoint count stays at 14 (the accessor itself is 1 entrypoint, plus 14 methods = 15, which is WORSE).
 
-**Migration scope**: ~30 daemon calls, ~0 CLI calls, ~100 test calls
-
-**Risks**: Significant refactor; need new DTO for status
+**Decision**: Keep current design. Adding a nested layer does not reduce surface area and violates the "no multi-layer facade" constraint.
 
 ---
 
-### 4.2 QE Engine Detection Cluster (MEDIUM IMPACT)
+## Consolidation Opportunities
 
-**Current entrypoints (7 utils)**:
-- `detect_qe`, `list_qe_engines`, `discover_qe_engines`, `set_qe_engine`
-- `get_qe_home`, `get_environment_info`, `create_default_registry`
-
-**Proposed minimal API (2)**:
-
-```python
-# utils
-def get_qe_status() -> QEStatusDTO  # replaces detect_qe, list_qe_engines, discover_qe_engines, get_environment_info
-def set_qe_engine(bin_dir: str | None) -> QEStatusDTO  # keep
-```
-
-**Expected delta**: 7 → 2 = **-5 entrypoints**
-
-**Migration scope**: ~20 daemon calls
-
-**Risks**: Need new `QEStatusDTO`; callers need to access status fields
-
----
-
-### 4.3 Presets/Precision Cluster (MEDIUM IMPACT)
-
-**Current entrypoints (7 utils)**:
-- `apply_presets_to_step`, `get_preset_catalog`, `detect_workflow_type`
-- `get_step_preset_footprints`, `resolve_precision_context`
-- `create_precision_advisor`, `detect_presets_from_calculation`
-
-**Proposed minimal API (2)**:
-
-```python
-def apply_presets_to_step(step_spec, presets, ...) -> dict  # keep
-def get_preset_context(calculation_dir) -> PresetContextDTO  # replaces 5 getters
-```
-
-Where `PresetContextDTO` contains:
-- `catalog: dict`
-- `workflow_type: str`
-- `footprints: dict`
-- `precision_context: dict`
-- `detected_presets: dict`
-
-**Expected delta**: 7 → 2 = **-5 entrypoints**
-
-**Migration scope**: ~15 daemon calls
-
----
-
-### 4.4 Online Search Cluster (LOW IMPACT)
-
-**Current entrypoints (5 utils)**:
-- `search_online_structures`, `fetch_structure_from_optimade`
-- `score_candidate`, `extract_provenance`, `OnlineStructureCache`
-
-**Proposed minimal API (2)**:
-
-```python
-def search_online_structures(query, sources, ...) -> list[CandidateSummary]  # keep
-# score_candidate, extract_provenance are internal - DELETE from API
-# OnlineStructureCache stays as class re-export
-```
-
-**Expected delta**: 5 → 2 = **-3 entrypoints** (move internals out of API)
-
----
-
-### 4.5 QE Input Utilities Cluster (LOW IMPACT)
-
-**Current entrypoints (6 utils)**:
-- `detect_runtime_control_keys`, `needs_alat_preservation`, `extract_alat_bohr`
-- `write_qe_input_file`, `apply_card_overrides_to_qe_input`, `apply_species_overrides_to_qe_input`
-
-These are CLI-only helpers for QE input manipulation. Could bundle into:
-
-```python
-def get_qe_input_info(qe_input) -> QEInputInfoDTO  # replaces 3 inspection functions
-def apply_qe_input_overrides(qe_input, card_overrides, species_overrides) -> None  # replaces 2
-```
-
-**Expected delta**: 6 → 3 = **-3 entrypoints**
-
----
-
-### 4.6 Structure Visualization Cluster (LOW IMPACT)
+### Cluster 1: Structure Visualization (SLIMMING: -1)
 
 **Current entrypoints (2 utils)**:
-- `visualize_structure`, `build_structure_vis_payload`
+- `visualize_structure(structure, ...)` - Returns visualization dict (CLI usage: 2)
+- `build_structure_vis_payload(structure, params)` - Returns visualization dict (daemon usage: 3)
 
-Both do similar things. Keep only one.
+**Analysis**:
+- Both functions produce similar output (visualization primitives)
+- `visualize_structure` is higher-level (creates DisplayModeParams internally)
+- `build_structure_vis_payload` takes explicit DisplayModeParams
 
-**Expected delta**: 2 → 1 = **-1 entrypoint**
+**Proposed**: Keep `build_structure_vis_payload` as the canonical, delete `visualize_structure`
+
+**Expected delta**: **-1**
+
+**Migration**: 2 CLI call sites migrate to `build_structure_vis_payload`
+
+**Risks**: Low - both functions tested
+
+### Cluster 2: Internal Model Leaks (SLIMMING: -2)
+
+**Current entrypoints**:
+- `load_calculation(path, project_root)` → returns `CalculationModel` (internal type)
+- `save_calculation(model, path)` → accepts `CalculationModel` (internal type)
+
+**Analysis**:
+- These expose internal kernel types (`CalculationModel`) through the API
+- Violates API isolation - callers become coupled to kernel internals
+- Tests use these heavily (t=121, t=21) but could use service methods instead
+
+**Proposed**: DELETE both
+
+**Expected delta**: **-2**
+
+**Migration**:
+- Tests calling `load_calculation` should use `svc.calculation.get()` returning `CalculationDTO`
+- Tests calling `save_calculation` should use `svc.calculation.update_*()` methods
+
+**Risks**: Medium - requires test migration (121 + 21 = 142 test refs)
+
+### Cluster 3: More Internal Model Leaks (SLIMMING: -4)
+
+**Current entrypoints**:
+- `create_default_registry(config_dict)` → returns `EngineRegistry`
+- `get_journal()` → returns `Journal`
+- `create_blob_store(calc_dir)` → returns `BlobStore`
+- `create_precision_advisor(calculation_dir)` → returns `PrecisionAdvisor`
+
+**Analysis**: All return internal kernel types, violating API isolation.
+
+**Proposed**: DELETE all (or move to internal-only module not in api/)
+
+**Expected delta**: **-4**
+
+**Migration**: Tests can import from kernel directly if needed
+
+**Risks**: Medium - test migration required
+
+### Cluster 4: Unused Service Methods (SLIMMING: -3)
+
+**Current entrypoints**:
+- `Analysis.find_band_files` - UNUSED (d=0, c=0, t=0)
+- `Project.get_species_map` - TESTS-ONLY (d=0, c=0, t=3)
+- `Project.get_potential_map` - TESTS-ONLY (d=0, c=0, t=3)
+
+**Analysis**: Zero production value; tests can use alternatives
+
+**Proposed**: DELETE all three
+
+**Expected delta**: **-3**
+
+**Migration**:
+- `find_band_files`: None needed (no callers)
+- `get_species_map`/`get_potential_map`: Tests use `svc.project.get_config().get("species_map", {})`
+
+**Risks**: Low - trivial test migration
 
 ---
 
-### 4.7 Calculation Discovery Helpers (LOW IMPACT)
+## Summary: Remaining Opportunities
 
-**Current entrypoints (4 utils)**:
-- `detect_engine_for_calculation`, `find_calculation_raw_dir`
-- `find_calculation_results_dir`, `compute_io_dir_from_calculation_model`
+Based on audited clusters:
 
-These should be service methods or embedded in CalculationDTO.
+| Cluster | Type | Delta | Priority |
+|---------|------|-------|----------|
+| Unused service methods | Slimming | -3 | HIGH |
+| Internal model leaks (load/save_calculation) | Slimming | -2 | MEDIUM |
+| Internal model leaks (other) | Slimming | -4 | MEDIUM |
+| Structure visualization | Slimming | -1 | LOW |
+| **Total** | | **-10** | |
 
-**Expected delta**: 4 → 0 = **-4 entrypoints** (embed in DTO/service)
+### What's NOT an Opportunity
 
----
-
-### 4.8 Template Operations (LOW IMPACT)
-
-**Current entrypoints (3 utils)**:
-- `list_calculation_templates`, `copy_calculation_template`, `copy_structure_template`
-
-Should be project accessor methods.
-
-**Expected delta**: 3 → 0 as utils = **-3 entrypoints** (move to `project.templates.*`)
+1. **Static methods** - All 23 are production-used, correctly designed
+2. **Engine accessor** - Tests-only but represents planned future capability
+3. **Analysis accessor methods** - Tests-only but represents planned future capability
+4. **Pseudo library grouping** - Would add facade layer, not reduce count
 
 ---
 
-### 4.9 Internal Model Leaks (HIGH PRIORITY)
+## Appendix: Audit Methodology
 
-These functions return internal kernel types, violating API isolation:
+### Pattern Matching
 
-| Function | Returns | Action |
-|----------|---------|--------|
-| `load_calculation` | `CalculationModel` | DELETE (use `svc.calculation.get`) |
-| `save_calculation` | via `CalculationModel` | DELETE (use `svc.calculation.update_*`) |
-| `create_default_registry` | `EngineRegistry` | DELETE or MOVE to internal |
-| `get_journal` | `Journal` | DELETE (use history accessor) |
-| `create_blob_store` | `BlobStore` | DELETE or MOVE to internal |
-| `create_precision_advisor` | `PrecisionAdvisor` | DELETE (embed in presets) |
-| `get_workflow_service` | `WorkflowService` | DELETE |
-
-**Expected delta**: -7 entrypoints
-
----
-
-## 5. Prioritized Top-10 Slimming Backlog
-
-| Priority | Action | Expected Delta | Rationale |
-|----------|--------|----------------|-----------|
-| **1** | Delete unused no-test service methods (`find_band_files`, `get_species_map`, `get_potential_map`) | **-3** | Zero usage, zero tests, immediate deletion |
-| **2** | Delete internal model leak functions (`load_calculation`, `save_calculation`, `get_journal`, `create_blob_store`, `create_default_registry`, `create_precision_advisor`, `get_workflow_service`) | **-7** | Violate API isolation, have DTO/service equivalents |
-| **3** | Bundle pseudo library static methods into `PseudoLibrary` accessor | **-12** | 14 statics → 6 methods on accessor |
-| **4** | Bundle pseudo config utils into pseudo library service | **-6** | 8 utils → 2 methods |
-| **5** | Consolidate QE engine detection utils | **-5** | 7 → 2 with status DTO |
-| **6** | Consolidate presets/precision utils | **-5** | 7 → 2 with context DTO |
-| **7** | Move template operations to project accessor | **-3** | 3 utils → project.templates |
-| **8** | Embed calculation discovery in DTO/service | **-4** | 4 utils → embedded |
-| **9** | Delete unused static methods (`get_settings`, `resolve_step_type_spec`, `is_pseudo_archive_installed`) | **-3** | Zero usage |
-| **10** | Merge online search internals | **-2** | Hide score_candidate, extract_provenance |
-
-**Total potential reduction**: ~50 entrypoints (213 → ~163)
-
----
-
-## Appendix: Audit Tool Output
-
+Initial report used:
+```bash
+grep -r "\.method\(" daemon/
 ```
-============================================================
-API SURFACE AUDIT SUMMARY
-============================================================
 
-TOTAL ENTRYPOINTS: 213
+This MISSED static method calls like `QVService.init_project(...)` because they don't have a leading dot.
 
-BY CATEGORY:
-  api_init            :    2
-  dtos                :   11
-  errors              :   10
-  service_nested      :   88
-  service_static      :   23
-  utils               :   79
-
-USAGE COVERAGE:
-  Daemon only:        108
-  CLI only:            45
-  Both daemon+CLI:     36
-  UNUSED (0 refs):     24
-============================================================
+Corrected approach:
+```bash
+grep -r "QVService\." daemon/  # For static methods
+grep -r "svc\.accessor\.method" daemon/  # For nested methods
 ```
+
+### Verified Counts
+
+All counts re-verified using:
+```python
+def count_refs(pattern, search_dir):
+    result = subprocess.run(['grep', '-r', '-c', pattern, str(search_dir)], ...)
+```
+
+With explicit patterns for each entrypoint category.
 
 ---
 

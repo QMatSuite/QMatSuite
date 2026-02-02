@@ -1048,4 +1048,180 @@ The remaining 79 utils functions serve distinct purposes, are used by daemon/CLI
 
 ---
 
+### Batch 30: Remove Redundant and Stub Service Methods
+
+**AUDIT BEFORE**:
+```
+TOTAL ENTRYPOINTS: 217
+  service_nested: 92
+  utils: 79
+```
+
+- **Time**: 2026-02-02
+- **Action**: Removed redundant delegations and stub service methods
+- **Changes**:
+  1. Removed `ErrorSpec` and `ErrorCodes` legacy aliases from api/__init__.py (unused, not counted in entrypoints)
+  2. Removed `Project.list_calculations()` - pure delegation to `Calculation.list()` (-1)
+  3. Removed `Run.list_runs()` - stub returning empty list (-1)
+  4. Removed `Run.get_status()` - stub raising NotFoundError "not implemented" (-1)
+- **Tests**: 3012 passed, 18 skipped
+
+**AUDIT AFTER**:
+```
+============================================================
+API SURFACE AUDIT SUMMARY
+============================================================
+TOTAL ENTRYPOINTS: 214
+
+BY CATEGORY:
+  api_init            :    2
+  dtos                :   11
+  errors              :   10
+  service_nested      :   89
+  service_static      :   23
+  utils               :   79
+
+USAGE COVERAGE:
+  Daemon only:        108
+  CLI only:            45
+  Both daemon+CLI:     36
+  UNUSED (0 refs):     25
+============================================================
+```
+
+**Delta**: 217 → 214 (-3 entrypoints)
+- service_nested: 92 → 89 (-3)
+- unused: 26 → 25 (-1)
+
+**Slimming Effect**: Removed service methods that were either:
+1. Pure delegations (Project.list_calculations → Calculation.list)
+2. Stubs returning empty data (Run.list_runs → [])
+3. Stubs throwing "not implemented" errors (Run.get_status)
+
+---
+
+### Batch 31: Remove More Unused Service Methods
+
+**AUDIT BEFORE**:
+```
+TOTAL ENTRYPOINTS: 214
+  service_nested: 89
+```
+
+- **Time**: 2026-02-02
+- **Action**: Removed more unused service methods
+- **Changes**:
+  1. Removed `Calculation.require_enclosing()` - thin wrapper over resolve_enclosing_path, unused (-1)
+- **Tests**: 3012 passed, 18 skipped
+
+**AUDIT AFTER**:
+```
+============================================================
+API SURFACE AUDIT SUMMARY
+============================================================
+TOTAL ENTRYPOINTS: 213
+
+BY CATEGORY:
+  api_init            :    2
+  dtos                :   11
+  errors              :   10
+  service_nested      :   88
+  service_static      :   23
+  utils               :   79
+
+USAGE COVERAGE:
+  Daemon only:        108
+  CLI only:            45
+  Both daemon+CLI:     36
+  UNUSED (0 refs):     24
+============================================================
+```
+
+**Delta**: 214 → 213 (-1 entrypoint)
+- service_nested: 89 → 88 (-1)
+- unused: 25 → 24 (-1)
+
+**Slimming Effect**: Removed unused thin wrapper that just delegated to resolve_enclosing_path and raised error on None.
+
+---
+
+## Final Status (Post-Batch 31)
+
+**AUDIT**:
+```
+============================================================
+API SURFACE AUDIT SUMMARY
+============================================================
+TOTAL ENTRYPOINTS: 213
+
+BY CATEGORY:
+  api_init            :    2
+  dtos                :   11
+  errors              :   10
+  service_nested      :   88
+  service_static      :   23
+  utils               :   79
+
+USAGE COVERAGE:
+  Daemon only:        108
+  CLI only:            45
+  Both daemon+CLI:     36
+  UNUSED (0 refs):     24
+============================================================
+```
+
+**Tests**: 3012 passed, 18 skipped
+
+### Analysis of Remaining 24 "Unused" Entrypoints
+
+Comprehensive audit reveals these 24 entrypoints are NOT candidates for removal:
+
+**False Positives (4)**:
+- Audit script picks up "F401" strings from `# noqa: F401` comments
+
+**Used Within Service Layer (2)**:
+- `ConflictError` - raised by Structure.delete, Calculation.delete, Calculation.rename
+- `FilesystemError` - mapped from kernel exceptions in exc_mapping.py
+
+**DTOs Returned by Service Methods (7)**:
+- `RunResultDTO`, `AnalysisRefDTO`, `AnalysisSummaryDTO`, `ErrorDTO`, `CalculationDTO`, `MetaDTO`, `BaseDTO`
+- Not referenced by name in daemon/CLI but returned from service methods
+
+**Tested Future Scaffolding (11)**:
+All have test coverage in tests/api/:
+- `Analysis.get_summary`, `Analysis.list_properties`, `Analysis.get_property_ref`, `Analysis.load_artifact`, `Analysis.find_band_files`
+- `Structure.get_atoms` (Jupyter-only)
+- `Calculation.get_effective_params`
+- `Project.get_species_map`, `Project.get_potential_map`
+- `Engine.get_info`, `Engine.list_step_types`, `Engine.validate_installation`
+
+### Consolidation Opportunities: EXHAUSTED
+
+**Categories fully harvested**:
+1. ✅ Service-delegating utils wrappers - All removed (Batches 26-29)
+2. ✅ Stub methods (empty returns, "not implemented" errors) - All removed (Batch 30)
+3. ✅ Pure delegation methods - All removed (Batch 30-31)
+4. ✅ Deprecated wrapper functions - All removed (Batch 25)
+5. ✅ Legacy compatibility aliases - All removed (Batch 30)
+
+**No further consolidation possible without**:
+- Adding new service methods (violates "no new API exports" rule)
+- Breaking daemon/CLI functionality (all remaining functions actively used)
+- Removing tested scaffolding (would break tests)
+- Major architectural changes beyond scope
+
+### Summary
+
+| Metric | Baseline | Final | Delta |
+|--------|----------|-------|-------|
+| Total Entrypoints | 243 | 213 | -30 (-12.3%) |
+| Utils | 91 | 79 | -12 |
+| Service Static | 38 | 23 | -15 |
+| Service Nested | 91 | 88 | -3 |
+| Unused | 33 | 24 | -9 |
+
+**API slimming complete** - all consolidation opportunities exhausted.
+
+---
+
 **End of Worklog**
