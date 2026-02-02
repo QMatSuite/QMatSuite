@@ -50,15 +50,15 @@ def ensure_calculation_identity(calc_dir: Path, project_root: Optional[Path] = N
         
         # Extract step types directly from YAML data (best-effort, don't require ULIDs)
         # For inference, we only need step types, not full CalculationStepEntry objects
-        step_types = []
+        step_types_mixed = []  # May contain SPEC or GEN values
         for step_data in data.get("steps", []):
             # Look for step_type_spec (SPEC type, SSOT) first, then step_type_gen (GEN type)
-            step_type = step_data.get("step_type_spec") or step_data.get("step_type_gen")
-            if step_type:
-                step_types.append(step_type)
+            step_type_val = step_data.get("step_type_spec") or step_data.get("step_type_gen")
+            if step_type_val:
+                step_types_mixed.append(step_type_val)
         
         # Infer identity from step types (public types from calculation.yaml)
-        inferred_kind, inferred_family = _infer_identity_from_step_types(calc_dir, step_types)
+        inferred_kind, inferred_family = _infer_identity_from_step_types(calc_dir, step_types_mixed)
         
         # Update data if inferred values available
         updated = False
@@ -98,9 +98,9 @@ def _infer_engine_family_from_spec_types(spec_types: List[str]) -> Optional[str]
     import quantumvitas.drivers
 
     families = set()
-    for step_type in spec_types:
-        if DriverRegistry.is_step_type_registered(step_type):
-            engine = DriverRegistry.get_engine_for_step_type(step_type)
+    for step_type_spec in spec_types:
+        if DriverRegistry.is_step_type_registered(step_type_spec):
+            engine = DriverRegistry.get_engine_for_step_type(step_type_spec)
             families.add(engine)
         # Unknown step types are ignored - will fail at handler dispatch
     
@@ -130,7 +130,7 @@ def _infer_structure_kind_from_engine_family(engine_family: str) -> str:
 
 def _infer_identity_from_step_types(
     calc_dir: Path,
-    step_types: List[str],
+    step_types_mixed: List[str],
 ) -> Tuple[Optional[str], Optional[str]]:
     """
     Infer calculation identity from step type strings.
@@ -140,7 +140,7 @@ def _infer_identity_from_step_types(
 
     Args:
         calc_dir: Calculation directory path
-        step_types: List of step type strings from calculation.yaml
+        step_types_mixed: List of step type strings (may be SPEC or GEN) from calculation.yaml
 
     Returns:
         Tuple of (structure_kind, engine_family) or (None, None) if inference fails
@@ -150,26 +150,26 @@ def _infer_identity_from_step_types(
     # Strategy 1: Use step types from calculation.yaml
     # Convert gen types to spec types via registry or DriverRegistry materialization
     spec_types = []
-    if step_types:
+    if step_types_mixed:
         registry = get_registry()
         # Ensure drivers are loaded for materialization
         import quantumvitas.drivers
         from quantumvitas.core.driver_registry import DriverRegistry
 
-        for step_type in step_types:
+        for step_type_val in step_types_mixed:
             # First try workflow registry lookup
-            spec = registry.get(step_type)
+            spec = registry.get(step_type_val)
             if spec:
                 spec_types.append(spec.step_type_spec)
                 continue
 
             # If registry lookup fails, try DriverRegistry materialization
             # Try common engine families (qe is most common for legacy imports)
-            # Normalize step_type to lowercase gen step name (remove GEN_ prefix if present for backward compat)
-            gen_step = step_type.lower()
+            # Normalize to lowercase gen step name (remove GEN_ prefix if present for backward compat)
+            gen_step = step_type_val.lower()
             if gen_step.startswith("gen_"):
                 gen_step = gen_step[4:]
-            
+
             for engine_family in ["qe", "vasp", "orca", "pyscf", "cp2k", "lammps", "w90"]:
                 try:
                     materialized = DriverRegistry.materialize_step_type(
@@ -182,9 +182,9 @@ def _infer_identity_from_step_types(
                 except Exception:
                     continue
 
-            # If still no match, check if step_type is already a spec type
-            if DriverRegistry.is_step_type_registered(step_type):
-                spec_types.append(step_type)
+            # If still no match, check if step_type_val is already a spec type
+            if DriverRegistry.is_step_type_registered(step_type_val):
+                spec_types.append(step_type_val)
 
     # Strategy 2: Fallback to step.yaml files if calculation.yaml steps empty
     if not spec_types:
@@ -234,9 +234,9 @@ def infer_calculation_identity(
     Returns:
         Tuple of (structure_kind, engine_family) or (None, None) if inference fails
     """
-    # Extract step types from CalculationStepEntry objects
-    step_types = [step.step_type_spec for step in steps if step.step_type_spec]
-    
-    # Use the helper function that works with step type strings
-    return _infer_identity_from_step_types(calc_dir, step_types)
+    # Extract step_type_spec values from CalculationStepEntry objects
+    step_types_spec = [step.step_type_spec for step in steps if step.step_type_spec]
+
+    # Use the helper function (accepts mixed SPEC/GEN values)
+    return _infer_identity_from_step_types(calc_dir, step_types_spec)
 

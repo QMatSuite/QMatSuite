@@ -220,7 +220,7 @@ class WorkflowService:
         )
         
         for i, step_entry in enumerate(steps):
-            step_type = None
+            step_type_spec = None  # Constitution: use explicit _spec/_gen names
             step_ulid = step_entry.get("step_ulid")
             step_entry_type = step_entry.get("step_type_spec")
             
@@ -256,11 +256,11 @@ class WorkflowService:
                             # Load step YAML to get step_type
                             from quantumvitas.core.yamldoc import StepDoc
                             step_doc = StepDoc.load(resolved_step.absolute_path)
-                            step_type = step_doc.get(["step_type_spec"], default=None)
+                            step_type_spec = step_doc.get(["step_type_spec"], default=None)
                             if debug_enabled:
                                 logger.info(
                                     f"[WORKFLOW_DETECT] Resolved step by ULID: step_ulid={step_ulid} -> "
-                                    f"step_type={step_type} (from step YAML)"
+                                    f"step_type_spec={step_type_spec} (from step YAML)"
                                 )
                         else:
                             if debug_enabled:
@@ -281,14 +281,14 @@ class WorkflowService:
                         )
                     pass
             
-            # Fallback to legacy format: step_type directly in entry, or type field
-            if not step_type:
-                step_type = step_entry_type
-                if step_type:
+            # Fallback to legacy format: step_type_spec directly in entry, or type field
+            if not step_type_spec:
+                step_type_spec = step_entry_type
+                if step_type_spec:
                     if debug_enabled:
                         logger.info(
                             f"[WORKFLOW_DETECT] Using type from calculation.yaml.steps[] entry: "
-                            f"step_ulid={step_ulid}, type={step_type}"
+                            f"step_ulid={step_ulid}, step_type_spec={step_type_spec}"
                         )
                 else:
                     # Always log warnings about missing type field (not gated)
@@ -299,7 +299,7 @@ class WorkflowService:
                     )
             
             # Also try resolving by file path (legacy format)
-            if not step_type:
+            if not step_type_spec:
                 step_file = step_entry.get("file")
                 if step_file:
                     step_path = calc_dir / step_file
@@ -307,31 +307,26 @@ class WorkflowService:
                         try:
                             from quantumvitas.core.yamldoc import StepDoc
                             step_doc = StepDoc.load(step_path)
-                            step_type = step_doc.get(["step_type_spec"], default=None)
+                            step_type_spec = step_doc.get(["step_type_spec"], default=None)
                             if debug_enabled:
                                 logger.info(
                                     f"[WORKFLOW_DETECT] Resolved step by file path: "
-                                    f"file={step_file} -> step_type={step_type}"
+                                    f"file={step_file} -> step_type_spec={step_type_spec}"
                                 )
                         except Exception:
                             pass
             
-            if step_type:
+            if step_type_spec:
                 # Phase 2: Map engine-specific step type (step_type_spec) to gen type for workflow detection
                 # Workflow detection MUST use GEN types (workflows are engine-agnostic)
                 from quantumvitas.workflow.registry import get_registry
-                from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+                from quantumvitas.workflow.step_type_convert import gen_from
                 registry = get_registry()
 
-                # Convert SPEC to GEN if needed (registry.get() expects GEN type)
-                if is_spec(step_type):
-                    # It's SPEC, convert to GEN first
-                    step_type_gen = gen_from(step_type)
-                    spec = registry.get(step_type_gen)  # Lookup by GEN type
-                else:
-                    # Already GEN, use directly
-                    step_type_gen = step_type
-                    spec = registry.get(step_type_gen)
+                # Convert to GEN (gen_from is idempotent for already-GEN values)
+                # Registry lookups use GEN types
+                step_type_gen = gen_from(step_type_spec)
+                spec = registry.get(step_type_gen)
                 
                 if spec:
                     # Use registry's canonical gen type for workflow detection
@@ -339,14 +334,14 @@ class WorkflowService:
                     present_steps.append(gen_type)
                     if debug_enabled:
                         logger.info(
-                            f"[WORKFLOW_DETECT] Step {i+1} mapped: {step_type} -> {gen_type}"
+                            f"[WORKFLOW_DETECT] Step {i+1} mapped: {step_type_spec} -> {gen_type}"
                         )
                 else:
                     # Fallback: use extracted gen type (shouldn't happen if registry is complete)
                     present_steps.append(step_type_gen)
                     if debug_enabled:
                         logger.warning(
-                            f"[WORKFLOW_DETECT] Step {i+1} not found in registry: {step_type} (gen: {step_type_gen})"
+                            f"[WORKFLOW_DETECT] Step {i+1} not found in registry: {step_type_spec} (gen: {step_type_gen})"
                         )
                 if debug_enabled:
                     logger.info(
@@ -356,7 +351,7 @@ class WorkflowService:
                 if debug_enabled:
                     logger.warning(
                         f"[WORKFLOW_DETECT] Step {i+1} could not be resolved: "
-                        f"step_ulid={step_ulid}, no step_type found"
+                        f"step_ulid={step_ulid}, no step_type_spec found"
                     )
         
         if debug_enabled:
@@ -552,17 +547,17 @@ class WorkflowService:
         if project_root is None:
             raise ValueError(f"Cannot find project root from {calc_dir}")
 
-        # Build step_types mapping: step_ulid -> PUBLIC step_type (for calculation.yaml)
-        # calculation.yaml stores public types, step.yaml stores machine types
-        step_types = {}
+        # Build step_types_gen mapping: step_ulid -> GEN step_type (for calculation.yaml)
+        # calculation.yaml stores GEN types, step.yaml stores SPEC types
+        step_types_gen = {}
         for public_step, step_ulid in zip(public_steps, created_step_ulids):
-            step_types[step_ulid] = public_step  # Store public type in calculation.yaml
+            step_types_gen[step_ulid] = public_step  # Store GEN type in calculation.yaml
 
         set_calculation_steps(
             project_root=project_root,
             calculation_ulid=parent_calculation_id,
             ordered_step_ulids=created_step_ulids,
-            step_types=step_types,  # Provide step types for canonical metadata
+            step_types=step_types_gen,  # Provide step types for canonical metadata
         )
         
         return created_paths
@@ -618,12 +613,12 @@ class WorkflowService:
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
         
-        for step_type in match.present_steps:
-            if not registry.has(step_type):
+        for step_type_gen in match.present_steps:
+            if not registry.has(step_type_gen):
                 issues.append(WorkflowIssue(
                     severity="warning",
-                    message=f"Unknown step type: {step_type}",
-                    step_type_gen=step_type,
+                    message=f"Unknown step type: {step_type_gen}",
+                    step_type_gen=step_type_gen,
                 ))
         
         return issues

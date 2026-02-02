@@ -310,24 +310,24 @@ def detect_dimension_from_steps(
     steps: List[Dict[str, Dict[str, Any]]],
     dimension: str,
     *,
-    step_types: Optional[List[str]] = None,
+    step_types_gen: Optional[List[str]] = None,
     calculation_dir: Optional[Path] = None,
 ) -> Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption, _CustomType]:
     """
     Detect a preset dimension value aggregated across multiple steps using variants.
-    
+
     Per Constitution 10.5.1:
     - If all steps have the same value → return that value
     - If steps have different values → return CUSTOM
     - Single step is valid (returns its value, not CUSTOM)
     - Steps without a variant for this dimension are skipped (dimension is N/A)
-    
+
     Uses variants registry to determine which steps are relevant.
-    
+
     Args:
         steps: List of step parameters dicts
         dimension: Dimension name to detect
-        step_types: Optional list of step_type strings (one per step)
+        step_types_gen: Optional list of step_type_gen strings (one per step)
         calculation_dir: Optional calculation directory (for precision context)
         
     Returns:
@@ -349,22 +349,22 @@ def detect_dimension_from_steps(
         else:
             return CUSTOM
     
-    # If step_types not provided, try to detect without variants (legacy path)
-    if step_types is None or len(step_types) != len(steps):
+    # If step_types_gen not provided, try to detect without variants (legacy path)
+    if step_types_gen is None or len(step_types_gen) != len(steps):
         # Fallback to old logic for backward compatibility during transition
         values = set()
         for step_params in steps:
             value = _detect_dimension(step_params, dimension)
             values.add(value)
-        
+
         if len(values) == 1:
             return values.pop()
         else:
             return CUSTOM
-    
+
     # Use variants-based detection
     values = []
-    for step_params, step_type_gen in zip(steps, step_types):
+    for step_params, step_type_gen in zip(steps, step_types_gen):
         # Check if variant applies
         variant = get_variant(dimension, step_type_gen)
         if variant is None:
@@ -417,27 +417,27 @@ def detect_dimension_from_steps(
 
 def _detect_precision_from_steps_strict(
     steps: List[Dict[str, Dict[str, Any]]],
-    step_types: List[str],
+    step_types_gen: List[str],
     calculation_dir: Path,
 ) -> Union[PrecisionOption, _CustomType]:
     """
     Detect precision from steps using step-type-aware strict matching.
-    
+
     Only receiver steps are considered. Non-receiver steps are wildcards.
     Each receiver step must match its step-type-specific canonical values.
-    
+
     Args:
         steps: List of step parameters dicts
-        step_types: List of step_type strings (one per step)
+        step_types_gen: List of step_type_gen strings (one per step)
         calculation_dir: Calculation directory (for loading structure/species_map)
-        
+
     Returns:
         PrecisionOption if all receiver steps match, CUSTOM otherwise
     """
     from quantumvitas.presets.receivers import get_precision_receiver_spec
     from quantumvitas.core.models import load_calculation
-    
-    if len(steps) != len(step_types):
+
+    if len(steps) != len(step_types_gen):
         # Mismatch - can't do step-type-aware detection
         return CUSTOM
     
@@ -477,8 +477,8 @@ def _detect_precision_from_steps_strict(
     
     # Collect detected precision for each receiver step
     receiver_values = []
-    
-    for step_params, step_type_gen in zip(steps, step_types):
+
+    for step_params, step_type_gen in zip(steps, step_types_gen):
         spec = get_precision_receiver_spec(step_type_gen)
         
         # Non-receiver steps are wildcards (don't contribute)
@@ -621,45 +621,45 @@ def detect_all_presets(
     steps: list[dict[str, dict[str, Any]]],
     *,
     include_precision: bool = True,
-    step_types: Optional[list[str]] = None,
+    step_types_gen: Optional[list[str]] = None,
     calculation_dir: Optional[Path] = None,
 ) -> dict[str, Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption, _CustomType]]:
     """
     Detect all preset dimensions from a list of steps.
-    
+
     This is the main entry point for Detector B. It returns the detected
     value for each dimension, aggregated across all steps.
-    
+
     Per Constitution 10.4.1: This is the sole legitimate source for
     preset/option state. UI should derive all state from this function.
-    
+
     Args:
         steps: List of step parameters dicts (section -> params)
         include_precision: If True (default), include precision dimension
-        step_types: Optional list of step_type strings (for step-type-aware precision detection)
+        step_types_gen: Optional list of step_type_gen strings (for step-type-aware precision detection)
         calculation_dir: Optional calculation directory (for precision detection)
-        
+
     Returns:
         Dict mapping dimension name to detected value (or CUSTOM)
-        
+
     Example:
         >>> steps = [{"SYSTEM": {"nspin": 2}}]
         >>> detect_all_presets(steps)
         {"magnetism": MagnetismOption.COLLINEAR_LSDA, "occupations_scheme": OccupationsSchemeOption.FIXED, "precision": PrecisionOption.MED}
     """
     from pathlib import Path
-    
+
     dimensions = V1_DIMENSIONS if include_precision else V0_DIMENSIONS
     result = {}
     for dimension in dimensions:
-        # For precision, if step_types/calculation_dir not provided, return CUSTOM
+        # For precision, if step_types_gen/calculation_dir not provided, return CUSTOM
         # (cannot do strict detection without context, and simple detection is unreliable)
-        if dimension == DIMENSION_PRECISION and (not step_types or not calculation_dir):
+        if dimension == DIMENSION_PRECISION and (not step_types_gen or not calculation_dir):
             result[dimension] = CUSTOM
         else:
             result[dimension] = detect_dimension_from_steps(
                 steps, dimension,
-                step_types=step_types,
+                step_types_gen=step_types_gen,
                 calculation_dir=Path(calculation_dir) if calculation_dir else None,
             )
     return result
