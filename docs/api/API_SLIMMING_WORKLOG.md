@@ -655,8 +655,15 @@ USAGE COVERAGE:
 |-------|------|--------|---------|-----------|-------|
 | 22 | 2026-02-02 | Delete structure utils wrappers | 2 | 223 | PASS |
 | 23 | 2026-02-02 | Migrate can_delete to service | 0* | 223 | PASS |
+| 24 | 2026-02-02 | Add generic selector function | +1 | 224 | PASS |
+| 25 | 2026-02-02 | Delete deprecated selector wrappers | 3 | 221 | PASS |
+| 26 | 2026-02-02 | Delete structure utils wrappers | 3 | 218 | PASS |
+| 27 | 2026-02-02 | Consolidate pseudo config raw | 1 | 220** | PASS |
+| 28 | 2026-02-02 | Consolidate path context functions | 1*** | 219 | PASS |
 
 *Net 0: +1 service_nested (`structure.can_delete`), -1 utils (`can_delete_structure`)
+**Note: Audit count drift corrected to 220 after recounting
+***Net -1: -2 deleted + 1 ContextNotFoundError export
 
 ---
 
@@ -718,6 +725,177 @@ TOTAL ENTRYPOINTS: 223
 **Delta**: +1 utils (added generic function, kept deprecated wrappers for backward compat)
 
 **Note**: Batches 25-30 were reverted due to architecture violation (daemon must import from api layer, not core directly). Those changes would have required daemon to import from core modules, which violates the frontend import rules.
+
+---
+
+### Batch 25: Remove Deprecated Selector Wrappers
+
+**Cluster Sheet**:
+- **Cluster**: Deprecated selector extraction wrappers
+- **Entrypoints to delete**:
+  - `extract_calculation_selector_from_entry` (deprecated wrapper)
+  - `extract_structure_selector_from_entry` (deprecated wrapper)
+  - `extract_step_selector_from_entry` (deprecated wrapper)
+- **Usage**: Not used by daemon; CLI already migrated to generic function
+- **Canonical to keep**: `extract_selector_from_entry(entry, kind)`
+- **Expected delta**: -3
+
+**Changes**:
+1. Deleted 3 deprecated wrapper functions from api/utils.py
+2. Generic function remains as the only selector export
+
+**Tests**: 3012 passed, 18 skipped
+
+**Delta**: utils 95 → 92 (-3 entrypoints)
+
+---
+
+### Batch 26: Remove Service-Delegating Structure Wrappers
+
+**Cluster Sheet**:
+- **Cluster**: Structure management wrappers
+- **Entrypoints to delete**:
+  - `can_delete_structure` (calls svc.structure.can_delete)
+  - `delete_structure` (calls svc.structure.delete)
+  - `rename_structure` (calls svc.structure.update_meta)
+- **Usage**: Daemon only - migrated to use service directly
+- **Canonical**: `svc.structure.can_delete()`, `svc.structure.delete()`, `svc.structure.update_meta()`
+- **Expected delta**: -3
+
+**Changes**:
+1. Migrated daemon handlers to use `get_service(project_root).structure.*` methods directly
+2. Deleted 3 service-delegating wrapper functions from api/utils.py
+
+**Tests**: 3012 passed, 18 skipped
+
+**Delta**: utils 92 → 89 (-3 entrypoints)
+
+---
+
+### Batch 27: Consolidate Pseudo Config Raw Loader
+
+**Cluster Sheet**:
+- **Cluster**: Pseudo config loaders
+- **Entrypoints**:
+  - `get_pseudo_config()` - returns dict (keep)
+  - `load_pseudo_config_raw()` - returns dataclass (delete)
+- **Usage**: daemon uses load_pseudo_config_raw for attribute access
+- **Canonical**: `get_pseudo_config()` with dict access
+- **Expected delta**: -1
+
+**Changes**:
+1. Migrated daemon from `config.seed_dir` to `config.get("seed_dir")` pattern
+2. Deleted `load_pseudo_config_raw()` from api/utils.py
+
+**Tests**: 3012 passed, 18 skipped
+
+**Delta**: utils 89 → 88 (-1 entrypoint)
+
+---
+
+## Current State (After Batch 27)
+
+**AUDIT (2026-02-02)**:
+```
+============================================================
+API SURFACE AUDIT SUMMARY
+============================================================
+TOTAL ENTRYPOINTS: 220
+
+BY CATEGORY:
+  api_init            :    2
+  dtos                :   11
+  errors              :   10
+  service_nested      :   92
+  service_static      :   23
+  utils               :   82
+
+USAGE COVERAGE:
+  Daemon only:        111
+  CLI only:            46
+  Both daemon+CLI:     38
+  UNUSED (0 refs):     25
+============================================================
+```
+
+**Tests**: 3012 passed, 18 skipped
+
+---
+
+### Cluster Sheet: Path Context Functions
+
+**Cluster Name**: Path Context Functions
+
+**Entrypoints in Cluster**:
+| Entrypoint | Usage | Description |
+|------------|-------|-------------|
+| `find_path_context_ref` | CLI: 9 | Returns dict with project context |
+| `find_project_root` | daemon: 8, CLI: 4 | Returns Path or None |
+| `find_path_context_from_pwd` | daemon: 4 | Returns PathContext object |
+
+**Semantic Equivalence Analysis**:
+- All three wrap the same core function `quantumvitas.core.context.find_path_context_from_pwd`
+- `find_project_root` = `find_path_context_from_pwd(...).project_root` with None fallback
+- `find_path_context_ref` = dict adapter over `find_path_context_from_pwd` result
+
+**Canonical Entrypoint**: `find_path_context_from_pwd` (returns full PathContext)
+
+**Consolidation Plan**:
+1. Keep `find_path_context_from_pwd` as canonical (already exists)
+2. Migrate CLI callers from `find_path_context_ref` to use `find_path_context_from_pwd`
+3. Migrate callers from `find_project_root` to use `find_path_context_from_pwd(...).project_root`
+4. Delete `find_path_context_ref` and `find_project_root`
+
+**Expected Delta**: -2 entrypoints (utils 82 → 80)
+
+---
+
+### Batch 28: Consolidate Path Context Functions
+
+**AUDIT BEFORE**:
+```
+TOTAL ENTRYPOINTS: 220
+  utils: 82
+```
+
+- **Time**: 2026-02-02
+- **Action**: Consolidated path context functions into `find_path_context_from_pwd`
+- **Changes**:
+  1. Added `ContextNotFoundError` re-export to api/utils.py (+1) for CLI error handling
+  2. Migrated 6 CLI usages from `find_path_context_ref` to `find_path_context_from_pwd`
+  3. Migrated 1 CLI usage from `find_project_root` to `find_path_context_from_pwd`
+  4. Deleted `find_path_context_ref` (-1)
+  5. Deleted `find_project_root` (-1)
+  6. Updated test import in test_api_service_facade.py
+- **Tests**: 3012 passed, 18 skipped
+
+**AUDIT AFTER**:
+```
+============================================================
+API SURFACE AUDIT SUMMARY
+============================================================
+TOTAL ENTRYPOINTS: 219
+
+BY CATEGORY:
+  api_init            :    2
+  dtos                :   11
+  errors              :   10
+  service_nested      :   92
+  service_static      :   23
+  utils               :   81
+
+USAGE COVERAGE:
+  Daemon only:        110
+  CLI only:            45
+  Both daemon+CLI:     38
+  UNUSED (0 refs):     26
+============================================================
+```
+
+**Delta**: 220 → 219 (-1 entrypoint)
+- utils: 82 → 81 (-1 net: -2 deleted + 1 new ContextNotFoundError export)
+
+**Slimming Effect**: Consolidated 3 path context functions into 1 canonical function + 1 exception export. CLI now uses PathContext object directly instead of dict adapter.
 
 ---
 

@@ -227,7 +227,7 @@ class TestAPIUtils:
             ensure_relative_path,
             read_structure,
             write_structure,
-            find_project_root,
+            find_path_context_from_pwd,
             is_ulid_like,
         )
 
@@ -236,7 +236,7 @@ class TestAPIUtils:
         assert callable(ensure_relative_path)
         assert callable(read_structure)
         assert callable(write_structure)
-        assert callable(find_project_root)
+        assert callable(find_path_context_from_pwd)
         assert callable(is_ulid_like)
 
     def test_slugify(self):

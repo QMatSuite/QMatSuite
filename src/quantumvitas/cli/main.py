@@ -33,13 +33,13 @@ from quantumvitas.api import (
 )
 from quantumvitas.api.utils import (
     build_step_spec_from_qe_input,
+    ContextNotFoundError,
     detect_runtime_control_keys,
     entry_display_name,
     entry_matches,
     extract_alat_bohr,
     extract_selector_from_entry,
-    find_path_context_ref,
-    find_project_root,
+    find_path_context_from_pwd,
     move_to_trash,
     needs_alat_preservation,
     write_qe_input_file,
@@ -1133,11 +1133,11 @@ def init_step_command(
         is_at_project_root = False
         if not calculation_entry:
             try:
-                path_ctx = find_path_context_ref()
+                path_ctx = find_path_context_from_pwd()
                 # Compare resolved paths to handle symlinks and path differences
-                if cwd_resolved == project_root_resolved and not path_ctx["is_inside_calculation"]:
+                if cwd_resolved == project_root_resolved and not path_ctx.is_inside_calculation():
                     is_at_project_root = True
-            except APIError:
+            except ContextNotFoundError:
                 # If we can't determine context but we have project_root, check if cwd matches project_root
                 if cwd_resolved == project_root_resolved:
                     is_at_project_root = True
@@ -1430,8 +1430,8 @@ def save_project_command(
     if project:
         project_root = Path(project).expanduser().resolve()
     else:
-        ctx = find_path_context_ref()
-        project_root = ctx["project_root"]
+        ctx = find_path_context_from_pwd()
+        project_root = ctx.project_root
     
     if not (project_root / "project.qv.yml").exists():
         raise typer.BadParameter(f"Not a project: {project_root}")
@@ -3135,7 +3135,11 @@ def configure_step_command(
         try:
             from quantumvitas.api import QVService
             if not project:
-                project = find_project_root(step_file.parent if step_file.exists() else None)
+                try:
+                    ctx = find_path_context_from_pwd(step_file.parent if step_file.exists() else None)
+                    project = ctx.project_root
+                except ContextNotFoundError:
+                    project = None
             if not project:
                 raise typer.BadParameter("Could not determine project root for step resolution")
             svc_resolve = get_service(project)
@@ -4287,16 +4291,16 @@ def analyze_output_command(
     elif input_file is None and normalized == "band":
         # Try to auto-detect calculation from pwd
         try:
-            ctx = find_path_context_ref()
-            project_root = ctx["project_root"]
-            if ctx["is_inside_calculation"]:
+            ctx = find_path_context_from_pwd()
+            project_root = ctx.project_root
+            if ctx.is_inside_calculation():
                 # Use resolve_enclosing_path for reliable detection
                 from quantumvitas.api import QVService
                 svc = get_service(project_root)
                 config = svc.project.get_config()
                 calc_dto = svc.calculation.resolve_enclosing_path()
                 if calc_dto:
-                    calculation_dir = ctx["calculation_directory"]
+                    calculation_dir = ctx.calculation_directory
                     calculation_selector = calc_ref.calc_ulid
                     if calculation_selector:
                         # For display, resolve to get user-friendly name
@@ -4308,7 +4312,7 @@ def analyze_output_command(
                         except Exception:
                             calculation_name = calculation_selector
                         typer.echo(f"Detected calculation: {calculation_name}")
-        except APIError:
+        except ContextNotFoundError:
             pass  # Not inside a project/calculation, will search pwd
     
     # For band analysis, auto-locate files if not all provided
@@ -4571,10 +4575,10 @@ def analyze_band_command(
     else:
         # Always try to detect project root from pwd
         try:
-            ctx = find_path_context_ref()
-            project_root = ctx["project_root"]
+            ctx = find_path_context_from_pwd()
+            project_root = ctx.project_root
             # Only auto-detect calculation if no input file provided
-            if input_file is None and ctx["is_inside_calculation"]:
+            if input_file is None and ctx.is_inside_calculation():
                 # Use resolve_enclosing_path to get the actual calculation
                 # This is more reliable than using the selector from calculation.yaml
                 # (which might be stale after a rename)
@@ -4594,7 +4598,7 @@ def analyze_band_command(
                             typer.echo(f"Detected calculation: {display_name}")
                         except Exception:
                             typer.echo(f"Detected calculation: {calculation_selector}")
-        except APIError:
+        except ContextNotFoundError:
             pass  # Not inside a project
     
     # If calculation specified but no project found, error
@@ -4685,11 +4689,11 @@ def analyze_dos_command(
         project_root = Path(project).resolve()
     else:
         try:
-            ctx = find_path_context_ref()
-            project_root = ctx["project_root"]
-        except APIError:
+            ctx = find_path_context_from_pwd()
+            project_root = ctx.project_root
+        except ContextNotFoundError:
             pass
-    
+
     # Call QVService
     try:
         svc = QVService(project_root)
@@ -4749,9 +4753,9 @@ def analyze_energy_command(
         project_root = Path(project).resolve()
     else:
         try:
-            ctx = find_path_context_ref()
-            project_root = ctx["project_root"]
-        except APIError:
+            ctx = find_path_context_from_pwd()
+            project_root = ctx.project_root
+        except ContextNotFoundError:
             pass
     
     # Call QVService (instance method when project context available)
