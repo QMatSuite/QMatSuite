@@ -1,8 +1,8 @@
 # Step Type GEN/SPEC Constitution
 
-**Status**: Final  
-**Version**: 1.0  
-**Location**: `src/quantumvitas/workflow/gen_steps.py` (GenStepRegistry), `src/quantumvitas/drivers/*/driver.py` (engine recipes)
+**Status**: Final
+**Version**: 1.1
+**Location**: `src/quantumvitas/workflow/step_type_convert.py` (SSOT for conversion), `src/quantumvitas/workflow/gen_steps.py` (GenStepRegistry), `src/quantumvitas/drivers/*/driver.py` (engine recipes)
 
 ---
 
@@ -83,6 +83,35 @@ Where `join(prefix, gen)` is implemented as `f"{prefix}_{gen}"`.
 
 **Rationale**: Scattered ad-hoc parsing creates inconsistency and violates the single source of truth. All conversion logic MUST flow through the canonical functions.
 
+### 3.2 Canonical Conversion Utilities (Exhaustive List)
+
+**The entire repository is allowed exactly 5 conversion utilities**, each implemented in exactly one SSOT location with no duplicates:
+
+| Function | Location | Purpose |
+|----------|----------|---------|
+| `spec_from(prefix, gen)` | `workflow/step_type_convert.py` | GEN → SPEC (strict) |
+| `gen_from(spec)` | `workflow/step_type_convert.py` | SPEC → GEN (strict) |
+| `prefix_from(spec)` | `workflow/step_type_convert.py` | SPEC → prefix (strict) |
+| `is_spec(x)` | `workflow/step_type_convert.py` | Returns True if x contains underscore |
+| `is_gen(x)` | `workflow/step_type_convert.py` | Returns True if x does NOT contain underscore |
+
+**One additional type-relaxed utility exists for rare boundary cases**:
+
+| Function | Location | Purpose |
+|----------|----------|---------|
+| `unpack_step_type_safe(x)` | `execution/step_type_unpack.py` | Accepts GEN or SPEC; returns structured info |
+
+**`unpack_step_type_safe` usage policy**:
+- MUST be used ONLY in rare boundary cases where strict typing is impossible
+- Every usage MUST include a short comment explaining why strict typing is impossible
+- MUST NOT be used merely to satisfy legacy tests/compat code
+- If tests/compat need it, those tests/compat must be updated to use DTO fields or pass-through
+
+**FORBIDDEN**:
+- Any other manual join/split/strip-prefix conversions anywhere in the repo
+- Reimplementation or duplication of the above functions
+- Wrapper functions that merely delegate to the above (no "convenience" layers)
+
 ---
 
 ## 4. Execution Layering (Route A - Required)
@@ -135,6 +164,54 @@ Any such overrides violate the derived law and MUST be deleted (no compatibility
 - **Runner**: Reads `step_type_spec` from `step.yaml` and performs exactly one `split(spec)` at a single choke point to `(prefix, gen)` for recipe lookup
 
 **Rationale**: Centralizing conversion at kernel/API boundaries prevents daemon/CLI from needing conversion logic and ensures consistency.
+
+### 4.6 DTO/RPC MUST Carry BOTH Fields
+
+**Every DTO, API response, and RPC payload that includes step type MUST include BOTH**:
+- `step_type_gen` — for UI display and output filenames
+- `step_type_spec` — for execution SSOT and persistence
+
+**Rationale**: Upper layers (daemon/CLI/UI) MUST NOT convert. By providing both fields, they can read whichever they need without importing kernel conversion logic.
+
+**Examples**:
+```python
+# DTO structure (always has both)
+{
+    "step_type_gen": "scf",
+    "step_type_spec": "qe_scf",
+    ...
+}
+```
+
+### 4.7 NO Conversion Above Kernel (Hard Ban)
+
+**From API boundary upward (daemon/CLI/UI/tests), conversion is FORBIDDEN.**
+
+Daemon, CLI, compat, and test code MUST:
+- Read `step_type_gen` and `step_type_spec` directly from DTO/RPC payloads, OR
+- Pass through user-provided GEN to API entrypoints (e.g., `init_step(step_type_gen="scf")`) without converting
+
+**FORBIDDEN in daemon/CLI/compat/tests**:
+- Calling `gen_from()`, `spec_from()`, `prefix_from()`, or any conversion function
+- Importing from `quantumvitas.workflow.step_type_convert`
+- Importing from `quantumvitas.execution.step_type_unpack`
+- Manual underscore parsing or concatenation
+
+**Rationale**: This is a direct consequence of the import layering rule: daemon/CLI MUST NOT import kernel modules. Since API must not reexport conversion, upper layers cannot convert—period.
+
+### 4.8 Ban API-Level Reexport of Conversion (Hard Ban)
+
+**The API layer (`quantumvitas.api.*`) MUST NOT reexport or wrap kernel conversion functions.**
+
+**FORBIDDEN in `quantumvitas.api.utils` or any API module**:
+- `step_type_gen_from_spec()` or any wrapper around `gen_from()`
+- `step_type_spec_from_gen()` or any wrapper around `spec_from()`
+- `is_step_type_spec()` or any wrapper around `is_spec()`
+- Any "conversion convenience function" for daemon/CLI consumption
+
+**Rationale**: If API reexports conversion, daemon/CLI can convert. We want to make conversion physically impossible above the kernel boundary by not providing the tools.
+
+**Migration**: Code that previously called `api.utils.step_type_gen_from_spec()` must be updated to read from DTO fields instead.
 
 ---
 

@@ -111,10 +111,10 @@ def get_gen_type(step: Any, registry: Optional[StepTypeRegistry] = None) -> Opti
         return None
 
     # Convert SPEC to GEN (registry expects GEN)
-    from quantumvitas.api.utils import is_step_type_spec, step_type_gen_from_spec
+    from quantumvitas.workflow.step_type_convert import gen_from, is_spec
     step_type_spec_str = str(step_type_spec)
-    if is_step_type_spec(step_type_spec_str):
-        gen_type = step_type_gen_from_spec(step_type_spec_str)
+    if is_spec(step_type_spec_str):
+        gen_type = gen_from(step_type_spec_str)
     else:
         gen_type = step_type_spec_str
 

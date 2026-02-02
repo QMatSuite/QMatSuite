@@ -17,58 +17,15 @@ from pathlib import Path
 
 
 # =============================================================================
-# Step type conversion utilities (thin facades over kernel SSOT)
+# Step type conversion utilities - REMOVED per Constitution v1.1 §4.8
 # =============================================================================
-
-def is_step_type_spec(s: str) -> bool:
-    """
-    Check if string is SPEC format (has underscore).
-
-    Thin facade; kernel is SSOT; no logic allowed.
-
-    Args:
-        s: Step type string to check
-
-    Returns:
-        True if SPEC format (e.g., "qe_scf"), False if GEN format (e.g., "scf")
-    """
-    from quantumvitas.workflow.step_type_convert import is_spec
-    return is_spec(s)
-
-
-def step_type_gen_from_spec(step_type_spec: str) -> str:
-    """
-    Extract GEN from SPEC.
-
-    Thin facade; kernel is SSOT; no logic allowed.
-
-    If input has no underscore, returns as-is (already GEN).
-
-    Args:
-        step_type_spec: SPEC step type (e.g., "qe_scf") or GEN (e.g., "scf")
-
-    Returns:
-        GEN step name (e.g., "scf")
-    """
-    from quantumvitas.workflow.step_type_convert import gen_from
-    return gen_from(step_type_spec)
-
-
-def step_type_spec_from_gen(prefix: str, step_type_gen: str) -> str:
-    """
-    Create SPEC from prefix + gen.
-
-    Thin facade; kernel is SSOT; no logic allowed.
-
-    Args:
-        prefix: Engine prefix (e.g., "qe", "vasp", "w90")
-        step_type_gen: GEN step name (e.g., "scf", "wannierprep")
-
-    Returns:
-        SPEC step type (e.g., "qe_scf", "w90_wannierprep")
-    """
-    from quantumvitas.workflow.step_type_convert import spec_from
-    return spec_from(prefix, step_type_gen)
+# The thin facades (is_step_type_spec, step_type_gen_from_spec, step_type_spec_from_gen)
+# have been REMOVED per Constitution v1.1 §4.8 (Ban API-level reexport conversion).
+#
+# Daemon/CLI MUST NOT convert - they should read from DTO fields.
+# Kernel code that needs conversion should import directly from SSOT:
+#   from quantumvitas.workflow.step_type_convert import gen_from, is_spec, spec_from
+# =============================================================================
 
 
 # =============================================================================

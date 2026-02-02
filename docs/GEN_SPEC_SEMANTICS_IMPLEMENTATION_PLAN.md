@@ -1,12 +1,12 @@
 # DOC 2 — Implementation Plan (No-Drift, Verifiable Steps)
 
-**Generated**: 2026-01-31
-**Constitution Reference**: `docs/spec/step_type_gen_spec_constitution.md` v1.0 (IMMUTABLE LAW)
+**Updated**: 2026-02-02
+**Constitution Reference**: `docs/spec/step_type_gen_spec_constitution.md` v1.1 (IMMUTABLE LAW)
 **Review Reference**: `docs/GEN_SPEC_SEMANTICS_REVIEW.md` (DOC 1)
 
 ---
 
-## NON-NEGOTIABLE LAWS (From Constitution)
+## NON-NEGOTIABLE LAWS (From Constitution v1.1)
 
 1. **Only two step type namespaces exist**: `step_type_gen` and `step_type_spec`. Any third namespace is **ILLEGAL**.
 
@@ -15,6 +15,14 @@
 3. **Underscore disambiguation**: `step_type_gen` and `engine_prefix` must contain NO underscores.
 
 4. **Repo-wide ban on bare `step_type`**: Must be explicitly `step_type_gen` or `step_type_spec`.
+
+5. **DTO/RPC MUST carry BOTH**: Every DTO/API response/RPC payload with step type MUST include both `step_type_gen` and `step_type_spec`.
+
+6. **NO conversion above kernel**: Daemon/CLI/compat MUST NOT call conversion functions. They read from DTO fields only.
+
+7. **Ban API reexport of conversion**: API layer MUST NOT reexport kernel conversion helpers.
+
+8. **Exactly 5 canonical conversion utilities**: `spec_from`, `gen_from`, `prefix_from`, `is_spec`, `is_gen` — plus `unpack_step_type_safe` for rare boundary cases only.
 
 ---
 
@@ -59,6 +67,171 @@ Migration: Use `step_type_gen="md"` or `step_type_gen="relax"` and store VC-ness
 | `wannier` | `w90_wannier` | wannier90.x |
 
 **Banned**: `w90_preproc`, `w90_run` as step type values.
+
+---
+
+## Phase A: Conversion Function Census (BLOCKING — Do First)
+
+**What changes**: Consolidate all conversion helpers to 5 canonical functions in SSOT.
+
+### Step A.1: Scan for ALL Existing Conversion Helpers
+
+```bash
+# Find all gen_from, spec_from, prefix_from, is_spec, is_gen implementations
+rg "def (gen_from|spec_from|prefix_from|is_spec|is_gen|is_step_type_spec|is_step_type_gen|step_type_gen_from|step_type_spec_from)" src/ --type py -l
+
+# Find unpack helpers
+rg "def unpack" src/ --type py -l | xargs grep -l "step_type"
+
+# Find manual split/join patterns
+rg '\.split\s*\(\s*["\']_' src/ --type py -l
+rg 'f"{.*}_{.*}".*step|prefix.*_.*gen' src/ --type py -l
+```
+
+### Step A.2: Consolidate to SSOT
+
+**Allowed locations**:
+- `src/quantumvitas/workflow/step_type_convert.py`: `spec_from`, `gen_from`, `prefix_from`, `is_spec`, `is_gen`
+- `src/quantumvitas/execution/step_type_unpack.py`: `unpack_step_type_safe`
+
+**Action**: Delete all duplicates. Update all callsites to import from SSOT.
+
+### Step A.3: Add `is_gen()` if Missing
+
+Ensure `is_gen(x)` exists in `step_type_convert.py`:
+```python
+def is_gen(x: str) -> bool:
+    """Returns True if x is GEN format (no underscore)."""
+    return "_" not in x
+```
+
+**Verification**:
+```bash
+rg "def (is_spec|is_gen|gen_from|spec_from|prefix_from)\(" src/ --type py -l | sort -u
+# Expected: ONLY step_type_convert.py
+
+rg "def unpack_step_type" src/ --type py -l
+# Expected: ONLY step_type_unpack.py
+```
+
+---
+
+## Phase B: Remove API Reexports of Conversion
+
+**What changes**: Delete conversion function reexports from `quantumvitas.api.utils`
+
+### Step B.1: Delete Reexports
+
+**Remove from `src/quantumvitas/api/utils.py`**:
+- `is_step_type_spec()` function
+- `step_type_gen_from_spec()` function
+- `step_type_spec_from_gen()` function
+- Any other conversion wrappers
+
+### Step B.2: Fix Daemon/CLI/Compat Callsites
+
+Find and fix all callers:
+```bash
+rg "from quantumvitas.api.utils import.*step_type" src/quantumvitas/daemon/ src/quantumvitas/cli/ --type py
+rg "api\.utils\.(is_step_type|step_type_gen_from|step_type_spec_from)" src/ --type py
+```
+
+**Migration pattern**: Replace conversion calls with DTO field reads.
+
+**Verification**:
+```bash
+rg "step_type_gen_from_spec|step_type_spec_from_gen|is_step_type_spec" src/quantumvitas/api/utils.py
+# Expected: (no output)
+
+rg "from quantumvitas.api.utils import.*step_type" src/quantumvitas/daemon/ --type py
+# Expected: (no output)
+```
+
+---
+
+## Phase C: Compat Uses DTO Only
+
+**What changes**: Audit and fix compat code to never convert; only consume DTO fields.
+
+### Step C.1: Audit Compat
+
+```bash
+rg "(gen_from|spec_from|prefix_from|is_spec|step_type.*split)" src/quantumvitas/daemon/compat.py
+```
+
+### Step C.2: Replace With DTO Field Reads
+
+Any line that converts must be replaced with reading the appropriate DTO field.
+
+**Example fix**:
+```python
+# BEFORE (conversion)
+step["name"] = step_type_gen_from_spec(step["step_type_spec"])
+
+# AFTER (DTO field read)
+step["name"] = step.get("step_type_gen", "")
+```
+
+**Verification**:
+```bash
+rg "(gen_from|spec_from|prefix_from|step_type_convert)" src/quantumvitas/daemon/ --type py
+# Expected: (no output)
+```
+
+---
+
+## Phase D: Tighten No Manual Join/Split Gate
+
+**What changes**: Update gate to also catch manual JOIN patterns.
+
+### Step D.1: Update Gate Test
+
+Edit `tests/gates/test_no_manual_join_split.py` to scan for:
+
+**SPLIT patterns** (already scanned):
+- `.split("_"` or `.split('_'`
+
+**JOIN patterns** (add these):
+- `f"{prefix}_{gen}"` or similar f-string patterns with underscore joining step type components
+- `prefix + "_" + gen` concatenation
+- `"_".join(...)` for step type construction
+
+### Step D.2: Verify Gate Catches All Patterns
+
+```bash
+.venv/bin/python -m pytest tests/gates/test_no_manual_join_split.py -v
+# Expected: PASS (no violations in src/)
+```
+
+---
+
+## Phase E: unpack_step_type_safe Usage Policy Verification
+
+**What changes**: Audit all usages to ensure they have rationale comments.
+
+### Step E.1: Find All Usages
+
+```bash
+rg "unpack_step_type_safe\(" src/ tests/ --type py -l
+```
+
+### Step E.2: Verify Each Has Rationale Comment
+
+For each usage, ensure there's a comment like:
+```python
+# Boundary case: step_type may be GEN or SPEC from legacy import
+unpacked = unpack_step_type_safe(step_type)
+```
+
+### Step E.3: Reject Legacy/Compat Reasons
+
+If any usage exists "to satisfy legacy tests" or "compat needs it", that usage is INVALID. The test/compat must be updated to use DTO fields instead.
+
+**Verification**:
+```bash
+rg -B2 "unpack_step_type_safe\(" src/ --type py
+# Inspect: each usage must have a rationale comment on preceding line
+```
 
 ---
 
@@ -416,6 +589,11 @@ rg '"w90_preproc"|"w90_run"' src/ tests/ --type py -c 2>/dev/null | awk -F: '{su
 
 | Phase | What | Verification | Expected |
 |-------|------|--------------|----------|
+| A | Conversion function census | rg for duplicates | Only SSOT locations |
+| B | Remove API reexports | rg api/utils.py | No conversion exports |
+| C | Compat uses DTO only | rg daemon/ | No conversion imports |
+| D | Tighten join/split gate | Gate test | Catches join patterns |
+| E | unpack_step_type_safe policy | Manual audit | All usages have rationale |
 | 0 | Baseline | rg counts | Establish baseline |
 | 1 | Create 10 gates | `ls tests/gates/ \| wc -l` | 10 files |
 | 2 | Delete third namespace | Zero-tolerance checklist | All 0 |

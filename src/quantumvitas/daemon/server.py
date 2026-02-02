@@ -3916,11 +3916,10 @@ class QVDaemon:
         for step_path in step_files:
             step_name = step_path.name
             try:
-                # Load step to get step_type for result (convert SPEC→GEN)
+                # Load step to get step_type for result
+                # Constitution v1.1: Read step_type_gen from file, don't convert
                 content = yaml.safe_load(step_path.read_text()) or {}
-                step_type_spec = content.get("step_type_spec", "scf")
-                from quantumvitas.api import get_step_type_gen
-                step_type_gen = get_step_type_gen(step_type_spec)
+                step_type_gen = content.get("step_type_gen", content.get("step_type_spec", "scf"))
                 
                 # Get step-type-aware precision advice if applicable
                 precision_advice = None
@@ -4159,19 +4158,15 @@ class QVDaemon:
 
         # Use dataclasses.asdict for proper serialization (hand-serialization violation fix)
         # Extract only needed fields from StepDTO using asdict
-        from quantumvitas.api import get_step_type_gen
 
         def _to_step_dict(s):
-            """Convert StepDTO to dict with proper GEN/SPEC type conversion."""
+            """Convert StepDTO to dict - read both fields from DTO (Constitution v1.1)."""
             s_dict = asdict(s)
-            step_type_spec = s_dict.get("step_type_spec")
-            # Convert SPEC to GEN using the canonical conversion function
-            # CRITICAL: Never fallback to SPEC value - that violates SPEC/GEN separation
-            step_type_gen_val = get_step_type_gen(step_type_spec) if step_type_spec else None
+            # Constitution v1.1: Kernel populates both. Read from DTO, don't convert.
             return {
                 "step_ulid": s_dict.get("step_ulid"),
-                "step_type_spec": step_type_spec,  # canonical SPEC type
-                "step_type_gen": step_type_gen_val,  # canonical GEN type via conversion
+                "step_type_spec": s_dict.get("step_type_spec"),  # canonical SPEC type
+                "step_type_gen": s_dict.get("step_type_gen"),  # canonical GEN type from DTO
                 "status": s_dict.get("status"),
             }
 

@@ -1,8 +1,8 @@
 # GEN/SPEC Constitution Implementation Worklog
 
 **Started**: 2026-02-01
-**Completed**: 2026-02-01
-**Status**: COMPLETE
+**Amended**: 2026-02-02 (Constitution v1.1 - DTO MUST carry BOTH, NO conversion above kernel)
+**Status**: COMPLETE (v1.1 Phases A-E done)
 
 ---
 
@@ -69,6 +69,52 @@
 |------|-------|--------|-------|
 | 2026-02-01 | gates/ | 126 passed | All gate tests pass including new manual join/split gate |
 | 2026-02-01 | tests/ (full) | 3019 passed | Full test suite passes with parallel execution |
+| 2026-02-02 | daemon/ api/ | 203 passed | After Phase B+C (remove reexports, DTO reads) |
+| 2026-02-02 | gates/ | 126 passed | All gates pass after B+C |
+| 2026-02-02 | tests/ (full) | 3019 passed | Full suite passes after B+C |
+| 2026-02-02 | gates/ | 126+2 skipped | After Phase D (join pattern detection added) |
+| 2026-02-02 | tests/ (full) | 3019 passed | Full suite passes after all v1.1 phases |
+
+---
+
+## Constitution v1.1 Amendment Phases (2026-02-02)
+
+### Phase A: Conversion Function Census
+
+| Task | Description | Status | Notes |
+|------|-------------|--------|-------|
+| A.1 | Scan for all conversion helpers | DONE | All 5 canonical functions exist in SSOT |
+| A.2 | Consolidate to SSOT | DONE | No duplicates in runtime code (docs/ only has examples) |
+| A.3 | Add is_gen() if missing | DONE | is_gen() exists at step_type_convert.py:81 |
+
+### Phase B: Remove API Reexports
+
+| Task | Description | Status | Notes |
+|------|-------------|--------|-------|
+| B.1 | Delete reexports from api/utils.py | DONE | Removed is_step_type_spec, step_type_gen_from_spec, step_type_spec_from_gen |
+| B.2 | Fix daemon/CLI/compat callsites | DONE | Updated daemon/compat.py and daemon/server.py to read from DTO |
+
+### Phase C: Compat Uses DTO Only
+
+| Task | Description | Status | Notes |
+|------|-------------|--------|-------|
+| C.1 | Audit compat.py | DONE | Found 9 conversion callsites |
+| C.2 | Replace with DTO field reads | DONE | All response shapers now read step_type_gen from DTO |
+
+### Phase D: Tighten Join/Split Gate
+
+| Task | Description | Status | Notes |
+|------|-------------|--------|-------|
+| D.1 | Update gate to catch join patterns | DONE | Added scan_for_manual_join() |
+| D.2 | Verify gate catches all patterns | DONE | Gate passes, detects step_type_spec = f"prefix_gen" |
+
+### Phase E: unpack_step_type_safe Policy
+
+| Task | Description | Status | Notes |
+|------|-------------|--------|-------|
+| E.1 | Find all usages | DONE | 3 usages: reference_resolver.py, vasp_staging.py, drivers/vasp/staging.py |
+| E.2 | Verify rationale comments | DONE | All have "Fallback:" comments explaining boundary case |
+| E.3 | Reject legacy/compat reasons | DONE | No legacy/compat usages found |
 
 ---
 

@@ -59,8 +59,8 @@ def verify_qc_topology(steps: List["Step"], registry) -> None:
             step_type_spec = getattr(step, 'step_type_spec', None)
             if step_type_spec:
                 # Convert SPEC to GEN for registry lookup
-                from quantumvitas.api.utils import step_type_gen_from_spec
-                step_type_gen = step_type_gen_from_spec(step_type_spec)
+                from quantumvitas.workflow.step_type_convert import gen_from
+                step_type_gen = gen_from(step_type_spec)
             else:
                 continue  # No step type info, skip
 
@@ -88,8 +88,8 @@ def verify_qc_topology(steps: List["Step"], registry) -> None:
             if not ancestor_gen:
                 ancestor_spec = getattr(ancestor_step, 'step_type_spec', None)
                 if ancestor_spec:
-                    from quantumvitas.api.utils import step_type_gen_from_spec
-                    ancestor_gen = step_type_gen_from_spec(ancestor_spec)
+                    from quantumvitas.workflow.step_type_convert import gen_from
+                    ancestor_gen = gen_from(ancestor_spec)
                 else:
                     continue
 

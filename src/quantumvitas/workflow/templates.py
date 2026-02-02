@@ -320,13 +320,13 @@ class WorkflowService:
                 # Phase 2: Map engine-specific step type (step_type_spec) to gen type for workflow detection
                 # Workflow detection MUST use GEN types (workflows are engine-agnostic)
                 from quantumvitas.workflow.registry import get_registry
-                from quantumvitas.api.utils import step_type_gen_from_spec, is_step_type_spec
+                from quantumvitas.workflow.step_type_convert import gen_from, is_spec
                 registry = get_registry()
-                
+
                 # Convert SPEC to GEN if needed (registry.get() expects GEN type)
-                if is_step_type_spec(step_type):
+                if is_spec(step_type):
                     # It's SPEC, convert to GEN first
-                    step_type_gen = step_type_gen_from_spec(step_type)
+                    step_type_gen = gen_from(step_type)
                     spec = registry.get(step_type_gen)  # Lookup by GEN type
                 else:
                     # Already GEN, use directly

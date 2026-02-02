@@ -11,7 +11,9 @@ This ensures UI (unchanged since 0873ebf) works with current HEAD.
 from typing import Any, Dict, Optional
 import copy
 
-from quantumvitas.api import get_step_type_gen
+# NOTE: Constitution v1.1 §4.7 - Daemon MUST NOT convert between GEN/SPEC.
+# All step_type_gen values MUST be read from DTO fields, not derived from step_type_spec.
+# If step_type_gen is missing, that indicates a kernel bug to be fixed at the source.
 
 
 # -----------------------------------------------------------------------------
@@ -208,11 +210,9 @@ def _shape_list_journal_entries(response: Dict[str, Any]) -> Dict[str, Any]:
         for key in ["before", "after"]:
             if key in entry and "steps" in entry[key]:
                 for step in entry[key]["steps"]:
-                    # Data should already have step_type_spec from kernel
-                    # Convert to GEN for v0 RPC response
-                    if "step_type_spec" in step:
-                        step["type"] = get_step_type_gen(step["step_type_spec"])
-                        step["step_type_gen"] = step["type"]  # Also add for v1 compatibility
+                    # Constitution v1.1: Read step_type_gen from DTO (kernel populates both)
+                    if "step_type_gen" in step:
+                        step["type"] = step["step_type_gen"]  # v0 expects "type" field
     return response
 
 
@@ -421,11 +421,9 @@ def _shape_change_calculation_structure(response: Dict[str, Any]) -> Dict[str, A
         # Derive name from type if missing
         if _should_derive_step_name(step.get("name", "")):
             step["name"] = _derive_step_name_from_type(step_type_spec)
-        # Data should already have step_type_spec from kernel
-        # Convert to GEN for v0 RPC response
-        if "step_type_spec" in step:
-            step["type"] = get_step_type_gen(step["step_type_spec"])
-            step["step_type_gen"] = step["type"]  # Also add for v1 compatibility
+        # Constitution v1.1: Read step_type_gen from DTO (kernel populates both)
+        if "step_type_gen" in step:
+            step["type"] = step["step_type_gen"]  # v0 expects "type" field
         if _should_derive_step_name(step.get("slug", "")):
             step["slug"] = step.get("name", "")
         # Regenerate step_file if missing or contains ULID
@@ -518,15 +516,12 @@ def _shape_list_calculations(response: Dict[str, Any]) -> Dict[str, Any]:
 
         # Shape steps
         for step in calc.get("steps", []):
-            # Data should already have step_type_spec from kernel
-            # Convert to GEN for v0 RPC response
-            if "step_type_spec" in step:
-                step_type_gen = get_step_type_gen(step["step_type_spec"])
-                step["type"] = step_type_gen
-                step["step_type_gen"] = step_type_gen  # Also add for v1 compatibility
+            # Constitution v1.1: Read step_type_gen from DTO (kernel populates both)
+            if "step_type_gen" in step:
+                step["type"] = step["step_type_gen"]  # v0 expects "type" field
                 # Derive name from type if missing
                 if _should_derive_step_name(step.get("name", "")):
-                    step["name"] = _derive_step_name_from_type(step_type_gen)
+                    step["name"] = _derive_step_name_from_type(step["step_type_gen"])
             if _should_derive_step_name(step.get("slug", "")):
                 step["slug"] = step.get("name", "")
 
@@ -716,27 +711,24 @@ def _shape_calculation_detail(response: Dict[str, Any]) -> Dict[str, Any]:
             elif "step_ulid" in step:
                 step["step_ulid"] = step.pop("step_ulid")
 
-        # Canonical: step_type_spec (SPEC) and step_type_gen (GEN)
+        # Constitution v1.1: Kernel populates both step_type_spec and step_type_gen.
+        # Daemon reads from DTO, does not convert.
         if "step_type_spec" not in step and "type" in step:
-            # Assume type contains SPEC if it has underscore, else GEN
+            # v0 client sent "type" field - detect format and set appropriate field
             type_val = step.pop("type")
             if "_" in type_val:
+                # SPEC format (e.g., "qe_scf") - set step_type_spec, kernel fills step_type_gen
                 step["step_type_spec"] = type_val
-                step["step_type_gen"] = get_step_type_gen(type_val)
             else:
-                # GEN value - need to infer SPEC (fallback to qe_)
+                # GEN format (e.g., "scf") - set step_type_gen
                 step["step_type_gen"] = type_val
-                step["step_type_spec"] = f"qe_{type_val}"
 
-        # Ensure both fields present
-        if "step_type_spec" in step and "step_type_gen" not in step:
-            step["step_type_gen"] = get_step_type_gen(step["step_type_spec"])
+        # NOTE: Per Constitution v1.1, kernel MUST populate both fields.
+        # Daemon does not fill missing step_type_gen - that would be conversion.
 
-        # Derive name from step_type_gen if missing
+        # Derive name from step_type_gen if available
         if _should_derive_step_name(step.get("name", "")):
-            from quantumvitas.api.utils import step_type_gen_from_spec
-            spec_val = step.get("step_type_spec", "")
-            step["name"] = step.get("step_type_gen", step_type_gen_from_spec(spec_val) if spec_val else "")
+            step["name"] = step.get("step_type_gen", "")
 
         # Derive slug from name if missing
         if _should_derive_step_name(step.get("slug", "")):
@@ -794,11 +786,9 @@ def _shape_update_calculation_species_map(response: Dict[str, Any]) -> Dict[str,
         # Derive name from type if missing
         if _should_derive_step_name(step.get("name", "")):
             step["name"] = _derive_step_name_from_type(step_type_spec)
-        # Data should already have step_type_spec from kernel
-        # Convert to GEN for v0 RPC response
-        if "step_type_spec" in step:
-            step["type"] = get_step_type_gen(step["step_type_spec"])
-            step["step_type_gen"] = step["type"]  # Also add for v1 compatibility
+        # Constitution v1.1: Read step_type_gen from DTO (kernel populates both)
+        if "step_type_gen" in step:
+            step["type"] = step["step_type_gen"]  # v0 expects "type" field
         if _should_derive_step_name(step.get("slug", "")):
             step["slug"] = step.get("name", "")
         # Regenerate step_file if missing or contains ULID
@@ -948,10 +938,9 @@ def _shape_step_detail(response: Dict[str, Any]) -> Dict[str, Any]:
     response.pop("step_ulid", None)
     response.pop("calc_ulid", None)
 
-    # Data should already have step_type_spec from kernel
-    # Add step_type_gen for API response
-    if "step_type_spec" in response:
-        response["step_type_gen"] = get_step_type_gen(response["step_type_spec"])
+    # Constitution v1.1: Kernel populates both step_type_spec and step_type_gen.
+    # Daemon reads from DTO, does not convert.
+    # If step_type_gen is missing, that's a kernel bug to fix at the source.
 
     return response
 
