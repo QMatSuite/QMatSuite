@@ -840,8 +840,11 @@ def _shape_create_demo_project(response: Dict[str, Any]) -> Dict[str, Any]:
         try:
             project_path = Path(project_root)
             if project_path.exists():
+                # Use nested service methods (API consolidation)
+                svc = QVService(project_path)
+
                 # Get project summary to fill in missing fields
-                summary = QVService.get_project_summary(project_path)
+                summary = svc.project.get_summary()
 
                 # Add v0 expected fields
                 if "project_ulid" not in response:
@@ -849,19 +852,19 @@ def _shape_create_demo_project(response: Dict[str, Any]) -> Dict[str, Any]:
                 if "project_name" not in response:
                     response["project_name"] = summary.get("name", "demo-si-project")
 
-                # Get first structure
-                structures = QVService.list_structures_data(project_path)
-                if structures and "structure" not in response:
-                    first_struct = structures[0]
+                # Get first structure (using nested DTO method)
+                structure_dtos = svc.structure.list()
+                if structure_dtos and "structure" not in response:
+                    first_struct = structure_dtos[0]
                     response["structure"] = {
-                        "ulid": first_struct.get("ulid", ""),
-                        "name": first_struct.get("name", ""),
+                        "ulid": first_struct.structure_ulid,
+                        "name": first_struct.meta.name if first_struct.meta else "",
                     }
 
-                # Get first calculation
-                calcs = QVService.list_calculations_data(project_path)
-                if calcs and "calculation" not in response:
-                    response["calculation"] = calcs[0].get("ulid", "")
+                # Get first calculation (using nested DTO method)
+                calc_dtos = svc.calculation.list()
+                if calc_dtos and "calculation" not in response:
+                    response["calculation"] = calc_dtos[0].calc_ulid
 
                 if "ready_to_run" not in response:
                     response["ready_to_run"] = True

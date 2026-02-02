@@ -179,8 +179,9 @@ class TestRelaxPromoteE2E:
         project_root = promote_test_calculation_with_relax["project_root"]
         initial_structure_ulid = promote_test_calculation_with_relax["structure_ulid"]
         
-        # Get initial structure count
-        initial_structures = QVService.list_structures_data(project_root)
+        # Get initial structure count via nested service method (DTO)
+        svc = QVService(project_root)
+        initial_structures = svc.structure.list()
         initial_count = len(initial_structures)
         
         # Run the relax step
@@ -206,8 +207,8 @@ class TestRelaxPromoteE2E:
             name="relaxed_h2",
         )
         
-        # Verify new structure was created
-        all_structures = QVService.list_structures_data(project_root)
+        # Verify new structure was created via nested service method (DTO)
+        all_structures = svc.structure.list()
         assert len(all_structures) == initial_count + 1, "Should have one more structure"
         
         # Verify promoted structure has different ULID

@@ -460,4 +460,116 @@ grep -E "from quantumvitas\.(core|io|analysis|...)" src/quantumvitas/daemon/*.py
 
 ---
 
+## 8. Consolidation Candidates (High-Impact)
+
+### 8.1 Cluster 1: Duplicate Static Methods → Nested Service Methods
+
+These static methods duplicate functionality already in nested service classes.
+
+#### 8.1.1 list_structures_data (Static) → Structure.list (Nested)
+
+| Property | Value |
+|----------|-------|
+| **Static method** | `QVService.list_structures_data(project_root) -> list[dict]` |
+| **Nested method** | `svc.structure.list() -> list[StructureDTO]` |
+| **Semantic equivalence** | ALMOST SAME (static returns dict, nested returns DTO) |
+| **Daemon usage** | 1 call (compat.py:853) |
+| **Nested usage** | 2 calls (server.py:2030, 2152) |
+| **Canonical entrypoint** | `svc.structure.list()` (keep) |
+| **To delete** | `QVService.list_structures_data` |
+| **Migration** | compat.py: `QVService.list_structures_data(path)` → `QVService(path).structure.list()` + convert to dict |
+| **Expected delta** | -1 static method |
+
+#### 8.1.2 list_calculations_data (Static) → Calculation.list (Nested)
+
+| Property | Value |
+|----------|-------|
+| **Static method** | `QVService.list_calculations_data(project_root) -> list[dict]` |
+| **Nested method** | `svc.calculation.list() -> list[CalculationDTO]` |
+| **Semantic equivalence** | ALMOST SAME (static returns dict, nested returns DTO) |
+| **Daemon usage** | 1 call (compat.py:862) |
+| **Nested usage** | 2 calls (server.py:2044, 2804) |
+| **Canonical entrypoint** | `svc.calculation.list()` (keep) |
+| **To delete** | `QVService.list_calculations_data` |
+| **Migration** | compat.py: `QVService.list_calculations_data(path)` → `QVService(path).calculation.list()` + convert to dict |
+| **Expected delta** | -1 static method |
+
+#### 8.1.3 get_project_summary (Static) → Project.get_summary (Nested)
+
+| Property | Value |
+|----------|-------|
+| **Static method** | `QVService.get_project_summary(project_root) -> dict` |
+| **Nested method** | `svc.project.get_summary() -> dict` |
+| **Semantic equivalence** | SAME |
+| **Daemon usage** | 1 call (compat.py:844) |
+| **Nested usage** | 2 calls (server.py:2019, 2119) |
+| **Canonical entrypoint** | `svc.project.get_summary()` (keep) |
+| **To delete** | `QVService.get_project_summary` |
+| **Migration** | compat.py: `QVService.get_project_summary(path)` → `QVService(path).project.get_summary()` |
+| **Expected delta** | -1 static method |
+
+#### 8.1.4 run_calculation (Static) - UNUSED
+
+| Property | Value |
+|----------|-------|
+| **Static method** | `QVService.run_calculation(project_root, calc, ...) -> RunResultDTO` |
+| **Nested method** | `svc.run.run_calculation(calc, ...) -> RunResultDTO` |
+| **Semantic equivalence** | SAME |
+| **Daemon usage** | 0 calls (only comments) |
+| **Nested usage** | 1 call (server.py:5318) |
+| **Canonical entrypoint** | `svc.run.run_calculation()` (keep) |
+| **To delete** | `QVService.run_calculation` (static) |
+| **Migration** | None needed (no call sites) |
+| **Expected delta** | -1 static method |
+
+---
+
+### 8.2 Cluster 2: Service-Delegating Utils
+
+These utils functions just call service methods and should be replaced at call sites.
+
+#### 8.2.1 delete_structure (Utils)
+
+| Property | Value |
+|----------|-------|
+| **Utils function** | `utils.delete_structure(project_root, selector, force)` |
+| **Service method** | `svc.structure.delete(selector, force)` |
+| **Semantic equivalence** | SAME (utils calls service internally) |
+| **Daemon usage** | 1 call (server.py:2750) |
+| **Migration** | server.py: `delete_structure(root, sel, ...)` → `QVService(root).structure.delete(sel, ...)` |
+| **Expected delta** | -1 utils function |
+
+#### 8.2.2 rename_structure (Utils)
+
+| Property | Value |
+|----------|-------|
+| **Utils function** | `utils.rename_structure(project_root, selector, new_name)` |
+| **Service method** | `svc.structure.update_meta(selector, new_name=...)` |
+| **Semantic equivalence** | ALMOST SAME (different return format) |
+| **Daemon usage** | 1 call (server.py:2704) |
+| **Migration** | server.py: `rename_structure(...)` → `svc.structure.update_meta(...)` |
+| **Expected delta** | -1 utils function |
+
+#### 8.2.3 can_delete_structure (Utils)
+
+| Property | Value |
+|----------|-------|
+| **Utils function** | `utils.can_delete_structure(project_root, selector) -> dict` |
+| **Daemon usage** | 2 calls (server.py:2725, 2744) |
+| **Expected delta** | -1 utils function (if equivalent service method exists) |
+
+---
+
+### 8.3 Execution Priority
+
+| Priority | Cluster | Items | Expected Delta | Risk |
+|----------|---------|-------|----------------|------|
+| 1 | Static run_calculation | 1 | -1 | LOW (0 callers) |
+| 2 | Static list/get methods | 3 | -3 | MEDIUM (1 caller each, in compat.py) |
+| 3 | Utils service-delegating | 3 | -3 | MEDIUM (need service method parity) |
+
+**Total expected reduction**: -7 entrypoints
+
+---
+
 **End of API Slimming Review v2**

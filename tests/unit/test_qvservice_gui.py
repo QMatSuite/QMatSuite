@@ -45,78 +45,6 @@ class TestGetProjectSummary:
         assert "calculation2" in summary["calculation_names"]
 
 
-class TestListStructuresData:
-    """Tests for QVService.list_structures_data()."""
-    
-    def test_returns_list(self, tmp_path):
-        """Test that list_structures_data returns a list."""
-        project_root = QVService.init_project(tmp_path / "test_project")
-        
-        structures = QVService.list_structures_data(project_root)
-        
-        assert isinstance(structures, list)
-        assert len(structures) == 0
-    
-    def test_structure_entry_schema(self, tmp_path, sample_structure_file):
-        """Test that structure entries have expected fields."""
-        project_root = QVService.init_project(tmp_path / "test_project")
-        
-        # Import a structure
-        QVService.import_structure(project_root, sample_structure_file, name="Test Structure")
-        
-        structures = QVService.list_structures_data(project_root)
-        
-        assert len(structures) == 1
-        entry = structures[0]
-        
-        # Required fields
-        assert "ulid" in entry
-        assert "name" in entry
-        assert "slug" in entry
-        assert "path" in entry
-        assert "absolute_path" in entry
-        
-        # Optional fields (should be present for valid structure)
-        assert "formula" in entry
-        assert "n_atoms" in entry
-        assert "lattice_params" in entry
-
-
-class TestListCalculationsData:
-    """Tests for QVService.list_calculations_data()."""
-    
-    def test_returns_list(self, tmp_path):
-        """Test that list_calculations_data returns a list."""
-        project_root = QVService.init_project(tmp_path / "test_project")
-        
-        calculations = QVService.list_calculations_data(project_root)
-        
-        assert isinstance(calculations, list)
-        assert len(calculations) == 0
-    
-    def test_calculation_entry_schema(self, tmp_path):
-        """Test that calculation entries have expected fields."""
-        project_root = QVService.init_project(tmp_path / "test_project")
-        QVService.init_calculation(project_root, "test-calculation")
-        
-        calculations = QVService.list_calculations_data(project_root)
-        
-        assert len(calculations) == 1
-        entry = calculations[0]
-        
-        # Required fields
-        assert "ulid" in entry
-        assert "name" in entry
-        assert "slug" in entry
-        assert "path" in entry
-        assert "absolute_path" in entry
-        
-        # Calculation-specific fields
-        assert "mode" in entry
-        assert "n_steps" in entry
-        assert "steps" in entry
-
-
 class TestGetStructureVisData:
     """Tests for QVService.get_structure_vis_data()."""
     
@@ -248,26 +176,6 @@ class TestJSONSerializability:
         
         # Should not raise
         json_str = json.dumps(summary)
-        assert json_str
-    
-    def test_structures_list_serializable(self, tmp_path):
-        """Test that structures list is JSON-serializable."""
-        import json
-        project_root = QVService.init_project(tmp_path / "test_project")
-        
-        structures = QVService.list_structures_data(project_root)
-        
-        json_str = json.dumps(structures)
-        assert json_str
-    
-    def test_calculations_list_serializable(self, tmp_path):
-        """Test that calculations list is JSON-serializable."""
-        import json
-        project_root = QVService.init_project(tmp_path / "test_project")
-        
-        calculations = QVService.list_calculations_data(project_root)
-        
-        json_str = json.dumps(calculations)
         assert json_str
     
     def test_structure_vis_serializable(self, tmp_path, sample_structure_file):
