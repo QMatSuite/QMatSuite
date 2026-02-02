@@ -899,4 +899,29 @@ USAGE COVERAGE:
 
 ---
 
+## Analysis: Remaining Consolidation Opportunities
+
+After thorough analysis of the remaining 81 utils functions:
+
+**Service-delegating wrappers**: EXHAUSTED - No remaining functions that just forward to QVService methods.
+
+**Semantic equivalence clusters**: LIMITED
+- Download functions (2): Could be merged but would add complexity, not reduce surface
+- QE metadata (11): Direct re-exports serving different purposes
+- Pseudo config (7): Distinct operations, can't merge
+- Online search (5): Helper chain, can't merge without complexity
+
+**Class re-exports (4 F401)**: Intentional for type hints/error handling
+- DisplayModeParams, OnlineStructureCache, QEUIParam, ContextNotFoundError
+
+**Unused entrypoints (26)**: All intentional scaffolding
+- 13 service nested methods (future features)
+- 7 DTOs (type definitions)
+- 2 errors (taxonomy)
+- 4 F401 class re-exports
+
+**Conclusion**: The easy consolidation opportunities have been exhausted. Remaining functions serve distinct purposes with different signatures and consumers (daemon vs CLI). Further reduction would require architectural changes beyond scope.
+
+---
+
 **End of Worklog**
