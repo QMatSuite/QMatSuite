@@ -65,7 +65,7 @@ def temp_project(tmp_path: Path) -> tuple[Path, str, str]:
 
     # Create step and get ULID
     svc = QVService(project_root)
-    step_dto = svc.calculation.add_step(calc_selector=calc_ulid, step_type="scf", name="step001")
+    step_dto = svc.calculation.add_step(calc_selector=calc_ulid, step_type_gen="scf", name="step001")
     step_ulid = step_dto.step_ulid
 
     return (project_root, calc_ulid, step_ulid)

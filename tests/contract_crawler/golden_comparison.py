@@ -143,6 +143,9 @@ DATA_DEPENDENT_FIELDS = {
     # QE parameter metadata loading state varies
     # Reason: depends on whether metadata cache is warm
     "loaded_at", "loaded_via", "path_abs",
+    # Scope metadata fields in preset catalog (not actual step types)
+    # Values may differ based on engine support or naming conventions
+    "step_type_spec",  # In scope: metadata label; in steps: actual spec type (but steps is data-dependent)
 }
 
 # Fields where we use approximate (tolerance) comparison for floats

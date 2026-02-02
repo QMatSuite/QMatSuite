@@ -93,7 +93,7 @@ class GetStepDetailRecipe(Recipe):
             step_result = QVService.add_step_to_calculation(
                 self.project_root,
                 calculation_selector=self.calc_id,
-                step_type="qe_scf",
+                step_type_gen="scf",  # GEN type for UI layer
                 step_name="scf",
             )
             # 0873ebf returns calculation dict with steps list
@@ -113,7 +113,7 @@ class GetStepDetailRecipe(Recipe):
             svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
             step_dto = svc.calculation.add_step(
                 calc_selector=self.calc_id,
-                step_type="qe_scf",
+                step_type_gen="scf",  # GEN type for UI layer
                 name="scf",
             )
             self.step_ulid = step_dto.step_ulid

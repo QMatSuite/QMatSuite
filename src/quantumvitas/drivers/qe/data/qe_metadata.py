@@ -510,13 +510,13 @@ def get_module_namelists(module: str) -> List[str]:
     return namelists
 
 
-def get_ui_parameters(module: str, step_type: str) -> List[QEUIParam]:
+def get_ui_parameters(module: str, step_type_gen: str) -> List[QEUIParam]:
     """
     Return a curated list of parameters for UI editing.
     
     Args:
         module: QE module name (e.g., 'pw')
-        step_type: Step type (e.g., 'scf', 'nscf', 'dos', 'bands')
+        step_type_gen: Step type (gen type, e.g., 'scf', 'nscf', 'dos', 'bands')
         
     Returns:
         List of QEUIParam objects with UI metadata.
@@ -524,7 +524,7 @@ def get_ui_parameters(module: str, step_type: str) -> List[QEUIParam]:
     """
     ui_data = _load_ui_parameters()
     module_entry = ui_data.get(module.lower(), {})
-    step_params = module_entry.get(step_type.lower(), [])
+    step_params = module_entry.get(step_type_gen.lower(), [])
     
     result = []
     for param_dict in step_params:

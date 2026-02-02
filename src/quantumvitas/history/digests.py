@@ -251,7 +251,7 @@ def compute_step_digest(
             break
 
     try:
-        if step_type_lower in ("scf", "relax", "vc-relax", "vc_relax", "md", "vc-md"):
+        if step_type_lower in ("scf", "relax", "md"):
             _parse_scf_digest(digest, output_file)
         elif step_type_lower == "nscf":
             _parse_nscf_digest(digest, output_file)
@@ -367,7 +367,7 @@ def _parse_scf_digest(digest: StepDigest, output_file: Optional[Path]) -> None:
             if step_type_for_relax.startswith(prefix):
                 step_type_for_relax = step_type_for_relax[len(prefix):]
                 break
-        if step_type_for_relax in ("relax", "vc-relax", "vc_relax"):
+        if step_type_for_relax == "relax":
             _parse_relax_specific(digest, output_file)
         
     except Exception as e:

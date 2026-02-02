@@ -1532,12 +1532,12 @@ class QVService:
                 # Validate step type (convert to GEN type for comparison)
                 from quantumvitas.api import get_step_type_gen
                 step_gen = get_step_type_gen(step_type_spec)
-                if step_gen not in ("relax", "vc-relax", "vc_relax"):
+                if step_gen != "relax":
                     raise ValidationError(
-                        f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type_spec})"
+                        f"Step '{step_selector}' is not a relax step (type: {step_type_spec})"
                     )
 
-                # Find output file (use GEN type for filename, e.g., "vc-relax.out" not "qe_vc-relax.out")
+                # Find output file
                 output_filename = CalculationFileNaming.output_filename(step_gen, working_dir=raw_dir)
                 output_file = raw_dir / output_filename
 
@@ -2684,8 +2684,8 @@ class QVService:
                         continue
                     
                     # Convert spec to gen for get_default_step_params (which expects gen type)
-                    from quantumvitas.workflow.step_type_convert import gen_from
-                    step_type_gen = gen_from(step_type_spec)
+                    from quantumvitas.api.utils import step_type_gen_from_spec
+                    step_type_gen = step_type_gen_from_spec(step_type_spec)
                     
                     # Get defaults for step type (using gen type)
                     defaults = get_default_step_params(step_type_gen)
@@ -3002,9 +3002,11 @@ class QVService:
 
                 # Get step_type_spec and engine from registry
                 from quantumvitas.workflow.registry import get_registry
+                from quantumvitas.workflow.step_type_convert import gen_from
                 registry = get_registry()
-                machine_step_type = step_data.get("step_type_spec", "scf")
-                step_spec = registry.get(machine_step_type)
+                step_type_spec = step_data.get("step_type_spec", "scf")
+                step_type_gen = gen_from(step_type_spec)  # Convert SPEC to GEN for registry
+                step_spec = registry.get(step_type_gen)
                 engine = step_spec.engine if step_spec else "qe"
 
                 # Create minimal Step object
@@ -3012,7 +3014,7 @@ class QVService:
                     meta=step_meta,
                     input_file=step_path,
                     engine=engine,
-                    step_type_spec=machine_step_type,
+                    step_type_spec=step_type_spec,
                 )
 
                 # Build StepDTO
@@ -3665,9 +3667,10 @@ class QVService:
                 unique_name = unique_slug if unique_slug != base_slug else step_name
 
                 # Create and save step using canonical factory
-                # Pass spec type so factory uses the engine-specific step type
+                # Factory expects gen type - convert spec to gen
                 step_path = create_and_save_step(
-                    step_type=spec.step_type_spec,  # Use engine-specific spec type (e.g., lammps_relax)
+                    step_type_gen=spec.step_type_gen,  # Use gen type (e.g., "relax")
+                    engine_family=spec.engine,  # Provide engine for materialization
                     name=unique_name,
                     steps_dir=steps_dir,
                     structure_ulid=structure_ulid,
@@ -3721,16 +3724,18 @@ class QVService:
                 )
                 
                 # Get step_type_spec from step_data (machine type)
-                machine_step_type = step_data.get("step_type_spec", public_step_type)
-                # Get engine from registry
-                step_spec = registry.get(machine_step_type)
+                step_type_spec = step_data.get("step_type_spec", public_step_type)
+                # Get engine from registry (registry.get expects GEN)
+                from quantumvitas.workflow.step_type_convert import gen_from
+                step_type_gen = gen_from(step_type_spec)
+                step_spec = registry.get(step_type_gen)
                 engine = step_spec.engine if step_spec else "qe"
                 # Create minimal Step object
                 step_obj = Step(
                     meta=step_meta,
                     input_file=step_path,  # Placeholder - not used for DTO
                     engine=engine,
-                    step_type_spec=machine_step_type,
+                    step_type_spec=step_type_spec,
                 )
                 
                 # Build StepDTO
@@ -6946,9 +6951,24 @@ class QVService:
             # Get defaults for step type
             defaults = get_default_step_params(step_type_gen)
 
-            # Create step doc
+            # Create step doc - convert spec to gen
+            from quantumvitas.api import get_step_type_gen
+            try:
+                step_type_gen = get_step_type_gen(machine_step_type) if "_" in machine_step_type else machine_step_type
+            except (KeyError, ValueError):
+                step_type_gen = machine_step_type  # Fallback
+            # Determine engine_family: use calculation's engine_family if available,
+            # otherwise infer from machine_step_type (if SPEC), default to "qe"
+            calc_engine_family = getattr(wf_model, 'engine_family', None) if calculation_yaml_path.exists() else None
+            if calc_engine_family:
+                engine_family = calc_engine_family
+            elif "_" in machine_step_type:
+                engine_family = machine_step_type.split("_", 1)[0]
+            else:
+                engine_family = "qe"  # Default
             step_doc = create_step_doc(
-                step_type=machine_step_type,
+                step_type_gen=step_type_gen,
+                engine_family=engine_family,
                 name=step_name,
                 structure_ulid=structure_ulid,
                 parent_calculation_id=calculation.meta.ulid if hasattr(calculation, 'meta') else None,
@@ -6972,7 +6992,15 @@ class QVService:
             step_ulid_from_doc = step_doc.get(["meta", "ulid"])
             if calculation_yaml_path.exists():
                 wf_model = load_calculation(calculation_dir, project_root)
-                step_entry = CalculationStepEntry(step_ulid=step_ulid_from_doc, step_type_spec=machine_step_type)
+                # Ensure machine_step_type is SPEC before assignment
+                from quantumvitas.api.utils import is_step_type_spec, step_type_spec_from_gen
+                if is_step_type_spec(machine_step_type):
+                    step_type_spec_value = machine_step_type  # Already SPEC
+                else:
+                    # It's GEN, convert to SPEC using engine_family
+                    engine_prefix = engine_family if engine_family else "qe"  # Default to qe if no engine_family
+                    step_type_spec_value = step_type_spec_from_gen(engine_prefix, machine_step_type)
+                step_entry = CalculationStepEntry(step_ulid=step_ulid_from_doc, step_type_spec=step_type_spec_value)
                 wf_model.steps.append(step_entry)
                 save_calculation(wf_model, calculation_dir)
 
@@ -7804,9 +7832,9 @@ class QVService:
         # Validate step type (convert to GEN type for comparison)
         from quantumvitas.api import get_step_type_gen
         step_gen = get_step_type_gen(step_type_spec)
-        if step_gen not in ("relax", "vc-relax", "vc_relax"):
+        if step_gen != "relax":
             raise ValueError(
-                f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type_spec})"
+                f"Step '{step_selector}' is not a relax step (type: {step_type_spec})"
             )
 
         # Check if structure already created (idempotency check)
@@ -7819,7 +7847,7 @@ class QVService:
                 "already_exists": True,
             }
 
-        # Find output file (use GEN type for filename, e.g., "vc-relax.out" not "qe_vc-relax.out")
+        # Find output file
         base_output = raw_dir / CalculationFileNaming.output_filename(step_gen, working_dir=None)
         if base_output.exists():
             output_file = base_output

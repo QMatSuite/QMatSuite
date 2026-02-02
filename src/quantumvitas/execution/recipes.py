@@ -52,18 +52,26 @@ def verify_qc_topology(steps: List["Step"], registry) -> None:
         TopologyError: If topology is invalid
     """
     for i, step in enumerate(steps):
-        # Get step type
-        step_type = getattr(step, 'step_type_spec', None)
-        if not step_type:
-            continue
+        # Get step type - prefer step_type_gen, fallback to step_type_spec
+        step_type_gen = getattr(step, 'step_type_gen', None)
+        if not step_type_gen:
+            # If no step_type_gen, try to extract from step_type_spec
+            step_type_spec = getattr(step, 'step_type_spec', None)
+            if step_type_spec:
+                # Convert SPEC to GEN for registry lookup
+                from quantumvitas.api.utils import step_type_gen_from_spec
+                step_type_gen = step_type_gen_from_spec(step_type_spec)
+            else:
+                continue  # No step type info, skip
 
-        # Look up spec to get gen type
-        spec = registry.get(step_type)
+        # Look up in registry using GEN type (registry.get() expects GEN)
+        spec = registry.get(step_type_gen)
         if spec:
+            # Use registry's step_type_gen (canonical)
             step_gen_type = spec.step_type_gen
         else:
-            # Fallback: assume step_type is already gen type
-            step_gen_type = step_type
+            # Fallback: use extracted gen type
+            step_gen_type = step_type_gen
 
         if step_gen_type in RELAX_STEP_TYPES:
             continue  # Relax is standalone, always valid
@@ -75,15 +83,21 @@ def verify_qc_topology(steps: List["Step"], registry) -> None:
         found_scf = False
         for j in range(i - 1, -1, -1):
             ancestor_step = steps[j]
-            ancestor_type = getattr(ancestor_step, 'step_type_spec', None)
-            if not ancestor_type:
-                continue
+            # Get ancestor GEN type
+            ancestor_gen = getattr(ancestor_step, 'step_type_gen', None)
+            if not ancestor_gen:
+                ancestor_spec = getattr(ancestor_step, 'step_type_spec', None)
+                if ancestor_spec:
+                    from quantumvitas.api.utils import step_type_gen_from_spec
+                    ancestor_gen = step_type_gen_from_spec(ancestor_spec)
+                else:
+                    continue
 
-            ancestor_spec = registry.get(ancestor_type)
-            if ancestor_spec:
-                ancestor_gen_type = ancestor_spec.step_type_gen
+            ancestor_spec_obj = registry.get(ancestor_gen)
+            if ancestor_spec_obj:
+                ancestor_gen_type = ancestor_spec_obj.step_type_gen
             else:
-                ancestor_gen_type = ancestor_type
+                ancestor_gen_type = ancestor_gen
 
             if ancestor_gen_type in RELAX_STEP_TYPES:
                 step_name = getattr(step, 'name', f'step_{i}') or f'step_{i}'

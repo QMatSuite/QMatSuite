@@ -15,10 +15,10 @@ from quantumvitas.calculation.manifest import ManifestStepEntry
 
 class MockStep:
     """Mock step for testing."""
-    def __init__(self, step_type: str, step_id: str = "01TEST"):
-        self.step_type_spec = step_type  # SPEC type (e.g., "vasp_scf")
+    def __init__(self, step_type_spec: str, step_id: str = "01TEST"):
+        self.step_type_spec = step_type_spec  # SPEC type (e.g., "vasp_scf")
         # Extract GEN type from SPEC type
-        self.step_type_gen = step_type.split("_", 1)[-1] if "_" in step_type else step_type
+        self.step_type_gen = step_type_spec.split("_", 1)[-1] if "_" in step_type_spec else step_type_spec
         self.meta = Mock()
         self.meta.ulid = step_id
 
@@ -31,7 +31,7 @@ class TestVASPStaging:
         scf_step = MockStep("vasp_scf")
         assert is_scf_step(scf_step) is True
         
-        bands_step = MockStep("vasp_bands")
+        bands_step = MockStep("vasp_bandspw")
         assert is_scf_step(bands_step) is False
     
     def test_stage_chgcar_non_scf_with_done_and_file(self, tmp_path):
@@ -47,7 +47,7 @@ class TestVASPStaging:
         target_workdir = calc_raw_dir / "current_step_id"
         target_workdir.mkdir()
         
-        current_step = MockStep("vasp_bands", "current_step_id")
+        current_step = MockStep("vasp_bandspw", "current_step_id")
         ref_step = MockStep("vasp_scf", "ref_scf_id")
         manifest_entry = ManifestStepEntry(
             kind="scf",
@@ -74,7 +74,7 @@ class TestVASPStaging:
         target_workdir = calc_raw_dir / "current_step_id"
         target_workdir.mkdir()
         
-        current_step = MockStep("vasp_bands", "current_step_id")
+        current_step = MockStep("vasp_bandspw", "current_step_id")
         ref_step = MockStep("vasp_scf", "ref_scf_id")
         manifest_entry = ManifestStepEntry(
             kind="scf",
@@ -102,7 +102,7 @@ class TestVASPStaging:
         target_workdir = calc_raw_dir / "current_step_id"
         target_workdir.mkdir()
         
-        current_step = MockStep("vasp_bands", "current_step_id")
+        current_step = MockStep("vasp_bandspw", "current_step_id")
         ref_step = MockStep("vasp_scf", "ref_scf_id")
         manifest_entry = ManifestStepEntry(
             kind="scf",
@@ -189,7 +189,7 @@ class TestVASPStaging:
         target_workdir = calc_raw_dir / "current_step_id"
         target_workdir.mkdir()
         
-        current_step = MockStep("vasp_bands", "current_step_id")
+        current_step = MockStep("vasp_bandspw", "current_step_id")
         ref_step = MockStep("vasp_scf", "ref_scf_id")
         manifest_entry = ManifestStepEntry(
             kind="scf",
@@ -221,7 +221,7 @@ class TestVASPStaging:
         target_workdir = calc_raw_dir / "current_step_id"
         target_workdir.mkdir()
         
-        current_step = MockStep("vasp_bands", "current_step_id")
+        current_step = MockStep("vasp_bandspw", "current_step_id")
         ref_step = MockStep("vasp_scf", "ref_scf_id")
         manifest_entry = ManifestStepEntry(
             kind="scf",
@@ -252,7 +252,7 @@ class TestVASPStaging:
         target_workdir = calc_raw_dir / "current_step_id"
         target_workdir.mkdir()
         
-        current_step = MockStep("vasp_bands", "current_step_id")
+        current_step = MockStep("vasp_bandspw", "current_step_id")
         ref_step = MockStep("vasp_scf", "ref_scf_id")
         manifest_entry = ManifestStepEntry(
             kind="scf",

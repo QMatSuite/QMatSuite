@@ -163,7 +163,7 @@ class TestResourceRenameSafety:
 
         # Create step using domain API
         svc = get_service(project_root)
-        step = svc.calculation.add_step(calc_selector=calculation.meta.slug, step_type="scf")
+        step = svc.calculation.add_step(calc_selector=calculation.meta.slug, step_type_gen="scf")
         step_file = project_root / calculation.meta.path / "steps" / "scf.step.yaml"
         step_data = yaml.safe_load(step_file.read_text())
         original_step_id = step_data["meta"]["ulid"]

@@ -245,7 +245,7 @@ def compile_presets(
 
 
 def compile_presets_for_step(
-    step_type: str,
+    step_type_gen: str,
     options: Dict[str, Any],
     *,
     validate_physics: bool = True,
@@ -258,7 +258,7 @@ def compile_presets_for_step(
     from presets - they inherit from the preceding PW calculation.
     
     Args:
-        step_type: The step type (scf, nscf, relax, etc.)
+        step_type_gen: Gen step type (e.g., "scf", "nscf", "relax") - GEN only
         options: Preset options dict
         validate_physics: If True, validate physics constraints
         
@@ -269,7 +269,7 @@ def compile_presets_for_step(
     # Post-processing steps don't need preset params (they use preceding calc's settings)
     POST_PROCESSING_TYPES = {"dos", "bands", "projwfc", "pp", "q2r", "matdyn", "dynmat"}
     
-    step_type_lower = step_type.lower() if step_type else ""
+    step_type_lower = step_type_gen.lower() if step_type_gen else ""
     
     if step_type_lower in POST_PROCESSING_TYPES:
         # Post-processing steps don't have their own SYSTEM params

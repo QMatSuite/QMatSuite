@@ -48,7 +48,7 @@ class TestWriteGeneratedStructure:
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
             run_ulid="run001",
             calculation_ulid="calc001",
             input_structure_ulid="struct001",
@@ -78,7 +78,7 @@ class TestWriteGeneratedStructure:
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
         )
         
         assert result_path.exists()
@@ -102,7 +102,7 @@ class TestReadGeneratedStructure:
             structure=original,
             calc_dir=calc_dir,
             step_ulid=step_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
         )
         
         # Read it back
@@ -139,7 +139,7 @@ class TestCleanGeneratedStructure:
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
         )
         
         assert path.exists()
@@ -207,31 +207,31 @@ Si   0.250000000   0.250000000   0.250000000
         calc_dir.mkdir()
         
         step_ulid = "01RELAXTEST"
-        step_type= "qe_relax"
+        step_type_spec = "qe_relax"  # SPEC type for execution layer
         calculation_ulid = "01CALCTEST"
         input_structure_ulid = "01STRUCTEST"
         run_id = "run001"
-        
+
         # Call handler
         artifact_path = handle_qe_relax_output(
             step_ulid=step_ulid,
-            step_type=step_type,
+            step_type_spec=step_type_spec,
             calc_dir=calc_dir,
             output_path=output_path,
             calculation_ulid=calculation_ulid,
             input_structure_ulid=input_structure_ulid,
             run_ulid=run_id,
         )
-        
+
         # Verify current.json was created
         assert artifact_path.exists()
         assert artifact_path == get_generated_structure_path(calc_dir, step_ulid)
-        
+
         # Verify content
         data = json.loads(artifact_path.read_text())
         assert "__qv_meta__" in data
         assert data["__qv_meta__"]["source_step_ulid"] == step_ulid
-        assert data["__qv_meta__"]["provenance"]["method"] == step_type
+        assert data["__qv_meta__"]["provenance"]["method"] == step_type_spec
         assert data["__qv_meta__"]["provenance"]["calculation_ulid"] == calculation_ulid
         assert data["__qv_meta__"]["provenance"]["input_structure_ulid"] == input_structure_ulid
         
@@ -265,7 +265,7 @@ class TestScopedCleanup:
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
         )
         
         # Verify it exists
@@ -324,13 +324,13 @@ class TestScopedCleanup:
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step1_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
         )
         write_generated_structure(
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step2_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
         )
         
         # Create job that only includes step1

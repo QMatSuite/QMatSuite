@@ -27,15 +27,19 @@ class TestPySCFStepTypeRegistration:
     def test_pyscf_scf_in_registry(self):
         """PYSCF_SCF step type is registered in StepTypeRegistry."""
         from quantumvitas.workflow.registry import get_registry
-        
+
         registry = get_registry()
-        assert registry.has("pyscf_scf")
+        # Per constitution: has() only accepts GEN types
+        # Use get_for_engine to check engine-specific registration
+        assert registry.get_for_engine("scf", "pyscf") is not None
     
     def test_pyscf_scf_spec_properties(self):
         """PYSCF_SCF StepTypeSpec has correct properties."""
         from quantumvitas.workflow.registry import get_registry
-        
-        spec = get_registry().get("pyscf_scf")
+
+        # Per constitution: get() only accepts GEN types
+        # Use get_for_engine for engine-specific lookup
+        spec = get_registry().get_for_engine("scf", "pyscf")
         
         assert spec is not None
         assert spec.step_type_gen == "scf"  # Public type (Phase 3C: pyscf_scf uses public type "scf")
@@ -54,15 +58,17 @@ class TestPySCFStepTypeRegistration:
     def test_pyscf_mp2_in_registry(self):
         """PYSCF_MP2 step type is registered in StepTypeRegistry (Phase 3C)."""
         from quantumvitas.workflow.registry import get_registry
-        
+
         registry = get_registry()
-        assert registry.has("pyscf_mp2")
+        # Per constitution: has() only accepts GEN types
+        assert registry.get_for_engine("mp2", "pyscf") is not None
     
     def test_pyscf_mp2_spec_properties(self):
         """PYSCF_MP2 StepTypeSpec has correct properties (Phase 3C)."""
         from quantumvitas.workflow.registry import get_registry
-        
-        spec = get_registry().get("pyscf_mp2")
+
+        # Per constitution: get() only accepts GEN types
+        spec = get_registry().get_for_engine("mp2", "pyscf")
         
         assert spec is not None
         assert spec.step_type_gen == "mp2"  # Public type
@@ -77,22 +83,24 @@ class TestPySCFStepTypeRegistration:
     def test_pyscf_scf_supports_incremental_skip(self):
         """PYSCF_SCF supports incremental skip (Phase 3C)."""
         from quantumvitas.workflow.registry import get_registry
-        
-        spec = get_registry().get("pyscf_scf")
+
+        spec = get_registry().get_for_engine("scf", "pyscf")
         assert spec.supports_incremental_skip is True
     
     def test_pyscf_td_in_registry(self):
         """PYSCF_TD step type is registered in StepTypeRegistry (Phase 3C)."""
         from quantumvitas.workflow.registry import get_registry
-        
+
         registry = get_registry()
-        assert registry.has("pyscf_td")
+        # Per constitution: has() only accepts GEN types
+        assert registry.get_for_engine("td", "pyscf") is not None
     
     def test_pyscf_td_spec_properties(self):
         """PYSCF_TD StepTypeSpec has correct properties (Phase 3C)."""
         from quantumvitas.workflow.registry import get_registry
-        
-        spec = get_registry().get("pyscf_td")
+
+        # Per constitution: get() only accepts GEN types
+        spec = get_registry().get_for_engine("td", "pyscf")
         
         assert spec is not None
         assert spec.step_type_gen == "td"  # Public type (generalized "td" key)
@@ -107,25 +115,26 @@ class TestPySCFStepTypeRegistration:
     def test_pyscf_scf_state_fields(self):
         """PYSCF_SCF has correct state dependency fields (Phase 3C)."""
         from quantumvitas.workflow.registry import get_registry
-        
-        spec = get_registry().get("pyscf_scf")
+
+        spec = get_registry().get_for_engine("scf", "pyscf")
         assert spec.consumes_state is None  # No dependency
         assert spec.produces_state == "mf"  # Produces mean-field state
     
     def test_pyscf_mp2_state_fields(self):
         """PYSCF_MP2 has correct state dependency fields (Phase 3C)."""
         from quantumvitas.workflow.registry import get_registry
-        
-        spec = get_registry().get("pyscf_mp2")
+
+        spec = get_registry().get_for_engine("mp2", "pyscf")
         assert spec.consumes_state == "mf"  # Consumes mean-field state from SCF
         assert spec.produces_state == "mp2"  # Phase 3C: MP2 produces mp2 state object (in-memory)
     
     def test_qe_steps_have_none_state_fields(self):
         """QE steps have None defaults for state fields (Phase 3C backward compat)."""
         from quantumvitas.workflow.registry import get_registry
-        
+
         registry = get_registry()
-        qe_spec = registry.get("qe_scf")
+        # Per constitution: get() only accepts GEN types
+        qe_spec = registry.get_for_engine("scf", "qe")
         assert qe_spec is not None
         assert qe_spec.consumes_state is None  # Default None
         assert qe_spec.produces_state is None  # Default None
@@ -210,7 +219,7 @@ class TestPySCFEngineAvailability:
         
         # Create mock step
         class MockStep:
-            step_type= "pyscf_scf"
+            step_type_gen= "scf"  # GEN type for UI layer
             parameters = {"atoms": []}
             options = {}
         

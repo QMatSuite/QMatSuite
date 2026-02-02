@@ -145,7 +145,7 @@ def run_standalone_step(ctx: StandaloneStepContext) -> tuple[StepResult, Prepare
         input_file=input_for_run,
         working_dir=workdir,
         project_root=None,  # Standalone mode: no project
-        step_type=None,  # Auto-detect from input
+        step_type_spec=None,  # Auto-detect from input
         keep_original=False,  # We've already handled file copying
     )
     

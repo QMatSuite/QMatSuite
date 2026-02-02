@@ -112,16 +112,16 @@ class VaspEngine(Engine):
                 vasp_params = step.parameters.get("engine_params", {}).get("vasp", {})
                 params.update(vasp_params.get("incar", {}))
         
-        # Set defaults based on step type
-        step_type = getattr(step, "step_type_spec", None)
-        
-        if step_type == "vasp_bands":
+        # Set defaults based on step type (SPEC type)
+        step_type_spec = getattr(step, "step_type_spec", None)
+
+        if step_type_spec == "vasp_bandspw":
             # Bands calculation: read charge density from CHGCAR
             if "ICHARG" not in params:
                 params["ICHARG"] = 11
             if "SYSTEM" not in params:
                 params["SYSTEM"] = "VASP bands calculation"
-        elif step_type == "vasp_dos":
+        elif step_type_spec == "vasp_dos":
             # DOS calculation: read charge density from CHGCAR, use tetrahedron method
             if "ICHARG" not in params:
                 params["ICHARG"] = 11

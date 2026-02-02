@@ -181,7 +181,7 @@ class TestStructureToQEInputToStructure:
 
         for step_type in ["scf", "nscf", "relax", "vc-relax", "bands"]:
             qe_input = generate_qe_input_from_structure(
-                structure=original, step_type=step_type
+                structure=original, step_type_gen=step_type
             )
 
             # Verify step type is set correctly
@@ -211,7 +211,7 @@ class TestStructureToQEInputToStructure:
         ]
 
         qe_input = generate_qe_input_from_structure(
-            structure=original, step_type="scf", parameter_overrides=overrides
+            structure=original, step_type_gen="scf", parameter_overrides=overrides
         )
 
         # Verify parameters were applied

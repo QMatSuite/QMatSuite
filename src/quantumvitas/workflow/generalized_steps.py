@@ -67,16 +67,19 @@ def _is_zero_mapping(gen_step: str, engine_family: str) -> bool:
 
     Zero-mappings are gen steps that have no corresponding spec step for an engine
     because the functionality is integrated into another step (e.g., VASP DOS
-    is integrated into NSCF output).
+    is integrated into NSCF output, VASP bands doesn't need post-processing).
 
-    SSOT: Checks if gen_step is in engine's SUPPORTED_GEN_STEPS.
+    A zero-mapping is EXPLICITLY declared by the driver via _get_zero_mappings().
+    If a step is simply unsupported (not in SUPPORTED_GEN_STEPS and not in
+    zero-mappings), it should raise an error, not be silently omitted.
 
     Args:
         gen_step: Generalized step identifier (e.g., "bands", "dos")
         engine_family: Engine family identifier (e.g., "vasp")
 
     Returns:
-        True if engine doesn't support this gen step (0-mapping), False otherwise
+        True only if engine explicitly declares this as a zero-mapping
+        False otherwise
     """
     import quantumvitas.drivers
 
@@ -87,10 +90,15 @@ def _is_zero_mapping(gen_step: str, engine_family: str) -> bool:
 
     try:
         driver = DriverRegistry.get_driver(engine_family)
-        # Check if gen_step is in engine's SUPPORTED_GEN_STEPS
-        if hasattr(driver, 'SUPPORTED_GEN_STEPS'):
-            return gen_step_lower not in driver.SUPPORTED_GEN_STEPS
+
+        # Check if driver has explicit zero-mappings
+        if hasattr(driver, '_get_zero_mappings'):
+            zero_mappings = driver._get_zero_mappings()
+            return gen_step_lower in zero_mappings
+
+        # No explicit zero-mappings defined - not a zero-mapping
         return False
+
     except UnknownEngineError:
         return False
 

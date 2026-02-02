@@ -141,13 +141,13 @@ def orca_chain_handler(
             }
             
             # If this is a relax step and succeeded, add artifact spec
-            step_type = step.step_type_spec if hasattr(step, "step_type_spec") else None
-            if success and step_type and is_relax_step_type(step_type):
+            step_type_spec = step.step_type_spec if hasattr(step, "step_type_spec") else None
+            if success and step_type_spec and is_relax_step_type(step_type_spec):
                 step_result_data["relax_artifact_spec"] = RelaxArtifactSpec(
                     artifact_type="orca_xyz",
                     artifact_path=Path(effective_working_dir),
                     step_ulid=step.meta.ulid,
-                    step_type_spec=str(step_type),
+                    step_type_spec=str(step_type_spec),
                     extra={"chain_key": effective_chain_key or ""},
                 ).to_dict()
             

@@ -44,7 +44,7 @@ class TestOccupationsSchemeRoundtrip:
         compiled = compile_occupations_scheme(OccupationsSchemeOption.FIXED)
         # compiled is now {"SYSTEM": {...}}
         params = compiled
-        detected = detect_occupations_scheme(params, step_type="scf")
+        detected = detect_occupations_scheme(params, step_type_gen="scf")
         assert detected == OccupationsSchemeOption.FIXED
     
     def test_roundtrip_tetrahedra(self):
@@ -52,7 +52,7 @@ class TestOccupationsSchemeRoundtrip:
         compiled = compile_occupations_scheme(OccupationsSchemeOption.TETRAHEDRA)
         # compiled is now {"SYSTEM": {...}}
         params = compiled
-        detected = detect_occupations_scheme(params, step_type="scf")
+        detected = detect_occupations_scheme(params, step_type_gen="scf")
         assert detected == OccupationsSchemeOption.TETRAHEDRA
     
     def test_roundtrip_smearing_gaussian(self):
@@ -60,7 +60,7 @@ class TestOccupationsSchemeRoundtrip:
         compiled = compile_occupations_scheme(OccupationsSchemeOption.SMEARING_GAUSSIAN)
         # compiled is now {"SYSTEM": {...}}
         params = compiled
-        detected = detect_occupations_scheme(params, step_type="scf")
+        detected = detect_occupations_scheme(params, step_type_gen="scf")
         assert detected == OccupationsSchemeOption.SMEARING_GAUSSIAN
     
     def test_not_applicable_strictness_fixed(self):

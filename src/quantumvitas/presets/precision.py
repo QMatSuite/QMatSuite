@@ -510,7 +510,7 @@ class PrecisionAdvisor:
     def advise_for_step(
         self,
         precision: PrecisionOption,
-        step_type: str,
+        step_type_gen: str,
     ) -> PrecisionAdvice:
         """
         Compute precision advice adjusted for a specific step type.
@@ -522,7 +522,7 @@ class PrecisionAdvisor:
         
         Args:
             precision: Desired precision level
-            step_type: Step type string (e.g., "scf", "nscf", "bandspw")
+            step_type_gen: Gen step type (e.g., "scf", "nscf", "relax") - GEN only
             
         Returns:
             PrecisionAdvice adjusted for step type
@@ -533,7 +533,7 @@ class PrecisionAdvisor:
         advice = self.advise(precision)
         
         # Get receiver spec for step type
-        spec = get_precision_receiver_spec(step_type)
+        spec = get_precision_receiver_spec(step_type_gen)
         
         # Apply nscf mesh multiplier if needed
         if spec and spec.kmesh_strategy == "nscf":

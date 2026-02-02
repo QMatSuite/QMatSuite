@@ -101,16 +101,16 @@ class TestVASPProjectE2E:
         scf_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
-            step_type="vasp_scf",
+            step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
         scf_ulid = scf_result.id
         
-        # Add Bands step
+        # Add Bands step (bandspw = band structure calculation, not bands = post-processing)
         bands_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
-            step_type="vasp_bands",
+            step_type_gen="bandspw",  # GEN type for UI layer (bandspw for band calculation)
             name="bands",
         )
         bands_ulid = bands_result.id
@@ -156,7 +156,7 @@ class TestVASPProjectE2E:
         scf_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
-            step_type="vasp_scf",
+            step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
         scf_ulid = scf_result.id
@@ -165,7 +165,7 @@ class TestVASPProjectE2E:
         dos_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
-            step_type="vasp_dos",
+            step_type_gen="dos",  # GEN type for UI layer
             name="dos",
         )
         dos_ulid = dos_result.id
@@ -209,16 +209,16 @@ class TestVASPProjectE2E:
         scf_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
-            step_type="vasp_scf",
+            step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
         scf_ulid = scf_result.id
         
-        # Add Bands step
+        # Add Bands step (bandspw = band structure calculation, not bands = post-processing)
         bands_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
-            step_type="vasp_bands",
+            step_type_gen="bandspw",  # GEN type for UI layer (bandspw for band calculation)
             name="bands",
         )
         bands_ulid = bands_result.id
@@ -272,7 +272,7 @@ class TestVASPProjectE2E:
         scf_result = QVService.init_step(
             project_root=project_root,
             calculation_selector=calc_ulid,
-            step_type="vasp_scf",
+            step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
         scf_ulid = scf_result.id

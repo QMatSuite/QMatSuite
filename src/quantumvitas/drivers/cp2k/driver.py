@@ -86,10 +86,10 @@ class CP2KDriver(BaseEngineDriver):
                 supports_restart=True,
             ),
             StepTypeSpec(
-                step_type_spec="cp2k_bands",
+                step_type_spec="cp2k_bandspw",
                 engine="cp2k",
                 executable="cp2k.psmp",
-                description="CP2K band structure",
+                description="CP2K band structure calculation (eigenstates along k-path)",
                 category="calculation",
             ),
             StepTypeSpec(
@@ -138,7 +138,7 @@ class CP2KDriver(BaseEngineDriver):
 
     def supports_incremental_skip(self, step_type_spec: str) -> bool:
         """MD steps should not be skipped."""
-        if step_type == "cp2k_md":
+        if step_type_spec == "cp2k_md":
             return False
         return True
 

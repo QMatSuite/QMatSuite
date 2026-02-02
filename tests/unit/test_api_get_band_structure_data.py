@@ -110,7 +110,7 @@ def tmp_project_with_bands(tmp_path: Path):
     svc = QVService(project_root)
     svc.calculation.add_step(
         calc_selector=calc_slug,
-        step_type="bands",
+        step_type_gen="bands",
         name="bands",
     )
     

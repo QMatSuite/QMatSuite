@@ -156,11 +156,14 @@ class TestPWScfIbravStepSpecsExecution:
 
             # Run the step in sandbox_dir (not raw_dir)
             # run_step will set ESPRESSO_PSEUDO to sandbox_dir/pseudo (standalone mode)
-            step_type = qe_engine.detect_step_type(sandbox_input)
+            step_type_gen = qe_engine.detect_step_type(sandbox_input)  # Returns GEN type (e.g., "scf")
+            # Convert GEN to SPEC for execution layer
+            from quantumvitas.workflow.step_type_convert import spec_from
+            step_type_spec = spec_from("qe", step_type_gen)  # Convert to SPEC (e.g., "qe_scf")
             step_result = qe_engine.run_step(
                 input_file=sandbox_input,
                 working_dir=sandbox_dir,
-                step_type=step_type,
+                step_type_spec=step_type_spec,  # Execution layer uses SPEC type
                 timeout=300,
             )
 

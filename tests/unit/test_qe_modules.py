@@ -113,7 +113,7 @@ class TestQEEngineModuleSupport:
         }
         
         input_file = engine.generate_input(
-            step_type='ph',
+            step_type_gen='ph',
             input_data=input_data,
             working_dir=tmp_path
         )
@@ -138,7 +138,7 @@ class TestQEEngineModuleSupport:
         }
         
         input_file = engine.generate_input(
-            step_type='gipaw',
+            step_type_gen='custom',  # Use 'custom' for unsupported step types like 'gipaw'
             input_data=input_data,
             working_dir=tmp_path
         )

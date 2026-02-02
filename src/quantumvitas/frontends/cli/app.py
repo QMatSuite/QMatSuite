@@ -872,18 +872,20 @@ def init_calculation_command(
 
 
 
-# Known step types for validation (Phase 2: engine-prefixed + legacy backward compat)
+# Known step types for validation (SPEC types are engine-prefixed, GEN types are engine-agnostic)
+# Note: VC (variable-cell) is a PARAMETER for relax/md, NOT a separate step type.
+# Use "relax" or "qe_relax" with CONTROL.calculation='vc-relax' parameter.
 KNOWN_STEP_TYPES = {
-    # Engine-prefixed step types (Phase 2)
-    "qe_scf", "qe_nscf", "qe_relax", "qe_vc_relax", "qe_md", "qe_vc_md",  # QE pw.x
+    # SPEC step types (engine-prefixed)
+    "qe_scf", "qe_nscf", "qe_relax", "qe_md",  # QE pw.x
     "qe_dos", "qe_bands", "qe_bandspw",  # QE post-processing
     "qe_ph", "qe_q2r", "qe_matdyn", "qe_dynmat",  # QE phonon
     "qe_pp", "qe_projwfc",  # QE other post-processing
     "qe_pw2wannier", "qe_custom",  # QE other
     "w90_wannierprep", "w90_wannier",  # Wannier90
     "pyscf_scf",  # PySCF molecular QC
-    # Legacy step types (backward compatibility)
-    "scf", "nscf", "relax", "vc-relax", "md", "vc-md",  # pw.x calculation types
+    # GEN step types (engine-agnostic)
+    "scf", "nscf", "relax", "md",  # pw.x calculation types
     "dos", "bands", "bandspw",  # post-processing
     "ph", "q2r", "matdyn", "dynmat",  # phonon
     "pp", "projwfc",  # other post-processing

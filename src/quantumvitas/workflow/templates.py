@@ -85,15 +85,10 @@ _WORKFLOWS: Dict[str, WorkflowTemplate] = {
     "relax": WorkflowTemplate(
         id="relax",
         name="Relaxation",
-        description="Atomic relaxation (optimize positions, fixed cell)",
-        step_sequence=("relax",),  # Public generalized step key
+        description="Structural relaxation (positions and optionally cell). VC is controlled via parameters.",
+        step_sequence=("relax",),  # GEN step type - VC is a parameter, not a separate step
     ),
-    "vc-relax": WorkflowTemplate(
-        id="vc-relax",
-        name="Full Relaxation",
-        description="Variable-cell relaxation (optimize positions and cell)",
-        step_sequence=("vc-relax",),  # Public generalized step key
-    ),
+    # Note: NO vc-relax template. VC (variable-cell) is a PARAMETER for relax, not a separate workflow.
     "dos": WorkflowTemplate(
         id="dos",
         name="Density of States",
@@ -323,11 +318,23 @@ class WorkflowService:
             
             if step_type:
                 # Phase 2: Map engine-specific step type (step_type_spec) to gen type for workflow detection
+                # Workflow detection MUST use GEN types (workflows are engine-agnostic)
                 from quantumvitas.workflow.registry import get_registry
+                from quantumvitas.api.utils import step_type_gen_from_spec, is_step_type_spec
                 registry = get_registry()
-                spec = registry.get(step_type)  # Accepts both gen and spec types
+                
+                # Convert SPEC to GEN if needed (registry.get() expects GEN type)
+                if is_step_type_spec(step_type):
+                    # It's SPEC, convert to GEN first
+                    step_type_gen = step_type_gen_from_spec(step_type)
+                    spec = registry.get(step_type_gen)  # Lookup by GEN type
+                else:
+                    # Already GEN, use directly
+                    step_type_gen = step_type
+                    spec = registry.get(step_type_gen)
+                
                 if spec:
-                    # Use gen type for workflow detection (workflows use gen types)
+                    # Use registry's canonical gen type for workflow detection
                     gen_type = spec.step_type_gen
                     present_steps.append(gen_type)
                     if debug_enabled:
@@ -335,11 +342,11 @@ class WorkflowService:
                             f"[WORKFLOW_DETECT] Step {i+1} mapped: {step_type} -> {gen_type}"
                         )
                 else:
-                    # Fallback: use step_type as-is (may be public type already)
-                    present_steps.append(step_type)
+                    # Fallback: use extracted gen type (shouldn't happen if registry is complete)
+                    present_steps.append(step_type_gen)
                     if debug_enabled:
                         logger.warning(
-                            f"[WORKFLOW_DETECT] Step {i+1} not found in registry: {step_type}"
+                            f"[WORKFLOW_DETECT] Step {i+1} not found in registry: {step_type} (gen: {step_type_gen})"
                         )
                 if debug_enabled:
                     logger.info(
@@ -510,9 +517,14 @@ class WorkflowService:
         created_step_ulids: List[str] = []
         
         for machine_step in machine_steps:
-            # Create step document with machine step type (for step.yaml)
+            # Create step document - convert spec to gen for create_step_doc
+            from quantumvitas.api import get_step_type_gen
+            try:
+                step_type_gen = get_step_type_gen(machine_step) if "_" in machine_step else machine_step
+            except (KeyError, ValueError):
+                step_type_gen = machine_step  # Fallback
             step_doc = create_step_doc(
-                step_type=machine_step,  # Machine type goes to step.yaml
+                step_type_gen=step_type_gen,
                 name=machine_step,  # TODO: Use public step name for display
                 structure_ulid=structure_ulid,
                 parent_calculation_id=parent_calculation_id,

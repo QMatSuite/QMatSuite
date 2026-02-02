@@ -61,33 +61,36 @@ class TestCp2kEngineRegistry:
 
 
 class TestCp2kStepTypes:
-    """Test CP2K step type registration."""
-    
+    """Test CP2K step type registration.
+
+    Uses get_for_engine(gen_type, engine) per constitution: registry.get() takes GEN only.
+    """
+
     def test_cp2k_scf_registered(self):
         """Test cp2k_scf step type is registered."""
         registry = get_registry()
-        spec = registry.get("cp2k_scf")
+        spec = registry.get_for_engine("scf", "cp2k")
         assert spec is not None
         assert spec.engine == "cp2k"
         assert spec.step_type_spec == "cp2k_scf"
         assert spec.step_type_gen == "scf"
         assert spec.supports_incremental_skip is True
-    
+
     def test_cp2k_relax_registered(self):
         """Test cp2k_relax step type is registered."""
         registry = get_registry()
-        spec = registry.get("cp2k_relax")
+        spec = registry.get_for_engine("relax", "cp2k")
         assert spec is not None
         assert spec.engine == "cp2k"
         assert spec.step_type_spec == "cp2k_relax"
         assert spec.step_type_gen == "relax"
         assert spec.is_structure_transform is True
         assert spec.supports_incremental_skip is True
-    
+
     def test_cp2k_md_registered(self):
         """Test cp2k_md step type is registered."""
         registry = get_registry()
-        spec = registry.get("cp2k_md")
+        spec = registry.get_for_engine("md", "cp2k")
         assert spec is not None
         assert spec.engine == "cp2k"
         assert spec.step_type_spec == "cp2k_md"

@@ -22,40 +22,47 @@ from quantumvitas.core.yaml_io import save_yaml_doc
 
 
 def create_step_doc(
-    step_type: str,
+    step_type_gen: str,
     name: str,
     structure_ulid: Optional[str] = None,
     parent_calculation_id: Optional[str] = None,
     overrides: Optional[Dict[str, Any]] = None,
+    engine_family: Optional[str] = None,
 ) -> StepDoc:
     """
     Create a new step document (not yet saved).
     
     Args:
-        step_type: Step type (e.g., "scf", "nscf", "dos")
+        step_type_gen: Gen step type (e.g., "scf", "nscf", "dos") - GEN only
         name: Step name (used for display and slug)
         structure_ulid: Optional structure ULID (for backwards compat, not authoritative)
         parent_calculation_id: Parent calculation ULID
         overrides: Optional parameter overrides to apply
+        engine_family: Optional engine family (e.g., "qe", "pyscf") - if provided, materializes to spec type
         
     Returns:
         StepDoc instance (in memory, not saved)
     """
     from quantumvitas.workflow.registry import get_registry
+    from quantumvitas.workflow.step_type_convert import spec_from
     
     registry = get_registry()
     
-    # Phase 2: Normalize step_type to spec type for step.yaml
-    # step.yaml stores spec types only (qe_scf, w90_wannier, etc.)
-    spec = registry.get(step_type)  # Accepts both gen and spec types
-    if spec:
-        machine_step_type = spec.step_type_spec  # Use spec type for step.yaml
+    # Materialize gen to spec if engine_family is provided
+    if engine_family:
+        spec = registry.get_for_engine(step_type_gen, engine_family)
+        if spec:
+            machine_step_type = spec.step_type_spec
+        else:
+            # Fallback: construct spec from engine prefix + gen
+            machine_step_type = spec_from(engine_family, step_type_gen)
     else:
-        # Fallback: assume it's already a spec type or unknown
-        machine_step_type = step_type
+        # No engine specified - use gen type as-is (will need to be materialized later)
+        # For now, default to qe_ prefix for backward compatibility
+        machine_step_type = spec_from("qe", step_type_gen)
     
-    # Get defaults for step type (use original step_type for lookup)
-    defaults = registry.get_defaults(step_type)
+    # Get defaults for step type (use gen type)
+    defaults = registry.get_defaults(step_type_gen)
     
     # Generate meta
     step_ulid = generate_resource_id()
@@ -189,12 +196,13 @@ def save_step_doc(step_doc: StepDoc, path: Path) -> list[str]:
 
 
 def create_and_save_step(
-    step_type: str,
+    step_type_gen: str,
     name: str,
     steps_dir: Path,
     structure_ulid: Optional[str] = None,
     parent_calculation_id: Optional[str] = None,
     overrides: Optional[Dict[str, Any]] = None,
+    engine_family: Optional[str] = None,
 ) -> Path:
     """
     Create and save a step in one call.
@@ -202,18 +210,20 @@ def create_and_save_step(
     Convenience function combining create_step_doc() and save_step_doc().
     
     Args:
-        step_type: Step type
+        step_type_gen: Gen step type (e.g., "scf", "relax") - GEN only
         name: Step name
         steps_dir: Directory to save step in
         structure_ulid: Optional structure ULID
         parent_calculation_id: Parent calculation ULID
         overrides: Optional parameter overrides
+        engine_family: Optional engine family (e.g., "qe", "pyscf") - if provided, materializes to spec type
         
     Returns:
         Path to saved step file
     """
     step_doc = create_step_doc(
-        step_type=step_type,
+        step_type_gen=step_type_gen,
+        engine_family=engine_family,
         name=name,
         structure_ulid=structure_ulid,
         parent_calculation_id=parent_calculation_id,

@@ -1455,13 +1455,13 @@ class QVDaemon:
             List of UI parameter descriptors with namelist, name, label, type, unit, etc.
         """
         module = payload.get("module", "").strip().lower()
-        # Accept both step_type_gen (canonical) and step_type (v0 compat)
-        step_type_gen = (payload.get("step_type_gen") or payload.get("step_type", "")).strip().lower()
+        # step_type_gen is canonical (GEN only for UI parameters)
+        step_type_gen = payload.get("step_type_gen", "").strip().lower()
 
         if not module:
             raise ValueError("'module' is required in payload")
         if not step_type_gen:
-            raise ValueError("'step_type_gen' is required in payload (or 'step_type' for v0 compat)")
+            raise ValueError("'step_type_gen' is required in payload")
         
         # Validate module is supported
         supported_modules = list_supported_modules()
@@ -4135,10 +4135,10 @@ class QVDaemon:
         """
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
-        # Accept both step_type_spec (canonical) and step_type_gen (backwards compat)
-        step_type_gen = payload.get("step_type_spec") or payload.get("step_type_gen") or payload.get("step_type")
+        # step_type_gen is canonical (GEN only for workflow intent)
+        step_type_gen = payload.get("step_type_gen")
         if not step_type_gen:
-            raise ValueError("Missing required field: step_type_spec (or step_type_gen for backwards compat)")
+            raise ValueError("Missing required field: step_type_gen")
         step_name = payload.get("step_name", step_type_gen)
         
         # Resolve with fallback to ensure cache is up-to-date

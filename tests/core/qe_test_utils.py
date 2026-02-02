@@ -397,7 +397,7 @@ def run_test_category_calculation(
                     reference_file=reference_file,
                     category=category,
                     timeout=timeout,
-                    step_type=None,  # Auto-detect from input
+                    step_type_gen=None,  # Auto-detect from input
                     project_root=project_root
                 )
                 

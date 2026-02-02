@@ -25,10 +25,10 @@ from quantumvitas.calculation.manifest import Manifest, ManifestStepEntry
 
 class MockStep:
     """Mock step for testing."""
-    def __init__(self, step_id: str, step_type: str, public_type: str, parameters: Dict[str, Any] = None):
+    def __init__(self, step_id: str, step_type_spec: str, step_type_gen: str, parameters: Dict[str, Any] = None):
         self.id = step_id
-        self.step_type_spec = step_type
-        self.step_type_gen = public_type
+        self.step_type_spec = step_type_spec
+        self.step_type_gen = step_type_gen
         self.parameters = parameters or {}
         self.options = {}
         # Create mock meta object
@@ -194,7 +194,7 @@ Reciprocal
         shutil.copy(scf_dir / "CHGCAR", bands_dir / "CHGCAR")
         
         # Run bands
-        bands_step = MockStep("s2", "vasp_bands", "bands")
+        bands_step = MockStep("s2", "vasp_bandspw", "bandspw")
         bands_result = vasp_engine.run_step(bands_step, bands_dir, None)
         
         # Check results
@@ -325,7 +325,7 @@ Reciprocal
         # Try to run bands - should work with fake_vasp (it generates outputs anyway)
         # But in real scenario, VASP would fail without CHGCAR for ICHARG=11
         # This test verifies the workflow, not the actual VASP behavior
-        bands_step = MockStep("s2", "vasp_bands", "bands")
+        bands_step = MockStep("s2", "vasp_bandspw", "bandspw")
         
         # With fake_vasp, it will succeed (fake_vasp doesn't check prerequisites)
         # But we can verify the staging logic would fail

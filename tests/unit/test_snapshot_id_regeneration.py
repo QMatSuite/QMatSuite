@@ -115,7 +115,7 @@ class TestSnapshotIDRegeneration:
         # Assert: Each calculation has the same number and types of steps
         for i, calculation_data in enumerate(snapshot.calculations):
             snapshot_steps = calculation_data.get("steps", [])
-            snapshot_step_types = [s.get("step_type_spec") or s.get("step_type") for s in snapshot_steps]
+            snapshot_step_types = [s.get("step_type_spec") for s in snapshot_steps]
             
             new_calculation_entry = new_project.calculations[i]
             new_calculation = load_calculation(

@@ -68,22 +68,25 @@ class TestLammpsEngineRegistry:
 
 
 class TestLammpsStepTypes:
-    """Test LAMMPS step type registration."""
-    
+    """Test LAMMPS step type registration.
+
+    Uses get_for_engine(gen_type, engine) per constitution: registry.get() takes GEN only.
+    """
+
     def test_lammps_relax_registered(self):
         """Test lammps_relax step type is registered."""
         registry = get_registry()
-        spec = registry.get("lammps_relax")
+        spec = registry.get_for_engine("relax", "lammps")
         assert spec is not None
         assert spec.engine == "lammps"
         assert spec.step_type_spec == "lammps_relax"
         assert spec.step_type_gen == "relax"
         assert spec.is_structure_transform is True
-    
+
     def test_lammps_md_registered(self):
         """Test lammps_md step type is registered."""
         registry = get_registry()
-        spec = registry.get("lammps_md")
+        spec = registry.get_for_engine("md", "lammps")
         assert spec is not None
         assert spec.engine == "lammps"
         assert spec.step_type_spec == "lammps_md"

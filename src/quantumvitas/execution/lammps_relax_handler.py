@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def handle_lammps_relax_output(
     step_ulid: str,
-    step_type: str,
+    step_type_spec: str,
     calc_dir: Path,
     working_dir: Path,
     calculation_ulid: str,
@@ -28,7 +28,7 @@ def handle_lammps_relax_output(
     
     Args:
         step_ulid: ULID of the relax step
-        step_type: Machine step type (e.g., "lammps_relax")
+        step_type_spec: Machine step type (e.g., "lammps_relax")
         calc_dir: Path to calculation directory
         working_dir: Path to step working directory (contains final.data)
         calculation_ulid: ULID of the calculation
@@ -62,7 +62,7 @@ def handle_lammps_relax_output(
         structure=structure,
         calc_dir=calc_dir,
         step_ulid=step_ulid,
-        step_type=step_type,
+        step_type_spec=step_type_spec,
         run_ulid=run_ulid,
         calculation_ulid=calculation_ulid,
         input_structure_ulid=input_structure_ulid,

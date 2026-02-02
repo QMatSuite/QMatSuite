@@ -1,11 +1,12 @@
 """
-Unit tests for registry compatibility aliases.
+Unit tests for registry step type handling.
 
-Tests that deprecated step types (vc-relax, opt, geomopt) are correctly
-mapped to the unified "relax" type with deprecation warnings.
+Per constitution, there are NO step type aliases.
+- Only canonical GEN types exist (e.g., "relax", "scf", "md")
+- VC (variable-cell) is a PARAMETER for relax/md, NOT a separate step type
+- No vc-relax, opt, geomopt, vcrelax, qe_vc_relax, etc.
 """
 
-import pytest
 import warnings
 
 from quantumvitas.workflow.registry import (
@@ -15,66 +16,51 @@ from quantumvitas.workflow.registry import (
 )
 
 
-class TestStepTypeAliases:
-    """Test that compatibility aliases work correctly."""
+class TestStepTypeNormalization:
+    """Test step type normalization behavior."""
 
-    def test_vc_relax_maps_to_relax(self):
-        """vc-relax should map to relax with deprecation warning."""
-        with pytest.warns(DeprecationWarning, match="vc-relax.*deprecated"):
-            normalized = normalize_step_type("vc-relax")
-        assert normalized == "relax"
+    def test_no_aliases_exist(self):
+        """No step type aliases exist - use canonical GEN types directly.
 
-    def test_qe_vc_relax_maps_to_qe_relax(self):
-        """qe_vc_relax should map to qe_relax with deprecation warning."""
-        with pytest.warns(DeprecationWarning, match="qe_vc_relax.*deprecated"):
-            normalized = normalize_step_type("qe_vc_relax")
-        assert normalized == "qe_relax"
+        Per constitution, there are no aliases. Code MUST use "relax" directly.
+        VC is a parameter, not a step type.
+        """
+        assert STEP_TYPE_ALIASES == {}
 
-    def test_opt_maps_to_relax(self):
-        """opt should map to relax with deprecation warning."""
-        with pytest.warns(DeprecationWarning, match="opt.*deprecated"):
-            normalized = normalize_step_type("opt")
-        assert normalized == "relax"
-
-    def test_geomopt_maps_to_relax(self):
-        """geomopt should map to relax with deprecation warning."""
-        with pytest.warns(DeprecationWarning, match="geomopt.*deprecated"):
-            normalized = normalize_step_type("geomopt")
-        assert normalized == "relax"
-
-    def test_non_alias_unchanged(self):
-        """Non-alias step types should be returned unchanged."""
-        # Should not warn
+    def test_canonical_types_unchanged(self):
+        """Canonical GEN types are returned unchanged."""
         with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            normalized = normalize_step_type("qe_relax")
-        assert normalized == "qe_relax"
-        
+            warnings.simplefilter("error")  # No warnings expected
+            assert normalize_step_type("relax") == "relax"
+            assert normalize_step_type("scf") == "scf"
+            assert normalize_step_type("md") == "md"
+            assert normalize_step_type("nscf") == "nscf"
+            assert normalize_step_type("bands") == "bands"
+
+    def test_spec_types_unchanged(self):
+        """SPEC types are returned unchanged (normalize only handles GEN)."""
         with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            normalized = normalize_step_type("scf")
-        assert normalized == "scf"
+            warnings.simplefilter("error")  # No warnings expected
+            assert normalize_step_type("qe_relax") == "qe_relax"
+            assert normalize_step_type("qe_scf") == "qe_scf"
+            assert normalize_step_type("vasp_relax") == "vasp_relax"
 
     def test_empty_string_unchanged(self):
-        """Empty string should be returned unchanged."""
+        """Empty string is returned unchanged."""
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            normalized = normalize_step_type("")
-        assert normalized == ""
+            assert normalize_step_type("") == ""
 
-    def test_all_aliases_in_dict(self):
-        """All aliases should be in STEP_TYPE_ALIASES dict."""
-        expected_aliases = {"vc-relax", "qe_vc_relax", "opt", "geomopt"}
-        assert set(STEP_TYPE_ALIASES.keys()) == expected_aliases
-
-    def test_alias_mapping_through_registry(self):
-        """Aliases should work when used with registry lookup."""
+    def test_registry_lookup_by_gen(self):
+        """Registry lookup works with GEN types."""
         registry = get_registry()
-        
-        # vc-relax should normalize to relax, then lookup should find qe_relax
-        # (since relax public_type maps to qe_relax by default)
-        normalized = normalize_step_type("vc-relax")
-        spec = registry.get(normalized)
+
+        # relax should find qe_relax spec (default engine)
+        spec = registry.get("relax")
         assert spec is not None
         assert spec.step_type_gen == "relax"
 
+        # scf should find qe_scf spec
+        spec = registry.get("scf")
+        assert spec is not None
+        assert spec.step_type_gen == "scf"

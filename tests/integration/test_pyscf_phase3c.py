@@ -101,7 +101,7 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
     step_resolved = QVService.init_step(
         project_root=temp_project,
         calculation_selector=calc_id,
-        step_type="scf",
+        step_type_gen="scf",
         name="scf",
     )
     step_id = step_resolved.meta.ulid
@@ -271,7 +271,7 @@ class TestPySCFPhase3CIntegration:
         scf_step_resolved = QVService.init_step(
             project_root=temp_project,
             calculation_selector=calc_id,
-            step_type="scf",
+            step_type_gen="scf",
             name="scf",
         )
         scf_step_id = scf_step_resolved.meta.ulid
@@ -293,7 +293,7 @@ class TestPySCFPhase3CIntegration:
         mp2_step_resolved = QVService.init_step(
             project_root=temp_project,
             calculation_selector=calc_id,
-            step_type="mp2",
+            step_type_gen="mp2",
             name="mp2",
         )
         mp2_step_id = mp2_step_resolved.meta.ulid
@@ -369,7 +369,7 @@ class TestPySCFPhase3CIntegration:
         mp2_step_resolved = QVService.init_step(
             project_root=temp_project,
             calculation_selector=calc_id,
-            step_type="mp2",
+            step_type_gen="mp2",
             name="mp2",
         )
         mp2_step_id = mp2_step_resolved.meta.ulid

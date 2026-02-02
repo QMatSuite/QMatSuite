@@ -7,9 +7,9 @@ from quantumvitas.workflow.registry import get_registry
 
 class MockStep:
     """Mock step for testing."""
-    def __init__(self, step_type: str, public_type: str = None):
-        self.step_type_spec = step_type  # SPEC type (e.g., "vasp_scf")
-        self.step_type_gen = public_type or (step_type.split("_", 1)[-1] if "_" in step_type else step_type)
+    def __init__(self, step_type_spec: str, step_type_gen: str = None):
+        self.step_type_spec = step_type_spec  # SPEC type (e.g., "vasp_scf")
+        self.step_type_gen = step_type_gen or (step_type_spec.split("_", 1)[-1] if "_" in step_type_spec else step_type_spec)
 
 
 class TestReferenceSCFResolver:
@@ -19,7 +19,7 @@ class TestReferenceSCFResolver:
         """Test finding SCF in simple topology: scf → bands."""
         steps = [
             MockStep("vasp_scf", "scf"),
-            MockStep("vasp_bands", "bands"),
+            MockStep("vasp_bandspw", "bandspw"),
         ]
         
         result = find_reference_scf(steps, current_step_idx=1)
@@ -34,7 +34,7 @@ class TestReferenceSCFResolver:
             MockStep("vasp_scf", "scf"),      # idx 0
             MockStep("vasp_relax", "relax"),   # idx 1 (barrier)
             MockStep("vasp_scf", "scf"),       # idx 2
-            MockStep("vasp_bands", "bands"),   # idx 3
+            MockStep("vasp_bandspw", "bandspw"),   # idx 3
         ]
         
         # For bands (idx 3), should find scf_2 (idx 2), not scf_1 (idx 0)
@@ -47,7 +47,7 @@ class TestReferenceSCFResolver:
     def test_find_reference_scf_no_scf_before(self):
         """Test when no SCF exists before current step."""
         steps = [
-            MockStep("vasp_bands", "bands"),
+            MockStep("vasp_bandspw", "bandspw"),
         ]
         
         result = find_reference_scf(steps, current_step_idx=0)
@@ -58,7 +58,7 @@ class TestReferenceSCFResolver:
         steps = [
             MockStep("vasp_scf", "scf"),      # idx 0
             MockStep("vasp_relax", "relax"),   # idx 1 (barrier)
-            MockStep("vasp_bands", "bands"),  # idx 2
+            MockStep("vasp_bandspw", "bandspw"),  # idx 2
         ]
         
         # For bands (idx 2), should find None (scf_1 blocked by relax)
@@ -71,7 +71,7 @@ class TestReferenceSCFResolver:
             MockStep("vasp_scf", "scf"),      # idx 0
             MockStep("vasp_nscf", "nscf"),     # idx 1
             MockStep("vasp_scf", "scf"),       # idx 2
-            MockStep("vasp_bands", "bands"),   # idx 3
+            MockStep("vasp_bandspw", "bandspw"),   # idx 3
         ]
         
         # For bands (idx 3), should find most recent scf (idx 2)
@@ -92,9 +92,9 @@ class TestReferenceSCFResolver:
         gen_type = get_gen_type(step, registry)
         assert gen_type == "relax"
         
-        step = MockStep("vasp_bands", "bands")
+        step = MockStep("vasp_bandspw", "bandspw")
         gen_type = get_gen_type(step, registry)
-        assert gen_type == "bands"
+        assert gen_type == "bandspw"
 
 
 

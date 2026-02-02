@@ -164,6 +164,14 @@ def qe_step_handler(
                 # Use compat executor
                 from quantumvitas.calculation.compat_executor import run_qe_step_from_existing_input_compat
                 
+                # Convert spec to gen for run_qe_step_from_existing_input_compat (expects gen)
+                from quantumvitas.api import get_step_type_gen
+                step_type_gen = None
+                if step.step_type_spec:
+                    try:
+                        step_type_gen = get_step_type_gen(step.step_type_spec)
+                    except (KeyError, ValueError):
+                        step_type_gen = None  # Fallback
                 result = run_qe_step_from_existing_input_compat(
                     existing_input_path=existing_input_path,
                     working_dir=raw_dir,
@@ -171,7 +179,7 @@ def qe_step_handler(
                     step_ulid=step_ulid,
                     calculation_slug=calculation.ulid,
                     engine=engine,
-                    step_type=step.step_type_spec if step.step_type_spec else None,
+                    step_type_gen=step_type_gen,
                     timeout=step.options.get("timeout"),
                 )
             else:
@@ -202,13 +210,13 @@ def qe_step_handler(
                 }
         
         # If this is a relax step and succeeded, add artifact spec for post-processing
-        step_type = step.step_type_spec if hasattr(step, "step_type_spec") else None
-        if success and step_type and is_relax_step_type(step_type) and result.output_file:
+        step_type_spec = step.step_type_spec if hasattr(step, "step_type_spec") else None
+        if success and step_type_spec and is_relax_step_type(step_type_spec) and result.output_file:
             step_result_data["relax_artifact_spec"] = RelaxArtifactSpec(
                 artifact_type="qe_output",
                 artifact_path=Path(result.output_file),
                 step_ulid=step_ulid,
-                step_type_spec=str(step_type),
+                step_type_spec=str(step_type_spec),
             ).to_dict()
 
         return JobResult(
@@ -231,7 +239,7 @@ def qe_step_handler(
 
 def handle_qe_relax_output(
     step_ulid: str,
-    step_type: str,
+    step_type_spec: str,
     calc_dir: Path,
     output_path: Path,
     calculation_ulid: str,
@@ -243,7 +251,7 @@ def handle_qe_relax_output(
     
     Args:
         step_ulid: ULID of the relax step
-        step_type: Machine step type (e.g., "qe_relax")
+        step_type_spec: Machine step type (e.g., "qe_relax")
         calc_dir: Path to calculation directory
         output_path: Path to QE output file (.out)
         calculation_ulid: ULID of the calculation
@@ -280,7 +288,7 @@ def handle_qe_relax_output(
         structure=structure,
         calc_dir=calc_dir,
         step_ulid=step_ulid,
-        step_type=step_type,
+        step_type_spec=step_type_spec,
         run_ulid=run_ulid,
         calculation_ulid=calculation_ulid,
         input_structure_ulid=input_structure_ulid,

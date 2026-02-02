@@ -73,7 +73,7 @@ def lj_project(tmp_path: Path):
     svc = QVService(project_root)
     step_dto = svc.calculation.add_step(
         calc_selector=calc_id,
-        step_type="relax",
+        step_type_gen="relax",
     )
     step_id = step_dto.step_ulid
 

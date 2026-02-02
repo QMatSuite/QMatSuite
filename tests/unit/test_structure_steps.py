@@ -37,7 +37,7 @@ def test_generate_qe_input_from_structure_applies_step_type(sample_structure):
     overrides = [ParameterOverride(name="ecutwfc", value=60, section="SYSTEM")]
     qe_input = generate_qe_input_from_structure(
         structure=sample_structure,
-        step_type="nscf",
+        step_type_gen="nscf",
         parameter_overrides=overrides,
     )
     control = qe_input.get_namelist("CONTROL")

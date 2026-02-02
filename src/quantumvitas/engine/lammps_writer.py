@@ -53,27 +53,29 @@ def render_lammps_template(
         raise RuntimeError(f"Failed to render template {template_name}: {e}") from e
 
 
-def get_template_for_step_type(step_type: str) -> str:
+def get_template_for_step_type(step_type_spec: str) -> str:
     """
-    Map step type to template filename.
-    
+    Map SPEC step type to template filename.
+
     Args:
-        step_type: Machine step type (e.g., "lammps_relax", "lammps_md")
-    
+        step_type_spec: SPEC step type (e.g., "lammps_relax", "lammps_md")
+
     Returns:
         Template filename
     """
-    if step_type == "lammps_relax":
+    # Execution layer - expects SPEC types directly
+    
+    if step_type_spec == "lammps_relax":
         return "minimize.in.j2"
-    elif step_type == "lammps_md":
+    elif step_type_spec == "lammps_md":
         # Need to determine ensemble from parameters
         # Default to NVT, can be overridden
         return "md_nvt.in.j2"
-    elif step_type == "lammps_restart":
+    elif step_type_spec == "lammps_restart":
         # Restart uses same template as MD but with restart_from
         return "md_nvt.in.j2"
     else:
-        raise ValueError(f"Unknown step type: {step_type}")
+        raise ValueError(f"Unknown step type: {step_type_spec}")
 
 
 def build_template_context(

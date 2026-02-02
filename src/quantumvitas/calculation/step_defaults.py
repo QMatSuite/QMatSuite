@@ -108,9 +108,11 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
         "species_overrides": {},
     },
     "relax": {
+        # Covers both fixed-cell and variable-cell relaxation.
+        # VC is controlled via CONTROL.calculation parameter ('relax' or 'vc-relax').
         "parameters": {
             "CONTROL": {
-                "calculation": "relax",
+                "calculation": "relax",  # User can override to 'vc-relax' for variable-cell
                 "outdir": "./outdir",
                 "restart_mode": "from_scratch",
             },
@@ -123,6 +125,7 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
             "IONS": {
                 "ion_dynamics": "bfgs",
             },
+            # CELL namelist: user adds via parameters if needed for vc-relax
         },
         "cards": {
             "K_POINTS": {
@@ -132,34 +135,7 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
         },
         "species_overrides": {},
     },
-    "vc-relax": {
-        "parameters": {
-            "CONTROL": {
-                "calculation": "vc-relax",
-                "outdir": "./outdir",
-                "restart_mode": "from_scratch",
-            },
-            "ELECTRONS": {
-                "conv_thr": 1.0e-08,
-            },
-            "SYSTEM": {
-                "ecutwfc": 50,
-            },
-            "IONS": {
-                "ion_dynamics": "bfgs",
-            },
-            "CELL": {
-                "cell_dynamics": "bfgs",
-            },
-        },
-        "cards": {
-            "K_POINTS": {
-                "option": "automatic",
-                "data": [[8, 8, 8, 0, 0, 0]],
-            },
-        },
-        "species_overrides": {},
-    },
+    # Note: NO "vc-relax" entry - VC is a parameter, not a separate step type
     "md": {
         "parameters": {
             "CONTROL": {
@@ -217,21 +193,14 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
 def get_default_step_params(step_type_gen: str) -> Dict[str, Any]:
     """
     Get default parameters for a gen step type.
-    
+
     Args:
-        step_type_gen: Gen step type (e.g., "scf", "nscf", "relax", "md")
-                      Accepts both gen types and spec types (converts spec to gen).
-        
+        step_type_gen: GEN step type (e.g., "scf", "nscf", "relax", "md")
+
     Returns:
         Dict with "parameters", "cards", and "species_overrides" keys.
         Returns empty dicts if step_type_gen is not recognized.
     """
-    from quantumvitas.workflow.step_type_convert import gen_from, is_spec
-    
-    # Convert to gen type if spec type provided (backward compatibility)
-    if is_spec(step_type_gen):
-        step_type_gen = gen_from(step_type_gen)
-    
     step_type_lower = step_type_gen.lower()
     
     # Direct lookup (gen types are stored directly in DEFAULT_STEP_PARAMS)

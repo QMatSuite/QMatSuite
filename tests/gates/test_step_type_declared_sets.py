@@ -35,6 +35,8 @@ ALLOWLIST_PATTERNS = [
     "src/quantumvitas/_vault/*",
     # This gate file itself (contains test strings)
     "tests/gates/test_step_type_declared_sets.py",
+    # Param mismatch gate contains signature definitions with type markers
+    "tests/gates/test_step_type_param_mismatch.py",
     # Contains intentional invalid test data (K_POINTS dict with step_type_gen)
     "tests/unit/test_kpoints_canonical.py",
 ]
@@ -186,8 +188,9 @@ def _build_spec_set() -> Set[str]:
     fallback_types = {
         "unknown", "custom", "custom_unknown",
         "variant_step_types",
-        # Preset catalog scope type indicator (not an actual step type)
+        # Preset catalog scope type indicators (not actual step types)
         "qe_variants",
+        "variants",  # Used in catalog scope metadata
     }
     spec_types.update(fallback_types)
 

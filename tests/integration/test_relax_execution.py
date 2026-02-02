@@ -52,7 +52,7 @@ class TestRelaxExecutorIntegration:
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
         )
         
         # Verify it exists
@@ -261,13 +261,13 @@ class TestRelaxExecutorIntegration:
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step1_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
         )
         write_generated_structure(
             structure=structure,
             calc_dir=calc_dir,
             step_ulid=step2_ulid,
-            step_type="qe_relax",
+            step_type_spec="qe_relax",  # Execution layer uses SPEC type
         )
         
         # Create job that only includes step1

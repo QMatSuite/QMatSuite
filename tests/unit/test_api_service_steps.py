@@ -94,7 +94,7 @@ def test_add_step_to_calculation_creates_valid_spec(temp_project):
     # Add a step (use name as selector)
     result = svc.calculation.add_step(
         calc_selector="Test Calculation",  # Use name
-        step_type="scf",
+        step_type_gen="scf",
         name="test-scf",
     )
 
@@ -142,7 +142,7 @@ def test_add_step_to_calculation_with_defaults(temp_project):
     # Add an nscf step
     result = svc.calculation.add_step(
         calc_selector="Test Calculation",  # Use name
-        step_type="nscf",
+        step_type_gen="nscf",
     )
 
     # Load the step spec
@@ -170,7 +170,7 @@ def test_add_step_to_calculation_no_executable_in_spec(temp_project):
     for step_type in ["scf", "dos", "bands"]:
         svc.calculation.add_step(
             calc_selector="Test Calculation",  # Use name
-            step_type=step_type,
+            step_type_gen=step_type,
             name=f"test-{step_type}",
         )
 
@@ -194,7 +194,7 @@ def test_configure_step_species_overrides(temp_project):
     # Add a step first
     svc.calculation.add_step(
         calc_selector="Test Calculation",
-        step_type="scf",
+        step_type_gen="scf",
         name="test-scf",
     )
 

@@ -209,7 +209,7 @@ class TestDaemonCalculationExecution:
         # Create SCF step
         svc.calculation.add_step(
             calc_selector="bands_daemon",
-            step_type="scf",
+            step_type_gen="scf",
             name="scf",
         )
         
@@ -245,7 +245,7 @@ class TestDaemonCalculationExecution:
         # Create NSCF step
         svc.calculation.add_step(
             calc_selector="bands_daemon",
-            step_type="nscf",
+            step_type_gen="nscf",
             name="nscf",
         )
         
@@ -282,7 +282,7 @@ class TestDaemonCalculationExecution:
         # Create bands calculation step (pw.x with calculation='bands')
         svc.calculation.add_step(
             calc_selector="bands_daemon",
-            step_type="bandspw",
+            step_type_gen="bandspw",
             name="bands",
         )
         
@@ -327,7 +327,7 @@ class TestDaemonCalculationExecution:
         # Create bands.x post-processing step
         svc.calculation.add_step(
             calc_selector="bands_daemon",
-            step_type="bands",
+            step_type_gen="bands",
             name="bandspp",
         )
         

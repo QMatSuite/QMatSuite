@@ -697,7 +697,7 @@ def _detect_precision_for_step(
 
 def _warn_if_key_not_in_schema(
     variant: ParamSpaceVariant,
-    step_type: str,
+    step_type_gen: str,
     section: str,
     key: str,
 ) -> None:

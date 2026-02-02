@@ -141,17 +141,17 @@ class TestDematerializeStep:
     """Test the dematerialize_step() function."""
 
     @pytest.mark.parametrize(
-        "machine_step,expected_engine",
+        "machine_step,expected_engine,expected_gen",
         [
-            ("qe_scf", "qe"),
-            ("qe_nscf", "qe"),
-            ("vasp_scf", "vasp"),
-            ("pyscf_scf", "pyscf"),
-            ("lammps_md", "lammps"),
-            ("cp2k_scf", "cp2k"),
+            ("qe_scf", "qe", "scf"),
+            ("qe_nscf", "qe", "nscf"),
+            ("vasp_scf", "vasp", "scf"),
+            ("pyscf_scf", "pyscf", "scf"),
+            ("lammps_md", "lammps", "md"),
+            ("cp2k_scf", "cp2k", "scf"),
         ],
     )
-    def test_dematerialize_step_success(self, machine_step: str, expected_engine: str):
+    def test_dematerialize_step_success(self, machine_step: str, expected_engine: str, expected_gen: str):
         """Test successful dematerialization."""
         if not DriverRegistry.is_step_type_registered(machine_step):
             pytest.skip(f"Step type {machine_step} not registered")
@@ -160,7 +160,8 @@ class TestDematerializeStep:
         assert result is not None
         engine, gen_type = result
         assert engine == expected_engine
-        assert gen_type.startswith("GEN_")
+        # GEN types are lowercase without prefix per constitution
+        assert gen_type == expected_gen
 
     def test_dematerialize_step_returns_none_for_unknown(self):
         """Test that unknown step types return None."""
@@ -174,16 +175,16 @@ class TestDematerializeToGenStep:
     @pytest.mark.parametrize(
         "machine_step,expected_gen",
         [
-            ("qe_scf", "SCF"),
-            ("qe_nscf", "NSCF"),
-            ("pyscf_td", "TD"),
-            ("lammps_md", "MD"),
+            ("qe_scf", "scf"),
+            ("qe_nscf", "nscf"),
+            ("pyscf_td", "td"),
+            ("lammps_md", "md"),
         ],
     )
     def test_dematerialize_to_generalized_step_strips_prefix(
         self, machine_step: str, expected_gen: str
     ):
-        """Test that GEN_ prefix is stripped for backward compatibility."""
+        """Test dematerialize returns lowercase gen type per constitution."""
         if not DriverRegistry.is_step_type_registered(machine_step):
             pytest.skip(f"Step type {machine_step} not registered")
 
@@ -200,10 +201,10 @@ class TestGetSupportedGenSteps:
             pytest.skip("QE not registered")
 
         steps = get_supported_generalized_steps("qe")
-        # Should include core steps (GEN_ prefix stripped)
-        assert "SCF" in steps
-        assert "NSCF" in steps
-        assert "RELAX" in steps
+        # GEN types are lowercase per constitution
+        assert "scf" in steps
+        assert "nscf" in steps
+        assert "relax" in steps
 
     def test_unknown_engine_returns_empty(self):
         """Test unknown engine returns empty list."""

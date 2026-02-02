@@ -57,7 +57,7 @@ class Engine(ABC):
     @abstractmethod
     def generate_input(
         self,
-        step_type: str,
+        step_type_gen: str,
         input_data: Dict[str, Any],
         working_dir: Path,
         input_filename: Optional[str] = None
@@ -66,7 +66,7 @@ class Engine(ABC):
         Generate input file for a calculation step.
         
         Args:
-            step_type: Type of calculation step (e.g., "scf", "nscf")
+            step_type_gen: Gen step type (e.g., "scf", "nscf") - GEN only
             input_data: Dictionary containing input parameters
             working_dir: Directory where input file should be created
             input_filename: Optional custom filename (default: engine-specific)
@@ -79,7 +79,7 @@ class Engine(ABC):
     @abstractmethod
     def build_command(
         self,
-        step_type: str,
+        step_type_spec: str,
         input_file: Path,
         working_dir: Path
     ) -> List[str]:
@@ -87,7 +87,7 @@ class Engine(ABC):
         Build the command to execute the calculation.
         
         Args:
-            step_type: Type of calculation step
+            step_type_spec: Spec step type (e.g., "qe_scf", "pyscf_scf") - SPEC only
             input_file: Path to input file
             working_dir: Working directory for execution
             
@@ -100,14 +100,14 @@ class Engine(ABC):
     def parse_output(
         self,
         output_file: Path,
-        step_type: str
+        step_type_spec: str
     ) -> Dict[str, Any]:
         """
         Parse output file and extract results.
         
         Args:
             output_file: Path to output file
-            step_type: Type of calculation step
+            step_type_spec: Spec step type (e.g., "qe_scf", "pyscf_scf") - SPEC only
             
         Returns:
             Dictionary containing parsed results
@@ -115,12 +115,12 @@ class Engine(ABC):
         pass
     
     @abstractmethod
-    def get_default_input_filename(self, step_type: str) -> str:
+    def get_default_input_filename(self, step_type_gen: str) -> str:
         """
         Get default input filename for a step type.
         
         Args:
-            step_type: Type of calculation step
+            step_type_gen: Type of calculation step (gen type, e.g., "scf", "nscf")
             
         Returns:
             Default input filename
@@ -128,12 +128,12 @@ class Engine(ABC):
         pass
     
     @abstractmethod
-    def get_default_output_filename(self, step_type: str, input_filename: str) -> str:
+    def get_default_output_filename(self, step_type_gen: str, input_filename: str) -> str:
         """
         Get default output filename for a step type.
         
         Args:
-            step_type: Type of calculation step
+            step_type_gen: Type of calculation step (gen type, e.g., "scf", "nscf")
             input_filename: Input filename
             
         Returns:
@@ -141,13 +141,13 @@ class Engine(ABC):
         """
         pass
     
-    def validate_input(self, input_data: Dict[str, Any], step_type: str) -> Tuple[bool, Optional[str]]:
+    def validate_input(self, input_data: Dict[str, Any], step_type_gen: str) -> Tuple[bool, Optional[str]]:
         """
         Validate input data before generating input file.
         
         Args:
             input_data: Input parameters to validate
-            step_type: Type of calculation step
+            step_type_gen: Type of calculation step (gen type, e.g., "scf", "nscf")
             
         Returns:
             Tuple of (is_valid, error_message)
@@ -155,12 +155,12 @@ class Engine(ABC):
         # Default implementation - engines can override
         return True, None
     
-    def get_required_inputs(self, step_type: str) -> List[str]:
+    def get_required_inputs(self, step_type_gen: str) -> List[str]:
         """
         Get list of required input parameters for a step type.
         
         Args:
-            step_type: Type of calculation step
+            step_type_gen: Type of calculation step (gen type, e.g., "scf", "nscf")
             
         Returns:
             List of required parameter names

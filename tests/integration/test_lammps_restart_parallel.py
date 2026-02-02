@@ -116,7 +116,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     relax_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="relax",
+        step_type_gen="relax",
     )
     relax_step_id = relax_step.meta.ulid
     
@@ -140,7 +140,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     md_step = QVService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
-        step_type="md",
+        step_type_gen="md",
     )
     md_step_id = md_step.meta.ulid
     

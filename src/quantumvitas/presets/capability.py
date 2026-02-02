@@ -174,24 +174,41 @@ def resolve_engine_for_step(step_path: Path) -> Optional[str]:
     """
     try:
         import yaml
-        
+        from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+
         with open(step_path, 'r') as f:
             step_data = yaml.safe_load(f)
-        
+
         if not step_data or 'step_type_spec' not in step_data:
             return None
 
-        step_type = step_data['step_type_spec']
-        if not step_type:
+        step_type_spec = step_data['step_type_spec']
+        if not step_type_spec:
             return None
-        
+
         # Use registry to get engine from step_type
+        # Per constitution, registry.get() only accepts GEN types
+        # SPEC format is "{engine}_{gen}", so we extract gen and optionally engine
         registry = get_registry()
-        spec = registry.get(step_type)
-        
+        from quantumvitas.workflow.step_type_convert import gen_from, prefix_from
+
+        # Always convert to GEN - gen_from handles both SPEC and GEN inputs
+        step_type_gen = gen_from(step_type_spec)
+
+        if is_spec(step_type_spec):
+            # Extract engine prefix from SPEC and use get_for_engine
+            try:
+                engine_prefix = prefix_from(step_type_spec)
+                spec = registry.get_for_engine(step_type_gen, engine_prefix)
+            except ValueError:
+                spec = None
+        else:
+            # Already GEN type - use generic lookup
+            spec = registry.get(step_type_gen)
+
         if spec and spec.engine:
             return spec.engine
-        
+
         return None
     except Exception:
         return None

@@ -946,22 +946,24 @@ def init_calculation_command(
 
 
 
-# Known step types for validation (Phase 2: engine-prefixed + legacy backward compat)
+# Known step types for validation
+# Note: VC (variable-cell) is a PARAMETER, not a separate step type.
+# Use "relax" or "qe_relax" with CONTROL.calculation='vc-relax' parameter.
 KNOWN_STEP_TYPES = {
-    # Engine-prefixed step types (Phase 2)
-    "qe_scf", "qe_nscf", "qe_relax", "qe_vc_relax", "qe_md", "qe_vc_md",  # QE pw.x
+    # SPEC step types (engine-prefixed)
+    "qe_scf", "qe_nscf", "qe_relax", "qe_md",  # QE pw.x
     "qe_dos", "qe_bands", "qe_bandspw",  # QE post-processing
     "qe_ph", "qe_q2r", "qe_matdyn", "qe_dynmat",  # QE phonon
     "qe_pp", "qe_projwfc",  # QE other post-processing
     "qe_pw2wannier", "qe_custom",  # QE other
     "w90_wannierprep", "w90_wannier",  # Wannier90
     "pyscf_scf",  # PySCF molecular QC
-    # Legacy step types (backward compatibility)
-    "scf", "nscf", "relax", "vc-relax", "md", "vc-md",  # pw.x calculation types
+    # GEN step types
+    "scf", "nscf", "relax", "md",  # pw.x
     "dos", "bands", "bandspw",  # post-processing
     "ph", "q2r", "matdyn", "dynmat",  # phonon
     "pp", "projwfc",  # other post-processing
-    "pw2wannier", "custom",  # escape hatch for unsupported types
+    "pw2wannier", "custom",  # escape hatch
 }
 
 
@@ -1980,7 +1982,7 @@ def run_structure_command(
     svc = get_service(project_root)
     qe_input = svc.generate_qe_input_from_structure(
         structure=struct,
-        step_type=step_type_gen,
+        step_type_gen=step_type_gen,
         parameter_overrides=bundle.parameters,
     )
     from quantumvitas.api.utils import apply_card_overrides_to_qe_input, apply_species_overrides_to_qe_input
@@ -1997,7 +1999,7 @@ def run_structure_command(
         input_file=generated_input,
         working_dir=workdir,
         project_root=project_root,
-        step_type=None,
+        step_type_spec=None,
         parameter_overrides=None,
         card_overrides=None,
         species_overrides=None,

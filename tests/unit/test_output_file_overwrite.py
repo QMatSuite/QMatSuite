@@ -62,7 +62,7 @@ exit 0
             result_1 = runner.run_step(
                 input_file=input_file_1,
                 working_dir=working_dir,
-                step_type="scf",
+                step_type_spec="qe_scf",  # Execution layer uses SPEC type
             )
             
             stdout_file_1 = working_dir / "scf.out"
@@ -79,7 +79,7 @@ exit 0
             result_2 = runner.run_step(
                 input_file=input_file_2,
                 working_dir=working_dir,
-                step_type="scf",  # Same step_type
+                step_type_spec="qe_scf",  # Execution layer uses SPEC type
             )
             
             # Verify output files still use step_type.out/.err (not versioned)
@@ -136,7 +136,7 @@ exit 0
             result_1 = runner.run_step(
                 input_file=input_file_1,
                 working_dir=working_dir,
-                step_type="wannierprep",
+                step_type_spec="w90_wannierprep",  # Execution layer uses SPEC type
             )
             
             # Verify output files use step_type.out/.err
@@ -150,7 +150,7 @@ exit 0
             result_2 = runner.run_step(
                 input_file=input_file_2,
                 working_dir=working_dir,
-                step_type="wannierprep",
+                step_type_spec="w90_wannierprep",  # Execution layer uses SPEC type
             )
             
             # Verify output files are still wannierprep.out/.err (overwritten, not versioned)

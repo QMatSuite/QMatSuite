@@ -80,11 +80,11 @@ def temp_project(tmp_path: Path) -> Path:
     # Add steps to the calculation
     svc.calculation.add_step(
         calc_selector=calculation_id,
-        step_type="scf",
+        step_type_gen="scf",
     )
     svc.calculation.add_step(
         calc_selector=calculation_id,
-        step_type="nscf",
+        step_type_gen="nscf",
     )
     
     # Store structures dict in project_dir for use in tests
@@ -171,11 +171,11 @@ class TestGetCalculationDetail:
         svc = QVService(temp_project)
         svc.calculation.add_step(
             calc_selector=calculation_slug,
-            step_type="bandspw",
+            step_type_gen="bandspw",
         )
         svc.calculation.add_step(
             calc_selector=calculation_slug,
-            step_type="bands",
+            step_type_gen="bands",
         )
         
         # Get calculation detail via daemon

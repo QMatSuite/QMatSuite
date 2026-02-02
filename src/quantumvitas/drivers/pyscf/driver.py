@@ -149,7 +149,7 @@ class PySCFDriver(BaseEngineDriver):
     def get_capabilities(self) -> set[str]:
         """PySCF capabilities."""
         return {
-            "scf", "dft", "opt", "freq",
+            "scf", "dft", "relax", "freq",
             "mp2", "ccsd", "casscf", "casci", "tddft",
             "molecular",  # PySCF is primarily molecular
             "chain",  # Supports chain execution

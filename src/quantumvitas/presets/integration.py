@@ -107,7 +107,7 @@ def _detect_engine_for_calculation(calculation_dir: Path) -> Optional[str]:
     """
     Detect engine from calculation's steps.
     
-    Reads step.yaml files and determines the engine from step_type.
+    Reads step.yaml files and determines the engine from step_type_spec.
     Returns the first engine found, or None if no engine can be determined.
     
     Args:
@@ -159,7 +159,7 @@ def detect_presets_from_calculation(
     # Load step parameters and types from calculation
     step_data = _load_step_parameters_with_types(calculation_dir)
     step_params_list = [params for params, _ in step_data]
-    step_types_list = [step_type for _, step_type in step_data]
+    step_types_list = [step_type_gen for _, step_type_gen in step_data]
     
     # Detect presets (with step-type-aware precision detection)
     # Only enable precision detection if we have step_types and calculation_dir
@@ -312,13 +312,15 @@ def _load_step_parameters(
 
             # Convert SPEC to GEN for receiver registry lookup (receivers use GEN types)
             from quantumvitas.api import get_step_type_gen
+            from quantumvitas.workflow.step_type_convert import gen_from
             try:
-                step_type = get_step_type_gen(step_type_spec)
+                step_type_gen = get_step_type_gen(step_type_spec)
             except (KeyError, ValueError):
-                step_type = step_type_spec  # Fallback if conversion fails
+                # Fallback: use explicit conversion function (handles both SPEC and GEN)
+                step_type_gen = gen_from(step_type_spec)  # gen_from() handles both SPEC and GEN inputs
 
             # Filter to only receiver steps for preset detection
-            if receivers_only and not is_receiver(step_type):
+            if receivers_only and not is_receiver(step_type_gen):
                 continue
             
             # Export parameters and cards as deep copies (no reference leakage)
@@ -331,7 +333,7 @@ def _load_step_parameters(
                 step_params = dict(parameters)
                 if cards:
                     step_params["cards"] = cards
-                step_params["_step_type"] = step_type  # Internal metadata for detector
+                step_params["_step_type"] = step_type_gen  # Internal metadata for detector
                 step_params_list.append(step_params)
         except Exception:
             # Skip malformed step files
@@ -353,7 +355,7 @@ def _load_step_parameters_with_types(
         receivers_only: If True (default), only load from receiver steps
         
     Returns:
-        List of (params_dict, step_type) tuples
+        List of (params_dict, step_type_gen) tuples where step_type_gen is the GEN type
     """
     from quantumvitas.presets.receivers import is_receiver
     from quantumvitas.core.yamldoc import StepDoc
@@ -375,12 +377,14 @@ def _load_step_parameters_with_types(
 
             # Convert SPEC to GEN for receiver registry lookup (receivers use GEN types)
             from quantumvitas.api import get_step_type_gen
+            from quantumvitas.workflow.step_type_convert import gen_from
             try:
-                step_type = get_step_type_gen(step_type_spec)
+                step_type_gen = get_step_type_gen(step_type_spec)
             except (KeyError, ValueError):
-                step_type = step_type_spec  # Fallback if conversion fails
+                # Fallback: use explicit conversion function (handles both SPEC and GEN)
+                step_type_gen = gen_from(step_type_spec)  # gen_from() handles both SPEC and GEN inputs
 
-            if receivers_only and not is_receiver(step_type):
+            if receivers_only and not is_receiver(step_type_gen):
                 continue
             
             # Export parameters and cards as deep copies (no reference leakage)
@@ -392,7 +396,7 @@ def _load_step_parameters_with_types(
                 step_params = dict(parameters)
                 if cards:
                     step_params["cards"] = cards
-                result.append((step_params, step_type))
+                result.append((step_params, step_type_gen))
         except Exception:
             continue
     
@@ -438,7 +442,7 @@ def apply_presets_to_step(
     Per Constitution §10.3.3: This OVERWRITES preset-related parameters,
     it does NOT merge. Non-preset parameters are preserved.
     
-    Uses variants registry to determine which dimensions apply to this step_type.
+    Uses variants registry to determine which dimensions apply to this step_type_gen.
     Deletions are driven by profile NOT_APPLICABLE cells and keys that will be written.
     
     Uses StepDoc abstraction for mutation containment (no direct dict mutation).
@@ -474,14 +478,15 @@ def apply_presets_to_step(
     # Load step using StepDoc (compiler has write access to parameters/cards)
     doc = StepDoc.load(step_path, access_control=True, owner="compiler")
     
-    # Get step_type for variant lookup (map step_type_spec to step_type_gen if needed)
-    step_type = doc.get(["step_type_spec"], default="scf")
-    # Map step_type_spec to step_type_gen for variant lookup (presets use step_type_gen)
-    from quantumvitas.workflow.registry import get_registry
-    registry = get_registry()
-    spec = registry.get(step_type)
-    if spec and spec.step_type_gen:
-        step_type = spec.step_type_gen
+    # Get step_type_gen for variant lookup (map step_type_spec to step_type_gen if needed)
+    step_type_spec_from_doc = doc.get(["step_type_spec"], default="scf")
+    # Convert SPEC to GEN for variant lookup (presets use step_type_gen)
+    from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+    if is_spec(step_type_spec_from_doc):
+        step_type_gen = gen_from(step_type_spec_from_doc)
+    else:
+        # Already a GEN type
+        step_type_gen = step_type_spec_from_doc
     
     # Resolve engine from step context (for capability validation)
     from quantumvitas.presets.capability import resolve_engine_for_step, require_preset_capability, CapabilityError
@@ -500,14 +505,14 @@ def apply_presets_to_step(
     
     for dimension, option_value in options.items():
         # First check if variant exists (ParamSpace applicability)
-        variant = get_variant(dimension, step_type)
+        variant = get_variant(dimension, step_type_gen)
         if variant is None:
             continue
         
         # Then validate engine capability (if engine is known)
         if engine_name:
             try:
-                require_preset_capability(engine_name, step_type, dimension)
+                require_preset_capability(engine_name, step_type_gen, dimension)
             except CapabilityError as e:
                 # Skip this dimension with clear error message
                 continue
@@ -522,11 +527,11 @@ def apply_presets_to_step(
             "accepted": False,
             "filtered_options": {},
             "updated_fields": [],
-            "skipped_fields": ["no variant applies to this step_type"],
+            "skipped_fields": ["no variant applies to this step_type_gen"],
         }
     
     # Per ParamSpace Constitution v1: Apply must be executed in phases
-    # Phase 1: Prerequisite ParamSpaces (occupations_scheme, step_type, etc.)
+    # Phase 1: Prerequisite ParamSpaces (occupations_scheme, step_type_gen, etc.)
     # Phase 2: Dependent ParamSpaces (precision)
     prerequisite_dimensions = [
         d for d in applied_dimensions 
@@ -568,7 +573,7 @@ def apply_presets_to_step(
         patch, deletions = compile_dimension_patch_for_step(
             dimension,
             option_enum,
-            step_type,
+            step_type_gen,
             step_yaml,
             explicit_defaults=True,
             precision_context=precision_context,
@@ -615,7 +620,7 @@ def apply_presets_to_step(
         precision_context = None
         if dimension == DIMENSION_PRECISION and precision_advice is not None:
             # Check if variant requires lattice_matrix (if it includes K_POINTS)
-            variant = get_variant(dimension, step_type)
+            variant = get_variant(dimension, step_type_gen)
             has_kpoints_key = False
             if variant is not None:
                 has_kpoints_key = any(
@@ -641,7 +646,7 @@ def apply_presets_to_step(
                 if precision_lattice_matrix is None:
                     from quantumvitas.presets.compiler import PresetCompilationError
                     raise PresetCompilationError(
-                        f"precision_lattice_matrix is required for precision preset application to {step_type}. "
+                        f"precision_lattice_matrix is required for precision preset application to {step_type_gen}. "
                         f"Pass it explicitly or ensure calculation.yaml and structure are available."
                     )
             
@@ -671,7 +676,7 @@ def apply_presets_to_step(
         patch, deletions = compile_dimension_patch_for_step(
             dimension,
             option_enum,
-            step_type,
+            step_type_gen,
             step_yaml,
             explicit_defaults=True,
             precision_context=precision_context,
@@ -825,8 +830,8 @@ def apply_presets_to_step(
     if unified_patch:
         # Serialize IR patch to engine format before writing to step.yaml
         # step.yaml stores YAML native booleans (true/false), not QE strings
-        # Get original step_type (before step_type_gen mapping) to determine engine
-        original_step_type = doc.get(["step_type_spec"], default="scf")
+        # Get original step_type_spec (before step_type_gen mapping) to determine engine
+        original_step_type_spec = doc.get(["step_type_spec"], default="scf")
         # In v0, all steps are QE, but we check for future extensibility
         # For now, assume QE backend
         from quantumvitas.ir.backends.qe.mapping import ir_params_to_qe_params
@@ -1069,9 +1074,9 @@ def detect_workflow_type(calculation_dir: Path) -> str:
 
     step_types = set()
     for step_entry in steps:
-        # Get step_type from entry
-        step_type = step_entry.get("step_type_spec")
-        if not step_type:
+        # Get step type from step_type_spec field (authoritative for step types)
+        step_type_spec = step_entry.get("step_type_spec")
+        if not step_type_spec:
             # Load from step file
             step_file = step_entry.get("step_file")
             if step_file:
@@ -1079,18 +1084,15 @@ def detect_workflow_type(calculation_dir: Path) -> str:
                 if step_path.exists():
                     try:
                         step_doc = StepDoc.load(step_path, access_control=True, owner="detector")
-                        step_type = step_doc.get(["step_type_spec"], default=None)
+                        step_type_spec = step_doc.get(["step_type_spec"], default=None)
                     except Exception:
                         pass
 
-        if step_type:
-            # Convert SPEC type to GEN type for workflow matching
-            spec = registry.get(step_type)
-            if spec:
-                step_types.add(spec.step_type_gen.lower())
-            else:
-                # Fallback: use as-is
-                step_types.add(step_type.lower())
+        if step_type_spec:
+            # ALWAYS use converter to get GEN type - gen_from handles both SPEC and GEN inputs
+            from quantumvitas.workflow.step_type_convert import gen_from
+            step_type_gen = gen_from(step_type_spec)
+            step_types.add(step_type_gen.lower())
     
     # Workflow detection rules (order matters - more specific first)
     # VC is a parameter, not a separate gen step

@@ -104,9 +104,10 @@ class TestGenSpecBoundary:
 
     def test_registry_provides_both_mappings(self):
         """Registry must provide both gen→spec and spec→gen mappings."""
-        # gen→spec mapping
-        gen_to_spec = rg_count(r"step_type_gen.*step_type_spec", "src/quantumvitas/workflow/registry.py")
-        assert gen_to_spec > 0, "Registry missing gen→spec mapping"
+        # gen→spec mapping: Check for StepTypeSpec dataclass with both fields
+        # Pattern matches: step_type_spec: str ... step_type_gen: str (in dataclass)
+        gen_to_spec = rg_count(r"step_type_spec.*step_type_gen|step_type_gen.*step_type_spec", "src/quantumvitas/workflow/registry.py")
+        assert gen_to_spec > 0, "Registry missing gen→spec mapping (StepTypeSpec should have both fields)"
 
     def test_step_factory_writes_spec_to_yaml(self):
         """step_factory must write step_type_spec (not gen) to step.yaml."""

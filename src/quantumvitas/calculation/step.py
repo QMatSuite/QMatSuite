@@ -115,7 +115,7 @@ class Step:
             result = engine.backend.run_step(
                 input_file=input_path,
                 working_dir=calculation_raw_dir,
-                step_type=step_type_value,
+                step_type_spec=step_type_value,
                 timeout=timeout,
             )
             

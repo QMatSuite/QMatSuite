@@ -366,7 +366,7 @@ class TestCompilerDetectorEquivalence:
         compiled = compile_magnetism(MagnetismOption.NONMAGNETIC)
         # compiled is now {"SYSTEM": {...}}
         params = compiled
-        detected = detect_magnetism(params, step_type="scf")
+        detected = detect_magnetism(params, step_type_gen="scf")
         
         assert detected == MagnetismOption.NONMAGNETIC
     
@@ -375,7 +375,7 @@ class TestCompilerDetectorEquivalence:
         compiled = compile_magnetism(MagnetismOption.COLLINEAR_LSDA)
         # compiled is now {"SYSTEM": {...}}
         params = compiled
-        detected = detect_magnetism(params, step_type="scf")
+        detected = detect_magnetism(params, step_type_gen="scf")
         
         assert detected == MagnetismOption.COLLINEAR_LSDA
     
@@ -384,7 +384,7 @@ class TestCompilerDetectorEquivalence:
         compiled = compile_magnetism(MagnetismOption.NONCOLLINEAR)
         # compiled is now {"SYSTEM": {...}}
         params = compiled
-        detected = detect_magnetism(params, step_type="scf")
+        detected = detect_magnetism(params, step_type_gen="scf")
         
         assert detected == MagnetismOption.NONCOLLINEAR
     
@@ -393,7 +393,7 @@ class TestCompilerDetectorEquivalence:
         compiled = compile_magnetism(MagnetismOption.NONCOLLINEAR_SOC)
         # compiled is now {"SYSTEM": {...}}
         params = compiled
-        detected = detect_magnetism(params, step_type="scf")
+        detected = detect_magnetism(params, step_type_gen="scf")
         
         assert detected == MagnetismOption.NONCOLLINEAR_SOC
     
@@ -405,7 +405,7 @@ class TestCompilerDetectorEquivalence:
         compiled = compile_occupations_scheme(OccupationsSchemeOption.FIXED)
         # compiled is now {"SYSTEM": {...}}
         params = compiled
-        detected = detect_occupations_scheme(params, step_type="scf")
+        detected = detect_occupations_scheme(params, step_type_gen="scf")
         
         assert detected == OccupationsSchemeOption.FIXED
     
@@ -416,7 +416,7 @@ class TestCompilerDetectorEquivalence:
         compiled = compile_occupations_scheme(OccupationsSchemeOption.SMEARING_GAUSSIAN)
         # compiled is now {"SYSTEM": {...}}
         params = compiled
-        detected = detect_occupations_scheme(params, step_type="scf")
+        detected = detect_occupations_scheme(params, step_type_gen="scf")
         
         assert detected == OccupationsSchemeOption.SMEARING_GAUSSIAN
     
@@ -427,7 +427,7 @@ class TestCompilerDetectorEquivalence:
         compiled = compile_occupations_scheme(OccupationsSchemeOption.TETRAHEDRA)
         # compiled is now {"SYSTEM": {...}}
         params = compiled
-        detected = detect_occupations_scheme(params, step_type="scf")
+        detected = detect_occupations_scheme(params, step_type_gen="scf")
         
         assert detected == OccupationsSchemeOption.TETRAHEDRA
     

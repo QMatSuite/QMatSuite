@@ -155,7 +155,7 @@ def qe_step_handler(
 
 def handle_qe_relax_output(
     step_ulid: str,
-    step_type: str,
+    step_type_spec: str,
     calc_dir: Path,
     output_path: Path,
     calculation_ulid: str,
@@ -170,7 +170,7 @@ def handle_qe_relax_output(
     from quantumvitas.drivers.qe.handler import handle_qe_relax_output as _handle_relax
     return _handle_relax(
         step_ulid=step_ulid,
-        step_type=step_type,
+        step_type_spec=step_type_spec,
         calc_dir=calc_dir,
         output_path=output_path,
         calculation_ulid=calculation_ulid,
@@ -217,13 +217,13 @@ def create_handler_map(
     return handler_map
 
 
-def get_handler_for_step(step_type: str) -> Callable:
+def get_handler_for_step(step_type_spec: str) -> Callable:
     """Get handler for step type via registry.
 
     This is the preferred entry point for handler lookup.
 
     Args:
-        step_type: Step type identifier
+        step_type_spec: Step type identifier (spec type, e.g., "qe_scf")
 
     Returns:
         Handler function
@@ -234,4 +234,4 @@ def get_handler_for_step(step_type: str) -> Callable:
     # Ensure drivers are loaded
     import quantumvitas.drivers
 
-    return DriverRegistry.get_handler(step_type)
+    return DriverRegistry.get_handler(step_type_spec)

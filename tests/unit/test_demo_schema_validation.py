@@ -158,7 +158,7 @@ def test_k_points_in_cards_when_present(demo_file: Path):
     for calc_idx, calc in enumerate(calculations):
         steps = calc.get("steps", [])
         for step_idx, step in enumerate(steps):
-            step_type = step.get("step_type", "").lower()
+            step_type = step.get("step_type_spec", "").lower()
             
             if step_type in steps_requiring_kpoints:
                 cards = step.get("cards", {})

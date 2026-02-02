@@ -381,7 +381,13 @@ class PySCFEngine(Engine):
         # Validate step_type is in registry
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
-        if not registry.has(target_step_type):
+        # Convert spec to gen for registry lookup
+        from quantumvitas.api import get_step_type_gen
+        try:
+            target_step_type_gen = get_step_type_gen(target_step_type) if target_step_type and "_" in target_step_type else target_step_type
+        except (KeyError, ValueError):
+            target_step_type_gen = target_step_type
+        if not registry.has(target_step_type_gen):
             return StepResult(
                 step_type_spec=target_step_type,
                 input_file=calculation_raw_dir / "job_chain.json",
@@ -481,36 +487,44 @@ class PySCFEngine(Engine):
         for step in chain_steps:
             step_ulid = step.meta.ulid if hasattr(step, 'meta') and hasattr(step.meta, 'ulid') else "unknown"
 
-            # Phase 3C: Read machine step_type from step.yaml (step.yaml stores machine types)
+            # Phase 3C: Read machine step_type_spec from step.yaml (step.yaml stores machine types)
             # Step.step_type_spec is StepType enum which doesn't have all machine types (e.g., no "mp2")
-            step_type = "unknown"
+            step_type_spec = "unknown"
             if hasattr(step, 'meta') and hasattr(step.meta, 'path') and step.meta.path:
                 # step.meta.path is relative to project root
                 step_yaml_path = project_root / step.meta.path
                 if step_yaml_path.exists():
                     import yaml
                     step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
-                    step_type = step_data.get("step_type_spec") or "unknown"
+                    step_type_spec = step_data.get("step_type_spec") or "unknown"
 
-            # HARD ERROR if step_type not found - no fallbacks allowed
-            if step_type == "unknown" or not step_type:
+            # HARD ERROR if step_type_spec not found - no fallbacks allowed
+            if step_type_spec == "unknown" or not step_type_spec:
                 return StepResult(
                     step_type_spec="unknown",
                     input_file=calculation_raw_dir / "job_chain.json",
                     success=False,
-                    error=f"Failed to read machine step_type from step.yaml for chain step {step_ulid}. Step meta.path={getattr(step.meta, 'path', 'None') if hasattr(step, 'meta') else 'No meta'}, project_root={project_root}. Execution MUST use machine step_type from step.yaml, not Step.step_type_spec enum.",
+                    error=f"Failed to read machine step_type_spec from step.yaml for chain step {step_ulid}. Step meta.path={getattr(step.meta, 'path', 'None') if hasattr(step, 'meta') else 'No meta'}, project_root={project_root}. Execution MUST use machine step_type_spec from step.yaml, not Step.step_type_spec enum.",
                     execution_time=time.time() - start_time,
                 )
             
-            # Validate step_type is in registry
+            # Validate step_type_spec is in registry
             from quantumvitas.workflow.registry import get_registry
             registry = get_registry()
-            if not registry.has(step_type):
+            # Convert spec to gen for registry lookup
+            from quantumvitas.api import get_step_type_gen
+            from quantumvitas.workflow.step_type_convert import gen_from
+            try:
+                step_type_gen = get_step_type_gen(step_type_spec) if step_type_spec and "_" in step_type_spec else step_type_spec
+            except (KeyError, ValueError):
+                # Fallback: use explicit conversion function (handles both SPEC and GEN)
+                step_type_gen = gen_from(step_type_spec)  # gen_from() handles both SPEC and GEN inputs
+            if not registry.has(step_type_gen):
                 return StepResult(
-                    step_type_spec=step_type,
+                    step_type_spec=step_type_spec,
                     input_file=calculation_raw_dir / "job_chain.json",
                     success=False,
-                    error=f"Step type '{step_type}' not found in registry for chain step {step_ulid}. This indicates an invalid or corrupted step.yaml file.",
+                    error=f"Step type '{step_type_spec}' not found in registry for chain step {step_ulid}. This indicates an invalid or corrupted step.yaml file.",
                     execution_time=time.time() - start_time,
                 )
             
@@ -526,7 +540,15 @@ class PySCFEngine(Engine):
             # Per contract: MP2 must NOT receive structure/atoms - it consumes mf from chain state only
             from quantumvitas.workflow.registry import get_registry
             registry = get_registry()
-            step_spec = registry.get(step_type)
+            # Convert spec to gen for registry lookup
+            from quantumvitas.api import get_step_type_gen
+            from quantumvitas.workflow.step_type_convert import gen_from
+            try:
+                step_type_gen = get_step_type_gen(step_type_spec) if step_type_spec and "_" in step_type_spec else step_type_spec
+            except (KeyError, ValueError):
+                # Fallback: use explicit conversion function (handles both SPEC and GEN)
+                step_type_gen = gen_from(step_type_spec)  # gen_from() handles both SPEC and GEN inputs
+            step_spec = registry.get(step_type_gen)
             if step_spec and step_spec.requires_structure and structure_data:
                 # Merge structure_path and metadata into params
                 params = {**params, **structure_data}
@@ -549,7 +571,7 @@ class PySCFEngine(Engine):
                 # For SCF steps: validate structure_path exists
                 if "structure_path" not in params:
                     return StepResult(
-                        step_type_spec=step_type,
+                        step_type_spec=step_type_spec,
                         input_file=calculation_raw_dir / "job_chain.json",
                         success=False,
                         error=f"SCF step ({step_ulid}) requires structure_path but it's missing from parameters",
@@ -558,7 +580,7 @@ class PySCFEngine(Engine):
                 structure_path_check = Path(params["structure_path"])
                 if not structure_path_check.exists():
                     return StepResult(
-                        step_type_spec=step_type,
+                        step_type_spec=step_type_spec,
                         input_file=calculation_raw_dir / "job_chain.json",
                         success=False,
                         error=f"SCF step ({step_ulid}) structure_path does not exist: {structure_path_check}",
@@ -570,16 +592,16 @@ class PySCFEngine(Engine):
                 found_structure_keys = structure_keys.intersection(params.keys())
                 if found_structure_keys:
                     return StepResult(
-                        step_type_spec=step_type,
+                        step_type_spec=step_type_spec,
                         input_file=calculation_raw_dir / "job_chain.json",
                         success=False,
-                        error=f"Step {step_ulid} ({step_type}) must not receive structure data, but found keys: {found_structure_keys}",
+                        error=f"Step {step_ulid} ({step_type_spec}) must not receive structure data, but found keys: {found_structure_keys}",
                         execution_time=time.time() - start_time,
                     )
             
             chain_step_specs.append({
                 "step_ulid": step_ulid,
-                "step_type_spec": step_type,
+                "step_type_spec": step_type_spec,
                 "parameters": params,
                 "step_artifacts_dir": str(step_artifacts_dir),
                 "allow_chkfile_init_guess": allow_chkfile_init_guess,

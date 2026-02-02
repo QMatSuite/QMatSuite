@@ -32,27 +32,44 @@ class MissingArtifactError(Exception):
 def is_scf_step(step: "Step", registry=None) -> bool:
     """
     Check if step is an SCF step.
-    
+
     Args:
         step: Step object
         registry: Optional StepTypeRegistry
-    
+
     Returns:
         True if step is SCF, False otherwise
     """
     if registry is None:
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
-    
-    step_type = getattr(step, 'step_type_spec', None)
-    if not step_type:
+
+    from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+
+    step_type_spec = getattr(step, 'step_type_spec', None)
+    if not step_type_spec:
         return False
-    
-    spec = registry.get(str(step_type))
+
+    step_type_str = str(step_type_spec)
+
+    # Per constitution, registry.get() only accepts GEN types
+    # Convert SPEC to GEN and use get_for_engine for lookup
+    if is_spec(step_type_str):
+        parts = step_type_str.split("_", 1)
+        if len(parts) == 2:
+            engine_prefix, gen_type = parts
+            spec = registry.get_for_engine(gen_type, engine_prefix)
+        else:
+            spec = None
+    else:
+        spec = registry.get(step_type_str)
+
     if spec:
         return spec.step_type_gen == "scf"
-    
-    return str(step_type) == "scf"
+
+    # Fallback: extract GEN from SPEC and compare directly
+    gen_type = gen_from(step_type_str) if is_spec(step_type_str) else step_type_str
+    return gen_type == "scf"
 
 
 def stage_chgcar(

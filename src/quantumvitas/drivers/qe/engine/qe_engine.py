@@ -26,12 +26,12 @@ class QuantumEspressoEngine(Engine):
     Supports pw.x, ph.x, bands.x, dos.x, projwfc.x, and other QE executables.
     """
     
-    # Mapping of step types to QE executables
+    # Mapping of GEN step types to QE executables
     EXECUTABLE_MAP = {
         "scf": "pw.x",
         "nscf": "pw.x",
-        "opt": "pw.x",
-        "md": "pw.x",
+        "relax": "pw.x",  # Covers both fixed-cell and VC relaxation
+        "md": "pw.x",  # Covers both fixed-cell and VC MD
         "bandspw": "pw.x",  # pw.x bands calculation (calculation='bands')
         "ph": "ph.x",
         "q2r": "q2r.x",
@@ -291,7 +291,7 @@ class QuantumEspressoEngine(Engine):
     
     def generate_input(
         self,
-        step_type: str,
+        step_type_gen: str,
         input_data: Dict[str, Any],
         working_dir: Path,
         input_filename: Optional[str] = None
@@ -300,7 +300,7 @@ class QuantumEspressoEngine(Engine):
         Generate QE input file from structured input data.
         
         Args:
-            step_type: Step type (gen or spec - will be converted to gen for filename)
+            step_type_gen: Gen step type (e.g., "scf", "nscf") - GEN only
             input_data: Dictionary containing:
                 - 'namelists': Dict of namelist_name -> parameters
                 - 'cards': List of card data
@@ -312,9 +312,7 @@ class QuantumEspressoEngine(Engine):
         """
         if input_filename is None:
             # Convert to gen type for filename generation
-            from quantumvitas.workflow.step_type_convert import gen_from, is_spec
-            step_type_gen_for_filename = gen_from(step_type) if is_spec(step_type) else step_type
-            input_filename = self.get_default_input_filename(step_type_gen_for_filename)
+            input_filename = self.get_default_input_filename(step_type_gen)
         
         input_path = working_dir / input_filename
         working_dir.mkdir(parents=True, exist_ok=True)
@@ -346,7 +344,7 @@ class QuantumEspressoEngine(Engine):
     
     def build_command(
         self,
-        step_type: str,
+        step_type_spec: str,
         input_file: Path,
         working_dir: Path
     ) -> List[str]:
@@ -357,7 +355,7 @@ class QuantumEspressoEngine(Engine):
         except for Wannier90 steps which use command-line arguments.
         
         Args:
-            step_type: Type of calculation step
+            step_type_spec: Step type spec (e.g., "qe_scf", "qe_bands")
             input_file: Path to input file
             working_dir: Working directory for execution
             
@@ -369,7 +367,7 @@ class QuantumEspressoEngine(Engine):
         """
         # Convert step_type_spec (e.g., 'qe_bands') to step_type_gen (e.g., 'bands') for lookup
         from quantumvitas.workflow.registry import normalize_step_type_to_gen
-        step_gen_type = normalize_step_type_to_gen(step_type)
+        step_gen_type = normalize_step_type_to_gen(step_type_spec)
 
         executable = self.EXECUTABLE_MAP.get(step_gen_type, "pw.x")
 
@@ -461,7 +459,7 @@ class QuantumEspressoEngine(Engine):
     def parse_output(
         self,
         output_file: Path,
-        step_type: str
+        step_type_spec: str
     ) -> Dict[str, Any]:
         """
         Parse QE output file.

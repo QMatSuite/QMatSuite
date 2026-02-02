@@ -31,13 +31,13 @@ def find_test_suite_dir() -> Optional[Path]:
     return None
 
 
-def is_step_type(input_file: Path, step_type: str) -> bool:
+def is_step_type(input_file: Path, step_type_gen: str) -> bool:
     """
     Detect if an input file matches the specified step type.
     
     Args:
         input_file: Path to QE input file
-        step_type: Step type to check (e.g., "scf", "nscf", "ph", etc.)
+        step_type_gen: Gen step type to check (e.g., "scf", "nscf", "ph") - GEN only
         
     Returns:
         True if the file matches the step type, False otherwise
@@ -130,7 +130,7 @@ def find_benchmark_file(category_dir: Path, input_filename: str) -> Optional[Pat
 def copy_test_files(
     test_suite_dir: Path,
     output_dir: Path,
-    step_type: str,
+    step_type_gen: str,
     filename_filter: Optional[Callable[[str], bool]] = None,
     verbose: bool = True
 ) -> Tuple[int, int, List[Tuple[str, str]]]:
@@ -140,7 +140,7 @@ def copy_test_files(
     Args:
         test_suite_dir: Path to QE test-suite directory
         output_dir: Output directory (full path where files will be copied)
-        step_type: Step type to filter (e.g., "scf", "nscf", "ph", etc.)
+        step_type_gen: Gen step type to filter (e.g., "scf", "nscf", "ph", etc.) - GEN only
         filename_filter: Optional function to filter filenames (returns True to include)
         verbose: Print progress messages
         
@@ -155,7 +155,7 @@ def copy_test_files(
     
     if verbose:
         print(f"Scanning test-suite: {test_suite_dir}")
-        print(f"Step type: {step_type}")
+        print(f"Step type: {step_type_gen}")
         if filename_filter:
             print(f"Filename filter: enabled")
         print(f"Output directory: {output_dir}\n")
@@ -185,7 +185,7 @@ def copy_test_files(
                 continue
             
             # Check if it matches the step type
-            if not is_step_type(input_file, step_type):
+            if not is_step_type(input_file, step_type_gen):
                 continue
             
             # Find corresponding benchmark file
@@ -212,7 +212,7 @@ def copy_test_files(
                 print(f"  ✓ Copied {input_file.name} + {benchmark_file.name}")
         
         if verbose and category_count > 0:
-            print(f"  → Found {category_count} {step_type} test(s) in {category_name}\n")
+            print(f"  → Found {category_count} {step_type_gen} test(s) in {category_name}\n")
     
     return copied_count, skipped_count, copied_files
 

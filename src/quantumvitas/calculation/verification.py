@@ -24,7 +24,7 @@ def basic_job_done_check(output_text: str) -> Tuple[bool, str]:
 
 
 def strict_verify(
-    step_type: str,
+    step_type_gen: str,
     metrics: Dict[str, float | None],
     output_text: str,
     reference_file: Path,
@@ -40,7 +40,7 @@ def strict_verify(
     overrides = tolerance_overrides or {}
 
     if (
-        step_type in ENERGY_STEP_TYPES
+        step_type_gen in ENERGY_STEP_TYPES
         and metrics.get("total_energy_ry") is not None
         and reference_metrics.get("total_energy_ry") is not None
     ):
@@ -73,7 +73,7 @@ def strict_verify(
 
 def evaluate_step_result(
     mode: StepMode,
-    step_type: str,
+    step_type_spec: str,
     output_text: str,
     reference_file: Path | None,
     step_result_return_code: Optional[int] = None,
@@ -84,7 +84,7 @@ def evaluate_step_result(
     
     Args:
         mode: Step execution mode (STRICT or NORMAL)
-        step_type: Type of step that was executed
+        step_type_spec: Type of step that was executed (spec type, e.g., "qe_scf", but also accepts gen types for backward compat)
         output_text: Standard output text from the step
         reference_file: Optional reference file for strict verification
         step_result_return_code: Optional return code from step execution (if return_code == 0, step succeeded)
@@ -96,7 +96,7 @@ def evaluate_step_result(
     # A. Wannier90 steps should NOT extract energy metrics (no QE output format)
     # Handle both GEN types (wannierprep) and SPEC types (w90_wannierprep, qe_pw2wannier)
     wannier90_gen_types = {"wannierprep", "wannier", "pw2wannier", "wannier90", "postw90"}
-    step_type_str = step_type.lower() if step_type else ""
+    step_type_str = step_type_spec.lower() if step_type_spec else ""
     # Strip engine prefix if present (e.g., "w90_wannierprep" -> "wannierprep")
     if "_" in step_type_str:
         step_type_gen = step_type_str.split("_", 1)[1]
@@ -156,7 +156,7 @@ def evaluate_step_result(
 
     if mode == StepMode.STRICT and reference_file:
         strict_ok, strict_msg = strict_verify(
-            step_type=step_type,
+            step_type_gen=step_type_gen,
             metrics=metrics,
             output_text=output_text,
             reference_file=reference_file,
