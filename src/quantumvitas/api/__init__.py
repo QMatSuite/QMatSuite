@@ -28,10 +28,8 @@ from quantumvitas.api.errors import (  # noqa: F401
     InternalError,
 )
 
-# Compatibility aliases for legacy code (frontends/daemon still uses these)
+# Compatibility alias for legacy code (frontends/cli still uses this)
 QVServiceError = APIError  # noqa: F401
-ErrorSpec = APIError  # noqa: F401 - Placeholder, not actively used
-ErrorCodes = type("ErrorCodes", (), {})  # noqa: F401 - Empty placeholder
 
 # PR10: Core DTOs (PR2: Complete)
 from quantumvitas.api.types import (  # noqa: F401

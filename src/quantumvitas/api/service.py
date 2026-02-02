@@ -2669,29 +2669,6 @@ class QVService:
                 # Return None on any error (not found)
                 return None
         
-        def require_enclosing(self, path: Path | None = None) -> CalculationRefDTO:
-            """
-            Require calculation that encloses the given path.
-            
-            Args:
-                path: Path to check (defaults to current working directory)
-                
-            Returns:
-                CalculationRefDTO
-                
-            Raises:
-                NotFoundError: If no calculation encloses the path
-            """
-            result = self.resolve_enclosing_path(path)
-            if result is None:
-                from quantumvitas.api.errors import NotFoundError
-                path_str = str(path) if path else "current directory"
-                raise NotFoundError(
-                    f"No calculation found enclosing {path_str}",
-                    context={"path": str(path) if path else None}
-                )
-            return result
-        
         def get_step(self, calc_selector: str, step_selector: str) -> StepDTO:
             """
             Get step by selectors.
@@ -5056,37 +5033,6 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
         
-        def get_status(self, run_ulid: str) -> RunResultDTO:
-            """
-            Get run status by run_ulid.
-            
-            Note: This is a simplified implementation. In a full system,
-            this would query job history or a job manager.
-            
-            Args:
-                run_ulid: Run ID (ULID)
-                
-            Returns:
-                RunResultDTO
-                
-            Raises:
-                APIError: If run not found
-            """
-            try:
-                from quantumvitas.api.errors import NotFoundError
-                
-                # Simplified: For now, we can't easily get run status without JobManager
-                # This would need to query calculation history or job manager
-                # For now, raise not found
-                raise NotFoundError(
-                    f"Run status lookup not yet implemented for run_ulid: {run_ulid}",
-                    context={"run_ulid": run_ulid}
-                )
-            except Exception as e:
-                if isinstance(e, APIError):
-                    raise
-                raise map_kernel_exception(e)
-        
         def cancel(self, run_ulid: str) -> RunResultDTO:
             """
             Cancel a running job.
@@ -5248,33 +5194,6 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
         
-        def list_runs(
-            self,
-            calc_selector: str | None = None,
-            status: str | None = None,
-        ) -> list[RunResultDTO]:
-            """
-            List runs, optionally filtered.
-
-            Note: This is a simplified implementation. In a full system,
-            this would query job history or a job manager.
-
-            Args:
-                calc_selector: Optional calculation selector filter
-                status: Optional status filter
-
-            Returns:
-                List of RunResultDTO
-            """
-            try:
-                # Simplified: For now, return empty list
-                # This would need to query calculation history or job manager
-                return []
-            except Exception as e:
-                if isinstance(e, APIError):
-                    raise
-                raise map_kernel_exception(e)
-
         def preflight(
             self,
             calc_selector: str | None = None,
@@ -5729,24 +5648,6 @@ class QVService:
             try:
                 from quantumvitas.core.resolution import build_resource_index
                 return build_resource_index(self._service.project_root)
-            except Exception as e:
-                if isinstance(e, APIError):
-                    raise
-                raise map_kernel_exception(e)
-        
-        def list_calculations(self) -> list[CalculationDTO]:
-            """
-            List all calculations in project.
-            
-            Returns:
-                List of CalculationDTO
-                
-            Raises:
-                APIError: If project invalid
-            """
-            try:
-                # Delegate to calculation.list()
-                return self._service.calculation.list()
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
