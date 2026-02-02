@@ -555,16 +555,24 @@ def _expand_step_ulids_to_steps(step_ulids: list, calc_absolute_path: str) -> li
         return [{"step_ulid": sid, "ulid": sid, "step_type_gen": ""} for sid in step_ulids]
 
     try:
+        from quantumvitas.workflow.registry import normalize_step_type_to_gen
+
         with open(calc_yaml) as f:
             calc_data = yaml.safe_load(f) or {}
 
         # Build step_ulid → type mapping from calculation.yaml
+        # calculation.yaml uses step_type_spec (e.g., "qe_scf"), need to convert to gen (e.g., "scf")
         step_type_map = {}
         for step_entry in calc_data.get("steps", []):
             sid = step_entry.get("step_ulid")
-            stype = step_entry.get("type", "")
-            if sid:
-                step_type_map[sid] = stype
+            # Try step_type_spec first (Constitution v1.1), fallback to type for backwards compat
+            stype_spec = step_entry.get("step_type_spec") or step_entry.get("type", "")
+            if sid and stype_spec:
+                try:
+                    step_type_map[sid] = normalize_step_type_to_gen(stype_spec)
+                except (KeyError, ValueError):
+                    # If conversion fails, use spec as-is (strip qe_ prefix as fallback)
+                    step_type_map[sid] = stype_spec.replace("qe_", "") if stype_spec.startswith("qe_") else stype_spec
 
         # Build steps array
         steps = []

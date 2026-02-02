@@ -169,21 +169,23 @@ test.describe('E2E Test 2: Create Demo Project → Calculation & Steps', () => {
           
           // Verify basic YAML structure
           expect(fileContent).toContain('meta:');
-          expect(fileContent).toContain('step_type:');
-          
+          // Constitution v1.1: step files use step_type_spec (e.g., "qe_scf")
+          expect(fileContent).toContain('step_type_spec:');
+
           // Verify step type matches (this is stable across snapshot materialization)
           // The step type in the file should match the step type from the UI
-          // trimmedStepType was already computed above from the step row
+          // trimmedStepType was already computed above from the step row (step_type_gen)
           if (trimmedStepType) {
-            // The file uses lowercase for step_type, so check case-insensitively
-            // Also handle potential whitespace variations
-            const stepTypePattern = new RegExp(`step_type:\\s*${trimmedStepType}`, 'i');
+            // The file uses step_type_spec (e.g., "qe_scf"), UI shows step_type_gen (e.g., "scf")
+            // Check that file contains the gen type (possibly with qe_ prefix)
+            const stepTypePattern = new RegExp(`step_type_spec:\\s*(qe_)?${trimmedStepType}`, 'i');
             expect(fileContent).toMatch(stepTypePattern);
           }
           
-          // Verify the file has a valid meta.id field (ULID format, 26 chars)
+          // Verify the file has a valid meta.ulid field (ULID format, 26 chars)
+          // Constitution v1.1: meta uses 'ulid' not 'id'
           // Don't require it to match stepIdText from UI since ULIDs are regenerated
-          expect(fileContent).toMatch(/meta:\s*\n\s*id:\s+[A-Z0-9]{26}/);
+          expect(fileContent).toMatch(/meta:\s*\n\s*ulid:\s+[A-Z0-9]{26}/);
           
           // Verify stepIdText from UI is also a valid ULID format (if it's long enough)
           if (stepIdText && stepIdText.length >= 20) {

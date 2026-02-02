@@ -231,7 +231,7 @@ export function StepDetailPanel({
   const [isDeletingStep, setIsDeletingStep] = useState(false);
   
   // Get module for current step (after stepDetail is declared)
-  const module = stepDetail ? stepTypeToModule(stepDetail.step_type) : null;
+  const module = stepDetail ? stepTypeToModule(stepDetail.step_type_gen) : null;
   
   // Build parameter metadata map for quick lookup
   // This map is built from already-loaded parameters in qeMetadata.parameters
@@ -312,11 +312,11 @@ export function StepDetailPanel({
       // "Step not found" errors when a step is clicked before the calculation detail has
       // been refreshed after step creation.
       if (selectedCalculation && selectedCalculation.steps && selectedCalculation.steps.length > 0) {
-        const stepExists = selectedCalculation.steps.some(step => step.id === stepSelector);
+        const stepExists = selectedCalculation.steps.some(step => step.ulid === stepSelector);
         if (!stepExists) {
           console.log('[StepDetailPanel] Step not found in calculation steps list, waiting for refresh...', {
             stepSelector,
-            availableSteps: selectedCalculation.steps.map(s => s.id),
+            availableSteps: selectedCalculation.steps.map(s => s.ulid),
           });
           setIsLoading(false);
           setStepDetail(null);
@@ -360,9 +360,9 @@ export function StepDetailPanel({
           console.log('[StepDetailPanel] get_step_detail SUCCESS', {
             stepSelector,
             stepDetail: {
-              id: response.data.id,
+              id: response.data.ulid,
               name: response.data.name,
-              step_type: response.data.step_type,
+              step_type: response.data.step_type_gen,
             },
           });
           setStepDetail(response.data);
@@ -406,7 +406,7 @@ export function StepDetailPanel({
           }
           
           // Load relax structure preview for relax/vc-relax steps (preview only, no side effects)
-          const stepType = response.data.step_type?.toLowerCase();
+          const stepType = response.data.step_type_gen?.toLowerCase();
           if ((stepType === 'relax' || stepType === 'vc-relax') && projectRoot && calculationSelector && stepSelector) {
             setIsLoadingRelaxPreview(true);
             setRelaxPreviewError(null);
@@ -432,7 +432,7 @@ export function StepDetailPanel({
           }
           
           // Load parameter metadata for all sections that have parameters
-          const stepModule = stepTypeToModule(response.data.step_type);
+          const stepModule = stepTypeToModule(response.data.step_type_gen);
           const parameters = response.data.parameters;
           if (stepModule && qeMetadata && parameters) {
             // Load sections first, then parameters for each section
@@ -525,8 +525,8 @@ export function StepDetailPanel({
       return;
     }
     
-    const module = stepTypeToModule(stepDetail.step_type);
-    const stepType = stepDetail.step_type;
+    const module = stepTypeToModule(stepDetail.step_type_gen);
+    const stepType = stepDetail.step_type_gen;
     
     if (!module) {
       // No module mapping - use legacy params or empty
@@ -575,7 +575,7 @@ export function StepDetailPanel({
     return () => {
       cancelled = true;
     };
-  }, [stepDetail?.step_type, stepDetail?.id]); // Only depend on primitive values - module and stepType determine when to refetch
+  }, [stepDetail?.step_type_gen, stepDetail?.ulid]); // Only depend on primitive values - module and stepType determine when to refetch
   
   // Handle running the step
   const handleRunStep = useCallback(async () => {
@@ -835,7 +835,7 @@ export function StepDetailPanel({
       console.log('[StepDetailPanel] handleSaveParams RPC response', {
         ok: response.ok,
         error: response.error,
-        data_id: response.data?.id,
+        data_id: response.data?.ulid,
         data_parameter_scan_keys: response.data ? Object.keys(response.data.parameter_scan || {}) : null,
       });
       
@@ -1057,7 +1057,7 @@ export function StepDetailPanel({
     if (!window.qv || !selectedCalculation || !selectedStepId || isDeletingStep) return;
     
     // Show confirmation dialog
-    const stepType = stepDetail?.step_type || 'step';
+    const stepType = stepDetail?.step_type_gen || 'step';
     const stepIdShort = selectedStepId.substring(0, 8);
     const confirmed = window.confirm(
       `Delete step "${stepType}" (${stepIdShort}...) from calculation "${selectedCalculation.name}"?\n\n` +
@@ -1236,7 +1236,7 @@ export function StepDetailPanel({
         unit: p.unit,
         description: p.description,
       }))
-    : (LEGACY_EDITABLE_PARAMS[stepDetail.step_type] || []);
+    : (LEGACY_EDITABLE_PARAMS[stepDetail.step_type_gen] || []);
   const hasEditableParams = editableParams.length > 0;
   
   // Extract card keys for display, filtering out K_POINTS (handled separately in Common Cards)
@@ -1260,7 +1260,7 @@ export function StepDetailPanel({
       {isFocusMode && showBreadcrumb && (
         <div className="step-detail-panel__focus-header">
           <div className="step-detail-panel__focus-breadcrumb">
-            {calculationName} › Step {stepIndex + 1} · {stepDetail?.step_type?.toUpperCase() || 'STEP'}
+            {calculationName} › Step {stepIndex + 1} · {stepDetail?.step_type_gen?.toUpperCase() || 'STEP'}
           </div>
           <button
             className="step-detail-panel__focus-run-btn"
@@ -1284,11 +1284,11 @@ export function StepDetailPanel({
           <div className="qv-step-header-main">
             <h2 className="panel-title qv-step-title">
               <span className="panel-icon">📋</span>
-              {stepDetail.name || stepDetail.id}
+              {stepDetail.name || stepDetail.ulid}
             </h2>
-            {!isFocusMode && stepDetail.step_type && (
+            {!isFocusMode && stepDetail.step_type_gen && (
               <div className="qv-step-type-chip">
-                {stepDetail.step_type.toUpperCase()}
+                {stepDetail.step_type_gen.toUpperCase()}
               </div>
             )}
           </div>
@@ -1359,11 +1359,11 @@ export function StepDetailPanel({
           <div className="detail-grid">
             <div className="detail-item">
               <span className="detail-label">Type</span>
-              <span className="detail-value step-type-badge">{stepDetail.step_type}</span>
+              <span className="detail-value step-type-badge">{stepDetail.step_type_gen}</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">ID</span>
-              <code className="detail-value detail-value--id" data-testid="qv-step-id">{stepDetail.id}</code>
+              <code className="detail-value detail-value--id" data-testid="qv-step-id">{stepDetail.ulid}</code>
             </div>
             {stepDetail.structure && (
               <div className="detail-item">
@@ -1587,7 +1587,7 @@ export function StepDetailPanel({
         )}
         
         {/* Relaxed Structure Section (for relax/vc-relax steps) */}
-        {stepDetail && (stepDetail.step_type?.toLowerCase() === 'relax' || stepDetail.step_type?.toLowerCase() === 'vc-relax') && (
+        {stepDetail && (stepDetail.step_type_gen?.toLowerCase() === 'relax' || stepDetail.step_type_gen?.toLowerCase() === 'vc-relax') && (
           <div className="detail-section">
             <div className="section-header">
               <h3>Relaxed Structure</h3>
@@ -1622,9 +1622,9 @@ export function StepDetailPanel({
                 <div className="relax-structure-actions" style={{ marginTop: '12px' }}>
                   <button
                     className="action-button action-button--primary"
-                    disabled={isSavingRelaxStructure || !selectedCalculation?.structure_id}
+                    disabled={isSavingRelaxStructure || !selectedCalculation?.structure_ulid}
                     onClick={async () => {
-                      if (!projectRoot || !calculationSelector || !stepSelector || !selectedCalculation?.structure_id) return;
+                      if (!projectRoot || !calculationSelector || !stepSelector || !selectedCalculation?.structure_ulid) return;
                       
                       setIsSavingRelaxStructure(true);
                       setRelaxSaveMessage(null);
@@ -1634,7 +1634,7 @@ export function StepDetailPanel({
                           projectRoot,
                           calculationSelector,
                           stepSelector,
-                          selectedCalculation.structure_id,
+                          selectedCalculation.structure_ulid,
                           stepDetail.name ? `${stepDetail.name} relaxed` : undefined
                         );
                         
@@ -1661,7 +1661,7 @@ export function StepDetailPanel({
                   >
                     {isSavingRelaxStructure ? 'Saving...' : 'Save as new Structure'}
                   </button>
-                  {!selectedCalculation?.structure_id && (
+                  {!selectedCalculation?.structure_ulid && (
                     <p className="common-cards-empty" style={{ fontSize: '0.85em', marginTop: '8px' }}>
                       ⚠️ Calculation has no structure reference. Cannot save relaxed structure.
                     </p>

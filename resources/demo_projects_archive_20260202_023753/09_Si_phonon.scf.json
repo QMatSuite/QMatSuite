@@ -1,0 +1,79 @@
+{
+  "converged": true,
+  "iterations": [
+    {
+      "iteration": 1,
+      "total_energy_ry": -22.83748221,
+      "scf_accuracy_ry": 0.0511855,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 2,
+      "total_energy_ry": -22.83919459,
+      "scf_accuracy_ry": 0.00262122,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 3,
+      "total_energy_ry": -22.83978179,
+      "scf_accuracy_ry": 0.00012254,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 4,
+      "total_energy_ry": -22.8398028,
+      "scf_accuracy_ry": 5.988e-05,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 5,
+      "total_energy_ry": -22.83980954,
+      "scf_accuracy_ry": 3e-08,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 6,
+      "total_energy_ry": -22.83980987,
+      "scf_accuracy_ry": 6e-08,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 7,
+      "total_energy_ry": -22.83980987,
+      "scf_accuracy_ry": 7.3e-09,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 8,
+      "total_energy_ry": -22.83980987,
+      "scf_accuracy_ry": 1e-10,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    }
+  ],
+  "total_energy_ry": -22.83980987,
+  "fermi_energy_ev": 5.623,
+  "homo_ev": 5.623,
+  "lumo_ev": null,
+  "band_gap_ev": null,
+  "n_electrons": 8.0,
+  "n_kpoints": 28,
+  "n_bands": 4,
+  "ecutwfc_ry": 50.0,
+  "ecutrho_ry": 200.0,
+  "calculation_type": null,
+  "total_cpu_time_s": 5.7,
+  "total_wall_time_s": 5.85,
+  "units": {
+    "energy": "Ry",
+    "fermi": "eV",
+    "time": "s"
+  }
+}

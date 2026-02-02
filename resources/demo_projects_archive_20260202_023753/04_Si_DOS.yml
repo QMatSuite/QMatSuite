@@ -1,0 +1,180 @@
+version: 1
+project:
+  meta:
+    ulid: 01KE2M08EGV2AXXRS1VXX68Y70
+    name: 04_Si_DOS
+    slug: 04_si_dos
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KE2M08ETEBYWTF11BF5FCEV1
+    name: si.1_scf
+    slug: si-1_scf
+    path: structures/si-1_scf.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.7546079563238743
+        - 0.0
+        - 2.7546079563238743
+      - - 0.0
+        - 2.7546079563238743
+        - 2.7546079563238743
+      - - -2.7546079563238743
+        - 2.7546079563238743
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.8956039308540573
+      b: 3.8956039308540573
+      c: 3.8956039308540573
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 41.803186562694144
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - -0.25
+      - 0.75
+      - -0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.3773039781619372
+      - 1.3773039781619374
+      - 1.3773039781619374
+calculations:
+- meta:
+    ulid: 01KE2M08EJSNJAQZ0TG3EKF1TQ
+    name: Si Dos
+    slug: si-dos
+    path: calculations/si-dos
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  steps:
+  - meta:
+      name: si.1_scf
+      slug: si-1_scf
+      path: si.1_scf.step.yaml
+      kind: step
+      ulid: 01KE2M08EQ6CB2252HKRGNM8B2
+    parameters:
+      CONTROL:
+        calculation: scf
+        restart_mode: from_scratch
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ecutwfc: 50
+      ELECTRONS:
+        conv_thr: 1.0e-08
+    input_name: si.1_scf.in
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '8'
+          - '8'
+          - '8'
+          - '0'
+          - '0'
+          - '0'
+    species_overrides:
+      Si:
+        mass: 28.0855
+    step_type_spec: qe_scf
+  - meta:
+      name: si.2_nscf
+      slug: si-2_nscf
+      path: si.2_nscf.step.yaml
+      kind: step
+      ulid: 01KE2M08FBP8QX85NXW1TAJFDA
+    parameters:
+      CONTROL:
+        calculation: nscf
+        restart_mode: from_scratch
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ecutwfc: 50
+        occupations: tetrahedra
+      ELECTRONS:
+        conv_thr: 1.0e-08
+    input_name: si.2_nscf.in
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '12'
+          - '12'
+          - '12'
+          - '0'
+          - '0'
+          - '0'
+    species_overrides:
+      Si:
+        mass: 28.0855
+    step_type_spec: qe_nscf
+  - meta:
+      name: si.3_dos
+      slug: si-3_dos
+      path: si.3_dos.step.yaml
+      kind: step
+      ulid: 01KE2M08G7M3JWF0NG68AJ4PJ8
+    parameters:
+      DOS:
+        fildos: si.dos.dat
+        emin: -9.0
+        emax: 16.0
+    input_name: si.3_dos.in
+    step_type_spec: qe_dos
+  structure_ulid: 01KE2M08EGEJV6P8DB5ZRP5C0K
+  species_map:
+    Si:
+      mass: 28.0855
+      pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+      pseudo_basename: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+pseudo:
+  directory: pseudo
+  files:
+  - Si.pbe-n-rrkjus_psl.1.0.0.UPF
+meta:
+  ulid: 04_Si_DOS
+  title: 4 Si Dos
+  subtitle: "SCF \u2192 NSCF \u2192 DOS"
+  tags:
+  - tutorial
+  - qe
+  - scf
+  - nscf
+  recommended_analysis: dos
+  difficulty: beginner
+  reference_artifacts:
+    scf: 04_Si_DOS.scf.json
+    dos: 04_Si_DOS.dos.json

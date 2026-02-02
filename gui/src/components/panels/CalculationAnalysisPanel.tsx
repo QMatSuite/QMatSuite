@@ -53,7 +53,7 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
   // Auto-select first step if none selected and steps are available
   useEffect(() => {
     if (!selectedStepId && steps.length > 0) {
-      setSelectedStepId(steps[0].id);
+      setSelectedStepId(steps[0].ulid);
     }
   }, [steps, selectedStepId]);
   
@@ -68,18 +68,18 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
   // Auto-select first step when calculation changes
   useEffect(() => {
     if (steps.length > 0 && !selectedStepId) {
-      setSelectedStepId(steps[0].id);
+      setSelectedStepId(steps[0].ulid);
     } else if (steps.length === 0) {
       setSelectedStepId(null);
-    } else if (selectedStepId && !steps.find(s => s.id === selectedStepId)) {
+    } else if (selectedStepId && !steps.find(s => s.ulid === selectedStepId)) {
       // Selected step no longer exists, select first step
-      setSelectedStepId(steps[0].id);
+      setSelectedStepId(steps[0].ulid);
     }
   }, [steps, selectedStepId]);
   
   // Get selected step
-  const selectedStep = steps.find(s => s.id === selectedStepId) || null;
-  const selectedStepType = selectedStep?.type?.toLowerCase() || '';
+  const selectedStep = steps.find(s => s.ulid === selectedStepId) || null;
+  const selectedStepType = selectedStep?.step_type_gen?.toLowerCase() || '';
   
   // Check if plot is supported (based on step type and artifacts)
   const [supportsPlot, setSupportsPlot] = useState(false);
@@ -91,7 +91,7 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
       return;
     }
     
-    const typeLower = selectedStep.type.toLowerCase();
+    const typeLower = selectedStep.step_type_gen.toLowerCase();
     const calcSelector = calculation.slug || calculation.name;
     
     // Fast path for scf/dos (always support plot if step type matches)
@@ -103,7 +103,7 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
     // For bands: only 'bands' step (post-processing) supports plot, not 'bands_pw'
     if (typeLower === 'bands') {
       // Check artifacts to see if this step has bands data files
-      const cachedArtifacts = artifactsCache[selectedStep.id];
+      const cachedArtifacts = artifactsCache[selectedStep.ulid];
       if (cachedArtifacts) {
         const hasBandsData = cachedArtifacts.some((a: any) => 
           a.path_relative_to_raw.endsWith('.gnu') || 
@@ -123,11 +123,11 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
       qv.call('list_step_artifacts', {
         project_root: normalizedRoot,
         calculation: calcSelector,
-        step: selectedStep.id,
+        step: selectedStep.ulid,
       }).then((response: any) => {
         if (response.ok && response.data) {
           const artifacts = response.data.artifacts || [];
-          setArtifactsCache(prev => ({ ...prev, [selectedStep.id]: artifacts }));
+          setArtifactsCache(prev => ({ ...prev, [selectedStep.ulid]: artifacts }));
           const hasBandsData = artifacts.some((a: any) => 
             a.path_relative_to_raw.endsWith('.gnu') || 
             a.path_relative_to_raw.includes('.dat.gnu')
@@ -239,7 +239,7 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
   const [failedLoads, setFailedLoads] = useState<Set<string>>(new Set());
   
   // Pin to History state
-  const [pinInfo, setPinInfo] = useState<{ run_id: string | null; can_pin: boolean; reason: string | null } | null>(null);
+  const [pinInfo, setPinInfo] = useState<{ run_ulid: string | null; can_pin: boolean; reason: string | null } | null>(null);
   const [isPinning, setIsPinning] = useState(false);
   const [pinSuccess, setPinSuccess] = useState<string | null>(null);
   const plotContainerRef = useRef<HTMLDivElement>(null);
@@ -252,7 +252,7 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
     }
     
     const stepId = selectedStepId;
-    const stepType = selectedStep.type;
+    const stepType = selectedStep.step_type_gen;
     const stepTypeLower = stepType.toLowerCase();
     
     // For bands, we need to wait for supportsPlot to be determined
@@ -315,19 +315,19 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
     // Check if this step can be pinned
     qv.call('get_latest_run_for_step', {
       project_root: normalizedRoot,
-      step_id: selectedStepId,
+      step_ulid: selectedStepId,
     }).then((response: any) => {
       if (response.ok && response.data) {
         setPinInfo({
-          run_id: response.data.run_id,
+          run_ulid: response.data.run_ulid,
           can_pin: response.data.can_pin,
           reason: response.data.reason,
         });
       } else {
-        setPinInfo({ run_id: null, can_pin: false, reason: 'Failed to check pin status' });
+        setPinInfo({ run_ulid: null, can_pin: false, reason: 'Failed to check pin status' });
       }
     }).catch(() => {
-      setPinInfo({ run_id: null, can_pin: false, reason: 'Error checking pin status' });
+      setPinInfo({ run_ulid: null, can_pin: false, reason: 'Error checking pin status' });
     });
   }, [selectedStepId, viewMode, selectedStepType, qv, projectRoot]);
   
@@ -341,7 +341,7 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
   
   // Handle Pin to History click
   const handlePinToHistory = useCallback(async () => {
-    if (!selectedStepId || !pinInfo?.run_id || !pinInfo?.can_pin || !qv) return;
+    if (!selectedStepId || !pinInfo?.run_ulid || !pinInfo?.can_pin || !qv) return;
     
     setIsPinning(true);
     setPinSuccess(null);
@@ -375,8 +375,8 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
       
       const response = await qv.call('pin_analysis_to_history', {
         project_root: normalizedRoot,
-        run_id: pinInfo.run_id,
-        step_id: selectedStepId,
+        run_ulid: pinInfo.run_ulid,
+        step_ulid: selectedStepId,
         analysis_kind: stepTypeLower,
         png_data_base64: pngDataBase64,
         json_payload: jsonPayload,
@@ -440,22 +440,22 @@ export function CalculationAnalysisPanel({ projectRoot, calculation }: Calculati
       {/* Step selector (pills) */}
       <div className="calculation-analysis-panel__step-tabs">
         {steps.map((step) => {
-          const stepTypeLabel = getStepTypeLabel(step.type);
-          const isSelected = step.id === selectedStepId;
-          // Use step.id for unique testid to avoid duplicates
+          const stepTypeLabel = getStepTypeLabel(step.step_type_gen);
+          const isSelected = step.ulid === selectedStepId;
+          // Use step.ulid for unique testid to avoid duplicates
           return (
             <button
-              key={step.id}
+              key={step.ulid}
               className={`calculation-analysis-panel__step-tab ${isSelected ? 'calculation-analysis-panel__step-tab--active' : ''}`}
               onClick={() => {
-                setSelectedStepId(step.id);
+                setSelectedStepId(step.ulid);
                 // Reset to text view when switching steps
                 setViewMode('text');
               }}
-              title={`${stepTypeLabel} (${step.id.slice(0, 8)}...)`}
-              data-testid={`qv-analysis-step-tab-${step.type.toLowerCase()}`}
-              data-step-id={step.id}
-              data-step-type={step.type}
+              title={`${stepTypeLabel} (${step.ulid.slice(0, 8)}...)`}
+              data-testid={`qv-analysis-step-tab-${step.step_type_gen.toLowerCase()}`}
+              data-step-ulid={step.ulid}
+              data-step-type-gen={step.step_type_gen}
             >
               {stepTypeLabel}
             </button>

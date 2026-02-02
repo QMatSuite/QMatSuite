@@ -24,7 +24,7 @@ interface HistoryPanelProps {
 
 export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
   const [timeline, setTimeline] = useState<HistoryTimelineEntry[]>([]);
-  const [latestRunId, setLatestRunId] = useState<string | null>(null);
+  const [latestRunUlid, setLatestRunUlid] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
@@ -42,16 +42,16 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
       const limitValue = limit === 'all' ? undefined : parseInt(limit, 10);
       const response = await window.qv.request<{
         timeline: HistoryTimelineEntry[];
-        latest_run_id: string | null;
+        latest_run_ulid: string | null;
         total: number;
       }>('get_project_history', {
         project_root: projectRoot,
         limit: limitValue,
       });
-      
+
       if (response.ok && response.data) {
         setTimeline(response.data.timeline || []);
-        setLatestRunId(response.data.latest_run_id);
+        setLatestRunUlid(response.data.latest_run_ulid);
       } else {
         setError(response.error?.message || 'Failed to load history');
       }
@@ -81,7 +81,7 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
       if (response.ok && response.data?.success) {
         // Clear timeline immediately
         setTimeline([]);
-        setLatestRunId(null);
+        setLatestRunUlid(null);
         setShowDeleteModal(false);
       } else {
         const errorMsg = response.data?.error || response.error?.message || 'Failed to delete history';
@@ -151,18 +151,18 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
   };
 
   const renderRunCard = (entry: HistoryTimelineEntry) => {
-    const isExpanded = entry.run_id ? expandedRuns.has(entry.run_id) : false;
+    const isExpanded = entry.run_ulid ? expandedRuns.has(entry.run_ulid) : false;
     const isSuccess = entry.status === 'success';
-    const isLatest = entry.run_id === latestRunId;
-    
+    const isLatest = entry.run_ulid === latestRunUlid;
+
     return (
-      <div 
-        key={entry.id} 
+      <div
+        key={entry.ulid}
         className={`history-entry history-entry--run ${isSuccess ? 'history-entry--success' : 'history-entry--failed'} ${isLatest ? 'history-entry--latest' : ''}`}
       >
-        <div 
+        <div
           className="history-entry__header"
-          onClick={() => entry.run_id && toggleRunExpanded(entry.run_id)}
+          onClick={() => entry.run_ulid && toggleRunExpanded(entry.run_ulid)}
         >
           <div className="history-entry__icon">
             {isSuccess ? '✓' : '✗'}
@@ -217,11 +217,11 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
             <h4 className="history-entry__details-title">Step Digests</h4>
             <div className="history-entry__steps">
               {entry.step_digests.map((step, idx) => (
-                <div 
-                  key={step.step_id || idx} 
+                <div
+                  key={step.step_ulid || idx}
                   className={`history-step ${step.status === 'success' ? 'history-step--success' : 'history-step--failed'}`}
                 >
-                  <span className="history-step__type">{step.step_type}</span>
+                  <span className="history-step__type">{step.step_type_gen}</span>
                   <span className="history-step__status">
                     {step.status === 'success' ? '✓' : step.status === 'skipped' ? '⊘' : '✗'}
                   </span>
@@ -247,13 +247,13 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
   const renderRunStarted = (entry: HistoryTimelineEntry) => {
     // Usually followed by run_finished, so render compact
     return (
-      <div key={entry.id} className="history-entry history-entry--run-started history-entry--compact">
+      <div key={entry.ulid} className="history-entry history-entry--run-started history-entry--compact">
         <div className="history-entry__icon">▶</div>
         <div className="history-entry__content">
           <span className="history-entry__label">Run started</span>
-          {entry.step_types && entry.step_types.length > 0 && (
+          {entry.step_type_gens && entry.step_type_gens.length > 0 && (
             <span className="history-entry__step-types">
-              {entry.step_types.join(' → ')}
+              {entry.step_type_gens.join(' → ')}
             </span>
           )}
         </div>
@@ -264,7 +264,7 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
 
   const renderEditEvent = (entry: HistoryTimelineEntry) => {
     return (
-      <div key={entry.id} className="history-entry history-entry--edit history-entry--compact">
+      <div key={entry.ulid} className="history-entry history-entry--edit history-entry--compact">
         <div className="history-entry__icon">✎</div>
         <div className="history-entry__content">
           <span className="history-entry__label">{entry.summary || 'Edit'}</span>
@@ -282,7 +282,7 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
 
   const renderPinEvent = (entry: HistoryTimelineEntry) => {
     return (
-      <div key={entry.id} className="history-entry history-entry--pin history-entry--compact">
+      <div key={entry.ulid} className="history-entry history-entry--pin history-entry--compact">
         <div className="history-entry__icon">📌</div>
         <div className="history-entry__content">
           <span className="history-entry__label">
@@ -296,7 +296,7 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
 
   const renderBaselineEvent = (entry: HistoryTimelineEntry) => {
     return (
-      <div key={entry.id} className="history-entry history-entry--baseline">
+      <div key={entry.ulid} className="history-entry history-entry--baseline">
         <div className="history-entry__icon">🚩</div>
         <div className="history-entry__content">
           <span className="history-entry__label">Project History Initialized</span>
@@ -313,7 +313,7 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
 
   const renderGenericEvent = (entry: HistoryTimelineEntry) => {
     return (
-      <div key={entry.id} className="history-entry history-entry--generic history-entry--compact">
+      <div key={entry.ulid} className="history-entry history-entry--generic history-entry--compact">
         <div className="history-entry__icon">•</div>
         <div className="history-entry__content">
           <span className="history-entry__label">{entry.event_type}</span>

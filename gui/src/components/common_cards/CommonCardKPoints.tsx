@@ -147,12 +147,14 @@ function generateBodyFromViewModel(vm: KPointsViewModel): string {
     return lines.join('\n');
   }
   
-  // Fallback: extract body from raw
-  const rawLines = vm.raw.split('\n');
-  if (rawLines.length > 1) {
-    return rawLines.slice(1).join('\n');
+  // Fallback: extract body from raw (with defensive check)
+  if (vm.raw) {
+    const rawLines = vm.raw.split('\n');
+    if (rawLines.length > 1) {
+      return rawLines.slice(1).join('\n');
+    }
   }
-  
+
   return '';
 }
 

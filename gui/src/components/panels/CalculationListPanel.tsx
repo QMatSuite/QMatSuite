@@ -90,7 +90,7 @@ export function CalculationListPanel({
   // Get selected calculation for rail view
   const selectedCalculation = useMemo(() => {
     if (!selectedId || !calculations) return null;
-    return calculations.find(calc => calc.id === selectedId) || null;
+    return calculations.find(calc => calc.calc_ulid === selectedId) || null;
   }, [selectedId, calculations]);
   
   // Generate monogram from calculation name or structure
@@ -224,8 +224,8 @@ export function CalculationListPanel({
       <div className="calculation-list" data-testid="qv-calculations-list">
         {calculations.map((calculation) => (
           <div
-            key={calculation.id}
-            className={`calculation-item ${selectedId === calculation.id ? 'calculation-item--selected' : ''}`}
+            key={calculation.calc_ulid}
+            className={`calculation-item ${selectedId === calculation.calc_ulid ? 'calculation-item--selected' : ''}`}
             data-testid="qv-calculation-row"
             data-calculation-slug={calculation.slug}
           >
@@ -283,10 +283,10 @@ export function CalculationListPanel({
               </div>
               
               <div className="calculation-item__steps">
-                {calculation.steps.map((step, idx) => (
-                  <span key={step.id} className="step-chip">
+                {(calculation.steps || []).map((step, idx) => (
+                  <span key={step.ulid} className="step-chip">
                     {idx > 0 && <span className="step-arrow">→</span>}
-                    <span className="step-type">{step.type}</span>
+                    <span className="step-type">{step.step_type_gen}</span>
                   </span>
                 ))}
               </div>
@@ -559,7 +559,7 @@ export function CalculationDetailPanel({
     
     qv.call('detect_workflow_for_calculation', {
       project_root: projectRoot,
-      calculation_ulid: calculation.id,
+      calculation_ulid: calculation.calc_ulid,
     })
       .then(response => {
         if (response.ok && response.data) {
@@ -571,7 +571,7 @@ export function CalculationDetailPanel({
       .catch(() => {
         setWorkflowDetection(null);
       });
-  }, [calculation?.id, projectRoot, qv]);
+  }, [calculation?.calc_ulid, projectRoot, qv]);
   
   // Load step details for scan summary (lazy, only when calculation is viewed in overview mode)
   useEffect(() => {
@@ -590,17 +590,17 @@ export function CalculationDetailPanel({
           const response = await qv.call('get_step_detail', {
             project_root: projectRoot,
             calculation: calculationForSteps.slug,
-            step: step.id,
+            step: step.ulid,
           });
           if (response.ok && response.data) {
             const stepDetail = response.data as import('../../types/qv').StepDetail;
-            detailsMap.set(step.id, {
+            detailsMap.set(step.ulid, {
               parameter_scan: stepDetail.parameter_scan,
             });
           }
         } catch (e) {
           // Skip failed steps (non-blocking for scan summary)
-          console.debug(`[ScanSummary] Failed to load step detail for ${step.id}:`, e);
+          console.debug(`[ScanSummary] Failed to load step detail for ${step.ulid}:`, e);
         }
       }
       
@@ -608,7 +608,7 @@ export function CalculationDetailPanel({
     };
     
     loadStepDetails();
-  }, [calculationForSteps?.id, projectRoot, isFocusMode, qv]);
+  }, [calculationForSteps?.calc_ulid, projectRoot, isFocusMode, qv]);
   
   // Handle deleting a step
   const handleDeleteStep = useCallback(async (stepId: string, stepType: string) => {
@@ -680,7 +680,7 @@ export function CalculationDetailPanel({
       const response = await window.qv.request<CalculationDetailResult>('add_step_to_calculation', {
         project_root: projectRoot,
         calculation: calculationForSteps.slug,
-        step_type: newStepType,
+        step_type_gen: newStepType,  // Constitution v1.1: use step_type_gen
         step_name: stepName,
       });
       
@@ -819,7 +819,7 @@ export function CalculationDetailPanel({
   // Start reorder mode
   const handleStartReorder = useCallback(() => {
     if (!calculation) return;
-    setStepOrder(calculation.steps.map(s => s.id));
+    setStepOrder((calculation.steps || []).map(s => s.ulid));
     setIsReordering(true);
     setError(null);
   }, [calculation]);
@@ -838,11 +838,11 @@ export function CalculationDetailPanel({
     setError(null);
     
     try {
-      // new_order must be array of step ULIDs (from step.id) in the desired order
+      // new_order must be array of step ULIDs (from step.ulid) in the desired order
       const response = await window.qv.request<CalculationDetailResult>('reorder_calculation_steps', {
         project_root: projectRoot,
         calculation: calculationForSteps.slug, // calculation selector: slug
-        new_order: stepOrder, // array of step ULIDs (from step.id)
+        new_order: stepOrder, // array of step ULIDs (from step.ulid)
       });
       
       if (response.ok) {
@@ -921,7 +921,7 @@ export function CalculationDetailPanel({
   // CRITICAL: Use calculationDetail.steps if available (canonical from calculation.yaml),
   // otherwise fall back to calculationSummary.steps (may have wrong order, but better than nothing)
   // The steps array from get_calculation_detail is the canonical source of step order and IDs.
-  // Each step.id is a ULID (26 chars) that must be used as the step selector for RPC calls.
+  // Each step.ulid is a ULID (26 chars) that must be used as the step selector for RPC calls.
   const baseSteps = calculationDetail?.steps ?? calculationSummary?.steps ?? [];
   
   // When reordering, reorder baseSteps according to stepOrder
@@ -932,7 +932,7 @@ export function CalculationDetailPanel({
       return baseSteps;
     }
     // Create a map of step ID to step object
-    const stepMap = new Map(baseSteps.map(s => [s.id, s]));
+    const stepMap = new Map(baseSteps.map(s => [s.ulid, s]));
     // Reorder according to stepOrder
     return stepOrder.map(id => stepMap.get(id)).filter((s): s is NonNullable<typeof s> => s !== undefined);
   }, [isReordering, stepOrder, baseSteps]);
@@ -973,9 +973,9 @@ export function CalculationDetailPanel({
     stepCount: displaySteps.length,
     steps: displaySteps.map((s, i) => ({
       index: i,
-      id: s.id,
-      type: s.type,
-      idLength: s.id?.length ?? 0,
+      ulid: s.ulid,
+      step_type_gen: s.step_type_gen,
+      ulidLength: s.ulid?.length ?? 0,
     })),
   });
 
@@ -992,7 +992,7 @@ export function CalculationDetailPanel({
             {calculation.name}
           </h2>
           <div className="qv-calc-header-subtitle">
-            Calculation: <code style={{ fontSize: '0.85em', marginLeft: '0.25em' }}>{calculation.id}</code>
+            Calculation: <code style={{ fontSize: '0.85em', marginLeft: '0.25em' }}>{calculation.calc_ulid}</code>
           </div>
         </div>
         <div className="panel-header-actions">
@@ -1138,12 +1138,12 @@ export function CalculationDetailPanel({
               <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
                 {workflowDetection.workflow_label || workflowDetection.workflow_name || 'Unknown'}
               </span>
-              {workflowDetection.missing_step_types.length > 0 && (
+              {workflowDetection.missing_step_types && workflowDetection.missing_step_types.length > 0 && (
                 <span style={{ color: 'var(--color-error)', fontSize: '0.85em' }}>
                   missing: {workflowDetection.missing_step_types.join(', ')}
                 </span>
               )}
-              {workflowDetection.issues.length > 0 && (
+              {workflowDetection.issues && workflowDetection.issues.length > 0 && (
                 <button
                   onClick={() => setShowWorkflowIssues(!showWorkflowIssues)}
                   style={{
@@ -1166,11 +1166,11 @@ export function CalculationDetailPanel({
                     e.currentTarget.style.color = 'var(--text-secondary)';
                   }}
                 >
-                  {showWorkflowIssues ? 'Hide' : 'Show'} Issues ({workflowDetection.issues.length})
+                  {showWorkflowIssues ? 'Hide' : 'Show'} Issues ({workflowDetection.issues?.length ?? 0})
                 </button>
               )}
             </div>
-            {showWorkflowIssues && workflowDetection.issues.length > 0 && (
+            {showWorkflowIssues && workflowDetection.issues && workflowDetection.issues.length > 0 && (
               <div style={{ 
                 marginTop: '8px', 
                 padding: '8px',
@@ -1387,7 +1387,7 @@ export function CalculationDetailPanel({
           <div className="steps-list" data-testid="qv-steps-list">
             {displaySteps.map((step, idx) => (
               <div 
-                key={step.id} 
+                key={step.ulid} 
                 className={`step-item-container ${
                   isReordering ? 'step-item-container--reordering' : ''
                 } ${
@@ -1401,8 +1401,8 @@ export function CalculationDetailPanel({
                 onDragOver={isReordering ? (e) => handleDragOver(e, idx) : undefined}
                 onDragLeave={isReordering ? handleDragLeave : undefined}
                 onDrop={isReordering ? (e) => handleDrop(e, idx) : undefined}
-                data-testid={`qv-step-row-${step.id}`}
-                data-step-id={step.id}
+                data-testid={`qv-step-row-${step.ulid}`}
+                data-step-id={step.ulid}
               >
                 {isReordering && (
                   <div className="step-reorder-controls">
@@ -1435,28 +1435,28 @@ export function CalculationDetailPanel({
                   className="step-item"
                   onClick={() => {
                     if (!isReordering) {
-                      // CRITICAL: step.id is ULID from backend (get_calculation_detail returns step.id from calculation.yaml)
+                      // CRITICAL: step.ulid is ULID from backend (get_calculation_detail returns step.ulid from calculation.yaml)
                       // This is the ONLY correct selector for get_step_detail RPC
-                      // We MUST use step.id directly, NOT derived from index or any other source
+                      // We MUST use step.ulid directly, NOT derived from index or any other source
                       console.log('[CalculationDetailPanel] step clicked', {
                         calculationSlug: calculationForSteps.slug,
                         stepIndex: idx,
-                        stepId: step.id,
-                        stepType: step.type,
+                        stepId: step.ulid,
+                        stepType: step.step_type_gen,
                       });
-                      // CRITICAL: Pass step.id (ULID) directly to onSelectStep
+                      // CRITICAL: Pass step.ulid (ULID) directly to onSelectStep
                       // This will be stored as selectedStepId in App.tsx and passed to StepDetailPanel
-                      onSelectStep?.(step.id);
+                      onSelectStep?.(step.ulid);
                     }
                   }}
                   disabled={isReordering}
-                  data-testid={`qv-step-button-${step.id}`}
+                  data-testid={`qv-step-button-${step.ulid}`}
                 >
                   <span className="step-number">{idx + 1}</span>
                   <div className="step-info">
-                    {/* step.id is ULID (26 chars) from backend - used as step selector */}
-                    <span className="step-id">{step.id}</span>
-                    <span className="step-type-badge">{step.type}</span>
+                    {/* step.ulid is ULID (26 chars) from backend - used as step selector */}
+                    <span className="step-id">{step.ulid}</span>
+                    <span className="step-type-badge">{step.step_type_gen}</span>
                   </div>
                   {/* Preset footprint chips - WYSIWYG from step.yml (Phase 8C: limit to 3) */}
                   {stepFootprints && stepFootprints[step.step_file] && (
@@ -1468,11 +1468,11 @@ export function CalculationDetailPanel({
                     className="step-delete-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDeleteStep(step.id, step.type);
+                      handleDeleteStep(step.ulid, step.step_type_gen);
                     }}
                     disabled={isDeletingStep}
-                    title={`Delete step "${step.type}"`}
-                    data-testid={`qv-delete-step-${step.id}`}
+                    title={`Delete step "${step.step_type_gen}"`}
+                    data-testid={`qv-delete-step-${step.ulid}`}
                   >
                     🗑️
                   </button>
