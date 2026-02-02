@@ -899,28 +899,152 @@ USAGE COVERAGE:
 
 ---
 
-## Analysis: Remaining Consolidation Opportunities
+### Cluster Sheet: Daemon Config/Index Loading
 
-After thorough analysis of the remaining 81 utils functions:
+**Cluster Name**: Daemon Config/Index Loading
 
-**Service-delegating wrappers**: EXHAUSTED - No remaining functions that just forward to QVService methods.
+**Entrypoints in Cluster**:
+| Entrypoint | Usage | Description |
+|------------|-------|-------------|
+| `load_project_config` | daemon: 4 | Loads project config from YAML |
+| `build_resource_index` | daemon: 2 | Builds resource index |
 
-**Semantic equivalence clusters**: LIMITED
-- Download functions (2): Could be merged but would add complexity, not reduce surface
-- QE metadata (11): Direct re-exports serving different purposes
-- Pseudo config (7): Distinct operations, can't merge
-- Online search (5): Helper chain, can't merge without complexity
+**Semantic Equivalence Analysis**:
+- `load_project_config(project_root)` ≡ `svc.project.get_config()`
+- `build_resource_index(project_root)` ≡ `svc.project.build_resource_index()`
+- Daemon already creates `QVService(project_root)` before calling these
 
-**Class re-exports (4 F401)**: Intentional for type hints/error handling
-- DisplayModeParams, OnlineStructureCache, QEUIParam, ContextNotFoundError
+**Canonical Entrypoint**: Service methods (`svc.project.get_config()`, `svc.project.build_resource_index()`)
 
-**Unused entrypoints (26)**: All intentional scaffolding
-- 13 service nested methods (future features)
-- 7 DTOs (type definitions)
-- 2 errors (taxonomy)
-- 4 F401 class re-exports
+**Consolidation Plan**:
+1. Migrate daemon from `load_project_config(project_root)` to `svc.project.get_config()`
+2. Migrate daemon from `build_resource_index(project_root)` to `svc.project.build_resource_index()`
+3. Delete both functions from api/utils.py
 
-**Conclusion**: The easy consolidation opportunities have been exhausted. Remaining functions serve distinct purposes with different signatures and consumers (daemon vs CLI). Further reduction would require architectural changes beyond scope.
+**Expected Delta**: -2 entrypoints (utils 81 → 79)
+
+---
+
+### Batch 29: Consolidate Daemon Config/Index Loading
+
+**AUDIT BEFORE**:
+```
+TOTAL ENTRYPOINTS: 219
+  utils: 81
+```
+
+- **Time**: 2026-02-02
+- **Action**: Consolidated daemon config/index loading into service methods
+- **Changes**:
+  1. Migrated daemon `rebuild_project_registry` to use `svc.project.get_config()` + `svc.project.build_resource_index()`
+  2. Migrated daemon `_rebuild_registry_after_write` to use same service methods
+  3. Deleted `load_project_config` from api/utils.py (-1)
+  4. Deleted `build_resource_index` from api/utils.py (-1)
+- **Tests**: 3012 passed, 18 skipped
+
+**AUDIT AFTER**:
+```
+============================================================
+API SURFACE AUDIT SUMMARY
+============================================================
+TOTAL ENTRYPOINTS: 217
+
+BY CATEGORY:
+  api_init            :    2
+  dtos                :   11
+  errors              :   10
+  service_nested      :   92
+  service_static      :   23
+  utils               :   79
+
+USAGE COVERAGE:
+  Daemon only:        110
+  CLI only:            45
+  Both daemon+CLI:     36
+  UNUSED (0 refs):     26
+============================================================
+```
+
+**Delta**: 219 → 217 (-2 entrypoints)
+- utils: 81 → 79 (-2)
+
+**Slimming Effect**: Daemon now uses service methods instead of standalone utils functions. Eliminated 2 thin wrappers that duplicated service functionality.
+
+---
+
+## Analysis: Remaining Consolidation Opportunities (Post-Batch 29)
+
+After completing Batch 29, the API surface stands at **217 entrypoints** (utils: 79).
+
+### Service-delegating wrappers: EXHAUSTED
+All functions that had direct service method equivalents have been migrated:
+- ✅ `find_path_context_ref` → `find_path_context_from_pwd` (Batch 28)
+- ✅ `find_project_root` → `find_path_context_from_pwd(...).project_root` (Batch 28)
+- ✅ `load_project_config` → `svc.project.get_config()` (Batch 29)
+- ✅ `build_resource_index` → `svc.project.build_resource_index()` (Batch 29)
+
+### Remaining utils functions (79): Analysis
+
+**Category 1: Validation utilities (2)**
+- `is_ulid_like`, `validate_ulid` - Core validation, no service equivalent
+
+**Category 2: Model I/O (2)**
+- `load_calculation`, `save_calculation` - Returns CalculationModel (internal type), not DTO
+
+**Category 3: Pseudo config cluster (7)**
+- `get_pseudo_config`, `set_pseudo_config`, `validate_pseudo_config_dict`
+- `list_installed_sssp`, `list_seed_archives`, `check_archives_status`, `load_manifest_archives`
+- These are config operations without service equivalents
+
+**Category 4: QE engine detection/config (6)**
+- `detect_qe`, `list_qe_engines`, `discover_qe_engines`, `set_qe_engine`
+- `detect_engine_for_calculation`, `detect_presets_from_calculation`
+- Used by daemon for engine management, no service equivalents
+
+**Category 5: QE metadata (11)**
+- `get_ui_parameters`, `list_supported_modules`, `get_module_param_sections`
+- `get_module_card_sections`, `get_module_doc_url`, `get_metadata_file_info`
+- `get_qe_metadata_debug_info`, `safe_load_metadata`, `reload_metadata`
+- `_iter_params`, `QEUIParam` (class re-export)
+- Direct re-exports for daemon QE parameter handling
+
+**Category 6: Class re-exports (4)**
+- `DisplayModeParams`, `OnlineStructureCache`, `QEUIParam`, `ContextNotFoundError`
+- Required for type hints/instantiation in daemon
+
+**Category 7: Structure operations (7)**
+- `read_structure`, `write_structure`, `canonicalize_structure`
+- `reduce_formula`, `visualize_structure`, `build_structure_vis_payload`
+- `DisplayModeParams`
+- Fundamental I/O and visualization utilities
+
+**Category 8: Online search (5)**
+- `search_online_structures`, `fetch_structure_from_optimade`
+- `score_candidate`, `extract_provenance`, `OnlineStructureCache`
+- Complete search workflow, no service equivalents
+
+**Category 9: Presets/precision (6)**
+- `apply_presets_to_step`, `get_preset_catalog`, `get_step_preset_footprints`
+- `resolve_precision_context`, `detect_workflow_type`, `create_precision_advisor`
+- Preset application utilities for daemon
+
+**Category 10: Resource utilities (6)**
+- `slugify`, `meta_from_name`, `ensure_relative_path`
+- `generate_unique_name_and_slug`, `calculations_using_structure`
+- `find_path_context_from_pwd`
+- Core resource management utilities
+
+**Category 11: Other specialized (23)**
+- Remaining functions covering: QE input parsing, project snapshots, journals, blob stores, calculation templates, etc.
+
+### Conclusion
+
+**No further consolidation opportunities remain** without:
+1. Adding new service methods (violates "no new API exports" rule)
+2. Breaking daemon/CLI functionality (all remaining functions are actively used)
+3. Architectural changes beyond scope
+
+The remaining 79 utils functions serve distinct purposes, are used by daemon/CLI, and don't have service method equivalents. The "easy wins" from service-delegating wrappers have been fully harvested.
 
 ---
 

@@ -5752,17 +5752,8 @@ class QVDaemon:
         """
         import time
 
-        from quantumvitas.api.utils import load_project_config, build_resource_index
-
         project_root = self._require_path(payload, "project_root")
         project_root = project_root.resolve()
-
-        # Get project name for logging
-        try:
-            config = load_project_config(project_root)
-            project_name = config.get("meta", {}).get("name") or project_root.name
-        except Exception:
-            project_name = project_root.name
 
         # Take snapshot of current registry (if any)
         old_cache = self.state._caches.get(project_root)
@@ -5772,8 +5763,9 @@ class QVDaemon:
         t0 = time.perf_counter()
         try:
             svc = QVService(project_root)
-            config = load_project_config(project_root)
-            index = build_resource_index(project_root)
+            config = svc.project.get_config()
+            index = svc.project.build_resource_index()
+            project_name = config.get("meta", {}).get("name") or project_root.name
             self.state._caches[project_root] = ProjectCache(
                 project_root=project_root,
                 index=index,
@@ -5826,23 +5818,16 @@ class QVDaemon:
             reason: Reason string for logging (e.g., "write_operation:create_demo_project")
         """
         import time
-        from quantumvitas.api.utils import load_project_config, build_resource_index
 
         project_root = project_root.resolve()
-
-        # Get project name for logging
-        try:
-            config = load_project_config(project_root)
-            project_name = config.get("meta", {}).get("name") or project_root.name
-        except Exception:
-            project_name = project_root.name
 
         # Rebuild the registry
         t0 = time.perf_counter()
         try:
             svc = QVService(project_root)
-            config = load_project_config(project_root)
-            index = build_resource_index(project_root)
+            config = svc.project.get_config()
+            index = svc.project.build_resource_index()
+            project_name = config.get("meta", {}).get("name") or project_root.name
             self.state._caches[project_root] = ProjectCache(
                 project_root=project_root,
                 index=index,
