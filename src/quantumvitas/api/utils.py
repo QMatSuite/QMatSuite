@@ -220,27 +220,61 @@ def copy_structure_template(
     )
 
 
+def extract_selector_from_entry(entry: dict, kind: str = "calculation") -> str | None:
+    """
+    Extract a selector from a project.qv.yml or calculation.yaml entry.
+
+    This is the generic selector extraction function. Use with kind parameter:
+    - "calculation": for calculation entries
+    - "structure": for structure entries
+    - "step": for step entries
+
+    Priority order:
+    1. {kind}_id or {kind}_ulid (ID-only model)
+    2. meta.ulid (ULID)
+    3. meta.slug (slug)
+    4. ulid (legacy)
+    5. name (legacy)
+
+    Args:
+        entry: Entry dict from project.qv.yml or calculation.yaml
+        kind: Resource kind ("calculation", "structure", or "step")
+
+    Returns:
+        Selector string (ULID, slug, or name) or None if no valid selector found
+
+    Example:
+        entry = {"calculation_id": "01KC38MFJZ7RF3SB7SHVYDQ4J8"}
+        selector = extract_selector_from_entry(entry, "calculation")  # Returns ULID
+    """
+    from quantumvitas.core.selectors import extract_selector_from_entry as _extract
+    return _extract(entry, kind)
+
+
 def extract_calculation_selector_from_entry(entry: dict) -> str | None:
     """
     Extract a calculation selector from a project.qv.yml entry.
-    
+
+    DEPRECATED: Use extract_selector_from_entry(entry, "calculation") instead.
+
     Priority order:
     1. calculation_id (ID-only model)
     2. meta.ulid (ULID)
     3. meta.slug (slug)
     4. id (legacy)
     5. name (legacy)
-    
+
     Returns:
         Selector string (ULID, slug, or name) or None if no valid selector found
     """
-    from quantumvitas.core.selectors import extract_calculation_selector_from_entry as _extract
-    return _extract(entry)
+    return extract_selector_from_entry(entry, "calculation")
 
 
 def extract_structure_selector_from_entry(entry: dict) -> str | None:
     """
     Extract a structure selector from a project.qv.yml entry.
+
+    DEPRECATED: Use extract_selector_from_entry(entry, "structure") instead.
 
     Priority order:
     1. structure_ulid (ID-only model)
@@ -252,13 +286,14 @@ def extract_structure_selector_from_entry(entry: dict) -> str | None:
     Returns:
         Selector string (ULID, slug, or name) or None if no valid selector found
     """
-    from quantumvitas.core.selectors import extract_structure_selector_from_entry as _extract
-    return _extract(entry)
+    return extract_selector_from_entry(entry, "structure")
 
 
 def extract_step_selector_from_entry(entry: dict) -> str | None:
     """
     Extract a step selector from a calculation.yaml step entry.
+
+    DEPRECATED: Use extract_selector_from_entry(entry, "step") instead.
 
     Priority order:
     1. step_ulid (ID-only model)
@@ -270,8 +305,7 @@ def extract_step_selector_from_entry(entry: dict) -> str | None:
     Returns:
         Selector string (ULID, slug, or name) or None if no valid selector found
     """
-    from quantumvitas.core.selectors import extract_step_selector_from_entry as _extract
-    return _extract(entry)
+    return extract_selector_from_entry(entry, "step")
 
 
 def entry_display_name(entry: dict) -> str:

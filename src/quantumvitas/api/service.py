@@ -2089,6 +2089,50 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
+        def can_delete(self, selector: str) -> dict:
+            """
+            Check if a structure can be safely deleted.
+
+            Args:
+                selector: Structure selector (ULID, slug, or name)
+
+            Returns:
+                Dict with:
+                    - can_delete: bool - True if structure is not used by any calculations
+                    - using_calculations: list[str] - Names of calculations using this structure
+                    - structure_name: str - Name of the structure
+
+            Raises:
+                APIError: If structure not found
+            """
+            try:
+                from quantumvitas.core.resolution import require_structure
+                from quantumvitas.core.project_utils import (
+                    load_project_config,
+                    find_structure_entry,
+                    calculations_using_structure,
+                )
+
+                project_root = self._service.project_root
+                config = load_project_config(project_root)
+
+                # Resolve structure to get entry
+                entry = find_structure_entry(config, selector, project_root)
+
+                # Check for dependent calculations
+                using_calculations = calculations_using_structure(project_root, config, entry)
+                calculation_names = [c.get("name") or c.get("meta", {}).get("name", "?") for c in using_calculations]
+
+                return {
+                    "can_delete": len(using_calculations) == 0,
+                    "using_calculations": calculation_names,
+                    "structure_name": (entry.get("meta") or {}).get("name") or entry.get("name"),
+                }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
         def delete(self, selector: str, force: bool = False) -> None:
             """
             Delete a structure.
@@ -2587,7 +2631,7 @@ class QVService:
             """
             try:
                 from quantumvitas.core.project_utils import find_enclosing_calculation
-                from quantumvitas.api.utils import ensure_relative_path, extract_calculation_selector_from_entry
+                from quantumvitas.api.utils import ensure_relative_path, extract_selector_from_entry
                 from quantumvitas.api._mapping.dto_mapping import calculation_ref_to_dto
                 
                 if path is None:
@@ -2601,7 +2645,7 @@ class QVService:
                     return None
                 
                 # Extract selector from entry and resolve to get path
-                selector = extract_calculation_selector_from_entry(entry)
+                selector = extract_selector_from_entry(entry, "calculation")
                 if not selector:
                     return None
                 
