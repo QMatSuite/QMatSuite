@@ -2684,8 +2684,8 @@ class QVService:
                         continue
                     
                     # Convert spec to gen for get_default_step_params (which expects gen type)
-                    from quantumvitas.api.utils import step_type_gen_from_spec
-                    step_type_gen = step_type_gen_from_spec(step_type_spec)
+                    from quantumvitas.workflow.step_type_convert import gen_from
+                    step_type_gen = gen_from(step_type_spec)
                     
                     # Get defaults for step type (using gen type)
                     defaults = get_default_step_params(step_type_gen)
@@ -6994,13 +6994,13 @@ class QVService:
             if calculation_yaml_path.exists():
                 wf_model = load_calculation(calculation_dir, project_root)
                 # Ensure machine_step_type is SPEC before assignment
-                from quantumvitas.api.utils import is_step_type_spec, step_type_spec_from_gen
-                if is_step_type_spec(machine_step_type):
+                from quantumvitas.workflow.step_type_convert import is_spec, spec_from
+                if is_spec(machine_step_type):
                     step_type_spec_value = machine_step_type  # Already SPEC
                 else:
                     # It's GEN, convert to SPEC using engine_family
                     engine_prefix = engine_family if engine_family else "qe"  # Default to qe if no engine_family
-                    step_type_spec_value = step_type_spec_from_gen(engine_prefix, machine_step_type)
+                    step_type_spec_value = spec_from(engine_prefix, machine_step_type)
                 step_entry = CalculationStepEntry(step_ulid=step_ulid_from_doc, step_type_spec=step_type_spec_value)
                 wf_model.steps.append(step_entry)
                 save_calculation(wf_model, calculation_dir)
