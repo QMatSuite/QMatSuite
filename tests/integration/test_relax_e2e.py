@@ -133,8 +133,8 @@ class TestRelaxE2E:
         assert artifact_path.exists()
         
         # Promote
-        promoted_result = QVService.promote_relax_structure(
-            project_root=project_root,
+        svc = QVService(project_root)
+        promoted_result = svc.structure.promote_relax_structure(
             calculation_selector=calc_ulid,
             step_selector=step_ulid,
             name="relaxed_silicon",
@@ -169,13 +169,13 @@ class TestRelaxE2E:
         step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Try to promote without current.json
+        svc = QVService(project_root)
         with pytest.raises(APIError) as exc_info:
-            QVService.promote_relax_structure(
-                project_root=project_root,
+            svc.structure.promote_relax_structure(
                 calculation_selector=calc_result.ulid,
                 step_selector=step_result.ulid,
             )
-        
+
         assert "No generated structure found" in str(exc_info.value)
 
     def test_promote_requires_relax_step_type(self, tmp_path):
@@ -197,13 +197,13 @@ class TestRelaxE2E:
         step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
         
         # Try to promote non-relax step
+        svc = QVService(project_root)
         with pytest.raises(APIError) as exc_info:
-            QVService.promote_relax_structure(
-                project_root=project_root,
+            svc.structure.promote_relax_structure(
                 calculation_selector=calc_result.ulid,
                 step_selector=step_result.ulid,
             )
-        
+
         assert "not a relax step" in str(exc_info.value)
 
     def test_generated_structure_metadata_preserved(self, tmp_path):

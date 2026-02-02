@@ -195,16 +195,15 @@ class TestDaemonCalculationExecution:
         
         calculation_dir = project_dir / "calculations" / "bands_daemon"
         
+        # Use domain accessor API for step creation
+        svc = QVService(project_dir)
+
         # Configure calculation-level species_map (required for project runs)
         # Do NOT set species_overrides at step level; use calculation-level species_map instead
-        QVService.configure_species_map(
-            project_root=project_dir,
+        svc.calculation.configure_species_map(
             calculation="bands_daemon",
             set_entries=[("Si", 28.0855, "Si.pbe-n-rrkjus_psl.1.0.0.UPF")],
         )
-        
-        # Use domain accessor API for step creation
-        svc = QVService(project_dir)
         
         # Create SCF step
         svc.calculation.add_step(

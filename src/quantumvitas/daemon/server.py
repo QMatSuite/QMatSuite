@@ -4450,8 +4450,9 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         selections_data = payload.get("selections", [])
 
-        # Pass dicts directly - QVService.analyze_project_pseudo_effects accepts dicts
-        report_dict = QVService.analyze_project_pseudo_effects(project_root, selections_data)
+        # Use nested service method
+        svc = QVService(project_root)
+        report_dict = svc.project.analyze_pseudo_effects(selections_data)
 
         return report_dict
     

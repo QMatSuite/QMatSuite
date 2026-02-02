@@ -116,8 +116,8 @@ def qe_calculation_with_relax(qe_project_with_si):
         calc_dir = calc_result.absolute_path.parent
     
     # Configure calculation with species_map and pseudo
-    QVService.configure_species_map(
-        project_root=project_root,
+    svc = QVService(project_root)
+    svc.calculation.configure_species_map(
         calculation=calc_ulid,
         set_entries=[("Si", 28.0855, "Si.pbe-n-rrkjus_psl.1.0.0.UPF")],
     )
