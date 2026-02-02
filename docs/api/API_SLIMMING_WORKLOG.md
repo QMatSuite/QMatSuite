@@ -227,12 +227,84 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ---
 
-### Batch 17: [PENDING]
-- **Time**:
-- **Action**: Migrate init_calculation callers and delete static
-- **Deleted**:
-- **Delta**:
-- **Tests**:
+### Batch 17: Migrate init_calculation test callers
+- **Time**: 2026-02-02
+- **Action**: Migrated all test callers of `QVService.init_calculation()` to use nested method `QVService(project_root).project.init_calculation()`
+- **Files Changed**: 27 test files migrated (73 usages in tests)
+  - `tests/integration/test_pyscf_phase3c.py` (3 usages)
+  - `tests/integration/orca/test_orca_project_level.py` (1 usage)
+  - `tests/integration/test_relax_promote_e2e.py` (3 usages)
+  - `tests/integration/test_orca_relax_real.py` (1 usage)
+  - `tests/integration/test_qe_relax_real.py` (1 usage)
+  - `tests/integration/test_pyscf_relax_real.py` (1 usage)
+  - `tests/integration/test_incremental_run.py` (2 usages)
+  - `tests/integration/vasp/test_vasp_project_e2e.py` (1 usage)
+  - `tests/daemon/test_gui_job_and_step_flows.py` (1 usage)
+  - `tests/daemon/test_si_bands_calculation_daemon.py` (1 usage)
+  - `tests/integration/test_relax_e2e.py` (3 usages)
+  - `tests/daemon/test_promote_relax_structure.py` (4 usages)
+  - `tests/daemon/test_gui_calculation_detail.py` (1 usage)
+  - `tests/integration/test_cp2k_integration.py` (1 usage)
+  - `tests/contract_crawler/recipes/structure_flow.py` (1 usage - removed compat conditional)
+  - `tests/contract_crawler/recipes/world.py` (1 usage - removed compat conditional)
+  - `tests/daemon/test_update_step_params_persistence.py` (1 usage)
+  - `tests/daemon/test_delete_calculation_daemon.py` (1 usage)
+  - `tests/integration/test_step_slug_consistency.py` (1 usage)
+  - `tests/integration/test_lammps_chain.py` (1 usage)
+  - `tests/integration/test_lammps_restart_parallel.py` (1 usage)
+  - `tests/integration/test_lammps_lj_minimize.py` (1 usage)
+  - `tests/integration/test_lammps_eam_md.py` (1 usage)
+  - `tests/integration/test_lammps_long_smoke.py` (4 usages)
+  - `tests/integration/test_lammps_incremental_skip.py` (2 usages)
+- **Deleted**: 0 (static still exists - pending final deletion after tools migration)
+- **Delta**: 228 entrypoints (unchanged), static 26
+- **Tests**: 3012 passed, 18 skipped
+- **AUDIT BEFORE**:
+  ```
+  service_static: 26
+  service_nested: 91
+  TOTAL: 228
+  UNUSED: 28
+  ```
+- **AUDIT AFTER** (same - static not yet deleted):
+  ```
+  service_static: 26
+  service_nested: 91
+  TOTAL: 228
+  UNUSED: 28
+  ```
+- **Slimming Effect**: Preparation complete. All test callers migrated. Static method can now be deleted (only tools/run_lammps_long_smoke.py and tools/import_tutorial_datasets.py remain as non-test callers).
+- **Pattern Applied**:
+  ```python
+  # Before
+  QVService.init_calculation(project_root=path, name="name", structure_selector=ulid)
+  # After
+  QVService(path).project.init_calculation(name="name", structure_selector=ulid)
+  ```
+
+---
+
+### Batch 18: Delete init_calculation static method
+- **Time**: 2026-02-02
+- **Action**: Deleted the static `init_calculation` method from `service.py`
+- **Deleted**: 1 static method (TEMP SHIM)
+- **Delta**: 228 → 227 entrypoints, static 26 → 25
+- **Tests**: 3012 passed, 18 skipped
+- **AUDIT BEFORE**:
+  ```
+  service_static: 26
+  TOTAL: 228
+  ```
+- **AUDIT AFTER**:
+  ```
+  service_static: 25
+  TOTAL: 227
+  ```
+- **Slimming Effect**: Removed `init_calculation` TEMP SHIM. Real surface reduction: -1 static method.
+- **Notes**:
+  - All test callers migrated in Batch 17
+  - 2 tools files still use the old pattern (`run_lammps_long_smoke.py`, `import_tutorial_datasets.py`) but are outside test suite
+  - Tools can be migrated separately or updated to use nested method
 
 ---
 
@@ -257,33 +329,36 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 | 14 | 2026-02-02 | Inline run_calculation | 1 | 229 | PASS |
 | 15 | 2026-02-02 | Inline run_step | 1 | 228 | PASS |
 | 16 | 2026-02-02 | Inline init_calculation | 0* | 228 | PASS |
+| 17 | 2026-02-02 | Migrate init_calculation test callers | 0 | 228 | PASS |
+| 18 | 2026-02-02 | Delete init_calculation static | 1 | 227 | PASS |
 
-*Static now delegates to nested - needs caller migration for actual deletion
+*init_calculation TEMP SHIM deleted - real surface reduction achieved
 
 ---
 
-## Current State (After Batch 15)
+## Current State (After Batch 18)
 
 | Category | Count |
 |----------|-------|
 | utils | 88 |
-| service_static | 26 |
+| service_static | 25 |
 | service_nested | 91 |
 | errors | 10 |
 | dtos | 11 |
 | api_init | 2 |
-| **TOTAL** | **228** |
+| **TOTAL** | **227** |
 
 | Usage Status | Count |
 |--------------|-------|
-| Daemon only | ~108 |
-| CLI only | ~50 |
-| Both | ~44 |
-| **UNUSED** | ~28 |
+| Daemon only | ~109 |
+| CLI only | ~49 |
+| Both | ~42 |
+| **UNUSED** | ~27 |
 
 ### Remaining TEMP SHIM Static Methods
-- `init_calculation` (73 callers) - next target
-- `import_structure` (62 callers) - after init_calculation
+- ~~`init_calculation`~~ ✓ DELETED (Batch 18)
+- `import_structure` (62 callers) - next target
+- `init_step` (many callers) - after import_structure
 - `run_single_step` (daemon) - delegates to nested `run_step`
 
 ---

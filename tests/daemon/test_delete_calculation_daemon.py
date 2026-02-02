@@ -27,7 +27,7 @@ class TestDeleteCalculationDaemon:
         )
         
         # Create calculation (this registers it in project config)
-        calc_resource = QVService.init_calculation(project_root, "To Delete")
+        calc_resource = QVService(project_root).project.init_calculation(name="To Delete")
         calculation_ulid = calc_resource.ulid
         calculation_slug = calc_resource.meta.slug
         

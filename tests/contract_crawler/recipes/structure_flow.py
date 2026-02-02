@@ -71,22 +71,13 @@ class GetStepDetailRecipe(Recipe):
         finally:
             struct_file.unlink()
 
-        # Create calculation
-        if is_static_api:
-            calc_result = QVService.init_calculation(
-                self.project_root,
-                name="test_calc",
-                structure_selector=structure_ulid,
-            )
-            self.calc_id = calc_result.ulid if hasattr(calc_result, 'ulid') else None
-        else:
-            svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
-            calc_dto = svc.calculation.create(
-                engine="qe",
-                name="test_calc",
-                structure_selector=structure_ulid,
-            )
-            self.calc_id = calc_dto.calc_id
+        # Create calculation using nested service method
+        svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
+        calc_result = svc.project.init_calculation(
+            name="test_calc",
+            structure_selector=structure_ulid,
+        )
+        self.calc_id = calc_result.ulid if hasattr(calc_result, 'ulid') else None
 
         # Add SCF step
         if is_static_api:

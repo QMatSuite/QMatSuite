@@ -76,25 +76,14 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
     finally:
         struct_file.unlink()
     
-    # Create calculation
-    if is_static_api:
-        # Baseline: use init_calculation
-        calc_result = QVService.init_calculation(
-            project_root,
-            name="demo_calc",
-            structure_selector=structure_ulid,
-        )
-        calc_id = calc_result.ulid if hasattr(calc_result, 'ulid') else None
-        calc_slug = calc_result.slug if hasattr(calc_result, 'slug') else "demo_calc"
-    else:
-        svc = QVService(project_root) if get_service is None else get_service(project_root)
-        calc_dto = svc.calculation.create(
-            engine="qe",
-            name="demo_calc",
-            structure_selector=structure_ulid,
-        )
-        calc_id = calc_dto.calc_id
-        calc_slug = calc_dto.meta.slug if hasattr(calc_dto, 'meta') and calc_dto.meta else "demo_calc"
+    # Create calculation using nested service method
+    svc = QVService(project_root) if get_service is None else get_service(project_root)
+    calc_result = svc.project.init_calculation(
+        name="demo_calc",
+        structure_selector=structure_ulid,
+    )
+    calc_id = calc_result.ulid if hasattr(calc_result, 'ulid') else None
+    calc_slug = calc_result.slug if hasattr(calc_result, 'slug') else "demo_calc"
     
     # Add multiple steps (at least 2)
     if is_static_api:

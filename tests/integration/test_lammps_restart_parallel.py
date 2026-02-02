@@ -88,8 +88,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     potential_sha = compute_sha256_file(potential_dst)
     
     # Create calculation
-    calc_result = QVService.init_calculation(
-        project_root=project_root,
+    calc_result = QVService(project_root).project.init_calculation(
         name="parallel_test",
         structure_selector=structure_ulid,
     )

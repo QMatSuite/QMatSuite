@@ -86,7 +86,7 @@ def tmp_project_with_bands(tmp_path: Path):
     
     # Create calculation
     calc_slug = "si-bands"
-    QVService.init_calculation(project_root, calc_slug, structure_selector="silicon")
+    QVService(project_root).project.init_calculation(calc_slug, structure_selector="silicon")
     
     calc_dir = project_root / "calculations" / calc_slug
     steps_dir = calc_dir / "steps"

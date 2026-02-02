@@ -82,8 +82,7 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
     assert structure_ulid is not None, "Structure h2 not found in project config"
     
     # Create calculation using service API
-    calc_resolved = QVService.init_calculation(
-        project_root=temp_project,
+    calc_resolved = QVService(temp_project).project.init_calculation(
         name="test_calc",
         structure_selector=structure_ulid,
     )
@@ -248,8 +247,7 @@ class TestPySCFPhase3CIntegration:
                 break
         assert structure_ulid is not None, "Structure h2 not found"
         
-        calc_resolved = QVService.init_calculation(
-            project_root=temp_project,
+        calc_resolved = QVService(temp_project).project.init_calculation(
             name="test_calc_mp2",
             structure_selector=structure_ulid,
         )
@@ -346,8 +344,7 @@ class TestPySCFPhase3CIntegration:
                 break
         assert structure_ulid is not None, "Structure h2 not found"
         
-        calc_resolved = QVService.init_calculation(
-            project_root=temp_project,
+        calc_resolved = QVService(temp_project).project.init_calculation(
             name="test_calc_mp2_only",
             structure_selector=structure_ulid,
         )

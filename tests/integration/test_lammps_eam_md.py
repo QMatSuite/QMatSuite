@@ -71,8 +71,7 @@ def eam_md_project(tmp_path: Path):
         pytest.skip("EAM potential file not found")
     
     # Create calculation
-    calc_resolved = QVService.init_calculation(
-        project_root=project_root,
+    calc_resolved = QVService(project_root).project.init_calculation(
         name="eam_md",
         structure_selector=structure_ulid,
     )

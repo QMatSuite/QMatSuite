@@ -39,8 +39,7 @@ def lammps_project(tmp_path: Path):
     struct_result = QVService.import_structure(project_root, structure_path)
     
     # Init calculation
-    calc_result = QVService.init_calculation(
-        project_root=project_root,
+    calc_result = QVService(project_root).project.init_calculation(
         name="test_calc",
         structure_selector=struct_result.meta.ulid,
     )

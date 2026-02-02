@@ -23,7 +23,7 @@ def project_with_step(tmp_path):
 
     # Create calculation and step using domain API
     calc_slug = "test-calc"
-    QVService.init_calculation(project_dir, calc_slug, structure_selector="silicon")
+    QVService(project_dir).project.init_calculation(calc_slug, structure_selector="silicon")
 
     # Use domain API for add_step
     svc = get_service(project_dir)

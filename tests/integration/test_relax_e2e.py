@@ -107,7 +107,7 @@ class TestRelaxE2E:
         struct_result = QVService.import_structure(project_root, source, name="Silicon")
         
         # Create calculation
-        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
+        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
         calc_ulid = calc_result.ulid
         
         # Create relax step
@@ -165,7 +165,7 @@ class TestRelaxE2E:
         struct_result = QVService.import_structure(project_root, source, name="Silicon")
         
         # Create calculation and relax step
-        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
+        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
         step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Try to promote without current.json
@@ -193,7 +193,7 @@ class TestRelaxE2E:
         struct_result = QVService.import_structure(project_root, source, name="Silicon")
         
         # Create calculation and SCF step (not relax)
-        calc_result = QVService.init_calculation(project_root, "calc001", structure_selector=struct_result.meta.ulid)
+        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
         step_result = QVService.init_step(project_root, calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
         
         # Try to promote non-relax step

@@ -129,8 +129,7 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
     structure_ulid = struct_result.meta.ulid
     
     # Create calculation
-    calc_result = QVService.init_calculation(
-        project_root=project_root,
+    calc_result = QVService(project_root).project.init_calculation(
         name="lj_relax",
         structure_selector=structure_ulid,
     )
@@ -256,8 +255,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     potential_sha = compute_sha256_file(potential_dst)
     
     # Create calculation
-    calc_result = QVService.init_calculation(
-        project_root=project_root,
+    calc_result = QVService(project_root).project.init_calculation(
         name="eam_md",
         structure_selector=structure_ulid,
     )
@@ -390,8 +388,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     potential_sha = compute_sha256_file(potential_dst)
     
     # Create calculation
-    calc_result = QVService.init_calculation(
-        project_root=project_root,
+    calc_result = QVService(project_root).project.init_calculation(
         name="chain",
         structure_selector=structure_ulid,
     )
@@ -586,8 +583,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     potential_sha = compute_sha256_file(potential_dst)
     
     # Create calculation
-    calc_result = QVService.init_calculation(
-        project_root=project_root,
+    calc_result = QVService(project_root).project.init_calculation(
         name="restart",
         structure_selector=structure_ulid,
     )

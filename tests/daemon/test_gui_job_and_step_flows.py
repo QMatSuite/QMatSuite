@@ -73,8 +73,7 @@ def temp_project(tmp_path: Path) -> Path:
         pytest.skip("Test data not available")
     
     # Create a calculation with one SCF step
-    calculation_result = QVService.init_calculation(
-        project_root=project_dir,
+    calculation_result = QVService(project_dir).project.init_calculation(
         name="test_calculation",
         structure_selector=structure_ulid,
     )

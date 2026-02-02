@@ -365,7 +365,7 @@ class TestIntegrationWithQVService:
         project_root = QVService.init_project(tmp_path / "test_project")
 
         # Create calculation with a step (need step for get_scf_convergence_data)
-        calc_result = QVService.init_calculation(project_root, "test-calculation")
+        calc_result = QVService(project_root).project.init_calculation("test-calculation")
         calc_dir = calc_result.absolute_path
 
         # Create raw directory (may already exist from init_calculation)
@@ -532,7 +532,7 @@ class TestGetReferenceAnalysis:
 
         # Create a regular (non-demo) project
         project_root = QVService.init_project(tmp_path / "regular_project")
-        QVService.init_calculation(project_root, "test-calculation")
+        QVService(project_root).project.init_calculation("test-calculation")
 
         # Should return None since it's not a demo project
         result = _get_reference_analysis(
@@ -550,7 +550,7 @@ class TestGetReferenceAnalysis:
 
         # Create a project and manually set it up as a demo project
         project_root = QVService.init_project(tmp_path / "demo_project")
-        QVService.init_calculation(project_root, "si-bands")
+        QVService(project_root).project.init_calculation("si-bands")
 
         # Add demo origin info to project settings
         config = load_project_config(project_root)
@@ -593,7 +593,7 @@ class TestGetReferenceAnalysis:
 
         # Create a project and manually set it up as a demo project
         project_root = QVService.init_project(tmp_path / "demo_project_scf")
-        QVService.init_calculation(project_root, "si-bands")
+        QVService(project_root).project.init_calculation("si-bands")
 
         # Add demo origin info
         config = load_project_config(project_root)
@@ -629,7 +629,7 @@ class TestGetReferenceAnalysis:
 
         # Create a demo project without DOS reference
         project_root = QVService.init_project(tmp_path / "demo_no_dos")
-        QVService.init_calculation(project_root, "si-bands")
+        QVService(project_root).project.init_calculation("si-bands")
 
         config = load_project_config(project_root)
         config["project"]["settings"] = {

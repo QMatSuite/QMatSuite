@@ -120,8 +120,7 @@ class TestUIWritebackContract:
         QVService.init_project(project_root, "Test Project")
 
         # Create calculation
-        calc_result = QVService.init_calculation(
-            project_root=project_root,
+        calc_result = QVService(project_root).project.init_calculation(
             name="Test Calc",
         )
         calc_id = calc_result.meta.ulid
@@ -183,8 +182,7 @@ class TestUIWritebackContract:
         QVService.init_project(project_root, "Test Project")
 
         # Create calculation
-        calc_result = QVService.init_calculation(
-            project_root=project_root,
+        calc_result = QVService(project_root).project.init_calculation(
             name="Test Calc",
         )
         calc_id = calc_result.meta.ulid

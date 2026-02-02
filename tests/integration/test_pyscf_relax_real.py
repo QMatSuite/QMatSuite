@@ -98,8 +98,7 @@ def pyscf_calculation_with_relax(pyscf_project_with_h2):
     structure_ulid = pyscf_project_with_h2["structure_ulid"]
     
     # Create calculation with molecule/pyscf settings
-    calc_result = QVService.init_calculation(
-        project_root=project_root,
+    calc_result = QVService(project_root).project.init_calculation(
         name="h2_relax",
         structure_selector=structure_ulid,
     )

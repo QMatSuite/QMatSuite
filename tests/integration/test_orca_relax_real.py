@@ -63,8 +63,8 @@ def orca_project_with_h2(orca_available):
     struct_result = QVService.import_structure(project_root, h2_file, name="H2")
     
     # Create calculation
-    calc = QVService.init_calculation(
-        project_root, "h2_relax",
+    calc = QVService(project_root).project.init_calculation(
+        name="h2_relax",
         structure_selector=struct_result.meta.ulid,
     )
     

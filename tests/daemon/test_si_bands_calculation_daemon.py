@@ -191,7 +191,7 @@ class TestDaemonCalculationExecution:
         project_dir = project_with_structure
         
         # Create calculation
-        QVService.init_calculation(project_dir, "bands_daemon", structure_selector="si")
+        QVService(project_dir).project.init_calculation(name="bands_daemon", structure_selector="si")
         
         calculation_dir = project_dir / "calculations" / "bands_daemon"
         
