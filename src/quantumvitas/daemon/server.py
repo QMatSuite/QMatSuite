@@ -32,18 +32,14 @@ from quantumvitas.api import QVService, APIError, get_service
 from quantumvitas.api.utils import (
     is_ulid_like,
     validate_ulid,
-    can_delete_structure,
     load_calculation,
     get_pseudo_config,
     set_pseudo_config,
     validate_pseudo_config_dict,
-    load_pseudo_config_raw,
     list_installed_sssp,
     list_seed_archives,
     check_archives_status,
     load_manifest_archives,
-    delete_structure,
-    rename_structure,
     detect_engine_for_calculation,
     detect_presets_from_calculation,
     download_pseudo_by_filename,
@@ -871,24 +867,24 @@ class QVDaemon:
         from quantumvitas.api import QVService
         from pathlib import Path
         
-        config = load_pseudo_config_raw()
+        config = get_pseudo_config()
         
-        if not config.seed_dir:
+        if not config.get("seed_dir"):
             return {
                 "success": False,
                 "messages": [],
                 "errors": ["Seed directory not configured"],
             }
         
-        if not config.store_dir:
+        if not config.get("store_dir"):
             return {
                 "success": False,
                 "messages": [],
                 "errors": ["Store directory not configured"],
             }
         
-        seed_dir = Path(config.seed_dir)
-        store_dir = Path(config.store_dir)
+        seed_dir = Path(config.get("seed_dir"))
+        store_dir = Path(config.get("store_dir"))
         
         version = payload.get("version")
         flavor = payload.get("flavor")
@@ -926,12 +922,12 @@ class QVDaemon:
         """
         from pathlib import Path
 
-        config = load_pseudo_config_raw()
+        config = get_pseudo_config()
 
-        if not config.seed_dir:
+        if not config.get("seed_dir"):
             return {"archives": []}
 
-        seed_dir = Path(config.seed_dir)
+        seed_dir = Path(config.get("seed_dir"))
         # list_seed_archives from api/utils already returns dicts
         archives = list_seed_archives(seed_dir)
 
@@ -969,23 +965,23 @@ class QVDaemon:
         version = payload.get("version", "1.3.0")
         force = payload.get("force", False)
 
-        config = load_pseudo_config_raw()
+        config = get_pseudo_config()
 
-        if not config.store_dir:
+        if not config.get("store_dir"):
             return {
                 "success": False,
                 "errors": ["Store directory not configured"],
                 "messages": [],
             }
         
-        store_dir = Path(config.store_dir)
-        seed_dir = Path(config.seed_dir) if config.seed_dir else None
+        store_dir = Path(config.get("store_dir"))
+        seed_dir = Path(config.get("seed_dir")) if config.get("seed_dir") else None
         result = QVService.download_sssp_library(
             store_dir=store_dir,
             flavor=flavor,
             version=version,
             force=force,
-            allow_download=config.allow_download,
+            allow_download=config.get("allow_download", False),
             seed_dir=seed_dir,
         )
         
@@ -1013,21 +1009,21 @@ class QVDaemon:
         
         force = payload.get("force", False)
         
-        config = load_pseudo_config_raw()
+        config = get_pseudo_config()
         
-        if not config.store_dir:
+        if not config.get("store_dir"):
             return {
                 "success": False,
                 "errors": ["Store directory not configured"],
                 "messages": [],
             }
         
-        store_dir = Path(config.store_dir)
-        seed_dir = Path(config.seed_dir) if config.seed_dir else None
+        store_dir = Path(config.get("store_dir"))
+        seed_dir = Path(config.get("seed_dir")) if config.get("seed_dir") else None
         result = QVService.download_all_sssp(
             store_dir=store_dir,
             force=force,
-            allow_download=config.allow_download,
+            allow_download=config.get("allow_download", False),
             seed_dir=seed_dir,
         )
         
@@ -1057,15 +1053,15 @@ class QVDaemon:
                 "errors": ["No files provided"],
             }
         
-        config = load_pseudo_config_raw()
-        if not config.seed_dir:
+        config = get_pseudo_config()
+        if not config.get("seed_dir"):
             return {
                 "imported": [],
                 "skipped": [],
                 "errors": ["Seed directory not configured"],
             }
         
-        seed_dir = Path(config.seed_dir)
+        seed_dir = Path(config.get("seed_dir"))
         archive_paths = [Path(p) for p in file_paths]
         
         return QVService.import_seed_archives(seed_dir, archive_paths)
@@ -2689,7 +2685,7 @@ class QVDaemon:
     def _handle_rename_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Rename a structure.
-        
+
         Payload:
             project_root: str - Path to project root
             selector: str - Structure selector
@@ -2698,39 +2694,37 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         selector = self._require_str(payload, "selector")
         new_name = self._require_str(payload, "new_name")
-        
-        # Pass cached index and config for in-place registry updates
-        cache = self.state.get_cache(project_root)
-        result = rename_structure(
-            project_root=project_root,
-            selector=selector,
-            new_name=new_name,
-            index=cache.index,
-            config=cache.config,
-        )
-        
-        return result
+
+        svc = get_service(project_root)
+        old_struct = svc.structure.get(selector)
+        old_name = old_struct.name if old_struct else selector
+        result_dto = svc.structure.update_meta(selector, new_name=new_name)
+
+        return {
+            "success": True,
+            "old_name": old_name,
+            "new_name": result_dto.name,
+            "new_slug": result_dto.slug,
+        }
     
     def _handle_can_delete_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Check if structure can be deleted.
-        
+
         Payload:
             project_root: str - Path to project root
             selector: str - Structure selector
         """
         project_root = self._require_path(payload, "project_root")
         selector = self._require_str(payload, "selector")
-        
-        return can_delete_structure(
-            project_root=project_root,
-            selector=selector,
-        )
+
+        svc = get_service(project_root)
+        return svc.structure.can_delete(selector)
     
     def _handle_delete_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Delete a structure.
-        
+
         Payload:
             project_root: str - Path to project root
             selector: str - Structure selector
@@ -2739,21 +2733,15 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         selector = self._require_str(payload, "selector")
         force = payload.get("force", False)
-        
+
+        svc = get_service(project_root)
+
         # Get structure name before deletion for response
-        check = can_delete_structure(project_root, selector)
-        structure_name = check.get("structure_name", selector)
-        
-        # Pass cached index for in-place registry updates
-        # Note: QVService.delete_structure loads config internally; we only pass index
-        cache = self.state.get_cache(project_root)
-        delete_structure(
-            project_root=project_root,
-            selector=selector,
-            force=force,
-            index=cache.index,
-        )
-        
+        struct_dto = svc.structure.get(selector)
+        structure_name = struct_dto.name if struct_dto else selector
+
+        svc.structure.delete(selector, force=force)
+
         return {
             "success": True,
             "name": structure_name,

@@ -251,63 +251,6 @@ def extract_selector_from_entry(entry: dict, kind: str = "calculation") -> str |
     return _extract(entry, kind)
 
 
-def extract_calculation_selector_from_entry(entry: dict) -> str | None:
-    """
-    Extract a calculation selector from a project.qv.yml entry.
-
-    DEPRECATED: Use extract_selector_from_entry(entry, "calculation") instead.
-
-    Priority order:
-    1. calculation_id (ID-only model)
-    2. meta.ulid (ULID)
-    3. meta.slug (slug)
-    4. id (legacy)
-    5. name (legacy)
-
-    Returns:
-        Selector string (ULID, slug, or name) or None if no valid selector found
-    """
-    return extract_selector_from_entry(entry, "calculation")
-
-
-def extract_structure_selector_from_entry(entry: dict) -> str | None:
-    """
-    Extract a structure selector from a project.qv.yml entry.
-
-    DEPRECATED: Use extract_selector_from_entry(entry, "structure") instead.
-
-    Priority order:
-    1. structure_ulid (ID-only model)
-    2. meta.ulid (ULID)
-    3. meta.slug (slug)
-    4. id (legacy)
-    5. name (legacy)
-
-    Returns:
-        Selector string (ULID, slug, or name) or None if no valid selector found
-    """
-    return extract_selector_from_entry(entry, "structure")
-
-
-def extract_step_selector_from_entry(entry: dict) -> str | None:
-    """
-    Extract a step selector from a calculation.yaml step entry.
-
-    DEPRECATED: Use extract_selector_from_entry(entry, "step") instead.
-
-    Priority order:
-    1. step_ulid (ID-only model)
-    2. meta.ulid (ULID)
-    3. meta.slug (slug)
-    4. id (legacy)
-    5. name (legacy)
-
-    Returns:
-        Selector string (ULID, slug, or name) or None if no valid selector found
-    """
-    return extract_selector_from_entry(entry, "step")
-
-
 def entry_display_name(entry: dict) -> str:
     """
     Get display name for a resource entry from project.qv.yml.
@@ -428,86 +371,6 @@ def build_step_spec_from_qe_input(
     return _build(qe_input, project_root, engine_config)
 
 
-def find_path_context_ref(cwd: Path | str | None = None, max_depth: int = 20) -> dict:
-    """
-    Find path context from working directory.
-
-    This function scans upward from cwd to find project root and context.
-
-    Args:
-        cwd: Starting directory (defaults to current working directory)
-        max_depth: Maximum directories to scan upward
-
-    Returns:
-        Dict with keys:
-        - project_root: Path to project root
-        - is_inside_calculation: bool
-        - calculation_directory: Optional[Path] if inside a calculation
-        - calculation_selector: Optional[str] if inside a calculation
-        - step_selector: Optional[str] if inside a step
-
-    Raises:
-        APIError: If no project context found
-    """
-    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
-    from quantumvitas.api.errors import NotFoundError
-
-    if cwd is None:
-        cwd = Path.cwd()
-    else:
-        cwd = Path(cwd).resolve()
-
-    try:
-        path_context = find_path_context_from_pwd(start=cwd, max_depth=max_depth)
-        result = {
-            "project_root": path_context.project_root,
-            "is_inside_calculation": path_context.is_inside_calculation(),
-            "calculation_directory": path_context.calculation_directory,
-        }
-
-        # Extract calculation and step selectors from context nodes
-        calculation_selector = None
-        step_selector = None
-        for node in path_context.nodes:
-            if node.kind == "calculation" and node.selector:
-                calculation_selector = node.selector
-            elif node.kind == "step" and node.selector:
-                step_selector = node.selector
-
-        if calculation_selector:
-            result["calculation_selector"] = calculation_selector
-        if step_selector:
-            result["step_selector"] = step_selector
-
-        return result
-    except ContextNotFoundError as e:
-        raise NotFoundError(f"No project context found: {e}", context={"cwd": str(cwd)})
-
-
-def find_project_root(start: Path | str | None = None) -> Path | None:
-    """
-    Find project root from a starting directory.
-
-    Args:
-        start: Starting directory (defaults to current working directory)
-
-    Returns:
-        Path to project root or None if not found
-    """
-    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
-
-    if start is None:
-        start = Path.cwd()
-    else:
-        start = Path(start).resolve()
-
-    try:
-        ctx = find_path_context_from_pwd(start=start)
-        return ctx.project_root
-    except ContextNotFoundError:
-        return None
-
-
 def is_ulid_like(s: str) -> bool:
     """
     Check if string looks like a ULID (26 chars, alphanumeric).
@@ -560,100 +423,6 @@ def calculations_using_structure(project_root: Path, config: dict | None, struct
     """
     from quantumvitas.core.project_utils import calculations_using_structure as _calculations_using_structure
     return _calculations_using_structure(project_root, config, struct_entry)
-
-
-def can_delete_structure(project_root: Path, selector: str) -> dict:
-    """
-    Check if a structure can be safely deleted.
-
-    Transparent re-export combining resolution + calculations_using_structure.
-
-    Args:
-        project_root: Project root path
-        selector: Structure selector (ULID, slug, name, or path)
-
-    Returns:
-        Dict with:
-            - can_delete: bool - True if structure is not used by any calculations
-            - using_calculations: list[str] - Names of calculations using this structure
-            - structure_name: str - Name of the structure
-    """
-    from quantumvitas.core.project_utils import (
-        load_project_config,
-        find_structure_entry,
-        calculations_using_structure as _calculations_using_structure,
-    )
-
-    config = load_project_config(project_root)
-    entry = find_structure_entry(config, selector, project_root)
-
-    using_calculations = _calculations_using_structure(project_root, config, entry)
-    calculation_names = [w.get("name", "?") for w in using_calculations]
-
-    return {
-        "can_delete": len(using_calculations) == 0,
-        "using_calculations": calculation_names,
-        "structure_name": (entry.get("meta") or {}).get("name") or entry.get("name"),
-    }
-
-
-def delete_structure(
-    project_root: Path,
-    selector: str,
-    force: bool = False,
-    *,
-    index=None,
-) -> None:
-    """
-    Delete a structure (move to trash).
-
-    Args:
-        project_root: Project root path
-        selector: Structure selector (ULID, slug, name, or path)
-        force: If True, delete even if used by calculations
-        index: Optional ResourceIndex for cache optimization (ignored in canonical impl)
-    """
-    from quantumvitas.api import get_service
-
-    svc = get_service(project_root)
-    svc.structure.delete(selector, force=force)
-
-
-def rename_structure(
-    project_root: Path,
-    selector: str,
-    new_name: str,
-    *,
-    index=None,
-    config: dict | None = None,
-) -> dict:
-    """
-    Rename a structure.
-
-    Args:
-        project_root: Project root path
-        selector: Structure selector (ULID, slug, name, or path)
-        new_name: New name for the structure
-        index: Optional ResourceIndex (ignored in canonical impl)
-        config: Optional project config (ignored in canonical impl)
-
-    Returns:
-        Dict with success, old_name, new_name, new_slug
-    """
-    from quantumvitas.api import get_service
-
-    svc = get_service(project_root)
-    # Get old name before renaming
-    old_struct = svc.structure.get(selector)
-    old_name = old_struct.name if old_struct else selector
-
-    result = svc.structure.update_meta(selector, new_name=new_name)
-    return {
-        "success": True,
-        "old_name": old_name,
-        "new_name": result.name,
-        "new_slug": result.slug,
-    }
 
 
 def load_calculation(path: Path, project_root: Path | None = None):
@@ -766,19 +535,6 @@ def validate_pseudo_config_dict(config_dict: dict | None = None) -> dict:
 
     result = _validate_pseudo_config(config)
     return result.to_dict()
-
-
-def load_pseudo_config_raw():
-    """
-    Load pseudo configuration (returns PseudoConfig dataclass).
-
-    Transparent re-export from core.pseudo_config.
-
-    Returns:
-        PseudoConfig dataclass instance
-    """
-    from quantumvitas.core.pseudo_config import load_pseudo_config as _load_pseudo_config
-    return _load_pseudo_config()
 
 
 def list_installed_sssp(store_dir: "Path | None" = None) -> list[dict]:
@@ -1664,6 +1420,10 @@ def resolve_precision_context(
 # Path context and structure utilities
 # =============================================================================
 
+# Re-export ContextNotFoundError for CLI error handling
+from quantumvitas.core.context import ContextNotFoundError  # noqa: E402, F401
+
+
 def find_path_context_from_pwd(start_dir: Path | None = None, max_depth: int = 20):
     """
     Scan upward from a directory to find project context.
@@ -1674,6 +1434,9 @@ def find_path_context_from_pwd(start_dir: Path | None = None, max_depth: int = 2
 
     Returns:
         PathContext with project_root and context nodes
+
+    Raises:
+        ContextNotFoundError: If no project context found
     """
     from quantumvitas.core.context import find_path_context_from_pwd as _find_context
     return _find_context(start_dir, max_depth=max_depth)
