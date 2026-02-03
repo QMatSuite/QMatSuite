@@ -290,4 +290,199 @@ All other nested methods are actively used by daemon/CLI.
 
 ---
 
+## Appendix C: Bundle QA (Phase 3 Quality Audit)
+
+**Date**: 2026-02-02
+**Status**: DTO-first schema recommendations
+
+### C.1 Overview
+
+Batches 33-35 created bundle functions to consolidate multiple utils calls into single responses.
+Current state: These return `dict` which creates stringly-typed surface.
+
+**Goal**: Define stable DTO schemas for each bundle WITHOUT increasing API surface.
+
+### C.2 Bundle Schemas
+
+#### C.2.1 get_pseudo_status_bundle()
+
+**Location**: `api/utils.py:463`
+
+**Current return type**: `dict`
+
+**Actual schema** (from implementation):
+```python
+{
+    "config": dict,           # PseudoConfig.to_dict()
+    "validation": dict,       # ValidationResult.to_dict()
+    "installed_sssp": list,   # List of installed SSSP library dicts
+    "seed_archives": list,    # List of seed archive dicts
+    "manifest_archives": list,# List of manifest archive dicts
+    "archive_statuses": list  # List of archive status dicts
+}
+```
+
+**Recommended DTO**:
+```python
+@dataclass
+class PseudoStatusBundle(BaseDTO):
+    """Comprehensive pseudo configuration status."""
+    config: dict               # STABLE: pseudo config as dict
+    validation: dict           # STABLE: validation result
+    installed_sssp: list[dict] # STABLE: installed libraries
+    seed_archives: list[dict]  # STABLE: available seed archives
+    manifest_archives: list[dict]  # STABLE: manifest archives
+    archive_statuses: list[dict]   # STABLE: installation status per archive
+```
+
+**Call-site audit**:
+- `daemon/server.py:_handle_get_pseudo_config` - uses `bundle["config"]`
+- `daemon/server.py:_handle_get_pseudo_validation` - uses `bundle["validation"]`
+- `daemon/server.py:_handle_list_installed_sssp` - uses `bundle["installed_sssp"]`
+
+**Error semantics**: Currently raises exceptions. Should wrap in ErrorDTO? NO - bundle is read-only data, exceptions are appropriate.
+
+**Migration path**:
+1. Create `PseudoStatusBundle` DTO (inherits BaseDTO)
+2. Change return type from `dict` to `PseudoStatusBundle`
+3. Callers use `bundle.config` instead of `bundle["config"]`
+4. No new exports needed (DTO goes in dtos.py, function name unchanged)
+
+---
+
+#### C.2.2 get_qe_engine_status()
+
+**Location**: `api/utils.py:779`
+
+**Current return type**: `dict`
+
+**Actual schema** (from implementation):
+```python
+{
+    "detection": {
+        "found": bool,
+        "qe_home": str | None,
+        "qe_bin_dir": str | None,
+        "version": str | None,
+        "executables": list[str],
+        "mode": str,  # "external" | "internal"
+        "error": str | None  # Only if found=False
+    },
+    "environment": {
+        "python_version": str,
+        "python_executable": str,
+        "qv_version": str,
+        "qe_home": str | None,
+        "qe_found": bool
+    },
+    "available_engines": list[dict],  # Internal QE installations
+    "discovered": list[dict]          # Auto-discovered engines
+}
+```
+
+**Recommended DTO**:
+```python
+@dataclass
+class QEDetectionInfo:
+    """QE detection result."""
+    found: bool
+    qe_home: str | None
+    qe_bin_dir: str | None
+    version: str | None
+    executables: list[str]
+    mode: str  # "external" | "internal"
+    error: str | None = None
+
+@dataclass
+class QEEnvironmentInfo:
+    """Environment info."""
+    python_version: str
+    python_executable: str
+    qv_version: str
+    qe_home: str | None
+    qe_found: bool
+
+@dataclass
+class QEEngineStatusBundle(BaseDTO):
+    """Comprehensive QE engine status."""
+    detection: QEDetectionInfo    # STABLE: detection result
+    environment: QEEnvironmentInfo  # STABLE: environment info
+    available_engines: list[dict]   # DEBUG: internal installations
+    discovered: list[dict]          # DEBUG: auto-discovered engines
+```
+
+**Note**: `available_engines` and `discovered` are DEBUG fields - useful for troubleshooting but not part of stable contract.
+
+**Call-site audit**:
+- `daemon/server.py:_handle_detect_qe` - uses `bundle["detection"]`
+- `daemon/server.py:_handle_get_env_info` - uses `bundle["environment"]`
+
+**Migration path**: Same as C.2.1 - create DTO, change return type, update callers.
+
+---
+
+#### C.2.3 get_calculation_preset_bundle()
+
+**Location**: `api/utils.py:633`
+
+**Current return type**: `dict`
+
+**Actual schema** (from implementation):
+```python
+{
+    "detected_engine": str | None,  # e.g., "qe", "pyscf"
+    "dimension_states": dict,       # Preset dimension values
+    "workflow_type": str | None,    # e.g., "SCF", "DOS", "BANDS"
+    "step_footprints": list[dict]   # Per-step preset footprints
+}
+```
+
+**Recommended DTO**:
+```python
+@dataclass
+class CalculationPresetBundle(BaseDTO):
+    """Comprehensive preset detection for calculation."""
+    detected_engine: str | None   # STABLE: detected engine family
+    dimension_states: dict        # STABLE: detected preset dimensions
+    workflow_type: str | None     # STABLE: detected workflow type
+    step_footprints: list[dict]   # STABLE: per-step footprints
+```
+
+**Call-site audit**:
+- `daemon/server.py:_handle_detect_presets` - uses `bundle["dimension_states"]`
+- `daemon/server.py:_handle_detect_workflow` - uses `bundle["workflow_type"]`
+- `daemon/server.py:_handle_get_step_preset_footprints` - uses `bundle["step_footprints"]`
+
+**Migration path**: Same pattern.
+
+---
+
+### C.3 DTO Migration Rules
+
+1. **No surface increase**: DTO classes go in `api/dtos.py` (already counted)
+2. **Function name unchanged**: `get_pseudo_status_bundle()` stays
+3. **Backwards compatible**: Callers can still use `bundle["key"]` if needed (DTOs support dict-like access via `to_dict()`)
+4. **Type annotations**: Update function signatures to return DTOs
+5. **Validation**: DTOs can validate fields on construction
+
+### C.4 Risks
+
+| Risk | Mitigation |
+|------|------------|
+| Breaking daemon/CLI that uses dict access | DTOs implement `to_dict()` for compatibility |
+| Type errors in tests | Update test assertions to use DTO attributes |
+| Serialization changes | DTOs use same `to_dict()` → JSON path |
+
+### C.5 Implementation Priority
+
+| Bundle | Priority | Reason |
+|--------|----------|--------|
+| PseudoStatusBundle | MEDIUM | Most complex, most fields |
+| QEEngineStatusBundle | LOW | Nested structure adds complexity |
+| CalculationPresetBundle | HIGH | Simple, clean schema |
+
+**Recommendation**: Start with `CalculationPresetBundle` as it has simplest schema.
+
+---
+
 **End of Review**

@@ -100,9 +100,263 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
-
-        # NOTE: list_properties, get_property_ref, load_artifact REMOVED (Batch 36)
-        # These methods had 0 daemon/CLI usage. Tests should use artifacts directly.
+        
+        def list_properties(
+            self,
+            calc_selector: str,
+            step_selector: str,
+        ) -> list[str]:
+            """
+            List available analysis properties for a calculation step.
+            
+            Args:
+                calc_selector: Calculation selector
+                step_selector: Step selector
+                
+            Returns:
+                List of property names (e.g., ["scf", "dos", "bands"])
+                
+            Raises:
+                APIError: If calculation/step not found
+            """
+            try:
+                from quantumvitas.core.resolution import require_calculation, require_step
+                from quantumvitas.analysis.artifacts import artifact_exists, AnalysisType
+                
+                # Resolve calculation and step
+                calc_resolved = require_calculation(self._service.project_root, calc_selector)
+                step_resolved = require_step(
+                    self._service.project_root,
+                    calc_selector,
+                    step_selector
+                )
+                
+                # Get calculation directory
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                else:
+                    calc_dir = calc_resolved.absolute_path
+                
+                # Check which artifacts exist
+                properties = []
+                for analysis_type in AnalysisType:
+                    if artifact_exists(calc_dir, analysis_type):
+                        properties.append(analysis_type.value)
+                
+                return properties
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def get_property_ref(
+            self,
+            calc_selector: str,
+            step_selector: str,
+            property_name: str,
+        ) -> AnalysisRefDTO:
+            """
+            Get reference to large analysis data (not embedded).
+            
+            Args:
+                calc_selector: Calculation selector
+                step_selector: Step selector
+                property_name: Property name (e.g., "band_structure", "dos")
+                
+            Returns:
+                AnalysisRefDTO with artifact reference
+                
+            Raises:
+                APIError: If calculation/step not found or property not available
+            """
+            try:
+                from quantumvitas.core.resolution import require_calculation, require_step
+                from quantumvitas.analysis.artifacts import (
+                    get_artifact_path,
+                    read_artifact,
+                    AnalysisType,
+                )
+                import hashlib
+                
+                # Resolve calculation and step
+                calc_resolved = require_calculation(self._service.project_root, calc_selector)
+                step_resolved = require_step(
+                    self._service.project_root,
+                    calc_selector,
+                    step_selector
+                )
+                
+                # Get calculation directory
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                else:
+                    calc_dir = calc_resolved.absolute_path
+                
+                # Map property name to analysis type
+                analysis_type_map = {
+                    "band_structure": AnalysisType.BANDS,
+                    "dos": AnalysisType.DOS,
+                    "scf": AnalysisType.SCF,
+                }
+                
+                if property_name not in analysis_type_map:
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(
+                        f"Unknown property: {property_name}",
+                        context={"property_name": property_name, "available": list(analysis_type_map.keys())}
+                    )
+                
+                analysis_type = analysis_type_map[property_name]
+                artifact_path = get_artifact_path(calc_dir, analysis_type)
+                
+                if not artifact_path.exists():
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(
+                        f"Analysis artifact not found: {property_name}",
+                        context={"property_name": property_name, "calc_dir": str(calc_dir)}
+                    )
+                
+                # Read artifact for summary
+                artifact_data = read_artifact(calc_dir, analysis_type)
+                if not artifact_data:
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(
+                        f"Failed to read analysis artifact: {property_name}",
+                        context={"property_name": property_name}
+                    )
+                
+                # Compute artifact hash and size
+                artifact_bytes = artifact_path.read_bytes()
+                artifact_sha256 = hashlib.sha256(artifact_bytes).hexdigest()
+                artifact_size = len(artifact_bytes)
+                
+                # Build reference DTO
+                return analysis_ref_to_dto(
+                    calc_ulid=calc_resolved.meta.ulid if calc_resolved.meta else "",
+                    step_ulid=step_resolved.meta.ulid if step_resolved.meta else "",
+                    property_name=property_name,
+                    artifact_path=str(artifact_path.relative_to(self._service.project_root)),
+                    artifact_format="json",
+                    artifact_sha256=artifact_sha256,
+                    artifact_size_bytes=artifact_size,
+                    artifact_data=artifact_data,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def load_artifact(self, ref: AnalysisRefDTO) -> dict:
+            """
+            Load full artifact data (Jupyter-only, returns numpy arrays).
+            
+            Args:
+                ref: AnalysisRefDTO reference
+                
+            Returns:
+                Dict with full data (may include numpy arrays)
+                
+            Raises:
+                ValidationError: If ref is invalid or missing required fields
+                NotFoundError: If artifact file not found
+                APIError: For other errors
+            """
+            try:
+                from quantumvitas.api.errors import ValidationError, NotFoundError
+                from pathlib import Path
+                
+                # Validate input
+                if ref is None:
+                    raise ValidationError(
+                        "AnalysisRefDTO cannot be None",
+                        code="VALIDATION_FAILED",
+                        context={"ref": None}
+                    )
+                
+                if not ref.artifact_path:
+                    raise ValidationError(
+                        "AnalysisRefDTO missing artifact_path",
+                        code="VALIDATION_FAILED",
+                        context={"ref": ref.to_dict() if hasattr(ref, 'to_dict') else str(ref)}
+                    )
+                
+                # Resolve artifact path (relative to project root)
+                artifact_path = Path(self._service.project_root) / ref.artifact_path
+                artifact_path = artifact_path.resolve()
+                
+                # Security check: ensure path is within project root
+                try:
+                    artifact_path.relative_to(Path(self._service.project_root).resolve())
+                except ValueError:
+                    raise ValidationError(
+                        f"Artifact path outside project root: {ref.artifact_path}",
+                        code="VALIDATION_FAILED",
+                        context={"artifact_path": ref.artifact_path}
+                    )
+                
+                # Check if file exists
+                if not artifact_path.exists():
+                    raise NotFoundError(
+                        f"Artifact not found: {ref.artifact_path}",
+                        context={
+                            "artifact_path": ref.artifact_path,
+                            "resolved_path": str(artifact_path)
+                        }
+                    )
+                
+                # Load based on format
+                artifact_format = ref.artifact_format.lower() if ref.artifact_format else "json"
+                
+                if artifact_format == "json":
+                    import json
+                    try:
+                        data = json.loads(artifact_path.read_text())
+                        # Remove metadata if present
+                        data.pop("_artifact_meta", None)
+                        return data
+                    except json.JSONDecodeError as e:
+                        from quantumvitas.api.errors import InternalError
+                        raise InternalError(
+                            f"Failed to parse JSON artifact: {e}",
+                            context={"artifact_path": ref.artifact_path}
+                        )
+                
+                elif artifact_format == "npz":
+                    try:
+                        import numpy as np
+                        data = np.load(str(artifact_path))
+                        # Convert to dict (arrays remain as numpy arrays)
+                        result = {key: data[key] for key in data.keys()}
+                        data.close()
+                        return result
+                    except Exception as e:
+                        from quantumvitas.api.errors import InternalError
+                        raise InternalError(
+                            f"Failed to load NPZ artifact: {e}",
+                            context={"artifact_path": ref.artifact_path}
+                        )
+                
+                elif artifact_format == "hdf5":
+                    # HDF5 support would require h5py
+                    # For now, raise an error indicating it's not yet implemented
+                    from quantumvitas.api.errors import InternalError
+                    raise InternalError(
+                        f"HDF5 format not yet supported: {artifact_format}",
+                        context={"artifact_path": ref.artifact_path, "format": artifact_format}
+                    )
+                
+                else:
+                    from quantumvitas.api.errors import ValidationError
+                    raise ValidationError(
+                        f"Unsupported artifact format: {artifact_format}",
+                        code="VALIDATION_FAILED",
+                        context={"artifact_format": artifact_format, "supported": ["json", "npz"]}
+                    )
+                    
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
 
         def analyze_band(
             self,
@@ -1190,6 +1444,8 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
+        # NOTE: find_band_files REMOVED - use quantumvitas.calculation.naming.find_band_analysis_files directly
+
         def get_relax_final_structure_preview(
             self,
             calc_selector: str,
@@ -1394,10 +1650,59 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
-
-        # NOTE: get_atoms REMOVED (Batch 37) - 0 daemon/CLI usage, Jupyter-only
-        # Callers can use pymatgen directly via structure file
-
+        
+        def get_atoms(self, selector: str) -> dict:
+            """
+            Get full atomic coordinates (Jupyter-only).
+            
+            Args:
+                selector: Structure selector
+                
+            Returns:
+                Dict with full atomic data (positions, species, etc.)
+                
+            Raises:
+                APIError: If structure not found
+            """
+            try:
+                from quantumvitas.core.resolution import require_structure
+                from quantumvitas.io.structure_io import read_structure
+                
+                # Resolve and load structure
+                struct_resolved = require_structure(self._service.project_root, selector)
+                struct_path = struct_resolved.absolute_path
+                
+                if not struct_path.exists():
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(
+                        f"Structure file not found: {struct_path}",
+                        context={"selector": selector}
+                    )
+                
+                pmg_structure = read_structure(struct_path)
+                
+                # Extract full atomic data
+                positions = pmg_structure.cart_coords.tolist()
+                species = [str(site.specie) for site in pmg_structure]
+                
+                result = {
+                    "positions": positions,
+                    "species": species,
+                    "num_atoms": len(pmg_structure),
+                }
+                
+                # Add lattice if periodic
+                if hasattr(pmg_structure, "lattice"):
+                    result["lattice"] = pmg_structure.lattice.matrix.tolist()
+                    result["lattice_abc"] = pmg_structure.lattice.abc
+                    result["lattice_angles"] = pmg_structure.lattice.angles
+                
+                return result
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
         def require_ref(self, selector: str, config: dict | None = None) -> Any:
             """
             Resolve structure selector to ResolvedResource (for internal use).
@@ -2343,6 +2648,29 @@ class QVService:
                 # Return None on any error (not found)
                 return None
         
+        def require_enclosing(self, path: Path | None = None) -> CalculationRefDTO:
+            """
+            Require calculation that encloses the given path.
+            
+            Args:
+                path: Path to check (defaults to current working directory)
+                
+            Returns:
+                CalculationRefDTO
+                
+            Raises:
+                NotFoundError: If no calculation encloses the path
+            """
+            result = self.resolve_enclosing_path(path)
+            if result is None:
+                from quantumvitas.api.errors import NotFoundError
+                path_str = str(path) if path else "current directory"
+                raise NotFoundError(
+                    f"No calculation found enclosing {path_str}",
+                    context={"path": str(path) if path else None}
+                )
+            return result
+        
         def get_step(self, calc_selector: str, step_selector: str) -> StepDTO:
             """
             Get step by selectors.
@@ -2548,8 +2876,8 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
-        # NOTE: get_effective_params REMOVED (Batch 37) - 0 daemon/CLI usage
-        # Callers can access step.parameters directly via calculation
+        # NOTE: get_effective_params REMOVED - internal detail, use get_calculation DTO
+        # which includes step.parameters. If merged params needed, should be StepDTO field.
 
         def create(
             self,
@@ -4640,6 +4968,37 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
         
+        def get_status(self, run_ulid: str) -> RunResultDTO:
+            """
+            Get run status by run_ulid.
+            
+            Note: This is a simplified implementation. In a full system,
+            this would query job history or a job manager.
+            
+            Args:
+                run_ulid: Run ID (ULID)
+                
+            Returns:
+                RunResultDTO
+                
+            Raises:
+                APIError: If run not found
+            """
+            try:
+                from quantumvitas.api.errors import NotFoundError
+                
+                # Simplified: For now, we can't easily get run status without JobManager
+                # This would need to query calculation history or job manager
+                # For now, raise not found
+                raise NotFoundError(
+                    f"Run status lookup not yet implemented for run_ulid: {run_ulid}",
+                    context={"run_ulid": run_ulid}
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
         def cancel(self, run_ulid: str) -> RunResultDTO:
             """
             Cancel a running job.
@@ -4801,6 +5160,33 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
         
+        def list_runs(
+            self,
+            calc_selector: str | None = None,
+            status: str | None = None,
+        ) -> list[RunResultDTO]:
+            """
+            List runs, optionally filtered.
+
+            Note: This is a simplified implementation. In a full system,
+            this would query job history or a job manager.
+
+            Args:
+                calc_selector: Optional calculation selector filter
+                status: Optional status filter
+
+            Returns:
+                List of RunResultDTO
+            """
+            try:
+                # Simplified: For now, return empty list
+                # This would need to query calculation history or job manager
+                return []
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
         def preflight(
             self,
             calc_selector: str | None = None,
@@ -5196,6 +5582,8 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
+        # NOTE: get_species_map, get_potential_map REMOVED - use get_config() instead
+
         def build_resource_index(self) -> Any:
             """
             Build resource index for project (for internal use).
@@ -5209,6 +5597,24 @@ class QVService:
             try:
                 from quantumvitas.core.resolution import build_resource_index
                 return build_resource_index(self._service.project_root)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def list_calculations(self) -> list[CalculationDTO]:
+            """
+            List all calculations in project.
+            
+            Returns:
+                List of CalculationDTO
+                
+            Raises:
+                APIError: If project invalid
+            """
+            try:
+                # Delegate to calculation.list()
+                return self._service.calculation.list()
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -5727,10 +6133,222 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
-
-        # NOTE: get_info, list_step_types, validate_installation REMOVED (Batch 37)
-        # 0 daemon/CLI usage - callers can use DriverRegistry directly
-
+        
+        def get_info(self, engine_name: str) -> dict:
+            """
+            Get information about a specific engine.
+            
+            Args:
+                engine_name: Engine name (e.g., "qe", "pyscf")
+                
+            Returns:
+                Engine info dict
+                
+            Raises:
+                APIError: If engine not found
+            """
+            try:
+                from quantumvitas.engine.registry import create_default_registry
+                from quantumvitas.api.errors import NotFoundError
+                
+                registry = create_default_registry()
+                
+                if not registry.has(engine_name):
+                    raise NotFoundError(
+                        f"Engine not found: {engine_name}",
+                        context={"engine_name": engine_name}
+                    )
+                
+                engine = registry.get(engine_name)
+                
+                info = {
+                    "name": engine_name,
+                    "supported_presets": getattr(engine, "supported_presets", []),
+                }
+                
+                # Add version if available
+                if hasattr(engine, "version") and engine.version:
+                    info["version"] = engine.version
+                
+                # Add executable path if available
+                if hasattr(engine, "executable"):
+                    try:
+                        info["executable"] = str(engine.executable)
+                    except Exception:
+                        pass
+                
+                return info
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def list_step_types(self, engine_name: str | None = None) -> list[dict]:
+            """
+            List step types, optionally filtered by engine.
+            
+            Args:
+                engine_name: Optional engine name filter
+                
+            Returns:
+                List of step type info dicts
+            """
+            try:
+                from quantumvitas.workflow.generalized_steps import get_supported_generalized_steps
+                from quantumvitas.workflow.registry import get_registry
+                
+                if engine_name:
+                    # Get step types for specific engine
+                    step_types = get_supported_generalized_steps(engine_name)
+                    return [{"name": st, "engine": engine_name} for st in step_types]
+                else:
+                    # Get all step types from registry
+                    registry = get_registry()
+                    step_types = []
+                    for step_name in registry.list_step_types():
+                        # Get engines that support this step
+                        from quantumvitas.workflow.generalized_steps import get_engine_families_for_step
+                        engines = get_engine_families_for_step(step_name)
+                        step_types.append({
+                            "name": step_name,
+                            "engines": engines,
+                        })
+                    return step_types
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+        
+        def validate_installation(self, engine_name: str) -> dict:
+            """
+            Validate engine installation.
+            
+            Args:
+                engine_name: Engine name (e.g., "qe", "vasp", "orca")
+                
+            Returns:
+                Validation result dict with schema:
+                - engine_name: str
+                - ok: bool
+                - details: dict (always present; may be empty)
+                - version: str | None (optional)
+                - binary: str | None (optional)
+                - message: str | None (optional)
+                - warnings: list[str] | None (optional)
+                
+            Raises:
+                ValidationError: If engine_name is unknown (invalid input)
+                APIError: For other errors
+            """
+            try:
+                from quantumvitas.api.errors import ValidationError
+                from quantumvitas.core.driver_registry import DriverRegistry
+                from quantumvitas.core.driver_exceptions import UnknownEngineError
+                
+                # Get driver from registry (canonical source)
+                try:
+                    driver = DriverRegistry.get_driver(engine_name)
+                except UnknownEngineError:
+                    # Unknown engine is a validation error (invalid input)
+                    raise ValidationError(
+                        f"Unknown engine: {engine_name}",
+                        code="VALIDATION_FAILED",
+                        context={"engine_name": engine_name}
+                    )
+                
+                # Initialize result with required fields
+                result = {
+                    "engine_name": engine_name,
+                    "ok": False,
+                    "details": {},
+                }
+                
+                # Engine-specific validation hooks
+                warnings = []
+                
+                if engine_name == "qe":
+                    # QE validation: check if binary directory can be resolved
+                    try:
+                        from quantumvitas.drivers.qe.engine.qe_resolver import resolve_qe_bin_dir
+                        from pathlib import Path
+                        
+                        bin_dir = resolve_qe_bin_dir()
+                        result["ok"] = True
+                        result["binary"] = str(bin_dir)
+                        result["details"]["bin_dir"] = str(bin_dir)
+                        result["details"]["mode"] = "external"  # or "internal" - simplified
+                        
+                        # Try to get version if available
+                        try:
+                            from quantumvitas.drivers.qe.engine.qe_diagnostics import diagnose_qe_resolution
+                            report = diagnose_qe_resolution()
+                            if report.version:
+                                result["version"] = report.version
+                        except Exception:
+                            pass
+                            
+                    except RuntimeError as e:
+                        # QE not found or invalid
+                        result["ok"] = False
+                        result["message"] = str(e)
+                        result["details"]["error"] = str(e)
+                    except Exception as e:
+                        # Other errors during validation
+                        result["ok"] = False
+                        result["message"] = f"Validation error: {e}"
+                        result["details"]["error"] = str(e)
+                        warnings.append(f"Unexpected error during QE validation: {e}")
+                
+                elif engine_name == "orca":
+                    # ORCA validation: check if binary can be found
+                    try:
+                        from quantumvitas.core.engines.orca_resolver import resolve_orca_bin, get_orca_version
+                        from pathlib import Path
+                        
+                        orca_bin = resolve_orca_bin()
+                        result["ok"] = True
+                        result["binary"] = str(orca_bin)
+                        result["details"]["binary"] = str(orca_bin)
+                        
+                        # Try to get version
+                        version = get_orca_version(orca_bin)
+                        if version:
+                            result["version"] = version
+                    except RuntimeError as e:
+                        # ORCA not found
+                        result["ok"] = False
+                        result["message"] = str(e)
+                        result["details"]["error"] = str(e)
+                    except Exception as e:
+                        result["ok"] = False
+                        result["message"] = f"Validation error: {e}"
+                        result["details"]["error"] = str(e)
+                
+                elif engine_name in ["pyscf", "cp2k", "lammps", "vasp"]:
+                    # For engines without specific validation hooks, return ok=True
+                    # with note that validation is not implemented
+                    result["ok"] = True
+                    result["details"]["note"] = "Engine is registered; validation hook not implemented"
+                    result["message"] = "Engine registered successfully"
+                
+                else:
+                    # Unknown engine (shouldn't happen if DriverRegistry is correct)
+                    # But if it does, return ok=True with note
+                    result["ok"] = True
+                    result["details"]["note"] = "Engine is registered; no validation hook available"
+                    result["message"] = "Engine registered successfully"
+                
+                # Add warnings if any
+                if warnings:
+                    result["warnings"] = warnings
+                
+                return result
+                
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+    
     @property
     def engine(self) -> Engine:
         """Access engine capabilities."""

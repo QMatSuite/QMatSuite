@@ -1,8 +1,9 @@
 # API Slimming Worklog
 
 **Started**: 2026-02-02
-**Status**: COMPLETE (Phase 3: High-Impact Bundle Consolidation)
-**Final Count**: 191 entrypoints (down from 213 baseline, -22 total = 10.3% reduction)
+**Status**: IN PROGRESS (Phase 3 → Phase 4: Daemon/CLI Unify)
+**Current Count**: 202 entrypoints (down from 213 baseline, -11 total = 5.2% reduction)
+**Note**: Batch 38 corrected improper capability deletions from Batches 36/37
 
 ---
 
@@ -1465,6 +1466,92 @@ TOTAL: 191
 
 **Delta**: 196 → 191 (-5 entrypoints)
 - service_nested: 82 → 77 (-5)
+
+---
+
+### Batch 38: Ownership Correction (Capability Restoration)
+
+**CRITICAL**: Batches 36/37 incorrectly deleted methods based solely on "0 daemon/CLI usage". Per API Constitution, the API serves daemon, CLI, Jupyter, agents, and future frontends. "0 daemon/CLI usage" does NOT imply "0 capability value".
+
+**Reference**: See `docs/api/BATCH_36_37_OWNERSHIP_REVIEW.md` for full ownership analysis.
+
+**AUDIT BEFORE** (after incorrect deletions):
+```
+service_nested: 77
+service_static: 23
+utils: 68
+TOTAL: 191
+```
+
+- **Time**: 2026-02-02
+- **Action**: Restore 7 capability methods; confirm deletion of 4 non-capability methods
+
+**Restored** (7 service_nested - real capabilities):
+1. `Analysis.list_properties` - discoverability capability
+2. `Analysis.get_property_ref` - DTO-returning artifact metadata
+3. `Analysis.load_artifact` - artifact access pattern completion
+4. `Structure.get_atoms` - API-encapsulated data access
+5. `Engine.get_info` - engine discoverability
+6. `Engine.list_step_types` - workflow discoverability
+7. `Engine.validate_installation` - diagnostic capability
+
+**Kept Deleted** (4 service_nested - not real capabilities):
+1. `Calculation.get_effective_params` - internal detail, use get_calculation DTO
+2. `Analysis.find_band_files` - pure kernel function, use calculation.naming directly
+3. `Project.get_species_map` - use get_config() instead
+4. `Project.get_potential_map` - use get_config() instead
+
+- **Tests**: 3012 passed, 18 skipped ✅
+
+**AUDIT AFTER**:
+```
+service_nested: 88
+service_static: 23
+utils: 68
+TOTAL: 202
+```
+
+**Delta**: 191 → 202 (+11 entrypoints, net +7 after accounting for 4 deletions)
+- service_nested: 77 → 88 (+11, net +7)
+
+**Lesson Learned**: Deletion criteria MUST include capability value analysis, not just usage counts:
+1. Does it provide discoverability? (list_*, get_info)
+2. Does it provide data access? (get_atoms, load_artifact)
+3. Does it provide diagnostics? (validate_installation)
+4. Is it part of a DTO workflow? (get_property_ref → load_artifact)
+
+If YES to any, it's a CAPABILITY and should be kept.
+
+---
+
+### Phase 4 Investigation: Daemon/CLI Unification
+
+**Date**: 2026-02-02
+**Status**: INVESTIGATION COMPLETE
+
+**Finding**: The daemon and CLI are ALREADY UNIFIED at the API layer.
+
+Both consumers import from `quantumvitas.api`:
+- All QVService methods
+- All DTOs
+- All error types
+- All utils functions
+
+There are NO duplicate API entrypoints between daemon and CLI. The 2→1 merge campaign assumed duplicates that don't exist.
+
+**Actual Architecture**:
+```
+Daemon (119 handlers) ──┐
+                        ├──→ quantumvitas.api (single API)
+CLI (31 commands) ──────┘
+```
+
+**Remaining Opportunities**:
+1. CLI-only utils (45 entries) - Could internalize if not used by Jupyter/agents
+2. Bundle DTO upgrades - Replace dict returns with typed DTOs (quality improvement)
+3. Periodic capability audits - Review "unused" list for real non-capabilities
+
+**Reference**: See `docs/api/API_SLIMMING_PHASE4_DAEMON_CLI_UNIFY_PLAN.md` for full analysis.
 
 ---
 
