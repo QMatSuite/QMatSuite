@@ -68,6 +68,9 @@ GEN_TYPE_TOKENS: Dict[str, str] = {
     "mp2": "m2",    # MP2 correlation
     "freq": "f",    # Frequency/vibrational analysis
     "nmr": "n",     # NMR chemical shifts
+    "vmc": "v",     # Variational Monte Carlo
+    "dmc": "d",     # Diffusion Monte Carlo
+    "wfopt": "wo",  # Wavefunction optimization
 }
 
 
@@ -576,6 +579,40 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
 
     # -------------------------------------------------------------------------
+    # QMCPACK step types
+    # -------------------------------------------------------------------------
+    "qmcpack_vmc": StepTypeSpec(
+        step_type_spec="qmcpack_vmc",
+        step_type_gen="vmc",
+        engine="qmcpack",
+        executable="qmcpack",
+        description="QMCPACK Variational Monte Carlo",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+    "qmcpack_dmc": StepTypeSpec(
+        step_type_spec="qmcpack_dmc",
+        step_type_gen="dmc",
+        engine="qmcpack",
+        executable="qmcpack",
+        description="QMCPACK Diffusion Monte Carlo",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+    "qmcpack_wfopt": StepTypeSpec(
+        step_type_spec="qmcpack_wfopt",
+        step_type_gen="wfopt",
+        engine="qmcpack",
+        executable="qmcpack",
+        description="QMCPACK wavefunction optimization",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+
+    # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
     "qe_custom": StepTypeSpec(
@@ -912,11 +949,11 @@ def resolve_engine_for_step(
         step_type_str = machine_step_type
     elif step_yaml_path:
         # Read step_type_spec directly from step.yaml
-        import yaml
+        from quantumvitas.core.public import StepDoc
         step_yaml_path = Path(step_yaml_path)  # Path is imported at module level
         if not step_yaml_path.exists():
             raise FileNotFoundError(f"Step YAML file not found: {step_yaml_path}")
-        step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
+        step_data = StepDoc.load(step_yaml_path).to_dict()
         step_type_str = step_data.get("step_type_spec")
         if not step_type_str:
             raise ValueError(f"Step YAML file missing 'step_type_spec' field: {step_yaml_path}")

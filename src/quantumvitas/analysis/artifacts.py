@@ -561,20 +561,20 @@ def parse_and_write_bands_artifact(
         elif step_selector:
             # Try to resolve step to get step_type, then check for {step_type}.out
             try:
-                from quantumvitas.core.resolution import require_step
+                from quantumvitas.core.public import require_step
                 # We need project_root and calculation_selector to resolve step
                 # But we can infer from calculation_dir
                 project_root = calculation_dir.parent.parent  # calculation_dir is usually <project>/calculations/<calc_name>
                 # Try to find calculation by looking for calculation.yaml
                 calc_yaml = calculation_dir / "calculation.yaml"
                 if calc_yaml.exists():
-                    import yaml
-                    calc_data = yaml.safe_load(calc_yaml.read_text()) or {}
+                    from quantumvitas.core.public import CalcDoc
+                    calc_data = CalcDoc.load(calc_yaml).to_dict()
                     calc_meta = calc_data.get("meta", {})
                     calc_ulid = calc_meta.get("ulid") or calc_meta.get("slug") or calculation_dir.name
                     step = require_step(project_root, calc_ulid, step_selector)
                     # Get step type from step
-                    from quantumvitas.calculation.structure_steps import StructureStepSpec
+                    from quantumvitas.calculation.public import StructureStepSpec
                     try:
                         spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=None)
                         step_type = spec.step_type_spec

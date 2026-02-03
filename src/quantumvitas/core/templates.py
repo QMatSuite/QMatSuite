@@ -12,7 +12,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-import yaml
+
 
 from quantumvitas.core.resources import generate_resource_id as generate_ulid
 
@@ -78,8 +78,8 @@ def list_calculation_templates() -> List[Dict[str, Any]]:
             continue
         
         try:
-            with open(calculation_yaml, "r") as f:
-                data = yaml.safe_load(f) or {}
+            from quantumvitas.core.yamldoc import CalcDoc
+            data = CalcDoc.load(calculation_yaml).to_dict()
             
             steps = data.get("steps", [])
             step_types = [s.get("type", "unknown") for s in steps]
@@ -252,8 +252,8 @@ def _copy_calculation_from_path(
     
     # First, read calculation.yaml to get the calculation ULID
     calculation_yaml_src = source_path / "calculation.yaml"
-    with open(calculation_yaml_src, "r") as f:
-        calculation_data = yaml.safe_load(f)
+    from quantumvitas.core.yamldoc import CalcDoc
+    calculation_data = CalcDoc.load(calculation_yaml_src).to_dict()
     
     # Use provided ULID or generate new one
     new_id = calculation_ulid or generate_ulid()
@@ -345,8 +345,8 @@ def _copy_calculation_from_path(
     if steps_src_dir.exists():
         steps_dest_dir.mkdir(parents=True, exist_ok=True)
         for step_file in steps_src_dir.glob("*.step.yaml"):
-            with open(step_file, "r") as f:
-                step_data = yaml.safe_load(f)
+            from quantumvitas.core.yamldoc import StepDoc
+            step_data = StepDoc.load(step_file).to_dict()
             
             # Regenerate step ULID
             _regenerate_ulids_in_meta(step_data, ulid_map)

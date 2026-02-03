@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
-from quantumvitas.core.engines.qe_calculation import StepResult
+from quantumvitas.core.public import StepResult
 from pymatgen.core import Structure
 from quantumvitas.io.structure_io import read_structure
 from quantumvitas.engine.base import Engine, EngineConfig
@@ -197,52 +197,56 @@ class VaspEngine(Engine):
     
     def run_step(
         self,
-        step: "Step",
-        working_dir: Path,
+        step_or_input,
+        working_dir: Path | None = None,
         calculation: Optional["Calculation"] = None,
     ) -> StepResult:
+        """Run VASP step.
+
+        Accepts either an ``EngineInput`` or the legacy ``(step, working_dir)`` pair.
         """
-        Run VASP step.
-        
-        Args:
-            step: Step object
-            working_dir: Working directory (must contain POSCAR/INCAR/KPOINTS/POTCAR)
-            calculation: Optional calculation context
-        
-        Returns:
-            StepResult with execution status
-        """
+        from quantumvitas.engine.engine_input import EngineInput
+
+        if isinstance(step_or_input, EngineInput):
+            ei = step_or_input
+            wd = ei.working_dir
+            step_type = ei.step_type_spec
+        else:
+            step = step_or_input
+            if working_dir is None:
+                raise ValueError("working_dir is required for legacy step objects")
+            wd = working_dir
+            step_type = step.step_type_spec if hasattr(step, "step_type_spec") else "vasp_scf"
+
         # Get VASP binary
         vasp_bin = self._get_vasp_bin("std")
-        
+
         # Change to working directory and run
         import os
         old_cwd = os.getcwd()
         try:
-            os.chdir(working_dir)
-            
+            os.chdir(wd)
+
             # Run VASP
             result = subprocess.run(
                 [str(vasp_bin)],
                 capture_output=True,
                 text=True,
-                timeout=None,  # TODO: Add timeout support
+                timeout=None,
             )
-            
+
             # Check outputs
-            outcar = working_dir / "OUTCAR"
-            oszicar = working_dir / "OSZICAR"
-            
+            outcar = wd / "OUTCAR"
+
             success = result.returncode == 0 and outcar.exists()
             error = None
             if not success:
                 error = f"VASP exited with code {result.returncode}"
                 if result.stderr:
                     error += f"\n{result.stderr[:500]}"
-            
-            step_type = step.step_type_spec if hasattr(step, "step_type_spec") else "vasp_scf"
-            input_file = working_dir / "INCAR"  # VASP uses INCAR as primary input
-            
+
+            input_file = wd / "INCAR"
+
             return StepResult(
                 step_type_spec=step_type,
                 input_file=input_file,

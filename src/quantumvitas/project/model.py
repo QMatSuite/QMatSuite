@@ -11,8 +11,6 @@ from typing import Dict, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from quantumvitas.core.resolution import ResourceIndex
 
-import yaml
-
 from quantumvitas.core.resources import (
     ResourceMeta,
     ResourceKind,
@@ -119,7 +117,8 @@ class Project:
         if not config_file.exists():
             raise FileNotFoundError(f"project.qv.yml not found under {root}")
 
-        data = yaml.safe_load(config_file.read_text()) or {}
+        from quantumvitas.core.yamldoc import ProjectDoc
+        data = ProjectDoc.load(config_file).to_dict()
         project_section = data.get("project", {})
         project_name = project_section.get("name") or root.name
         project_meta = ResourceMeta.from_dict(
@@ -315,8 +314,8 @@ class Project:
                     candidate_yaml = candidate_dir / "calculation.yaml"
                     if candidate_yaml.exists():
                         try:
-                            import yaml
-                            wf_data = yaml.safe_load(candidate_yaml.read_text()) or {}
+                            from quantumvitas.core.yamldoc import CalcDoc
+                            wf_data = CalcDoc.load(candidate_yaml).to_dict()
                             wf_meta_dict = wf_data.get("meta") or {}
                             # Verify the ID matches
                             if wf_meta_dict.get("ulid") == calculation_id:
@@ -346,8 +345,8 @@ class Project:
                     wf_yaml = wf_dir / "calculation.yaml"
                     if wf_yaml.exists():
                         try:
-                            import yaml
-                            wf_data = yaml.safe_load(wf_yaml.read_text()) or {}
+                            from quantumvitas.core.yamldoc import CalcDoc
+                            wf_data = CalcDoc.load(wf_yaml).to_dict()
                             wf_meta_dict = wf_data.get("meta") or {}
                             if wf_meta_dict.get("ulid") == calculation_id:
                                 calculation_dir = wf_dir
@@ -390,8 +389,8 @@ class Project:
                 # Try to load from calculation.yaml to get canonical name/slug
                 # But prefer name from entry (project.qv.yml) if it exists and is different from slug
                 try:
-                    import yaml
-                    wf_data = yaml.safe_load(calculation_yaml_path.read_text()) or {}
+                    from quantumvitas.core.yamldoc import CalcDoc
+                    wf_data = CalcDoc.load(calculation_yaml_path).to_dict()
                     wf_meta = wf_data.get("meta") or {}
                     # Prefer name from entry (project.qv.yml) over calculation.yaml if entry has a human-readable name
                     entry_name = entry.get("name") or (entry.get("meta") or {}).get("name")

@@ -53,6 +53,9 @@ ALLOWLISTED_ID_CLASSES = {
     "StepTypeSpec",
     # Test mocks (MockMeta.id is legitimate for mocking)
     "MockMeta",
+    # XML ElementTree: `id` is an XML attribute name
+    "SubElement",
+    "Element",
 }
 
 # Classes that must use sanitized construction (no **meta)

@@ -62,6 +62,30 @@ def _load_yaml_raw(path: Path) -> dict:
     return data
 
 
+def load_yaml_meta_subtree(path: Path) -> dict:
+    """Load a YAML file and return ONLY the 'meta' subtree.
+
+    Returns the dict under the 'meta' key. All other top-level keys
+    are discarded. Uses _load_yaml_raw() internally.
+
+    This is the ONLY YAML loader that the resources/resolution domain
+    should call during index building and resolution.
+    """
+    data = _load_yaml_raw(path)
+    return data.get("meta") or data.get("__qv_meta__") or {}
+
+
+def load_json_meta_subtree(path: Path) -> dict:
+    """Load a JSON file and return ONLY the meta subtree.
+
+    Returns the dict under the '__qv_meta__' or 'meta' key.
+    All other top-level keys are discarded.
+    """
+    import json
+    data = json.loads(path.read_text())
+    return data.get("__qv_meta__") or data.get("meta") or {}
+
+
 def _save_yaml_raw(data: dict, path: Path) -> None:
     """
     Save raw dict to YAML file.
@@ -351,8 +375,7 @@ def _extract_calc_ulid(data: dict, path: Path) -> Optional[str]:
             calc_yaml = current / "calculation.yaml"
             if calc_yaml.exists():
                 try:
-                    import yaml
-                    calc_data = yaml.safe_load(calc_yaml.read_text()) or {}
+                    calc_data = _load_yaml_raw(calc_yaml)
                     return calc_data.get("meta", {}).get("ulid")
                 except Exception:
                     pass

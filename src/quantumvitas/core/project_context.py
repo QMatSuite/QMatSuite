@@ -88,9 +88,9 @@ class ProjectContext:
                     if calculation_dir.exists():
                         calculation_yaml = calculation_dir / "calculation.yaml"
                         if calculation_yaml.exists():
-                            import yaml
                             try:
-                                wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
+                                from quantumvitas.core.yamldoc import CalcDoc
+                                wf_data = CalcDoc.load(calculation_yaml).to_dict()
                                 wf_meta = wf_data.get("meta") or {}
                                 current_calculation_id = wf_meta.get("ulid")
                                 

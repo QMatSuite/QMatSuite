@@ -13,8 +13,7 @@ from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from quantumvitas.calculation.manifest import ManifestStepEntry
-    from quantumvitas.calculation.step import Step
+    from quantumvitas.calculation.public import ManifestStepEntry, Step
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +40,10 @@ def is_scf_step(step: "Step", registry=None) -> bool:
         True if step is SCF, False otherwise
     """
     if registry is None:
-        from quantumvitas.workflow.registry import get_registry
+        from quantumvitas.workflow.public import get_registry
         registry = get_registry()
 
-    from quantumvitas.workflow.step_type_convert import is_spec
+    from quantumvitas.workflow.public import is_spec
     from quantumvitas.execution.step_type_unpack import unpack_step_type, unpack_step_type_safe
 
     step_type_spec = getattr(step, 'step_type_spec', None)

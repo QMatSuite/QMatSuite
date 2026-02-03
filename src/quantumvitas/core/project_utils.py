@@ -13,8 +13,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, Sequence, TYPE_CHECKING
 
-import yaml
-
 from quantumvitas.core.resources import (
     ensure_relative_path,
     generate_resource_id,
@@ -51,7 +49,8 @@ def load_project_config(project_root: Path) -> dict:
     config_file = project_root / "project.qv.yml"
     if not config_file.exists():
         raise ProjectConfigError(f"project.qv.yml not found under {project_root}")
-    return yaml.safe_load(config_file.read_text()) or {}
+    from quantumvitas.core.yamldoc import ProjectDoc
+    return ProjectDoc.load(config_file).to_dict()
 
 
 def save_project_config(project_root: Path, data: dict) -> None:
@@ -581,7 +580,8 @@ def find_step_in_calculation(
     calculation_yaml = calculation_dir / "calculation.yaml"
     if calculation_yaml.exists():
         try:
-            wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
+            from quantumvitas.core.yamldoc import CalcDoc
+            wf_data = CalcDoc.load(calculation_yaml).to_dict()
             for step in wf_data.get("steps", []):
                 step_ulid = step.get("ulid", "")
                 if step_ulid.lower() == step_ulidentifier.lower():
@@ -608,7 +608,8 @@ def find_step_in_calculation(
                 return step_path
             # Or parse and check step_type/id inside
             try:
-                step_data = yaml.safe_load(step_path.read_text()) or {}
+                from quantumvitas.core.yamldoc import StepDoc
+                step_data = StepDoc.load(step_path).to_dict()
                 if step_data.get("ulid", "").lower() == ident_lower:
                     return step_path
                 if step_data.get("step_type_spec", "").lower() == ident_lower:

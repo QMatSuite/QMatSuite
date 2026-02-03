@@ -171,7 +171,7 @@ class WorkflowService:
         Returns:
             WorkflowMatch with best matching workflow
         """
-        from quantumvitas.core.yamldoc import CalcDoc
+        from quantumvitas.core.public import CalcDoc
         
         calc_dir = Path(calc_dir).resolve()
         
@@ -203,7 +203,7 @@ class WorkflowService:
             )
         
         import logging
-        from quantumvitas.core.debug import is_resolution_debug_enabled
+        from quantumvitas.core.public import is_resolution_debug_enabled
         
         logger = logging.getLogger(__name__)
         debug_enabled = is_resolution_debug_enabled()
@@ -211,7 +211,7 @@ class WorkflowService:
         # Collect step types in order from calculation.yaml.steps[] (authoritative)
         # Per Constitution: steps[] is single source of truth, do NOT scan filesystem
         present_steps: List[str] = []
-        from quantumvitas.core.project_utils import find_project_root
+        from quantumvitas.core.public import find_project_root
         project_root = find_project_root(calc_dir)
         
         logger.info(
@@ -233,15 +233,15 @@ class WorkflowService:
             # This requires project_root to be available
             if step_ulid and project_root:
                 try:
-                    from quantumvitas.core.resolution import resolve_step
-                    from quantumvitas.core.project_utils import load_project_config
+                    from quantumvitas.core.public import resolve_step
+                    from quantumvitas.core.public import load_project_config
                     config = load_project_config(project_root)
                     
                     # Resolve calculation first to get calculation_ulid
                     # We need calc_dir to find the calculation
                     calc_yaml = calc_dir / "calculation.yaml"
                     if calc_yaml.exists():
-                        from quantumvitas.core.yamldoc import CalcDoc
+                        from quantumvitas.core.public import CalcDoc
                         calc_doc = CalcDoc.load(calc_yaml)
                         calculation_ulid = calc_doc.get(["meta", "ulid"], default=None) or calc_doc.get(["meta", "id"], default=None)
                         
@@ -254,7 +254,7 @@ class WorkflowService:
                             )
                             
                             # Load step YAML to get step_type
-                            from quantumvitas.core.yamldoc import StepDoc
+                            from quantumvitas.core.public import StepDoc
                             step_doc = StepDoc.load(resolved_step.absolute_path)
                             step_type_spec = step_doc.get(["step_type_spec"], default=None)
                             if debug_enabled:
@@ -305,7 +305,7 @@ class WorkflowService:
                     step_path = calc_dir / step_file
                     if step_path.exists():
                         try:
-                            from quantumvitas.core.yamldoc import StepDoc
+                            from quantumvitas.core.public import StepDoc
                             step_doc = StepDoc.load(step_path)
                             step_type_spec = step_doc.get(["step_type_spec"], default=None)
                             if debug_enabled:
@@ -463,7 +463,7 @@ class WorkflowService:
         """
         from quantumvitas.workflow.step_factory import create_step_doc, save_step_doc
         from quantumvitas.workflow.generalized_steps import materialize_workflow
-        from quantumvitas.core.models import CalculationModel
+        from quantumvitas.core.public import CalculationModel
         
         workflow = self.get_template(workflow_id)
         if workflow is None:
@@ -477,8 +477,8 @@ class WorkflowService:
         if engine_family is None:
             calc_yaml_path = calc_dir / "calculation.yaml"
             if calc_yaml_path.exists():
-                import yaml
-                calc_data = yaml.safe_load(calc_yaml_path.read_text())
+                from quantumvitas.core.public import CalcDoc
+                calc_data = CalcDoc.load(calc_yaml_path).to_dict()
                 engine_family = calc_data.get("engine_family")
             
             # Fallback to default (qe)
@@ -536,8 +536,8 @@ class WorkflowService:
         
         # Update calculation.yaml.steps[] with created steps (authoritative)
         # Per Constitution: steps[] is single source of truth
-        from quantumvitas.core.models import set_calculation_steps
-        from quantumvitas.core.project_utils import find_project_root
+        from quantumvitas.core.public import set_calculation_steps
+        from quantumvitas.core.public import find_project_root
 
         # Find project root (calc_dir is calculations/{slug}/)
         project_root = find_project_root(calc_dir)

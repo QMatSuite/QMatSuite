@@ -21,7 +21,7 @@ WANNIER90_STEP_TYPES = {"wannierprep", "wannier", "pw2wannier", "wannier90", "po
 def is_vasp_step(step_type_spec: str) -> bool:
     """Check if step type belongs to VASP."""
     import quantumvitas.drivers
-    from quantumvitas.core.driver_registry import DriverRegistry
+    from quantumvitas.core.public import DriverRegistry
     
     if not DriverRegistry.is_step_type_registered(step_type_spec):
         return False
@@ -31,7 +31,7 @@ def is_vasp_step(step_type_spec: str) -> bool:
 def is_lammps_step(step_type_spec: str) -> bool:
     """Check if step type belongs to LAMMPS."""
     import quantumvitas.drivers
-    from quantumvitas.core.driver_registry import DriverRegistry
+    from quantumvitas.core.public import DriverRegistry
     
     if not DriverRegistry.is_step_type_registered(step_type_spec):
         return False

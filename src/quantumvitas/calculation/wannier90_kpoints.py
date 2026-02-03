@@ -128,8 +128,8 @@ def find_nscf_input_file(calculation_dir: Path, working_dir: Optional[Path] = No
         return None
     
     try:
-        import yaml
-        calc_data = yaml.safe_load(calc_yaml.read_text()) or {}
+        from quantumvitas.core.public import CalcDoc
+        calc_data = CalcDoc.load(calc_yaml).to_dict()
         steps = calc_data.get("steps", [])
         
         # Find nscf step

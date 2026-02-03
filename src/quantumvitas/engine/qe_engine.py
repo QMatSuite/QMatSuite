@@ -8,8 +8,7 @@ from pathlib import Path
 
 from typing import Optional
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine as _LegacyQeEngine
-from quantumvitas.core.engines.base import EngineConfig
+from quantumvitas.core.public import QuantumEspressoEngine as _LegacyQeEngine, EngineConfig
 
 from .base import Engine, StepResult
 
@@ -39,7 +38,29 @@ class QeEngine(Engine):
     def backend(self) -> _LegacyQeEngine:
         return self._engine
 
-    def run_step(self, step, working_dir: Path) -> StepResult:
+    def run_step(self, step_or_input, working_dir: Path | None = None) -> StepResult:
+        from quantumvitas.engine.engine_input import EngineInput
+
+        if isinstance(step_or_input, EngineInput):
+            ei = step_or_input
+            wd = ei.working_dir
+            wd.mkdir(parents=True, exist_ok=True)
+            input_path = ei.materialized_inputs.get("input_file")
+            if input_path is None:
+                raise ValueError("EngineInput missing 'input_file' in materialized_inputs")
+            if not input_path.exists():
+                raise FileNotFoundError(f"Input file not found: {input_path}")
+            return self._engine.run_step(
+                input_file=input_path,
+                working_dir=wd,
+                step_type_spec=ei.step_type_spec,
+                timeout=ei.parameters.get("timeout"),
+            )
+
+        # Legacy path
+        step = step_or_input
+        if working_dir is None:
+            raise ValueError("working_dir is required for legacy step objects")
         working_dir.mkdir(parents=True, exist_ok=True)
         timeout = None
         step_type_value = None

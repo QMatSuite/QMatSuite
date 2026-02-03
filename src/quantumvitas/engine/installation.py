@@ -2,7 +2,7 @@
 QE installation utilities (re-exported from legacy module).
 """
 
-from quantumvitas.core.engines.qe_installation import QEInstallation
+from quantumvitas.core.public import QEInstallation
 
 __all__ = ["QEInstallation"]
 

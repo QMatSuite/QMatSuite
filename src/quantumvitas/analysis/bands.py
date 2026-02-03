@@ -8,8 +8,7 @@ import json
 from pathlib import Path
 from typing import List, Optional
 
-from quantumvitas.calculation.results import CalculationResult
-from quantumvitas.calculation.calculation import Calculation
+from quantumvitas.calculation.public import CalculationResult, Calculation
 from .parsers import (
     parse_bands_gnu,
     parse_scf_output,

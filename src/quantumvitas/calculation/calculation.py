@@ -8,9 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import yaml
-
-from quantumvitas.core.resources import ResourceMeta, ensure_relative_path
+from quantumvitas.core.public import ResourceMeta, ensure_relative_path
 from quantumvitas.project.model import Project, StructureRef
 from .types import StepMode
 from .step import Step
@@ -66,7 +64,7 @@ class Calculation:
         calculation_yaml = self.dir / "calculation.yaml"
         if calculation_yaml.exists():
             try:
-                from quantumvitas.core.models import load_calculation
+                from quantumvitas.core.public import load_calculation
                 wf_model = load_calculation(calculation_yaml, self.project.root)
                 self._structure_ulid = wf_model.structure_ulid
                 return self._structure_ulid
@@ -98,7 +96,7 @@ class Calculation:
         calculation_yaml = self.dir / "calculation.yaml"
         if calculation_yaml.exists():
             try:
-                from quantumvitas.core.models import load_calculation
+                from quantumvitas.core.public import load_calculation
                 wf_model = load_calculation(calculation_yaml, self.project.root)
                 self._species_map = wf_model.species_map
                 return self._species_map
@@ -126,7 +124,7 @@ class Calculation:
         calculation_yaml = self.dir / "calculation.yaml"
         if calculation_yaml.exists():
             try:
-                from quantumvitas.core.models import load_calculation
+                from quantumvitas.core.public import load_calculation
                 wf_model = load_calculation(calculation_yaml, self.project.root)
                 self._potential_map = getattr(wf_model, "potential_map", None)
                 return self._potential_map
@@ -153,7 +151,7 @@ class Calculation:
         calculation_yaml = self.dir / "calculation.yaml"
         if calculation_yaml.exists():
             try:
-                from quantumvitas.core.models import load_calculation
+                from quantumvitas.core.public import load_calculation
                 wf_model = load_calculation(calculation_yaml, self.project.root)
                 self._engine_family = wf_model.engine_family
                 return self._engine_family
@@ -182,14 +180,15 @@ class Calculation:
         if not calculation_yaml.exists():
             raise FileNotFoundError(f"calculation.yaml not found: {calculation_yaml}")
 
-        data = yaml.safe_load(calculation_yaml.read_text())
+        from quantumvitas.core.public import CalcDoc
+        data = CalcDoc.load(calculation_yaml).to_dict()
         calculation_id = data.get("ulid", calculation_dir.name)
         mode = StepMode(data.get("mode", StepMode.NORMAL.value))
 
         calculation_meta = data.get("calculation", {})
         
         # Detect legacy structure selector (NOT SUPPORTED)
-        from quantumvitas.core.exceptions import LegacyProjectError
+        from quantumvitas.core.public import LegacyProjectError
         
         structure_ulid = calculation_meta.get("structure_ulid") or data.get("structure_ulid")
         legacy_structure = calculation_meta.get("structure") or data.get("structure")
@@ -266,7 +265,7 @@ class Calculation:
         calculation._structure_ulid = structure_ulid
         
         # Phase 3A: Ensure calculation identity is set (best-effort recovery)
-        from quantumvitas.core.calc_identity import ensure_calculation_identity
+        from quantumvitas.core.public import ensure_calculation_identity
         ensure_calculation_identity(calculation_dir, project_root=project.root)
         
         # No auto-migration - legacy calculations raise LegacyProjectError during step building
@@ -290,13 +289,13 @@ def _build_step(
         Tuple of (Step, migrated_flag) where migrated_flag is True if legacy
         fallback path was used (indicating the calculation needs migration).
     """
-    from quantumvitas.core.resolution import require_step, ResourceNotFoundError
+    from quantumvitas.core.public import require_step, ResourceNotFoundError
     from quantumvitas.calculation.structure_steps import StructureStepSpec
-    from quantumvitas.core.resolution import make_structure_selector_resolver
-    from quantumvitas.core.project_utils import load_project_config
+    from quantumvitas.core.public import make_structure_selector_resolver
+    from quantumvitas.core.public import load_project_config
     
     # Require step_ulid (ULID) - no legacy fallback
-    from quantumvitas.core.exceptions import LegacyProjectError
+    from quantumvitas.core.public import LegacyProjectError
     
     step_ulid = step_data.get("step_ulid") or step_data.get("step_ulid")
     if not step_ulid:
@@ -364,11 +363,11 @@ def _build_step(
     step_file_data = {}
     if step_file_path.exists():
         try:
-            import yaml
-            step_file_data = yaml.safe_load(step_file_path.read_text()) or {}
+            from quantumvitas.core.public import StepDoc
+            step_file_data = StepDoc.load(step_file_path).to_dict()
         except Exception:
             pass
-    
+
     # Engine must be specified or inferred from step type
     engine_name = step_data.get("engine")
     if engine_name is None:
@@ -389,7 +388,7 @@ def _build_step(
             # If registry lookup fails, try DriverRegistry materialization
             if engine_name is None:
                 import quantumvitas.drivers
-                from quantumvitas.core.driver_registry import DriverRegistry
+                from quantumvitas.core.public import DriverRegistry
 
                 # Check if step_type_spec is already a machine type
                 if DriverRegistry.is_step_type_registered(step_type_spec):
@@ -493,11 +492,11 @@ def _build_step_inspection(
         Tuple of (Step, migrated_flag) where migrated_flag indicates if legacy
         fallback path was used.
     """
-    from quantumvitas.core.resources import ResourceMeta, generate_resource_id
-    from quantumvitas.core.resolution import require_step, ResourceNotFoundError
+    from quantumvitas.core.public import ResourceMeta, generate_resource_id
+    from quantumvitas.core.public import require_step, ResourceNotFoundError
     from quantumvitas.calculation.structure_steps import StructureStepSpec
-    from quantumvitas.core.resolution import make_structure_selector_resolver
-    from quantumvitas.core.project_utils import load_project_config
+    from quantumvitas.core.public import make_structure_selector_resolver
+    from quantumvitas.core.public import load_project_config
     
     # Prefer step_ulid (ULID) - canonical reference, fall back to legacy step_ulid/id fields
     step_ulid = step_data.get("step_ulid") or step_data.get("step_ulid") or step_data.get("ulid")
@@ -524,8 +523,8 @@ def _build_step_inspection(
         # Load step file to extract step_type
         if step_file_path.exists():
             try:
-                import yaml
-                step_file_data = yaml.safe_load(step_file_path.read_text()) or {}
+                from quantumvitas.core.public import StepDoc
+                step_file_data = StepDoc.load(step_file_path).to_dict()
             except Exception:
                 pass
     except Exception:
@@ -551,7 +550,7 @@ def _build_step_inspection(
             # If registry lookup fails, try DriverRegistry materialization
             if engine_name is None:
                 import quantumvitas.drivers
-                from quantumvitas.core.driver_registry import DriverRegistry
+                from quantumvitas.core.public import DriverRegistry
 
                 # Check if step_type_spec is already a spec type
                 if DriverRegistry.is_step_type_registered(step_type_spec):
@@ -833,7 +832,7 @@ def _build_step_from_spec(
                         element_symbol = str(row[0]).strip()
                         pseudo_filename = str(row[2]).strip()
                         # Skip placeholder names (missing configuration) and old default pattern
-                        from quantumvitas.core.pseudo import is_missing_pseudo_placeholder
+                        from quantumvitas.core.public import is_missing_pseudo_placeholder
                         if pseudo_filename and not is_missing_pseudo_placeholder(pseudo_filename):
                             # Also skip old default pattern for backward compatibility
                             if pseudo_filename != f"{element_symbol}.upf":

@@ -41,6 +41,10 @@ class GenStepRegistry:
         # Post-HF (molecular)
         "mp2",
         "td",
+        # Quantum Monte Carlo
+        "vmc",       # Variational Monte Carlo
+        "dmc",       # Diffusion Monte Carlo
+        "wfopt",     # Wavefunction optimization
         # Escape hatch
         "custom",
     })

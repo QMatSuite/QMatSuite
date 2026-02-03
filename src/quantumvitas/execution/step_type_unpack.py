@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from quantumvitas.workflow.step_type_convert import gen_from, prefix_from, is_spec
+from quantumvitas.workflow.public import gen_from, prefix_from, is_spec
 
 
 @dataclass(frozen=True)

@@ -43,13 +43,13 @@ def _get_step_input_from_calculation_yaml(
     Returns:
         Path to input file if found in calculation.yaml, None otherwise
     """
-    import yaml
-    
+    from quantumvitas.core.yamldoc import CalcDoc
+
     calculation_yaml = calculation.dir / "calculation.yaml"
     if not calculation_yaml.exists():
         return None
-    
-    data = yaml.safe_load(calculation_yaml.read_text())
+
+    data = CalcDoc.load(calculation_yaml).to_dict()
     steps_data = data.get("steps", [])
     
     for step_data in steps_data:

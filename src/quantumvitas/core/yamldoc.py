@@ -505,8 +505,8 @@ class StepDoc(YamlDoc):
         """Normalize section names to uppercase for namelists."""
         result = {}
         for key, value in data.items():
-            # Uppercase namelist sections
-            if key.upper() in self.NAMELIST_SECTIONS:
+            # Uppercase namelist sections (only for string keys)
+            if isinstance(key, str) and key.upper() in self.NAMELIST_SECTIONS:
                 key = key.upper()
             
             if isinstance(value, dict):

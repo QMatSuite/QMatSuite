@@ -16,9 +16,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from quantumvitas.core.resources import generate_resource_id, slugify
-from quantumvitas.core.yamldoc import StepDoc
-from quantumvitas.core.yaml_io import save_yaml_doc
+from quantumvitas.core.public import (
+    generate_resource_id,
+    slugify,
+    StepDoc,
+    save_yaml_doc,
+)
 
 
 def create_step_doc(

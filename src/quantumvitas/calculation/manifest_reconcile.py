@@ -56,9 +56,9 @@ def reconcile_manifest(
     structure_sha = compute_structure_sha(structure_path)
     
     # Load calculation ID once (used for resolving steps)
-    from quantumvitas.core.models import load_calculation
-    from quantumvitas.core.resolution import require_step
-    from quantumvitas.core.project_utils import load_project_config
+    from quantumvitas.core.public import load_calculation
+    from quantumvitas.core.public import require_step
+    from quantumvitas.core.public import load_project_config
     
     calc_model = load_calculation(calc_dir / "calculation.yaml", project_root=project_root)
     calculation_id = calc_model.meta.ulid
@@ -76,7 +76,7 @@ def reconcile_manifest(
         step_ulid = step.meta.ulid
         
         # Load step YAML to compute step_sha
-        from quantumvitas.core.yamldoc import StepDoc
+        from quantumvitas.core.public import StepDoc
         
         # Resolve the step using calculation_id and step ULID
         step_resolved = require_step(project_root, calculation_id, step_ulid, config=config)
@@ -105,9 +105,9 @@ def reconcile_manifest(
                 if shas_match:
                     # SHAs match: verify step is actually done using StepDonePolicy
                     # Phase 3C: Also check if step supports incremental skip
-                    from quantumvitas.core.yamldoc import StepDoc
-                    from quantumvitas.core.resolution import require_step
-                    from quantumvitas.core.project_utils import load_project_config
+                    from quantumvitas.core.public import StepDoc
+                    from quantumvitas.core.public import require_step
+                    from quantumvitas.core.public import load_project_config
                     from quantumvitas.workflow.registry import get_registry
                     
                     try:

@@ -1,1376 +1,546 @@
-# QMatSuite 宪法（Constitution）
+> **DEPRECATED — This document is no longer authoritative.**
+> **The authoritative English constitution is now: `CONSTITUTION.md` (repo root).**
+> **This Chinese version is retained for historical reference only. If conflicts exist, `CONSTITUTION.md` governs.**
 
-**版本**: 1.2  
-**最后更新**: 2025-01-XX  
+# QMatSuite 宪法（Constitution）— 已废弃
+
+**版本**: 2.0 (已废弃；权威版本为 `CONSTITUTION.md` v2.1)
+**最后更新**: 2026-02-03
 **适用范围**: QMatSuite / QuantumVITAS v2 代码库
 
 ---
 
 ## 前言
 
-本文档是 QMatSuite 项目的“宪法”（Constitution）。它只定义项目的最高规则、不变量、术语与真相层（Truth vs Info）。  
-所有代码修改、架构决策、AI 辅助开发都必须遵守这些规则。
+> ⚠️ **本文档已废弃。权威宪法现为英文版 `CONSTITUTION.md`（仓库根目录）。**
 
-**重要说明**
-- 本文档是仓库内**唯一的中文文档**，用于项目作者快速阅读。
-- 除本文档外，所有代码、注释、文档默认语言为**英文**。除非作者明确要求，不新增其它中文文档或注释。
-- 本文档只记录**规则与定义**，不记录实现细节（文件路径、行号、函数列表、证据摘录等应放入英文文档/ TODO）。
+本文档是 QMatSuite 项目旧版中文"宪法"（Constitution）。
+权威版本已迁移至英文 `CONSTITUTION.md`，以消除双语漂移风险。
 
-**给 AI 的一句话指令（复制粘贴即可）**
-> 遵守根目录 CONSTITUTION_ZH.md；实现入口/证据看 docs/IMPLEMENTATION_NOTES.md；可做改进按 docs/TODO_ADR_ALIGNMENT.md 走小 PR。
+**给 AI 的一句话指令**
+> 遵守根目录 **CONSTITUTION.md**（英文）；详细规范见 docs/governance/；可做改进按小 PR 走。
 
 ---
 
 ## 术语与真相层
 
 ### Truth vs Info
-- **Truth（真相层）**：用于计算、可复现、必须稳定的事实与键（例如：ULID、SHA256、结构的 canonical form、单位约定）。
-- **Info（信息层）**：用于展示、理解、提示、搜索的可变信息（例如：文件名、路径、slug、来源描述、UI 文案）。
+- **Truth（真相层）**：用于计算、可复现、必须稳定的事实与键（ULID、SHA256、结构的 canonical form、单位约定）。
+- **Info（信息层）**：用于展示、理解、提示、搜索的可变信息（文件名、路径、slug、来源描述、UI 文案）。
 
 ### 身份（Identity）
 - 资源身份以 **ULID** 为唯一标识。
-- 伪势身份以 **SHA256（严格）** / **SHA_FAMILY（物理）** 为核心判定键（见第 6 节）。
+- 伪势身份以 **SHA256（严格）** / **SHA_FAMILY（物理）** 为核心判定键（见第 7 节）。
 
 ---
 
 ## 1. 语言规则（Language Policy）
 
-1) 本仓库所有代码、注释、文档默认语言为**英文**。  
-2) 只有根目录 `CONSTITUTION_ZH.md` 为中文。  
-3) 除非作者明确要求，不新增其它中文文档或注释。（GUI 国际化不在本条约束范围内。）
+1) 本仓库所有代码、注释、文档默认语言为**英文**。
+2) 只有根目录 `CONSTITUTION_ZH.md` 为中文。
+3) 除非作者明确要求，不新增其它中文文档或注释。
 
 ---
 
-## 2. 资源图谱与引用（ULID-only DAG + Index + Cache）
+## 2. SSOT 与持久化（Single Source of Truth）
 
-### 2.1 ULID-only 引用规则
-- 资源之间只允许通过 **ULID** 引用（ID-only）。
-- 路径、文件名、slug 只能作为 **Info**，不得作为跨资源引用依据与真相。
+### 2.1 唯一可执行真相
 
-### 2.2 必然代价与缓存原则
-- ULID-only 的必然代价：需要从 **project root** 向下扫描所有资源，构建 registry/index，进而构造 DAG。
-- 因此必须存在 **cache**：
-  - 至少要有内存缓存；
-  - 当项目规模增长时，必须具备可行的持久化缓存方案；
-  - 缓存失效策略必须明确（例如基于 mtime/hash 或显式手动失效）。
+SSOT 仅为：**calculation.yaml** + **step.yaml**。
 
-### 2.3 Project Root 约定
-- Project root marker 固定为：`project.qv.yml`（存在即代表项目根目录）。
-- root 查找逻辑：向上遍历目录树，找到包含 marker 的目录。
+- step.yaml 是唯一可执行真相；任何计算结果的可复现性只能由 step 参数保证。
+- step.yaml 必须保持纯粹输入，不得包含 workflow / preset / provenance 等元数据。
+- calculation.yaml 负责：structure、species_map（伪势三元组）、step 拓扑。
 
-### 2.4 身份不变性
+### 2.2 Input 文件是中间产物
+
+Input 文件（如 QE `.in` 文件）是中间产物：
+- materialize 时通过 clean rewrite 写入 `raw/`。
+- run 只读取 `raw/`。
+- 运行期间修改 YAML 不影响当前 run（仅影响下次 run）。
+
+### 2.3 禁止扫描 outdir/.save
+
+不得扫描/清理 `outdir/.save`（wavefunction 等），不得将其用于增量跳过决策。
+
+### 2.4 YAML IO 必须通过 Doc + yaml_io
+
+所有 project/calc/step YAML 的读写必须使用 Doc 层和集中化的 yaml_io。禁止直接使用 `yaml.safe_load`/`yaml.safe_dump`。
+
+> 详细规范：[KERNEL_DEPENDENCY_SPEC.md](docs/governance/KERNEL_DEPENDENCY_SPEC.md) §2.1 (Domain: ssot)
+
+---
+
+## 3. Present vs Past（History 世界分离）
+
+### 3.1 Present = 工作目录真相
+
+当前计算状态只存在于工作目录中的 SSOT 文件（calculation.yaml + step.yaml）。
+
+### 3.2 Past = .history/（唯一）
+
+- `.history/` 是唯一允许持久化派生叙事工件（digests / thumbnails / 快照）的位置。
+- `.history/` 为 append-only、immutable。
+- 删除 `.history/` 意味着历史 UI 变空，**不得**从其他地方"重建"。
+
+### 3.3 Job == Run
+
+- 每次引擎调用 = 一个 Job = 一个 Run；job_id == run_id（同一 ULID）。
+- 每次 run 产生一个 immutable **RunRevision**（inputs snapshot + run digest + step digests）。
+- Digest 是 best-effort，不得因 digest 失败而 crash。
+
+---
+
+## 4. 并发与锁（Concurrency & Locks）
+
+每个 calculation 有两个跨进程文件锁：
+
+| 锁 | 持有时长 | 用途 |
+|----|---------|------|
+| `edit.lock` | 短锁 | 仅用于 YAML 写入（via `save_yaml_doc()`） |
+| `run.lock` | 长锁 | 从 materialize 到执行结束 |
+
+**锁不可重入**：持有 `edit.lock` 时不得再次调用 `save_yaml_doc()`（portalocker non-reentrant → deadlock）。
+
+---
+
+## 5. 增量运行 Manifest（Incremental Run）
+
+### 5.1 Manifest = 运行时 bookkeeping（非 SSOT）
+
+每个 calc 的 manifest 是运行时 bookkeeping，可删除，不是 UI cache，不是 SSOT。
+
+### 5.2 Skip 决策
+
+Skip 判定只使用：`(kind/step_type, pseudo_set_sha, structure_sha, step_sha, done==true)`。永远不使用 output hashes。
+
+### 5.3 运行模式
+
+- **Run Calculation**：增量运行为默认；full run 先 reconcile 并清除 done 标记，然后从 step0 开始。
+- **Run Single Step**：目标 step 必须总是执行（no skip）。成功后保守地将下游 steps 标记为 `done=false`。
+
+### 5.4 StepDonePolicy 集中化
+
+"Step done" 逻辑必须集中在 `StepDonePolicy`（runner + skip 的单一入口点）。
+
+---
+
+## 6. 身份：ULID-only
+
+### 6.1 ULID 引用规则
+
+- 资源之间只允许通过 **ULID** 引用。
+- 路径、文件名、slug 只能作为 Info，不得作为跨资源引用依据。
+- DTO/meta **不得**包含遗留身份字段（`id`, `calc_id`, `step_id`, `run_id` 等）。
+- 规范字段：`project_ulid`, `calc_ulid`, `step_ulid`, `run_ulid`。
+- Slug 仅为资源自身的 `meta.slug`，不得在跨资源引用中持久化；内部引用只用 ULID。
+
+### 6.2 Project Root
+
+- Project root marker 固定为：`project.qv.yml`。
+- 查找逻辑：向上遍历目录树找到包含 marker 的目录。
+
+### 6.3 身份不变性
+
 - rename / move / 目录重排不应改变资源身份（ULID 不变）。
 
-### 2.5 不变性范围（Identity vs Info）
+### 6.4 不变性范围
 
-**不变性真相键（Immutable Truth Keys）**（一旦初始化后**必须不**变）：
-- ULID
-- machine step_type
-- engine
-- executable
-- calc 身份字段（如 engine_family、structure_kind）
+**不变性真相键**（初始化后必须不变）：ULID、step_type_spec、engine。
 
-**可变信息键（Mutable Info Keys）**（可在不改变身份的情况下变更）：
-- name
-- slug
-- path
-- description
-- 显示标签
+**可变信息键**：name、slug、path、description。
 
-**明确规则**：metadata **并非完全不可变**；只有身份/真相键是不可变的。
+> 门禁：`tests/gates/test_no_legacy_identity_fields.py`
 
 ---
 
-## 3. 几何宪法：Canonicalization 只做一次；之后不 snap
+## 7. Step Type 宪法（GEN/SPEC only）
 
-### 3.1 单次 Canonicalization
-- Structure canonicalization **只允许发生一次**（在几何入口/准备层）。
-- canonicalize 之后：不允许再次对原子分数坐标做 snap / wrap / fold。
-- 后续若需表达等价单胞，只允许通过改变 lattice vectors 来实现。
+### 7.1 两个且仅两个命名空间
 
-### 3.2 Canonicalization 的区间规则与 wrap_tol
-- 分数坐标必须被映射到：`[-wrap_tol, 1 - wrap_tol)`。
-- `wrap_tol` 的意义：仅用于覆盖浮点 knife-edge（0/1 附近），应较小。
-- 当前宪法默认：`wrap_tol = 1e-4`。
+| 字段 | 层 | 用途 | 示例 |
+|------|---|------|------|
+| `step_type_gen` | Intent/UI/workflow/preset/ParamSpace/文件命名 | 引擎无关 | `scf`, `relax`, `bandspw` |
+| `step_type_spec` | SSOT 执行/step.yaml/runner/dispatch/handler | 引擎特定 | `qe_scf`, `vasp_relax`, `w90_wannier` |
 
-### 3.3 Boundary atoms 判定与 boundary_tol
-- Boundary atoms 判定采用“双侧判定”：
-  - 近 0：`0 ± boundary_tol`
-  - 近 1：`1 ± boundary_tol`
-- `boundary_tol` 可稍大，因为它只影响“是否额外加入边界显示原子”，不应影响主物理与主结构。
-- 当前宪法默认：`boundary_tol = 0.01`。
-
----
-
-## 4. Atom list 与 Bonds：一等公民模型 + 纯数学函数
-
-### 4.1 统一计算路径（必须）
-不论 prim / supercell / conventional cell / QE 的 ibrav 表示差异，最终必须走同一条数学路径：
-
-`canonicalized geometry → atom list（primary + optional boundary，皆一等公民）→ bonds(atom_list)`
-
-### 4.2 Atom list 一等公民
-- primary atoms 与 boundary atoms 均为一等公民（first-class citizens），以“同一 atom list”表达。
-- boundary atoms 只能通过“扩展 atom list”进入显示/统计，不得引入特殊的“boundary-only 成键逻辑”。
-
-### 4.3 Bonds 的纯函数契约
-- bonds 必须由纯数学函数从 atom list 生成。
-- bond detection 不得产生几何副作用（不得 canonicalize / wrap / snap / 修改结构）。
-
----
-
-## 5. QE 结构 Schema：JSON 只存绝对单位 cell + frac coords
-
-### 5.1 输入解析 vs 内部存储
-- QE 输入层允许解析多种表示（ibrav、alat、CELL_PARAMETERS 等）。
-- 但进入我们的 JSON/内部结构存储后，必须统一为单一真相表示。
-
-### 5.2 内部存储规范（必须）
-- **只存 cell parameters（绝对单位）**
-- **原子位置一律存 frac 坐标**
-- **永不在 JSON 中存储 QE 特定表示**：ibrav / alat / celldm 等。
-
-### 5.3 单位真相（必须）
-- 内部 lattice / cell parameters 的绝对单位统一为：**Å（angstrom）**。
-
-### 5.4 输出文件命名不变量（必须）
-- 输入可版本化（scf.in, scf-1.in），但输出 capture 文件必须固定为 `{step_type}.out/.err` 并覆盖。
-- **禁止由 input 推导 output 文件名**（例如：scf-1.in → scf-1.out 是错误的；正确应为 scf-1.in → scf.out）。
-
----
-
-## 6. Pseudopotential 身份：SHA（严格相同）vs SHATOKEN（物理相同）
-
-### 6.1 SHA256（严格身份）
-- SHA256 表示 bitwise identical 的严格身份，用于去重存储与可复现锁定。
-
-### 6.2 SHA_FAMILY（物理相同 / 语义等价）
-- SHA_FAMILY 用于"物理相同"的判定（语义等价）。
-- 算法（宪法定义）：
-  1) 将 UPF 文本中所有空白字符（isspace()）移除
-  2) 把剩余字符拼接为字符串
-  3) 对该字符串的 UTF-8 bytes 计算 SHA256
-- 因此：
-  - `"1    23"` 与 `"1 23"` → sha_family 相同（空白被移除）
-  - `"1    23"` 与 `"12  3"` → sha_family 相同（空白被移除，都变成 "123"）
-  - `"1    23"` 与 `"1    24"` → sha_family 不同（非空白字符不同）
-
-### 6.3 判定规则（必须）
-- **sha_family 不同**：视为完全不同，不可混用。
-- **sha_family 相同但 sha256 不同**：视为物理一致；默认以标准库/权威来源的版本覆盖用户导入副本（例如 CRLF/LF 差异导致 sha256 不同）。
-
----
-
-## 7. 伪势管理（Pseudopotentials）不变量
-
-### 7.1 伪势三源（唯一来源模型）
-- 仅允许三类来源：
-  - **internal**：仅指 `repo/resources/pseudo`（禁止使用 `tests/demo` 等其它目录）。
-  - **lib**：用户安装在 `temp/pseudo/...` 下的库（例如 `temp/pseudo/sssp/1.3.0/efficiency` 的结构）。
-  - **project runtime**：`project/pseudo`（项目运行目录）。
-- **禁止**引入第四来源（如 cache、seed、或任何隐式目录）。
-- 如历史代码/文档出现 `repo_root/pseudo`、`tests/demo`、其它 pseudo 缓存目录等概念，必须清理。
-
-### 7.2 唯一运行目录：project/pseudo
-- QE 运行时（输入文件中的 pseudo 路径）**永远只指向** `project/pseudo`。
-- lib/internal 的 pseudo 仅作为“可被选择/拷贝”的外部候选；实际运行前**必须落地到** `project/pseudo`。
-- **禁止**在 repo root 创建/使用 `repo_root/pseudo`。
-
-### 7.3 UI 与 Run 的职责边界
-- **UI/设置页面/预览页面**：不得执行任何文件系统写操作（不得 copy / rename / 覆盖 / mkdir pseudo）。
-- 所有涉及 `project/pseudo` 的文件系统变更，**只允许**在用户点击 Run 后的“Step0/准备阶段”统一执行。
-- 目的：保证 UI 与 Run 不分叉语义，避免“双逻辑”。
-
-### 7.4 sha256 vs sha_family 的语义与用途
-- **sha256**：严格字节一致性（打开保存、换行 CRLF、空格变化都会变）。
-- **sha_family**：物理等价指纹（将 UPF 文本中所有空白字符移除后，把剩余字符拼接为字符串，再对该字符串的 UTF-8 bytes 计算 sha256）。
-- **重要**：UI 下拉选择主键是 **sha256**，不是 sha_family。
-- **sha_family 仅用于**：
-  - 冲突处理（Step0 rename/overwrite 决策）
-  - 警告/提示（family-match、family-mismatch）
-  - 跨 calc 引用一致性更新（rename 后按 sha_family 更新 calc 引用的 filename）
-
-### 7.5 UI 选择与 calc.yml 持久化规则
-
-#### 7.5.1 UI 展示/可选项规则
-- Dropdown 中“可选条目”必须对应文件系统真实存在的 UPF（project 或 internal 或已安装 lib 中能解析得到的文件）。
-- UI 允许展示 provenance chips（project/internal/lib），但不要求展示“未安装库”的 disabled 条目；未安装库可以只在右侧 chip/提示中出现为 provenance 信息（例如“属于某未安装库”）。
-- UI 默认选择优先级：project → internal → lib（优先贴近 runtime 实际，减少“无意覆盖”）。
-
-#### 7.5.1.1 确定性优先级（tie-break）规则
-- 当 sha256 命中多个候选（多来源或多路径/多 basename），用以下规则选“默认展示/默认选中”的那一个：
-  - **若 calc.yml 里有 pseudo_filename**，优先选择 filename 完全匹配的候选（同 sha256 下可能多个候选，先 filename 命中）。
-  - **若 filename 命中仍有多个，或没有任何 filename 命中**：按来源优先级 project → internal → lib。
-  - **若仍有多个**（例如同为 lib 且 sha256 命中多库），按 library/asset 名称字母序（ascending）稳定排序选第一个。
-  - **若同一 lib 内仍有多个**（极少见），按 relative_path / basename 字母序稳定排序选第一个。
-
-#### 7.5.2 默认选中（恢复选择）规则：不写 yml
-- 打开 calc 时，UI 根据 calc.yml 里的记录恢复选择：
-  - **优先按 pseudo_sha256 精确匹配**（命中则选中该 sha256 对应条目；若同 sha256 有多来源，按 7.5.1.1 tie-break 规则选定）。
-  - **若 sha256 找不到**（库未安装/文件改名/迁移等），fallback 按 pseudo_filename：
-    - 先在 project/pseudo/<filename> 找
-    - 再在 internal/resources/pseudo/<filename> 找
-    - 再在已安装 lib 中按 filename 找（若多条则按 7.5.1.1 tie-break 规则选定，并给 warning）
-- **以上“自动恢复默认选中”的过程绝对不能写回 calc.yml**（只读恢复，不做持久化变更）。
-
-#### 7.5.3 用户主动选择时：写 triplet，三元必须一起写
-- 只有当用户在 UI 中手动点击改变选择时，才写回 calc.yml。
-- 写回时必须一次性更新三元组（triplet）：
-  - `pseudo_filename`
-  - `pseudo_sha256`
-  - `pseudo_sha_family`
-- 并要求在 UI debug log 输出一条"写 yml"的日志（用于排查）。
-
-#### 7.5.4 Family-match edge case 的 UI 规则
-- 若 project/pseudo/<basename> 与某 external（lib/internal）：
-  - sha256 不同但 sha_family 相同（family-match）
-- 则 UI 不得合并成一个条目（避免"用户没选却被替换"的隐式行为）。应表现为：
-  - **project 本地条目**：显示 project chip，并额外提示"family-match with <lib/internal>（仅物理等价）"
-  - **external 条目**：显示 lib/internal chip，并额外提示"family-match with project（仅物理等价）"
-- 这样用户只有在显式选择 external 条目时，Run 才会发生覆盖行为（见 Step0 规则）。
-
-### 7.6 Calculation 必须记录 pseudo 三元组
-- 每个 calc **必须记录**：
-  - `pseudo_filename`（在 `project/pseudo` 下的文件名）
-  - `pseudo_sha256`（严格字节哈希）
-  - `pseudo_sha_family`（"物理等价"哈希）
-- Run 前 Step0 结束后，**必须刷新写回**上述记录。
-- 允许 calc 存在 stale sha256 状态：未重新 Run 前可以与当前文件不一致（见 7.7.3）。
-
-### 7.7 Step0 冲突规则（以 sha_family 做语义分歧）
-
-#### 7.7.1 Step0 总原则
-- Step0 的职责：根据 UI/calc 选中的 pseudo，把所需 pseudo 准备到 project/pseudo，并刷新 calc 记录（sha256/sha_family/filename）。
-- **如果用户选择的是 project/pseudo 自身的文件（project source）**：
-  - Step0 必须 noop（不覆盖/不改名），但仍需计算并刷新 calc 的 sha256/sha_family（用于修复 stale 记录）。
-
-#### 7.7.2 当选择的是 external（internal/lib）并需要落地到 project/pseudo/<basename> 时
-- 若目标 basename 已存在于 project/pseudo：
-  - **若 sha256 相同**：noop
-  - **若 sha_family 相同但 sha256 不同**：overwrite（只有在用户显式选择 external 时才发生；"标准库版本"= 用户所选 external）
-  - **若 sha_family 不同**：rename_existing
-    - 必须把已存在的旧文件改名为不冲突的新名字（例如追加 `__fam-<old_family[:10]>` 之类），保证 project/pseudo 内同名文件不对应不同 sha_family
-    - 并且必须基于旧文件的 sha_family，对项目内所有 calcs 做引用更新：只更新 filename，不改变其 sha_family 身份（保持物理身份不变）
-
-#### 7.7.3 stale sha 的定义与允许性
-- calc 可以存在 stale sha256：文件被打开保存/换行改变导致 sha256 变化但 sha_family 不变，这并不表示"物理改变"。
-- 只有当 sha_family 也变化才表示物理改变，需要更强 warning；但处理仍然遵循上述 Step0 规则。
-
----
-
-## 8. Windows Toolchain：oneAPI + MKL + MPI（拒绝 MinGW 作为主路线）
-
-### 8.1 主路线（必须）
-- Windows 下专业/HPC 可交付路线：**原生 oneAPI + MKL + (MS-MPI / Intel MPI)**。
-
-### 8.2 MinGW 不是主路线（政策）
-- MinGW 路线不是主路线：往往更难（可能需要修改 QE 源码以通过）且性能不如 oneAPI+MKL。
-- 本仓库当前未接入 Windows CI：不是技术不可行，仅为尚未完成；但路线选择必须明确写入宪法以防误导。
-
----
-
-## 9. 数据根目录、临时目录与可复现资产
-
-### 9.1 两类根目录（dev 阶段固定在 repo root，且都 gitignore）
-
-#### 9.1.1 `.qmatsuite/`：持久化、可迁移、可复现资产
-- **语义**：持久化资产目录，包含可迁移、可复现的数据。
-- **位置**：`repo_root/.qmatsuite/`（dev 阶段固定）。
-- **内容**：
-  - `engines/`：已安装的 QE 引擎（managed engines）
-  - `libraries/`：已安装的库（如伪势库）
-  - `seeds/`：可重装介质（QE seed、伪势 seed）
-  - `config/`：全局配置（`settings.json`）
-  - `logs/`：日志文件
-- **特性**：
-  - 可迁移（可复制到其他机器）
-  - 可复现（seed 支持离线重装）
-  - 必须 gitignore
-
-#### 9.1.2 `.tmp/`：临时目录
-- **语义**：临时文件目录，任何时候可删除。
-- **位置**：`repo_root/.tmp/`（dev 阶段固定）。
-- **内容**：
-  - `runs/`：计算运行目录（`<calc_ulid>/`）
-  - `downloads/`：下载缓存
-  - `unpack/`：解包临时目录
-  - `probe/`：自动搜索缓存
-  - `locks/`：文件锁
-- **特性**：
-  - 可随时删除
-  - 必须 gitignore
-
-#### 9.1.3 废弃 `temp/`
-- **禁止**：代码中不得再使用 `repo_root/temp/`。
-- **迁移**：所有 `temp/` 下的内容必须迁入 `.qmatsuite/` 或 `.tmp/`。
-- **规则**：新代码若出现 `temp/`，视为违反宪法。
-
-### 9.2 目录结构标准化
+### 7.2 推导规则（核心法则）
 
 ```
-repo_root/
-  .qmatsuite/                    # 持久化资产（gitignore）
-    config/
-      settings.json              # 唯一全局配置（极简）
-    engines/
-      qe/
-        <opaque_folder_name>/    # QE 引擎文件夹（名称不具语义）
-          bin/                   # 语义单元：包含 pw* 可执行文件的 bin 目录
-          test-suite/
-          ...
-    libraries/
-      pseudo/                    # 已安装伪势库
-        sssp/
-          1.3.0/
-            precision/
-            efficiency/
-    seeds/
-      qe/
-        <seed_id>/               # QE seed：压缩包/安装介质/校验信息
-          archive.tar.gz
-          manifest.json
-          sha256.txt
-      pseudo/                    # 伪势 seed
-        sssp/
-          1.3.0/
-            precision/
-            efficiency/
-    logs/
-      ...
-  .tmp/                          # 临时目录（gitignore）
-    runs/
-      <calc_ulid>/               # 计算运行目录
-    downloads/                   # 下载缓存
-    unpack/                      # 解包临时目录
-    probe/                       # 自动搜索缓存
-    locks/                       # 文件锁
-    e2e_projects/                # E2E 测试项目目录
+step_type_spec = f"{engine_prefix}_{step_type_gen}"
 ```
 
-**重要说明**：
-- 在 `.qmatsuite/engines/qe/**/bin` 下，**包含 pw* 可执行文件的 bin 目录是唯一的语义单元**。
-- 引擎文件夹名称（`<opaque_folder_name>`）不具语义，仅作为组织用途。
+- `engine_prefix` 和 `step_type_gen` **不得**包含下划线 `_`（下划线禁令 → 可靠拆分）。
+- 反向推导使用 `split(spec)` 在首个下划线处拆分。
+- 转换工具函数必须集中在 `workflow/step_type_convert.py`。
 
-### 9.3 QE Seed 机制
+### 7.3 禁令
 
-#### 9.3.1 定义与用途
-- **QE seed**：可重装介质，用于离线/快速重装 engine。
-- **功能**：
-  - 校验 hash（SHA256）
-  - 支持回滚
-  - 离线安装（无需重新下载）
+- **别名 step type 全面禁止**：DTO/YAML/tests/tools 中不得出现 `vc-relax`, `opt`, `w90_preproc`, `w90_run` 等别名。
+- **禁止裸 `step_type` 字段**：必须显式使用 `step_type_gen` 或 `step_type_spec`。
+- **禁止手动 split/join**：不得在代码中手动拆分/拼接下划线；必须使用规范转换函数。
+- **Daemon/CLI 禁止转换**：上层不得导入/调用转换函数；DTO 同时携带双字段。
 
-#### 9.3.2 安装流程（设计级定义）
-1. **下载阶段**：下载到 `.tmp/downloads/`
-2. **校验阶段**：校验 SHA256
-3. **落盘阶段**：保存到 `.qmatsuite/seeds/qe/<seed_id>/`
-4. **解包/安装阶段**：解包/安装到 `.qmatsuite/engines/qe/<opaque_folder_name>/`
+### 7.4 Wannier 工作流
 
-#### 9.3.3 当前状态
-- **当前版本尚未支持通过 seed 在程序内自动重装 QE；seed 仅作为未来可复现机制的占位定义。**
-- 灾难恢复功能（从 `seeds/qe/` 重新安装）尚未实现。
+- GEN: `wannierprep` → `pw2wannier` → `wannier`
+- SPEC: `w90_wannierprep` → `qe_pw2wannier` → `w90_wannier`
 
-### 9.4 QE 引擎解析（两态模型）
+### 7.5 Bands 语义
 
-#### 9.4.1 唯一真相：settings.qe.bin_dir
-- QE 引擎选择的唯一真相来源是 `settings.json` 中的 `qe.bin_dir` 字段。
-- `bin_dir` 必须是绝对路径，指向包含 `pw*` 可执行文件的 bin 目录。
+- `bandspw` 是计算步骤（qe/vasp 可实现）。
+- `bands` 是后处理步骤（qe 可实现；vasp 可能没有，允许 gen→spec=0 映射）。
 
-#### 9.4.2 两态模型
-
-**状态 1：External QE（外部 QE）**
-- 若 `settings.qe.bin_dir != null`：
-  - 视为 External QE
-  - 必须是包含 `pw*` 可执行文件的 bin 目录
-  - 若无效（目录不存在或缺少 `pw*` 可执行文件）→ 直接报错，不回退
-
-**状态 2：Internal QE（内部 QE）**
-- 若 `settings.qe.bin_dir == null`：
-  - 使用 Internal QE
-  - 从 `.qmatsuite/engines/qe/**/bin` 中自动选择
-  - 若不存在 → 报错并提示安装
-
-#### 9.4.3 禁止隐式 fallback
-- **禁止任何隐式 fallback**：
-  - 禁止搜索系统 PATH
-  - 禁止搜索 QE_HOME 环境变量
-  - 禁止 shell 自动发现
-  - 禁止磁盘扫描自动发现
-- 所有引擎选择必须通过显式配置（`settings.qe.bin_dir`）或内部引擎自动选择完成。
-
-### 9.5 settings.json 最小 Schema
-
-```json
-{
-  "version": "1.0",
-  "qe": {
-    "bin_dir": null
-  }
-}
-```
-
-**字段说明**：
-- `version`：配置版本号
-- `qe.bin_dir`：QE bin 目录的绝对路径
-  - 若为 `null`：使用 Internal QE（从 `.qmatsuite/engines/qe/**/bin` 自动选择）
-  - 若为非 `null`：使用 External QE（必须指向包含 `pw*` 可执行文件的 bin 目录）
-
-**原则**：
-- `settings.json` 是 machine-local 配置，不可移植。
-- `bin_dir` 是绝对路径，绑定到特定机器的文件系统。
-- Project 配置不记录 engine 信息。
-- 可复现性来自 raw in/out 中的 QE version 记录，而非 settings。
-- `settings.json` 是唯一全局配置（极简）。
-- 禁止引入多个配置文件。
-
-### 9.6 迁移说明
-
-#### 9.6.1 历史目录迁移对照表
-
-| 历史路径 | 新路径 | 说明 |
-|---------|--------|------|
-| `temp/pseudo_seed/` | `.qmatsuite/seeds/pseudo/` | 伪势 seed 迁移 |
-| `temp/pseudo/` | `.qmatsuite/libraries/pseudo/` | 伪势库迁移 |
-| `temp/test_outputs/` | `.tmp/runs/` | 测试运行目录迁移 |
-| `temp/matplotlib_tests/` | `.tmp/runs/` | 测试运行目录迁移 |
-| `temp/e2e/` | `.tmp/e2e_projects/` | E2E 测试项目目录迁移 |
-
-#### 9.6.2 迁移规则
-- 所有 `temp/` 下的持久化资产（pseudo_seed、pseudo 解包库）→ `.qmatsuite/`
-- 所有 `temp/` 下的临时文件（test_outputs、e2e、matplotlib_tests、e2e_projects）→ `.tmp/`
-- 迁移后，代码中禁止再出现 `temp/` 路径。
-- **明确规则**：任何新代码引用 `repo_root/temp` 视为违反宪法。
+> 详细规范：[STEP_TYPE_GEN_SPEC_CONSTITUTION.md](docs/governance/STEP_TYPE_GEN_SPEC_CONSTITUTION.md)
+> 门禁：`tests/gates/test_step_type_constitution.py`, `test_no_bare_step_type.py`, `test_underscore_ban.py`, `test_no_manual_join_split.py`, `test_banned_legacy_aliases.py`
 
 ---
 
-## 10. 计算模型与 Preset / Workflow 宪法
+## 8. Preset / ParamSpace / IR（非持久化意图层）
 
-本宪法用于约束 QMatSuite 中 proj / calc / step 计算模型，以及 preset / workflow / compiler / detector 的设计边界。  
-本宪法优先级高于任何具体实现、UI 便利或短期工程优化。
+### 8.1 非实体原则
 
-### 10.1 唯一真相原则（Single Source of Truth）
+Preset / Workflow / IR **不持久化**。它们仅是对当前 step DAG 的运行时解释和对 step 参数集合的正向生成/反向解释。
 
-#### 10.1.1 执行真相
-系统中**唯一的可执行真相**是 step.yml 中记录的 input parameters。  
-任何计算结果的可复现性，只能且必须由 step 参数保证。
+### 8.2 ParamSpace 编译流程
 
-#### 10.1.1.1 运行时状态不可持久化（必须）
+ParamSpace 将 preset profile 编译为 IR patch，写入 step.yaml（SSOT）。
 
-对于会话链引擎（session-chain engines），中间运行时状态（mf、mp2 对象、ccsd 对象等）**必须不**作为 YAML 真相持久化。
+### 8.3 反向推断
 
-**明确规则**：
-- 除 SCF 以外，**不存在**可被可靠序列化、复用、恢复的中间态
-- MP2 / CCSD / TD / EOM 等步骤产生的对象：
-  - **仅存在于** runtime memory
-  - **不构成** artifact
-  - **不可作为**后续执行的持久化输入
-- 任何试图通过 shim / partial serialization / fake checkpoint 恢复这些对象的行为：
-  - **不被视为**合法执行路径
-  - **不属于** QMatSuite 支持范围
+Preset 仅通过"精确持久化模式匹配"来推断；不匹配 → `custom`。
 
-**SCF checkpoint 的唯一例外**：
-- SCF checkpoint（如 PySCF chkfile）**仅能**作为 initial guess
-- 使用 checkpoint 后**必须**重新运行 SCF
-- checkpoint **不构成**真正意义上的 state reuse
+### 8.4 ParamSpace 核心约束
 
-**明确禁止**：
-- MP2 / CCSD / TD 等步骤**不得** requires_structure
-- MP2 / CCSD / TD 等步骤**不得**直接读取 structure
-- 上述步骤**只能** consume 前序 mf（runtime state）
+- **Single-writer 原则**：每个 YAML key 只能由一个 ParamSpace 写/删。
+- **三态 Cell**：每个 profile 对每个 key 必须为 `VALUE(v)` / `NOT_APPLICABLE`（must-absent）/ `WILDCARD`（不参与匹配）。
+- **Compiler/Detector 等价性**：`detect(compile_one(step_type, options))` 必须等于原始 options 值。
+- **禁止猜测**：关键参数缺失且无可靠默认语义时，Detector 必须返回 `CUSTOM`。
 
-#### 10.1.2 文件系统纯度
-step.yml 必须保持纯粹输入，不得包含以下任何信息：
+### 8.5 Apply 规则
 
-- workflow 标识
-- preset / option / provenance
-- 参数来源、继承关系、生成历史
-- compiler / detector 相关元数据
+- Apply 是**局部精确修改**：只修改该维度 Variant 声明的 keys。
+- NOT_APPLICABLE → 必须删除该 key。
+- 其他维度/用户手写参数必须保持原样。
+- 执行顺序：先 Prerequisite ParamSpaces（改变 applicability 的），再 Dependent ParamSpaces（依赖 Oracle 的）。
 
-违反本条视为模型污染。
+> 详细定义见宪法旧版 §10（ParamSpace 完整框架）在 `docs/governance/PARAMSPACE_SPEC.md` 中独立维护。
 
-#### 10.1.3 calc 职责边界
-calc 仅负责：
+---
 
-- structure
-- pseudopotentials
+## 9. Species / 伪势 SSOT
 
-calc 不得持有任何计算参数、preset 状态或 workflow 状态。
+### 9.1 Project-run 伪势 SSOT
 
-### 10.2 Preset / Workflow 的法律地位
+- SSOT 在 `calculation.yaml`: `species_map`（element / mass / pseudo filename + hash，可扩展）。
+- Step-level `species_overrides` 为 warning+ignored（仅用于 legacy/standalone）。
 
-#### 10.2.1 非实体原则
-workflow 与 preset 不是一等公民，不得作为持久化实体存在于文件系统中。
+### 9.2 pseudo_dir 运行时管理
 
-它们仅是：
+- `pseudo_dir` 是运行时管理的，强制指向 `project/pseudo`。
+- Runner 仅 stage 所需伪势。
 
-- 对当前 step DAG 的运行时解释
-- 对 step 参数集合的正向生成与反向解释
+### 9.3 伪势三源
 
-#### 10.2.2 抽象层不得持久化（必须）
-以下抽象层概念必须不得持久化为 YAML 真相：
+仅允许三类来源：
+- **internal**：`repo/resources/pseudo`
+- **lib**：用户安装在 `.qmatsuite/libraries/pseudo/` 下
+- **project runtime**：`project/pseudo`
 
-- **generalized step（通用步骤类型）**：公共类型如 scf/td/mp2 仅为运行时/UI/历史记录存在
-- **IR / detector / preset 匹配结果**：检测器推断结果、预设匹配结果等仅为运行时解释
-- **UI 分类标签**：如 "custom" 等仅为 UI 显示用途
+禁止第四来源。
 
-**明确规则**：
-- generalized step + IR 仅存在于运行时/UI/历史记录中
-- 持久化的 step.yaml **必须包含** machine step_type（引擎特定类型）
-- machine step_type **必须**在 StepTypeRegistry 中注册
-- 禁止在持久化 YAML 中以 generalized step 类型或 "custom" 作为真相
+### 9.4 SHA256 vs SHA_FAMILY
 
-### 10.3 Compiler（正向生成）的宪法约束
+- **SHA256**：bitwise identical（严格）。
+- **SHA_FAMILY**：物理等价（移除所有空白字符后的 SHA256）。
+- UI 下拉选择主键是 SHA256。SHA_FAMILY 仅用于冲突处理 / 警告 / 跨 calc 引用更新。
 
-#### 10.3.1 Compiler 定义与职责
-Compiler 是一个纯函数族，其职责是**规范化写入器**：将用户选项映射为 step 的 input parameters。
+---
 
-其形式为：
+## 10. Scan 规则（硬法则）
 
-```
-compile_one(step_type, options) -> full_parameter_dict
-```
+### 10.1 YamlDoc 不变量
 
-或等价的批量形式。
+`dict` 总是子树 patch；dict-leaf 禁止（scan 无例外）。
 
-**职责定位**：Compiler 是规范化写入器，负责将用户意图转换为显式、完整的参数表示。
+### 10.2 ScanRef
 
-#### 10.3.2 输入独立性
-Compiler 不得依赖以下任何信息：
+ScanRef leaf 仅为标量 token 字符串 `"@scan:<scan_id>"`。禁止 `{scan_ref: ...}` 旧格式。
 
-- step 拓扑 / DAG
-- workflow
-- structure
-- pseudopotential
-- calc 状态
+### 10.3 parameter_scan 结构
 
-Compiler 仅允许依赖：
+`step.yaml` 中顶层 `parameter_scan.<scan_id>.values:[...]`。
 
-- step_type
-- 用户 options（spin / soc / material / accuracy 等）
+- Values 仅为显式枚举；`linspace/logspace` 仅为 UI 工具，不持久化。
+- Fingerprint/manifest hash 仅包含解析后的有效引擎参数；`parameter_scan` 段本身不参与 hash。
 
-**例外：precision resolver 的 context 依赖**：
-一般维度的 compiler 不得依赖 structure/pseudo；但允许少数维度（如 precision）通过明确命名的 resolver 依赖 context。resolver 必须纯函数、可审计、有合同测试。
+### 10.4 Scan 范围与排序
 
-#### 10.3.3 局部精确修改原则
-Preset Apply 必须是局部精确修改：只允许修改该维度 ParamSpace Variant 明确声明的 keys（包括写入 VALUE 和删除 NOT_APPLICABLE）。所有不归该 preset 维度管理的参数必须保持原样（不得被重置、不得被删除、不得被覆盖）。该规则用于保证 canonical form 与数学等价性，同时确保用户手写/其他维度参数不会被清空。
+- Scan 展开在单个 job 内进行；scan 不跨 job。
+- Variant 排序确定性：later-step / faster-changing dimensions 在 inner loop（最大化复用）。
 
-如果未来需要"清理/归一化/删除多余参数"，应通过一个独立的清理功能实现，而不是 preset apply 的职责。
+### 10.5 孤儿 scan 删除
 
-#### 10.3.4 Canonical Encoding（必须显式写出）
-Compiler 输出必须采用规范化参数表示，**必须显式写出所有关键参数**：
+需要完整替换语义；UI 移除所有 scan 时必须发送 `parameter_scan:{}`。UI 必须在 Apply 时 flush scan values（commit-on-apply）。
 
-- 所有关键语义（如 spin / soc / material / accuracy）必须显式写出
-- 不得依赖默认值（即使 QE 有默认值，也必须显式写入）
-- 不得留下与当前 option 冲突的残留参数
-- 不得省略任何影响语义的参数
+---
 
-**示例**：若 option 为 nonspin，Compiler 必须显式写入 `nspin = 1`，不得依赖 QE 默认值。
+## 11. Managed / Injected 参数 UI 策略
 
-### 10.4 Detector B（反向检测）的宪法地位
+运行时管理的 keys（如 QE CONTROL: `prefix`/`outdir`/`pseudo_dir`）和 step-type-owned keys（如 `CONTROL.calculation`）在 UI 中为**只读**：不可编辑 / scan / unset / remove。
 
-#### 10.4.1 Detector 核心性与职责
-Detector B 是系统中**唯一合法的 preset / option 状态判定来源**。  
-UI 不得基于用户"选择历史"显示状态。
+优先使用引擎元数据 `is_managed` + `managed_reason` 驱动 UI（MVP 可为 QE）。
 
-**职责定位**：Detector B 是语义解释器，负责从 step 参数反向推断用户意图，包括隐式默认语义。
+---
 
-#### 10.4.2 无 A 原则
-系统中**不存在"Selected vs Detected"双轨状态模型**。  
-所有状态均由 Detector B 从 step 参数实时推断。
+## 12. UI input → YAML → Writer 类型契约
 
-### 10.5 Detector B 的数学定义
+### 12.1 两类 Keys
 
-#### 10.5.1 维度判定
-每个 preset 维度（如 Spin / SOC / Material / Accuracy）独立判定。
+| 类 | 定义 | 类型规则 |
+|----|------|---------|
+| **A-class** | Preset/IR/ParamSpace 拥有/映射的 keys | 严格类型 + 规范化；无效解析阻止持久化 |
+| **B-class** | 自由引擎 keys | 无类型强制；任意字符串允许 |
 
-对任一维度 d：
+### 12.2 A-class key set SSOT
 
-1. 选取相关 step 集合 R_d
-2. 从每个 step 提取值 v_d(step)（见 10.5.3 隐式默认语义）
-3. 构造集合 V = unique(v_d(step) for step in R_d)
+来自 ParamSpace/IR registry export，**不是** `qeparameters.json`。
 
-判定规则为：
+### 12.3 Writer 契约
 
-- 若 |V| == 1 → Detected = 该唯一值
-- 若 |V| > 1 → Detected = Custom
+- typed bool → QE 输出 `.true.`/`.false.`
+- string `".true."` 保持字面值，不重新解释。
 
-不存在 Unknown 状态。
+---
 
-#### 10.5.2 单步合法性
-若 R_d 中仅包含一个 step，则该 step 的值即为 Detected 值。  
-单步合法，不构成 Custom。
+## 13. RELAX 审计法则
 
-#### 10.5.3 隐式默认语义的反向解释（必须支持）
-Detector B 必须支持隐式默认语义的反向解释。
+### 13.1 Relax 是结构变换器
 
-**规则**：当 step 参数中未显式写出某个关键参数时，Detector 必须按照 QE 默认语义进行解释。
+Input structure → output structure；无电子态 / 无 SCF 引用。
 
-**示例**：
-- 若 step 中未写 `nspin`，Detector 必须解释为 `nonspin`（等价于 `nspin = 1`）
-- 若 step 中未写 `lspinorb`，Detector 必须解释为 `no_soc`（等价于 `lspinorb = .false.`）
+### 13.2 唯一 GEN step
 
-**目的**：保证 Detector 能够正确解释非 Compiler 生成的 step（如用户手动编辑、从 QE input 导入等）。
+只有一个公开 GEN step: `relax`。引擎内部 spec: `qe_relax`, `orca_relax`, `pyscf_relax`。
 
-### 10.6 Compiler 与 Detector 的数学等价性
+### 13.3 输出结构
 
-#### 10.6.1 职责不对称性
-Compiler 与 Detector 在职责上具有不对称性：
+Output structure 是 calc-private artifact；不是 project structure resource，除非显式 promote。
 
-- **Compiler（规范化写入器）**：将用户意图转换为显式、完整的参数表示
-- **Detector（语义解释器）**：从参数反向推断用户意图，包括隐式默认语义
+### 13.4 QC 强链边界（ORCA/PySCF）
 
-这种不对称性导致等价性要求的不同严格程度。
+- SCF chain 不得跨越 relax。
+- `run_step(non-relax)` 必须找到 relax 之前的 SCF，否则硬错误。
+- `run_calc` 验证拓扑并 fail-fast。
 
-#### 10.6.2 等价性公理（区分 Compiler 输出与非 Compiler 输出）
+### 13.5 缺失结构 = 硬错误
 
-**对 Compiler 输出（严格等价）**：
-对任意 options 与 step_type，必须满足：
+缺少生成的结构 artifact → 硬错误；不自动重跑 relax。
 
-```
-detect( compile_one(step_type, options) ) == options 在该维度的值
-```
+---
 
-该等价性是强制不变量，必须严格满足。
+## 14. LAMMPS 集成宪法
 
-**对非 Compiler 输出（宽容语义推断）**：
-对非 Compiler 生成的 step（如用户手动编辑、从 QE input 导入），Detector 允许更宽容的语义推断：
+### 14.1 结构变换引擎
 
-- 允许基于隐式默认语义进行解释（见 10.5.3）
-- 允许处理参数缺失、参数冗余等情况
-- 目标是在语义等价的前提下，尽可能推断出合理的 preset / option 状态
+LAMMPS 是结构变换引擎。GEN steps: `relax`, `md`；SPEC: `lammps_relax`, `lammps_md`（显式映射）。
 
-**示例**：
-- Compiler 输出：`nspin = 1` → Detector 必须检测为 `nonspin`
-- 非 Compiler 输出：未写 `nspin` → Detector 应推断为 `nonspin`（基于隐式默认）
+### 14.2 restart_from
 
-**QE 参数 JSON / schema 的定位（仅诊断工具）**：
-QE 参数 JSON / schema 仅作为诊断工具：当 Variant 声称写入的 key 不被该 step_type 接受时，发出 warning。但 warning 不改变 apply/detect 的行为。禁止用 JSON 推导/决定：某维度是否应用、某 key 是否应该被写入/删除、某 step 是否属于某 variant。行为真相必须来自 ParamSpace Variant 的显式声明（见 10.7.9）。该规则确保 apply/detect 逻辑的唯一真相来源，避免 JSON schema 成为第二真相。
+`restart_from` 引用上游 artifacts，不引用 structure resources。不跨 calculation 引用；跨 calc 复用需 promote structure。
 
-运行时可发 warning；对核心 step_types / 核心维度，必须有 enforcement tests（或 CI 约束）确保：variant 声称写入的 key 在 schema 中被接受，否则视为配置错误（fail）。
+### 14.3 potential_map SSOT
 
-#### 10.6.3 禁止 Guessing（猜测式识别）
+`calculation.yaml`: `potential_map` 为 SSOT；assets 在 `project/potentials/`。
 
-当某维度的关键参数缺失，且不存在可靠的 QE 隐式默认语义可映射到某个 profile 时：
+### 14.4 Fingerprint 必须包含 potentials
 
-- Detector 必须返回 CUSTOM
-- 不得"猜一个最可能的 preset"
+Inline dict → `step_sha`；external files → `potential_assets_sha`（未来统一为 `engine_assets_sha`）。
 
-容忍缺失只允许以两种方式出现：
+### 14.5 真实执行 smoke tests
 
-1. 该维度在 ParamSpace 中明确声明 defaults，并用 present vs effective 区分语义（见 10.7.4）
-2. 该 key 在该 space 之外（无关参数）或被声明为 WILDCARD（无语义，见 10.7.3）
+必须有 LJ relax、EAM MD external、relax→md chain、md restart_from 四类真实执行测试。
 
-禁止任何基于"最可能值"、"常见值"、"历史经验"的猜测行为。该规则防止未来再出现"缺 conv_thr 就 MED"等猜测式识别，确保 detect 的严格性与可复现性。
+---
 
-#### 10.6.4 等价性验证
-等价性必须通过 unit tests 验证，而非经验保证：
+## 15. 几何宪法
 
-- **Compiler 输出等价性**：必须通过严格的 unit tests 验证
-- **非 Compiler 输出语义推断**：必须通过测试覆盖常见场景（参数缺失、默认值、冗余参数等）
+### 15.1 单次 Canonicalization
 
-### 10.7 Preset Space 统一框架（声明式数据结构 + 通用算法）
+Structure canonicalization 只允许发生一次（在几何入口/准备层）。之后不允许再 snap / wrap / fold。
 
-#### 10.7.1 统一框架原则
-Preset Space = 声明式数据结构 + 通用算法。
+### 15.2 Canonicalization 区间
 
-**目标**：避免每个维度各写一套 compiler/detector/receiver 导致反复出现"apply 能写、detect 读不出"的 bug。
+分数坐标映射到 `[-wrap_tol, 1 - wrap_tol)`，`wrap_tol = 1e-4`（默认）。
 
-**核心要求**：
-- 每个 preset 维度必须由一个"参数空间声明（ParamSpace）"描述
-- 禁止为某个维度单独写"特判 detector/特判 compiler"
-- 允许维度提供 ParamSpace 声明 + （可选）少量纯函数 canonicalizer，但核心逻辑必须复用通用框架
+### 15.3 Boundary atoms
 
-#### 10.7.2 ParamSpace 声明结构
-每个 preset 维度必须声明一个 ParamSpace，包含以下要素：
+双侧判定（`0 ± boundary_tol`、`1 ± boundary_tol`），`boundary_tol = 0.01`（默认）。
 
-**keys（固定有序列表）**：
-- 完整定义本空间允许读写的参数键
-- 必须是有序列表（用于确定性匹配与写入顺序）
+---
 
-**defaults（隐式默认值字典）**：
-- 每个 key 的隐式默认值，用于 detect 时补全 effective_value
-- 当 YAML 中未显式包含某 key 时，使用对应的 default 值
+## 16. QE 结构 Schema
 
-**aliases/canonicalizers（同义词表/规范化规则）**：
-- 同义词表：例如 `gaussian` 与 `gauss` 等价
-- 规范化规则：必须属于 ParamSpace，而不是散落在 detector 中
-- 每个 key 可以有独立的 canonicalizer 函数（纯函数）
+### 16.1 内部存储
 
-**profiles（用户可选项的矩阵）**：
-- 对 keys 的每一项给出 cell（见 10.7.3）
-- profiles 必须是"满矩阵"：对 keys 全覆盖
-- 任何漏填在构造时必须自动补 WILDCARD 或直接报错（实现由代码决定，但宪法必须要求"不可漏 key"）
+- 只存 cell parameters（绝对单位，Å）。
+- 原子位置一律存 frac 坐标。
+- 永不在 JSON 中存储 QE 特定表示（ibrav / alat / celldm 等）。
 
-**numeric tolerances（数值容差）**：
-- 如 float 的 abs_tol
-- 用于 detect 时的数值比较
+### 16.2 输出文件命名不变量
 
-#### 10.7.3 Cell 语义（三态）
-每个 profile 对每个 key 必须给出一个 cell，且只能是以下三种之一：
+输入可版本化（`scf.in`, `scf-1.in`），输出固定为 `{step_type}.out/.err` 并覆盖。禁止由 input 推导 output 文件名。
 
-**VALUE(v)**：
-- 该 key 的期望值为 v
-- detect 用 effective_value 比较（带 canonicalize/容差）
-- apply 根据 explicit_defaults 决定是否显式写入（见 10.7.5）
+---
 
-**NOT_APPLICABLE**：
-- 该 key 在此 profile 下不应显式存在
-- apply 必须删除该 key
-- detect 若 present==True 则不匹配（见 10.7.4）
+## 17. 引擎执行语义
 
-**WILDCARD**：
-- 该 key 在此 profile 下不参与匹配
-- detect 不检查该 key
-- apply 默认不写、不删，保持原样
+### 17.1 两类引擎模型
 
-**满矩阵要求**：
-- profiles 必须对 keys 全覆盖
-- 任何漏填在构造时必须自动补 WILDCARD 或直接报错
-- 实现由代码决定，但宪法必须要求"不可漏 key"
+| 模型 | 引擎 | 状态传递 |
+|------|------|---------|
+| 会话链（Session-chain） | PySCF/ORCA | 内存态链，线性有序 |
+| 工件桥接（Artifact-bridged） | QE/W90/LAMMPS | 磁盘文件桥接，步骤可独立 |
 
-#### 10.7.4 present vs effective_value（detect 必须区分）
-detect 必须区分两个概念：
+### 17.2 会话链引擎的严格线性依赖
 
-**present**：
-- YAML 是否显式包含该 key
-- 布尔值：True 表示 YAML 中存在该 key，False 表示不存在
+- 每步必须 consume 最近合法前序 state；state 不存在 → 硬失败。
+- 禁止 DAG 执行、跳跃依赖、隐式补全。
+- SCF 是唯一 consume structure 并 produce mf 的步骤。
+- SCF checkpoint 仅作 initial guess，必须重跑 SCF。
+- 除 SCF 外不存在可靠序列化/复用/恢复的中间态。
 
-**effective_value**：
-- 若 present 则取 YAML 值，否则取 defaults 值
-- 取值后必须经过 canonicalize（应用同义词表/规范化规则）
+### 17.3 引擎集成不变量
 
-**匹配规则**：
-- **VALUE**：比较 effective_value（带 canonicalize/容差）
-- **NOT_APPLICABLE**：检查 present 必须为 False（不看 effective_value）
-- **WILDCARD**：不检查
+- 所有路由必须是显式 registry lookup，未知 step type → 硬错误。
+- 添加新引擎不得修改 kernel 代码（只新增 `drivers/<engine>/` + tests）。
+- Driver 自包含：所有引擎特定逻辑在 driver bundle 内。
 
-**目的**：解决"apply 能写、detect 读不出"的根本原因——detect 必须正确处理参数缺失与默认值。
+> 详细规范：[ENGINE_INTEGRATION_CONSTITUTION.md](docs/governance/ENGINE_INTEGRATION_CONSTITUTION.md)
 
-#### 10.7.5 apply 的 explicit_defaults 开关
-apply(profile, explicit_defaults=True|False) 的行为：
+---
 
-**VALUE**：
-- explicit_defaults=True：必写（即使 value == default 也显式写入）
-- explicit_defaults=False：若 value == default 则不写（删除该 key，依赖隐式默认）
+## 18. API 分层与 Facade
 
-**NOT_APPLICABLE**：
-- 必须删除该 key（无论 explicit_defaults 值）
+### 18.1 三层模型
 
-**WILDCARD**：
-- 默认不写不删（不触碰该 key）
+| 层 | 包 | 导入规则 |
+|----|---|---------|
+| **Frontend** | daemon, CLI, GUI | 只能从 `quantumvitas.api` 导入 |
+| **API Facade** | `quantumvitas.api` | DTOs + Errors + Utils + Service |
+| **Core/Runtime** | 其余所有包 | Frontend 不可直接导入 |
 
-**目的**：允许 Compiler 在"显式写入所有参数"与"依赖 QE 默认值"之间选择，同时保证 detect 的一致性。
+### 18.2 Utils 策略
 
-**Policy 澄清（explicit_defaults 与显式写入原则）**：
-Production compiler 默认必须使用 explicit_defaults=True，以满足宪法里"显式写出关键参数、不依赖 QE 默认值"的原则（见 10.3.4 Canonical Encoding）。explicit_defaults=False 只能作为 advanced/compact encoding 的可选模式存在：不能成为默认路径、必须有独立合同测试覆盖、不能影响 detect 的严格可逆性（尤其是 strict detector）。该政策确保所有关键参数可审计、可追溯，避免依赖隐式默认导致的语义模糊。
+默认不允许 utils reexport。例外仅限于：
+- 真正的 frontend boundary helper
+- 不能合理地成为 QVService capability method
+- 有 docstring justification
 
-**Apply 契约：精确修改，不 reset 众生**：
-apply 只能修改该 Variant 的 parameter space 中的 key（profile 指定的 VALUE/NOT_APPLICABLE）。任何不在该 space 的 key 必须保持原样（不得被重置、不得被删除、不得被覆盖）。这是为了保证用户手写/其他维度参数（如 DFT+U 等）不会因为应用其它 preset 而被清空。该规则确保 apply 的局部性：只影响显式声明的 keys，不影响其他参数。
+### 18.3 DTO 边界
 
-**删除规则：禁止"因为 owned 就先删"**：
-删除只能由两类原因触发：profile cell == NOT_APPLICABLE（明确要求清理）、本次 apply 将写入该 key（覆盖语义）。禁止为了"归属/owned keys"而先删除，但最终又不写回 replacement（这会导致数据丢失）。必须有合同测试覆盖此规则（尤其是 cards 类参数的安全性），确保不会出现"先删后不写"的数据丢失场景。
+所有跨 API 边界的数据必须为 DTO 或 primitive types。
 
-#### 10.7.6 零技术债原则
-本系统是新功能：不允许"向后兼容两种 YAML 表示法"。
+### 18.4 Filesystem Access Control（Law H9）
 
-**规则**：
-- 出现不规范旧表示必须通过一次性 migration 或直接重写生成
-- 禁止在运行时 silently fallback 到旧表示法
-- 新增/修改 schema 必须配套更新测试与迁移策略
+仅 kernel 允许修改 SSOT 文件系统。Frontend 不得直接写 YAML / 创建项目结构 / 修改 calculation/step/structure 文件。
 
-**目的**：避免"apply 能写、detect 读不出"的另一个根本原因——YAML 表示法不一致。
+> 详细规范：[API_CONSTITUTION.md](docs/governance/API_CONSTITUTION.md)
+> 门禁：`tests/gates/test_import_gate.py`, `test_frontend_no_yaml_write.py`, `test_daemon_kernel_ban.py`
 
-#### 10.7.7 合同测试（必须）
-每个 preset space 必须有 roundtrip contract tests。
+---
 
-**必须覆盖的测试场景**：
-1. **对每个 profile**：apply → detect 必须命中同一 profile
-2. **对 NOT_APPLICABLE**：若强行写入该 key（即使写默认值），detect 必须变 CUSTOM
-3. **对 aliases**：同义词写法必须 detect 命中同一 profile
+## 19. Kernel 内部依赖
 
-**要求**：
-- 没有这些测试，不允许 merge
-- 测试必须作为 CI 的一部分，不允许跳过
+### 19.1 Kernel → API 禁止
 
-**目的**：通过自动化测试保证等价性公理（10.6.2）的严格执行，避免"apply 能写、detect 读不出"的 bug 进入代码库。
+Kernel 不得反向导入 API facade。
 
-#### 10.7.8 单一注册表 + 薄封装 + 强制执行（Enforced）
+### 19.2 七域模型
 
-**Single Source of Truth（单一真源）**：
-所有 preset 维度必须在一个集中注册表中注册（声明式、唯一真源）。禁止"分散声明"或"临时绕过注册表"的维度实现。
+Kernel 组织为 7 个 domain（ssot, resources, models, runtime, engines, analysis, workflow），各有明确职责边界和禁止导入规则。
 
-**Thin Wrapper（薄封装）**：
-compiler/detector 的每个维度入口必须是薄封装：只能把参数转交给通用引擎（ParamSpace），不得写维度特判逻辑。维度特判（aliases/tolerance/defaults/present/effective）只能存在于 ParamSpace 声明中。
+### 19.3 YAML 读取
 
-**Enforcement Tests（强制执行测试）**：
-必须有 CI/enforcement tests 防止回归：新增维度未注册 → 失败；wrapper 变厚/出现特判逻辑 → 失败；出现旧路径/猜测式识别 → 失败。这些测试必须可强制、可自动化，不允许手动审查替代。
+Resolution 只允许读取 `meta.*` 子树（元数据），不得读取非 meta 字段。
 
-#### 10.7.9 ParamSpace Variant 与适用范围
+> 详细规范：[KERNEL_DEPENDENCY_SPEC.md](docs/governance/KERNEL_DEPENDENCY_SPEC.md)
+> 例外：[KERNEL_EXCEPTIONS.md](docs/governance/KERNEL_EXCEPTIONS.md)
+> 门禁：`tests/gates/test_kernel_no_api_import.py`, `test_engine_no_ssot_import.py`, `test_resolution_meta_only.py`
 
-每个 preset 维度允许有多个 ParamSpace Variant。每个 Variant 必须显式声明 applies_to_step_types（适用 step_type 列表）。适用范围是唯一真相：apply/detect 只对该列表中的 step 生效；不在范围内的 step 视为 N/A（不 apply、不 detect、不参与 custom 判定）。禁止把"适用范围真相"散落在别处（例如 registry 映射表/receiver 隐式过滤）形成第二真相。
+---
 
-允许实现层从 variants 自动导出 step_type→variant 的索引/缓存用于查询或性能；但索引必须完全可由 variants 推导生成，不允许手工维护额外语义；真相仍在 variant 的 applies_to_step_types。
+## 20. 数据根目录与临时目录
 
-必须有 enforcement tests 保证：同一 (dimension, step_type) 不能被多个 variant 覆盖（禁止 overlap）、关键 step_type 必须被覆盖或明确声明 N/A。
+### 20.1 两类根目录
 
-### 10.8 ParamSpace / Preset Apply / Invariant Enforcement 宪法
+| 目录 | 语义 | 可删除 |
+|------|------|--------|
+| `.qmatsuite/` | 持久化资产（engines, libraries, seeds, config, logs） | 否 |
+| `.tmp/` | 临时文件（runs, downloads, locks） | 是 |
 
-#### 10.8.1 Single-writer 原则（不可违反）
-每一个 YAML key 只能由一个 ParamSpace 写/删。任何"多个 ParamSpace 共同管理同一 key"的设计都是非法的。
+### 20.2 废弃 temp/
 
-**语义归属 ≠ 写入归属**：例如 degauss 语义依赖 occupation，但 writer 仍归 precision。
+代码中不得再使用 `repo_root/temp/`。任何新代码引用 `temp/` 视为违宪。
 
-#### 10.8.2 ParamSpace 的统一职责模型
-每个 ParamSpace 必须且只做三件事：
+### 20.3 settings.json
 
-**Detect**：使用 matrix 判定 preset / CUSTOM，只依赖 YAML 真相 + Oracle（只读）。
+唯一全局配置（极简）。QE 引擎两态模型：`qe.bin_dir` 为 null → Internal QE；非 null → External QE。禁止隐式 fallback（PATH / QE_HOME / shell discover / disk scan）。
 
-**Preset Apply**：仅当用户显式选择该 ParamSpace 的 preset 时执行，使用同一套 matrix 写入值，NOT_APPLICABLE ⇒ must-absent。
+---
 
-**Custom Apply（Invariant Enforcement）**：永远执行，即使 detect 结果是 CUSTOM，即使用户没有修改该 ParamSpace，用于维护该 ParamSpace 负责 keys 的定义域 / 适用性不变量。默认行为是 no-op（pass）。
+## 最后条款
 
-**禁止 "CUSTOM ⇒ 什么都不做" 的隐式假设**。
+### 修改原则
+- 宪法修改需项目作者审核。
+- 实现细节、证据、TODO、改进建议放在英文文档中维护。
 
-#### 10.8.3 NOT_APPLICABLE 的强语义
-NOT_APPLICABLE ≠ WILDCARD。它隐含 must-absent：apply 必须删除该 key，detect 若 present ⇒ 冲突 ⇒ CUSTOM。
+### 解释权
+- 宪法优先。
+- 简洁性优先。
+- 数学可证明性优先于 UX 便利。
 
-#### 10.8.4 Oracle 的定位（极窄）
-Oracle 不是 guard，不负责 preset 判定，只提供"语义前提（semantic prerequisite）"。
-
-Oracle 必须满足：
-- 只读
-- 只返回小离散值（bool / 小 enum）
-- 不返回 preset id
-- 不返回"建议值"
-
-Oracle 只看 YAML 真相（当前内存态），不看 preset intention，不看 detect 的命中结果。
-
-#### 10.8.5 Apply 执行顺序（必须）
-Apply 必须分阶段执行：
-1. **Prerequisite ParamSpaces**：会改变 applicability 的（如 occupation、step_type）
-2. **Dependent ParamSpaces**：依赖 oracle 的（如 precision）
-
-这是为了保证 Oracle 在 apply 时永远只读"最新 YAML 真相"。
-
-#### 10.8.6 Precision / degauss 的宪法级约束（示例）
-SYSTEM.degauss 的唯一 writer 是 Precision ParamSpace。
-
-Precision ParamSpace 在 apply 时必须：
-1. **永远执行 invariant enforcement**：若 degauss_applicability == false ⇒ 删除 degauss
-2. **仅在用户显式设置 precision preset 时写入 degauss 值**：LOW / MED / HIGH ⇒ 0.01 / 0.02 / 0.03
-3. **smearing 时不强制自动补 degauss（策略 A）**
-
-#### 10.8.7 禁止事项（红线）
-- ParamSpace 读取其他 ParamSpace 的 preset 结果
-- Oracle 返回 preset id / 参数值
-- 为了方便 detect/apply 而引入共享写入
-- 为 custom case 写隐式特判逻辑而不通过 ParamSpace 统一接口
-
-#### 10.8.8 Rationale（设计理由）
-以下规则存在的理由，确保未来修改不显得任意：
-
-- **CUSTOM 不能意味着 no-op**：即使 detect 结果为 CUSTOM，ParamSpace 仍必须维护其负责 keys 的定义域不变量（如 degauss 在非 smearing 时必须删除）。这保证 YAML 状态始终符合物理语义，避免残留无效参数。
-
-- **Invariant enforcement 必须无条件执行**：不因 detect 结果、用户选择或 preset 应用状态而跳过。这确保系统始终处于一致状态，避免"部分应用"导致的不一致。
-
-- **Oracle 必须读取 YAML 真相，而非 preset intention**：Oracle 只读当前内存中的 YAML 状态，不读取用户意图或 detect 结果。这保证 Oracle 的纯函数性质，避免循环依赖和状态不一致。
-
-- **Single-writer 不可协商**：每个 key 只能由一个 ParamSpace 写入/删除，避免多写者导致的冲突、覆盖和数据丢失。即使语义上相关（如 degauss 与 occupation），写入权也必须唯一归属。
-
-#### 10.8.9 ParamSpace Key Access 与 Ownership 强制规则
-
-##### 10.8.9.1 ParamSpace Detect / Compile / Apply Key Access 规则（强制）
-
-在 detect、compile、apply 的整个生命周期中：
-
-**任一 ParamSpace 只能访问**：
-
-- 自身声明的 owned keys；以及
-- Oracle 明确暴露的语义前提（semantic prerequisites）。
-
-**禁止**任何形式的：
-
-- 直接读取；
-- 间接读取；
-- 或基于派生状态、缓存、聚合结果的方式，
-
-访问其他 ParamSpace 的 owned keys。
-
-**任何违反上述规则的行为，必须在运行时立即报错并中止执行。**
-
-##### 10.8.9.2 Key Ownership 唯一性规则（运行时强制）
-
-任一 YAML key 必须且只能被一个 ParamSpace 声明为 owned key。
-
-若发生以下任一情况：
-
-- 同一 key 被多个 ParamSpace 声明为 owned；或
-- 同一 key 在系统生命周期内被多个 ParamSpace 作为 writer 访问；
-
-**系统必须在初始化或运行时立即失败。**
-
-该规则不可降级为 warning。
-
-##### 10.8.9.3 非法行为的明确判定
-
-以下行为均视为**非法的 ParamSpace 行为**：
-
-- 访问未声明为自身 owned 的 YAML key（例如：occupation ParamSpace 读取或写入 degauss）；
-- 通过 detect 结果、preset ID、聚合状态等方式绕过 key ownership 规则；
-- 任何"语义等价但路径非法"的访问方式。
-
-##### 10.8.9.4 Rationale（设计依据）
-
-以下规则存在的依据，用于解释为何规则存在，而非指导实现：
-
-- **Key ownership 是防止 ParamSpace 之间隐式耦合与语义污染的唯一可靠机制**：若无强制规则，不同 ParamSpace 可能通过共享 key 产生隐式依赖，导致系统行为不可预测、难以维护。
-
-- **Detect 阶段的越权读取会导致 UI 状态不稳定、preset 结果不对称**：若 detect 阶段允许读取其他 ParamSpace 的 owned keys，会导致 detect 结果依赖于其他维度的状态，破坏 detect 的独立性与可复现性。
-
-- **即使语义等价，绕过 Oracle 的直接访问仍然是非法的**：Oracle 是唯一合法的跨 ParamSpace 语义查询通道。直接访问虽然可能功能等价，但破坏了架构边界，导致未来无法统一管理跨维度依赖。
-
-- **非-YAML 输入（如 structure、pseudo、派生 cutoff）不属于 ParamSpace key space**：
-  - 它们是只读的、不可变的外部事实；
-  - 不参与 detect / apply 写入；
-  - 不存在 ownership 冲突的可能；
-  - 因此不受 key-access 规则约束。
-
-### 10.9 Advanced 用户路径
-
-#### 10.9.1 Step 自治
-Advanced 用户对 step 的任何手动修改：
-
-- 直接写入 step.yml
-- 不触发隐式继承、联动或修正
-
-#### 10.9.2 显式继承
-如提供继承能力，必须通过显式 UI 行为（如 dropdown copy），且仅为一次性复制。
-
-### 10.10 Precision 的制度化（Context-dependent 参数）
-
-#### 10.10.1 策略与数值分离
-precision 的 ecut/kmesh 是 context-dependent（pseudo/structure），因此：ParamSpace profiles 存"策略参数"（如 multiplier / delta_k / conv_thr / nscf factor 等），具体数值由 resolver 在 apply/detect 时计算得到。
-
-#### 10.10.2 Variant 适用范围
-precision 必须用多个 variant 明确适用范围（例如 default PW steps / nscf / bands_pw）。每个 variant 必须显式声明 applies_to_step_types（见 10.7.9）。
-
-#### 10.10.3 bands_pw 的 K_POINTS 排除规则
-关键硬约束：bands_pw 的 precision variant 必须移除 K_POINTS（因为 bands_pw 的 K_POINTS 语义属于 kpath，不由 precision 管）。必须有回归测试保证：对 bands_pw 应用 precision 不得改变其 kpath K_POINTS（内容完全不变）。bands_pw 的 K_POINTS 属于 kpath 语义；若要 preset 化，应由独立的 kpath 维度管理，而非 precision。
-
-### 10.11 读写策略（非宪法核心）
-
-#### 10.11.1 当前实现
-当前阶段允许：
-
-- UI 操作即刻读写 step.yml
-
-#### 10.11.2 未来优化
-未来可引入内存缓冲、延迟写入等优化，但不得改变前述宪法语义。
-
-### 10.12 禁止事项
-
-禁止引入以下概念进入持久模型：
-
-- **preset / workflow 的持久化**：preset 与 workflow 不得作为持久化实体存在于文件系统中（见 10.2.1）
-- **anchor**：禁止引入 anchor 概念
-- **family state**：禁止引入 family state 概念
-- **baseline**：禁止引入 baseline 概念
-- **implicit inheritance**：禁止引入隐式继承机制
-- **A/B 双轨状态**：禁止引入"Selected vs Detected"双轨状态模型（见 10.4.2）
-- **compiler version / schema version 作为运行语义依赖**：禁止将版本号作为运行语义依赖
-
-### 10.13 解释权
-
-当实现与宪法存在冲突时：
-
-- 宪法优先
-- 简洁性优先
-- 数学可证明性优先于 UX 便利
-
-### 10.14 宪法总结性原则（一句话）
+### 总结性原则
 
 **Execution is concrete; intention is inferred.**
 
-所有计算只相信 step 参数；  
-workflow 与 preset 只是对现状的解释，而非事实。
+所有计算只相信 step 参数；workflow 与 preset 只是对现状的解释，而非事实。
 
 ---
 
-## 最后条款：修改原则
-- 宪法的修改需谨慎，任何修改必须由项目作者审核。
-- 实现细节、证据、TODO、改进建议等请放在英文文档中维护（避免宪法过时）。
-
----
-
-## 本次修订摘要（2025-01-XX）：Phase 3C 执行语义与持久化规则（最终定稿）
-
-### 新增条款
-
-1. **§2.5 不变性范围（Identity vs Info）**
-   - 明确区分不变性真相键（ULID、machine step_type、engine、executable 等）与可变信息键（name、slug、path、description 等）
-   - 明确 metadata 并非完全不可变；只有身份/真相键是不可变的
-
-2. **§10.1.1.1 运行时状态不可持久化（必须）**
-   - 会话链引擎的中间运行时状态（mf、mp2、ccsd 对象等）**必须不**作为 YAML 真相持久化
-   - 明确除 SCF 以外不存在可被可靠序列化、复用、恢复的中间态
-   - SCF checkpoint 作为唯一例外，仅能作为 initial guess，必须重新运行 SCF
-   - 明确禁止 MP2/CCSD/TD 等步骤 requires_structure 或直接读取 structure
-
-3. **§10.2.2 抽象层不得持久化（必须）**
-   - 扩展非实体原则，明确 generalized step、IR/detector/preset 匹配结果、UI 分类标签（如 "custom"）不得持久化
-   - 持久化的 step.yaml 必须包含 machine step_type 且必须在 StepTypeRegistry 中注册
-
-4. **§13.2.1-13.2.2 StepTypeRegistry 与 step.yaml 是 step_type 的唯一真相来源**
-   - 强化 StepTypeRegistry 规则，明确 machine step_type 必须为 registry 已知类型
-   - 禁止在持久层使用 "CUSTOM"/"UNKNOWN" 作为回退
-   - 新增执行阶段必须从 step.yaml 读取 machine step_type，禁止 fallback
-   - 明确 engine_family 仅允许用于初始化阶段，执行阶段不得 consult engine_family
-
-5. **§14 引擎执行语义（Engine Execution Semantics）**
-   - 新增章节定义两类引擎执行模型：会话链引擎（PySCF/ORCA 类）与工件桥接引擎（QE/W90 类）
-   - 新增 §14.2 会话链引擎的严格线性依赖规则
-   - 明确 SCF 的唯一特殊地位：唯一 consumes structure 并 produces mf 的步骤
-   - 新增 §14.3 中间态的不可落盘原则，明确 PySCF/ORCA 不存在通用的中间态桥接机制
-
-### 关键原则
-
-- **单一真相来源**：step.yaml 与 StepTypeRegistry 是 step_type 的唯一真相来源，执行阶段禁止 fallback 到枚举或 "CUSTOM"
-- **抽象层隔离**：generalized step 和 UI 分类不得作为持久化真相
-- **运行时状态分离**：会话链引擎的中间运行时状态必须不持久化，除 SCF checkpoint 外不存在可复用的中间态
-- **严格线性依赖**：会话链引擎必须严格线性、有序、内存态传递，禁止 DAG 执行或跳跃依赖
-- **SCF 唯一特殊地位**：SCF 是唯一 consumes structure 的步骤，其 checkpoint 仅能作为 initial guess
-
----
-
-## 历史修订摘要（2025-01-XX）
-
-### 新增条款（ParamSpace / Preset Apply / Invariant Enforcement）
-- **10.8 ParamSpace / Preset Apply / Invariant Enforcement 宪法**（全新章节）
-  - **10.8.1 Single-writer 原则**：每个 YAML key 只能由一个 ParamSpace 写/删
-  - **10.8.2 ParamSpace 的统一职责模型**：Detect、Preset Apply、Custom Apply（Invariant Enforcement）
-  - **10.8.3 NOT_APPLICABLE 的强语义**：must-absent 规则
-  - **10.8.4 Oracle 的定位**：只读、极窄、基于 YAML 真相
-  - **10.8.5 Apply 执行顺序**：Prerequisite → Dependent 分阶段执行
-  - **10.8.6 Precision / degauss 的宪法级约束**：作为示例说明 Single-writer 与 Invariant Enforcement
-  - **10.8.7 禁止事项**：红线规则
-  - **10.8.8 Rationale**：设计理由说明
-
-### 历史新增条款（Preset Space 统一框架）
-- **10.7 Preset Space 统一框架（声明式数据结构 + 通用算法）**
-  - **10.7.1 统一框架原则**：禁止各维度单独写特判逻辑，必须使用声明式 ParamSpace
-    - 解决的问题：避免每个维度各写一套 compiler/detector/receiver 导致反复出现"apply 能写、detect 读不出"的 bug
-  - **10.7.2 ParamSpace 声明结构**：keys、defaults、aliases/canonicalizers、profiles、numeric tolerances
-    - 解决的问题：occupations_scheme 类问题（gaussian/gauss 同义词、degauss 容差）、precision 类问题（数值容差、同义词处理）
-  - **10.7.3 Cell 语义（三态）**：VALUE(v)、NOT_APPLICABLE、WILDCARD，满矩阵要求
-    - 解决的问题：维度交叉污染（通过 keys 隔离）、NOT_APPLICABLE 的明确语义
-  - **10.7.4 present vs effective_value**：detect 必须区分，解决参数缺失与默认值问题
-    - 解决的问题：occupations_scheme 类问题（缺失 smearing/degauss 时的检测）、precision 类问题（缺失参数时的处理）
-  - **10.7.5 apply 的 explicit_defaults 开关**：控制是否显式写入默认值
-    - 解决的问题：Compiler 在"显式写入所有参数"与"依赖 QE 默认值"之间的选择
-  - **10.7.6 零技术债原则**：禁止向后兼容两种 YAML 表示法，必须 migration
-    - 解决的问题：YAML 表示法不一致导致的"apply 能写、detect 读不出"
-  - **10.7.7 合同测试（必须）**：roundtrip 测试、NOT_APPLICABLE 测试、aliases 测试
-    - 解决的问题：通过自动化测试保证等价性公理的严格执行，避免 bug 进入代码库
-
-**解决的问题类型总结**：
-- **occupations_scheme 类问题**：`gaussian`/`gauss` 同义词、`degauss=0.02` 容差匹配、缺失 `smearing`/`degauss` 时的检测
-- **precision 类问题**：`ecutwfc`/`ecutrho` 整数舍入、`conv_thr` 容差、K_POINTS 匹配、缺失结构时的错误处理
-- **维度交叉污染**：apply 一个维度影响其他维度（通过 ParamSpace 的 keys 隔离解决）
-- **apply/detect 不一致**：通过统一框架和合同测试保证等价性
-
-### 新增章节（历史）
-- **第 10 章：计算模型与 Preset / Workflow 宪法**（全新章节）
-  - 10.1 唯一真相原则（step.yml 是唯一可执行真相）
-  - 10.2 Preset / Workflow 的法律地位（非实体原则）
-  - 10.3 Compiler（正向生成）的宪法约束
-  - 10.4 Detector B（反向检测）的宪法地位
-  - 10.5 Detector B 的数学定义
-  - 10.6 Compiler 与 Detector 的数学等价性
-  - 10.7 Preset Space 统一框架（声明式数据结构 + 通用算法）
-  - 10.8 ParamSpace / Preset Apply / Invariant Enforcement 宪法**新增**
-  - 10.9 Advanced 用户路径
-  - 10.10 Precision 的制度化（Context-dependent 参数）
-  - 10.11 读写策略（非宪法核心）
-  - 10.12 禁止事项（anchor / family state / baseline / implicit inheritance）
-  - 10.13 解释权
-  - 10.14 宪法总结性原则
-
-### 历史新增章节
-- **第 9 章：数据根目录、临时目录与可复现资产**（历史章节）
-  - 9.1 两类根目录定义（`.qmatsuite/` 与 `.tmp/`）
-  - 9.2 目录结构标准化
-  - 9.3 QE Seed 机制
-  - 9.4 QE 引擎解析（两态模型）
-  - 9.5 settings.json 最小 Schema
-  - 9.6 迁移说明
-
-### 修改章节
-- **第 7 章：伪势管理（Pseudopotentials）不变量**（全面重写）
-- **第 9 章：数据根目录、临时目录与可复现资产**（QE 两态模型重构）
-  - 9.2：移除 engine_id 语义，明确 bin 目录为唯一语义单元
-  - 9.3：明确 QE seed 当前尚未支持程序内自动重装
-  - 9.4：完全重写为"QE 引擎解析（两态模型）"，移除所有 engine_id、PATH fallback、自动发现逻辑
-  - 9.5：简化为极简两态 schema（仅 `qe.bin_dir`）
-  - 9.6：更新迁移规则，明确禁止 `repo_root/temp` 引用
-
-### 关键语义变化
-1. **选择主键改为 sha256**：明确 UI 下拉选择主键是 sha256（不是 sha_family）；sha_family 仅用于冲突处理、警告、跨 calc 引用更新。
-2. **新增 7.5 小节：UI 选择与 calc.yml 持久化规则**：
-   - 7.5.1 UI 展示/可选项规则（文件系统真实存在要求）
-   - 7.5.2 默认选中（恢复选择）规则：不写 yml（只读恢复）
-   - 7.5.3 用户主动选择时：写 triplet（三元必须一起写）
-   - 7.5.4 Family-match edge case 的 UI 规则（不合并条目）
-3. **重写 7.7 小节：Step0 冲突规则**：
-   - 7.7.1 Step0 总原则（project source = noop）
-   - 7.7.2 external 选择落地规则（sha256 相同/noop，sha_family 相同/overwrite，sha_family 不同/rename）
-   - 7.7.3 stale sha 的定义与允许性
-4. **更新 7.4 小节**：明确 sha256 vs sha_family 的语义与用途（sha256 是选择主键）。
-5. **删除旧 7.5 小节**：移除"以 sha_family 为物理身份"的旧表述（已整合到 7.4 和 7.7）。
-6. **删除旧 7.6 小节**：冲突规则已整合到 7.7。
-7. **明确 UI 默认优先级动机**：在 7.5.1 中说明"优先贴近 runtime 实际，减少无意覆盖"。
-8. **强调 project source noop**：在 7.7.1 中明确用户选择 project/pseudo 自身文件时 Step0 必须 noop。
-
-### 变更摘要（sha_token → sha_family，历史）
-- **sha_token 重命名为 sha_family**：术语更清晰，表示"家族"（物理等价组）而非"令牌"。
-- **算法变更**：从"token 边界敏感"改为"空白字符完全移除"：
-  - 旧算法：空白字符 split → 保留非空白 token → 单空格 join → SHA256
-  - 新算法：移除所有空白字符（isspace()）→ 拼接剩余字符 → SHA256
-  - 影响：`"12 3"` 和 `"1 23"` 现在产生相同的 sha_family（都变成 `"123"`），这是预期的行为。
-- **其他语义不变**：dropdown 仍以 sha256 为选择主键；sha_family 仍仅用于警告、冲突处理、跨 calc 引用更新。
-
-### 本次修订关键原则（第 10 章）
-1. **唯一真相原则**：step.yml 是唯一可执行真相，不得包含 workflow / preset / provenance 等元数据。
-2. **非实体原则**：workflow 与 preset 不是持久化实体，仅为运行时解释。
-3. **Compiler 纯函数约束**：Compiler 是纯函数，仅依赖 step_type 和用户 options，必须完全重写参数。
-4. **Detector B 唯一性**：Detector B 是唯一合法的状态判定来源，不存在 Selected vs Detected 双轨模型。
-5. **数学等价性**：Compiler 与 Detector 必须满足数学等价性，并通过 unit tests 验证。
-6. **禁止事项**：禁止 anchor / family state / baseline / implicit inheritance 等概念进入持久模型。
-
-### 本次修订（2025-01-XX）：职责不对称性与等价性细化
-
-#### 新增内容
-- **10.3.1**：明确 Compiler 是规范化写入器的职责定位
-- **10.3.4**：强化 Canonical Encoding 要求，必须显式写出所有关键参数（不得依赖默认值）
-- **10.4.1**：明确 Detector B 是语义解释器的职责定位
-- **10.5.3**：新增隐式默认语义的反向解释规则（Detector 必须支持）
-- **10.6.1**：新增职责不对称性说明
-- **10.6.2**：修订等价性公理，区分 Compiler 输出（严格等价）与非 Compiler 输出（宽容语义推断）
-- **10.6.3**：细化等价性验证要求
-- **10.9**：明确禁止 preset/workflow 持久化和 A/B 双轨状态
-
-#### 关键变化
-1. **职责不对称性**：
-   - Compiler（规范化写入器）：将用户意图转换为显式、完整的参数表示
-   - Detector（语义解释器）：从参数反向推断用户意图，包括隐式默认语义
-
-2. **等价性要求细化**：
-   - **Compiler 输出**：Detector 必须严格等价（`detect(compile_one(...)) == options`）
-   - **非 Compiler 输出**：Detector 允许更宽容的语义推断（基于隐式默认语义）
-
-3. **Canonical Encoding 强化**：
-   - 必须显式写出所有关键参数
-   - 不得依赖默认值（即使 QE 有默认值，也必须显式写入）
-
-4. **隐式默认语义支持**：
-   - Detector 必须支持隐式默认语义的反向解释
-   - 示例：未写 `nspin` → 解释为 `nonspin`（等价于 `nspin = 1`）
-
-### 本次修订（2025-01-XX）：ParamSpace Invariant Enforcement 宪法合并
-
-#### 变更摘要
-1. **新增 10.8 章节：ParamSpace / Preset Apply / Invariant Enforcement 宪法**：将独立的 ParamSpace Constitution 合并入全局宪法，作为第 10 章的子章节。包含 Single-writer 原则、ParamSpace 统一职责模型（Detect、Preset Apply、Custom Apply/Invariant Enforcement）、NOT_APPLICABLE 强语义、Oracle 定位（只读、极窄、基于 YAML 真相）、Apply 执行顺序（Prerequisite → Dependent）、Precision/degauss 示例、禁止事项和 Rationale（设计理由说明）。
-
-2. **章节重新编号**：原 10.8-10.13 调整为 10.9-10.14。
-
-3. **源文档标记为已合并**：`docs/paramspace_constitution_cn.md` 已添加弃用说明，指向全局宪法。
-
-### 历史修订（2025-01-XX）：精确 apply、清理按钮、precision resolver 例外、variant 索引澄清、JSON enforcement、kpath 归属
-
-#### 变更摘要
-1. **修订 10.3.3：从"完全重写"改为"局部精确修改"**：Preset Apply 必须是局部精确修改，只允许修改该维度 ParamSpace Variant 明确声明的 keys，所有不归该 preset 维度管理的参数必须保持原样。明确说明如果未来需要"清理/归一化/删除多余参数"，应通过独立的清理功能实现，而不是 preset apply 的职责。
-
-2. **修订 10.3.2：加入 precision resolver 的例外条款**：保留"通常 compiler 不得依赖 structure/pseudo"的原则，但允许少数维度（如 precision）通过明确命名的 resolver 依赖 context。resolver 必须纯函数、可审计、有合同测试。
-
-3. **10.7.9 补一句：允许导出索引，但索引不是第二真相**：允许实现层从 variants 自动导出 step_type→variant 的索引/缓存用于查询或性能，但索引必须完全可由 variants 推导生成，不允许手工维护额外语义；真相仍在 variant 的 applies_to_step_types。
-
-4. **JSON sanity-check 章节补充 enforcement 政策**：在"JSON 仅用于诊断工具"条款下补充：运行时可发 warning；对核心 step_types / 核心维度，必须有 enforcement tests（或 CI 约束）确保 variant 声称写入的 key 在 schema 中被接受，否则视为配置错误（fail）。
-
-5. **precision 的 K_POINTS 规则补充 kpath 归属提示**：在 bands_pw 的 precision variant 必须移除 K_POINTS 的规则后补充：bands_pw 的 K_POINTS 属于 kpath 语义；若要 preset 化，应由独立的 kpath 维度管理，而非 precision。
-
----
-
-## 11. YAML 文档层（YamlDoc）与 Journal 体系
-
-### 11.1 YAML IO 必须通过 Doc + yaml_io（必须）
-
-所有 project/calc/step YAML 的读写必须使用 Doc 层和集中化的 yaml_io。  
-禁止在业务逻辑中直接使用 `yaml.safe_load`/`yaml.safe_dump`。
-
-**理由**：单一 hook 点支持 Journal 和未来 undo/redo；防止 bypass 路径导致状态不一致。
-
-### 11.2 无引用泄漏（必须）
-
-Doc API 不得返回可变 dict/list 引用。  
-分支导出必须使用显式方法名（如 `export_copy()`），且必须深拷贝。
-
-**理由**：防止未授权修改，确保所有变更可被 Journal 记录。
-
-### 11.3 叶级导向的变更（必须）
-
-所有变更必须是叶级（`set`/`delete`）或通过 `apply_patch`（内部使用 set/delete）。  
-禁止：`set(path, dict)` 分支替换。
-
-**理由**：防止静默大范围覆盖，防止绕过不变量/Journal。
-
-### 11.4 子树更新必须使用 apply_patch（必须）
-
-对于 `parameters`/`cards`/`species_overrides` 等字段，更新 dict 子树必须使用 `apply_patch`。  
-禁止直接 `set(path, dict)`（实际 bug：species_overrides 直接 set 导致 YamlDocError）。
-
-**理由**：一致性和防止分支写入违规。
-
-### 11.5 Journal hook 单一入口点（必须）
-
-Journal 仅在 `yaml_io.save_yaml_doc()`（Doc 边界）记录，不得分散在业务逻辑中。
-
-**理由**：单一位置保证可追溯性。
-
-### 11.6 执行与测试
-
-这些规则由以下测试强制执行：`test_yamldoc`、`test_journal`、step 创建集成测试。  
-详见 `docs/yamldoc_refactor_plan.md` 和 `docs/journal_design.md`。
-
----
-
-## 12. ParamSpace 键所有权隔离（Key Ownership）
-
-### 12.1 键所有权唯一性（必须）
-
-YAML 叶键（section+key）必须由且仅由一个 ParamSpace 拥有。  
-重复所有权是错误。
-
-**理由**：保证可逆性、对称性，避免"后门纠缠"。
-
-### 12.2 Detect/Compile 访问规则（必须）
-
-在 detect/compile 中，ParamSpace 只能访问：
-- 其自身声明的 keys
-- oracle 暴露的先决条件
-
-禁止直接读写其他 paramspace 的 keys。
-
-**理由**：可逆性、对称性，无"后门纠缠"。
-
-### 12.3 非 YAML 输入允许
-
-结构/伪势/运行时派生事实可作为只读输入用于某些 space（如 precision）。  
-它们不是 YAML keys，不参与所有权。
-
-**理由**：保持系统实用性，不破坏隔离。
-
----
-
-## 13. Workflow 与 StepTypeRegistry 原则
-
-### 13.1 Workflow 是运行时解释（必须）
-
-Workflow 模板不持久化；磁盘上的 YAML 是真相。  
-Workflow 仅用于运行时检测和实例化，不得写入 step/calc YAML。
-
-**理由**：避免状态同步问题，保持 YAML 纯粹性（见 10.1.2）。
-
-### 13.2 StepTypeRegistry 集中化 step_type 语义（必须）
-
-禁止在 UI/API/workflow 中分散 step_type 规则。  
-所有 step_type 知识必须通过 StepTypeRegistry/Spec 访问。
-
-**理由**：单一真相来源，数据驱动，可查询。
-
-#### 13.2.1 StepTypeRegistry 是 step_type 的唯一真相来源（必须）
-
-- machine step_type **必须**为 registry 已知类型；未知的 machine 类型是硬错误
-- **禁止**在持久层使用 "CUSTOM"/"UNKNOWN" 作为回退（这些标签仅允许存在于 UI/运行时推断中）
-- 执行路径**必须**使用 registry 中注册的 machine step_type，**不得**回退到枚举类型或 "CUSTOM"
-
-#### 13.2.2 step.yaml 是执行阶段 step_type 的唯一真相来源（必须）
-
-任何执行路径**必须**从 step.yaml 读取 machine step_type。
-
-**明确规则**：
-- 若无法从 step.yaml 获得 machine step_type：**必须立即失败**，**不得** fallback
-- **禁止**在执行阶段：
-  - 从 generalized step 推断 step_type
-  - 使用 StepType enum 作为执行依据
-  - 引入 "custom" 作为可执行类型
-  - 重新 materialize step
-- engine_family **仅允许**用于 step 初始化 / materialization 阶段
-- 一旦 step.yaml 写入 machine step_type：engine_family **不再参与**任何执行判断
-- 执行阶段**只允许**查看 step.yaml，**不允许**再次 consult engine_family
-
-### 13.3 Step 创建必须通过 StepFactory（必须）
-
-任何创建/更新 step.yaml 的操作必须使用集中化的 step factory/doc save 路径。  
-禁止直接 `yaml.safe_dump` 写入 step 文件。
-
-**理由**：确保所有 step 写入通过 yaml_io，从而被 Journal 记录。
-
-### 13.4 执行与测试
-
-这些规则由以下测试强制执行：`test_workflow`、step 创建集成测试。  
-详见 `docs/workflow_refactor_plan.md`。
-
----
-
-## 14. 引擎执行语义（Engine Execution Semantics）
-
-### 14.1 两类引擎执行模型
-
-系统支持两类引擎执行语义：
-
-**A) 会话链引擎（Session-chain engines）**（如 PySCF/ORCA 类）：
-- 步骤在单个内存会话中执行，形成状态链
-- run-step **必须**从最近依赖源重放整个链
-- **仅链的起始步骤**消费结构（structure）
-- 后续步骤**只能**消费运行时状态（mf、mp2、ccsd 等），**必须不**直接消费结构
-
-**B) 工件桥接引擎（Artifact-bridged engines）**（如 QE/W90 类）：
-- 步骤主要通过磁盘工件桥接；会话连续性不是必需的
-- 步骤之间通过文件输入/输出传递状态
-- 每个步骤可独立执行，不要求内存状态连续性
-
-### 14.2 会话链引擎的严格线性依赖（必须）
-
-对于会话链引擎，执行语义**必须是**线性、有序、内存态传递。
-
-**明确规则**：
-- 每一步**必须** consumes 最近的、合法的前序 state
-- 若 state 不存在 → **必须 fail**，**不得**继续执行
-- **禁止**：
-  - DAG 执行
-  - 跳跃依赖
-  - 隐式补全 state
-  - 从 artifact 中"推断" state
-
-**SCF 的唯一特殊地位**：
-- SCF **是唯一一个**：
-  - consumes: structure
-  - produces: mf（in-memory state）
-- SCF checkpoint **仅能**作为 initial guess，**必须**重新运行 SCF
-- 除 SCF 外，**不存在**可被可靠序列化、复用、恢复的中间态
-
-### 14.3 中间态的不可落盘原则（必须）
-
-**明确规则**：
-- PySCF / ORCA / 量子化学引擎**不存在** Quantum ESPRESSO 那种"通用的、可复用的中间态桥接机制"
-- MP2 / CCSD / TD / EOM 等步骤产生的对象：
-  - **仅存在于** runtime memory
-  - **不构成** artifact
-  - **不可作为**后续执行的持久化输入
-- 任何试图通过 shim / partial serialization / fake checkpoint 恢复这些对象的行为：
-  - **不被视为**合法执行路径
-  - **不属于** QMatSuite 支持范围
-
-### 14.4 语义约束
-
-本定义仅描述执行语义，不规定 runner 设计或实现细节。  
-引擎类型的判定基于 StepTypeRegistry 中的引擎标识，而非实现路径。
+## 修订摘要 v2.0（2026-02-03）
+
+### 从 v1.2 到 v2.0 的主要变化
+
+**结构重组**：
+- 宪法从 ~1400 行"全量详细"重写为 ~380 行"薄宪法"。
+- 详细机制规范迁移至 `docs/governance/` 下的独立文档。
+- 新增文档层级体系（宪法 > governance specs > implementation docs）。
+
+**新增法则**（对齐 13 条已实施的 final laws）：
+1. **§3 History 世界分离**：Present vs Past，`.history/` append-only，Job == Run，RunRevision。
+2. **§4 并发与锁**：edit.lock / run.lock 两锁模型，不可重入。
+3. **§5 增量运行 Manifest**：非 SSOT bookkeeping，skip 决策规则，StepDonePolicy 集中化。
+4. **§10 Scan 规则**：ScanRef `@scan:<id>` 标量 token，dict-leaf 禁止，scan 不跨 job。
+5. **§11 Managed 参数**：UI read-only 策略。
+6. **§12 类型契约**：A-class / B-class key 分类，writer 契约。
+7. **§13 RELAX 审计**：结构变换器语义，QC 强链边界，缺失结构 = 硬错误。
+8. **§14 LAMMPS 集成**：potential_map SSOT，fingerprint 包含 potentials。
+9. **§18 API 分层**：三层模型，Utils 策略，H9 filesystem access control。
+10. **§19 Kernel 依赖**：七域模型，反向导入禁止，meta-only 读取。
+
+**语义更新**：
+- Step type 章节（§7）对齐 GEN_SPEC_CONSTITUTION，取消旧"StepTypeRegistry 集中化"叙述。
+- SSOT（§2）明确 calculation.yaml + step.yaml（非 step.yml / calc.yml）。
+- Identity（§6）对齐 ULID-only 法则：禁止 `id`, `calc_id`, `step_id`。
+- Species/pseudo（§9）对齐 project-run species_map SSOT。
+
+**删除/折叠的旧章节**：
+- 旧 §10（ParamSpace 全文 ~400 行）→ 瘦化为 §8（核心约束），详细定义迁入 `PARAMSPACE_SPEC.md`。
+- 旧 §11-14 → 折叠进相应新章节或迁入 governance specs。
+- 旧修订历史列表（~200 行）→ 删除，仅保留 v2.0 摘要。
+
+**旧语义中的过时内容**（已修正）：
+- `step.yml` / `calc.yml` → 正确为 `step.yaml` / `calculation.yaml`
+- 旧"StepTypeRegistry 叙述"→ 对齐 GEN/SPEC 两命名空间法则
+- 缺失的 history / locks / scan / manifest 规则 → 已新增
+- 缺失的 LAMMPS / RELAX / API / Kernel 规则 → 已新增

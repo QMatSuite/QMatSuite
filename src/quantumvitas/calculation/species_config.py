@@ -12,11 +12,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
-from quantumvitas.core.project_utils import (
-    find_calculation_entry,
-    calculation_directory,
-    load_project_config,
-)
+from quantumvitas.core.public import load_project_config
+from quantumvitas.core.project_utils import find_calculation_entry, calculation_directory
 
 
 def configure_species_map(
@@ -66,8 +63,8 @@ def configure_species_map(
         raise ValueError(f"calculation.yaml not found at {calculation_yaml_path}")
     
     # Load existing calculation.yaml
-    from quantumvitas.core.yamldoc import CalcDoc
-    from quantumvitas.core.yaml_io import save_yaml_doc
+    from quantumvitas.core.public import CalcDoc
+    from quantumvitas.core.public import save_yaml_doc
 
     doc = CalcDoc.load(calculation_yaml_path)
     existing_species_map = doc.export_copy(["species_map"]) if doc.has(["species_map"]) else {}

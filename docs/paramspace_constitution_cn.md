@@ -1,6 +1,8 @@
-> ⚠️ **本文档已合并入根目录 CONSTITUTION_ZH.md，**
-> **不再作为独立宪法来源。**
-> **如有冲突，以 CONSTITUTION_ZH.md 为准。**
+> ⚠️ **DEPRECATED — 本文档已废弃。**
+> **权威来源现为：**
+> - 高阶规则：`CONSTITUTION_ZH.md` §8
+> - 详细规范：`docs/governance/PARAMSPACE_SPEC.md`
+> **如有冲突，以上述两个文档为准。**
 
 # ParamSpace / Oracle / Apply 体系设计宪法（v1）
 

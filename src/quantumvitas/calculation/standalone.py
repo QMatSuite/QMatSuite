@@ -11,15 +11,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from quantumvitas.core.public import QuantumEspressoEngine, EngineConfig, StepResult
 from quantumvitas.calculation.input_runner import (
     run_input_step,
     prepare_input_step,
     run_prepared_step,
     PreparedInputStep,
 )
-from quantumvitas.core.engines.qe_calculation import StepResult
 from quantumvitas.io.parser.qe_parser import QEInputParser
 from quantumvitas.io.generator import QEInputGenerator
 
@@ -101,7 +99,7 @@ def run_standalone_step(ctx: StandaloneStepContext) -> tuple[StepResult, Prepare
         qe_input.namelists.insert(0, control)
     
     # Handle pseudopotentials: use central ensure_qe_pseudos function
-    from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+    from quantumvitas.core.public import ensure_qe_pseudos, get_system_pseudo_dir
     
     project_pseudo_dir = workdir / "pseudo"
     system_pseudo_dir = get_system_pseudo_dir()

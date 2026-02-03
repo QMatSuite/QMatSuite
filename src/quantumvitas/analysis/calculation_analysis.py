@@ -7,8 +7,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.results import CalculationResult
+from quantumvitas.calculation.public import Calculation, CalculationResult
 from .dos import analyze_dos
 from .bands import analyze_bands
 from .energy import summarize_calculation_energies

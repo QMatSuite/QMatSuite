@@ -24,7 +24,7 @@ def extract_species_map_from_qe_input(qe_input) -> Dict[str, Dict[str, Any]]:
         Dictionary mapping element symbol to {mass, pseudopot}
     """
     from quantumvitas.io.model import QECardType
-    from quantumvitas.core.pseudo import is_missing_pseudo_placeholder
+    from quantumvitas.core.public import is_missing_pseudo_placeholder
 
     species_map: Dict[str, Dict[str, Any]] = {}
     atomic_species_card = qe_input.get_card(QECardType.ATOMIC_SPECIES)

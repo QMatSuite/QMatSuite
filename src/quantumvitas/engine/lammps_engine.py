@@ -10,7 +10,7 @@ from typing import Optional, TYPE_CHECKING
 from pymatgen.core import Structure
 
 from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin
-from quantumvitas.core.engines.qe_calculation import StepResult
+from quantumvitas.core.public import StepResult
 from quantumvitas.engine.base import Engine, EngineConfig
 from quantumvitas.engine.lammps_potentials import (
     stage_potentials,
@@ -504,54 +504,58 @@ class LammpsEngine(Engine):
 
     def run_step(
         self,
-        step: "Step",
-        working_dir: Path,
+        step_or_input,
+        working_dir: Path | None = None,
         calculation: Optional["Calculation"] = None,
     ) -> StepResult:
+        """Execute LAMMPS step.
+
+        Accepts either an ``EngineInput`` or the legacy ``(step, working_dir)`` pair.
         """
-        Execute LAMMPS step.
-        
-        Args:
-            step: Step object
-            working_dir: Working directory with input files
-            calculation: Optional calculation context
-        
-        Returns:
-            StepResult with success status and output file paths
-        """
+        from quantumvitas.engine.engine_input import EngineInput
         import subprocess
-        
+
+        if isinstance(step_or_input, EngineInput):
+            ei = step_or_input
+            wd = ei.working_dir
+            step_type = ei.step_type_spec
+        else:
+            step = step_or_input
+            if working_dir is None:
+                raise ValueError("working_dir is required for legacy step objects")
+            wd = working_dir
+            step_type = step.step_type_spec if hasattr(step, "step_type_spec") else ""
+
         lmp_bin = self._get_lammps_bin()
-        
+
         cmd = [
             str(lmp_bin),
             "-in", "in.lammps",
             "-log", "log.lammps",
             "-screen", "none",
         ]
-        
+
         logger.info(f"Running LAMMPS: {' '.join(cmd)}")
-        logger.info(f"Working directory: {working_dir}")
-        
+        logger.info(f"Working directory: {wd}")
+
         result = subprocess.run(
             cmd,
-            cwd=working_dir,
+            cwd=wd,
             capture_output=True,
             text=True,
         )
-        
+
         # Check for errors
-        log_path = working_dir / "log.lammps"
+        log_path = wd / "log.lammps"
         error = None
         if result.returncode != 0:
             error = f"LAMMPS exited with code {result.returncode}"
             if log_path.exists():
                 log_content = log_path.read_text()
-                # Extract ERROR lines
                 error_lines = [l for l in log_content.splitlines() if "ERROR" in l.upper()]
                 if error_lines:
                     error += f"\n{error_lines[0]}"
-        
+
         # Also check log for errors even if return code is 0
         if log_path.exists():
             log_content = log_path.read_text()
@@ -559,10 +563,10 @@ class LammpsEngine(Engine):
                 error_lines = [l for l in log_content.splitlines() if "ERROR" in l.upper()]
                 if error_lines:
                     error = f"LAMMPS reported errors:\n" + "\n".join(error_lines[:5])
-        
+
         return StepResult(
-            step_type_spec=step.step_type_spec if hasattr(step, "step_type_spec") else "",
-            input_file=working_dir / "in.lammps",
+            step_type_spec=step_type,
+            input_file=wd / "in.lammps",
             success=(result.returncode == 0 and error is None),
             error=error,
             output_file=log_path if log_path.exists() else None,

@@ -14,8 +14,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Literal, Optional
 
-import yaml
-
 
 ContextNodeKind = Literal["project", "calculation", "step", "structure", "other"]
 
@@ -228,7 +226,8 @@ def _is_inside_directory(path: Path, directory: Path) -> bool:
 def _extract_project_name(yaml_path: Path) -> str:
     """Extract project name from project.qv.yml."""
     try:
-        data = yaml.safe_load(yaml_path.read_text()) or {}
+        from quantumvitas.core.yamldoc import ProjectDoc
+        data = ProjectDoc.load(yaml_path).to_dict()
         project_section = data.get("project", {})
         meta = project_section.get("meta") or {}
         return meta.get("name") or project_section.get("name") or yaml_path.parent.name
@@ -276,7 +275,8 @@ def _extract_calculation_selector(yaml_path: Path, fallback: str) -> str:
         return fallback
     
     try:
-        data = yaml.safe_load(yaml_path.read_text()) or {}
+        from quantumvitas.core.yaml_io import load_yaml_doc
+        data = load_yaml_doc(yaml_path).to_dict()
         meta = data.get("meta") or {}
         return meta.get("slug") or meta.get("name") or fallback
     except Exception:
@@ -329,7 +329,8 @@ def _extract_step_selector(yaml_path: Path, fallback: str) -> str:
         return fallback
     
     try:
-        data = yaml.safe_load(yaml_path.read_text()) or {}
+        from quantumvitas.core.yaml_io import load_yaml_doc
+        data = load_yaml_doc(yaml_path).to_dict()
         return data.get("ulid") or data.get("step_type_spec") or fallback
     except Exception:
         return fallback

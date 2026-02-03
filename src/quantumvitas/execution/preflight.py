@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from quantumvitas.calculation.calculation import Calculation
+    from quantumvitas.calculation.public import Calculation
 
 
 @dataclass

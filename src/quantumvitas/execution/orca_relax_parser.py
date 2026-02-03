@@ -206,7 +206,7 @@ def handle_orca_relax_output(
         molecule = parse_orca_optimized_xyz(xyz_path)
     
     # Canonicalize before writing
-    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+    from quantumvitas.core.public import canonicalize_structure_like_in_place
     canonicalize_structure_like_in_place(molecule)
     
     # Write current.json

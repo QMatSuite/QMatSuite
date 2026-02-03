@@ -1,0 +1,203 @@
+{
+  "molecule": "formaldehyde",
+  "method_chain": [
+    "scf",
+    "td"
+  ],
+  "basis": "cc-pvdz",
+  "scf_energy": -113.87621890440926,
+  "excitations": [
+    {
+      "state": 1,
+      "energy_au": 0.16881969812651468,
+      "energy_ev": 4.593817970124068,
+      "oscillator_strength": 0.0
+    },
+    {
+      "state": 2,
+      "energy_au": 0.3654409383922474,
+      "energy_ev": 9.944154434793663,
+      "oscillator_strength": 0.0
+    },
+    {
+      "state": 3,
+      "energy_au": 0.3758485237410484,
+      "energy_ev": 10.227359257047832,
+      "oscillator_strength": 0.0
+    },
+    {
+      "state": 4,
+      "energy_au": 0.38315418791330985,
+      "energy_ev": 10.42615650482561,
+      "oscillator_strength": 0.0
+    },
+    {
+      "state": 5,
+      "energy_au": 0.42770781653551515,
+      "energy_ev": 11.638522490965086,
+      "oscillator_strength": 0.0
+    }
+  ],
+  "all_variables": {
+    "CURRENT ENERGY": -113.87621890440926,
+    "CURRENT REFERENCE ENERGY": -113.87621890440926,
+    "DD SOLVATION ENERGY": 0.0,
+    "HF KINETIC ENERGY": 113.72631100232321,
+    "HF POTENTIAL ENERGY": -227.60252990673246,
+    "HF TOTAL ENERGY": -113.87621890440926,
+    "HF VIRIAL RATIO": 2.0013181461771232,
+    "NUCLEAR REPULSION ENERGY": 31.346375085718435,
+    "ONE-ELECTRON ENERGY": -217.4589393000837,
+    "PCM POLARIZATION ENERGY": 0.0,
+    "PE ENERGY": 0.0,
+    "SCF ITERATION ENERGY": -113.87621890440926,
+    "SCF ITERATIONS": 9.0,
+    "SCF TOTAL ENERGY": -113.87621890440926,
+    "TWO-ELECTRON ENERGY": 72.236345309956,
+    "CURRENT DIPOLE": "[ 1.58208264e-14 -1.11390187e-12 -1.05433357e+00]",
+    "SCF DIPOLE": "[ 1.58208264e-14 -1.11390187e-12 -1.05433357e+00]",
+    "SCF TOTAL ENERGIES": "[-114.26549547 -113.35567797 -113.81922233 -113.87498441 -113.87614738\n -113.87621202 -113.87621805 -113.87621874 -113.87621888 -113.8762189 ]"
+  },
+  "tddft_raw": [
+    {
+      "EXCITATION ENERGY": 0.16881969812651468,
+      "ELECTRIC DIPOLE TRANSITION MOMENT (LEN)": [
+        4.115021329364196e-14,
+        -2.3790479964193618e-15,
+        -8.466565541921962e-15
+      ],
+      "OSCILLATOR STRENGTH (LEN)": 1.9928407425934282e-28,
+      "ELECTRIC DIPOLE TRANSITION MOMENT (VEL)": [
+        1.3471807462503826e-17,
+        -2.3841364337369067e-16,
+        8.657337146293974e-16
+      ],
+      "OSCILLATOR STRENGTH (VEL)": 3.184926200514149e-30,
+      "MAGNETIC DIPOLE TRANSITION MOMENT": [
+        -2.836303872870746e-15,
+        -3.399337633940923e-14,
+        0.5857944776347077
+      ],
+      "ROTATORY STRENGTH (LEN)": -4.959667338990227e-15,
+      "ROTATORY STRENGTH (VEL)": -3.0040453499214007e-15,
+      "SYMMETRY": "A",
+      "SPIN": "singlet",
+      "RIGHT EIGENVECTOR ALPHA": "<psi4.core.Matrix object at 0x16cb1e810>",
+      "LEFT EIGENVECTOR ALPHA": "<psi4.core.Matrix object at 0x16cb1e810>",
+      "RIGHT EIGENVECTOR BETA": "<psi4.core.Matrix object at 0x16cb1e810>",
+      "LEFT EIGENVECTOR BETA": "<psi4.core.Matrix object at 0x16cb1e810>"
+    },
+    {
+      "EXCITATION ENERGY": 0.3654409383922474,
+      "ELECTRIC DIPOLE TRANSITION MOMENT (LEN)": [
+        0.05056183534345536,
+        -9.013123543660198e-15,
+        8.691129593057885e-14
+      ],
+      "OSCILLATOR STRENGTH (LEN)": 0.0006228329761320649,
+      "ELECTRIC DIPOLE TRANSITION MOMENT (VEL)": [
+        0.010610117692225295,
+        3.0723789609359155e-15,
+        -5.541178701032324e-15
+      ],
+      "OSCILLATOR STRENGTH (VEL)": 0.00020536760867231185,
+      "MAGNETIC DIPOLE TRANSITION MOMENT": [
+        -1.0870851554555848e-14,
+        0.7508990542303451,
+        -1.3361294112556722e-14
+      ],
+      "ROTATORY STRENGTH (LEN)": -7.31759615094146e-15,
+      "ROTATORY STRENGTH (VEL)": -5.997427248402697e-15,
+      "SYMMETRY": "A",
+      "SPIN": "singlet",
+      "RIGHT EIGENVECTOR ALPHA": "<psi4.core.Matrix object at 0x16cb1cd70>",
+      "LEFT EIGENVECTOR ALPHA": "<psi4.core.Matrix object at 0x16cb1cd70>",
+      "RIGHT EIGENVECTOR BETA": "<psi4.core.Matrix object at 0x16cb1cd70>",
+      "LEFT EIGENVECTOR BETA": "<psi4.core.Matrix object at 0x16cb1cd70>"
+    },
+    {
+      "EXCITATION ENERGY": 0.3758485237410484,
+      "ELECTRIC DIPOLE TRANSITION MOMENT (LEN)": [
+        -9.747682422628336e-15,
+        1.9774253720326024e-12,
+        0.8686649076417079
+      ],
+      "OSCILLATOR STRENGTH (LEN)": 0.1890715324153177,
+      "ELECTRIC DIPOLE TRANSITION MOMENT (VEL)": [
+        1.5706795006329871e-15,
+        -3.655151689271908e-13,
+        -0.06674309987714605
+      ],
+      "OSCILLATOR STRENGTH (VEL)": 0.007901483531842286,
+      "MAGNETIC DIPOLE TRANSITION MOMENT": [
+        2.204934161510697e-12,
+        -6.947749574667377e-14,
+        -1.8182493301351043e-15
+      ],
+      "ROTATORY STRENGTH (LEN)": -1.5794493865902873e-15,
+      "ROTATORY STRENGTH (VEL)": -3.228843244179693e-16,
+      "SYMMETRY": "A",
+      "SPIN": "singlet",
+      "RIGHT EIGENVECTOR ALPHA": "<psi4.core.Matrix object at 0x16cb1df70>",
+      "LEFT EIGENVECTOR ALPHA": "<psi4.core.Matrix object at 0x16cb1df70>",
+      "RIGHT EIGENVECTOR BETA": "<psi4.core.Matrix object at 0x16cb1df70>",
+      "LEFT EIGENVECTOR BETA": "<psi4.core.Matrix object at 0x16cb1df70>"
+    },
+    {
+      "EXCITATION ENERGY": 0.38315418791330985,
+      "ELECTRIC DIPOLE TRANSITION MOMENT (LEN)": [
+        -3.3280814412463414e-15,
+        0.9741794085915453,
+        -2.3614843387132064e-12
+      ],
+      "OSCILLATOR STRENGTH (LEN)": 0.24241540164802047,
+      "ELECTRIC DIPOLE TRANSITION MOMENT (VEL)": [
+        1.430619864232476e-15,
+        -0.30806180240244097,
+        1.8811756848320394e-14
+      ],
+      "OSCILLATOR STRENGTH (VEL)": 0.16512425387855006,
+      "MAGNETIC DIPOLE TRANSITION MOMENT": [
+        0.4732825899274679,
+        9.948079473172477e-15,
+        -5.981183599847388e-16
+      ],
+      "ROTATORY STRENGTH (LEN)": 8.116091173795659e-15,
+      "ROTATORY STRENGTH (VEL)": 6.231266403234017e-15,
+      "SYMMETRY": "A",
+      "SPIN": "singlet",
+      "RIGHT EIGENVECTOR ALPHA": "<psi4.core.Matrix object at 0x16cb1e690>",
+      "LEFT EIGENVECTOR ALPHA": "<psi4.core.Matrix object at 0x16cb1e690>",
+      "RIGHT EIGENVECTOR BETA": "<psi4.core.Matrix object at 0x16cb1e690>",
+      "LEFT EIGENVECTOR BETA": "<psi4.core.Matrix object at 0x16cb1e690>"
+    },
+    {
+      "EXCITATION ENERGY": 0.42770781653551515,
+      "ELECTRIC DIPOLE TRANSITION MOMENT (LEN)": [
+        2.4309266566720592e-14,
+        3.028150034662899e-15,
+        6.908501576946095e-15
+      ],
+      "OSCILLATOR STRENGTH (LEN)": 1.8472344962336776e-28,
+      "ELECTRIC DIPOLE TRANSITION MOMENT (VEL)": [
+        6.833832728480227e-14,
+        -1.1560978141328125e-15,
+        3.9044300824294875e-16
+      ],
+      "OSCILLATOR STRENGTH (VEL)": 7.281631374464826e-27,
+      "MAGNETIC DIPOLE TRANSITION MOMENT": [
+        -9.177583988294356e-16,
+        6.916116071470572e-14,
+        0.35451448511483286
+      ],
+      "ROTATORY STRENGTH (LEN)": 2.4491638794662427e-15,
+      "ROTATORY STRENGTH (VEL)": -3.2362677669768303e-16,
+      "SYMMETRY": "A",
+      "SPIN": "singlet",
+      "RIGHT EIGENVECTOR ALPHA": "<psi4.core.Matrix object at 0x16cb1eb10>",
+      "LEFT EIGENVECTOR ALPHA": "<psi4.core.Matrix object at 0x16cb1eb10>",
+      "RIGHT EIGENVECTOR BETA": "<psi4.core.Matrix object at 0x16cb1eb10>",
+      "LEFT EIGENVECTOR BETA": "<psi4.core.Matrix object at 0x16cb1eb10>"
+    }
+  ]
+}

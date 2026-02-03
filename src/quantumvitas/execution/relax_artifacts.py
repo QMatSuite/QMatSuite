@@ -104,7 +104,7 @@ def _handle_qe_output(
         read_final_geometry_from_output_text,
         structure_from_qe_geometry_snapshot,
     )
-    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+    from quantumvitas.core.public import canonicalize_structure_like_in_place
     
     output_path = spec.artifact_path
     if not output_path.exists():
@@ -135,7 +135,7 @@ def _handle_pyscf_results(
 ) -> Path:
     """Handle PySCF relax output: read results.json and write current.json."""
     from pymatgen.core import Molecule
-    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+    from quantumvitas.core.public import canonicalize_structure_like_in_place
     
     results_path = spec.artifact_path
     if not results_path.exists():
@@ -181,7 +181,7 @@ def _handle_orca_xyz(
         parse_orca_optimized_xyz,
         parse_orca_optimized_from_out,
     )
-    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+    from quantumvitas.core.public import canonicalize_structure_like_in_place
     
     working_dir = spec.artifact_path
     chain_key = spec.extra.get("chain_key", "")
@@ -247,7 +247,7 @@ def _handle_lammps_data(
 ) -> Path:
     """Handle LAMMPS relax output: parse final.data and write current.json."""
     from quantumvitas.io.lammps_data import read_lammps_data
-    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+    from quantumvitas.core.public import canonicalize_structure_like_in_place
     
     final_data = spec.artifact_path
     if not final_data.exists():
@@ -289,9 +289,9 @@ def _handle_cp2k_trajectory_artifact(
     Returns:
         Path to current.json
     """
-    from quantumvitas.engine.cp2k_parser import extract_final_structure
+    from quantumvitas.engine.public import extract_final_structure
     from quantumvitas.execution.latest_selector import find_latest_by_mtime
-    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+    from quantumvitas.core.public import canonicalize_structure_like_in_place
 
     artifact_path = spec.artifact_path
     if not artifact_path.exists():
@@ -499,8 +499,8 @@ def is_relax_step_type(step_type_spec: str) -> bool:
     Returns:
         True if the step type is a structure-transforming relax type.
     """
-    from quantumvitas.workflow.registry import get_registry, normalize_step_type
-    from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+    from quantumvitas.workflow.public import get_registry, normalize_step_type
+    from quantumvitas.workflow.public import gen_from, is_spec
 
     # Convert to GEN first (registry expects GEN)
     # If SPEC format (has underscore), extract GEN; otherwise use as-is (already GEN)
