@@ -1,8 +1,8 @@
 # API Slimming Review
 
-**Date**: 2026-02-02 (v3: Phase 3 High-Impact Consolidation)
+**Date**: 2026-02-02 (v4: Final Closeout)
 **Scope**: Full `quantumvitas.api` traversal
-**Status**: Phase 2 complete, Phase 3 opportunities identified
+**Status**: CLOSED — Post-slimming stable surface
 
 ---
 
@@ -482,6 +482,45 @@ class CalculationPresetBundle(BaseDTO):
 | CalculationPresetBundle | HIGH | Simple, clean schema |
 
 **Recommendation**: Start with `CalculationPresetBundle` as it has simplest schema.
+
+---
+
+## 8. Final Post-Slimming State (Closeout)
+
+### 8.1 Final Surface Numbers
+
+| Category | Baseline | Final | Delta |
+|----------|----------|-------|-------|
+| `api/__init__.py` exports | 24 | 2 | -22 |
+| QVService static methods | 38 | 23 | -15 |
+| QVService nested methods | ~100 | 90 | -10 |
+| Utils exports | 88 | 68 | -20 |
+| DTOs | 13 | 11 | -2 |
+| Errors | 9 | 10 | +1 |
+| **TOTAL** | **~270** | **204** | **-66** |
+
+Audit tool baseline (first measurement): 243 → 204 = **-39 (-16.0%)**
+
+### 8.2 Remaining Surface is Intentionally Stable
+
+The 204 remaining entrypoints are the **post-slimming stable API surface**. They consist of:
+
+- **90 nested service methods**: Core capabilities (calculation, structure, analysis, run, engine)
+- **68 utils**: Proxy re-exports with documented justification, bundle functions, and helpers
+- **23 static methods**: Bootstrap/factory operations
+- **11 DTOs**: Data transfer objects for the API boundary
+- **10 errors**: Error taxonomy per Law H6
+- **2 api_init**: `QVService` and `get_service`
+
+### 8.3 Disallowed Changes (Now Gated)
+
+| Disallowed Change | Gate |
+|-------------------|------|
+| Service-delegating wrappers in utils | Gate B (`test_no_service_delegating_utils.py`) |
+| Stub/placeholder service methods | Gate C (`test_no_stub_service_methods.py`) |
+| Direct YAML writes in frontends | Gate H9 (`test_frontend_no_yaml_write.py`) |
+
+Any new entrypoint additions require justification per Law G4.
 
 ---
 

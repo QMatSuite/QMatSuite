@@ -1,8 +1,8 @@
 # API Slimming Worklog
 
 **Started**: 2026-02-02
-**Status**: IN PROGRESS (Phase 3 → Phase 4: Daemon/CLI Unify)
-**Current Count**: 202 entrypoints (down from 213 baseline, -11 total = 5.2% reduction)
+**Status**: CLOSED (Final Closeout Complete)
+**Final Count**: 204 entrypoints (down from 243 audit baseline, -39 total = -16.0%)
 **Note**: Batch 38 corrected improper capability deletions from Batches 36/37
 
 ---
@@ -1717,6 +1717,111 @@ structures:
 **Test Results**: 3022 passed, 18 skipped ✅
 
 **Rule Applied**: "No compat, no legacy, clean system" - All test fixtures adapted to API/daemon contract.
+
+---
+
+### Batch 42: Final Closeout — Gates, Constitution, Dead Code, Docs
+
+**Date**: 2026-02-02
+**Status**: COMPLETE
+
+**Summary**: Sealed the API slimming results with anti-regression gates, constitution amendments, dead code cleanup, and doc updates.
+
+**1. Anti-Regression Gates Added**:
+
+| Gate | Test File | Checks |
+|------|-----------|--------|
+| Gate B | `tests/gates/test_no_service_delegating_utils.py` | No `get_service()`/`QVService()` in utils functions |
+| Gate C | `tests/gates/test_no_stub_service_methods.py` | No stub/placeholder nested service methods |
+
+**2. Constitution Updated (v2.0 -> v2.1)**:
+- Added Appendix C: Bundle-Returning Capabilities (stable schema for `get_pseudo_status_bundle`, `get_qe_engine_status`, `get_calculation_preset_bundle`)
+- Added Appendix D: Anti-Regression Gates (B, C, H9)
+- Change protocol: key changes require daemon/CLI + constitution updates
+
+**3. Dead Code Removed**:
+- Removed `Run.get_status()` stub from `service.py` (always raised NotFoundError with "not yet implemented")
+- Delta: 205 -> 204 entrypoints (-1 service_nested)
+
+**4. Docs Updated**:
+- `API_SLIMMING_REVIEW.md` v4: Added Section 8 "Final Post-Slimming State" with final surface numbers, stable surface declaration, and disallowed changes
+- `API_SLIMMING_OPPORTUNITY_REPORT.md`: Added "Final Closeout Status" with final numbers and gated patterns
+
+**Audit After**:
+
+```
+TOTAL ENTRYPOINTS: 204
+
+BY CATEGORY:
+  api_init            :    2
+  dtos                :   11
+  errors              :   10
+  service_nested      :   90
+  service_static      :   23
+  utils               :   68
+
+USAGE COVERAGE:
+  Daemon only:         96
+  CLI only:            48
+  Both daemon+CLI:     39
+  UNUSED (0 refs):     21
+```
+
+**Test Results**: 3026 passed, 18 skipped
+
+---
+
+## FINAL CLOSEOUT SUMMARY
+
+### Baseline vs Final
+
+| Category | Baseline (Audit) | Final | Delta |
+|----------|-----------------|-------|-------|
+| api_init | 2 | 2 | 0 |
+| service_static | 38 | 23 | -15 |
+| service_nested | 91 | 90 | -1 |
+| utils | 91 | 68 | -23 |
+| errors | 10 | 10 | 0 |
+| dtos | 11 | 11 | 0 |
+| **TOTAL** | **243** | **204** | **-39 (-16.0%)** |
+
+### Major Consolidations Performed
+
+1. **Pseudo config bundle** (`get_pseudo_status_bundle`): Consolidated 7 pseudo-related utils into 1 bundle
+2. **QE engine bundle** (`get_qe_engine_status`): Consolidated 5 QE engine utils into 1 bundle
+3. **Calculation preset bundle** (`get_calculation_preset_bundle`): Consolidated 5 preset detection utils into 1 bundle
+4. **Unused utils removal**: Removed ~20 utils functions with 0 daemon+CLI usage
+5. **Static method reduction**: Reduced from 38 to 23 static methods
+6. **Law H9 migration**: CLI commands migrated from direct YAML writes to API calls (+3 new service methods: `rename_step`, `update_steps_structure`, `add_step_from_spec`)
+7. **Dead stub removal**: Removed `Run.get_status()` stub
+
+### Anti-Regression Gates Added
+
+| Gate | Test File | Purpose |
+|------|-----------|---------|
+| Gate B | `tests/gates/test_no_service_delegating_utils.py` | Prevents re-introduction of service-delegating wrappers in utils |
+| Gate C | `tests/gates/test_no_stub_service_methods.py` | Prevents stub/placeholder service methods from shipping |
+| Gate H9 | `tests/gates/test_frontend_no_yaml_write.py` | Prevents direct YAML writes in frontends |
+
+### Constitution Amendments
+
+- **v2.0**: Initial constitution with Laws H1-H9, G1-G4
+- **v2.1**: Added Appendix C (bundle schema contracts) and Appendix D (anti-regression gates)
+
+### Dead Code Cleanup
+
+- Removed `Run.get_status()` -- stub method that always raised NotFoundError
+- Verified no orphaned implementations from removed utils
+- F401 re-exports in utils confirmed actively used by daemon/CLI
+- DTOs/errors with 0 daemon/CLI refs confirmed used by tests and fundamental to API contract
+
+### Final Test Run
+
+```bash
+source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+```
+
+**Result**: 3026 passed, 18 skipped
 
 ---
 

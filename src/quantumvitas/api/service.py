@@ -5321,37 +5321,6 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
         
-        def get_status(self, run_ulid: str) -> RunResultDTO:
-            """
-            Get run status by run_ulid.
-            
-            Note: This is a simplified implementation. In a full system,
-            this would query job history or a job manager.
-            
-            Args:
-                run_ulid: Run ID (ULID)
-                
-            Returns:
-                RunResultDTO
-                
-            Raises:
-                APIError: If run not found
-            """
-            try:
-                from quantumvitas.api.errors import NotFoundError
-                
-                # Simplified: For now, we can't easily get run status without JobManager
-                # This would need to query calculation history or job manager
-                # For now, raise not found
-                raise NotFoundError(
-                    f"Run status lookup not yet implemented for run_ulid: {run_ulid}",
-                    context={"run_ulid": run_ulid}
-                )
-            except Exception as e:
-                if isinstance(e, APIError):
-                    raise
-                raise map_kernel_exception(e)
-        
         def cancel(self, run_ulid: str) -> RunResultDTO:
             """
             Cancel a running job.
