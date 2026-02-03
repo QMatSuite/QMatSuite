@@ -214,7 +214,7 @@ calculations: []
 
         # Check analysis methods
         assert hasattr(svc.analysis, "get_summary")
-        assert hasattr(svc.analysis, "list_properties")
+        # NOTE: list_properties, get_property_ref, load_artifact REMOVED (Batch 36)
 
 
 class TestAPIUtils:

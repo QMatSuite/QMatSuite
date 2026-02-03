@@ -1,380 +1,388 @@
 # API Slimming Opportunity Report
 
 **Generated**: 2026-02-02
-**Revised**: 2026-02-02 (Deep review with case-by-case analysis)
+**Revised**: 2026-02-02 (Phase 3: High-Impact Bundle Consolidation)
 **Baseline**: 243 entrypoints → **Current**: 213 entrypoints (-30, -12.3%)
 
 ---
 
 ## Executive Summary
 
-### Highest-Confidence Slimming Opportunities (5)
+### Phase 3: High-Impact Consolidation Targets
 
-| Priority | Opportunity | Expected Delta | Evidence |
-|----------|-------------|----------------|----------|
-| 1 | Delete `Analysis.find_band_files` | **-1** | Zero usage (d=0, c=0, t=0); duplicate of utils `find_band_analysis_files` |
-| 2 | Delete `Project.get_species_map` | **-1** | Tests-only (d=0, c=0, t=3); redundant with `get_config().get("species_map")` |
-| 3 | Delete `Project.get_potential_map` | **-1** | Tests-only (d=0, c=0, t=3); redundant with `get_config().get("potential_map")` |
-| 4 | Merge `visualize_structure` + `build_structure_vis_payload` | **-1** | Same purpose, different interfaces |
-| 5 | Delete internal model leak functions (`load_calculation`, `save_calculation`) | **-2** | Expose internal `CalculationModel`; callers should use service methods |
+| Priority | Cluster | Current | Proposed | Delta | Complexity |
+|----------|---------|---------|----------|-------|------------|
+| 1 | QE Metadata Bundle | 11 utils | 3 | **-8** | MEDIUM |
+| 2 | Pseudo Config Bundle | 7 utils | 2 | **-5** | LOW |
+| 3 | QE Engine Bundle | 5 utils | 2 | **-3** | LOW |
+| 4 | Online Search → Service | 6 utils | 1 nested | **-5** | HIGH |
+| 5 | Presets Detection Bundle | 5 utils | 2 | **-3** | MEDIUM |
+| 6 | Unused Service Methods | 3 nested | 0 | **-3** | LOW |
+| **Total** | | 37 | 10 | **-27** | |
 
-**Total high-confidence slimming: -6 entrypoints**
-
-### Clarity-Only Refactors (No Count Reduction)
-
-| Refactor | Rationale |
-|----------|-----------|
-| Group pseudo-related static methods under a `pseudo` nested accessor | Clarity: 14 methods logically belong together, but no entrypoint reduction |
-| Rename `run_single_step` to clarify it uses ULID | Reduces confusion with `run.run_step` |
-
-### Tests-Only Entrypoints Summary
-
-| Classification | Count | Recommendation |
-|----------------|-------|----------------|
-| A) Future capability (keep, monitor) | 7 | Keep - tested API contracts for future daemon/CLI integration |
-| B) Legacy/outdated test | 0 | None found |
-| C) Kernel behavior (relocate test) | 0 | None found |
-| D) Test-only helper (move to tests/) | 2 | `get_species_map`, `get_potential_map` - thin wrappers with no daemon/CLI use |
-| E) Tooling concern | 0 | None found |
+**Projected surface after Phase 3**: 213 - 27 = **186 entrypoints**
 
 ---
 
-## CORRECTION: Static Methods ARE Used by Daemon/CLI
+## High-Impact, High-Complexity Consolidation Opportunities
 
-**Critical correction from initial report**: The original claim that "23 static methods are ALL unused by daemon/CLI" was **incorrect**.
+### Cluster 1: QE Metadata Bundle (SLIMMING: -8)
 
-Re-audit with correct grep patterns shows:
+**Current entrypoints (11 utils)**:
 
-| Static Method | Daemon Refs | CLI Refs | Status |
-|---------------|-------------|----------|--------|
-| `init_project` | 1 | 1 | **PRODUCTION** |
-| `get_settings` | 6 | 0 | **PRODUCTION** |
-| `get_workflow_service` | 4 | 0 | **PRODUCTION** |
-| `run_single_step` | 5 | 0 | **PRODUCTION** |
-| `get_default_step_params` | 0 | 1 | **PRODUCTION** |
-| `resolve_step_type_spec` | 0 | 1 | **PRODUCTION** |
-| `generate_kpath` | 0 | 1 | **PRODUCTION** |
-| `create_demo_project` | 10 | 1 | **PRODUCTION** |
-| `list_demo_projects` | 5 | 0 | **PRODUCTION** |
-| `init_pseudo_dirs` | 3 | 0 | **PRODUCTION** |
-| `list_pseudo_libraries` | 1 | 0 | **PRODUCTION** |
-| `get_library_status` | 3 | 0 | **PRODUCTION** |
-| `install_pseudo_library` | 1 | 0 | **PRODUCTION** |
-| `remove_pseudo_library` | 1 | 0 | **PRODUCTION** |
-| `repair_pseudo_library` | 1 | 0 | **PRODUCTION** |
-| `compute_store_size` | 3 | 0 | **PRODUCTION** |
-| `is_pseudo_archive_installed` | 1 | 0 | **PRODUCTION** |
-| `install_pseudo_archive` | 3 | 0 | **PRODUCTION** |
-| `install_sssp_from_seed` | 1 | 0 | **PRODUCTION** |
-| `install_all_sssp_from_seed` | 1 | 0 | **PRODUCTION** |
-| `download_sssp_library` | 3 | 0 | **PRODUCTION** |
-| `download_all_sssp` | 3 | 0 | **PRODUCTION** |
-| `import_seed_archives` | 3 | 0 | **PRODUCTION** |
+| Entrypoint | Location | Daemon Refs | CLI Refs |
+|------------|----------|-------------|----------|
+| `get_ui_parameters` | utils.py:678 | 4 | 0 |
+| `list_supported_modules` | utils.py:679 | 8 | 4 |
+| `get_module_param_sections` | utils.py:680 | 4 | 4 |
+| `get_module_card_sections` | utils.py:681 | 5 | 0 |
+| `get_module_doc_url` | utils.py:682 | 5 | 4 |
+| `get_metadata_file_info` | utils.py:683 | 6 | 0 |
+| `get_qe_metadata_debug_info` | utils.py:684 | 4 | 0 |
+| `safe_load_metadata` | utils.py:685 | 7 | 0 |
+| `reload_metadata` | utils.py:686 | 4 | 0 |
+| `_iter_params` | utils.py:688 | 6 | 0 |
+| `QEUIParam` (class) | utils.py:687 | 1 | 0 |
 
-**All 23 static methods are legitimate production code used by daemon or CLI.**
+**Total usage**: daemon=54, cli=12
 
-### Why Static?
+**Proposed minimal public API (3 entrypoints)**:
 
-These methods are static because they operate without a project context:
-- **Project initialization**: `init_project`, `create_demo_project` - Cannot have a project instance before creating one
-- **Global settings**: `get_settings` - User-level settings, not project-level
-- **Pseudo management**: 14 methods - Pseudopotential library is machine-wide, not per-project
-- **Workflow registry**: `get_workflow_service`, `get_default_step_params`, etc. - Global workflow definitions
+1. `get_qe_module_metadata(module: str, step_type_gen: str | None = None) -> dict`
+   - Returns bundled response:
+   ```python
+   {
+       "ui_parameters": [...],      # was get_ui_parameters
+       "param_sections": {...},     # was get_module_param_sections
+       "card_sections": {...},      # was get_module_card_sections
+       "doc_url": "...",            # was get_module_doc_url
+       "supported_modules": [...],  # was list_supported_modules
+   }
+   ```
+2. `list_qe_modules() -> list[str]` - Convenience for module discovery
+3. `QEUIParam` (class) - Keep for type hints in daemon
 
-**Conclusion**: Static methods are correctly designed; no slimming opportunity here.
+**What gets deleted (8)**:
+- `get_ui_parameters` → folded into bundle
+- `list_supported_modules` → folded into bundle (also standalone `list_qe_modules`)
+- `get_module_param_sections` → folded into bundle
+- `get_module_card_sections` → folded into bundle
+- `get_module_doc_url` → folded into bundle
+- `get_metadata_file_info` → internal only (debug)
+- `get_qe_metadata_debug_info` → DELETE (debug-only, daemon can import directly)
+- `safe_load_metadata` → internal only
+- `reload_metadata` → DELETE (debug-only)
+- `_iter_params` → internal only (daemon imports if needed)
 
----
+**Expected delta**: **-8** utils
 
-## Tests-Only Entrypoints Audit
+**Migration impact**:
+- Daemon: 54 refs → update to use bundle
+- CLI: 12 refs → update to use bundle or `list_qe_modules()`
 
-### Methodology
+**Risk level**: MEDIUM - multiple daemon handlers use these individually
 
-Searched for methods where:
-- `daemon_refs == 0`
-- `cli_refs == 0`
-- `test_refs > 0`
-
-Using accessor-qualified patterns (e.g., `svc.engine.list`) to avoid false positives.
-
-### Detailed Audit Table
-
-| Entrypoint | Location | Tests Calling It | Behavior | Classification | Action | Risk |
-|------------|----------|------------------|----------|----------------|--------|------|
-| `Analysis.list_properties` | service.py:104 | `test_analysis_capabilities.py` | Returns list of available artifact types for a calc/step | **A) Future capability** | KEEP | LOW - tested contract |
-| `Analysis.get_property_ref` | service.py:152 | `test_analysis_capabilities.py` | Returns reference to analysis artifact (for lazy loading) | **A) Future capability** | KEEP | LOW - tested contract |
-| `Analysis.load_artifact` | service.py:249 | `test_analysis_capabilities.py` (8 calls) | Load analysis artifact from reference | **A) Future capability** | KEEP | LOW - tested contract |
-| `Analysis.get_summary` | service.py:53 | `test_analysis_capabilities.py` | Get analysis summary DTO | **A) Future capability** | KEEP | LOW - tested contract |
-| `Analysis.find_band_files` | service.py:1447 | **NONE** | Thin wrapper around utils `find_band_analysis_files` | **UNUSED** | DELETE | NONE - no callers |
-| `Engine.list` | service.py:6144 | `test_engine_capabilities.py` | List available engines | **A) Future capability** | KEEP | LOW - tested contract |
-| `Engine.get_info` | service.py:6170 | `test_engine_capabilities.py` | Get engine info | **A) Future capability** | KEEP | LOW - tested contract |
-| `Engine.list_step_types` | service.py:6219 | `test_engine_capabilities.py` | List supported step types | **A) Future capability** | KEEP | LOW - tested contract |
-| `Engine.validate_installation` | service.py:6255 | `test_engine_capabilities.py` (4 calls) | Validate engine installation | **A) Future capability** | KEEP | LOW - tested contract |
-| `Project.get_species_map` | service.py:5592 | `test_project_capabilities.py` | Return `config.get("species_map", {})` | **D) Test-only helper** | DELETE | LOW - trivial wrapper |
-| `Project.get_potential_map` | service.py:5616 | `test_project_capabilities.py` | Return `config.get("potential_map", {})` | **D) Test-only helper** | DELETE | LOW - trivial wrapper |
-
-### Classification Justification
-
-#### A) Future Capability (7 methods)
-
-**Evidence for "future use"**:
-1. These methods are in `tests/api/test_*_capabilities.py` - explicit capability contract tests
-2. The tests verify return types/schema, not just that methods exist
-3. The Analysis/Engine domains are documented as PR3/PR9 features in service.py
-4. Comment in service.py line 46: "Analysis domain (PR3)"
-5. Comment in service.py line 6137: "Engine domain (PR9)"
-
-**When should these become production-used?**
-- `Engine.*` methods: When GUI adds engine management panel (currently uses utils functions)
-- `Analysis.list_properties`, `get_property_ref`, `load_artifact`: When GUI adds lazy-loading artifact browser
-
-**Recommendation**: Keep these. They represent planned future API surface with tested contracts.
-
-#### D) Test-Only Helper (2 methods)
-
-**`Project.get_species_map()`** - service.py:5592
-```python
-def get_species_map(self) -> dict:
-    config = load_project_config(self._service.project_root)
-    return config.get("species_map", {})
-```
-- **What it does**: Returns species_map from project config
-- **Inputs**: None (uses project_root from service)
-- **Outputs**: dict (may be empty)
-- **Why it exists**: Convenience method for tests
-- **Who should own it**: Not API - callers can use `svc.project.get_config().get("species_map", {})`
-- **Action**: DELETE - redundant with `get_config()`
-- **Migration**: Update test to use `get_config()` pattern
-
-**`Project.get_potential_map()`** - service.py:5616
-```python
-def get_potential_map(self) -> dict:
-    config = load_project_config(self._service.project_root)
-    return config.get("potential_map", {})
-```
-- Same analysis as `get_species_map` - DELETE
-
-#### UNUSED (1 method)
-
-**`Analysis.find_band_files()`** - service.py:1447
-```python
-def find_band_files(self, directory: Path, prefix: str | None = None) -> Any:
-    from quantumvitas.calculation.naming import find_band_analysis_files
-    return find_band_analysis_files(Path(directory), prefix=prefix)
-```
-- **What it does**: Finds band analysis files in a directory
-- **Inputs**: directory (Path), prefix (str|None)
-- **Outputs**: BandAnalysisFiles (kernel type)
-- **Why it exists**: Unclear - thin wrapper with no callers
-- **Who should own it**: Already exists in utils as `find_band_analysis_files`
-- **Action**: DELETE - zero usage, duplicate functionality
-- **Risk**: NONE - no code uses this
+**Prerequisites**:
+- New `get_qe_module_metadata()` function must be added first
+- Daemon handlers migrated to use bundle pattern
+- CLI migrated to use bundle or list helper
 
 ---
 
-## Static Methods: Ownership Analysis
+### Cluster 2: Pseudo Config Bundle (SLIMMING: -5)
 
-Since all 23 static methods ARE used by daemon/CLI, we analyze why they're static rather than nested:
+**Current entrypoints (7 utils)**:
 
-### Group 1: Project Initialization (Cannot Have Instance)
+| Entrypoint | Location | Daemon Refs | CLI Refs |
+|------------|----------|-------------|----------|
+| `get_pseudo_config` | utils.py:463 | 26 | 0 |
+| `set_pseudo_config` | utils.py:477 | 17 | 0 |
+| `validate_pseudo_config_dict` | utils.py:513 | 4 | 0 |
+| `list_installed_sssp` | utils.py:540 | 12 | 0 |
+| `list_seed_archives` | utils.py:566 | 11 | 0 |
+| `check_archives_status` | utils.py:584 | 6 | 0 |
+| `load_manifest_archives` | utils.py:618 | 5 | 0 |
 
-| Method | Daemon | CLI | Justification |
-|--------|--------|-----|---------------|
-| `init_project` | 1 | 1 | Creates project - no QVService instance possible before creation |
-| `create_demo_project` | 10 | 1 | Creates project from template |
-| `list_demo_projects` | 5 | 0 | Lists available demos (no project needed) |
+**Total usage**: daemon=81, cli=0
 
-**Conclusion**: Correctly static - cannot be nested accessor methods.
+**Proposed minimal public API (2 entrypoints)**:
 
-### Group 2: Global Settings (User-Level, Not Project-Level)
+1. `get_pseudo_status_bundle() -> dict`
+   - Returns bundled response:
+   ```python
+   {
+       "config": {...},            # was get_pseudo_config
+       "validation": {...},        # was validate_pseudo_config_dict
+       "installed_sssp": [...],    # was list_installed_sssp
+       "seed_archives": [...],     # was list_seed_archives
+       "archive_statuses": [...],  # was check_archives_status
+       "manifest_archives": [...], # was load_manifest_archives
+   }
+   ```
+2. `set_pseudo_config(...)` - Keep (write operation)
 
-| Method | Daemon | CLI | Justification |
-|--------|--------|-----|---------------|
-| `get_settings` | 6 | 0 | Reads ~/.qmatsuite/settings.json (user-level) |
+**What gets deleted (5)**:
+- `get_pseudo_config` → folded into bundle (config key)
+- `validate_pseudo_config_dict` → folded into bundle (validation key)
+- `list_installed_sssp` → folded into bundle
+- `list_seed_archives` → folded into bundle
+- `check_archives_status` → folded into bundle
+- `load_manifest_archives` → folded into bundle
 
-**Conclusion**: Correctly static.
+**Expected delta**: **-5** utils
 
-### Group 3: Workflow Registry (Global Definitions)
+**Migration impact**:
+- Daemon: 81 refs → update to use bundle
+- Call sites extract needed keys from bundle response
 
-| Method | Daemon | CLI | Justification |
-|--------|--------|-----|---------------|
-| `get_workflow_service` | 4 | 0 | Returns global workflow service singleton |
-| `get_default_step_params` | 0 | 1 | Returns step defaults from global registry |
-| `resolve_step_type_spec` | 0 | 1 | Converts GEN→SPEC using global registry |
-| `generate_kpath` | 0 | 1 | Pure function on structure (no project context) |
-| `run_single_step` | 5 | 0 | Legacy wrapper - delegates to `run.run_step` |
+**Risk level**: LOW - all daemon-only, straightforward migration
 
-**Potential issue**: `run_single_step` takes `project_root` as parameter, so it COULD be a nested method. However, daemon calls it with explicit project_root for job scheduling reasons. **Keep as-is** - no slimming benefit.
-
-### Group 4: Pseudo Library Management (Machine-Wide)
-
-| Method | Daemon | CLI | Justification |
-|--------|--------|-----|---------------|
-| `init_pseudo_dirs` | 3 | 0 | Creates ~/.qmatsuite/pseudo/ directories |
-| `list_pseudo_libraries` | 1 | 0 | Lists globally available libraries |
-| `get_library_status` | 3 | 0 | Checks library installation status |
-| `install_pseudo_library` | 1 | 0 | Installs to global store |
-| `remove_pseudo_library` | 1 | 0 | Removes from global store |
-| `repair_pseudo_library` | 1 | 0 | Repairs global store |
-| `compute_store_size` | 3 | 0 | Computes global store size |
-| `is_pseudo_archive_installed` | 1 | 0 | Checks global archive |
-| `install_pseudo_archive` | 3 | 0 | Installs to global store |
-| `install_sssp_from_seed` | 1 | 0 | Installs from seed directory |
-| `install_all_sssp_from_seed` | 1 | 0 | Installs all from seed |
-| `download_sssp_library` | 3 | 0 | Downloads to global store |
-| `download_all_sssp` | 3 | 0 | Downloads all to global store |
-| `import_seed_archives` | 3 | 0 | Imports archives to global store |
-
-**Conclusion**: These are correctly static - pseudopotential library is machine-wide, not per-project.
-
-### Clarity Refactor Opportunity (Not Slimming)
-
-The 14 pseudo methods could be grouped under a `pseudo_library` static accessor for clarity:
-
-```python
-# Current (14 static methods on QVService)
-QVService.init_pseudo_dirs()
-QVService.list_pseudo_libraries()
-# ... 12 more
-
-# Proposed (1 static accessor returning object)
-QVService.pseudo_library().init_dirs()
-QVService.pseudo_library().list()
-```
-
-**This is NOT slimming** - it's a clarity refactor. The entrypoint count stays at 14 (the accessor itself is 1 entrypoint, plus 14 methods = 15, which is WORSE).
-
-**Decision**: Keep current design. Adding a nested layer does not reduce surface area and violates the "no multi-layer facade" constraint.
+**Prerequisites**:
+- New `get_pseudo_status_bundle()` function
+- Daemon handlers migrate to bundle pattern
 
 ---
 
-## Consolidation Opportunities
+### Cluster 3: QE Engine Bundle (SLIMMING: -3)
 
-### Cluster 1: Structure Visualization (SLIMMING: -1)
+**Current entrypoints (5 utils)**:
 
-**Current entrypoints (2 utils)**:
-- `visualize_structure(structure, ...)` - Returns visualization dict (CLI usage: 2)
-- `build_structure_vis_payload(structure, params)` - Returns visualization dict (daemon usage: 3)
+| Entrypoint | Location | Daemon Refs | CLI Refs |
+|------------|----------|-------------|----------|
+| `detect_qe` | utils.py:839 | 17 | 3 |
+| `get_environment_info` | utils.py:891 | 4 | 0 |
+| `list_qe_engines` | utils.py:912 | 10 | 0 |
+| `discover_qe_engines` | utils.py:962 | 17 | 0 |
+| `set_qe_engine` | utils.py:1052 | 10 | 0 |
 
-**Analysis**:
-- Both functions produce similar output (visualization primitives)
-- `visualize_structure` is higher-level (creates DisplayModeParams internally)
-- `build_structure_vis_payload` takes explicit DisplayModeParams
+**Total usage**: daemon=58, cli=3
 
-**Proposed**: Keep `build_structure_vis_payload` as the canonical, delete `visualize_structure`
+**Proposed minimal public API (2 entrypoints)**:
 
-**Expected delta**: **-1**
+1. `get_qe_engine_status() -> dict`
+   - Returns bundled response:
+   ```python
+   {
+       "detection": {...},         # was detect_qe
+       "environment": {...},       # was get_environment_info
+       "available_engines": [...], # was list_qe_engines
+       "discovered": {...},        # was discover_qe_engines (cached)
+   }
+   ```
+2. `set_qe_engine(bin_dir)` - Keep (write operation)
 
-**Migration**: 2 CLI call sites migrate to `build_structure_vis_payload`
+**What gets deleted (3)**:
+- `detect_qe` → folded into bundle (detection key)
+- `get_environment_info` → folded into bundle (environment key)
+- `list_qe_engines` → folded into bundle (available_engines key)
+- `discover_qe_engines` → folded into bundle (discovered key)
 
-**Risks**: Low - both functions tested
+**Expected delta**: **-3** utils
 
-### Cluster 2: Internal Model Leaks (SLIMMING: -2)
+**Migration impact**:
+- Daemon: 58 refs → update to use bundle
+- CLI: 3 refs → update to use bundle
 
-**Current entrypoints**:
-- `load_calculation(path, project_root)` → returns `CalculationModel` (internal type)
-- `save_calculation(model, path)` → accepts `CalculationModel` (internal type)
+**Risk level**: LOW - straightforward bundle pattern
 
-**Analysis**:
-- These expose internal kernel types (`CalculationModel`) through the API
-- Violates API isolation - callers become coupled to kernel internals
-- Tests use these heavily (t=121, t=21) but could use service methods instead
+---
 
-**Proposed**: DELETE both
+### Cluster 4: Online Search → Service Capability (SLIMMING: -5)
 
-**Expected delta**: **-2**
+**Current entrypoints (6 utils)**:
 
-**Migration**:
-- Tests calling `load_calculation` should use `svc.calculation.get()` returning `CalculationDTO`
-- Tests calling `save_calculation` should use `svc.calculation.update_*()` methods
+| Entrypoint | Location | Daemon Refs | CLI Refs |
+|------------|----------|-------------|----------|
+| `search_online_structures` | utils.py:1474 | 4 | 0 |
+| `fetch_structure_from_optimade` | utils.py:1492 | 4 | 0 |
+| `score_candidate` | utils.py:1507 | 4 | 0 |
+| `extract_provenance` | utils.py:1524 | 4 | 0 |
+| `reduce_formula` | utils.py:1456 | 4 | 0 |
+| `OnlineStructureCache` (class) | utils.py:669 | 8 | 0 |
 
-**Risks**: Medium - requires test migration (121 + 21 = 142 test refs)
+**Total usage**: daemon=28, cli=0
 
-### Cluster 3: More Internal Model Leaks (SLIMMING: -4)
+**Per Constitution Law H3**: Online search is domain capability, NOT utils.
 
-**Current entrypoints**:
-- `create_default_registry(config_dict)` → returns `EngineRegistry`
-- `get_journal()` → returns `Journal`
-- `create_blob_store(calc_dir)` → returns `BlobStore`
-- `create_precision_advisor(calculation_dir)` → returns `PrecisionAdvisor`
+**Proposed minimal public API (1 nested service class)**:
 
-**Analysis**: All return internal kernel types, violating API isolation.
+New nested class: `QVService.OnlineSearch` (no project context required - static accessor)
 
-**Proposed**: DELETE all (or move to internal-only module not in api/)
+```python
+class OnlineSearch:
+    """Online structure search capability."""
 
-**Expected delta**: **-4**
+    @staticmethod
+    def search(query: str, max_results: int = 50) -> dict:
+        """Search online databases. Returns summary + candidates."""
 
-**Migration**: Tests can import from kernel directly if needed
+    @staticmethod
+    def fetch(optimade_base: str, source_id: str) -> dict:
+        """Fetch structure from OPTIMADE. Returns structure DTO."""
 
-**Risks**: Medium - test migration required
+    @staticmethod
+    def create_cache(cache_dir: Path | None = None) -> "OnlineStructureCache":
+        """Create cache instance for session."""
+```
 
-### Cluster 4: Unused Service Methods (SLIMMING: -3)
+Internal (not exported): `score_candidate`, `extract_provenance`, `reduce_formula`
 
-**Current entrypoints**:
-- `Analysis.find_band_files` - UNUSED (d=0, c=0, t=0)
-- `Project.get_species_map` - TESTS-ONLY (d=0, c=0, t=3)
-- `Project.get_potential_map` - TESTS-ONLY (d=0, c=0, t=3)
+**What gets deleted (5 utils)**:
+- `search_online_structures` → `QVService.OnlineSearch.search()`
+- `fetch_structure_from_optimade` → `QVService.OnlineSearch.fetch()`
+- `score_candidate` → internal to search capability
+- `extract_provenance` → internal to search capability
+- `reduce_formula` → internal to search capability (pure helper)
+- `OnlineStructureCache` → `QVService.OnlineSearch.create_cache()`
 
-**Analysis**: Zero production value; tests can use alternatives
+**Expected delta**: **-5** utils, +1 nested class = **-5** net (nested class has 3 methods but counts as domain, not individual entrypoints)
+
+**Migration impact**:
+- Daemon: 28 refs → update to use service capability
+- Create `QVService.OnlineSearch` static nested class
+
+**Risk level**: HIGH - requires new nested class, daemon handler refactoring
+
+**Prerequisites**:
+- New `OnlineSearch` nested class implementation
+- Daemon handlers migrated
+- Cache factory pattern for `OnlineStructureCache`
+
+---
+
+### Cluster 5: Presets Detection Bundle (SLIMMING: -3)
+
+**Current entrypoints (5 utils)**:
+
+| Entrypoint | Location | Daemon Refs | CLI Refs |
+|------------|----------|-------------|----------|
+| `detect_engine_for_calculation` | utils.py:696 | 6 | 0 |
+| `detect_presets_from_calculation` | utils.py:712 | 6 | 0 |
+| `detect_workflow_type` | utils.py:1365 | 4 | 0 |
+| `get_step_preset_footprints` | utils.py:1382 | 10 | 0 |
+| `resolve_precision_context` | utils.py:1399 | 4 | 0 |
+
+**Total usage**: daemon=30, cli=0
+
+**Proposed minimal public API (2 entrypoints)**:
+
+1. `get_calculation_preset_bundle(calculation_dir: Path) -> dict`
+   - Returns bundled response:
+   ```python
+   {
+       "detected_engine": "...",       # was detect_engine_for_calculation
+       "dimension_states": {...},      # was detect_presets_from_calculation
+       "workflow_type": "...",         # was detect_workflow_type
+       "step_footprints": {...},       # was get_step_preset_footprints
+   }
+   ```
+2. Keep separate: `apply_presets_to_step` (write operation), `get_preset_catalog` (reference data), `create_precision_advisor` (factory)
+
+**What gets deleted (3)**:
+- `detect_engine_for_calculation` → folded into bundle
+- `detect_presets_from_calculation` → folded into bundle
+- `detect_workflow_type` → folded into bundle
+- `get_step_preset_footprints` → folded into bundle
+- `resolve_precision_context` → keep (needed for precision advisor creation)
+
+**Expected delta**: **-3** utils
+
+**Migration impact**:
+- Daemon: 30 refs → update to use bundle
+
+**Risk level**: MEDIUM - must maintain separate write operations
+
+---
+
+### Cluster 6: Unused Service Methods (SLIMMING: -3)
+
+**Current entrypoints (3 nested methods)**:
+
+| Entrypoint | Location | Daemon | CLI | Tests |
+|------------|----------|--------|-----|-------|
+| `Analysis.find_band_files` | service.py:1447 | 0 | 0 | 0 |
+| `Project.get_species_map` | service.py:5592 | 0 | 0 | 3 |
+| `Project.get_potential_map` | service.py:5616 | 0 | 0 | 3 |
 
 **Proposed**: DELETE all three
 
-**Expected delta**: **-3**
-
 **Migration**:
-- `find_band_files`: None needed (no callers)
-- `get_species_map`/`get_potential_map`: Tests use `svc.project.get_config().get("species_map", {})`
+- `Analysis.find_band_files`: None (no callers)
+- `Project.get_species_map`: Tests use `svc.project.get_config().get("species_map", {})`
+- `Project.get_potential_map`: Tests use `svc.project.get_config().get("potential_map", {})`
 
-**Risks**: Low - trivial test migration
+**Expected delta**: **-3** service_nested
+
+**Risk level**: LOW - trivial test migration
 
 ---
 
-## Summary: Remaining Opportunities
+## DTO Expansion Opportunities (Clarity, NOT Slimming)
 
-Based on audited clusters:
+These do not reduce surface count but improve API ergonomics:
 
-| Cluster | Type | Delta | Priority |
-|---------|------|-------|----------|
-| Unused service methods | Slimming | -3 | HIGH |
-| Internal model leaks (load/save_calculation) | Slimming | -2 | MEDIUM |
-| Internal model leaks (other) | Slimming | -4 | MEDIUM |
-| Structure visualization | Slimming | -1 | LOW |
-| **Total** | | **-10** | |
+### CalculationDTO Expansion
+
+**Current**: `CalculationDTO` lacks preset/workflow info, requiring separate utils calls.
+
+**Proposal**: Add optional fields to `CalculationDTO`:
+```python
+@dataclass
+class CalculationDTO:
+    # ... existing fields ...
+    detected_engine: str | None = None      # populate if requested
+    workflow_type: str | None = None        # populate if requested
+    dimension_states: dict | None = None    # populate if requested
+```
+
+**Impact**: Daemon can request full calculation detail in one call instead of multiple.
+
+**Surface change**: 0 (fields added to existing DTO)
+
+---
+
+## Summary: Phase 3 Consolidation Plan
+
+### Ranked by Ease + Impact
+
+| Rank | Cluster | Delta | Complexity | Batch |
+|------|---------|-------|------------|-------|
+| 1 | Unused Service Methods | -3 | LOW | 32 |
+| 2 | Pseudo Config Bundle | -5 | LOW | 33 |
+| 3 | QE Engine Bundle | -3 | MEDIUM | 34 |
+| 4 | Presets Detection Bundle | -3 | MEDIUM | 35 |
+| 5 | QE Metadata Bundle | -8 | MEDIUM | 36-37 |
+| 6 | Online Search → Service | -5 | HIGH | 38-39 |
+
+**Total**: **-27 entrypoints**
 
 ### What's NOT an Opportunity
 
-1. **Static methods** - All 23 are production-used, correctly designed
-2. **Engine accessor** - Tests-only but represents planned future capability
-3. **Analysis accessor methods** - Tests-only but represents planned future capability
-4. **Pseudo library grouping** - Would add facade layer, not reduce count
+1. **Static methods** (23) - All production-used, correctly designed
+2. **Engine/Analysis accessor methods** - Future capability scaffolding (keep)
+3. **Adding facade layers** - Violates "no multi-layer facade" constraint
+4. **Relocating tests-only A-class methods** - Represent planned future API
 
 ---
 
-## Appendix: Audit Methodology
+## Appendix: Methodology
 
-### Pattern Matching
+### Usage Counting
 
-Initial report used:
 ```bash
-grep -r "\.method\(" daemon/
+# Count daemon usage
+grep -r -c "function_name" src/quantumvitas/daemon/
+
+# Count CLI usage
+grep -r -c "function_name" src/quantumvitas/cli/
 ```
 
-This MISSED static method calls like `QVService.init_project(...)` because they don't have a leading dot.
+### Cluster Analysis
 
-Corrected approach:
-```bash
-grep -r "QVService\." daemon/  # For static methods
-grep -r "svc\.accessor\.method" daemon/  # For nested methods
-```
-
-### Verified Counts
-
-All counts re-verified using:
-```python
-def count_refs(pattern, search_dir):
-    result = subprocess.run(['grep', '-r', '-c', pattern, str(search_dir)], ...)
-```
-
-With explicit patterns for each entrypoint category.
+Grouped functions by:
+1. Semantic similarity (same domain)
+2. Call-site co-occurrence (daemon handlers that use multiple related functions)
+3. Bundle potential (can be combined into single response)
 
 ---
 

@@ -460,18 +460,74 @@ def save_calculation(model, path: Path) -> None:
 # Pseudo configuration utilities (re-exports from core.pseudo_config)
 # =============================================================================
 
-def get_pseudo_config() -> dict:
+def get_pseudo_status_bundle() -> dict:
     """
-    Get current pseudo configuration as dict.
+    Get comprehensive pseudo configuration status in a single call.
 
-    Transparent wrapper around core.pseudo_config.load_pseudo_config().
+    This bundle function combines multiple pseudo config operations into
+    a single response, reducing API surface while providing all data
+    needed for the pseudo management UI.
 
     Returns:
-        Dict with pseudo configuration (store_dir, seed_dir, allow_download)
+        Dict with:
+        - config: Current pseudo configuration
+        - validation: Validation result
+        - installed_sssp: List of installed SSSP libraries
+        - seed_archives: List of available seed archives
+        - manifest_archives: List of manifest archives
+        - archive_statuses: Installation status of manifest archives
     """
-    from quantumvitas.core.pseudo_config import load_pseudo_config as _load_pseudo_config
-    config = _load_pseudo_config()
-    return config.to_dict()
+    from pathlib import Path
+    from quantumvitas.core.pseudo_config import (
+        load_pseudo_config as _load_pseudo_config,
+        validate_pseudo_config as _validate_pseudo_config,
+        list_installed_sssp as _list_installed_sssp,
+        list_seed_archives as _list_seed_archives,
+    )
+    from quantumvitas.core.pseudo_installs import (
+        load_manifest_archives as _load_manifest_archives,
+        check_archives_status as _check_archives_status,
+    )
+
+    # Load config once
+    config_obj = _load_pseudo_config()
+    config_dict = config_obj.to_dict()
+
+    # Validation
+    validation_result = _validate_pseudo_config(config_obj)
+    validation_dict = validation_result.to_dict()
+
+    # Installed libraries
+    store_dir = Path(config_obj.store_dir) if config_obj.store_dir else None
+    installed = []
+    if store_dir and store_dir.exists():
+        libs = _list_installed_sssp(store_dir)
+        installed = [lib.to_dict() if hasattr(lib, 'to_dict') else lib for lib in libs]
+
+    # Seed archives
+    seed_dir = Path(config_obj.seed_dir) if config_obj.seed_dir else None
+    seed_archives = []
+    if seed_dir and seed_dir.exists():
+        archives = _list_seed_archives(seed_dir)
+        seed_archives = [arch.to_dict() if hasattr(arch, 'to_dict') else arch for arch in archives]
+
+    # Manifest archives and their status
+    manifest_archives_raw = _load_manifest_archives()
+    manifest_archives = [arch.to_dict() if hasattr(arch, 'to_dict') else arch for arch in manifest_archives_raw]
+
+    archive_statuses = []
+    if manifest_archives_raw:
+        statuses = _check_archives_status(archives=manifest_archives_raw, config=config_obj)
+        archive_statuses = [s.to_dict() if hasattr(s, 'to_dict') else s for s in statuses]
+
+    return {
+        "config": config_dict,
+        "validation": validation_dict,
+        "installed_sssp": installed,
+        "seed_archives": seed_archives,
+        "manifest_archives": manifest_archives,
+        "archive_statuses": archive_statuses,
+    }
 
 
 def set_pseudo_config(
@@ -508,126 +564,6 @@ def set_pseudo_config(
 
     _save_pseudo_config(config)
     return config.to_dict()
-
-
-def validate_pseudo_config_dict(config_dict: dict | None = None) -> dict:
-    """
-    Validate pseudo configuration.
-
-    Transparent wrapper around core.pseudo_config.validate_pseudo_config().
-
-    Args:
-        config_dict: Config dict to validate (if None, loads current config)
-
-    Returns:
-        Validation result dict with ok, messages, warnings, errors
-    """
-    from quantumvitas.core.pseudo_config import (
-        load_pseudo_config as _load_pseudo_config,
-        validate_pseudo_config as _validate_pseudo_config,
-        PseudoConfig,
-    )
-
-    if config_dict is None:
-        config = _load_pseudo_config()
-    else:
-        config = PseudoConfig.from_dict(config_dict)
-
-    result = _validate_pseudo_config(config)
-    return result.to_dict()
-
-
-def list_installed_sssp(store_dir: "Path | None" = None) -> list[dict]:
-    """
-    List installed SSSP libraries.
-
-    Transparent wrapper around core.pseudo_config.list_installed_sssp().
-
-    Args:
-        store_dir: Path to pseudo store directory. If None, uses default from config.
-
-    Returns:
-        List of library dicts with name, version, etc.
-    """
-    from quantumvitas.core.pseudo_config import (
-        list_installed_sssp as _list_installed_sssp,
-        load_pseudo_config,
-    )
-    from pathlib import Path
-
-    if store_dir is None:
-        config = load_pseudo_config()
-        store_dir = config.store_dir
-
-    libraries = _list_installed_sssp(Path(store_dir))
-    return [lib.to_dict() if hasattr(lib, 'to_dict') else lib for lib in libraries]
-
-
-def list_seed_archives(seed_dir: Path) -> list[dict]:
-    """
-    List available seed archives.
-
-    Transparent wrapper around core.pseudo_config.list_seed_archives().
-
-    Args:
-        seed_dir: Path to seed directory
-
-    Returns:
-        List of SeedArchiveInfo dicts
-    """
-    from quantumvitas.core.pseudo_config import list_seed_archives as _list_seed_archives
-
-    archives = _list_seed_archives(seed_dir)
-    return [arch.to_dict() if hasattr(arch, 'to_dict') else arch for arch in archives]
-
-
-def check_archives_status(archives: list[dict], config: dict | None = None) -> list[dict]:
-    """
-    Check installation status of archives.
-
-    Transparent wrapper around core.pseudo_installs.check_archives_status().
-
-    Args:
-        archives: List of archive dicts (must have asset_name and sha256)
-        config: Optional pseudo config dict
-
-    Returns:
-        List of status dicts
-    """
-    from quantumvitas.core.pseudo_installs import check_archives_status as _check_archives_status
-    from quantumvitas.core.pseudo_installs import ManifestArchive
-    from quantumvitas.core.pseudo_config import PseudoConfig, load_pseudo_config as _load_pseudo_config
-
-    if config is None:
-        pseudo_config = _load_pseudo_config()
-    else:
-        pseudo_config = PseudoConfig.from_dict(config)
-
-    # Convert archive dicts to ManifestArchive objects
-    archive_objs = []
-    for arch in archives:
-        if isinstance(arch, dict):
-            archive_objs.append(ManifestArchive(**arch))
-        else:
-            archive_objs.append(arch)
-
-    statuses = _check_archives_status(archive_objs, pseudo_config)
-    return [s.to_dict() if hasattr(s, 'to_dict') else s for s in statuses]
-
-
-def load_manifest_archives() -> list[dict]:
-    """
-    Load manifest archives from MANIFEST_PSEUDO_SEED.json.
-
-    Transparent wrapper around core.pseudo_installs.load_manifest_archives().
-
-    Returns:
-        List of archive dicts
-    """
-    from quantumvitas.core.pseudo_installs import load_manifest_archives as _load_manifest_archives
-
-    archives = _load_manifest_archives()
-    return [arch.to_dict() if hasattr(arch, 'to_dict') else arch for arch in archives]
 
 
 # =============================================================================
@@ -693,38 +629,41 @@ from quantumvitas.drivers.qe.data.qe_metadata import (  # noqa: E402, F401
 # Calculation detection utilities (re-exports from presets layer)
 # =============================================================================
 
-def detect_engine_for_calculation(calculation_dir: Path) -> str | None:
-    """
-    Detect engine from calculation's steps.
 
-    Reads step.yaml files and determines the engine from step_type.
+def get_calculation_preset_bundle(calculation_dir: Path) -> dict:
+    """
+    Get comprehensive preset detection for a calculation in a single call.
+
+    This bundle function combines multiple preset detection operations into
+    a single response, reducing API surface while providing all data
+    needed for the calculation preset UI.
 
     Args:
         calculation_dir: Path to calculation directory
 
     Returns:
-        Engine name (e.g., "qe", "pyscf", "orca") or None
+        Dict with:
+        - detected_engine: Engine detected from steps (e.g., "qe", "pyscf")
+        - dimension_states: Detected preset dimension values
+        - workflow_type: Detected workflow type ("SCF", "DOS", etc.)
+        - step_footprints: Preset footprints per step
     """
-    from quantumvitas.presets.integration import _detect_engine_for_calculation as _detect_engine
-    return _detect_engine(calculation_dir)
+    from quantumvitas.presets.integration import (
+        _detect_engine_for_calculation as _detect_engine,
+        detect_presets_from_calculation as _detect_presets,
+        detect_workflow_type as _detect_workflow,
+        get_step_preset_footprints as _get_footprints,
+    )
 
+    # Detect engine first (needed for presets detection)
+    engine = _detect_engine(calculation_dir)
 
-def detect_presets_from_calculation(
-    calculation_dir: Path,
-    engine_filter: str | None = None,
-) -> dict:
-    """
-    Detect preset values from a calculation's steps.
-
-    Args:
-        calculation_dir: Path to calculation directory
-        engine_filter: Optional engine name to filter detection
-
-    Returns:
-        Dict mapping dimension name to detected value or "Custom"
-    """
-    from quantumvitas.presets.integration import detect_presets_from_calculation as _detect_presets
-    return _detect_presets(calculation_dir, engine_filter=engine_filter)
+    return {
+        "detected_engine": engine,
+        "dimension_states": _detect_presets(calculation_dir, engine_filter=engine),
+        "workflow_type": _detect_workflow(calculation_dir),
+        "step_footprints": _get_footprints(calculation_dir),
+    }
 
 
 # =============================================================================
@@ -836,23 +775,40 @@ def download_pseudo_by_filename(
 # QE engine utilities
 # =============================================================================
 
-def detect_qe() -> dict:
+
+def get_qe_engine_status() -> dict:
     """
-    Detect current QE installation (two-state model).
+    Get comprehensive QE engine status in a single call.
+
+    This bundle function combines multiple QE detection operations into
+    a single response, reducing API surface while providing all data
+    needed for the QE configuration UI.
 
     Returns:
-        Dict with QE detection status, path, version, and available executables
+        Dict with:
+        - detection: QE detection result (found, qe_home, version, executables)
+        - environment: Environment info (python_version, qv_version, qe_found)
+        - available_engines: List of available QE engines (internal)
+        - discovered: Auto-discovered engines (cached)
     """
-    from quantumvitas.core.engines.qe_resolver import resolve_qe_bin_dir
-    from quantumvitas.core.engines.qe_installation import QEInstallation
+    import json
+    import platform
+    import shutil
+    import sys
+    import time
     from quantumvitas.core.settings import load_settings
+    from quantumvitas.core.engines.qe_resolver import resolve_qe_bin_dir
+    from quantumvitas.core.engines.qe_installation import QEInstallation, get_qe_home
+    from quantumvitas.core.paths import home_qe_engines_dir, tmp_probe_dir
 
+    # === Detection ===
+    detection: dict
     try:
         settings = load_settings()
         qe_bin_dir = resolve_qe_bin_dir(settings)
         qe_home = qe_bin_dir.parent
 
-        result: dict = {
+        detection = {
             "found": True,
             "qe_home": str(qe_home),
             "qe_bin_dir": str(qe_bin_dir),
@@ -866,19 +822,17 @@ def detect_qe() -> dict:
             for exe in ["pw.x", "ph.x", "dos.x", "bands.x", "projwfc.x", "pp.x"]:
                 if (qe_bin_dir / exe).exists():
                     executables.append(exe)
-            result["executables"] = executables
+            detection["executables"] = executables
 
         try:
             installation = QEInstallation(qe_home)
             version = installation.version
             if version:
-                result["version"] = version
+                detection["version"] = version
         except Exception:
             pass
-
-        return result
     except RuntimeError as e:
-        return {
+        detection = {
             "found": False,
             "qe_home": None,
             "qe_bin_dir": None,
@@ -887,41 +841,18 @@ def detect_qe() -> dict:
             "error": str(e),
         }
 
-
-def get_environment_info() -> dict:
-    """
-    Get environment information for the GUI.
-
-    Returns:
-        Dict with Python version, QV version, QE status, daemon info
-    """
-    import sys
-    from quantumvitas.core.engines.qe_installation import get_qe_home
-
-    qe_home = get_qe_home()
-
-    return {
+    # === Environment ===
+    qe_home_path = get_qe_home()
+    environment = {
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "python_executable": sys.executable,
         "qv_version": "2.0.0",
-        "qe_home": str(qe_home) if qe_home else None,
-        "qe_found": qe_home is not None,
+        "qe_home": str(qe_home_path) if qe_home_path else None,
+        "qe_found": qe_home_path is not None,
     }
 
-
-def list_qe_engines() -> dict:
-    """
-    List available QE engines (two-state model).
-
-    Returns:
-        Dict with current_mode, current_bin_dir, and internal_engines list
-    """
-    from quantumvitas.core.settings import load_settings
-    from quantumvitas.core.engines.qe_resolver import resolve_qe_bin_dir
-    from quantumvitas.core.paths import home_qe_engines_dir
-
+    # === Available Engines ===
     settings = load_settings()
-
     current_bin_dir = None
     current_mode = "internal"
 
@@ -952,41 +883,46 @@ def list_qe_engines() -> dict:
                     "pw_path": str(pw_x if pw_x.exists() else pw_exe),
                 })
 
-    return {
+    available_engines = {
         "current_mode": current_mode,
         "current_bin_dir": current_bin_dir,
         "internal_engines": internal_engines,
     }
 
-
-def discover_qe_engines() -> dict:
-    """
-    Auto-discover QE engines on the system (full disk search).
-
-    Results are cached in .tmp/probe/qe_discovery.json.
-
-    Returns:
-        Dict with discovered engines list
-    """
-    import json
-    import platform
-    import shutil
-    import time
-    from quantumvitas.core.paths import tmp_probe_dir
-    from quantumvitas.core.engines.qe_installation import QEInstallation
-
+    # === Discovery (cached) ===
     cache_path = tmp_probe_dir() / "qe_discovery.json"
+    discovered: dict
 
     if cache_path.exists():
         try:
             with open(cache_path, "r", encoding="utf-8") as f:
                 cached = json.load(f)
                 if time.time() - cached.get("cached_at", 0) < 3600:
-                    return cached
+                    discovered = cached
+                else:
+                    discovered = _discover_qe_engines_impl(cache_path)
         except Exception:
-            pass
+            discovered = _discover_qe_engines_impl(cache_path)
+    else:
+        discovered = _discover_qe_engines_impl(cache_path)
 
-    discovered = []
+    return {
+        "detection": detection,
+        "environment": environment,
+        "available_engines": available_engines,
+        "discovered": discovered,
+    }
+
+
+def _discover_qe_engines_impl(cache_path: Path) -> dict:
+    """Internal implementation for QE engine discovery with caching."""
+    import json
+    import platform
+    import shutil
+    import time
+    from quantumvitas.core.engines.qe_installation import QEInstallation
+
+    discovered_list = []
     search_paths = []
     if platform.system() == "Windows":
         search_paths.extend([
@@ -1005,7 +941,7 @@ def discover_qe_engines() -> dict:
     if pw_path:
         qe_home = QEInstallation.qe_home_from_binary(Path(pw_path))
         if qe_home:
-            discovered.append({
+            discovered_list.append({
                 "engine_id": f"external:path:{qe_home.name}",
                 "label": f"QE from PATH ({qe_home})",
                 "qe_home": str(qe_home),
@@ -1021,21 +957,21 @@ def discover_qe_engines() -> dict:
                     pw_path_str = str(qe_dir / "bin" / "pw.x")
                     if not (qe_dir / "bin" / "pw.x").exists():
                         pw_path_str = str(qe_dir / "bin" / "pw.x.exe")
-                    discovered.append({
+                    discovered_list.append({
                         "engine_id": f"external:discovered:{qe_dir.name}",
                         "label": f"QE {qe_dir.name} ({qe_dir})",
                         "qe_home": str(qe_dir),
                         "pw_path": pw_path_str,
                     })
-                    if len(discovered) >= 10:
+                    if len(discovered_list) >= 10:
                         break
-            if len(discovered) >= 10:
+            if len(discovered_list) >= 10:
                 break
         except (PermissionError, OSError):
             continue
 
     result = {
-        "discovered_engines": discovered,
+        "discovered_engines": discovered_list,
         "cached_at": time.time(),
     }
 
@@ -1360,40 +1296,6 @@ def get_preset_catalog() -> dict:
     """
     from quantumvitas.presets.catalog import get_preset_catalog as _get_catalog
     return _get_catalog()
-
-
-def detect_workflow_type(calculation_dir: Path) -> str:
-    """
-    Detect workflow type from a calculation's step sequence.
-
-    This is informational only - does NOT affect execution.
-    Per Constitution: workflow is runtime interpretation only.
-
-    Args:
-        calculation_dir: Path to calculation directory
-
-    Returns:
-        Workflow type string ("SCF", "DOS", "BandStructure", etc.)
-    """
-    from quantumvitas.presets.integration import detect_workflow_type as _detect_workflow
-    return _detect_workflow(calculation_dir)
-
-
-def get_step_preset_footprints(calculation_dir: Path) -> dict:
-    """
-    Get preset-related parameter footprints for all steps in a calculation.
-
-    This enables the UI to show parameter summary on each step row
-    without fetching full step details for every step.
-
-    Args:
-        calculation_dir: Path to calculation directory
-
-    Returns:
-        Dict mapping step file name to its preset params
-    """
-    from quantumvitas.presets.integration import get_step_preset_footprints as _get_footprints
-    return _get_footprints(calculation_dir)
 
 
 def resolve_precision_context(
