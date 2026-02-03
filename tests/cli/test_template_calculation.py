@@ -123,14 +123,10 @@ def test_template_calculation_ulids_consistent(template_project):
                         break
     
     assert calculation_entry is not None, "si-dos calculation not found in project.qv.yml"
-    
-    # In ID-only model, calculation entry might have calculation_id (ULID) directly or in meta.id
-    calculation_ulid = (
-        calculation_entry.get("calculation_id") or
-        calculation_entry.get("ulid") or
-        (calculation_entry.get("meta") or {}).get("ulid")
-    )
-    assert calculation_ulid, "Calculation should have a ULID (calculation_id, id, or meta.id)"
+
+    # API model: calculation entry has meta with ulid
+    calculation_ulid = (calculation_entry.get("meta") or {}).get("ulid")
+    assert calculation_ulid, "Calculation should have meta.ulid"
     
     # DAG model: Step YAML should NOT contain parent_calculation_id
     # Verify step files do not contain parent_calculation_id

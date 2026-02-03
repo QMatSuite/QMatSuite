@@ -458,15 +458,23 @@ class TestWorkflowInstantiation:
         project_root.mkdir()
         project_config = {
             "project": {"name": "Test", "ulid": generate_resource_id()},
-            "calculations": [{"calculation_id": calc_ulid}]
+            "calculations": [{
+                "meta": {
+                    "ulid": calc_ulid,
+                    "name": "test-calc",
+                    "slug": "test-calc",
+                    "path": "calculations/test_calc",
+                    "kind": "calculation",
+                }
+            }]
         }
         (project_root / "project.qv.yml").write_text(
             yaml.safe_dump(project_config, sort_keys=False)
         )
-        
+
         calc_dir = project_root / "calculations" / "test_calc"
         calc_dir.mkdir(parents=True)
-        
+
         # Create calculation.yaml with meta.id and proper structure
         calc_yaml_data = {
             "meta": {
@@ -510,15 +518,23 @@ class TestWorkflowInstantiation:
         project_root.mkdir()
         project_config = {
             "project": {"name": "Test", "ulid": generate_resource_id()},
-            "calculations": [{"calculation_id": calc_ulid}]
+            "calculations": [{
+                "meta": {
+                    "ulid": calc_ulid,
+                    "name": "test-calc",
+                    "slug": "test-calc",
+                    "path": "calculations/test_calc",
+                    "kind": "calculation",
+                }
+            }]
         }
         (project_root / "project.qv.yml").write_text(
             yaml.safe_dump(project_config, sort_keys=False)
         )
-        
+
         calc_dir = project_root / "calculations" / "test_calc"
         calc_dir.mkdir(parents=True)
-        
+
         # Create calculation.yaml with meta.id and proper structure
         calc_yaml_data = {
             "meta": {
@@ -565,15 +581,23 @@ class TestWorkflowInstantiation:
         project_root.mkdir()
         project_config = {
             "project": {"name": "Test", "ulid": generate_resource_id()},
-            "calculations": [{"calculation_id": calc_ulid}]
+            "calculations": [{
+                "meta": {
+                    "ulid": calc_ulid,
+                    "name": "test-calc",
+                    "slug": "test-calc",
+                    "path": "calculations/test_calc",
+                    "kind": "calculation",
+                }
+            }]
         }
         (project_root / "project.qv.yml").write_text(
             yaml.safe_dump(project_config, sort_keys=False)
         )
-        
+
         calc_dir = project_root / "calculations" / "test_calc"
         calc_dir.mkdir(parents=True)
-        
+
         # Create calculation.yaml with meta.id and proper structure
         calc_yaml_data = {
             "meta": {
@@ -630,15 +654,23 @@ class TestWorkflowInstantiation:
         project_root.mkdir()
         project_config = {
             "project": {"name": "Test", "ulid": generate_resource_id()},
-            "calculations": [{"calculation_id": calc_ulid}]
+            "calculations": [{
+                "meta": {
+                    "ulid": calc_ulid,
+                    "name": "test-calc",
+                    "slug": "test-calc",
+                    "path": "calculations/test_calc",
+                    "kind": "calculation",
+                }
+            }]
         }
         (project_root / "project.qv.yml").write_text(
             yaml.safe_dump(project_config, sort_keys=False)
         )
-        
+
         calc_dir = project_root / "calculations" / "test_calc"
         calc_dir.mkdir(parents=True)
-        
+
         # Create calculation.yaml with meta.id and proper structure
         calc_yaml_data = {
             "meta": {

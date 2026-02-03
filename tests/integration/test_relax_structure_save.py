@@ -107,7 +107,15 @@ def test_save_relax_structure_ulidempotency(tmp_path: Path):
         ],
     }
     (calc_dir / "calculation.yaml").write_text(yaml.safe_dump(calc_config))
-    project_config["calculations"].append({"calculation_id": calc_id})
+    project_config["calculations"].append({
+        "meta": {
+            "ulid": calc_id,
+            "name": "relax-test",
+            "slug": "relax-test",
+            "path": "calculations/relax-test",
+            "kind": "calculation",
+        }
+    })
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
     
     # Create mock output file with final coordinates

@@ -15,6 +15,16 @@ project:
         scf: si_bands_demo.scf.json
 settings: {}
 structures:
-- structure_ulid: 01KDTJYMXY21PZ4P5J5P0RCERR
+- meta:
+    ulid: 01KDTJYMXY21PZ4P5J5P0RCERR
+    name: si
+    slug: si
+    path: structures/si.json
+    kind: structure
 calculations:
-- calculation_id: 01KDTJYMXYMMQHMDM7N3BXQAH6
+- meta:
+    ulid: 01KDTJYMXYMMQHMDM7N3BXQAH6
+    name: Si bands
+    slug: si-bands
+    path: calculations/si-bands
+    kind: calculation

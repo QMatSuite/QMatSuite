@@ -1,37 +1,174 @@
 # API Slimming Phase 4: Daemon/CLI Unify Plan
 
 **Date**: 2026-02-02
-**Status**: PLANNING
-**Goal**: Merge duplicate daemon/CLI operations into single canonical API capabilities
+**Status**: REVISED - Architecture Issue Identified
+**Goal**: Ensure CLI uses API functions instead of bypassing them
 
 ---
 
 ## 1. Overview
 
-### 1.1 Problem Statement
+### 1.1 Problem Statement (REVISED)
 
-The daemon (119 handlers) and CLI (31 commands) often implement the same operations with different code paths:
-- Daemon: JSON-RPC handlers that call QVService methods
-- CLI: Typer commands with terminal formatting, mode handling, standalone execution
+**Original assumption**: Daemon and CLI call DIFFERENT API functions for the same operation.
 
-This creates:
-1. Duplicate code to maintain
-2. Inconsistent behavior between interfaces
-3. Larger API surface than necessary
+**Actual finding**: The API has ONE function per operation. The issue is:
+- **Daemon**: Calls API functions correctly (e.g., `svc.calculation.add_step()`)
+- **CLI**: BYPASSES the API and does direct file I/O (e.g., `_write_step_spec()`)
 
-### 1.2 Unification Principle
+This is a **Law H1 violation** (Import Boundary) - CLI should use API, not bypass it.
 
-**Each operation should have ONE canonical API capability.**
+### 1.2 Correct Architecture
 
-| Layer | Responsibility |
-|-------|---------------|
-| QVService | Capability implementation (single source of truth) |
-| Daemon | JSON-RPC wrapper (thin) |
-| CLI | Terminal formatting + user interaction (thin) |
+| Layer | Should Do | CLI Currently Does |
+|-------|-----------|-------------------|
+| QVService | Capability implementation | (correct) |
+| Daemon | JSON-RPC wrapper → API | (correct) |
+| CLI | Typer wrapper → API | **BYPASSES API** |
 
 ---
 
-## 2. Candidate Operations (Ranked)
+## 2. CLI API Bypass Issues (Verified)
+
+### 2.1 Init Step / Add Step
+
+| Consumer | What it calls | API Function |
+|----------|--------------|--------------|
+| Daemon | `svc.calculation.add_step()` | YES - uses API |
+| CLI | `_write_step_spec()` (private helper) | NO - bypasses API |
+
+**Evidence**: `grep -n "svc\.calculation\.add_step" src/quantumvitas/cli/main.py` returns no matches.
+
+**CLI does instead**:
+1. Manually reads `calculation.yaml`
+2. Parses existing steps
+3. Generates step ULID
+4. Writes step.yaml file directly
+5. Updates calculation.yaml directly
+
+**Fix**: CLI should call `svc.calculation.add_step()` instead of `_write_step_spec()`.
+
+### 2.2 Update Step Parameters
+
+| Consumer | What it calls | API Function |
+|----------|--------------|--------------|
+| Daemon | `svc.calculation.update_step_params()` | YES - uses API |
+| CLI | Direct YAML manipulation | NO - bypasses API |
+
+**CLI does instead**:
+1. `yaml.safe_load()` step file
+2. Modifies dict in memory
+3. `yaml.safe_dump()` back to file
+
+**Fix**: CLI should call `svc.calculation.update_step_params()`.
+
+### 2.3 Create Calculation
+
+| Consumer | What it calls | API Function |
+|----------|--------------|--------------|
+| Daemon | `svc.project.init_calculation()` | YES - uses API |
+| CLI | Direct file I/O + utils | NO - bypasses API |
+
+**CLI does instead**:
+1. Calls template utils (`list_calculation_templates`, `copy_calculation_template`)
+2. Calls `svc.structure.require_ref()` for resolution
+3. Does direct YAML manipulation
+4. Calls `svc.project.update_config()` to save
+
+**Note**: `svc.project.init_calculation()` exists but CLI doesn't use it.
+
+**Fix**: CLI should call `svc.project.init_calculation()`.
+
+### 2.4 Import Structure
+
+| Consumer | What it calls | API Function |
+|----------|--------------|--------------|
+| Daemon | `svc.structure.import_file()` | YES - uses API |
+| CLI | Direct file I/O + utils | NO - bypasses API |
+
+**CLI does instead**:
+1. Calls `read_structure()`, `write_structure()` utils
+2. Generates name/slug manually
+3. Does direct YAML manipulation
+4. Calls `svc.project.update_config()`
+
+**Fix**: CLI should call `svc.structure.import_file()`.
+
+---
+
+## 3. Analysis Functions (NOT Duplicates)
+
+### 3.1 Band Structure Analysis
+
+| Function | Purpose | Used By |
+|----------|---------|---------|
+| `analyze_band()` | Parse raw files, optionally plot | CLI |
+| `get_band_structure_data()` | Retrieve cached/computed data for GUI | Daemon |
+
+**These are COMPLEMENTARY, not duplicates**:
+- `analyze_band`: GENERATE analysis (parse QE output)
+- `get_band_structure_data`: RETRIEVE data (from artifact cache)
+
+`get_band_structure_data` internally calls `ensure_analysis_artifact` which may use `analyze_band` logic.
+
+**No unification needed** - different purposes, different output formats.
+
+### 3.2 DOS Analysis
+
+Same pattern:
+- `analyze_dos()`: Parse raw files, optionally plot (CLI)
+- `get_dos_data()`: Retrieve cached data for GUI (daemon)
+
+**No unification needed** - complementary functions.
+
+---
+
+## 4. Impact on API Surface
+
+**Key insight**: Fixing CLI to use API functions does NOT change API surface count.
+
+The API already has the correct functions:
+- `svc.calculation.add_step()` - 1 function (not 2)
+- `svc.calculation.update_step_params()` - 1 function
+- `svc.project.init_calculation()` - 1 function
+- `svc.structure.import_file()` - 1 function
+
+CLI refactoring is a **code quality** improvement, not an API slimming opportunity.
+
+**Surface impact**: 0 (no API entrypoints added or removed)
+
+---
+
+## 5. Recommended Actions
+
+### 5.1 CLI Refactoring (Code Quality, Not API Slimming)
+
+| Priority | Operation | Current CLI | Fix |
+|----------|-----------|-------------|-----|
+| HIGH | Init Step | `_write_step_spec()` | Use `svc.calculation.add_step()` |
+| HIGH | Update Step | Direct YAML | Use `svc.calculation.update_step_params()` |
+| MEDIUM | Create Calculation | Direct file I/O | Use `svc.project.init_calculation()` |
+| MEDIUM | Import Structure | Direct file I/O | Use `svc.structure.import_file()` |
+
+**Note**: This work improves code consistency but doesn't reduce API surface.
+
+### 5.2 Actual API Slimming Opportunities
+
+From the audit, remaining opportunities are:
+1. **CLI-only utils** (45 entries) - Could internalize if not needed by Jupyter/agents
+2. **F401 re-exports** (4 entries) - Could remove if truly unused
+3. **Bundle DTO upgrades** - Quality improvement, not count reduction
+
+---
+
+## 6. DEPRECATED: Original Candidate List
+
+The following section contains the original analysis which assumed duplicate API functions.
+These operations are already unified at the API level - the issue is CLI bypassing the API.
+
+---
+
+## 2. Candidate Operations (Ranked) [DEPRECATED]
 
 ### 2.1 Easy (Quick Wins) - Batch 39-41
 

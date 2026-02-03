@@ -335,10 +335,10 @@ class TestResourceRenameEdgeCases:
         config_after = load_project_config(project_root)
         calculations_after = config_after.get("calculations", [])
 
-        # Find calculation entry by ID (ID-only model: entry may have id or calculation_id field)
+        # Find calculation entry by ID (API model: entry has meta with ulid)
         calculation_entry = None
         for w in calculations_after:
-            entry_id = w.get("ulid") or w.get("calculation_id") or (w.get("meta") or {}).get("ulid")
+            entry_id = (w.get("meta") or {}).get("ulid")
             if entry_id == original_calculation_id:
                 calculation_entry = w
                 break
@@ -347,11 +347,11 @@ class TestResourceRenameEdgeCases:
             f"Calculation entry should exist. Found calculations: {calculations_after}, looking for ID: {original_calculation_id}"
 
         # Verify calculation ID is unchanged
-        entry_id = calculation_entry.get("ulid") or calculation_entry.get("calculation_id") or (calculation_entry.get("meta") or {}).get("ulid")
+        entry_id = (calculation_entry.get("meta") or {}).get("ulid")
         assert entry_id == original_calculation_id, "Calculation ID should be unchanged"
 
         # Verify new path (may have changed if slug changed)
-        new_path = calculation_entry.get("path") or (calculation_entry.get("meta") or {}).get("path")
+        new_path = (calculation_entry.get("meta") or {}).get("path")
         assert new_path is not None, "Calculation should have a path"
 
         # Verify calculation.yaml exists at new location

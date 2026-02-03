@@ -9,7 +9,17 @@ project:
   structures_dir: structures
   calculations_dir: calculations
 calculations:
-- calculation_id: 01KC38ZHBGWW0T1W9BV7ASEP2Z
+- meta:
+    ulid: 01KC38ZHBGWW0T1W9BV7ASEP2Z
+    name: Si bands
+    slug: si-bands
+    path: calculations/si-bands
+    kind: calculation
 structures:
-- structure_ulid: 01KC38ZCMZZQ8DAA61A6SC8X23
+- meta:
+    ulid: 01KC38ZCMZZQ8DAA61A6SC8X23
+    name: si
+    slug: si
+    path: structures/si.json
+    kind: structure
 settings: {}

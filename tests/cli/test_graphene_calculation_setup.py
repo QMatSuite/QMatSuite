@@ -130,15 +130,15 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             assert calculation_data["steps"] == []
             
             # Verify calculation is registered in project config
-            # ID-only model: project.qv.yml only has calculation_id, not name
+            # API model: project.qv.yml has meta with ulid, name, slug, path
             # Resolve calculation from registry to get its name
             project_config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
             calculations = project_config.get("calculations", [])
             assert len(calculations) > 0, "Calculation should be registered"
             from quantumvitas.core.resolution import build_resource_index, require_calculation
             index = build_resource_index(project_dir)
-            calculation_id = calculations[0].get("ulid") or calculations[0].get("calculation_id")
-            assert calculation_id is not None, "Calculation entry should have id"
+            calculation_id = (calculations[0].get("meta") or {}).get("ulid")
+            assert calculation_id is not None, "Calculation entry should have meta.ulid"
             resolved = require_calculation(project_dir, calculation_id, index=index)
             assert resolved.meta.name == "graphene bands", f"Calculation name should be 'graphene bands'. Found: {resolved.meta.name}"
             

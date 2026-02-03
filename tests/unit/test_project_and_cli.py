@@ -44,12 +44,25 @@ def sample_project(tmp_path: Path) -> Path:
     
     project_config = {
         "project": {"name": "sample"},
-        "calculations": [{"ulid": calculation_ulid, "path": "calculations/wf"}],  # Use ULID, not human-readable name
+        "calculations": [{
+            "meta": {
+                "ulid": calculation_ulid,
+                "name": "wf",
+                "slug": "wf",
+                "path": "calculations/wf",
+                "kind": "calculation",
+            }
+        }],
         "structures": [
             {
-                "ulid": structure_ulid,
+                "meta": {
+                    "ulid": structure_ulid,
+                    "name": "si",
+                    "slug": "si",
+                    "path": "structures/si.json",
+                    "kind": "structure",
+                },
                 "file": "structures/si.json",
-                "meta": structure_meta_dict,
             }
         ],
     }
@@ -141,9 +154,9 @@ def test_project_open(sample_project: Path):
     # Use API to access project config
     config = svc.project.get_config()
     assert len(config.get("calculations", [])) == 1
-    # Verify calculation can be resolved by ID from config
+    # Verify calculation can be resolved by ID from config (API format: meta.ulid)
     calc_entry = config["calculations"][0]
-    calc_id = calc_entry.get("ulid")
+    calc_id = (calc_entry.get("meta") or {}).get("ulid")
     assert calc_id is not None
     # Verify we can resolve it via API (by ULID)
     calc_ref = svc.calculation.require_ref(calc_id)
@@ -151,7 +164,7 @@ def test_project_open(sample_project: Path):
     # Check structures - verify via config (structure.list() requires file to be loadable which may fail)
     assert len(config.get("structures", [])) == 1
     struct_entry = config["structures"][0]
-    struct_id = struct_entry.get("ulid")
+    struct_id = (struct_entry.get("meta") or {}).get("ulid")
     assert struct_id is not None
     # Verify structure metadata from config
     struct_meta = struct_entry.get("meta", {})
@@ -307,30 +320,31 @@ def test_cli_rename_structure(sample_project: Path):
 
 
 def test_cli_rename_calculation(sample_project: Path):
+    """Test renaming calculation via configure command (rename is deprecated)."""
     runner = CliRunner()
-    new_path = "calculations/wf_new"
+    # Use configure calculation --name instead of deprecated rename calculation
     result = runner.invoke(
         app,
         [
-            "rename",
+            "configure",
             "calculation",
             "wf",
             "--project",
             str(sample_project),
             "--name",
             "Calculation new",
-            "--path",
-            new_path,
         ],
     )
     assert result.exit_code == 0, result.stdout
 
     config = yaml.safe_load((sample_project / "project.qv.yml").read_text())
     entry = config["calculations"][0]
-    assert entry["name"] == "Calculation new"
-    assert entry["path"] == new_path
-    assert entry["meta"]["slug"].startswith("calculation-new")
-    assert (sample_project / new_path).exists()
+    # API format: meta contains ulid, name, slug, path
+    assert entry["meta"]["name"] == "Calculation new"
+    assert entry["meta"]["slug"] == "calculation-new"
+    # Path is updated based on slug
+    assert entry["meta"]["path"] == "calculations/calculation-new"
+    assert (sample_project / "calculations" / "calculation-new").exists()
 
 
 def test_cli_delete_structure(tmp_path: Path):

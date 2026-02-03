@@ -105,9 +105,21 @@ parameters:
     ecutwfc: 30.0
 """)
     
-    # Add to project config
+    # Add to project config (API format: meta with ulid, name, slug, path)
     import yaml
-    config = {"name": "test", "calculations": [{"calculation_id": "01TESTORIGINAL1234567890"}], "structures": []}
+    config = {
+        "name": "test",
+        "calculations": [{
+            "meta": {
+                "ulid": "01TESTORIGINAL1234567890",
+                "name": "Original Calculation",
+                "slug": "original_calc",
+                "path": "calculations/original_calc",
+                "kind": "calculation"
+            }
+        }],
+        "structures": []
+    }
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
     
     svc = QVService(project_root)
@@ -139,7 +151,7 @@ parameters:
     
     # Verify calculation is in project config
     config_after = yaml.safe_load((project_root / "project.qv.yml").read_text())
-    calc_ids = [c.get("calculation_id") for c in config_after.get("calculations", [])]
+    calc_ids = [(c.get("meta") or {}).get("ulid") for c in config_after.get("calculations", [])]
     assert dup_calc.calc_id in calc_ids
     assert "01TESTORIGINAL1234567890" in calc_ids  # Original still there
 
@@ -176,9 +188,21 @@ engine_family: qe
 structure_kind: periodic
 """)
     
-    # Add to project config
+    # Add to project config (API format: meta with ulid, name, slug, path)
     import yaml
-    config = {"name": "test", "calculations": [{"calculation_id": "01TESTEXISTING1234567890"}], "structures": []}
+    config = {
+        "name": "test",
+        "calculations": [{
+            "meta": {
+                "ulid": "01TESTEXISTING1234567890",
+                "name": "Existing Calculation",
+                "slug": "existing_calc",
+                "path": "calculations/existing_calc",
+                "kind": "calculation"
+            }
+        }],
+        "structures": []
+    }
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
     
     svc = QVService(project_root)
@@ -211,11 +235,23 @@ structure_kind: periodic
 """)
     
     import yaml
-    config = {"name": "test", "calculations": [{"calculation_id": "01TESTORIGINAL1234567890"}], "structures": []}
+    config = {
+        "name": "test",
+        "calculations": [{
+            "meta": {
+                "ulid": "01TESTORIGINAL1234567890",
+                "name": "Original",
+                "slug": "original",
+                "path": "calculations/original",
+                "kind": "calculation"
+            }
+        }],
+        "structures": []
+    }
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
-    
+
     svc = QVService(project_root)
-    
+
     # Duplicate with custom slug
     dup_calc = svc.calculation.duplicate("original", new_name="Custom Name", new_slug="custom-slug")
     
@@ -265,13 +301,25 @@ structure_kind: periodic
 steps: []
 """)
     
-    # Add to project config
+    # Add to project config (API format: meta with ulid, name, slug, path)
     import yaml
-    config = {"name": "test", "calculations": [{"calculation_id": "01TESTCALC1234567890123456"}], "structures": []}
+    config = {
+        "name": "test",
+        "calculations": [{
+            "meta": {
+                "ulid": "01TESTCALC1234567890123456",
+                "name": "Test Calculation",
+                "slug": "test_calc",
+                "path": "calculations/test_calc",
+                "kind": "calculation"
+            }
+        }],
+        "structures": []
+    }
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
-    
+
     svc = QVService(project_root)
-    
+
     # Add step
     step = svc.calculation.add_step("test_calc", "scf", name="scf1")
     
@@ -346,13 +394,25 @@ steps:
     step_type_spec: qe_scf
 """)
     
-    # Add to project config
+    # Add to project config (API format: meta with ulid, name, slug, path)
     import yaml
-    config = {"name": "test", "calculations": [{"calculation_id": "01TESTCALC1234567890123456"}], "structures": []}
+    config = {
+        "name": "test",
+        "calculations": [{
+            "meta": {
+                "ulid": "01TESTCALC1234567890123456",
+                "name": "Test Calculation",
+                "slug": "test_calc",
+                "path": "calculations/test_calc",
+                "kind": "calculation"
+            }
+        }],
+        "structures": []
+    }
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
-    
+
     svc = QVService(project_root)
-    
+
     # Verify step exists
     assert step_yaml.exists()
     calc_data_before = yaml.safe_load(calc_yaml.read_text())
@@ -408,7 +468,19 @@ steps: []
 """)
 
     import yaml
-    config = {"name": "test", "calculations": [{"calculation_id": "01TESTCALC1234567890123456"}], "structures": []}
+    config = {
+        "name": "test",
+        "calculations": [{
+            "meta": {
+                "ulid": "01TESTCALC1234567890123456",
+                "name": "Test Calculation",
+                "slug": "test_calc",
+                "path": "calculations/test_calc",
+                "kind": "calculation"
+            }
+        }],
+        "structures": []
+    }
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
 
     svc = QVService(project_root)
