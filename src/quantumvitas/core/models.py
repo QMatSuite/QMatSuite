@@ -946,9 +946,13 @@ def save_project(model: ProjectModel, path: Optional[Path] = None) -> None:
         model: ProjectModel to save
         path: Path to project root (defaults to model.root)
     """
+    from quantumvitas.core.yamldoc import ProjectDoc
+    from quantumvitas.core.yaml_io import save_yaml_doc
+
     root = path or model.root
     config_file = root / "project.qv.yml"
-    config_file.write_text(yaml.safe_dump(model.to_dict(), sort_keys=False))
+    doc = ProjectDoc(model.to_dict())
+    save_yaml_doc(doc, config_file)
 
 
 # ---------------------------------------------------------------------------

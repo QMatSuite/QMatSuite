@@ -255,7 +255,11 @@ def build_step_spec_from_qe_input(
         cards=cards,
         species_overrides=species_overrides if species_overrides else None,
     )
-    step_file.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+    from quantumvitas.core.yamldoc import StepDoc
+    from quantumvitas.core.yaml_io import save_yaml_doc
+
+    step_doc = StepDoc(spec.to_dict())
+    save_yaml_doc(step_doc, step_file, skip_journal=True)
 
     return StepImportResult(
         step_ulid=step_ulid,
@@ -433,8 +437,12 @@ def build_calculation_from_qe_inputs(
     calculation_config.pop("structure_name", None)
     calculation_config.pop("structure", None)
     
+    from quantumvitas.core.yamldoc import CalcDoc
+    from quantumvitas.core.yaml_io import save_yaml_doc
+
     calculation_file = calculation_dir / "calculation.yaml"
-    calculation_file.write_text(yaml.safe_dump(calculation_config, sort_keys=False))
+    calc_doc = CalcDoc(calculation_config)
+    save_yaml_doc(calc_doc, calculation_file, skip_journal=True)
 
     return CalculationImportResult(
         calculation_ulid=calculation_id,

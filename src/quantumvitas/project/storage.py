@@ -30,7 +30,7 @@ class ProjectStorage:
 
     def save_settings(self, settings: ProjectSettings) -> None:
         self.project.settings_file.parent.mkdir(parents=True, exist_ok=True)
-        self.project.settings_file.write_text(yaml.safe_dump(settings.data))
+        self.project.settings_file.write_text(yaml.safe_dump(settings.data))  # EXC-004: settings file is not SSOT
 
     def list_calculations(self) -> Iterable[CalculationRef]:
         calculations_dir = self.project.calculations_dir

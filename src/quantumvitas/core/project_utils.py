@@ -56,8 +56,12 @@ def load_project_config(project_root: Path) -> dict:
 
 def save_project_config(project_root: Path, data: dict) -> None:
     """Write project configuration to project.qv.yml."""
+    from quantumvitas.core.yamldoc import ProjectDoc
+    from quantumvitas.core.yaml_io import save_yaml_doc
+
     config_file = project_root / "project.qv.yml"
-    config_file.write_text(yaml.safe_dump(data, sort_keys=False))
+    doc = ProjectDoc(data)
+    save_yaml_doc(doc, config_file)
 
 
 # ---------------------------------------------------------------------------
@@ -1170,19 +1174,22 @@ def apply_calculation_rename(
             calculation_yaml_path = new_abs / "calculation.yaml"
             if calculation_yaml_path.exists():
                 try:
-                    import yaml
-                    wf_data = yaml.safe_load(calculation_yaml_path.read_text()) or {}
-                    wf_meta = wf_data.setdefault("meta", {})
-                    wf_meta["name"] = name_candidate
-                    wf_meta["slug"] = slug_candidate
-                    wf_meta["path"] = rel_str
+                    from quantumvitas.core.yamldoc import CalcDoc
+                    from quantumvitas.core.yaml_io import save_yaml_doc
+
+                    doc = CalcDoc.load(calculation_yaml_path)
+                    doc.set(["meta", "name"], name_candidate)
+                    doc.set(["meta", "slug"], slug_candidate)
+                    doc.set(["meta", "path"], rel_str)
                     # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
-                    wf_data.pop("structure_name", None)
-                    wf_data.pop("structure", None)
-                    if "calculation" in wf_data:
-                        wf_data["calculation"].pop("structure_name", None)
-                        wf_data["calculation"].pop("structure", None)
-                    calculation_yaml_path.write_text(yaml.safe_dump(wf_data, sort_keys=False))
+                    doc.delete(["structure_name"])
+                    doc.delete(["structure"])
+                    calc_data = doc.to_dict()
+                    if "calculation" in calc_data:
+                        calc_data["calculation"].pop("structure_name", None)
+                        calc_data["calculation"].pop("structure", None)
+                        doc = CalcDoc(calc_data)
+                    save_yaml_doc(doc, calculation_yaml_path)
                 except Exception:
                     pass  # If update fails, continue (config is still updated)
 

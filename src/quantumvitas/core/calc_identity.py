@@ -38,40 +38,44 @@ def ensure_calculation_identity(calc_dir: Path, project_root: Optional[Path] = N
         return
     
     try:
-        import yaml
-        data = yaml.safe_load(calc_yaml.read_text()) or {}
-        
-        structure_kind = data.get("structure_kind")
-        engine_family = data.get("engine_family")
-        
+        from quantumvitas.core.yamldoc import CalcDoc
+        from quantumvitas.core.yaml_io import save_yaml_doc
+
+        doc = CalcDoc.load(calc_yaml)
+
+        structure_kind = doc.get(["structure_kind"], None)
+        engine_family = doc.get(["engine_family"], None)
+
         # If both are set, nothing to do
         if structure_kind is not None and engine_family is not None:
             return
-        
+
         # Extract step types directly from YAML data (best-effort, don't require ULIDs)
         # For inference, we only need step types, not full CalculationStepEntry objects
         step_types_mixed = []  # May contain SPEC or GEN values
-        for step_data in data.get("steps", []):
-            # Look for step_type_spec (SPEC type, SSOT) first, then step_type_gen (GEN type)
-            step_type_val = step_data.get("step_type_spec") or step_data.get("step_type_gen")
-            if step_type_val:
-                step_types_mixed.append(step_type_val)
-        
+        steps_list = doc.get(["steps"], [])
+        if isinstance(steps_list, list):
+            for step_data in steps_list:
+                # Look for step_type_spec (SPEC type, SSOT) first, then step_type_gen (GEN type)
+                step_type_val = step_data.get("step_type_spec") or step_data.get("step_type_gen")
+                if step_type_val:
+                    step_types_mixed.append(step_type_val)
+
         # Infer identity from step types (public types from calculation.yaml)
         inferred_kind, inferred_family = _infer_identity_from_step_types(calc_dir, step_types_mixed)
-        
+
         # Update data if inferred values available
         updated = False
         if structure_kind is None and inferred_kind is not None:
-            data["structure_kind"] = inferred_kind
+            doc.set(["structure_kind"], inferred_kind)
             updated = True
         if engine_family is None and inferred_family is not None:
-            data["engine_family"] = inferred_family
+            doc.set(["engine_family"], inferred_family)
             updated = True
-        
+
         # Write back if updated
         if updated:
-            calc_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
+            save_yaml_doc(doc, calc_yaml)
     except Exception:
         # Best-effort: if anything fails, silently return (don't crash)
         pass

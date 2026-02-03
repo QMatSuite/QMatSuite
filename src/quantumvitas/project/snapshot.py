@@ -822,8 +822,12 @@ def materialize_project_from_snapshot(
             step_spec = StructureStepSpec.from_dict(step_spec_dict)
             
             # Write step file using to_dict() which enforces DAG invariants
+            from quantumvitas.core.yamldoc import StepDoc
+            from quantumvitas.core.yaml_io import save_yaml_doc
+
             step_file = steps_dir / f"{step_slug}.step.yaml"
-            step_file.write_text(yaml.safe_dump(step_spec.to_dict(), sort_keys=False))
+            step_doc = StepDoc(step_spec.to_dict())
+            save_yaml_doc(step_doc, step_file, skip_journal=True)
             
             # Add to calculation steps list using step_ulid (ULID) from step meta
             from quantumvitas.core.models import CalculationStepEntry
