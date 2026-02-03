@@ -215,6 +215,58 @@ Daemon/CLI MUST NOT catch or handle core/runtime exceptions directly.
 
 ---
 
+### Law H9: Filesystem Access Control
+
+**Only kernel is allowed to modify the filesystem.**
+
+Frontends (daemon, CLI, GUI, Jupyter adapters) MUST NOT:
+- Write to YAML files directly
+- Create/delete project structure files
+- Modify calculation/step/structure files
+
+**All filesystem mutations MUST go through kernel via API calls.**
+
+#### H9.1 YAML SSOT Files
+
+The following YAML files are Single Source of Truth (SSOT) and MUST only be modified by their respective `YamlDoc` subclasses in `quantumvitas.core.yamldoc`:
+
+| File Pattern | Allowed Writer |
+|--------------|----------------|
+| `project.qv.yml` | `ProjectDoc` |
+| `calculation.yaml` | `CalcDoc` |
+| `*.step.yaml` | `StepDoc` |
+
+These classes provide:
+- Atomic writes with locking
+- Schema validation
+- Event logging
+
+#### H9.2 Forbidden Patterns in Frontends
+
+```python
+# FORBIDDEN in daemon/CLI:
+yaml.safe_dump(data, file)           # Direct YAML write
+file.write_text(yaml.dump(...))      # Direct file write
+Path(...).mkdir()                    # Direct directory creation for SSOT
+shutil.copy(...)                     # Direct file copy for SSOT
+
+# REQUIRED in daemon/CLI:
+svc.calculation.add_step(...)        # Use API
+svc.structure.import_file(...)       # Use API
+svc.project.init_calculation(...)    # Use API
+```
+
+#### H9.3 Exceptions
+
+Frontends MAY write to:
+- Temporary/scratch files (for user export, not SSOT)
+- Log files
+- Cache files (non-SSOT)
+
+**Gate**: `tests/gates/test_frontend_no_yaml_write.py`
+
+---
+
 ## 3. Surface Governance Laws
 
 ### Law G1: Surface Accounting (Flattening Law)

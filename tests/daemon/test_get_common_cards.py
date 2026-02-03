@@ -32,10 +32,18 @@ class TestGetCommonCards:
         (project_root / "project.qv.yml").write_text(
             yaml.safe_dump({
                 "project": {"name": "Test", "ulid": generate_resource_id()},
-                "calculations": [{"calculation_id": calc_ulid}]
+                "calculations": [{
+                    "meta": {
+                        "ulid": calc_ulid,
+                        "name": "test-calc",
+                        "slug": "test-calc",
+                        "path": "calculations/test_calc",
+                        "kind": "calculation",
+                    }
+                }]
             }, sort_keys=False)
         )
-        
+
         calc_dir = project_root / "calculations" / "test_calc"
         calc_dir.mkdir(parents=True)
         (calc_dir / "calculation.yaml").write_text(
@@ -84,10 +92,18 @@ class TestGetCommonCards:
         (project_root / "project.qv.yml").write_text(
             yaml.safe_dump({
                 "project": {"name": "Test", "ulid": generate_resource_id()},
-                "calculations": [{"calculation_id": calc_ulid}]
+                "calculations": [{
+                    "meta": {
+                        "ulid": calc_ulid,
+                        "name": "test-calc",
+                        "slug": "test-calc",
+                        "path": "calculations/test_calc",
+                        "kind": "calculation",
+                    }
+                }]
             }, sort_keys=False)
         )
-        
+
         calc_dir = project_root / "calculations" / "test_calc"
         calc_dir.mkdir(parents=True)
         (calc_dir / "calculation.yaml").write_text(

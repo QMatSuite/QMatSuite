@@ -3040,6 +3040,12 @@ class QVService:
                 # Update metadata
                 if "name" in meta_kwargs:
                     calc_model.meta.name = meta_kwargs["name"]
+                    # Auto-update slug if name changed (unless slug explicitly provided)
+                    if "slug" not in meta_kwargs:
+                        from quantumvitas.core.resources import slugify
+                        calc_model.meta.slug = slugify(meta_kwargs["name"])
+                if "slug" in meta_kwargs:
+                    calc_model.meta.slug = meta_kwargs["slug"]
                 if "description" in meta_kwargs:
                     calc_model.meta.description = meta_kwargs["description"]
                 if "tags" in meta_kwargs:
@@ -3291,18 +3297,27 @@ class QVService:
                 # Reload model
                 new_calc_model = load_calculation(new_calc_yaml, self._service.project_root)
                 
-                # Add to project config
+                # Add to project config with full meta
                 config = load_project_config(self._service.project_root)
                 calculations = config.setdefault("calculations", [])
                 # Check if already in config (shouldn't be, but be safe)
-                if not any(c.get("calculation_id") == new_id for c in calculations):
-                    calculations.append({"calculation_id": new_id})
+                if not any((c.get("meta") or {}).get("ulid") == new_id for c in calculations):
+                    calc_entry = {
+                        "meta": {
+                            "ulid": new_id,
+                            "name": new_calc_model.meta.name,
+                            "slug": new_calc_model.meta.slug,
+                            "path": new_calc_model.meta.path,
+                            "kind": "calculation",
+                        }
+                    }
+                    calculations.append(calc_entry)
                 save_project_config(self._service.project_root, config)
-                
+
                 # Build ResolvedResource
                 new_calc_resolved = ResolvedResource(
                     meta=new_calc_model.meta,
-                    entry={"calculation_id": new_id},
+                    entry=calc_entry,
                     absolute_path=new_dir,
                 )
                 
@@ -3747,19 +3762,27 @@ class QVService:
             *,
             name: str | None = None,
             params: dict | None = None,
+            cards: dict | None = None,
+            species_overrides: dict | None = None,
+            step_spec: dict | None = None,
+            index: int | None = None,
         ) -> StepDTO:
             """
             Add a step to a calculation.
-            
+
             Args:
                 calc_selector: Calculation selector
                 step_type_gen: Step type (e.g., "scf", "nscf" - gen type, or "qe_scf" - spec type, accepts both)
                 name: Optional step name (defaults to step_type_gen)
                 params: Optional parameter overrides (applied via apply_patch, respects managed keys)
-                
+                cards: Optional card overrides (e.g., K_POINTS)
+                species_overrides: Optional species overrides
+                step_spec: Optional full step spec dict (if provided, overrides other params)
+                index: Optional insertion index (0-indexed, defaults to append)
+
             Returns:
                 StepDTO for the new step
-                
+
             Raises:
                 NotFoundError: If calculation not found
                 ValidationError: If step_type_gen is invalid or unmapped
@@ -3914,7 +3937,116 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
-        
+
+        def add_step_from_spec(
+            self,
+            calc_selector: str,
+            step_spec: dict,
+            *,
+            index: int | None = None,
+        ) -> dict:
+            """
+            Add a step to a calculation using a pre-built step spec dict.
+
+            This is the Law H9 compliant way for CLI to add steps.
+            CLI builds the spec dict (with all its complex logic like --auto-kpath,
+            --no-defaults, etc.), then passes it to this method for file writing.
+
+            Args:
+                calc_selector: Calculation selector (ULID or slug)
+                step_spec: Complete step spec dict (must have meta.ulid, step_type_spec, etc.)
+                index: Optional insertion index (0-indexed, defaults to append)
+
+            Returns:
+                Dict with step_path and step_ulid
+
+            Raises:
+                NotFoundError: If calculation not found
+                ValidationError: If step_spec is missing required fields
+            """
+            try:
+                from quantumvitas.core.resolution import require_calculation
+                from quantumvitas.core.models import load_calculation, save_calculation, CalculationStepEntry
+                from quantumvitas.core.yamldoc import StepDoc
+                from quantumvitas.workflow.step_factory import save_step_doc
+                import yaml
+
+                # Validate step_spec has required fields
+                meta = step_spec.get("meta", {})
+                step_ulid = meta.get("ulid")
+                step_type_spec = step_spec.get("step_type_spec")
+                if not step_ulid:
+                    from quantumvitas.api.errors import ValidationError
+                    raise ValidationError(
+                        "step_spec.meta.ulid is required",
+                        code="VALIDATION_FAILED"
+                    )
+                if not step_type_spec:
+                    from quantumvitas.api.errors import ValidationError
+                    raise ValidationError(
+                        "step_spec.step_type_spec is required",
+                        code="VALIDATION_FAILED"
+                    )
+
+                # Resolve calculation
+                calc_resolved = require_calculation(self._service.project_root, calc_selector)
+
+                # Get calculation directory
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                else:
+                    calc_dir = calc_resolved.absolute_path
+
+                calc_yaml = calc_dir / "calculation.yaml"
+                calc_model = load_calculation(calc_yaml, self._service.project_root)
+                calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else ""
+
+                # Create steps directory
+                steps_dir = calc_dir / "steps"
+                steps_dir.mkdir(parents=True, exist_ok=True)
+
+                # Determine step file path from meta.slug or meta.name
+                step_slug = meta.get("slug") or meta.get("name") or step_ulid[:8]
+                step_path = steps_dir / f"{step_slug}.step.yaml"
+
+                # Update meta.path in spec
+                from quantumvitas.api.utils import ensure_relative_path
+                rel_path = ensure_relative_path(step_path, base=self._service.project_root)
+                step_spec["meta"]["path"] = str(rel_path)
+
+                # Create StepDoc and save via journaled path
+                step_doc = StepDoc(data=step_spec)
+                save_step_doc(step_doc, step_path)
+
+                # Add step to calculation.yaml steps array
+                step_entry = CalculationStepEntry(
+                    step_ulid=step_ulid,
+                    step_type_spec=step_type_spec,
+                )
+
+                # Determine insertion index
+                if not hasattr(calc_model, 'steps') or calc_model.steps is None:
+                    calc_model.steps = []
+
+                if index is not None:
+                    insert_at = max(0, min(len(calc_model.steps), index))
+                    calc_model.steps.insert(insert_at, step_entry)
+                else:
+                    calc_model.steps.append(step_entry)
+
+                # Save calculation.yaml
+                save_calculation(calc_model, calc_yaml)
+
+                return {
+                    "step_path": str(step_path),
+                    "step_ulid": step_ulid,
+                    "calc_ulid": calc_ulid,
+                }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
         def remove_step(self, calc_selector: str, step_selector: str) -> None:
             """
             Remove a step from a calculation.
@@ -3989,6 +4121,133 @@ class QVService:
                     # Ghost step - file already missing, just continue
                     pass
                 
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def rename_step(
+            self,
+            calc_selector: str,
+            step_selector: str,
+            new_name: str,
+            *,
+            new_path: str | None = None,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> dict:
+            """
+            Rename a step or relocate its spec file (Law H9 compliant).
+
+            Updates step meta (name, slug), optionally moves file, and updates
+            calculation.yaml step entry.
+
+            Args:
+                calc_selector: Calculation selector
+                step_selector: Current step selector (ULID)
+                new_name: New step name
+                new_path: Optional new path for step file (relative to calculation dir)
+                index: Optional ResourceIndex
+                config: Optional project config
+
+            Returns:
+                Dict with old_name, new_name, new_slug, step_path
+            """
+            try:
+                from quantumvitas.core.resolution import require_calculation, require_step
+                from quantumvitas.core.models import load_calculation, save_calculation
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.core.yamldoc import StepDoc
+                from quantumvitas.workflow.step_factory import save_step_doc
+                from quantumvitas.core.resources import slugify
+                from quantumvitas.api.utils import ensure_relative_path
+                import shutil
+
+                if config is None:
+                    config = load_project_config(self._service.project_root)
+
+                # Resolve calculation and step
+                calc_resolved = require_calculation(self._service.project_root, calc_selector, config=config, index=index)
+                step_resolved = require_step(self._service.project_root, calc_selector, step_selector)
+
+                # Get paths
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                    calc_yaml = calc_resolved.absolute_path
+                else:
+                    calc_dir = calc_resolved.absolute_path
+                    calc_yaml = calc_dir / "calculation.yaml"
+
+                step_path = step_resolved.absolute_path
+                old_name = step_resolved.meta.name
+
+                # Load calculation model
+                from quantumvitas.core.resolution import make_structure_selector_resolver
+                resolver = make_structure_selector_resolver(self._service.project_root, config=config)
+                calc_model = load_calculation(calc_yaml, project_root=self._service.project_root, resolve_structure_selector=resolver)
+
+                # Find and update step entry
+                step_ulid = step_resolved.meta.ulid
+                step_entry = None
+                for entry in calc_model.steps:
+                    if entry.step_ulid == step_ulid:
+                        step_entry = entry
+                        break
+
+                if step_entry is None:
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(
+                        f"Step '{step_selector}' not found in calculation",
+                        context={"calc_selector": calc_selector, "step_selector": step_selector}
+                    )
+
+                # Update step entry ULID to new name
+                new_slug = slugify(new_name)
+                step_entry.step_ulid = new_slug
+
+                # Handle file move/rename
+                destination_path = step_path
+                if new_path:
+                    # Explicit new path
+                    dest = Path(new_path)
+                    if not dest.is_absolute():
+                        destination_path = (calc_dir / dest).resolve()
+                    else:
+                        destination_path = dest.resolve()
+                    destination_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(step_path), str(destination_path))
+                else:
+                    # Auto-rename file to match new name
+                    new_filename = step_path.with_name(f"{new_slug}.step.yaml")
+                    if new_filename != step_path:
+                        if new_filename.exists():
+                            from quantumvitas.api.errors import ValidationError
+                            raise ValidationError(
+                                f"Step file '{new_filename.name}' already exists",
+                                context={"existing_file": str(new_filename)}
+                            )
+                        destination_path = new_filename
+                        destination_path.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.move(str(step_path), str(destination_path))
+
+                # Update step spec meta
+                step_doc = StepDoc.load(destination_path)
+                relative_project = ensure_relative_path(destination_path, base=self._service.project_root)
+                step_doc.set(["meta", "name"], new_name)
+                step_doc.set(["meta", "slug"], new_slug)
+                step_doc.set(["meta", "path"], relative_project)
+                save_step_doc(step_doc, destination_path)
+
+                # Save calculation.yaml
+                save_calculation(calc_model, calc_yaml)
+
+                return {
+                    "success": True,
+                    "old_name": old_name,
+                    "new_name": new_name,
+                    "new_slug": new_slug,
+                    "step_path": str(destination_path),
+                }
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -4433,6 +4692,100 @@ class QVService:
 
                 # Return updated detail
                 return self.get_detail(calc_selector)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def update_steps_structure(
+            self,
+            calc_selector: str,
+            structure_selector: str,
+            *,
+            index: Any = None,
+            config: dict | None = None,
+        ) -> dict:
+            """
+            Update structure reference in all steps of a calculation (Law H9 compliant).
+
+            Updates structure_ulid in all step spec files.
+
+            Args:
+                calc_selector: Calculation selector
+                structure_selector: New structure selector
+                index: Optional ResourceIndex
+                config: Optional project config
+
+            Returns:
+                Dict with old_structure, new_structure, steps_updated count
+            """
+            try:
+                from quantumvitas.core.resolution import require_calculation, require_step, require_structure
+                from quantumvitas.core.models import load_calculation
+                from quantumvitas.core.project_utils import load_project_config
+                from quantumvitas.core.yamldoc import StepDoc
+                from quantumvitas.workflow.step_factory import save_step_doc
+
+                if config is None:
+                    config = load_project_config(self._service.project_root)
+
+                # Resolve calculation
+                calc_resolved = require_calculation(self._service.project_root, calc_selector, config=config, index=index)
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                    calc_yaml = calc_resolved.absolute_path
+                else:
+                    calc_dir = calc_resolved.absolute_path
+                    calc_yaml = calc_dir / "calculation.yaml"
+
+                # Resolve new structure
+                structure_resolved = require_structure(self._service.project_root, structure_selector, config=config)
+                new_structure_ulid = structure_resolved.meta.ulid
+
+                # Load calculation to get steps
+                from quantumvitas.core.resolution import make_structure_selector_resolver
+                resolver = make_structure_selector_resolver(self._service.project_root, config=config)
+                calc_model = load_calculation(calc_yaml, project_root=self._service.project_root, resolve_structure_selector=resolver)
+
+                # Get old structure for reporting
+                old_structure = calc_model.structure_ulid or "none"
+
+                # Update each step's structure_ulid
+                steps_updated = 0
+                errors = []
+                for step_entry in calc_model.steps:
+                    step_ulid = step_entry.step_ulid
+                    if not step_ulid:
+                        continue
+
+                    try:
+                        step_resolved = require_step(
+                            self._service.project_root,
+                            calc_selector,
+                            step_ulid
+                        )
+                        step_path = step_resolved.absolute_path
+                        if not step_path.exists():
+                            continue
+
+                        # Load and update step spec
+                        step_doc = StepDoc.load(step_path)
+                        step_doc.set(["structure_ulid"], new_structure_ulid)
+                        # Clear legacy structure field
+                        step_doc.set(["structure"], "")
+                        save_step_doc(step_doc, step_path)
+                        steps_updated += 1
+                    except Exception as e:
+                        errors.append(f"Step {step_ulid}: {e}")
+
+                return {
+                    "success": True,
+                    "old_structure": old_structure,
+                    "new_structure": structure_selector,
+                    "new_structure_ulid": new_structure_ulid,
+                    "steps_updated": steps_updated,
+                    "errors": errors if errors else None,
+                }
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -5868,6 +6221,9 @@ class QVService:
             structure_selector: str | None = None,
             template: str | None = None,
             *,
+            structure_kind: str | None = None,
+            engine_family: str | None = None,
+            parents: list[str] | None = None,
             index: Any = None,
             config: dict | None = None,
         ) -> Any:
@@ -5878,6 +6234,9 @@ class QVService:
                 name: Calculation name
                 structure_selector: Optional structure selector for calculation
                 template: Optional template name
+                structure_kind: 'periodic' or 'molecule' (defaults based on engine)
+                engine_family: 'qe', 'pyscf', etc. (defaults to 'qe')
+                parents: Optional list of parent calculation IDs (metadata only)
                 index: Optional resource index (for performance)
                 config: Optional project config (for performance)
 
@@ -5914,21 +6273,38 @@ class QVService:
                 # Generate calculation ID
                 calc_ulid = generate_resource_id()
 
-                # Create calculation directory
+                # Create calculation directory and subdirectories
                 calc_dir = project_root / "calculations" / final_slug
                 calc_dir.mkdir(parents=True, exist_ok=True)
+                (calc_dir / "raw").mkdir(exist_ok=True)
+                (calc_dir / "steps").mkdir(exist_ok=True)
+
+                # Determine structure_kind and engine_family defaults
+                if structure_kind is None:
+                    structure_kind = "periodic"
+                if engine_family is None:
+                    engine_family = "pyscf" if structure_kind == "molecule" else "qe"
+
+                # Build meta dict
+                meta_dict = {
+                    "ulid": calc_ulid,
+                    "name": final_name,
+                    "slug": final_slug,
+                    "path": f"calculations/{final_slug}",
+                    "kind": "calculation",
+                }
+                if parents:
+                    meta_dict["parents"] = parents
 
                 # Create calculation.yaml
                 calc_yaml = calc_dir / "calculation.yaml"
                 calc_data = {
-                    "meta": {
-                        "ulid": calc_ulid,
-                        "name": final_name,
-                        "slug": final_slug,
-                        "path": f"calculations/{final_slug}",
-                        "kind": "calculation",
-                    },
+                    "meta": meta_dict,
+                    "mode": "normal",
+                    "working_dir": "raw",
                     "steps": [],
+                    "structure_kind": structure_kind,
+                    "engine_family": engine_family,
                 }
 
                 # Add structure reference if provided
@@ -5942,7 +6318,7 @@ class QVService:
                 with open(calc_yaml, "w", encoding="utf-8") as f:
                     yaml.dump(calc_data, f, default_flow_style=False, sort_keys=False)
 
-                # Add to project config
+                # Add to project config with full meta
                 calc_entry = {
                     "meta": {
                         "ulid": calc_ulid,

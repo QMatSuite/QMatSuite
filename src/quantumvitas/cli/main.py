@@ -726,30 +726,13 @@ def init_project_command(
             f"Destination '{project_dir}' already exists and is not empty."
         )
 
-    project_dir.mkdir(parents=True, exist_ok=True)
+    # Use API instead of direct YAML write (Law H9 compliance)
+    from quantumvitas.api import QVService
     project_name = name or project_dir.name
-    import yaml
-    from quantumvitas.api.utils import meta_from_name
-    project_meta_dict = meta_from_name("project", name=project_name, path=".")
-    project_meta = project_meta_dict  # Use dict directly (no ResourceMeta dependency)
-
-    project_config = {
-        "project": {
-            "name": project_meta["name"],
-            "meta": project_meta,
-            "structures_dir": "structures",
-            "calculations_dir": "calculations",
-        },
-        "calculations": [],
-        "structures": [],
-        "settings": {},
-    }
-
-    (project_dir / "structures").mkdir(parents=True, exist_ok=True)
-    (project_dir / "calculations").mkdir(parents=True, exist_ok=True)
-    (project_dir / "project.qv.yml").write_text(
-        yaml.safe_dump(project_config, sort_keys=False)
-    )
+    try:
+        QVService.init_project(target_dir=project_dir, name=project_name)
+    except ValueError as e:
+        raise typer.BadParameter(str(e))
 
     typer.secho(f"Project created at {project_dir}", fg=typer.colors.GREEN)
 
@@ -887,59 +870,25 @@ def init_calculation_command(
             "--structure is required when not using --template"
         )
 
-    # Resolve structure selector to structure_ulid (ULID)
-    resolved_structure = svc.structure.require_ref(structure, config=config)
-    structure_ulid = resolved_structure.meta.ulid
-    structure_name = resolved_structure.meta.name
-
-    raw_dir = calculation_dir / "raw"
-    steps_dir = calculation_dir / "steps"
-    raw_dir.mkdir(parents=True, exist_ok=True)
-    steps_dir.mkdir(parents=True, exist_ok=True)
-
-    # Generate calculation meta with ULID
-    from quantumvitas.api.utils import ensure_relative_path, meta_from_name
-    rel_path = ensure_relative_path(calculation_dir, base=project_root)
-    calculation_meta_dict = meta_from_name("calculation", name=calculation_id, path=str(rel_path))
-    if parent:
-        calculation_meta_dict["parents"] = parent
-
-    # Phase 2: Determine structure_kind and engine_family
-    # Default structure_kind to periodic if not provided
-    if structure_kind is None:
-        structure_kind = "periodic"
-    elif structure_kind not in ("periodic", "molecule"):
+    # Validate structure_kind if provided
+    if structure_kind is not None and structure_kind not in ("periodic", "molecule"):
         raise typer.BadParameter(
             f"Invalid structure_kind '{structure_kind}'. Must be 'periodic' or 'molecule'."
         )
-    
-    # Default engine_family based on structure_kind if not provided
-    if engine_family is None:
-        if structure_kind == "molecule":
-            engine_family = "pyscf"
-        else:
-            engine_family = "qe"  # Default for periodic structures
-    
-    # Write calculation.yaml with proper meta section (contains ULID)
-    # DAG + ID-only model: use structure_ulid (ULID) as canonical reference
-    # Do NOT write structure_name or structure selector (violates DAG + ID-only constitution)
-    calculation_payload = {
-        "meta": calculation_meta_dict,
-        "structure_ulid": structure_ulid,  # Canonical reference (ULID only)
-        "mode": "normal",
-        "working_dir": "raw",
-        "steps": [],
-        # Phase 2: Add structure_kind and engine_family
-        "structure_kind": structure_kind,
-        "engine_family": engine_family,
-    }
-    (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_payload, sort_keys=False))
 
-    # Add to project.qv.yml (DAG + ID-only: only calculation_id, no meta duplication)
-    calculations_section.append({
-        "calculation_id": calculation_meta_dict["ulid"],  # ID-only reference (ULID)
-    })
-    svc.project.update_config(config)
+    # Use API instead of direct YAML write (Law H9 compliance)
+    try:
+        resolved = svc.project.init_calculation(
+            name=calculation_id,
+            structure_selector=structure,
+            structure_kind=structure_kind,
+            engine_family=engine_family,
+            parents=parent if parent else None,
+            config=config,
+        )
+        calculation_dir = resolved.absolute_path
+    except Exception as e:
+        raise typer.BadParameter(str(e))
 
     typer.secho(f"Calculation '{calculation_id}' created at {calculation_dir}", fg=typer.colors.GREEN)
 
@@ -1359,42 +1308,30 @@ def init_step_command(
     # These are DAG relationships resolved at runtime
     if kpath_result:
         spec["kpath_metadata"] = kpath_result.to_dict()
-    _write_step_spec(spec_path, spec, project_root=project_root)
 
-    if calculation_entry and calculation_steps is not None and calculation_data is not None:
+    if calculation_entry and calculation_data is not None:
+        # Use API to add step (Law H9 compliance)
         assert calculation_dir is not None
-        from quantumvitas.api.utils import ensure_relative_path
-        rel_step_path = ensure_relative_path(spec_path, base=calculation_dir)
-        insertion_index = (
-            max(0, min(len(calculation_steps), index))
-            if index is not None
-            else len(calculation_steps)
-        )
-        # Use step_ulid (ULID) from step spec meta (canonical reference)
-        # CalculationStepEntry removed - use dict directly
-        # rel_step_path is already a relative path string from ensure_relative_path
-        # Create step entry with only step_ulid (ULID) - no step_file (resolved via registry)
-        step_entry = {
-            "step_ulid": spec.get("meta", {}).get("ulid"),  # Use ULID from step spec meta (canonical reference)
-            "step_type_gen": step_type_gen,
-            # step_file is NOT stored - step location resolved via registry using step_ulid
-        }
-        calculation_steps.insert(
-            insertion_index,
-            step_entry,
-        )
-        # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
-        calculation_data.pop("structure_name", None)
-        calculation_data.pop("structure", None)
-        if "calculation" in calculation_data:
-            calculation_data["calculation"].pop("structure_name", None)
-            calculation_data["calculation"].pop("structure", None)
-        calculation_yaml = calculation_dir / "calculation.yaml"
-        calculation_yaml.write_text(yaml.safe_dump(calculation_data, sort_keys=False))
-        from quantumvitas.api import QVService
-        typer.echo(
-            f"Calculation '{entry_display_name(calculation_entry)}' updated with step id '{step_slug}'."
-        )
+        calc_ulid = _get_calc_ulid_from_entry(calculation_entry)
+        if not calc_ulid:
+            calc_ulid = calculation_data.get("meta", {}).get("ulid")
+
+        try:
+            result = svc.calculation.add_step_from_spec(
+                calc_selector=calc_ulid,
+                step_spec=spec,
+                index=index,
+            )
+            spec_path = Path(result["step_path"])
+            typer.echo(
+                f"Calculation '{entry_display_name(calculation_entry)}' updated with step id '{step_slug}'."
+            )
+        except Exception as e:
+            raise typer.BadParameter(f"Failed to add step: {e}")
+    else:
+        # Standalone step (not attached to calculation) - still needs file write
+        # TODO: Create API method for standalone step creation
+        _write_step_spec(spec_path, spec, project_root=project_root)
 
     typer.echo(f"Step spec created at {spec_path}")
 
@@ -2476,106 +2413,30 @@ def rename_step_command(
     """
     Rename a calculation step or move its spec file.
     """
+    if not new_id and not path:
+        raise typer.BadParameter("At least one of --id or --path must be specified.")
 
     project_root = (project or _resolve_project_root()).resolve()
     from quantumvitas.api import QVService
     svc = get_service(project_root)
-    config = svc.project.get_config()
     calc_dto = svc.calculation.get(calculation)
-    calculation_entry = _find_entry_by_calc_ulid(config, calc_dto.calc_ulid)
-    # Get calculation directory from calc_ulid
-    calc_ulid = _get_calc_ulid_from_entry(calculation_entry)
-    calc_resolved = svc.calculation.require_ref(calc_ulid)
-    if calc_resolved.absolute_path.name == "calculation.yaml":
-        calculation_dir = calc_resolved.absolute_path.parent
-    else:
-        calculation_dir = calc_resolved.absolute_path
-    calculation_yaml = calculation_dir / "calculation.yaml"
-    if not calculation_yaml.exists():
-        raise typer.BadParameter(f"calculation.yaml not found at {calculation_yaml}")
+    calc_ulid = calc_dto.calc_ulid
 
-    data = yaml.safe_load(calculation_yaml.read_text()) or {}
-    steps: list[dict] = data.get("steps") or []
-    
-    # Find step by matching selector (ID-only model uses step_ulid)
-    target_step = None
-    for step in steps:
-        step_selector = extract_selector_from_entry(step, "step")
-        if step_selector == step_ulid:
-            target_step = step
-            break
-    
-    if not target_step:
-        raise typer.BadParameter(
-            f"Step '{step_ulid}' not found in calculation '{calculation_entry.get('name')}'."
+    # Use API to rename step (Law H9 compliance)
+    try:
+        # If only path is given (no rename), use current name
+        step_name = new_id if new_id else step_ulid
+        new_path_str = str(path) if path else None
+
+        result = svc.calculation.rename_step(
+            calc_selector=calc_ulid,
+            step_selector=step_ulid,
+            new_name=step_name,
+            new_path=new_path_str,
         )
-
-    if new_id:
-        # Check for duplicate step_ulid
-        if any(extract_selector_from_entry(step, "step") == new_id for step in steps if step is not target_step):
-            raise typer.BadParameter(
-                f"Step id '{new_id}' already exists in calculation '{calculation_entry.get('name')}'."
-            )
-        # Update step_ulid (ID-only model)
-        target_step["step_ulid"] = new_id
-        # Also update legacy id for backwards compatibility
-        target_step["ulid"] = new_id
-
-    source_rel = target_step.get("step_file")
-    if not source_rel:
-        raise typer.BadParameter("Step entry is missing its step_file.")
-    source_path = (calculation_dir / source_rel).resolve()
-    if not source_path.exists():
-        raise typer.BadParameter(f"Step file '{source_rel}' does not exist.")
-    # Load step spec as dict (no StructureStepSpec dependency)
-    spec_dict = yaml.safe_load(source_path.read_text())
-    if not spec_dict:
-        raise typer.BadParameter(f"Step file '{source_rel}' is empty or invalid.")
-    spec = spec_dict
-
-    destination_path = source_path
-    if path is not None:
-        destination_path = Path(path)
-        if not destination_path.is_absolute():
-            destination_path = (calculation_dir / destination_path).resolve()
-        destination_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(source_path), str(destination_path))
-        from quantumvitas.api.utils import ensure_relative_path
-        target_step["step_file"] = ensure_relative_path(destination_path, base=calculation_dir)
-    elif new_id:
-        rel_source = Path(source_rel)
-        new_filename = rel_source.with_name(f"{new_id}.step.yaml")
-        destination_path = (calculation_dir / new_filename).resolve()
-        if destination_path.exists():
-            raise typer.BadParameter(
-                f"Step file '{new_filename}' already exists. Use --path to pick a custom filename."
-            )
-        destination_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(source_path), str(destination_path))
-        from quantumvitas.api.utils import ensure_relative_path
-        target_step["step_file"] = ensure_relative_path(destination_path, base=calculation_dir)
-
-    step_file_rel = target_step.get("step_file")
-    if step_file_rel:
-        spec_path = (calculation_dir / step_file_rel).resolve()
-        from quantumvitas.api.utils import ensure_relative_path
-        relative_project = ensure_relative_path(spec_path, base=project_root)
-        # Update meta in dict
-        if "meta" not in spec:
-            spec["meta"] = {}
-        if new_id:
-            spec["meta"]["name"] = new_id
-        spec["meta"]["path"] = relative_project
-        spec_path.write_text(yaml.safe_dump(spec, sort_keys=False))
-
-    # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
-    data.pop("structure_name", None)
-    data.pop("structure", None)
-    if "calculation" in data:
-        data["calculation"].pop("structure_name", None)
-        data["calculation"].pop("structure", None)
-    calculation_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
-    typer.secho("Step updated successfully.", fg=typer.colors.GREEN)
+        typer.secho("Step updated successfully.", fg=typer.colors.GREEN)
+    except Exception as e:
+        raise typer.BadParameter(str(e)) from e
 
 
 @delete_app.command("structure")
@@ -2921,51 +2782,15 @@ def delete_step_command(
     # Get calculation entry for display
     calc_dto = svc.calculation.get(calculation_selector)
     calculation_entry = _find_entry_by_calc_ulid(config, calc_dto.calc_ulid)
-    # Get calculation directory from calc_ulid
     calc_ulid = _get_calc_ulid_from_entry(calculation_entry)
-    calc_resolved = svc.calculation.require_ref(calc_ulid)
-    if calc_resolved.absolute_path.name == "calculation.yaml":
-        calculation_dir = calc_resolved.absolute_path.parent
-    else:
-        calculation_dir = calc_resolved.absolute_path
-    calculation_yaml = calculation_dir / "calculation.yaml"
-    
-    if not calculation_yaml.exists():
-        raise typer.BadParameter(f"calculation.yaml not found at {calculation_yaml}")
+    step_ulid_to_remove = step_resolved.meta.ulid
 
-    data = yaml.safe_load(calculation_yaml.read_text()) or {}
-    steps: list[dict] = data.get("steps") or []
-    
-    # Find step by step_ulid (ULID) - this is the canonical reference
-    step_ulid_to_find = step_resolved.meta.ulid
-    target_step = None
-    for step in steps:
-        # Use centralized selector extraction to get step_ulid
-        step_ulid = extract_selector_from_entry(step, "step")
-        if step_ulid == step_ulid_to_find:
-            target_step = step
-            break
-    
-    if not target_step:
-        from quantumvitas.api import QVService
-        wf_name = entry_display_name(calculation_entry)
-        raise typer.BadParameter(f"Step '{step_ulid}' not found in calculation '{wf_name}'.")
+    # Use API to remove step (Law H9 compliance)
+    try:
+        svc.calculation.remove_step(calc_ulid, step_ulid_to_remove)
+    except Exception as e:
+        raise typer.BadParameter(str(e)) from e
 
-    trash_dir = (project_root / "trash").resolve()
-    # In ID-only model, step_resolved.absolute_path is the canonical step file location
-    # (step entries in calculation.yaml only have step_ulid, not step_file)
-    spec_path = step_resolved.absolute_path
-    if spec_path.exists():
-        move_to_trash(spec_path, trash_dir)
-
-    steps.remove(target_step)
-    # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
-    data.pop("structure_name", None)
-    data.pop("structure", None)
-    if "calculation" in data:
-        data["calculation"].pop("structure_name", None)
-        data["calculation"].pop("structure", None)
-    calculation_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
     typer.secho(
         f"Step '{step_ulid}' removed from calculation '{entry_display_name(calculation_entry)}'.",
         fg=typer.colors.GREEN,
@@ -3203,58 +3028,93 @@ def configure_step_command(
         raise typer.BadParameter(f"Step file not found: {step_file}") from exc
 
     modified = False
-    
+
+    # Determine if we have a calculation context for API calls
+    has_calculation_context = calculation_yaml and calculation_yaml.exists() and project_root_resolved
+
     # Handle name change (rename step)
     if name:
         meta = spec.get("meta", {})
         old_name = meta.get("name")
-        from quantumvitas.api.utils import slugify
-        new_slug = slugify(name)
-        spec["meta"] = {
-            "ulid": meta.get("ulid"),
-            "name": name,
-            "slug": new_slug,
-            "path": meta.get("path"),
-            "kind": "step",
-        }
-        
-        # Update calculation.yaml if we have it
-        if calculation_yaml and calculation_yaml.exists():
-            wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
-            for step_entry in wf_data.get("steps", []):
-                if step_entry.get("ulid") == step_ulidentifier or step_entry.get("ulid") == old_name:
-                    step_entry["ulid"] = new_slug
-                    break
-            # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
-            wf_data.pop("structure_name", None)
-            wf_data.pop("structure", None)
-            if "calculation" in wf_data:
-                wf_data["calculation"].pop("structure_name", None)
-                wf_data["calculation"].pop("structure", None)
-            calculation_yaml.write_text(yaml.safe_dump(wf_data, sort_keys=False))
-        
+
+        if has_calculation_context:
+            # Use API to rename step (Law H9 compliance)
+            try:
+                svc = get_service(project_root_resolved)
+                calc_ulid = _get_calc_ulid_from_entry(ctx_res.parent_entry)
+                step_ulid = meta.get("ulid") or step_ulidentifier
+                svc.calculation.rename_step(
+                    calc_selector=calc_ulid,
+                    step_selector=step_ulid,
+                    new_name=name,
+                )
+            except Exception as e:
+                raise typer.BadParameter(f"Failed to rename step: {e}") from e
+        else:
+            # Standalone step file (H9.3 allows direct writes for non-SSOT)
+            from quantumvitas.api.utils import slugify
+            new_slug = slugify(name)
+            spec["meta"] = {
+                "ulid": meta.get("ulid"),
+                "name": name,
+                "slug": new_slug,
+                "path": meta.get("path"),
+                "kind": "step",
+            }
+            # Write directly for standalone step (allowed per H9.3)
+            _write_step_spec(step_file, spec)
+
         typer.secho(f"Step renamed from '{old_name}' to '{name}'", fg=typer.colors.GREEN)
         modified = True
 
     # Handle parameter overrides
     if bundle.has_any():
-        parameters = spec.get("parameters") or {}
-        updates = _overrides_to_parameter_dict(bundle.parameters)
-        _merge_parameter_updates(parameters, updates, remove=remove)
-        spec["parameters"] = {k: v for k, v in parameters.items() if v}
+        if has_calculation_context and not name:
+            # Use API to update step params (Law H9 compliance)
+            try:
+                svc = get_service(project_root_resolved)
+                calc_ulid = _get_calc_ulid_from_entry(ctx_res.parent_entry)
+                step_ulid = spec.get("meta", {}).get("ulid") or step_ulidentifier
 
-        spec["cards"] = _merge_card_updates(spec.get("cards") or {}, bundle.card_overrides, remove=remove)
-        spec["species_overrides"] = _merge_species_updates(
-            spec.get("species_overrides") or {}, bundle.species_overrides, remove=remove
-        )
-        
+                # Build params dict
+                parameters = spec.get("parameters") or {}
+                updates = _overrides_to_parameter_dict(bundle.parameters)
+                _merge_parameter_updates(parameters, updates, remove=remove)
+                new_parameters = {k: v for k, v in parameters.items() if v}
+
+                new_cards = _merge_card_updates(spec.get("cards") or {}, bundle.card_overrides, remove=remove)
+                new_species = _merge_species_updates(
+                    spec.get("species_overrides") or {}, bundle.species_overrides, remove=remove
+                )
+
+                svc.calculation.update_step_params(
+                    calc_selector=calc_ulid,
+                    step_selector=step_ulid,
+                    params={
+                        "parameters": new_parameters,
+                        "cards": new_cards,
+                        "species_overrides": new_species,
+                    },
+                )
+            except Exception as e:
+                raise typer.BadParameter(f"Failed to update step parameters: {e}") from e
+        else:
+            # Standalone step or already modified by rename - use direct write (H9.3 allowed)
+            parameters = spec.get("parameters") or {}
+            updates = _overrides_to_parameter_dict(bundle.parameters)
+            _merge_parameter_updates(parameters, updates, remove=remove)
+            spec["parameters"] = {k: v for k, v in parameters.items() if v}
+
+            spec["cards"] = _merge_card_updates(spec.get("cards") or {}, bundle.card_overrides, remove=remove)
+            spec["species_overrides"] = _merge_species_updates(
+                spec.get("species_overrides") or {}, bundle.species_overrides, remove=remove
+            )
+            # Write directly for standalone step (allowed per H9.3)
+            _write_step_spec(step_file, spec)
+
         action = "Removed" if remove else "Updated"
         typer.secho(f"{action} parameters in {step_file}", fg=typer.colors.GREEN)
         modified = True
-
-    if modified:
-        # Warnings are computed and printed by _write_step_spec
-        _write_step_spec(step_file, spec)
 
 
 @configure_app.command("project")
@@ -3293,8 +3153,9 @@ def configure_calculation_command(
         qv configure calculation --structure si
         qv configure calculation --reorder scf,nscf,dos
     """
+    import yaml
     from quantumvitas.api import QVService
-    
+
     # Find project root
     if project:
         project_root = Path(project).expanduser().resolve()
@@ -3425,17 +3286,13 @@ def configure_calculation_command(
                 raise typer.BadParameter(f"Could not resolve calculation directory after rename")
         
         calculation_yaml = calculation_dir / "calculation.yaml"
-        
+
         # Re-read calculation.yaml if directory was moved
         # Note: apply_calculation_rename should have moved the directory, so calculation.yaml should exist
-        # But if it doesn't, try to reload from the new location
         if calculation_dir != old_calculation_dir:
             # Directory was moved - calculation.yaml should be at the new location
             if not calculation_yaml.exists():
-                # Try to find it in the new directory
                 if calculation_dir.exists():
-                    # Directory exists but calculation.yaml doesn't - this shouldn't happen
-                    # but let's try to reload it anyway
                     raise typer.BadParameter(
                         f"calculation.yaml not found at {calculation_yaml} after rename. "
                         f"Directory was moved from {old_calculation_dir} to {calculation_dir}, "
@@ -3447,149 +3304,55 @@ def configure_calculation_command(
                         f"Expected to be moved from {old_calculation_dir}."
                     )
             calculation_data = yaml.safe_load(calculation_yaml.read_text()) or {}
-        
-        # Update meta in calculation.yaml
-        if "meta" in calculation_data:
-            calculation_data["meta"]["name"] = name
-            # Use the slug from the entry (which was updated by apply_calculation_rename)
-            from quantumvitas.api.utils import slugify
-            new_slug = (calculation_entry.get("meta") or {}).get("slug") or slugify(name)
-            calculation_data["meta"]["slug"] = new_slug
-        
+
+        # Update calculation.yaml meta via API (Law H9 compliance)
+        try:
+            svc.calculation.update_meta(calc_ulid, name=name)
+        except Exception as e:
+            typer.secho(f"Warning: Failed to update calculation.yaml meta: {e}", fg=typer.colors.YELLOW)
+
         modified = True
         typer.secho(f"Calculation renamed to '{name}'", fg=typer.colors.GREEN)
     
-    # Handle structure change
+    # Handle structure change - use API (Law H9 compliance)
     if structure:
-        # Validate structure exists
-        struct_dto = svc.structure.get(structure)
-        _find_entry_by_structure_ulid(config, struct_dto.meta.ulid if struct_dto.meta else "")
-        
-        # Update calculation.yaml
-        calculation_section = calculation_data.setdefault("calculation", {})
-        old_structure = calculation_section.get("structure")
-        calculation_section["structure"] = structure
-        modified = True
-        
-        # Update all step yaml files
-        steps_updated = 0
-        index = svc.project.build_resource_index()
-        
-        for step_entry in calculation_data.get("steps", []):
-            # With ID-only model, resolve step file via step_ulid
-            step_ulid = extract_selector_from_entry(step_entry, "step")
-            if not step_ulid:
-                continue
-            
-            try:
-                # Resolve step file path via step_ulid
-                # Use centralized selector extraction for calculation selector
-                calculation_selector = extract_selector_from_entry(calculation_entry)
-                if not calculation_selector:
-                    continue  # Skip if no valid selector
-                step_resolved = svc.calculation.require_step_ref(calculation_selector, step_ulid, config=config)
-                step_path = step_resolved.absolute_path
-                
-                if not step_path.exists():
-                    continue
-                
-                # Load step spec as dict (no StructureStepSpec dependency)
-                spec_dict = yaml.safe_load(step_path.read_text())
-                if not spec_dict:
-                    continue
-                spec = spec_dict
-                # Note: Structure selectors are resolved via API when needed
-                
-                # Update structure_ulid (canonical reference) - structure selector is not written
-                resolved = svc.structure.require_ref(structure, config=config)
-                spec["structure_ulid"] = resolved.meta.ulid
-                # Clear legacy structure field (not written to YAML)
-                spec["structure"] = ""
-                step_path.write_text(yaml.safe_dump(spec, sort_keys=False))
-                steps_updated += 1
-            except Exception as e:
-                typer.secho(f"  Warning: Could not update step {step_ulid}: {e}", fg=typer.colors.YELLOW)
-        
-        typer.secho(
-            f"Structure changed from '{old_structure}' to '{structure}' ({steps_updated} steps updated)",
-            fg=typer.colors.GREEN
-        )
-    
-    # Handle reorder
+        try:
+            result = svc.calculation.update_steps_structure(
+                calc_selector=calc_ulid,
+                structure_selector=structure,
+                config=config,
+            )
+            steps_updated = result.get("steps_updated", 0)
+            old_structure = result.get("old_structure", "none")
+            typer.secho(
+                f"Structure changed from '{old_structure}' to '{structure}' ({steps_updated} steps updated)",
+                fg=typer.colors.GREEN
+            )
+            if result.get("errors"):
+                for err in result["errors"]:
+                    typer.secho(f"  Warning: {err}", fg=typer.colors.YELLOW)
+            modified = True
+        except Exception as e:
+            raise typer.BadParameter(f"Failed to update structure: {e}") from e
+
+    # Handle reorder - use API (Law H9 compliance)
     if reorder:
         step_selectors = [s.strip() for s in reorder.split(",") if s.strip()]
         if not step_selectors:
             raise typer.BadParameter("--reorder requires a comma-separated list of step identifiers (slug, name, type, or ULID)")
-        
-        current_steps = calculation_data.get("steps", [])
-        
-        # Build index for step resolution
-        from quantumvitas.api import QVService
-        svc = get_service(project_root)
-        index = svc.project.build_resource_index()
-        
-        # Match each selector to a step entry using centralized helper
-        reordered_entries = []
-        seen_ulids = set()
-        
-        for selector in step_selectors:
-            try:
-                step_entry = svc.match_step_selector(
-                    calculation_dir=calculation_dir,
-                    steps=current_steps,
-                    selector=selector,
-                    index=index,
-                    config=config,
-                )
-                step_ulid = extract_selector_from_entry(step_entry, "step")
-                if step_ulid and step_ulid not in seen_ulids:
-                    reordered_entries.append(step_entry)
-                    seen_ulids.add(step_ulid)
-                elif step_ulid in seen_ulids:
-                    raise typer.BadParameter(
-                        f"Step '{selector}' appears multiple times in reorder list. "
-                        f"Each step can only appear once."
-                    )
-            except (NotFoundError, AmbiguousError) as e:
-                raise typer.BadParameter(str(e)) from e
-        
-        # Check if all current steps are accounted for
-        current_ulids = {
-            extract_selector_from_entry(step, "step") 
-            for step in current_steps 
-            if extract_selector_from_entry(step, "step")
-        }
-        if seen_ulids != current_ulids:
-            missing_ulids = current_ulids - seen_ulids
-            missing_identifiers = []
-            calculation_slug = (calculation_entry.get("meta") or {}).get("slug") or calculation_entry.get("name") or calculation_dir.name
-            for missing_ulid in missing_ulids:
-                # Try to get a friendly identifier for the missing step
-                try:
-                    from quantumvitas.api import QVService
-                    svc = get_service(project_root)
-                    step_resolved = svc.calculation.require_step_ref(calculation_slug, missing_ulid, config=config, index=index)
-                    missing_identifiers.append(step_resolved.meta.slug or step_resolved.meta.name or missing_ulid[:8])
-                except Exception:
-                    missing_identifiers.append(missing_ulid[:8])
-            raise typer.BadParameter(
-                f"All steps must be included in reorder. Missing: {', '.join(missing_identifiers)}"
+
+        try:
+            svc.calculation.reorder_steps(
+                calc_selector=calc_ulid,
+                new_order=step_selectors,
+                config=config,
             )
-        
-        # Reorder
-        calculation_data["steps"] = reordered_entries
-        modified = True
-        
-        typer.secho(f"Steps reordered: {' -> '.join(step_selectors)}", fg=typer.colors.GREEN)
-    
+            typer.secho(f"Steps reordered: {' -> '.join(step_selectors)}", fg=typer.colors.GREEN)
+            modified = True
+        except Exception as e:
+            raise typer.BadParameter(f"Failed to reorder steps: {e}") from e
+
     if modified:
-        # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
-        calculation_data.pop("structure_name", None)
-        calculation_data.pop("structure", None)
-        if "calculation" in calculation_data:
-            calculation_data["calculation"].pop("structure_name", None)
-            calculation_data["calculation"].pop("structure", None)
-        calculation_yaml.write_text(yaml.safe_dump(calculation_data, sort_keys=False))
         typer.secho(f"Calculation updated: {calculation_yaml}", fg=typer.colors.GREEN)
     else:
         typer.secho("No changes specified. Use --structure or --reorder.", fg=typer.colors.YELLOW)

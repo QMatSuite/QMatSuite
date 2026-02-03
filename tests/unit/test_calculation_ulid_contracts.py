@@ -64,13 +64,21 @@ class TestCalculationULIDContracts:
         }
         calc_yaml.write_text(yaml.safe_dump(calc_data, sort_keys=False))
         
-        # Update project config
+        # Update project config (API format: meta with ulid, name, slug, path)
         config = yaml.safe_load((project_root / "project.qv.yml").read_text())
-        config["calculations"].append({"calculation_id": calc_id})
+        config["calculations"].append({
+            "meta": {
+                "ulid": calc_id,
+                "name": "bands",
+                "slug": "bands",
+                "path": "calculations/bands",
+                "kind": "calculation",
+            }
+        })
         (project_root / "project.qv.yml").write_text(yaml.safe_dump(config, sort_keys=False))
-        
+
         svc = QVService(project_root)
-        
+
         # Test: ULID should work
         result = svc.calculation.get(calc_id)
         assert result.calc_id == calc_id
@@ -124,11 +132,19 @@ class TestCalculationULIDContracts:
         }
         step_yaml.write_text(yaml.safe_dump(step_data, sort_keys=False))
         
-        # Update project config
+        # Update project config (API format: meta with ulid, name, slug, path)
         config = yaml.safe_load((project_root / "project.qv.yml").read_text())
-        config["calculations"].append({"calculation_id": calc_id})
+        config["calculations"].append({
+            "meta": {
+                "ulid": calc_id,
+                "name": "bands",
+                "slug": "bands",
+                "path": "calculations/bands",
+                "kind": "calculation",
+            }
+        })
         (project_root / "project.qv.yml").write_text(yaml.safe_dump(config, sort_keys=False))
-        
+
         # Build index
         index = build_resource_index(project_root)
         
@@ -240,11 +256,19 @@ class TestCalculationULIDContracts:
         }
         calc_yaml.write_text(yaml.safe_dump(calc_data, sort_keys=False))
         
-        # Update project config
+        # Update project config (API format: meta with ulid, name, slug, path)
         config = yaml.safe_load((project_root / "project.qv.yml").read_text())
-        config["calculations"].append({"calculation_id": calc_id})
+        config["calculations"].append({
+            "meta": {
+                "ulid": calc_id,
+                "name": "test",
+                "slug": "test",
+                "path": "calculations/test",
+                "kind": "calculation",
+            }
+        })
         (project_root / "project.qv.yml").write_text(yaml.safe_dump(config, sort_keys=False))
-        
+
         # Test workflow detection
         service = get_workflow_service()
         match = service.detect_workflow(calc_dir)
@@ -308,11 +332,19 @@ class TestCalculationULIDContracts:
         }
         calc_yaml.write_text(yaml.safe_dump(calc_data, sort_keys=False))
         
-        # Update project config
+        # Update project config (API format: meta with ulid, name, slug, path)
         config = yaml.safe_load((project_root / "project.qv.yml").read_text())
-        config["calculations"].append({"calculation_id": calc_id})
+        config["calculations"].append({
+            "meta": {
+                "ulid": calc_id,
+                "name": "test",
+                "slug": "test",
+                "path": "calculations/test",
+                "kind": "calculation",
+            }
+        })
         (project_root / "project.qv.yml").write_text(yaml.safe_dump(config, sort_keys=False))
-        
+
         # Test workflow detection (should fallback to step YAML)
         service = get_workflow_service()
         match = service.detect_workflow(calc_dir)

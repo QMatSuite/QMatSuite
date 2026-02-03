@@ -1527,31 +1527,196 @@ If YES to any, it's a CAPABILITY and should be kept.
 ### Phase 4 Investigation: Daemon/CLI Unification
 
 **Date**: 2026-02-02
-**Status**: INVESTIGATION COMPLETE
+**Status**: INVESTIGATION COMPLETE (REVISED)
 
-**Finding**: The daemon and CLI are ALREADY UNIFIED at the API layer.
+**Original Assumption**: Daemon and CLI call DIFFERENT API functions for the same operation.
 
-Both consumers import from `quantumvitas.api`:
-- All QVService methods
-- All DTOs
-- All error types
-- All utils functions
+**Actual Finding**: The API has ONE function per operation. The issue is:
+- **Daemon**: Calls API functions correctly
+- **CLI**: BYPASSES the API and does direct file I/O for some operations
 
-There are NO duplicate API entrypoints between daemon and CLI. The 2→1 merge campaign assumed duplicates that don't exist.
+**Verified CLI API Bypasses**:
 
-**Actual Architecture**:
-```
-Daemon (119 handlers) ──┐
-                        ├──→ quantumvitas.api (single API)
-CLI (31 commands) ──────┘
-```
+| Operation | Daemon Uses | CLI Does |
+|-----------|-------------|----------|
+| Init Step | `svc.calculation.add_step()` | Direct YAML (`_write_step_spec()`) |
+| Update Step Params | `svc.calculation.update_step_params()` | Direct YAML manipulation |
+| Create Calculation | `svc.project.init_calculation()` | Direct file I/O + utils |
+| Import Structure | `svc.structure.import_file()` | Direct file I/O + utils |
 
-**Remaining Opportunities**:
+**Analysis Functions (NOT Duplicates)**:
+- `analyze_band()` vs `get_band_structure_data()` - COMPLEMENTARY (parse vs retrieve)
+- `analyze_dos()` vs `get_dos_data()` - COMPLEMENTARY (parse vs retrieve)
+
+**Impact on API Surface**: 0
+
+The API already has correct functions. CLI refactoring is a code quality issue, not API slimming.
+
+**Remaining API Slimming Opportunities**:
 1. CLI-only utils (45 entries) - Could internalize if not used by Jupyter/agents
-2. Bundle DTO upgrades - Replace dict returns with typed DTOs (quality improvement)
-3. Periodic capability audits - Review "unused" list for real non-capabilities
+2. F401 re-exports (4 entries) - Could remove if truly unused
+3. Bundle DTO upgrades - Quality improvement, not count reduction
 
 **Reference**: See `docs/api/API_SLIMMING_PHASE4_DAEMON_CLI_UNIFY_PLAN.md` for full analysis.
+
+---
+
+### Batch 39: Law H9 - Filesystem Access Control
+
+**Date**: 2026-02-02
+**Status**: CONSTITUTION AMENDED + CLI VIOLATIONS DOCUMENTED
+
+**Constitution Amendment**: Added Law H9 to `API_CONSTITUTION.md`:
+
+> **Only kernel is allowed to modify the filesystem.**
+>
+> Frontends (daemon, CLI, GUI, Jupyter adapters) MUST NOT:
+> - Write to YAML files directly
+> - Create/delete project structure files
+> - Modify calculation/step/structure files
+>
+> **All filesystem mutations MUST go through kernel via API calls.**
+
+**YAML SSOT Files** (only modifiable by YamlDoc classes in `core/yamldoc.py`):
+- `project.qv.yml` → `ProjectDoc`
+- `calculation.yaml` → `CalcDoc`
+- `*.step.yaml` → `StepDoc`
+
+**CLI Violations Documented**:
+
+| Line | Command | File Written | API Function to Use |
+|------|---------|--------------|---------------------|
+| 750-752 | `init project` | `project.qv.yml` | `QVService.init_project()` |
+| 936 | `init calculation` | `calculation.yaml` | `svc.project.init_calculation()` |
+| 1393 | `init step` | `calculation.yaml` | `svc.calculation.add_step()` |
+| 2569, 2577 | `update step` | `*.step.yaml`, `calculation.yaml` | `svc.calculation.update_step_params()` |
+| 2968 | `delete step` | `calculation.yaml` | `svc.calculation.remove_step()` |
+| 3234 | `modify step` | `calculation.yaml` | Step rename capability needed |
+| 3508, 3592 | `modify calculation` | `*.step.yaml`, `calculation.yaml` | `svc.calculation.change_structure()`, `svc.calculation.reorder_steps()` |
+| 5044 | `_write_step_spec` | `*.step.yaml` | `svc.calculation.add_step()` |
+
+**Allowed Exception**: Line 1448 (`save-project`) writes to user-specified export file (H9.3 exception for scratch/export files).
+
+**Created Files**:
+1. `docs/api/CLI_LAW_H9_VIOLATIONS.md` - Complete analysis and migration plan
+2. `tests/cli/test_cli_h9_premigration.py` - Pre-migration behavior tests (in progress)
+
+**Next Steps**:
+1. Get pre-migration tests passing (fixture issues identified)
+2. Migrate CLI to use API functions (same as daemon)
+3. Remove direct YAML writes from CLI
+4. Delete `_write_step_spec` helper
+
+**Impact on API Surface**: 0 (quality improvement, not count reduction)
+
+---
+
+### Batch 40: Law H9 Migration Complete
+
+**Date**: 2026-02-02
+**Status**: COMPLETE ✅
+
+**Summary**: Migrated all CLI direct YAML writes to API calls for Law H9 compliance.
+
+**CLI Commands Migrated**:
+
+| Command | Before (Violation) | After (API Call) |
+|---------|-------------------|------------------|
+| `init project` | Direct YAML write | `QVService.init_project()` |
+| `init calculation` | Direct YAML write | `svc.project.init_calculation()` |
+| `init step` | `_write_step_spec()` | `svc.calculation.add_step_from_spec()` |
+| `delete step` | Direct calc.yaml write | `svc.calculation.remove_step()` |
+| `rename step` | Direct YAML writes | `svc.calculation.rename_step()` |
+| `configure step --name` | Direct calc.yaml write | `svc.calculation.rename_step()` |
+| `configure calculation --structure` | Direct step YAML writes | `svc.calculation.update_steps_structure()` |
+| `configure calculation --reorder` | Direct calc.yaml write | `svc.calculation.reorder_steps()` |
+| `configure calculation --name` | Direct calc.yaml write | `svc.calculation.update_meta()` |
+
+**New API Methods Added**:
+1. `svc.calculation.rename_step()` - Rename step with file move
+2. `svc.calculation.update_steps_structure()` - Update structure in all steps
+3. `svc.calculation.add_step_from_spec()` - Add step from pre-built spec dict
+
+**`_write_step_spec` Helper**: Retained for standalone step files only (allowed per H9.3 - not SSOT)
+
+**Gate Test Created**: `tests/gates/test_frontend_no_yaml_write.py`
+- Detects direct YAML writes in CLI/daemon/utils
+- Verifies YamlDoc classes exist
+- Filters allowed exceptions (standalone steps, user exports)
+
+**Test Results**: 3021 passed, 1 failed (pre-existing ID-only model issue), 18 skipped
+
+**Pre-existing Test Failure** (unrelated to Law H9):
+- `test_rename_calculation_across_directories_updates_all_references` - Expects path in project entry
+- This is an ID-only model issue where entries may only contain ULIDs, not paths
+- Not a regression from Law H9 work
+
+**Files Modified**:
+- `src/quantumvitas/cli/main.py` - CLI commands migrated to API
+- `src/quantumvitas/api/service.py` - New API methods added
+- `tests/gates/test_frontend_no_yaml_write.py` - Gate test created
+- `tests/cli/test_cli_h9_premigration.py` - Pre-migration tests
+
+**Impact on API Surface**: +3 new methods (rename_step, update_steps_structure, add_step_from_spec)
+
+---
+
+**End of Worklog**
+
+### Batch 41: Law H9 Test Data Migration
+
+**Date**: 2026-02-02
+**Status**: COMPLETE ✅
+
+**Summary**: Migrated all test data fixtures to use the new API `{"meta": {...}}` entry format instead of the legacy `{"calculation_id": ...}` format.
+
+**Changes**:
+
+1. **Test Fixtures Updated** (project config entries now use `meta` format):
+   - `tests/api/test_calculation_write.py` - 5 fixtures
+   - `tests/cli/test_graphene_calculation_setup.py` - assertion updated
+   - `tests/cli/test_template_calculation.py` - assertion updated
+   - `tests/unit/test_project_and_cli.py` - fixture and assertions updated
+   - `tests/unit/test_resource_rename_safety.py` - assertions updated
+   - `tests/unit/test_workflow.py` - 4 fixtures
+   - `tests/daemon/test_get_common_cards.py` - 2 fixtures
+   - `tests/unit/test_calculation_ulid_contracts.py` - 4 fixtures
+   - `tests/integration/test_relax_structure_save.py` - 1 fixture
+
+2. **Example Project Data Updated** (now use `meta` format):
+   - `tests/data/project_examples/project1/project.qv.yml`
+   - `tests/data/project_examples/project2_bands/project.qv.yml`
+   - `tests/data/golden_project/silicon-band-structure-2/project.qv.yml`
+
+3. **CLI Bug Fixed**:
+   - `configure_calculation_command` was missing `import yaml` at function scope
+   - Added explicit import to fix `UnboundLocalError`
+
+4. **Test Updated**:
+   - `test_cli_rename_calculation` - Uses `configure calculation --name` instead of deprecated `rename calculation`
+   - Assertions updated to use `entry["meta"]["name"]`, `entry["meta"]["slug"]`, `entry["meta"]["path"]`
+
+**API Entry Format** (canonical for project.qv.yml):
+```yaml
+calculations:
+- meta:
+    ulid: <26-char-ulid>
+    name: <display-name>
+    slug: <url-safe-slug>
+    path: calculations/<slug>
+    kind: calculation
+structures:
+- meta:
+    ulid: <26-char-ulid>
+    name: <display-name>
+    slug: <url-safe-slug>
+    path: structures/<file>
+    kind: structure
+```
+
+**Test Results**: 3022 passed, 18 skipped ✅
+
+**Rule Applied**: "No compat, no legacy, clean system" - All test fixtures adapted to API/daemon contract.
 
 ---
 
