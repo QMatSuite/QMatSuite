@@ -927,13 +927,8 @@ def resolve_engine_for_step(
         raise ValueError("Machine step_type is empty or None")
     
     # Look up step_type in registry (convert spec to gen if needed)
-    from quantumvitas.api import get_step_type_gen
     from quantumvitas.workflow.step_type_convert import gen_from
-    try:
-        step_type_gen = get_step_type_gen(step_type_str) if "_" in step_type_str else step_type_str
-    except (KeyError, ValueError):
-        # Fallback: use explicit conversion function (handles both SPEC and GEN)
-        step_type_gen = gen_from(step_type_str)  # gen_from() handles both SPEC and GEN inputs
+    step_type_gen = gen_from(step_type_str)
     spec = registry.get(step_type_gen)
     if spec is None:
         # List some known types for error message (limit to avoid huge error messages)

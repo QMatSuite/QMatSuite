@@ -457,8 +457,8 @@ Per `step_type_gen_spec_constitution.md`, the following rules apply throughout A
 
 When all PRs land:
 
-- [ ] **K0**: Zero `from quantumvitas.api` imports in kernel. Gate G-K0 passes with empty allowlist.
-- [ ] **K1**: No import cycles. Lazy imports documented per EXC-002.
+- [x] **K0**: Zero `from quantumvitas.api` imports in kernel. Gate G-K0 passes with empty allowlist.
+- [x] **K1**: No import cycles. Lazy imports documented per EXC-002.
 - [ ] **K2**: `public.py` exists for all 6+ domains. Deep import migration underway.
 - [ ] **K3**: All YAML writes through `save_yaml_doc()` (or EXC-004 whitelist with assertions). Gate G-K3 passes.
 - [ ] **K6**: No `yaml.safe_load` in `engine/`. No SSOT imports in `engine/`. No manual step-type manipulation in `engine/`. `EngineInput` port implemented. Gate G-K6 passes.

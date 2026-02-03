@@ -165,13 +165,8 @@ def qe_step_handler(
                 from quantumvitas.calculation.compat_executor import run_qe_step_from_existing_input_compat
                 
                 # Convert spec to gen for run_qe_step_from_existing_input_compat (expects gen)
-                from quantumvitas.api import get_step_type_gen
-                step_type_gen = None
-                if step.step_type_spec:
-                    try:
-                        step_type_gen = get_step_type_gen(step.step_type_spec)
-                    except (KeyError, ValueError):
-                        step_type_gen = None  # Fallback
+                from quantumvitas.workflow.step_type_convert import gen_from
+                step_type_gen = gen_from(step.step_type_spec) if step.step_type_spec else None
                 result = run_qe_step_from_existing_input_compat(
                     existing_input_path=existing_input_path,
                     working_dir=raw_dir,

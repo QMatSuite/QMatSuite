@@ -513,11 +513,8 @@ class WorkflowService:
         
         for machine_step in machine_steps:
             # Create step document - convert spec to gen for create_step_doc
-            from quantumvitas.api import get_step_type_gen
-            try:
-                step_type_gen = get_step_type_gen(machine_step) if "_" in machine_step else machine_step
-            except (KeyError, ValueError):
-                step_type_gen = machine_step  # Fallback
+            from quantumvitas.workflow.step_type_convert import gen_from
+            step_type_gen = gen_from(machine_step)
             step_doc = create_step_doc(
                 step_type_gen=step_type_gen,
                 name=machine_step,  # TODO: Use public step name for display
