@@ -1,7 +1,7 @@
 # QMatSuite API Constitution
 
 **Status**: AUTHORITATIVE LAW
-**Version**: 2.0
+**Version**: 2.1
 **Date**: 2026-02-02
 
 ---
@@ -425,4 +425,63 @@ VIOLATION (requires remediation):
 
 ---
 
-**End of API Constitution v2.0**
+## Appendix C: Bundle-Returning Capabilities (Stable Schema)
+
+These bundle functions consolidate multiple related API calls into single returns.
+Key changes require updating daemon/CLI call sites AND updating this section.
+
+### C.1 `get_pseudo_status_bundle()`
+
+Location: `api/utils.py`
+
+| Key | Type | Contract | Description |
+|-----|------|----------|-------------|
+| `config` | dict | **stable** | Current pseudo configuration |
+| `validation` | dict | **stable** | Validation result |
+| `installed_sssp` | list | **stable** | Installed SSSP libraries |
+| `seed_archives` | list | **stable** | Available seed archives |
+| `manifest_archives` | list | **stable** | Manifest archives |
+| `archive_statuses` | list | **stable** | Installation status per manifest archive |
+
+### C.2 `get_qe_engine_status()`
+
+Location: `api/utils.py`
+
+| Key | Type | Contract | Description |
+|-----|------|----------|-------------|
+| `detection` | dict | **stable** | QE detection result (found, qe_home, version, executables) |
+| `environment` | dict | **stable** | Environment info (python_version, qv_version, qe_found) |
+| `available_engines` | list | debug/diagnostic | Available QE engines (internal) |
+| `discovered` | list | debug/diagnostic | Auto-discovered engines (internal, cached) |
+
+### C.3 `get_calculation_preset_bundle(calculation_dir)`
+
+Location: `api/utils.py`
+
+| Key | Type | Contract | Description |
+|-----|------|----------|-------------|
+| `detected_engine` | str | **stable** | Engine detected from steps (e.g., "qe", "pyscf") |
+| `dimension_states` | dict | **stable** | Detected preset dimension values |
+| `workflow_type` | str | **stable** | Detected workflow type ("SCF", "DOS", etc.) |
+| `step_footprints` | dict | **stable** | Preset footprints per step |
+
+### C.4 Change Protocol
+
+- **Stable keys**: Renaming or removing requires updating ALL daemon/CLI call sites AND this constitution section.
+- **Debug/diagnostic keys**: May be renamed or removed without daemon/CLI update, but this section must still be updated.
+- **Adding keys**: Allowed freely; document in this section.
+- **No silent key drift**: Any key change without updating this section is a violation.
+
+---
+
+## Appendix D: Anti-Regression Gates
+
+| Gate | Test File | Checks |
+|------|-----------|--------|
+| Gate B | `tests/gates/test_no_service_delegating_utils.py` | No `get_service()`/`QVService()` in utils functions |
+| Gate C | `tests/gates/test_no_stub_service_methods.py` | No stub/placeholder nested service methods |
+| Gate H9 | `tests/gates/test_frontend_no_yaml_write.py` | No direct YAML writes in frontends |
+
+---
+
+**End of API Constitution v2.1**

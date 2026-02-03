@@ -1,8 +1,8 @@
 # API Slimming Opportunity Report
 
 **Generated**: 2026-02-02
-**Revised**: 2026-02-02 (Phase 3: High-Impact Bundle Consolidation)
-**Baseline**: 243 entrypoints → **Current**: 213 entrypoints (-30, -12.3%)
+**Revised**: 2026-02-02 (Final Closeout)
+**Baseline**: 243 entrypoints → **Final**: 204 entrypoints (-39, -16.0%)
 
 ---
 
@@ -383,6 +383,36 @@ Grouped functions by:
 1. Semantic similarity (same domain)
 2. Call-site co-occurrence (daemon handlers that use multiple related functions)
 3. Bundle potential (can be combined into single response)
+
+---
+
+## Final Closeout Status
+
+**Status**: CLOSED — All actionable slimming completed.
+
+### Final Numbers
+
+| Category | Count |
+|----------|-------|
+| api_init | 2 |
+| service_static | 23 |
+| service_nested | 90 |
+| utils | 68 |
+| dtos | 11 |
+| errors | 10 |
+| **TOTAL** | **204** |
+
+### Remaining Surface is Post-Slimming Stable
+
+The opportunities documented above have been partially executed (Phases 1-3 bundles, unused removal, H9 migration). The remaining 204 entrypoints represent the intentional stable API surface.
+
+### Disallowed Patterns (Gated)
+
+- **Service-delegating wrappers in utils**: Gate B prevents re-introduction
+- **Stub/placeholder service methods**: Gate C prevents half-baked capabilities
+- **Direct YAML writes in frontends**: Gate H9 enforces kernel-only filesystem access
+
+Future slimming (if desired) would target the remaining Phase 3 opportunities (online search migration, further QE metadata bundling). These are tracked here for reference but not scheduled.
 
 ---
 
