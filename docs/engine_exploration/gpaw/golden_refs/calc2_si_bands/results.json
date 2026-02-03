@@ -1,0 +1,18 @@
+{
+  "scf": {
+    "total_energy_eV": -10.79014816831038,
+    "fermi_level_eV": 5.617685999715786,
+    "n_bands": 8,
+    "n_kpoints": 108
+  },
+  "bands": {
+    "reference_eV": 5.617685999715786,
+    "label_seq": "GXWKL"
+  },
+  "dos": {
+    "n_points": 500,
+    "energy_min_eV": -12.678176325375066,
+    "energy_max_eV": 9.382688285059427,
+    "integral": 15.999999999999869
+  }
+}
