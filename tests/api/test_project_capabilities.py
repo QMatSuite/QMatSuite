@@ -46,34 +46,36 @@ def test_project_update_config_returns_dict(tmp_path):
         pass
 
 
-def test_project_get_species_map_returns_dict(tmp_path):
-    """get_species_map() returns species mapping dict."""
+def test_project_species_map_via_config(tmp_path):
+    """Species map can be accessed via get_config()."""
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
     (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
-    
+
     svc = QVService(project_root)
-    
+
     try:
-        species_map = svc.project.get_species_map()
+        config = svc.project.get_config()
+        species_map = config.get("species_map", {})
         assert isinstance(species_map, dict)
     except Exception:
         # Expected to fail without full project setup
         pass
 
 
-def test_project_get_potential_map_returns_dict(tmp_path):
-    """get_potential_map() returns potential mapping dict."""
+def test_project_potential_map_via_config(tmp_path):
+    """Potential map can be accessed via get_config()."""
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
     (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
-    
+
     svc = QVService(project_root)
-    
+
     try:
-        potential_map = svc.project.get_potential_map()
+        config = svc.project.get_config()
+        potential_map = config.get("potential_map", {})
         assert isinstance(potential_map, dict)
     except Exception:
         # Expected to fail without full project setup

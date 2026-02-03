@@ -33,20 +33,11 @@ from quantumvitas.api.utils import (
     is_ulid_like,
     validate_ulid,
     load_calculation,
-    get_pseudo_config,
+    get_pseudo_status_bundle,
     set_pseudo_config,
-    validate_pseudo_config_dict,
-    list_installed_sssp,
-    list_seed_archives,
-    check_archives_status,
-    load_manifest_archives,
-    detect_engine_for_calculation,
-    detect_presets_from_calculation,
+    get_calculation_preset_bundle,
     download_pseudo_by_filename,
-    detect_qe,
-    get_environment_info,
-    list_qe_engines,
-    discover_qe_engines,
+    get_qe_engine_status,
     set_qe_engine,
     resolve_pseudo_provenance,
     download_pseudo_from_url,
@@ -56,8 +47,6 @@ from quantumvitas.api.utils import (
     parse_volume_artifact,
     apply_presets_to_step,
     get_preset_catalog,
-    detect_workflow_type,
-    get_step_preset_footprints,
     resolve_precision_context,
     generate_unique_name_and_slug,
     meta_from_name,
@@ -729,42 +718,42 @@ class QVDaemon:
     def _handle_detect_qe(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Detect QE installation.
-        
+
         Payload: (none required)
-        
+
         Returns detection status, qe_home, version, executables
         """
-        return detect_qe()
-    
+        return get_qe_engine_status()["detection"]
+
     def _handle_get_env_info(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get environment info.
-        
+
         Payload: (none required)
-        
+
         Returns python_version, qv_version, qe_home, etc.
         """
-        return get_environment_info()
-    
+        return get_qe_engine_status()["environment"]
+
     def _handle_list_qe_engines(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         List available QE engines (managed + external).
-        
+
         Payload: (none required)
-        
+
         Returns managed_engines and external_engines lists.
         """
-        return list_qe_engines()
-    
+        return get_qe_engine_status()["available_engines"]
+
     def _handle_discover_qe_engines(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Auto-discover QE engines on the system.
-        
+
         Payload: (none required)
-        
+
         Returns discovered_engines list (cached in .tmp/probe/).
         """
-        return discover_qe_engines()
+        return get_qe_engine_status()["discovered"]
     
     def _handle_set_qe_engine(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -785,9 +774,9 @@ class QVDaemon:
     def _handle_get_pseudo_config(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get pseudopotential configuration.
-        
+
         Payload: (none required)
-        
+
         Returns:
             store_dir: str - Path to global pseudo store
             seed_dir: str - Path to seed directory
@@ -796,7 +785,7 @@ class QVDaemon:
             default_store_dir: str - Default store directory
             default_seed_dir: str - Default seed directory
         """
-        return get_pseudo_config()
+        return get_pseudo_status_bundle()["config"]
     
     def _handle_set_pseudo_config(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -819,9 +808,9 @@ class QVDaemon:
     def _handle_validate_pseudo_config(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Validate pseudopotential configuration.
-        
+
         Payload: (none required, uses saved config)
-        
+
         Returns:
             ok: bool - Overall validation status
             repo_pseudo_exists: bool
@@ -833,7 +822,7 @@ class QVDaemon:
             warnings: List[str]
             errors: List[str]
         """
-        return validate_pseudo_config_dict()
+        return get_pseudo_status_bundle()["validation"]
     
     def _handle_init_pseudo_dirs(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -866,29 +855,30 @@ class QVDaemon:
         """
         from quantumvitas.api import QVService
         from pathlib import Path
-        
-        config = get_pseudo_config()
-        
+
+        bundle = get_pseudo_status_bundle()
+        config = bundle["config"]
+
         if not config.get("seed_dir"):
             return {
                 "success": False,
                 "messages": [],
                 "errors": ["Seed directory not configured"],
             }
-        
+
         if not config.get("store_dir"):
             return {
                 "success": False,
                 "messages": [],
                 "errors": ["Store directory not configured"],
             }
-        
+
         seed_dir = Path(config.get("seed_dir"))
         store_dir = Path(config.get("store_dir"))
-        
+
         version = payload.get("version")
         flavor = payload.get("flavor")
-        
+
         if version and flavor:
             # Install specific version/flavor
             result = QVService.install_sssp_from_seed(seed_dir, store_dir, version, flavor)
@@ -900,15 +890,14 @@ class QVDaemon:
     def _handle_list_installed_sssp(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         List installed SSSP libraries in store.
-        
+
         Payload: (none required, uses saved config)
-        
+
         Returns:
             libraries: List of SSSPLibraryInfo dicts
         """
-        libraries = list_installed_sssp()
         return {
-            "libraries": libraries,
+            "libraries": get_pseudo_status_bundle()["installed_sssp"],
         }
     
     def _handle_list_seed_archives(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -920,19 +909,8 @@ class QVDaemon:
         Returns:
             archives: List of SeedArchiveInfo dicts
         """
-        from pathlib import Path
-
-        config = get_pseudo_config()
-
-        if not config.get("seed_dir"):
-            return {"archives": []}
-
-        seed_dir = Path(config.get("seed_dir"))
-        # list_seed_archives from api/utils already returns dicts
-        archives = list_seed_archives(seed_dir)
-
         return {
-            "archives": archives,
+            "archives": get_pseudo_status_bundle()["seed_archives"],
         }
     
     def _handle_download_sssp_library(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -955,17 +933,18 @@ class QVDaemon:
         """
         from quantumvitas.api import QVService
         from pathlib import Path
-        
+
         flavor = payload.get("flavor")
         if not flavor:
             raise ValueError("flavor is required ('efficiency' or 'precision')")
         if flavor not in ("efficiency", "precision"):
             raise ValueError(f"Invalid flavor: {flavor}. Must be 'efficiency' or 'precision'")
-        
+
         version = payload.get("version", "1.3.0")
         force = payload.get("force", False)
 
-        config = get_pseudo_config()
+        bundle = get_pseudo_status_bundle()
+        config = bundle["config"]
 
         if not config.get("store_dir"):
             return {
@@ -973,7 +952,7 @@ class QVDaemon:
                 "errors": ["Store directory not configured"],
                 "messages": [],
             }
-        
+
         store_dir = Path(config.get("store_dir"))
         seed_dir = Path(config.get("seed_dir")) if config.get("seed_dir") else None
         result = QVService.download_sssp_library(
@@ -984,10 +963,10 @@ class QVDaemon:
             allow_download=config.get("allow_download", False),
             seed_dir=seed_dir,
         )
-        
-        # Add installed libraries to response
-        result["installed_libraries"] = list_installed_sssp()
-        
+
+        # Add installed libraries to response (refresh after download)
+        result["installed_libraries"] = get_pseudo_status_bundle()["installed_sssp"]
+
         return result
     
     def _handle_download_all_sssp(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -1006,18 +985,19 @@ class QVDaemon:
         """
         from quantumvitas.api import QVService
         from pathlib import Path
-        
+
         force = payload.get("force", False)
-        
-        config = get_pseudo_config()
-        
+
+        bundle = get_pseudo_status_bundle()
+        config = bundle["config"]
+
         if not config.get("store_dir"):
             return {
                 "success": False,
                 "errors": ["Store directory not configured"],
                 "messages": [],
             }
-        
+
         store_dir = Path(config.get("store_dir"))
         seed_dir = Path(config.get("seed_dir")) if config.get("seed_dir") else None
         result = QVService.download_all_sssp(
@@ -1026,10 +1006,10 @@ class QVDaemon:
             allow_download=config.get("allow_download", False),
             seed_dir=seed_dir,
         )
-        
-        # Add installed libraries to response
-        result["installed_libraries"] = list_installed_sssp()
-        
+
+        # Add installed libraries to response (refresh after download)
+        result["installed_libraries"] = get_pseudo_status_bundle()["installed_sssp"]
+
         return result
     
     def _handle_import_seed_archives(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -1044,7 +1024,7 @@ class QVDaemon:
         """
         from quantumvitas.api import QVService
         from pathlib import Path
-        
+
         file_paths = payload.get("file_paths", [])
         if not file_paths:
             return {
@@ -1052,18 +1032,19 @@ class QVDaemon:
                 "skipped": [],
                 "errors": ["No files provided"],
             }
-        
-        config = get_pseudo_config()
+
+        bundle = get_pseudo_status_bundle()
+        config = bundle["config"]
         if not config.get("seed_dir"):
             return {
                 "imported": [],
                 "skipped": [],
                 "errors": ["Seed directory not configured"],
             }
-        
+
         seed_dir = Path(config.get("seed_dir"))
         archive_paths = [Path(p) for p in file_paths]
-        
+
         return QVService.import_seed_archives(seed_dir, archive_paths)
     
     def _handle_list_libraries(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -1241,19 +1222,18 @@ class QVDaemon:
     def _handle_list_pseudo_archives_status(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         List all pseudopotential archives from vendored manifest with install status.
-        
+
         Payload: (none required)
-        
+
         Returns:
             Dict with:
             - archives: List[ArchiveStatus dict] - All archives with install status
             - grouped_by_library: Dict[str, List[ArchiveStatus dict]] - Grouped by library_name
         """
         try:
-            config = get_pseudo_config()
-            archives = load_manifest_archives()
-            archives_status = check_archives_status(archives=archives, config=config)
-            
+            bundle = get_pseudo_status_bundle()
+            archives_status = bundle["archive_statuses"]
+
             # Group by library_name + library_version
             grouped: Dict[str, List[Dict[str, Any]]] = {}
             for archive_status in archives_status:
@@ -1264,7 +1244,7 @@ class QVDaemon:
                 if key not in grouped:
                     grouped[key] = []
                 grouped[key].append(archive_status)
-            
+
             return {
                 "archives": archives_status,
                 "grouped_by_library": grouped,
@@ -1302,10 +1282,11 @@ class QVDaemon:
             }
         
         force = payload.get("force", False)
-        
+
         try:
-            config = get_pseudo_config()
-            
+            bundle = get_pseudo_status_bundle()
+            config = bundle["config"]
+
             # Check if downloads are allowed
             if not config.get("allow_download", False) and not force:
                 return {
@@ -1314,15 +1295,15 @@ class QVDaemon:
                     "errors": ["Network downloads not allowed. Enable 'Allow Network Downloads' in Settings."],
                     "archive_status": None,
                 }
-            
+
             # Find archive in manifest
-            archives = load_manifest_archives()
+            manifest_archives = bundle["manifest_archives"]
             archive = None
-            for arch in archives:
+            for arch in manifest_archives:
                 if arch.get("asset_name") == asset_name:
                     archive = arch
                     break
-            
+
             if not archive:
                 return {
                     "success": False,
@@ -1330,7 +1311,7 @@ class QVDaemon:
                     "errors": [f"Archive not found in manifest: {asset_name}"],
                     "archive_status": None,
                 }
-            
+
             # Check if already installed (unless force)
             if not force:
                 if QVService.is_pseudo_archive_installed(
@@ -1338,15 +1319,19 @@ class QVDaemon:
                     expected_sha256=archive.get("sha256", ""),
                     config=config,
                 ):
-                    # Return success with current status
-                    archives_updated = check_archives_status(archives=[archive], config=config)
+                    # Return success with current status from bundle
+                    archive_status = None
+                    for status in bundle["archive_statuses"]:
+                        if status.get("asset_name") == asset_name:
+                            archive_status = status
+                            break
                     return {
                         "success": True,
                         "messages": [f"Archive already installed: {asset_name}"],
                         "errors": [],
-                        "archive_status": archives_updated[0] if archives_updated else None,
+                        "archive_status": archive_status,
                     }
-            
+
             # Install archive
             if not archive.get("upstream_url"):
                 return {
@@ -1355,7 +1340,7 @@ class QVDaemon:
                     "errors": [f"No upstream URL for archive: {asset_name}"],
                     "archive_status": None,
                 }
-            
+
             result = QVService.install_pseudo_archive(
                 asset_url=archive.get("upstream_url", ""),
                 asset_name=archive.get("asset_name", ""),
@@ -1363,11 +1348,15 @@ class QVDaemon:
                 expected_size=archive.get("size_bytes"),
                 config=config,
             )
-            
-            # Get updated status
-            archives_updated = check_archives_status(archives=[archive], config=config)
-            archive_status = archives_updated[0] if archives_updated else None
-            
+
+            # Get updated status (refresh bundle after install)
+            updated_bundle = get_pseudo_status_bundle()
+            archive_status = None
+            for status in updated_bundle["archive_statuses"]:
+                if status.get("asset_name") == asset_name:
+                    archive_status = status
+                    break
+
             return {
                 "success": result.get("success", False),
                 "messages": result.get("messages", []),
@@ -3701,14 +3690,11 @@ class QVDaemon:
             calculation_dir = resolved.absolute_path.parent
         else:
             calculation_dir = resolved.absolute_path
-        
-        # Detect engine from calculation (for filtering)
-        engine_filter = detect_engine_for_calculation(calculation_dir)
-        
-        # Detect presets from calculation steps
+
+        # Use bundle for preset detection
         # If precision context resolution fails, it will be mapped to ConfigError by map_kernel_exception
         try:
-            dimension_states = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
+            bundle = get_calculation_preset_bundle(calculation_dir)
         except ConfigError as e:
             # PrecisionContextError is mapped to ConfigError by map_kernel_exception
             # Check if it's a precision context error by checking the error message or context
@@ -3722,11 +3708,11 @@ class QVDaemon:
                 }
             # Re-raise other config errors
             raise
-        
+
         return {
-            "dimension_states": dimension_states,
+            "dimension_states": bundle["dimension_states"],
         }
-    
+
     def _handle_detect_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Detect workflow type from a calculation's step sequence.
@@ -3745,7 +3731,7 @@ class QVDaemon:
         """
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
-        
+
         # Resolve calculation with fallback to ensure cache is up-to-date
         resolved = self._resolve_calculation_with_fallback(project_root, calculation)
         # absolute_path points to calculation.yaml, so get the parent directory
@@ -3753,14 +3739,14 @@ class QVDaemon:
             calculation_dir = resolved.absolute_path.parent
         else:
             calculation_dir = resolved.absolute_path
-        
-        # Detect workflow type
-        workflow = detect_workflow_type(calculation_dir)
-        
+
+        # Use bundle for workflow detection
+        bundle = get_calculation_preset_bundle(calculation_dir)
+
         return {
-            "workflow": workflow,
+            "workflow": bundle["workflow_type"],
         }
-    
+
     def _handle_apply_presets_to_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Apply preset options to a step.
@@ -3813,14 +3799,13 @@ class QVDaemon:
         
         # Return updated dimension states for the calculation
         calculation_dir = step_path.parent.parent  # steps/foo.step.yaml -> calculation_dir
-        engine_filter = detect_engine_for_calculation(calculation_dir)
-        updated_dimension_states = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
-        
+        bundle = get_calculation_preset_bundle(calculation_dir)
+
         return {
             "status": "applied",
-            "dimension_states": updated_dimension_states,
+            "dimension_states": bundle["dimension_states"],
         }
-    
+
     def _handle_apply_presets_to_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Apply preset options to ALL steps in a calculation (BROADCAST).
@@ -3974,17 +3959,16 @@ class QVDaemon:
                 })
         
         # Return updated dimension states for the calculation
-        engine_filter = detect_engine_for_calculation(calculation_dir)
-        updated_dimension_states = detect_presets_from_calculation(calculation_dir, engine_filter=engine_filter)
-        
+        bundle = get_calculation_preset_bundle(calculation_dir)
+
         return {
             "status": "applied",
             "steps_updated": steps_updated,
             "steps_skipped": steps_skipped,
             "step_results": step_results,
-            "dimension_states": updated_dimension_states,
+            "dimension_states": bundle["dimension_states"],
         }
-    
+
     def _handle_get_step_preset_footprints(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get preset-related parameter footprints for all steps in a calculation.
@@ -4030,14 +4014,14 @@ class QVDaemon:
             calculation_dir = resolved.absolute_path.parent
         else:
             calculation_dir = resolved.absolute_path
-        
-        # Get step footprints
-        footprints = get_step_preset_footprints(calculation_dir)
-        
+
+        # Use bundle for step footprints
+        bundle = get_calculation_preset_bundle(calculation_dir)
+
         return {
-            "footprints": footprints,
+            "footprints": bundle["step_footprints"],
         }
-    
+
     def _handle_get_calculation_detail(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get detailed calculation information.

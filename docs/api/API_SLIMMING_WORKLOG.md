@@ -1,7 +1,8 @@
 # API Slimming Worklog
 
 **Started**: 2026-02-02
-**Status**: IN PROGRESS (Phase 2: Utils Cluster Merging)
+**Status**: COMPLETE (Phase 3: High-Impact Bundle Consolidation)
+**Final Count**: 191 entrypoints (down from 213 baseline, -22 total = 10.3% reduction)
 
 ---
 
@@ -40,8 +41,9 @@
 | Document | Location |
 |----------|----------|
 | API Constitution | `docs/api/API_CONSTITUTION.md` |
-| Implementation Plan | `docs/api/API_SLIMMING_IMPLEMENTATION_PLAN.md` |
+| Opportunity Report | `docs/api/API_SLIMMING_OPPORTUNITY_REPORT.md` |
 | Slimming Review | `docs/api/API_SLIMMING_REVIEW.md` |
+| Phase 3 Implementation Plan | `docs/api/API_SLIMMING_PHASE3_IMPLEMENTATION_PLAN.md` |
 | Audit Script | `tools/api_surface_audit.py` |
 
 ---
@@ -1220,7 +1222,249 @@ All have test coverage in tests/api/:
 | Service Nested | 91 | 88 | -3 |
 | Unused | 33 | 24 | -9 |
 
-**API slimming complete** - all consolidation opportunities exhausted.
+**Phase 2 complete** - Phase 3 high-impact bundle consolidation begins.
+
+---
+
+## Phase 3: High-Impact Bundle Consolidation
+
+See `API_SLIMMING_PHASE3_IMPLEMENTATION_PLAN.md` for full plan.
+
+**Target**: 213 → 186 entrypoints (-27)
+
+---
+
+### Batch 32: Delete Unused Service Methods
+
+**AUDIT BEFORE**:
+```
+service_nested: 88
+service_static: 23
+utils: 79
+TOTAL: 213
+```
+
+- **Time**: 2026-02-02
+- **Action**: Deleted unused service methods with zero production usage
+- **Deleted** (3 service_nested):
+  1. `Analysis.find_band_files` - UNUSED (d=0, c=0, t=0)
+  2. `Project.get_species_map` - tests-only (d=0, c=0, t=3) - redundant with `get_config().get("species_map", {})`
+  3. `Project.get_potential_map` - tests-only (d=0, c=0, t=3) - redundant with `get_config().get("potential_map", {})`
+- **Migration**:
+  - Updated `tests/api/test_project_capabilities.py` to use `get_config()` pattern
+- **Tests**: 3012 passed, 18 skipped ✅
+
+**AUDIT AFTER**:
+```
+service_nested: 85
+service_static: 23
+utils: 79
+TOTAL: 210
+```
+
+**Delta**: 213 → 210 (-3 entrypoints)
+- service_nested: 88 → 85 (-3)
+
+---
+
+### Batch 33: Pseudo Config Bundle Consolidation
+
+**AUDIT BEFORE**:
+```
+service_nested: 85
+service_static: 23
+utils: 80
+TOTAL: 211
+```
+
+- **Time**: 2026-02-02
+- **Action**: Consolidated 6 pseudo config utils into single bundle function
+- **Added** (1 utils):
+  - `get_pseudo_status_bundle` - returns dict with config, validation, installed_sssp, seed_archives, manifest_archives, archive_statuses
+- **Deleted** (6 utils):
+  1. `get_pseudo_config` - replaced by bundle["config"]
+  2. `validate_pseudo_config_dict` - replaced by bundle["validation"]
+  3. `list_installed_sssp` - replaced by bundle["installed_sssp"]
+  4. `list_seed_archives` - replaced by bundle["seed_archives"]
+  5. `check_archives_status` - replaced by bundle["archive_statuses"]
+  6. `load_manifest_archives` - replaced by bundle["manifest_archives"]
+- **Migration**:
+  - Updated daemon/server.py handlers to use bundle:
+    - `_handle_get_pseudo_config` → `get_pseudo_status_bundle()["config"]`
+    - `_handle_validate_pseudo_config` → `get_pseudo_status_bundle()["validation"]`
+    - `_handle_list_installed_sssp` → `get_pseudo_status_bundle()["installed_sssp"]`
+    - `_handle_list_seed_archives` → `get_pseudo_status_bundle()["seed_archives"]`
+    - `_handle_list_pseudo_archives_status` → `get_pseudo_status_bundle()["archive_statuses"]`
+    - `_handle_install_pseudo_archive` → uses bundle for config and manifest_archives
+    - Other handlers updated to use `bundle["config"]` for path access
+- **Tests**: 3012 passed, 18 skipped ✅
+
+**AUDIT AFTER**:
+```
+service_nested: 85
+service_static: 23
+utils: 74
+TOTAL: 205
+```
+
+**Delta**: 211 → 205 (-6 entrypoints)
+- utils: 80 → 74 (-6, net of -7 removed +1 added)
+
+---
+
+### Batch 34: QE Engine Bundle Consolidation
+
+**AUDIT BEFORE**:
+```
+service_nested: 85
+service_static: 23
+utils: 74
+TOTAL: 205
+```
+
+- **Time**: 2026-02-02
+- **Action**: Consolidated 4 QE engine utils into single bundle function
+- **Added** (1 utils):
+  - `get_qe_engine_status` - returns dict with detection, environment, available_engines, discovered
+- **Deleted** (4 utils):
+  1. `detect_qe` - replaced by bundle["detection"]
+  2. `get_environment_info` - replaced by bundle["environment"]
+  3. `list_qe_engines` - replaced by bundle["available_engines"]
+  4. `discover_qe_engines` - replaced by bundle["discovered"]
+- **Kept** (1 utils):
+  - `set_qe_engine` - write operation, cannot be bundled
+- **Migration**:
+  - Updated daemon/server.py handlers to use bundle:
+    - `_handle_detect_qe` → `get_qe_engine_status()["detection"]`
+    - `_handle_get_env_info` → `get_qe_engine_status()["environment"]`
+    - `_handle_list_qe_engines` → `get_qe_engine_status()["available_engines"]`
+    - `_handle_discover_qe_engines` → `get_qe_engine_status()["discovered"]`
+- **Tests**: 3012 passed, 18 skipped ✅
+
+**AUDIT AFTER**:
+```
+service_nested: 85
+service_static: 23
+utils: 71
+TOTAL: 202
+```
+
+**Delta**: 205 → 202 (-3 entrypoints)
+- utils: 74 → 71 (-3, net of -4 removed +1 added)
+
+---
+
+### Batch 35: Presets Detection Bundle Consolidation
+
+**AUDIT BEFORE**:
+```
+service_nested: 85
+service_static: 23
+utils: 71
+TOTAL: 202
+```
+
+- **Time**: 2026-02-02
+- **Action**: Consolidated 4 preset detection utils into single bundle function
+- **Added** (1 utils):
+  - `get_calculation_preset_bundle(calculation_dir)` - returns dict with detected_engine, dimension_states, workflow_type, step_footprints
+- **Deleted** (4 utils):
+  1. `detect_engine_for_calculation` - replaced by bundle["detected_engine"]
+  2. `detect_presets_from_calculation` - replaced by bundle["dimension_states"]
+  3. `detect_workflow_type` - replaced by bundle["workflow_type"]
+  4. `get_step_preset_footprints` - replaced by bundle["step_footprints"]
+- **Kept** (1 utils):
+  - `resolve_precision_context` - different purpose (precision advisor, not calculation detection)
+- **Migration**:
+  - Updated daemon/server.py handlers to use bundle:
+    - `_handle_detect_presets` → `get_calculation_preset_bundle(calculation_dir)["dimension_states"]`
+    - `_handle_detect_workflow` → `get_calculation_preset_bundle(calculation_dir)["workflow_type"]`
+    - `_handle_get_step_preset_footprints` → `get_calculation_preset_bundle(calculation_dir)["step_footprints"]`
+    - `_handle_apply_presets_to_step` → uses bundle for updated dimension_states
+    - `_handle_apply_presets_to_calculation` → uses bundle for updated dimension_states
+- **Tests**: 3012 passed, 18 skipped ✅
+
+**AUDIT AFTER**:
+```
+service_nested: 85
+service_static: 23
+utils: 68
+TOTAL: 199
+```
+
+**Delta**: 202 → 199 (-3 entrypoints)
+- utils: 71 → 68 (-3, net of -4 removed +1 added)
+
+---
+
+### Batch 36: Delete Unused Analysis Service Methods
+
+**AUDIT BEFORE**:
+```
+service_nested: 85
+service_static: 23
+utils: 68
+TOTAL: 199
+```
+
+- **Time**: 2026-02-02
+- **Action**: Deleted unused Analysis service methods with 0 daemon/CLI usage
+- **Deleted** (3 service_nested):
+  1. `svc.analysis.list_properties` - 0 daemon/CLI usage, test-only
+  2. `svc.analysis.get_property_ref` - 0 daemon/CLI usage, test-only
+  3. `svc.analysis.load_artifact` - 0 daemon/CLI usage, Jupyter-only (callers can access artifacts directly)
+- **Migration**:
+  - Added comment in service.py noting removed methods
+  - Removed corresponding tests from tests/api/test_analysis_capabilities.py
+  - Updated tests/unit/test_api_service_facade.py to not assert list_properties exists
+- **Tests**: 3006 passed, 18 skipped ✅
+
+**AUDIT AFTER**:
+```
+service_nested: 82
+service_static: 23
+utils: 68
+TOTAL: 196
+```
+
+**Delta**: 199 → 196 (-3 entrypoints)
+- service_nested: 85 → 82 (-3)
+
+---
+
+### Batch 37: Delete Remaining Unused Service Methods
+
+**AUDIT BEFORE**:
+```
+service_nested: 82
+service_static: 23
+utils: 68
+TOTAL: 196
+```
+
+- **Time**: 2026-02-02
+- **Action**: Deleted remaining unused service methods with 0 daemon/CLI usage
+- **Deleted** (5 service_nested):
+  1. `svc.structure.get_atoms` - 0 daemon/CLI usage, Jupyter-only (callers can use pymatgen directly)
+  2. `svc.calculation.get_effective_params` - 0 daemon/CLI usage (callers can access step.parameters directly)
+  3. `svc.engine.get_info` - 0 daemon/CLI usage (callers can use DriverRegistry directly)
+  4. `svc.engine.list_step_types` - 0 daemon/CLI usage (callers can use workflow.registry directly)
+  5. `svc.engine.validate_installation` - 0 daemon/CLI usage (callers can use DriverRegistry directly)
+- **Migration**:
+  - Added comments in service.py noting removed methods
+  - Removed corresponding tests from tests/api/test_engine_capabilities.py
+- **Tests**: 3002 passed, 18 skipped ✅
+
+**AUDIT AFTER**:
+```
+service_nested: 77
+service_static: 23
+utils: 68
+TOTAL: 191
+```
+
+**Delta**: 196 → 191 (-5 entrypoints)
+- service_nested: 82 → 77 (-5)
 
 ---
 
