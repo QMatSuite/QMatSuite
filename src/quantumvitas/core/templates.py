@@ -376,8 +376,11 @@ def _copy_calculation_from_path(
                 # If parsing fails, use cleaned dict directly
                 step_dict = step_data
             
-            with open(steps_dest_dir / step_file.name, "w") as f:
-                yaml.safe_dump(step_dict, f, default_flow_style=False, sort_keys=False)
+            from quantumvitas.core.yamldoc import StepDoc
+            from quantumvitas.core.yaml_io import save_yaml_doc
+
+            step_doc = StepDoc(step_dict)
+            save_yaml_doc(step_doc, steps_dest_dir / step_file.name, skip_journal=True)
     
     # Copy raw input files if they exist
     raw_src_dir = source_path / "raw"
@@ -396,9 +399,12 @@ def _copy_calculation_from_path(
             calculation_data["engine_family"] = "qe"
     
     # Write calculation.yaml
+    from quantumvitas.core.yamldoc import CalcDoc
+    from quantumvitas.core.yaml_io import save_yaml_doc
+
     calculation_dest = dest_dir / "calculation.yaml"
-    with open(calculation_dest, "w") as f:
-        yaml.safe_dump(calculation_data, f, default_flow_style=False, sort_keys=False)
+    calc_doc = CalcDoc(calculation_data)
+    save_yaml_doc(calc_doc, calculation_dest, skip_journal=True)
     
     return calculation_dest, structures_needed, new_id
 

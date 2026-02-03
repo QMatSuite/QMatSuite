@@ -66,8 +66,11 @@ def configure_species_map(
         raise ValueError(f"calculation.yaml not found at {calculation_yaml_path}")
     
     # Load existing calculation.yaml
-    calculation_data = yaml.safe_load(calculation_yaml_path.read_text()) or {}
-    existing_species_map = calculation_data.get("species_map", {})
+    from quantumvitas.core.yamldoc import CalcDoc
+    from quantumvitas.core.yaml_io import save_yaml_doc
+
+    doc = CalcDoc.load(calculation_yaml_path)
+    existing_species_map = doc.export_copy(["species_map"]) if doc.has(["species_map"]) else {}
     
     if merge:
         merged_species_map = dict(existing_species_map)
@@ -118,8 +121,9 @@ def configure_species_map(
             merged_species_map[element]["pseudopot"] = pseudopot
     
     # Write back to calculation.yaml
-    calculation_data["species_map"] = merged_species_map
-    calculation_yaml_path.write_text(yaml.safe_dump(calculation_data, sort_keys=False))
+    doc.delete(["species_map"])
+    doc.apply_patch({"species_map": merged_species_map})
+    save_yaml_doc(doc, calculation_yaml_path)
     
     return merged_species_map
 

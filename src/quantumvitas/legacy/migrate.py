@@ -228,7 +228,7 @@ def migrate_legacy_project(project_root: Path) -> None:
                         step_type_spec=step_type or "scf",
                     )
                     
-                    step_file_path.write_text(yaml.safe_dump(minimal_spec.to_dict(), sort_keys=False))
+                    step_file_path.write_text(yaml.safe_dump(minimal_spec.to_dict(), sort_keys=False))  # EXC-003: legacy deletion scheduled 2026-05-01
                     print(f"    Step {i+1}: Created step file with ULID {step_ulid_ulid}")
             
             # Update step entry
@@ -241,7 +241,7 @@ def migrate_legacy_project(project_root: Path) -> None:
         wf_data.pop("structure_name", None)
         
         # Write migrated calculation.yaml
-        calculation_yaml.write_text(yaml.safe_dump(wf_data, sort_keys=False))
+        calculation_yaml.write_text(yaml.safe_dump(wf_data, sort_keys=False))  # EXC-003: legacy deletion scheduled 2026-05-01
         print(f"    Saved migrated calculation.yaml")
     
     # Step 5: Save migrated project config
