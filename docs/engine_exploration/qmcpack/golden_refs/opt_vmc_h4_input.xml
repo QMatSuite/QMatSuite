@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<simulation>
+<project id="H4_opt_vmc" series="0"/>
+  <include href="H4.ptcl.xml"/>
+  <include href="H4.wfs.xml"/>
+
+  <hamiltonian name="h0" type="generic" target="e">
+    <pairpot name="ElecElec" type="coulomb" source="e" target="e" physical="true"/>
+    <pairpot name="IonElec" type="coulomb" source="ion0" target="e"/>
+    <pairpot name="IonIon" type="coulomb" source="ion0" target="ion0"/>
+  </hamiltonian>
+
+  <!-- Step 0: Wavefunction optimization (3 iterations) -->
+  <loop max="3">
+  <qmc method="linear" move="pbyp" checkpoint="-1">
+   <parameter name="blocks">100</parameter>
+   <parameter name="steps">50</parameter>
+   <parameter name="samples">5000</parameter>
+   <parameter name="warmupsteps">100</parameter>
+   <parameter name="timestep">0.05</parameter>
+   <estimator name="LocalEnergy" hdf5="no"/>
+   <parameter name="Minmethod">adaptive</parameter>
+   <parameter name="max_relative_cost_change">10.0</parameter>
+   <parameter name="max_param_change">3</parameter>
+   <parameter name="shift_i">0.01</parameter>
+   <parameter name="shift_s">1.00</parameter>
+  </qmc>
+  </loop>
+
+  <!-- Step 1: VMC production with optimized wavefunction -->
+  <qmc method="vmc" move="pbyp" checkpoint="-1">
+    <parameter name="blocks">200</parameter>
+    <parameter name="steps">100</parameter>
+    <parameter name="warmupsteps">100</parameter>
+    <parameter name="timestep">0.05</parameter>
+    <parameter name="useDrift">yes</parameter>
+    <estimator name="LocalEnergy" hdf5="no"/>
+  </qmc>
+
+</simulation>

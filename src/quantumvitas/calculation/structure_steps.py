@@ -797,14 +797,16 @@ def materialize_step_spec(
     is_orca_step = False
     is_lammps_step = False
     is_cp2k_step = False
-    
+    is_qmcpack_step = False
+
     if DriverRegistry.is_step_type_registered(step_type_lower):
         engine = DriverRegistry.get_engine_for_step_type(step_type_lower)
         is_pyscf_step = engine == "pyscf"
         is_orca_step = engine == "orca"
         is_lammps_step = engine == "lammps"
         is_cp2k_step = engine == "cp2k"
-    
+        is_qmcpack_step = engine == "qmcpack"
+
     # Also check calculation engine family as fallback
     if calculation_engine_family:
         if calculation_engine_family == "pyscf":
@@ -815,6 +817,8 @@ def materialize_step_spec(
             is_lammps_step = True
         elif calculation_engine_family == "cp2k":
             is_cp2k_step = True
+        elif calculation_engine_family == "qmcpack":
+            is_qmcpack_step = True
 
     import logging
     logger = logging.getLogger(__name__)
@@ -1161,6 +1165,25 @@ def materialize_step_spec(
         generated_input.parent.mkdir(parents=True, exist_ok=True)
         # Create empty file if needed (Step model may require file to exist)
         generated_input.touch(exist_ok=True)
+        return generated_input, spec_obj
+
+    # QMCPACK steps - no QE input file generation (QMCPACK engine builds XML dynamically)
+    if is_qmcpack_step:
+        logger.info(
+            f"[MATERIALIZE_STEP_SPEC] QMCPACK step detected: step_type_spec={step_type_lower}, "
+            f"engine_family={calculation_engine_family}, skipping QE input generation. "
+            f"QMCPACK engine will build input dynamically from structure + parameters."
+        )
+        from quantumvitas.calculation.naming import CalculationFileNaming
+        if input_name:
+            filename = input_name
+        else:
+            ext = CalculationFileNaming.input_extension(step_type_lower)
+            filename = f"{step_type_lower}{ext}"
+
+        generated_input = Path(output_dir) / filename
+        generated_input = generated_input.resolve()
+        generated_input.parent.mkdir(parents=True, exist_ok=True)
         return generated_input, spec_obj
 
     # QE PATH: Standard QE input generation (existing logic)

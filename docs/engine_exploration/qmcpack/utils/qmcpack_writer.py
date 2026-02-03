@@ -1,6 +1,8 @@
-"""QMCPACK input writer.
+"""QMCPACK input writer — temporary utility for exploration.
 
 Generates QMCPACK XML input files from structured parameters.
+This is a standalone utility for testing; will be deleted after
+integration into src/quantumvitas/drivers/qmcpack/.
 """
 
 from __future__ import annotations
@@ -42,7 +44,8 @@ class QMCPACKWavefunction:
     num_up: int = 0
     num_down: int = 0
     num_orbitals: int = 0
-    j1_coeffs: Optional[dict[str, list[float]]] = None
+    # Jastrow parameters (optional, pre-optimized)
+    j1_coeffs: Optional[dict[str, list[float]]] = None  # element -> coeffs
     j2_uu_coeffs: Optional[list[float]] = None
     j2_ud_coeffs: Optional[list[float]] = None
 
@@ -50,7 +53,6 @@ class QMCPACKWavefunction:
 @dataclass
 class QMCPACKVMCParams:
     """VMC calculation parameters."""
-    walkers: int = 1
     blocks: int = 200
     steps: int = 10
     substeps: int = 2
@@ -111,6 +113,7 @@ def write_vmc_input(
     tree = ET.ElementTree(root)
     ET.indent(tree, space="   ")
     tree.write(output_path, xml_declaration=True, encoding="unicode")
+    # Add newline at end
     with open(output_path, "a") as f:
         f.write("\n")
     return output_path
@@ -145,48 +148,12 @@ def write_vmc_dmc_input(
     return output_path
 
 
-def write_wfopt_input(
-    output_path: Path,
-    project_id: str,
-    cell: QMCPACKCell,
-    species: list[QMCPACKSpecies],
-    wavefunction: QMCPACKWavefunction,
-    opt_params: QMCPACKOptParams,
-    vmc_params: Optional[QMCPACKVMCParams] = None,
-) -> Path:
-    """Write a QMCPACK wavefunction optimization input XML file.
-
-    Optionally followed by a VMC production run.
-    """
-    root = ET.Element("simulation")
-    _add_project(root, project_id)
-    qmcsystem = ET.SubElement(root, "qmcsystem")
-    _add_simulationcell(qmcsystem, cell)
-    _add_electron_particleset(qmcsystem, wavefunction.num_up, wavefunction.num_down)
-    _add_ion_particleset(qmcsystem, species)
-    _add_wavefunction(qmcsystem, wavefunction, species)
-    _add_hamiltonian(qmcsystem, species)
-    _add_opt_section(root, opt_params)
-
-    if vmc_params is not None:
-        _add_vmc_section(root, vmc_params)
-
-    tree = ET.ElementTree(root)
-    ET.indent(tree, space="   ")
-    tree.write(output_path, xml_declaration=True, encoding="unicode")
-    with open(output_path, "a") as f:
-        f.write("\n")
-    return output_path
-
-
 # ─────────────────────────────────────────────────────────────────────
 # Internal helpers
 # ─────────────────────────────────────────────────────────────────────
 
-def _add_project(root: ET.Element, project_id: str, series: int = 0, driver_version: str = "legacy"):
+def _add_project(root: ET.Element, project_id: str, series: int = 0):
     proj = ET.SubElement(root, "project", id=project_id, series=str(series))
-    if driver_version:
-        ET.SubElement(proj, "parameter", name="driver_version").text = driver_version
 
 
 def _add_simulationcell(parent: ET.Element, cell: QMCPACKCell):
@@ -236,6 +203,7 @@ def _add_wavefunction(
     species: list[QMCPACKSpecies],
 ):
     wfn = ET.SubElement(parent, "wavefunction", name="psi0", target="e")
+    # SPO collection from HDF5
     spo_coll = ET.SubElement(wfn, "sposet_collection",
                               type="bspline", href=wf.href,
                               tilematrix=wf.tilematrix,
@@ -245,11 +213,13 @@ def _add_wavefunction(
                               precision=wf.precision)
     ET.SubElement(spo_coll, "sposet", type="bspline", name="spo_ud",
                   size=str(wf.num_orbitals), spindataset="0")
+    # Determinant set
     detset = ET.SubElement(wfn, "determinantset")
     slater = ET.SubElement(detset, "slaterdeterminant")
     ET.SubElement(slater, "determinant", sposet="spo_ud")
     ET.SubElement(slater, "determinant", sposet="spo_ud")
 
+    # Jastrow factors
     if wf.j1_coeffs:
         j1 = ET.SubElement(wfn, "jastrow", type="One-Body", name="J1",
                            function="bspline", source="ion0", **{"print": "yes"})
@@ -278,6 +248,7 @@ def _add_hamiltonian(parent: ET.Element, species: list[QMCPACKSpecies]):
     ET.SubElement(ham, "pairpot", type="coulomb", name="ElecElec", source="e", target="e")
     ET.SubElement(ham, "pairpot", type="coulomb", name="IonIon", source="ion0", target="ion0")
 
+    # Check if any species have pseudopotentials
     has_pseudo = any(sp.pseudo_file for sp in species)
     if has_pseudo:
         pp = ET.SubElement(ham, "pairpot", type="pseudo", name="PseudoPot",
@@ -292,7 +263,6 @@ def _add_vmc_section(root: ET.Element, params: QMCPACKVMCParams):
     if params.checkpoint != 0:
         qmc.set("checkpoint", str(params.checkpoint))
     ET.SubElement(qmc, "estimator", name="LocalEnergy", hdf5="no")
-    ET.SubElement(qmc, "parameter", name="walkers").text = str(params.walkers)
     ET.SubElement(qmc, "parameter", name="blocks").text = str(params.blocks)
     ET.SubElement(qmc, "parameter", name="steps").text = str(params.steps)
     ET.SubElement(qmc, "parameter", name="substeps").text = str(params.substeps)
@@ -314,17 +284,78 @@ def _add_dmc_section(root: ET.Element, params: QMCPACKDMCParams):
     ET.SubElement(qmc, "parameter", name="reconfiguration").text = params.reconfiguration
 
 
-def _add_opt_section(root: ET.Element, params: QMCPACKOptParams):
-    loop = ET.SubElement(root, "loop", max=str(params.num_loops))
-    qmc = ET.SubElement(loop, "qmc", method="linear", move="pbyp", checkpoint="-1")
-    ET.SubElement(qmc, "estimator", name="LocalEnergy", hdf5="no")
-    ET.SubElement(qmc, "parameter", name="blocks").text = str(params.blocks)
-    ET.SubElement(qmc, "parameter", name="steps").text = str(params.steps)
-    ET.SubElement(qmc, "parameter", name="samples").text = str(params.samples)
-    ET.SubElement(qmc, "parameter", name="warmupsteps").text = str(params.warmupsteps)
-    ET.SubElement(qmc, "parameter", name="timestep").text = str(params.timestep)
-    ET.SubElement(qmc, "parameter", name="Minmethod").text = params.minmethod
-    ET.SubElement(qmc, "parameter", name="max_relative_cost_change").text = str(params.max_relative_cost_change)
-    ET.SubElement(qmc, "parameter", name="max_param_change").text = str(params.max_param_change)
-    ET.SubElement(qmc, "parameter", name="shift_i").text = str(params.shift_i)
-    ET.SubElement(qmc, "parameter", name="shift_s").text = str(params.shift_s)
+# ─────────────────────────────────────────────────────────────────────
+# Self-test
+# ─────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import tempfile
+
+    print("=" * 60)
+    print("QMCPACK Writer Self-Test")
+    print("=" * 60)
+
+    # Diamond C cell
+    cell = QMCPACKCell(
+        lattice=[
+            [3.37316115, 3.37316115, 0.0],
+            [0.0, 3.37316115, 3.37316115],
+            [3.37316115, 0.0, 3.37316115],
+        ],
+        bconds="p p p",
+    )
+
+    carbon = QMCPACKSpecies(
+        symbol="C",
+        charge=4,
+        valence=4,
+        atomic_number=6,
+        mass=21894.7135906,
+        positions=[
+            [0.0, 0.0, 0.0],
+            [1.68658058, 1.68658058, 1.68658058],
+        ],
+        pseudo_file="C.BFD.xml",
+    )
+
+    wf = QMCPACKWavefunction(
+        href="pwscf.pwscf.h5",
+        num_up=4,
+        num_down=4,
+        num_orbitals=4,
+        j1_coeffs={"C": [-0.2032, -0.1626, -0.1431, -0.1216, -0.0992, -0.0711, -0.0445, -0.0214]},
+        j2_uu_coeffs=[0.2798, 0.2173, 0.1656, 0.1217, 0.0840, 0.0530, 0.0292, 0.0122],
+        j2_ud_coeffs=[0.4631, 0.3564, 0.2588, 0.1829, 0.1234, 0.0771, 0.0415, 0.0169],
+    )
+
+    vmc = QMCPACKVMCParams(blocks=200, steps=10, timestep=0.3)
+    dmc = QMCPACKDMCParams(targetwalkers=64, blocks=100, timestep=0.005)
+
+    # Test VMC input
+    with tempfile.NamedTemporaryFile(suffix=".xml", delete=False, mode="w") as f:
+        vmc_path = Path(f.name)
+    write_vmc_input(vmc_path, "test_vmc", cell, [carbon], wf, vmc)
+    content = vmc_path.read_text()
+    assert "<simulation>" in content
+    assert 'method="vmc"' in content
+    assert "C.BFD.xml" in content
+    assert "pwscf.pwscf.h5" in content
+    print(f"\n--- VMC input ({len(content)} chars) ---")
+    print(content[:500] + "...\n")
+    print("  VMC input: PASSED")
+    vmc_path.unlink()
+
+    # Test VMC+DMC input
+    with tempfile.NamedTemporaryFile(suffix=".xml", delete=False, mode="w") as f:
+        vmc_dmc_path = Path(f.name)
+    write_vmc_dmc_input(vmc_dmc_path, "test_vmc_dmc", cell, [carbon], wf, vmc, dmc)
+    content = vmc_dmc_path.read_text()
+    assert 'method="vmc"' in content
+    assert 'method="dmc"' in content
+    print(f"--- VMC+DMC input ({len(content)} chars) ---")
+    print("  VMC+DMC input: PASSED")
+    vmc_dmc_path.unlink()
+
+    print("\n" + "=" * 60)
+    print("All writer tests PASSED")
+    print("=" * 60)

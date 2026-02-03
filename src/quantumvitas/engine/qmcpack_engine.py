@@ -62,11 +62,14 @@ class QmcpackEngine(Engine):
         params = getattr(step, "parameters", None) or {}
         step_type_spec = getattr(step, "step_type_spec", None) or ""
 
+        # Build case-insensitive lookup (StepDoc may uppercase keys like "cell" -> "CELL")
+        params_lower = {k.lower(): v for k, v in params.items()}
+
         # Extract QMC-specific parameters
-        cell_params = params.get("cell", {})
-        species_params = params.get("species", [])
-        wf_params = params.get("wavefunction", {})
-        project_id = params.get("project_id", "qmc")
+        cell_params = params_lower.get("cell", {})
+        species_params = params_lower.get("species", [])
+        wf_params = params_lower.get("wavefunction", {})
+        project_id = params_lower.get("project_id", "qmc")
 
         # Build cell
         cell = QMCPACKCell(
@@ -103,14 +106,15 @@ class QmcpackEngine(Engine):
             j2_ud_coeffs=wf_params.get("j2_ud_coeffs"),
         )
 
-        # Stage supporting files (h5, pseudo)
-        self._stage_supporting_files(params, working_dir, calculation)
+        # Stage supporting files (h5, pseudo) — use lowered keys
+        self._stage_supporting_files(params_lower, working_dir, calculation)
 
         output_path = working_dir / "qmc_input.xml"
 
         if step_type_spec == "qmcpack_vmc":
-            vmc_p = params.get("vmc", {})
+            vmc_p = params_lower.get("vmc", {})
             vmc_params = QMCPACKVMCParams(
+                walkers=vmc_p.get("walkers", 1),
                 blocks=vmc_p.get("blocks", 200),
                 steps=vmc_p.get("steps", 10),
                 substeps=vmc_p.get("substeps", 2),
@@ -120,15 +124,16 @@ class QmcpackEngine(Engine):
             write_vmc_input(output_path, project_id, cell, species, wavefunction, vmc_params)
 
         elif step_type_spec == "qmcpack_dmc":
-            vmc_p = params.get("vmc", {})
+            vmc_p = params_lower.get("vmc", {})
             vmc_params = QMCPACKVMCParams(
+                walkers=vmc_p.get("walkers", 1),
                 blocks=vmc_p.get("blocks", 50),
                 steps=vmc_p.get("steps", 10),
                 substeps=vmc_p.get("substeps", 2),
                 timestep=vmc_p.get("timestep", 0.3),
                 warmupsteps=vmc_p.get("warmupsteps", 50),
             )
-            dmc_p = params.get("dmc", {})
+            dmc_p = params_lower.get("dmc", {})
             dmc_params = QMCPACKDMCParams(
                 targetwalkers=dmc_p.get("targetwalkers", 256),
                 blocks=dmc_p.get("blocks", 100),
@@ -140,7 +145,7 @@ class QmcpackEngine(Engine):
             write_vmc_dmc_input(output_path, project_id, cell, species, wavefunction, vmc_params, dmc_params)
 
         elif step_type_spec == "qmcpack_wfopt":
-            opt_p = params.get("optimization", {})
+            opt_p = params_lower.get("optimization", {})
             opt_params = QMCPACKOptParams(
                 blocks=opt_p.get("blocks", 100),
                 steps=opt_p.get("steps", 50),
@@ -152,8 +157,8 @@ class QmcpackEngine(Engine):
             )
             # Optional post-opt VMC production
             vmc_params = None
-            if "vmc" in params:
-                vmc_p = params["vmc"]
+            if "vmc" in params_lower:
+                vmc_p = params_lower["vmc"]
                 vmc_params = QMCPACKVMCParams(
                     blocks=vmc_p.get("blocks", 200),
                     steps=vmc_p.get("steps", 10),
