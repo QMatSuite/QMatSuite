@@ -72,6 +72,7 @@ pip install --upgrade pip
   pip install --prefer-binary pyscf
   pip install pyberny  (this is dependency of pyscf)
   pip install gpaw
+  conda install -c conda-forge psi4
   
   pip install -r requirements.txt
   pip install pytest-cov

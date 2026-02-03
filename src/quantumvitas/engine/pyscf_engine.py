@@ -156,47 +156,302 @@ class PySCFEngine(Engine):
         # Future: check for managed bundle first
         return [sys.executable, "-m", "quantumvitas.engines.pyscf"]
     
-    def run_step(self, step, working_dir: Path) -> StepResult:
+    def run_step(self, step_or_input, working_dir: Path | None = None) -> StepResult:
         """
         Run a PySCF calculation step via subprocess.
-        
-        Phase 3C: Single-step execution is now a chain of length 1.
-        All PySCF execution goes through chain execution for consistency.
-        
-        Args:
-            step: Step object with parameters attribute
-            working_dir: Working directory for output files (base directory)
-            
-        Returns:
-            StepResult with calculation results
+
+        Accepts either an ``EngineInput`` (preferred) or the legacy
+        ``(step, working_dir)`` pair.
         """
-        # Phase 3C: Unify execution path - single step is now a chain of length 1
-        # Extract structure_ulid and project_root from step.options (set by CalculationRunner)
+        from quantumvitas.engine.engine_input import EngineInput
+
+        if isinstance(step_or_input, EngineInput):
+            return self._run_with_engine_input(step_or_input)
+
+        # Legacy path
+        return self._run_legacy(step_or_input, working_dir)
+
+    def _run_legacy(self, step, working_dir: Path | None) -> StepResult:
+        """Legacy run_step path: extract info from step object."""
         structure_ulid = None
         resolved_project_root = None
-        
+
         if hasattr(step, 'options'):
             structure_ulid = step.options.get('structure_ulid')
             project_root_str = step.options.get('project_root')
             if project_root_str:
                 resolved_project_root = Path(project_root_str)
-        
-        # Phase 3C: Single-step execution becomes chain of length 1
-        # working_dir is the base directory (e.g., calculation.raw_dir)
-        # run_step_with_chain will create step_artifacts_dir inside it
+
         working_dir = Path(working_dir)
         working_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Phase 3C: Single-step execution becomes chain of length 1
-        # Call run_step_with_chain with a single-step chain
-        # calculation_raw_dir should be the base directory (working_dir), not step_artifacts_dir
-        # run_step_with_chain will create step_artifacts_dir inside calculation_raw_dir
+
         return self.run_step_with_chain(
             target_step=step,
-            chain_steps=[step],  # Chain of length 1
+            chain_steps=[step],
             calculation_raw_dir=working_dir,
             structure_ulid=structure_ulid,
             project_root=resolved_project_root,
+        )
+
+    def _run_with_engine_input(self, ei: "EngineInput") -> StepResult:
+        """Run PySCF via EngineInput — no SSOT reads needed."""
+        start_time = time.time()
+        calculation_raw_dir = ei.working_dir
+        calculation_raw_dir.mkdir(parents=True, exist_ok=True)
+
+        # Platform check
+        if sys.platform == "win32":
+            return StepResult(
+                step_type_spec=ei.step_type_spec,
+                input_file=calculation_raw_dir / "job_chain.json",
+                success=False,
+                error="PySCF native Windows is not supported. Use WSL or Docker.",
+                execution_time=time.time() - start_time,
+            )
+
+        # Availability check
+        probe_result = self.probe()
+        if not probe_result.get("available"):
+            return StepResult(
+                step_type_spec=ei.step_type_spec,
+                input_file=calculation_raw_dir / "job_chain.json",
+                success=False,
+                error=probe_result.get("reason", "PySCF not available"),
+                execution_time=time.time() - start_time,
+            )
+
+        target_step_type = ei.step_type_spec
+        target_step_type_gen = ei.step_type_gen
+
+        # Validate in registry
+        from quantumvitas.workflow.registry import get_registry
+        registry = get_registry()
+        if not registry.has(target_step_type_gen):
+            return StepResult(
+                step_type_spec=target_step_type,
+                input_file=calculation_raw_dir / "job_chain.json",
+                success=False,
+                error=f"Step type '{target_step_type}' (gen: '{target_step_type_gen}') not found in registry.",
+                execution_time=time.time() - start_time,
+            )
+
+        # Structure validation
+        if not ei.structure_ulid:
+            return StepResult(
+                step_type_spec=target_step_type,
+                input_file=calculation_raw_dir / "job_chain.json",
+                success=False,
+                error="Structure ID is required for PySCF chain execution, but structure_ulid is None",
+                execution_time=time.time() - start_time,
+            )
+        if not ei.project_root:
+            return StepResult(
+                step_type_spec=target_step_type,
+                input_file=calculation_raw_dir / "job_chain.json",
+                success=False,
+                error="Project root is required for structure resolution, but project_root is None",
+                execution_time=time.time() - start_time,
+            )
+
+        # Resolve structure
+        structure_data = None
+        try:
+            from quantumvitas.core.public import require_structure
+            from quantumvitas.io.structure_io import read_structure
+            from pymatgen.core import Molecule as PMGMolecule
+
+            structure_resolved = require_structure(ei.project_root, ei.structure_ulid)
+            structure_path = structure_resolved.absolute_path
+            structure = read_structure(structure_path)
+
+            if not isinstance(structure, PMGMolecule):
+                return StepResult(
+                    step_type_spec=target_step_type,
+                    input_file=calculation_raw_dir / "job_chain.json",
+                    success=False,
+                    error=f"Expected Molecule for PySCF, got {type(structure)}",
+                    execution_time=time.time() - start_time,
+                )
+            if len(structure) == 0:
+                return StepResult(
+                    step_type_spec=target_step_type,
+                    input_file=calculation_raw_dir / "job_chain.json",
+                    success=False,
+                    error=f"Structure has no atoms (structure_ulid={ei.structure_ulid})",
+                    execution_time=time.time() - start_time,
+                )
+
+            structure_path_abs = Path(structure_path).resolve()
+            structure_data = {
+                "structure_path": str(structure_path_abs),
+                "charge": structure.charge,
+                "spin": structure.spin_multiplicity - 1,
+                "unit": "Angstrom",
+            }
+            if not structure_path_abs.exists():
+                return StepResult(
+                    step_type_spec=target_step_type,
+                    input_file=calculation_raw_dir / "job_chain.json",
+                    success=False,
+                    error=f"Structure file does not exist: {structure_path_abs}",
+                    execution_time=time.time() - start_time,
+                )
+        except Exception as e:
+            import traceback
+            return StepResult(
+                step_type_spec=target_step_type,
+                input_file=calculation_raw_dir / "job_chain.json",
+                success=False,
+                error=f"Failed to load structure: {e}\n{traceback.format_exc()}",
+                execution_time=time.time() - start_time,
+            )
+
+        # Build chain from EngineInput.chain (pre-resolved, no yaml reads)
+        chain_step_specs = []
+        chain_entries = ei.chain or []
+        # If no chain provided, build a single-step chain from the EngineInput itself
+        if not chain_entries:
+            from quantumvitas.engine.engine_input import ChainStepEntry
+            chain_entries = [ChainStepEntry(
+                step_ulid=ei.step_ulid,
+                step_type_spec=ei.step_type_spec,
+                step_type_gen=ei.step_type_gen,
+                parameters=ei.parameters,
+                requires_structure=True,  # conservative default
+                step_artifacts_dir=calculation_raw_dir / "step_artifacts" / ei.step_ulid,
+            )]
+
+        for entry in chain_entries:
+            params = entry.parameters.copy()
+
+            # Merge structure data for steps that require it
+            if entry.requires_structure and structure_data:
+                params = {**params, **structure_data}
+            elif not entry.requires_structure:
+                params = {k: v for k, v in params.items()
+                          if k not in ("atoms", "structure_path", "charge", "spin", "unit", "structure")}
+
+            step_artifacts_dir = entry.step_artifacts_dir
+            is_target = (entry.step_ulid == ei.step_ulid)
+
+            # Validation
+            if entry.requires_structure:
+                if "structure_path" not in params:
+                    return StepResult(
+                        step_type_spec=entry.step_type_spec,
+                        input_file=calculation_raw_dir / "job_chain.json",
+                        success=False,
+                        error=f"SCF step ({entry.step_ulid}) requires structure_path but it's missing",
+                        execution_time=time.time() - start_time,
+                    )
+            else:
+                structure_keys = {"atoms", "structure_path", "structure", "charge", "spin", "unit"}
+                found = structure_keys.intersection(params.keys())
+                if found:
+                    return StepResult(
+                        step_type_spec=entry.step_type_spec,
+                        input_file=calculation_raw_dir / "job_chain.json",
+                        success=False,
+                        error=f"Step {entry.step_ulid} ({entry.step_type_spec}) must not receive structure data, found: {found}",
+                        execution_time=time.time() - start_time,
+                    )
+
+            chain_step_specs.append({
+                "step_ulid": entry.step_ulid,
+                "step_type_spec": entry.step_type_spec,
+                "parameters": params,
+                "step_artifacts_dir": str(step_artifacts_dir),
+                "allow_chkfile_init_guess": not is_target,
+            })
+
+        # Build and write job chain spec
+        job_chain_spec = {
+            "base_working_dir": str(calculation_raw_dir),
+            "chain_steps": chain_step_specs,
+            "target_step_ulid": ei.step_ulid,
+            "resources": {},
+        }
+
+        job_chain_file = calculation_raw_dir / "job_chain.json"
+        try:
+            job_chain_file.write_text(json.dumps(job_chain_spec, indent=2))
+        except Exception as e:
+            return StepResult(
+                step_type_spec=target_step_type,
+                input_file=job_chain_file,
+                success=False,
+                error=f"Failed to write job chain file: {e}",
+                execution_time=time.time() - start_time,
+            )
+
+        # Run subprocess
+        cmd = self._get_runner_command() + [str(job_chain_file)]
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                cwd=calculation_raw_dir,
+                timeout=ei.parameters.get("timeout"),
+            )
+            stdout = result.stdout
+            stderr = result.stderr
+            return_code = result.returncode
+        except subprocess.TimeoutExpired as e:
+            return StepResult(
+                step_type_spec=target_step_type,
+                input_file=job_chain_file,
+                success=False,
+                return_code=None,
+                stdout=e.stdout.decode() if e.stdout else "",
+                stderr=e.stderr.decode() if e.stderr else "",
+                error="Chain execution timed out",
+                execution_time=time.time() - start_time,
+            )
+        except Exception as e:
+            return StepResult(
+                step_type_spec=target_step_type,
+                input_file=job_chain_file,
+                success=False,
+                error=f"Subprocess execution failed: {e}",
+                execution_time=time.time() - start_time,
+            )
+
+        # Parse results
+        target_artifacts_dir = calculation_raw_dir / "step_artifacts" / ei.step_ulid
+        results_file = target_artifacts_dir / "results.json"
+        parsed_output: Optional[Dict[str, Any]] = None
+        success = False
+        error = None
+
+        if results_file.exists():
+            try:
+                parsed_output = json.loads(results_file.read_text())
+                success = parsed_output.get("success", False)
+                error = parsed_output.get("error")
+            except Exception as e:
+                error = f"Failed to parse results.json: {e}"
+        else:
+            try:
+                parsed_output = json.loads(stdout)
+                success = parsed_output.get("success", False)
+                error = parsed_output.get("error")
+            except Exception:
+                error = stderr or stdout or f"Runner exited with code {return_code}"
+
+        output_file = results_file if results_file.exists() else job_chain_file
+
+        return StepResult(
+            step_type_spec=target_step_type,
+            input_file=job_chain_file,
+            output_file=output_file,
+            success=success,
+            return_code=return_code,
+            stdout=stdout,
+            stderr=stderr,
+            error=error,
+            execution_time=time.time() - start_time,
+            parsed_output=parsed_output,
         )
     
     # =========================================================================
@@ -365,7 +620,7 @@ class PySCFEngine(Engine):
             step_yaml_path = project_root / target_step.meta.path
             if step_yaml_path.exists():
                 import yaml
-                step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
+                step_data = yaml.safe_load(step_yaml_path.read_text()) or {}  # K4-ALLOW: replaced by EngineInput in PR-K4
                 target_step_type = step_data.get("step_type_spec")
         
         # HARD ERROR if step_type not found
@@ -414,7 +669,7 @@ class PySCFEngine(Engine):
         
         structure_data = None
         try:
-            from quantumvitas.core.resolution import require_structure
+            from quantumvitas.core.public import require_structure
             from quantumvitas.io.structure_io import read_structure
             from pymatgen.core import Molecule as PMGMolecule
             
@@ -492,7 +747,7 @@ class PySCFEngine(Engine):
                 step_yaml_path = project_root / step.meta.path
                 if step_yaml_path.exists():
                     import yaml
-                    step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
+                    step_data = yaml.safe_load(step_yaml_path.read_text()) or {}  # K4-ALLOW: replaced by EngineInput in PR-K4
                     step_type_spec = step_data.get("step_type_spec") or "unknown"
 
             # HARD ERROR if step_type_spec not found - no fallbacks allowed

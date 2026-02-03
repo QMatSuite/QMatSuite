@@ -136,7 +136,7 @@ def migrate_legacy_project(project_root: Path) -> None:
         
         # Load calculation YAML
         try:
-            wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
+            wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}  # EXC-003: legacy deletion scheduled 2026-05-01
         except Exception as e:
             print(f"    Error loading calculation.yaml: {e}")
             continue

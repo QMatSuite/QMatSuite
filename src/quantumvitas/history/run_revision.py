@@ -356,8 +356,8 @@ def _create_snapshot(
             calc_yaml = d / "calculation.yaml"
             if calc_yaml.exists():
                 try:
-                    import yaml
-                    data = yaml.safe_load(calc_yaml.read_text()) or {}
+                    from quantumvitas.core.yamldoc import CalcDoc
+                    data = CalcDoc.load(calc_yaml).to_dict()
                     meta_id = data.get("meta", {}).get("ulid", "")
                     if meta_id == calc_ulid:
                         calc_dir = d

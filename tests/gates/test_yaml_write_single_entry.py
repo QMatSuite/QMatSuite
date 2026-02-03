@@ -85,7 +85,8 @@ def _find_safe_dump_calls(file_path: Path) -> list[tuple[int, str]]:
     try:
         tree = ast.parse(content)
         for node in ast.walk(tree):
-            if isinstance(node, ast.Expr) and isinstance(node.value, (ast.Constant, ast.Str)):
+            _str_types = (ast.Constant,) + ((ast.Str,) if hasattr(ast, "Str") else ())
+            if isinstance(node, ast.Expr) and isinstance(node.value, _str_types):
                 # Mark all lines of this string literal as docstring
                 for ln in range(node.lineno, (node.end_lineno or node.lineno) + 1):
                     docstring_lines.add(ln)

@@ -16,7 +16,7 @@ from .results import CalculationResult, StepResultSummary
 from .types import StepMode, StepStatus
 from .verification import evaluate_step_result
 from quantumvitas.engine.registry import EngineRegistry
-from quantumvitas.core.provenance import update_provenance_after_step
+from quantumvitas.core.public import update_provenance_after_step
 
 logger = logging.getLogger(__name__)
 
@@ -270,7 +270,7 @@ class CalculationRunner:
                     compute_pseudo_set_sha,
                 )
                 from quantumvitas.io import read_structure
-                from quantumvitas.core.resolution import require_structure
+                from quantumvitas.core.public import require_structure
                 
                 # Compute pseudo_set_sha (should have been computed in preflight, but recompute here for reconciliation)
                 project_pseudo_dir = calculation.project.root / "pseudo"
@@ -310,7 +310,7 @@ class CalculationRunner:
             try:
                 from quantumvitas.calculation.manifest_reconcile import reconcile_manifest
                 from quantumvitas.calculation.hash_utils import compute_pseudo_set_sha
-                from quantumvitas.core.resolution import require_structure
+                from quantumvitas.core.public import require_structure
                 
                 project_pseudo_dir = calculation.project.root / "pseudo"
                 species_map = calculation.species_map or {}
@@ -373,9 +373,9 @@ class CalculationRunner:
                 compute_pseudo_set_sha,
                 compute_potential_assets_sha,
             )
-            from quantumvitas.core.yamldoc import StepDoc
-            from quantumvitas.core.resolution import require_step, require_structure
-            from quantumvitas.core.project_utils import load_project_config
+            from quantumvitas.core.public import StepDoc
+            from quantumvitas.core.public import require_step, require_structure
+            from quantumvitas.core.public import load_project_config
 
             # Compute pseudo_set_sha (or potential_assets_sha for LAMMPS)
             # Determine engine family to decide which SHA to compute

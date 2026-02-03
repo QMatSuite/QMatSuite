@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Any
 from dataclasses import dataclass
 
-from quantumvitas.core.engines.qe_calculation import StepResult
+from quantumvitas.core.public import StepResult
 from quantumvitas.core.engines.cp2k_resolver import (
     find_cp2k_executable,
     get_cp2k_version,
@@ -145,21 +145,28 @@ class Cp2kEngine(Engine):
 
     def run_step(
         self,
-        step,
-        working_dir: Path,
+        step_or_input,
+        working_dir: Path | None = None,
         calculation: Optional["Calculation"] = None,
     ) -> Cp2kStepResult:
-        """
-        Execute CP2K step.
+        """Execute CP2K step.
 
-        Args:
-            step: Step specification
-            working_dir: Working directory (must contain input.inp)
-            calculation: Calculation context
-
-        Returns:
-            Cp2kStepResult with execution status and artifact paths.
+        Accepts either an ``EngineInput`` or the legacy ``(step, working_dir)`` pair.
         """
+        from quantumvitas.engine.engine_input import EngineInput
+
+        if isinstance(step_or_input, EngineInput):
+            ei = step_or_input
+            working_dir = ei.working_dir
+            step_type_spec = ei.step_type_spec
+            params = ei.parameters
+        else:
+            step = step_or_input
+            if working_dir is None:
+                raise ValueError("working_dir is required for legacy step objects")
+            step_type_spec = getattr(step, "step_type_spec", None) or ""
+            params = getattr(step, "parameters", None) or {}
+
         # Build command
         input_file = "input.inp"
         output_file = "output.log"
@@ -170,10 +177,6 @@ class Cp2kEngine(Engine):
         data_dir = get_cp2k_data_dir()
         if data_dir:
             env["CP2K_DATA_DIR"] = str(data_dir)
-
-        # Get step type for timeout/threads
-        step_type_spec = getattr(step, "step_type_spec", None) or ""
-        params = getattr(step, "parameters", None) or {}
 
         # Execute CP2K
         try:

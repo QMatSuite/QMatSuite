@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from quantumvitas.core.resources import ResourceMeta
+from quantumvitas.core.public import ResourceMeta
 from quantumvitas.engine.base import Engine, StepResult
 from quantumvitas.project.model import StructureRef
 

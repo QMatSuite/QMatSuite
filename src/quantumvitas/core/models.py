@@ -16,8 +16,6 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import yaml
-
 from quantumvitas.core.resources import (
     ResourceMeta,
     ResourceKind,
@@ -425,8 +423,9 @@ def load_calculation(
     if not path.exists():
         raise FileNotFoundError(f"Calculation file not found: {path}")
     
-    data = yaml.safe_load(path.read_text()) or {}
-    
+    from quantumvitas.core.yaml_io import load_yaml_doc
+    data = load_yaml_doc(path).to_dict()
+
     # Default name and path
     calculation_dir = path.parent
     default_name = data.get("ulid") or calculation_dir.name
@@ -489,7 +488,8 @@ def save_calculation(model: CalculationModel, path: Path) -> None:
     # If calculation.yaml exists, check that identity fields haven't changed
     if path.exists():
         try:
-            existing_data = yaml.safe_load(path.read_text()) or {}
+            from quantumvitas.core.yaml_io import load_yaml_doc
+            existing_data = load_yaml_doc(path).to_dict()
         except Exception:
             # Best-effort: if we can't read existing file, allow save (will overwrite)
             # This handles cases where file is corrupted or permissions issue
@@ -757,8 +757,8 @@ class CalculationEntry:
                     calculation_yaml = calculation_dir / "calculation.yaml"
                     if calculation_yaml.exists():
                         try:
-                            import yaml
-                            wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
+                            from quantumvitas.core.yamldoc import CalcDoc
+                            wf_data = CalcDoc.load(calculation_yaml).to_dict()
                             wf_meta_dict = wf_data.get("meta", {})
                             if wf_meta_dict and wf_meta_dict.get("ulid") == calculation_id:
                                 # Found matching calculation - use its meta
@@ -789,8 +789,8 @@ class CalculationEntry:
         calculation_yaml = project_root / path / "calculation.yaml"
         if calculation_yaml.exists():
             try:
-                import yaml
-                wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
+                from quantumvitas.core.yamldoc import CalcDoc
+                wf_data = CalcDoc.load(calculation_yaml).to_dict()
                 wf_meta_dict = wf_data.get("meta", {})
                 if wf_meta_dict:
                     # Prefer name from entry (project.qv.yml) over calculation.yaml if entry has a human-readable name
@@ -934,7 +934,8 @@ def load_project(path: Path) -> ProjectModel:
     if not config_file.exists():
         raise FileNotFoundError(f"project.qv.yml not found: {config_file}")
     
-    data = yaml.safe_load(config_file.read_text()) or {}
+    from quantumvitas.core.yamldoc import ProjectDoc
+    data = ProjectDoc.load(config_file).to_dict()
     return ProjectModel.from_dict(data, project_root.resolve())
 
 

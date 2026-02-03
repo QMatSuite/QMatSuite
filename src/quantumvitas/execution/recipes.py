@@ -19,16 +19,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Protocol, runtime_checkable
 
 from quantumvitas.execution.job_graph import Job, JobGraph, compute_job_fingerprint
-from quantumvitas.workflow.registry import (
-    get_registry,
-    generate_subchain_basename,
-    get_chain_namespace_folder,
-)
-from quantumvitas.engine.qc_engine_base import SCF_ROOT_TYPES, RELAX_STEP_TYPES
-from quantumvitas.core.driver_registry import DriverRegistry
+from quantumvitas.workflow.public import get_registry, generate_subchain_basename, get_chain_namespace_folder
+from quantumvitas.engine.public import SCF_ROOT_TYPES, RELAX_STEP_TYPES
+from quantumvitas.core.public import DriverRegistry
 
 if TYPE_CHECKING:
-    from quantumvitas.calculation.step import Step
+    from quantumvitas.calculation.public import Step
 
 
 class TopologyError(Exception):
@@ -59,7 +55,7 @@ def verify_qc_topology(steps: List["Step"], registry) -> None:
             step_type_spec = getattr(step, 'step_type_spec', None)
             if step_type_spec:
                 # Convert SPEC to GEN for registry lookup
-                from quantumvitas.workflow.step_type_convert import gen_from
+                from quantumvitas.workflow.public import gen_from
                 step_type_gen = gen_from(step_type_spec)
             else:
                 continue  # No step type info, skip
@@ -88,7 +84,7 @@ def verify_qc_topology(steps: List["Step"], registry) -> None:
             if not ancestor_gen:
                 ancestor_spec = getattr(ancestor_step, 'step_type_spec', None)
                 if ancestor_spec:
-                    from quantumvitas.workflow.step_type_convert import gen_from
+                    from quantumvitas.workflow.public import gen_from
                     ancestor_gen = gen_from(ancestor_spec)
                 else:
                     continue

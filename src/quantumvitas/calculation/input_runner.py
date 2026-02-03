@@ -23,8 +23,7 @@ from quantumvitas.io import (
     QENamelist,
 )
 # Pseudopotential resolution is handled by ensure_qe_pseudos in quantumvitas.core.pseudo
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.qe_calculation import StepResult
+from quantumvitas.core.public import QuantumEspressoEngine, StepResult
 from quantumvitas.data import get_module_param_sections, load_qe_parameter_map
 
 
@@ -70,7 +69,7 @@ def detect_project_root(start: Optional[Path] = None, *, stop_at: Optional[Path]
     
     Use find_project_root() or require_project_root() from quantumvitas.core.project_utils instead.
     """
-    from quantumvitas.core.project_utils import find_project_root
+    from quantumvitas.core.public import find_project_root
     return find_project_root(start, stop_at=stop_at)
 
 
@@ -309,7 +308,7 @@ def prepare_input_step(
         )
     # Handle project_root: if None, try to detect from working_dir using marker-based detection
     # If provided, validate it is not repo root and use as-is
-    from quantumvitas.core.project_utils import find_project_root
+    from quantumvitas.core.public import find_project_root
     from quantumvitas.core.pseudo_config import _find_quantumvitas_root
     
     if project_root is None:
@@ -360,7 +359,7 @@ def prepare_input_step(
         project_pseudo_dir = working_dir / "pseudo"
     
     # Use central pseudopotential resolution
-    from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+    from quantumvitas.core.public import ensure_qe_pseudos, get_system_pseudo_dir
     
     pseudo_result = ensure_qe_pseudos(
         qe_input_file=input_file,

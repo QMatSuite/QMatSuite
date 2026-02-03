@@ -132,7 +132,7 @@ class ProjectSnapshot:
         project_data = {}
         if "project.qv.yml" in file_map:
             try:
-                project_data = yaml.safe_load(file_map["project.qv.yml"]) or {}
+                project_data = yaml.safe_load(file_map["project.qv.yml"]) or {}  # EXC-004: in-memory string from snapshot archive
             except Exception:
                 project_data = {}
         
@@ -159,14 +159,14 @@ class ProjectSnapshot:
         for file_path, content in file_map.items():
             if file_path.endswith("/calculation.yaml"):
                 try:
-                    calculation_data = yaml.safe_load(content) or {}
+                    calculation_data = yaml.safe_load(content) or {}  # EXC-004: in-memory string from snapshot archive
                     # Extract steps from step files
                     calculation_dir = file_path.rsplit("/", 1)[0]
                     steps_data = []
                     for step_path, step_content in file_map.items():
                         if step_path.startswith(calculation_dir + "/steps/") and step_path.endswith(".step.yaml"):
                             try:
-                                step_data = yaml.safe_load(step_content) or {}
+                                step_data = yaml.safe_load(step_content) or {}  # EXC-004: in-memory string from snapshot archive
                                 steps_data.append(step_data)
                             except Exception:
                                 pass

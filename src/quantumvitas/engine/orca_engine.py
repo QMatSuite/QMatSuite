@@ -172,36 +172,191 @@ class ORCAEngine(Engine):
         """Build ORCA command line."""
         return [str(self.orca_binary), str(input_file)]
 
-    def run_step(self, step, working_dir: Path) -> StepResult:
+    def run_step(self, step_or_input, working_dir: Path | None = None) -> StepResult:
+        """Execute a single ORCA step.
+
+        Accepts either an ``EngineInput`` (preferred) or the legacy
+        ``(step, working_dir)`` pair.
         """
-        Execute a single ORCA step.
-        
-        For ORCA, single steps are executed as chains of length 1.
-        This method delegates to run_step_with_chain with a single-step chain.
-        
-        Args:
-            step: Step object to execute
-            working_dir: Working directory for execution
-            
-        Returns:
-            StepResult with execution status
-        """
-        # Extract structure_ulid and project_root from step.options (set by handler)
+        from quantumvitas.engine.engine_input import EngineInput
+
+        if isinstance(step_or_input, EngineInput):
+            return self._run_with_engine_input(step_or_input)
+
+        # Legacy path
+        step = step_or_input
         structure_ulid = None
         project_root = None
-        
+
         if hasattr(step, 'options'):
             structure_ulid = step.options.get('structure_ulid') or step.options.get('structure_ulid')
             project_root_str = step.options.get('project_root')
             if project_root_str:
                 project_root = Path(project_root_str)
-        
+
         return self.run_step_with_chain(
             target_step=step,
-            chain_steps=[step],  # Chain of length 1
+            chain_steps=[step],
             calculation_raw_dir=working_dir,
             structure_ulid=structure_ulid,
             project_root=project_root,
+        )
+
+    def _run_with_engine_input(self, ei: "EngineInput") -> "StepResult":
+        """Run ORCA via EngineInput — no SSOT reads needed."""
+        import time
+        from quantumvitas.engine.base import StepResult
+        from quantumvitas.engine.qc_engine_base import QCChain, detect_chains, derive_chain_key
+        from quantumvitas.io.structure_io import read_structure
+        from quantumvitas.core.public import require_structure
+        from pymatgen.core import Molecule as PMGMolecule
+        from quantumvitas.workflow.registry import get_registry
+
+        start_time = time.time()
+        calculation_raw_dir = Path(ei.working_dir)
+
+        # 1. Validate inputs
+        if not ei.structure_ulid:
+            return StepResult(
+                step_type_spec=ei.step_type_spec,
+                input_file=calculation_raw_dir / "chain.inp",
+                success=False,
+                error="Structure ID is required for ORCA chain execution",
+                execution_time=time.time() - start_time,
+            )
+        if not ei.project_root:
+            return StepResult(
+                step_type_spec=ei.step_type_spec,
+                input_file=calculation_raw_dir / "chain.inp",
+                success=False,
+                error="Project root is required for structure resolution",
+                execution_time=time.time() - start_time,
+            )
+
+        # 2. Load Molecule
+        try:
+            structure_resolved = require_structure(ei.project_root, ei.structure_ulid)
+            structure_path = structure_resolved.absolute_path
+            molecule = read_structure(structure_path)
+
+            if not isinstance(molecule, PMGMolecule):
+                return StepResult(
+                    step_type_spec=ei.step_type_spec,
+                    input_file=calculation_raw_dir / "chain.inp",
+                    success=False,
+                    error=f"Expected Molecule for ORCA, got {type(molecule)}",
+                    execution_time=time.time() - start_time,
+                )
+        except Exception as e:
+            return StepResult(
+                step_type_spec=ei.step_type_spec,
+                input_file=calculation_raw_dir / "chain.inp",
+                success=False,
+                error=f"Failed to load molecule: {e}",
+                execution_time=time.time() - start_time,
+            )
+
+        # 3. Build wrapped steps from EngineInput.chain (pre-resolved, no yaml reads)
+        registry = get_registry()
+        chain_entries = ei.chain or []
+        if not chain_entries:
+            from quantumvitas.engine.engine_input import ChainStepEntry
+            chain_entries = [ChainStepEntry(
+                step_ulid=ei.step_ulid,
+                step_type_spec=ei.step_type_spec,
+                step_type_gen=ei.step_type_gen,
+                parameters=ei.parameters,
+                requires_structure=True,
+                step_artifacts_dir=calculation_raw_dir / "step_artifacts" / ei.step_ulid,
+            )]
+
+        class _EIStepWrapper:
+            def __init__(self, entry):
+                self.ulid = entry.step_ulid
+                self.step_type_gen = entry.step_type_gen
+                self.step_type_spec = entry.step_type_spec
+                self.parameters = entry.parameters
+                # Minimal meta for compatibility
+                class _Meta:
+                    def __init__(self, ulid):
+                        self.ulid = ulid
+                self.meta = _Meta(entry.step_ulid)
+
+        wrapped_steps = [_EIStepWrapper(e) for e in chain_entries]
+
+        if not wrapped_steps:
+            return StepResult(
+                step_type_spec=ei.step_type_spec,
+                input_file=calculation_raw_dir / "chain.inp",
+                success=False,
+                error="No valid steps provided",
+                execution_time=time.time() - start_time,
+            )
+
+        chains = detect_chains(wrapped_steps)
+
+        if not chains:
+            single_step = wrapped_steps[0]
+            chain_obj = QCChain(scf_root=single_step, downstream=[], key="")
+            chain_obj.key = derive_chain_key(chain_obj, chain_index=1)
+        else:
+            chain_obj = chains[0]
+
+        # 4. Set up working directory
+        working_dir = calculation_raw_dir
+        working_dir.mkdir(parents=True, exist_ok=True)
+
+        # 5. Execute chain
+        try:
+            orca_results = self.run_chain(
+                chain=chain_obj,
+                working_dir=working_dir,
+                molecule=molecule,
+                fresh=True,
+            )
+        except Exception as e:
+            return StepResult(
+                step_type_spec=ei.step_type_spec,
+                input_file=working_dir / f"{chain_obj.key}.inp",
+                success=False,
+                error=f"ORCA chain execution failed: {e}",
+                execution_time=time.time() - start_time,
+            )
+
+        # 6. Convert ORCAStepResult to StepResult
+        target_result = None
+        for orca_result in orca_results:
+            if orca_result.step_ulid == ei.step_ulid:
+                target_result = orca_result
+                break
+
+        if target_result is None and orca_results:
+            target_result = orca_results[-1]
+
+        if target_result is None:
+            return StepResult(
+                step_type_spec=ei.step_type_spec,
+                input_file=working_dir / f"{chain_obj.key}.inp",
+                success=False,
+                error="No result found for target step",
+                execution_time=time.time() - start_time,
+            )
+
+        parsed_output = {
+            "working_dir": str(working_dir),
+            "chain_key": chain_obj.key,
+            "metrics": target_result.metrics,
+            "artifacts": target_result.artifacts,
+        }
+
+        return StepResult(
+            step_type_spec=ei.step_type_spec,
+            input_file=Path(target_result.artifacts.get("input", working_dir / f"{chain_obj.key}.inp")),
+            output_file=Path(target_result.artifacts.get("output", working_dir / f"{chain_obj.key}.out")),
+            success=target_result.success,
+            error=target_result.error,
+            execution_time=time.time() - start_time,
+            parsed_output=parsed_output,
         )
 
     def run_chain(
@@ -445,7 +600,7 @@ class ORCAEngine(Engine):
         from quantumvitas.engine.base import StepResult
         from quantumvitas.engine.qc_engine_base import QCChain, detect_chains
         from quantumvitas.io.structure_io import read_structure
-        from quantumvitas.core.resolution import require_structure
+        from quantumvitas.core.public import require_structure
         from pymatgen.core import Molecule as PMGMolecule
         
         start_time = time.time()
@@ -511,7 +666,7 @@ class ORCAEngine(Engine):
                     step_yaml_path = project_root / step.meta.path
                     if step_yaml_path.exists():
                         import yaml
-                        step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
+                        step_data = yaml.safe_load(step_yaml_path.read_text()) or {}  # K4-ALLOW: replaced by EngineInput in PR-K4
                         step_type = step_data.get("step_type_spec")
 
             if step_type:
@@ -526,7 +681,7 @@ class ORCAEngine(Engine):
                     step_yaml_path = project_root / step.meta.path
                     if step_yaml_path.exists():
                         import yaml
-                        step_data = yaml.safe_load(step_yaml_path.read_text()) or {}
+                        step_data = yaml.safe_load(step_yaml_path.read_text()) or {}  # K4-ALLOW: replaced by EngineInput in PR-K4
                         parameters = step_data.get("parameters", {})
 
                 # Create a wrapper object with step_type_gen and parameters

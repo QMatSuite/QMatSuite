@@ -12,7 +12,7 @@ from typing import FrozenSet
 
 # Known engine prefixes (no underscores allowed)
 ENGINE_PREFIXES: FrozenSet[str] = frozenset({
-    "qe", "pyscf", "orca", "vasp", "lammps", "cp2k", "w90"
+    "qe", "pyscf", "orca", "vasp", "lammps", "cp2k", "w90", "qmcpack"
 })
 
 

@@ -223,8 +223,8 @@ class TestStepResolution:
         return project_root
     
     def test_resolve_step_by_id(self, project_with_steps):
-        """Resolve step by id."""
-        result = resolve_step(project_with_steps, "test-calculation", "scf-step")
+        """Resolve step by meta.ulid."""
+        result = resolve_step(project_with_steps, "test-calculation", "01STEP_ULID_HERE________")
         assert "scf" in result.name.lower() or "scf" in result.slug.lower()
     
     def test_resolve_step_by_type(self, project_with_steps):

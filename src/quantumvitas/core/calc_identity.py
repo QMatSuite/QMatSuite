@@ -196,8 +196,8 @@ def _infer_identity_from_step_types(
         if steps_dir.exists():
             for step_file in steps_dir.glob("*.step.yaml"):
                 try:
-                    import yaml
-                    step_data = yaml.safe_load(step_file.read_text()) or {}
+                    from quantumvitas.core.yamldoc import StepDoc
+                    step_data = StepDoc.load(step_file).to_dict()
                     spec_type = step_data.get("step_type_spec")
                     if spec_type:
                         spec_types.append(spec_type)

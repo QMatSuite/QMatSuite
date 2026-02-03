@@ -7,8 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from quantumvitas.core.engines.base import EngineConfig as _LegacyEngineConfig
-from quantumvitas.core.engines.qe_calculation import StepResult as _LegacyStepResult
+from quantumvitas.core.public import EngineConfig as _LegacyEngineConfig, StepResult as _LegacyStepResult
 
 
 EngineConfig = _LegacyEngineConfig
@@ -37,5 +36,12 @@ class Engine:
         """
         raise NotImplementedError
 
-    def run_step(self, step, working_dir: Path) -> StepResult:  # pragma: no cover - interface
+    def run_step(self, step_or_input, working_dir: Path | None = None) -> StepResult:  # pragma: no cover - interface
+        """Run a calculation step.
+
+        Accepts either an ``EngineInput`` (preferred) or the legacy
+        ``(step, working_dir)`` pair.  During the transition period each
+        concrete engine checks ``isinstance(step_or_input, EngineInput)``
+        and branches accordingly.
+        """
         raise NotImplementedError

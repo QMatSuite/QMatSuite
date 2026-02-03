@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence
 
 import yaml
 
-from quantumvitas.core.resources import meta_from_name, ensure_relative_path
+from quantumvitas.core.public import meta_from_name, ensure_relative_path
 from quantumvitas.io import QEInputGenerator, QEInputParser, read_structure, write_structure
 from quantumvitas.io.model import QECardType, QEModule, QEInput
 from quantumvitas.io.structure_io import structure_from_qe_input, qe_input_has_structure
@@ -140,7 +140,7 @@ def build_step_spec_from_qe_input(
     has_structure = qe_input_has_structure(qe_input)
     
     # Generate ULID for step_ulid (DAG + ULID model requirement)
-    from quantumvitas.core.resources import generate_resource_id
+    from quantumvitas.core.public import generate_resource_id
     if step_ulid:
         # If step_ulid is provided but not a ULID, generate one
         if len(step_ulid) != 26 or not step_ulid.startswith("01"):
@@ -219,7 +219,7 @@ def build_step_spec_from_qe_input(
                         override["mass"] = mass
                 if pseudo_filename:
                     # Skip placeholder names
-                    from quantumvitas.core.pseudo import is_missing_pseudo_placeholder
+                    from quantumvitas.core.public import is_missing_pseudo_placeholder
                     if not is_missing_pseudo_placeholder(pseudo_filename):
                         override["pseudopot"] = pseudo_filename
                 
@@ -255,8 +255,8 @@ def build_step_spec_from_qe_input(
         cards=cards,
         species_overrides=species_overrides if species_overrides else None,
     )
-    from quantumvitas.core.yamldoc import StepDoc
-    from quantumvitas.core.yaml_io import save_yaml_doc
+    from quantumvitas.core.public import StepDoc
+    from quantumvitas.core.public import save_yaml_doc
 
     step_doc = StepDoc(spec.to_dict())
     save_yaml_doc(step_doc, step_file, skip_journal=True)
@@ -332,7 +332,7 @@ def build_calculation_from_qe_inputs(
     # Handle structure_ulid parameter:
     # - If it's a ULID and reference_structure_by="id", treat it as a selector for existing structure
     # - Otherwise, we're creating a new structure, so generate a ULID upfront
-    from quantumvitas.core.resources import generate_resource_id
+    from quantumvitas.core.public import generate_resource_id
     
     # Check if structure_ulid is a valid ULID
     is_ulid = structure_ulid and len(structure_ulid) == 26 and structure_ulid.startswith("01")
@@ -437,8 +437,8 @@ def build_calculation_from_qe_inputs(
     calculation_config.pop("structure_name", None)
     calculation_config.pop("structure", None)
     
-    from quantumvitas.core.yamldoc import CalcDoc
-    from quantumvitas.core.yaml_io import save_yaml_doc
+    from quantumvitas.core.public import CalcDoc
+    from quantumvitas.core.public import save_yaml_doc
 
     calculation_file = calculation_dir / "calculation.yaml"
     calc_doc = CalcDoc(calculation_config)

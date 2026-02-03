@@ -38,6 +38,9 @@ from quantumvitas.drivers import orca
 # PySCF driver (migrated)
 from quantumvitas.drivers import pyscf
 
+# QMCPACK driver
+from quantumvitas.drivers import qmcpack
+
 # Note: All major drivers have been migrated
 
 logger.debug("Driver packages imported")

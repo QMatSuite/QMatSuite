@@ -27,12 +27,11 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 from quantumvitas.execution.job_graph import Job
 from quantumvitas.execution.executor import JobResult
 from quantumvitas.execution.relax_artifacts import RelaxArtifactSpec, is_relax_step_type
-from quantumvitas.core.driver_registry import DriverRegistry
+from quantumvitas.core.public import DriverRegistry
 
 if TYPE_CHECKING:
-    from quantumvitas.calculation.calculation import Calculation
-    from quantumvitas.calculation.step import Step
-    from quantumvitas.engine.registry import EngineRegistry
+    from quantumvitas.calculation.public import Calculation, Step
+    from quantumvitas.engine.public import EngineRegistry
 
 
 logger = logging.getLogger(__name__)
@@ -104,13 +103,13 @@ def _get_step_input_from_calculation_yaml(
     Returns:
         Path to input file if found in calculation.yaml, None otherwise
     """
-    import yaml
-    
+    from quantumvitas.core.public import CalcDoc
+
     calculation_yaml = calculation.dir / "calculation.yaml"
     if not calculation_yaml.exists():
         return None
-    
-    data = yaml.safe_load(calculation_yaml.read_text())
+
+    data = CalcDoc.load(calculation_yaml).to_dict()
     steps_data = data.get("steps", [])
     
     for step_data in steps_data:

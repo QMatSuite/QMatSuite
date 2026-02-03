@@ -8,8 +8,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from quantumvitas.calculation.results import CalculationResult
-from quantumvitas.calculation.calculation import Calculation
+from quantumvitas.calculation.public import CalculationResult, Calculation
 from .parsers import parse_dos_data, parse_scf_output, DOSData
 from .plotting import plot_dos, save_figure
 

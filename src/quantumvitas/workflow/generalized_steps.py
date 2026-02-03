@@ -16,8 +16,7 @@ from __future__ import annotations
 
 from typing import Dict, Optional, Tuple
 
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_exceptions import UnknownMaterializationError, UnknownEngineError
+from quantumvitas.core.public import DriverRegistry, UnknownMaterializationError, UnknownEngineError
 
 # =============================================================================
 # SSOT: DriverRegistry is the single source of truth for step-type mappings.

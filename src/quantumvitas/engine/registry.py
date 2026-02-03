@@ -13,6 +13,7 @@ from .orca_engine import ORCAEngine, ORCAEngineConfig
 from .vasp_engine import VaspEngine
 from .lammps_engine import LammpsEngine
 from .cp2k_engine import Cp2kEngine
+from .qmcpack_engine import QmcpackEngine
 
 
 class EngineRegistry:
@@ -79,6 +80,9 @@ def create_default_registry(
     
     # Always register CP2K if requested (binary resolution is deferred)
     registry.register(Cp2kEngine())
+
+    # Always register QMCPACK (binary resolution is deferred)
+    registry.register(QmcpackEngine())
 
     return registry
 

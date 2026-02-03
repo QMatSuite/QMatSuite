@@ -6,14 +6,9 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, Union
 
 from typing import TYPE_CHECKING
 
-import yaml
 from pymatgen.core import Structure as PMGStructure, Molecule as PMGMolecule
 
-from quantumvitas.core.resources import (
-    ResourceMeta,
-    ensure_relative_path,
-    meta_from_name,
-)
+from quantumvitas.core.public import ResourceMeta, ensure_relative_path, meta_from_name
 from quantumvitas.io import QEInputGenerator, read_structure
 from quantumvitas.io.structure_io import qe_input_from_structure
 from quantumvitas.io.model import QECardType, QEInput, QENamelist, QEModule
@@ -170,7 +165,8 @@ class StructureStepSpec:
                 If provided and structure_ulid is missing, legacy 'structure' selector will be resolved.
         """
         spec_path = Path(path)
-        content = yaml.safe_load(spec_path.read_text()) or {}
+        from quantumvitas.core.public import StepDoc
+        content = StepDoc.load(spec_path).to_dict()
         if not isinstance(content, dict):
             raise ValueError(f"Step file {path} must contain a mapping at the root")
         return cls.from_dict(content, source_path=spec_path, resolve_structure_selector=resolve_structure_selector)
@@ -727,8 +723,8 @@ def materialize_step_spec(
     resolve_structure_selector = None
     if project_root:
         def _make_resolver(proj_root: Path):
-            from quantumvitas.core.resolution import resolve_structure
-            from quantumvitas.core.project_utils import load_project_config, ProjectConfigError
+            from quantumvitas.core.public import resolve_structure
+            from quantumvitas.core.public import load_project_config, ProjectConfigError
             try:
                 config = load_project_config(proj_root)
                 def resolver(selector: str) -> str:
@@ -780,9 +776,9 @@ def materialize_step_spec(
     calculation_engine_family = None
     if calculation_dir and project_root:
         try:
-            from quantumvitas.core.models import load_calculation
-            from quantumvitas.core.resolution import make_structure_selector_resolver
-            from quantumvitas.core.project_utils import load_project_config
+            from quantumvitas.core.public import load_calculation
+            from quantumvitas.core.public import make_structure_selector_resolver
+            from quantumvitas.core.public import load_project_config
             calc_yaml_path = Path(calculation_dir) / "calculation.yaml"
             if calc_yaml_path.exists():
                 project_root_path = Path(project_root).resolve()
@@ -795,7 +791,7 @@ def materialize_step_spec(
     
     # Use registry to determine engine for step type
     import quantumvitas.drivers
-    from quantumvitas.core.driver_registry import DriverRegistry
+    from quantumvitas.core.public import DriverRegistry
     
     is_pyscf_step = False
     is_orca_step = False
@@ -1011,9 +1007,9 @@ def materialize_step_spec(
             calc_outdir = "./outdir"
             if calculation_dir and project_root:
                 try:
-                    from quantumvitas.core.models import load_calculation
-                    from quantumvitas.core.resolution import make_structure_selector_resolver
-                    from quantumvitas.core.project_utils import load_project_config
+                    from quantumvitas.core.public import load_calculation
+                    from quantumvitas.core.public import make_structure_selector_resolver
+                    from quantumvitas.core.public import load_project_config
                     calc_yaml_path = Path(calculation_dir) / "calculation.yaml"
                     if calc_yaml_path.exists():
                         project_root_path = Path(project_root).resolve()
@@ -1184,9 +1180,9 @@ def materialize_step_spec(
     calc_model = None
     if calculation_dir and project_root:
         try:
-            from quantumvitas.core.models import load_calculation
-            from quantumvitas.core.resolution import make_structure_selector_resolver, resolve_structure
-            from quantumvitas.core.project_utils import load_project_config
+            from quantumvitas.core.public import load_calculation
+            from quantumvitas.core.public import make_structure_selector_resolver, resolve_structure
+            from quantumvitas.core.public import load_project_config
             calc_yaml_path = Path(calculation_dir) / "calculation.yaml"
             if calc_yaml_path.exists():
                 project_root_path = Path(project_root).resolve()
@@ -1269,7 +1265,7 @@ def materialize_step_spec(
                 continue
             
             # Check for placeholder names
-            from quantumvitas.core.pseudo import is_missing_pseudo_placeholder
+            from quantumvitas.core.public import is_missing_pseudo_placeholder
             if is_missing_pseudo_placeholder(pseudo_filename):
                 missing_elements.append(element)
         
@@ -1321,7 +1317,7 @@ def materialize_step_spec(
         set_outdir_to_temp(qe_input)
         
         # Use central pseudopotential resolution
-        from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+        from quantumvitas.core.public import ensure_qe_pseudos, get_system_pseudo_dir
         from quantumvitas.calculation.input_runner import set_pseudo_dir_in_input
         
         # Normal case: project_root is a user project
@@ -1506,7 +1502,7 @@ def _resolve_structure_for_spec(
         
         if calculation_yaml.exists():
             try:
-                from quantumvitas.core.models import load_calculation
+                from quantumvitas.core.public import load_calculation
                 
                 # Determine project_root for load_calculation
                 wf_project_root = project.root if project else project_root_path
@@ -1591,7 +1587,7 @@ def _resolve_structure_for_spec(
             # If multiple, and we have a calculation structure_ulid, try to match by ID
             if calculation_dir_path:
                 try:
-                    from quantumvitas.core.models import load_calculation
+                    from quantumvitas.core.public import load_calculation
                     calculation_yaml = calculation_dir_path / "calculation.yaml"
                     if calculation_yaml.exists():
                         wf_project_root = project.root if project else project_root_path
@@ -1702,7 +1698,7 @@ def _resolve_structure_for_spec(
         
         if project:
             try:
-                from quantumvitas.core.models import load_calculation
+                from quantumvitas.core.public import load_calculation
                 calculation_path = Path(calculation_dir)
                 if calculation_path.is_dir():
                     calculation_path = calculation_path / "calculation.yaml"
@@ -1759,7 +1755,7 @@ def _resolve_structure_for_spec(
         else:
             # No project available, but try to load calculation.yaml directly and find structure via filesystem
             try:
-                from quantumvitas.core.models import load_calculation
+                from quantumvitas.core.public import load_calculation
                 calculation_path = Path(calculation_dir)
                 if calculation_path.is_dir():
                     calculation_path = calculation_path / "calculation.yaml"
@@ -1830,7 +1826,7 @@ def _resolve_structure_for_spec(
         calculation_structure_ulid = None
         if calculation_dir and project:
             try:
-                from quantumvitas.core.models import load_calculation
+                from quantumvitas.core.public import load_calculation
                 calculation_path = Path(calculation_dir)
                 if calculation_path.is_dir():
                     calculation_path = calculation_path / "calculation.yaml"

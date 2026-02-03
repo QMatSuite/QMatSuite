@@ -15,9 +15,7 @@ import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-import yaml
-
-from quantumvitas.core.pseudo_provenance import compute_sha256_file
+from quantumvitas.core.public import compute_sha256_file
 
 # Float comparison tolerance for canonicalization
 FLOAT_TOLERANCE = 1e-10
@@ -287,7 +285,8 @@ def compute_step_sha(
     if isinstance(step_doc, Path):
         if not step_doc.exists():
             raise FileNotFoundError(f"Step file not found: {step_doc}")
-        data = yaml.safe_load(step_doc.read_text()) or {}
+        from quantumvitas.core.public import StepDoc
+        data = StepDoc.load(step_doc).to_dict()
     else:
         data = step_doc
     
@@ -440,7 +439,8 @@ def get_pseudo_refs_from_calc(calculation_dir: Path) -> Dict[str, Dict[str, Any]
     if not calc_yaml.exists():
         return {}
     
-    data = yaml.safe_load(calc_yaml.read_text()) or {}
+    from quantumvitas.core.public import CalcDoc
+    data = CalcDoc.load(calc_yaml).to_dict()
     calculation_section = data.get("calculation", {})
     species_map = calculation_section.get("species_map", {})
     

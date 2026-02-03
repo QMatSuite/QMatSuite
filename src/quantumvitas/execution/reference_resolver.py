@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from typing import Optional, Tuple, List, Any, TYPE_CHECKING
 
-from quantumvitas.workflow.registry import get_registry, StepTypeRegistry
+from quantumvitas.workflow.public import get_registry, StepTypeRegistry
 
 if TYPE_CHECKING:
-    from quantumvitas.calculation.step import Step
+    from quantumvitas.calculation.public import Step
 
 
 def find_reference_scf(
@@ -43,7 +43,7 @@ def find_reference_scf(
     if registry is None:
         registry = get_registry()
 
-    from quantumvitas.workflow.step_type_convert import is_spec
+    from quantumvitas.workflow.public import is_spec
     from quantumvitas.execution.step_type_unpack import unpack_step_type, unpack_step_type_safe
 
     # Walk backwards from current step
@@ -111,7 +111,7 @@ def get_gen_type(step: Any, registry: Optional[StepTypeRegistry] = None) -> Opti
         return None
 
     # Convert SPEC to GEN (registry expects GEN)
-    from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+    from quantumvitas.workflow.public import gen_from, is_spec
     step_type_spec_str = str(step_type_spec)
     if is_spec(step_type_spec_str):
         gen_type = gen_from(step_type_spec_str)

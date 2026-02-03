@@ -13,7 +13,7 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from quantumvitas.core.pseudo import get_system_pseudo_dir
+from quantumvitas.core.public import get_system_pseudo_dir
 
 # Import StepResult from engine base (not calculation.types)
 from quantumvitas.engine.base import StepResult

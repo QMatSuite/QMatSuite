@@ -28,7 +28,6 @@ from pathlib import Path
 from typing import Optional, List, Dict, TYPE_CHECKING
 
 import json
-import yaml
 
 from quantumvitas.core.resources import (
     ResourceMeta,
@@ -567,8 +566,8 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
             calculation_yaml = calculation_dir / "calculation.yaml"
             if calculation_yaml.exists():
                 try:
-                    data = yaml.safe_load(calculation_yaml.read_text()) or {}
-                    meta_dict = data.get("meta", {})
+                    from quantumvitas.core.yaml_io import load_yaml_meta_subtree
+                    meta_dict = load_yaml_meta_subtree(calculation_yaml)
                     # CANONICAL ONLY: meta.ulid (NO fallback to id)
                     if meta_dict and meta_dict.get("ulid"):
                         from quantumvitas.core.resources import ResourceMeta
@@ -600,8 +599,8 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
                         except ValueError:
                             pass  # Not under trash, continue
                     try:
-                        data = yaml.safe_load(step_file.read_text()) or {}
-                        meta_dict = data.get("meta", {})
+                        from quantumvitas.core.yaml_io import load_yaml_meta_subtree
+                        meta_dict = load_yaml_meta_subtree(step_file)
                         # CANONICAL ONLY: meta.ulid (NO fallback to id)
                         if meta_dict and meta_dict.get("ulid"):
                             from quantumvitas.core.resources import ResourceMeta
@@ -633,9 +632,8 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
                 except ValueError:
                     pass  # Not under trash, continue
             try:
-                data = json.loads(struct_file.read_text())
-                # Handle both __qv_meta__ wrapper and direct meta
-                meta_dict = data.get("__qv_meta__") or data.get("meta")
+                from quantumvitas.core.yaml_io import load_json_meta_subtree
+                meta_dict = load_json_meta_subtree(struct_file)
                 # CANONICAL ONLY: meta.ulid (NO fallback to id)
                 if meta_dict and meta_dict.get("ulid"):
                     from quantumvitas.core.resources import ResourceMeta
@@ -1032,17 +1030,16 @@ def make_structure_selector_resolver(
 
 def _structure_to_resolved(project_root: Path, entry: dict) -> ResolvedResource:
     """Convert a structure entry to ResolvedResource."""
-    # ID-only model: entry only has structure_ulid, need to load structure file to get meta
+    # ID-only model: entry from project config has structure_ulid or ulid
     structure_ulid = entry.get("structure_ulid") or entry.get("ulid")
-    
+
     # Try to find and load structure file by ID
     structures_dir = project_root / "structures"
     if structures_dir.exists() and structure_ulid:
         for struct_file in structures_dir.glob("*.json"):
             try:
-                import json
-                struct_data = json.loads(struct_file.read_text())
-                struct_meta_dict = struct_data.get("__qv_meta__") or struct_data.get("meta")
+                from quantumvitas.core.yaml_io import load_json_meta_subtree
+                struct_meta_dict = load_json_meta_subtree(struct_file)
                 if struct_meta_dict and struct_meta_dict.get("ulid") == structure_ulid:
                     # Found matching structure file - use its meta
                     from quantumvitas.core.resources import ResourceMeta
@@ -1216,9 +1213,9 @@ def _resolve_calculation_by_path(
 
 def _calculation_to_resolved(project_root: Path, entry: dict) -> ResolvedResource:
     """Convert a calculation entry to ResolvedResource."""
-    # ID-only model: entry only has calculation_id (or id), need to load calculation.yaml to get meta
+    # ID-only model: entry from project config has calculation_id or ulid
     calculation_id = entry.get("calculation_id") or entry.get("ulid")
-    
+
     # Try to find and load calculation.yaml by ID
     calculations_dir = project_root / "calculations"
     if calculations_dir.exists() and calculation_id:
@@ -1228,9 +1225,8 @@ def _calculation_to_resolved(project_root: Path, entry: dict) -> ResolvedResourc
             calculation_yaml = calculation_dir / "calculation.yaml"
             if calculation_yaml.exists():
                 try:
-                    import yaml
-                    wf_data = yaml.safe_load(calculation_yaml.read_text())
-                    wf_meta_dict = wf_data.get("meta") or {}
+                    from quantumvitas.core.yaml_io import load_yaml_meta_subtree
+                    wf_meta_dict = load_yaml_meta_subtree(calculation_yaml)
                     if wf_meta_dict.get("ulid") == calculation_id:
                         # Found matching calculation - use its meta
                         from quantumvitas.core.resources import ResourceMeta
@@ -1399,7 +1395,8 @@ def resolve_step(
                 
                 # Build entry dict for backwards compatibility
                 try:
-                    entry_data = yaml.safe_load(abs_path.read_text()) or {}
+                    from quantumvitas.core.yaml_io import load_yaml_doc
+                    entry_data = load_yaml_doc(abs_path).to_dict()
                 except Exception:
                     entry_data = {}
                 
@@ -1427,41 +1424,29 @@ def resolve_step(
     step_entries = []
     for step_file in step_files:
         try:
-            data = yaml.safe_load(step_file.read_text()) or {}
-            step_entries.append((step_file, data))
+            from quantumvitas.core.yaml_io import load_yaml_meta_subtree
+            meta_dict = load_yaml_meta_subtree(step_file)
+            step_entries.append((step_file, meta_dict))
         except Exception:
             continue
-    
+
     # Strategy 4: ULID (in step meta)
     if _is_ulid_like(step_selector):
-        for step_file, data in step_entries:
-            meta = data.get("meta") or {}
-            # Check both ulid (canonical) and id (legacy) for backwards compatibility
-            if meta.get("ulid") == step_selector or meta.get("ulid") == step_selector:
+        for step_file, meta_dict in step_entries:
+            if meta_dict.get("ulid") == step_selector:
                 return _step_path_to_resolved(step_file, project_root)
-    
+
     # Strategy 5: step meta.name or meta.slug (exact match)
-    for step_file, data in step_entries:
-        meta = data.get("meta") or {}
-        step_name = meta.get("name", "")
-        step_slug = meta.get("slug", "")
+    for step_file, meta_dict in step_entries:
+        step_name = meta_dict.get("name", "")
+        step_slug = meta_dict.get("slug", "")
         if step_name.lower() == step_selector.lower() or step_slug.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
-    
-    # Strategy 6: step id field from step YAML (exact match) - check both top-level and meta
-    for step_file, data in step_entries:
-        step_ulid = data.get("ulid", "")
-        meta = data.get("meta") or {}
-        meta_ulid = meta.get("ulid", "")
-        meta_id = meta.get("ulid", "")  # Legacy fallback
-        # Check both top-level id and meta.ulid (canonical) and meta.ulid (legacy)
-        if step_ulid.lower() == step_selector.lower() or meta_ulid.lower() == step_selector.lower() or meta_id.lower() == step_selector.lower():
-            return _step_path_to_resolved(step_file, project_root)
-    
-    # Strategy 7: step_type_spec (exact match)
-    for step_file, data in step_entries:
-        step_type = data.get("step_type_spec", "")
-        if step_type.lower() == step_selector.lower():
+
+    # Strategy 6: step meta.ulid (case-insensitive match)
+    for step_file, meta_dict in step_entries:
+        meta_ulid = meta_dict.get("ulid", "")
+        if meta_ulid.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
     
     # Strategy 8: filename stem match
@@ -1500,20 +1485,18 @@ def _step_path_to_resolved(step_path: Path, project_root: Path) -> ResolvedResou
     in-memory Step objects (constitution requirement).
     """
     try:
-        data = yaml.safe_load(step_path.read_text()) or {}
+        from quantumvitas.core.yaml_io import load_yaml_meta_subtree
+        meta_dict = load_yaml_meta_subtree(step_path)
     except Exception:
-        data = {}
-    
-    meta_dict = data.get("meta") or {}
-    step_ulid = meta_dict.get("ulid") or data.get("ulid") or step_path.stem.replace(".step", "")
-    step_name = meta_dict.get("name") or data.get("step_type_spec") or step_ulid
+        meta_dict = {}
+
+    step_ulid = meta_dict.get("ulid") or step_path.stem.replace(".step", "")
+    step_name = meta_dict.get("name") or step_ulid
     # CRITICAL FIX: Use meta.slug from YAML (authoritative), fallback to slugify(name)
-    # Previously: slug=slugify(step_name) - this caused inconsistency when step_name="md"
-    # but YAML meta.slug="md-1"
     step_slug = meta_dict.get("slug") or slugify(step_name)
-    
+
     from quantumvitas.core.resources import generate_resource_id
-    
+
     resource_meta = ResourceMeta(
         ulid=meta_dict.get("ulid") or generate_resource_id(),
         name=step_name,
@@ -1521,8 +1504,15 @@ def _step_path_to_resolved(step_path: Path, project_root: Path) -> ResolvedResou
         path=ensure_relative_path(step_path, base=project_root),
         kind="step",
     )
-    
-    return ResolvedResource(meta=resource_meta, entry=data, absolute_path=step_path)
+
+    # Load full doc for ResolvedResource.entry (POST-resolution backward compat)
+    try:
+        from quantumvitas.core.yaml_io import load_yaml_doc
+        entry_data = load_yaml_doc(step_path).to_dict()
+    except Exception:
+        entry_data = {}
+
+    return ResolvedResource(meta=resource_meta, entry=entry_data, absolute_path=step_path)
 
 
 # ---------------------------------------------------------------------------
@@ -1580,7 +1570,8 @@ def _load_config(project_root: Path) -> dict:
     config_file = project_root / "project.qv.yml"
     if not config_file.exists():
         raise SelectorNotFoundError(f"No project.qv.yml found at {project_root}")
-    return yaml.safe_load(config_file.read_text()) or {}
+    from quantumvitas.core.yamldoc import ProjectDoc
+    return ProjectDoc.load(config_file).to_dict()
 
 
 # ---------------------------------------------------------------------------

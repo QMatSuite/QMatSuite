@@ -21,9 +21,8 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 from quantumvitas.execution.job_graph import Job, JobGraph, SelectionMode
 
 if TYPE_CHECKING:
-    from quantumvitas.calculation.calculation import Calculation
-    from quantumvitas.calculation.manifest import ManifestStepEntry, RunManifest
-    from quantumvitas.calculation.step import Step
+    from quantumvitas.calculation.public import Calculation, ManifestStepEntry, Step
+    from quantumvitas.calculation.manifest import RunManifest
 
 # Import scan expansion modules
 from quantumvitas.execution.scan_expansion import (
@@ -37,16 +36,14 @@ from quantumvitas.execution.post_job import (
     ArchiveToSlotAction,
     snapshot_raw_dir,
 )
-from quantumvitas.calculation.hash_utils import compute_step_sha
-from quantumvitas.core.exceptions import MissingArtifactError
+from quantumvitas.calculation.public import compute_step_sha
+from quantumvitas.core.public import MissingArtifactError, structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
 from quantumvitas.execution.relax_artifacts import (
     get_generated_structure_path,
     read_generated_structure,
     is_relax_step_type,
     process_relax_artifact,
 )
-from quantumvitas.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
-
 
 logger = logging.getLogger(__name__)
 
@@ -326,7 +323,7 @@ class JobExecutor:
             if steps_dir.exists():
                 for candidate in steps_dir.glob("*.step.yaml"):
                     try:
-                        from quantumvitas.core.yamldoc import StepDoc
+                        from quantumvitas.core.public import StepDoc
                         step_doc = StepDoc.load(candidate)
                         if step_doc.get(["meta", "ulid"]) == step_ulid:
                             step_file = candidate
@@ -336,7 +333,7 @@ class JobExecutor:
             
             if step_file and step_file.exists():
                 try:
-                    from quantumvitas.core.yamldoc import StepDoc
+                    from quantumvitas.core.public import StepDoc
                     step_doc = StepDoc.load(step_file)
                     step_docs[step_ulid] = step_doc.to_dict()
                 except Exception as e:
@@ -400,7 +397,7 @@ class JobExecutor:
             
             # Compute effective fingerprint for this variant
             try:
-                from quantumvitas.core.yamldoc import StepDoc
+                from quantumvitas.core.public import StepDoc
                 step = self._find_step_by_ulid(calculation, step_ulid)
                 if step is None:
                     return False
@@ -624,7 +621,7 @@ class JobExecutor:
                     if steps_dir.exists():
                         for candidate in steps_dir.glob("*.step.yaml"):
                             try:
-                                from quantumvitas.core.yamldoc import StepDoc
+                                from quantumvitas.core.public import StepDoc
                                 step_doc = StepDoc.load(candidate)
                                 if step_doc.get(["meta", "ulid"]) == step.meta.ulid:
                                     step_type_spec = step_doc.get(["step_type_spec"])

@@ -44,7 +44,7 @@ def handle_lammps_relax_output(
     """
     from quantumvitas.io.lammps_data import read_lammps_data
     from quantumvitas.execution.relax_artifacts import write_generated_structure
-    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+    from quantumvitas.core.public import canonicalize_structure_like_in_place
     
     # 1. Read final.data
     final_data = working_dir / "final.data"

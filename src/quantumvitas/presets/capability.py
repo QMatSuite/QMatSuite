@@ -173,11 +173,10 @@ def resolve_engine_for_step(step_path: Path) -> Optional[str]:
         Engine name (e.g., "qe", "pyscf", "orca") or None if not found
     """
     try:
-        import yaml
+        from quantumvitas.core.yamldoc import StepDoc
         from quantumvitas.workflow.step_type_convert import gen_from, is_spec
 
-        with open(step_path, 'r') as f:
-            step_data = yaml.safe_load(f)
+        step_data = StepDoc.load(step_path).to_dict()
 
         if not step_data or 'step_type_spec' not in step_data:
             return None

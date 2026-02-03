@@ -1,1 +1,2 @@
 from quantumvitas.analysis.artifacts import read_artifact, artifact_exists, AnalysisType
+from quantumvitas.analysis.energy import extract_energy_metrics_from_text

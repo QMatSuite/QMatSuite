@@ -25,7 +25,7 @@ class ProjectStorage:
     def load_settings(self) -> ProjectSettings:
         if not self.project.settings_file.exists():
             return ProjectSettings()
-        data = yaml.safe_load(self.project.settings_file.read_text()) or {}
+        data = yaml.safe_load(self.project.settings_file.read_text()) or {}  # EXC-004: settings file, not SSOT
         return ProjectSettings(data=data)
 
     def save_settings(self, settings: ProjectSettings) -> None:
