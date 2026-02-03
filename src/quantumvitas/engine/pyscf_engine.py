@@ -382,11 +382,8 @@ class PySCFEngine(Engine):
         from quantumvitas.workflow.registry import get_registry
         registry = get_registry()
         # Convert spec to gen for registry lookup
-        from quantumvitas.api import get_step_type_gen
-        try:
-            target_step_type_gen = get_step_type_gen(target_step_type) if target_step_type and "_" in target_step_type else target_step_type
-        except (KeyError, ValueError):
-            target_step_type_gen = target_step_type
+        from quantumvitas.workflow.step_type_convert import gen_from
+        target_step_type_gen = gen_from(target_step_type) if target_step_type else target_step_type
         if not registry.has(target_step_type_gen):
             return StepResult(
                 step_type_spec=target_step_type,
@@ -512,13 +509,8 @@ class PySCFEngine(Engine):
             from quantumvitas.workflow.registry import get_registry
             registry = get_registry()
             # Convert spec to gen for registry lookup
-            from quantumvitas.api import get_step_type_gen
             from quantumvitas.workflow.step_type_convert import gen_from
-            try:
-                step_type_gen = get_step_type_gen(step_type_spec) if step_type_spec and "_" in step_type_spec else step_type_spec
-            except (KeyError, ValueError):
-                # Fallback: use explicit conversion function (handles both SPEC and GEN)
-                step_type_gen = gen_from(step_type_spec)  # gen_from() handles both SPEC and GEN inputs
+            step_type_gen = gen_from(step_type_spec) if step_type_spec else step_type_spec
             if not registry.has(step_type_gen):
                 return StepResult(
                     step_type_spec=step_type_spec,
@@ -541,13 +533,8 @@ class PySCFEngine(Engine):
             from quantumvitas.workflow.registry import get_registry
             registry = get_registry()
             # Convert spec to gen for registry lookup
-            from quantumvitas.api import get_step_type_gen
             from quantumvitas.workflow.step_type_convert import gen_from
-            try:
-                step_type_gen = get_step_type_gen(step_type_spec) if step_type_spec and "_" in step_type_spec else step_type_spec
-            except (KeyError, ValueError):
-                # Fallback: use explicit conversion function (handles both SPEC and GEN)
-                step_type_gen = gen_from(step_type_spec)  # gen_from() handles both SPEC and GEN inputs
+            step_type_gen = gen_from(step_type_spec) if step_type_spec else step_type_spec
             step_spec = registry.get(step_type_gen)
             if step_spec and step_spec.requires_structure and structure_data:
                 # Merge structure_path and metadata into params

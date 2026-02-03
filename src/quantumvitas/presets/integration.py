@@ -311,13 +311,8 @@ def _load_step_parameters(
             step_type_spec = doc.get(["step_type_spec"], default="scf")
 
             # Convert SPEC to GEN for receiver registry lookup (receivers use GEN types)
-            from quantumvitas.api import get_step_type_gen
             from quantumvitas.workflow.step_type_convert import gen_from
-            try:
-                step_type_gen = get_step_type_gen(step_type_spec)
-            except (KeyError, ValueError):
-                # Fallback: use explicit conversion function (handles both SPEC and GEN)
-                step_type_gen = gen_from(step_type_spec)  # gen_from() handles both SPEC and GEN inputs
+            step_type_gen = gen_from(step_type_spec)
 
             # Filter to only receiver steps for preset detection
             if receivers_only and not is_receiver(step_type_gen):
@@ -376,13 +371,8 @@ def _load_step_parameters_with_types(
             step_type_spec = doc.get(["step_type_spec"], default="scf")
 
             # Convert SPEC to GEN for receiver registry lookup (receivers use GEN types)
-            from quantumvitas.api import get_step_type_gen
             from quantumvitas.workflow.step_type_convert import gen_from
-            try:
-                step_type_gen = get_step_type_gen(step_type_spec)
-            except (KeyError, ValueError):
-                # Fallback: use explicit conversion function (handles both SPEC and GEN)
-                step_type_gen = gen_from(step_type_spec)  # gen_from() handles both SPEC and GEN inputs
+            step_type_gen = gen_from(step_type_spec)
 
             if receivers_only and not is_receiver(step_type_gen):
                 continue
