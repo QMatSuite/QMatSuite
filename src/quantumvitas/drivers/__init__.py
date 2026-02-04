@@ -50,6 +50,9 @@ from quantumvitas.drivers import gpaw
 # Siesta driver
 from quantumvitas.drivers import siesta
 
+# xTB driver
+from quantumvitas.drivers import xtb
+
 # Note: All major drivers have been migrated
 
 logger.debug("Driver packages imported")

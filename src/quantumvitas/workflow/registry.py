@@ -809,6 +809,21 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
 
     # -------------------------------------------------------------------------
+    # xTB engine
+    # -------------------------------------------------------------------------
+    "xtb_relax": StepTypeSpec(
+        step_type_spec="xtb_relax",
+        step_type_gen="relax",
+        engine="xtb",
+        executable="xtb",
+        description="xTB geometry optimization (GFN2-xTB)",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        is_structure_transform=True,
+    ),
+
+    # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
     "qe_custom": StepTypeSpec(
@@ -1101,7 +1116,7 @@ def normalize_step_type_to_gen(step_type_spec: str) -> str:
         return spec.step_type_gen
 
     # Fallback: strip known engine prefixes (e.g., "qe_vc-relax" -> "vc-relax")
-    ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_")
+    ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_", "gpaw_", "siesta_", "xtb_")
     lower = normalized.lower()
     for prefix in ENGINE_PREFIXES:
         if lower.startswith(prefix):
