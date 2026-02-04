@@ -163,6 +163,8 @@ class TestDriverValidation:
             'quantumvitas.drivers.qmcpack',
             'quantumvitas.drivers.psi4',
             'quantumvitas.drivers.gpaw',
+            'quantumvitas.drivers.siesta',
+            'quantumvitas.drivers.xtb',
         ]
         for mod_name in modules_to_remove:
             if mod_name in sys.modules:
