@@ -1,0 +1,45 @@
+# Silicon Relaxation - Smoke Test
+# Start with ideal structure but compressed cell
+
+# Structural parameters (compressed cell)
+acell 3*10.0  # Compressed vs equilibrium ~10.26
+rprim
+  0.0  0.5  0.5
+  0.5  0.0  0.5
+  0.5  0.5  0.0
+natom 2
+ntypat 1
+typat 1 1
+znucl 14
+xred
+  0.00  0.00  0.00
+  0.25  0.25  0.25  # Exact high-symmetry position
+
+# Plane-wave basis
+ecut 10.0
+
+# K-point sampling  
+ngkpt 2 2 2
+nshiftk 1
+shiftk 0.0 0.0 0.0
+chksymbreak 0
+
+# Relaxation parameters
+ionmov 2       # BFGS optimization  
+optcell 1      # Optimize cell volume
+ntime 10       # Max ionic steps
+tolmxf 5.0d-4  # Force tolerance (Ha/Bohr)
+ecutsm 0.5     # Smearing for cell optimization
+dilatmx 1.05   # Max cell expansion factor
+
+# SCF convergence
+nstep 30
+toldff 5.0d-5  # Force convergence
+diemac 12.0
+
+# Output control
+prtwf 0
+prtden 0
+
+pp_dirpath "$ABI_PSPDIR"
+pseudos "14si.pspnc"
