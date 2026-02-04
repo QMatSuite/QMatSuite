@@ -53,6 +53,9 @@ from quantumvitas.drivers import siesta
 # xTB driver
 from quantumvitas.drivers import xtb
 
+# Yambo driver (MBPT: GW, BSE, TDDFT)
+from quantumvitas.drivers import yambo
+
 # Note: All major drivers have been migrated
 
 logger.debug("Driver packages imported")

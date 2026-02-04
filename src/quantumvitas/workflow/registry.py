@@ -824,6 +824,50 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
 
     # -------------------------------------------------------------------------
+    # Yambo engine (MBPT: GW, BSE, TDDFT)
+    # -------------------------------------------------------------------------
+    "yambo_setup": StepTypeSpec(
+        step_type_spec="yambo_setup",
+        step_type_gen="setup",
+        engine="yambo",
+        executable="yambo",
+        description="Yambo setup (p2y conversion + database initialization)",
+        requires_structure=False,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+    "yambo_gw": StepTypeSpec(
+        step_type_spec="yambo_gw",
+        step_type_gen="gw",
+        engine="yambo",
+        executable="yambo",
+        description="G0W0 quasiparticle calculation",
+        requires_structure=False,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+    "yambo_bse": StepTypeSpec(
+        step_type_spec="yambo_bse",
+        step_type_gen="bse",
+        engine="yambo",
+        executable="yambo",
+        description="BSE optical absorption spectrum",
+        requires_structure=False,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+    "yambo_optics": StepTypeSpec(
+        step_type_spec="yambo_optics",
+        step_type_gen="optics",
+        engine="yambo",
+        executable="yambo",
+        description="IP/RPA/TDDFT optical properties",
+        requires_structure=False,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+
+    # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
     "qe_custom": StepTypeSpec(
@@ -1116,7 +1160,7 @@ def normalize_step_type_to_gen(step_type_spec: str) -> str:
         return spec.step_type_gen
 
     # Fallback: strip known engine prefixes (e.g., "qe_vc-relax" -> "vc-relax")
-    ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_", "gpaw_", "siesta_", "xtb_")
+    ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_", "gpaw_", "siesta_", "xtb_", "yambo_")
     lower = normalized.lower()
     for prefix in ENGINE_PREFIXES:
         if lower.startswith(prefix):

@@ -132,6 +132,11 @@ _ENGINE_PROBES: Dict[str, EngineProbe] = {
         binary_names=["xtb"],
         conda_package="xtb",
     ),
+    "yambo": EngineProbe(
+        engine_name="yambo",
+        binary_names=["yambo", "p2y", "ypp"],
+        env_vars=["YAMBO_HOME"],
+    ),
 }
 
 # Shell profile files to parse (in priority order)
