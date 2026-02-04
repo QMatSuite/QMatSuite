@@ -459,6 +459,77 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
 
     # -------------------------------------------------------------------------
+    # Psi4 step types (molecular quantum chemistry - Python-native)
+    # -------------------------------------------------------------------------
+    "psi4_scf": StepTypeSpec(
+        step_type_spec="psi4_scf",
+        step_type_gen="scf",
+        engine="psi4",
+        executable="python",
+        description="Psi4 HF/DFT SCF calculation",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=True,
+        produces_state="wfn",
+        consumes_state=None,
+        token="s",
+    ),
+    "psi4_hf": StepTypeSpec(
+        step_type_spec="psi4_hf",
+        step_type_gen="hf",
+        engine="psi4",
+        executable="python",
+        description="Psi4 Hartree-Fock calculation",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=True,
+        produces_state="wfn",
+        consumes_state=None,
+        token="h",
+    ),
+    "psi4_mp2": StepTypeSpec(
+        step_type_spec="psi4_mp2",
+        step_type_gen="mp2",
+        engine="psi4",
+        executable="python",
+        description="Psi4 MP2 correlation energy",
+        requires_structure=False,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=False,
+        consumes_state="wfn",
+        produces_state="wfn",
+        token="m2",
+    ),
+    "psi4_td": StepTypeSpec(
+        step_type_spec="psi4_td",
+        step_type_gen="td",
+        engine="psi4",
+        executable="python",
+        description="Psi4 TDDFT/TDA excited states",
+        requires_structure=False,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=False,
+        consumes_state="wfn",
+        produces_state=None,
+        token="t",
+    ),
+    "psi4_relax": StepTypeSpec(
+        step_type_spec="psi4_relax",
+        step_type_gen="relax",
+        engine="psi4",
+        executable="python",
+        description="Psi4 geometry optimization",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        is_structure_transform=True,
+    ),
+
+    # -------------------------------------------------------------------------
     # VASP step types (Periodic Boundary Conditions - PBC)
     # -------------------------------------------------------------------------
     "vasp_scf": StepTypeSpec(

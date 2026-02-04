@@ -41,6 +41,9 @@ from quantumvitas.drivers import pyscf
 # QMCPACK driver
 from quantumvitas.drivers import qmcpack
 
+# Psi4 driver
+from quantumvitas.drivers import psi4
+
 # Note: All major drivers have been migrated
 
 logger.debug("Driver packages imported")
