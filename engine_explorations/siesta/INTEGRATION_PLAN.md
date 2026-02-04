@@ -188,13 +188,24 @@ This is analogous to how QE handles UPF files and VASP handles POTCAR. The handl
 
 ## Implementation Order
 
-1. Create `src/quantumvitas/drivers/siesta/` directory structure
-2. Implement `driver.py` (SiestaDriver class)
-3. Implement `parser.py` (adapted from exploration utility)
-4. Implement `writer.py` (adapted from exploration utility)
-5. Implement `handler.py` (step execution)
-6. Implement `recipe.py` (SiestaRecipe)
-7. Implement `__init__.py` (registration)
-8. Add import to `src/quantumvitas/drivers/__init__.py`
-9. Add tests (unit + integration)
-10. Verify all existing tests still pass
+1. Create `src/quantumvitas/drivers/siesta/` directory structure ✅
+2. Implement `driver.py` (SiestaDriver class) ✅
+3. Implement `parser.py` (adapted from exploration utility) ✅
+4. Implement `writer.py` (adapted from exploration utility) ✅
+5. Implement `handler.py` (step execution) ✅
+6. Implement `recipe.py` (SiestaRecipe) ✅
+7. Implement `__init__.py` (registration) ✅
+8. Add import to `src/quantumvitas/drivers/__init__.py` ✅
+9. Add siesta probe to `src/quantumvitas/core/engines/discovery.py` ✅
+10. Add siesta step types to `src/quantumvitas/workflow/registry.py` ✅
+11. Add tests (unit + integration) ✅
+12. Update existing gate tests for siesta prefix ✅
+13. Verify all existing tests still pass ✅ (3204 passed)
+
+## Additional Files Modified (not in original plan)
+
+- `src/quantumvitas/core/engines/discovery.py` — Added siesta `EngineProbe` (binary_names=["siesta"], conda_package="siesta")
+- `src/quantumvitas/workflow/registry.py` — Added 5 Siesta step type specs (siesta_scf, siesta_relax, siesta_md, siesta_bands, siesta_dos)
+- `tests/unit/test_engine_discovery.py` — Added "siesta" to expected engine set
+- `tests/unit/test_step_type_mapping.py` — Added "siesta_" to valid prefixes
+- `engine_explorations/siesta/pseudopotentials/` — Downloaded PseudoDojo nc-sr-04 PBE PSML files (H, O, Si)

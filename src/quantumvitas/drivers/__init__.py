@@ -47,6 +47,9 @@ from quantumvitas.drivers import psi4
 # GPAW driver
 from quantumvitas.drivers import gpaw
 
+# Siesta driver
+from quantumvitas.drivers import siesta
+
 # Note: All major drivers have been migrated
 
 logger.debug("Driver packages imported")

@@ -41,7 +41,7 @@ class TestEngineProbeRegistry:
         names = get_registered_engine_names()
         expected = {
             "cp2k", "gpaw", "lammps", "orca", "psi4",
-            "pyscf", "qe", "qmcpack", "vasp", "w90",
+            "pyscf", "qe", "qmcpack", "siesta", "vasp", "w90",
         }
         assert set(names) == expected
 

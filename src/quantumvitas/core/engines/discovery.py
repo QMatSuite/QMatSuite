@@ -122,6 +122,11 @@ _ENGINE_PROBES: Dict[str, EngineProbe] = {
         env_vars=["W90_HOME"],
         bundled_under="qe",  # wannier90.x ships inside QE: .qmatsuite/engines/qe/*/bin/
     ),
+    "siesta": EngineProbe(
+        engine_name="siesta",
+        binary_names=["siesta"],
+        conda_package="siesta",
+    ),
 }
 
 # Shell profile files to parse (in priority order)
