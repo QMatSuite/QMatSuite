@@ -45,6 +45,11 @@ class GenStepRegistry:
         "vmc",       # Variational Monte Carlo
         "dmc",       # Diffusion Monte Carlo
         "wfopt",     # Wavefunction optimization
+        # Many-body perturbation theory (yambo)
+        "setup",     # Converter + initialization (p2y + yambo init)
+        "gw",        # GW quasiparticle corrections
+        "bse",       # Bethe-Salpeter equation (optical spectra)
+        "optics",    # IP/RPA/TDDFT optical properties
         # Escape hatch
         "custom",
     })
