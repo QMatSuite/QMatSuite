@@ -331,12 +331,42 @@ def _handle_cp2k_trajectory_artifact(
     )
 
 
+def _handle_xtb_xyz(
+    spec: RelaxArtifactSpec,
+    calc_dir: Path,
+    run_context: Dict[str, Any],
+) -> Path:
+    """Handle xTB relax output: parse xtbopt.xyz and write current.json."""
+    from pymatgen.core import Molecule
+    from quantumvitas.core.public import canonicalize_structure_like_in_place
+
+    xtbopt_path = spec.artifact_path
+    if not xtbopt_path.exists():
+        raise FileNotFoundError(f"xTB optimized geometry not found: {xtbopt_path}")
+
+    mol = Molecule.from_file(str(xtbopt_path))
+    canonicalize_structure_like_in_place(mol)
+
+    artifact_path = write_generated_structure(
+        structure=mol,
+        calc_dir=calc_dir,
+        step_ulid=spec.step_ulid,
+        step_type_spec=spec.step_type_spec,
+        run_ulid=run_context.get("run_ulid"),
+        calculation_ulid=run_context.get("calculation_ulid", ""),
+        input_structure_ulid=run_context.get("input_structure_ulid", ""),
+    )
+    logger.info(f"[RELAX_ARTIFACT] Processed xTB output for step {spec.step_ulid}")
+    return artifact_path
+
+
 RELAX_ARTIFACT_HANDLERS: Dict[str, RelaxArtifactHandler] = {
     "qe_output": _handle_qe_output,
     "pyscf_results": _handle_pyscf_results,
     "orca_xyz": _handle_orca_xyz,
     "lammps_data": _handle_lammps_data,
     "cp2k_trajectory": _handle_cp2k_trajectory_artifact,
+    "xtb_xyz": _handle_xtb_xyz,
 }
 
 

@@ -127,6 +127,11 @@ _ENGINE_PROBES: Dict[str, EngineProbe] = {
         binary_names=["siesta"],
         conda_package="siesta",
     ),
+    "xtb": EngineProbe(
+        engine_name="xtb",
+        binary_names=["xtb"],
+        conda_package="xtb",
+    ),
 }
 
 # Shell profile files to parse (in priority order)
