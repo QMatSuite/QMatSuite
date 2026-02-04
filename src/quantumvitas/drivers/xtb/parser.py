@@ -1,7 +1,7 @@
 """xTB output parser.
 
 Parses xTB calculation results from stdout and output files.
-Adapted from engine_explorations/xtb/scripts/xtb_parser.py.
+Adapted from docs/engines/xtb/scripts/xtb_parser.py.
 """
 
 from __future__ import annotations

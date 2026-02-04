@@ -260,14 +260,14 @@ def xtb_step_handler(job, calculation, engine_registry, context):
 
 ### `writer.py` — Input Writer
 
-Adapted from `engine_explorations/xtb/scripts/xtb_input_writer.py`:
+Adapted from `docs/engines/xtb/scripts/xtb_input_writer.py`:
 - `write_xyz_file()`: Write standard XYZ from symbols + positions
 - `write_xyz_from_pymatgen()`: Write XYZ from pymatgen Structure/Molecule
 - `build_xtb_command()`: Build CLI arguments from parameters
 
 ### `parser.py` — Output Parser
 
-Adapted from `engine_explorations/xtb/scripts/xtb_parser.py`:
+Adapted from `docs/engines/xtb/scripts/xtb_parser.py`:
 - `parse_xtbopt_xyz()`: Parse optimized geometry from xtbopt.xyz
 - `parse_xtb_stdout()`: Parse stdout for energy, convergence, etc.
 - `parse_charges()`: Parse Mulliken charges
@@ -288,7 +288,7 @@ Adapted from `engine_explorations/xtb/scripts/xtb_parser.py`:
    - Parse optimized geometry (xtbopt.xyz)
    - Parse charges file
    - Validate energy, convergence, structure extraction
-   - Golden artifacts: `engine_explorations/xtb/artifacts/`
+   - Golden artifacts: `docs/engines/xtb/artifacts/`
 
 3. **`test_xtb_writer.py`** — Input file generation:
    - XYZ file writing from symbols + positions

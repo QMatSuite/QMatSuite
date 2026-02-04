@@ -25,17 +25,17 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Skip all tests if yambo is not installed
 pytestmark = pytest.mark.skipif(
-    not is_engine_available("yambo"),
+    not is_engine_available("yambo", project_root=Path(__file__).resolve().parent.parent.parent),
     reason="Yambo not installed",
 )
 
 # Also need QE for the full workflow
-_QE_AVAILABLE = is_engine_available("qe")
+_QE_AVAILABLE = is_engine_available("qe", project_root=Path(__file__).resolve().parent.parent.parent)
 
 
 def _find_yambo_bin(binary_name: str = "yambo") -> str:
     """Find a yambo binary (yambo, p2y, ypp)."""
-    result = discover_engine("yambo")
+    result = discover_engine("yambo", project_root=_REPO_ROOT)
     if result.available and result.executable_path:
         bin_dir = result.executable_path.parent
         candidate = bin_dir / binary_name
@@ -48,7 +48,7 @@ def _find_yambo_bin(binary_name: str = "yambo") -> str:
 
 def _find_pw_bin() -> str:
     """Find QE pw.x binary."""
-    result = discover_engine("qe")
+    result = discover_engine("qe", project_root=_REPO_ROOT)
     if result.available and result.executable_path:
         return str(result.executable_path)
     found = shutil.which("pw.x")
@@ -58,7 +58,7 @@ def _find_pw_bin() -> str:
 
 # ── QE input templates for Si (minimal, 2-atom diamond cell) ──
 
-_SI_SCF_INPUT = """\
+_SI_SCF_TEMPLATE = """\
 &CONTROL
   calculation = 'scf'
   prefix = 'si'
@@ -78,7 +78,7 @@ _SI_SCF_INPUT = """\
   conv_thr = 1.0d-6
 /
 ATOMIC_SPECIES
-  Si 28.086 Si_ONCV_PBE-1.2.upf
+  Si 28.086 {pseudo_file}
 ATOMIC_POSITIONS crystal
   Si 0.00 0.00 0.00
   Si 0.25 0.25 0.25
@@ -86,7 +86,7 @@ K_POINTS automatic
   2 2 2 0 0 0
 """
 
-_SI_NSCF_INPUT = """\
+_SI_NSCF_TEMPLATE = """\
 &CONTROL
   calculation = 'nscf'
   prefix = 'si'
@@ -107,13 +107,50 @@ _SI_NSCF_INPUT = """\
   diago_full_acc = .true.
 /
 ATOMIC_SPECIES
-  Si 28.086 Si_ONCV_PBE-1.2.upf
+  Si 28.086 {pseudo_file}
 ATOMIC_POSITIONS crystal
   Si 0.00 0.00 0.00
   Si 0.25 0.25 0.25
 K_POINTS automatic
   2 2 2 0 0 0
 """
+
+
+def _find_si_oncv_pseudo() -> Path:
+    """Find any Si ONCV norm-conserving pseudo for yambo tests.
+
+    Yambo requires norm-conserving pseudopotentials (not PAW/US).
+    Searches multiple locations for any Si_ONCV_PBE-*.upf version.
+    """
+    import glob as globmod
+
+    # Explicit paths to check (in priority order)
+    explicit_paths = [
+        _REPO_ROOT / "docs" / "engines" / "yambo"
+        / "smoke_si_nc" / "pseudo" / "Si_ONCV_PBE-1.2.upf",
+        _REPO_ROOT / "resources" / "pseudo" / "Si_ONCV_PBE-1.2.upf",
+    ]
+    for p in explicit_paths:
+        if p.exists():
+            return p
+
+    # Search for any Si_ONCV_PBE-*.upf in known locations
+    search_dirs = [
+        _REPO_ROOT / "resources" / "pseudo",
+        _REPO_ROOT / ".qmatsuite" / "engines" / "qe",
+        Path.home() / ".qmatsuite" / "pseudo",
+    ]
+    for search_dir in search_dirs:
+        for match in search_dir.rglob("Si_ONCV_PBE-*.upf"):
+            return match
+
+    # Search system pseudo directories
+    for sys_dir in [Path("/usr/share/espresso/pseudo"), Path.home() / "pseudo"]:
+        if sys_dir.is_dir():
+            for match in sys_dir.rglob("Si_ONCV_PBE-*.upf"):
+                return match
+
+    return None
 
 
 def _setup_qe_and_yambo(workdir: Path) -> Path:
@@ -123,32 +160,22 @@ def _setup_qe_and_yambo(workdir: Path) -> Path:
     """
     workdir.mkdir(parents=True, exist_ok=True)
 
-    # Copy pseudopotential
+    # Find and copy pseudopotential
     pseudo_dir = workdir / "pseudo"
     pseudo_dir.mkdir(exist_ok=True)
-    # Find the NC pseudo from exploration smoke test or resources
-    pseudo_sources = [
-        _REPO_ROOT / ".qmatsuite" / "engines" / "yambo" / "exploration"
-        / "smoke_si_nc" / "pseudo" / "Si_ONCV_PBE-1.2.upf",
-        _REPO_ROOT / "resources" / "pseudo" / "Si_ONCV_PBE-1.2.upf",
-    ]
-    pseudo_found = False
-    for src in pseudo_sources:
-        if src.exists():
-            shutil.copy2(src, pseudo_dir / "Si_ONCV_PBE-1.2.upf")
-            pseudo_found = True
-            break
 
-    if not pseudo_found:
-        # Try to download from PseudoDojo
-        pytest.skip("Si_ONCV_PBE-1.2.upf pseudopotential not found")
+    pseudo_src = _find_si_oncv_pseudo()
+    if pseudo_src is None:
+        pytest.skip("No Si ONCV NC pseudopotential found")
+    pseudo_file = pseudo_src.name
+    shutil.copy2(pseudo_src, pseudo_dir / pseudo_file)
 
     pw_bin = _find_pw_bin()
     p2y_bin = _find_yambo_bin("p2y")
     yambo_bin = _find_yambo_bin("yambo")
 
     # ── Step 1: QE SCF ──
-    (workdir / "scf.in").write_text(_SI_SCF_INPUT)
+    (workdir / "scf.in").write_text(_SI_SCF_TEMPLATE.format(pseudo_file=pseudo_file))
     scf_result = subprocess.run(
         [pw_bin, "-in", "scf.in"],
         cwd=str(workdir),
@@ -163,7 +190,7 @@ def _setup_qe_and_yambo(workdir: Path) -> Path:
     assert "JOB DONE" in scf_result.stdout, "SCF did not complete"
 
     # ── Step 2: QE NSCF ──
-    (workdir / "nscf.in").write_text(_SI_NSCF_INPUT)
+    (workdir / "nscf.in").write_text(_SI_NSCF_TEMPLATE.format(pseudo_file=pseudo_file))
     nscf_result = subprocess.run(
         [pw_bin, "-in", "nscf.in"],
         cwd=str(workdir),
@@ -474,10 +501,10 @@ class TestYamboDriverRegistration:
 class TestYamboParser:
     """Test parsers against golden reference files from exploration."""
 
-    _GOLDEN = _REPO_ROOT / ".qmatsuite" / "engines" / "yambo" / "exploration" / "golden_refs"
+    _GOLDEN = _REPO_ROOT / "docs" / "engines" / "yambo" / "golden_refs"
 
     @pytest.mark.skipif(
-        not (_REPO_ROOT / ".qmatsuite" / "engines" / "yambo" / "exploration"
+        not (_REPO_ROOT / "docs" / "engines" / "yambo"
              / "golden_refs" / "gw" / "o-gw_si.qp").exists(),
         reason="Golden reference files not available",
     )
@@ -494,7 +521,7 @@ class TestYamboParser:
         assert abs(vbm[0].e_dft) < 0.01
 
     @pytest.mark.skipif(
-        not (_REPO_ROOT / ".qmatsuite" / "engines" / "yambo" / "exploration"
+        not (_REPO_ROOT / "docs" / "engines" / "yambo"
              / "golden_refs" / "ip" / "o-ip_si.eps_q1_ip").exists(),
         reason="Golden reference files not available",
     )
@@ -509,7 +536,7 @@ class TestYamboParser:
         assert spec.static_dielectric > 10.0  # Si IP eps(0) ~ 14.5
 
     @pytest.mark.skipif(
-        not (_REPO_ROOT / ".qmatsuite" / "engines" / "yambo" / "exploration"
+        not (_REPO_ROOT / "docs" / "engines" / "yambo"
              / "golden_refs" / "bse" / "o-bse_si.eps_q1_haydock_bse").exists(),
         reason="Golden reference files not available",
     )

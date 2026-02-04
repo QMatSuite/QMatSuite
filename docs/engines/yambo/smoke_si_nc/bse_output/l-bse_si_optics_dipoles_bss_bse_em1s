@@ -1,0 +1,203 @@
+
+
+  __ __  ____ ___ ___ ____   ___
+ |  |  |/    |   |   |    \ /   \
+ |  |  |  o  | _   _ |  o  )     |
+ |  ~  |     |  \_/  |     |  O  |
+ |___, |  _  |   |   |  O  |     |
+ |     |  |  |   |   |     |     |
+ |____/|__|__|___|___|_____|\___/
+
+
+ <---> [01] MPI/OPENMP structure, Files & I/O Directories
+ <---> [02] CORE Variables Setup
+ <---> [02.01] Unit cells
+ <---> [02.02] Symmetries
+ <---> [02.03] Reciprocal space
+ <---> [02.04] K-grid lattice
+ <---> Grid dimensions      :   8   8   8
+ <---> [02.05] Energies & Occupations
+ <---> [03] Transferred momenta grid and indexing
+ <---> [WARNING] [BS] User bands 3-6 break level degeneracy
+ <---> [04] Dipoles
+ <---> [04.01] Setup: observables and procedures
+ <---> [DIP] Database not correct or missing. To be computed
+ <---> [x,Vnl] computed using 16 projectors
+ <---> R V P [g-space] |                                        | [000%] --(E) --(X)
+ <---> R V P [g-space] |########################################| [100%] --(E) --(X)
+ <---> [WARNING] [r,Vnl^pseudo] included in position and velocity dipoles.
+ <---> [WARNING] In case H contains other non local terms, these are neglected
+ <---> [05] Static Dielectric Matrix
+ <---> [LA] SERIAL linear algebra
+ <---> [X-CG] R(p) Tot o/o(of R):    576  16384    100
+ <---> [X] Upper matrix triangle filled
+ <---> Xo@q[1] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[1] |########################################| [100%] --(E) --(X)
+ <---> X@q[1] |                                        | [000%] --(E) --(X)
+ <---> X@q[1] |########################################| [100%] --(E) --(X)
+ <---> [FFT-X] Mesh size:  15  15  15
+ <---> [X-CG] R(p) Tot o/o(of R):   3395  16384    100
+ <---> Xo@q[2] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[2] |########################################| [100%] --(E) --(X)
+ <---> X@q[2] |                                        | [000%] --(E) --(X)
+ <---> X@q[2] |########################################| [100%] --(E) --(X)
+ <---> [X-CG] R(p) Tot o/o(of R):   3225  16384    100
+ <---> Xo@q[3] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[3] |########################################| [100%] --(E) --(X)
+ <---> X@q[3] |                                        | [000%] --(E) --(X)
+ <---> X@q[3] |########################################| [100%] --(E) --(X)
+ <---> [X-CG] R(p) Tot o/o(of R):   2192  16384    100
+ <---> Xo@q[4] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[4] |########################################| [100%] --(E) --(X)
+ <---> X@q[4] |                                        | [000%] --(E) --(X)
+ <---> X@q[4] |########################################| [100%] --(E) --(X)
+ <---> [X-CG] R(p) Tot o/o(of R):   3879  16384    100
+ <---> Xo@q[5] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[5] |########################################| [100%] --(E) --(X)
+ <---> X@q[5] |                                        | [000%] --(E) --(X)
+ <---> X@q[5] |########################################| [100%] --(E) --(X)
+ <---> [X-CG] R(p) Tot o/o(of R):   4182  16384    100
+ <---> Xo@q[6] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[6] |########################################| [100%] --(E) --(X)
+ <---> X@q[6] |                                        | [000%] --(E) --(X)
+ <---> X@q[6] |########################################| [100%] --(E) --(X)
+ <---> [X-CG] R(p) Tot o/o(of R):   2421  16384    100
+ <---> Xo@q[7] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[7] |########################################| [100%] --(E) --(X)
+ <---> X@q[7] |                                        | [000%] --(E) --(X)
+ <---> X@q[7] |########################################| [100%] --(E) --(X)
+ <---> [X-CG] R(p) Tot o/o(of R):   4625  16384    100
+ <---> Xo@q[8] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[8] |########################################| [100%] --(E) --(X)
+ <---> X@q[8] |                                        | [000%] --(E) --(X)
+ <---> X@q[8] |########################################| [100%] --(E) --(X)
+ <---> [X-CG] R(p) Tot o/o(of R):   1511  16384    100
+ <---> Xo@q[9] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[9] |########################################| [100%] --(E) --(X)
+ <---> X@q[9] |                                        | [000%] --(E) --(X)
+ <---> X@q[9] |########################################| [100%] --(E) --(X)
+ <---> [X-CG] R(p) Tot o/o(of R):   4394  16384    100
+ <---> Xo@q[10] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[10] |########################################| [100%] --(E) --(X)
+ <---> X@q[10] |                                        | [000%] --(E) --(X)
+ <---> X@q[10] |########################################| [100%] --(E) --(X)
+ <---> [X-CG] R(p) Tot o/o(of R):   4964  16384    100
+ <---> Xo@q[11] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[11] |########################################| [100%] --(E) --(X)
+ <---> X@q[11] |                                        | [000%] --(E) --(X)
+ <---> X@q[11] |########################################| [100%] --(E) --(X)
+ <---> [X-CG] R(p) Tot o/o(of R):   1988  16384    100
+ <---> Xo@q[12] |                                        | [000%] --(E) --(X)
+ <02s> Xo@q[12] |########################################| [100%] --(E) --(X)
+ <02s> X@q[12] |                                        | [000%] --(E) --(X)
+ <02s> X@q[12] |########################################| [100%] --(E) --(X)
+ <02s> [X-CG] R(p) Tot o/o(of R):   4388  16384    100
+ <02s> Xo@q[13] |                                        | [000%] --(E) --(X)
+ <02s> Xo@q[13] |########################################| [100%] --(E) --(X)
+ <02s> X@q[13] |                                        | [000%] --(E) --(X)
+ <02s> X@q[13] |########################################| [100%] --(E) --(X)
+ <02s> [X-CG] R(p) Tot o/o(of R):   2183  16384    100
+ <02s> Xo@q[14] |                                        | [000%] --(E) --(X)
+ <02s> Xo@q[14] |########################################| [100%] --(E) --(X)
+ <02s> X@q[14] |                                        | [000%] --(E) --(X)
+ <02s> X@q[14] |########################################| [100%] --(E) --(X)
+ <02s> [X-CG] R(p) Tot o/o(of R):   4187  16384    100
+ <02s> Xo@q[15] |                                        | [000%] --(E) --(X)
+ <02s> Xo@q[15] |########################################| [100%] --(E) --(X)
+ <02s> X@q[15] |                                        | [000%] --(E) --(X)
+ <02s> X@q[15] |########################################| [100%] --(E) --(X)
+ <02s> [X-CG] R(p) Tot o/o(of R):   2977  16384    100
+ <02s> Xo@q[16] |                                        | [000%] --(E) --(X)
+ <02s> Xo@q[16] |########################################| [100%] --(E) --(X)
+ <02s> X@q[16] |                                        | [000%] --(E) --(X)
+ <02s> X@q[16] |########################################| [100%] --(E) --(X)
+ <02s> [X-CG] R(p) Tot o/o(of R):   1816  16384    100
+ <02s> Xo@q[17] |                                        | [000%] --(E) --(X)
+ <03s> Xo@q[17] |########################################| [100%] --(E) --(X)
+ <03s> X@q[17] |                                        | [000%] --(E) --(X)
+ <03s> X@q[17] |########################################| [100%] --(E) --(X)
+ <03s> [X-CG] R(p) Tot o/o(of R):   3393  16384    100
+ <03s> Xo@q[18] |                                        | [000%] --(E) --(X)
+ <03s> Xo@q[18] |########################################| [100%] --(E) --(X)
+ <03s> X@q[18] |                                        | [000%] --(E) --(X)
+ <03s> X@q[18] |########################################| [100%] --(E) --(X)
+ <03s> [X-CG] R(p) Tot o/o(of R):   1195  16384    100
+ <03s> Xo@q[19] |                                        | [000%] --(E) --(X)
+ <03s> Xo@q[19] |########################################| [100%] --(E) --(X)
+ <03s> X@q[19] |                                        | [000%] --(E) --(X)
+ <03s> X@q[19] |########################################| [100%] --(E) --(X)
+ <03s> [06] Bethe Salpeter Equation driver
+ <03s> [06.01] Bethe Salpeter Equation @q1
+ <03s> [06.01.01] Transition pre-analysis @q1
+ <03s> [06.01.02] Transition Groups build-up @q1
+ <03s> [BSK] Size (resonant):  1024
+ <03s> [BSK]         (total):  1024
+ <03s> [BSK] N. of matrices :  1
+ <03s> [06.01.03] Loading Dipoles @q1
+ <03s> BSE dipoles |                                        | [000%] --(E) --(X)
+ <03s> BSE dipoles |########################################| [100%] --(E) --(X)
+ <03s> [06.01.04] Independent Particles properties @q1
+ <03s> IP properties |                                        | [000%] --(E) --(X)
+ <03s> IP properties |########################################| [100%] --(E) --(X)
+ <03s>  EPS via KK, poles at w>0 reflected also in w<0
+ <03s> [06.01.05] BSE Kernel @q1 (Resonant CORRRELATION EXCHANGE)
+ <03s> [06.01.05.01] Screened interaction header I/O
+ <03s> [06.01.05.02] Main kernel loop
+ <03s> Kernel exch |                                        | [000%] --(E) --(X)
+ <04s> Kernel exch |########################################| [100%] --(E) --(X)
+ <04s> [FFT-BSK-3] Mesh size:  15  15  15
+ <04s> [06.01.05.03] Wave-Function Phases
+ <04s> Kernel corr |                                        | [000%] --(E) --(X)
+ <04s> Kernel corr |########################################| [100%] --(E) --(X)
+ <04s> [06.01.06] BSE solver(s) @q1
+ <04s> [06.01.07] Haydock Solver in the optics basis @q1 using the hermitian scheme
+ <04s> [Haydock] Iteration 1
+ <04s> [Haydock] Iteration 2
+ <04s> [Haydock] Iteration 3 Accuracy  2.438872|-0.020000
+ <04s> [Haydock] Iteration 4 Accuracy  1.982208|-0.020000
+ <04s> [Haydock] Iteration 5 Accuracy  2.647954|-0.020000
+ <04s> [Haydock] Iteration 6 Accuracy  1.627612|-0.020000
+ <04s> [Haydock] Iteration 7 Accuracy  1.511154|-0.020000
+ <04s> [Haydock] Iteration 8 Accuracy  1.097093|-0.020000
+ <04s> [Haydock] Iteration 9 Accuracy  2.341180|-0.020000
+ <04s> [Haydock] Iteration 10 Accuracy  0.621867|-0.020000
+ <04s>  EPS via KK, poles at w>0 reflected also in w<0
+ <04s> [Haydock] Iteration 11 Accuracy  1.796329|-0.020000
+ <04s> [Haydock] Iteration 12 Accuracy  0.542954|-0.020000
+ <04s> [Haydock] Iteration 13 Accuracy  0.392846|-0.020000
+ <04s> [Haydock] Iteration 14 Accuracy  2.675496|-0.020000
+ <04s> [Haydock] Iteration 15 Accuracy  0.496021|-0.020000
+ <04s> [Haydock] Iteration 16 Accuracy  0.421254|-0.020000
+ <04s> [Haydock] Iteration 17 Accuracy  0.445950|-0.020000
+ <04s> [Haydock] Iteration 18 Accuracy  0.310000|-0.020000
+ <04s> [Haydock] Iteration 19 Accuracy  0.247153|-0.020000
+ <04s> [Haydock] Iteration 20 Accuracy  0.267849|-0.020000
+ <04s>  EPS via KK, poles at w>0 reflected also in w<0
+ <04s> [Haydock] Iteration 21 Accuracy  0.195403|-0.020000
+ <04s> [Haydock] Iteration 22 Accuracy  0.173562|-0.020000
+ <04s> [Haydock] Iteration 23 Accuracy  0.168478|-0.020000
+ <04s> [Haydock] Iteration 24 Accuracy  0.134125|-0.020000
+ <04s> [Haydock] Iteration 25 Accuracy  0.340256|-0.020000
+ <04s> [Haydock] Iteration 26 Accuracy  0.778677|-0.020000
+ <04s> [Haydock] Iteration 27 Accuracy  0.073691|-0.020000
+ <04s> [Haydock] Iteration 28 Accuracy  0.089039|-0.020000
+ <04s> [Haydock] Iteration 29 Accuracy  0.362256|-0.020000
+ <04s> [Haydock] Iteration 30 Accuracy  0.076341|-0.020000
+ <04s>  EPS via KK, poles at w>0 reflected also in w<0
+ <04s> [Haydock] Iteration 31 Accuracy  0.025110|-0.020000
+ <04s> [Haydock] Iteration 32 Accuracy  0.170288|-0.020000
+ <04s> [Haydock] Iteration 33 Accuracy  0.111754|-0.020000
+ <04s> [Haydock] Iteration 34 Accuracy  0.091243|-0.020000
+ <04s> [Haydock] Iteration 35 Accuracy  3.363844|-0.020000
+ <04s> [Haydock] Iteration 36 Accuracy  0.088039|-0.020000
+ <04s> [Haydock] Iteration 37 Accuracy  0.057177|-0.020000
+ <04s> [Haydock] Iteration 38 Accuracy  0.114567|-0.020000
+ <04s> [Haydock] Iteration 39 Accuracy  0.022745|-0.020000
+ <04s> [Haydock] Iteration 40 Accuracy  0.032984|-0.020000
+ <04s>  EPS via KK, poles at w>0 reflected also in w<0
+ <04s> [Haydock] Iteration 41 Accuracy  0.011891|-0.020000
+ <04s> [Haydock] Iteration 42 Accuracy  0.011199|-0.020000
+ <04s>  EPS via KK, poles at w>0 reflected also in w<0
+ <04s> [07] Timing Overview
+ <04s> [08] Game Over & Game summary
+ <04s> [TIMING]            [Time-Profile]: 04s

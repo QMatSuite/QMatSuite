@@ -1,0 +1,3 @@
+process launch -- -F ip.in -J ip_debug -C ip_debug_out
+bt all
+quit

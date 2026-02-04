@@ -1,0 +1,41 @@
+#                                                                     
+# :   :::   :::     ::::    ::::  :::::::::   ::::::::                
+# :+:   :+: :+: :+:   +:+:+: :+:+:+ :+:    :+: :+:    :+              
+#  +:+ +:+ +:+   +:+  +:+ +:+:+ +:+ +:+    +:+ +:+    +:+             
+#   +#++: +#++:++#++: +#+  +:+  +#+ +#++:++#+  +#+    +:+             
+#    +#+  +#+     +#+ +#+       +#+ +#+    +#+ +#+    +#+             
+#    #+#  #+#     #+# #+#       #+# #+#    #+# #+#    #+#             
+#    ###  ###     ### ###       ### #########   ########              
+#                                                                     
+#                                                                     
+# Version 5.3.0 Revision 23927 Hash (prev commit) 1730222ea           
+#                   Branch is v2-python                               
+#                  Serial+HDF5_IO Build                               
+#                http://www.yambo-code.eu                             
+#
+HF_and_locXC                     # [R] Hartree-Fock
+gw0                              # [R] GW approximation
+ppa                              # [R][Xp] Plasmon Pole Approximation for the Screened Interaction
+el_el_corr                       # [R] Electron-Electron Correlation
+dyson                            # [R] Dyson Equation solver
+em1d                             # [R][X] Dynamically Screened Interaction
+#DegFix                        # Force the code to impose the energy levels to respect their degeneracy
+EXXRLvcs=  5961            RL    # [XX] Exchange    RL components
+VXCRLvcs=  5961            RL    # [XC] XCpotential RL components
+Chimod= "HARTREE"                # [X] IP/Hartree/ALDA/LRC/PF/BSfxc
+% BndsRnXp
+   1 |  50 |                         # [Xp] Polarization function bands
+%
+NGsBlkXp= 1                RL    # [Xp] Response block size
+% LongDrXp
+ 1.000000 | 0.000000 | 0.000000 |        # [Xp] [cc] Electric Field
+%
+PPAPntXp= 27.21138         eV    # [Xp] PPA imaginary energy
+% GbndRnge
+   1 |  50 |                         # [GW] G[W] bands range
+%
+GTermKind= "none"                # [GW] GW terminator ("none","BG" Bruneval-Gonze,"BRS" Berger-Reining-Sottile)
+DysSolver= "n"                   # [GW] Dyson Equation solver ("n","s","g","q")
+%QPkrange                        # [GW] QP generalized Kpoint/Band indices
+1|10|3|6|
+%
