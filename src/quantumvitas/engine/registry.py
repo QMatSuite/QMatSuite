@@ -14,6 +14,7 @@ from .vasp_engine import VaspEngine
 from .lammps_engine import LammpsEngine
 from .cp2k_engine import Cp2kEngine
 from .qmcpack_engine import QmcpackEngine
+from .psi4_engine import Psi4Engine
 
 
 class EngineRegistry:
@@ -83,6 +84,9 @@ def create_default_registry(
 
     # Always register QMCPACK (binary resolution is deferred)
     registry.register(QmcpackEngine())
+
+    # Always register Psi4 (availability checked at execution time)
+    registry.register(Psi4Engine())
 
     return registry
 

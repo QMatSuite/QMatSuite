@@ -59,6 +59,7 @@ ALLOWLIST = [
     # K4-ALLOW: removed when PR-K4 lands (EngineInput replaces these reads)
     ("engine/pyscf_engine.py", None, "K4-ALLOW"),
     ("engine/orca_engine.py", None, "K4-ALLOW"),
+    ("engine/psi4_engine.py", None, "K4-ALLOW"),
 ]
 
 # Patterns that indicate a yaml.safe_load call
