@@ -1,0 +1,51 @@
+# Silicon Band Structure - Multi-dataset SCF + NSCF
+# Dataset 1: SCF to get density
+# Dataset 2: NSCF along k-path for bands
+
+ndtset 2
+
+# Common parameters
+acell 3*10.26311
+rprim
+  0.0  0.5  0.5
+  0.5  0.0  0.5
+  0.5  0.5  0.0
+natom 2
+ntypat 1
+typat 1 1
+znucl 14
+xred
+  0.00  0.00  0.00
+  0.25  0.25  0.25
+ecut 10.0
+diemac 12.0
+nstep 30
+chksymbreak 0
+
+# Dataset 1: SCF
+ngkpt1 4 4 4
+nshiftk1 1
+shiftk1 0.0 0.0 0.0
+toldfe1 1.0d-8
+prtden1 1
+
+# Dataset 2: NSCF bands along high-symmetry path
+iscf2 -2
+getden2 1
+nband2 8
+tolwfr2 1.0d-12
+
+# k-point path: L-Gamma-X-K-Gamma (5 k-points, 4 segments)
+kptopt2 -4
+ndivk2 10 10 10 10
+kptbounds2
+  0.5  0.5  0.5
+  0.0  0.0  0.0
+  0.5  0.0  0.5
+  0.625 0.25 0.625
+  0.0  0.0  0.0
+
+prtwf 0
+
+pp_dirpath "$ABI_PSPDIR"
+pseudos "14si.pspnc"

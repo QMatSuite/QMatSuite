@@ -1,5 +1,8 @@
 # Abinit Compilation Worklog (macOS arm64)
 
+> **DO NOT DELETE**: This file contains the reproducible compilation recipe for ABINIT on macOS arm64.
+> It documents all compilation issues encountered and their solutions.
+
 **Date**: 2026-02-04
 **System**: macOS 26.2, Darwin 25.2.0, arm64 (Apple Silicon)
 **Target**: Build abinit from source, install to ~/.qmatsuite/engines/abinit/10.4.7/

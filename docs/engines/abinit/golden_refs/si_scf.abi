@@ -1,0 +1,37 @@
+# Silicon SCF Calculation - Smoke Test
+# Diamond structure, 2 atoms in primitive cell
+
+# Structural parameters
+acell 3*10.26311
+rprim
+  0.0  0.5  0.5
+  0.5  0.0  0.5
+  0.5  0.5  0.0
+natom 2
+ntypat 1
+typat 1 1
+znucl 14
+xred
+  0.00  0.00  0.00
+  0.25  0.25  0.25
+
+# Plane-wave basis
+ecut 10.0
+
+# K-point sampling - Monkhorst-Pack without shift
+ngkpt 4 4 4
+nshiftk 1
+shiftk 0.0 0.0 0.0
+chksymbreak 0
+
+# SCF convergence
+nstep 30
+toldfe 1.0d-8
+diemac 12.0
+
+# Output control  
+prtwf 0
+prtden 0
+
+pp_dirpath "$ABI_PSPDIR"
+pseudos "14si.pspnc"
