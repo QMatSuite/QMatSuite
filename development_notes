@@ -169,4 +169,8 @@ conda install -c conda-forge siesta
 conda install -c conda-forge psi4
 psi4 --version
 
-sudo port install abinit
+(abinit install failed. Tried brew, macports, source code: all failed. Decide not to support abinit for now.)
+
+conda install -c conda-forge xtb
+which xtb
+xtb --version

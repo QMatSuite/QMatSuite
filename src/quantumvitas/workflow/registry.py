@@ -752,6 +752,63 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
 
     # -------------------------------------------------------------------------
+    # Siesta step types (periodic DFT — NAO basis, Fortran binary)
+    # -------------------------------------------------------------------------
+    "siesta_scf": StepTypeSpec(
+        step_type_spec="siesta_scf",
+        step_type_gen="scf",
+        engine="siesta",
+        executable="siesta",
+        description="Siesta SCF energy calculation",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=True,
+        supports_incremental_skip=True,
+    ),
+    "siesta_relax": StepTypeSpec(
+        step_type_spec="siesta_relax",
+        step_type_gen="relax",
+        engine="siesta",
+        executable="siesta",
+        description="Siesta geometry optimization (CG/Broyden/FIRE)",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        is_structure_transform=True,
+    ),
+    "siesta_md": StepTypeSpec(
+        step_type_spec="siesta_md",
+        step_type_gen="md",
+        engine="siesta",
+        executable="siesta",
+        description="Siesta molecular dynamics",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=False,
+    ),
+    "siesta_bands": StepTypeSpec(
+        step_type_spec="siesta_bands",
+        step_type_gen="bands",
+        engine="siesta",
+        executable="siesta",
+        description="Siesta band structure (via BandLines block in SCF)",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+    "siesta_dos": StepTypeSpec(
+        step_type_spec="siesta_dos",
+        step_type_gen="dos",
+        engine="siesta",
+        executable="siesta",
+        description="Siesta density of states",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+
+    # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
     "qe_custom": StepTypeSpec(
