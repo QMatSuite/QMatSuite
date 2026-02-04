@@ -1,0 +1,44 @@
+%YAML 1.2
+---
+
+siesta:
+  version: "#SIESTA_VERSION#"
+  arch: "#CMAKE_SYSTEM_PROCESSOR#"
+  compiler: "#CMAKE_Fortran_COMPILER_ID#-#CMAKE_Fortran_COMPILER_VERSION#"
+  fflags: "#Fortran_FLAGS_CURRENT_multiline#"
+  fppflags: "<not-set>"
+  libs: "<not-set>"
+  build: "mpi"
+  openmp: "no"
+  gemm3m: "no"
+  netcdf: "yes"
+  netcdf4: "yes"
+  netcdf4_mpi: "yes"
+  metis: "no"
+  chess: "no"
+  elpa: "no"
+  flook: "yes"
+  pexsi: "no"
+
+energies:
+  Ebs:          -0.58042753E+01
+  Eions:           0.28507133E+02
+  Ena:           0.91227233E+01
+  Ekin:           0.60986734E+01
+  Enl:           0.23742884E+01
+  Eso:           0.00000000E+00
+  Edftu:           0.00000000E+00
+  DEna:           0.15817610E+00
+  DUscf:           0.25355209E-01
+  DUext:           0.00000000E+00
+  Exc:          -0.61794251E+01
+  Ecorrec:           0.00000000E+00
+  Emadel:           0.00000000E+00
+  Emeta:           0.00000000E+00
+  Emolmec:           0.00000000E+00
+  Ekinion:           0.00000000E+00
+  Eharris:          -0.16907342E+02
+  Etot:          -0.16907342E+02
+  FreeEng:          -0.16907342E+02
+
+...

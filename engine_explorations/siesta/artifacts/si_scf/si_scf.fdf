@@ -1,0 +1,57 @@
+SystemName        Silicon bulk
+SystemLabel       si_scf
+
+NumberOfAtoms     2
+NumberOfSpecies   1
+
+%block ChemicalSpeciesLabel
+ 1  14  Si
+%endblock ChemicalSpeciesLabel
+
+PAO.BasisSize     DZP
+PAO.EnergyShift   100 meV
+
+LatticeConstant   5.43 Ang
+%block LatticeVectors
+  0.500  0.500  0.000
+  0.000  0.500  0.500
+  0.500  0.000  0.500
+%endblock LatticeVectors
+
+AtomicCoordinatesFormat  ScaledCartesian
+%block AtomicCoordinatesAndAtomicSpecies
+  0.000  0.000  0.000  1
+  0.250  0.250  0.250  1
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+%block kgrid_Monkhorst_Pack
+  4  0  0  0.5
+  0  4  0  0.5
+  0  0  4  0.5
+%endblock kgrid_Monkhorst_Pack
+
+MeshCutoff        200.0 Ry
+MaxSCFIterations  100
+DM.MixingWeight   0.3
+DM.Tolerance      1.d-4
+SolutionMethod    diagon
+XC.functional     GGA
+XC.authors        PBE
+
+WriteMullikenPop  1
+WriteForces       T
+WriteCoorXmol     T
+
+%block ProjectedDensityOfStates
+  -20.00  10.00  0.100  500  eV
+%endblock ProjectedDensityOfStates
+
+BandLinesScale    pi/a
+%block BandLines
+ 1  0.000  0.000  0.000  \Gamma
+20  1.000  0.000  0.000  X
+20  1.000  0.500  0.500  W
+20  0.500  0.500  0.500  L
+20  0.000  0.000  0.000  \Gamma
+20  0.750  0.750  0.000  K
+%endblock BandLines

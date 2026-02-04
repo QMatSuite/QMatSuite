@@ -19,14 +19,7 @@ from quantumvitas.core.yamldoc import CalcDoc
 from quantumvitas.core.models import load_calculation
 
 
-def _qmcpack_available() -> bool:
-    """Check if QMCPACK binary is available."""
-    try:
-        from quantumvitas.core.engines.qmcpack_resolver import resolve_qmcpack_bin
-        resolve_qmcpack_bin()
-        return True
-    except FileNotFoundError:
-        return False
+from quantumvitas.core.engines.discovery import is_engine_available
 
 
 @pytest.fixture
@@ -36,7 +29,7 @@ def diamond_vmc_project(tmp_path: Path):
     This creates a project with a diamond C structure and a VMC step.
     Requires QMCPACK and an HDF5 wavefunction file.
     """
-    if not _qmcpack_available():
+    if not is_engine_available("qmcpack"):
         pytest.skip("QMCPACK not installed")
 
     from pymatgen.core import Structure, Lattice

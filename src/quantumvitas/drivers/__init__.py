@@ -44,6 +44,9 @@ from quantumvitas.drivers import qmcpack
 # Psi4 driver
 from quantumvitas.drivers import psi4
 
+# GPAW driver
+from quantumvitas.drivers import gpaw
+
 # Note: All major drivers have been migrated
 
 logger.debug("Driver packages imported")

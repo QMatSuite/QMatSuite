@@ -684,6 +684,74 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
 
     # -------------------------------------------------------------------------
+    # GPAW step types (periodic and molecular DFT - Python-native)
+    # -------------------------------------------------------------------------
+    "gpaw_scf": StepTypeSpec(
+        step_type_spec="gpaw_scf",
+        step_type_gen="scf",
+        engine="gpaw",
+        executable="python",
+        description="GPAW ground state SCF calculation",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=True,
+        supports_incremental_skip=True,
+    ),
+    "gpaw_nscf": StepTypeSpec(
+        step_type_spec="gpaw_nscf",
+        step_type_gen="nscf",
+        engine="gpaw",
+        executable="python",
+        description="GPAW non-self-consistent (fixed density) calculation",
+        requires_structure=True,
+        requires_charge_density=True,
+        produces_charge_density=False,
+        supports_incremental_skip=True,
+    ),
+    "gpaw_relax": StepTypeSpec(
+        step_type_spec="gpaw_relax",
+        step_type_gen="relax",
+        engine="gpaw",
+        executable="python",
+        description="GPAW geometry relaxation via ASE optimizer",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        is_structure_transform=True,
+    ),
+    "gpaw_bandspw": StepTypeSpec(
+        step_type_spec="gpaw_bandspw",
+        step_type_gen="bandspw",
+        engine="gpaw",
+        executable="python",
+        description="GPAW band structure (fixed density along k-path)",
+        requires_structure=True,
+        requires_charge_density=True,
+        produces_charge_density=False,
+    ),
+    "gpaw_dos": StepTypeSpec(
+        step_type_spec="gpaw_dos",
+        step_type_gen="dos",
+        engine="gpaw",
+        executable="python",
+        description="GPAW density of states",
+        requires_structure=True,
+        requires_charge_density=True,
+        produces_charge_density=False,
+    ),
+    "gpaw_md": StepTypeSpec(
+        step_type_spec="gpaw_md",
+        step_type_gen="md",
+        engine="gpaw",
+        executable="python",
+        description="GPAW molecular dynamics via ASE",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=False,
+    ),
+
+    # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
     "qe_custom": StepTypeSpec(

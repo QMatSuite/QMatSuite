@@ -15,6 +15,7 @@ from .lammps_engine import LammpsEngine
 from .cp2k_engine import Cp2kEngine
 from .qmcpack_engine import QmcpackEngine
 from .psi4_engine import Psi4Engine
+from .gpaw_engine import GpawEngine
 
 
 class EngineRegistry:
@@ -87,6 +88,9 @@ def create_default_registry(
 
     # Always register Psi4 (availability checked at execution time)
     registry.register(Psi4Engine())
+
+    # Always register GPAW (availability checked at execution time)
+    registry.register(GpawEngine())
 
     return registry
 

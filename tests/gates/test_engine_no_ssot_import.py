@@ -41,8 +41,8 @@ YAML_LOAD_ALLOWLIST: set[str] = {
     "engine/pyscf_engine.py:750",
     "engine/orca_engine.py:669",
     "engine/orca_engine.py:684",
-    "engine/psi4_engine.py:403",
-    "engine/psi4_engine.py:484",
+    "engine/psi4_engine.py:435",
+    "engine/psi4_engine.py:516",
 }
 
 # Regex pattern to detect yaml.safe_load calls

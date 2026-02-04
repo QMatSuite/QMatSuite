@@ -158,9 +158,15 @@ pip install -e.
 brew install cp2k
 cp2k.ssmp --version
 which cp2k.ssmp
+which cp2k.psmp
 
 brew install lammps
 lammps_serial -h | head
 brew --prefix lammps
 
 conda install -c conda-forge siesta
+
+conda install -c conda-forge psi4
+psi4 --version
+
+sudo port install abinit

@@ -161,6 +161,8 @@ class TestDriverValidation:
             'quantumvitas.drivers.orca',
             'quantumvitas.drivers.pyscf',
             'quantumvitas.drivers.qmcpack',
+            'quantumvitas.drivers.psi4',
+            'quantumvitas.drivers.gpaw',
         ]
         for mod_name in modules_to_remove:
             if mod_name in sys.modules:
