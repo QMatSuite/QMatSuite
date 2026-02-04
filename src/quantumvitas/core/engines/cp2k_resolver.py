@@ -27,20 +27,17 @@ def find_cp2k_executable() -> Optional[Path]:
         if p.exists() and os.access(p, os.X_OK):
             return p
 
-    # 2. cp2k.ssmp in PATH (preferred for OpenMP)
-    ssmp = shutil.which("cp2k.ssmp")
-    if ssmp:
-        return Path(ssmp)
+    # 2. Check PATH for all CP2K binary flavors (in preference order)
+    for flavor in ("cp2k.psmp", "cp2k.popt", "cp2k.ssmp", "cp2k.sopt", "cp2k"):
+        found = shutil.which(flavor)
+        if found:
+            return Path(found)
 
-    # 3. cp2k in PATH (generic)
-    generic = shutil.which("cp2k")
-    if generic:
-        return Path(generic)
-
-    # 4. Homebrew default
-    homebrew = Path("/opt/homebrew/bin/cp2k.ssmp")
-    if homebrew.exists():
-        return homebrew
+    # 3. Homebrew default paths
+    for flavor in ("cp2k.psmp", "cp2k.ssmp", "cp2k"):
+        homebrew = Path(f"/opt/homebrew/bin/{flavor}")
+        if homebrew.exists():
+            return homebrew
 
     return None
 

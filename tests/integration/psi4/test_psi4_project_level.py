@@ -17,21 +17,10 @@ from pathlib import Path
 from quantumvitas.api import QVService
 
 
-def _psi4_available() -> bool:
-    """Check if Psi4 is installed and importable.
-
-    We check for psi4.core because the project's drivers/psi4 package
-    can shadow the real psi4 module during test collection.
-    """
-    try:
-        import psi4
-        return hasattr(psi4, "core")
-    except ImportError:
-        return False
-
+from quantumvitas.core.engines.discovery import is_engine_available
 
 pytestmark = pytest.mark.skipif(
-    not _psi4_available(),
+    not is_engine_available("psi4"),
     reason="Psi4 not installed - install with: conda install psi4 -c conda-forge"
 )
 

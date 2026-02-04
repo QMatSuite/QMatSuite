@@ -1,0 +1,32 @@
+SystemName        Water molecule
+SystemLabel       h2o
+
+NumberOfAtoms     3
+NumberOfSpecies   2
+
+%block ChemicalSpeciesLabel
+ 1  8  O
+ 2  1  H
+%endblock ChemicalSpeciesLabel
+
+PAO.BasisSize     SZ
+
+LatticeConstant   10.0 Ang
+%block LatticeVectors
+  1.0  0.0  0.0
+  0.0  1.0  0.0
+  0.0  0.0  1.0
+%endblock LatticeVectors
+
+AtomicCoordinatesFormat  Ang
+%block AtomicCoordinatesAndAtomicSpecies
+  0.000  0.000  0.000  1
+  0.757  0.586  0.000  2
+ -0.757  0.586  0.000  2
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+MeshCutoff        100.0 Ry
+MaxSCFIterations  50
+DM.MixingWeight   0.3
+DM.Tolerance      1.d-4
+SolutionMethod    diagon

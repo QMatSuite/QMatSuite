@@ -1,0 +1,9 @@
+Neighbors of:     1 O at:   0.0000  0.0000  0.0000
+    2 H                     0.9573  Ang. Really at:   1.4305  1.1074  0.0000
+    3 H                     0.9573  Ang. Really at:  -1.4305  1.1074  0.0000
+Neighbors of:     2 H at:   1.4305  1.1074  0.0000
+    1 O                     0.9573  Ang. Really at:  -0.0000  0.0000  0.0000
+    3 H                     1.5140  Ang. Really at:  -1.4305  1.1074  0.0000
+Neighbors of:     3 H at:  -1.4305  1.1074  0.0000
+    1 O                     0.9573  Ang. Really at:   0.0000  0.0000  0.0000
+    2 H                     1.5140  Ang. Really at:   1.4305  1.1074  0.0000

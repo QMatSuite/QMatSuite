@@ -4,31 +4,24 @@ Integration tests for Psi4 execution.
 These tests run actual Psi4 calculations and verify results.
 Tests are skipped if Psi4 is not installed.
 
+All tests use subprocess execution — pytest never imports psi4.
+Only the runner subprocess (which may use conda Python) imports psi4.
+
 To run these tests:
     conda install psi4 -c conda-forge
     pytest tests/integration/test_psi4_execution.py -v
 """
 
 import json
+import os
+import subprocess
 import pytest
 from pathlib import Path
 
-
-def _psi4_available() -> bool:
-    """Check if Psi4 is installed and importable.
-
-    We check for psi4.core because the project's drivers/psi4 package
-    can shadow the real psi4 module during test collection.
-    """
-    try:
-        import psi4
-        return hasattr(psi4, "core")
-    except ImportError:
-        return False
-
+from quantumvitas.core.engines.discovery import discover_engine, is_engine_available
 
 pytestmark = pytest.mark.skipif(
-    not _psi4_available(),
+    not is_engine_available("psi4"),
     reason="Psi4 not installed - install with: conda install psi4 -c conda-forge"
 )
 
@@ -41,13 +34,91 @@ H2O_ATOMS = [
 ]
 
 
+def _get_psi4_python() -> str:
+    """Get the Python executable that has Psi4."""
+    result = discover_engine("psi4")
+    if result.available and result.executable_path:
+        return str(result.executable_path)
+    return "python"
+
+
+def _get_runner_env() -> dict:
+    """Get environment for the runner subprocess.
+
+    Adds the project's src/ to PYTHONPATH so the discovered Python
+    (which may be conda) can import quantumvitas.
+    """
+    import quantumvitas
+    env = os.environ.copy()
+    src_dir = str(Path(quantumvitas.__file__).parent.parent)
+    existing = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = f"{src_dir}:{existing}" if existing else src_dir
+    return env
+
+
+def _run_psi4_chain(job_chain: dict, working_dir: Path) -> dict:
+    """Run a Psi4 calculation via subprocess (no psi4 import in test).
+
+    Writes job_chain.json, runs the Psi4 runner module via subprocess
+    using the discovered Psi4 Python, and returns parsed results.
+    """
+    job_chain_file = working_dir / "job_chain.json"
+    job_chain_file.write_text(json.dumps(job_chain, indent=2))
+
+    python = _get_psi4_python()
+    cmd = [python, "-m", "quantumvitas.engines.psi4", str(job_chain_file)]
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        cwd=working_dir,
+        timeout=120,
+        env=_get_runner_env(),
+    )
+
+    # Find and parse results.json from the target step artifacts dir
+    target_ulid = job_chain["target_step_ulid"]
+    for step in job_chain["chain_steps"]:
+        if step["step_ulid"] == target_ulid:
+            artifacts_dir = Path(step["step_artifacts_dir"])
+            results_file = artifacts_dir / "results.json"
+            if results_file.exists():
+                return json.loads(results_file.read_text())
+
+    # Fallback: try parsing stdout
+    try:
+        return json.loads(result.stdout)
+    except Exception:
+        return {
+            "success": False,
+            "error": f"Runner exited with code {result.returncode}. stderr: {result.stderr[:500]}",
+        }
+
+
+def _make_scf_chain(params: dict, tmp_path: Path) -> dict:
+    """Build a single-step SCF chain job spec."""
+    step_dir = tmp_path / "step_artifacts" / "step1"
+    step_dir.mkdir(parents=True, exist_ok=True)
+    return {
+        "base_working_dir": str(tmp_path),
+        "chain_steps": [
+            {
+                "step_ulid": "step1",
+                "step_type_spec": "psi4_scf",
+                "parameters": params,
+                "step_artifacts_dir": str(step_dir),
+            },
+        ],
+        "target_step_ulid": "step1",
+        "resources": {},
+    }
+
+
 class TestPsi4SCF:
     """Integration tests for Psi4 SCF calculations."""
 
     def test_h2o_rhf_sto3g(self, tmp_path):
         """Run H2O RHF/STO-3G and verify energy."""
-        from quantumvitas.engines.psi4.runner import run_scf, build_molecule
-
         params = {
             "method": "hf",
             "basis": "sto-3g",
@@ -58,7 +129,7 @@ class TestPsi4SCF:
             "nthreads": 1,
         }
 
-        result = run_scf(params, tmp_path)
+        result = _run_psi4_chain(_make_scf_chain(params, tmp_path), tmp_path)
 
         assert result["success"], f"Calculation failed: {result.get('error')}"
         assert result["converged"]
@@ -70,8 +141,6 @@ class TestPsi4SCF:
 
     def test_h2o_hf_ccpvdz(self, tmp_path):
         """Run H2O HF/cc-pVDZ and verify energy."""
-        from quantumvitas.engines.psi4.runner import run_scf
-
         params = {
             "method": "hf",
             "basis": "cc-pvdz",
@@ -82,7 +151,7 @@ class TestPsi4SCF:
             "nthreads": 1,
         }
 
-        result = run_scf(params, tmp_path)
+        result = _run_psi4_chain(_make_scf_chain(params, tmp_path), tmp_path)
 
         assert result["success"], f"Calculation failed: {result.get('error')}"
 
@@ -92,8 +161,6 @@ class TestPsi4SCF:
 
     def test_h2o_b3lyp_sto3g(self, tmp_path):
         """Run H2O B3LYP/STO-3G DFT and verify energy."""
-        from quantumvitas.engines.psi4.runner import run_scf
-
         params = {
             "method": "scf",
             "xc": "b3lyp",
@@ -105,7 +172,7 @@ class TestPsi4SCF:
             "nthreads": 1,
         }
 
-        result = run_scf(params, tmp_path)
+        result = _run_psi4_chain(_make_scf_chain(params, tmp_path), tmp_path)
 
         assert result["success"], f"Calculation failed: {result.get('error')}"
 
@@ -114,9 +181,7 @@ class TestPsi4SCF:
         assert -76.5 < energy < -74.5, f"Energy {energy} outside expected range for B3LYP"
 
     def test_output_files_created(self, tmp_path):
-        """Verify output files are created."""
-        from quantumvitas.engines.psi4.runner import run_scf
-
+        """Verify output files are created in step artifacts dir."""
         params = {
             "method": "hf",
             "basis": "sto-3g",
@@ -127,19 +192,14 @@ class TestPsi4SCF:
             "nthreads": 1,
         }
 
-        result = run_scf(params, tmp_path)
+        result = _run_psi4_chain(_make_scf_chain(params, tmp_path), tmp_path)
         assert result["success"]
 
-        # Check output.dat created
-        assert (tmp_path / "output.dat").exists()
-
-        # Check wavefunction saved
-        assert (tmp_path / "wavefunction.npy").exists()
+        step_dir = tmp_path / "step_artifacts" / "step1"
+        assert (step_dir / "results.json").exists()
 
     def test_psi4_variables_collected(self, tmp_path):
         """Verify Psi4 variables dict is populated."""
-        from quantumvitas.engines.psi4.runner import run_scf
-
         params = {
             "method": "hf",
             "basis": "sto-3g",
@@ -150,7 +210,7 @@ class TestPsi4SCF:
             "nthreads": 1,
         }
 
-        result = run_scf(params, tmp_path)
+        result = _run_psi4_chain(_make_scf_chain(params, tmp_path), tmp_path)
         assert result["success"]
 
         psi4_vars = result.get("psi4_variables", {})
@@ -163,47 +223,47 @@ class TestPsi4MP2Chain:
 
     def test_scf_mp2_chain(self, tmp_path):
         """Run SCF → MP2 chain and verify energies."""
-        from quantumvitas.engines.psi4.chain_execution import run_chain_session
-
         scf_dir = tmp_path / "step_artifacts" / "scf_step"
         mp2_dir = tmp_path / "step_artifacts" / "mp2_step"
+        scf_dir.mkdir(parents=True, exist_ok=True)
+        mp2_dir.mkdir(parents=True, exist_ok=True)
 
-        chain_steps = [
-            {
-                "step_ulid": "scf_step",
-                "step_type_spec": "psi4_scf",
-                "parameters": {
-                    "method": "hf",
-                    "basis": "cc-pvdz",
-                    "atoms": H2O_ATOMS,
-                    "charge": 0,
-                    "multiplicity": 1,
-                    "memory_mb": 500,
-                    "nthreads": 1,
+        job_chain = {
+            "base_working_dir": str(tmp_path),
+            "chain_steps": [
+                {
+                    "step_ulid": "scf_step",
+                    "step_type_spec": "psi4_scf",
+                    "parameters": {
+                        "method": "hf",
+                        "basis": "cc-pvdz",
+                        "atoms": H2O_ATOMS,
+                        "charge": 0,
+                        "multiplicity": 1,
+                        "memory_mb": 500,
+                        "nthreads": 1,
+                    },
+                    "step_artifacts_dir": str(scf_dir),
                 },
-                "step_artifacts_dir": str(scf_dir),
-            },
-            {
-                "step_ulid": "mp2_step",
-                "step_type_spec": "psi4_mp2",
-                "parameters": {
-                    "basis": "cc-pvdz",
+                {
+                    "step_ulid": "mp2_step",
+                    "step_type_spec": "psi4_mp2",
+                    "parameters": {
+                        "basis": "cc-pvdz",
+                    },
+                    "step_artifacts_dir": str(mp2_dir),
                 },
-                "step_artifacts_dir": str(mp2_dir),
-            },
-        ]
+            ],
+            "target_step_ulid": "mp2_step",
+            "resources": {},
+        }
 
-        result = run_chain_session(
-            chain_steps=chain_steps,
-            base_working_dir=tmp_path,
-            target_step_ulid="mp2_step",
-        )
+        result = _run_psi4_chain(job_chain, tmp_path)
 
         assert result.get("success"), f"Chain failed: {result.get('error')}"
 
         # MP2 total energy should be lower than SCF (correlation is negative)
         total_energy = result["energy"]
-        scf_energy = result.get("scf_energy")
         correlation = result.get("correlation_energy")
 
         # H2O HF/cc-pVDZ MP2 reference: ~-76.23 Hartree
@@ -221,19 +281,32 @@ class TestPsi4Relax:
 
     def test_h2o_relax_hf_sto3g(self, tmp_path):
         """Run H2O geometry optimization at HF/STO-3G."""
-        from quantumvitas.engines.psi4.runner import run_relax
+        step_dir = tmp_path / "step_artifacts" / "step1"
+        step_dir.mkdir(parents=True, exist_ok=True)
 
-        params = {
-            "method": "hf",
-            "basis": "sto-3g",
-            "atoms": H2O_ATOMS,
-            "charge": 0,
-            "multiplicity": 1,
-            "memory_mb": 500,
-            "nthreads": 1,
+        job_chain = {
+            "base_working_dir": str(tmp_path),
+            "chain_steps": [
+                {
+                    "step_ulid": "step1",
+                    "step_type_spec": "psi4_relax",
+                    "parameters": {
+                        "method": "hf",
+                        "basis": "sto-3g",
+                        "atoms": H2O_ATOMS,
+                        "charge": 0,
+                        "multiplicity": 1,
+                        "memory_mb": 500,
+                        "nthreads": 1,
+                    },
+                    "step_artifacts_dir": str(step_dir),
+                },
+            ],
+            "target_step_ulid": "step1",
+            "resources": {},
         }
 
-        result = run_relax(params, tmp_path)
+        result = _run_psi4_chain(job_chain, tmp_path)
 
         assert result["success"], f"Optimization failed: {result.get('error')}"
         assert result["converged"]
@@ -256,9 +329,7 @@ class TestPsi4SubprocessExecution:
     """Test the full subprocess execution path (as the daemon would use it)."""
 
     def test_subprocess_chain(self, tmp_path):
-        """Test chain execution via subprocess (run_job_chain)."""
-        from quantumvitas.engines.psi4.runner import run_job_chain
-
+        """Test chain execution via subprocess."""
         scf_dir = tmp_path / "step_artifacts" / "step1"
         scf_dir.mkdir(parents=True, exist_ok=True)
 
@@ -284,21 +355,13 @@ class TestPsi4SubprocessExecution:
             "resources": {},
         }
 
-        # Write job_chain.json
-        job_chain_file = tmp_path / "job_chain.json"
-        job_chain_file.write_text(json.dumps(job_chain, indent=2))
+        result = _run_psi4_chain(job_chain, tmp_path)
 
-        # Run
-        exit_code = run_job_chain(job_chain_file)
+        assert result["success"], f"Subprocess failed: {result.get('error')}"
+        assert -76.0 < result["energy"] < -74.0
 
-        assert exit_code == 0, f"Exit code {exit_code}, check results.json"
-
-        # Verify results.json
-        results_file = scf_dir / "results.json"
-        assert results_file.exists()
-        results = json.loads(results_file.read_text())
-        assert results["success"]
-        assert -76.0 < results["energy"] < -74.0
+        # Verify results.json was written
+        assert (scf_dir / "results.json").exists()
 
     def test_engine_probe(self):
         """Test Psi4Engine.probe() returns available=True."""

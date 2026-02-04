@@ -108,6 +108,7 @@ _NOT_IN_PUBLIC_ALLOWLIST: dict[str, Set[str]] = {
     "engine/lammps_engine.py": {"quantumvitas.core.engines.lammps_resolver"},
     "engine/qmcpack_engine.py": {"quantumvitas.core.engines.qmcpack_resolver"},
     "engine/orca_engine.py": {"quantumvitas.core.engines.orca_resolver"},
+    "engine/psi4_engine.py": {"quantumvitas.core.engines.discovery"},
     "engine/vasp_engine.py": {"quantumvitas.core.engines.vasp_resolver"},
     "engine/vasp_writer.py": {"quantumvitas.core.engines.vasp_resolver"},
     # Internal analysis model (trajectory frame)

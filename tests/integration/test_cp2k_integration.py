@@ -18,12 +18,9 @@ from quantumvitas.core.yamldoc import CalcDoc
 from quantumvitas.core.models import load_calculation
 
 
-# Check CP2K availability
-try:
-    from quantumvitas.core.engines.cp2k_resolver import find_cp2k_executable
-    CP2K_AVAILABLE = find_cp2k_executable() is not None
-except Exception:
-    CP2K_AVAILABLE = False
+# Check CP2K availability via centralized discovery
+from quantumvitas.core.engines.discovery import is_engine_available
+CP2K_AVAILABLE = is_engine_available("cp2k")
 
 
 @pytest.fixture

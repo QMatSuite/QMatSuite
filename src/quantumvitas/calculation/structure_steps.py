@@ -793,32 +793,18 @@ def materialize_step_spec(
     import quantumvitas.drivers
     from quantumvitas.core.public import DriverRegistry
     
-    is_pyscf_step = False
-    is_orca_step = False
-    is_lammps_step = False
-    is_cp2k_step = False
-    is_qmcpack_step = False
-
+    # Determine engine via registry — no scattered per-engine boolean flags.
+    # Only QE steps go through QE input generation; all other registered engines
+    # build input dynamically and skip QE materialization.
+    resolved_engine = None
     if DriverRegistry.is_step_type_registered(step_type_lower):
-        engine = DriverRegistry.get_engine_for_step_type(step_type_lower)
-        is_pyscf_step = engine == "pyscf"
-        is_orca_step = engine == "orca"
-        is_lammps_step = engine == "lammps"
-        is_cp2k_step = engine == "cp2k"
-        is_qmcpack_step = engine == "qmcpack"
+        resolved_engine = DriverRegistry.get_engine_for_step_type(step_type_lower)
 
-    # Also check calculation engine family as fallback
-    if calculation_engine_family:
-        if calculation_engine_family == "pyscf":
-            is_pyscf_step = True
-        elif calculation_engine_family == "orca":
-            is_orca_step = True
-        elif calculation_engine_family == "lammps":
-            is_lammps_step = True
-        elif calculation_engine_family == "cp2k":
-            is_cp2k_step = True
-        elif calculation_engine_family == "qmcpack":
-            is_qmcpack_step = True
+    # Fallback: use calculation-level engine_family if registry lookup didn't match
+    if not resolved_engine and calculation_engine_family:
+        resolved_engine = calculation_engine_family
+
+    is_non_qe_engine = resolved_engine is not None and resolved_engine != "qe"
 
     import logging
     logger = logging.getLogger(__name__)
@@ -1087,92 +1073,14 @@ def materialize_step_spec(
             
             return generated_input, spec_obj
     
-    # Phase 3C: PySCF steps - no input file generation (PySCF engine builds input dynamically)
-    if is_pyscf_step:
+    # Phase 3C: Non-QE engines — skip QE input generation.
+    # All non-QE engines build input dynamically from structure + parameters.
+    # Dispatched via DriverRegistry (no per-engine boolean flags needed).
+    if is_non_qe_engine:
         logger.info(
-            f"[MATERIALIZE_STEP_SPEC] PySCF step detected: step_type_spec={step_type_lower}, "
-            f"engine_family={calculation_engine_family}, skipping QE input generation. "
-            f"PySCF engine will build input dynamically from structure + parameters."
-        )
-        # Generate a dummy input file path (PySCF engine doesn't use it, but Step.input_file requires a path)
-        from quantumvitas.calculation.naming import CalculationFileNaming
-        if input_name:
-            filename = input_name
-        else:
-            ext = CalculationFileNaming.input_extension(step_type_lower)
-            filename = f"{step_type_lower}{ext}"
-        
-        generated_input = Path(output_dir) / filename
-        generated_input = generated_input.resolve()
-        generated_input.parent.mkdir(parents=True, exist_ok=True)
-        # Don't write a file - PySCF engine builds input dynamically
-        return generated_input, spec_obj
-
-    # Phase 3C: ORCA steps - no QE input file generation (ORCA engine builds input dynamically)
-    # ORCA uses molecular systems (Molecule), not periodic structures - cannot use qe_input_from_structure()
-    if is_orca_step:
-        logger.info(
-            f"[MATERIALIZE_STEP_SPEC] ORCA step detected: step_type_spec={step_type_lower}, "
-            f"engine_family={calculation_engine_family}, skipping QE input generation. "
-            f"ORCA engine will build input dynamically from structure + parameters."
-        )
-        # Generate a dummy input file path (ORCA engine doesn't use it, but Step.input_file requires a path)
-        from quantumvitas.calculation.naming import CalculationFileNaming
-        if input_name:
-            filename = input_name
-        else:
-            ext = CalculationFileNaming.input_extension(step_type_lower)
-            filename = f"{step_type_lower}{ext}"
-
-        generated_input = Path(output_dir) / filename
-        generated_input = generated_input.resolve()
-        generated_input.parent.mkdir(parents=True, exist_ok=True)
-        # Don't write a file - ORCA engine builds input dynamically
-        return generated_input, spec_obj
-
-    # LAMMPS steps - no QE input file generation (LAMMPS engine builds input dynamically)
-    if is_lammps_step:
-        logger.info(
-            f"[MATERIALIZE_STEP_SPEC] LAMMPS step detected: step_type_spec={step_type_lower}, "
-            f"engine_family={calculation_engine_family}, skipping QE input generation. "
-            f"LAMMPS engine will build input dynamically from structure + parameters."
-        )
-        # Generate a dummy input file path (LAMMPS engine doesn't use it, but Step.input_file requires a path)
-        from quantumvitas.calculation.naming import CalculationFileNaming
-        if input_name:
-            filename = input_name
-        else:
-            ext = CalculationFileNaming.input_extension(step_type_lower)
-            filename = f"{step_type_lower}{ext}"
-
-        generated_input = Path(output_dir) / filename
-        generated_input = generated_input.resolve()
-        generated_input.parent.mkdir(parents=True, exist_ok=True)
-        # Don't write a file - LAMMPS engine builds input dynamically
-        return generated_input, spec_obj
-
-    # CP2K steps - no QE input file generation (CP2K engine builds input dynamically)
-    if is_cp2k_step:
-        logger.info(
-            f"[MATERIALIZE_STEP_SPEC] CP2K step detected: step_type_spec={step_type_lower}, "
-            f"engine_family={calculation_engine_family}, skipping QE input generation. "
-            f"CP2K engine will build input dynamically from structure + parameters."
-        )
-        # Generate a dummy input file path (CP2K engine doesn't use it, but Step.input_file requires a path)
-        # CP2K uses cp2k.inp as the input filename
-        generated_input = Path(output_dir) / "cp2k.inp"
-        generated_input = generated_input.resolve()
-        generated_input.parent.mkdir(parents=True, exist_ok=True)
-        # Create empty file if needed (Step model may require file to exist)
-        generated_input.touch(exist_ok=True)
-        return generated_input, spec_obj
-
-    # QMCPACK steps - no QE input file generation (QMCPACK engine builds XML dynamically)
-    if is_qmcpack_step:
-        logger.info(
-            f"[MATERIALIZE_STEP_SPEC] QMCPACK step detected: step_type_spec={step_type_lower}, "
-            f"engine_family={calculation_engine_family}, skipping QE input generation. "
-            f"QMCPACK engine will build input dynamically from structure + parameters."
+            f"[MATERIALIZE_STEP_SPEC] Non-QE engine '{resolved_engine}' detected: "
+            f"step_type_spec={step_type_lower}, skipping QE input generation. "
+            f"Engine will build input dynamically from structure + parameters."
         )
         from quantumvitas.calculation.naming import CalculationFileNaming
         if input_name:

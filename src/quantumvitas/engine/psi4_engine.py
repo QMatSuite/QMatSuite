@@ -17,6 +17,7 @@ Architecture:
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -54,19 +55,32 @@ class Psi4Engine(Engine):
     def supported_presets(self) -> List[str]:
         return ["qc_precision"]
 
+    def _get_psi4_python(self) -> str:
+        """Get the Python executable that has Psi4 installed.
+
+        Uses centralized engine discovery to find Psi4, which may be
+        in conda rather than the current venv.
+        """
+        from quantumvitas.core.engines.discovery import discover_engine
+        result = discover_engine("psi4")
+        if result.available and result.executable_path:
+            return str(result.executable_path)
+        return sys.executable
+
     def probe(self) -> Dict[str, Any]:
         """
         Check if Psi4 is available without importing it.
 
-        Uses subprocess to check if Psi4 can be imported.
+        Uses centralized engine discovery (subprocess-based).
         Results are cached for performance.
         """
         if self._probe_cache is not None:
             return self._probe_cache
 
+        psi4_python = self._get_psi4_python()
         try:
             result = subprocess.run(
-                [sys.executable, "-c", "import psi4; print(psi4.__version__)"],
+                [psi4_python, "-c", "import psi4; print(psi4.__version__)"],
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -107,8 +121,25 @@ class Psi4Engine(Engine):
         return self.probe().get("available", False)
 
     def _get_runner_command(self) -> list:
-        """Get the command to run the Psi4 runner subprocess."""
-        return [sys.executable, "-m", "quantumvitas.engines.psi4"]
+        """Get the command to run the Psi4 runner subprocess.
+
+        Uses the discovered Psi4 Python (may be conda) and sets
+        PYTHONPATH so the subprocess can import quantumvitas.
+        """
+        return [self._get_psi4_python(), "-m", "quantumvitas.engines.psi4"]
+
+    def _get_runner_env(self) -> Dict[str, str]:
+        """Get environment for the Psi4 runner subprocess.
+
+        Adds the project's src/ directory to PYTHONPATH so that
+        conda Python (which has psi4) can also import quantumvitas.
+        """
+        import quantumvitas
+        env = os.environ.copy()
+        src_dir = str(Path(quantumvitas.__file__).parent.parent)
+        existing = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = f"{src_dir}:{existing}" if existing else src_dir
+        return env
 
     def run_step(self, step_or_input, working_dir: Path | None = None) -> StepResult:
         """Run a Psi4 calculation step via subprocess."""
@@ -288,7 +319,7 @@ class Psi4Engine(Engine):
                 execution_time=time.time() - start_time,
             )
 
-        # Run subprocess
+        # Run subprocess with environment that has PYTHONPATH for quantumvitas
         cmd = self._get_runner_command() + [str(job_chain_file)]
         try:
             result = subprocess.run(
@@ -297,6 +328,7 @@ class Psi4Engine(Engine):
                 text=True,
                 cwd=calculation_raw_dir,
                 timeout=ei.parameters.get("timeout"),
+                env=self._get_runner_env(),
             )
             stdout = result.stdout
             stderr = result.stderr
@@ -526,7 +558,7 @@ class Psi4Engine(Engine):
         job_chain_file = calculation_raw_dir / "job_chain.json"
         job_chain_file.write_text(json.dumps(job_chain_spec, indent=2))
 
-        # Run subprocess
+        # Run subprocess with environment that has PYTHONPATH for quantumvitas
         cmd = self._get_runner_command() + [str(job_chain_file)]
         try:
             result = subprocess.run(
@@ -535,6 +567,7 @@ class Psi4Engine(Engine):
                 text=True,
                 cwd=calculation_raw_dir,
                 timeout=target_step.options.get("timeout") if hasattr(target_step, "options") else None,
+                env=self._get_runner_env(),
             )
             stdout = result.stdout
             stderr = result.stderr
