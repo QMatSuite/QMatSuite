@@ -1,0 +1,124 @@
+#                                                                     
+#  __  __   ________   ___ __ __    _______   ______                  
+# /_/\/_/\ /_______/\ /__//_//_/\ /_______/\ /_____/\                 
+# \ \ \ \ \\::: _  \ \\::\| \| \ \\::: _  \ \\:::_ \ \                
+#  \:\_\ \ \\::(_)  \ \\:.      \ \\::(_)  \/_\:\ \ \ \               
+#   \::::_\/ \:: __  \ \\:.\-/\  \ \\::  _  \ \\:\ \ \ \              
+#     \::\ \  \:.\ \  \ \\. \  \  \ \\::(_)  \ \\:\_\ \ \             
+#      \__\/   \__\/\__\/ \__\/ \__\/ \_______\/ \_____\/             
+#                                                                     
+#                                                                     
+# Version 5.3.0 Revision 23927 Hash (prev commit) 1730222ea           
+#                   Branch is v2-python                               
+#                  Serial+HDF5_IO Build                               
+#                http://www.yambo-code.eu                             
+#
+#
+# GW solver                                       : Newton
+# GW approximation                                : PPA
+# PPA imaginary Energy                            :   27.2113800    [ev]
+# dS/dw steps                                     :  2
+# dS/dw step                                      :  0.100000001    [ev]
+# X G`s                                           :  1 [used]
+# X G`s                                           :  1 [disk]
+# X bands                                         :    1   50
+# X poles                                         :   100.000000    [o/o]
+# X e/h E range                                   :  -1.00000000     -1.00000000    [ev]
+# X Hxc Kernel                                    : HARTREE
+# X BZ energy Double Grid                         : no
+# X Optical Averaged directions                   : none
+# Sc/G bands                                      :    1   50
+# Sc/G damping                                    :  0.100000001    [ev]
+# Sc bands terminator                             : no
+# Sx RL components                                :   5961
+#                                                 
+# QP @ state[ 1 ] K range                         :   1  10
+# QP @ state[ 1 ] b range                         :   3   6
+# GF energies kind                                : Perdew, Burke & Ernzerhof(X)+Perdew, Burke & Ernzerhof(C)
+# GF WF`s kind                                    : Perdew, Burke & Ernzerhof(X)+Perdew, Burke & Ernzerhof(C)
+# Xs energies kind                                : Perdew, Burke & Ernzerhof(X)+Perdew, Burke & Ernzerhof(C)
+# Xs WF`s kind                                    : Perdew, Burke & Ernzerhof(X)+Perdew, Burke & Ernzerhof(C)
+#
+# Vxc  =Perdew, Burke & Ernzerhof(X)+Perdew, Burke & Ernzerhof(C)
+# Vnlxc=Hartree-Fock
+#
+#    K-point            Band               Eo [eV]            E-Eo [eV]          Sc|Eo [eV]
+#
+        1                  3                  0.000000           0.407029           1.681395
+        1                   4                 0.000000           0.406459           1.680673
+        1                   5                 2.832664           1.448329          -2.500886
+        1                   6                 3.292668           1.459336          -2.579924
+        2                  3                 -2.053996           0.234450           2.268110
+        2                   4                -0.487755           0.351163           1.901301
+        2                   5                 3.052685           1.457340          -2.609678
+        2                   6                 3.980870           1.534535          -2.922403
+        3                  3                 -2.014632           0.218041           2.244172
+        3                   4                -1.290223           0.257820           2.139529
+        3                   5                 2.498382           1.319985          -2.550507
+        3                   6                 3.823000           1.427604          -2.804903
+         4                 3                 -1.047533           0.296687           1.988268
+         4                  4                -0.962829           0.351339           1.882778
+         4                  5                 2.436930           1.269635          -2.433964
+         4                  6                 4.062299           1.618016          -2.785025
+         5                 3                 -2.422956           0.179694           2.407788
+         5                  4                -1.949885           0.179453           2.327449
+         5                  5                 1.616690           1.154521          -2.399091
+         5                  6                 3.167304           1.292409          -2.830026
+         6                 3                 -3.844655           0.019020           2.917497
+         6                  4                -2.721793           0.132934           2.515188
+         6                  5                 2.664904           1.233667          -2.668703
+         6                  6                 4.573486           1.357461          -3.101182
+         7                 3                 -3.081922           0.107494           2.641051
+         7                  4                -1.668213           0.244457           2.188685
+         7                  5                 3.170168           1.323491          -2.741035
+         7                  6                 3.858371           1.417141          -2.829800
+         8                 3                 -3.205932           0.075593           2.672619
+         8                  4                -2.431089           0.139125           2.532907
+         8                  5                 1.142710           1.090228          -2.428097
+         8                  6                 2.233551           1.184112          -2.614356
+         9                 3                 -0.805670           0.306963           2.001827
+         9                  4                -0.805670           0.310130           2.005605
+         9                  5                 2.000880           1.349210          -2.426584
+         9                  6                 3.736840           1.471555          -2.834270
+        10                 3                 -3.769414           0.008228           2.883001
+        10                  4                -1.620852           0.226324           2.252707
+        10                  5                 2.114980           1.227437          -2.587035
+        10                  6                 5.798302           1.488622          -3.234657
+# 
+# 02/04/2026 at 10:15 yambo @ <HOST> [start]
+# 02/04/2026 at 10:16                        [end]
+#  
+# Timing   [Min/Max/Average]: 22s/22s/22s
+#
+# .-Input file  gw_output/gw.in_gw_si
+# | HF_and_locXC                     # [R] Hartree-Fock
+# | gw0                              # [R] GW approximation
+# | dyson                            # [R] Dyson Equation solver
+# | em1d                             # [R][X] Dynamically Screened Interaction
+# | ppa                              # [R][Xp] Plasmon Pole Approximation for the Screened Interaction
+# | el_el_corr                       # [R] Electron-Electron Correlation
+# | BoseTemp= 0.000000         eV    # Bosonic Temperature
+# | #DegFix                        # Force the code to impose the energy levels to respect their degeneracy
+# | FFTGvecs= 1067             RL    # [FFT] Plane-waves
+# | EXXRLvcs=  5961            RL    # [XX] Exchange    RL components
+# | VXCRLvcs=  5961            RL    # [XC] XCpotential RL components
+# | Chimod= "HARTREE"                # [X] IP/Hartree/ALDA/LRC/PF/BSfxc
+# | % BndsRnXp
+# |    1 |  50 |                         # [Xp] Polarization function bands
+# | %
+# | NGsBlkXp= 1                RL    # [Xp] Response block size
+# | % LongDrXp
+# |  0.100000E-4 |  0.00000    |  0.00000    # [Xp] [cc] Electric Field
+# | %
+# | PPAPntXp= 27.21138         eV    # [Xp] PPA imaginary energy
+# | % GbndRnge
+# |    1 |  50 |                         # [GW] G[W] bands range
+# | %
+# | GTermKind= "none"                # [GW] GW terminator ("none","BG" Bruneval-Gonze,"BRS" Berger-Reining-Sottile)
+# | DysSolver= "n"                   # [GW] Dyson Equation solver ("n","s","g","q")
+# | %QPkrange                        # [GW] QP generalized Kpoint/Band indices
+# | 1|10|3|6|
+# | %
+# | %QPerange                        # [GW] QP generalized Kpoint/Energy indices
+# | 1|10| 0.000000|-1.000000|
+# | %

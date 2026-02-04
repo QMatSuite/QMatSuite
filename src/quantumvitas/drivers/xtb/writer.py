@@ -1,7 +1,7 @@
 """xTB input writer.
 
 Generates XYZ input files and builds CLI commands for xTB calculations.
-Adapted from engine_explorations/xtb/scripts/xtb_input_writer.py.
+Adapted from docs/engines/xtb/scripts/xtb_input_writer.py.
 """
 
 from __future__ import annotations

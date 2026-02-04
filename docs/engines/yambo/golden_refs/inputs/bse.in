@@ -1,0 +1,39 @@
+#
+# BSE calculation for Si (with static screening)
+#
+optics                           # [R] Linear Response optical properties
+bss                              # [R] BSE solver
+bse                              # [R][BSE] Bethe Salpeter Equation
+em1s                             # [R][Xs] Static Screening (needed for BSE kernel)
+dipoles                          # [R] Oscillator strengths
+BSKmod= "SEX"                    # [BSE] Screened Exchange kernel
+BSEmod= "resonant"               # [BSE] resonant (Tamm-Dancoff approx)
+BSSmod= "h"                      # [BSS] Haydock iterative solver
+Chimod= "HARTREE"                # [X] Hartree screening approx
+% BndsRnXs
+   1 |  20 |                         # [Xs] Polarization function bands
+%
+NGsBlkXs= 1                RL    # [Xs] Response block size
+% LongDrXs
+ 1.000000 | 0.000000 | 0.000000 |        # [Xs] [cc] Electric Field
+%
+BSENGexx=  839             RL    # [BSK] Exchange components (reduced)
+BSENGBlk= 1                RL    # [BSK] Screened interaction block size
+% BSEQptR
+ 1 | 1 |                             # [BSK] Transferred momenta range
+%
+% BSEBands
+   3 |   6 |                         # [BSK] Bands range (v3-4, c5-6)
+%
+% BEnRange
+  0.00000 | 10.00000 |         eV    # [BSS] Energy range
+%
+% BDmRange
+ 0.100000 | 0.100000 |         eV    # [BSS] Damping range
+%
+BEnSteps= 200                    # [BSS] Energy steps
+% BLongDir
+ 1.000000 | 0.000000 | 0.000000 |        # [BSS] [cc] Electric Field direction
+%
+BSEprop= "abs"                   # [BSS] absorption
+BSHayTrs=-0.020000               # [BSS] Haydock threshold

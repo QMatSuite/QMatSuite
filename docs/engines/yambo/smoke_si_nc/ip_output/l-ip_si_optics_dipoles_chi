@@ -1,0 +1,109 @@
+
+
+ __   __  _______  __   __  _______  _______
+|  | |  ||   _   ||  |_|  ||  _    ||       |
+|  |_|  ||  |_|  ||       || |_|   ||   _   |
+|       ||       ||       ||       ||  | |  |
+|_     _||       ||       ||  _   | |  |_|  |
+  |   |  |   _   || ||_|| || |_|   ||       |
+  |___|  |__| |__||_|   |_||_______||_______|
+
+
+ <---> [01] MPI/OPENMP structure, Files & I/O Directories
+ <---> [02] CORE Variables Setup
+ <---> [02.01] Unit cells
+ <---> [02.02] Symmetries
+ <---> [02.03] Reciprocal space
+ <---> [02.04] K-grid lattice
+ <---> Grid dimensions      :   8   8   8
+ <---> [02.05] Energies & Occupations
+ <---> [03] Transferred momenta grid and indexing
+ <---> [04] Dipoles
+ <---> [04.01] Setup: observables and procedures
+ <---> [DIP] Database not correct or missing. To be computed
+ <---> [x,Vnl] computed using 16 projectors
+ <---> R V P [g-space] |                                        | [000%] --(E) --(X)
+ <---> R V P [g-space] |########################################| [100%] --(E) --(X)
+ <---> [WARNING] [r,Vnl^pseudo] included in position and velocity dipoles.
+ <---> [WARNING] In case H contains other non local terms, these are neglected
+ <---> [05] Optics
+ <---> [LA] SERIAL linear algebra
+ <---> [X-CG] R(p) Tot o/o(of R):    1649   47104     100
+ <---> Xo@q[1] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[1] |########################################| [100%] --(E) --(X)
+ <---> [LA] SERIAL linear algebra
+ <---> [FFT-X] Mesh size:  15  15  15
+ <---> [X-CG] R(p) Tot o/o(of R):    9636   47104     100
+ <---> Xo@q[2] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[2] |########################################| [100%] --(E) --(X)
+ <---> [LA] SERIAL linear algebra
+ <---> [X-CG] R(p) Tot o/o(of R):    9149   47104     100
+ <---> Xo@q[3] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[3] |########################################| [100%] --(E) --(X)
+ <---> [LA] SERIAL linear algebra
+ <---> [X-CG] R(p) Tot o/o(of R):    6230   47104     100
+ <---> Xo@q[4] |                                        | [000%] --(E) --(X)
+ <---> Xo@q[4] |########################################| [100%] --(E) --(X)
+ <---> [LA] SERIAL linear algebra
+ <---> [X-CG] R(p) Tot o/o(of R):   10942   47104     100
+ <---> Xo@q[5] |                                        | [000%] --(E) --(X)
+ <02s> Xo@q[5] |########################################| [100%] --(E) --(X)
+ <02s> [LA] SERIAL linear algebra
+ <02s> [X-CG] R(p) Tot o/o(of R):   11838   47104     100
+ <02s> Xo@q[6] |                                        | [000%] --(E) --(X)
+ <03s> Xo@q[6] |########################################| [100%] --(E) --(X)
+ <03s> [LA] SERIAL linear algebra
+ <03s> [X-CG] R(p) Tot o/o(of R):    6862   47104     100
+ <03s> Xo@q[7] |                                        | [000%] --(E) --(X)
+ <03s> Xo@q[7] |########################################| [100%] --(E) --(X)
+ <03s> [LA] SERIAL linear algebra
+ <03s> [X-CG] R(p) Tot o/o(of R):   13050   47104     100
+ <03s> Xo@q[8] |                                        | [000%] --(E) --(X)
+ <04s> Xo@q[8] |########################################| [100%] --(E) --(X)
+ <04s> [LA] SERIAL linear algebra
+ <04s> [X-CG] R(p) Tot o/o(of R):    4315   47104     100
+ <04s> Xo@q[9] |                                        | [000%] --(E) --(X)
+ <04s> Xo@q[9] |########################################| [100%] --(E) --(X)
+ <04s> [LA] SERIAL linear algebra
+ <04s> [X-CG] R(p) Tot o/o(of R):   12408   47104     100
+ <04s> Xo@q[10] |                                        | [000%] --(E) --(X)
+ <05s> Xo@q[10] |########################################| [100%] --(E) --(X)
+ <05s> [LA] SERIAL linear algebra
+ <05s> [X-CG] R(p) Tot o/o(of R):   13962   47104     100
+ <05s> Xo@q[11] |                                        | [000%] --(E) --(X)
+ <06s> Xo@q[11] |########################################| [100%] --(E) --(X)
+ <06s> [LA] SERIAL linear algebra
+ <06s> [X-CG] R(p) Tot o/o(of R):    5685   47104     100
+ <06s> Xo@q[12] |                                        | [000%] --(E) --(X)
+ <06s> Xo@q[12] |########################################| [100%] --(E) --(X)
+ <06s> [LA] SERIAL linear algebra
+ <06s> [X-CG] R(p) Tot o/o(of R):   12376   47104     100
+ <06s> Xo@q[13] |                                        | [000%] --(E) --(X)
+ <07s> Xo@q[13] |########################################| [100%] --(E) --(X)
+ <07s> [LA] SERIAL linear algebra
+ <07s> [X-CG] R(p) Tot o/o(of R):    6211   47104     100
+ <07s> Xo@q[14] |                                        | [000%] --(E) --(X)
+ <08s> Xo@q[14] |########################################| [100%] --(E) --(X)
+ <08s> [LA] SERIAL linear algebra
+ <08s> [X-CG] R(p) Tot o/o(of R):   11838   47104     100
+ <08s> Xo@q[15] |                                        | [000%] --(E) --(X)
+ <08s> Xo@q[15] |########################################| [100%] --(E) --(X)
+ <08s> [LA] SERIAL linear algebra
+ <08s> [X-CG] R(p) Tot o/o(of R):    8447   47104     100
+ <08s> Xo@q[16] |                                        | [000%] --(E) --(X)
+ <09s> Xo@q[16] |########################################| [100%] --(E) --(X)
+ <09s> [LA] SERIAL linear algebra
+ <09s> [X-CG] R(p) Tot o/o(of R):    5185   47104     100
+ <09s> Xo@q[17] |                                        | [000%] --(E) --(X)
+ <09s> Xo@q[17] |########################################| [100%] --(E) --(X)
+ <09s> [LA] SERIAL linear algebra
+ <09s> [X-CG] R(p) Tot o/o(of R):    9610   47104     100
+ <09s> Xo@q[18] |                                        | [000%] --(E) --(X)
+ <10s> Xo@q[18] |########################################| [100%] --(E) --(X)
+ <10s> [LA] SERIAL linear algebra
+ <10s> [X-CG] R(p) Tot o/o(of R):    3416   47104     100
+ <10s> Xo@q[19] |                                        | [000%] --(E) --(X)
+ <11s> Xo@q[19] |########################################| [100%] --(E) --(X)
+ <11s> [06] Timing Overview
+ <11s> [07] Game Over & Game summary
+ <11s> [TIMING]            [Time-Profile]: 11s

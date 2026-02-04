@@ -21,7 +21,7 @@ from quantumvitas.core.engines.discovery import is_engine_available
 
 # Repo root for .tmp directory
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PP_DIR = _REPO_ROOT / "engine_explorations" / "siesta" / "pseudopotentials"
+_PP_DIR = _REPO_ROOT / "docs" / "engines" / "siesta" / "pseudopotentials"
 
 pytestmark = pytest.mark.skipif(
     not is_engine_available("siesta"),
@@ -346,7 +346,7 @@ class TestSiestaParser:
         """Parse H2O SCF golden artifacts."""
         from quantumvitas.drivers.siesta.parser import parse_siesta_workdir
 
-        artifact_dir = _REPO_ROOT / "engine_explorations" / "siesta" / "artifacts" / "h2o_scf"
+        artifact_dir = _REPO_ROOT / "docs" / "engines" / "siesta" / "artifacts" / "h2o_scf"
         if not artifact_dir.exists():
             pytest.skip("H2O artifacts not found")
 
@@ -362,7 +362,7 @@ class TestSiestaParser:
         """Parse Si SCF golden artifacts."""
         from quantumvitas.drivers.siesta.parser import parse_siesta_workdir
 
-        artifact_dir = _REPO_ROOT / "engine_explorations" / "siesta" / "artifacts" / "si_scf"
+        artifact_dir = _REPO_ROOT / "docs" / "engines" / "siesta" / "artifacts" / "si_scf"
         if not artifact_dir.exists():
             pytest.skip("Si SCF artifacts not found")
 
@@ -380,7 +380,7 @@ class TestSiestaParser:
         """Parse Si relaxation golden artifacts."""
         from quantumvitas.drivers.siesta.parser import parse_siesta_workdir
 
-        artifact_dir = _REPO_ROOT / "engine_explorations" / "siesta" / "artifacts" / "si_relax"
+        artifact_dir = _REPO_ROOT / "docs" / "engines" / "siesta" / "artifacts" / "si_relax"
         if not artifact_dir.exists():
             pytest.skip("Si relax artifacts not found")
 

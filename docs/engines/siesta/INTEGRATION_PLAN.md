@@ -118,7 +118,7 @@ class SiestaDriver(BaseEngineDriver):
 
 ### `writer.py` — FDF Writer
 
-Adapted from `engine_explorations/siesta/scripts/siesta_input_writer.py`:
+Adapted from `docs/engines/siesta/scripts/siesta_input_writer.py`:
 - Converts QMatSuite step parameters to FDF format
 - Handles species/pseudopotential mapping
 - Generates k-point grid
@@ -127,7 +127,7 @@ Adapted from `engine_explorations/siesta/scripts/siesta_input_writer.py`:
 
 ### `parser.py` — Output Parser
 
-Adapted from `engine_explorations/siesta/scripts/siesta_parser.py`:
+Adapted from `docs/engines/siesta/scripts/siesta_parser.py`:
 - Parses `.out`, `.EIG`, `.FA`, `.STRUCT_OUT`, `.XV`, `FORCE_STRESS`, `OUTVARS.yml`, `.MDE`, `.DOS`, `.PDOS.xml`
 - Returns structured data for `JobResult`
 - Checks convergence and normal exit
@@ -208,4 +208,4 @@ This is analogous to how QE handles UPF files and VASP handles POTCAR. The handl
 - `src/quantumvitas/workflow/registry.py` — Added 5 Siesta step type specs (siesta_scf, siesta_relax, siesta_md, siesta_bands, siesta_dos)
 - `tests/unit/test_engine_discovery.py` — Added "siesta" to expected engine set
 - `tests/unit/test_step_type_mapping.py` — Added "siesta_" to valid prefixes
-- `engine_explorations/siesta/pseudopotentials/` — Downloaded PseudoDojo nc-sr-04 PBE PSML files (H, O, Si)
+- `docs/engines/siesta/pseudopotentials/` — Downloaded PseudoDojo nc-sr-04 PBE PSML files (H, O, Si)

@@ -346,7 +346,7 @@ $end
 
 ## 9. Artifacts Saved
 
-All golden reference artifacts are in `engine_explorations/xtb/artifacts/`:
+All golden reference artifacts are in `docs/engines/xtb/artifacts/`:
 
 ```
 artifacts/
