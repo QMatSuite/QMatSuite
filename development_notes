@@ -174,3 +174,93 @@ psi4 --version
 conda install -c conda-forge xtb
 which xtb
 xtb --version
+
+
+--------------YAMBO------------------
+# Yambo: see engine exploration file for final recipe. Below are some intermediate ones. In the end you should use openBLAS, not the default apple Accelerate lib (runtime error).
+# === YAMBO 5.3.0 (macOS ARM, Homebrew gcc@14) workable compilation recipe ===
+# deps (brew)
+brew install gcc@14 curl make coreutils pkg-config
+
+# paths (edit if needed)
+export YM_VER="5.3.0"
+export YM_ROOT="$HOME/QMatSuite/.qmatsuite/engines/yambo"
+export YM_SRC="$YM_ROOT/yambo-$YM_VER"
+export PREFIX="$YM_SRC/lib/external/gfortran/gfortran-14"
+export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/opt/gcc@14/bin:$PATH"
+
+# download yambo source
+mkdir -p "$YM_ROOT"
+cd "$YM_ROOT"
+curl -L -o "yambo-$YM_VER.tar.gz" "https://github.com/yambo-code/yambo/archive/refs/tags/$YM_VER.tar.gz"
+tar -xzf "yambo-$YM_VER.tar.gz"
+mv "yambo-$YM_VER" "yambo-$YM_VER.src" 2>/dev/null || true
+# (if the tarball unpacks as yambo-$YM_VER directly, keep it)
+[ -d "yambo-$YM_VER" ] || mv "yambo-$YM_VER.src" "yambo-$YM_VER"
+cd "$YM_SRC"
+
+# IMPORTANT: macOS cp has no -u; use coreutils gcp and/or patch build scripts
+# Option A (recommended): make coreutils cp take precedence
+hash -r
+which cp   # should be /opt/homebrew/opt/coreutils/libexec/gnubin/cp
+# Option B: hard replace in repo (one-time)
+# ggrep -rlE '(^|\s)cp\s+-u(\s|$)' . | xargs -I{} gsed -i '' 's/\bcp -u\b/gcp -u/g' {}
+
+# compilers (use gcc-14/gfortran-14 to avoid gfortran15 strict mismatch issues)
+export CC="gcc-14"
+export FC="gfortran-14"
+export F77="gfortran-14"
+export CPP="gcc-14 -E -P"
+export FPP="gfortran-14 -E -P"
+
+# Fortran mismatch flag (for older code paths)
+# (set into yambo's config/setup later if needed; keeps build moving on strict interfaces)
+export FCFLAGS="-O3 -g -mtune=native -fopenmp -fallow-argument-mismatch"
+export FFLAGS="$FCFLAGS"
+
+# === LIBXC 5.2.3 (no configure; build + install into PREFIX; this is what yambo will link against) ===
+mkdir -p ~/tmp/libxc-src ~/tmp/libxc-build
+cd ~/tmp/libxc-src
+curl -LO https://gitlab.com/libxc/libxc/-/archive/5.2.3/libxc-5.2.3.tar.gz
+tar -xzf libxc-5.2.3.tar.gz
+cd libxc-5.2.3
+rm -rf objdir
+cmake -S . -B objdir \
+  -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+  -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+  -DCMAKE_C_COMPILER=gcc-14 \
+  -DCMAKE_Fortran_COMPILER=gfortran-14 \
+  -DENABLE_FORTRAN=ON
+cmake --build objdir -j4
+cmake --install objdir
+# sanity: module + pc file exist
+find "$PREFIX" -name "xc_f03_lib_m.mod" -o -name "libxc.pc"
+
+# === YAMBO configure (force internal HDF5/NETCDF/FFTW if external detection is messy; keep it serial first) ===
+cd "$YM_SRC"
+make clean || true
+./configure \
+  CC=gcc-14 CPP="gcc-14 -E -P" \
+  FC=gfortran-14 F77=gfortran-14 FPP="gfortran-14 -E -P" \
+  --enable-openmp \
+  --with-libxc-path="$PREFIX" \
+  --with-libxc-include="$PREFIX/include" \
+  --with-libxc-lib="$PREFIX/lib" \
+  --with-fcflags="$FCFLAGS" \
+  --with-fflags="$FFLAGS"
+
+# If you need to hard-wire flags after configure:
+# (yambo allows editing config/setup; ensure -fallow-argument-mismatch is present)
+# ggrep -n "FCFLAGS\|FFLAGS" config/setup
+# gsed -i '' 's/^\(FCFLAGS=.*\)$/\1 -fallow-argument-mismatch/' config/setup
+# gsed -i '' 's/^\(FFLAGS=.*\)$/\1 -fallow-argument-mismatch/' config/setup
+
+# build
+make -j4 all
+
+# quick runtime verification (no databases needed)
+ls -lh bin/ | head
+./bin/yambo -V
+./bin/yambo -h | head -n 20
+otool -L bin/yambo | head -n 40
+-------------------------------------
