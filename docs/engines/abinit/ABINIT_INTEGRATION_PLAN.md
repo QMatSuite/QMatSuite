@@ -1,6 +1,6 @@
 # ABINIT Engine Integration Plan for QMatSuite
 
-## Status: PLANNED (awaiting implementation)
+## Status: IMPLEMENTED (2026-02-04)
 
 ---
 
@@ -51,26 +51,32 @@ ABINIT is a plane-wave DFT code similar to Quantum ESPRESSO. This integration fo
 
 ### Files to Create (in `src/quantumvitas/drivers/abinit/`)
 
-| File | Contents |
-|------|----------|
-| `__init__.py` | `DriverRegistry.register(AbinitDriver())` |
-| `driver.py` | AbinitDriver class (7-item MUST interface) |
-| `handler.py` | `abinit_step_handler` function |
-| `recipe.py` | AbinitRecipe class (Directory-state archetype) |
-| `writer.py` | Input file generation (copy from `docs/engines/abinit/abinit_writer.py`) |
-| `parser.py` | Output parsing (copy from `docs/engines/abinit/abinit_parser.py`) |
+| File | Contents | Status |
+|------|----------|--------|
+| `__init__.py` | `DriverRegistry.register(AbinitDriver())` | ✅ Done |
+| `driver.py` | AbinitDriver class (7-item MUST interface) | ✅ Done |
+| `handler.py` | `abinit_step_handler` function | ✅ Done |
+| `recipe.py` | AbinitRecipe class (Directory-state archetype) | ✅ Done |
+| `writer.py` | Input file generation (copy from `docs/engines/abinit/abinit_writer.py`) | ✅ Done |
+| `parser.py` | Output parsing (copy from `docs/engines/abinit/abinit_parser.py`) | ✅ Done |
 
 ### Files to Modify
 
-| File | Change |
-|------|--------|
-| `src/quantumvitas/drivers/__init__.py` | Add `from quantumvitas.drivers import abinit` |
-| `src/quantumvitas/workflow/step_type_convert.py` | Add "abinit" to ENGINE_PREFIXES |
-| `src/quantumvitas/workflow/registry.py` | Add abinit_scf/nscf/relax StepTypeSpecs + "abinit_" prefix |
-| `src/quantumvitas/core/engines/discovery.py` | Add abinit EngineProbe |
-| `tests/unit/test_engine_discovery.py` | Add "abinit" to expected set |
-| `tests/unit/test_step_type_mapping.py` | Add "abinit_" to valid_prefixes (2 places) |
-| `tests/gates/test_registry_routing.py` | Add 'quantumvitas.drivers.abinit' to modules_to_remove |
+| File | Change | Status |
+|------|--------|--------|
+| `src/quantumvitas/drivers/__init__.py` | Add `from quantumvitas.drivers import abinit` | ✅ Done |
+| `src/quantumvitas/workflow/step_type_convert.py` | Add "abinit" to ENGINE_PREFIXES | ✅ Done |
+| `src/quantumvitas/workflow/registry.py` | Add abinit_scf/nscf/relax StepTypeSpecs + "abinit_" prefix | ✅ Done |
+| `src/quantumvitas/core/engines/discovery.py` | Add abinit EngineProbe | ✅ Done |
+| `tests/unit/test_engine_discovery.py` | Add "abinit" to expected set | ✅ Done |
+| `tests/unit/test_step_type_mapping.py` | Add "abinit_" to valid_prefixes (2 places) | ✅ Done |
+| `tests/gates/test_registry_routing.py` | Add 'quantumvitas.drivers.abinit' to modules_to_remove | ✅ Done |
+
+### Integration Tests Created
+
+| File | Description | Status |
+|------|-------------|--------|
+| `tests/integration/test_abinit_execution.py` | Full integration test suite | ✅ Done |
 
 ### Files NOT to Modify (Hard Ban)
 
@@ -388,17 +394,18 @@ ABINIT uses `{outdata_prefix}_*` for outputs. We set this explicitly per step.
 
 ## 12. Implementation Order
 
-1. **Create driver bundle skeleton** (`__init__.py`, `driver.py`)
-2. **Add to registry.py** (workflow StepTypeSpecs)
-3. **Add to step_type_convert.py** (ENGINE_PREFIXES)
-4. **Add to discovery.py** (EngineProbe)
-5. **Add to drivers/__init__.py** (import)
-6. **Implement handler.py** (execution)
-7. **Implement recipe.py** (materialization)
-8. **Copy writer.py and parser.py** from docs/engines/abinit/
-9. **Update test hardcoded lists**
-10. **Write tests**
-11. **Run full test suite**
+1. ✅ **Create driver bundle skeleton** (`__init__.py`, `driver.py`)
+2. ✅ **Add to registry.py** (workflow StepTypeSpecs)
+3. ✅ **Add to step_type_convert.py** (ENGINE_PREFIXES)
+4. ✅ **Add to discovery.py** (EngineProbe)
+5. ✅ **Add to drivers/__init__.py** (import)
+6. ✅ **Implement handler.py** (execution)
+7. ✅ **Implement recipe.py** (materialization)
+8. ✅ **Copy writer.py and parser.py** from docs/engines/abinit/
+9. ✅ **Update test hardcoded lists**
+10. ✅ **Write tests** (`tests/integration/test_abinit_execution.py`)
+11. ✅ **Run full test suite** (3256 passed, 19 skipped)
+12. ✅ **Add Si pseudopotential** (`docs/engines/abinit/pseudopotentials/14si.pspnc`)
 
 ---
 
@@ -408,6 +415,7 @@ Pre-built utilities in `docs/engines/abinit/`:
 - `abinit_writer.py` — Copy to `src/quantumvitas/drivers/abinit/writer.py`
 - `abinit_parser.py` — Copy to `src/quantumvitas/drivers/abinit/parser.py`
 - `golden_refs/` — Use for test fixtures
+- `pseudopotentials/14si.pspnc` — Si pseudopotential for integration tests
 
 ---
 

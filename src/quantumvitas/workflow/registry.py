@@ -868,6 +868,41 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
 
     # -------------------------------------------------------------------------
+    # ABINIT step types (plane-wave DFT)
+    # -------------------------------------------------------------------------
+    "abinit_scf": StepTypeSpec(
+        step_type_spec="abinit_scf",
+        step_type_gen="scf",
+        engine="abinit",
+        executable="abinit",
+        description="ABINIT ground state SCF calculation",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=True,
+    ),
+    "abinit_nscf": StepTypeSpec(
+        step_type_spec="abinit_nscf",
+        step_type_gen="nscf",
+        engine="abinit",
+        executable="abinit",
+        description="ABINIT non-self-consistent calculation",
+        requires_structure=True,
+        requires_charge_density=True,
+        produces_charge_density=False,
+    ),
+    "abinit_relax": StepTypeSpec(
+        step_type_spec="abinit_relax",
+        step_type_gen="relax",
+        engine="abinit",
+        executable="abinit",
+        description="ABINIT structure relaxation",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        is_structure_transform=True,
+    ),
+
+    # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
     "qe_custom": StepTypeSpec(
@@ -1160,7 +1195,7 @@ def normalize_step_type_to_gen(step_type_spec: str) -> str:
         return spec.step_type_gen
 
     # Fallback: strip known engine prefixes (e.g., "qe_vc-relax" -> "vc-relax")
-    ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_", "gpaw_", "siesta_", "xtb_", "yambo_")
+    ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_", "gpaw_", "siesta_", "xtb_", "yambo_", "abinit_")
     lower = normalized.lower()
     for prefix in ENGINE_PREFIXES:
         if lower.startswith(prefix):
