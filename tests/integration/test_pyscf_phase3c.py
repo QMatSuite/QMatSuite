@@ -18,6 +18,20 @@ from quantumvitas.api import QVService
 from quantumvitas.core.resolution import build_resource_index
 
 
+def _pyscf_available() -> bool:
+    """Check if PySCF is installed with actual functionality.
+
+    CI environments may have a stub pyscf module that passes basic import
+    but fails on actual submodules like gto and scf. We check for these
+    to ensure PySCF is fully functional.
+    """
+    try:
+        from pyscf import gto, scf
+        return True
+    except ImportError:
+        return False
+
+
 @pytest.fixture
 def temp_project(tmp_path: Path) -> Path:
     """Create a temporary project for testing."""
@@ -124,8 +138,8 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
 
 
 @pytest.mark.skipif(
-    not pytest.importorskip("pyscf", reason="PySCF not installed"),
-    reason="PySCF not available",
+    not _pyscf_available(),
+    reason="PySCF not installed - install with: pip install pyscf",
 )
 class TestPySCFPhase3CIntegration:
     """Integration tests for Phase 3C PySCF semantics."""

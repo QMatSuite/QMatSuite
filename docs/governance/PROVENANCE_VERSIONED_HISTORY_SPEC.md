@@ -1,6 +1,6 @@
 # Provenance / Versioned History System Specification
 
-**Status:** Draft v1.0
+**Status:** PROPOSED v1.1
 **Author:** Architecture Team
 **Date:** 2026-02-05
 **Target Implementer:** Auto (Claude)
@@ -16,9 +16,10 @@
 5. [MVP Workflows](#5-mvp-workflows)
 6. [Engine Integration Points](#6-engine-integration-points)
 7. [GC and Retention Policies](#7-gc-and-retention-policies)
-8. [Testing Plan](#8-testing-plan)
-9. [Migration and Compatibility](#9-migration-and-compatibility)
-10. [Future Enhancements](#10-future-enhancements)
+8. [Gate Inventory](#8-gate-inventory)
+9. [Testing Plan](#9-testing-plan)
+10. [Migration and Compatibility](#10-migration-and-compatibility)
+11. [Future Enhancements](#11-future-enhancements)
 
 ---
 
@@ -45,6 +46,8 @@ This system follows a **"behind-the-scenes"** approach:
 
 4. **Explicit Intent, Not Inference**: Operations are recorded with explicit `OperationContext` passed through the call chain. We do not rely on observers/listeners to infer intent.
 
+5. **Only SSOT-Writing Actions are Recorded**: UI-only state changes (like preset "select" without apply) are NOT provenance events. Only operations that result in SSOT YAML writes are recorded.
+
 ### 1.3 High-Level Architecture
 
 ```
@@ -58,12 +61,12 @@ This system follows a **"behind-the-scenes"** approach:
 │  ├─────────────────────────────────────┤  ├──────────────────────────────┤ │
 │  │  project.qv.yml                     │  │  .provenance/                │ │
 │  │  calculations/                      │  │  ├── provenance.db (SQLite)  │ │
-│  │  ├── <calc_ulid>/                   │  │  └── .cas/                   │ │
-│  │  │   ├── calculation.yaml           │  │      ├── objects/            │ │
-│  │  │   ├── step_*.yaml                │  │      │   └── <sha256>/       │ │
-│  │  │   └── raw/  (current outputs)    │  │      └── tmp/                │ │
-│  │  pseudo/                            │  │                              │ │
-│  │  potentials/                        │  │                              │ │
+│  │  ├── <calc_ulid>/                   │  │  ├── provenance.lock         │ │
+│  │  │   ├── calculation.yaml           │  │  └── .cas/                   │ │
+│  │  │   ├── step_*.yaml                │  │      ├── objects/            │ │
+│  │  │   └── raw/  (current outputs)    │  │      │   └── <sha256>/       │ │
+│  │  pseudo/                            │  │      ├── tmp/                │ │
+│  │  potentials/                        │  │      └── gc.lock             │ │
 │  │  structures/                        │  │                              │ │
 │  └─────────────────────────────────────┘  └──────────────────────────────┘ │
 │                                                                             │
@@ -73,12 +76,22 @@ This system follows a **"behind-the-scenes"** approach:
 │  ├─────────────────────────────────────┤                                   │
 │  │  calculations/<ulid>/.run_tmp_info/ │                                   │
 │  │  └── manifest.json                  │                                   │
-│  │  .locks/                            │                                   │
+│  │  calculations/<ulid>/.locks/        │                                   │
 │  │  └── edit.lock, run.lock            │                                   │
 │  └─────────────────────────────────────┘                                   │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### 1.4 Key Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| **SHA storage** | Only for CAS objects | Operation events do NOT store before/after SHA; only runs store snapshot SHAs |
+| **Run step storage** | Normalized `runs` + `run_steps` tables | No JSON blobs; enables efficient per-step queries |
+| **Lock ordering** | edit.lock → release → provenance.lock | Never hold both simultaneously; SQLite append after YAML write |
+| **Preset events** | Only APPLY recorded | SELECT is UI-only; no SSOT write = no event |
+| **Artifact scanning** | Single Runner-level scanner | No duplicate scanners in handlers/engines |
 
 ---
 
@@ -95,17 +108,18 @@ These invariants are BINDING and must be enforced via gate tests.
 - No kernel code path may fail due to missing/corrupt provenance data.
 - History data is "write-only from kernel perspective"—reads are for UI/agents/analytics only.
 
-**Enforcement:** Gate test that deletes `.provenance/` before a run and verifies success.
+**Enforcement:** Gate `test_provenance_independence.py`
 
 ### Law P2: OperationContext Required (Choke Point Rule)
 
 > **Any write to Present World SSOT YAML MUST carry an explicit OperationContext.**
 
 - `save_yaml_doc()` MUST require an `opctx` parameter.
-- Calling `save_yaml_doc()` without `opctx` MUST raise a hard error (not warning).
-- This guarantees all operations are recorded without scattered logging calls.
+- Calling `save_yaml_doc()` without `opctx` MUST raise `OperationContextRequiredError`.
+- This guarantees all SSOT-writing operations are recorded without scattered logging calls.
+- OperationContext minimum fields: `op` (enum), `actor` (human/agent/system), `source` (kernel public method name), `scope` (project/calc/step/structure), `payload` (JSON-serializable dict), `timestamp` (optional; recorder sets if None).
 
-**Enforcement:** Gate test that verifies `save_yaml_doc(doc, path)` without opctx raises `OperationContextRequiredError`.
+**Enforcement:** Gate `test_provenance_opctx_required.py`
 
 ### Law P3: No Provenance-Dependent Skip Logic
 
@@ -114,17 +128,17 @@ These invariants are BINDING and must be enforced via gate tests.
 - Manifest-based incremental run (Constitution §5) uses only: kind, pseudo_set_sha, structure_sha, step_sha, done flag.
 - The provenance system is for audit/rollback, not runtime optimization.
 
-**Enforcement:** Gate test that skip logic never imports from `quantumvitas.provenance`.
+**Enforcement:** Gate `test_provenance_skip_isolation.py`
 
 ### Law P4: Append-Only Timeline
 
-> **The SQLite timeline is append-only. Events are NEVER deleted or modified.**
+> **The SQLite timeline is append-only. Events and runs are NEVER deleted or modified.**
 
 - Operations and runs are immutable once recorded.
 - Corrections are recorded as new events (e.g., `CORRECTION` event type).
-- GC may delete CAS blobs, but SQLite event references remain (with `blob_deleted=true` flag if needed).
+- GC may delete CAS blobs, but SQLite records remain (with soft-delete flag if needed).
 
-**Enforcement:** Schema has no UPDATE/DELETE statements for events table; audit trigger logs any attempts.
+**Enforcement:** Schema design; no UPDATE/DELETE on events/runs tables.
 
 ### Law P5: CAS Integrity
 
@@ -134,28 +148,52 @@ These invariants are BINDING and must be enforced via gate tests.
 - Once written, a CAS object is never modified.
 - Duplicate writes (same hash) are no-ops.
 - GC may delete objects per tier policy, but must verify no live references first.
+- **SHA exists ONLY for objects actually stored in CAS** (snapshots, artifacts). Operation events do NOT store before/after SHAs.
 
-**Enforcement:** Gate test that writing same content twice produces same hash; modification attempts fail.
+**Enforcement:** Gate `test_cas_integrity.py`
 
-### Law P6: Lock Ordering
+### Law P6: Lock Ordering (Sequential, Not Nested)
 
-> **Locks MUST be acquired in canonical order: edit.lock → provenance.lock**
+> **Locks MUST be acquired sequentially: edit.lock first, then provenance.lock. Never hold both simultaneously.**
 
-- If both locks are needed, edit.lock is acquired first.
-- This prevents deadlocks between YAML writes and provenance recording.
-- Provenance recording should occur AFTER YAML write commits (inside edit.lock critical section).
+- YAML write sequence:
+  1. Acquire edit.lock → write YAML → release edit.lock
+  2. Acquire provenance.lock → append SQLite event → release provenance.lock
+- This prevents deadlocks and ensures YAML write is never blocked by provenance.
+- **Critical:** Provenance append happens AFTER edit.lock is released, not inside it.
 
-**Enforcement:** Concurrency gate test with multi-threaded writers.
+**Enforcement:** Gate `test_lock_ordering.py`
 
 ### Law P7: Graceful Degradation
 
 > **Provenance failures MUST NOT fail YAML writes.**
 
 - If SQLite append fails after YAML write succeeds, log warning and continue.
-- Project remains runnable; provenance gap is recorded when possible.
+- Project remains runnable; provenance gap is logged when possible.
 - Best-effort retry is optional (not required for MVP).
+- History is NOT SSOT; YAML write success is the only success criterion.
 
-**Enforcement:** Integration test that corrupts provenance.db and verifies YAML operations continue.
+**Enforcement:** Integration test `test_provenance_failure_graceful.py`
+
+### Law P8: Only SSOT-Writing Actions are Provenance Events
+
+> **Only operations that result in SSOT YAML writes are recorded as provenance events.**
+
+- UI-only state changes (preset "select", parameter preview, validation) are NOT events.
+- Preset APPLY that writes to step.yaml is an event; preset SELECT is not.
+- If no `save_yaml_doc()` call occurs, no provenance event is recorded.
+
+**Enforcement:** Architectural design; tested via preset integration tests.
+
+### Law P9: Single Artifact Scanner (No Duplicate Logic)
+
+> **Artifact scanning MUST occur only at Runner level. No duplicate scanners in handlers or engines.**
+
+- Pre-step and post-step scans are Runner responsibility.
+- Handlers and engine modules MUST NOT implement independent artifact scanning.
+- Engine recipes define artifact policy (blacklist/whitelist); Runner applies it.
+
+**Enforcement:** Gate `test_no_duplicate_scanners.py`
 
 ---
 
@@ -165,9 +203,9 @@ These invariants are BINDING and must be enforced via gate tests.
 
 ```
 project_root/
-├── .provenance/                          # NEW: Provenance root
-│   ├── provenance.db                     # SQLite database (timeline + metadata)
-│   ├── provenance.lock                   # Lock file for SQLite writes
+├── .provenance/                          # Provenance root (project-level)
+│   ├── provenance.db                     # SQLite database
+│   ├── provenance.lock                   # Project-level lock for SQLite writes
 │   └── .cas/                             # Content-Addressed Store
 │       ├── objects/                      # Immutable blob storage
 │       │   ├── <first2>/                 # First 2 chars of sha256
@@ -177,8 +215,16 @@ project_root/
 │       └── gc.lock                       # Lock for GC operations
 ├── project.qv.yml                        # Present World SSOT
 ├── calculations/                         # Present World SSOT
-│   └── ...
-└── ...                                   # Other Present World files
+│   └── <calc_ulid>/
+│       ├── calculation.yaml
+│       ├── step_*.yaml
+│       ├── raw/                          # Engine I/O (current only)
+│       ├── .run_tmp_info/
+│       │   └── manifest.json             # Incremental run bookkeeping
+│       └── .locks/
+│           ├── edit.lock                 # Per-calc YAML write lock
+│           └── run.lock                  # Per-calc execution lock
+└── ...
 ```
 
 ### 3.2 OperationContext Schema
@@ -193,18 +239,36 @@ class OperationContext:
     scope: ScopeType               # Enum: project/calc/step/structure
     source: str                    # Kernel public method name (e.g., "Calculation.add_step")
     payload: dict                  # Operation-specific data (JSON-serializable)
-    timestamp: Optional[str]       # ISO8601; recorder sets if None
-    facade_endpoint: Optional[str] # Optional: higher-level API endpoint
-    request_id: Optional[str]      # Optional: correlation ID for multi-op requests
+    timestamp: Optional[str] = None       # ISO8601; recorder sets if None
+    facade_endpoint: Optional[str] = None # Optional: higher-level API endpoint
+    request_id: Optional[str] = None      # Optional: correlation ID for multi-op requests
 
     def to_dict(self) -> dict:
         """Serialize for SQLite JSON column."""
-        ...
+        return {
+            "op": self.op.value,
+            "actor": self.actor.value,
+            "scope": self.scope.value,
+            "source": self.source,
+            "payload": self.payload,
+            "timestamp": self.timestamp,
+            "facade_endpoint": self.facade_endpoint,
+            "request_id": self.request_id,
+        }
 
     @classmethod
     def from_dict(cls, data: dict) -> "OperationContext":
         """Deserialize from SQLite JSON column."""
-        ...
+        return cls(
+            op=OperationType(data["op"]),
+            actor=ActorType(data["actor"]),
+            scope=ScopeType(data["scope"]),
+            source=data["source"],
+            payload=data.get("payload", {}),
+            timestamp=data.get("timestamp"),
+            facade_endpoint=data.get("facade_endpoint"),
+            request_id=data.get("request_id"),
+        )
 
 
 class OperationType(str, Enum):
@@ -227,8 +291,7 @@ class OperationType(str, Enum):
     STEP_REMOVE = "step_remove"
     STEP_REORDER = "step_reorder"
 
-    # Preset operations
-    PRESET_SELECT = "preset_select"
+    # Preset operations (APPLY only; SELECT is UI-only, not recorded)
     PRESET_APPLY = "preset_apply"
     PRESET_CLEAR = "preset_clear"
 
@@ -241,11 +304,6 @@ class OperationType(str, Enum):
     # Species/Pseudo
     SPECIES_MAP_UPDATE = "species_map_update"
     PSEUDO_ASSIGN = "pseudo_assign"
-
-    # Run operations
-    RUN_START = "run_start"
-    RUN_COMPLETE = "run_complete"
-    RUN_ABORT = "run_abort"
 
     # Rollback/Restore
     RESTORE = "restore"                   # Restore from snapshot
@@ -271,7 +329,7 @@ class ScopeType(str, Enum):
     RESOURCE = "resource"  # Pseudo, potential, etc.
 ```
 
-### 3.3 SQLite Schema
+### 3.3 SQLite Schema (Normalized Tables)
 
 ```sql
 -- Schema version tracking
@@ -281,16 +339,16 @@ CREATE TABLE IF NOT EXISTS schema_version (
 );
 INSERT INTO schema_version (version) VALUES (1);
 
--- Main timeline: unified events table
--- All events (operations + runs) in chronological order
-CREATE TABLE IF NOT EXISTS events (
+--------------------------------------------------------------------------------
+-- OPERATIONS TABLE: Records all SSOT-writing operations
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS operations (
     -- Identity
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ulid TEXT NOT NULL UNIQUE,            -- ULID for external references
 
     -- Classification
-    event_kind TEXT NOT NULL,             -- 'operation' | 'run_start' | 'run_complete' | 'run_abort'
-    op_type TEXT,                         -- OperationType enum value (for operations)
+    op_type TEXT NOT NULL,                -- OperationType enum value
 
     -- Timing
     timestamp TEXT NOT NULL,              -- ISO8601 with microseconds
@@ -308,78 +366,106 @@ CREATE TABLE IF NOT EXISTS events (
     facade_endpoint TEXT,                 -- Optional higher-level endpoint
     request_id TEXT,                      -- Optional correlation ID
 
-    -- Payload
-    payload TEXT NOT NULL DEFAULT '{}',   -- JSON: operation-specific data
+    -- Payload: operation-specific data + diff summary
+    payload TEXT NOT NULL DEFAULT '{}',   -- JSON: includes changed_paths, summary, etc.
 
-    -- Snapshot references (for operations that modify SSOT)
-    before_snapshot_sha TEXT,             -- SHA-256 of before state in CAS
-    after_snapshot_sha TEXT,              -- SHA-256 of after state in CAS
-
-    -- Run-specific fields (for run events)
-    run_ulid TEXT,                        -- Links run events together
-    steps_json TEXT,                      -- JSON array of step execution records (run_complete only)
-    status TEXT,                          -- 'success' | 'failed' | 'aborted' (run_complete/abort only)
-    error_message TEXT,                   -- Error details (if failed/aborted)
-
-    -- Indexes for common queries
+    -- Metadata
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Indexes for efficient queries
-CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
-CREATE INDEX IF NOT EXISTS idx_events_event_kind ON events(event_kind);
-CREATE INDEX IF NOT EXISTS idx_events_op_type ON events(op_type);
-CREATE INDEX IF NOT EXISTS idx_events_target_ulid ON events(target_ulid);
-CREATE INDEX IF NOT EXISTS idx_events_calc_ulid ON events(calc_ulid);
-CREATE INDEX IF NOT EXISTS idx_events_run_ulid ON events(run_ulid);
-CREATE INDEX IF NOT EXISTS idx_events_actor ON events(actor);
-CREATE INDEX IF NOT EXISTS idx_events_request_id ON events(request_id);
+-- Indexes for operations table
+CREATE INDEX IF NOT EXISTS idx_operations_timestamp ON operations(timestamp);
+CREATE INDEX IF NOT EXISTS idx_operations_op_type ON operations(op_type);
+CREATE INDEX IF NOT EXISTS idx_operations_target_ulid ON operations(target_ulid);
+CREATE INDEX IF NOT EXISTS idx_operations_calc_ulid ON operations(calc_ulid);
+CREATE INDEX IF NOT EXISTS idx_operations_actor ON operations(actor);
+CREATE INDEX IF NOT EXISTS idx_operations_request_id ON operations(request_id);
 
--- Step execution records within runs
--- Normalized for efficient per-step queries
+--------------------------------------------------------------------------------
+-- RUNS TABLE: Records calculation run events
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS runs (
+    -- Identity
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_ulid TEXT NOT NULL UNIQUE,        -- Run ULID
+
+    -- Association
+    calc_ulid TEXT NOT NULL,              -- Calculation ULID
+    project_ulid TEXT,                    -- Project ULID
+
+    -- Timing
+    started_at TEXT NOT NULL,             -- ISO8601
+    finished_at TEXT,                     -- ISO8601 (NULL if running/aborted)
+
+    -- Status
+    status TEXT NOT NULL DEFAULT 'running',  -- 'running' | 'success' | 'failed' | 'aborted'
+    error_message TEXT,                   -- Error details (if failed/aborted)
+
+    -- Snapshot reference (Tier-0 CAS object)
+    snapshot_sha TEXT,                    -- SHA-256 of pre-run SSOT snapshot in CAS
+
+    -- Engine info
+    engine TEXT,                          -- Engine family (qe, vasp, etc.)
+
+    -- Metadata
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_runs_calc_ulid ON runs(calc_ulid);
+CREATE INDEX IF NOT EXISTS idx_runs_status ON runs(status);
+CREATE INDEX IF NOT EXISTS idx_runs_started_at ON runs(started_at);
+
+--------------------------------------------------------------------------------
+-- RUN_STEPS TABLE: Normalized per-step execution records
+--------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS run_steps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_ulid TEXT NOT NULL,               -- Links to events.run_ulid
+    run_ulid TEXT NOT NULL,               -- FK to runs.run_ulid
     step_ulid TEXT NOT NULL,              -- Step ULID
     step_index INTEGER NOT NULL,          -- Position in execution order (0-based)
 
-    -- Snapshot references
-    snapshot_sha TEXT NOT NULL,           -- Tier-0: YAML/structure snapshot in CAS
-
-    -- Artifact collection
-    artifact_collection_sha TEXT,         -- Tier-2/3: Collection manifest in CAS
-
-    -- Execution details
+    -- Timing
     started_at TEXT,                      -- ISO8601
     finished_at TEXT,                     -- ISO8601
-    status TEXT NOT NULL,                 -- 'pending' | 'running' | 'success' | 'failed' | 'skipped'
+
+    -- Status
+    status TEXT NOT NULL DEFAULT 'pending',  -- 'pending' | 'running' | 'success' | 'failed' | 'skipped'
+
+    -- Snapshot reference (Tier-0)
+    snapshot_sha TEXT,                    -- SHA-256 of step YAML snapshot in CAS
+
+    -- Artifact collection reference (Tier-2/3)
+    artifact_collection_sha TEXT,         -- SHA-256 of collection manifest in CAS
 
     -- Optional digest
     digest_sha TEXT,                      -- SHA-256 of step digest in CAS
 
-    UNIQUE(run_ulid, step_ulid)
+    UNIQUE(run_ulid, step_ulid),
+    FOREIGN KEY (run_ulid) REFERENCES runs(run_ulid)
 );
 
 CREATE INDEX IF NOT EXISTS idx_run_steps_run_ulid ON run_steps(run_ulid);
 CREATE INDEX IF NOT EXISTS idx_run_steps_step_ulid ON run_steps(step_ulid);
 
--- CAS object metadata
--- Tracks objects in .cas/objects/ with tier and retention info
+--------------------------------------------------------------------------------
+-- CAS_OBJECTS TABLE: Metadata for objects in .cas/objects/
+--------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS cas_objects (
     sha256 TEXT PRIMARY KEY,              -- Content hash
-    tier INTEGER NOT NULL,                -- 0, 1, 2, or 3
+    tier INTEGER NOT NULL,                -- 0, 0.5, 1, 2, or 3
     size_bytes INTEGER NOT NULL,          -- Object size
+    content_type TEXT,                    -- MIME type hint
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     last_referenced_at TEXT,              -- Updated on access (for LRU)
-    ref_count INTEGER NOT NULL DEFAULT 1, -- Reference counting for GC
-    content_type TEXT,                    -- MIME type hint
     deleted BOOLEAN NOT NULL DEFAULT 0    -- Soft-delete for GC
 );
 
 CREATE INDEX IF NOT EXISTS idx_cas_objects_tier ON cas_objects(tier);
 CREATE INDEX IF NOT EXISTS idx_cas_objects_deleted ON cas_objects(deleted);
 
--- Agent journal entries (optional, for future agent memory)
+--------------------------------------------------------------------------------
+-- JOURNAL_ENTRIES TABLE: Agent/human narrative notes (optional, for future)
+--------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS journal_entries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ulid TEXT NOT NULL UNIQUE,
@@ -401,83 +487,105 @@ CREATE TABLE IF NOT EXISTS journal_entries (
 CREATE INDEX IF NOT EXISTS idx_journal_entries_run_ulid ON journal_entries(run_ulid);
 CREATE INDEX IF NOT EXISTS idx_journal_entries_calc_ulid ON journal_entries(calc_ulid);
 
--- Full-text search for journal
+-- Full-text search for journal (optional, for future)
 CREATE VIRTUAL TABLE IF NOT EXISTS journal_fts USING fts5(
     title, tags,
     content='journal_entries',
     content_rowid='id'
 );
-
--- Triggers for FTS sync
-CREATE TRIGGER IF NOT EXISTS journal_ai AFTER INSERT ON journal_entries BEGIN
-    INSERT INTO journal_fts(rowid, title, tags) VALUES (new.id, new.title, new.tags);
-END;
-
-CREATE TRIGGER IF NOT EXISTS journal_ad AFTER DELETE ON journal_entries BEGIN
-    INSERT INTO journal_fts(journal_fts, rowid, title, tags) VALUES('delete', old.id, old.title, old.tags);
-END;
-
-CREATE TRIGGER IF NOT EXISTS journal_au AFTER UPDATE ON journal_entries BEGIN
-    INSERT INTO journal_fts(journal_fts, rowid, title, tags) VALUES('delete', old.id, old.title, old.tags);
-    INSERT INTO journal_fts(rowid, title, tags) VALUES (new.id, new.title, new.tags);
-END;
 ```
 
-### 3.4 CAS Object Format
+### 3.4 Operation Event Payload Schema
 
-#### 3.4.1 Path Derivation
+Operations do NOT store before/after snapshot SHAs. Instead, they store a lightweight diff summary in the payload:
 
 ```python
-def cas_path(sha256: str) -> Path:
+@dataclass
+class OperationPayload:
+    """Payload structure for operation events."""
+
+    # Operation-specific data (varies by op_type)
+    preset_name: Optional[str] = None     # For PRESET_APPLY
+    step_type_spec: Optional[str] = None  # For STEP_ADD/UPDATE
+    structure_ulid: Optional[str] = None  # For STRUCTURE_* ops
+
+    # Diff summary (computed from before/after YAML)
+    changed_paths: List[str] = field(default_factory=list)  # JSONPointer-like paths
+    summary: Optional[str] = None         # Human-readable description
+
+    # Optional: run correlation
+    run_ulid: Optional[str] = None        # If this op is part of a run
+
+    def to_dict(self) -> dict:
+        """Serialize for SQLite storage."""
+        return {k: v for k, v in asdict(self).items() if v is not None}
+```
+
+**Example payloads:**
+
+```json
+// PRESET_APPLY
+{
+    "preset_name": "high_accuracy",
+    "changed_paths": ["/parameters/ecutwfc", "/parameters/ecutrho", "/kpoints/grid"],
+    "summary": "Applied preset 'high_accuracy' to step scf"
+}
+
+// STEP_UPDATE
+{
+    "step_type_spec": "qe_scf",
+    "changed_paths": ["/parameters/ecutwfc"],
+    "summary": "Updated ecutwfc from 40 to 60"
+}
+
+// RELAX_PROMOTE
+{
+    "structure_ulid": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+    "summary": "Promoted relaxed structure from step relax"
+}
+```
+
+### 3.5 CAS Object Formats
+
+#### 3.5.1 Path Derivation
+
+```python
+def cas_path(cas_root: Path, sha256: str) -> Path:
     """Derive CAS path from SHA-256 hash."""
-    return CAS_ROOT / "objects" / sha256[:2] / sha256[2:]
+    return cas_root / "objects" / sha256[:2] / sha256[2:]
 ```
 
 Example: `sha256 = "a1b2c3d4..."` → `.cas/objects/a1/b2c3d4...`
 
-#### 3.4.2 Snapshot Object (Tier-0)
+#### 3.5.2 Run Snapshot Object (Tier-0)
 
-Snapshots capture the complete SSOT state needed for restore:
+Snapshots are created at run start and capture the complete SSOT state:
 
 ```json
 {
     "version": 1,
-    "type": "snapshot",
-    "scope": "calc",
+    "type": "run_snapshot",
+    "run_ulid": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
+    "calc_ulid": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
     "timestamp": "2026-02-05T10:30:00.000000Z",
-    "target_ulid": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 
     "files": {
-        "calculation.yaml": {
-            "sha256": "...",
-            "content_inline": true
-        },
-        "step_scf.yaml": {
-            "sha256": "...",
-            "content_inline": true
-        },
-        "step_bands.yaml": {
-            "sha256": "...",
-            "content_inline": true
-        }
+        "calculation.yaml": "<inline YAML content>",
+        "step_scf.yaml": "<inline YAML content>",
+        "step_bands.yaml": "<inline YAML content>"
     },
 
-    "structure_refs": {
-        "main": {
+    "structure_refs": [
+        {
             "ulid": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+            "path": "structures/si_diamond.yaml",
             "sha256": "..."
         }
-    },
-
-    "content": {
-        "calculation.yaml": "<base64 or raw YAML>",
-        "step_scf.yaml": "<base64 or raw YAML>",
-        "step_bands.yaml": "<base64 or raw YAML>"
-    }
+    ]
 }
 ```
 
-#### 3.4.3 Artifact Collection Object (Tier-2/3)
+#### 3.5.3 Artifact Collection Object (Tier-2/3)
 
 Artifact collections are manifests pointing to individual artifact blobs:
 
@@ -522,21 +630,21 @@ Artifact collections are manifests pointing to individual artifact blobs:
 
     "scan_metadata": {
         "blacklist_applied": ["outdir/"],
-        "whitelist_patterns": ["*.out", "*.xml", "*.json"],
         "total_files_scanned": 15,
         "total_size_bytes": 20971520,
+        "captured_count": 2,
         "captured_size_bytes": 153600
     }
 }
 ```
 
-### 3.5 Storage Tiers
+### 3.6 Storage Tiers
 
 | Tier | Contents | Retention | GC Policy |
 |------|----------|-----------|-----------|
-| **Tier-0** | SSOT snapshots (YAML, structures) | Forever | Never auto-delete |
-| **Tier-0.5** | Reproducibility assets (pseudos, potentials, basis) | Forever | Never auto-delete; content-addressed dedup |
-| **Tier-1** | Derived outputs (reports, images, analysis) | Long-lived | Delete only on explicit user request |
+| **Tier-0** | Run snapshots (YAML, structures) | Forever | Never auto-delete |
+| **Tier-0.5** | Reproducibility assets (pseudos, potentials, basis) | Forever | Never auto-delete; content-addressed dedup. Physical SSOT is `project/pseudo/` etc.; CAS is backup/dedup only |
+| **Tier-1** | Derived outputs (reports, images, analysis, journal bodies) | Long-lived | Delete only on explicit user request |
 | **Tier-2** | Raw artifacts from calc/raw (excluding blacklist) | Long-lived | Configurable; default keep all |
 | **Tier-3** | Large optional outputs (wavefunction, CHGCAR, restart) | Rolling window | Keep last N per step/engine (default: 3) |
 
@@ -555,77 +663,84 @@ Artifact collections are manifests pointing to individual artifact blobs:
 
 ### 4.2 Lock Ordering (Law P6)
 
-To prevent deadlocks, locks MUST be acquired in this order:
+**Critical Rule: Locks are acquired SEQUENTIALLY, never held simultaneously.**
 
 ```
-1. edit.lock (if needed for YAML write)
-2. provenance.lock (if needed for SQLite append)
-3. gc.lock (only for GC operations, never during writes)
+YAML write + provenance recording sequence:
+
+1. Acquire edit.lock
+2. Write YAML to disk (atomic via temp + rename)
+3. Capture diff summary (changed paths, before/after comparison)
+4. Release edit.lock
+   ─────────────────── edit.lock released ───────────────────
+5. Acquire provenance.lock
+6. Append operation event to SQLite (with diff summary in payload)
+7. Release provenance.lock
 ```
 
-**Critical Rule:** Never acquire edit.lock while holding provenance.lock.
+**Why sequential, not nested:**
+- Prevents deadlocks between concurrent YAML writers and provenance recorders
+- Ensures YAML write is never blocked by slow SQLite operations
+- If provenance append fails, YAML write already succeeded (Law P7)
 
 ### 4.3 YAML Write + Provenance Recording Sequence
 
+```python
+def save_yaml_doc(doc: YamlDoc, path: Path, opctx: OperationContext) -> None:
+    """
+    Single choke point for all SSOT YAML writes.
+
+    Law P2: opctx is REQUIRED. Raises OperationContextRequiredError if None.
+    """
+    # 1. Validate opctx
+    if opctx is None:
+        raise OperationContextRequiredError(
+            "save_yaml_doc() requires OperationContext. "
+            "Pass opctx from the calling kernel method."
+        )
+
+    # 2. Capture before state (for diff summary)
+    before = doc.get_snapshot()
+    after = doc.to_dict()
+
+    # 3. Compute diff summary BEFORE acquiring any locks
+    diff_summary = compute_diff_summary(before, after)
+
+    # 4. Acquire edit.lock and write YAML
+    calc_dir = find_calc_dir_from_path(path)
+    if calc_dir:
+        with calc_edit_lock(calc_dir):
+            _save_yaml_raw(after, path)
+    else:
+        _save_yaml_raw(after, path)
+
+    # ─────────── edit.lock is now released ───────────
+
+    # 5. Append provenance event (outside edit.lock)
+    try:
+        project_root = find_project_root(path)
+        if project_root:
+            record_operation_event(
+                project_root=project_root,
+                opctx=opctx,
+                diff_summary=diff_summary,
+            )
+    except ProvenanceError as e:
+        # Law P7: Provenance failure does not fail YAML write
+        logger.warning(f"Provenance recording failed: {e}")
 ```
-save_yaml_doc(doc, path, opctx) {
-    1. Validate opctx is not None (raise OperationContextRequiredError)
-    2. Compute before_snapshot = hash(current_file_content)
 
-    WITH edit.lock:
-        3. Write YAML to disk (atomic via temp + rename)
-        4. Compute after_snapshot = hash(new_file_content)
-
-        # Provenance recording inside edit.lock (MVP: synchronous)
-        WITH provenance.lock:
-            5. Store before/after snapshots in CAS (if not exists)
-            6. Append operation event to SQLite
-        # provenance.lock released
-
-    # edit.lock released
-
-    7. Return success
-}
-```
-
-### 4.4 Failure Semantics (Law P7)
-
-```
-save_yaml_doc(doc, path, opctx) {
-    ...
-    WITH edit.lock:
-        3. Write YAML to disk
-        4. Compute after_snapshot
-
-        TRY:
-            WITH provenance.lock:
-                5-6. CAS + SQLite writes
-        CATCH ProvenanceError as e:
-            # YAML write succeeded - log warning, don't fail
-            log.warning(f"Provenance recording failed: {e}")
-            # Optional: Queue for retry later
-            provenance_retry_queue.append((opctx, before, after))
-
-    # edit.lock released
-    7. Return success  # YAML write succeeded regardless of provenance
-}
-```
-
-### 4.5 Thread-Local Lock Tracking
-
-Reuse existing pattern from `locking.py`:
+### 4.4 Provenance Lock Implementation
 
 ```python
-_HELD_PROVENANCE_LOCKS: threading.local = threading.local()
-
-def _get_held_provenance_locks() -> set:
-    if not hasattr(_HELD_PROVENANCE_LOCKS, 'locks'):
-        _HELD_PROVENANCE_LOCKS.locks = set()
-    return _HELD_PROVENANCE_LOCKS.locks
-
 @contextmanager
-def provenance_lock(project_root: Path, fail_fast: bool = False):
-    """Acquire provenance.lock with reentrancy detection."""
+def provenance_lock(project_root: Path, timeout: float = 10.0):
+    """
+    Acquire project-level provenance lock for SQLite writes.
+
+    Uses portalocker for cross-platform compatibility.
+    Thread-local tracking prevents reentrancy.
+    """
     canonical = project_root.resolve()
     held = _get_held_provenance_locks()
 
@@ -635,12 +750,30 @@ def provenance_lock(project_root: Path, fail_fast: bool = False):
     lock_path = canonical / ".provenance" / "provenance.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with portalocker.Lock(lock_path, timeout=10 if not fail_fast else 0):
+    with portalocker.Lock(lock_path, timeout=timeout):
         held.add(canonical)
         try:
             yield
         finally:
             held.discard(canonical)
+```
+
+### 4.5 Failure Semantics (Law P7)
+
+```
+Scenario: SQLite append fails after YAML write succeeds
+
+1. YAML write completes successfully (edit.lock held, then released)
+2. provenance.lock acquired
+3. SQLite INSERT fails (disk full, corruption, etc.)
+4. Exception caught, logged as warning
+5. Function returns success (YAML write succeeded)
+6. Provenance gap exists but project is runnable
+
+Recovery options (MVP: none required):
+- Optional: Queue failed events for retry on next save
+- Optional: Periodic background retry of failed events
+- Long-term: Event gap detection in provenance query API
 ```
 
 ---
@@ -660,31 +793,30 @@ def provenance_lock(project_root: Path, fail_fast: bool = False):
      │                  │ opctx = OpCtx(     │                   │
      │                  │   op=PRESET_APPLY, │                   │
      │                  │   actor=HUMAN,     │                   │
+     │                  │   source="...",    │                   │
      │                  │   payload={preset} │                   │
      │                  │ )                  │                   │
      │                  │                    │                   │
-     │                  │ calc.apply_preset( │                   │
+     │                  │ step.apply_preset( │                   │
      │                  │   preset, opctx)   │                   │
      │                  ├───────────────────>│                   │
      │                  │                    │                   │
-     │                  │                    │ # Modify step.yaml│
-     │                  │                    │ step.update(...)  │
-     │                  │                    │                   │
-     │                  │                    │ save_yaml_doc(    │
-     │                  │                    │   doc, path, opctx│
-     │                  │                    │ )                 │
+     │                  │                    │ # Load step doc   │
+     │                  │                    │ # Apply patch     │
+     │                  │                    │ # Compute diff    │
      │                  │                    │                   │
      │                  │                    │ ┌───────────────┐ │
-     │                  │                    │ │WITH edit.lock │ │
-     │                  │                    │ │  Write YAML   │ │
-     │                  │                    │ │               │ │
-     │                  │                    │ │WITH prov.lock │ │
-     │                  │                    │ ├───────────────┼>│
-     │                  │                    │ │               │ │ Store CAS
-     │                  │                    │ │               │ │ Append event
-     │                  │                    │ │<──────────────┼─┤
-     │                  │                    │ │               │ │
+     │                  │                    │ │ edit.lock     │ │
+     │                  │                    │ │ Write YAML    │ │
+     │                  │                    │ │ Release lock  │ │
      │                  │                    │ └───────────────┘ │
+     │                  │                    │                   │
+     │                  │                    │ # After edit.lock released:
+     │                  │                    ├──────────────────>│
+     │                  │                    │                   │ prov.lock
+     │                  │                    │                   │ INSERT op
+     │                  │                    │                   │ Release
+     │                  │                    │<──────────────────┤
      │                  │                    │                   │
      │                  │<───────────────────┤                   │
      │<─────────────────┤                    │                   │
@@ -695,22 +827,21 @@ def provenance_lock(project_root: Path, fail_fast: bool = False):
 
 ```
 ┌──────────┐     ┌────────┐     ┌────────┐     ┌─────────┐     ┌───────────┐
-│  Runner  │     │ Recipe │     │Handler │     │Artifacts│     │ Provenance│
+│  Runner  │     │ Recipe │     │Handler │     │ Scanner │     │ Provenance│
 └────┬─────┘     └───┬────┘     └───┬────┘     └────┬────┘     └─────┬─────┘
      │               │              │               │                │
-     │ run_ulid = generate_ulid()   │               │                │
+     │ run_ulid = ULID()            │               │                │
      │               │              │               │                │
-     │ # PRE-RUN: Capture snapshots │               │                │
-     │───────────────────────────────────────────────────────────────>│
-     │               │              │               │   Snapshot     │
-     │               │              │               │   calc.yaml +  │
-     │               │              │               │   step*.yaml   │
+     │ # PRE-RUN: Create snapshot   │               │                │
+     ├──────────────────────────────────────────────────────────────>│
+     │               │              │               │                │
+     │               │              │               │   Collect YAML │
+     │               │              │               │   + structures │
      │               │              │               │   → CAS Tier-0 │
-     │<──────────────────────────────────────────────────────────────┤
      │               │              │               │                │
-     │ # Record RUN_START event     │               │                │
-     │───────────────────────────────────────────────────────────────>│
-     │               │              │               │   events.append│
+     │               │              │               │   INSERT runs  │
+     │               │              │               │   (status=     │
+     │               │              │               │    running)    │
      │<──────────────────────────────────────────────────────────────┤
      │               │              │               │                │
      │ materialize() │              │               │                │
@@ -718,36 +849,41 @@ def provenance_lock(project_root: Path, fail_fast: bool = False):
      │   JobGraph    │              │               │                │
      │<──────────────┤              │               │                │
      │               │              │               │                │
-     │ FOR each job in JobGraph:    │               │                │
+     │ FOR each step in JobGraph:   │               │                │
+     │               │              │               │                │
+     │   # PRE-STEP: Scan baseline  │               │                │
+     │   ───────────────────────────────────────────>│               │
+     │               │              │               │ Record mtimes  │
+     │   <───────────────────────────────────────────┤               │
      │               │              │               │                │
      │   execute(job)│              │               │                │
      ├──────────────────────────────>│              │                │
      │               │              │ # Run engine  │                │
-     │               │              │ subprocess    │                │
      │   JobResult   │              │               │                │
      │<──────────────────────────────┤              │                │
      │               │              │               │                │
-     │   # POST-STEP: Scan artifacts│               │                │
-     │   scan_artifacts(job)        │               │                │
-     ├──────────────────────────────────────────────>│               │
-     │               │              │               │ # Scan raw/    │
-     │               │              │               │ # Apply blacklist
-     │               │              │               │ # Hash changed │
-     │   artifact_collection        │               │ # files        │
-     │<─────────────────────────────────────────────┤                │
+     │   # POST-STEP: Scan changes  │               │                │
+     │   ───────────────────────────────────────────>│               │
+     │               │              │               │ Delta detect   │
+     │               │              │               │ Apply policy   │
+     │               │              │               │ Hash captures  │
+     │   artifact_collection        │               │                │
+     │   <───────────────────────────────────────────┤               │
      │               │              │               │                │
-     │   # Store artifact collection│               │                │
+     │   # Store in CAS + record run_step           │                │
      │───────────────────────────────────────────────────────────────>│
      │               │              │               │   CAS Tier-2/3 │
-     │               │              │               │   Insert       │
+     │               │              │               │   INSERT       │
      │               │              │               │   run_steps    │
      │<──────────────────────────────────────────────────────────────┤
      │               │              │               │                │
      │ END FOR       │              │               │                │
      │               │              │               │                │
-     │ # Record RUN_COMPLETE event  │               │                │
+     │ # Finalize run                               │                │
      │───────────────────────────────────────────────────────────────>│
-     │               │              │               │   events.append│
+     │               │              │               │   UPDATE runs  │
+     │               │              │               │   SET status,  │
+     │               │              │               │   finished_at  │
      │<──────────────────────────────────────────────────────────────┤
      │               │              │               │                │
 ```
@@ -759,8 +895,14 @@ def provenance_lock(project_root: Path, fail_fast: bool = False):
 │  UI/CLI  │     │    Kernel    │     │ Provenance│     │ Present SSOT│
 └────┬─────┘     └──────┬───────┘     └─────┬─────┘     └──────┬──────┘
      │                  │                   │                  │
-     │ restore(snapshot_sha)                │                  │
+     │ restore(run_ulid)│                   │                  │
      ├─────────────────>│                   │                  │
+     │                  │                   │                  │
+     │                  │ # Get snapshot SHA│                  │
+     │                  │ from runs table   │                  │
+     │                  ├──────────────────>│                  │
+     │                  │   snapshot_sha    │                  │
+     │                  │<──────────────────┤                  │
      │                  │                   │                  │
      │                  │ # Fetch snapshot  │                  │
      │                  │ from CAS          │                  │
@@ -771,21 +913,16 @@ def provenance_lock(project_root: Path, fail_fast: bool = False):
      │                  │ opctx = OpCtx(    │                  │
      │                  │   op=RESTORE,     │                  │
      │                  │   payload={       │                  │
-     │                  │     from_sha: ... │                  │
+     │                  │     from_run: ... │                  │
      │                  │   }               │                  │
      │                  │ )                 │                  │
      │                  │                   │                  │
-     │                  │ # Write restored files              │
-     │                  │ # to Present SSOT                   │
+     │                  │ # Write restored files (each via    │
+     │                  │ # save_yaml_doc with RESTORE opctx) │
      │                  ├─────────────────────────────────────>│
      │                  │                   │  calc.yaml      │
      │                  │                   │  step*.yaml     │
-     │                  │                   │  structures/*   │
-     │                  │                   │                  │
-     │                  │ # Each write via save_yaml_doc      │
-     │                  │ # records RESTORE event             │
-     │                  │ # with provenance                   │
-     │                  │                   │                  │
+     │                  │                   │  (structures)   │
      │                  │                   │                  │
      │<─────────────────┤                   │                  │
      │ OK + restore_summary                 │                  │
@@ -797,14 +934,14 @@ def provenance_lock(project_root: Path, fail_fast: bool = False):
 
 ### 6.1 Artifact Policy in Engine Recipes
 
-Each engine driver MUST define artifact handling policy in its recipe:
+Each engine driver MUST define artifact handling policy. This is the ONLY place artifact policy is defined (Law P9).
 
 ```python
 # src/quantumvitas/drivers/<engine>/recipe.py
 
 class EngineRecipe(BaseRecipe):
 
-    # Artifact policy (REQUIRED)
+    # Artifact policy (REQUIRED for provenance support)
     ARTIFACT_POLICY = ArtifactPolicy(
         mode="blacklist",  # or "whitelist" for strict engines
 
@@ -818,7 +955,6 @@ class EngineRecipe(BaseRecipe):
         blacklist_patterns=[
             "*.wfc*",            # Wavefunction files (huge)
             "*.chg",             # Charge density (huge)
-            "*.restart*",        # Restart files
         ],
 
         # Tier-3 patterns (keep rolling window)
@@ -829,7 +965,7 @@ class EngineRecipe(BaseRecipe):
         ],
 
         # Whitelist overrides blacklist for specific files
-        whitelist_patterns=[
+        force_capture_patterns=[
             "*.out",             # Always capture output
             "*.xml",             # Always capture XML
             "*.json",            # Always capture JSON
@@ -847,24 +983,26 @@ class EngineRecipe(BaseRecipe):
 ```python
 @dataclass(frozen=True, slots=True)
 class ArtifactPolicy:
-    """Engine-specific artifact capture policy."""
+    """Engine-specific artifact capture policy. Defined in recipe, applied by Runner."""
 
-    mode: Literal["blacklist", "whitelist"]
+    mode: Literal["blacklist", "whitelist"] = "blacklist"
 
     # Blacklist mode: capture everything EXCEPT these
     blacklist_dirs: List[str] = field(default_factory=list)
     blacklist_patterns: List[str] = field(default_factory=list)
 
-    # Whitelist mode: capture ONLY these (plus mandatory outputs)
+    # Whitelist mode: capture ONLY these (plus force_capture_patterns)
     whitelist_patterns: List[str] = field(default_factory=list)
+
+    # Always capture these (overrides blacklist)
+    force_capture_patterns: List[str] = field(default_factory=list)
 
     # Tier-3: large files that get rolling-window retention
     tier3_patterns: List[str] = field(default_factory=list)
 
-    # Size limit: skip files larger than this (bytes)
-    # -1 = no limit (default for Tier-2)
-    tier2_max_size: int = -1
-    tier3_max_size: int = -1
+    # Size limits
+    tier2_max_size: int = -1  # -1 = no limit
+    tier3_max_size: int = -1  # -1 = no limit
 
     def should_capture(self, rel_path: str, size_bytes: int) -> Tuple[bool, int, Optional[str]]:
         """
@@ -889,13 +1027,16 @@ class ArtifactPolicy:
 | **LAMMPS** | blacklist | (none) | `*.restart` |
 | **xTB** | blacklist | (none) | (none) |
 
-### 6.4 Artifact Scanner Implementation
+### 6.4 Artifact Scanner (Runner-Only)
+
+The artifact scanner is implemented ONLY in the Runner. Handlers and engines MUST NOT implement their own scanners.
 
 ```python
-# src/quantumvitas/provenance/artifacts.py
+# src/quantumvitas/provenance/scanner.py
 
 @dataclass
 class ScannedFile:
+    """Result of scanning a single file."""
     rel_path: str
     abs_path: Path
     size_bytes: int
@@ -903,58 +1044,72 @@ class ScannedFile:
     tier: int
     should_capture: bool
     skip_reason: Optional[str] = None
-    sha256: Optional[str] = None  # Computed lazily on capture
+    sha256: Optional[str] = None  # Computed lazily at CAS ingestion
 
 
-def scan_step_artifacts(
-    calc_raw_dir: Path,
-    step_ulid: str,
-    policy: ArtifactPolicy,
-    previous_scan: Optional[Dict[str, ScannedFile]] = None,
-) -> List[ScannedFile]:
+class ArtifactScanner:
     """
-    Scan calc/raw/ directory for step artifacts.
+    Single scanner for artifact capture. Used ONLY by Runner.
 
-    Args:
-        calc_raw_dir: Path to calc/raw/
-        step_ulid: Step ULID for context
-        policy: Engine-specific artifact policy
-        previous_scan: Optional previous scan for delta detection
-
-    Returns:
-        List of ScannedFile objects with capture decisions
+    Law P9: No duplicate scanners in handlers or engines.
     """
-    results = []
 
-    for path in calc_raw_dir.rglob("*"):
-        if path.is_dir():
-            continue
+    def __init__(self, calc_raw_dir: Path, policy: ArtifactPolicy):
+        self.calc_raw_dir = calc_raw_dir
+        self.policy = policy
+        self._baseline: Dict[str, Tuple[float, int]] = {}  # path -> (mtime, size)
 
-        rel_path = path.relative_to(calc_raw_dir).as_posix()
-        stat = path.stat()
+    def capture_baseline(self) -> None:
+        """
+        Capture baseline state before step execution.
+        Called by Runner at PRE-STEP.
+        """
+        self._baseline = {}
+        for path in self.calc_raw_dir.rglob("*"):
+            if path.is_file():
+                rel_path = path.relative_to(self.calc_raw_dir).as_posix()
+                stat = path.stat()
+                self._baseline[rel_path] = (stat.st_mtime, stat.st_size)
 
-        # Check policy
-        should_capture, tier, skip_reason = policy.should_capture(
-            rel_path, stat.st_size
-        )
+    def scan_changes(self) -> List[ScannedFile]:
+        """
+        Scan for changed/new files after step execution.
+        Called by Runner at POST-STEP.
 
-        # Delta detection: skip unchanged files
-        if previous_scan and rel_path in previous_scan:
-            prev = previous_scan[rel_path]
-            if prev.mtime == stat.st_mtime and prev.size_bytes == stat.st_size:
-                continue  # Unchanged, skip
+        Delta detection: Uses path + mtime + size comparison.
+        Hashing is deferred to CAS ingestion for efficiency.
+        """
+        results = []
 
-        results.append(ScannedFile(
-            rel_path=rel_path,
-            abs_path=path,
-            size_bytes=stat.st_size,
-            mtime=stat.st_mtime,
-            tier=tier,
-            should_capture=should_capture,
-            skip_reason=skip_reason,
-        ))
+        for path in self.calc_raw_dir.rglob("*"):
+            if path.is_dir():
+                continue
 
-    return results
+            rel_path = path.relative_to(self.calc_raw_dir).as_posix()
+            stat = path.stat()
+
+            # Delta detection: skip unchanged files
+            if rel_path in self._baseline:
+                old_mtime, old_size = self._baseline[rel_path]
+                if stat.st_mtime == old_mtime and stat.st_size == old_size:
+                    continue  # Unchanged
+
+            # Check policy
+            should_capture, tier, skip_reason = self.policy.should_capture(
+                rel_path, stat.st_size
+            )
+
+            results.append(ScannedFile(
+                rel_path=rel_path,
+                abs_path=path,
+                size_bytes=stat.st_size,
+                mtime=stat.st_mtime,
+                tier=tier,
+                should_capture=should_capture,
+                skip_reason=skip_reason,
+            ))
+
+        return results
 ```
 
 ---
@@ -973,9 +1128,6 @@ class RetentionPolicy:
     tier1_policy: Literal["never_delete", "explicit_only"] = "never_delete"
     tier2_policy: Literal["never_delete", "age_based", "count_based"] = "never_delete"
     tier3_policy: Literal["rolling_window"] = "rolling_window"
-
-    # Tier-2 age-based: delete objects older than N days (0 = never)
-    tier2_max_age_days: int = 0
 
     # Tier-3 rolling window: keep last N per (step_ulid, engine)
     tier3_keep_count: int = 3
@@ -1008,23 +1160,11 @@ def gc_cas(project_root: Path, policy: RetentionPolicy, dry_run: bool = False) -
 
     # Tier-3: Rolling window
     if policy.tier3_policy == "rolling_window":
-        # Group Tier-3 objects by (step_ulid, engine) from artifact collections
         tier3_groups = group_tier3_by_step_engine(db)
 
         for (step_ulid, engine), objects in tier3_groups.items():
-            # Sort by created_at descending
             objects.sort(key=lambda o: o.created_at, reverse=True)
-
-            # Mark objects beyond keep_count for deletion
             for obj in objects[policy.tier3_keep_count:]:
-                to_delete.append(obj.sha256)
-
-    # Tier-2: Age-based (if enabled)
-    if policy.tier2_policy == "age_based" and policy.tier2_max_age_days > 0:
-        cutoff = datetime.now() - timedelta(days=policy.tier2_max_age_days)
-
-        for obj in db.query_tier2_objects():
-            if obj.created_at < cutoff:
                 to_delete.append(obj.sha256)
 
     # Verify no live references before actual deletion
@@ -1037,9 +1177,9 @@ def gc_cas(project_root: Path, policy: RetentionPolicy, dry_run: bool = False) -
     report = GCReport()
     if not dry_run:
         for sha256 in safe_to_delete:
-            cas_path = cas_root / "objects" / sha256[:2] / sha256[2:]
-            cas_path.unlink(missing_ok=True)
-            db.mark_deleted(sha256)
+            cas_file = cas_root / "objects" / sha256[:2] / sha256[2:]
+            cas_file.unlink(missing_ok=True)
+            db.execute("UPDATE cas_objects SET deleted = 1 WHERE sha256 = ?", (sha256,))
             report.deleted_count += 1
             report.freed_bytes += db.get_size(sha256)
 
@@ -1048,19 +1188,45 @@ def gc_cas(project_root: Path, policy: RetentionPolicy, dry_run: bool = False) -
 
 ### 7.3 GC Trigger Points
 
-GC should be triggered:
+MVP: **Manual trigger only.** No automatic GC.
 
-1. **Manual:** User/agent explicitly requests GC
-2. **Post-run:** Optional, after successful run completion
-3. **On-demand:** When CAS exceeds size threshold (future)
-
-MVP: Manual trigger only. No automatic GC.
+Future options:
+1. Post-run: Optional, after successful run completion
+2. On-demand: When CAS exceeds size threshold
 
 ---
 
-## 8. Testing Plan
+## 8. Gate Inventory
 
-### 8.1 Gate Tests (Mandatory, CI-blocking)
+### 8.1 Law to Gate Mapping
+
+| Law | Gate Test File | Test Functions |
+|-----|----------------|----------------|
+| **P1: SSOT Separation** | `test_provenance_independence.py` | `test_project_runnable_without_provenance()`, `test_delete_provenance_then_run()` |
+| **P2: OpCtx Required** | `test_provenance_opctx_required.py` | `test_save_yaml_doc_without_opctx_raises()`, `test_save_yaml_doc_with_opctx_succeeds()` |
+| **P3: No Prov in Skip** | `test_provenance_skip_isolation.py` | `test_manifest_no_provenance_imports()`, `test_skip_logic_no_provenance_calls()` |
+| **P4: Append-Only** | (Schema enforcement) | N/A - enforced by schema design |
+| **P5: CAS Integrity** | `test_cas_integrity.py` | `test_cas_content_addressed()`, `test_cas_immutable()`, `test_cas_duplicate_noop()` |
+| **P6: Lock Ordering** | `test_lock_ordering.py` | `test_sequential_lock_acquisition()`, `test_no_nested_locks()`, `test_concurrent_writers_no_deadlock()` |
+| **P7: Graceful Degrade** | `test_provenance_failure_graceful.py` | `test_yaml_write_succeeds_despite_provenance_failure()` |
+| **P8: Only SSOT Writes** | `test_preset_events.py` | `test_preset_apply_records_event()`, `test_preset_select_no_event()` |
+| **P9: Single Scanner** | `test_no_duplicate_scanners.py` | `test_handler_no_scanner_import()`, `test_engine_no_scanner_import()` |
+
+### 8.2 Integration Test Inventory
+
+| Feature | Test File | Key Tests |
+|---------|-----------|-----------|
+| **Preset Recording** | `test_provenance_preset.py` | `test_preset_apply_creates_operation()`, `test_preset_payload_contains_name()` |
+| **Run Recording** | `test_provenance_run.py` | `test_run_creates_runs_row()`, `test_run_steps_normalized()`, `test_snapshot_in_cas()` |
+| **Artifact Capture** | `test_provenance_artifacts.py` | `test_artifact_scan_captures_outputs()`, `test_blacklist_excludes_outdir()`, `test_delta_detection()` |
+| **Rollback** | `test_provenance_rollback.py` | `test_restore_from_run_snapshot()`, `test_restore_records_operation()` |
+| **Concurrency** | `test_provenance_concurrent.py` | `test_concurrent_writes_no_corruption()`, `test_concurrent_runs_isolated()` |
+
+---
+
+## 9. Testing Plan
+
+### 9.1 Gate Tests (Mandatory, CI-blocking)
 
 #### Gate P2-1: OperationContext Required
 
@@ -1070,16 +1236,16 @@ MVP: Manual trigger only. No automatic GC.
 def test_save_yaml_doc_without_opctx_raises():
     """Law P2: save_yaml_doc() MUST require opctx."""
     doc = YamlDoc({"key": "value"})
-    path = Path("/tmp/test.yaml")
+    path = tmp_path / "test.yaml"
 
     with pytest.raises(OperationContextRequiredError):
         save_yaml_doc(doc, path)  # No opctx
 
 
-def test_save_yaml_doc_with_opctx_succeeds():
+def test_save_yaml_doc_with_opctx_succeeds(tmp_path):
     """Law P2: save_yaml_doc() succeeds with opctx."""
     doc = YamlDoc({"key": "value"})
-    path = Path("/tmp/test.yaml")
+    path = tmp_path / "test.yaml"
     opctx = OperationContext(
         op=OperationType.CUSTOM,
         actor=ActorType.SYSTEM,
@@ -1088,7 +1254,6 @@ def test_save_yaml_doc_with_opctx_succeeds():
         payload={},
     )
 
-    # Should not raise
     save_yaml_doc(doc, path, opctx)
     assert path.exists()
 ```
@@ -1100,7 +1265,6 @@ def test_save_yaml_doc_with_opctx_succeeds():
 
 def test_project_runnable_without_provenance(tmp_project):
     """Law P1: Deleting .provenance/ leaves project runnable."""
-    # Setup: Create project with provenance data
     calc = tmp_project.create_calculation("test_calc")
     calc.add_step("scf", step_type_spec="qe_scf")
 
@@ -1110,14 +1274,12 @@ def test_project_runnable_without_provenance(tmp_project):
         shutil.rmtree(provenance_dir)
 
     # Verify project still works
-    assert calc.yaml_path.exists()
     calc2 = tmp_project.load_calculation(calc.ulid)
     assert calc2.steps[0].step_type_spec == "qe_scf"
 
     # Verify run can proceed (mock execution)
     runner = Runner(calc2)
-    # Should not raise ProvenanceMissingError or similar
-    runner.prepare_run()
+    runner.prepare_run()  # Should not raise
 ```
 
 #### Gate P3-1: No Provenance in Skip Logic
@@ -1125,7 +1287,7 @@ def test_project_runnable_without_provenance(tmp_project):
 ```python
 # tests/gates/test_provenance_skip_isolation.py
 
-def test_manifest_skip_logic_no_provenance_imports():
+def test_manifest_no_provenance_imports():
     """Law P3: Skip logic must not import from provenance module."""
     import ast
 
@@ -1135,41 +1297,10 @@ def test_manifest_skip_logic_no_provenance_imports():
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                assert "provenance" not in alias.name, \
-                    f"manifest.py imports provenance: {alias.name}"
+                assert "provenance" not in alias.name.lower()
         elif isinstance(node, ast.ImportFrom):
             if node.module:
-                assert "provenance" not in node.module, \
-                    f"manifest.py imports from provenance: {node.module}"
-```
-
-#### Gate P5-1: CAS Integrity
-
-```python
-# tests/gates/test_cas_integrity.py
-
-def test_cas_content_addressed(tmp_cas):
-    """Law P5: Same content produces same hash."""
-    content = b"test content for CAS"
-
-    sha1 = tmp_cas.store(content)
-    sha2 = tmp_cas.store(content)
-
-    assert sha1 == sha2
-    assert tmp_cas.exists(sha1)
-
-
-def test_cas_immutable(tmp_cas):
-    """Law P5: CAS objects cannot be modified."""
-    content = b"original content"
-    sha = tmp_cas.store(content)
-
-    # Attempt to modify should fail or be ignored
-    with pytest.raises((PermissionError, CASImmutabilityError)):
-        tmp_cas.modify(sha, b"modified content")
-
-    # Verify content unchanged
-    assert tmp_cas.retrieve(sha) == content
+                assert "provenance" not in node.module.lower()
 ```
 
 #### Gate P6-1: Lock Ordering
@@ -1177,143 +1308,120 @@ def test_cas_immutable(tmp_cas):
 ```python
 # tests/gates/test_lock_ordering.py
 
-def test_provenance_lock_after_edit_lock(tmp_project):
-    """Law P6: edit.lock must be acquired before provenance.lock."""
-    import threading
+def test_no_nested_locks(tmp_project):
+    """Law P6: Provenance lock must not be acquired inside edit lock."""
+    # This test inspects save_yaml_doc implementation
+    import inspect
+    from quantumvitas.core.yaml_io import save_yaml_doc
 
-    calc = tmp_project.create_calculation("test_lock_order")
-    errors = []
+    source = inspect.getsource(save_yaml_doc)
 
-    def writer():
-        try:
-            # This should acquire edit.lock first, then provenance.lock
-            opctx = OperationContext(
-                op=OperationType.STEP_UPDATE,
-                actor=ActorType.SYSTEM,
-                scope=ScopeType.STEP,
-                source="test_writer",
-                payload={},
-            )
-            calc.steps[0].update({"param": "value"}, opctx)
-        except Exception as e:
-            errors.append(e)
-
-    # Run multiple concurrent writers
-    threads = [threading.Thread(target=writer) for _ in range(10)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-
-    # No deadlock errors
-    assert not any(isinstance(e, DeadlockError) for e in errors)
+    # Verify provenance recording is AFTER edit lock release
+    # by checking the structure of the function
+    assert "# edit.lock released" in source or \
+           source.index("record_operation") > source.index("calc_edit_lock")
 ```
 
-### 8.2 Integration Tests
+#### Gate P9-1: No Duplicate Scanners
+
+```python
+# tests/gates/test_no_duplicate_scanners.py
+
+def test_handler_no_scanner_import():
+    """Law P9: Handlers must not import artifact scanner."""
+    import ast
+
+    handler_files = Path("src/quantumvitas/drivers").rglob("handler.py")
+
+    for handler_path in handler_files:
+        tree = ast.parse(handler_path.read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                if node.module and "scanner" in node.module:
+                    pytest.fail(f"{handler_path} imports scanner: {node.module}")
+```
+
+### 9.2 Integration Tests
+
+#### Integration: Run Produces Normalized Records
+
+```python
+# tests/integration/test_provenance_run.py
+
+def test_run_creates_normalized_run_steps(tmp_project, mock_engine):
+    """Run must produce normalized run_steps rows, not JSON blob."""
+    calc = tmp_project.create_calculation("test_run")
+    calc.add_step("scf", step_type_spec="qe_scf")
+    calc.add_step("bands", step_type_spec="qe_bands")
+
+    runner = Runner(calc)
+    run_ulid = runner.run()
+
+    # Check database structure
+    db = open_provenance_db(tmp_project.root)
+
+    # Verify runs table
+    run_row = db.execute(
+        "SELECT * FROM runs WHERE run_ulid = ?", (run_ulid,)
+    ).fetchone()
+    assert run_row is not None
+    assert run_row["status"] == "success"
+    assert run_row["snapshot_sha"] is not None  # Has CAS reference
+
+    # Verify run_steps table (normalized, not JSON)
+    step_rows = db.execute(
+        "SELECT * FROM run_steps WHERE run_ulid = ? ORDER BY step_index",
+        (run_ulid,)
+    ).fetchall()
+
+    assert len(step_rows) == 2
+    assert step_rows[0]["step_index"] == 0
+    assert step_rows[1]["step_index"] == 1
+    assert all(row["snapshot_sha"] is not None for row in step_rows)
+```
 
 #### Integration: Preset Apply Records Event
 
 ```python
 # tests/integration/test_provenance_preset.py
 
-def test_preset_apply_records_event(tmp_project):
-    """Preset apply must produce operation event with op=PRESET_APPLY."""
+def test_preset_apply_creates_operation(tmp_project):
+    """Preset APPLY produces operation event with correct payload."""
     calc = tmp_project.create_calculation("test_preset")
     calc.add_step("scf", step_type_spec="qe_scf")
 
-    # Apply preset
     preset_name = "high_accuracy"
     calc.apply_preset(preset_name)
 
-    # Check provenance
     db = open_provenance_db(tmp_project.root)
-    events = db.query_events(op_type=OperationType.PRESET_APPLY)
+    ops = db.execute(
+        "SELECT * FROM operations WHERE op_type = ?",
+        (OperationType.PRESET_APPLY.value,)
+    ).fetchall()
 
-    assert len(events) >= 1
-    last_event = events[-1]
-    assert last_event.op_type == OperationType.PRESET_APPLY
-    assert last_event.payload.get("preset_name") == preset_name
-    assert last_event.actor == ActorType.HUMAN  # or appropriate actor
-```
-
-#### Integration: Run Produces Run Node
-
-```python
-# tests/integration/test_provenance_run.py
-
-def test_run_produces_run_node_with_snapshots(tmp_project, mock_engine):
-    """Run must produce run node with ordered steps and snapshot refs."""
-    calc = tmp_project.create_calculation("test_run")
-    calc.add_step("scf", step_type_spec="qe_scf")
-    calc.add_step("bands", step_type_spec="qe_bands")
-
-    # Run with mock engine
-    runner = Runner(calc)
-    run_ulid = runner.run()
-
-    # Check run events
-    db = open_provenance_db(tmp_project.root)
-
-    # RUN_START event
-    start_events = db.query_events(
-        event_kind="run_start",
-        run_ulid=run_ulid
-    )
-    assert len(start_events) == 1
-
-    # RUN_COMPLETE event
-    complete_events = db.query_events(
-        event_kind="run_complete",
-        run_ulid=run_ulid
-    )
-    assert len(complete_events) == 1
-
-    # Run steps
-    run_steps = db.query_run_steps(run_ulid=run_ulid)
-    assert len(run_steps) == 2
-
-    # Verify order
-    assert run_steps[0].step_index == 0
-    assert run_steps[1].step_index == 1
-
-    # Verify snapshots exist in CAS
-    cas = CAS(tmp_project.root)
-    for step in run_steps:
-        assert cas.exists(step.snapshot_sha)
+    assert len(ops) >= 1
+    last_op = ops[-1]
+    payload = json.loads(last_op["payload"])
+    assert payload["preset_name"] == preset_name
+    assert "changed_paths" in payload
 
 
-def test_artifact_scan_records_expected_files(tmp_project, mock_engine):
-    """Artifact scan must record expected files by path/mtime/size."""
-    calc = tmp_project.create_calculation("test_artifacts")
+def test_preset_select_no_event(tmp_project):
+    """Preset SELECT (UI-only) does NOT produce operation event."""
+    calc = tmp_project.create_calculation("test_preset")
     calc.add_step("scf", step_type_spec="qe_scf")
 
-    # Create mock output files
-    raw_dir = calc.dir / "raw"
-    raw_dir.mkdir(parents=True, exist_ok=True)
-    (raw_dir / "scf.out").write_text("mock output")
-    (raw_dir / "scf.xml").write_text("<mock/>")
+    # Detect presets (SELECT operation - UI only)
+    presets = detect_presets_from_calculation(calc)
 
-    # Run
-    runner = Runner(calc)
-    run_ulid = runner.run()
-
-    # Check artifact collection
     db = open_provenance_db(tmp_project.root)
-    run_steps = db.query_run_steps(run_ulid=run_ulid)
+    ops = db.execute("SELECT COUNT(*) FROM operations").fetchone()[0]
 
-    assert run_steps[0].artifact_collection_sha is not None
-
-    cas = CAS(tmp_project.root)
-    collection = cas.retrieve_json(run_steps[0].artifact_collection_sha)
-
-    artifacts = collection["artifacts"]
-    paths = [a["relative_path"] for a in artifacts]
-
-    assert "scf.out" in paths
-    assert "scf.xml" in paths
+    # Only the calc creation, not the select
+    assert ops == 1  # CALC_CREATE only
 ```
 
-### 8.3 Concurrency Tests
+### 9.3 Concurrency Tests
 
 ```python
 # tests/concurrency/test_provenance_concurrent.py
@@ -1344,74 +1452,39 @@ def test_concurrent_yaml_writes_no_corruption(tmp_project):
         futures = [executor.submit(write_param, i) for i in range(100)]
         concurrent.futures.wait(futures)
 
-    # No corruption errors
     assert not errors
 
-    # DB is valid
     db = open_provenance_db(tmp_project.root)
-    events = db.query_events(op_type=OperationType.STEP_UPDATE)
-    assert len(events) == 100  # All writes recorded
-```
+    ops_count = db.execute(
+        "SELECT COUNT(*) FROM operations WHERE op_type = ?",
+        (OperationType.STEP_UPDATE.value,)
+    ).fetchone()[0]
 
-### 8.4 Failure/Recovery Tests
-
-```python
-# tests/integration/test_provenance_failure.py
-
-def test_yaml_write_succeeds_despite_provenance_failure(tmp_project, monkeypatch):
-    """Law P7: YAML write must succeed even if provenance fails."""
-    calc = tmp_project.create_calculation("test_graceful")
-    calc.add_step("scf", step_type_spec="qe_scf")
-
-    # Corrupt provenance DB
-    db_path = tmp_project.root / ".provenance" / "provenance.db"
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    db_path.write_text("corrupt data")
-
-    # Attempt write
-    opctx = OperationContext(
-        op=OperationType.STEP_UPDATE,
-        actor=ActorType.SYSTEM,
-        scope=ScopeType.STEP,
-        source="test_graceful",
-        payload={},
-    )
-
-    # Should not raise
-    calc.steps[0].update({"param": "new_value"}, opctx)
-
-    # YAML should be updated
-    step_data = calc.steps[0].load()
-    assert step_data.get("param") == "new_value"
+    assert ops_count == 100
 ```
 
 ---
 
-## 9. Migration and Compatibility
+## 10. Migration and Compatibility
 
-### 9.1 New Projects
+### 10.1 New Projects
 
 For new projects, provenance is enabled by default:
 
 - First `save_yaml_doc()` call initializes `.provenance/` directory
-- First event is `SEED` operation with initial state snapshot
+- First event is `SEED` operation with initial state in payload
 
-### 9.2 Existing Projects (No Provenance)
+### 10.2 Existing Projects (No Provenance)
 
 For existing projects without `.provenance/`:
 
 1. **Lazy initialization:** First provenance-aware operation creates `.provenance/`
-2. **Seed event:** First event is `SEED` with payload `{"migration": true}`
+2. **Seed event:** First event is `SEED` with `payload={"migration": true}`
 3. **No retroactive history:** Past operations are not recorded; timeline starts from migration point
 
 ```python
 def ensure_provenance_initialized(project_root: Path) -> bool:
-    """
-    Initialize provenance for existing project if needed.
-
-    Returns:
-        True if newly initialized, False if already existed
-    """
+    """Initialize provenance for existing project if needed."""
     provenance_dir = project_root / ".provenance"
 
     if provenance_dir.exists():
@@ -1426,22 +1499,23 @@ def ensure_provenance_initialized(project_root: Path) -> bool:
     db = create_provenance_db(provenance_dir / "provenance.db")
 
     # Record seed event
-    seed_event = Event(
-        ulid=generate_ulid(),
-        event_kind="operation",
-        op_type=OperationType.SEED,
-        timestamp=now_iso8601(),
-        actor=ActorType.SYSTEM,
-        scope=ScopeType.PROJECT,
-        source="ensure_provenance_initialized",
-        payload={"migration": True},
-    )
-    db.append_event(seed_event)
+    db.execute("""
+        INSERT INTO operations (ulid, op_type, timestamp, actor, scope, source, payload)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        generate_ulid(),
+        OperationType.SEED.value,
+        now_iso8601(),
+        ActorType.SYSTEM.value,
+        ScopeType.PROJECT.value,
+        "ensure_provenance_initialized",
+        json.dumps({"migration": True}),
+    ))
 
     return True
 ```
 
-### 9.3 Deleting Provenance
+### 10.3 Deleting Provenance
 
 Deleting `.provenance/` is always safe:
 
@@ -1450,19 +1524,18 @@ rm -rf project/.provenance/
 ```
 
 After deletion:
-
-- Project remains fully runnable
+- Project remains fully runnable (Law P1)
 - Next provenance-aware operation re-initializes with new `SEED`
-- No migration warnings or errors
+- No warnings or errors
 
-### 9.4 Version Compatibility
-
-SQLite schema includes version tracking:
+### 10.4 Schema Versioning
 
 ```python
+CURRENT_SCHEMA_VERSION = 1
+
 def check_schema_version(db: sqlite3.Connection) -> int:
     """Check schema version and migrate if needed."""
-    version = db.execute("SELECT version FROM schema_version").fetchone()[0]
+    version = db.execute("SELECT MAX(version) FROM schema_version").fetchone()[0]
 
     if version < CURRENT_SCHEMA_VERSION:
         migrate_schema(db, version, CURRENT_SCHEMA_VERSION)
@@ -1472,131 +1545,38 @@ def check_schema_version(db: sqlite3.Connection) -> int:
 
 ---
 
-## 10. Future Enhancements
+## 11. Future Enhancements
 
 These are explicitly **NOT part of MVP** but designed for:
 
-### 10.1 Buffered Write Mode (Performance)
+### 11.1 Buffered Write Mode (Performance)
 
-MVP uses synchronous SQLite append. Future enhancement:
+MVP uses synchronous SQLite append. Future option:
 
-```python
-class BufferedProvenanceWriter:
-    """
-    Buffer provenance events in memory, flush periodically.
+- In-memory buffer for rapid edits
+- Flush on: buffer full, before run, explicit save, process exit
 
-    Benefits:
-    - Reduced I/O during rapid edits
-    - Batched SQLite transactions
+### 11.2 Agent Journal (Memory)
 
-    Invariants:
-    - MUST flush before run starts
-    - MUST flush on explicit save/sync
-    - MUST flush on process exit (atexit handler)
-    """
+Full-featured agent memory:
 
-    def __init__(self, max_buffer_size: int = 100, max_age_seconds: float = 5.0):
-        self.buffer: List[Event] = []
-        self.max_buffer_size = max_buffer_size
-        self.max_age_seconds = max_age_seconds
-        self.last_flush = time.time()
-        self._lock = threading.Lock()
+- Before-run rationale, after-run analysis
+- Short titles in SQLite (FTS), bodies in CAS (Tier-1)
 
-    def append(self, event: Event):
-        with self._lock:
-            self.buffer.append(event)
-            if len(self.buffer) >= self.max_buffer_size:
-                self._flush_locked()
-
-    def flush(self):
-        with self._lock:
-            self._flush_locked()
-```
-
-### 10.2 Agent Journal (Memory)
-
-Full-featured agent memory system:
-
-```python
-@dataclass
-class JournalEntry:
-    """Agent memory entry."""
-
-    ulid: str
-    timing: Literal["before_run", "after_run", "note"]
-    title: str                    # Short, FTS-indexed
-    tags: List[str]               # Categorization
-    body: str                     # Full content (stored in CAS)
-
-    # Associations
-    run_ulid: Optional[str] = None
-    calc_ulid: Optional[str] = None
-    step_ulid: Optional[str] = None
-
-    # Metadata
-    created_at: str = field(default_factory=now_iso8601)
-    author: str = "agent"         # agent ID or "human"
-```
-
-Usage patterns:
-
-- **Before-run:** Record rationale, expected outcomes, parameter choices
-- **After-run:** Record analysis summary, lessons learned, next steps
-- **Notes:** General observations, reminders, context
-
-### 10.3 Cross-Project Provenance
-
-For workflows spanning multiple projects:
-
-- Global CAS for shared pseudopotentials/potentials
-- Cross-project references via ULIDs
-- Export/import of provenance subgraphs
-
-### 10.4 Query API
+### 11.3 Query API
 
 Rich querying for UI/agents:
 
 ```python
-class ProvenanceQuery:
-    """Query builder for provenance data."""
-
-    def events(self) -> "EventQuery":
-        """Query events timeline."""
-        ...
-
-    def runs(self) -> "RunQuery":
-        """Query run history."""
-        ...
-
-    def snapshots(self) -> "SnapshotQuery":
-        """Query available snapshots."""
-        ...
-
-    def journal(self, search: str) -> "JournalQuery":
-        """Full-text search journal."""
-        ...
-
-
-# Example usage
 query = ProvenanceQuery(project)
-recent_runs = (
-    query.runs()
-    .calc(calc_ulid)
-    .since(datetime.now() - timedelta(days=7))
-    .status("success")
-    .limit(10)
-    .execute()
-)
+recent_runs = query.runs().calc(calc_ulid).since(days=7).status("success").limit(10)
 ```
 
-### 10.5 Export/Reporting
-
-Generate provenance reports:
+### 11.4 Export/Reporting
 
 - Timeline visualization (HTML/SVG)
-- Run comparison reports
-- Audit logs for reproducibility documentation
-- Export to standard formats (W3C PROV, JSON-LD)
+- Audit logs for reproducibility
+- Export to W3C PROV format
 
 ---
 
@@ -1607,8 +1587,9 @@ Generate provenance reports:
 | Provenance module | `src/quantumvitas/provenance/` |
 | OperationContext | `src/quantumvitas/provenance/opctx.py` |
 | SQLite schema | `src/quantumvitas/provenance/schema.py` |
+| Database operations | `src/quantumvitas/provenance/db.py` |
 | CAS implementation | `src/quantumvitas/provenance/cas.py` |
-| Artifact scanner | `src/quantumvitas/provenance/artifacts.py` |
+| Artifact scanner | `src/quantumvitas/provenance/scanner.py` |
 | Lock utilities | `src/quantumvitas/provenance/locks.py` |
 | Gate tests | `tests/gates/test_provenance_*.py` |
 | Integration tests | `tests/integration/test_provenance_*.py` |
@@ -1618,15 +1599,16 @@ Generate provenance reports:
 ### Public Functions (Kernel)
 
 ```python
-# OperationContext creation helpers
+# OperationContext creation (convenience helpers)
 def opctx_for_preset(preset_name: str, actor: ActorType) -> OperationContext
 def opctx_for_step_update(step_ulid: str, actor: ActorType) -> OperationContext
 def opctx_for_run(run_ulid: str, actor: ActorType) -> OperationContext
 
-# Provenance recording (internal, called by save_yaml_doc)
-def record_operation(project_root: Path, opctx: OperationContext, before: bytes, after: bytes)
-def record_run_start(project_root: Path, run_ulid: str, steps: List[str])
-def record_run_complete(project_root: Path, run_ulid: str, status: str, step_results: List[StepResult])
+# Provenance recording (internal, called by save_yaml_doc / Runner)
+def record_operation_event(project_root: Path, opctx: OperationContext, diff_summary: dict)
+def record_run_start(project_root: Path, run_ulid: str, calc_ulid: str, snapshot_sha: str)
+def record_run_complete(project_root: Path, run_ulid: str, status: str, finished_at: str)
+def record_run_step(project_root: Path, run_ulid: str, step_ulid: str, index: int, ...)
 
 # CAS operations
 def cas_store(project_root: Path, content: bytes, tier: int) -> str
@@ -1634,13 +1616,13 @@ def cas_retrieve(project_root: Path, sha256: str) -> bytes
 def cas_exists(project_root: Path, sha256: str) -> bool
 
 # Snapshot operations
-def create_snapshot(project_root: Path, scope: ScopeType, target_ulid: str) -> str
-def restore_snapshot(project_root: Path, snapshot_sha: str, opctx: OperationContext)
+def create_run_snapshot(project_root: Path, calc_ulid: str, run_ulid: str) -> str
+def restore_from_snapshot(project_root: Path, snapshot_sha: str, opctx: OperationContext)
 
 # Query (for UI/agents)
-def query_events(project_root: Path, **filters) -> List[Event]
-def query_runs(project_root: Path, **filters) -> List[RunSummary]
-def get_run_steps(project_root: Path, run_ulid: str) -> List[RunStep]
+def query_operations(project_root: Path, **filters) -> List[dict]
+def query_runs(project_root: Path, **filters) -> List[dict]
+def get_run_steps(project_root: Path, run_ulid: str) -> List[dict]
 ```
 
 ### Errors
@@ -1653,7 +1635,7 @@ class CASIntegrityError(Exception):
     """Raised on CAS corruption or hash mismatch."""
 
 class ProvenanceError(Exception):
-    """Base class for provenance errors (non-fatal for YAML ops)."""
+    """Base class for provenance errors (non-fatal for YAML ops per Law P7)."""
 
 class SnapshotNotFoundError(ProvenanceError):
     """Raised when requested snapshot doesn't exist in CAS."""
@@ -1661,51 +1643,4 @@ class SnapshotNotFoundError(ProvenanceError):
 
 ---
 
-## Appendix C: Checklist for Implementer
-
-### Phase 1: Foundation (MVP Core)
-
-- [ ] Create `src/quantumvitas/provenance/` package
-- [ ] Implement `OperationContext` dataclass
-- [ ] Implement `OperationType`, `ActorType`, `ScopeType` enums
-- [ ] Create SQLite schema (events, run_steps, cas_objects tables)
-- [ ] Implement CAS basic operations (store, retrieve, exists)
-- [ ] Add `provenance.lock` context manager
-- [ ] Modify `save_yaml_doc()` to require opctx parameter
-- [ ] Implement `record_operation()` function
-- [ ] Add gate test: opctx required
-- [ ] Add gate test: history independence
-
-### Phase 2: Run Integration
-
-- [ ] Implement `record_run_start()` and `record_run_complete()`
-- [ ] Implement `create_snapshot()` for YAML/structure capture
-- [ ] Integrate with `Runner` for pre-run snapshots
-- [ ] Implement `ArtifactPolicy` and default policies per engine
-- [ ] Implement artifact scanner
-- [ ] Add `run_steps` recording
-- [ ] Add integration test: run produces run node
-
-### Phase 3: Preset and Operation Recording
-
-- [ ] Update preset apply code to pass opctx
-- [ ] Update step modification code to pass opctx
-- [ ] Update calculation modification code to pass opctx
-- [ ] Add integration test: preset apply records event
-
-### Phase 4: Rollback/Restore
-
-- [ ] Implement `restore_snapshot()`
-- [ ] Add restore operation recording
-- [ ] Add tests for restore workflow
-
-### Phase 5: GC and Cleanup
-
-- [ ] Implement GC algorithm per tier
-- [ ] Add gc.lock handling
-- [ ] Implement manual GC trigger
-- [ ] Add GC tests
-
----
-
-*End of Specification*
+*End of Specification v1.1*

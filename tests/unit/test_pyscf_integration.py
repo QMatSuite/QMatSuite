@@ -13,9 +13,14 @@ from pathlib import Path
 
 
 def _pyscf_importable() -> bool:
-    """Check if PySCF can be imported."""
+    """Check if PySCF can be imported with actual functionality.
+
+    CI environments may have a stub pyscf module that passes basic import
+    but fails on actual submodules like gto and scf. We check for these
+    to ensure PySCF is fully functional.
+    """
     try:
-        import pyscf
+        from pyscf import gto, scf
         return True
     except ImportError:
         return False
