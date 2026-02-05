@@ -137,6 +137,12 @@ _ENGINE_PROBES: Dict[str, EngineProbe] = {
         binary_names=["yambo", "p2y", "ypp"],
         env_vars=["YAMBO_HOME"],
     ),
+    "abinit": EngineProbe(
+        engine_name="abinit",
+        binary_names=["abinit"],
+        env_vars=["ABINIT_HOME", "ABI_HOME"],
+        brew_name="abinit",
+    ),
 }
 
 # Shell profile files to parse (in priority order)

@@ -1,0 +1,11 @@
+# Gaussian checkpoint files (large, binary)
+*.chk
+
+# Gaussian read-write files
+*.rwf
+
+# Scratch files
+Gau-*.inp
+Gau-*.d2e
+Gau-*.int
+Gau-*.scr

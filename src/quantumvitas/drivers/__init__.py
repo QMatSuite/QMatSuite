@@ -56,6 +56,9 @@ from quantumvitas.drivers import xtb
 # Yambo driver (MBPT: GW, BSE, TDDFT)
 from quantumvitas.drivers import yambo
 
+# ABINIT driver (plane-wave DFT)
+from quantumvitas.drivers import abinit
+
 # Note: All major drivers have been migrated
 
 logger.debug("Driver packages imported")
