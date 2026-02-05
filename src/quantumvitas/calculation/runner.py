@@ -116,7 +116,6 @@ class CalculationRunner:
         self,
         calculation: Calculation,
         *,
-        skip_history: bool = False,
         run_ulid: Optional[str] = None,
         run_mode: str = "incremental",  # "incremental" or "full"
         target_step_ulid: Optional[str] = None,  # For Run Step mode (TARGET selection)
@@ -129,9 +128,8 @@ class CalculationRunner:
 
         Args:
             calculation: The calculation to execute
-            skip_history: If True, skip history recording (for testing)
             run_ulid: External run ID to use (e.g., job_id from JobManager).
-                    If provided, this ID will be used for history recording
+                    If provided, this ID will be used for provenance recording
                     to ensure job_id == run_ulid identity.
             run_mode: Run mode ("incremental" or "full"). Default "incremental".
                      Incremental skips steps that are already done and unchanged.
@@ -153,13 +151,12 @@ class CalculationRunner:
             import ulid
             run_ulid = str(ulid.new())
         
-        # History: Create run revision and record run_started event
-        run_revision = None
+        # Provenance: Create run snapshot and record run_started event
         actual_run_ulid = run_ulid  # Use external run_ulid if provided
-        if not skip_history:
-            run_revision, actual_run_ulid = self._start_history_recording(
-                calculation, started, run_ulid=run_ulid
-            )
+        snapshot_sha = None
+        snapshot_sha, actual_run_ulid = self._start_provenance_recording(
+            calculation, run_ulid=run_ulid
+        )
 
         # Step0: Prepare pseudos in project/pseudo (constitution-compliant)
         # This is the ONLY place allowed to mutate project/pseudo
@@ -452,14 +449,12 @@ class CalculationRunner:
             finished = datetime.now(timezone.utc)
             io_dir = calculation.raw_dir.resolve() if calculation.raw_dir else None
 
-            # History: Complete run revision
-            if not skip_history and actual_run_ulid:
-                self._complete_history_recording(
+            # Provenance: Record run completion
+            if actual_run_ulid:
+                self._complete_provenance_recording(
                     calculation=calculation,
                     run_ulid=actual_run_ulid,
                     status=status,
-                    step_summaries=step_summaries,
-                    working_dir=io_dir,
                 )
 
             return CalculationResult(
@@ -685,188 +680,110 @@ class CalculationRunner:
                 return idx
         return None
 
-    def _start_history_recording(
+    def _start_provenance_recording(
         self,
         calculation: Calculation,
-        started: datetime,
         *,
         run_ulid: Optional[str] = None,
     ) -> tuple:
         """
-        Create run revision and record run_started event.
-        
+        Create run snapshot and record run_start event in provenance.
+
+        Per Law P7: Provenance failures are logged but don't fail the run.
+
         Args:
             calculation: The calculation being run
-            started: Start timestamp
             run_ulid: External run ID to use (e.g., job_id from JobManager).
                     If provided, this ID will be used instead of generating a new one.
-        
+
         Returns:
-            Tuple of (run_revision, run_ulid) or (None, None) on error
+            Tuple of (snapshot_sha, run_ulid) - both may be None on error
         """
         try:
-            from quantumvitas.history.run_revision import create_run_revision
-            from quantumvitas.history.storage import ProjectHistory
-            from quantumvitas.history.events import RunStartedEvent
-            
-            # Gather step info
-            step_ulids = [s.meta.ulid for s in calculation.steps]
-            step_types = [
-                str(s.step_type_spec) if s.step_type_spec else "unknown"
-                for s in calculation.steps
-            ]
-            
-            # Get preset options if available
-            preset_options = None
-            try:
-                from quantumvitas.presets.integration import detect_presets_from_calculation
-                preset_options = detect_presets_from_calculation(calculation.dir)
-                # Convert to string representations
-                if preset_options:
-                    preset_options = {
-                        k: v.value if hasattr(v, "value") else str(v)
-                        for k, v in preset_options.items()
-                    }
-            except Exception:
-                pass
-            
+            from quantumvitas.provenance import (
+                create_run_snapshot,
+                record_run_start,
+            )
+
+            # Generate run_ulid if not provided
+            if run_ulid is None:
+                import ulid
+                run_ulid = str(ulid.new())
+
             # Get engine info
-            engine_version = None
-            engine_path = None
             engine_family = None
             if calculation.steps:
                 first_step = calculation.steps[0]
                 engine_family = first_step.engine
                 if not engine_family:
                     raise ValueError("Step requires explicit 'engine' field")
-                if self.engine_registry:
-                    engine = self.engine_registry.get(engine_family)
-                    if engine:
-                        engine_version = getattr(engine, "version", None)
-                        engine_path = str(getattr(engine, "executable_path", ""))
             else:
-                # Fallback to calculation.engine_family if no steps
                 engine_family = calculation.engine_family
                 if not engine_family:
                     raise ValueError("Calculation requires explicit engine_family")
-            
-            # Create run revision (use external run_ulid if provided)
-            run_revision = create_run_revision(
+
+            # Get project_ulid from project config
+            project_ulid = None
+            try:
+                from quantumvitas.core.public import load_project_config
+                config = load_project_config(calculation.project.root)
+                project_ulid = config.ulid if config else None
+            except Exception:
+                pass
+
+            # Create snapshot of SSOT state
+            snapshot_sha = create_run_snapshot(
                 project_root=calculation.project.root,
                 calc_ulid=calculation.ulid,
-                calc_name=calculation.name if hasattr(calculation, "name") else None,
-                step_ulids=step_ulids,
-                step_types=step_types,
-                structure_ulid=getattr(calculation, "structure_ulid", None),
-                structure_name=getattr(calculation, "structure_name", None),
-                engine=engine_family,
-                engine_version=engine_version,
-                engine_path=engine_path,
-                preset_options=preset_options,
-                species_map=calculation.species_map,
-                working_dir=calculation.raw_dir,
-                create_snapshot=True,
-                run_ulid=run_ulid,  # Use external run_ulid (job_id) if provided
+                run_ulid=run_ulid,
+                calc_dir=calculation.dir,
             )
-            
-            actual_run_ulid = run_revision.ulid
-            
-            # Record run_started event
-            history = ProjectHistory(calculation.project.root)
-            project_ulid = run_revision.project_ulid
-            
-            event = RunStartedEvent.create(
-                project_ulid=project_ulid,
+
+            # Record run start in provenance database
+            record_run_start(
+                project_root=calculation.project.root,
+                run_ulid=run_ulid,
                 calc_ulid=calculation.ulid,
-                run_ulid=actual_run_ulid,
-                calc_name=calculation.name if hasattr(calculation, "name") else None,
-                step_ulids=step_ulids,
-                step_types=step_types,
+                snapshot_sha=snapshot_sha,
                 engine=engine_family,
-                structure_ulid=getattr(calculation, "structure_ulid", None),
-                snapshot_path=run_revision.snapshot_path,
+                project_ulid=project_ulid,
             )
-            history.append_event(event)
-            
-            logger.debug(f"[HISTORY] Created run revision: {actual_run_ulid}")
-            return run_revision, actual_run_ulid
-            
+
+            logger.debug(f"[PROVENANCE] Created snapshot {snapshot_sha[:12]} for run: {run_ulid}")
+            return snapshot_sha, run_ulid
+
         except Exception as e:
-            logger.warning(f"[HISTORY] Failed to start history recording: {e}")
-            return None, None
+            # Law P7: Provenance failures must not fail runs
+            logger.warning(f"[PROVENANCE] Failed to start provenance recording: {e}")
+            return None, run_ulid
     
-    def _complete_history_recording(
+    def _complete_provenance_recording(
         self,
         calculation: Calculation,
         run_ulid: str,
         status: StepStatus,
-        step_summaries: List[StepResultSummary],
-        working_dir: Optional[Path],
     ) -> None:
         """
-        Complete run revision with digests and record run_finished event.
+        Record run completion in provenance database.
+
+        Per Law P7: Provenance failures are logged but don't fail the run.
         """
         try:
-            from quantumvitas.history.run_revision import complete_run_revision
-            from quantumvitas.history.storage import ProjectHistory
-            from quantumvitas.history.events import RunFinishedEvent
-            
-            # Convert step summaries to the format expected by complete_run_revision
-            step_results = []
-            for summary in step_summaries:
-                step_results.append({
-                    "step_ulid": summary.step_ulid,
-                    "step_type_spec": summary.step_type_spec,
-                    "step_name": getattr(summary, "step_name", None),
-                    "status": summary.status.value if hasattr(summary.status, "value") else str(summary.status),
-                    "message": summary.message,
-                })
-            
+            from quantumvitas.provenance import record_run_complete
+
             # Determine status string
             status_str = "success" if status == StepStatus.SUCCESS else "failed"
-            
-            # Error summary for failed runs
-            error_summary = None
-            if status != StepStatus.SUCCESS:
-                failed_steps = [s for s in step_summaries if s.status != StepStatus.SUCCESS]
-                if failed_steps:
-                    error_summary = f"Failed steps: {', '.join(s.step_ulid for s in failed_steps[:3])}"
-                    if len(failed_steps) > 3:
-                        error_summary += f" (+{len(failed_steps) - 3} more)"
-            
-            # Complete run revision with digests
-            run_revision = complete_run_revision(
+
+            # Record run completion
+            record_run_complete(
                 project_root=calculation.project.root,
                 run_ulid=run_ulid,
                 status=status_str,
-                step_results=step_results,
-                working_dir=working_dir or calculation.raw_dir,
-                error_summary=error_summary,
             )
-            
-            # Record run_finished event
-            history = ProjectHistory(calculation.project.root)
-            
-            run_digest = run_revision.run_digest or {}
-            duration = run_digest.get("duration_seconds")
-            success_count = run_digest.get("success_count", 0)
-            failure_count = run_digest.get("failed_count", 0)
-            
-            event = RunFinishedEvent.create(
-                project_ulid=run_revision.project_ulid,
-                calc_ulid=calculation.ulid,
-                run_ulid=run_ulid,
-                status=status_str,
-                duration_seconds=duration,
-                step_count=len(step_summaries),
-                success_count=success_count,
-                failure_count=failure_count,
-                error_summary=error_summary,
-            )
-            history.append_event(event)
-            
-            logger.debug(f"[HISTORY] Completed run revision: {run_ulid} ({status_str})")
-            
+
+            logger.debug(f"[PROVENANCE] Completed run: {run_ulid} ({status_str})")
+
         except Exception as e:
-            logger.warning(f"[HISTORY] Failed to complete history recording: {e}")
+            # Law P7: Provenance failures must not fail runs
+            logger.warning(f"[PROVENANCE] Failed to complete provenance recording: {e}")
 

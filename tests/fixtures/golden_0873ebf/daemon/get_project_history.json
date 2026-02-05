@@ -2,22 +2,14 @@
   "method": "get_project_history",
   "success": true,
   "response": {
-    "timeline": [
-      {
-        "ulid": "<NORMALIZED_ID>",
-        "timestamp": "<NORMALIZED_TIMESTAMP>",
-        "event_type": "baseline",
-        "step_ulid": "<NORMALIZED_ID>",
-        "structure_ulids": "<NORMALIZED_ID>",
-        "calculation_ids": [],
-        "calc_ulid": "<NORMALIZED_ID>"
-      }
-    ],
+    "timeline": [],
     "latest_run_id": null,
-    "total": 1
+    "latest_run_ulid": null,
+    "total": 0
   },
   "recipe_name": "ProjectMethodsRecipe(get_project_history)",
   "baseline_commit": "0873ebf",
   "generated_at": "2026-01-29T03:26:59.727535",
-  "source": "recipe"
+  "source": "recipe",
+  "_note": "Updated for provenance system - no automatic baseline events"
 }

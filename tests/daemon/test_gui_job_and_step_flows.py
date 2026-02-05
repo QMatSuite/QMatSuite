@@ -669,7 +669,7 @@ class TestCalculationFailureHandling:
         
         original_run = CalculationRunner.run
         
-        def mock_run_with_failure(self, calculation, *, skip_history: bool = False, run_id: Optional[str] = None, run_mode: str = "incremental", **kwargs):
+        def mock_run_with_failure(self, calculation, *, run_ulid: Optional[str] = None, run_mode: str = "incremental", **kwargs):
             """Mock runner that simulates nscf step failure.
             
             Accepts run_mode and any other kwargs for future compatibility.
