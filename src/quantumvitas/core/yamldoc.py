@@ -594,15 +594,23 @@ class StepDoc(YamlDoc):
         """
         return super().get(path, default)
     
-    def save(self, path: Path) -> None:
+    def save(
+        self,
+        path: Path,
+        opctx: Optional["OperationContext"] = None,
+    ) -> None:
         """
         Save step document to YAML file.
-        
-        Delegates to save_yaml_doc() for Journal integration.
+
+        Delegates to save_yaml_doc() for Journal and Provenance integration.
+
+        Args:
+            path: Path to save to
+            opctx: OperationContext for provenance tracking (optional during migration)
         """
         from quantumvitas.core.yaml_io import save_yaml_doc
-        
-        save_yaml_doc(self, path)
+
+        save_yaml_doc(self, path, opctx)
 
 
 class CalcDoc(YamlDoc):
@@ -623,15 +631,23 @@ class CalcDoc(YamlDoc):
         data = _load_yaml_raw(path)
         return cls(data)
     
-    def save(self, path: Path) -> None:
+    def save(
+        self,
+        path: Path,
+        opctx: Optional["OperationContext"] = None,
+    ) -> None:
         """
         Save calculation document to YAML file.
-        
-        Delegates to save_yaml_doc() for Journal integration.
+
+        Delegates to save_yaml_doc() for Journal and Provenance integration.
+
+        Args:
+            path: Path to save to
+            opctx: OperationContext for provenance tracking (optional during migration)
         """
         from quantumvitas.core.yaml_io import save_yaml_doc
-        
-        save_yaml_doc(self, path)
+
+        save_yaml_doc(self, path, opctx)
 
 
 class ProjectDoc(YamlDoc):
@@ -652,13 +668,21 @@ class ProjectDoc(YamlDoc):
         data = _load_yaml_raw(path)
         return cls(data)
     
-    def save(self, path: Path) -> None:
+    def save(
+        self,
+        path: Path,
+        opctx: Optional["OperationContext"] = None,
+    ) -> None:
         """
         Save project document to YAML file.
-        
-        Delegates to save_yaml_doc() for Journal integration.
+
+        Delegates to save_yaml_doc() for Journal and Provenance integration.
+
+        Args:
+            path: Path to save to
+            opctx: OperationContext for provenance tracking (optional during migration)
         """
         from quantumvitas.core.yaml_io import save_yaml_doc
-        
-        save_yaml_doc(self, path)
+
+        save_yaml_doc(self, path, opctx)
 

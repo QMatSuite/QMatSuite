@@ -4,6 +4,16 @@
 **Companion to:** `PROVENANCE_VERSIONED_HISTORY_SPEC.md` v1.1
 **Purpose:** Deep code review and phased implementation plan for Auto
 
+**Implementation Status:** COMPLETE (Core Infrastructure)
+- Phase 0: Scaffolding + Gate Tests ✓
+- Phase 1: SQLite + OpCtx Enforcement ✓
+- Phase 2: Run Recording + Snapshots ✓
+- Phase 3: Artifact Scanning + Policy ✓
+- Phase 4: CAS + Restore ✓
+- Phase 5: Cleanup (partial - skip_history kept for compat)
+
+**Worklog:** `docs/worklog/provenance_implementation.md`
+
 ---
 
 ## Part 1: Deep Code Review
