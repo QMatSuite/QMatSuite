@@ -141,6 +141,7 @@ def load_yaml_doc(
 def save_yaml_doc(
     doc: YamlDoc,
     path: Path,
+    opctx: Optional["OperationContext"] = None,
     *,
     skip_journal: bool = False,
     skip_history: bool = False,
@@ -148,27 +149,44 @@ def save_yaml_doc(
 ) -> None:
     """
     Save Doc to YAML file.
-    
+
     This is the SINGLE COMMIT POINT for all YAML changes.
-    Journal and Project History are hooked here - no other place records changes.
-    
+    Journal, Project History, and Provenance are hooked here.
+
+    Per Law P2 (OperationContext Required): All YAML writes should carry
+    an OperationContext. Currently opctx is optional for migration, but
+    will become required once all callers are updated.
+
+    Per Law P6 (Lock Ordering): Provenance recording happens AFTER
+    edit.lock is released, not inside it.
+
+    Per Law P7 (Graceful Degradation): Provenance failures are logged
+    but don't fail the YAML write.
+
     Args:
         doc: Document to save
         path: Path to save to
+        opctx: OperationContext for provenance tracking (will become required)
         skip_journal: If True, skip journal recording (for internal use)
         skip_history: If True, skip project history recording
         actor: Actor for history event ("gui", "cli", "daemon", "system")
-        
+
     Journal Integration:
         - Captures before (snapshot) and after (current state)
         - Records entry with target ULID from meta.ulid
         - Infers doc_type from document structure
-        
+
     Project History Integration:
         - Records semantic edit events for project-scoped files
         - Computes structured diffs (not text diffs)
         - Stored in project/.history/events.jsonl
+
+    Provenance Integration:
+        - Records operation events in .provenance/provenance.db
+        - Uses OperationContext for structured audit trail
     """
+    # Import here to avoid circular dependency
+    from quantumvitas.provenance.opctx import OperationContext
     # Capture before/after for Journal and History
     before = doc.get_snapshot()
     after = doc.to_dict()
@@ -241,6 +259,37 @@ def save_yaml_doc(
         except Exception:
             # History failures should not break saves
             pass
+
+    # ─────────────── edit.lock is now released ───────────────
+    # Record in Provenance (Law P6: after edit.lock release, Law P7: graceful degradation)
+    if opctx is not None:
+        try:
+            from quantumvitas.provenance.recording import (
+                record_operation_event,
+                compute_diff_summary,
+            )
+            import logging
+
+            project_root = _find_project_root(resolved_path)
+            if project_root:
+                diff_summary = compute_diff_summary(before, after)
+
+                # Extract target and calc ULIDs from document
+                target_ulid = _extract_step_ulid(after) or _extract_calc_ulid(after, resolved_path)
+                calc_ulid_val = _extract_calc_ulid(after, resolved_path)
+
+                record_operation_event(
+                    project_root=project_root,
+                    opctx=opctx,
+                    diff_summary=diff_summary,
+                    target_ulid=target_ulid,
+                    calc_ulid=calc_ulid_val,
+                )
+        except Exception as e:
+            # Law P7: Provenance failures should not break saves
+            logging.getLogger(__name__).warning(
+                f"Provenance recording failed (non-fatal): {e}"
+            )
 
 
 def _record_history_edit_event(

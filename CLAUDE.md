@@ -24,7 +24,7 @@ Note: `CONSTITUTION_ZH.md` is deprecated. The English `CONSTITUTION.md` is autho
 | Presets, ParamSpace, IR, detection | `docs/governance/PARAMSPACE_SPEC.md` + Constitution §8 |
 | YAML, SSOT, persistence | Constitution §2 |
 | History, runs, revisions | Constitution §3 + `docs/governance/PROVENANCE_VERSIONED_HISTORY_SPEC.md` |
-| Provenance, versioned history, CAS, rollback | `docs/governance/PROVENANCE_VERSIONED_HISTORY_SPEC.md` |
+| Provenance, versioned history, CAS, rollback | `docs/governance/PROVENANCE_VERSIONED_HISTORY_SPEC.md` + `docs/governance/PROVENANCE_IMPLEMENTATION_PLAN.md` |
 | Locks, concurrency | Constitution §4 |
 | Incremental run, manifest, skip | Constitution §5 |
 | Identity, ULID, meta | Constitution §6 |
