@@ -59,6 +59,10 @@ class OperationType(str, Enum):
     RESTORE = "restore"  # Restore from snapshot
     ROLLBACK = "rollback"  # Rollback to previous state
 
+    # Pins
+    PIN_CREATE = "pin_create"  # Pin analysis to history
+    PIN_DELETE = "pin_delete"  # Remove pinned analysis
+
     # Misc
     SEED = "seed"  # Initial state capture
     CORRECTION = "correction"  # Manual correction event

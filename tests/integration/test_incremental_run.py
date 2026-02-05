@@ -881,7 +881,7 @@ def test_crash_recovery_incremental_rerun_from_failed_step(tmp_project, minimal_
     
     call_count = [0]
     
-    def mock_run(self, calculation, *, skip_history=False, run_ulid=None, run_mode="incremental", **kwargs):
+    def mock_run(self, calculation, *, run_ulid=None, run_mode="incremental", **kwargs):
         call_count[0] += 1
         # Simulate crash after starting step 1
         if call_count[0] == 1:
@@ -969,7 +969,7 @@ def test_pseudo_preflight_update_failure_non_blocking(tmp_project, minimal_calcu
         from quantumvitas.calculation.types import StepStatus
         from datetime import datetime, timezone
         
-        def mock_run(self, calculation, *, skip_history=False, run_ulid=None, run_mode="incremental", **kwargs):
+        def mock_run(self, calculation, *, run_ulid=None, run_mode="incremental", **kwargs):
             execution_calls.append({
                 "calculation_ulid": calculation.ulid,
                 "run_ulid": run_ulid,

@@ -5260,7 +5260,6 @@ class QVService:
                 try:
                     result = runner.run(
                         calculation,
-                        skip_history=False,
                         run_ulid=run_ulid,
                         run_mode="incremental",
                         target_step_ulid=target_step_ulid,
@@ -5341,9 +5340,8 @@ class QVService:
             """
             try:
                 from quantumvitas.api.errors import NotFoundError, EngineError
-                from quantumvitas.history.storage import ProjectHistory
-                from quantumvitas.history.run_revision import load_run_revision
-                
+                from quantumvitas.provenance import get_run_details
+
                 # Try to access JobManager if available (daemon context)
                 # Check for thread-local or context variable
                 job_manager = None
@@ -5430,52 +5428,43 @@ class QVService:
                         error=error,
                     )
                 
-                # If JobManager not available, try to find run in history
-                history = ProjectHistory(self._service.project_root)
-                run_dir = history.get_run_dir(run_ulid)
-                
-                if run_dir is None:
+                # If JobManager not available, try to find run in provenance
+                run_info = get_run_details(self._service.project_root, run_ulid)
+
+                if run_info is None:
                     raise NotFoundError(
                         f"Run not found: {run_ulid}",
                         context={"run_ulid": run_ulid}
                     )
-                
-                # Load run revision to get status
-                try:
-                    revision = load_run_revision(run_dir)
-                    
-                    # Check if run is already terminal
-                    if revision.status in ["completed", "failed", "cancelled"]:
-                        # Return current status (can't cancel already terminal runs)
-                        status_map = {
-                            "completed": "completed",
-                            "failed": "failed",
-                            "cancelled": "cancelled",
-                        }
-                        status = status_map.get(revision.status, "completed")
-                    else:
-                        # Run is active but we can't cancel without JobManager
-                        # Return current status with hint that cancellation requires daemon
-                        status = "running"  # or "submitted" depending on revision.status
-                    
-                    return RunResultDTO(
-                        run_ulid=run_ulid,
-                        calc_ulid=revision.calc_ulid,
-                        status=status,
-                        step_ulids=revision.step_ulids or [],
-                        started_at=revision.started_at,
-                        completed_at=revision.finished_at,
-                        duration_seconds=None,  # Would need to calculate from timestamps
-                        exit_code=None,
-                        log_path=revision.working_dir,
-                        error=None,
-                    )
-                except Exception as e:
-                    # If we can't load revision, still raise NotFoundError
-                    raise NotFoundError(
-                        f"Run not found or inaccessible: {run_ulid}",
-                        context={"run_ulid": run_ulid}
-                    ) from e
+
+                # Check if run is already terminal
+                run_status = run_info.get("status", "")
+                if run_status in ["success", "completed", "failed", "cancelled"]:
+                    # Map status for DTO
+                    status_map = {
+                        "success": "completed",
+                        "completed": "completed",
+                        "failed": "failed",
+                        "cancelled": "cancelled",
+                    }
+                    status = status_map.get(run_status, "completed")
+                else:
+                    # Run is active but we can't cancel without JobManager
+                    # Return current status with hint that cancellation requires daemon
+                    status = "running"  # or "submitted" depending on run_info.status
+
+                return RunResultDTO(
+                    run_ulid=run_ulid,
+                    calc_ulid=run_info.get("calc_ulid", ""),
+                    status=status,
+                    step_ulids=run_info.get("step_ulids", []),
+                    started_at=run_info.get("started_at"),
+                    completed_at=run_info.get("finished_at"),
+                    duration_seconds=None,  # Would need to calculate from timestamps
+                    exit_code=None,
+                    log_path=None,
+                    error=None,
+                )
                     
             except Exception as e:
                 if isinstance(e, APIError):
@@ -6701,7 +6690,7 @@ class QVService:
 
     # History domain (minimal surface for daemon)
     class History:
-        """History/timeline capabilities."""
+        """History/timeline capabilities using provenance system."""
 
         def __init__(self, service: QVService):
             self._service = service
@@ -6722,88 +6711,63 @@ class QVService:
                 Dict with timeline entries and latest_run_ulid
             """
             try:
-                from quantumvitas.history.storage import ProjectHistory
-                from quantumvitas.history.events import EventType
-                from quantumvitas.history.run_revision import load_run_revision
+                from quantumvitas.provenance import (
+                    query_runs,
+                    get_run_details,
+                    get_latest_run_ulid,
+                )
 
-                history = ProjectHistory(self._service.project_root)
-
-                events = history.list_events(
+                # Query runs from provenance database
+                runs = query_runs(
+                    self._service.project_root,
                     calc_ulid=calc_ulid,
                     limit=limit,
-                    reverse=True,
                 )
 
                 timeline = []
-                run_info_cache = {}
 
-                for event in events:
-                    entry = {
-                        "ulid": event.id,
-                        "timestamp": event.timestamp,
-                        "event_type": event.event_type,
-                        "calc_ulid": event.calc_ulid,
-                        "step_ulid": event.step_ulid,
-                        "step_ulid": event.step_ulid,  # Backwards compat
+                for run in runs:
+                    # Create run_started entry
+                    started_entry = {
+                        "ulid": run["run_ulid"],
+                        "timestamp": run["started_at"],
+                        "event_type": "run_started",
+                        "calc_ulid": run["calc_ulid"],
+                        "run_ulid": run["run_ulid"],
+                        "step_ulid": None,
                     }
 
-                    if event.event_type == EventType.RUN_STARTED.value:
-                        entry["run_ulid"] = getattr(event, "run_ulid", "")
-                        entry["step_ulids"] = getattr(event, "step_ulids", [])
-                        entry["step_types"] = getattr(event, "step_types", [])
-                        entry["calc_name"] = getattr(event, "calc_name", "")
+                    # Get step info from run details
+                    run_details = get_run_details(self._service.project_root, run["run_ulid"])
+                    if run_details:
+                        started_entry["step_ulids"] = run_details.get("step_ulids", [])
 
-                    elif event.event_type == EventType.RUN_FINISHED.value:
-                        run_ulid = getattr(event, "run_ulid", "")
-                        entry["run_ulid"] = run_ulid
-                        entry["status"] = getattr(event, "status", "")
-                        entry["duration_seconds"] = getattr(event, "duration_seconds", None)
-                        entry["step_count"] = getattr(event, "step_count", 0)
-                        entry["success_count"] = getattr(event, "success_count", 0)
-                        entry["failure_count"] = getattr(event, "failure_count", 0)
-                        entry["error_summary"] = getattr(event, "error_summary", None)
+                    timeline.append(started_entry)
 
-                        if run_ulid and run_ulid not in run_info_cache:
-                            run_dir = history.get_run_dir(run_ulid)
-                            if run_dir:
-                                try:
-                                    revision = load_run_revision(run_dir)
-                                    revision_dict = revision.to_dict()
-                                    run_info_cache[run_ulid] = {
-                                        "run_digest": revision_dict.get("run_digest"),
-                                        "step_digests": revision_dict.get("step_digests"),
-                                    }
-                                except Exception:
-                                    pass
+                    # Create run_finished entry if run is complete
+                    if run.get("finished_at"):
+                        finished_entry = {
+                            "ulid": run["run_ulid"] + "_finished",
+                            "timestamp": run["finished_at"],
+                            "event_type": "run_finished",
+                            "calc_ulid": run["calc_ulid"],
+                            "run_ulid": run["run_ulid"],
+                            "status": run.get("status", ""),
+                            "step_ulid": None,
+                            "error_summary": run.get("error_message"),
+                        }
+                        timeline.append(finished_entry)
 
-                        if run_ulid in run_info_cache:
-                            entry["run_digest"] = run_info_cache[run_ulid].get("run_digest")
-                            entry["step_digests"] = run_info_cache[run_ulid].get("step_digests")
+                # Sort by timestamp descending
+                timeline.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
 
-                    elif event.event_type == EventType.EDIT.value:
-                        entry["doc_type"] = getattr(event, "doc_type", "")
-                        entry["doc_path"] = getattr(event, "doc_path", "")
-                        entry["summary"] = getattr(event, "summary", "")
-                        entry["actor"] = getattr(event, "actor", "")
-
-                    elif event.event_type == EventType.PIN_CREATED.value:
-                        entry["run_ulid"] = getattr(event, "run_ulid", "")
-                        entry["analysis_kind"] = getattr(event, "analysis_kind", "")
-                        entry["pin_path"] = getattr(event, "pin_path", "")
-
-                    elif event.event_type == EventType.BASELINE.value:
-                        entry["structure_ulids"] = getattr(event, "structure_ulids", [])
-                        entry["calculation_ids"] = getattr(event, "calculation_ids", [])
-
-                    timeline.append(entry)
-
-                latest_run_ulid = history.get_latest_run_ulid()
+                latest_run_ulid = get_latest_run_ulid(self._service.project_root)
 
                 return {
-                    "timeline": timeline,
+                    "timeline": timeline[:limit],
                     "latest_run_ulid": latest_run_ulid,
                     "latest_run_id": latest_run_ulid,  # Backwards compat alias
-                    "total": len(timeline),
+                    "total": len(timeline[:limit]),
                 }
             except Exception as e:
                 if isinstance(e, APIError):
@@ -6821,20 +6785,28 @@ class QVService:
                 Dict with revision or error
             """
             try:
-                from quantumvitas.history.storage import ProjectHistory
-                from quantumvitas.history.run_revision import load_run_revision
+                from quantumvitas.provenance import get_run_details
 
-                history = ProjectHistory(self._service.project_root)
-                run_dir = history.get_run_dir(run_ulid)
+                run_details = get_run_details(self._service.project_root, run_ulid)
 
-                if not run_dir:
+                if not run_details:
                     return {"revision": None, "error": f"Run not found: {run_ulid}"}
 
-                try:
-                    revision = load_run_revision(run_dir)
-                    return {"revision": revision.to_dict()}
-                except Exception as e:
-                    return {"revision": None, "error": str(e)}
+                # Convert to legacy revision format for compatibility
+                revision = {
+                    "ulid": run_details["run_ulid"],
+                    "calc_ulid": run_details["calc_ulid"],
+                    "project_ulid": run_details.get("project_ulid"),
+                    "status": run_details.get("status"),
+                    "started_at": run_details.get("started_at"),
+                    "finished_at": run_details.get("finished_at"),
+                    "step_ulids": run_details.get("step_ulids", []),
+                    "engine": run_details.get("engine"),
+                    "snapshot_sha": run_details.get("snapshot_sha"),
+                    "steps": run_details.get("steps", []),
+                }
+
+                return {"revision": revision}
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -6856,28 +6828,31 @@ class QVService:
                 Dict with runs list
             """
             try:
-                from quantumvitas.history.storage import ProjectHistory
-                from quantumvitas.history.run_revision import load_run_revision
+                from quantumvitas.provenance import query_runs, get_run_details
 
-                history = ProjectHistory(self._service.project_root)
-                run_ulids = history.list_runs(calc_ulid=calc_ulid, limit=limit)
+                runs_data = query_runs(
+                    self._service.project_root,
+                    calc_ulid=calc_ulid,
+                    limit=limit,
+                )
 
                 runs = []
-                for run_ulid in run_ulids:
-                    run_dir = history.get_run_dir(run_ulid)
-                    if run_dir:
-                        try:
-                            revision = load_run_revision(run_dir)
-                            runs.append({
-                                "run_ulid": run_ulid,
-                                "calc_ulid": revision.calc_ulid,
-                                "status": revision.status,
-                                "started_at": revision.started_at,
-                                "finished_at": revision.finished_at,
-                                "step_ulids": revision.step_ulids or [],
-                            })
-                        except Exception:
-                            runs.append({"run_ulid": run_ulid, "error": "Failed to load"})
+                for run in runs_data:
+                    run_info = {
+                        "run_ulid": run["run_ulid"],
+                        "calc_ulid": run["calc_ulid"],
+                        "status": run.get("status"),
+                        "started_at": run.get("started_at"),
+                        "finished_at": run.get("finished_at"),
+                        "step_ulids": [],
+                    }
+
+                    # Get step ULIDs
+                    run_details = get_run_details(self._service.project_root, run["run_ulid"])
+                    if run_details:
+                        run_info["step_ulids"] = run_details.get("step_ulids", [])
+
+                    runs.append(run_info)
 
                 return {"runs": runs, "total": len(runs)}
             except Exception as e:
@@ -6907,7 +6882,10 @@ class QVService:
                 Pin result dict
             """
             try:
-                from quantumvitas.history.pins import pin_analysis_to_history, PinError
+                from quantumvitas.provenance import (
+                    pin_analysis_to_history,
+                    PinError,
+                )
 
                 try:
                     result = pin_analysis_to_history(
@@ -6938,7 +6916,7 @@ class QVService:
                 Dict with allowed and reason
             """
             try:
-                from quantumvitas.history.pins import can_pin_to_run
+                from quantumvitas.provenance import can_pin_to_run
                 return can_pin_to_run(self._service.project_root, run_ulid, step_ulid)
             except Exception as e:
                 if isinstance(e, APIError):
@@ -6960,10 +6938,10 @@ class QVService:
                 analysis_kind: Type of analysis
 
             Returns:
-                Dict with png_path, json_path, json_data
+                Dict with png_data, json_data
             """
             try:
-                from quantumvitas.history.pins import get_pin_data as _get_pin_data
+                from quantumvitas.provenance import get_pin_data as _get_pin_data
                 return _get_pin_data(
                     self._service.project_root, run_ulid, step_ulid, analysis_kind
                 )
@@ -6983,11 +6961,12 @@ class QVService:
                 Dict with run_ulid, can_pin, reason
             """
             try:
-                from quantumvitas.history.storage import ProjectHistory
+                from quantumvitas.provenance import (
+                    get_latest_run_ulid,
+                    get_run_step_ulids,
+                )
 
-                history = ProjectHistory(self._service.project_root)
-
-                latest_run_ulid = history.get_latest_run_ulid()
+                latest_run_ulid = get_latest_run_ulid(self._service.project_root)
 
                 if not latest_run_ulid:
                     return {
@@ -6996,7 +6975,10 @@ class QVService:
                         "reason": "No runs found in history",
                     }
 
-                step_ulids_in_run = history.get_run_step_ulids(latest_run_ulid)
+                step_ulids_in_run = get_run_step_ulids(
+                    self._service.project_root,
+                    latest_run_ulid,
+                )
 
                 if step_ulid not in step_ulids_in_run:
                     return {
@@ -7017,7 +6999,7 @@ class QVService:
 
         def delete(self, confirm: bool = False) -> dict:
             """
-            Delete the entire .history directory for a project.
+            Delete the entire .provenance directory for a project.
 
             Args:
                 confirm: Must be True to confirm deletion
@@ -7027,7 +7009,7 @@ class QVService:
             """
             try:
                 import shutil
-                from quantumvitas.history.storage import HISTORY_DIR_NAME
+                from quantumvitas.provenance import PROVENANCE_DIR_NAME
 
                 if not confirm:
                     return {
@@ -7036,20 +7018,20 @@ class QVService:
                     }
 
                 project_root = self._service.project_root.resolve()
-                history_dir = project_root / HISTORY_DIR_NAME
+                provenance_dir = project_root / PROVENANCE_DIR_NAME
 
                 # Validate path
                 try:
-                    history_dir_resolved = history_dir.resolve()
-                    if not str(history_dir_resolved).startswith(str(project_root)):
+                    provenance_dir_resolved = provenance_dir.resolve()
+                    if not str(provenance_dir_resolved).startswith(str(project_root)):
                         return {
                             "success": False,
                             "error": "Security error: invalid path",
                         }
-                    if history_dir_resolved.name != HISTORY_DIR_NAME:
+                    if provenance_dir_resolved.name != PROVENANCE_DIR_NAME:
                         return {
                             "success": False,
-                            "error": "Security error: invalid history directory name",
+                            "error": "Security error: invalid provenance directory name",
                         }
                 except Exception:
                     return {
@@ -7057,17 +7039,17 @@ class QVService:
                         "error": "Security error: path resolution failed",
                     }
 
-                if not history_dir.exists():
+                if not provenance_dir.exists():
                     return {
                         "success": True,
                         "deleted_path": None,
-                        "message": "History directory does not exist",
+                        "message": "Provenance directory does not exist",
                     }
 
-                shutil.rmtree(history_dir)
+                shutil.rmtree(provenance_dir)
                 return {
                     "success": True,
-                    "deleted_path": str(history_dir),
+                    "deleted_path": str(provenance_dir),
                 }
             except Exception as e:
                 if isinstance(e, APIError):

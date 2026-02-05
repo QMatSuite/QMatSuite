@@ -144,14 +144,12 @@ def save_yaml_doc(
     opctx: Optional["OperationContext"] = None,
     *,
     skip_journal: bool = False,
-    skip_history: bool = False,
-    actor: Optional[str] = None,
 ) -> None:
     """
     Save Doc to YAML file.
 
     This is the SINGLE COMMIT POINT for all YAML changes.
-    Journal, Project History, and Provenance are hooked here.
+    Journal and Provenance are hooked here.
 
     Per Law P2 (OperationContext Required): All YAML writes should carry
     an OperationContext. Currently opctx is optional for migration, but
@@ -168,18 +166,11 @@ def save_yaml_doc(
         path: Path to save to
         opctx: OperationContext for provenance tracking (will become required)
         skip_journal: If True, skip journal recording (for internal use)
-        skip_history: If True, skip project history recording
-        actor: Actor for history event ("gui", "cli", "daemon", "system")
 
     Journal Integration:
         - Captures before (snapshot) and after (current state)
         - Records entry with target ULID from meta.ulid
         - Infers doc_type from document structure
-
-    Project History Integration:
-        - Records semantic edit events for project-scoped files
-        - Computes structured diffs (not text diffs)
-        - Stored in project/.history/events.jsonl
 
     Provenance Integration:
         - Records operation events in .provenance/provenance.db
@@ -247,19 +238,6 @@ def save_yaml_doc(
             # In production, consider logging this
             pass
     
-    # Record in Project History (lazy import to avoid circular dependencies)
-    if not skip_history and before is not None:
-        try:
-            _record_history_edit_event(
-                resolved_path=resolved_path,
-                before=before,
-                after=after,
-                actor=actor,
-            )
-        except Exception:
-            # History failures should not break saves
-            pass
-
     # ─────────────── edit.lock is now released ───────────────
     # Record in Provenance (Law P6: after edit.lock release, Law P7: graceful degradation)
     if opctx is not None:
@@ -290,72 +268,6 @@ def save_yaml_doc(
             logging.getLogger(__name__).warning(
                 f"Provenance recording failed (non-fatal): {e}"
             )
-
-
-def _record_history_edit_event(
-    resolved_path: Path,
-    before: dict,
-    after: dict,
-    actor: Optional[str] = None,
-) -> None:
-    """
-    Record a semantic edit event in project history.
-    
-    Only records if we can determine the project root from the path.
-    """
-    from quantumvitas.history.events import (
-        EditEvent,
-        EditChange,
-        EditOperation,
-        compute_semantic_diff,
-    )
-    from quantumvitas.history.storage import ProjectHistory
-    
-    # Try to find project root by walking up from the file path
-    project_root = _find_project_root(resolved_path)
-    if project_root is None:
-        return  # Not inside a project, skip history recording
-    
-    history = ProjectHistory(project_root)
-    
-    # Ensure baseline exists
-    history.ensure_baseline()
-    
-    # Determine doc type and IDs
-    doc_type = _infer_history_doc_type(after)
-    project_ulid = _extract_project_ulid(project_root)
-    calc_ulid = _extract_calc_ulid(after, resolved_path)
-    step_ulid = _extract_step_ulid(after)
-    
-    # Compute semantic diff
-    changes = compute_semantic_diff(before, after)
-    
-    # Skip if no changes
-    if not changes:
-        return
-    
-    # Generate summary
-    summary = _generate_edit_summary(doc_type, changes)
-    
-    # Get relative path
-    try:
-        rel_path = str(resolved_path.relative_to(project_root))
-    except ValueError:
-        rel_path = str(resolved_path)
-    
-    # Create and append event
-    event = EditEvent.create(
-        project_ulid=project_ulid,
-        calc_ulid=calc_ulid,
-        step_ulid=step_ulid,
-        doc_type=doc_type,
-        doc_path=rel_path,
-        changes=[c.__dict__ if hasattr(c, "__dict__") else c for c in changes],
-        actor=actor,
-        summary=summary,
-    )
-    
-    history.append_event(event)
 
 
 def _find_project_root(path: Path) -> Optional[Path]:

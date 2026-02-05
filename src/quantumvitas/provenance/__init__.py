@@ -84,6 +84,23 @@ from quantumvitas.provenance.db import (
 from quantumvitas.provenance.locks import (
     provenance_lock,
 )
+from quantumvitas.provenance.query import (
+    query_operations,
+    query_runs,
+    get_run_details,
+    get_latest_run_ulid,
+    get_run_step_ulids,
+    build_timeline_entry,
+    PROVENANCE_DIR_NAME,
+)
+from quantumvitas.provenance.pins import (
+    PinError,
+    PinResult,
+    can_pin_to_run,
+    pin_analysis_to_history,
+    get_pin_data,
+    list_pins_for_step,
+)
 
 __all__ = [
     # Core context
@@ -143,4 +160,19 @@ __all__ = [
     "ProvenanceDB",
     # Locks
     "provenance_lock",
+    # Query API
+    "query_operations",
+    "query_runs",
+    "get_run_details",
+    "get_latest_run_ulid",
+    "get_run_step_ulids",
+    "build_timeline_entry",
+    "PROVENANCE_DIR_NAME",
+    # Pins
+    "PinError",
+    "PinResult",
+    "can_pin_to_run",
+    "pin_analysis_to_history",
+    "get_pin_data",
+    "list_pins_for_step",
 ]
