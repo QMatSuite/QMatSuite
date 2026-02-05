@@ -59,6 +59,9 @@ from quantumvitas.drivers import yambo
 # ABINIT driver (plane-wave DFT)
 from quantumvitas.drivers import abinit
 
+# Gaussian driver (molecular quantum chemistry)
+from quantumvitas.drivers import gaussian
+
 # Note: All major drivers have been migrated
 
 logger.debug("Driver packages imported")

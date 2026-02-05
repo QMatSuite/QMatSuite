@@ -1,6 +1,6 @@
 # QMatSuite Governance Documents
 
-**Last Updated**: 2026-02-03
+**Last Updated**: 2026-02-05
 
 ---
 
@@ -38,6 +38,7 @@
 | [`ENGINE_INTEGRATION_CONSTITUTION.md`](ENGINE_INTEGRATION_CONSTITUTION.md) | **SPECIFICATION** (v1.0) | Engine integration invariants: no guessing, hard error, explicit mapping, driver self-containment | Constitution §17 | 2026-02-01 |
 | [`PARAMSPACE_SPEC.md`](PARAMSPACE_SPEC.md) | **FINAL** (v1.0) | ParamSpace framework: compiler/detector equivalence, single-writer, cell semantics, Oracle | Constitution §8 | 2026-02-03 |
 | [`ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md`](ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md) | **FINAL** (v1.0) | Engine recipe system, runner independence, recipe archetypes, directory contracts, bans | Constitution §17 | 2026-02-03 |
+| [`PROVENANCE_VERSIONED_HISTORY_SPEC.md`](PROVENANCE_VERSIONED_HISTORY_SPEC.md) | **PROPOSED** (v1.0) | Provenance/history system: SQLite timeline, CAS blobs, OperationContext, rollback, artifact tiers | Constitution §3 | 2026-02-05 |
 
 ### Status Taxonomy
 
@@ -56,7 +57,11 @@
 | Invariant | Constitution § | Governance Spec | Enforcement Gate(s) |
 |-----------|---------------|-----------------|---------------------|
 | **SSOT = calculation.yaml + step.yaml** | §2.1 | KERNEL_DEPENDENCY_SPEC §2.1 | `test_yaml_write_single_entry.py`, `test_yaml_read_single_entry.py` |
-| **History world separation** | §3 | — | — (not yet gated) |
+| **History world separation (Law P1)** | §3 | PROVENANCE_VERSIONED_HISTORY_SPEC §2 | `test_provenance_independence.py` |
+| **OperationContext required (Law P2)** | §3 | PROVENANCE_VERSIONED_HISTORY_SPEC §2 | `test_provenance_opctx_required.py` |
+| **No provenance in skip logic (Law P3)** | §3 | PROVENANCE_VERSIONED_HISTORY_SPEC §2 | `test_provenance_skip_isolation.py` |
+| **CAS integrity (Law P5)** | §3 | PROVENANCE_VERSIONED_HISTORY_SPEC §2 | `test_cas_integrity.py` |
+| **Lock ordering edit→provenance (Law P6)** | §3, §4 | PROVENANCE_VERSIONED_HISTORY_SPEC §4 | `test_lock_ordering.py` |
 | **Concurrency: edit.lock + run.lock** | §4 | KERNEL_DEPENDENCY_SPEC §2.1 | — (runtime enforcement) |
 | **Manifest = non-SSOT bookkeeping** | §5 | — | — |
 | **ULID-only identity** | §6 | API_CONSTITUTION H7 | `test_no_legacy_identity_fields.py` |

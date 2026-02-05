@@ -1,6 +1,6 @@
 # Gaussian Engine Integration Plan for QMatSuite
 
-## Status: PLANNING
+## Status: COMPLETE ✅
 
 ---
 
@@ -56,7 +56,7 @@ Gaussian is an external binary quantum chemistry engine, similar to ORCA. It sup
 
 ## 2. Files to MODIFY (7 files)
 
-### 2.1 `src/quantumvitas/workflow/gen_steps.py`
+### 2.1 `src/quantumvitas/workflow/gen_steps.py` ✅
 
 Add 6 new GEN steps to `GenStepRegistry.GEN_STEPS`:
 
@@ -68,11 +68,11 @@ Add 6 new GEN steps to `GenStepRegistry.GEN_STEPS`:
 # Note: "scf", "relax", "freq" already exist
 ```
 
-### 2.2 `src/quantumvitas/workflow/step_type_convert.py`
+### 2.2 `src/quantumvitas/workflow/step_type_convert.py` ✅
 
 Add `"gaussian"` to `ENGINE_PREFIXES` frozenset.
 
-### 2.3 `src/quantumvitas/workflow/registry.py`
+### 2.3 `src/quantumvitas/workflow/registry.py` ✅
 
 Add Gaussian step types to `_STEP_TYPES` dict:
 
@@ -93,14 +93,14 @@ Add Gaussian step types to `_STEP_TYPES` dict:
 
 Also add `"gaussian_"` prefix to `normalize_step_type_to_gen()` if needed.
 
-### 2.4 `src/quantumvitas/drivers/__init__.py`
+### 2.4 `src/quantumvitas/drivers/__init__.py` ✅
 
 Add import:
 ```python
 from quantumvitas.drivers import gaussian
 ```
 
-### 2.5 `src/quantumvitas/core/engines/discovery.py`
+### 2.5 `src/quantumvitas/core/engines/discovery.py` ✅
 
 Add Gaussian EngineProbe to `_ENGINE_PROBES`:
 
@@ -112,11 +112,11 @@ Add Gaussian EngineProbe to `_ENGINE_PROBES`:
 ),
 ```
 
-### 2.6 `tests/unit/test_engine_discovery.py`
+### 2.6 `tests/unit/test_engine_discovery.py` ✅
 
 Add `"gaussian"` to the `expected` engine set.
 
-### 2.7 `tests/unit/test_step_type_mapping.py`
+### 2.7 `tests/unit/test_step_type_mapping.py` ✅
 
 Add `"gaussian_"` to `valid_prefixes` tuple (2 locations).
 
@@ -124,7 +124,7 @@ Add `"gaussian_"` to `valid_prefixes` tuple (2 locations).
 
 ## 3. Files to CREATE (7 files in `src/quantumvitas/drivers/gaussian/`)
 
-### 3.1 `__init__.py`
+### 3.1 `__init__.py` ✅
 
 ```python
 from quantumvitas.core.driver_registry import DriverRegistry
@@ -133,7 +133,7 @@ from quantumvitas.drivers.gaussian.driver import GaussianDriver
 DriverRegistry.register(GaussianDriver())
 ```
 
-### 3.2 `driver.py` — GaussianDriver class
+### 3.2 `driver.py` — GaussianDriver class ✅
 
 ```python
 class GaussianDriver(EngineDriver):
@@ -179,7 +179,7 @@ class GaussianDriver(EngineDriver):
         return ErrorClass.SUCCESS
 ```
 
-### 3.3 `handler.py` — `gaussian_step_handler()`
+### 3.3 `handler.py` — `gaussian_step_handler()` ✅
 
 Single handler dispatching by gen type:
 
@@ -204,7 +204,7 @@ Each sub-handler:
 4. Parses output via parser
 5. Returns `JobResult` with parsed data
 
-### 3.4 `recipe.py` — GaussianRecipe
+### 3.4 `recipe.py` — GaussianRecipe ✅
 
 ```python
 class GaussianRecipe(Recipe):
@@ -223,14 +223,14 @@ class GaussianRecipe(Recipe):
 
 ISOLATED workdir policy — each step gets `calc/raw/{step_ulid}/`.
 
-### 3.5 `writer.py`
+### 3.5 `writer.py` ✅
 
 Copy from exploration `gaussian_writer.py`, adapt for driver interface:
 - `GaussianParams` dataclass
 - `write_input(step, params, path)` function
 - Method/basis from step parameters
 
-### 3.6 `parser.py`
+### 3.6 `parser.py` ✅
 
 Copy from exploration `gaussian_parser.py`, adapt for driver interface:
 - `parse_log_file(path) -> dict`
@@ -323,7 +323,7 @@ Parse `.log` file for:
 
 ## 7. Integration Test
 
-### File: `tests/integration/test_gaussian_execution.py`
+### File: `tests/integration/test_gaussian_execution.py` ✅
 
 ```python
 @pytest.mark.skipif(
@@ -389,15 +389,15 @@ class TestGaussianParser:
 
 ## 8. Execution Order
 
-1. Add GEN steps to `gen_steps.py` (`hf`, `mp2`, `td`)
-2. Add `"gaussian"` to `ENGINE_PREFIXES` in `step_type_convert.py`
-3. Add step types to `_STEP_TYPES` in `registry.py`
-4. Create driver bundle (`driver.py`, `__init__.py`, `recipe.py`, `handler.py`, `writer.py`, `parser.py`)
-5. Register driver in `drivers/__init__.py`
-6. Add engine probe to `discovery.py`
-7. Update hardcoded engine lists in unit tests
-8. Create integration test
-9. Run tests: `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+1. ✅ Add GEN steps to `gen_steps.py` (`hf`, `mp2`, `td`)
+2. ✅ Add `"gaussian"` to `ENGINE_PREFIXES` in `step_type_convert.py`
+3. ✅ Add step types to `_STEP_TYPES` in `registry.py`
+4. ✅ Create driver bundle (`driver.py`, `__init__.py`, `recipe.py`, `handler.py`, `writer.py`, `parser.py`)
+5. ✅ Register driver in `drivers/__init__.py`
+6. ✅ Add engine probe to `discovery.py`
+7. ✅ Update hardcoded engine lists in unit tests
+8. ✅ Create integration test
+9. ✅ Run tests: `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile` (3269 passed, 19 skipped)
 
 ---
 

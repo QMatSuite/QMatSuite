@@ -547,10 +547,13 @@ class CalculationRunner:
         selection = SelectionMode.TARGET if target_step_ulid else SelectionMode.ALL
 
         # Create execution context
+        # Include project_root for engine discovery (e.g., bundled engines)
+        project_root = calculation.project.root if calculation.project else None
         context = {
             "run_ulid": run_ulid,
             "run_mode": run_mode,
             "compat_input_playback": compat_input_playback,
+            "project_root": project_root,
         }
 
         # Create handlers
