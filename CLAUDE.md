@@ -23,7 +23,8 @@ Note: `CONSTITUTION_ZH.md` is deprecated. The English `CONSTITUTION.md` is autho
 | Engine recipes, runner, adding engines | `docs/governance/ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md` + Constitution §17.4 |
 | Presets, ParamSpace, IR, detection | `docs/governance/PARAMSPACE_SPEC.md` + Constitution §8 |
 | YAML, SSOT, persistence | Constitution §2 |
-| History, runs, revisions | Constitution §3 |
+| History, runs, revisions | Constitution §3 + `docs/governance/PROVENANCE_VERSIONED_HISTORY_SPEC.md` |
+| Provenance, versioned history, CAS, rollback | `docs/governance/PROVENANCE_VERSIONED_HISTORY_SPEC.md` |
 | Locks, concurrency | Constitution §4 |
 | Incremental run, manifest, skip | Constitution §5 |
 | Identity, ULID, meta | Constitution §6 |
@@ -73,3 +74,5 @@ When adding a new engine, follow the checklist in `docs/governance/ENGINE_RECIPE
 - **No legacy, no compat**: Delete legacy code; do not maintain backward compatibility shims.
 - **Runner is engine-agnostic**: All dispatch through DriverRegistry; no engine-specific imports in runner.
 - **One engine, one recipe**: Each engine has exactly one driver class with PREFIX + SUPPORTED_GEN_STEPS.
+- **History world independence**: Deleting `.provenance/` must leave project runnable. SQLite/CAS never in runtime paths.
+- **OperationContext required**: All `save_yaml_doc()` calls must carry an opctx. No opctx = hard error.

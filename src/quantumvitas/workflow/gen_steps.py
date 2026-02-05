@@ -41,6 +41,8 @@ class GenStepRegistry:
         # Post-HF (molecular)
         "mp2",
         "td",
+        # Frequency/vibrational
+        "freq",
         # Quantum Monte Carlo
         "vmc",       # Variational Monte Carlo
         "dmc",       # Diffusion Monte Carlo

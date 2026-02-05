@@ -143,6 +143,11 @@ _ENGINE_PROBES: Dict[str, EngineProbe] = {
         env_vars=["ABINIT_HOME", "ABI_HOME"],
         brew_name="abinit",
     ),
+    "gaussian": EngineProbe(
+        engine_name="gaussian",
+        binary_names=["g16", "g09", "g03"],
+        env_vars=["g16root", "g09root", "g03root", "GAUSS_EXEDIR"],
+    ),
 }
 
 # Shell profile files to parse (in priority order)
@@ -233,6 +238,16 @@ def _search_bundled(
                 # Also check directly in variant dir (ORCA layout)
                 for binary_name in probe.binary_names:
                     candidate = variant_dir / binary_name
+                    if candidate.is_file():
+                        return EngineDiscoveryResult(
+                            engine_name=probe.engine_name,
+                            available=True,
+                            executable_path=candidate,
+                            source="bundled",
+                        )
+                # Check variant / binary_name / binary_name (Gaussian layout)
+                for binary_name in probe.binary_names:
+                    candidate = variant_dir / binary_name / binary_name
                     if candidate.is_file():
                         return EngineDiscoveryResult(
                             engine_name=probe.engine_name,
@@ -376,6 +391,15 @@ def _search_env_var(probe: EngineProbe) -> Optional[EngineDiscoveryResult]:
                     )
                 # Also check bin/ subdirectory
                 candidate = env_path / "bin" / binary_name
+                if candidate.is_file():
+                    return EngineDiscoveryResult(
+                        engine_name=probe.engine_name,
+                        available=True,
+                        executable_path=candidate,
+                        source="env_var",
+                    )
+                # Also check binary_name/ subdirectory (Gaussian layout: g09root/g09/g09)
+                candidate = env_path / binary_name / binary_name
                 if candidate.is_file():
                     return EngineDiscoveryResult(
                         engine_name=probe.engine_name,

@@ -903,6 +903,88 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
 
     # -------------------------------------------------------------------------
+    # Gaussian step types (molecular quantum chemistry)
+    # -------------------------------------------------------------------------
+    "gaussian_scf": StepTypeSpec(
+        step_type_spec="gaussian_scf",
+        step_type_gen="scf",
+        engine="gaussian",
+        executable="g09",
+        description="Gaussian DFT/HF single-point calculation",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=True,
+        produces_state="chk",
+        consumes_state=None,
+        token="s",
+    ),
+    "gaussian_hf": StepTypeSpec(
+        step_type_spec="gaussian_hf",
+        step_type_gen="hf",
+        engine="gaussian",
+        executable="g09",
+        description="Gaussian Hartree-Fock calculation",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=True,
+        produces_state="chk",
+        consumes_state=None,
+        token="h",
+    ),
+    "gaussian_relax": StepTypeSpec(
+        step_type_spec="gaussian_relax",
+        step_type_gen="relax",
+        engine="gaussian",
+        executable="g09",
+        description="Gaussian geometry optimization",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        is_structure_transform=True,
+    ),
+    "gaussian_freq": StepTypeSpec(
+        step_type_spec="gaussian_freq",
+        step_type_gen="freq",
+        engine="gaussian",
+        executable="g09",
+        description="Gaussian frequency/vibrational analysis",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        token="f",
+    ),
+    "gaussian_mp2": StepTypeSpec(
+        step_type_spec="gaussian_mp2",
+        step_type_gen="mp2",
+        engine="gaussian",
+        executable="g09",
+        description="Gaussian MP2 correlation energy",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=False,
+        consumes_state="chk",
+        produces_state="chk",
+        token="m2",
+    ),
+    "gaussian_td": StepTypeSpec(
+        step_type_spec="gaussian_td",
+        step_type_gen="td",
+        engine="gaussian",
+        executable="g09",
+        description="Gaussian TDDFT excited states",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        supports_incremental_skip=False,
+        consumes_state="chk",
+        produces_state=None,
+        token="t",
+    ),
+
+    # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
     "qe_custom": StepTypeSpec(
@@ -1195,7 +1277,7 @@ def normalize_step_type_to_gen(step_type_spec: str) -> str:
         return spec.step_type_gen
 
     # Fallback: strip known engine prefixes (e.g., "qe_vc-relax" -> "vc-relax")
-    ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_", "gpaw_", "siesta_", "xtb_", "yambo_", "abinit_")
+    ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_", "gpaw_", "siesta_", "xtb_", "yambo_", "abinit_", "gaussian_")
     lower = normalized.lower()
     for prefix in ENGINE_PREFIXES:
         if lower.startswith(prefix):

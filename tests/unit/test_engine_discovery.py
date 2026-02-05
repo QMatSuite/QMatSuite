@@ -42,7 +42,7 @@ class TestEngineProbeRegistry:
         expected = {
             "cp2k", "gpaw", "lammps", "orca", "psi4",
             "pyscf", "qe", "qmcpack", "siesta", "vasp", "w90", "xtb",
-            "yambo", "abinit",
+            "yambo", "abinit", "gaussian",
         }
         assert set(names) == expected
 
