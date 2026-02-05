@@ -10,6 +10,20 @@ from pathlib import Path
 from pymatgen.core import Molecule
 
 
+def _pyscf_available() -> bool:
+    """Check if PySCF is installed with actual functionality.
+
+    CI environments may have a stub pyscf module that passes basic import
+    but fails on actual submodules like gto and scf. We check for these
+    to ensure PySCF is fully functional.
+    """
+    try:
+        from pyscf import gto, scf
+        return True
+    except ImportError:
+        return False
+
+
 @pytest.fixture
 def h2_molecule_file(tmp_path: Path) -> Path:
     """Create a minimal H2 molecule structure file."""
@@ -33,8 +47,8 @@ def h2_molecule_file(tmp_path: Path) -> Path:
 
 
 @pytest.mark.skipif(
-    not pytest.importorskip("pyscf", reason="PySCF not installed").__version__,
-    reason="PySCF not installed"
+    not _pyscf_available(),
+    reason="PySCF not installed - install with: pip install pyscf"
 )
 def test_structure_loading_chain(h2_molecule_file: Path):
     """
@@ -94,8 +108,8 @@ def test_structure_loading_chain(h2_molecule_file: Path):
 
 
 @pytest.mark.skipif(
-    not pytest.importorskip("pyscf", reason="PySCF not installed").__version__,
-    reason="PySCF not installed"
+    not _pyscf_available(),
+    reason="PySCF not installed - install with: pip install pyscf"
 )
 def test_atoms_list_conversion_format(h2_molecule_file: Path):
     """

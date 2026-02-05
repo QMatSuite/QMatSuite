@@ -38,7 +38,8 @@
 | [`ENGINE_INTEGRATION_CONSTITUTION.md`](ENGINE_INTEGRATION_CONSTITUTION.md) | **SPECIFICATION** (v1.0) | Engine integration invariants: no guessing, hard error, explicit mapping, driver self-containment | Constitution §17 | 2026-02-01 |
 | [`PARAMSPACE_SPEC.md`](PARAMSPACE_SPEC.md) | **FINAL** (v1.0) | ParamSpace framework: compiler/detector equivalence, single-writer, cell semantics, Oracle | Constitution §8 | 2026-02-03 |
 | [`ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md`](ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md) | **FINAL** (v1.0) | Engine recipe system, runner independence, recipe archetypes, directory contracts, bans | Constitution §17 | 2026-02-03 |
-| [`PROVENANCE_VERSIONED_HISTORY_SPEC.md`](PROVENANCE_VERSIONED_HISTORY_SPEC.md) | **PROPOSED** (v1.0) | Provenance/history system: SQLite timeline, CAS blobs, OperationContext, rollback, artifact tiers | Constitution §3 | 2026-02-05 |
+| [`PROVENANCE_VERSIONED_HISTORY_SPEC.md`](PROVENANCE_VERSIONED_HISTORY_SPEC.md) | **PROPOSED** (v1.1) | Provenance/history system: SQLite timeline, CAS blobs, OperationContext, rollback, artifact tiers, normalized run_steps | Constitution §3 | 2026-02-05 |
+| [`PROVENANCE_IMPLEMENTATION_PLAN.md`](PROVENANCE_IMPLEMENTATION_PLAN.md) | **IMPLEMENTATION** | Code review + phased implementation plan for provenance system | — | 2026-02-05 |
 
 ### Status Taxonomy
 
@@ -62,6 +63,9 @@
 | **No provenance in skip logic (Law P3)** | §3 | PROVENANCE_VERSIONED_HISTORY_SPEC §2 | `test_provenance_skip_isolation.py` |
 | **CAS integrity (Law P5)** | §3 | PROVENANCE_VERSIONED_HISTORY_SPEC §2 | `test_cas_integrity.py` |
 | **Lock ordering edit→provenance (Law P6)** | §3, §4 | PROVENANCE_VERSIONED_HISTORY_SPEC §4 | `test_lock_ordering.py` |
+| **Graceful degradation (Law P7)** | §3 | PROVENANCE_VERSIONED_HISTORY_SPEC §2 | `test_provenance_failure_graceful.py` |
+| **Only SSOT writes are events (Law P8)** | §3 | PROVENANCE_VERSIONED_HISTORY_SPEC §2 | `test_preset_events.py` |
+| **Single artifact scanner (Law P9)** | §3 | PROVENANCE_VERSIONED_HISTORY_SPEC §6 | `test_no_duplicate_scanners.py` |
 | **Concurrency: edit.lock + run.lock** | §4 | KERNEL_DEPENDENCY_SPEC §2.1 | — (runtime enforcement) |
 | **Manifest = non-SSOT bookkeeping** | §5 | — | — |
 | **ULID-only identity** | §6 | API_CONSTITUTION H7 | `test_no_legacy_identity_fields.py` |
