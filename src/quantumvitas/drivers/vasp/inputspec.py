@@ -36,6 +36,8 @@ def _write_incar_text(params: dict[str, Any] | None) -> str:
     for key, value in sorted(params.items()):
         if key == "SYSTEM":
             continue
+        if isinstance(value, dict):
+            continue  # Skip nested dicts (e.g., kpoints goes to KPOINTS file)
         if isinstance(value, bool):
             value_str = ".TRUE." if value else ".FALSE."
         elif isinstance(value, (list, tuple)):
@@ -53,6 +55,24 @@ def _write_poscar_text(structure: dict[str, Any] | None) -> str:
     if not structure:
         return ""
     return write_poscar_text(structure)
+
+
+def _parse_incar_text(text: str) -> dict:
+    """Delegate to the pure INCAR parser."""
+    from quantumvitas.drivers.vasp.io.incar import parse_incar_text
+    return parse_incar_text(text)
+
+
+def _parse_poscar_text(text: str) -> dict:
+    """Delegate to the pure POSCAR parser."""
+    from quantumvitas.drivers.vasp.io.poscar import parse_poscar_text
+    return parse_poscar_text(text)
+
+
+def _parse_kpoints_text(text: str) -> dict:
+    """Delegate to the pure KPOINTS parser."""
+    from quantumvitas.drivers.vasp.io.kpoints import parse_kpoints_text
+    return parse_kpoints_text(text)
 
 
 def _write_kpoints_text(params: dict[str, Any] | None) -> str:
@@ -99,18 +119,21 @@ def get_vasp_input_spec(**context: Any) -> EngineInputSpec:
                 content_role="parameters",
                 description="VASP calculation parameters",
                 custom_writer=_write_incar_text,
+                custom_parser=_parse_incar_text,
             ),
             InputFileSpec(
                 filename="POSCAR",
                 content_role="structure",
                 description="Crystal structure (Direct coordinates)",
                 custom_writer=_write_poscar_text,
+                custom_parser=_parse_poscar_text,
             ),
             InputFileSpec(
                 filename="KPOINTS",
                 content_role="kpoints",
                 description="K-point mesh specification",
                 custom_writer=_write_kpoints_text,
+                custom_parser=_parse_kpoints_text,
             ),
         ),
         resource_refs=(

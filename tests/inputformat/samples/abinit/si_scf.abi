@@ -1,0 +1,27 @@
+# ABINIT input file
+# Si diamond SCF
+
+natom  2
+ntypat 1
+typat  1 1
+znucl  14
+
+acell  1.0 1.0 1.0  Angstrom
+rprim
+  5.4309000000  0.0000000000  0.0000000000
+  0.0000000000  5.4309000000  0.0000000000
+  0.0000000000  0.0000000000  5.4309000000
+
+xred
+  0.0000000000  0.0000000000  0.0000000000
+  0.2500000000  0.2500000000  0.2500000000
+
+ecut  30
+ngkpt  4 4 4
+nshiftk  1
+shiftk  0.0 0.0 0.0
+toldfe  1.0d-8
+nstep  50
+
+pp_dirpath "./"
+pseudos "Si.psp8"

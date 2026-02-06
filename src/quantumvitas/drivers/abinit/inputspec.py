@@ -96,6 +96,191 @@ def _write_abinit_text(fragment: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+# Atomic number → symbol for the first 103 elements (znucl reversal)
+_ATOMIC_SYMBOLS = [
+    "",  # 0 placeholder
+    "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne",
+    "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar",
+    "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+    "Ga", "Ge", "As", "Se", "Br", "Kr",
+    "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+    "In", "Sn", "Sb", "Te", "I", "Xe",
+    "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy",
+    "Ho", "Er", "Tm", "Yb", "Lu",
+    "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Tl", "Pb", "Bi", "Po", "At", "Rn",
+    "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf",
+    "Es", "Fm", "Md", "No", "Lr",
+]
+
+
+def _parse_abinit_text(text: str) -> dict[str, Any]:
+    """Parse ABINIT input text into combined params + structure dict.
+
+    Handles:
+    - key value lines (whitespace separated)
+    - Comments (# and !)
+    - Multi-line arrays (xred, rprim — data lines continue previous key)
+    - Structure variables: natom, ntypat, typat, znucl, acell, rprim, xred
+    - Pseudopotential references (pp_dirpath, pseudos)
+
+    Returns:
+        {"params": {...}, "structure": {...}} matching writer input format.
+    """
+    raw_data: dict[str, list[str]] = {}
+    current_key: str | None = None
+
+    for raw_line in text.splitlines():
+        # Strip comments
+        line = raw_line.split("#")[0].split("!")[0].strip()
+        if not line:
+            current_key = None
+            continue
+
+        # Check if line starts with a keyword (alphabetic first character)
+        tokens = line.split()
+        if tokens[0][0].isalpha() or tokens[0][0] == '"':
+            # New key-value pair
+            current_key = tokens[0]
+            if current_key not in raw_data:
+                raw_data[current_key] = []
+            raw_data[current_key].extend(tokens[1:])
+        elif current_key is not None:
+            # Continuation of previous key (numeric data)
+            raw_data[current_key].extend(tokens)
+        # else: orphan numeric line, skip
+
+    # Separate structure keys from params
+    structure_keys = {"natom", "ntypat", "typat", "znucl", "acell", "rprim", "xred"}
+    pseudo_keys = {"pp_dirpath", "pseudos"}
+
+    params: dict[str, Any] = {}
+    struct_raw: dict[str, list[str]] = {}
+
+    for key, vals in raw_data.items():
+        if key in structure_keys:
+            struct_raw[key] = vals
+        elif key in pseudo_keys:
+            # Quoted values: join and strip quotes
+            joined = " ".join(vals).strip('"')
+            params[key] = joined
+        else:
+            params[key] = _coerce_abinit_value(vals)
+
+    # Reconstruct structure dict
+    structure = _reconstruct_structure(struct_raw)
+
+    # Store znucl mapping in params for roundtrip
+    if "znucl" in struct_raw and structure.get("species"):
+        unique_species: list[str] = []
+        for sp in structure["species"]:
+            if sp not in unique_species:
+                unique_species.append(sp)
+        znucl_vals = [int(float(v)) for v in struct_raw["znucl"]]
+        znucl_map = {}
+        for sp, z in zip(unique_species, znucl_vals):
+            znucl_map[sp] = z
+        params["znucl"] = znucl_map
+
+    return {"params": params, "structure": structure}
+
+
+def _coerce_abinit_value(vals: list[str]) -> Any:
+    """Coerce a list of string tokens from ABINIT input to Python types."""
+    if len(vals) == 0:
+        return ""
+
+    # Handle unit suffix on single-value lines (e.g., "1.0d-8" or "30")
+    # Filter out known unit strings
+    known_units = {"Angstrom", "Bohr", "eV", "Ha", "Ry", "angstrom", "bohr"}
+    filtered = [v for v in vals if v not in known_units]
+
+    if len(filtered) == 0:
+        return " ".join(vals)
+
+    if len(filtered) == 1:
+        return _coerce_abinit_single(filtered[0])
+
+    # Multi-value: try to coerce all to numbers
+    coerced = [_coerce_abinit_single(v) for v in filtered]
+    all_numeric = all(isinstance(v, (int, float)) for v in coerced)
+    if all_numeric:
+        return coerced
+    return " ".join(vals)
+
+
+def _coerce_abinit_single(s: str) -> Any:
+    """Coerce a single ABINIT token."""
+    s = s.strip().strip('"')
+    if not s:
+        return s
+
+    # Handle Fortran d exponent
+    lower = s.lower()
+    if "d" in lower and not lower.startswith("d"):
+        try:
+            return float(lower.replace("d", "e"))
+        except ValueError:
+            pass
+
+    if "." in s or "e" in s.lower():
+        try:
+            return float(s)
+        except ValueError:
+            pass
+
+    try:
+        return int(s)
+    except ValueError:
+        pass
+
+    return s
+
+
+def _reconstruct_structure(struct_raw: dict[str, list[str]]) -> dict[str, Any]:
+    """Reconstruct StructureDoc dict from ABINIT structure variables."""
+    structure: dict[str, Any] = {}
+
+    # Lattice: rprim (3x3 matrix) scaled by acell
+    if "rprim" in struct_raw:
+        rprim_vals = [float(v) for v in struct_raw["rprim"]]
+        if len(rprim_vals) >= 9:
+            lattice = [
+                [rprim_vals[0], rprim_vals[1], rprim_vals[2]],
+                [rprim_vals[3], rprim_vals[4], rprim_vals[5]],
+                [rprim_vals[6], rprim_vals[7], rprim_vals[8]],
+            ]
+            structure["lattice"] = lattice
+
+    # Fractional coordinates: xred
+    if "xred" in struct_raw:
+        xred_vals = [float(v) for v in struct_raw["xred"]]
+        natom = len(xred_vals) // 3
+        frac_coords = []
+        for i in range(natom):
+            frac_coords.append([
+                xred_vals[3 * i],
+                xred_vals[3 * i + 1],
+                xred_vals[3 * i + 2],
+            ])
+        structure["frac_coords"] = frac_coords
+
+    # Species: znucl + typat → element symbols
+    if "znucl" in struct_raw and "typat" in struct_raw:
+        znucl = [int(float(v)) for v in struct_raw["znucl"]]
+        typat = [int(float(v)) for v in struct_raw["typat"]]
+        species = []
+        for t in typat:
+            z = znucl[t - 1] if 1 <= t <= len(znucl) else 0
+            if 0 < z < len(_ATOMIC_SYMBOLS):
+                species.append(_ATOMIC_SYMBOLS[z])
+            else:
+                species.append(f"Type{t}")
+        structure["species"] = species
+
+    return structure
+
+
 def get_abinit_input_spec(**context: Any) -> EngineInputSpec:
     """Return the ABINIT EngineInputSpec.
 
@@ -114,6 +299,7 @@ def get_abinit_input_spec(**context: Any) -> EngineInputSpec:
                 content_role="combined",
                 description="ABINIT input file",
                 custom_writer=_write_abinit_text,
+                custom_parser=_parse_abinit_text,
             ),
         ),
         resource_refs=(

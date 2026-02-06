@@ -1,10 +1,8 @@
 """Universal engine input format package.
 
 This package provides engine-agnostic types and orchestration for writing
-engine input files from SSOT data. It is a leaf package with NO imports
-from drivers/, core/, engine/, or calculation/.
-
-Phase A: custom_writer-based dispatch only (no family writers yet).
+and parsing engine input files from SSOT data. It is a leaf package with
+NO imports from drivers/, core/, engine/, or calculation/.
 """
 
 from quantumvitas.inputformat.core import (
@@ -13,12 +11,20 @@ from quantumvitas.inputformat.core import (
     ResourceRefSpec,
     SSOTMappingSpec,
 )
+from quantumvitas.inputformat.parser import (
+    Diagnostic,
+    ParseResult,
+    parse_engine_inputs,
+)
 from quantumvitas.inputformat.writer import write_engine_inputs
 
 __all__ = [
+    "Diagnostic",
     "EngineInputSpec",
     "InputFileSpec",
+    "ParseResult",
     "ResourceRefSpec",
     "SSOTMappingSpec",
+    "parse_engine_inputs",
     "write_engine_inputs",
 ]
