@@ -1,0 +1,48 @@
+# 3d EAM surface for local hyperdynamics
+
+variable        Tequil index 400.0
+variable        Vmax index 0.4
+variable        qfactor index 0.3
+variable        cutbond index 3.2
+variable        steps index 2000
+variable        nevent index 100
+variable        seed index 3875984
+
+units           metal
+atom_style	atomic
+boundary        p p p
+
+lattice		fcc 3.92
+region		box block 0 6 0 6 0 4
+create_box	2 box
+create_atoms	1 box
+
+mass            * 1.0
+
+pair_style	eam/alloy
+pair_coeff	* * ptvoterlammps.eam Pt Pt
+
+neighbor	0.5 bin
+neigh_modify    every 1 delay 5 check yes
+
+fix		1 all nve
+fix		2 all langevin ${Tequil} ${Tequil} 1.0 ${seed} zero yes
+
+timestep	0.005
+
+compute         tmobile all temp
+
+thermo		100
+thermo_modify   temp tmobile
+
+run             1000
+
+fix             freeze all setforce 0.0 0.0 0.0
+compute         event all event/displace 1.1
+
+fix             HL all hyper/local ${cutbond} ${qfactor} ${Vmax} ${Tequil} &
+                10.0 200.0 4000.0
+
+thermo_style    custom step temp pe f_HL f_HL[*]
+
+hyper           ${steps} ${nevent} HL event min 1.0e-15 1.0e-15 1000 1000

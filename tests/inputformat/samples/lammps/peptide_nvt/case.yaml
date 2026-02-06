@@ -1,0 +1,5 @@
+case_id: peptide_nvt
+title: "Peptide NVT with CHARMM"
+engine: lammps
+workflow_tags: [md, nvt, biomolecular]
+description: "Full atom_style peptide with kspace, shake, bonded styles, read_data"

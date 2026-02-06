@@ -1,0 +1,5 @@
+case_id: meam_sic
+title: "MEAM SiC NVE"
+engine: lammps
+workflow_tags: [md, nve, meam]
+description: "MEAM potential with read_data, metal units, simple NVE"

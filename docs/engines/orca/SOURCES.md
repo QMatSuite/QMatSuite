@@ -80,9 +80,26 @@ H  1.0 0.0 0.0
 
 ---
 
+## Web Crawl Metadata
+
+Crawled using `tools/scrape_orca_docs.py`:
+
+| Section | Base URL | Pages | Failures |
+|---------|----------|------:|--------:|
+| Manual | https://www.faccts.de/docs/orca/6.0/manual/ | 323 | 2 |
+| Tutorials | https://www.faccts.de/docs/orca/6.0/tutorials/ | 151 | 2 |
+| Input Library | https://sites.google.com/site/orcainputlibrary/ | 46 | 0 |
+| **Total** | | **520** | **4** |
+
+All 4 failures were binary resources (PDF/image files). No documentation content was lost.
+Index: `.tmp/engine_research/orca/raw_web/index.json`
+
+---
+
 ## Corpus Summary
 
 - **Location**: `.tmp/engine_research/orca/`
 - **Normalized Cases**: 8 cases in `normalized/`
 - **Total Files**: ~842
 - **Total Size**: ~244MB
+- **Detailed Index**: See `CORPUS_INDEX.md`

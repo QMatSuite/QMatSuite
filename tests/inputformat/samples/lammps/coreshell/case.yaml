@@ -1,0 +1,5 @@
+case_id: coreshell
+title: "Core-shell NaCl"
+engine: lammps
+workflow_tags: [md, coreshell, ionic]
+description: "Core-shell model with unfix, multi-run, bonded + kspace, fix_modify"
