@@ -138,6 +138,11 @@ class PySCFDriver(BaseEngineDriver):
         from .recipe import PySCFRecipe
         return PySCFRecipe
 
+    def get_input_spec(self, **context):
+        """Return PySCF input format specification."""
+        from .inputspec import get_pyscf_input_spec
+        return get_pyscf_input_spec(**context)
+
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Override defaults where PySCF differs
     # ─────────────────────────────────────────────────────────────────────

@@ -110,6 +110,11 @@ class GaussianDriver(BaseEngineDriver):
         from .recipe import GaussianRecipe
         return GaussianRecipe
 
+    def get_input_spec(self, **context):
+        """Return Gaussian input format specification."""
+        from .inputspec import get_gaussian_input_spec
+        return get_gaussian_input_spec(**context)
+
     # ── SHOULD: Overrides ─────────────────────────────────────────────
 
     def get_workdir_policy(self) -> WorkdirPolicy:

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Callable, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from quantumvitas.execution.job_graph import Job
     from quantumvitas.execution.executor import JobResult
+    from quantumvitas.inputformat.core import EngineInputSpec
 
 
 class WorkdirPolicy(Enum):
@@ -223,6 +224,21 @@ class BaseEngineDriver:
     # ─────────────────────────────────────────────────────────────────────
     # PLUGIN: Optional extension points
     # ─────────────────────────────────────────────────────────────────────
+
+    def get_input_spec(self, **context: Any) -> "EngineInputSpec | None":
+        """Return input format specification for this engine.
+
+        Override to declare the engine's input files, resource refs, and
+        SSOT mapping.  Returns None if not yet implemented (Phase A default).
+
+        Args:
+            **context: Engine-specific context for resolving dynamic
+                filenames (e.g., gen_type for QE, system_label for Siesta).
+
+        Returns:
+            EngineInputSpec or None.
+        """
+        return None
 
     def get_artifact_patterns(self) -> dict[str, str]:
         """Default: no artifact patterns.

@@ -141,6 +141,11 @@ class VASPDriver(BaseEngineDriver):
         return VASPRecipe
 
 
+    def get_input_spec(self, **context):
+        """Return VASP input format specification."""
+        from .inputspec import get_vasp_input_spec
+        return get_vasp_input_spec(**context)
+
     def _get_zero_mappings(self) -> set[str]:
         """Return gen steps that are explicit zero-mappings (no step needed).
 

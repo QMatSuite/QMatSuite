@@ -118,6 +118,10 @@ class CP2KDriver(BaseEngineDriver):
         from .recipe import CP2KRecipe
         return CP2KRecipe
 
+    def get_input_spec(self, **context):
+        """Return CP2K input format specification."""
+        from .inputspec import get_cp2k_input_spec
+        return get_cp2k_input_spec(**context)
 
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Override defaults where CP2K differs

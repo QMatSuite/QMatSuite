@@ -36,6 +36,11 @@ class QEDriver(BaseEngineDriver):
         from .recipe import QERecipe
         return QERecipe
 
+    def get_input_spec(self, **context):
+        """Return QE input format specification."""
+        from .inputspec import get_qe_input_spec
+        return get_qe_input_spec(**context)
+
     def get_workdir_policy(self) -> WorkdirPolicy:
         return WorkdirPolicy.SHARED
 

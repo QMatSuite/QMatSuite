@@ -142,6 +142,10 @@ class ORCADriver(BaseEngineDriver):
         from .recipe import ORCARecipe
         return ORCARecipe
 
+    def get_input_spec(self, **context):
+        """Return ORCA input format specification."""
+        from .inputspec import get_orca_input_spec
+        return get_orca_input_spec(**context)
 
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Override defaults where ORCA differs
