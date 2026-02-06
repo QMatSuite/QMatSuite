@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<simulation>
+<project id="H2" series="0">
+  <parameter name="driver_version">batch</parameter>
+</project>
+  <random seed="130"/>
+  <particleset name="ion0" size="2">
+    <group name="H">
+      <parameter name="charge">1</parameter>
+      <parameter name="valence">1</parameter>
+      <parameter name="atomicnumber">1</parameter>
+    </group>
+    <attrib name="position" datatype="posArray">
+  0.0000000000e+00  0.0000000000e+00 -9.4486299390e-01
+  0.0000000000e+00  0.0000000000e+00  9.4486299390e-01
+</attrib>
+    <attrib name="ionid" datatype="stringArray">
+ H H
+</attrib>
+  </particleset>
+  <particleset name="e" random="yes" randomsrc="ion0">
+    <group name="u" size="1">
+      <parameter name="charge">-1</parameter>
+    </group>
+    <group name="d" size="1">
+      <parameter name="charge">-1</parameter>
+    </group>
+  </particleset>
+  <wavefunction id="psi0" target="e">
+    <determinantset>
+      <slaterdeterminant>
+        <determinant sposet="spo-up"/>
+        <determinant sposet="spo-dn"/>
+      </slaterdeterminant>
+    </determinantset>
+    <jastrow name="J2" type="Two-Body" function="Bspline" print="yes">
+      <correlation rcut="2" size="10" speciesA="u" speciesB="d">
+        <coefficients id="ud" type="Array">0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0</coefficients>
+      </correlation>
+    </jastrow>
+    <jastrow name="J1" type="One-Body" function="Bspline" source="ion0" print="yes">
+      <correlation rcut="2" size="10" cusp="1" elementType="H">
+        <coefficients id="eH" type="Array">0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0</coefficients>
+      </correlation>
+    </jastrow>
+  </wavefunction>
+  <hamiltonian name="h0" type="generic" target="e">
+    <pairpot name="ElecElec" type="coulomb" source="e" target="e"/>
+    <pairpot name="IonElec" type="coulomb" source="ion0"/>
+    <constant name="IonIon" type="coulomb" source="ion0" target="ion0"/>
+  </hamiltonian>
+  <qmc method="vmc" target="e">
+    <parameter name="blocks">200</parameter>
+    <parameter name="steps">100</parameter>
+    <parameter name="warmupsteps">200</parameter>
+    <parameter name="timestep">0.05</parameter>
+  </qmc>
+</simulation>

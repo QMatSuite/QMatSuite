@@ -73,9 +73,98 @@
   - All-electron cases (He, Be, H2) run in <10s each
   - DMC energy (-2.870 Ha) approaches exact He energy (-2.904 Ha) despite small walker population
 
-### Lessons Learned
+### Lessons Learned (Stages 1-3)
 1. **driver_version matters**: batch vs legacy have different sample semantics
 2. **Self-contained inputs**: He/Be/H2 are fully self-contained (STO/Gaussian basis, no external files)
-3. **HDF5-dependent cases**: O2/LiH/Diamond require pw2qmcpack preprocessing (not executed)
+3. **HDF5-dependent cases**: O2/LiH/Diamond require pw2qmcpack preprocessing (not executed in Stage 3)
 4. **Optimization with loop**: `<loop max="N">` wraps `<qmc method="linear">` for iterative optimization
 5. **QMCPACK output structure**: scalar.dat (block-averaged), dmc.dat (step-level), opt.xml (optimized params)
+
+---
+
+## 2026-02-06 — Stages 4-8 Implementation
+
+### Stage 4: XML Parser + Enhanced Writer — DONE
+
+**Parser** (`_parse_qmcpack_text` in `inputspec.py`):
+- Full XML parser using `xml.etree.ElementTree`
+- Returns `{"params": {...}, "structure": {...}}` for content_role="combined"
+- Handles 5 diverse XML patterns:
+  - Simple open BC (He, Be): single species, STO/Gaussian basis
+  - Multi-atom molecule (H2): ionid attrib, Cartesian coords
+  - Periodic solid (LiH): lattice, fractional coords (condition="1"), PPs, einspline
+  - Optimization (He opt): loop wrapper, linear method, cost elements
+  - Electron gas (HEG): no ions, rs parameter, free-particle sposet
+- Two position layouts: flat (with ionid) and grouped
+- Wavefunction/hamiltonian preserved as XML strings for lossless roundtrip
+- Also extracts structured semantic fields (determinantset type/href, jastrow types, etc.)
+
+**Writer** (`_write_qmcpack_text`):
+- Full XML generation from params + structure
+- Re-inserts preserved `_wavefunction_xml` / `_hamiltonian_xml` for roundtrip
+- Handles project, simulationcell, particlesets, qmc blocks, loop, costs, estimators
+- Generates `condition="1"` for fractional coords, omits for Cartesian
+- Ionid attrib written when >1 species
+
+**Wired** `custom_parser=_parse_qmcpack_text` in `get_qmcpack_input_spec()`.
+
+### Stage 5: Output Digest — DONE
+
+Created `src/quantumvitas/drivers/qmcpack/parsers/`:
+- `__init__.py` — import trigger for `@register_parser` registration
+- `output.py` — `QMCPACKDigest` (14 fields) + `QMCPACKOutputParser`
+  - Registered as `("qmcpack", "scf_digest")`
+  - `can_parse`: checks for `*.scalar.dat` files
+  - `parse`: delegates to existing `parser.py` functions (parse_scalar_dat, parse_qmcpack_run)
+  - `parse_qmcpack_stdout_text`: convenience function for inline unit testing
+
+### Stage 6: ResourceRef Handling — DONE
+
+`_extract_resource_refs()` in `inputspec.py`:
+- Iterates XML tree for `href` attributes on `<determinantset>`, `<pseudo>`, `<include>`
+- Returns `{"wavefunction_hrefs": [...], "pseudopotential_hrefs": [...], "include_hrefs": [...]}`
+- Stored in `params["_resource_refs"]` when any refs found
+- Tested on lih_solid_vmc_pp.xml (LiH.h5 + Li.xml + H.xml)
+
+### Stage 7: QE→QMCPACK Workflow — DONE
+
+Created `lih_qe_workflow` normalized case (14th case):
+- **Step 1**: QE pw.x SCF (LiH Gamma-point, LDA, ecutwfc=450 Ry) — 1.5s
+- **Step 2**: pw2qmcpack.x conversion (generates LiH-gamma.pwscf.h5) — 0.2s
+- **Step 3**: QMCPACK VMC (einspline orbitals, batch driver) — 0.1s
+- **Result**: -8.087 Ha (unoptimized Jastrow)
+- **Lesson**: Batch driver rejects `walkers` tag (removed it; batch auto-manages walkers)
+- Run artifacts in `.tmp/engine_research/qmcpack/runs/lih_qe_workflow/`
+
+**Total validation runs**: 6 (5 self-contained + 1 QE workflow)
+
+### Stage 8: Tests — DONE
+
+**Curated samples** (`tests/inputformat/samples/qmcpack/`):
+5 XML files: he_vmc_sto, h2_ae_vmc, lih_solid_vmc_pp, he_opt_pade, heg_vmc
+
+**test_qmcpack_parse.py** (~50 tests):
+- `TestPosArray` (4 tests): position array parsing
+- `TestStringArray` (2 tests): string array parsing
+- `TestParseHeVmcSto` (11 tests): simplest case, all fields
+- `TestParseH2AeVmc` (6 tests): multi-atom molecule, random seed
+- `TestParseLihSolid` (12 tests): periodic, PP, 2 QMC blocks, resource refs
+- `TestParseHeOptPade` (4 tests): optimization loop, costs
+- `TestParseHegVmc` (6 tests): electron gas, rs, free particle
+- `TestParseMinimal` (3 tests): edge cases
+- `TestWriter` (8 tests): XML generation
+- `TestRoundtrip` (5 tests): parse→write→parse semantic equality
+- `TestResourceRefs` (4 tests): href extraction
+- `TestOrchestratorIntegration` (4 tests): end-to-end with inputformat package
+
+**test_qmcpack_digest.py** (~15 tests):
+- `TestQMCPACKDigest` (3 tests): dataclass, to_dict
+- `TestParseStdoutText` (9 tests): inline stdout parsing
+- `TestQMCPACKOutputParser` (5 tests): can_parse, scalar.dat, registry
+
+### Lessons Learned (Stages 4-8)
+1. **Batch driver rejects `walkers` tag**: Use auto-managed walkers or `total_walkers`
+2. **Preserved XML strategy**: Storing wavefunction/hamiltonian as serialized XML strings enables lossless roundtrip without decomposing every QMCPACK wavefunction variant
+3. **Ion position diversity**: QMCPACK uses both flat (with ionid) and grouped position formats; parser must handle both
+4. **condition="1" means fractional**: Position attrib with condition="1" uses lattice coordinates
+5. **QE→QMCPACK pipeline is fast**: LiH solid complete workflow under 2 seconds total
