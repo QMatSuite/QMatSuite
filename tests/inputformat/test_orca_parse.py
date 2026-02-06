@@ -217,3 +217,362 @@ class TestORCAOrchestrator:
         assert result.params["basis"] == "def2-SVP"
         assert result.structure is not None
         assert result.structure["species"] == ["O", "H", "H"]
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Enhanced parser tests (Stage 4)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+class TestORCAEnhancedParser:
+    """Tests for enhanced parser features: multi-line blocks, booleans, CPCM, etc."""
+
+    def test_parse_multiline_pal_block(self):
+        """Multi-line %pal block should extract nprocs."""
+        text = """! B3LYP def2-SVP
+%pal
+  nprocs 8
+end
+
+* xyz 0 1
+  H  0.0 0.0 0.0
+*
+"""
+        result = _parse_orca_text(text)
+        assert result["params"]["nprocs"] == 8
+        assert "blocks" in result["params"]
+        assert result["params"]["blocks"]["pal"]["nprocs"] == 8
+
+    def test_parse_boolean_values_true(self):
+        """Boolean 'true' should parse to Python True."""
+        text = """! B3LYP def2-SVP
+%geom
+  Calc_Hess true
+end
+
+* xyz 0 1
+  H  0.0 0.0 0.0
+*
+"""
+        result = _parse_orca_text(text)
+        assert result["params"]["blocks"]["geom"]["Calc_Hess"] is True
+
+    def test_parse_boolean_values_false(self):
+        """Boolean 'false' should parse to Python False."""
+        text = """! B3LYP def2-SVP
+%tddft
+  NRoots 10
+  TDA false
+end
+
+* xyz 0 1
+  H  0.0 0.0 0.0
+*
+"""
+        result = _parse_orca_text(text)
+        assert result["params"]["blocks"]["tddft"]["TDA"] is False
+        assert result["params"]["blocks"]["tddft"]["NRoots"] == 10
+
+    def test_parse_cpcm_solvation(self):
+        """CPCM(solvent) on keyword line should be extracted."""
+        text = """! B3LYP def2-SVP CPCM(Water)
+* xyz 0 1
+  H  0.0 0.0 0.0
+*
+"""
+        result = _parse_orca_text(text)
+        assert result["params"]["solvation"] == "Water"
+        assert "CPCM(Water)" in result["params"]["keywords"]
+
+    def test_parse_cpcm_block(self):
+        """CPCM parameters in %cpcm block."""
+        text = """! B3LYP def2-SVP CPCM(Water)
+%cpcm
+  epsilon 80.4
+  refrac 1.33
+end
+
+* xyz 0 1
+  H  0.0 0.0 0.0
+*
+"""
+        result = _parse_orca_text(text)
+        assert result["params"]["blocks"]["cpcm"]["epsilon"] == 80.4
+        assert result["params"]["blocks"]["cpcm"]["refrac"] == 1.33
+
+    def test_parse_uks_method_extraction(self):
+        """UKS should be extracted as keyword, not method. B3LYP should be method."""
+        text = """! UKS B3LYP def2-SVP TIGHTSCF
+* xyz 0 1
+  H  0.0 0.0 0.0
+*
+"""
+        result = _parse_orca_text(text)
+        assert result["params"]["method"] == "B3LYP"
+        assert result["params"]["basis"] == "def2-SVP"
+        assert "UKS" in result["params"]["keywords"]
+        assert "TIGHTSCF" in result["params"]["keywords"]
+
+    def test_parse_casscf_method(self):
+        """CASSCF should be recognized as method."""
+        text = """! CASSCF def2-TZVP TIGHTSCF
+%casscf
+  nel 4
+  norb 4
+  nroots 4
+end
+
+* xyz 0 1
+  H  0.0 0.0 0.0
+*
+"""
+        result = _parse_orca_text(text)
+        assert result["params"]["method"] == "CASSCF"
+        assert result["params"]["basis"] == "def2-TZVP"
+        assert result["params"]["blocks"]["casscf"]["nel"] == 4
+        assert result["params"]["blocks"]["casscf"]["norb"] == 4
+
+    def test_parse_array_syntax_in_block(self):
+        """Array syntax like weights[0] = 1,1,1,1 should be preserved."""
+        text = """! CASSCF def2-TZVP
+%casscf
+  nel 4
+  norb 4
+  nroots 4
+  weights[0] = 1,1,1,1
+end
+
+* xyz 0 1
+  H  0.0 0.0 0.0
+*
+"""
+        result = _parse_orca_text(text)
+        assert result["params"]["blocks"]["casscf"]["weights[0]"] == "1,1,1,1"
+
+    def test_parse_tddft_block(self):
+        """%tddft block with multiple parameters."""
+        text = """! B3LYP def2-TZVP
+%tddft
+  NRoots 10
+  MaxDim 50
+  TDA false
+end
+
+* xyz 0 1
+  C  0.0 0.0 0.0
+*
+"""
+        result = _parse_orca_text(text)
+        assert "tddft" in result["params"]["blocks"]
+        tddft = result["params"]["blocks"]["tddft"]
+        assert tddft["NRoots"] == 10
+        assert tddft["MaxDim"] == 50
+        assert tddft["TDA"] is False
+
+    def test_parse_geom_block_with_hess(self):
+        """%geom block with Calc_Hess and other parameters."""
+        text = """! B3LYP def2-SVP OPT
+%geom
+  MaxIter 100
+  Calc_Hess true
+  Recalc_Hess 5
+end
+
+* xyz 0 1
+  O  0.0 0.0 0.0
+*
+"""
+        result = _parse_orca_text(text)
+        assert "geom" in result["params"]["blocks"]
+        geom = result["params"]["blocks"]["geom"]
+        assert geom["MaxIter"] == 100
+        assert geom["Calc_Hess"] is True
+        assert geom["Recalc_Hess"] == 5
+
+    def test_parse_comment_lines(self):
+        """Lines starting with # should be ignored."""
+        text = """! B3LYP def2-SVP
+# This is a comment
+%maxcore 4000
+# Another comment
+
+* xyz 0 1
+  H  0.0 0.0 0.0
+*
+"""
+        result = _parse_orca_text(text)
+        assert result["params"]["maxcore"] == 4000
+
+    def test_parse_multiple_keyword_lines(self):
+        """Multiple ! lines should merge keywords."""
+        text = """! B3LYP def2-SVP
+! OPT TIGHTSCF
+
+* xyz 0 1
+  H  0.0 0.0 0.0
+*
+"""
+        result = _parse_orca_text(text)
+        assert result["params"]["method"] == "B3LYP"
+        assert result["params"]["basis"] == "def2-SVP"
+        # All keywords from both lines should be collected
+        assert "OPT" in result["params"]["keywords"]
+        assert "TIGHTSCF" in result["params"]["keywords"]
+
+
+class TestORCAEnhancedWriter:
+    """Tests for enhanced writer features."""
+
+    def test_write_multiline_pal_block(self):
+        """Writer should output multi-line %pal block."""
+        fragment = {
+            "params": {
+                "method": "B3LYP",
+                "basis": "def2-SVP",
+                "nprocs": 4,
+                "charge": 0,
+                "multiplicity": 1,
+            },
+            "structure": {
+                "species": ["H"],
+                "cart_coords": [[0.0, 0.0, 0.0]],
+            },
+        }
+        text = _write_orca_text(fragment)
+        assert "%pal" in text
+        assert "nprocs 4" in text
+        assert "end" in text
+
+    def test_write_boolean_values(self):
+        """Writer should output lowercase true/false for booleans."""
+        fragment = {
+            "params": {
+                "method": "B3LYP",
+                "basis": "def2-SVP",
+                "charge": 0,
+                "multiplicity": 1,
+                "blocks": {
+                    "geom": {"Calc_Hess": True, "NumHess": False},
+                },
+            },
+            "structure": {
+                "species": ["H"],
+                "cart_coords": [[0.0, 0.0, 0.0]],
+            },
+        }
+        text = _write_orca_text(fragment)
+        assert "Calc_Hess true" in text
+        assert "NumHess false" in text
+
+    def test_write_cpcm_solvation(self):
+        """Writer should include CPCM(solvent) on keyword line if solvation is set."""
+        fragment = {
+            "params": {
+                "method": "B3LYP",
+                "basis": "def2-SVP",
+                "solvation": "Water",
+                "charge": 0,
+                "multiplicity": 1,
+            },
+            "structure": {
+                "species": ["H"],
+                "cart_coords": [[0.0, 0.0, 0.0]],
+            },
+        }
+        text = _write_orca_text(fragment)
+        assert "CPCM(Water)" in text
+
+    def test_write_uses_cart_coords(self):
+        """Writer should use cart_coords directly if present."""
+        fragment = {
+            "params": {
+                "method": "B3LYP",
+                "basis": "def2-SVP",
+                "charge": 0,
+                "multiplicity": 1,
+            },
+            "structure": {
+                "species": ["O", "H", "H"],
+                "cart_coords": [
+                    [0.0, 0.0, 0.117369],
+                    [0.0, 0.757918, -0.469476],
+                    [0.0, -0.757918, -0.469476],
+                ],
+            },
+        }
+        text = _write_orca_text(fragment)
+        result = _parse_orca_text(text)
+
+        # Coords should roundtrip exactly
+        for i, (orig, parsed) in enumerate(
+            zip(fragment["structure"]["cart_coords"], result["structure"]["cart_coords"])
+        ):
+            for j in range(3):
+                assert abs(orig[j] - parsed[j]) < 1e-6, f"Coord mismatch at atom {i}, dim {j}"
+
+
+class TestORCAEnhancedRoundtrip:
+    """Roundtrip tests with enhanced features."""
+
+    def test_roundtrip_with_blocks(self):
+        """Roundtrip with %geom, %scf blocks."""
+        fragment = {
+            "params": {
+                "method": "B3LYP",
+                "basis": "def2-SVP",
+                "keywords": ["OPT", "TIGHTSCF"],
+                "charge": 0,
+                "multiplicity": 1,
+                "nprocs": 4,
+                "maxcore": 4000,
+                "blocks": {
+                    "geom": {"MaxIter": 100, "Calc_Hess": True},
+                    "scf": {"MaxIter": 200},
+                },
+            },
+            "structure": {
+                "species": ["O", "H", "H"],
+                "cart_coords": [
+                    [0.0, 0.0, 0.117],
+                    [0.0, 0.758, -0.469],
+                    [0.0, -0.758, -0.469],
+                ],
+            },
+        }
+        text = _write_orca_text(fragment)
+        result = _parse_orca_text(text)
+
+        assert result["params"]["method"] == "B3LYP"
+        assert result["params"]["basis"] == "def2-SVP"
+        assert result["params"]["nprocs"] == 4
+        assert result["params"]["maxcore"] == 4000
+
+        # Blocks should roundtrip
+        assert result["params"]["blocks"]["geom"]["MaxIter"] == 100
+        assert result["params"]["blocks"]["geom"]["Calc_Hess"] is True
+        assert result["params"]["blocks"]["scf"]["MaxIter"] == 200
+
+    def test_roundtrip_with_solvation(self):
+        """Roundtrip with CPCM solvation."""
+        fragment = {
+            "params": {
+                "method": "B3LYP",
+                "basis": "def2-SVP",
+                "solvation": "Ethanol",
+                "charge": 0,
+                "multiplicity": 1,
+                "blocks": {
+                    "cpcm": {"epsilon": 24.3},
+                },
+            },
+            "structure": {
+                "species": ["H"],
+                "cart_coords": [[0.0, 0.0, 0.0]],
+            },
+        }
+        text = _write_orca_text(fragment)
+        result = _parse_orca_text(text)
+
+        assert result["params"]["solvation"] == "Ethanol"
+        assert "CPCM(Ethanol)" in result["params"]["keywords"]
+        assert result["params"]["blocks"]["cpcm"]["epsilon"] == 24.3
