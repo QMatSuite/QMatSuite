@@ -1,0 +1,13 @@
+SYSTEM = Fe BCC magnetic
+
+EDIFF = 1E-6
+ENCUT = 350
+ISMEAR = 1
+ISPIN = 2
+LCHARG = .TRUE.
+LORBIT = 11
+LWAVE = .FALSE.
+MAGMOM = 2*3.0
+NSW = 0
+PREC = Accurate
+SIGMA = 0.1

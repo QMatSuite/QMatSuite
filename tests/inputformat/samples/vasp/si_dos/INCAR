@@ -1,0 +1,12 @@
+SYSTEM = Si diamond DOS
+
+EMAX = 10.0
+EMIN = -10.0
+ENCUT = 300
+ICHARG = 11
+ISMEAR = -5
+LORBIT = 11
+LWAVE = .FALSE.
+NEDOS = 2001
+NSW = 0
+PREC = Accurate

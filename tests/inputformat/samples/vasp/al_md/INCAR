@@ -1,0 +1,15 @@
+SYSTEM = Al FCC molecular dynamics
+
+EDIFF = 1E-5
+ENCUT = 240
+IBRION = 0
+ISMEAR = 1
+LCHARG = .FALSE.
+LWAVE = .FALSE.
+NSW = 100
+POTIM = 1.0
+PREC = Normal
+SIGMA = 0.2
+SMASS = 0.0
+TEBEG = 300
+TEEND = 300

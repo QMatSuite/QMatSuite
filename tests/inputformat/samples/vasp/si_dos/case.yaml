@@ -1,0 +1,7 @@
+case_id: si_dos
+title: "Silicon diamond density of states"
+engine: vasp
+workflow_tags: [dos, nscf]
+species: [Si]
+functional: PBE
+description: "Si DOS with tetrahedron method (ISMEAR=-5) and fine k-mesh"

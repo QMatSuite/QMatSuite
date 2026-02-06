@@ -1,0 +1,7 @@
+case_id: si_hybrid
+title: "Silicon diamond HSE06 hybrid functional"
+engine: vasp
+workflow_tags: [scf, hybrid, hse]
+species: [Si]
+functional: HSE06
+description: "Si HSE06 with HFSCREEN=0.2, AEXX=0.25, damped algorithm"

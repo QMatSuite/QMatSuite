@@ -1,0 +1,7 @@
+case_id: si_relax
+title: "Silicon diamond ionic relaxation"
+engine: vasp
+workflow_tags: [relax, ionic]
+species: [Si]
+functional: PBE
+description: "Si diamond CG relaxation with ISIF=2 (ions only)"

@@ -107,8 +107,8 @@ class TestINCARParser:
         assert "ISMEAR" in result
 
     def test_curated_sample_parse(self):
-        """Parse the curated si_scf_INCAR sample."""
-        text = (SAMPLES_DIR / "si_scf_INCAR").read_text()
+        """Parse the curated si_scf/INCAR sample."""
+        text = (SAMPLES_DIR / "si_scf" / "INCAR").read_text()
         result = parse_incar_text(text)
 
         assert result["SYSTEM"] == "Si diamond SCF"
@@ -160,7 +160,7 @@ class TestINCAR_WriterParserRoundtrip:
 
     def test_curated_sample_roundtrip(self):
         """Parse curated INCAR -> write -> parse -> compare."""
-        original_text = (SAMPLES_DIR / "si_scf_INCAR").read_text()
+        original_text = (SAMPLES_DIR / "si_scf" / "INCAR").read_text()
         parsed = parse_incar_text(original_text)
         written = _write_incar_text(parsed)
         reparsed = parse_incar_text(written)
@@ -266,9 +266,9 @@ class TestVASPFullRoundtrip:
         spec = self._get_vasp_spec()
 
         # Copy curated samples to workdir with canonical filenames
-        shutil.copy(SAMPLES_DIR / "si_scf_INCAR", tmp_path / "INCAR")
-        shutil.copy(SAMPLES_DIR / "si_scf_POSCAR", tmp_path / "POSCAR")
-        shutil.copy(SAMPLES_DIR / "si_scf_KPOINTS", tmp_path / "KPOINTS")
+        shutil.copy(SAMPLES_DIR / "si_scf" / "INCAR", tmp_path / "INCAR")
+        shutil.copy(SAMPLES_DIR / "si_scf" / "POSCAR", tmp_path / "POSCAR")
+        shutil.copy(SAMPLES_DIR / "si_scf" / "KPOINTS", tmp_path / "KPOINTS")
 
         # First parse
         result1 = parse_engine_inputs(spec, tmp_path)
