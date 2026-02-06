@@ -1,0 +1,385 @@
+{
+  "engine": "gaussian",
+  "schema_version": 1,
+  "target_version": "G09 Rev D.01 / G16",
+  "generated_at": "2026-02-06",
+  "provenance": "gaussian.com official documentation + thiele.ruc.dk G09 keyword reference",
+  "keywords": {
+    "HF": {
+      "kind": "method",
+      "category": "method",
+      "description": "Hartree-Fock self-consistent field",
+      "prefixes": ["R", "U", "RO"]
+    },
+    "B3LYP": {
+      "kind": "method",
+      "category": "method",
+      "description": "Becke 3-parameter Lee-Yang-Parr hybrid DFT"
+    },
+    "PBE0": {
+      "kind": "method",
+      "category": "method",
+      "description": "Perdew-Burke-Ernzerhof hybrid (PBE1PBE synonym)",
+      "aliases": ["PBE1PBE"]
+    },
+    "M06-2X": {
+      "kind": "method",
+      "category": "method",
+      "description": "Minnesota 06 with 2x Hartree-Fock exchange"
+    },
+    "wB97XD": {
+      "kind": "method",
+      "category": "method",
+      "description": "Long-range corrected with empirical dispersion"
+    },
+    "LC-wPBE": {
+      "kind": "method",
+      "category": "method",
+      "description": "Long-range corrected wPBE"
+    },
+    "CAM-B3LYP": {
+      "kind": "method",
+      "category": "method",
+      "description": "Coulomb-attenuating B3LYP"
+    },
+    "HSE06": {
+      "kind": "method",
+      "category": "method",
+      "description": "Heyd-Scuseria-Ernzerhof screened hybrid",
+      "aliases": ["HSEh1PBE"]
+    },
+    "BLYP": {
+      "kind": "method",
+      "category": "method",
+      "description": "Becke exchange + LYP correlation (pure GGA)"
+    },
+    "PBE": {
+      "kind": "method",
+      "category": "method",
+      "description": "Perdew-Burke-Ernzerhof pure GGA",
+      "aliases": ["PBEPBE"]
+    },
+    "BP86": {
+      "kind": "method",
+      "category": "method",
+      "description": "Becke exchange + Perdew 86 correlation"
+    },
+    "TPSS": {
+      "kind": "method",
+      "category": "method",
+      "description": "Tao-Perdew-Staroverov-Scuseria meta-GGA",
+      "aliases": ["TPSSTPSS"]
+    },
+    "LSDA": {
+      "kind": "method",
+      "category": "method",
+      "description": "Local spin density approximation"
+    },
+    "B2PLYP": {
+      "kind": "method",
+      "category": "method",
+      "description": "Grimme double-hybrid (HF exchange + MP2 correlation)"
+    },
+    "MP2": {
+      "kind": "method",
+      "category": "method",
+      "description": "2nd-order Moller-Plesset perturbation theory",
+      "options": ["Full", "FC", "FullDirect", "SemiDirect", "InCore"]
+    },
+    "MP3": {
+      "kind": "method",
+      "category": "method",
+      "description": "3rd-order Moller-Plesset"
+    },
+    "MP4": {
+      "kind": "method",
+      "category": "method",
+      "description": "4th-order Moller-Plesset (default: SDTQ)"
+    },
+    "CCSD": {
+      "kind": "method",
+      "category": "method",
+      "description": "Coupled cluster singles and doubles"
+    },
+    "CCSD(T)": {
+      "kind": "method",
+      "category": "method",
+      "description": "Coupled cluster singles and doubles with perturbative triples"
+    },
+    "QCISD": {
+      "kind": "method",
+      "category": "method",
+      "description": "Quadratic configuration interaction singles and doubles"
+    },
+    "CIS": {
+      "kind": "method",
+      "category": "method",
+      "description": "Configuration interaction singles (excited states)"
+    },
+    "CASSCF": {
+      "kind": "method",
+      "category": "method",
+      "description": "Complete active space SCF"
+    },
+    "AM1": {
+      "kind": "method",
+      "category": "semiempirical",
+      "description": "Austin Model 1 semi-empirical"
+    },
+    "PM3": {
+      "kind": "method",
+      "category": "semiempirical",
+      "description": "Parametric Method 3 semi-empirical"
+    },
+    "PM6": {
+      "kind": "method",
+      "category": "semiempirical",
+      "description": "Parametric Method 6 semi-empirical"
+    },
+    "MNDO": {
+      "kind": "method",
+      "category": "semiempirical",
+      "description": "Modified neglect of diatomic overlap"
+    },
+    "DFTB": {
+      "kind": "method",
+      "category": "semiempirical",
+      "description": "Density functional tight binding"
+    },
+    "Amber": {
+      "kind": "method",
+      "category": "mm",
+      "description": "AMBER molecular mechanics force field"
+    },
+    "UFF": {
+      "kind": "method",
+      "category": "mm",
+      "description": "Universal Force Field molecular mechanics"
+    },
+    "Dreiding": {
+      "kind": "method",
+      "category": "mm",
+      "description": "Dreiding molecular mechanics force field"
+    },
+    "SP": {
+      "kind": "job_type",
+      "category": "job_type",
+      "description": "Single point energy (default job type)"
+    },
+    "Opt": {
+      "kind": "job_type",
+      "category": "job_type",
+      "description": "Geometry optimization",
+      "options": ["Tight", "CalcFC", "MaxCycles", "GDIIS", "QST2", "QST3", "TS", "ModRedundant", "EF"]
+    },
+    "Freq": {
+      "kind": "job_type",
+      "category": "job_type",
+      "description": "Frequency/vibrational analysis",
+      "options": ["Analytic", "Numer", "Anharm", "VCD", "ROA", "Raman", "HPModes"]
+    },
+    "Force": {
+      "kind": "job_type",
+      "category": "job_type",
+      "description": "Compute forces on nuclei"
+    },
+    "IRC": {
+      "kind": "job_type",
+      "category": "job_type",
+      "description": "Intrinsic reaction coordinate path following",
+      "options": ["Forward", "Reverse", "Downhill", "CalcFC", "MaxPoints", "StepSize", "HPC"]
+    },
+    "Scan": {
+      "kind": "job_type",
+      "category": "job_type",
+      "description": "Rigid potential energy surface scan"
+    },
+    "Stable": {
+      "kind": "job_type",
+      "category": "job_type",
+      "description": "Wavefunction stability test",
+      "options": ["Opt", "RepOpt"]
+    },
+    "Volume": {
+      "kind": "job_type",
+      "category": "job_type",
+      "description": "Compute molecular volume"
+    },
+    "ADMP": {
+      "kind": "job_type",
+      "category": "job_type",
+      "description": "Atom-centered density matrix propagation (MD)"
+    },
+    "BOMD": {
+      "kind": "job_type",
+      "category": "job_type",
+      "description": "Born-Oppenheimer molecular dynamics"
+    },
+    "Counterpoise": {
+      "kind": "job_type",
+      "category": "job_type",
+      "description": "BSSE correction via counterpoise method"
+    },
+    "TD": {
+      "kind": "property",
+      "category": "property",
+      "description": "Time-dependent HF/DFT for excited states",
+      "options": ["NStates", "Root", "Singlets", "Triplets", "TDA", "SOS", "NAC"]
+    },
+    "NMR": {
+      "kind": "property",
+      "category": "property",
+      "description": "Nuclear magnetic resonance properties",
+      "options": ["GIAO", "CSGT", "SpinSpin", "All"]
+    },
+    "Polar": {
+      "kind": "property",
+      "category": "property",
+      "description": "Polarizability and hyperpolarizability",
+      "options": ["ROA", "Raman", "OptRot", "DCSHG", "Gamma"]
+    },
+    "Pop": {
+      "kind": "property",
+      "category": "property",
+      "description": "Population analysis",
+      "options": ["Full", "Minimal", "NBO", "NPA", "MK", "CHelpG", "ESP", "CM5"]
+    },
+    "SCF": {
+      "kind": "control",
+      "category": "scf_control",
+      "description": "SCF convergence procedure control",
+      "options": ["DIIS", "QC", "XQC", "Fermi", "Damp", "Tight", "Direct", "InCore", "Conver", "MaxCycle", "VShift"]
+    },
+    "SCRF": {
+      "kind": "control",
+      "category": "solvation",
+      "description": "Self-consistent reaction field (solvation)",
+      "models": ["PCM", "IEFPCM", "SMD", "IPCM", "SCIPCM", "Onsager"],
+      "common_solvents": ["Water", "Methanol", "Ethanol", "Acetone", "DMSO", "THF", "Dichloromethane", "Chloroform", "Toluene", "Hexane", "Acetonitrile", "DMF"]
+    },
+    "Geom": {
+      "kind": "control",
+      "category": "geometry_control",
+      "description": "Geometry input/output control",
+      "options": ["Checkpoint", "AllCheck", "ModRedundant", "Connectivity"]
+    },
+    "Guess": {
+      "kind": "control",
+      "category": "geometry_control",
+      "description": "Initial guess control",
+      "options": ["Harris", "Huckel", "Core", "Mix", "Read", "Only", "Always", "Fragment"]
+    },
+    "EmpiricalDispersion": {
+      "kind": "control",
+      "category": "dispersion",
+      "description": "Empirical dispersion corrections for DFT",
+      "options": ["GD2", "GD3", "GD3BJ"]
+    },
+    "Integral": {
+      "kind": "control",
+      "category": "integral",
+      "description": "Two-electron integral control",
+      "grids": ["UltraFine", "SuperFineGrid", "FineGrid", "SG1Grid", "CoarseGrid"]
+    },
+    "PBC": {
+      "kind": "control",
+      "category": "periodic",
+      "description": "Periodic boundary conditions",
+      "options": ["GammaOnly", "NKPoint", "CellRange"]
+    },
+    "Symmetry": {
+      "kind": "control",
+      "category": "geometry_control",
+      "description": "Symmetry control"
+    },
+    "NoSymm": {
+      "kind": "control",
+      "category": "geometry_control",
+      "description": "Disable symmetry"
+    },
+    "Pseudo": {
+      "kind": "control",
+      "category": "basis",
+      "description": "Pseudopotential/ECP specification"
+    },
+    "DensityFit": {
+      "kind": "control",
+      "category": "output_control",
+      "description": "Enable density fitting"
+    },
+    "Restart": {
+      "kind": "control",
+      "category": "output_control",
+      "description": "Restart failed calculation"
+    },
+    "Pressure": {
+      "kind": "control",
+      "category": "output_control",
+      "description": "Thermochemistry pressure"
+    },
+    "Temperature": {
+      "kind": "control",
+      "category": "output_control",
+      "description": "Thermochemistry temperature"
+    },
+    "G4": {
+      "kind": "composite",
+      "category": "composite",
+      "description": "Gaussian-4 theory"
+    },
+    "G3": {
+      "kind": "composite",
+      "category": "composite",
+      "description": "Gaussian-3 theory"
+    },
+    "G2": {
+      "kind": "composite",
+      "category": "composite",
+      "description": "Gaussian-2 theory"
+    },
+    "G1": {
+      "kind": "composite",
+      "category": "composite",
+      "description": "Gaussian-1 theory"
+    },
+    "CBS-QB3": {
+      "kind": "composite",
+      "category": "composite",
+      "description": "Complete basis set QB3 model"
+    },
+    "W1U": {
+      "kind": "composite",
+      "category": "composite",
+      "description": "Weizmann-1 theory (unrestricted)"
+    },
+    "ONIOM": {
+      "kind": "multilayer",
+      "category": "multilayer",
+      "description": "N-layered integrated molecular orbital + molecular mechanics"
+    }
+  },
+  "builtin_basis_sets": [
+    "STO-3G", "3-21G", "6-21G", "4-31G",
+    "6-31G", "6-31G(d)", "6-31G(d,p)", "6-31+G(d)", "6-31++G(d,p)",
+    "6-311G", "6-311G(d,p)", "6-311+G(d,p)", "6-311++G(d,p)",
+    "6-311G(2d,2p)", "6-311+G(2d,2p)", "6-311++G(3df,3pd)",
+    "cc-pVDZ", "cc-pVTZ", "cc-pVQZ", "cc-pV5Z",
+    "aug-cc-pVDZ", "aug-cc-pVTZ", "aug-cc-pVQZ",
+    "def2-SVP", "def2-TZVP", "def2-TZVPP", "def2-QZVP",
+    "LANL2DZ", "LANL2MB", "SDD", "DGDZVP", "DGDZVP2",
+    "CEP-4G", "CEP-31G", "CEP-121G"
+  ],
+  "link0_directives": {
+    "%Mem": {"description": "Memory allocation", "syntax": "%Mem=NMB or %Mem=NGB"},
+    "%NProc": {"description": "Number of processors (Linda)", "syntax": "%NProc=N"},
+    "%NProcShared": {"description": "Number of shared-memory processors", "syntax": "%NProcShared=N"},
+    "%Chk": {"description": "Checkpoint file path", "syntax": "%Chk=filename.chk"},
+    "%OldChk": {"description": "Old checkpoint file to read from", "syntax": "%OldChk=filename.chk"},
+    "%RWF": {"description": "Read-write file path", "syntax": "%RWF=filename"},
+    "%Save": {"description": "Save scratch files after job", "syntax": "%Save"},
+    "%NoSave": {"description": "Delete scratch files after job (default)", "syntax": "%NoSave"},
+    "%KJob": {"description": "Kill job at specified link", "syntax": "%KJob LN M"},
+    "%CPU": {"description": "CPU allocation for Linda", "syntax": "%CPU=N"},
+    "%GPUCPU": {"description": "GPU-CPU mapping", "syntax": "%GPUCPU=gpu_list"}
+  }
+}

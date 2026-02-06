@@ -1,0 +1,12 @@
+%mem=500MB
+%nproc=1
+%chk=water_opt.chk
+#p B3LYP/6-31G* Opt
+
+Water geometry optimization
+
+0 1
+O    0.000000    0.000000    0.117499
+H    0.000000    0.756950   -0.469996
+H    0.000000   -0.756950   -0.469996
+

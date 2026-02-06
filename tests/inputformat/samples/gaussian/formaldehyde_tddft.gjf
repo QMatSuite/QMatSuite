@@ -1,0 +1,13 @@
+%mem=500MB
+%nproc=1
+%chk=formaldehyde.chk
+#p B3LYP/STO-3G TD=(NStates=3)
+
+Formaldehyde TDDFT excited states
+
+0 1
+C    0.000000    0.000000   -0.529800
+O    0.000000    0.000000    0.667200
+H    0.000000    0.935700   -1.109800
+H    0.000000   -0.935700   -1.109800
+
