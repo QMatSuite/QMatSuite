@@ -56,19 +56,21 @@
 
 ## Normalized Cases
 
-13 cases under `.tmp/engine_research/qmcpack/normalized/`:
+14 cases under `.tmp/engine_research/qmcpack/normalized/`:
 - Self-contained: he_vmc_sto, he_opt_pade, he_dmc, he_bspline_jastrow, be_sto_vmc, h2_ae_vmc, heg_vmc
 - PP-dependent: h2o_vmc_pp, lih_pp_vmc
 - HDF5-dependent: o2_opt_bspline, o2_dmc_bspline, lih_solid_vmc_pp, diamond_vmc_pp
+- QE workflow: lih_qe_workflow (QE SCF → pw2qmcpack → QMCPACK VMC)
 
 ## Validation Runs
 
-5 fast cases executed with QMCPACK 4.1.0:
+6 cases executed with QMCPACK 4.1.0 (+ QE 7.5):
 - he_vmc_sto (VMC, 1.1s, -2.773 Ha)
 - he_dmc (VMC+DMC, 4.9s, -2.870 Ha)
 - he_opt_pade (opt+VMC, 6.9s, -2.897 Ha)
 - be_sto_vmc (VMC, 7.8s, -14.626 Ha)
 - h2_ae_vmc (VMC, 1.7s, -1.177 Ha)
+- lih_qe_workflow (QE→pw2qmcpack→VMC, 1.8s total, -8.087 Ha)
 
 ## Tools
 

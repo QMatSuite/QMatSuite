@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<simulation>
+<project id="heg_SJ" series="0">
+  <parameter name="driver_version">batch</parameter>
+</project>
+  <qmcsystem>
+  <simulationcell>
+    <parameter name="rs" condition="14">5</parameter>
+    <parameter name="bconds">p p p</parameter>
+    <parameter name="LR_dim_cutoff">6</parameter>
+  </simulationcell>
+  </qmcsystem>
+  <particleset name="e" random="yes">
+    <group name="u" size="7">
+      <parameter name="charge">-1</parameter>
+    </group>
+    <group name="d" size="7">
+      <parameter name="charge">-1</parameter>
+    </group>
+  </particleset>
+  <wavefunction name="psi0" target="e">
+    <sposet_collection type="free">
+      <sposet name="spo-ud" size="7"/>
+    </sposet_collection>
+    <determinantset>
+      <slaterdeterminant>
+        <determinant id="updet" sposet="spo-ud"/>
+        <determinant id="dndet" sposet="spo-ud"/>
+      </slaterdeterminant>
+    </determinantset>
+    <jastrow name="J2" type="Two-Body" function="Bspline" optimize="yes">
+      <correlation speciesA="u" speciesB="u" size="5">
+        <coefficients id="uu" type="Array" optimize="yes"> 1.0829 0.6653 0.4359 0.2244 0.1103</coefficients>
+      </correlation>
+      <correlation speciesA="u" speciesB="d" size="5">
+        <coefficients id="ud" type="Array" optimize="yes"> 1.6962 1.0477 0.6275 0.3176 0.1447</coefficients>
+      </correlation>
+    </jastrow>
+  </wavefunction>
+  <hamiltonian name="h0" type="generic" target="e">
+    <pairpot name="ElecElec" type="coulomb" source="e" target="e"/>
+    <estimator type="gofr" name="gr" num_bin="200" rmax="9.712825"/>
+  </hamiltonian>
+  <qmc method="vmc" move="pbyp">
+    <parameter name="warmupsteps">200</parameter>
+    <parameter name="blocks">200</parameter>
+    <parameter name="steps">40</parameter>
+    <parameter name="tau">5.0</parameter>
+  </qmc>
+</simulation>

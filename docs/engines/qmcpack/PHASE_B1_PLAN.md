@@ -1,10 +1,10 @@
-# QMCPACK Phase B1: Exploration (Stages 1-3)
+# QMCPACK Phase B1: Full Implementation (Stages 1-8)
 
 **Status**: COMPLETE
 **Started**: 2026-02-06
-**Baseline**: 3691 passed, 24 skipped
-**Final**: 3864 passed, 24 skipped (no regressions; +173 from parallel Gaussian work)
-**Constraint**: Exploration only — no src/quantumvitas/ changes
+**Baseline**: 3921 passed, 24 skipped (post-Gaussian)
+**Constraint Stages 1-3**: Exploration only — no src/quantumvitas/ changes
+**Stages 4-8**: Implementation — parser/writer, output digest, tests
 
 ---
 
@@ -162,4 +162,104 @@ Self-contained cases (no external HDF5/QE dependency):
 source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
 
-Run frequently to confirm no regressions (exploration track should not change code).
+Run frequently to confirm no regressions.
+
+---
+
+## Stage 4: XML Input Parser + Enhanced Writer
+
+### 4a. Parser (`_parse_qmcpack_text`)
+
+**File**: `src/quantumvitas/drivers/qmcpack/inputspec.py`
+
+XML parser using `xml.etree.ElementTree` that returns `{"params": {...}, "structure": {...}}`
+for content_role="combined" convention. Extracts:
+- Project (id, series, driver_version)
+- Simulationcell (lattice, bconds, LR_dim_cutoff, rs)
+- Ion particleset → structure (species, frac_coords/cart_coords)
+- Electron particleset → electron counts
+- Wavefunction (preserved as XML string + key semantic fields)
+- Hamiltonian (preserved as XML string + key semantic fields)
+- QMC blocks (list of dicts with method + parameters + costs + estimators)
+- Loop wrappers (_loop_max)
+- Resource refs (wavefunction_hrefs, pseudopotential_hrefs, include_hrefs)
+
+Handles two position layouts: flat (with ionid) and grouped.
+
+### 4b. Enhanced Writer (`_write_qmcpack_text`)
+
+Reconstructs full XML from params + structure:
+- Uses preserved `_wavefunction_xml` / `_hamiltonian_xml` for lossless roundtrip
+- Generates project, simulationcell, particlesets, qmc blocks from structured params
+- Handles loop wrappers, cost elements, estimators
+
+### 4c. Wiring
+
+`custom_parser=_parse_qmcpack_text` added to `InputFileSpec` in `get_qmcpack_input_spec()`.
+
+**Status**: [x] DONE
+
+---
+
+## Stage 5: Output Digest (Parser Registry)
+
+**New files**:
+- `src/quantumvitas/drivers/qmcpack/parsers/__init__.py`
+- `src/quantumvitas/drivers/qmcpack/parsers/output.py`
+
+`QMCPACKDigest` dataclass (14 fields) + `QMCPACKOutputParser` registered as
+`("qmcpack", "scf_digest")`. Reuses existing `parser.py` functions. Includes
+`parse_qmcpack_stdout_text()` convenience function for unit testing.
+
+**Status**: [x] DONE
+
+---
+
+## Stage 6: ResourceRef Handling
+
+`_extract_resource_refs()` in `inputspec.py` extracts `href` attributes from:
+- `<determinantset href="...">` (wavefunction HDF5)
+- `<pseudo href="...">` (pseudopotentials)
+- `<include href="...">` (XML includes)
+
+Stored in `params["_resource_refs"]`. Tested without requiring actual asset files.
+
+**Status**: [x] DONE
+
+---
+
+## Stage 7: QE→QMCPACK Workflow Validation
+
+Complete QE→pw2qmcpack→QMCPACK workflow validated:
+- `lih_qe_workflow`: QE SCF (1.5s) → pw2qmcpack (0.2s) → QMCPACK VMC (0.1s)
+- Energy: -8.087 Ha (LiH solid, Gamma-point, unoptimized Jastrow)
+- 6 total validation runs (5 self-contained + 1 QE workflow)
+
+**Status**: [x] DONE
+
+---
+
+## Stage 8: Tests
+
+### 8a. Curated Samples (`tests/inputformat/samples/qmcpack/`)
+5 XML samples: he_vmc_sto, h2_ae_vmc, lih_solid_vmc_pp, he_opt_pade, heg_vmc
+
+### 8b. `test_qmcpack_parse.py` (~50 tests)
+Parser, writer, roundtrip, resource refs, orchestrator integration
+
+### 8c. `test_qmcpack_digest.py` (~15 tests)
+Stdout parsing, scalar.dat parsing, registry registration, error handling
+
+**Status**: [x] DONE
+
+---
+
+## Acceptance Criteria (Stages 4-8)
+
+- [x] `_parse_qmcpack_text` parses all 5 curated samples correctly
+- [x] `_write_qmcpack_text` produces valid XML from parsed params
+- [x] Roundtrip (parse → write → parse) holds for all 5 samples
+- [x] `QMCPACKOutputParser` registered with parser registry
+- [x] ResourceRef extraction tested for PP and HDF5 hrefs
+- [x] QE→QMCPACK workflow validated with live execution
+- [x] All new tests pass, zero regressions from baseline
