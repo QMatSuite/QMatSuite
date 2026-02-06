@@ -1,4 +1,4 @@
-"""VASP INCAR pure text <-> dict parser.
+"""VASP INCAR pure text <-> dict parser and writer.
 
 Maps VASP INCAR text (TAG = VALUE format) to a flat parameter dict.
 Stdlib only — no pymatgen, no qmatsuite core imports.
@@ -7,9 +7,10 @@ Handles:
 - KEY = VALUE lines (= separator, whitespace tolerant)
 - Semicolon-separated multi-tag lines (ISMEAR = 0 ; SIGMA = 0.1)
 - Fortran booleans (.TRUE., .FALSE.)
-- Comments (! and #)
+- Comments (! and #) — preserved inside SYSTEM tag values
 - Multi-value tags (space-separated lists, N*VALUE expansion)
 - Continuation lines (backslash at end of line)
+- Trailing semicolons
 
 Writer always produces uppercase keys. Parser normalises to uppercase.
 """
@@ -70,12 +71,22 @@ def parse_incar_text(text: str) -> dict[str, Any]:
 def _strip_comment(line: str) -> str:
     """Strip inline comments from an INCAR line.
 
-    Comments start with ! or #. However, these characters inside
-    the value of SYSTEM (or other string tags) should not be treated
-    as comment markers. We use a simple heuristic: strip from the
-    first ! or # that is NOT preceded by an = on the same segment.
+    Comments start with ! or #. However, for SYSTEM (and other string
+    tags), these characters inside the value should be preserved.
+    Heuristic: if the line contains '=', only strip ! or # that appear
+    before the '=' (leading comments) — for SYSTEM specifically, we
+    preserve everything after the '=' since it is a string value.
+    For non-SYSTEM tags, strip from the first ! or # after '='.
     """
-    # Find the first ! or # that is likely a comment
+    # Check if this is a SYSTEM tag (special case: value may contain ! or #)
+    stripped = line.lstrip()
+    if "=" in stripped:
+        key_part = stripped.split("=", 1)[0].strip().upper()
+        if key_part == "SYSTEM":
+            # Preserve entire value for SYSTEM — no comment stripping
+            return line
+
+    # Normal case: strip from first ! or #
     for i, ch in enumerate(line):
         if ch in ("!", "#"):
             return line[:i]
@@ -176,3 +187,46 @@ def _coerce_single(s: str) -> Any:
         pass
 
     return s
+
+
+# ---------------------------------------------------------------------------
+# Writer
+# ---------------------------------------------------------------------------
+
+
+def write_incar_text(params: dict[str, Any] | None) -> str:
+    """Write INCAR text from a parameters dict.
+
+    Pure function, stdlib only. Produces canonical INCAR output:
+    SYSTEM tag first, then remaining keys in sorted order.
+
+    Args:
+        params: Dict of parameter name -> value. Keys should be uppercase.
+
+    Returns:
+        INCAR file content as string.
+    """
+    if not params:
+        return ""
+
+    lines: list[str] = []
+
+    # SYSTEM tag first (conventional)
+    if "SYSTEM" in params:
+        lines.append(f"SYSTEM = {params['SYSTEM']}")
+        lines.append("")
+
+    for key, value in sorted(params.items()):
+        if key == "SYSTEM":
+            continue
+        if isinstance(value, dict):
+            continue  # Skip nested dicts (e.g., kpoints goes to KPOINTS file)
+        if isinstance(value, bool):
+            value_str = ".TRUE." if value else ".FALSE."
+        elif isinstance(value, (list, tuple)):
+            value_str = " ".join(str(v) for v in value)
+        else:
+            value_str = str(value)
+        lines.append(f"{key} = {value_str}")
+
+    return "\n".join(lines) + "\n"

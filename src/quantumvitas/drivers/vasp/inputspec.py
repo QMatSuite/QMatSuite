@@ -17,36 +17,9 @@ from quantumvitas.inputformat.core import (
 
 
 def _write_incar_text(params: dict[str, Any] | None) -> str:
-    """Write INCAR text from a parameters dict.
-
-    Pure function, stdlib only. Matches the output format of
-    engine/vasp_writer.py:write_incar but operates on a dict and
-    returns a string instead of writing to a file.
-    """
-    if not params:
-        return ""
-
-    lines: list[str] = []
-
-    # SYSTEM tag first (conventional)
-    if "SYSTEM" in params:
-        lines.append(f"SYSTEM = {params['SYSTEM']}")
-        lines.append("")
-
-    for key, value in sorted(params.items()):
-        if key == "SYSTEM":
-            continue
-        if isinstance(value, dict):
-            continue  # Skip nested dicts (e.g., kpoints goes to KPOINTS file)
-        if isinstance(value, bool):
-            value_str = ".TRUE." if value else ".FALSE."
-        elif isinstance(value, (list, tuple)):
-            value_str = " ".join(str(v) for v in value)
-        else:
-            value_str = str(value)
-        lines.append(f"{key} = {value_str}")
-
-    return "\n".join(lines) + "\n"
+    """Delegate to the pure INCAR writer in io.incar."""
+    from quantumvitas.drivers.vasp.io.incar import write_incar_text
+    return write_incar_text(params)
 
 
 def _write_poscar_text(structure: dict[str, Any] | None) -> str:

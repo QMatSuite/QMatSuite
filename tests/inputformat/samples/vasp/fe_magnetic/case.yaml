@@ -1,0 +1,7 @@
+case_id: fe_magnetic
+title: "Iron BCC spin-polarised SCF"
+engine: vasp
+workflow_tags: [scf, magnetic, spin]
+species: [Fe]
+functional: PBE
+description: "Fe BCC with ISPIN=2 and initial MAGMOM=3.0 per atom"

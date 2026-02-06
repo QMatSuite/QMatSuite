@@ -186,9 +186,9 @@ class TestHarnessWithRealEngine:
         vasp_samples = (
             __import__("pathlib").Path(__file__).parent / "samples" / "vasp"
         )
-        shutil.copy(vasp_samples / "si_scf_INCAR", samples_dir / "INCAR")
-        shutil.copy(vasp_samples / "si_scf_POSCAR", samples_dir / "POSCAR")
-        shutil.copy(vasp_samples / "si_scf_KPOINTS", samples_dir / "KPOINTS")
+        shutil.copy(vasp_samples / "si_scf" / "INCAR", samples_dir / "INCAR")
+        shutil.copy(vasp_samples / "si_scf" / "POSCAR", samples_dir / "POSCAR")
+        shutil.copy(vasp_samples / "si_scf" / "KPOINTS", samples_dir / "KPOINTS")
 
         corpus_dir = tmp_path / "corpus"
         report = run_corpus_harness("vasp", spec, corpus_dir)

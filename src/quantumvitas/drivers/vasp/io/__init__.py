@@ -8,7 +8,7 @@ between SSOT-compatible dicts and VASP-native text. They are kernel-internal
 and not part of the public API facade.
 """
 
-from quantumvitas.drivers.vasp.io.incar import parse_incar_text
+from quantumvitas.drivers.vasp.io.incar import parse_incar_text, write_incar_text
 from quantumvitas.drivers.vasp.io.poscar import (
     write_poscar_text,
     parse_poscar_text,
@@ -20,6 +20,7 @@ from quantumvitas.drivers.vasp.io.kpoints import (
 
 __all__ = [
     "parse_incar_text",
+    "write_incar_text",
     "write_poscar_text",
     "parse_poscar_text",
     "write_kpoints_text",

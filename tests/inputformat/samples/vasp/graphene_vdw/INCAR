@@ -1,0 +1,11 @@
+SYSTEM = Graphene DFT-D3(BJ)
+
+EDIFF = 1E-6
+ENCUT = 400
+ISMEAR = 0
+IVDW = 12
+LCHARG = .FALSE.
+LWAVE = .FALSE.
+NSW = 0
+PREC = Accurate
+SIGMA = 0.05

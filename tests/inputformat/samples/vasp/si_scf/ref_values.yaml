@@ -1,0 +1,10 @@
+# Reference values for Si diamond SCF (2-atom cell, PBE, ENCUT=240)
+#
+# These are approximate reference values for verification purposes.
+# Tolerances in verify_reference() control how strictly they are enforced.
+# Values obtained from VASP 6.5.0 with standard PBE PAW pseudopotentials.
+
+converged_electronic: true
+converged_ionic: true
+n_ionic_steps: 1
+n_atoms: 2

@@ -1,0 +1,12 @@
+SYSTEM = Si diamond relaxation
+
+EDIFF = 1E-6
+EDIFFG = -0.01
+ENCUT = 300
+IBRION = 2
+ISMEAR = 0
+LCHARG = .FALSE.
+LWAVE = .FALSE.
+NSW = 50
+PREC = Accurate
+SIGMA = 0.05

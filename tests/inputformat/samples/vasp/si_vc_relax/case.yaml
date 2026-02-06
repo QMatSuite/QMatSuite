@@ -1,0 +1,7 @@
+case_id: si_vc_relax
+title: "Silicon diamond variable-cell relaxation"
+engine: vasp
+workflow_tags: [vc-relax, ionic, cell]
+species: [Si]
+functional: PBE
+description: "Si diamond CG relaxation with ISIF=3 (ions + cell shape + volume)"

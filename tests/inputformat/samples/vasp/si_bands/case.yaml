@@ -1,0 +1,7 @@
+case_id: si_bands
+title: "Silicon diamond band structure"
+engine: vasp
+workflow_tags: [bands, nscf]
+species: [Si]
+functional: PBE
+description: "Si band structure along G-X-W-K-G-L with ICHARG=11"

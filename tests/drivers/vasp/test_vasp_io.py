@@ -18,6 +18,7 @@ from quantumvitas.drivers.vasp.io.kpoints import write_kpoints_text, parse_kpoin
 
 
 SAMPLES_DIR = Path(__file__).parent.parent.parent / "inputformat" / "samples" / "vasp"
+SI_SCF_DIR = SAMPLES_DIR / "si_scf"
 
 # ──────────────────────────────────────────────────────────────────────────
 # Fixtures: canonical SSOT dicts
@@ -222,7 +223,7 @@ class TestPOSCARParseCuratedSample:
 
     def test_parse_curated_poscar(self):
         """Parse tests/inputformat/samples/vasp/si_scf_POSCAR."""
-        text = (SAMPLES_DIR / "si_scf_POSCAR").read_text()
+        text = (SI_SCF_DIR / "POSCAR").read_text()
         result = parse_poscar_text(text)
 
         assert result["species"] == ["Si", "Si"]
@@ -238,7 +239,7 @@ class TestPOSCARParseCuratedSample:
 
     def test_curated_poscar_roundtrip(self):
         """Parse curated sample -> write -> parse -> semantic equality."""
-        original_text = (SAMPLES_DIR / "si_scf_POSCAR").read_text()
+        original_text = (SI_SCF_DIR / "POSCAR").read_text()
         parsed = parse_poscar_text(original_text)
         written = write_poscar_text(parsed)
         reparsed = parse_poscar_text(written)
@@ -329,7 +330,7 @@ class TestKPOINTSParseCuratedSample:
     """Parse the curated sample and verify kpoints recovery."""
 
     def test_parse_curated_kpoints(self):
-        text = (SAMPLES_DIR / "si_scf_KPOINTS").read_text()
+        text = (SI_SCF_DIR / "KPOINTS").read_text()
         result = parse_kpoints_text(text)
 
         assert result["mode"] == "automatic"
@@ -337,7 +338,7 @@ class TestKPOINTSParseCuratedSample:
         assert result["centering"] == "Gamma"
 
     def test_curated_kpoints_roundtrip(self):
-        original_text = (SAMPLES_DIR / "si_scf_KPOINTS").read_text()
+        original_text = (SI_SCF_DIR / "KPOINTS").read_text()
         parsed = parse_kpoints_text(original_text)
         written = write_kpoints_text(parsed)
         reparsed = parse_kpoints_text(written)
@@ -434,3 +435,128 @@ class TestKPOINTSEdgeCases:
         """Raise ValueError for unknown KPOINTS mode in writer."""
         with pytest.raises(ValueError, match="Unknown KPOINTS mode"):
             write_kpoints_text({"mode": "invalid"})
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# INCAR writer module tests (Step 4)
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestINCARWriterModule:
+    """Tests for io.incar.write_incar_text (extracted from inputspec)."""
+
+    def test_incar_writer_module_importable(self):
+        """write_incar_text is importable from io.incar."""
+        from quantumvitas.drivers.vasp.io.incar import write_incar_text
+        assert callable(write_incar_text)
+
+    def test_incar_writer_basic(self):
+        from quantumvitas.drivers.vasp.io.incar import write_incar_text, parse_incar_text
+        params = {"ENCUT": 300, "ISMEAR": 0, "NSW": 100}
+        text = write_incar_text(params)
+        recovered = parse_incar_text(text)
+        for key in params:
+            assert recovered[key] == params[key]
+
+    def test_incar_writer_empty(self):
+        from quantumvitas.drivers.vasp.io.incar import write_incar_text
+        assert write_incar_text(None) == ""
+        assert write_incar_text({}) == ""
+
+    def test_incar_writer_skips_dicts(self):
+        """Dict values (e.g., kpoints) are not written to INCAR."""
+        from quantumvitas.drivers.vasp.io.incar import write_incar_text
+        params = {"ENCUT": 300, "kpoints": {"mesh": [4, 4, 4]}}
+        text = write_incar_text(params)
+        assert "kpoints" not in text.lower()
+        assert "ENCUT" in text
+
+    def test_incar_writer_list_values(self):
+        """List values are written space-separated."""
+        from quantumvitas.drivers.vasp.io.incar import write_incar_text, parse_incar_text
+        params = {"MAGMOM": [3.0, 3.0, -3.0]}
+        text = write_incar_text(params)
+        assert "3.0 3.0 -3.0" in text
+        recovered = parse_incar_text(text)
+        assert recovered["MAGMOM"] == [3.0, 3.0, -3.0]
+
+    def test_incar_system_with_bang(self):
+        """SYSTEM value containing ! is preserved (not treated as comment)."""
+        from quantumvitas.drivers.vasp.io.incar import parse_incar_text
+        text = "SYSTEM = Si bulk ! important\nENCUT = 300\n"
+        result = parse_incar_text(text)
+        assert result["SYSTEM"] == "Si bulk ! important"
+        assert result["ENCUT"] == 300
+
+    def test_incar_system_with_hash(self):
+        """SYSTEM value containing # is preserved."""
+        from quantumvitas.drivers.vasp.io.incar import parse_incar_text
+        text = "SYSTEM = run #42\nENCUT = 300\n"
+        result = parse_incar_text(text)
+        assert result["SYSTEM"] == "run #42"
+
+    def test_incar_ldau_arrays(self):
+        """LDAUU/LDAUL/LDAUJ array tags with per-species values."""
+        from quantumvitas.drivers.vasp.io.incar import parse_incar_text
+        text = "LDAUL = 2 -1\nLDAUU = 4.0 0.0\nLDAUJ = 0.0 0.0\n"
+        result = parse_incar_text(text)
+        assert result["LDAUL"] == [2, -1]
+        assert result["LDAUU"] == [4.0, 0.0]
+        assert result["LDAUJ"] == [0.0, 0.0]
+
+    def test_incar_trailing_semicolon(self):
+        """Trailing semicolon does not cause errors."""
+        from quantumvitas.drivers.vasp.io.incar import parse_incar_text
+        text = "ENCUT = 300 ; ISMEAR = 0 ;\n"
+        result = parse_incar_text(text)
+        assert result["ENCUT"] == 300
+        assert result["ISMEAR"] == 0
+
+
+class TestPOSCARNegativeScale:
+    """POSCAR negative scale factor (= volume in A^3)."""
+
+    def test_poscar_negative_scale(self):
+        """Negative scale factor should compute scale from volume."""
+        # Volume-based: scale = (volume / det(lattice_raw)) ^ (1/3)
+        # For now verify it doesn't crash; the current parser applies
+        # scale directly (negative * vector), which is physically wrong
+        # but we document the limitation.
+        neg_scale_poscar = """\
+Si volume-scaled
+-160.0
+  5.4309  0.0  0.0
+  0.0  5.4309  0.0
+  0.0  0.0  5.4309
+Si
+2
+Direct
+  0.0  0.0  0.0
+  0.25 0.25 0.25
+"""
+        result = parse_poscar_text(neg_scale_poscar)
+        # With negative scale the lattice values are negative, but
+        # the structure should still parse without error
+        assert result["species"] == ["Si", "Si"]
+        assert len(result["frac_coords"]) == 2
+
+    def test_poscar_selective_dynamics_roundtrip(self):
+        """Selective dynamics parsed, write produces clean Direct output."""
+        sd_poscar = """\
+Si with selective dynamics
+1.0
+  5.4309  0.0  0.0
+  0.0  5.4309  0.0
+  0.0  0.0  5.4309
+Si
+2
+Selective dynamics
+Direct
+  0.0  0.0  0.0  T T T
+  0.25 0.25 0.25  F F F
+"""
+        parsed = parse_poscar_text(sd_poscar)
+        written = write_poscar_text(parsed)
+        reparsed = parse_poscar_text(written)
+        assert parsed["species"] == reparsed["species"]
+        _assert_coords_equal(parsed["frac_coords"], reparsed["frac_coords"])

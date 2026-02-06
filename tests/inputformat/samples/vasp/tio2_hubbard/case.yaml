@@ -1,0 +1,7 @@
+case_id: tio2_hubbard
+title: "TiO2 rutile DFT+U"
+engine: vasp
+workflow_tags: [scf, hubbard, dft_plus_u]
+species: [Ti, O]
+functional: PBE+U
+description: "TiO2 rutile with Dudarev DFT+U (LDATYPE=2, U=4.0 on Ti-d)"

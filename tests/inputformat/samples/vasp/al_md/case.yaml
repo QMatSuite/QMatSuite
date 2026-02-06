@@ -1,0 +1,7 @@
+case_id: al_md
+title: "Aluminium FCC molecular dynamics"
+engine: vasp
+workflow_tags: [md, ionic]
+species: [Al]
+functional: PBE
+description: "Al FCC NVT-MD with Nose-Hoover thermostat at 300 K"

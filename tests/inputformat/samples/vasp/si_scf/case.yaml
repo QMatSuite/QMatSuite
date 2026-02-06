@@ -1,0 +1,7 @@
+case_id: si_scf
+title: "Silicon diamond SCF"
+engine: vasp
+workflow_tags: [scf, electronic]
+species: [Si]
+functional: PBE
+description: "Basic Si diamond SCF with standard PBE settings"
