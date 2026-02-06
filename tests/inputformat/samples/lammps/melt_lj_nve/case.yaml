@@ -1,0 +1,5 @@
+case_id: melt_lj_nve
+title: "3D LJ melt NVE"
+engine: lammps
+workflow_tags: [md, nve]
+description: "Basic NVE molecular dynamics of LJ melt, lattice-create (no data file)"

@@ -1,14 +1,95 @@
 # ORCA Phase B1 Worklog
 
 **Plan**: `docs/engines/orca/PHASE_B1_PLAN.md`
-**Started**: 2026-02-06
+**Started**: 2026-02-05 (Exploration) / 2026-02-06 (Implementation)
+**Status**: COMPLETE
 **Test Command**: `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
 
 ---
 
 ## Session Log
 
-### 2026-02-06: Session Start
+### 2026-02-05: Stages 1-3 (Exploration)
+
+**Task**: ORCA "Explore" Track
+**Constraint**: Do NOT touch QMatSuite core/inputformat/runner code
+
+#### Stage 1: Docs + Raw Corpus
+
+**Completed Tasks**:
+- [x] Created directory structure: `raw_web/`, `raw_pdfs/`, `raw_zips/`, `extracted/`, `normalized/`
+- [x] Downloaded ORCA 6.0 Manual PDF (55MB)
+- [x] Downloaded Winter School CC 2021 tutorial PDF (2.5MB)
+- [x] Downloaded TAMU ORCA Introduction PDF (500KB)
+- [x] Cloned OrcaNotes repository (sample inputs and notes)
+- [x] Cloned ccinput repository (Python input generator with ORCA support)
+- [x] Cloned autochem repository (Python automation with ORCA interface)
+- [x] Fetched ORCA Input Library documentation (geometry, DFT, excited states)
+- [x] Documented all 37 ORCA block types with purposes
+- [x] Created CORPUS_INDEX.md with complete inventory
+
+**Key Findings**:
+- ORCA uses "keyword-block" syntax (F4 family per UNIVERSAL_PARSER_WRITER_DESIGN.md)
+- Input structure: `!` keyword line, `%...end` blocks, `*...*` geometry
+- 37 documented block types for detailed configuration
+- Extensive keyword catalog for methods, basis sets, convergence, etc.
+
+#### Stage 2: Metadata Catalog Seed
+
+**Completed Tasks**:
+- [x] Created `metadata_seed/orca_keywords.json` - comprehensive keyword catalog
+  - Keyword line categories (methods, basis, RI, dispersion, convergence, etc.)
+  - Block definitions with parameters and types
+  - Geometry input format specifications
+- [x] Created `metadata_seed/orca_step_types.json` - step type mappings
+  - Maps QMatSuite step types (scf, opt, ts, freq, tddft, etc.) to ORCA keywords
+  - Includes method presets (fast_dft, accurate_dft, gold_standard, etc.)
+
+**Metadata Highlights**:
+- 15+ calculation type keywords (SP, OPT, OPTTS, FREQ, NEB, IRC, MD, NMR, etc.)
+- 20+ block types documented with parameters
+- Method categories: HF, GGA-DFT, hybrid-DFT, range-separated, double-hybrid, MP, CC, multireference
+- Basis set families: Pople, Karlsruhe (def2), Dunning (cc)
+- RI approximations: RI, RIJK, RIJCOSX, RIJONX
+
+#### Stage 3: Normalized Case Library
+
+**8 Cases Created**:
+
+| Case ID | Title | Step Type | Method | Special Features |
+|---------|-------|-----------|--------|------------------|
+| case_001_water_sp | Water Single-Point | scf | B3LYP/def2-TZVP | D3BJ, RIJCOSX |
+| case_002_water_opt | Water Optimization | opt | B3LYP/def2-SVP | Exact Hessian |
+| case_003_benzene_tddft | Benzene TD-DFT | tddft | B3LYP/def2-TZVP | 10 excited states |
+| case_004_ts_sn2 | SN2 Transition State | ts | B3LYP/def2-SVP | OPTTS, anion |
+| case_005_methane_freq | Methane Frequencies | freq | B3LYP/def2-TZVP | Thermochemistry |
+| case_006_ethanol_solvation | Ethanol CPCM | opt | B3LYP/def2-TZVP | CPCM solvation |
+| case_007_fe_complex_uks | Fe(II) High-Spin | scf | UKS-B3LYP/def2-SVP | Open-shell, S=2 |
+| case_008_formaldehyde_casscf | Formaldehyde CASSCF | casscf | CASSCF(4,4)/def2-TZVP | Multireference |
+
+**Coverage**:
+- [x] Single-point energy
+- [x] Geometry optimization
+- [x] Transition state
+- [x] Vibrational frequencies
+- [x] TD-DFT excited states
+- [x] Implicit solvation (CPCM)
+- [x] Open-shell / unrestricted
+- [x] Multireference (CASSCF)
+
+**Timestamp Log**:
+- 2026-02-05 21:55 - Started Stage 1
+- 2026-02-05 22:00 - PDF downloads complete
+- 2026-02-05 22:02 - GitHub repos cloned
+- 2026-02-05 22:05 - CORPUS_INDEX.md created
+- 2026-02-05 22:10 - Stage 2 metadata catalogs created
+- 2026-02-05 22:15 - Stage 3 basic cases (1-5) complete
+- 2026-02-05 22:20 - Stage 3 advanced cases (6-8) complete
+- 2026-02-05 22:22 - Stages 1-3 COMPLETE
+
+---
+
+### 2026-02-06: Session Start (Implementation)
 
 **Baseline**: 3539 passed, 24 skipped
 
@@ -99,6 +180,21 @@
 
 ## Progress Tracking
 
+### Stage 1: Docs + Raw Corpus
+- [x] 1.1 Create directory structure
+- [x] 1.2 Download PDFs (3 documents)
+- [x] 1.3 Clone GitHub repos (3 repos)
+- [x] 1.4 Fetch web documentation
+- [x] 1.5 Create CORPUS_INDEX.md
+
+### Stage 2: Metadata Catalog Seed
+- [x] 2.1 Create orca_keywords.json
+- [x] 2.2 Create orca_step_types.json
+
+### Stage 3: Normalized Case Library
+- [x] 3.1 Create 8 normalized cases
+- [x] 3.2 Add metadata.yaml to each case
+
 ### Stage 4: Parser/Writer Robustness
 - [x] 4.1 Enhance parser for multi-line blocks
 - [x] 4.2 Add CPCM solvation support
@@ -133,8 +229,43 @@
 
 ---
 
+## File Inventory
+
+### Committable (in `docs/engines/orca/`)
+- `PHASE_B1_PLAN.md` - Complete plan (Stages 1-7)
+- `PHASE_B1_WORKLOG.md` - This worklog
+- `CORPUS_INDEX.md` - Detailed corpus inventory
+- `SOURCES.md` - Documentation sources
+
+### Research Assets (in `.tmp/engine_research/orca/`)
+```
+.tmp/engine_research/orca/
+├── raw_pdfs/
+│   ├── ORCA_6.0_Manual.pdf (55MB)
+│   ├── ORCA_Winter_School_2021.pdf (2.5MB)
+│   └── ORCA_TAMU_Intro.pdf (500KB)
+├── extracted/
+│   ├── OrcaNotes/ (markdown notes + examples)
+│   ├── ccinput/ (Python input generator)
+│   └── autochem/ (Python automation)
+├── metadata_seed/
+│   ├── orca_keywords.json (comprehensive keyword catalog)
+│   └── orca_step_types.json (step type mappings)
+└── normalized/
+    ├── case_001_water_sp/
+    ├── case_002_water_opt/
+    ├── case_003_benzene_tddft/
+    ├── case_004_ts_sn2/
+    ├── case_005_methane_freq/
+    ├── case_006_ethanol_solvation/
+    ├── case_007_fe_complex_uks/
+    └── case_008_formaldehyde_casscf/
+```
+
+---
+
 ## Notes
 
-- ORCA installed at: `.qmatsuite/engines/orca/orca_6_1_1_macosx_arm64_openmpi411`
-- Normalized cases: `.tmp/engine_research/orca/normalized/`
-- Keep this worklog updated throughout implementation
+- ORCA syntax family: F4 (keyword-block)
+- Normalized cases location: `.tmp/engine_research/orca/normalized/`
+- Stage 6 (real execution) skipped - ORCA not installed

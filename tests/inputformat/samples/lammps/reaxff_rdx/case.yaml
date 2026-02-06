@@ -1,0 +1,5 @@
+case_id: reaxff_rdx
+title: "ReaxFF RDX"
+engine: lammps
+workflow_tags: [md, reactive, reaxff]
+description: "ReaxFF reactive potential with charge equilibration, variables, line continuation"

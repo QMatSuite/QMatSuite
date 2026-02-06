@@ -11,5 +11,8 @@ from .driver import LAMMPSDriver
 # Register driver at import time
 DriverRegistry.register(LAMMPSDriver())
 
+# Trigger parser registration (LAMMPSOutputParser -> registry)
+from . import parsers  # noqa: F401, E402
+
 __all__ = ["LAMMPSDriver"]
 
