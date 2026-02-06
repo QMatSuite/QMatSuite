@@ -76,6 +76,145 @@ def _write_orca_text(fragment: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _parse_orca_text(text: str) -> dict[str, Any]:
+    """Parse ORCA input text into combined params + structure dict.
+
+    Handles:
+    - ! keyword lines (method, basis, extra keywords)
+    - %pal nprocs N end — parallel settings
+    - %maxcore N — memory per core
+    - %block ... end — arbitrary named blocks
+    - * xyz charge mult ... * — geometry block (Cartesian)
+
+    Returns:
+        {"params": {...}, "structure": {"species": [...], "cart_coords": [...]}}
+    """
+    params: dict[str, Any] = {}
+    species: list[str] = []
+    cart_coords: list[list[float]] = []
+
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+
+        # Empty line
+        if not line:
+            i += 1
+            continue
+
+        # Comment line
+        if line.startswith("#"):
+            i += 1
+            continue
+
+        # Keyword line
+        if line.startswith("!"):
+            tokens = line[1:].split()
+            if len(tokens) >= 1:
+                params["method"] = tokens[0]
+            if len(tokens) >= 2:
+                params["basis"] = tokens[1]
+            if len(tokens) > 2:
+                params["keywords"] = tokens[2:]
+            i += 1
+            continue
+
+        # %pal block (single-line: %pal nprocs N end)
+        if line.lower().startswith("%pal"):
+            tokens = line.split()
+            for j in range(len(tokens) - 1):
+                if tokens[j].lower() == "nprocs":
+                    try:
+                        params["nprocs"] = int(tokens[j + 1])
+                    except (ValueError, IndexError):
+                        pass
+            i += 1
+            continue
+
+        # %maxcore
+        if line.lower().startswith("%maxcore"):
+            tokens = line.split()
+            if len(tokens) >= 2:
+                try:
+                    params["maxcore"] = int(tokens[1])
+                except ValueError:
+                    params["maxcore"] = tokens[1]
+            i += 1
+            continue
+
+        # Generic %block ... end
+        if line.startswith("%") and not line.lower().startswith("%pal") and not line.lower().startswith("%maxcore"):
+            block_name = line[1:].split()[0]
+            block_params: dict[str, Any] = {}
+            i += 1
+            while i < len(lines):
+                bline = lines[i].strip()
+                if bline.lower() == "end":
+                    i += 1
+                    break
+                parts = bline.split(None, 1)
+                if len(parts) == 2:
+                    try:
+                        block_params[parts[0]] = int(parts[1])
+                    except ValueError:
+                        try:
+                            block_params[parts[0]] = float(parts[1])
+                        except ValueError:
+                            block_params[parts[0]] = parts[1]
+                elif len(parts) == 1:
+                    block_params[parts[0]] = True
+                i += 1
+            else:
+                pass  # no "end" found
+            if "blocks" not in params:
+                params["blocks"] = {}
+            params["blocks"][block_name] = block_params
+            continue
+
+        # Geometry block: * xyz charge mult ... *
+        if line.startswith("*") and len(line) > 1:
+            tokens = line[1:].strip().split()
+            if tokens and tokens[0].lower() == "xyz" and len(tokens) >= 3:
+                try:
+                    params["charge"] = int(tokens[1])
+                    params["multiplicity"] = int(tokens[2])
+                except ValueError:
+                    pass
+                i += 1
+                # Read atom lines until closing *
+                while i < len(lines):
+                    aline = lines[i].strip()
+                    if aline == "*":
+                        i += 1
+                        break
+                    if not aline:
+                        i += 1
+                        continue
+                    parts = aline.split()
+                    if len(parts) >= 4:
+                        species.append(parts[0])
+                        try:
+                            cart_coords.append([
+                                float(parts[1]),
+                                float(parts[2]),
+                                float(parts[3]),
+                            ])
+                        except ValueError:
+                            pass
+                    i += 1
+                continue
+
+        i += 1
+
+    structure: dict[str, Any] = {}
+    if species:
+        structure["species"] = species
+        structure["cart_coords"] = cart_coords
+
+    return {"params": params, "structure": structure}
+
+
 def get_orca_input_spec(**context: Any) -> EngineInputSpec:
     """Return the ORCA EngineInputSpec.
 
@@ -94,6 +233,7 @@ def get_orca_input_spec(**context: Any) -> EngineInputSpec:
                 content_role="combined",
                 description="ORCA input file (keywords + geometry)",
                 custom_writer=_write_orca_text,
+                custom_parser=_parse_orca_text,
             ),
         ),
         ssot_mapping=SSOTMappingSpec(
