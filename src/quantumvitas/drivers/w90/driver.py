@@ -87,6 +87,11 @@ class W90Driver(BaseEngineDriver):
         from .recipe import W90Recipe
         return W90Recipe
 
+    def get_input_spec(self, **context):
+        """Return Wannier90 input format specification."""
+        from .inputspec import get_w90_input_spec
+        return get_w90_input_spec(**context)
+
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Override defaults where W90 differs
     # ─────────────────────────────────────────────────────────────────────

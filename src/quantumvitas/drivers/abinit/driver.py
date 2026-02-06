@@ -81,6 +81,11 @@ class AbinitDriver(BaseEngineDriver):
         from .recipe import AbinitRecipe
         return AbinitRecipe
 
+    def get_input_spec(self, **context):
+        """Return ABINIT input format specification."""
+        from .inputspec import get_abinit_input_spec
+        return get_abinit_input_spec(**context)
+
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Override defaults where ABINIT differs
     # ─────────────────────────────────────────────────────────────────────

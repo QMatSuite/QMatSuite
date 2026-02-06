@@ -81,6 +81,11 @@ class QMCPACKDriver(BaseEngineDriver):
         from .recipe import QMCPACKRecipe
         return QMCPACKRecipe
 
+    def get_input_spec(self, **context):
+        """Return QMCPACK input format specification."""
+        from .inputspec import get_qmcpack_input_spec
+        return get_qmcpack_input_spec(**context)
+
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Override defaults where QMCPACK differs
     # ─────────────────────────────────────────────────────────────────────

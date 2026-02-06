@@ -108,6 +108,11 @@ class GPAWDriver(BaseEngineDriver):
         from .recipe import GPAWRecipe
         return GPAWRecipe
 
+    def get_input_spec(self, **context):
+        """Return GPAW input format specification."""
+        from .inputspec import get_gpaw_input_spec
+        return get_gpaw_input_spec(**context)
+
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Override defaults where GPAW differs
     # ─────────────────────────────────────────────────────────────────────

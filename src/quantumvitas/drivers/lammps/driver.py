@@ -127,6 +127,11 @@ class LAMMPSDriver(BaseEngineDriver):
         from .recipe import LAMMPSRecipe
         return LAMMPSRecipe
 
+    def get_input_spec(self, **context):
+        """Return LAMMPS input format specification."""
+        from .inputspec import get_lammps_input_spec
+        return get_lammps_input_spec(**context)
+
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Override defaults where LAMMPS differs
     # ─────────────────────────────────────────────────────────────────────

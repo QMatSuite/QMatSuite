@@ -93,6 +93,11 @@ class YamboDriver(BaseEngineDriver):
         from .recipe import YamboRecipe
         return YamboRecipe
 
+    def get_input_spec(self, **context):
+        """Return Yambo input format specification."""
+        from .inputspec import get_yambo_input_spec
+        return get_yambo_input_spec(**context)
+
     # -- SHOULD: Overrides --------------------------------------------------
 
     def get_workdir_policy(self) -> WorkdirPolicy:

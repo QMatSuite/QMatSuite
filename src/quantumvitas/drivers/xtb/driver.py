@@ -63,6 +63,11 @@ class XTBDriver(BaseEngineDriver):
         from .recipe import XTBRecipe
         return XTBRecipe
 
+    def get_input_spec(self, **context):
+        """Return xTB input format specification."""
+        from .inputspec import get_xtb_input_spec
+        return get_xtb_input_spec(**context)
+
     # ── SHOULD: Overrides ─────────────────────────────────────────────
 
     def get_workdir_policy(self) -> WorkdirPolicy:

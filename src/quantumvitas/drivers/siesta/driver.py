@@ -91,6 +91,11 @@ class SiestaDriver(BaseEngineDriver):
         from .recipe import SiestaRecipe
         return SiestaRecipe
 
+    def get_input_spec(self, **context):
+        """Return Siesta input format specification."""
+        from .inputspec import get_siesta_input_spec
+        return get_siesta_input_spec(**context)
+
     # ── SHOULD: Overrides ─────────────────────────────────────────────
 
     def get_workdir_policy(self) -> WorkdirPolicy:

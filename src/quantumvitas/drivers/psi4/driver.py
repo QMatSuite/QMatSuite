@@ -86,6 +86,11 @@ class Psi4Driver(BaseEngineDriver):
         from .recipe import Psi4Recipe
         return Psi4Recipe
 
+    def get_input_spec(self, **context):
+        """Return Psi4 input format specification."""
+        from .inputspec import get_psi4_input_spec
+        return get_psi4_input_spec(**context)
+
     def get_workdir_policy(self) -> WorkdirPolicy:
         """Psi4 uses isolated workdir."""
         return WorkdirPolicy.ISOLATED
