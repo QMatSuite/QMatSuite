@@ -1,0 +1,15 @@
+%mem=500MB
+%nproc=1
+#p HF/STO-3G Scan
+
+HCN bond length scan
+
+0 1
+H
+C  1  R1
+N  2  R2  1  A1
+
+R1=1.07 5 0.05
+R2=1.16
+A1=180.0
+

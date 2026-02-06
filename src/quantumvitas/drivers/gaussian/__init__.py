@@ -8,5 +8,10 @@ and frequency calculations.
 from quantumvitas.core.driver_registry import DriverRegistry
 from .driver import GaussianDriver
 
-# Register the driver
+# Register driver at import time
 DriverRegistry.register(GaussianDriver())
+
+# Trigger parser registration (GaussianOutputParser -> registry)
+from . import parsers  # noqa: F401, E402
+
+__all__ = ["GaussianDriver"]

@@ -1,0 +1,14 @@
+%mem=500MB
+%nproc=1
+#p HF/STO-3G
+
+Water Z-matrix
+
+0 1
+O
+H  1  R1
+H  1  R1  2  A1
+
+R1=0.96
+A1=104.5
+
