@@ -344,7 +344,7 @@ For CLI, implement the following (remember separation of concerns: cli should on
 
 2025.11.28-3:
 1. delete project: update doc and implementation, not only path but also name/slug.
-2. delete project within the project folder: "Working directory switched to /Users/SB2/quantumVITAS/manual_tests" is wrong. Cannot change pwd. Change output to something like we are in trash.
+2. delete project within the project folder: "Working directory switched to <HOME>/quantumVITAS/manual_tests" is wrong. Cannot change pwd. Change output to something like we are in trash.
 3. init workflow <id> in doc is wrong: never id, always name. In doc --step, but reality: No such option: --step
 4. qv list: show which structure applies to which workflow.
 5. for init step: add reference to parent workflow id in step .yaml. Also, make structure id optional: If there is parent workflow, then <structure-id> is simply copied from parent workflow. if no parent workflow, then error if not input structure id.  Remove [--name NAME] because step name is automatically from step type with possible number if not only one of same type exists. Make --type required so it is just next paramater after qv init step.
