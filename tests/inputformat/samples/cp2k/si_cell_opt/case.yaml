@@ -1,0 +1,6 @@
+case_id: si_cell_opt
+title: "Silicon cell optimization"
+engine: cp2k
+workflow_tags: [cell_opt, periodic, stress]
+species: [Si]
+description: "Cell optimization for Si with analytical stress tensor. Tests CELL_OPT section, KEEP_SYMMETRY, and STRESS_TENSOR at FORCE_EVAL level."

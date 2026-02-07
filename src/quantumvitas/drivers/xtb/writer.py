@@ -1,7 +1,8 @@
-"""xTB input writer.
+"""xTB writer helpers.
 
-Generates XYZ input files and builds CLI commands for xTB calculations.
-Adapted from docs/engines/xtb/scripts/xtb_input_writer.py.
+Includes:
+- XYZ file writing helpers used by execution handler
+- command builder for xTB CLI invocations
 """
 
 from __future__ import annotations
@@ -64,6 +65,8 @@ def build_xtb_command(
     uhf: int = 0,
     solvent: str | None = None,
     solvent_model: str = "alpb",
+    xcontrol_file: str | None = None,
+    json_output: bool = False,
     accuracy: float | None = None,
     max_iterations: int | None = None,
     extra_flags: list[str] | None = None,
@@ -72,13 +75,15 @@ def build_xtb_command(
 
     Args:
         input_file: Path to input XYZ file
-        runtype: Calculation type: "sp", "opt"
+        runtype: Calculation type: "sp", "opt", "grad", "hess", "ohess", "md"
         gfn_level: GFN parametrization level (0, 1, 2) or -1 for GFN-FF
         opt_level: Optimization level (crude/sloppy/loose/normal/tight/verytight/extreme)
         charge: Molecular charge
         uhf: Number of unpaired electrons
         solvent: Solvent name for implicit solvation
         solvent_model: "alpb" or "gbsa"
+        xcontrol_file: Optional xcontrol input file path
+        json_output: Whether to write xtbout.json
         accuracy: SCC accuracy (lower = better)
         max_iterations: Max SCF iterations
         extra_flags: Additional command-line flags
@@ -102,6 +107,17 @@ def build_xtb_command(
             cmd.extend(["--opt", opt_level])
         else:
             cmd.append("--opt")
+    elif runtype == "grad":
+        cmd.append("--grad")
+    elif runtype == "hess":
+        cmd.append("--hess")
+    elif runtype == "ohess":
+        if opt_level:
+            cmd.extend(["--ohess", opt_level])
+        else:
+            cmd.append("--ohess")
+    elif runtype == "md":
+        cmd.append("--md")
 
     # Charge and spin
     if charge != 0:
@@ -112,6 +128,14 @@ def build_xtb_command(
     # Solvation
     if solvent:
         cmd.extend([f"--{solvent_model}", solvent])
+
+    # xcontrol
+    if xcontrol_file:
+        cmd.extend(["-I", xcontrol_file])
+
+    # JSON output
+    if json_output:
+        cmd.append("--json")
 
     # Accuracy
     if accuracy is not None:

@@ -1,0 +1,32 @@
+# Silicon SCF — basic ground state calculation
+# 2-atom diamond Si in FCC primitive cell
+
+# System definition
+acell 3*10.26311  # Bohr (experimental lattice constant)
+rprim
+  0.0  0.5  0.5
+  0.5  0.0  0.5
+  0.5  0.5  0.0
+ntypat 1
+znucl 14
+natom 2
+typat 1 1
+xred
+  0.00  0.00  0.00
+  0.25  0.25  0.25
+
+# Plane-wave basis
+ecut 10
+
+# K-point grid
+ngkpt 4 4 4
+nshiftk 1
+shiftk 0.5 0.5 0.5
+
+# SCF convergence
+nstep 30
+toldfe 1.0d-8
+
+# Pseudopotentials
+pp_dirpath "./pseudos"
+pseudos "Si.psp8"

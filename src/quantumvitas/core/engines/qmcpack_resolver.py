@@ -16,10 +16,27 @@ from shutil import which
 
 def _search_qmatsuite_engines(binary_name: str, engine_subdir: str) -> Path | None:
     """Search .qmatsuite/engines/<engine_subdir>/*/bin/<binary_name>."""
-    search_roots = [
-        Path.home() / ".qmatsuite" / "engines" / engine_subdir,
-        Path.cwd() / ".qmatsuite" / "engines" / engine_subdir,
-    ]
+    search_roots = []
+
+    # Project-local via centralized repo root detection
+    try:
+        from quantumvitas.core.engines.discovery import _find_repo_root
+        repo_root = _find_repo_root()
+        if repo_root:
+            search_roots.append(repo_root / ".qmatsuite" / "engines" / engine_subdir)
+    except ImportError:
+        pass
+
+    # CWD-relative
+    cwd_candidate = Path.cwd() / ".qmatsuite" / "engines" / engine_subdir
+    if cwd_candidate not in search_roots:
+        search_roots.append(cwd_candidate)
+
+    # Home directory
+    home_candidate = Path.home() / ".qmatsuite" / "engines" / engine_subdir
+    if home_candidate not in search_roots:
+        search_roots.append(home_candidate)
+
     for root in search_roots:
         if root.is_dir():
             for candidate in sorted(root.iterdir(), reverse=True):

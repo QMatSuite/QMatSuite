@@ -1,0 +1,6 @@
+case_id: al_scf
+title: "Aluminum SCF with metallic smearing"
+engine: abinit
+workflow_tags: [scf]
+species: [Al]
+description: "SCF calculation for 1-atom FCC aluminum with Gaussian smearing (occopt 7), dense 8x8x8 k-mesh, and 8 bands."

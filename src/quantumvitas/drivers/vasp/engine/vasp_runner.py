@@ -51,10 +51,32 @@ class RunResult:
 # VASP binary resolution
 # ──────────────────────────────────────────────────────────────────────────
 
-_DEFAULT_VASP_ROOTS = [
-    Path.home() / ".qmatsuite" / "engines" / "vasp",
-    Path(".qmatsuite") / "engines" / "vasp",
-]
+def _get_vasp_roots() -> list[Path]:
+    """Build list of VASP root directories to search.
+
+    Uses the centralized ``_find_repo_root()`` from discovery module
+    to handle test environments where CWD is a tmpdir.
+    """
+    roots = []
+    # Project-local (via centralized repo root detection)
+    try:
+        from quantumvitas.core.engines.discovery import _find_repo_root
+        repo_root = _find_repo_root()
+        if repo_root:
+            candidate = repo_root / ".qmatsuite" / "engines" / "vasp"
+            if candidate.is_dir():
+                roots.append(candidate)
+    except ImportError:
+        pass
+    # CWD relative (for backwards compat)
+    cwd_candidate = Path(".qmatsuite") / "engines" / "vasp"
+    if cwd_candidate.is_dir() and cwd_candidate.resolve() not in [r.resolve() for r in roots]:
+        roots.append(cwd_candidate)
+    # Home directory
+    home_candidate = Path.home() / ".qmatsuite" / "engines" / "vasp"
+    if home_candidate.is_dir() and home_candidate.resolve() not in [r.resolve() for r in roots]:
+        roots.append(home_candidate)
+    return roots
 
 
 def find_vasp_binary(variant: str = "vasp_std") -> Optional[Path]:
@@ -62,7 +84,7 @@ def find_vasp_binary(variant: str = "vasp_std") -> Optional[Path]:
 
     Search order:
         1. QMATS_VASP_STD_BIN / QMATS_VASP_GAM_BIN / QMATS_VASP_NCL_BIN
-        2. <root>/vasp.*/bin/<variant> under default roots
+        2. <root>/vasp.*/bin/<variant> under detected roots
 
     Returns:
         Path to binary, or None if not found.
@@ -81,8 +103,8 @@ def find_vasp_binary(variant: str = "vasp_std") -> Optional[Path]:
             if p.is_file():
                 return p
 
-    # Search default roots
-    for root in _DEFAULT_VASP_ROOTS:
+    # Search detected roots
+    for root in _get_vasp_roots():
         if not root.is_dir():
             continue
         for version_dir in sorted(root.iterdir(), reverse=True):

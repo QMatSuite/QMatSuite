@@ -61,9 +61,9 @@ def parse_main_output(out_path: Path) -> dict[str, Any]:
     # SCF convergence
     result["scf_converged"] = "SCF Convergence" in text
 
-    # Total energy
-    m = re.search(r"siesta:\s+E_KS\(eV\)\s+=\s+([-\d.]+)", text)
-    result["total_energy_eV"] = float(m.group(1)) if m else None
+    # Total energy (final reported value for multi-step workflows).
+    e_matches = re.findall(r"siesta:\s+E_KS\(eV\)\s+=\s+([-\d.]+)", text)
+    result["total_energy_eV"] = float(e_matches[-1]) if e_matches else None
 
     # Fermi energy
     m = re.search(r"siesta:\s+Fermi\s+=\s+([-\d.E+]+)", text)

@@ -1,0 +1,6 @@
+case_id: si_vcrelax
+title: "Silicon variable-cell relaxation"
+engine: abinit
+workflow_tags: [vc_relax]
+species: [Si]
+description: "Full variable-cell relaxation of 2-atom diamond silicon using BFGS with all 6 strain components optimized."

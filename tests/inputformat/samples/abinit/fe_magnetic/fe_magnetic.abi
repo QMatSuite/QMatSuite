@@ -1,0 +1,41 @@
+# Iron magnetic — BCC Fe spin-polarized calculation
+# 1-atom BCC iron with ferromagnetic initialization
+
+# System definition
+acell 3*5.42  # Bohr (BCC iron lattice constant)
+rprim
+  -0.5  0.5  0.5
+   0.5 -0.5  0.5
+   0.5  0.5 -0.5
+ntypat 1
+znucl 26
+natom 1
+typat 1
+xred
+  0.00  0.00  0.00
+
+# Plane-wave basis
+ecut 15
+
+# Spin-polarized settings
+nsppol 2
+spinat
+  0.0  0.0  4.0  # Initial magnetic moment ~4 muB
+
+# Metallic occupation for magnetic metal
+occopt 7
+tsmear 0.01
+nband 12
+
+# K-point grid
+ngkpt 8 8 8
+nshiftk 1
+shiftk 0.5 0.5 0.5
+
+# SCF convergence
+nstep 50
+toldfe 1.0d-8
+
+# Pseudopotentials
+pp_dirpath "./pseudos"
+pseudos "Fe.psp8"

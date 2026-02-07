@@ -1,0 +1,7 @@
+case_id: si_spin
+title: "Silicon spin-polarized SCF"
+engine: siesta
+workflow_tags: [scf, spin, periodic]
+species: [Si]
+functional: PBE
+description: "SpinPolarized SCF setup for bulk silicon."

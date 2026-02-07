@@ -170,23 +170,34 @@ _discovery_cache: Dict[str, EngineDiscoveryResult] = {}
 
 
 def _find_repo_root() -> Optional[Path]:
-    """Auto-detect the repo/project root by walking up from CWD.
+    """Auto-detect the repo/project root by walking up from CWD or package location.
 
     Looks for markers: ``.qmatsuite/engines/`` directory, ``project.qv.yml``,
     or ``pyproject.toml`` (for dev checkout).
+
+    Tries CWD first, then falls back to walking up from the ``quantumvitas``
+    package installation path (handles test environments where CWD is a tmpdir).
     """
-    current = Path.cwd().resolve()
-    for _ in range(20):  # safety limit
-        if (current / ".qmatsuite" / "engines").is_dir():
-            return current
-        if (current / "project.qv.yml").is_file():
-            return current
-        if (current / "pyproject.toml").is_file() and (current / "src").is_dir():
-            return current
-        parent = current.parent
-        if parent == current:
-            break
-        current = parent
+    start_points = [Path.cwd().resolve()]
+
+    # Fallback: walk up from the quantumvitas package directory
+    # (handles conftest fixtures that change CWD to tmpdir)
+    pkg_dir = Path(__file__).resolve().parent  # core/engines/
+    start_points.append(pkg_dir)
+
+    for start in start_points:
+        current = start
+        for _ in range(20):  # safety limit
+            if (current / ".qmatsuite" / "engines").is_dir():
+                return current
+            if (current / "project.qv.yml").is_file():
+                return current
+            if (current / "pyproject.toml").is_file() and (current / "src").is_dir():
+                return current
+            parent = current.parent
+            if parent == current:
+                break
+            current = parent
     return None
 
 

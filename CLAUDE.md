@@ -1,4 +1,4 @@
-# QMatSuite — Claude Code Instructions
+# QMatSuite — Claude Code Instructions (also for GPT Codex)
 
 ## Authoritative Laws
 

@@ -11,4 +11,7 @@ from .driver import YamboDriver
 # Register driver at import time
 DriverRegistry.register(YamboDriver())
 
+# Trigger parser registration (YamboOutputParser -> registry)
+from . import parsers  # noqa: F401, E402
+
 __all__ = ["YamboDriver"]

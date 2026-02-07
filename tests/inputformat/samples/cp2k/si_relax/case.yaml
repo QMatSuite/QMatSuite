@@ -1,0 +1,6 @@
+case_id: si_relax
+title: "Silicon geometry optimization (BFGS)"
+engine: cp2k
+workflow_tags: [geo_opt, periodic, relaxation]
+species: [Si]
+description: "BFGS geometry optimization for Si diamond with force convergence criteria. Tests GEO_OPT section with optimizer/threshold keywords."

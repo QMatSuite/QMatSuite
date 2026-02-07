@@ -1,0 +1,6 @@
+case_id: si_scf
+title: "Silicon SCF ground state"
+engine: abinit
+workflow_tags: [scf]
+species: [Si]
+description: "Basic SCF calculation for 2-atom diamond silicon in FCC primitive cell with ecut 10 Ha and 4x4x4 k-mesh."

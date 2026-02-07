@@ -1,0 +1,6 @@
+case_id: benzene_energy
+title: "Benzene molecule with DFT-D3 dispersion"
+engine: cp2k
+workflow_tags: [scf, molecule, dispersion, vdw]
+species: [C, H]
+description: "Benzene single-point with BLYP+D3 dispersion and Martyna-Tuckerman Poisson solver for isolated molecule. Tests VDW_POTENTIAL/PAIR_POTENTIAL and POISSON sections."

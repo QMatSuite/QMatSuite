@@ -53,6 +53,14 @@ def parse_xtb_stdout(text: str) -> dict[str, Any]:
 
     result["normal_termination"] = "normal termination of xtb" in text
 
+    m = re.search(r"total free energy\s+([-\d.]+)\s+Eh", text)
+    if m:
+        result["free_energy_Eh"] = float(m.group(1))
+
+    m = re.search(r"zero point energy\s+([-\d.]+)\s+Eh", text)
+    if m:
+        result["zpe_Eh"] = float(m.group(1))
+
     return result
 
 
@@ -100,6 +108,15 @@ def parse_xtbopt_xyz(path: Path) -> dict[str, Any]:
     return result
 
 
-def check_success(working_dir: Path) -> bool:
-    """Check if xTB optimization succeeded via .xtboptok marker."""
-    return (working_dir / ".xtboptok").exists()
+def check_success(working_dir: Path, calc_type: str = "opt") -> bool:
+    """Check xTB success marker files.
+
+    - ``opt``: .xtboptok
+    - ``md``: xtbmdok
+    - otherwise: marker-free mode (assume success if process exited cleanly)
+    """
+    if calc_type == "md":
+        return (working_dir / "xtbmdok").exists()
+    if calc_type == "opt":
+        return (working_dir / ".xtboptok").exists()
+    return True

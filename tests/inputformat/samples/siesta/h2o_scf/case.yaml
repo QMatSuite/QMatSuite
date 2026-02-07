@@ -1,0 +1,7 @@
+case_id: h2o_scf
+title: "Water molecule SCF"
+engine: siesta
+workflow_tags: [scf, molecular]
+species: [O, H]
+functional: PBE
+description: "Minimal molecular SCF in a large periodic box."

@@ -1,0 +1,1728 @@
+{
+  "schema_version": 1,
+  "engine": "cp2k",
+  "engine_version": "2026.1",
+  "doc_url": "https://manual.cp2k.org/",
+  "tags": {
+    "GLOBAL/PROJECT": {
+      "name": "PROJECT",
+      "type": "str",
+      "default": "PROJECT",
+      "category": "global",
+      "description": "Name of the project, used as prefix for output files.",
+      "section": "GLOBAL"
+    },
+    "GLOBAL/RUN_TYPE": {
+      "name": "RUN_TYPE",
+      "type": "enum",
+      "default": "ENERGY",
+      "category": "global",
+      "description": "Type of run: ENERGY, ENERGY_FORCE, GEO_OPT, CELL_OPT, BAND, MD, VIBRATIONAL_ANALYSIS, LINEAR_RESPONSE, etc.",
+      "section": "GLOBAL"
+    },
+    "GLOBAL/PRINT_LEVEL": {
+      "name": "PRINT_LEVEL",
+      "type": "enum",
+      "default": "MEDIUM",
+      "category": "global",
+      "description": "Verbosity of output: SILENT, LOW, MEDIUM, HIGH, DEBUG.",
+      "section": "GLOBAL"
+    },
+    "GLOBAL/WALLTIME": {
+      "name": "WALLTIME",
+      "type": "str",
+      "default": null,
+      "category": "global",
+      "description": "Maximum execution wall time (HH:MM:SS or seconds).",
+      "section": "GLOBAL"
+    },
+    "GLOBAL/PREFERRED_FFT_LIBRARY": {
+      "name": "PREFERRED_FFT_LIBRARY",
+      "type": "enum",
+      "default": "FFTW3",
+      "category": "global",
+      "description": "FFT library preference: FFTW3, FFTSG, FFTW.",
+      "section": "GLOBAL"
+    },
+    "GLOBAL/PREFERRED_DIAG_LIBRARY": {
+      "name": "PREFERRED_DIAG_LIBRARY",
+      "type": "enum",
+      "default": "SCALAPACK",
+      "category": "global",
+      "description": "Diagonalization library: SCALAPACK, ELPA, SL, etc.",
+      "section": "GLOBAL"
+    },
+    "GLOBAL/EXTENDED_FFT_LENGTHS": {
+      "name": "EXTENDED_FFT_LENGTHS",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "global",
+      "description": "Use extended FFT lengths for improved performance.",
+      "section": "GLOBAL"
+    },
+    "FORCE_EVAL/METHOD": {
+      "name": "METHOD",
+      "type": "enum",
+      "default": "Quickstep",
+      "category": "method",
+      "description": "Electronic structure method: Quickstep (DFT), FIST (MM), QS, QMMM, EIP, SIRIUS, MIXED.",
+      "section": "FORCE_EVAL"
+    },
+    "FORCE_EVAL/STRESS_TENSOR": {
+      "name": "STRESS_TENSOR",
+      "type": "enum",
+      "default": "NONE",
+      "category": "method",
+      "description": "Whether to compute stress tensor: NONE, ANALYTICAL, NUMERICAL, DIAGONAL_ANALYTICAL, DIAGONAL_NUMERICAL.",
+      "section": "FORCE_EVAL"
+    },
+    "FORCE_EVAL/DFT/BASIS_SET_FILE_NAME": {
+      "name": "BASIS_SET_FILE_NAME",
+      "type": "str",
+      "default": "BASIS_SET",
+      "category": "basis",
+      "description": "Path to the basis set data file.",
+      "section": "FORCE_EVAL/DFT"
+    },
+    "FORCE_EVAL/DFT/POTENTIAL_FILE_NAME": {
+      "name": "POTENTIAL_FILE_NAME",
+      "type": "str",
+      "default": "POTENTIAL",
+      "category": "basis",
+      "description": "Path to the pseudopotential data file.",
+      "section": "FORCE_EVAL/DFT"
+    },
+    "FORCE_EVAL/DFT/CHARGE": {
+      "name": "CHARGE",
+      "type": "int",
+      "default": "0",
+      "category": "electronic",
+      "description": "Total charge of the system.",
+      "section": "FORCE_EVAL/DFT"
+    },
+    "FORCE_EVAL/DFT/MULTIPLICITY": {
+      "name": "MULTIPLICITY",
+      "type": "int",
+      "default": "0",
+      "category": "electronic",
+      "description": "Spin multiplicity (2S+1). 0 means determined automatically.",
+      "section": "FORCE_EVAL/DFT"
+    },
+    "FORCE_EVAL/DFT/UKS": {
+      "name": "UKS",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "spin",
+      "description": "Enable unrestricted Kohn-Sham (spin-polarized) calculation.",
+      "section": "FORCE_EVAL/DFT"
+    },
+    "FORCE_EVAL/DFT/ROKS": {
+      "name": "ROKS",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "spin",
+      "description": "Enable restricted open-shell Kohn-Sham calculation.",
+      "section": "FORCE_EVAL/DFT"
+    },
+    "FORCE_EVAL/DFT/LSD": {
+      "name": "LSD",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "spin",
+      "description": "Enable local spin density approximation (spin-polarized).",
+      "section": "FORCE_EVAL/DFT"
+    },
+    "FORCE_EVAL/DFT/WFN_RESTART_FILE_NAME": {
+      "name": "WFN_RESTART_FILE_NAME",
+      "type": "str",
+      "default": null,
+      "category": "restart",
+      "description": "Name of the wavefunction restart file to read.",
+      "section": "FORCE_EVAL/DFT"
+    },
+    "FORCE_EVAL/DFT/SURFACE_DIPOLE_CORRECTION": {
+      "name": "SURFACE_DIPOLE_CORRECTION",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "electronic",
+      "description": "Apply dipole correction for slab calculations.",
+      "section": "FORCE_EVAL/DFT"
+    },
+    "FORCE_EVAL/DFT/EXCITATIONS": {
+      "name": "EXCITATIONS",
+      "type": "enum",
+      "default": "NONE",
+      "category": "tddft",
+      "description": "Type of excitation calculation: NONE, TDDFPT, RTP.",
+      "section": "FORCE_EVAL/DFT"
+    },
+    "FORCE_EVAL/DFT/MGRID/CUTOFF": {
+      "name": "CUTOFF",
+      "type": "float",
+      "default": "280.0",
+      "category": "grid",
+      "description": "Plane-wave cutoff for the finest grid level in Ry.",
+      "section": "FORCE_EVAL/DFT/MGRID"
+    },
+    "FORCE_EVAL/DFT/MGRID/NGRIDS": {
+      "name": "NGRIDS",
+      "type": "int",
+      "default": "4",
+      "category": "grid",
+      "description": "Number of multi-grid levels.",
+      "section": "FORCE_EVAL/DFT/MGRID"
+    },
+    "FORCE_EVAL/DFT/MGRID/REL_CUTOFF": {
+      "name": "REL_CUTOFF",
+      "type": "float",
+      "default": "40.0",
+      "category": "grid",
+      "description": "Relative cutoff controlling Gaussian mapping to grids in Ry.",
+      "section": "FORCE_EVAL/DFT/MGRID"
+    },
+    "FORCE_EVAL/DFT/MGRID/PROGRESSION_FACTOR": {
+      "name": "PROGRESSION_FACTOR",
+      "type": "float",
+      "default": "3.0",
+      "category": "grid",
+      "description": "Factor by which cutoff decreases between grid levels.",
+      "section": "FORCE_EVAL/DFT/MGRID"
+    },
+    "FORCE_EVAL/DFT/QS/METHOD": {
+      "name": "METHOD",
+      "type": "enum",
+      "default": "GPW",
+      "category": "qs",
+      "description": "QS method: GPW (Gaussian and plane-waves), GAPW (Gaussian and augmented PW), LRIGPW, RIGPW, OFGPW.",
+      "section": "FORCE_EVAL/DFT/QS"
+    },
+    "FORCE_EVAL/DFT/QS/EPS_DEFAULT": {
+      "name": "EPS_DEFAULT",
+      "type": "float",
+      "default": "1.0E-10",
+      "category": "qs",
+      "description": "Default threshold for QS numerical precision.",
+      "section": "FORCE_EVAL/DFT/QS"
+    },
+    "FORCE_EVAL/DFT/QS/EPS_PGF_ORB": {
+      "name": "EPS_PGF_ORB",
+      "type": "float",
+      "default": null,
+      "category": "qs",
+      "description": "Threshold for primitive Gaussian function screening.",
+      "section": "FORCE_EVAL/DFT/QS"
+    },
+    "FORCE_EVAL/DFT/QS/EXTRAPOLATION": {
+      "name": "EXTRAPOLATION",
+      "type": "enum",
+      "default": "ASPC",
+      "category": "qs",
+      "description": "Wavefunction extrapolation method for MD: ASPC, PS, USE_PREV_P, LINEAR_P, USE_GUESS.",
+      "section": "FORCE_EVAL/DFT/QS"
+    },
+    "FORCE_EVAL/DFT/QS/EXTRAPOLATION_ORDER": {
+      "name": "EXTRAPOLATION_ORDER",
+      "type": "int",
+      "default": "3",
+      "category": "qs",
+      "description": "Order of wavefunction extrapolation (ASPC).",
+      "section": "FORCE_EVAL/DFT/QS"
+    },
+    "FORCE_EVAL/DFT/QS/MAP_CONSISTENT": {
+      "name": "MAP_CONSISTENT",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "qs",
+      "description": "Use a consistent mapping of Gaussians to the grid.",
+      "section": "FORCE_EVAL/DFT/QS"
+    },
+    "FORCE_EVAL/DFT/SCF/MAX_SCF": {
+      "name": "MAX_SCF",
+      "type": "int",
+      "default": "50",
+      "category": "scf",
+      "description": "Maximum number of SCF iterations.",
+      "section": "FORCE_EVAL/DFT/SCF"
+    },
+    "FORCE_EVAL/DFT/SCF/EPS_SCF": {
+      "name": "EPS_SCF",
+      "type": "float",
+      "default": "1.0E-5",
+      "category": "scf",
+      "description": "SCF convergence threshold for energy change.",
+      "section": "FORCE_EVAL/DFT/SCF"
+    },
+    "FORCE_EVAL/DFT/SCF/SCF_GUESS": {
+      "name": "SCF_GUESS",
+      "type": "enum",
+      "default": "ATOMIC",
+      "category": "scf",
+      "description": "Initial guess for SCF: ATOMIC, RESTART, RANDOM, CORE, MOPAC, SPARSE, NONE, HISTORY_RESTART.",
+      "section": "FORCE_EVAL/DFT/SCF"
+    },
+    "FORCE_EVAL/DFT/SCF/ADDED_MOS": {
+      "name": "ADDED_MOS",
+      "type": "int",
+      "default": "0",
+      "category": "scf",
+      "description": "Number of additional (empty) molecular orbitals beyond occupied. Required for smearing/DIIS.",
+      "section": "FORCE_EVAL/DFT/SCF"
+    },
+    "FORCE_EVAL/DFT/SCF/CHOLESKY": {
+      "name": "CHOLESKY",
+      "type": "enum",
+      "default": "REDUCE",
+      "category": "scf",
+      "description": "Cholesky decomposition method: REDUCE, RESTORE, INVERSE, OFF, INVERSE_DBCSR.",
+      "section": "FORCE_EVAL/DFT/SCF"
+    },
+    "FORCE_EVAL/DFT/SCF/MAX_SCF_HISTORY": {
+      "name": "MAX_SCF_HISTORY",
+      "type": "int",
+      "default": "0",
+      "category": "scf",
+      "description": "Number of SCF history vectors for wfn extrapolation.",
+      "section": "FORCE_EVAL/DFT/SCF"
+    },
+    "FORCE_EVAL/DFT/SCF/MAX_DIIS": {
+      "name": "MAX_DIIS",
+      "type": "int",
+      "default": "4",
+      "category": "scf",
+      "description": "Maximum number of DIIS vectors.",
+      "section": "FORCE_EVAL/DFT/SCF"
+    },
+    "FORCE_EVAL/DFT/SCF/MIXING/METHOD": {
+      "name": "METHOD",
+      "type": "enum",
+      "default": "BROYDEN_MIXING",
+      "category": "scf",
+      "description": "SCF mixing method: BROYDEN_MIXING, DIRECT_P_MIXING, KERKER_MIXING, PULAY_MIXING, MULTISECANT_MIXING.",
+      "section": "FORCE_EVAL/DFT/SCF/MIXING"
+    },
+    "FORCE_EVAL/DFT/SCF/MIXING/ALPHA": {
+      "name": "ALPHA",
+      "type": "float",
+      "default": "0.4",
+      "category": "scf",
+      "description": "Mixing parameter (fraction of new density).",
+      "section": "FORCE_EVAL/DFT/SCF/MIXING"
+    },
+    "FORCE_EVAL/DFT/SCF/MIXING/BETA": {
+      "name": "BETA",
+      "type": "float",
+      "default": "0.5",
+      "category": "scf",
+      "description": "Pulay mixing beta parameter.",
+      "section": "FORCE_EVAL/DFT/SCF/MIXING"
+    },
+    "FORCE_EVAL/DFT/SCF/MIXING/NBUFFER": {
+      "name": "NBUFFER",
+      "type": "int",
+      "default": "4",
+      "category": "scf",
+      "description": "Number of history buffers for mixing.",
+      "section": "FORCE_EVAL/DFT/SCF/MIXING"
+    },
+    "FORCE_EVAL/DFT/SCF/SMEAR/METHOD": {
+      "name": "METHOD",
+      "type": "enum",
+      "default": "FERMI_DIRAC",
+      "category": "scf",
+      "description": "Smearing method: FERMI_DIRAC, ENERGY_WINDOW, LIST.",
+      "section": "FORCE_EVAL/DFT/SCF/SMEAR"
+    },
+    "FORCE_EVAL/DFT/SCF/SMEAR/ELECTRONIC_TEMPERATURE": {
+      "name": "ELECTRONIC_TEMPERATURE",
+      "type": "float",
+      "default": "300.0",
+      "category": "scf",
+      "description": "Electronic temperature for Fermi-Dirac smearing in K.",
+      "section": "FORCE_EVAL/DFT/SCF/SMEAR"
+    },
+    "FORCE_EVAL/DFT/SCF/DIAGONALIZATION/ALGORITHM": {
+      "name": "ALGORITHM",
+      "type": "enum",
+      "default": "STANDARD",
+      "category": "scf",
+      "description": "Diagonalization algorithm: STANDARD, OT (orbital transformation).",
+      "section": "FORCE_EVAL/DFT/SCF/DIAGONALIZATION"
+    },
+    "FORCE_EVAL/DFT/SCF/OT/MINIMIZER": {
+      "name": "MINIMIZER",
+      "type": "enum",
+      "default": "DIIS",
+      "category": "scf",
+      "description": "OT minimizer algorithm: DIIS, CG, SD, BROYDEN.",
+      "section": "FORCE_EVAL/DFT/SCF/OT"
+    },
+    "FORCE_EVAL/DFT/SCF/OT/PRECONDITIONER": {
+      "name": "PRECONDITIONER",
+      "type": "enum",
+      "default": "FULL_SINGLE_INVERSE",
+      "category": "scf",
+      "description": "OT preconditioner: FULL_SINGLE_INVERSE, FULL_ALL, FULL_KINETIC, NONE.",
+      "section": "FORCE_EVAL/DFT/SCF/OT"
+    },
+    "FORCE_EVAL/DFT/SCF/OT/ENERGY_GAP": {
+      "name": "ENERGY_GAP",
+      "type": "float",
+      "default": "0.001",
+      "category": "scf",
+      "description": "Expected energy gap for OT preconditioner (Ha).",
+      "section": "FORCE_EVAL/DFT/SCF/OT"
+    },
+    "FORCE_EVAL/DFT/SCF/OT/STEPSIZE": {
+      "name": "STEPSIZE",
+      "type": "float",
+      "default": "0.1",
+      "category": "scf",
+      "description": "Initial step size for OT line search.",
+      "section": "FORCE_EVAL/DFT/SCF/OT"
+    },
+    "FORCE_EVAL/DFT/SCF/OT/LINESEARCH": {
+      "name": "LINESEARCH",
+      "type": "enum",
+      "default": "2PNT",
+      "category": "scf",
+      "description": "OT line search method: 2PNT, 3PNT, GOLD, NONE.",
+      "section": "FORCE_EVAL/DFT/SCF/OT"
+    },
+    "FORCE_EVAL/DFT/SCF/OUTER_SCF/MAX_SCF": {
+      "name": "MAX_SCF",
+      "type": "int",
+      "default": "0",
+      "category": "scf",
+      "description": "Maximum number of outer SCF loops (0 = disabled).",
+      "section": "FORCE_EVAL/DFT/SCF/OUTER_SCF"
+    },
+    "FORCE_EVAL/DFT/SCF/OUTER_SCF/EPS_SCF": {
+      "name": "EPS_SCF",
+      "type": "float",
+      "default": "1.0E-5",
+      "category": "scf",
+      "description": "Convergence threshold for outer SCF loop.",
+      "section": "FORCE_EVAL/DFT/SCF/OUTER_SCF"
+    },
+    "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL": {
+      "name": "XC_FUNCTIONAL",
+      "type": "enum",
+      "default": "PBE",
+      "category": "xc",
+      "description": "Exchange-correlation functional shortcut: PBE, BLYP, BP86, PADE, PBE0, B3LYP, TPSS, SCAN, NO_SHORTCUT.",
+      "section": "FORCE_EVAL/DFT/XC"
+    },
+    "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL/PBE/PARAMETRIZATION": {
+      "name": "PARAMETRIZATION",
+      "type": "enum",
+      "default": "ORIG",
+      "category": "xc",
+      "description": "PBE parametrization: ORIG, REVPBE, PBESOL.",
+      "section": "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL/PBE"
+    },
+    "FORCE_EVAL/DFT/XC/HF/FRACTION": {
+      "name": "FRACTION",
+      "type": "float",
+      "default": "1.0",
+      "category": "xc",
+      "description": "Fraction of Hartree-Fock exchange (for hybrid functionals).",
+      "section": "FORCE_EVAL/DFT/XC/HF"
+    },
+    "FORCE_EVAL/DFT/XC/HF/SCREENING/EPS_SCHWARZ": {
+      "name": "EPS_SCHWARZ",
+      "type": "float",
+      "default": "1.0E-10",
+      "category": "xc",
+      "description": "Schwarz screening threshold for HFX integrals.",
+      "section": "FORCE_EVAL/DFT/XC/HF/SCREENING"
+    },
+    "FORCE_EVAL/DFT/XC/HF/SCREENING/SCREEN_ON_INITIAL_P": {
+      "name": "SCREEN_ON_INITIAL_P",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "xc",
+      "description": "Screen HFX integrals based on initial density matrix.",
+      "section": "FORCE_EVAL/DFT/XC/HF/SCREENING"
+    },
+    "FORCE_EVAL/DFT/XC/HF/INTERACTION_POTENTIAL/POTENTIAL_TYPE": {
+      "name": "POTENTIAL_TYPE",
+      "type": "enum",
+      "default": "COULOMB",
+      "category": "xc",
+      "description": "HFX potential: COULOMB, SHORTRANGE (for HSE), TRUNCATED, MIX_CL_TRUNC.",
+      "section": "FORCE_EVAL/DFT/XC/HF/INTERACTION_POTENTIAL"
+    },
+    "FORCE_EVAL/DFT/XC/HF/INTERACTION_POTENTIAL/CUTOFF_RADIUS": {
+      "name": "CUTOFF_RADIUS",
+      "type": "float",
+      "default": null,
+      "category": "xc",
+      "description": "Cutoff radius for truncated HFX potential (Angstrom).",
+      "section": "FORCE_EVAL/DFT/XC/HF/INTERACTION_POTENTIAL"
+    },
+    "FORCE_EVAL/DFT/XC/HF/INTERACTION_POTENTIAL/OMEGA": {
+      "name": "OMEGA",
+      "type": "float",
+      "default": null,
+      "category": "xc",
+      "description": "Range-separation parameter for HSE-type functionals.",
+      "section": "FORCE_EVAL/DFT/XC/HF/INTERACTION_POTENTIAL"
+    },
+    "FORCE_EVAL/DFT/XC/VDW_POTENTIAL/POTENTIAL_TYPE": {
+      "name": "POTENTIAL_TYPE",
+      "type": "enum",
+      "default": null,
+      "category": "xc",
+      "description": "Van der Waals correction: DFTD2, DFTD3, DFTD3(BJ), NON_LOCAL.",
+      "section": "FORCE_EVAL/DFT/XC/VDW_POTENTIAL"
+    },
+    "FORCE_EVAL/DFT/XC/VDW_POTENTIAL/PAIR_POTENTIAL/TYPE": {
+      "name": "TYPE",
+      "type": "enum",
+      "default": "DFTD3",
+      "category": "xc",
+      "description": "DFT-D pair potential type: DFTD2, DFTD3, DFTD3(BJ).",
+      "section": "FORCE_EVAL/DFT/XC/VDW_POTENTIAL/PAIR_POTENTIAL"
+    },
+    "FORCE_EVAL/DFT/XC/VDW_POTENTIAL/PAIR_POTENTIAL/REFERENCE_FUNCTIONAL": {
+      "name": "REFERENCE_FUNCTIONAL",
+      "type": "str",
+      "default": null,
+      "category": "xc",
+      "description": "Reference functional for D3 parameters (e.g. PBE, BLYP).",
+      "section": "FORCE_EVAL/DFT/XC/VDW_POTENTIAL/PAIR_POTENTIAL"
+    },
+    "FORCE_EVAL/DFT/XC/VDW_POTENTIAL/PAIR_POTENTIAL/R_CUTOFF": {
+      "name": "R_CUTOFF",
+      "type": "float",
+      "default": null,
+      "category": "xc",
+      "description": "Cutoff radius for DFT-D pair potential (Angstrom).",
+      "section": "FORCE_EVAL/DFT/XC/VDW_POTENTIAL/PAIR_POTENTIAL"
+    },
+    "FORCE_EVAL/DFT/XC/VDW_POTENTIAL/NON_LOCAL/TYPE": {
+      "name": "TYPE",
+      "type": "enum",
+      "default": "DRSLL",
+      "category": "xc",
+      "description": "Non-local vdW functional type: DRSLL, LMKLL, RVV10.",
+      "section": "FORCE_EVAL/DFT/XC/VDW_POTENTIAL/NON_LOCAL"
+    },
+    "FORCE_EVAL/DFT/KPOINTS/SCHEME": {
+      "name": "SCHEME",
+      "type": "str",
+      "default": "GAMMA",
+      "category": "kpoints",
+      "description": "K-point scheme: GAMMA, MONKHORST-PACK N1 N2 N3, MACDONALD, GENERAL.",
+      "section": "FORCE_EVAL/DFT/KPOINTS"
+    },
+    "FORCE_EVAL/DFT/KPOINTS/SYMMETRY": {
+      "name": "SYMMETRY",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "kpoints",
+      "description": "Use crystal symmetry to reduce k-points.",
+      "section": "FORCE_EVAL/DFT/KPOINTS"
+    },
+    "FORCE_EVAL/DFT/KPOINTS/FULL_GRID": {
+      "name": "FULL_GRID",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "kpoints",
+      "description": "Use the full (unreduced) k-point grid.",
+      "section": "FORCE_EVAL/DFT/KPOINTS"
+    },
+    "FORCE_EVAL/DFT/KPOINTS/EPS_GEO": {
+      "name": "EPS_GEO",
+      "type": "float",
+      "default": "1.0E-6",
+      "category": "kpoints",
+      "description": "Tolerance for k-point geometry comparison.",
+      "section": "FORCE_EVAL/DFT/KPOINTS"
+    },
+    "FORCE_EVAL/DFT/KPOINTS/WAVEFUNCTIONS": {
+      "name": "WAVEFUNCTIONS",
+      "type": "enum",
+      "default": "COMPLEX",
+      "category": "kpoints",
+      "description": "Type of wavefunction representation: COMPLEX, REAL.",
+      "section": "FORCE_EVAL/DFT/KPOINTS"
+    },
+    "FORCE_EVAL/DFT/PRINT/MO_CUBES/WRITE_CUBE": {
+      "name": "WRITE_CUBE",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "print",
+      "description": "Write molecular orbital cube files.",
+      "section": "FORCE_EVAL/DFT/PRINT/MO_CUBES"
+    },
+    "FORCE_EVAL/DFT/PRINT/PDOS/NLUMO": {
+      "name": "NLUMO",
+      "type": "int",
+      "default": "0",
+      "category": "print",
+      "description": "Number of unoccupied orbitals for PDOS.",
+      "section": "FORCE_EVAL/DFT/PRINT/PDOS"
+    },
+    "FORCE_EVAL/DFT/PRINT/PDOS/COMPONENTS": {
+      "name": "COMPONENTS",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "print",
+      "description": "Print orbital-resolved PDOS contributions.",
+      "section": "FORCE_EVAL/DFT/PRINT/PDOS"
+    },
+    "FORCE_EVAL/DFT/PRINT/BAND_STRUCTURE/FILE_NAME": {
+      "name": "FILE_NAME",
+      "type": "str",
+      "default": null,
+      "category": "print",
+      "description": "Output file for band structure data.",
+      "section": "FORCE_EVAL/DFT/PRINT/BAND_STRUCTURE"
+    },
+    "FORCE_EVAL/DFT/PRINT/V_HARTREE_CUBE/FILENAME": {
+      "name": "FILENAME",
+      "type": "str",
+      "default": null,
+      "category": "print",
+      "description": "Output file for Hartree potential cube.",
+      "section": "FORCE_EVAL/DFT/PRINT/V_HARTREE_CUBE"
+    },
+    "FORCE_EVAL/DFT/PRINT/E_DENSITY_CUBE/FILENAME": {
+      "name": "FILENAME",
+      "type": "str",
+      "default": null,
+      "category": "print",
+      "description": "Output file for electron density cube.",
+      "section": "FORCE_EVAL/DFT/PRINT/E_DENSITY_CUBE"
+    },
+    "FORCE_EVAL/DFT/POISSON/PERIODIC": {
+      "name": "PERIODIC",
+      "type": "enum",
+      "default": "XYZ",
+      "category": "poisson",
+      "description": "Periodicity of the Poisson solver: XYZ, XY, X, NONE.",
+      "section": "FORCE_EVAL/DFT/POISSON"
+    },
+    "FORCE_EVAL/DFT/POISSON/POISSON_SOLVER": {
+      "name": "POISSON_SOLVER",
+      "type": "enum",
+      "default": "PERIODIC",
+      "category": "poisson",
+      "description": "Poisson solver method: PERIODIC, MT (Martyna-Tuckerman), MULTIPOLE, ANALYTIC, WAVELET, IMPLICIT.",
+      "section": "FORCE_EVAL/DFT/POISSON"
+    },
+    "FORCE_EVAL/DFT/TDDFPT/NSTATES": {
+      "name": "NSTATES",
+      "type": "int",
+      "default": "1",
+      "category": "tddft",
+      "description": "Number of excited states to compute in TDDFT.",
+      "section": "FORCE_EVAL/DFT/TDDFPT"
+    },
+    "FORCE_EVAL/DFT/TDDFPT/MAX_ITER": {
+      "name": "MAX_ITER",
+      "type": "int",
+      "default": "100",
+      "category": "tddft",
+      "description": "Maximum number of Davidson iterations in TDDFT.",
+      "section": "FORCE_EVAL/DFT/TDDFPT"
+    },
+    "FORCE_EVAL/DFT/TDDFPT/CONVERGENCE": {
+      "name": "CONVERGENCE",
+      "type": "float",
+      "default": "1.0E-5",
+      "category": "tddft",
+      "description": "Convergence threshold for TDDFT excited state energies.",
+      "section": "FORCE_EVAL/DFT/TDDFPT"
+    },
+    "FORCE_EVAL/DFT/TDDFPT/KERNEL": {
+      "name": "KERNEL",
+      "type": "enum",
+      "default": "FULL",
+      "category": "tddft",
+      "description": "TDDFT kernel: FULL, STDA, sTDA, NONE.",
+      "section": "FORCE_EVAL/DFT/TDDFPT"
+    },
+    "FORCE_EVAL/DFT/TDDFPT/RESTART": {
+      "name": "RESTART",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "tddft",
+      "description": "Restart TDDFT from previous calculation.",
+      "section": "FORCE_EVAL/DFT/TDDFPT"
+    },
+    "FORCE_EVAL/DFT/DFT_PLUS_U/METHOD": {
+      "name": "METHOD",
+      "type": "enum",
+      "default": "LOWDIN",
+      "category": "dftu",
+      "description": "DFT+U projection method: LOWDIN, MULLIKEN.",
+      "section": "FORCE_EVAL/DFT/DFT_PLUS_U"
+    },
+    "FORCE_EVAL/SUBSYS/CELL/A": {
+      "name": "A",
+      "type": "array",
+      "default": null,
+      "category": "structure",
+      "description": "First lattice vector (3 components, Angstrom).",
+      "section": "FORCE_EVAL/SUBSYS/CELL"
+    },
+    "FORCE_EVAL/SUBSYS/CELL/B": {
+      "name": "B",
+      "type": "array",
+      "default": null,
+      "category": "structure",
+      "description": "Second lattice vector (3 components, Angstrom).",
+      "section": "FORCE_EVAL/SUBSYS/CELL"
+    },
+    "FORCE_EVAL/SUBSYS/CELL/C": {
+      "name": "C",
+      "type": "array",
+      "default": null,
+      "category": "structure",
+      "description": "Third lattice vector (3 components, Angstrom).",
+      "section": "FORCE_EVAL/SUBSYS/CELL"
+    },
+    "FORCE_EVAL/SUBSYS/CELL/ABC": {
+      "name": "ABC",
+      "type": "array",
+      "default": null,
+      "category": "structure",
+      "description": "Cell dimensions a, b, c (Angstrom). Used for orthorhombic cells.",
+      "section": "FORCE_EVAL/SUBSYS/CELL"
+    },
+    "FORCE_EVAL/SUBSYS/CELL/ALPHA_BETA_GAMMA": {
+      "name": "ALPHA_BETA_GAMMA",
+      "type": "array",
+      "default": "90.0 90.0 90.0",
+      "category": "structure",
+      "description": "Cell angles alpha, beta, gamma (degrees).",
+      "section": "FORCE_EVAL/SUBSYS/CELL"
+    },
+    "FORCE_EVAL/SUBSYS/CELL/PERIODIC": {
+      "name": "PERIODIC",
+      "type": "enum",
+      "default": "XYZ",
+      "category": "structure",
+      "description": "Periodic boundary conditions: XYZ, XY, X, NONE.",
+      "section": "FORCE_EVAL/SUBSYS/CELL"
+    },
+    "FORCE_EVAL/SUBSYS/CELL/SYMMETRY": {
+      "name": "SYMMETRY",
+      "type": "enum",
+      "default": "NONE",
+      "category": "structure",
+      "description": "Cell symmetry class: CUBIC, HEXAGONAL, TETRAGONAL, ORTHORHOMBIC, MONOCLINIC, TRICLINIC, NONE.",
+      "section": "FORCE_EVAL/SUBSYS/CELL"
+    },
+    "FORCE_EVAL/SUBSYS/CELL/MULTIPLE_UNIT_CELL": {
+      "name": "MULTIPLE_UNIT_CELL",
+      "type": "array",
+      "default": "1 1 1",
+      "category": "structure",
+      "description": "Supercell repetitions along each lattice direction.",
+      "section": "FORCE_EVAL/SUBSYS/CELL"
+    },
+    "FORCE_EVAL/SUBSYS/COORD/SCALED": {
+      "name": "SCALED",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "structure",
+      "description": "If .TRUE., coordinates are in fractional (scaled) units.",
+      "section": "FORCE_EVAL/SUBSYS/COORD"
+    },
+    "FORCE_EVAL/SUBSYS/COORD/UNIT": {
+      "name": "UNIT",
+      "type": "enum",
+      "default": "angstrom",
+      "category": "structure",
+      "description": "Unit for coordinates: angstrom, bohr, au.",
+      "section": "FORCE_EVAL/SUBSYS/COORD"
+    },
+    "FORCE_EVAL/SUBSYS/KIND/BASIS_SET": {
+      "name": "BASIS_SET",
+      "type": "str",
+      "default": null,
+      "category": "basis",
+      "description": "Basis set name for this atomic kind (e.g. DZVP-MOLOPT-SR-GTH).",
+      "section": "FORCE_EVAL/SUBSYS/KIND"
+    },
+    "FORCE_EVAL/SUBSYS/KIND/POTENTIAL": {
+      "name": "POTENTIAL",
+      "type": "str",
+      "default": null,
+      "category": "basis",
+      "description": "Pseudopotential name for this atomic kind (e.g. GTH-PBE-q6).",
+      "section": "FORCE_EVAL/SUBSYS/KIND"
+    },
+    "FORCE_EVAL/SUBSYS/KIND/ELEMENT": {
+      "name": "ELEMENT",
+      "type": "str",
+      "default": null,
+      "category": "basis",
+      "description": "Element symbol (defaults to kind name if not given).",
+      "section": "FORCE_EVAL/SUBSYS/KIND"
+    },
+    "FORCE_EVAL/SUBSYS/KIND/MAGNETIZATION": {
+      "name": "MAGNETIZATION",
+      "type": "float",
+      "default": "0.0",
+      "category": "spin",
+      "description": "Initial magnetic moment for this atomic kind.",
+      "section": "FORCE_EVAL/SUBSYS/KIND"
+    },
+    "FORCE_EVAL/SUBSYS/KIND/DFT_PLUS_U/L": {
+      "name": "L",
+      "type": "int",
+      "default": null,
+      "category": "dftu",
+      "description": "Angular momentum for DFT+U correction (0=s, 1=p, 2=d, 3=f).",
+      "section": "FORCE_EVAL/SUBSYS/KIND/DFT_PLUS_U"
+    },
+    "FORCE_EVAL/SUBSYS/KIND/DFT_PLUS_U/U_MINUS_J": {
+      "name": "U_MINUS_J",
+      "type": "float",
+      "default": null,
+      "category": "dftu",
+      "description": "Effective U-J parameter for DFT+U correction (eV).",
+      "section": "FORCE_EVAL/SUBSYS/KIND/DFT_PLUS_U"
+    },
+    "FORCE_EVAL/SUBSYS/KIND/GHOST": {
+      "name": "GHOST",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "basis",
+      "description": "Treat as ghost atom (basis functions only, no nuclear charge).",
+      "section": "FORCE_EVAL/SUBSYS/KIND"
+    },
+    "FORCE_EVAL/SUBSYS/KIND/AUX_FIT_BASIS_SET": {
+      "name": "AUX_FIT_BASIS_SET",
+      "type": "str",
+      "default": null,
+      "category": "basis",
+      "description": "Auxiliary fitting basis set for ADMM.",
+      "section": "FORCE_EVAL/SUBSYS/KIND"
+    },
+    "FORCE_EVAL/SUBSYS/TOPOLOGY/COORD_FILE_NAME": {
+      "name": "COORD_FILE_NAME",
+      "type": "str",
+      "default": null,
+      "category": "structure",
+      "description": "Path to external coordinate file (XYZ, PDB, CIF).",
+      "section": "FORCE_EVAL/SUBSYS/TOPOLOGY"
+    },
+    "FORCE_EVAL/SUBSYS/TOPOLOGY/COORD_FILE_FORMAT": {
+      "name": "COORD_FILE_FORMAT",
+      "type": "enum",
+      "default": null,
+      "category": "structure",
+      "description": "Format of external coordinate file: XYZ, PDB, CIF, CP2K.",
+      "section": "FORCE_EVAL/SUBSYS/TOPOLOGY"
+    },
+    "FORCE_EVAL/SUBSYS/TOPOLOGY/CONNECTIVITY": {
+      "name": "CONNECTIVITY",
+      "type": "enum",
+      "default": "OFF",
+      "category": "structure",
+      "description": "Connectivity generation: OFF, GENERATE, MOL_SET, USER, PSF, AMBER, UPSF.",
+      "section": "FORCE_EVAL/SUBSYS/TOPOLOGY"
+    },
+    "MOTION/GEO_OPT/TYPE": {
+      "name": "TYPE",
+      "type": "enum",
+      "default": "MINIMIZATION",
+      "category": "geometry",
+      "description": "Optimization type: MINIMIZATION, TRANSITION_STATE.",
+      "section": "MOTION/GEO_OPT"
+    },
+    "MOTION/GEO_OPT/OPTIMIZER": {
+      "name": "OPTIMIZER",
+      "type": "enum",
+      "default": "BFGS",
+      "category": "geometry",
+      "description": "Geometry optimization algorithm: BFGS, LBFGS, CG.",
+      "section": "MOTION/GEO_OPT"
+    },
+    "MOTION/GEO_OPT/MAX_ITER": {
+      "name": "MAX_ITER",
+      "type": "int",
+      "default": "200",
+      "category": "geometry",
+      "description": "Maximum number of geometry optimization steps.",
+      "section": "MOTION/GEO_OPT"
+    },
+    "MOTION/GEO_OPT/MAX_DR": {
+      "name": "MAX_DR",
+      "type": "float",
+      "default": "0.003",
+      "category": "geometry",
+      "description": "Convergence criterion for maximum displacement (Bohr).",
+      "section": "MOTION/GEO_OPT"
+    },
+    "MOTION/GEO_OPT/MAX_FORCE": {
+      "name": "MAX_FORCE",
+      "type": "float",
+      "default": "0.00045",
+      "category": "geometry",
+      "description": "Convergence criterion for maximum atomic force (Ha/Bohr).",
+      "section": "MOTION/GEO_OPT"
+    },
+    "MOTION/GEO_OPT/RMS_DR": {
+      "name": "RMS_DR",
+      "type": "float",
+      "default": "0.0015",
+      "category": "geometry",
+      "description": "Convergence criterion for RMS displacement (Bohr).",
+      "section": "MOTION/GEO_OPT"
+    },
+    "MOTION/GEO_OPT/RMS_FORCE": {
+      "name": "RMS_FORCE",
+      "type": "float",
+      "default": "0.0003",
+      "category": "geometry",
+      "description": "Convergence criterion for RMS force (Ha/Bohr).",
+      "section": "MOTION/GEO_OPT"
+    },
+    "MOTION/GEO_OPT/STEP_START_VAL": {
+      "name": "STEP_START_VAL",
+      "type": "int",
+      "default": "0",
+      "category": "geometry",
+      "description": "Step counter start value (for restarts).",
+      "section": "MOTION/GEO_OPT"
+    },
+    "MOTION/CELL_OPT/TYPE": {
+      "name": "TYPE",
+      "type": "enum",
+      "default": "DIRECT_CELL_OPT",
+      "category": "geometry",
+      "description": "Cell optimization type: DIRECT_CELL_OPT, GEO_OPT, MD.",
+      "section": "MOTION/CELL_OPT"
+    },
+    "MOTION/CELL_OPT/OPTIMIZER": {
+      "name": "OPTIMIZER",
+      "type": "enum",
+      "default": "BFGS",
+      "category": "geometry",
+      "description": "Cell optimization algorithm: BFGS, LBFGS, CG.",
+      "section": "MOTION/CELL_OPT"
+    },
+    "MOTION/CELL_OPT/MAX_ITER": {
+      "name": "MAX_ITER",
+      "type": "int",
+      "default": "200",
+      "category": "geometry",
+      "description": "Maximum number of cell optimization steps.",
+      "section": "MOTION/CELL_OPT"
+    },
+    "MOTION/CELL_OPT/MAX_DR": {
+      "name": "MAX_DR",
+      "type": "float",
+      "default": "0.003",
+      "category": "geometry",
+      "description": "Convergence criterion for maximum displacement in cell opt.",
+      "section": "MOTION/CELL_OPT"
+    },
+    "MOTION/CELL_OPT/MAX_FORCE": {
+      "name": "MAX_FORCE",
+      "type": "float",
+      "default": "0.00045",
+      "category": "geometry",
+      "description": "Convergence criterion for maximum force in cell opt.",
+      "section": "MOTION/CELL_OPT"
+    },
+    "MOTION/CELL_OPT/PRESSURE_TOLERANCE": {
+      "name": "PRESSURE_TOLERANCE",
+      "type": "float",
+      "default": "100.0",
+      "category": "geometry",
+      "description": "Pressure tolerance for cell optimization (bar).",
+      "section": "MOTION/CELL_OPT"
+    },
+    "MOTION/CELL_OPT/KEEP_ANGLES": {
+      "name": "KEEP_ANGLES",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "geometry",
+      "description": "Keep cell angles fixed during optimization.",
+      "section": "MOTION/CELL_OPT"
+    },
+    "MOTION/CELL_OPT/KEEP_SYMMETRY": {
+      "name": "KEEP_SYMMETRY",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "geometry",
+      "description": "Keep symmetry during cell optimization.",
+      "section": "MOTION/CELL_OPT"
+    },
+    "MOTION/CELL_OPT/EXTERNAL_PRESSURE": {
+      "name": "EXTERNAL_PRESSURE",
+      "type": "float",
+      "default": "0.0",
+      "category": "geometry",
+      "description": "External pressure applied during cell optimization (bar).",
+      "section": "MOTION/CELL_OPT"
+    },
+    "MOTION/MD/ENSEMBLE": {
+      "name": "ENSEMBLE",
+      "type": "enum",
+      "default": "NVE",
+      "category": "md",
+      "description": "MD ensemble: NVE, NVT, NPT_I, NPT_F, NPH_I, NPH_F, LANGEVIN, REFTRAJ, ISOKIN.",
+      "section": "MOTION/MD"
+    },
+    "MOTION/MD/STEPS": {
+      "name": "STEPS",
+      "type": "int",
+      "default": "3",
+      "category": "md",
+      "description": "Number of MD time steps.",
+      "section": "MOTION/MD"
+    },
+    "MOTION/MD/TIMESTEP": {
+      "name": "TIMESTEP",
+      "type": "float",
+      "default": "0.5",
+      "category": "md",
+      "description": "MD time step in femtoseconds.",
+      "section": "MOTION/MD"
+    },
+    "MOTION/MD/TEMPERATURE": {
+      "name": "TEMPERATURE",
+      "type": "float",
+      "default": "300.0",
+      "category": "md",
+      "description": "Target temperature for MD simulation (K).",
+      "section": "MOTION/MD"
+    },
+    "MOTION/MD/THERMOSTAT/TYPE": {
+      "name": "TYPE",
+      "type": "enum",
+      "default": "NOSE",
+      "category": "md",
+      "description": "Thermostat type: NOSE, CSVR, GLE, AD_LANGEVIN, NONE.",
+      "section": "MOTION/MD/THERMOSTAT"
+    },
+    "MOTION/MD/THERMOSTAT/NOSE/LENGTH": {
+      "name": "LENGTH",
+      "type": "int",
+      "default": "3",
+      "category": "md",
+      "description": "Length of Nose-Hoover chain.",
+      "section": "MOTION/MD/THERMOSTAT/NOSE"
+    },
+    "MOTION/MD/THERMOSTAT/NOSE/TIMECON": {
+      "name": "TIMECON",
+      "type": "float",
+      "default": "1000.0",
+      "category": "md",
+      "description": "Nose-Hoover thermostat time constant (fs).",
+      "section": "MOTION/MD/THERMOSTAT/NOSE"
+    },
+    "MOTION/MD/THERMOSTAT/CSVR/TIMECON": {
+      "name": "TIMECON",
+      "type": "float",
+      "default": "1000.0",
+      "category": "md",
+      "description": "CSVR thermostat time constant (fs).",
+      "section": "MOTION/MD/THERMOSTAT/CSVR"
+    },
+    "MOTION/MD/BAROSTAT/PRESSURE": {
+      "name": "PRESSURE",
+      "type": "float",
+      "default": "0.0",
+      "category": "md",
+      "description": "Target pressure for NPT simulations (bar).",
+      "section": "MOTION/MD/BAROSTAT"
+    },
+    "MOTION/MD/BAROSTAT/TIMECON": {
+      "name": "TIMECON",
+      "type": "float",
+      "default": "1000.0",
+      "category": "md",
+      "description": "Barostat time constant (fs).",
+      "section": "MOTION/MD/BAROSTAT"
+    },
+    "MOTION/MD/AVERAGES": {
+      "name": "AVERAGES",
+      "type": "bool",
+      "default": ".TRUE.",
+      "category": "md",
+      "description": "Compute running averages during MD.",
+      "section": "MOTION/MD"
+    },
+    "MOTION/MD/COMVEL_TOL": {
+      "name": "COMVEL_TOL",
+      "type": "float",
+      "default": "0.0",
+      "category": "md",
+      "description": "Tolerance for center-of-mass velocity removal.",
+      "section": "MOTION/MD"
+    },
+    "MOTION/PRINT/TRAJECTORY/FORMAT": {
+      "name": "FORMAT",
+      "type": "enum",
+      "default": "XYZ",
+      "category": "print",
+      "description": "Trajectory output format: XYZ, PDB, DCD, XMOL.",
+      "section": "MOTION/PRINT/TRAJECTORY"
+    },
+    "MOTION/PRINT/TRAJECTORY/EACH/MD": {
+      "name": "MD",
+      "type": "int",
+      "default": "1",
+      "category": "print",
+      "description": "Frequency of trajectory output in MD steps.",
+      "section": "MOTION/PRINT/TRAJECTORY/EACH"
+    },
+    "MOTION/PRINT/FORCES/EACH/MD": {
+      "name": "MD",
+      "type": "int",
+      "default": "1",
+      "category": "print",
+      "description": "Frequency of force output in MD steps.",
+      "section": "MOTION/PRINT/FORCES/EACH"
+    },
+    "MOTION/PRINT/RESTART/EACH/MD": {
+      "name": "MD",
+      "type": "int",
+      "default": "1",
+      "category": "print",
+      "description": "Frequency of restart file output in MD steps.",
+      "section": "MOTION/PRINT/RESTART/EACH"
+    },
+    "MOTION/PRINT/CELL/EACH/MD": {
+      "name": "MD",
+      "type": "int",
+      "default": "1",
+      "category": "print",
+      "description": "Frequency of cell info output in MD steps.",
+      "section": "MOTION/PRINT/CELL/EACH"
+    },
+    "MOTION/PRINT/STRESS/EACH/MD": {
+      "name": "MD",
+      "type": "int",
+      "default": "1",
+      "category": "print",
+      "description": "Frequency of stress tensor output in MD steps.",
+      "section": "MOTION/PRINT/STRESS/EACH"
+    },
+    "MOTION/BAND/NPROC_REP": {
+      "name": "NPROC_REP",
+      "type": "int",
+      "default": "1",
+      "category": "band",
+      "description": "Number of processors per replica in NEB band.",
+      "section": "MOTION/BAND"
+    },
+    "MOTION/BAND/NUMBER_OF_REPLICA": {
+      "name": "NUMBER_OF_REPLICA",
+      "type": "int",
+      "default": "10",
+      "category": "band",
+      "description": "Number of NEB replicas (images).",
+      "section": "MOTION/BAND"
+    },
+    "MOTION/BAND/BAND_TYPE": {
+      "name": "BAND_TYPE",
+      "type": "enum",
+      "default": "CI-NEB",
+      "category": "band",
+      "description": "NEB band type: IT-NEB, CI-NEB, D-NEB, SM, EB.",
+      "section": "MOTION/BAND"
+    },
+    "MOTION/BAND/K_SPRING": {
+      "name": "K_SPRING",
+      "type": "float",
+      "default": "0.02",
+      "category": "band",
+      "description": "Spring constant for NEB band (Ha/Bohr^2).",
+      "section": "MOTION/BAND"
+    },
+    "FORCE_EVAL/DFT/LS_SCF/MAX_SCF": {
+      "name": "MAX_SCF",
+      "type": "int",
+      "default": "20",
+      "category": "ls_scf",
+      "description": "Maximum SCF iterations for linear-scaling DFT.",
+      "section": "FORCE_EVAL/DFT/LS_SCF"
+    },
+    "FORCE_EVAL/DFT/LS_SCF/EPS_SCF": {
+      "name": "EPS_SCF",
+      "type": "float",
+      "default": "1.0E-7",
+      "category": "ls_scf",
+      "description": "SCF convergence threshold for LS-DFT.",
+      "section": "FORCE_EVAL/DFT/LS_SCF"
+    },
+    "FORCE_EVAL/DFT/LS_SCF/PURIFICATION_METHOD": {
+      "name": "PURIFICATION_METHOD",
+      "type": "enum",
+      "default": "TRS4",
+      "category": "ls_scf",
+      "description": "Purification method for LS-DFT: TRS4, TC2, PEXSI, SIGN.",
+      "section": "FORCE_EVAL/DFT/LS_SCF"
+    },
+    "FORCE_EVAL/DFT/LS_SCF/S_PRECONDITIONER": {
+      "name": "S_PRECONDITIONER",
+      "type": "enum",
+      "default": "ATOMIC",
+      "category": "ls_scf",
+      "description": "Overlap matrix preconditioner: ATOMIC, NONE, MOLECULAR.",
+      "section": "FORCE_EVAL/DFT/LS_SCF"
+    },
+    "FORCE_EVAL/DFT/LS_SCF/MATRIX_CLUSTER_TYPE": {
+      "name": "MATRIX_CLUSTER_TYPE",
+      "type": "enum",
+      "default": "ATOMIC",
+      "category": "ls_scf",
+      "description": "Matrix clustering type: ATOMIC, MOLECULAR.",
+      "section": "FORCE_EVAL/DFT/LS_SCF"
+    },
+    "FORCE_EVAL/DFT/AUXILIARY_DENSITY_MATRIX_METHOD/METHOD": {
+      "name": "METHOD",
+      "type": "enum",
+      "default": "BASIS_PROJECTION",
+      "category": "admm",
+      "description": "ADMM method: BASIS_PROJECTION, BLOCKED_PROJECTION, CHARGE_CONSTRAINED_PROJECTION.",
+      "section": "FORCE_EVAL/DFT/AUXILIARY_DENSITY_MATRIX_METHOD"
+    },
+    "FORCE_EVAL/DFT/AUXILIARY_DENSITY_MATRIX_METHOD/ADMM_PURIFICATION_METHOD": {
+      "name": "ADMM_PURIFICATION_METHOD",
+      "type": "enum",
+      "default": "NONE",
+      "category": "admm",
+      "description": "ADMM purification method: NONE, MO_DIAG, MO_NO_DIAG.",
+      "section": "FORCE_EVAL/DFT/AUXILIARY_DENSITY_MATRIX_METHOD"
+    },
+    "FORCE_EVAL/DFT/AUXILIARY_DENSITY_MATRIX_METHOD/EXCH_CORRECTION_FUNC": {
+      "name": "EXCH_CORRECTION_FUNC",
+      "type": "enum",
+      "default": "DEFAULT",
+      "category": "admm",
+      "description": "Exchange correction functional for ADMM: DEFAULT, PBEX, OPTX, BECKE88.",
+      "section": "FORCE_EVAL/DFT/AUXILIARY_DENSITY_MATRIX_METHOD"
+    },
+    "FORCE_EVAL/DFT/REAL_TIME_PROPAGATION/MAX_ITER": {
+      "name": "MAX_ITER",
+      "type": "int",
+      "default": "100",
+      "category": "rtp",
+      "description": "Maximum number of steps in RT propagation.",
+      "section": "FORCE_EVAL/DFT/REAL_TIME_PROPAGATION"
+    },
+    "FORCE_EVAL/DFT/REAL_TIME_PROPAGATION/MAT_EXP": {
+      "name": "MAT_EXP",
+      "type": "enum",
+      "default": "ARNOLDI",
+      "category": "rtp",
+      "description": "Matrix exponential method: ARNOLDI, BCH, TAYLOR, PADE.",
+      "section": "FORCE_EVAL/DFT/REAL_TIME_PROPAGATION"
+    },
+    "FORCE_EVAL/DFT/REAL_TIME_PROPAGATION/PROPAGATOR": {
+      "name": "PROPAGATOR",
+      "type": "enum",
+      "default": "ETRS",
+      "category": "rtp",
+      "description": "Time propagator: ETRS (enforced time-reversal), CN.",
+      "section": "FORCE_EVAL/DFT/REAL_TIME_PROPAGATION"
+    },
+    "FORCE_EVAL/DFT/REAL_TIME_PROPAGATION/INITIAL_WFN": {
+      "name": "INITIAL_WFN",
+      "type": "enum",
+      "default": "SCF_WFN",
+      "category": "rtp",
+      "description": "Initial wavefunction: SCF_WFN, RESTART_WFN, RT_RESTART.",
+      "section": "FORCE_EVAL/DFT/REAL_TIME_PROPAGATION"
+    },
+    "FORCE_EVAL/MM/FORCEFIELD/PARMTYPE": {
+      "name": "PARMTYPE",
+      "type": "enum",
+      "default": null,
+      "category": "mm",
+      "description": "Force field parameter format: CHM, AMBER, OFF.",
+      "section": "FORCE_EVAL/MM/FORCEFIELD"
+    },
+    "FORCE_EVAL/MM/FORCEFIELD/EI_SCALE14": {
+      "name": "EI_SCALE14",
+      "type": "float",
+      "default": "1.0",
+      "category": "mm",
+      "description": "1-4 electrostatic interaction scaling factor.",
+      "section": "FORCE_EVAL/MM/FORCEFIELD"
+    },
+    "FORCE_EVAL/MM/FORCEFIELD/VDW_SCALE14": {
+      "name": "VDW_SCALE14",
+      "type": "float",
+      "default": "1.0",
+      "category": "mm",
+      "description": "1-4 van der Waals interaction scaling factor.",
+      "section": "FORCE_EVAL/MM/FORCEFIELD"
+    },
+    "FORCE_EVAL/MM/POISSON/EWALD/EWALD_TYPE": {
+      "name": "EWALD_TYPE",
+      "type": "enum",
+      "default": "EWALD",
+      "category": "mm",
+      "description": "Ewald method: EWALD, PME, SPME, NONE.",
+      "section": "FORCE_EVAL/MM/POISSON/EWALD"
+    },
+    "FORCE_EVAL/MM/POISSON/EWALD/ALPHA": {
+      "name": "ALPHA",
+      "type": "float",
+      "default": "0.35",
+      "category": "mm",
+      "description": "Ewald convergence parameter.",
+      "section": "FORCE_EVAL/MM/POISSON/EWALD"
+    },
+    "FORCE_EVAL/MM/POISSON/EWALD/GMAX": {
+      "name": "GMAX",
+      "type": "int",
+      "default": null,
+      "category": "mm",
+      "description": "Number of reciprocal space vectors for Ewald.",
+      "section": "FORCE_EVAL/MM/POISSON/EWALD"
+    },
+    "FORCE_EVAL/QMMM/E_COUPL": {
+      "name": "E_COUPL",
+      "type": "enum",
+      "default": "GAUSS",
+      "category": "qmmm",
+      "description": "QM/MM coupling method: GAUSS, COULOMB, S_WAVE, NONE.",
+      "section": "FORCE_EVAL/QMMM"
+    },
+    "FORCE_EVAL/QMMM/MM_POTENTIAL_FILE_NAME": {
+      "name": "MM_POTENTIAL_FILE_NAME",
+      "type": "str",
+      "default": null,
+      "category": "qmmm",
+      "description": "Path to MM potential file for QM/MM.",
+      "section": "FORCE_EVAL/QMMM"
+    },
+    "FORCE_EVAL/PROPERTIES/LINRES/LOCALIZE": {
+      "name": "LOCALIZE",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "response",
+      "description": "Localize orbitals before linear response.",
+      "section": "FORCE_EVAL/PROPERTIES/LINRES"
+    },
+    "FORCE_EVAL/PROPERTIES/LINRES/MAX_ITER": {
+      "name": "MAX_ITER",
+      "type": "int",
+      "default": "50",
+      "category": "response",
+      "description": "Maximum iterations for linear response equations.",
+      "section": "FORCE_EVAL/PROPERTIES/LINRES"
+    },
+    "FORCE_EVAL/PROPERTIES/LINRES/EPS": {
+      "name": "EPS",
+      "type": "float",
+      "default": "1.0E-6",
+      "category": "response",
+      "description": "Convergence threshold for linear response.",
+      "section": "FORCE_EVAL/PROPERTIES/LINRES"
+    },
+    "FORCE_EVAL/PROPERTIES/LINRES/POLAR/DO_RAMAN": {
+      "name": "DO_RAMAN",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "response",
+      "description": "Compute Raman intensities via linear response.",
+      "section": "FORCE_EVAL/PROPERTIES/LINRES/POLAR"
+    },
+    "FORCE_EVAL/PROPERTIES/TDDFPT/NSTATES": {
+      "name": "NSTATES",
+      "type": "int",
+      "default": "1",
+      "category": "tddft",
+      "description": "Number of excited states in TDDFPT properties.",
+      "section": "FORCE_EVAL/PROPERTIES/TDDFPT"
+    },
+    "MOTION/CONSTRAINT/FIXED_ATOMS/LIST": {
+      "name": "LIST",
+      "type": "str",
+      "default": null,
+      "category": "constraint",
+      "description": "Atom indices to fix during optimization/MD.",
+      "section": "MOTION/CONSTRAINT/FIXED_ATOMS"
+    },
+    "MOTION/CONSTRAINT/FIXED_ATOMS/COMPONENTS_TO_FIX": {
+      "name": "COMPONENTS_TO_FIX",
+      "type": "enum",
+      "default": "XYZ",
+      "category": "constraint",
+      "description": "Which Cartesian components to fix: XYZ, XY, X, Y, Z, etc.",
+      "section": "MOTION/CONSTRAINT/FIXED_ATOMS"
+    },
+    "MOTION/FREE_ENERGY/METADYN/DO_HILLS": {
+      "name": "DO_HILLS",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "metadyn",
+      "description": "Enable hill spawning in metadynamics.",
+      "section": "MOTION/FREE_ENERGY/METADYN"
+    },
+    "MOTION/FREE_ENERGY/METADYN/WW": {
+      "name": "WW",
+      "type": "float",
+      "default": null,
+      "category": "metadyn",
+      "description": "Height of Gaussian hills in metadynamics (Ha).",
+      "section": "MOTION/FREE_ENERGY/METADYN"
+    },
+    "MOTION/FREE_ENERGY/METADYN/NT_HILLS": {
+      "name": "NT_HILLS",
+      "type": "int",
+      "default": null,
+      "category": "metadyn",
+      "description": "Frequency of hill spawning (in MD steps).",
+      "section": "MOTION/FREE_ENERGY/METADYN"
+    },
+    "FORCE_EVAL/DFT/PRINT/MULLIKEN": {
+      "name": "MULLIKEN",
+      "type": "str",
+      "default": null,
+      "category": "print",
+      "description": "Enable Mulliken population analysis printing.",
+      "section": "FORCE_EVAL/DFT/PRINT"
+    },
+    "FORCE_EVAL/DFT/PRINT/HIRSHFELD": {
+      "name": "HIRSHFELD",
+      "type": "str",
+      "default": null,
+      "category": "print",
+      "description": "Enable Hirshfeld charge analysis printing.",
+      "section": "FORCE_EVAL/DFT/PRINT"
+    },
+    "FORCE_EVAL/DFT/PRINT/MO/EIGENVALUES": {
+      "name": "EIGENVALUES",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "print",
+      "description": "Print MO eigenvalues (KS orbital energies).",
+      "section": "FORCE_EVAL/DFT/PRINT/MO"
+    },
+    "FORCE_EVAL/DFT/PRINT/MO/OCCUPATION_NUMBERS": {
+      "name": "OCCUPATION_NUMBERS",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "print",
+      "description": "Print MO occupation numbers.",
+      "section": "FORCE_EVAL/DFT/PRINT/MO"
+    },
+    "FORCE_EVAL/PRINT/FORCES/EACH/QS_SCF": {
+      "name": "QS_SCF",
+      "type": "int",
+      "default": "0",
+      "category": "print",
+      "description": "Print forces every N QS SCF steps (0 = off).",
+      "section": "FORCE_EVAL/PRINT/FORCES/EACH"
+    },
+    "FORCE_EVAL/PRINT/STRESS_TENSOR": {
+      "name": "STRESS_TENSOR",
+      "type": "str",
+      "default": null,
+      "category": "print",
+      "description": "Control stress tensor printing.",
+      "section": "FORCE_EVAL/PRINT"
+    },
+    "EXT_RESTART/RESTART_FILE_NAME": {
+      "name": "RESTART_FILE_NAME",
+      "type": "str",
+      "default": null,
+      "category": "restart",
+      "description": "Path to restart file for continuing a calculation.",
+      "section": "EXT_RESTART"
+    },
+    "EXT_RESTART/RESTART_DEFAULT": {
+      "name": "RESTART_DEFAULT",
+      "type": "bool",
+      "default": ".TRUE.",
+      "category": "restart",
+      "description": "Use default restart settings.",
+      "section": "EXT_RESTART"
+    },
+    "EXT_RESTART/RESTART_COUNTERS": {
+      "name": "RESTART_COUNTERS",
+      "type": "bool",
+      "default": ".TRUE.",
+      "category": "restart",
+      "description": "Restart internal step counters.",
+      "section": "EXT_RESTART"
+    },
+    "EXT_RESTART/RESTART_POS": {
+      "name": "RESTART_POS",
+      "type": "bool",
+      "default": ".TRUE.",
+      "category": "restart",
+      "description": "Restart atomic positions from restart file.",
+      "section": "EXT_RESTART"
+    },
+    "EXT_RESTART/RESTART_VEL": {
+      "name": "RESTART_VEL",
+      "type": "bool",
+      "default": ".TRUE.",
+      "category": "restart",
+      "description": "Restart velocities from restart file.",
+      "section": "EXT_RESTART"
+    },
+    "EXT_RESTART/RESTART_CELL": {
+      "name": "RESTART_CELL",
+      "type": "bool",
+      "default": ".TRUE.",
+      "category": "restart",
+      "description": "Restart cell parameters from restart file.",
+      "section": "EXT_RESTART"
+    },
+    "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL/BECKE88": {
+      "name": "BECKE88",
+      "type": "str",
+      "default": null,
+      "category": "xc",
+      "description": "Becke88 exchange functional section (part of B3LYP/BLYP).",
+      "section": "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL"
+    },
+    "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL/LYP": {
+      "name": "LYP",
+      "type": "str",
+      "default": null,
+      "category": "xc",
+      "description": "LYP correlation functional section (part of B3LYP/BLYP).",
+      "section": "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL"
+    },
+    "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL/VWN": {
+      "name": "VWN",
+      "type": "str",
+      "default": null,
+      "category": "xc",
+      "description": "Vosko-Wilk-Nusair correlation functional (LDA).",
+      "section": "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL"
+    },
+    "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL/XALPHA": {
+      "name": "XALPHA",
+      "type": "str",
+      "default": null,
+      "category": "xc",
+      "description": "X-alpha exchange functional.",
+      "section": "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL"
+    },
+    "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL/TPSS": {
+      "name": "TPSS",
+      "type": "str",
+      "default": null,
+      "category": "xc",
+      "description": "TPSS meta-GGA exchange-correlation functional section.",
+      "section": "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL"
+    },
+    "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL/SCAN": {
+      "name": "SCAN",
+      "type": "str",
+      "default": null,
+      "category": "xc",
+      "description": "SCAN meta-GGA exchange-correlation functional section.",
+      "section": "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL"
+    },
+    "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL/OPTB88": {
+      "name": "OPTB88",
+      "type": "str",
+      "default": null,
+      "category": "xc",
+      "description": "optB88 exchange functional for vdW-DF.",
+      "section": "FORCE_EVAL/DFT/XC/XC_FUNCTIONAL"
+    },
+    "MOTION/PRINT/RESTART_HISTORY": {
+      "name": "RESTART_HISTORY",
+      "type": "str",
+      "default": null,
+      "category": "print",
+      "description": "Control restart history file writing.",
+      "section": "MOTION/PRINT"
+    },
+    "MOTION/PRINT/VELOCITIES": {
+      "name": "VELOCITIES",
+      "type": "str",
+      "default": null,
+      "category": "print",
+      "description": "Control velocity output.",
+      "section": "MOTION/PRINT"
+    },
+    "MOTION/PRINT/TRAJECTORY/UNIT": {
+      "name": "UNIT",
+      "type": "enum",
+      "default": "angstrom",
+      "category": "print",
+      "description": "Units for trajectory output: angstrom, bohr.",
+      "section": "MOTION/PRINT/TRAJECTORY"
+    },
+    "FORCE_EVAL/DFT/SCF/LEVEL_SHIFT": {
+      "name": "LEVEL_SHIFT",
+      "type": "float",
+      "default": "0.0",
+      "category": "scf",
+      "description": "Level shift applied to unoccupied orbitals during SCF (Ha).",
+      "section": "FORCE_EVAL/DFT/SCF"
+    },
+    "FORCE_EVAL/DFT/SCF/EPS_DIIS": {
+      "name": "EPS_DIIS",
+      "type": "float",
+      "default": "0.1",
+      "category": "scf",
+      "description": "Threshold at which DIIS mixing is activated.",
+      "section": "FORCE_EVAL/DFT/SCF"
+    },
+    "FORCE_EVAL/DFT/MGRID/COMMENSURATE": {
+      "name": "COMMENSURATE",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "grid",
+      "description": "Use commensurate multi-grids.",
+      "section": "FORCE_EVAL/DFT/MGRID"
+    },
+    "FORCE_EVAL/DFT/MGRID/REALSPACE": {
+      "name": "REALSPACE",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "grid",
+      "description": "Use real-space (RS) multi-grid method.",
+      "section": "FORCE_EVAL/DFT/MGRID"
+    },
+    "FORCE_EVAL/DFT/PRINT/LOWDIN": {
+      "name": "LOWDIN",
+      "type": "str",
+      "default": null,
+      "category": "print",
+      "description": "Enable Lowdin population analysis printing.",
+      "section": "FORCE_EVAL/DFT/PRINT"
+    },
+    "FORCE_EVAL/DFT/SCF/OT/ROTATION": {
+      "name": "ROTATION",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "scf",
+      "description": "Use orbital rotation in OT method.",
+      "section": "FORCE_EVAL/DFT/SCF/OT"
+    },
+    "FORCE_EVAL/DFT/SCF/OT/ENERGIES": {
+      "name": "ENERGIES",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "scf",
+      "description": "Compute orbital energies in OT method.",
+      "section": "FORCE_EVAL/DFT/SCF/OT"
+    },
+    "MOTION/VIBRATIONAL_ANALYSIS/DX": {
+      "name": "DX",
+      "type": "float",
+      "default": "0.01",
+      "category": "vibrational",
+      "description": "Displacement for numerical force differentiation (Bohr).",
+      "section": "MOTION/VIBRATIONAL_ANALYSIS"
+    },
+    "MOTION/VIBRATIONAL_ANALYSIS/NPROC_REP": {
+      "name": "NPROC_REP",
+      "type": "int",
+      "default": "1",
+      "category": "vibrational",
+      "description": "Number of processors per displacement replica.",
+      "section": "MOTION/VIBRATIONAL_ANALYSIS"
+    },
+    "MOTION/VIBRATIONAL_ANALYSIS/FULLY_PERIODIC": {
+      "name": "FULLY_PERIODIC",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "vibrational",
+      "description": "Treat system as fully periodic for vibrational analysis.",
+      "section": "MOTION/VIBRATIONAL_ANALYSIS"
+    },
+    "MOTION/VIBRATIONAL_ANALYSIS/INTENSITIES": {
+      "name": "INTENSITIES",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "vibrational",
+      "description": "Compute IR intensities via dipole derivatives.",
+      "section": "MOTION/VIBRATIONAL_ANALYSIS"
+    },
+    "MOTION/VIBRATIONAL_ANALYSIS/TC_PRESSURE": {
+      "name": "TC_PRESSURE",
+      "type": "float",
+      "default": "101325.0",
+      "category": "vibrational",
+      "description": "Pressure for thermochemistry (Pa).",
+      "section": "MOTION/VIBRATIONAL_ANALYSIS"
+    },
+    "MOTION/VIBRATIONAL_ANALYSIS/TC_TEMPERATURE": {
+      "name": "TC_TEMPERATURE",
+      "type": "float",
+      "default": "273.15",
+      "category": "vibrational",
+      "description": "Temperature for thermochemistry (K).",
+      "section": "MOTION/VIBRATIONAL_ANALYSIS"
+    },
+    "FORCE_EVAL/DFT/PRINT/MOMENTS/PERIODIC": {
+      "name": "PERIODIC",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "print",
+      "description": "Use Berry phase for dipole moment in periodic systems.",
+      "section": "FORCE_EVAL/DFT/PRINT/MOMENTS"
+    },
+    "FORCE_EVAL/DFT/PRINT/MOMENTS/REFERENCE": {
+      "name": "REFERENCE",
+      "type": "enum",
+      "default": "ZERO",
+      "category": "print",
+      "description": "Dipole reference point: ZERO, COAC, COM, USER_DEFINED.",
+      "section": "FORCE_EVAL/DFT/PRINT/MOMENTS"
+    },
+    "FORCE_EVAL/DFT/SCF/PRINT/RESTART/EACH/QS_SCF": {
+      "name": "QS_SCF",
+      "type": "int",
+      "default": "0",
+      "category": "print",
+      "description": "Frequency of wavefunction restart write per SCF step.",
+      "section": "FORCE_EVAL/DFT/SCF/PRINT/RESTART/EACH"
+    },
+    "FORCE_EVAL/DFT/LOCALIZE/METHOD": {
+      "name": "METHOD",
+      "type": "enum",
+      "default": "JACOBI",
+      "category": "electronic",
+      "description": "Orbital localization method: JACOBI, CRAZY, DIRECT, L1SD.",
+      "section": "FORCE_EVAL/DFT/LOCALIZE"
+    },
+    "FORCE_EVAL/DFT/LOCALIZE/MAX_ITER": {
+      "name": "MAX_ITER",
+      "type": "int",
+      "default": "10000",
+      "category": "electronic",
+      "description": "Maximum iterations for orbital localization.",
+      "section": "FORCE_EVAL/DFT/LOCALIZE"
+    },
+    "FORCE_EVAL/DFT/LOCALIZE/EPS_LOCALIZATION": {
+      "name": "EPS_LOCALIZATION",
+      "type": "float",
+      "default": "1.0E-4",
+      "category": "electronic",
+      "description": "Convergence threshold for orbital localization.",
+      "section": "FORCE_EVAL/DFT/LOCALIZE"
+    },
+    "FORCE_EVAL/DFT/MGRID/SKIP_LOAD_BALANCE_DISTRIBUTED": {
+      "name": "SKIP_LOAD_BALANCE_DISTRIBUTED",
+      "type": "bool",
+      "default": ".FALSE.",
+      "category": "grid",
+      "description": "Skip load balancing for distributed grids.",
+      "section": "FORCE_EVAL/DFT/MGRID"
+    },
+    "FORCE_EVAL/SUBSYS/KIND/MM_RADIUS": {
+      "name": "MM_RADIUS",
+      "type": "float",
+      "default": null,
+      "category": "mm",
+      "description": "MM radius for QM/MM boundary treatment.",
+      "section": "FORCE_EVAL/SUBSYS/KIND"
+    }
+  }
+}

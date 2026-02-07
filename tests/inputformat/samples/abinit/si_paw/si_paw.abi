@@ -1,0 +1,36 @@
+# Silicon PAW — projector augmented wave calculation
+# 2-atom diamond Si using PAW method
+
+# System definition
+acell 3*10.26311  # Bohr
+rprim
+  0.0  0.5  0.5
+  0.5  0.0  0.5
+  0.5  0.5  0.0
+ntypat 1
+znucl 14
+natom 2
+typat 1 1
+xred
+  0.00  0.00  0.00
+  0.25  0.25  0.25
+
+# PAW settings
+usepaw 1
+pawecutdg 40  # PAW double-grid cutoff (Ha)
+
+# Plane-wave basis
+ecut 15
+
+# K-point grid
+ngkpt 4 4 4
+nshiftk 1
+shiftk 0.5 0.5 0.5
+
+# SCF convergence
+nstep 30
+toldfe 1.0d-8
+
+# Pseudopotentials (PAW datasets)
+pp_dirpath "./pseudos"
+pseudos "Si.GGA_PBE-JTH.xml"

@@ -1,0 +1,49 @@
+# Silicon band structure — multi-dataset SCF + NSCF
+# Dataset 1: SCF on uniform grid
+# Dataset 2: NSCF along high-symmetry path L-G-X-K-G
+
+ndtset 2
+
+# Common variables
+acell 3*10.26311  # Bohr
+rprim
+  0.0  0.5  0.5
+  0.5  0.0  0.5
+  0.5  0.5  0.0
+ntypat 1
+znucl 14
+natom 2
+typat 1 1
+xred
+  0.00  0.00  0.00
+  0.25  0.25  0.25
+
+ecut 10
+nstep 30
+
+# Dataset 1: SCF
+toldfe1 1.0d-8
+ngkpt1 4 4 4
+nshiftk1 1
+shiftk1 0.5 0.5 0.5
+prtden1 1  # Print density for dataset 2
+
+# Dataset 2: NSCF band structure
+iscf2 -2          # Non-self-consistent
+getden2 1         # Read density from dataset 1
+tolwfr2 1.0d-12
+nband2 8
+
+# High-symmetry path: L-Gamma-X-K-Gamma
+kptopt2 -4
+ndivk2 10 10 10 10
+kptbounds2
+  0.5   0.0   0.0   # L
+  0.0   0.0   0.0   # Gamma
+  0.0   0.5   0.5   # X
+  0.375 0.375 0.75  # K
+  0.0   0.0   0.0   # Gamma
+
+# Pseudopotentials
+pp_dirpath "./pseudos"
+pseudos "Si.psp8"

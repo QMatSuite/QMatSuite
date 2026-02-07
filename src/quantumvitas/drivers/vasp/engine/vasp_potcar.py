@@ -23,8 +23,11 @@ POTCAR_LIBRARY_DIRS: Dict[str, str] = {
 def get_default_potcar_root() -> Optional[Path]:
     """Return the default POTCAR root directory, or None if not found.
 
-    Searches for ``~/.qmatsuite/engines/vasp/`` first, then checks
-    the ``VASP_PP_PATH`` environment variable.
+    Search order:
+        1. ``VASP_PP_PATH`` environment variable
+        2. Project-local ``.qmatsuite/engines/vasp/`` (via centralized repo root)
+        3. Project-local ``.qmatsuite/engines/vasp/`` (walked up from CWD)
+        4. ``~/.qmatsuite/engines/vasp/``
     """
     # Check env var first
     env_path = os.environ.get("VASP_PP_PATH")
@@ -33,7 +36,30 @@ def get_default_potcar_root() -> Optional[Path]:
         if p.is_dir():
             return p
 
-    # Default location
+    # Project-local via centralized repo root detection
+    # (handles test environments where CWD is a tmpdir)
+    try:
+        from quantumvitas.core.engines.discovery import _find_repo_root
+        repo_root = _find_repo_root()
+        if repo_root:
+            candidate = repo_root / ".qmatsuite" / "engines" / "vasp"
+            if candidate.is_dir():
+                return candidate
+    except ImportError:
+        pass
+
+    # Project-local: walk up from CWD
+    current = Path.cwd().resolve()
+    for _ in range(20):
+        candidate = current / ".qmatsuite" / "engines" / "vasp"
+        if candidate.is_dir():
+            return candidate
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
+
+    # Home directory default
     default = Path.home() / ".qmatsuite" / "engines" / "vasp"
     if default.is_dir():
         return default

@@ -189,13 +189,27 @@ def get_recipe_for_engine(engine_family: str) -> BaseRecipe:
 # to maintain compatibility with existing test code and handlers.
 # The DriverRegistry is the primary mechanism; these are compat shims.
 # Import at module level to ensure isinstance() checks work correctly
-from quantumvitas.drivers.qe.recipe import QERecipe
-from quantumvitas.drivers.orca.recipe import ORCARecipe
-from quantumvitas.drivers.vasp.recipe import VASPRecipe
-from quantumvitas.drivers.pyscf.recipe import PySCFRecipe
-from quantumvitas.drivers.cp2k.recipe import CP2KRecipe
-from quantumvitas.drivers.lammps.recipe import LAMMPSRecipe
-from quantumvitas.drivers.w90.recipe import W90Recipe
+_RECIPE_EXPORTS = {
+    "QERecipe": "quantumvitas.drivers.qe.recipe",
+    "ORCARecipe": "quantumvitas.drivers.orca.recipe",
+    "VASPRecipe": "quantumvitas.drivers.vasp.recipe",
+    "PySCFRecipe": "quantumvitas.drivers.pyscf.recipe",
+    "CP2KRecipe": "quantumvitas.drivers.cp2k.recipe",
+    "LAMMPSRecipe": "quantumvitas.drivers.lammps.recipe",
+    "W90Recipe": "quantumvitas.drivers.w90.recipe",
+}
+
+
+def __getattr__(name: str):
+    """Lazy-load recipe re-exports to avoid import cycles."""
+    if name in _RECIPE_EXPORTS:
+        import importlib
+
+        module = importlib.import_module(_RECIPE_EXPORTS[name])
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "BaseRecipe",

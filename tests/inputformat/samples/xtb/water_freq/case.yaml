@@ -1,0 +1,6 @@
+case_id: water_freq
+title: "Water optimize+hessian"
+engine: xtb
+workflow_tags: [frequency, hessian, ohess]
+species: [O, H]
+description: "Optimization plus Hessian and thermochemistry."

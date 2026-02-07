@@ -6,6 +6,7 @@ Requires QMCPACK binary to be available.
 """
 
 import json
+import shutil
 import pytest
 from pathlib import Path
 
@@ -20,6 +21,18 @@ from quantumvitas.core.models import load_calculation
 
 
 from quantumvitas.core.engines.discovery import is_engine_available
+
+
+def _find_qmcpack_asset(repo_root: Path, filename: str) -> Path | None:
+    """Find a required QMCPACK test asset from known local locations."""
+    candidates = [
+        repo_root / ".qmatsuite" / "engines" / "qmcpack" / "qmcpack-4.1.0" / "tests" / "solids" / "diamondC_1x1x1_pp" / filename,
+        repo_root / ".tmp" / "engine_research" / "qmcpack" / "extracted" / "tests_solids" / "diamondC_1x1x1_pp" / filename,
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
 
 
 @pytest.fixture
@@ -39,6 +52,16 @@ def diamond_vmc_project(tmp_path: Path):
         target_dir=tmp_path / "qmcpack_project",
         name="QMCPACK VMC Test"
     )
+    repo_root = Path(__file__).resolve().parents[2]
+
+    # Stage required wavefunction/pseudopotential into project root so the engine
+    # can copy them into the step workdir during materialization.
+    h5_src = _find_qmcpack_asset(repo_root, "pwscf.pwscf.h5")
+    pseudo_src = _find_qmcpack_asset(repo_root, "C.BFD.xml")
+    if h5_src is None or pseudo_src is None:
+        pytest.skip("QMCPACK test assets not found (pwscf.pwscf.h5, C.BFD.xml)")
+    shutil.copy2(h5_src, project_root / "pwscf.pwscf.h5")
+    shutil.copy2(pseudo_src, project_root / "C.BFD.xml")
 
     # Create diamond C structure
     lattice = Lattice(

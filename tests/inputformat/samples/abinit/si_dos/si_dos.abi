@@ -1,0 +1,42 @@
+# Silicon DOS — multi-dataset SCF + dense NSCF
+# Dataset 1: SCF on coarse grid
+# Dataset 2: NSCF on dense grid with DOS output
+
+ndtset 2
+
+# Common variables
+acell 3*10.26311  # Bohr
+rprim
+  0.0  0.5  0.5
+  0.5  0.0  0.5
+  0.5  0.5  0.0
+ntypat 1
+znucl 14
+natom 2
+typat 1 1
+xred
+  0.00  0.00  0.00
+  0.25  0.25  0.25
+
+ecut 10
+nstep 30
+
+# Dataset 1: SCF
+toldfe1 1.0d-8
+ngkpt1 4 4 4
+nshiftk1 1
+shiftk1 0.5 0.5 0.5
+prtden1 1  # Print density for dataset 2
+
+# Dataset 2: NSCF for DOS
+iscf2 -2          # Non-self-consistent
+getden2 1         # Read density from dataset 1
+tolwfr2 1.0d-12
+ngkpt2 8 8 8      # Dense k-mesh for DOS
+nshiftk2 1
+shiftk2 0.5 0.5 0.5
+prtdos2 1         # Print DOS
+
+# Pseudopotentials
+pp_dirpath "./pseudos"
+pseudos "Si.psp8"

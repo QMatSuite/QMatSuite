@@ -1,0 +1,45 @@
+# Silicon DFPT phonons — perturbation theory at Gamma
+# Dataset 1: SCF ground state
+# Dataset 2: DFPT phonon response
+
+ndtset 2
+
+# Common variables
+acell 3*10.26311  # Bohr
+rprim
+  0.0  0.5  0.5
+  0.5  0.0  0.5
+  0.5  0.5  0.0
+ntypat 1
+znucl 14
+natom 2
+typat 1 1
+xred
+  0.00  0.00  0.00
+  0.25  0.25  0.25
+
+ecut 10
+nstep 30
+
+# K-point grid
+ngkpt 4 4 4
+nshiftk 1
+shiftk 0.5 0.5 0.5
+
+# Dataset 1: SCF ground state
+toldfe1 1.0d-8
+prtden1 1
+
+# Dataset 2: DFPT phonon response at Gamma
+getwfk2 1
+getden2 1
+rfphon2 1         # Activate phonon response
+rfatpol2 1 2      # Perturb atoms 1 through 2
+rfdir2 1 1 1      # All three directions
+nqpt2 1
+qpt2 0.0 0.0 0.0 # Gamma point
+tolvrs2 1.0d-8
+
+# Pseudopotentials
+pp_dirpath "./pseudos"
+pseudos "Si.psp8"

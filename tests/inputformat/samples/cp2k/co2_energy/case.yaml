@@ -1,0 +1,6 @@
+case_id: co2_energy
+title: "CO2 single-point with OT minimizer"
+engine: cp2k
+workflow_tags: [scf, molecule, ot]
+species: [C, O]
+description: "CO2 single-point using orbital transformation (OT) minimizer with DIIS and FULL_SINGLE_INVERSE preconditioner. Tests SCF/OT section and high-accuracy MGRID settings."

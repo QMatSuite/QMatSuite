@@ -1,12 +1,18 @@
-"""Siesta FDF input writer.
-
-Generates Siesta FDF input files from structured parameters.
-"""
+"""Siesta FDF input writer (driver-facing compatibility wrapper)."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+
+from quantumvitas.drivers.siesta.io.fdf import write_fdf_text
+
+
+def _to_lattice_ang(lattice_constant: float, lattice_vectors: list[list[float]]) -> list[list[float]]:
+    return [
+        [float(lattice_constant) * float(v[0]), float(lattice_constant) * float(v[1]), float(lattice_constant) * float(v[2])]
+        for v in lattice_vectors
+    ]
 
 
 def write_fdf(
@@ -20,170 +26,55 @@ def write_fdf(
     coord_format: str = "Ang",
     params: dict[str, Any] | None = None,
 ) -> str:
-    """Write a Siesta FDF input file.
+    """Write a Siesta FDF input file from legacy handler arguments.
 
-    Args:
-        output_path: Path to write the FDF file
-        system_name: Human-readable system name
-        system_label: Short label for file naming
-        species: List of dicts with keys: index, atomic_number, label
-        lattice_constant: Lattice constant in Angstrom
-        lattice_vectors: 3x3 lattice vectors (scaled by lattice_constant)
-        atoms: List of dicts with keys: x, y, z, species_index
-        coord_format: Coordinate format (Ang, Bohr, ScaledCartesian, Fractional)
-        params: Additional FDF parameters as key-value dict
-
-    Returns:
-        The FDF file content as a string
+    This wrapper preserves the historic ``write_fdf(...)`` API while delegating
+    rendering to ``drivers/siesta/io/fdf.py``.
     """
-    if params is None:
-        params = {}
-    else:
-        params = dict(params)  # defensive copy
+    p = dict(params or {})
 
-    lines: list[str] = []
+    # Convert species/atoms records into StructureDoc-like representation.
+    species_by_idx: dict[int, str] = {}
+    znucl: dict[str, int] = {}
+    for rec in species:
+        idx = int(rec.get("index", 0))
+        label = str(rec.get("label", f"Type{idx}"))
+        z = int(rec.get("atomic_number", 0))
+        species_by_idx[idx] = label
+        znucl[label] = z
 
-    # System identification
-    lines.append(f"SystemName        {system_name}")
-    lines.append(f"SystemLabel       {system_label}")
-    lines.append("")
-
-    # Species
-    lines.append(f"NumberOfAtoms     {len(atoms)}")
-    lines.append(f"NumberOfSpecies   {len(species)}")
-    lines.append("")
-    lines.append("%block ChemicalSpeciesLabel")
-    for sp in species:
-        lines.append(f" {sp['index']}  {sp['atomic_number']}  {sp['label']}")
-    lines.append("%endblock ChemicalSpeciesLabel")
-    lines.append("")
-
-    # Basis set
-    basis_size = params.pop("PAO.BasisSize", "DZP")
-    energy_shift = params.pop("PAO.EnergyShift", "100 meV")
-    lines.append(f"PAO.BasisSize     {basis_size}")
-    lines.append(f"PAO.EnergyShift   {energy_shift}")
-    lines.append("")
-
-    # Lattice
-    lines.append(f"LatticeConstant   {lattice_constant} Ang")
-    lines.append("%block LatticeVectors")
-    for v in lattice_vectors:
-        lines.append(f"  {v[0]:.6f}  {v[1]:.6f}  {v[2]:.6f}")
-    lines.append("%endblock LatticeVectors")
-    lines.append("")
-
-    # Atomic coordinates
-    lines.append(f"AtomicCoordinatesFormat  {coord_format}")
-    lines.append("%block AtomicCoordinatesAndAtomicSpecies")
+    struct_species: list[str] = []
+    coords: list[list[float]] = []
     for atom in atoms:
-        lines.append(
-            f"  {atom['x']:.6f}  {atom['y']:.6f}  {atom['z']:.6f}  {atom['species_index']}"
-        )
-    lines.append("%endblock AtomicCoordinatesAndAtomicSpecies")
-    lines.append("")
+        sp_idx = int(atom.get("species_index", 1))
+        struct_species.append(species_by_idx.get(sp_idx, f"Type{sp_idx}"))
+        coords.append([float(atom.get("x", 0.0)), float(atom.get("y", 0.0)), float(atom.get("z", 0.0))])
 
-    # K-points (if provided)
-    kgrid = params.pop("kgrid", None)
-    if kgrid:
-        lines.append("%block kgrid_Monkhorst_Pack")
-        for row in kgrid:
-            if len(row) == 4:
-                lines.append(f"  {row[0]}  {row[1]}  {row[2]}  {row[3]}")
-            else:
-                lines.append(f"  {row[0]}  {row[1]}  {row[2]}  0.0")
-        lines.append("%endblock kgrid_Monkhorst_Pack")
-        lines.append("")
+    structure: dict[str, Any] = {
+        "species": struct_species,
+        "lattice": _to_lattice_ang(lattice_constant, lattice_vectors),
+    }
 
-    # SCF parameters
-    mesh_cutoff = params.pop("MeshCutoff", "200.0 Ry")
-    max_scf = params.pop("MaxSCFIterations", 100)
-    mixing_weight = params.pop("DM.MixingWeight", 0.3)
-    dm_tolerance = params.pop("DM.Tolerance", "1.d-4")
-    solution_method = params.pop("SolutionMethod", "diagon")
-    xc_functional = params.pop("XC.functional", "GGA")
-    xc_authors = params.pop("XC.authors", "PBE")
+    fmt = coord_format.strip().lower()
+    if fmt in {"fractional", "scaledcartesian", "scaled"}:
+        structure["frac_coords"] = coords
+    else:
+        structure["cart_coords"] = coords
 
-    lines.append(f"MeshCutoff        {mesh_cutoff}")
-    lines.append(f"MaxSCFIterations  {max_scf}")
-    lines.append(f"DM.MixingWeight   {mixing_weight}")
-    lines.append(f"DM.Tolerance      {dm_tolerance}")
-    lines.append(f"SolutionMethod    {solution_method}")
-    lines.append(f"XC.functional     {xc_functional}")
-    lines.append(f"XC.authors        {xc_authors}")
-    lines.append("")
+    merged_params = {
+        "system_name": system_name,
+        "system_label": system_label,
+        # Keep the original lattice scaling so ScaledCartesian coordinates
+        # preserve their physical meaning in the emitted FDF.
+        "LatticeConstant": f"{float(lattice_constant):.12g} Ang",
+        "AtomicCoordinatesFormat": coord_format,
+        "znucl": znucl,
+    }
+    merged_params.update(p)
 
-    # Output controls
-    write_forces = params.pop("WriteForces", True)
-    write_coor_xmol = params.pop("WriteCoorXmol", True)
-    if write_forces:
-        lines.append("WriteForces       T")
-    if write_coor_xmol:
-        lines.append("WriteCoorXmol     T")
+    text = write_fdf_text({"params": merged_params, "structure": structure})
+    output_path.write_text(text)
+    return text
 
-    # Relaxation / MD parameters
-    md_type = params.pop("MD.TypeOfRun", None)
-    if md_type:
-        lines.append("")
-        lines.append(f"MD.TypeOfRun      {md_type}")
-        md_steps = params.pop("MD.NumCGsteps", None) or params.pop("MD.Steps", None)
-        if md_steps:
-            if md_type == "CG":
-                lines.append(f"MD.NumCGsteps     {md_steps}")
-            else:
-                lines.append(f"MD.Steps          {md_steps}")
-        force_tol = params.pop("MD.MaxForceTol", None)
-        if force_tol:
-            lines.append(f"MD.MaxForceTol    {force_tol}")
-        variable_cell = params.pop("MD.VariableCell", None)
-        if variable_cell:
-            lines.append(f"MD.VariableCell   {'T' if variable_cell else 'F'}")
-        stress_tol = params.pop("MD.MaxStressTol", None)
-        if stress_tol:
-            lines.append(f"MD.MaxStressTol   {stress_tol}")
-        lines.append("WriteMDXmol       T")
-        lines.append("WriteMDhistory    T")
 
-    # DM restart
-    use_dm = params.pop("DM.UseSaveDM", None)
-    if use_dm is not None:
-        lines.append(f"DM.UseSaveDM      {'T' if use_dm else 'F'}")
-
-    # PDOS block
-    pdos = params.pop("ProjectedDensityOfStates", None)
-    if pdos:
-        lines.append("")
-        lines.append("%block ProjectedDensityOfStates")
-        lines.append(
-            f"  {pdos['emin']}  {pdos['emax']}  {pdos['sigma']}  {pdos['npoints']}  eV"
-        )
-        lines.append("%endblock ProjectedDensityOfStates")
-
-    # Band lines
-    band_lines = params.pop("BandLines", None)
-    if band_lines:
-        lines.append("")
-        scale = params.pop("BandLinesScale", "pi/a")
-        lines.append(f"BandLinesScale    {scale}")
-        lines.append("%block BandLines")
-        for bl in band_lines:
-            lines.append(
-                f"{bl['npoints']:3d}  {bl['kx']:.3f}  {bl['ky']:.3f}  "
-                f"{bl['kz']:.3f}  {bl['label']}"
-            )
-        lines.append("%endblock BandLines")
-
-    # Remaining params
-    if params:
-        lines.append("")
-        for key, value in params.items():
-            if isinstance(value, bool):
-                lines.append(f"{key}  {'T' if value else 'F'}")
-            else:
-                lines.append(f"{key}  {value}")
-
-    lines.append("")
-    content = "\n".join(lines)
-
-    output_path.write_text(content)
-    return content
+__all__ = ["write_fdf"]

@@ -1,0 +1,22 @@
+optics
+chi
+tddft
+Chimod= "LRC"
+LRC_alpha= 0.2
+NGsBlkXd= 1 RL
+% QpntsRXd
+ 1 | -1 |
+%
+% BndsRnXd
+ 1 | 50 |
+%
+% EnRngeXd
+  0.00000 | 10.00000 | eV
+%
+% DmRngeXd
+ 0.100000 | 0.100000 | eV
+%
+ETStpsXd= 100
+% LongDrXd
+ 1.000000 | 0.000000 | 0.000000 |
+%

@@ -1,0 +1,6 @@
+case_id: si_ip_optics
+title: "Silicon IP optics"
+engine: yambo
+workflow_tags: [optics, ip, linear_response]
+species: [Si]
+description: "Independent-particle optics spectrum (Chimod=IP) on 0-10 eV grid."

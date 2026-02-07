@@ -1,0 +1,6 @@
+case_id: h2o_tddft
+title: "Water TDDFT excited states"
+engine: cp2k
+workflow_tags: [tddft, excited_states, molecule]
+species: [O, H]
+description: "TDDFT calculation of 3 excited states for water molecule. Tests DFT/TDDFPT section with convergence and iteration settings."

@@ -1,0 +1,6 @@
+case_id: si_bands
+title: "Silicon band structure calculation"
+engine: cp2k
+workflow_tags: [bands, periodic, electronic]
+species: [Si]
+description: "Band structure calculation for Si with smearing, added MOs, and BAND_STRUCTURE print section. Tests SCF/SMEAR, SCF/DIAGONALIZATION, and DFT/PRINT nested sections."
