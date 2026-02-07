@@ -64,6 +64,9 @@ extended-tests/*.log
 *.log
 *.err
 
+# Engine runtime artifacts (Yambo timer, etc.)
+timer.dat
+
 # Generated test results
 test_results*.txt
 test_results*.md

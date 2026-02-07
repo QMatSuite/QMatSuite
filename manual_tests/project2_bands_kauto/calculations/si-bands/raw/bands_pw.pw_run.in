@@ -2,7 +2,7 @@
     calculation = 'bands'
     outdir = './outdir'
     prefix = 'si'
-    pseudo_dir = '<HOME>/Code/quantumVITAS/pseudo'
+    pseudo_dir = '<repo root>/
     restart_mode = 'from_scratch'
 /
 

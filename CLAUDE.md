@@ -64,6 +64,34 @@ When adding a new engine, follow the checklist in `docs/governance/ENGINE_RECIPE
 5. Add import to `src/quantumvitas/drivers/__init__.py`
 6. **You MUST NOT modify**: `runner.py`, `executor.py`, `handlers.py`, `driver_registry.py`, `driver_protocol.py`, or any kernel routing/dispatch code
 
+## Sensitive Information — Hard Ban (Law S1)
+
+No real usernames, hostnames, absolute home paths, or other locally-identifying strings may appear in any committed file (code, docs, tests, fixtures, golden refs, templates, resources).
+
+### Prohibited patterns (non-exhaustive)
+- Real usernames (e.g. `jsmith`, login names from `whoami`)
+- Real hostnames (e.g. `WORKSTATION-XYZ`, output of `hostname`)
+- Absolute home paths (e.g. `/Users/<name>/...`, `/home/<name>/...`, `C:\Users\<name>\...`)
+- Session/temp paths that embed usernames or hostnames
+
+### Required replacements
+| Instead of... | Use... |
+|---------------|--------|
+| `/Users/<real-name>/...` | `$HOME/...` or `<HOME>/...` or a relative path |
+| Real username in output | `<USER>` |
+| Real hostname in output | `<HOST>` |
+| Engine install path | `<ENGINE_ROOT>` or env var |
+| Scratchpad temp paths | `<TMPDIR>/...` |
+
+### Where sensitive data MAY live (uncommitted only)
+- `.tmp/` (gitignored)
+- Local scratchpad directories
+- User's `~/.claude/` directory
+
+### Enforcement
+- **Gate test**: `tests/gates/test_no_sensitive_paths.py` scans all tracked files on every CI run.
+- Any PR that introduces a real local identifier will be caught and must be fixed before merge.
+
 ## Key Invariants (Quick Reference)
 
 - **SSOT**: Only `calculation.yaml` + `step.yaml`. No other files are truth.

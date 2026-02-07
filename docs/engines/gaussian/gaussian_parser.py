@@ -333,7 +333,7 @@ def parse_archive_line(text: str) -> dict[str, str]:
     r"""Parse the compact archive line at the end of the log.
 
     Example:
-    1\1\GINC-<HOST>\SP\RHF\STO-3G\H2O1\HH7465\04-Feb-2026\0\\#p HF
+    1\1\GINC-SOMEHOST\SP\RHF\STO-3G\H2O1\SOMEUSER\04-Feb-2026\0\\#p HF
     /STO-3G\\Water single point energy\\0,1\O,0,0.,0.,0.117499\H,0,0.,0.75
     695,-0.469996\H,0,0.,-0.75695,-0.469996\\Version=EM64M-G09RevD.01\Stat
     e=1-A1\HF=-74.9631155\RMSD=2.136e-10\Dipole=0.,0.,-0.6788622\...

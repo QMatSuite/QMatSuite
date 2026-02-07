@@ -1,5 +1,5 @@
 &control
-    pseudo_dir = '<HOME>/Code/quantumVITAS/pseudo'
+    pseudo_dir = '<repo root>/
 /
 
 &bands
