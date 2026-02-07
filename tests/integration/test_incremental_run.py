@@ -115,6 +115,7 @@ def minimal_calculation(tmp_project, minimal_structure):
     calc_resolved = QVService(tmp_project).project.init_calculation(
         name="test_calc",
         structure_selector=structure_ulid,
+        engine_family="qe",
     )
     calc_id = calc_resolved.meta.ulid
     calc_dir = calc_resolved.absolute_path
@@ -240,6 +241,7 @@ def test_different_calcs_run_concurrently(tmp_project, minimal_structure):
     calc1_resolved = QVService(tmp_project).project.init_calculation(
         name="calc1",
         structure_selector=structure_ulid,
+        engine_family="qe",
     )
     calc1_id = calc1_resolved.meta.ulid
     calc1_dir = calc1_resolved.absolute_path
@@ -247,6 +249,7 @@ def test_different_calcs_run_concurrently(tmp_project, minimal_structure):
     calc2_resolved = QVService(tmp_project).project.init_calculation(
         name="calc2",
         structure_selector=structure_ulid,
+        engine_family="qe",
     )
     calc2_id = calc2_resolved.meta.ulid
     calc2_dir = calc2_resolved.absolute_path

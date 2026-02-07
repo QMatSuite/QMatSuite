@@ -73,6 +73,7 @@ class GetStepDetailRecipe(Recipe):
         calc_result = svc.project.init_calculation(
             name="test_calc",
             structure_selector=structure_ulid,
+            engine_family="qe",
         )
         self.calc_id = calc_result.ulid if hasattr(calc_result, 'ulid') else None
 

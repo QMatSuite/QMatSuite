@@ -76,6 +76,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
     calc_result = svc.project.init_calculation(
         name="demo_calc",
         structure_selector=structure_ulid,
+        engine_family="qe",
     )
     calc_id = calc_result.ulid if hasattr(calc_result, 'ulid') else None
     calc_slug = calc_result.slug if hasattr(calc_result, 'slug') else "demo_calc"

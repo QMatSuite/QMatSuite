@@ -28,6 +28,8 @@ class YamboDriver(BaseEngineDriver):
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
         "setup", "gw", "bse", "optics",
     })
+    ENGINE_ROLE: str = "postprocessing"
+    COMPANION_ENGINES: frozenset = frozenset()
 
     # -- MUST: Properties ---------------------------------------------------
 

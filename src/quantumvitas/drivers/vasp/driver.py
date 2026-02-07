@@ -23,6 +23,8 @@ class VASPDriver(BaseEngineDriver):
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
         "scf", "nscf", "relax", "md", "bandspw"
     })
+    ENGINE_ROLE: str = "base"
+    COMPANION_ENGINES: frozenset = frozenset()
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties

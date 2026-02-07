@@ -17,9 +17,7 @@ def get_minimal_payload(method_name: str, project_root: Path | None = None, tmp_
         "ping": {},
         "get_env_info": {},
         "list_qe_engines": {},
-        "discover_qe_engines": {},
         "get_debug_resolution": {},
-        "get_qe_parameter_metadata_debug_info": {},
         "get_pseudo_config": {},
         "list_seed_archives": {},
         "list_libraries": {},
@@ -32,9 +30,10 @@ def get_minimal_payload(method_name: str, project_root: Path | None = None, tmp_
         "list_wannier_3d_fixtures": {},
         "job_counts": {},
         "list_jobs": {},
+        # M4: Generic engine RPCs
+        "list_engine_families": {},
         # Additional stateless/near-stateless methods
         "detect_qe": {"search_paths": []},  # Empty list uses default PATH search
-        "reload_qe_parameter_metadata": {},  # Reloads internal cache
     }
 
     if method_name in STATELESS:
@@ -60,6 +59,10 @@ def get_minimal_payload(method_name: str, project_root: Path | None = None, tmp_
         "set_log_level": {"level": "INFO"},
         "set_debug_resolution": {"enabled": False},
         "set_qe_engine": {"bin_dir": None},  # None means use internal QE
+        # M4: Generic engine RPCs
+        "list_step_palette": {"engine_family": None},  # UNDECIDED state
+        "list_engine_ui_parameters": {"engine_family": "qe", "step_type_gen": "scf"},
+        "list_engine_parameter_metadata": {"engine_family": "qe", "operation": "list_categories"},
     }
 
     if method_name in SIMPLE_PARAMS:
@@ -95,7 +98,7 @@ def get_methods_needing_recipes() -> set[str]:
         "rename_structure", "delete_structure", "can_delete_structure",
         "rename_calculation", "delete_calculation", "can_delete_calculation",
         "get_calculation_detail", "reorder_calculation_steps",
-        "add_step_to_calculation", "import_step_from_qe_input",
+        "add_step_to_calculation",
         "change_calculation_structure", "get_calculation_pseudo_mapping",
         "update_calculation_species_map", "get_pseudo_options_for_calculation",
         "materialize_pseudo_file", "delete_step",

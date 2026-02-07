@@ -117,7 +117,7 @@ class TestSiDosCalculation:
         """Create calculation."""
         project_dir = project_with_structure
         
-        run_qv(["init", "calculation", "si_dos", "--structure", "si"], cwd=project_dir)
+        run_qv(["init", "calculation", "si_dos", "--structure", "si", "--engine-family", "qe"], cwd=project_dir)
         
         calculation_dir = project_dir / "calculations" / "si_dos"
         assert calculation_dir.exists()

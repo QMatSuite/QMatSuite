@@ -3,7 +3,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, type RefObject } from 'react';
-import type { CalculationInfo, DetectWorkflowForCalculationResult } from '../../types/qv';
+import type { CalculationInfo, DetectWorkflowForCalculationResult, StepPaletteResult } from '../../types/qv';
 import './CalculationListPanel.css';
 
 interface CalculationListPanelProps {
@@ -486,12 +486,29 @@ export function CalculationDetailPanel({
   
   // Import step state
   const [isImportingStep, setIsImportingStep] = useState(false);
-  
+
   // Delete step state
   const [isDeletingStep, setIsDeletingStep] = useState(false);
-  
+
   // Pseudopotential mapping state (calculation-level)
   const qv = useQVClient();
+
+  // Step palette for dynamic step type dropdown (fetched via RPC)
+  const [stepPalette, setStepPalette] = useState<StepPaletteResult | null>(null);
+
+  // Fetch step palette based on engine family from calculation detail
+  useEffect(() => {
+    const engineFamily = calculationDetail?.engine_family ?? null;
+    qv.listStepPalette(engineFamily)
+      .then(response => {
+        if (response.ok && response.data) {
+          setStepPalette(response.data);
+        }
+      })
+      .catch(() => {
+        // Silently fail - step palette is non-critical
+      });
+  }, [calculationDetail?.engine_family, qv]);
   
   // Local structures state (fallback if not provided via props)
   const [localStructures, setLocalStructures] = useState<StructureInfo[] | null>(null);
@@ -1342,16 +1359,20 @@ export function CalculationDetailPanel({
                     autoFocus
                   >
                     <option value="">-- Select Type --</option>
-                    <option value="scf">SCF (pw.x)</option>
-                    <option value="nscf">NSCF (pw.x)</option>
-                    <option value="relax">Relax (pw.x)</option>
-                    <option value="vc-relax">VC-Relax (pw.x)</option>
-                    <option value="bands_pw">Bands PW (pw.x)</option>
-                    <option value="bands">Bands PP (bands.x)</option>
-                    <option value="dos">DOS (dos.x)</option>
-                    <option value="projwfc">PDOS (projwfc.x)</option>
-                    <option value="ph">Phonon (ph.x)</option>
-                    <option value="pp">Post-Process (pp.x)</option>
+                    {stepPalette?.base_steps.map((step) => (
+                      <option key={step.gen} value={step.gen}>
+                        {step.description || step.gen.toUpperCase()}
+                      </option>
+                    ))}
+                    {stepPalette && Object.entries(stepPalette.companion_steps).map(([engine, steps]) => (
+                      <optgroup key={engine} label={engine.toUpperCase()}>
+                        {steps.map((step) => (
+                          <option key={step.gen} value={step.gen}>
+                            {step.description || step.gen}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
                 </div>
                 <div className="form-group">

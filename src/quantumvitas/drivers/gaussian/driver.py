@@ -27,6 +27,8 @@ class GaussianDriver(BaseEngineDriver):
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
         "scf", "hf", "relax", "freq", "mp2", "td"
     })
+    ENGINE_ROLE: str = "base"
+    COMPANION_ENGINES: frozenset = frozenset()
 
     # ── MUST: Properties ──────────────────────────────────────────────
 

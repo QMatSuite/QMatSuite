@@ -75,6 +75,7 @@ def temp_project(tmp_path: Path) -> Path:
     calculation_result = QVService(project_dir).project.init_calculation(
         name="test_calculation",
         structure_selector=structure_ulid,
+        engine_family="qe",
     )
     calculation_id = calculation_result.meta.ulid
     

@@ -355,8 +355,7 @@ class CalculationModel:
         if engine_family is None:
             if structure_kind == "molecule":
                 engine_family = "pyscf"
-            else:
-                engine_family = "qe"  # Default for periodic or unknown
+            # engine_family may remain None (UNDECIDED state per Law EF1)
         if structure_kind is None:
             if engine_family == "pyscf":
                 structure_kind = "molecule"

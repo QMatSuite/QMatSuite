@@ -111,6 +111,7 @@ calculations:
     kind: calculation
   mode: normal
   working_dir: raw
+  engine_family: qe
   steps:
   - meta:
       name: al.1_vc_relax
@@ -148,7 +149,7 @@ calculations:
     species_overrides:
       Al:
         mass: 26.981539
-    step_type_spec: qe_vc-relax
+    step_type_spec: qe_relax
   - meta:
       name: al.2_scf
       slug: al-2_scf

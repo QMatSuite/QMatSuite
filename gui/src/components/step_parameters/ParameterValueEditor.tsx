@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useState, useMemo, useEffect } from 'react';
-import type { QEParameterMeta } from '../../hooks/useQEParameterMetadata';
+import type { QEParameterMeta } from '../../hooks/useEngineParameterMetadata';
 import { normalizeQeScalar, quoteSingle } from '../../utils/qeStringUtils';
 import './ParameterValueEditor.css';
 

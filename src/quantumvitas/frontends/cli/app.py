@@ -845,7 +845,7 @@ def init_calculation_command(
         if structure_kind == "molecule":
             engine_family = "pyscf"
         else:
-            engine_family = "qe"  # Default for periodic structures
+            engine_family = None  # Will be set by user or inferred from context
     
     # Write calculation.yaml with proper meta section (contains ULID)
     # DAG + ID-only model: use structure_ulid (ULID) as canonical reference

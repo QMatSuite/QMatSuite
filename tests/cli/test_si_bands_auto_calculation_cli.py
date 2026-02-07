@@ -128,7 +128,7 @@ class TestSiBandsCalculationAutoKpath:
         """Create calculation with auto k-path."""
         project_dir = project_with_structure
         
-        run_qv(["init", "calculation", "bands_auto", "--structure", "si"], cwd=project_dir)
+        run_qv(["init", "calculation", "bands_auto", "--structure", "si", "--engine-family", "qe"], cwd=project_dir)
         
         calculation_dir = project_dir / "calculations" / "bands_auto"
         assert calculation_dir.exists()

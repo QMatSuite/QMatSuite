@@ -82,10 +82,11 @@ def get_method_categories() -> dict[str, list[str]]:
     return {
         "system": ["ping", "shutdown"],
         "environment": [
-            "detect_qe", "get_env_info", "list_qe_engines", "discover_qe_engines",
+            "detect_qe", "get_env_info", "list_qe_engines",
             "set_qe_engine", "set_log_level", "set_debug_resolution", "get_debug_resolution",
-            "list_qe_ui_parameters", "list_qe_parameter_metadata",
-            "reload_qe_parameter_metadata", "get_qe_parameter_metadata_debug_info",
+            # Generic engine RPCs (replace former QE-specific RPCs)
+            "list_engine_families", "list_step_palette", "list_engine_ui_parameters",
+            "list_engine_parameter_metadata", "set_engine_family",
         ],
         "pseudo_config": [
             "get_pseudo_config", "set_pseudo_config", "validate_pseudo_config",
@@ -112,7 +113,7 @@ def get_method_categories() -> dict[str, list[str]]:
             "list_calculation_templates", "create_calculation", "rename_calculation",
             "delete_calculation", "can_delete_calculation", "get_calculation_detail",
             "reorder_calculation_steps", "add_step_to_calculation",
-            "import_step_from_qe_input", "change_calculation_structure",
+            "change_calculation_structure",
             "get_calculation_pseudo_mapping", "update_calculation_species_map",
             "get_pseudo_options_for_calculation", "materialize_pseudo_file",
         ],

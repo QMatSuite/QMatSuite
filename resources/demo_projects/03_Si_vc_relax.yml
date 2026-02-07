@@ -77,6 +77,7 @@ calculations:
     kind: calculation
   mode: normal
   working_dir: raw
+  engine_family: qe
   steps:
   - meta:
       name: si.vc_relax
@@ -110,7 +111,7 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
-    step_type_spec: qe_vc-relax
+    step_type_spec: qe_relax
   structure_ulid: 01KE2M087ACNW7EWMBP23SQZHF
   species_map:
     Si:

@@ -65,6 +65,7 @@ calculations:
     kind: calculation
   mode: normal
   working_dir: raw
+  engine_family: qe
   structure_ulid: 01KE2K2ENX56JW1A2E6VKVXTYG
   species_map:
     Cu:

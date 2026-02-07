@@ -25,6 +25,8 @@ class CP2KDriver(BaseEngineDriver):
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
         "scf", "relax", "md", "bandspw", "dos"
     })
+    ENGINE_ROLE: str = "base"
+    COMPANION_ENGINES: frozenset = frozenset()
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties

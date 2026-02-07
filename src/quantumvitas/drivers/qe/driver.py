@@ -9,8 +9,10 @@ class QEDriver(BaseEngineDriver):
     PREFIX: str = "qe"
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
         "scf", "nscf", "relax", "bands", "bandspw", "dos",
-        "pw2wannier", "ph", "md", "custom"
+        "pw2wannier", "ph", "gipaw", "md", "custom"
     })
+    ENGINE_ROLE: str = "base"
+    COMPANION_ENGINES: frozenset = frozenset({"w90", "qmcpack", "yambo"})
 
     @property
     def engine_family(self) -> str:

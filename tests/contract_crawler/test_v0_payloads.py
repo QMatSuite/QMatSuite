@@ -81,21 +81,6 @@ class TestV0PayloadSchemas:
         assert payload["source_file"] == "/path/to/file.cif"
 
     # -------------------------------------------------------------------------
-    # QE parameter methods
-    # -------------------------------------------------------------------------
-
-    def test_list_qe_ui_parameters_requires_both_module_and_step_type(self, mock_world):
-        """list_qe_ui_parameters: requires both module AND step_type."""
-        payload = build_v0_payload(
-            "list_qe_ui_parameters", mock_world, module="pw", step_type_gen="scf"
-        )
-
-        assert "module" in payload, "Must have 'module' field"
-        assert "step_type_gen" in payload, "Must have 'step_type_gen' field"
-        assert payload["module"] == "pw"
-        assert payload["step_type_gen"] == "scf"
-
-    # -------------------------------------------------------------------------
     # Calculation/step methods
     # -------------------------------------------------------------------------
 

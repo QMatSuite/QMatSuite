@@ -33,7 +33,7 @@ import {
   JobsPanel,
   SettingsPanel,
   HistoryPanel,
-  QEParameterBrowserPanel,
+  EngineParameterBrowserPanel,
   ErrorBoundary,
   CalculationOverviewTab,
   CalculationRunTab,
@@ -2461,7 +2461,10 @@ function App() {
         );
         
       case 'resources':
-        return <QEParameterBrowserPanel />;
+        // EngineParameterBrowserPanel requires engineFamily prop
+        // For now, default to 'qe' for backwards compatibility
+        // TODO: Get engineFamily from current calculation or user selection
+        return <EngineParameterBrowserPanel engineFamily="qe" />;
         
       case 'settings':
         return (

@@ -12,7 +12,7 @@ copied to the raw/ directory, pseudo files to project/pseudo/, and
 calculation.yaml referencing steps.
 
 Usage:
-    python tools/generate_wannier90_demos.py
+    python tools/demo_generators/verified/generate_wannier90_demos.py
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 # Add src to path
-repo_root = Path(__file__).resolve().parent.parent
+repo_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(repo_root / "src"))
 
 from quantumvitas.project.snapshot import export_project_to_snapshot

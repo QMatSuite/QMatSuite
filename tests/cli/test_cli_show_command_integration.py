@@ -138,6 +138,8 @@ def test_cli_show_command_executes_against_references(
                 structure_name,
                 "--project",
                 str(project_root),
+                "--engine-family",
+                "qe",
             ],
             catch_exceptions=False,
         )

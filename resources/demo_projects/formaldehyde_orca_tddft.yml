@@ -85,7 +85,7 @@ calculations:
       basis: def2-SVP
       charge: 0
       spin: 0
-    step_type_spec: qe_scf
+    step_type_spec: orca_scf
   - meta:
       name: td
       slug: td
@@ -95,7 +95,7 @@ calculations:
     parameters:
       nroots: 5
       tda: true
-    step_type_spec: pyscf_td
+    step_type_spec: orca_td
 meta:
   ulid: formaldehyde_orca_tddft
   title: Formaldehyde ORCA TDDFT

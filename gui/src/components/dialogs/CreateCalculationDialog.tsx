@@ -5,7 +5,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Modal } from './Modal';
 import { useQVClient } from '../../hooks/useQVClient';
-import type { StructureInfo, CalculationTemplateInfo, WorkflowTemplate } from '../../types/qv';
+import type { StructureInfo, CalculationTemplateInfo, WorkflowTemplate, EngineFamilyInfo } from '../../types/qv';
 
 interface CreateCalculationDialogProps {
   isOpen: boolean;
@@ -28,6 +28,8 @@ export function CreateCalculationDialog({
   const [selectedStructure, setSelectedStructure] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [selectedWorkflow, setSelectedWorkflow] = useState('');
+  const [selectedEngine, setSelectedEngine] = useState('');
+  const [engineFamilies, setEngineFamilies] = useState<EngineFamilyInfo[]>([]);
   const [templates, setTemplates] = useState<CalculationTemplateInfo[]>([]);
   const [workflows, setWorkflows] = useState<WorkflowTemplate[]>([]);
   const [localStructures, setLocalStructures] = useState<StructureInfo[]>([]);
@@ -39,7 +41,7 @@ export function CreateCalculationDialog({
   // Use provided structures or fetch if not provided
   const effectiveStructures = structures.length > 0 ? structures : localStructures;
   
-  // Load templates, workflows, and structures when dialog opens
+  // Load templates, workflows, structures, and engine families when dialog opens
   useEffect(() => {
     if (isOpen) {
       if (templates.length === 0) loadTemplates();
@@ -47,6 +49,16 @@ export function CreateCalculationDialog({
       // Fetch structures if not provided via props
       if (structures.length === 0 && localStructures.length === 0) {
         loadStructures();
+      }
+      // Fetch engine families
+      if (engineFamilies.length === 0) {
+        qv.listEngineFamilies().then((res) => {
+          if (res.ok && res.data) {
+            // Filter to base engines only (postprocessing engines can't be selected as engine_family)
+            const baseEngines = res.data.engines.filter(e => e.engine_role === 'base');
+            setEngineFamilies(baseEngines);
+          }
+        });
       }
     }
   }, [isOpen]);
@@ -98,6 +110,7 @@ export function CreateCalculationDialog({
       name: calculationName,
       structure: selectedStructure || undefined,
       template: selectedWorkflow ? undefined : (selectedTemplate || undefined),
+      engine_family: selectedEngine || undefined,  // null = UNDECIDED
     });
     
     if (!response.ok || !response.data) {
@@ -144,6 +157,7 @@ export function CreateCalculationDialog({
     setSelectedStructure('');
     setSelectedTemplate('');
     setSelectedWorkflow('');
+    setSelectedEngine('');
     setError(null);
     onClose();
   }, [onClose]);
@@ -230,6 +244,23 @@ export function CreateCalculationDialog({
           <span className="form-hint">
             Select a structure for this calculation
           </span>
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="engine-family">Engine</label>
+          <select
+            id="engine-family"
+            className="form-select"
+            value={selectedEngine}
+            onChange={(e) => setSelectedEngine(e.target.value)}
+          >
+            <option value="">Decide later</option>
+            {engineFamilies.map((eng) => (
+              <option key={eng.engine_family} value={eng.engine_family}>
+                {eng.display_name}
+              </option>
+            ))}
+          </select>
         </div>
         
         <div className="form-group">

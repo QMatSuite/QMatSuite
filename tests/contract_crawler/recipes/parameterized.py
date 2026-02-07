@@ -365,6 +365,7 @@ class CalculationMutationsRecipe(Recipe):
         "reorder_calculation_steps",
         "apply_presets_to_calculation",
         "change_calculation_structure",
+        "set_engine_family",  # M4: Generic engine RPC
     }
 
     def __init__(self, tmp_path: Path, method_name: str):
@@ -449,6 +450,13 @@ class CalculationMutationsRecipe(Recipe):
                 **base,
                 "calculation": self.world["calculation_selector"],
                 "new_structure": self.second_structure_ulid,
+            }
+
+        if self.method_name == "set_engine_family":
+            return {
+                **base,
+                "calculation": self.world["calculation_selector"],
+                "engine_family": "vasp",  # Use a base engine
             }
 
         return base
@@ -601,93 +609,6 @@ class WorkflowRecipe(Recipe):
         return True, None
 
 
-class ImportStepRecipe(Recipe):
-    """
-    Recipe for import_step_from_qe_input method.
-
-    Requires a QE input file to import.
-    """
-
-    method_name = "import_step_from_qe_input"
-    description = "Import step from QE input file"
-
-    COVERED_METHODS = {
-        "import_step_from_qe_input",
-    }
-
-    def __init__(self, tmp_path: Path, method_name: str = "import_step_from_qe_input"):
-        super().__init__(tmp_path)
-        self.method_name = method_name
-        self.world: dict[str, Any] | None = None
-        self.input_file: str | None = None
-
-    def setup(self) -> bool:
-        """Create minimal project world and QE input file."""
-        if QVService is None:
-            return False
-
-        self.project_root = self.tmp_path / "demo_project"
-        self.project_root.mkdir()
-        QVService.init_project(self.project_root, name="demo_project")
-
-        self.world = build_demo_world(self.project_root)
-
-        # Create a minimal QE input file
-        qe_input = """&CONTROL
-    calculation = 'scf'
-    prefix = 'si'
-    outdir = './tmp'
-    pseudo_dir = './pseudo'
-/
-&SYSTEM
-    ibrav = 0
-    nat = 2
-    ntyp = 1
-    ecutwfc = 30.0
-/
-&ELECTRONS
-    conv_thr = 1.0d-8
-/
-ATOMIC_SPECIES
-Si 28.086 Si.pbe-n-rrkjus_psl.1.0.0.UPF
-ATOMIC_POSITIONS crystal
-Si 0.0 0.0 0.0
-Si 0.25 0.25 0.25
-CELL_PARAMETERS angstrom
-5.43 0.0 0.0
-0.0 5.43 0.0
-0.0 0.0 5.43
-K_POINTS automatic
-4 4 4 0 0 0
-"""
-        input_path = self.tmp_path / "scf.in"
-        input_path.write_text(qe_input)
-        self.input_file = str(input_path)
-
-        return True
-
-    def build_payload(self) -> dict[str, Any]:
-        """Build payload."""
-        if self.world is None or self.input_file is None:
-            return {}
-
-        return {
-            "project_root": self.world["project_root"],
-            "calculation": self.world["calculation_selector"],
-            "input_file": self.input_file,
-            "step_name": "imported_scf",
-        }
-
-    def validate_response(self, response_data: dict[str, Any]) -> tuple[bool, str | None]:
-        """Basic validation."""
-        import json
-        try:
-            json.dumps(response_data)
-        except (TypeError, ValueError) as e:
-            return False, f"Not JSON serializable: {e}"
-        return True, None
-
-
 # Import additional recipe classes
 try:
     from .network_methods import NetworkMethodsRecipe
@@ -714,7 +635,6 @@ PARAMETERIZED_RECIPES = {
     CalculationMutationsRecipe,
     StepMutationsRecipe,
     WorkflowRecipe,
-    ImportStepRecipe,
 }
 
 # Add additional recipes if available

@@ -823,6 +823,7 @@ def init_calculation_command(
             new_name=calculation_id,
             structure=structure,
             calculation_ulid=calculation_meta["ulid"],
+            engine_family=engine_family,
         )
         
         # Copy missing structures from templates
@@ -1285,10 +1286,8 @@ def init_step_command(
     # SPEC layer: step_type_spec (e.g., "qe_scf") - persisted in step.yaml
     from quantumvitas.api import QVService
 
-    # Get engine_family from calculation context (default to "qe" for backwards compat)
-    engine_family = "qe"  # Default
-    if calculation_data:
-        engine_family = calculation_data.get("engine_family", "qe")
+    # Get engine_family from calculation context
+    engine_family = calculation_data.get("engine_family") if calculation_data else None
 
     # Resolve to engine-specific SPEC type
     step_type_spec_resolved = QVService.resolve_step_type_spec(step_type_gen, engine_family)

@@ -169,6 +169,13 @@ class BaseEngineDriver:
     """
 
     # ─────────────────────────────────────────────────────────────────────
+    # Engine classification (per GUI_ENGINE_FAMILY_DEMO_SPEC.md v1.1)
+    # ─────────────────────────────────────────────────────────────────────
+
+    ENGINE_ROLE: str = "base"
+    COMPANION_ENGINES: frozenset = frozenset()
+
+    # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Methods with sensible defaults
     # ─────────────────────────────────────────────────────────────────────
 

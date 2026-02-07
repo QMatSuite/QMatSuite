@@ -7,8 +7,8 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { QESearchResult } from '../../hooks/useQEParameterMetadata';
-import { useQEParameterMetadata } from '../../hooks/useQEParameterMetadata';
+import type { QESearchResult } from '../../hooks/useEngineParameterMetadata';
+import { useEngineParameterMetadata } from '../../hooks/useEngineParameterMetadata';
 import './AddParameterPalette.css';
 
 interface AddParameterPaletteProps {
@@ -34,7 +34,7 @@ export function AddParameterPalette({
     searchError,
     search,
     metadataInfo,
-  } = useQEParameterMetadata();
+  } = useEngineParameterMetadata('qe'); // QE-specific for now
   
   // Filter search results to only show parameters for the current module
   const filteredResults = module

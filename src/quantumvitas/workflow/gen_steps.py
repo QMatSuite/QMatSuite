@@ -35,6 +35,7 @@ class GenStepRegistry:
         "q2r",
         "matdyn",
         "dynmat",
+        "gipaw",  # gipaw.x — NMR chemical shifts, EPR g-tensor
         # Dynamics
         "md",  # VC vs non-VC is a parameter, not a separate gen step
         "minimize",  # Energy minimization (LAMMPS, etc.)

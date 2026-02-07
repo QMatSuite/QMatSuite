@@ -19,8 +19,6 @@ class SimpleQueriesRecipe(Recipe):
 
     COVERED_METHODS = {
         "list_installed_sssp",
-        "list_qe_parameter_metadata",
-        "list_qe_ui_parameters",
         "find_project_root",  # Needs isolated tmp_path to avoid CWD variance in parallel runs
     }
 
@@ -44,11 +42,6 @@ class SimpleQueriesRecipe(Recipe):
         if self.method_name == "list_installed_sssp":
             return {
                 "store_dir": str(self.tmp_path / "pseudo_store"),
-            }
-
-        if self.method_name == "list_qe_parameter_metadata":
-            return {
-                "operation": "list_modules",
             }
 
         if self.method_name == "find_project_root":

@@ -14,7 +14,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import type { StepDetail } from '../../types/qv';
-import type { QEParameterMeta, QEModuleMeta } from '../../hooks/useQEParameterMetadata';
+import type { QEParameterMeta, QEModuleMeta } from '../../hooks/useEngineParameterMetadata';
 import { ParameterValueEditor } from './ParameterValueEditor';
 import { ParameterModeSelector } from './ParameterModeSelector';
 import { ScanValuesEditor } from './ScanValuesEditor';

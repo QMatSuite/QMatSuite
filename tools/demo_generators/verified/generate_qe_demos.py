@@ -8,7 +8,7 @@ It also extracts reference JSON artifacts (SCF, DOS, bands) from calculation res
 Run this when test example projects are updated to regenerate the demo snapshots.
 
 Usage:
-    python tools/generate_demo_snapshots.py
+    python tools/demo_generators/verified/generate_qe_demos.py
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 # Add src to path so we can import quantumvitas
-repo_root = Path(__file__).resolve().parent.parent
+repo_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(repo_root / "src"))
 
 from quantumvitas.project.snapshot import export_project_to_snapshot
@@ -206,7 +206,7 @@ def main(auto_download: bool = True):
     Args:
         auto_download: If True, automatically download missing pseudos from QE repository
     """
-    repo_root = Path(__file__).resolve().parent.parent
+    repo_root = Path(__file__).resolve().parent.parent.parent.parent
     
     # Define source projects and target snapshots
     projects = [

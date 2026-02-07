@@ -225,7 +225,7 @@ def test_init_calculation_from_template_with_custom_structure(tmp_path):
     result = runner.invoke(
         app,
         ["init", "calculation", "my-calculation", "--template", "si-dos", 
-         "--structure", "custom_si", "--project", str(project_dir)],
+         "--structure", "custom_si", "--project", str(project_dir), "--engine-family", "qe"],
         catch_exceptions=False
     )
     assert result.exit_code == 0, f"Failed: {result.output}"

@@ -26,6 +26,8 @@ class SiestaDriver(BaseEngineDriver):
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
         "scf", "relax", "md", "bands", "dos",
     })
+    ENGINE_ROLE: str = "base"
+    COMPANION_ENGINES: frozenset = frozenset()
 
     # ── MUST: Properties ──────────────────────────────────────────────
 

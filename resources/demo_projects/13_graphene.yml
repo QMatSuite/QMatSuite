@@ -197,6 +197,7 @@ calculations:
     kind: calculation
   mode: normal
   working_dir: raw
+  engine_family: qe
   steps:
   - meta:
       name: graphene.1_vc_relax
@@ -240,7 +241,7 @@ calculations:
     species_overrides:
       C:
         mass: 12.0107
-    step_type_spec: qe_vc-relax
+    step_type_spec: qe_relax
   - meta:
       name: graphene.2_scf
       slug: graphene-2_scf
