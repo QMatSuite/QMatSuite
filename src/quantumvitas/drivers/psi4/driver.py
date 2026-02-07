@@ -22,6 +22,8 @@ class Psi4Driver(BaseEngineDriver):
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
         "scf", "hf", "mp2", "relax", "td"
     })
+    ENGINE_ROLE: str = "base"
+    COMPANION_ENGINES: frozenset = frozenset()
 
     @property
     def engine_family(self) -> str:

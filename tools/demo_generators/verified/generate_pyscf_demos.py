@@ -6,7 +6,7 @@ Creates a minimal H2O single-point calculation demo to demonstrate
 PySCF molecular quantum chemistry integration.
 
 Usage:
-    python tools/generate_pyscf_demo.py
+    python tools/demo_generators/verified/generate_pyscf_demos.py
 
 Output:
     resources/demo_projects/water_pyscf_scf.yml
@@ -17,7 +17,7 @@ import json
 import sys
 
 # Add src to path for imports
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from quantumvitas.core.resources import generate_resource_id

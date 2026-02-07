@@ -53,7 +53,7 @@ class TestPromoteRelaxStructureAPI:
         struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation
-        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
+        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
         calc_ulid = calc_result.ulid
         
         # Create relax step
@@ -110,7 +110,7 @@ class TestPromoteRelaxStructureAPI:
         struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and step
-        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
+        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
         step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Try to promote without current.json
@@ -139,7 +139,7 @@ class TestPromoteRelaxStructureAPI:
         struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and SCF step (not relax)
-        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
+        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
         step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
         
         # Try to promote non-relax step
@@ -174,7 +174,7 @@ class TestPromoteRelaxStructureDaemonRPC:
         struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and relax step
-        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid)
+        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
         step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Write generated structure

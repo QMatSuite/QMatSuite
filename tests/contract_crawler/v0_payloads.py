@@ -131,25 +131,6 @@ def _build_import_structure(world: Dict[str, Any], **extra) -> Dict[str, Any]:
 
 
 # -----------------------------------------------------------------------------
-# QE Parameter Methods
-# -----------------------------------------------------------------------------
-
-def _build_list_qe_ui_parameters(world: Dict[str, Any], **extra) -> Dict[str, Any]:
-    """
-    v0 list_qe_ui_parameters payload.
-    Source: 0873ebf server.py _handle_list_qe_ui_parameters
-
-    Fields:
-        module: str (required) - e.g., "pw", "bands", "dos"
-        step_type: str (required) - e.g., "scf", "nscf", "bands"
-    """
-    return {
-        "module": extra.get("module", "pw"),
-        "step_type_gen": extra.get("step_type_gen", "scf"),  # Canonical: step_type_gen for UI parameters
-    }
-
-
-# -----------------------------------------------------------------------------
 # Calculation/Step Methods
 # -----------------------------------------------------------------------------
 
@@ -266,9 +247,6 @@ V0_PAYLOAD_BUILDERS: Dict[str, callable] = {
     "can_delete_structure": _build_can_delete_structure,
     "get_structure_vis": _build_get_structure_vis,
     "import_structure": _build_import_structure,
-
-    # QE parameter methods
-    "list_qe_ui_parameters": _build_list_qe_ui_parameters,
 
     # Calculation/step methods
     "run_single_step": _build_run_single_step,

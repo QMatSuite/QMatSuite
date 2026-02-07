@@ -25,6 +25,8 @@ class XTBDriver(BaseEngineDriver):
 
     PREFIX: str = "xtb"
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({"relax"})
+    ENGINE_ROLE: str = "base"
+    COMPANION_ENGINES: frozenset = frozenset()
 
     # ── MUST: Properties ──────────────────────────────────────────────
 

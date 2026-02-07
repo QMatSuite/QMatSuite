@@ -14,7 +14,7 @@ import { useQVClient, useQVLogs } from '../../hooks/useQVClient';
 import { LibrariesPanel } from './LibrariesPanel';
 import { PseudoArchivesPanel } from '../settings/PseudoArchivesPanel';
 import { JournalHistoryPanel } from '../settings/JournalHistoryPanel';
-import type { QEDetectionResult, EnvironmentInfo } from '../../types/qv';
+import type { QEDetectionResult, EnvironmentInfo, EngineFamilyInfo } from '../../types/qv';
 import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './SettingsPanel.css';
 
@@ -36,6 +36,9 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   const [isLoading, setIsLoading] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Engine families state
+  const [engineFamilies, setEngineFamilies] = useState<EngineFamilyInfo[]>([]);
   
   // QE Engine selection state (two-state model)
   const [qeEngineInfo, setQeEngineInfo] = useState<{
@@ -59,14 +62,6 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   const logs = useQVLogs(200);
   const logsScrollRef = useRef<HTMLDivElement>(null);
   
-  // QE metadata debug info
-  const [qeMetadataDebugInfo, setQeMetadataDebugInfo] = useState<{
-    loaded_via: 'cache' | 'disk' | 'not_loaded';
-    loaded_at: string | null;
-    schema_version: number | null;
-    path_abs: string | null;
-  } | null>(null);
-  
   // Fetch debug resolution flag on mount
   useEffect(() => {
     const fetchDebugResolution = async () => {
@@ -83,26 +78,6 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
       fetchDebugResolution();
     }
   }, [qv, qv?.state.isConnected]);
-  
-  // Fetch QE metadata debug info
-  const fetchQEMetadataDebugInfo = useCallback(async () => {
-    if (!qv) return;
-    
-    try {
-      const response = await window.qv.request('get_qe_parameter_metadata_debug_info', {});
-      if (response.ok && response.data) {
-        setQeMetadataDebugInfo(response.data as {
-          loaded_via: 'cache' | 'disk' | 'not_loaded';
-          loaded_at: string | null;
-          schema_version: number | null;
-          path_abs: string | null;
-        });
-      }
-    } catch (e) {
-      // Silently fail - debug info is optional
-      console.debug('[Settings] Failed to fetch QE metadata debug info', e);
-    }
-  }, [qv]);
   
   // Fetch QE engine info on mount
   const fetchQEEngineInfo = useCallback(async () => {
@@ -121,6 +96,22 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
       console.error('[Settings] Failed to fetch QE engine info', e);
       setQeError(e instanceof Error ? e.message : 'Failed to fetch QE engine info');
     }
+  }, [qv]);
+  
+  // Fetch engine families on mount
+  useEffect(() => {
+    const fetchEngineFamilies = async () => {
+      if (!qv) return;
+      try {
+        const response = await qv.listEngineFamilies();
+        if (response.ok && response.data) {
+          setEngineFamilies(response.data.engines.filter(e => e.engine_role === 'base'));
+        }
+      } catch (e) {
+        console.error('[Settings] Failed to fetch engine families', e);
+      }
+    };
+    fetchEngineFamilies();
   }, [qv]);
   
   // Fetch environment info on mount
@@ -156,13 +147,6 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
     
     fetchEnvInfo();
   }, []);
-  
-  // Fetch QE metadata debug info when diagnostics section is shown
-  useEffect(() => {
-    if (showDiagnostics) {
-      fetchQEMetadataDebugInfo();
-    }
-  }, [showDiagnostics, fetchQEMetadataDebugInfo]);
   
   const handleRedetectQE = useCallback(async () => {
     if (!window.qv) return;
@@ -297,88 +281,103 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   return (
     <div className="settings-panel">
       <div className="settings-scroll-container">
-        {/* QE Detection Section */}
-        <div className="settings-section">
-          <div className="settings-section__header">
-          <h3 className="settings-section__title">
-            <span className="settings-icon">⚛️</span>
-            Quantum ESPRESSO
-          </h3>
-          <button 
-            className="settings-btn settings-btn--sm"
-            onClick={handleRedetectQE}
-            disabled={isDetecting}
-          >
-            {isDetecting ? '🔄 Detecting...' : '🔍 Re-detect'}
-            </button>
-          </div>
-          
-          <div className="settings-section__content">
-          {qeInfo ? (
-            <div className={`qe-status qe-status--${qeInfo.found ? 'found' : 'missing'}`}>
-              <div className="qe-status__indicator">
-                {qeInfo.found ? (
-                  <>
-                    <span className="status-dot status-dot--success" />
-                    <span className="status-text">QE Installation Found</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="status-dot status-dot--error" />
-                    <span className="status-text">QE Not Found</span>
-                  </>
-                )}
-              </div>
-              
-              {qeInfo.found && qeInfo.qe_home && (
-                <div className="qe-details">
-                  <div className="detail-row">
-                    <span className="detail-label">QE Home</span>
-                    <code className="detail-value detail-value--path">{qeInfo.qe_home}</code>
-                  </div>
-                  
-                  {qeInfo.version && (
-                    <div className="detail-row">
-                      <span className="detail-label">Version</span>
-                      <span className="detail-value">{qeInfo.version}</span>
-                    </div>
-                  )}
-                  
-                  {qeInfo.executables && qeInfo.executables.length > 0 && (
-                    <div className="detail-row">
-                      <span className="detail-label">Executables</span>
-                      <div className="detail-tags">
-                        {qeInfo.executables.map(exe => (
-                          <span key={exe} className="exe-tag">{exe}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+        {/* Engine Detection Sections */}
+        {engineFamilies.map((engine) => (
+          <div key={engine.engine_family} className="settings-section">
+            <div className="settings-section__header">
+              <h3 className="settings-section__title">
+                <span className="settings-icon">⚛️</span>
+                {engine.display_name}
+              </h3>
+              {/* For QE, keep the existing re-detect button */}
+              {engine.engine_family === 'qe' && (
+                <button
+                  className="settings-btn settings-btn--sm"
+                  onClick={handleRedetectQE}
+                  disabled={isDetecting}
+                >
+                  {isDetecting ? '🔄 Detecting...' : '🔍 Re-detect'}
+                </button>
               )}
-              
-              {!qeInfo.found && (
-                <div className="qe-not-found">
-                  <p className="qe-not-found__message">
-                    Quantum ESPRESSO was not detected on your system.
-                  </p>
-                  <div className="qe-not-found__help">
-                    <p><strong>To fix this:</strong></p>
-                    <ol>
-                      <li>Install QE from <a href="https://www.quantum-espresso.org/" target="_blank" rel="noopener noreferrer">quantum-espresso.org</a></li>
-                      <li>Set the <code>QE_HOME</code> environment variable to your QE installation directory</li>
-                      <li>Or add QE&apos;s <code>bin/</code> directory to your <code>PATH</code></li>
-                      <li>Click &quot;Re-detect&quot; after installation</li>
-                    </ol>
+            </div>
+            <div className="settings-section__content">
+              {engine.engine_family === 'qe' ? (
+                /* Keep existing QE detection display */
+                qeInfo ? (
+                  <div className={`qe-status qe-status--${qeInfo.found ? 'found' : 'missing'}`}>
+                    <div className="qe-status__indicator">
+                      {qeInfo.found ? (
+                        <>
+                          <span className="status-dot status-dot--success" />
+                          <span className="status-text">QE Installation Found</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="status-dot status-dot--error" />
+                          <span className="status-text">QE Not Found</span>
+                        </>
+                      )}
+                    </div>
+                    
+                    {qeInfo.found && qeInfo.qe_home && (
+                      <div className="qe-details">
+                        <div className="detail-row">
+                          <span className="detail-label">QE Home</span>
+                          <code className="detail-value detail-value--path">{qeInfo.qe_home}</code>
+                        </div>
+                        
+                        {qeInfo.version && (
+                          <div className="detail-row">
+                            <span className="detail-label">Version</span>
+                            <span className="detail-value">{qeInfo.version}</span>
+                          </div>
+                        )}
+                        
+                        {qeInfo.executables && qeInfo.executables.length > 0 && (
+                          <div className="detail-row">
+                            <span className="detail-label">Executables</span>
+                            <div className="detail-tags">
+                              {qeInfo.executables.map(exe => (
+                                <span key={exe} className="exe-tag">{exe}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {!qeInfo.found && (
+                      <div className="qe-not-found">
+                        <p className="qe-not-found__message">
+                          Quantum ESPRESSO was not detected on your system.
+                        </p>
+                        <div className="qe-not-found__help">
+                          <p><strong>To fix this:</strong></p>
+                          <ol>
+                            <li>Install QE from <a href="https://www.quantum-espresso.org/" target="_blank" rel="noopener noreferrer">quantum-espresso.org</a></li>
+                            <li>Set the <code>QE_HOME</code> environment variable to your QE installation directory</li>
+                            <li>Or add QE&apos;s <code>bin/</code> directory to your <code>PATH</code></li>
+                            <li>Click &quot;Re-detect&quot; after installation</li>
+                          </ol>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <p className="settings-empty">Click &quot;Re-detect&quot; to check for QE installation</p>
+                )
+              ) : (
+                /* Generic engine status */
+                <div className="engine-status">
+                  <p>Supported gen steps: {engine.supported_gen_steps.join(', ')}</p>
+                  {engine.companion_engines.length > 0 && (
+                    <p>Companion engines: {engine.companion_engines.join(', ')}</p>
+                  )}
                 </div>
               )}
             </div>
-          ) : (
-            <p className="settings-empty">Click &quot;Re-detect&quot; to check for QE installation</p>
-          )}
           </div>
-        </div>
+        ))}
         
         {/* QE Engine Selection Section (Two-State Model) */}
         <div className="settings-section">
@@ -811,83 +810,6 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                       </div>
                     )}
                   </div>
-                </div>
-              </div>
-              
-              {/* QE Metadata Load Status */}
-              <div className="diagnostics-subsection">
-                <div className="diagnostics-subsection__header">
-                  <h4 className="diagnostics-subsection__title">QE Metadata Load Status</h4>
-                  <button
-                    className="settings-btn settings-btn--sm"
-                    onClick={fetchQEMetadataDebugInfo}
-                    title="Refresh metadata load status"
-                  >
-                    🔄
-                  </button>
-                </div>
-                <div className="diagnostics-subsection__content">
-                  {qeMetadataDebugInfo ? (
-                    <div className="diagnostics-info">
-                      <div className="diagnostics-info-item">
-                        <span className="diagnostics-info-label">Loaded via:</span>
-                        <span className="diagnostics-info-value">
-                          {(() => {
-                            const loadedVia = qeMetadataDebugInfo.loaded_via;
-                            const loadedAt = qeMetadataDebugInfo.loaded_at;
-                            
-                            if (loadedVia === 'not_loaded') {
-                              return 'not loaded yet';
-                            }
-                            
-                            let timeStr = '—';
-                            if (loadedAt) {
-                              try {
-                                const date = new Date(loadedAt);
-                                const hours = date.getHours().toString().padStart(2, '0');
-                                const minutes = date.getMinutes().toString().padStart(2, '0');
-                                const seconds = date.getSeconds().toString().padStart(2, '0');
-                                timeStr = `${hours}:${minutes}:${seconds}`;
-                              } catch {
-                                timeStr = '—';
-                              }
-                            }
-                            return `${loadedVia} (${timeStr})`;
-                          })()}
-                        </span>
-                      </div>
-                      {qeMetadataDebugInfo.schema_version !== null && (
-                        <div className="diagnostics-info-item">
-                          <span className="diagnostics-info-label">Schema:</span>
-                          <span className="diagnostics-info-value">
-                            v{qeMetadataDebugInfo.schema_version}
-                          </span>
-                        </div>
-                      )}
-                      {qeMetadataDebugInfo.path_abs && (
-                        <div className="diagnostics-info-item">
-                          <span className="diagnostics-info-label">Path:</span>
-                          <code 
-                            className="diagnostics-info-value" 
-                            title={qeMetadataDebugInfo.path_abs}
-                            style={{
-                              maxWidth: '400px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              display: 'inline-block',
-                            }}
-                          >
-                            {qeMetadataDebugInfo.path_abs}
-                          </code>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="diagnostics-info">
-                      <span className="diagnostics-info-value">Loading...</span>
-                    </div>
-                  )}
                 </div>
               </div>
               

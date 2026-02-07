@@ -51,11 +51,15 @@ export interface QVClient {
   listCalculations: (projectRoot: string) => Promise<QVResponse<{ calculations: CalculationInfo[]; count: number }>>;
   rebuildProjectRegistry: (projectRoot: string) => Promise<QVResponse<QVResult<'rebuild_project_registry'>>>;
   listJobs: (filter?: { status?: JobStatus; job_type?: string }) => Promise<QVResponse<{ jobs: JobSummary[]; count: number }>>;
-  listQeUiParameters: (module: string, stepType: string) => Promise<QVResponse<QVResult<'list_qe_ui_parameters'>>>;
-  listQeParameterMetadata: (
-    operation: 'list_modules' | 'list_sections' | 'list_parameters' | 'search',
-    params?: { module?: string; section?: string; query?: string }
-  ) => Promise<QVResponse<QVResult<'list_qe_parameter_metadata'>>>;
+  listEngineFamilies: () => Promise<QVResponse<QVResult<'list_engine_families'>>>;
+  listStepPalette: (engineFamily: string | null) => Promise<QVResponse<QVResult<'list_step_palette'>>>;
+  setEngineFamily: (projectRoot: string, calculation: string, engineFamily: string) => Promise<QVResponse<QVResult<'set_engine_family'>>>;
+  listEngineUiParameters: (engineFamily: string, stepTypeGen: string) => Promise<QVResponse<QVResult<'list_engine_ui_parameters'>>>;
+  listEngineParameterMetadata: (
+    engineFamily: string,
+    operation: 'list_categories' | 'list_tags' | 'search',
+    params?: { category?: string; section?: string; query?: string }
+  ) => Promise<QVResponse<QVResult<'list_engine_parameter_metadata'>>>;
   getCommonCards: (projectRoot: string, calculation: string, step: string) => Promise<QVResponse<QVResult<'get_common_cards'>>>;
   setCommonCard: (
     projectRoot: string,
@@ -378,16 +382,31 @@ export function useQVClient(): QVClient {
     [call]
   );
   
-  const listQeUiParameters = useCallback(
-    (module: string, stepType: string) => call('list_qe_ui_parameters', { module, step_type_gen: stepType }),
+  const listEngineFamilies = useCallback(
+    () => call('list_engine_families', {}),
     [call]
   );
-  
-  const listQeParameterMetadata = useCallback(
-    (
-      operation: 'list_modules' | 'list_sections' | 'list_parameters' | 'search',
-      params: { module?: string; section?: string; query?: string } = {}
-    ) => call('list_qe_parameter_metadata', { operation, ...params }),
+
+  const listStepPalette = useCallback(
+    (engineFamily: string | null) => call('list_step_palette', { engine_family: engineFamily }),
+    [call]
+  );
+
+  const setEngineFamily = useCallback(
+    (projectRoot: string, calculation: string, engineFamily: string) =>
+      call('set_engine_family', { project_root: projectRoot, calculation, engine_family: engineFamily }),
+    [call]
+  );
+
+  const listEngineUiParameters = useCallback(
+    (engineFamily: string, stepTypeGen: string) =>
+      call('list_engine_ui_parameters', { engine_family: engineFamily, step_type_gen: stepTypeGen }),
+    [call]
+  );
+
+  const listEngineParameterMetadata = useCallback(
+    (engineFamily: string, operation: 'list_categories' | 'list_tags' | 'search', params: { category?: string; section?: string; query?: string } = {}) =>
+      call('list_engine_parameter_metadata', { engine_family: engineFamily, operation, ...params }),
     [call]
   );
   
@@ -595,8 +614,11 @@ export function useQVClient(): QVClient {
     listCalculations,
     rebuildProjectRegistry,
     listJobs,
-    listQeUiParameters,
-    listQeParameterMetadata,
+    listEngineFamilies,
+    listStepPalette,
+    setEngineFamily,
+    listEngineUiParameters,
+    listEngineParameterMetadata,
     getCommonCards,
     setCommonCard,
     getPseudoMapping,

@@ -21,6 +21,8 @@ class AbinitDriver(BaseEngineDriver):
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
         "scf", "nscf", "relax",
     })
+    ENGINE_ROLE: str = "base"
+    COMPANION_ENGINES: frozenset = frozenset()
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties

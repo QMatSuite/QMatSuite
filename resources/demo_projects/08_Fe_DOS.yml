@@ -64,6 +64,7 @@ calculations:
     kind: calculation
   mode: normal
   working_dir: raw
+  engine_family: qe
   steps:
   - meta:
       name: fe.scf_noncollin

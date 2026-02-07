@@ -170,10 +170,11 @@ def copy_calculation_template(
     new_name: str | None = None,
     structure: str | None = None,
     calculation_ulid: str | None = None,
+    engine_family: str | None = None,
 ) -> tuple[Path, set[str], str]:
     """
     Copy a calculation template to destination.
-    
+
     Args:
         template_name: Template name
         dest_dir: Destination directory for calculation
@@ -181,7 +182,8 @@ def copy_calculation_template(
         new_name: Optional new name for the calculation
         structure: Optional structure name to use (overrides template)
         calculation_ulid: Optional ULID to use for the calculation
-        
+        engine_family: Optional engine family to set on the calculation
+
     Returns:
         Tuple of (calculation.yaml path, set of structure names needed, calculation ULID)
     """
@@ -193,6 +195,7 @@ def copy_calculation_template(
         new_name=new_name,
         structure=structure,
         calculation_ulid=calculation_ulid,
+        engine_family=engine_family,
     )
 
 
@@ -623,6 +626,311 @@ from quantumvitas.drivers.qe.data.qe_metadata import (  # noqa: E402, F401
     QEUIParam,
     _iter_params,  # Private helper needed by daemon
 )
+
+
+# =============================================================================
+# Generic engine registry queries (for daemon RPCs, M4)
+# =============================================================================
+
+def _get_engine_metadata_module(engine_family: str):
+    """
+    Get the metadata module for an engine, or None if not available.
+
+    JUSTIFICATION: Internal helper for get_engine_ui_parameters and
+    get_engine_parameter_metadata. Centralizes lazy imports of engine
+    data modules so daemon handlers don't import from drivers directly.
+    """
+    if engine_family == "vasp":
+        from quantumvitas.drivers.vasp.data import vasp_metadata
+        return vasp_metadata
+    elif engine_family == "orca":
+        from quantumvitas.drivers.orca.data import orca_metadata
+        return orca_metadata
+    elif engine_family == "lammps":
+        from quantumvitas.drivers.lammps.data import lammps_metadata
+        return lammps_metadata
+    elif engine_family == "gaussian":
+        from quantumvitas.drivers.gaussian.data import gaussian_metadata
+        return gaussian_metadata
+    elif engine_family == "abinit":
+        from quantumvitas.drivers.abinit.data import abinit_metadata
+        return abinit_metadata
+    elif engine_family == "cp2k":
+        from quantumvitas.drivers.cp2k.data import cp2k_metadata
+        return cp2k_metadata
+    elif engine_family == "qmcpack":
+        from quantumvitas.drivers.qmcpack.data import qmcpack_metadata
+        return qmcpack_metadata
+    return None
+
+
+def list_engine_families() -> list[dict]:
+    """
+    List all registered engine families with classification metadata.
+
+    JUSTIFICATION: Needed by daemon for list_engine_families RPC.
+    Global driver registry query — no project context required.
+    Same pattern as QE metadata re-exports (line 616) but engine-agnostic.
+
+    PROXIES: quantumvitas.core.driver_registry.DriverRegistry
+    """
+    from quantumvitas.core.driver_registry import DriverRegistry
+    import quantumvitas.drivers  # noqa: F401 — ensure loaded
+
+    engines = []
+    for family in sorted(DriverRegistry.get_all_engines()):
+        driver = DriverRegistry.get_driver(family)
+        engines.append({
+            "engine_family": family,
+            "display_name": driver.display_name,
+            "engine_role": getattr(driver, 'ENGINE_ROLE', 'base'),
+            "companion_engines": sorted(getattr(driver, 'COMPANION_ENGINES', frozenset())),
+            "supported_gen_steps": sorted(getattr(driver, 'SUPPORTED_GEN_STEPS', set())),
+        })
+    return engines
+
+
+def get_step_palette(engine_family: str | None) -> dict:
+    """
+    Get step palette (base + companion steps) for a given engine family.
+
+    JUSTIFICATION: Needed by daemon for list_step_palette RPC.
+    Global driver registry query — no project context required.
+
+    PROXIES: quantumvitas.core.driver_registry.DriverRegistry
+    """
+    if engine_family is None:
+        return {"base_steps": [], "companion_steps": {}}
+
+    from quantumvitas.core.driver_registry import DriverRegistry
+    import quantumvitas.drivers  # noqa: F401
+
+    driver = DriverRegistry.get_driver(engine_family)
+    supported = getattr(driver, 'SUPPORTED_GEN_STEPS', set())
+
+    base_steps = []
+    for gen in sorted(supported):
+        try:
+            spec = DriverRegistry.materialize_step_type(engine_family, gen)
+            try:
+                spec_obj = DriverRegistry.get_step_type_spec(spec)
+                desc = spec_obj.description
+            except Exception:
+                desc = gen
+            base_steps.append({"gen": gen, "spec": spec, "description": desc})
+        except Exception:
+            continue
+
+    companions = getattr(driver, 'COMPANION_ENGINES', frozenset())
+    companion_steps = {}
+    for comp in sorted(companions):
+        try:
+            comp_driver = DriverRegistry.get_driver(comp)
+            comp_supported = getattr(comp_driver, 'SUPPORTED_GEN_STEPS', set())
+            comp_list = []
+            for gen in sorted(comp_supported):
+                try:
+                    spec = DriverRegistry.materialize_step_type(comp, gen)
+                    try:
+                        spec_obj = DriverRegistry.get_step_type_spec(spec)
+                        desc = spec_obj.description
+                    except Exception:
+                        desc = gen
+                    comp_list.append({"gen": gen, "spec": spec, "description": desc})
+                except Exception:
+                    continue
+            if comp_list:
+                companion_steps[comp] = comp_list
+        except Exception:
+            continue
+
+    return {"base_steps": base_steps, "companion_steps": companion_steps}
+
+
+def validate_engine_family(engine_family: str) -> tuple[bool, str]:
+    """
+    Validate that engine_family is a registered base engine.
+
+    JUSTIFICATION: Needed by daemon for set_engine_family RPC validation.
+    Pure validation check on static registry data, no project context.
+
+    PROXIES: quantumvitas.core.driver_registry.DriverRegistry
+
+    Returns:
+        Tuple of (is_valid, error_message). error_message is empty if valid.
+    """
+    from quantumvitas.core.driver_registry import DriverRegistry
+    import quantumvitas.drivers  # noqa: F401
+
+    if not DriverRegistry.is_engine_registered(engine_family):
+        return False, (
+            f"Unknown engine_family '{engine_family}'. "
+            f"Registered: {sorted(DriverRegistry.get_all_engines())}"
+        )
+
+    driver = DriverRegistry.get_driver(engine_family)
+    role = getattr(driver, 'ENGINE_ROLE', 'base')
+    if role != 'base':
+        return False, (
+            f"Cannot set engine_family to '{engine_family}' — "
+            f"it has ENGINE_ROLE='{role}'. Only base engines can be set as engine_family."
+        )
+
+    return True, ""
+
+
+def get_engine_ui_parameters(engine_family: str, step_type_gen: str) -> list[dict]:
+    """
+    Get UI parameter metadata for any engine + step type.
+
+    JUSTIFICATION: Needed by daemon for list_engine_ui_parameters RPC.
+    Generic replacement for QE-specific get_ui_parameters.
+    Queries static engine metadata modules, no project context.
+
+    PROXIES: quantumvitas.drivers.<engine>.data.<engine>_metadata
+    """
+    engine_family = engine_family.strip().lower()
+    step_type_gen = step_type_gen.strip().lower()
+
+    # QE: delegate to existing QE metadata infrastructure
+    if engine_family == "qe":
+        module_map = {
+            "scf": "pw", "nscf": "pw", "relax": "pw",
+            "bands_pw": "pw", "bandspw": "pw", "dos": "pw", "md": "pw",
+            "bands": "bands", "ph": "ph", "projwfc": "projwfc", "pp": "pp",
+        }
+        module = module_map.get(step_type_gen)
+        if module and module in list_supported_modules():
+            ui_params = get_ui_parameters(module, step_type_gen)
+            result = []
+            for param in ui_params:
+                param_dict = {
+                    "key": param.name,
+                    "label": param.label,
+                    "type": param.type,
+                    "section": param.namelist,
+                }
+                if param.unit:
+                    param_dict["unit"] = param.unit
+                if param.description:
+                    param_dict["description"] = param.description
+                if param.options:
+                    param_dict["options"] = param.options
+                if param.importance:
+                    param_dict["importance"] = param.importance
+                result.append(param_dict)
+            return result
+
+    # For engines with metadata modules (VASP, ORCA, etc.)
+    try:
+        metadata_module = _get_engine_metadata_module(engine_family)
+        if metadata_module and hasattr(metadata_module, 'list_tags'):
+            tags = metadata_module.list_tags()
+            result = []
+            for tag_name in sorted(tags):
+                info = metadata_module.get_tag_info(tag_name)
+                if info:
+                    result.append({
+                        "key": tag_name,
+                        "label": tag_name,
+                        "type": info.get("type", "string"),
+                        "default": info.get("default"),
+                        "description": info.get("description", ""),
+                        "section": info.get("category", "general"),
+                    })
+            return result
+    except (ImportError, AttributeError):
+        pass
+
+    return []
+
+
+def get_engine_parameter_metadata(
+    engine_family: str,
+    operation: str,
+    category: str = "",
+    query: str = "",
+) -> dict:
+    """
+    Browse parameter metadata for any engine.
+
+    JUSTIFICATION: Needed by daemon for list_engine_parameter_metadata RPC.
+    Generic replacement for QE-specific parameter metadata queries.
+    Queries static engine metadata modules, no project context.
+
+    PROXIES: quantumvitas.drivers.<engine>.data.<engine>_metadata
+    """
+    engine_family = engine_family.strip().lower()
+
+    try:
+        metadata_module = _get_engine_metadata_module(engine_family)
+        if metadata_module is None:
+            return {"categories": [], "tags": [], "results": []}
+
+        if operation == "list_categories":
+            if hasattr(metadata_module, 'list_categories'):
+                cats = metadata_module.list_categories()
+                return {"categories": [{"id": c, "label": c} for c in sorted(cats)]}
+            return {"categories": []}
+
+        elif operation == "list_tags":
+            if hasattr(metadata_module, 'list_tags'):
+                tags = (
+                    metadata_module.list_tags(category=category)
+                    if category
+                    else metadata_module.list_tags()
+                )
+                result = []
+                for tag_name in sorted(tags) if isinstance(tags, (list, set)) else sorted(tags):
+                    info = (
+                        metadata_module.get_tag_info(tag_name)
+                        if hasattr(metadata_module, 'get_tag_info')
+                        else {}
+                    )
+                    if info:
+                        result.append({
+                            "name": tag_name,
+                            "type": info.get("type", "string"),
+                            "default": info.get("default"),
+                            "description": info.get("description", ""),
+                            "category": info.get("category", category),
+                        })
+                return {"tags": result}
+            return {"tags": []}
+
+        elif operation == "search":
+            if not query:
+                raise ValueError("'query' is required for search operation")
+            query_lower = query.lower()
+            if hasattr(metadata_module, 'list_tags'):
+                tags = metadata_module.list_tags()
+                results = []
+                for tag_name in tags if isinstance(tags, (list, set)) else list(tags):
+                    info = (
+                        metadata_module.get_tag_info(tag_name)
+                        if hasattr(metadata_module, 'get_tag_info')
+                        else {}
+                    )
+                    name_lower = tag_name.lower()
+                    desc_lower = (info.get("description", "") or "").lower() if info else ""
+                    if query_lower in name_lower or query_lower in desc_lower:
+                        results.append({
+                            "name": tag_name,
+                            "type": info.get("type", "string") if info else "string",
+                            "default": info.get("default") if info else None,
+                            "description": info.get("description", "") if info else "",
+                            "category": info.get("category", "") if info else "",
+                        })
+                return {"results": results}
+            return {"results": []}
+
+        else:
+            raise ValueError(
+                f"Unknown operation '{operation}'. Must be: list_categories, list_tags, search"
+            )
+
+    except (ImportError, AttributeError) as e:
+        return {"categories": [], "tags": [], "results": [], "error": str(e)}
 
 
 # =============================================================================

@@ -108,6 +108,8 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
                     "graphene bands",
                     "--structure",
                     "C",
+                    "--engine-family",
+                    "qe",
                 ],
             )
             assert result.exit_code == 0, f"Calculation init failed: {result.stdout}"

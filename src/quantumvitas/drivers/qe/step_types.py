@@ -53,6 +53,12 @@ QE_STEP_TYPE_SPECS: list[StepTypeSpec] = [
         description="QE phonon calculation",
     ),
     StepTypeSpec(
+        step_type_spec="qe_gipaw",
+        engine="qe",
+        executable="gipaw.x",
+        description="QE GIPAW NMR chemical shifts and EPR g-tensor",
+    ),
+    StepTypeSpec(
         step_type_spec="qe_q2r",
         engine="qe",
         executable="q2r.x",

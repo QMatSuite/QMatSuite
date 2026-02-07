@@ -9,7 +9,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import type { StepDetail, JobSubmitResult, CalculationDetailResult, QVError } from '../../types/qv';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 import { useQVClient } from '../../hooks/useQVClient';
-import { useQEParameterMetadata, type QEParameterMeta } from '../../hooks/useQEParameterMetadata';
+import { useEngineParameterMetadata, type QEParameterMeta } from '../../hooks/useEngineParameterMetadata';
 import { ActiveParametersPanel } from '../step_parameters/ActiveParametersPanel';
 import { AddParameterPalette } from '../step_parameters/AddParameterPalette';
 import { CommonCardKPoints, type CommonCardKPointsRef } from '../common_cards/CommonCardKPoints';
@@ -45,81 +45,6 @@ interface StepDetailPanelProps {
   onStepDeleted?: (stepId: string) => void;
 }
 
-/**
- * Map step_type to QE module for UI parameter fetching.
- * Most pw.x-based steps use module "pw", but bands.x uses module "bands".
- */
-function stepTypeToModule(stepType: string): string | null {
-  const stepTypeLower = stepType.toLowerCase();
-  
-  // pw.x-based steps
-  if (['scf', 'nscf', 'relax', 'vc-relax', 'md', 'bands_pw', 'dos'].includes(stepTypeLower)) {
-    return 'pw';
-  }
-  
-  // bands.x post-processing
-  if (stepTypeLower === 'bands') {
-    return 'bands';
-  }
-  
-  // Other modules map 1:1
-  const moduleMap: Record<string, string> = {
-    'ph': 'ph',
-    'projwfc': 'projwfc',
-    'pp': 'pp',
-  };
-  
-  return moduleMap[stepTypeLower] || null;
-}
-
-// Legacy fallback parameters (used if UI metadata is not available)
-const LEGACY_EDITABLE_PARAMS: Record<string, Array<{
-  namelist: string;
-  key: string;
-  label: string;
-  type: 'number' | 'text' | 'select';
-  options?: string[];
-  unit?: string;
-  description?: string;
-}>> = {
-  scf: [
-    { namelist: 'SYSTEM', key: 'ecutwfc', label: 'Wavefunction Cutoff', type: 'number', unit: 'Ry', description: 'Kinetic energy cutoff for wavefunctions' },
-    { namelist: 'SYSTEM', key: 'ecutrho', label: 'Charge Density Cutoff', type: 'number', unit: 'Ry', description: 'Kinetic energy cutoff for charge density (default: 4×ecutwfc)' },
-    { namelist: 'SYSTEM', key: 'occupations', label: 'Occupations', type: 'select', options: ['smearing', 'fixed', 'tetrahedra', 'tetrahedra_lin', 'tetrahedra_opt'] },
-    { namelist: 'SYSTEM', key: 'smearing', label: 'Smearing Type', type: 'select', options: ['gaussian', 'gauss', 'methfessel-paxton', 'm-p', 'mp', 'marzari-vanderbilt', 'cold', 'm-v', 'mv', 'fermi-dirac', 'f-d', 'fd'] },
-    { namelist: 'SYSTEM', key: 'degauss', label: 'Smearing Width', type: 'number', unit: 'Ry', description: 'Gaussian spreading for Brillouin-zone integration' },
-    { namelist: 'ELECTRONS', key: 'conv_thr', label: 'Convergence Threshold', type: 'number', description: 'Convergence threshold for self-consistency' },
-  ],
-  nscf: [
-    { namelist: 'SYSTEM', key: 'ecutwfc', label: 'Wavefunction Cutoff', type: 'number', unit: 'Ry' },
-    { namelist: 'SYSTEM', key: 'ecutrho', label: 'Charge Density Cutoff', type: 'number', unit: 'Ry' },
-    { namelist: 'SYSTEM', key: 'occupations', label: 'Occupations', type: 'select', options: ['smearing', 'fixed', 'tetrahedra', 'tetrahedra_lin', 'tetrahedra_opt'] },
-    { namelist: 'SYSTEM', key: 'smearing', label: 'Smearing Type', type: 'select', options: ['gaussian', 'methfessel-paxton', 'marzari-vanderbilt', 'fermi-dirac'] },
-    { namelist: 'SYSTEM', key: 'degauss', label: 'Smearing Width', type: 'number', unit: 'Ry' },
-    { namelist: 'ELECTRONS', key: 'conv_thr', label: 'Convergence Threshold', type: 'number' },
-  ],
-  relax: [
-    { namelist: 'SYSTEM', key: 'ecutwfc', label: 'Wavefunction Cutoff', type: 'number', unit: 'Ry' },
-    { namelist: 'SYSTEM', key: 'ecutrho', label: 'Charge Density Cutoff', type: 'number', unit: 'Ry' },
-    { namelist: 'CONTROL', key: 'forc_conv_thr', label: 'Force Convergence', type: 'number', unit: 'Ry/au', description: 'Convergence threshold on forces' },
-    { namelist: 'ELECTRONS', key: 'conv_thr', label: 'SCF Convergence', type: 'number' },
-  ],
-  bands_pw: [
-    { namelist: 'SYSTEM', key: 'ecutwfc', label: 'Wavefunction Cutoff', type: 'number', unit: 'Ry', description: 'Kinetic energy cutoff for wavefunctions' },
-    { namelist: 'SYSTEM', key: 'ecutrho', label: 'Charge Density Cutoff', type: 'number', unit: 'Ry', description: 'Kinetic energy cutoff for charge density (default: 4×ecutwfc)' },
-    { namelist: 'SYSTEM', key: 'nbnd', label: 'Number of Bands', type: 'number', description: 'Number of bands to compute' },
-    { namelist: 'ELECTRONS', key: 'conv_thr', label: 'Convergence Threshold', type: 'number', description: 'Convergence threshold for self-consistency' },
-  ],
-  bands: [
-    { namelist: 'BANDS', key: 'filband', label: 'Output File', type: 'text', description: 'Name of output file for band data' },
-    { namelist: 'BANDS', key: 'lsym', label: 'Use Symmetry', type: 'select', options: ['.true.', '.false.'], description: 'Use symmetry to reduce k-points' },
-  ],
-  dos: [
-    { namelist: 'SYSTEM', key: 'ecutwfc', label: 'Wavefunction Cutoff', type: 'number', unit: 'Ry' },
-    { namelist: 'SYSTEM', key: 'ecutrho', label: 'Charge Density Cutoff', type: 'number', unit: 'Ry' },
-  ],
-};
-
 export function StepDetailPanel({
   projectRoot,
   selectedCalculation,
@@ -136,17 +61,21 @@ export function StepDetailPanel({
   onStepDeleted,
 }: StepDetailPanelProps) {
   const qv = useQVClient();
-  
-  // Store stable reference to listQeUiParameters to avoid including qv object in dependencies
+
+  // Get engine_family from calculation detail (must be declared before useEngineParameterMetadata)
+  const engineFamily = selectedCalculation?.engine_family ?? null;
+
+  // Store stable reference to listEngineUiParameters to avoid including qv object in dependencies
   // The function is memoized in useQVClient, so this ref will be stable across renders
-  const listQeUiParametersRef = useRef(qv.listQeUiParameters);
-  listQeUiParametersRef.current = qv.listQeUiParameters;
-  
+  const listEngineUiParametersRef = useRef(qv.listEngineUiParameters);
+  listEngineUiParametersRef.current = qv.listEngineUiParameters;
+
   // QE parameter metadata hook (shared with Resources view)
-  const qeMetadata = useQEParameterMetadata();
+  // For QE, pass engineFamily='qe' to maintain backwards compatibility
+  const qeMetadata = useEngineParameterMetadata(engineFamily || 'qe');
   // Extract stable function references to avoid effect re-runs
   const { loadSections, loadParameters } = qeMetadata;
-  
+
   // Calculation selector: always use slug (backend expects calculation slug)
   const calculationSelector = selectedCalculation?.slug ?? null;
   // Step selector: always use ULID from selectedStepId (must be ULID from calculation.yaml's steps array)
@@ -230,8 +159,24 @@ export function StepDetailPanel({
   // Delete step state
   const [isDeletingStep, setIsDeletingStep] = useState(false);
   
-  // Get module for current step (after stepDetail is declared)
-  const module = stepDetail ? stepTypeToModule(stepDetail.step_type_gen) : null;
+  // Get module for current step (for QE metadata loading - still needed for parameter metadata)
+  // Note: This is only used for QE parameter metadata (loadSections, loadParameters)
+  // UI parameters now use generic list_engine_ui_parameters RPC
+  const module = stepDetail && engineFamily === 'qe' ? (() => {
+    const stepTypeLower = stepDetail.step_type_gen.toLowerCase();
+    if (['scf', 'nscf', 'relax', 'vc-relax', 'md', 'bands_pw', 'dos'].includes(stepTypeLower)) {
+      return 'pw';
+    }
+    if (stepTypeLower === 'bands') {
+      return 'bands';
+    }
+    const moduleMap: Record<string, string> = {
+      'ph': 'ph',
+      'projwfc': 'projwfc',
+      'pp': 'pp',
+    };
+    return moduleMap[stepTypeLower] || null;
+  })() : null;
   
   // Build parameter metadata map for quick lookup
   // This map is built from already-loaded parameters in qeMetadata.parameters
@@ -249,10 +194,10 @@ export function StepDetailPanel({
     return map;
   }, [module, qeMetadata.parameters]);
   
-  // UI parameter metadata (from daemon)
+  // UI parameter metadata (from daemon) - using generic EngineUIParameter type
   const [uiParams, setUiParams] = useState<Array<{
-    namelist: string;
-    name: string;
+    section?: string;  // Generic section name (replaces namelist for QE)
+    key: string;       // Generic key (replaces name for QE)
     label: string;
     type: string;
     unit?: string;
@@ -431,19 +376,18 @@ export function StepDetailPanel({
             setRelaxPreviewError(null);
           }
           
-          // Load parameter metadata for all sections that have parameters
-          const stepModule = stepTypeToModule(response.data.step_type_gen);
+          // Load parameter metadata for all sections that have parameters (QE only, for metadata lookup)
           const parameters = response.data.parameters;
-          if (stepModule && qeMetadata && parameters) {
+          if (module && qeMetadata && parameters && engineFamily === 'qe') {
             // Load sections first, then parameters for each section
-            qeMetadata.loadSections(stepModule).then(() => {
+            qeMetadata.loadSections(module).then(() => {
               const sectionsToLoad = new Set<string>();
               for (const namelist of Object.keys(parameters)) {
                 const sectionKey = namelist.startsWith('&') ? namelist : `&${namelist}`;
                 sectionsToLoad.add(sectionKey);
               }
               sectionsToLoad.forEach(section => {
-                qeMetadata.loadParameters(stepModule, section);
+                qeMetadata.loadParameters(module, section);
               });
             });
           }
@@ -516,30 +460,23 @@ export function StepDetailPanel({
   }, [projectRoot, calculationSelector, stepSelector, selectedCalculation]);
   
   // Fetch UI parameters when stepDetail changes
-  // QE UI params are static metadata; we only fetch once per module+stepType combination.
+  // Generic engine UI params are fetched via list_engine_ui_parameters RPC.
   // CRITICAL: Do not include `qv` in dependencies - it's a new object reference on every render.
-  // Instead, extract module and stepType as primitive values and depend only on those.
+  // Instead, extract engineFamily and stepType as primitive values and depend only on those.
   useEffect(() => {
-    if (!stepDetail || !window.qv) {
+    if (!stepDetail || !window.qv || !engineFamily) {
       setUiParams([]);
       return;
     }
     
-    const module = stepTypeToModule(stepDetail.step_type_gen);
-    const stepType = stepDetail.step_type_gen;
-    
-    if (!module) {
-      // No module mapping - use legacy params or empty
-      setUiParams([]);
-      return;
-    }
+    const stepTypeGen = stepDetail.step_type_gen;
     
     // Track if component is still mounted to prevent state updates after unmount
     let cancelled = false;
     
     // Fetch UI parameters (static metadata, no need to refetch on every render)
     // Use ref to avoid including qv object in dependencies
-    listQeUiParametersRef.current(module, stepType)
+    listEngineUiParametersRef.current(engineFamily, stepTypeGen)
       .then(response => {
         // Only update state if component is still mounted
         if (cancelled) return;
@@ -556,17 +493,17 @@ export function StepDetailPanel({
           
           // Development logging (can be removed later)
           if (sorted.length > 0) {
-            console.log(`[StepDetailPanel] Loaded ${sorted.length} UI parameters for ${module}/${stepType}`, sorted.slice(0, 3).map(p => p.name));
+            console.log(`[StepDetailPanel] Loaded ${sorted.length} UI parameters for ${engineFamily}/${stepTypeGen}`, sorted.slice(0, 3).map(p => p.key));
           }
         } else {
-          // Fall back to empty (will use legacy params)
+          // No parameters available for this engine/step type
           setUiParams([]);
         }
       })
       .catch(err => {
         // Only log if component is still mounted
         if (!cancelled) {
-          console.warn('[StepDetailPanel] Failed to load UI parameters, using fallback', err);
+          console.warn('[StepDetailPanel] Failed to load UI parameters', err);
           setUiParams([]);
         }
       });
@@ -575,7 +512,7 @@ export function StepDetailPanel({
     return () => {
       cancelled = true;
     };
-  }, [stepDetail?.step_type_gen, stepDetail?.ulid]); // Only depend on primitive values - module and stepType determine when to refetch
+  }, [stepDetail?.step_type_gen, stepDetail?.ulid, engineFamily]); // Only depend on primitive values - engineFamily and stepType determine when to refetch
   
   // Handle running the step
   const handleRunStep = useCallback(async () => {
@@ -1225,18 +1162,20 @@ export function StepDetailPanel({
     );
   }
   
-  // Get editable parameters: prefer UI metadata, fall back to legacy
+  // Get editable parameters from generic UI metadata
+  // For QE, section maps to namelist (e.g., "SYSTEM" -> "SYSTEM")
+  // For other engines, section may be different (e.g., "general")
   const editableParams = uiParams.length > 0
     ? uiParams.map(p => ({
-        namelist: p.namelist,
-        key: p.name,
+        namelist: p.section || 'CONTROL',  // Use section as namelist (QE compatibility), fallback to CONTROL
+        key: p.key,
         label: p.label,
         type: (p.type === 'float' ? 'number' : p.type) as 'number' | 'text' | 'select',
         options: p.options || undefined,
         unit: p.unit,
         description: p.description,
       }))
-    : (LEGACY_EDITABLE_PARAMS[stepDetail.step_type_gen] || []);
+    : [];
   const hasEditableParams = editableParams.length > 0;
   
   // Extract card keys for display, filtering out K_POINTS (handled separately in Common Cards)
@@ -1432,6 +1371,14 @@ export function StepDetailPanel({
                 );
               })}
             </div>
+            )}
+            
+            {/* Show message if no guided parameters available */}
+            {!hasEditableParams && (
+              <div className="step-detail__no-params">
+                <p>No guided parameters available for this engine/step type.</p>
+                <p>Use the raw parameter editor below to edit parameters directly.</p>
+              </div>
             )}
             
             {/* K_POINTS editor (inline with Common Parameters) */}

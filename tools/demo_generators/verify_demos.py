@@ -7,7 +7,7 @@ This tool validates that all generated demos have complete pseudo identity tripl
 files exist in resources/pseudo/.
 
 Usage:
-    python tools/verify_demos.py
+    python tools/demo_generators/verify_demos.py
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from typing import List, Tuple
 import yaml
 
 # Add src to path
-repo_root = Path(__file__).resolve().parent.parent
+repo_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(repo_root / "src"))
 
 
@@ -103,7 +103,7 @@ def verify_demo(demo_file: Path, resources_pseudo_dir: Path) -> Tuple[bool, List
 
 def main():
     """Verify all demo projects."""
-    repo_root = Path(__file__).resolve().parent.parent
+    repo_root = Path(__file__).resolve().parent.parent.parent
     demo_dir = repo_root / "resources" / "demo_projects"
     resources_pseudo_dir = repo_root / "resources" / "pseudo"
     

@@ -202,14 +202,13 @@ def _get_bootstrap_allowlist() -> dict[str, set[str]]:
         Dict mapping file paths (as strings) to sets of allowed module prefixes.
         Only ONE file should be allowed, and only minimal imports.
     """
+    allowlist = {}
     bootstrap_path = PROJECT_ROOT / "src/quantumvitas/frontends/_shared/bootstrap.py"
     if bootstrap_path.exists():
         # Allow ONLY quantumvitas.core.context for bootstrap
-        return {
-            str(bootstrap_path): {"quantumvitas.core.context"}
-        }
-    # No bootstrap file exists yet - no exceptions
-    return {}
+        allowlist[str(bootstrap_path)] = {"quantumvitas.core.context"}
+    
+    return allowlist
 
 
 class TestFrontendImportRules:

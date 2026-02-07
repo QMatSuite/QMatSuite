@@ -3179,7 +3179,11 @@ class QVService:
                 step_type_spec = step_data.get("step_type_spec", "scf")
                 step_type_gen = gen_from(step_type_spec)  # Convert SPEC to GEN for registry
                 step_spec = registry.get(step_type_gen)
-                engine = step_spec.engine if step_spec else "qe"
+                if step_spec is None:
+                    from quantumvitas.workflow.step_type_convert import prefix_from
+                    engine = prefix_from(step_type_spec)
+                else:
+                    engine = step_spec.engine
 
                 # Create minimal Step object
                 step_obj = Step(
@@ -3822,7 +3826,12 @@ class QVService:
                 # Validate step_type_gen and get spec type for calculation.yaml
                 # Use engine_family to pick the correct engine-specific step type
                 registry = get_registry()
-                engine_family = getattr(calc_model, 'engine_family', None) or "qe"
+                engine_family = getattr(calc_model, 'engine_family', None)
+                if engine_family is None:
+                    raise ValueError(
+                        f"Cannot add step '{step_type_gen}' to calculation without engine_family. "
+                        "Set engine_family on the calculation first."
+                    )
                 spec = registry.get_for_engine(step_type_gen, engine_family)
                 if not spec:
                     # Try generic lookup as fallback
@@ -3918,7 +3927,11 @@ class QVService:
                 from quantumvitas.workflow.step_type_convert import gen_from
                 step_type_gen = gen_from(step_type_spec)
                 step_spec = registry.get(step_type_gen)
-                engine = step_spec.engine if step_spec else "qe"
+                if step_spec is None:
+                    from quantumvitas.workflow.step_type_convert import prefix_from
+                    engine = prefix_from(step_type_spec)
+                else:
+                    engine = step_spec.engine
                 # Create minimal Step object
                 step_obj = Step(
                     meta=step_meta,
@@ -6237,11 +6250,11 @@ class QVService:
                 (calc_dir / "raw").mkdir(exist_ok=True)
                 (calc_dir / "steps").mkdir(exist_ok=True)
 
-                # Determine structure_kind and engine_family defaults
+                # Determine structure_kind defaults
                 if structure_kind is None:
                     structure_kind = "periodic"
-                if engine_family is None:
-                    engine_family = "pyscf" if structure_kind == "molecule" else "qe"
+                # engine_family may be None (UNDECIDED state per Law EF1).
+                # Caller must provide engine_family; do not infer.
 
                 # Build meta dict
                 meta_dict = {
@@ -7264,7 +7277,7 @@ class QVService:
         return _get_default_step_params(step_type_gen)
 
     @staticmethod
-    def resolve_step_type_spec(step_type_gen: str, engine_family: str = "qe") -> str:
+    def resolve_step_type_spec(step_type_gen: str, engine_family: str) -> str:
         """
         Resolve a GEN step type to a SPEC step type for a given engine.
 

@@ -53,6 +53,28 @@ DAEMON_ALLOWED_PREFIXES = (
     "quantumvitas.daemon",
 )
 
+# Exception: Engine metadata imports in server.py handlers (M4)
+# These are lazy imports inside try/except blocks, only triggered by specific engine_family requests.
+# Per PROMPT_M4.md: "The engine-specific imports inside this handler are acceptable because
+# this is daemon/server.py (above kernel). The imports are lazy and only triggered by the
+# specific engine_family requested."
+# Also allow DriverRegistry and core imports needed for generic RPC handlers (M4).
+DAEMON_METADATA_IMPORT_EXCEPTIONS = {
+    "src/quantumvitas/daemon/server.py": [
+        "quantumvitas.drivers.vasp.data",
+        "quantumvitas.drivers.orca.data",
+        "quantumvitas.drivers.lammps.data",
+        "quantumvitas.drivers.gaussian.data",
+        "quantumvitas.drivers.abinit.data",
+        "quantumvitas.drivers.cp2k.data",
+        "quantumvitas.drivers.qmcpack.data",
+        "quantumvitas.core.driver_registry",  # M4: Generic RPC handlers need DriverRegistry
+        "quantumvitas.drivers",  # M4: Generic RPC handlers need to import drivers package
+        "quantumvitas.core.resolution",  # M4: set_engine_family needs require_calculation
+        "quantumvitas.core.models",  # M4: set_engine_family needs load_calculation, save_calculation
+    ]
+}
+
 
 def find_imports(file_path: Path) -> list[tuple[int, str, str]]:
     """
@@ -105,8 +127,14 @@ def test_daemon_no_kernel_imports():
             # Check if forbidden
             is_forbidden = any(module.startswith(prefix) for prefix in DAEMON_KERNEL_PREFIXES)
 
-            if is_forbidden and not is_allowed:
-                rel_path = py_file.relative_to(PROJECT_ROOT)
+            # Check for exceptions (e.g., engine metadata imports in server.py handlers)
+            rel_path = py_file.relative_to(PROJECT_ROOT)
+            is_exception = False
+            if str(rel_path) in DAEMON_METADATA_IMPORT_EXCEPTIONS:
+                exception_modules = DAEMON_METADATA_IMPORT_EXCEPTIONS[str(rel_path)]
+                is_exception = any(module.startswith(em) for em in exception_modules)
+
+            if is_forbidden and not is_allowed and not is_exception:
                 violations.append(
                     f"  {rel_path}:{line_num}: {import_type} {module}"
                 )

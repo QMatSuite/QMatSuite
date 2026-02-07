@@ -32,6 +32,8 @@ class W90Driver(BaseEngineDriver):
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
         "wannierprep", "wannier"
     })
+    ENGINE_ROLE: str = "postprocessing"
+    COMPANION_ENGINES: frozenset = frozenset()
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties

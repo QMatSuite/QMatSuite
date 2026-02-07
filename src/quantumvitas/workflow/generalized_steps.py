@@ -163,48 +163,32 @@ def materialize_public_step_key(
     engine_family: str,
 ) -> Optional[str]:
     """
-    Materialize a PUBLIC step key (like "scf", "bandspw", "td") to MACHINE step type.
+    Materialize a PUBLIC step key to MACHINE step type.
 
-    Phase 3B/3C: Helper for materializing PUBLIC step keys from workflow templates.
+    Uses companion allowlist routing:
+    1. Try base engine's materialization map
+    2. Try each companion engine's materialization map
+    3. Return None if no match (caller decides if it's a zero-mapping or error)
 
-    SSOT: Uses DriverRegistry via materialize_step() for all mappings.
-
-    Strategy:
-    1. First try StepTypeRegistry lookup for PUBLIC keys (handles "scf", "td", etc.)
-    2. If that fails, try DriverRegistry via materialize_step()
-    3. Verify the machine type's engine matches engine_family
+    SSOT: Uses DriverRegistry.resolve_companion_step() for all mappings.
+    The StepTypeRegistry is NOT used for cross-engine first-match resolution.
 
     Args:
-        public_step_key: PUBLIC step key (e.g., "scf", "bandspw", "td", "mp2")
-        engine_family: Engine family identifier (e.g., "qe", "pyscf")
+        public_step_key: PUBLIC step key (e.g., "scf", "wannierprep", "vmc")
+        engine_family: Engine family identifier (e.g., "qe", "vasp")
 
     Returns:
-        MACHINE step type (e.g., "qe_scf", "pyscf_td"), or None if unsupported
-
-    Example:
-        >>> materialize_public_step_key("scf", "qe")
-        "qe_scf"
-        >>> materialize_public_step_key("td", "pyscf")
-        "pyscf_td"
+        MACHINE step type (e.g., "qe_scf", "w90_wannierprep"), or None if unsupported
     """
-    # Strategy: Prioritize StepTypeRegistry lookup for PUBLIC keys
-    # This ensures PUBLIC keys like "bands" map correctly (qe_bands, not qe_bandspw)
-    from quantumvitas.workflow.registry import get_registry
-    registry = get_registry()
-    spec = registry.get(public_step_key)  # Lookup by PUBLIC key (also accepts machine types)
-    if spec:
-        # Check if the spec's engine matches the requested engine_family
-        spec_engine_family = spec.engine
-        if spec_engine_family == engine_family:
-            return spec.step_type_spec
-
-    # Fallback: Try DriverRegistry via materialize_step()
     # Normalize to lowercase gen step name
-    result = materialize_step(public_step_key.lower(), engine_family)
-    if result is not None:
-        return result
+    gen_lower = public_step_key.lower()
+    if gen_lower.startswith("gen_"):
+        gen_lower = gen_lower[4:]
 
-    return None
+    try:
+        return DriverRegistry.resolve_companion_step(engine_family, gen_lower)
+    except UnknownEngineError:
+        return None
 
 
 def get_supported_generalized_steps(engine_family: str) -> list[str]:

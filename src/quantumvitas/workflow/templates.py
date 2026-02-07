@@ -481,9 +481,12 @@ class WorkflowService:
                 calc_data = CalcDoc.load(calc_yaml_path).to_dict()
                 engine_family = calc_data.get("engine_family")
             
-            # Fallback to default (qe)
+            # Require engine_family for workflow instantiation
             if engine_family is None:
-                engine_family = "qe"
+                raise ValueError(
+                    "engine_family is required for workflow instantiation. "
+                    "Set engine_family on the calculation before instantiating a workflow."
+                )
         
         # Phase 3B: Materialize PUBLIC step keys to MACHINE step types using engine_family
         # Workflow templates use PUBLIC step keys (lowercase like "scf"), materialize to MACHINE types (like "qe_scf")

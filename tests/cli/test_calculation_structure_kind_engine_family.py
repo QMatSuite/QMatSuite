@@ -53,6 +53,7 @@ def test_calculation_defaults_to_periodic_qe(test_project: Path):
             "init", "calculation", "test_calc",
             "--structure", "test_structure",
             "--project", str(test_project),
+            "--engine-family", "qe",
         ],
     )
     assert result.exit_code == 0, f"CLI command failed: {result.output}"
@@ -82,6 +83,7 @@ def test_calculation_with_molecule_structure_kind(test_project: Path):
             "--structure", "test_structure",
             "--structure-kind", "molecule",
             "--project", str(test_project),
+            "--engine-family", "pyscf",
         ],
     )
     assert result.exit_code == 0, f"CLI command failed: {result.output}"

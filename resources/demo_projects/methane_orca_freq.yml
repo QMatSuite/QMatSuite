@@ -95,7 +95,7 @@ calculations:
       basis: def2-TZVP
       charge: 0
       spin: 0
-    step_type_spec: qe_scf
+    step_type_spec: orca_scf
 meta:
   ulid: methane_orca_freq
   title: Methane ORCA Frequency

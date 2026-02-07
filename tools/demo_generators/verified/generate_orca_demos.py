@@ -6,7 +6,7 @@ Reads demo definitions from tools/orca_demo_definitions.yaml and generates
 QMatSuite demo project YAML files.
 
 Usage:
-    python tools/generate_orca_demos.py
+    python tools/demo_generators/verified/generate_orca_demos.py
 
 Output:
     resources/demo_projects/{demo_id}.yml
@@ -19,7 +19,7 @@ from pathlib import Path
 import sys
 
 # Add src to path for imports
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from quantumvitas.core.resources import generate_resource_id
@@ -27,7 +27,7 @@ from quantumvitas.core.resources import generate_resource_id
 
 def load_demo_definitions() -> dict:
     """Load demo definitions from YAML file."""
-    definitions_path = REPO_ROOT / "tools" / "orca_demo_definitions.yaml"
+    definitions_path = REPO_ROOT / "tools" / "demo_generators" / "verified" / "orca_demo_definitions.yaml"
     with open(definitions_path, "r") as f:
         return yaml.safe_load(f)
 

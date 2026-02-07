@@ -30,6 +30,8 @@ class LAMMPSDriver(BaseEngineDriver):
         "minimize", "md", "relax"
         # nvt and npt are MD ensemble parameters, not separate gen steps
     })
+    ENGINE_ROLE: str = "base"
+    COMPANION_ENGINES: frozenset = frozenset()
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties

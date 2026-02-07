@@ -234,6 +234,7 @@ def _copy_calculation_from_path(
     new_name: Optional[str] = None,
     structure: Optional[str] = None,
     calculation_ulid: Optional[str] = None,
+    engine_family: Optional[str] = None,
 ) -> tuple[Path, Set[str], str]:
     """
     Internal: Copy calculation from a source path to destination.
@@ -391,12 +392,10 @@ def _copy_calculation_from_path(
     # Phase 2: Ensure structure_kind and engine_family are set (defaults if missing)
     if "structure_kind" not in calculation_data:
         calculation_data["structure_kind"] = "periodic"
-    if "engine_family" not in calculation_data:
-        structure_kind = calculation_data.get("structure_kind", "periodic")
-        if structure_kind == "molecule":
-            calculation_data["engine_family"] = "pyscf"
-        else:
-            calculation_data["engine_family"] = "qe"
+    if engine_family:
+        calculation_data["engine_family"] = engine_family
+    if "engine_family" not in calculation_data or calculation_data.get("engine_family") is None:
+        raise ValueError("engine_family is required for template instantiation")
     
     # Write calculation.yaml
     from quantumvitas.core.yamldoc import CalcDoc
@@ -416,10 +415,11 @@ def copy_calculation_template(
     new_name: Optional[str] = None,
     structure: Optional[str] = None,
     calculation_ulid: Optional[str] = None,
+    engine_family: Optional[str] = None,
 ) -> tuple[Path, Set[str], str]:
     """
     Copy a calculation template to destination, including step files.
-    
+
     Args:
         template_name: Template name
         dest_dir: Destination directory for calculation
@@ -427,14 +427,15 @@ def copy_calculation_template(
         new_name: Optional new name for the calculation
         structure: Optional structure name to use (overrides template)
         calculation_ulid: Optional ULID to use for the calculation (for parent_calculation_id in steps)
-        
+        engine_family: Optional engine family to set on the calculation
+
     Returns:
         Tuple of (calculation.yaml path, set of structure names needed, calculation ULID)
     """
     source_path = get_template_path("calculation", template_name)
     if not source_path:
         raise ValueError(f"Calculation template '{template_name}' not found")
-    
+
     return _copy_calculation_from_path(
         source_path=source_path,
         dest_dir=dest_dir,
@@ -442,6 +443,7 @@ def copy_calculation_template(
         new_name=new_name,
         structure=structure,
         calculation_ulid=calculation_ulid,
+        engine_family=engine_family,
     )
 
 

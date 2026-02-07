@@ -557,6 +557,7 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     calculation_yaml_data = {
         "meta": calculation_meta_dict,
         "structure_ulid": struct_resolved.meta.ulid if struct_resolved.meta else None,
+        "engine_family": "qe",
         "steps": [],
     }
     (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
@@ -692,6 +693,7 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     calculation_yaml_data = {
         "meta": calculation_meta_dict,
         "structure_ulid": struct_resolved.meta.ulid if struct_resolved.meta else None,
+        "engine_family": "qe",
         "steps": [],
     }
     (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
@@ -1025,6 +1027,8 @@ def test_cli_show_command_import_preserves_original_parameters(
                 structure_name,
                 "--project",
                 str(project_root),
+                "--engine-family",
+                "qe",
             ],
         )
         assert (

@@ -76,6 +76,8 @@ class TestStepDefaultsFromScratch:
                 "si",
                 "--project",
                 str(project_root),
+                "--engine-family",
+                "qe",
             ],
         )
         assert result.exit_code == 0, result.stdout
@@ -185,6 +187,8 @@ class TestStepDefaultsImportFromInput:
                 structure_name,
                 "--project",
                 str(project_root),
+                "--engine-family",
+                "qe",
             ],
         )
         assert result.exit_code == 0, result.stdout

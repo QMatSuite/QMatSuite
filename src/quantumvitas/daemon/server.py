@@ -64,15 +64,12 @@ from quantumvitas.api.utils import (
 from quantumvitas.daemon.jobs import JobManager, JobStatus
 from quantumvitas.daemon.compat import adapt_payload, shape_response
 from quantumvitas.api.utils import (
-    get_ui_parameters,
     list_supported_modules,
     get_module_param_sections,
     get_module_card_sections,
     get_module_doc_url,
     get_metadata_file_info,
-    get_qe_metadata_debug_info,
     safe_load_metadata,
-    reload_metadata,
     _iter_params,
 )
 
@@ -245,18 +242,22 @@ class QVDaemon:
             "shutdown": self._handle_shutdown,
             
             # Environment and settings
-            "detect_qe": self._handle_detect_qe,
+            "detect_qe": self._handle_detect_qe,  # Engine detection — no generic replacement yet (spec §5.5)
             "get_env_info": self._handle_get_env_info,
-            "list_qe_engines": self._handle_list_qe_engines,
-            "discover_qe_engines": self._handle_discover_qe_engines,
-            "set_qe_engine": self._handle_set_qe_engine,
+            "list_qe_engines": self._handle_list_qe_engines,  # Engine detection — no generic replacement yet
+            "set_qe_engine": self._handle_set_qe_engine,  # Engine detection — no generic replacement yet
             "set_log_level": self._handle_set_log_level,
             "set_debug_resolution": self._handle_set_debug_resolution,
             "get_debug_resolution": self._handle_get_debug_resolution,
-            "list_qe_ui_parameters": self._handle_list_qe_ui_parameters,
-            "list_qe_parameter_metadata": self._handle_list_qe_parameter_metadata,
-            "reload_qe_parameter_metadata": self._handle_reload_qe_parameter_metadata,
-            "get_qe_parameter_metadata_debug_info": self._handle_get_qe_parameter_metadata_debug_info,
+            
+            # ─────────────────────────────────────────────────────────────
+            # Generic engine RPCs (engine-agnostic, replaces QE-specific)
+            # ─────────────────────────────────────────────────────────────
+            "list_engine_families": self._handle_list_engine_families,
+            "list_step_palette": self._handle_list_step_palette,
+            "list_engine_ui_parameters": self._handle_list_engine_ui_parameters,
+            "list_engine_parameter_metadata": self._handle_list_engine_parameter_metadata,
+            "set_engine_family": self._handle_set_engine_family,
             
             # Pseudopotential configuration
             "get_pseudo_config": self._handle_get_pseudo_config,
@@ -330,7 +331,7 @@ class QVDaemon:
             "get_calculation_detail": self._handle_get_calculation_detail,
             "reorder_calculation_steps": self._handle_reorder_calculation_steps,
             "add_step_to_calculation": self._handle_add_step_to_calculation,
-            "import_step_from_qe_input": self._handle_import_step_from_qe_input,
+            # import_step_from_qe_input removed in M8
             "change_calculation_structure": self._handle_change_calculation_structure,
             "get_calculation_pseudo_mapping": self._handle_get_calculation_pseudo_mapping,
             "update_calculation_species_map": self._handle_update_calculation_species_map,
@@ -745,16 +746,6 @@ class QVDaemon:
         """
         return get_qe_engine_status()["available_engines"]
 
-    def _handle_discover_qe_engines(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Auto-discover QE engines on the system.
-
-        Payload: (none required)
-
-        Returns discovered_engines list (cached in .tmp/probe/).
-        """
-        return get_qe_engine_status()["discovered"]
-    
     def _handle_set_qe_engine(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Set QE bin directory (two-state model).
@@ -1429,68 +1420,7 @@ class QVDaemon:
         root_logger = logging.getLogger()
         root_logger.setLevel(log_level)
     
-    def _handle_list_qe_ui_parameters(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Get UI parameter metadata for a QE module and step type.
-
-        Payload:
-            module: str (required) - QE module name (e.g., "pw", "bands")
-            step_type_gen: str (required) - GEN step type (e.g., "scf", "nscf", "dos", "bands")
-
-        Returns:
-            List of UI parameter descriptors with namelist, name, label, type, unit, etc.
-        """
-        module = payload.get("module", "").strip().lower()
-        # step_type_gen is canonical (GEN only for UI parameters)
-        step_type_gen = payload.get("step_type_gen", "").strip().lower()
-
-        if not module:
-            raise ValueError("'module' is required in payload")
-        if not step_type_gen:
-            raise ValueError("'step_type_gen' is required in payload")
-        
-        # Validate module is supported
-        supported_modules = list_supported_modules()
-        if module not in supported_modules:
-            raise ValueError(
-                f"Unknown module '{module}'. Supported: {', '.join(sorted(supported_modules))}"
-            )
-        
-        # Log at info level for visibility (short log line)
-        self.logger.info(
-            "[RPC] list_qe_ui_parameters (module: %s, step_type_gen: %s)",
-            module,
-            step_type_gen,
-        )
-        
-        # Get UI parameters
-        ui_params = get_ui_parameters(module, step_type_gen)
-        
-        # Convert QEUIParam objects to dicts for JSON serialization
-        result = []
-        for param in ui_params:
-            param_dict = {
-                "namelist": param.namelist,
-                "name": param.name,
-                "label": param.label,
-                "type": param.type,  # Parameter type (number, select, bool), NOT step type
-            }
-            if param.unit:
-                param_dict["unit"] = param.unit
-            if param.description:
-                param_dict["description"] = param.description
-            if param.options:
-                param_dict["options"] = param.options
-            if param.importance:
-                param_dict["importance"] = param.importance
-            # Add GEN/SPEC type fields for parameter input type (GUI compat)
-            param_dict["step_type_gen"] = param.type  # GEN type (e.g., "number")
-            param_dict["step_type_spec"] = f"qe_{param.type}"  # SPEC type (e.g., "qe_number")
-            result.append(param_dict)
-
-        return {"parameters": result}
-    
-    def _handle_list_qe_parameter_metadata(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _qe_parameter_metadata_internal(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Browse QE parameter metadata (modules, sections, parameters, search).
         
@@ -1908,85 +1838,153 @@ class QVDaemon:
             # Metadata loading errors should be user-friendly
             raise ValueError(f"QE parameter metadata is not available: {e}. Run `python tools/extract_qe_parameters_v2.py` to generate it.") from e
     
-    def _handle_reload_qe_parameter_metadata(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Reload QE parameter metadata from disk by clearing the cache.
-        
-        This clears the in-memory metadata cache, forcing the next access to
-        re-read the JSON file from disk. This is useful when the metadata file
-        has been updated externally.
-        
-        Payload:
-            No fields required.
-        
-        Returns:
-            {"modules": [{"ulid": "pw", "label": "pw.x"}, ...]} - Fresh list of modules
-            after reload, so the frontend can immediately refresh.
-        """
-        self.log("[RPC] reload_qe_parameter_metadata")
-        
-        try:
-            # Clear the cache
-            reload_metadata()
-            
-            # Get metadata file info after reload
-            metadata_info = get_metadata_file_info()
-            
-            # Optionally return modules so the frontend can immediately refresh
-            modules = list_supported_modules()
-            result = []
-            for module_id in modules:
-                doc_url = get_module_doc_url(module_id)
-                label = f"{module_id}.x" if module_id else module_id
-                result.append({
-                    "id": module_id,  # Backwards compat alias
-                    "ulid": module_id,
-                    "label": label,
-                    "doc_url": doc_url,
-                })
+    # _handle_reload_qe_parameter_metadata and _handle_get_qe_parameter_metadata_debug_info
+    # removed in M8 — debug-only QE RPCs, no GUI consumer
+    # ─────────────────────────────────────────────────────────────────────
+    # Generic Engine RPCs (M4)
+    # ─────────────────────────────────────────────────────────────────────
 
-            self.log(f"[RPC] reload_qe_parameter_metadata: cache cleared, {len(result)} modules available")
-            return {
-                "modules": result,
-                "metadata_path_abs": metadata_info.get("metadata_path_abs"),
-                "schema_version": metadata_info.get("schema_version"),
-            }
-        
-        except (RuntimeError, FileNotFoundError) as e:
-            # Metadata loading errors should be user-friendly
-            raise ValueError(f"Failed to reload QE parameter metadata: {e}. Run `python tools/extract_qe_parameters_v3.py` to generate it.") from e
-    
-    def _handle_get_qe_parameter_metadata_debug_info(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_list_engine_families(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Get QE metadata load state for debug/internal use.
-        
-        This command is intended for Settings/Debug UI only, not for customer-facing features.
-        
+        List all registered engine families with classification.
+
+        Payload: (none required)
+
+        Returns:
+            {"engines": [{engine_family, display_name, engine_role, companion_engines, supported_gen_steps}]}
+        """
+        from quantumvitas.api.utils import list_engine_families
+        return {"engines": list_engine_families()}
+
+    def _handle_list_step_palette(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get step palette for a given engine_family (or UNDECIDED).
+
         Payload:
-            No fields required.
-        
+            engine_family: str | null — If null, returns empty palette.
+
         Returns:
             {
-                "loaded_via": "cache" | "disk" | "not_loaded",
-                "loaded_at": "<ISO timestamp>" | null,
-                "schema_version": int | null,
-                "path_abs": str | null,
+                "base_steps": [{"gen": "scf", "spec": "qe_scf", "description": "..."}],
+                "companion_steps": {"w90": [{"gen": "wannierprep", "spec": "w90_wannierprep", ...}]},
             }
         """
-        self.log("[RPC] get_qe_parameter_metadata_debug_info")
-        
-        try:
-            debug_info = get_qe_metadata_debug_info()
-            return debug_info
-        except Exception as e:
-            self.log(f"[RPC] get_qe_parameter_metadata_debug_info error: {e}")
-            # Return safe defaults on error
-            return {
-                "loaded_via": "not_loaded",
-                "loaded_at": None,
-                "schema_version": None,
-                "path_abs": None,
-            }
+        from quantumvitas.api.utils import get_step_palette
+        engine_family = payload.get("engine_family")
+        return get_step_palette(engine_family)
+
+    def _handle_list_engine_ui_parameters(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get UI parameter metadata for any engine + step type.
+
+        Payload:
+            engine_family: str (required)
+            step_type_gen: str (required) — GEN step type (e.g., "scf")
+
+        Returns:
+            {"parameters": [{key, label, type, default, description, section, ...}]}
+        """
+        engine_family = payload.get("engine_family", "").strip().lower()
+        step_type_gen = payload.get("step_type_gen", "").strip().lower()
+
+        if not engine_family:
+            raise ValueError("'engine_family' is required in payload")
+        if not step_type_gen:
+            raise ValueError("'step_type_gen' is required in payload")
+
+        self.log(f"[RPC] list_engine_ui_parameters (engine: {engine_family}, gen: {step_type_gen})")
+
+        from quantumvitas.api.utils import get_engine_ui_parameters
+        return {"parameters": get_engine_ui_parameters(engine_family, step_type_gen)}
+
+    def _handle_list_engine_parameter_metadata(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Browse parameter metadata for any engine.
+
+        Payload:
+            engine_family: str (required)
+            operation: str (required) — "list_categories", "list_tags", "search"
+
+        Returns:
+            Varies by operation (same shape across engines).
+        """
+        engine_family = payload.get("engine_family", "").strip().lower()
+        operation = payload.get("operation", "").strip().lower()
+
+        if not engine_family:
+            raise ValueError("'engine_family' is required in payload")
+        if not operation:
+            raise ValueError("'operation' is required. Must be: list_categories, list_sections, list_tags, search")
+
+        self.log(f"[RPC] list_engine_parameter_metadata (engine: {engine_family}, op: {operation})")
+
+        # For QE, delegate to existing metadata infrastructure
+        if engine_family == "qe":
+            qe_payload = dict(payload)
+            if operation == "list_categories":
+                qe_payload["operation"] = "list_modules"
+            elif operation == "list_sections":
+                qe_payload["operation"] = "list_sections"
+                qe_payload["module"] = payload.get("category", "pw")
+            elif operation == "list_tags":
+                qe_payload["operation"] = "list_parameters"
+                qe_payload["module"] = payload.get("category", "pw")
+                qe_payload["section"] = payload.get("section", "")
+            elif operation == "search":
+                qe_payload["operation"] = "search"
+            return self._qe_parameter_metadata_internal(qe_payload)
+
+        # For other engines: delegate to api.utils
+        from quantumvitas.api.utils import get_engine_parameter_metadata
+        return get_engine_parameter_metadata(
+            engine_family=engine_family,
+            operation=operation,
+            category=payload.get("category", ""),
+            query=payload.get("query", ""),
+        )
+
+    def _handle_set_engine_family(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Set engine_family on a calculation (UNDECIDED -> DECIDED transition).
+
+        Payload:
+            project_root: str (required)
+            calculation: str (required) — Calculation selector
+            engine_family: str (required) — Engine to set
+
+        Returns:
+            {"success": true, "engine_family": "vasp"}
+        """
+        from quantumvitas.api.utils import validate_engine_family
+        from quantumvitas.api.utils import load_calculation, save_calculation
+
+        project_root = self._require_path(payload, "project_root")
+        calculation_selector = self._require_str(payload, "calculation")
+        engine_family = self._require_str(payload, "engine_family")
+
+        # Validate engine_family is registered and is a base engine
+        is_valid, error_msg = validate_engine_family(engine_family)
+        if not is_valid:
+            raise ValueError(error_msg)
+
+        # Resolve calculation via daemon helper (no kernel imports)
+        calc_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+
+        # Get calculation directory
+        if calc_resolved.absolute_path.name == "calculation.yaml":
+            calc_dir = calc_resolved.absolute_path.parent
+        else:
+            calc_dir = calc_resolved.absolute_path
+
+        # Load calculation model, update, save (via api.utils proxies)
+        calc_yaml = calc_dir / "calculation.yaml"
+        calc_model = load_calculation(calc_yaml, project_root)
+        calc_model.engine_family = engine_family
+        save_calculation(calc_model, calc_dir)
+
+        self.log(f"[RPC] set_engine_family: {calculation_selector} -> {engine_family}")
+
+        return {"success": True, "engine_family": engine_family}
     
     # -------------------------------------------------------------------------
     # Project/resource handlers
@@ -4154,47 +4152,8 @@ class QVDaemon:
             "steps": [_to_step_dict(s) for s in steps]
         }
     
-    def _handle_import_step_from_qe_input(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Import a QE input file as a step (preserves original parameters, no defaults).
-        
-        Payload:
-            project_root: str - Path to project root
-            calculation: str - Calculation selector (name, slug, or id)
-            input_file: str - Path to QE input file (.in)
-            step_name: str - Optional name for the new step (defaults to input file stem)
-        """
-        import logging
-        
-        logger = logging.getLogger(__name__)
-        
-        project_root = self._require_path(payload, "project_root")
-        calculation_selector = self._require_str(payload, "calculation")
-        input_file = self._require_path(payload, "input_file")
-        step_name = payload.get("step_name")
-        
-        # Resolve calculation selector to ULID at boundary
-        if is_ulid_like(calculation_selector):
-            calculation_ulid = calculation_selector
-        else:
-            calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-            calculation_ulid = calculation_resolved.ulid
-        
-        # Pass cached index and config to avoid rebuilding ResourceIndex
-        cache = self.state.get_cache(project_root)
-        svc = get_service(project_root)
-        result = svc.calculation.import_step_from_qe_input(
-            calc_selector=calculation_ulid,
-            input_file=input_file,
-            step_name=step_name,
-            index=cache.index,
-            config=cache.config,
-        )
-        
-        # Registry updated in-place by QVService.import_step_from_qe_input (no rebuild needed)
-        
-        return result
-    
+    # _handle_import_step_from_qe_input removed in M8 — QE-only import feature
+
     def _handle_change_calculation_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Change calculation structure.

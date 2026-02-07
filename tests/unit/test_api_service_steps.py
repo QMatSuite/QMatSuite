@@ -81,6 +81,7 @@ calculations:
   kind: calculation
 structure_ulid: 01TESTSTRUCTUREID123456789
 structure_name: Si
+engine_family: qe
 steps: []
 """)
 

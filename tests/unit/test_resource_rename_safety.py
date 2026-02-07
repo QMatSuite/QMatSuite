@@ -48,7 +48,7 @@ class TestResourceRenameSafety:
         save_project_config(project_root, config)
 
         # Create calculation with structure
-        calculation = QVService(project_root).project.init_calculation("Test Calculation", structure_selector="Si")
+        calculation = QVService(project_root).project.init_calculation("Test Calculation", structure_selector="Si", engine_family="qe")
         original_calculation_id = calculation.meta.ulid
         original_structure_ulid = struct_meta["ulid"]
 
@@ -108,7 +108,7 @@ class TestResourceRenameSafety:
         save_project_config(project_root, config)
 
         # Create calculation with structure
-        calculation = QVService(project_root).project.init_calculation("Test Calculation", structure_selector="Si")
+        calculation = QVService(project_root).project.init_calculation("Test Calculation", structure_selector="Si", engine_family="qe")
         original_structure_ulid = struct_meta["ulid"]
 
         # Verify calculation has structure_ulid
@@ -158,7 +158,7 @@ class TestResourceRenameSafety:
         config['structures'].append({"ulid": struct_meta["ulid"]})
         save_project_config(project_root, config)
 
-        calculation = QVService(project_root).project.init_calculation("Test Calculation", structure_selector="Si")
+        calculation = QVService(project_root).project.init_calculation("Test Calculation", structure_selector="Si", engine_family="qe")
         original_calculation_id = calculation.meta.ulid
 
         # Create step using domain API
@@ -202,7 +202,7 @@ class TestResourceIndexAfterRename:
         QVService.init_project(project_root, name="Test Project")
 
         # Create calculation
-        calculation = QVService(project_root).project.init_calculation("Original Name")
+        calculation = QVService(project_root).project.init_calculation("Original Name", engine_family="qe")
         original_id = calculation.meta.ulid
 
         # Build index
@@ -320,7 +320,7 @@ class TestResourceRenameEdgeCases:
         save_project_config(project_root, config)
 
         # Create calculation in calculations/ directory
-        calculation = QVService(project_root).project.init_calculation("Original Calculation", structure_selector="Si")
+        calculation = QVService(project_root).project.init_calculation("Original Calculation", structure_selector="Si", engine_family="qe")
         original_calculation_id = calculation.meta.ulid
         original_path = calculation.meta.path
 
@@ -383,7 +383,7 @@ class TestResourceRenameEdgeCases:
         QVService.init_project(project_root, name="Test Project")
 
         # Create calculation
-        calculation = QVService(project_root).project.init_calculation("Calculation A")
+        calculation = QVService(project_root).project.init_calculation("Calculation A", engine_family="qe")
         original_calculation_id = calculation.meta.ulid
 
         svc = get_service(project_root)

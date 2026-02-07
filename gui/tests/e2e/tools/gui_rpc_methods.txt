@@ -31,14 +31,12 @@ get_preset_catalog
 get_project_history
 get_project_summary
 get_pseudo_config
-get_qe_parameter_metadata_debug_info
 get_reference_analysis
 get_scf_convergence
 get_step_detail
 get_step_preset_footprints
 get_structure_vis
 import_step
-import_step_from_qe_input
 import_structure
 instantiate_workflow
 job_counts
@@ -47,7 +45,6 @@ list_demo_projects
 list_journal_entries
 list_libraries
 list_qe_engines
-list_qe_parameter_metadata
 list_step_artifacts
 list_structures
 list_wannier_3d_fixtures
@@ -57,7 +54,6 @@ ping
 preflight_check
 read_step_artifact_text
 rebuild_project_registry
-reload_qe_parameter_metadata
 rename_calculation
 rename_structure
 reorder_calculation_steps

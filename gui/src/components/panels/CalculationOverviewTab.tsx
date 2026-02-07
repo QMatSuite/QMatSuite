@@ -14,7 +14,8 @@ import { CalculationDetailPanel } from './CalculationListPanel';
 import { StepDetailPanel } from './StepDetailPanel';
 import { ResizablePane, type ResizablePaneRef } from '../layout/ResizablePane';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
-import type { CalculationInfo, CalculationDetailResult, StructureInfo } from '../../types/qv';
+import type { CalculationInfo, CalculationDetailResult, StructureInfo, StepPaletteResult } from '../../types/qv';
+import { useQVClient } from '../../hooks/useQVClient';
 import './CalculationOverviewTab.css';
 
 interface CalculationOverviewTabProps {
@@ -274,11 +275,28 @@ function CompactStepList({
   onImportStep,
   onReorder: _onReorder,
 }: CompactStepListProps) {
+  const qv = useQVClient();
   const [showAddStep, setShowAddStep] = useState(false);
   const [newStepType, setNewStepType] = useState('');
   const [newStepName, setNewStepName] = useState('');
   const [isAddingStep, setIsAddingStep] = useState(false);
   const [isImportingStep, setIsImportingStep] = useState(false);
+
+  // Step palette for dynamic step type dropdown (fetched via RPC)
+  const [stepPalette, setStepPalette] = useState<StepPaletteResult | null>(null);
+
+  // Fetch step palette (engine family is null for now, returns all available steps)
+  useEffect(() => {
+    qv.listStepPalette(null)
+      .then(response => {
+        if (response.ok && response.data) {
+          setStepPalette(response.data);
+        }
+      })
+      .catch(() => {
+        // Silently fail - step palette is non-critical
+      });
+  }, [qv]);
 
   const handleAddStep = useCallback(async () => {
     if (!window.qv || !calculation || !newStepType) return;
@@ -451,13 +469,20 @@ function CompactStepList({
             className="compact-step-list__type-select"
           >
             <option value="">Select step type...</option>
-            <option value="scf">SCF</option>
-            <option value="nscf">NSCF</option>
-            <option value="relax">Relax</option>
-            <option value="vc-relax">VC-Relax</option>
-            <option value="bands_pw">Bands (PW)</option>
-            <option value="bands">Bands</option>
-            <option value="dos">DOS</option>
+            {stepPalette?.base_steps.map((step) => (
+              <option key={step.gen} value={step.gen}>
+                {step.description || step.gen.toUpperCase()}
+              </option>
+            ))}
+            {stepPalette && Object.entries(stepPalette.companion_steps).map(([engine, steps]) => (
+              <optgroup key={engine} label={engine.toUpperCase()}>
+                {steps.map((step) => (
+                  <option key={step.gen} value={step.gen}>
+                    {step.description || step.gen}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
           </select>
           <input
             type="text"

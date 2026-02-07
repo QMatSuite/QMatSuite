@@ -104,6 +104,7 @@ def qe_calculation_with_relax(qe_project_with_si):
     calc_result = QVService(project_root).project.init_calculation(
         name="si_relax",
         structure_selector=structure_ulid,
+        engine_family="qe",
     )
     calc_ulid = calc_result.ulid
     # calc_dir should be the calculation directory (where calculation.yaml is)

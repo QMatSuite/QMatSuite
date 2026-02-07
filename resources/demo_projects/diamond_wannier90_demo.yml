@@ -78,6 +78,7 @@ calculations:
     kind: calculation
   mode: normal
   working_dir: raw
+  engine_family: qe
   structure_ulid: 01KE2K2EMCFP2KVK2H4MV1S0ZK
   species_map:
     C:

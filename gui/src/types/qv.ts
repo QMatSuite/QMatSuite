@@ -404,6 +404,41 @@ export interface QEDetectionResult {
   error?: string;
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Generic Engine Types (replaces QE-specific types)
+// ─────────────────────────────────────────────────────────────────────
+
+export interface EngineFamilyInfo {
+  engine_family: string;
+  display_name: string;
+  engine_role: 'base' | 'postprocessing';
+  companion_engines: string[];
+  supported_gen_steps: string[];
+}
+
+export interface StepPaletteEntry {
+  gen: string;
+  spec: string;
+  description: string;
+}
+
+export interface StepPaletteResult {
+  base_steps: StepPaletteEntry[];
+  companion_steps: Record<string, StepPaletteEntry[]>;
+}
+
+export interface EngineUIParameter {
+  key: string;
+  label: string;
+  type: string;        // "number", "select", "bool", "text"
+  section?: string;     // e.g., "SYSTEM", "ELECTRONS" for QE; "general" for others
+  unit?: string;
+  description?: string;
+  options?: string[];
+  importance?: string;
+  default?: any;
+}
+
 export interface EnvironmentInfo {
   python_version: string;
   python_executable: string;
@@ -508,18 +543,6 @@ export interface QVCommandMap {
         engine_path: string;
         pw_path: string;
       }>;
-    };
-  };
-  discover_qe_engines: {
-    payload: Record<string, never>;
-    result: {
-      discovered_engines: Array<{
-        engine_id: string;
-        label: string;
-        qe_home: string;
-        pw_path: string;
-      }>;
-      cached_at: number;
     };
   };
   set_qe_engine: {
@@ -693,99 +716,35 @@ export interface QVCommandMap {
       }>;
     };
   };
-  list_qe_ui_parameters: {
-    payload: {
-      module: string;
-      step_type_gen: string;
-    };
-    result: {
-      parameters: Array<{
-        namelist: string;
-        name: string;
-        label: string;
-        type: string;
-        unit?: string;
-        description?: string;
-        options?: string[] | null;
-        importance?: string;
-      }>;
-    };
+  // Generic engine RPCs
+  list_engine_families: {
+    payload: Record<string, never>;
+    result: { engines: EngineFamilyInfo[] };
   };
-  list_qe_parameter_metadata: {
+  list_step_palette: {
+    payload: { engine_family: string | null };
+    result: StepPaletteResult;
+  };
+  set_engine_family: {
+    payload: { project_root: string; calculation: string; engine_family: string };
+    result: { success: boolean; engine_family: string };
+  };
+  list_engine_ui_parameters: {
+    payload: { engine_family: string; step_type_gen: string };
+    result: { parameters: EngineUIParameter[] };
+  };
+  list_engine_parameter_metadata: {
     payload: {
-      operation: 'list_modules' | 'list_sections' | 'list_parameters' | 'search';
-      module?: string;
+      engine_family: string;
+      operation: 'list_categories' | 'list_tags' | 'search';
+      category?: string;
       section?: string;
       query?: string;
     };
     result: {
-      modules?: Array<{
-        id: string;
-        label: string;
-        doc_url?: string;
-      }>;
-      sections?: Array<{
-        id: string;
-        name: string;  // Clean name without '&' prefix
-        kind: 'namelist' | 'card';
-        label: string;  // Display label from metadata (includes '&' for namelists, raw for cards)
-      }>;
-      parameters?: Array<{
-        name: string;
-        type: string | null;
-        default: string | number | null;
-        enum: string[] | null;
-        description: string | null;
-        section: string;
-        module: string;
-        indexing?: {
-          kind: 'bounded' | 'unbounded';
-          index_name: string;
-          start?: number;
-          end?: number;
-          keyword_pattern: string;
-        };
-      }>;
-      results?: Array<{
-        module: string;
-        section: string;
-        name: string;
-        key: string; // unique per param, e.g. `${module}::${section}::${name}`
-        type: string | null;
-        default: string | number | null;
-        enum: string[] | null;
-        description: string | null;
-        indexing?: {
-          kind: 'bounded' | 'unbounded';
-          index_name: string;
-          start?: number;
-          end?: number;
-          keyword_pattern: string;
-        };
-      }>;
-      metadata_path_abs?: string | null;
-      schema_version?: number | null;
-    };
-  };
-  reload_qe_parameter_metadata: {
-    payload: Record<string, never>;
-    result: {
-      modules: Array<{
-        id: string;
-        label: string;
-        doc_url?: string;
-      }>;
-      metadata_path_abs?: string | null;
-      schema_version?: number | null;
-    };
-  };
-  get_qe_parameter_metadata_debug_info: {
-    payload: Record<string, never>;
-    result: {
-      loaded_via: 'cache' | 'disk' | 'not_loaded';
-      loaded_at: string | null;
-      schema_version: number | null;
-      path_abs: string | null;
+      categories?: Array<{ id: string; label: string }>;
+      tags?: Array<{ name: string; type: string; default: any; description: string; category: string }>;
+      results?: Array<{ name: string; type: string; default: any; description: string; category: string }>;
     };
   };
   
@@ -1101,6 +1060,7 @@ export interface QVCommandMap {
       name: string;
       structure?: string;
       template?: string;
+      engine_family?: string;
     };
     result: {
       calculation_id: string;
@@ -1346,15 +1306,6 @@ export interface QVCommandMap {
       step: string;
     };
     result: StepDetail;
-  };
-  import_step_from_qe_input: {
-    payload: {
-      project_root: string;
-      calculation: string;
-      input_file: string;
-      step_name?: string;
-    };
-    result: CalculationDetailResult;
   };
   add_step_to_calculation: {
     payload: {
@@ -1745,6 +1696,7 @@ export interface CalculationDetailResult {
   structure_elements: string[];  // Element symbols from structure composition
   mode: string;
   n_steps: number;
+  engine_family?: string | null;  // Engine family (e.g., "qe", "pyscf") - optional for backwards compatibility
   steps: Array<{
     ulid: string;
     slug: string;

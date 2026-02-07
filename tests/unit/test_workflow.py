@@ -484,6 +484,7 @@ class TestWorkflowInstantiation:
                 "path": "calculations/test_calc"
             },
             "ulid": "test-calc",
+            "engine_family": "qe",
         }
         _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
         
@@ -544,6 +545,7 @@ class TestWorkflowInstantiation:
                 "path": "calculations/test_calc"
             },
             "ulid": "test-calc",
+            "engine_family": "qe",
         }
         _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
         
@@ -607,6 +609,7 @@ class TestWorkflowInstantiation:
                 "path": "calculations/test_calc"
             },
             "ulid": "test-calc",
+            "engine_family": "qe",
         }
         _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
         
@@ -680,6 +683,7 @@ class TestWorkflowInstantiation:
                 "path": "calculations/test_calc"
             },
             "ulid": "test-calc",
+            "engine_family": "qe",
         }
         _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
         

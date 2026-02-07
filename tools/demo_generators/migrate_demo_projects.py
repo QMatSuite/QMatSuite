@@ -9,7 +9,7 @@ from pathlib import Path
 import yaml
 
 # Add src to path for registry import
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 from quantumvitas.workflow.registry import get_registry
 
 
@@ -54,7 +54,8 @@ def migrate_demo(path: Path) -> bool:
 
 
 def main():
-    demo_dir = Path("resources/demo_projects")
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    demo_dir = repo_root / "resources" / "demo_projects"
     if not demo_dir.exists():
         print(f"Demo directory not found: {demo_dir}")
         return

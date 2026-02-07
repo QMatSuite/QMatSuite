@@ -328,6 +328,45 @@ class DriverRegistry:
         return mat_map[gen_type_lower]
 
     @classmethod
+    def resolve_companion_step(cls, engine_family: str, gen_step: str) -> str | None:
+        """Resolve a gen step through companion engines.
+
+        Tries the base engine first, then iterates COMPANION_ENGINES.
+
+        Args:
+            engine_family: Base engine family (e.g., 'qe')
+            gen_step: Generalized step name (e.g., 'wannierprep')
+
+        Returns:
+            Engine-specific step type (e.g., 'w90_wannierprep'), or None if
+            not supported by base engine or any companion.
+        """
+        instance = cls.get_instance()
+
+        if engine_family not in instance._drivers:
+            from quantumvitas.core.driver_exceptions import UnknownEngineError
+            raise UnknownEngineError(engine_family, list(instance._drivers.keys()))
+
+        gen_lower = gen_step.lower()
+        if gen_lower.startswith("gen_"):
+            gen_lower = gen_lower[4:]
+
+        # 1. Try base engine
+        mat_map = instance._materialization_maps.get(engine_family, {})
+        if gen_lower in mat_map:
+            return mat_map[gen_lower]
+
+        # 2. Try each companion engine
+        driver = instance._drivers[engine_family]
+        companions = getattr(driver, 'COMPANION_ENGINES', frozenset())
+        for companion in sorted(companions):  # sorted for determinism
+            comp_map = instance._materialization_maps.get(companion, {})
+            if gen_lower in comp_map:
+                return comp_map[gen_lower]
+
+        return None
+
+    @classmethod
     def is_step_type_registered(cls, step_type_spec: str) -> bool:
         """Check if step type is registered."""
         instance = cls.get_instance()
