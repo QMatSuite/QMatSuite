@@ -1,0 +1,8 @@
+case_id: water_b3lyp_opt
+title: "Water B3LYP Geometry Optimization"
+engine: gaussian
+workflow_tags: [relax, dft, small-molecule]
+species: [O, H]
+functional: B3LYP
+basis_set: 6-31G*
+description: "B3LYP/6-31G* geometry optimization on water; covers Opt keyword"

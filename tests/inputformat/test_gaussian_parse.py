@@ -253,7 +253,7 @@ class TestCuratedSamples:
     """Parse curated .gjf samples from tests/inputformat/samples/gaussian/."""
 
     def test_water_hf_sp(self):
-        text = (SAMPLES_DIR / "water_hf_sp.gjf").read_text()
+        text = (SAMPLES_DIR / "water_hf_sp" / "input.gjf").read_text()
         result = _parse_gaussian_text(text)
         assert result["params"]["method"] == "HF"
         assert result["params"]["basis"] == "STO-3G"
@@ -264,7 +264,7 @@ class TestCuratedSamples:
         assert result["params"]["chk_name"] == "water.chk"
 
     def test_water_b3lyp_opt(self):
-        text = (SAMPLES_DIR / "water_b3lyp_opt.gjf").read_text()
+        text = (SAMPLES_DIR / "water_b3lyp_opt" / "input.gjf").read_text()
         result = _parse_gaussian_text(text)
         assert result["params"]["method"] == "B3LYP"
         assert result["params"]["basis"] == "6-31G*"
@@ -272,7 +272,7 @@ class TestCuratedSamples:
         assert result["structure"]["species"] == ["O", "H", "H"]
 
     def test_methanol_solvation(self):
-        text = (SAMPLES_DIR / "methanol_solvation.gjf").read_text()
+        text = (SAMPLES_DIR / "methanol_solvation" / "input.gjf").read_text()
         result = _parse_gaussian_text(text)
         assert result["params"]["method"] == "B3LYP"
         assert result["params"]["basis"] == "6-31G*"
@@ -281,7 +281,7 @@ class TestCuratedSamples:
         assert len(result["structure"]["species"]) == 6
 
     def test_water_zmatrix(self):
-        text = (SAMPLES_DIR / "water_zmatrix.gjf").read_text()
+        text = (SAMPLES_DIR / "water_zmatrix" / "input.gjf").read_text()
         result = _parse_gaussian_text(text)
         assert result["params"]["method"] == "HF"
         assert result["params"]["basis"] == "STO-3G"
@@ -292,7 +292,7 @@ class TestCuratedSamples:
         assert result["structure"]["species"] == ["O", "H", "H"]
 
     def test_formaldehyde_tddft(self):
-        text = (SAMPLES_DIR / "formaldehyde_tddft.gjf").read_text()
+        text = (SAMPLES_DIR / "formaldehyde_tddft" / "input.gjf").read_text()
         result = _parse_gaussian_text(text)
         assert result["params"]["method"] == "B3LYP"
         assert result["params"]["basis"] == "STO-3G"
@@ -301,7 +301,7 @@ class TestCuratedSamples:
         assert len(result["structure"]["species"]) == 4
 
     def test_hcn_scan(self):
-        text = (SAMPLES_DIR / "hcn_scan.gjf").read_text()
+        text = (SAMPLES_DIR / "hcn_scan" / "input.gjf").read_text()
         result = _parse_gaussian_text(text)
         assert result["params"]["method"] == "HF"
         assert result["params"]["basis"] == "STO-3G"
@@ -311,6 +311,39 @@ class TestCuratedSamples:
         assert zvars["R1"] == 1.07
         assert zvars["R1_scan_steps"] == 5
         assert zvars["R1_scan_step_size"] == 0.05
+
+    def test_ethylene_mp2(self):
+        text = (SAMPLES_DIR / "ethylene_mp2" / "input.gjf").read_text()
+        result = _parse_gaussian_text(text)
+        assert result["params"]["method"] == "MP2"
+        assert result["params"]["basis"] == "STO-3G"
+        assert result["structure"]["species"] == ["C", "C", "H", "H", "H", "H"]
+        assert len(result["structure"]["cart_coords"]) == 6
+
+    def test_o2_triplet_uhf(self):
+        text = (SAMPLES_DIR / "o2_triplet_uhf" / "input.gjf").read_text()
+        result = _parse_gaussian_text(text)
+        assert result["params"]["method"] == "UHF"
+        assert result["params"]["basis"] == "6-31G*"
+        assert result["params"]["multiplicity"] == 3
+        assert result["structure"]["species"] == ["O", "O"]
+
+    def test_water_opt_freq(self):
+        text = (SAMPLES_DIR / "water_opt_freq" / "input.gjf").read_text()
+        result = _parse_gaussian_text(text)
+        assert result["params"]["method"] == "HF"
+        assert result["params"]["basis"] == "STO-3G"
+        assert result["params"]["gen_type"] == "relax"
+        assert result["params"]["freq"] is True
+        assert result["structure"]["species"] == ["O", "H", "H"]
+
+    def test_multi_step_link1(self):
+        text = (SAMPLES_DIR / "multi_step_link1" / "input.gjf").read_text()
+        result = _parse_gaussian_text(text)
+        assert result["params"]["method"] == "HF"
+        assert result["params"]["basis"] == "STO-3G"
+        assert result["params"]["link1_jobs"] == 2
+        assert result["structure"]["species"] == ["O", "H", "H"]
 
 
 # ──────────────────────────────────────────────────────────────────────────

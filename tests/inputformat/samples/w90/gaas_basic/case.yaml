@@ -1,0 +1,6 @@
+case_id: gaas_basic
+title: "GaAs basic Wannierisation"
+engine: w90
+workflow_tags: [wannierise, basic]
+species: [Ga, As]
+description: "Minimal GaAs sp3 Wannier functions (Tutorial Example 1). Pure W90 standalone with 2x2x2 k-grid, 4 WFs. Tests basic scalar parsing, unit_cell_cart (bohr), atoms_frac, projections, and explicit kpoints block."

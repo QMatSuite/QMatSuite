@@ -1,0 +1,6 @@
+case_id: silane_molecular
+title: "Silane molecule (gamma-only, atoms_cart)"
+engine: w90
+workflow_tags: [molecular, gamma_only, atoms_cart]
+species: [Si, H]
+description: "SiH4 molecule in large cubic box (Tutorial Example 7). Gamma-only calculation with 1x1x1 k-grid, atoms_cart block (Cartesian coordinates), unit_cell_cart in bohr. Tests molecular/isolated system workflow and atoms_cart parsing."

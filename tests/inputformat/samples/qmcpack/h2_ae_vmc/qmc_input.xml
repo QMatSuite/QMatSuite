@@ -1,0 +1,123 @@
+<?xml version="1.0"?>
+<simulation>
+<project id="H2" series="0">
+  <parameter name="driver_version">batch</parameter>
+</project>
+  <random seed="130"/>
+
+  <!-- Particle sets (inlined from h2.ptcl.xml) -->
+  <particleset name="e">
+    <group name="u" size="1">
+      <parameter name="charge">-1</parameter>
+      <attrib name="position" datatype="posArray">
+  5.2261545687e-01  4.6234802699e-01 -1.2355134293e+00
+</attrib>
+    </group>
+    <group name="d" size="1">
+      <parameter name="charge">-1</parameter>
+      <attrib name="position" datatype="posArray">
+  6.4451072699e-01  1.3453681375e-01  1.3161796485e+00
+</attrib>
+    </group>
+  </particleset>
+  <particleset name="ion0" size="2">
+    <group name="H">
+      <parameter name="charge">1</parameter>
+      <parameter name="valence">1</parameter>
+      <parameter name="atomicnumber">1</parameter>
+    </group>
+    <attrib name="position" datatype="posArray">
+  0.0000000000e+00  0.0000000000e+00 -9.4486299390e-01
+  0.0000000000e+00  0.0000000000e+00  9.4486299390e-01
+</attrib>
+    <attrib name="ionid" datatype="stringArray">
+ H H
+</attrib>
+  </particleset>
+
+  <!-- Wavefunction (inlined from h2.wfn.xml) -->
+  <wavefunction id="psi0" target="e">
+    <sposet_collection name="LCAOBSet" type="MolecularOrbital" transform="yes" source="ion0">
+      <basisset name="LCAOBSet">
+        <atomicBasisSet name="Gaussian-G2" angular="cartesian" type="Gaussian" elementType="H" normalized="no">
+          <grid type="log" ri="1.e-6" rf="1.e2" npts="1001"/>
+          <basisGroup rid="H00" n="0" l="0" type="Gaussian">
+            <radfunc exponent="3.387000000000e+01" contraction="2.549486323500e-02"/>
+            <radfunc exponent="5.095000000000e+00" contraction="1.903627658930e-01"/>
+            <radfunc exponent="1.159000000000e+00" contraction="8.521620222450e-01"/>
+          </basisGroup>
+          <basisGroup rid="H10" n="1" l="0" type="Gaussian">
+            <radfunc exponent="3.258000000000e-01" contraction="1.000000000000e+00"/>
+          </basisGroup>
+          <basisGroup rid="H20" n="2" l="0" type="Gaussian">
+            <radfunc exponent="1.027000000000e-01" contraction="1.000000000000e+00"/>
+          </basisGroup>
+          <basisGroup rid="H31" n="3" l="1" type="Gaussian">
+            <radfunc exponent="1.407000000000e+00" contraction="1.000000000000e+00"/>
+          </basisGroup>
+          <basisGroup rid="H41" n="4" l="1" type="Gaussian">
+            <radfunc exponent="3.880000000000e-01" contraction="1.000000000000e+00"/>
+          </basisGroup>
+          <basisGroup rid="H52" n="5" l="2" type="Gaussian">
+            <radfunc exponent="1.057000000000e+00" contraction="1.000000000000e+00"/>
+          </basisGroup>
+        </atomicBasisSet>
+      </basisset>
+      <sposet basisset="LCAOBSet" name="spo-up" size="1">
+        <occupation mode="ground"/>
+        <coefficient size="28" id="updetC">
+    1.61128000000000e-01  2.85480000000000e-01  1.79120000000000e-01  0.00000000000000e+00
+    0.00000000000000e+00  8.47800000000000e-03  0.00000000000000e+00  0.00000000000000e+00
+    2.24280000000000e-02 -1.11800000000000e-03 -1.11800000000000e-03  2.23500000000000e-03
+    0.00000000000000e+00  0.00000000000000e+00  0.00000000000000e+00  1.61128000000000e-01
+    2.85480000000000e-01  1.79120000000000e-01  0.00000000000000e+00  0.00000000000000e+00
+   -8.47800000000000e-03  0.00000000000000e+00  0.00000000000000e+00 -2.24280000000000e-02
+   -1.11800000000000e-03 -1.11800000000000e-03  2.23500000000000e-03  0.00000000000000e+00
+        </coefficient>
+      </sposet>
+      <sposet basisset="LCAOBSet" name="spo-dn" size="1">
+        <occupation mode="ground"/>
+        <coefficient size="28" id="downdetC">
+    1.61128000000000e-01  2.85480000000000e-01  1.79120000000000e-01  0.00000000000000e+00
+    0.00000000000000e+00  8.47800000000000e-03  0.00000000000000e+00  0.00000000000000e+00
+    2.24280000000000e-02 -1.11800000000000e-03 -1.11800000000000e-03  2.23500000000000e-03
+    0.00000000000000e+00  0.00000000000000e+00  0.00000000000000e+00  1.61128000000000e-01
+    2.85480000000000e-01  1.79120000000000e-01  0.00000000000000e+00  0.00000000000000e+00
+   -8.47800000000000e-03  0.00000000000000e+00  0.00000000000000e+00 -2.24280000000000e-02
+   -1.11800000000000e-03 -1.11800000000000e-03  2.23500000000000e-03  0.00000000000000e+00
+        </coefficient>
+      </sposet>
+    </sposet_collection>
+    <determinantset>
+      <slaterdeterminant>
+        <determinant sposet="spo-up"/>
+        <determinant sposet="spo-dn"/>
+      </slaterdeterminant>
+    </determinantset>
+    <jastrow name="J2" type="Two-Body" function="Bspline" print="yes">
+      <correlation rcut="2" size="10" speciesA="u" speciesB="d">
+        <coefficients id="ud" type="Array">0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0</coefficients>
+      </correlation>
+    </jastrow>
+    <jastrow name="J1" type="One-Body" function="Bspline" source="ion0" print="yes">
+      <correlation rcut="2" size="10" cusp="1" elementType="H">
+        <coefficients id="eH" type="Array">0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0</coefficients>
+      </correlation>
+    </jastrow>
+  </wavefunction>
+
+  <!-- Hamiltonian -->
+  <hamiltonian name="h0" type="generic" target="e">
+    <pairpot name="ElecElec" type="coulomb" source="e" target="e"/>
+    <pairpot name="IonElec" type="coulomb" source="ion0"/>
+    <constant name="IonIon" type="coulomb" source="ion0" target="ion0"/>
+  </hamiltonian>
+
+  <!-- VMC run -->
+  <qmc method="vmc" target="e">
+    <parameter name="blocks">200</parameter>
+    <parameter name="steps">100</parameter>
+    <parameter name="warmupsteps">200</parameter>
+    <parameter name="timestep">0.05</parameter>
+  </qmc>
+</simulation>

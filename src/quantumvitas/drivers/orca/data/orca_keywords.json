@@ -1,0 +1,342 @@
+{
+  "schema_version": 1,
+  "_meta": {
+    "engine": "orca",
+    "version": "6.0",
+    "format_family": "keyword-block",
+    "format_family_id": "F4",
+    "created": "2026-02-06",
+    "provenance": [
+      "ORCA 6.0 Manual (faccts.de)",
+      "ORCA Input Library (sites.google.com/site/orcainputlibrary)",
+      "OrcaNotes (github.com/raghurama123/OrcaNotes)"
+    ]
+  },
+  "keywords": {
+    "SP": {"category": "calculation_type", "type": "flag", "description": "Single point energy"},
+    "OPT": {"category": "calculation_type", "type": "flag", "description": "Geometry optimization"},
+    "OPTTS": {"category": "calculation_type", "type": "flag", "description": "Transition state optimization"},
+    "FREQ": {"category": "calculation_type", "type": "flag", "description": "Vibrational frequencies", "aliases": ["NUMFREQ"]},
+    "NEB": {"category": "calculation_type", "type": "flag", "description": "Nudged Elastic Band"},
+    "IRC": {"category": "calculation_type", "type": "flag", "description": "Intrinsic Reaction Coordinate"},
+    "MD": {"category": "calculation_type", "type": "flag", "description": "Molecular dynamics"},
+    "NMR": {"category": "calculation_type", "type": "flag", "description": "NMR chemical shifts"},
+    "GOAT": {"category": "calculation_type", "type": "flag", "description": "Global geometry optimization"},
+    "ENGRAD": {"category": "calculation_type", "type": "flag", "description": "Energy + gradient"},
+    "NUMGRAD": {"category": "calculation_type", "type": "flag", "description": "Numerical gradient"},
+
+    "HF": {"category": "method_hf", "type": "flag", "description": "Hartree-Fock", "aliases": ["RHF"]},
+    "UHF": {"category": "method_hf", "type": "flag", "description": "Unrestricted Hartree-Fock"},
+    "ROHF": {"category": "method_hf", "type": "flag", "description": "Restricted Open-shell HF"},
+
+    "BP86": {"category": "method_dft_gga", "type": "flag", "description": "Becke-Perdew 86", "aliases": ["BP"]},
+    "PBE": {"category": "method_dft_gga", "type": "flag", "description": "Perdew-Burke-Ernzerhof"},
+    "BLYP": {"category": "method_dft_gga", "type": "flag", "description": "Becke-Lee-Yang-Parr"},
+    "TPSS": {"category": "method_dft_gga", "type": "flag", "description": "Tao-Perdew-Staroverov-Scuseria"},
+    "M06L": {"category": "method_dft_gga", "type": "flag", "description": "Minnesota 06 local"},
+    "REVPBE": {"category": "method_dft_gga", "type": "flag", "description": "Revised PBE"},
+    "PW91": {"category": "method_dft_gga", "type": "flag", "description": "Perdew-Wang 91"},
+
+    "B3LYP": {"category": "method_dft_hybrid", "type": "flag", "description": "Becke 3-param Lee-Yang-Parr", "aliases": ["B3LYP/G"]},
+    "PBE0": {"category": "method_dft_hybrid", "type": "flag", "description": "PBE hybrid"},
+    "M06": {"category": "method_dft_hybrid", "type": "flag", "description": "Minnesota 06"},
+    "M06-2X": {"category": "method_dft_hybrid", "type": "flag", "description": "Minnesota 06 2X"},
+    "TPSSh": {"category": "method_dft_hybrid", "type": "flag", "description": "TPSS hybrid"},
+    "B97": {"category": "method_dft_hybrid", "type": "flag", "description": "Becke 97"},
+    "BHLYP": {"category": "method_dft_hybrid", "type": "flag", "description": "50% HF exchange BLYP"},
+    "B2PLYP": {"category": "method_dft_double_hybrid", "type": "flag", "description": "Double-hybrid B2PLYP"},
+
+    "WB97X": {"category": "method_dft_range_separated", "type": "flag", "description": "Range-separated hybrid", "aliases": ["wB97X"]},
+    "WB97X-D3": {"category": "method_dft_range_separated", "type": "flag", "description": "WB97X with D3 dispersion", "aliases": ["wB97X-D3"]},
+    "WB97X-D4": {"category": "method_dft_range_separated", "type": "flag", "description": "WB97X with D4 dispersion"},
+    "CAM-B3LYP": {"category": "method_dft_range_separated", "type": "flag", "description": "CAM-B3LYP range-separated"},
+    "LC-BLYP": {"category": "method_dft_range_separated", "type": "flag", "description": "Long-range corrected BLYP"},
+    "WB97M-V": {"category": "method_dft_range_separated", "type": "flag", "description": "WB97M with VV10"},
+
+    "PWPB95": {"category": "method_dft_double_hybrid", "type": "flag", "description": "PW P B95 double hybrid"},
+    "DSD-BLYP": {"category": "method_dft_double_hybrid", "type": "flag", "description": "DSD double hybrid"},
+    "REVDSD-PBEP86": {"category": "method_dft_double_hybrid", "type": "flag", "description": "Revised DSD-PBEP86"},
+
+    "MP2": {"category": "method_mp", "type": "flag", "description": "Moller-Plesset 2nd order"},
+    "RI-MP2": {"category": "method_mp", "type": "flag", "description": "RI-accelerated MP2", "aliases": ["RIMP2"]},
+    "DLPNO-MP2": {"category": "method_mp", "type": "flag", "description": "Domain-based local pair natural orbital MP2"},
+    "SCS-MP2": {"category": "method_mp", "type": "flag", "description": "Spin-component scaled MP2"},
+    "MP3": {"category": "method_mp", "type": "flag", "description": "Moller-Plesset 3rd order"},
+
+    "CCSD": {"category": "method_cc", "type": "flag", "description": "Coupled cluster singles and doubles"},
+    "CCSD(T)": {"category": "method_cc", "type": "flag", "description": "CCSD with perturbative triples"},
+    "DLPNO-CCSD(T)": {"category": "method_cc", "type": "flag", "description": "DLPNO-accelerated CCSD(T)"},
+    "STEOM-CCSD": {"category": "method_cc", "type": "flag", "description": "Similarity-transformed EOM-CCSD"},
+    "EOM-CCSD": {"category": "method_cc", "type": "flag", "description": "Equation of motion CCSD"},
+    "DLPNO-CCSD": {"category": "method_cc", "type": "flag", "description": "DLPNO-CCSD"},
+    "LPNO-CCSD": {"category": "method_cc", "type": "flag", "description": "LPNO-CCSD"},
+
+    "CASSCF": {"category": "method_multireference", "type": "flag", "description": "Complete active space SCF"},
+    "NEVPT2": {"category": "method_multireference", "type": "flag", "description": "N-electron valence perturbation theory"},
+    "MRCI": {"category": "method_multireference", "type": "flag", "description": "Multi-reference CI"},
+    "DMRG": {"category": "method_multireference", "type": "flag", "description": "Density matrix renormalization group"},
+    "FIC-MRCI": {"category": "method_multireference", "type": "flag", "description": "Fully internally contracted MRCI"},
+
+    "XTB": {"category": "method_semiempirical", "type": "flag", "description": "Extended tight binding", "aliases": ["XTB1", "XTB2", "GFN2-XTB"]},
+    "PM3": {"category": "method_semiempirical", "type": "flag", "description": "PM3 semiempirical"},
+    "AM1": {"category": "method_semiempirical", "type": "flag", "description": "AM1 semiempirical"},
+
+    "STO-3G": {"category": "basis_pople", "type": "flag", "description": "Minimal basis"},
+    "3-21G": {"category": "basis_pople", "type": "flag", "description": "Split valence"},
+    "6-31G": {"category": "basis_pople", "type": "flag", "description": "Split valence", "aliases": ["6-31G*", "6-31G**", "6-31+G*", "6-31++G**"]},
+    "6-311G": {"category": "basis_pople", "type": "flag", "description": "Triple zeta valence", "aliases": ["6-311G*", "6-311+G**"]},
+
+    "DEF2-SVP": {"category": "basis_karlsruhe", "type": "flag", "description": "Split valence polarization", "aliases": ["def2-SVP"]},
+    "DEF2-TZVP": {"category": "basis_karlsruhe", "type": "flag", "description": "Triple zeta valence polarization", "aliases": ["def2-TZVP"]},
+    "DEF2-TZVPP": {"category": "basis_karlsruhe", "type": "flag", "description": "Triple zeta + extra polarization"},
+    "DEF2-QZVPP": {"category": "basis_karlsruhe", "type": "flag", "description": "Quadruple zeta + polarization"},
+    "DEF2-SV(P)": {"category": "basis_karlsruhe", "type": "flag", "description": "Split valence (polarization)"},
+
+    "CC-PVDZ": {"category": "basis_dunning", "type": "flag", "description": "Correlation consistent double zeta", "aliases": ["cc-pVDZ"]},
+    "CC-PVTZ": {"category": "basis_dunning", "type": "flag", "description": "Correlation consistent triple zeta", "aliases": ["cc-pVTZ"]},
+    "CC-PVQZ": {"category": "basis_dunning", "type": "flag", "description": "Correlation consistent quadruple zeta", "aliases": ["cc-pVQZ"]},
+    "AUG-CC-PVDZ": {"category": "basis_dunning", "type": "flag", "description": "Augmented cc-pVDZ", "aliases": ["aug-cc-pVDZ"]},
+    "AUG-CC-PVTZ": {"category": "basis_dunning", "type": "flag", "description": "Augmented cc-pVTZ", "aliases": ["aug-cc-pVTZ"]},
+
+    "DEF2/J": {"category": "auxiliary_basis", "type": "flag", "description": "Coulomb fitting for DEF2", "aliases": ["def2/J"]},
+    "DEF2/JK": {"category": "auxiliary_basis", "type": "flag", "description": "Coulomb+Exchange fitting", "aliases": ["def2/JK"]},
+    "CC-PVTZ/C": {"category": "auxiliary_basis", "type": "flag", "description": "Correlation fitting for cc-pVTZ", "aliases": ["cc-pVTZ/C"]},
+    "AUTOAUX": {"category": "auxiliary_basis", "type": "flag", "description": "Automatic auxiliary basis"},
+
+    "RI": {"category": "ri_approximation", "type": "flag", "description": "Resolution of identity"},
+    "RIJK": {"category": "ri_approximation", "type": "flag", "description": "RI for J and K integrals"},
+    "RIJCOSX": {"category": "ri_approximation", "type": "flag", "description": "RI-J with chain-of-spheres X"},
+    "RIJONX": {"category": "ri_approximation", "type": "flag", "description": "RI-J only, exact exchange"},
+    "NORI": {"category": "ri_approximation", "type": "flag", "description": "No RI approximation"},
+
+    "D3": {"category": "dispersion", "type": "flag", "description": "DFT-D3 dispersion"},
+    "D3ZERO": {"category": "dispersion", "type": "flag", "description": "D3 zero damping"},
+    "D3BJ": {"category": "dispersion", "type": "flag", "description": "D3 Becke-Johnson damping"},
+    "D4": {"category": "dispersion", "type": "flag", "description": "D4 dispersion correction"},
+    "NL": {"category": "dispersion", "type": "flag", "description": "Nonlocal correlation"},
+    "VDW10": {"category": "dispersion", "type": "flag", "description": "VV10 nonlocal"},
+
+    "LOOSESCF": {"category": "scf_convergence", "type": "flag", "description": "Loose SCF convergence"},
+    "SLOPPYSCF": {"category": "scf_convergence", "type": "flag", "description": "Very weak convergence"},
+    "NORMALSCF": {"category": "scf_convergence", "type": "flag", "description": "Normal SCF (default)"},
+    "STRONGSCF": {"category": "scf_convergence", "type": "flag", "description": "Strong convergence"},
+    "TIGHTSCF": {"category": "scf_convergence", "type": "flag", "description": "Tight convergence"},
+    "VERYTIGHTSCF": {"category": "scf_convergence", "type": "flag", "description": "Very tight convergence"},
+    "EXTREMESCF": {"category": "scf_convergence", "type": "flag", "description": "Near numerical precision"},
+
+    "LOOSEOPT": {"category": "opt_convergence", "type": "flag", "description": "Loose geometry convergence"},
+    "NORMALOPT": {"category": "opt_convergence", "type": "flag", "description": "Normal geometry (default)"},
+    "TIGHTOPT": {"category": "opt_convergence", "type": "flag", "description": "Tight geometry convergence"},
+    "VERYTIGHTOPT": {"category": "opt_convergence", "type": "flag", "description": "Very tight geometry"},
+
+    "GRID1": {"category": "grid", "type": "flag", "description": "Coarse integration grid"},
+    "GRID2": {"category": "grid", "type": "flag", "description": "Medium grid"},
+    "GRID3": {"category": "grid", "type": "flag", "description": "Default grid"},
+    "GRID4": {"category": "grid", "type": "flag", "description": "Fine grid"},
+    "GRID5": {"category": "grid", "type": "flag", "description": "Very fine grid"},
+    "GRID6": {"category": "grid", "type": "flag", "description": "Ultra-fine grid"},
+    "GRID7": {"category": "grid", "type": "flag", "description": "Finest grid"},
+    "DEFGRID3": {"category": "grid", "type": "flag", "description": "Default grid v3"},
+    "FINALGRID6": {"category": "grid", "type": "flag", "description": "Final grid 6"},
+
+    "USESYM": {"category": "symmetry", "type": "flag", "description": "Use point group symmetry"},
+    "NOSYM": {"category": "symmetry", "type": "flag", "description": "Disable symmetry"},
+
+    "UKS": {"category": "spin", "type": "flag", "description": "Unrestricted Kohn-Sham"},
+    "RKS": {"category": "spin", "type": "flag", "description": "Restricted Kohn-Sham"},
+    "ROKS": {"category": "spin", "type": "flag", "description": "Restricted open-shell KS"},
+
+    "PRINTBASIS": {"category": "output_control", "type": "flag", "description": "Print basis set info"},
+    "PRINTGAP": {"category": "output_control", "type": "flag", "description": "Print HOMO-LUMO gap"},
+    "LARGEPRINT": {"category": "output_control", "type": "flag", "description": "Verbose output"},
+    "MINIPRINT": {"category": "output_control", "type": "flag", "description": "Minimal output"},
+    "MOREAD": {"category": "output_control", "type": "flag", "description": "Read orbitals from GBW"},
+    "NOITER": {"category": "output_control", "type": "flag", "description": "No SCF iteration (1 cycle)"},
+
+    "CPCM": {"category": "solvation", "type": "flag", "description": "CPCM solvation model"},
+    "SMD": {"category": "solvation", "type": "flag", "description": "SMD solvation model"},
+    "ALPB": {"category": "solvation", "type": "flag", "description": "Analytical linearized PB"},
+
+    "KDIIS": {"category": "scf_algorithm", "type": "flag", "description": "KDIIS SCF algorithm"},
+    "SOSCF": {"category": "scf_algorithm", "type": "flag", "description": "Second-order SCF"},
+    "NRSCF": {"category": "scf_algorithm", "type": "flag", "description": "Newton-Raphson SCF"},
+    "DIIS": {"category": "scf_algorithm", "type": "flag", "description": "DIIS algorithm"},
+
+    "PMODEL": {"category": "scf_guess", "type": "flag", "description": "Polarized model density guess"},
+    "HUECKEL": {"category": "scf_guess", "type": "flag", "description": "Extended Hueckel guess"},
+    "HCORE": {"category": "scf_guess", "type": "flag", "description": "Core Hamiltonian guess"},
+    "PATOM": {"category": "scf_guess", "type": "flag", "description": "Polarized atoms guess"},
+
+    "PAL2": {"category": "parallelization", "type": "flag", "description": "Use 2 processes"},
+    "PAL4": {"category": "parallelization", "type": "flag", "description": "Use 4 processes"},
+    "PAL8": {"category": "parallelization", "type": "flag", "description": "Use 8 processes"},
+
+    "SLOWCONV": {"category": "scf_control", "type": "flag", "description": "Slow convergence mode"},
+    "VERYSLOWCONV": {"category": "scf_control", "type": "flag", "description": "Very slow convergence mode"},
+    "NOAUTOSTART": {"category": "scf_control", "type": "flag", "description": "No automatic restart"},
+    "AUTOSTART": {"category": "scf_control", "type": "flag", "description": "Automatic restart"}
+  },
+  "blocks": {
+    "scf": {
+      "description": "SCF procedure control",
+      "parameters": {
+        "MaxIter": {"type": "int", "default": 125, "description": "Maximum SCF iterations"},
+        "Convergence": {"type": "enum", "values": ["Sloppy", "Loose", "Medium", "Normal", "Strong", "Tight", "VeryTight", "Extreme"], "description": "Convergence level"},
+        "TolE": {"type": "float", "description": "Energy convergence threshold"},
+        "TolMaxP": {"type": "float", "description": "Max density matrix change"},
+        "TolRMSP": {"type": "float", "description": "RMS density matrix change"},
+        "Guess": {"type": "enum", "values": ["Hueckel", "PModel", "PAtom", "MORead"], "description": "Initial guess"},
+        "HFTyp": {"type": "enum", "values": ["RHF", "UHF", "ROHF"], "description": "HF type"},
+        "DIISMaxEq": {"type": "int", "description": "DIIS history length"},
+        "Rotate": {"type": "block", "description": "Orbital rotation specification"}
+      }
+    },
+    "geom": {
+      "description": "Geometry optimization control",
+      "parameters": {
+        "MaxIter": {"type": "int", "default": 50, "description": "Maximum optimization steps"},
+        "Calc_Hess": {"type": "bool", "description": "Calculate initial Hessian"},
+        "Recalc_Hess": {"type": "int", "description": "Recalculate Hessian every N steps"},
+        "NumHess": {"type": "bool", "description": "Use numerical Hessian"},
+        "InHess": {"type": "enum", "values": ["Read", "Unit", "Almloef"], "description": "Initial Hessian source"},
+        "InHessName": {"type": "string", "description": "Hessian file name"},
+        "Hybrid_Hess": {"type": "array", "description": "Atoms for hybrid Hessian"},
+        "Trust": {"type": "float", "description": "Initial trust radius"},
+        "TolE": {"type": "float", "description": "Energy convergence"},
+        "TolMAXG": {"type": "float", "description": "Max gradient convergence"},
+        "TolRMSG": {"type": "float", "description": "RMS gradient convergence"},
+        "TolMAXD": {"type": "float", "description": "Max displacement convergence"},
+        "TolRMSD": {"type": "float", "description": "RMS displacement convergence"}
+      }
+    },
+    "pal": {
+      "description": "Parallelization control",
+      "parameters": {
+        "nprocs": {"type": "int", "description": "Number of parallel processes"}
+      }
+    },
+    "basis": {
+      "description": "Basis set specification",
+      "parameters": {
+        "basis": {"type": "string", "description": "Default basis set name"},
+        "NewGTO": {"type": "block", "description": "Custom GTO definition"},
+        "NewECP": {"type": "block", "description": "Custom ECP definition"}
+      }
+    },
+    "cis": {
+      "description": "CIS/TD-DFT excited state calculations",
+      "aliases": ["tddft"],
+      "parameters": {
+        "NRoots": {"type": "int", "description": "Number of excited states"},
+        "MaxDim": {"type": "int", "description": "Maximum Davidson dimension"},
+        "IRoot": {"type": "int", "description": "Root for optimization"},
+        "TDA": {"type": "bool", "description": "Tamm-Dancoff approximation"},
+        "Triplets": {"type": "bool", "description": "Calculate triplet states"},
+        "DCOrr": {"type": "int", "description": "Doubles correction type (1-4)"}
+      }
+    },
+    "tddft": {
+      "description": "TD-DFT excited state calculations",
+      "parameters": {
+        "NRoots": {"type": "int", "description": "Number of excited states"},
+        "MaxDim": {"type": "int", "description": "Maximum Davidson dimension"},
+        "IRoot": {"type": "int", "description": "Root for optimization"},
+        "TDA": {"type": "bool", "description": "Tamm-Dancoff approximation"},
+        "Triplets": {"type": "bool", "description": "Calculate triplet states"}
+      }
+    },
+    "casscf": {
+      "description": "CASSCF/NEVPT2 calculations",
+      "parameters": {
+        "nel": {"type": "int", "description": "Number of active electrons"},
+        "norb": {"type": "int", "description": "Number of active orbitals"},
+        "mult": {"type": "int", "description": "Spin multiplicity"},
+        "nroots": {"type": "int", "description": "Number of states"},
+        "weights": {"type": "array", "description": "State averaging weights"},
+        "ActOrbs": {"type": "enum", "values": ["NatOrbs", "Localized", "QROs"], "description": "Active orbital source"}
+      }
+    },
+    "mdci": {
+      "description": "Single-reference correlation methods (CC/EOM)",
+      "parameters": {
+        "nroots": {"type": "int", "description": "Number of excited states"},
+        "STol": {"type": "float", "description": "Convergence threshold"},
+        "MaxIter": {"type": "int", "description": "Maximum iterations"},
+        "Density": {"type": "enum", "values": ["None", "Unrelaxed", "Relaxed"], "description": "Density type"}
+      }
+    },
+    "cpcm": {
+      "description": "Conductor-like PCM solvation",
+      "parameters": {
+        "smd": {"type": "bool", "description": "Use SMD model"},
+        "SMDsolvent": {"type": "string", "description": "SMD solvent name"},
+        "epsilon": {"type": "float", "description": "Dielectric constant"},
+        "refrac": {"type": "float", "description": "Refractive index"}
+      }
+    },
+    "freq": {
+      "description": "Frequency calculation control",
+      "parameters": {
+        "Temp": {"type": "float", "default": 298.15, "description": "Temperature (K)"},
+        "Anharmonic": {"type": "bool", "description": "Anharmonic corrections"},
+        "Increment": {"type": "float", "description": "Numerical increment"}
+      }
+    },
+    "neb": {
+      "description": "Nudged Elastic Band calculation",
+      "parameters": {
+        "product": {"type": "string", "description": "Product geometry file"},
+        "NImages": {"type": "int", "default": 8, "description": "Number of NEB images"},
+        "CI": {"type": "bool", "description": "Climbing image NEB"},
+        "TS": {"type": "bool", "description": "Locate transition state"}
+      }
+    },
+    "irc": {
+      "description": "Intrinsic Reaction Coordinate",
+      "parameters": {
+        "MaxIter": {"type": "int", "description": "Maximum IRC steps"},
+        "Direction": {"type": "enum", "values": ["Forward", "Backward", "Both"], "description": "IRC direction"},
+        "InitHess": {"type": "enum", "values": ["Read", "Calc"], "description": "Initial Hessian"}
+      }
+    },
+    "md": {
+      "description": "Molecular dynamics simulation",
+      "parameters": {
+        "TimeStep": {"type": "float", "description": "Time step (fs)"},
+        "RunTime": {"type": "float", "description": "Total simulation time (fs)"},
+        "Thermostat": {"type": "enum", "values": ["NVE", "Berendsen", "NoseHoover"], "description": "Temperature control"},
+        "Temp": {"type": "float", "description": "Target temperature (K)"}
+      }
+    },
+    "output": {
+      "description": "Output control",
+      "parameters": {
+        "PrintLevel": {"type": "enum", "values": ["Mini", "Small", "Normal", "Large"], "description": "Verbosity level"}
+      }
+    },
+    "eprnmr": {
+      "description": "EPR/NMR property calculations",
+      "parameters": {
+        "gtensor": {"type": "bool", "description": "Calculate g-tensor"},
+        "Dtensor": {"type": "bool", "description": "Calculate D-tensor"}
+      }
+    },
+    "plots": {
+      "description": "Visualization and cube file generation",
+      "parameters": {
+        "dim1": {"type": "int", "description": "Grid points X"},
+        "dim2": {"type": "int", "description": "Grid points Y"},
+        "dim3": {"type": "int", "description": "Grid points Z"},
+        "Format": {"type": "enum", "values": ["Gaussian_Cube", "VTK"], "description": "Output format"}
+      }
+    },
+    "rel": {
+      "description": "Relativistic options",
+      "parameters": {
+        "method": {"type": "enum", "values": ["DKH", "ZORA", "X2C"], "description": "Relativistic method"},
+        "order": {"type": "int", "description": "DKH order"},
+        "picturechange": {"type": "bool", "description": "Picture change for properties"}
+      }
+    }
+  }
+}

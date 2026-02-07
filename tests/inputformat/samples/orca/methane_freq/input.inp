@@ -1,0 +1,20 @@
+! B3LYP DEF2-TZVP RIJCOSX DEF2/J D3BJ FREQ TIGHTSCF
+# Vibrational frequency analysis for methane
+
+%pal
+  nprocs 4
+end
+
+%maxcore 2000
+
+%freq
+  Temp 298.15
+end
+
+* xyz 0 1
+C    0.000000    0.000000    0.000000
+H    0.629118    0.629118    0.629118
+H   -0.629118   -0.629118    0.629118
+H   -0.629118    0.629118   -0.629118
+H    0.629118   -0.629118   -0.629118
+*

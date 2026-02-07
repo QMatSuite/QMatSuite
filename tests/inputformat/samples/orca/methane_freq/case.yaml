@@ -1,0 +1,8 @@
+case_id: methane_freq
+title: "Methane Vibrational Frequencies"
+engine: orca
+workflow_tags: [freq, frequencies, thermochemistry, dft]
+species: [C, H]
+functional: B3LYP
+basis_set: DEF2-TZVP
+description: "Vibrational frequency analysis with thermochemistry at 298.15 K"

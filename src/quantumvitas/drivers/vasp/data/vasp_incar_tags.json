@@ -1530,7 +1530,73 @@
       "subcategory": "general",
       "enum": null,
       "description": "Enable Wannier function projection.",
-      "see_also": [],
+      "see_also": ["LWANNIER90_RUN"],
+      "status": "active"
+    },
+    "LWANNIER90_RUN": {
+      "name": "LWANNIER90_RUN",
+      "type": "LOGICAL",
+      "default": ".FALSE.",
+      "category": "wannier",
+      "subcategory": "interface",
+      "enum": null,
+      "description": "Run the internal Wannier90 interface to compute MLWFs after DFT.",
+      "see_also": ["LWRITE_MMN_AMN", "NUM_WANN", "WANNIER90_WIN"],
+      "status": "active"
+    },
+    "LWRITE_MMN_AMN": {
+      "name": "LWRITE_MMN_AMN",
+      "type": "LOGICAL",
+      "default": ".FALSE.",
+      "category": "wannier",
+      "subcategory": "interface",
+      "enum": null,
+      "description": "Write .mmn and .amn files for the Wannier90 interface.",
+      "see_also": ["LWANNIER90_RUN"],
+      "status": "active"
+    },
+    "NUM_WANN": {
+      "name": "NUM_WANN",
+      "type": "INTEGER",
+      "default": "0",
+      "category": "wannier",
+      "subcategory": "interface",
+      "enum": null,
+      "description": "Number of Wannier functions to construct.",
+      "see_also": ["LWANNIER90_RUN", "WANNIER90_WIN"],
+      "status": "active"
+    },
+    "WANNIER90_WIN": {
+      "name": "WANNIER90_WIN",
+      "type": "CHARACTER",
+      "default": "\"\"",
+      "category": "wannier",
+      "subcategory": "interface",
+      "enum": null,
+      "description": "Inline Wannier90 win-file content embedded as a string in the INCAR.",
+      "see_also": ["LWANNIER90_RUN", "NUM_WANN"],
+      "status": "active"
+    },
+    "LWRITE_WANNIER_XSF": {
+      "name": "LWRITE_WANNIER_XSF",
+      "type": "LOGICAL",
+      "default": ".FALSE.",
+      "category": "wannier",
+      "subcategory": "output",
+      "enum": null,
+      "description": "Write Wannier functions in XSF format for visualization.",
+      "see_also": ["LWANNIER90_RUN"],
+      "status": "active"
+    },
+    "LINTPOL_KPATH": {
+      "name": "LINTPOL_KPATH",
+      "type": "LOGICAL",
+      "default": ".FALSE.",
+      "category": "wannier",
+      "subcategory": "output",
+      "enum": null,
+      "description": "Interpolate band structure along a k-path using Wannier functions.",
+      "see_also": ["LWANNIER90_RUN"],
       "status": "active"
     },
     "LWRITE_MMTL": {

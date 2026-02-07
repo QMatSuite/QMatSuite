@@ -1,0 +1,1 @@
+# QMCPACK metadata data package.

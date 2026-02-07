@@ -1,0 +1,8 @@
+case_id: formaldehyde_casscf
+title: "Formaldehyde CASSCF Multireference"
+engine: orca
+workflow_tags: [casscf, multireference, excited-states, state-averaging]
+species: [C, H, O]
+method: CASSCF
+basis_set: DEF2-TZVP
+description: "CASSCF(4,4) state-averaged calculation for 4 states of formaldehyde"

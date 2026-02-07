@@ -1,0 +1,23 @@
+SYSTEM = Si diamond Wannier90 pipeline
+
+ENCUT = 240
+PREC = Accurate
+EDIFF = 1E-8
+ISMEAR = 0
+SIGMA = 0.05
+NBANDS = 16
+ALGO = Exact
+NELM = 1
+
+LWANNIER90_RUN = .TRUE.
+LWRITE_MMN_AMN = .TRUE.
+NUM_WANN = 4
+
+WANNIER90_WIN = "
+num_iter = 200
+num_print_cycles = 50
+
+begin projections
+Si:sp3
+end projections
+"

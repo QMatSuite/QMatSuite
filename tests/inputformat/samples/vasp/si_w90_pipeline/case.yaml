@@ -1,0 +1,7 @@
+case_id: si_w90_pipeline
+title: "Silicon diamond VASP+Wannier90 composite pipeline"
+engine: vasp
+workflow_tags: [scf, wannier, composite_pipeline]
+species: [Si]
+functional: PBE
+description: "Si diamond with LWANNIER90_RUN for VASP internal Wannier90 interface (sp3 projections)"

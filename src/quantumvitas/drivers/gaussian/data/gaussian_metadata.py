@@ -276,6 +276,39 @@ def validate_route_keywords(route_keywords: List[str]) -> List[str]:
     return unknown
 
 
+def get_tag_type(name: str) -> Optional[str]:
+    """Return the type string for a keyword (case-insensitive).
+
+    Returns:
+        Type string (e.g., "method", "keyword"), or None if not found.
+    """
+    info = get_keyword_info(name)
+    if info is None:
+        return None
+    return info.get("type")
+
+
+def get_tag_default(name: str) -> Optional[str]:
+    """Return the default value for a keyword (case-insensitive).
+
+    Returns:
+        Default string, or None if not found or no default.
+    """
+    info = get_keyword_info(name)
+    if info is None:
+        return None
+    return info.get("default")
+
+
+def validate_params(params: Dict[str, Any]) -> List[str]:
+    """Return unknown param names from a params dict.
+
+    Alias for validate_route_keywords() that accepts a dict
+    and validates the keys.
+    """
+    return validate_route_keywords(list(params.keys()))
+
+
 def get_metadata_file_info() -> Dict[str, Any]:
     """Return metadata file path and schema version for debug."""
     try:

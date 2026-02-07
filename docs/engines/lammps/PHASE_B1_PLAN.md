@@ -1,8 +1,9 @@
 # LAMMPS Phase B1: End-to-End Parser/Writer/Digest
 
-**Status**: COMPLETE
+**Status**: B1 PLAYBOOK COMPLIANT
 **Baseline**: 3572 passed, 24 skipped
-**Final**: 3691 passed, 24 skipped (+119 new tests)
+**Final (pre-playbook)**: 3691 passed, 24 skipped (+119 new tests)
+**Final (playbook compliant)**: 4034 passed, 24 skipped (+22 metadata tests)
 
 ## Goal
 Bring LAMMPS to VASP/ORCA maturity: robust command-stream parser/writer with roundtrip support, output digest, and comprehensive tests.

@@ -1,0 +1,6 @@
+case_id: iron_spinor
+title: "Iron BCC with spinors and postw90 kpath"
+engine: w90
+workflow_tags: [spinors, disentanglement, postw90, kpath, band_interpolation]
+species: [Fe]
+description: "Iron BCC with 18 spinor WFs from 28 bands (Tutorial Example 17). Spinor Wannier functions with sp3d2+dxy+dxz+dyz projections, large frozen window, kpath_task for band plotting with spin colouring, 8x8x8 k-grid."

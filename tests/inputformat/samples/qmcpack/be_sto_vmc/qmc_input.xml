@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<simulation>
+  <project id="be_vmc" series="0">
+    <parameter name="driver_version">batch</parameter>
+  </project>
+
+  <!-- Particle sets (merged from Be.structure.xml) -->
+  <particleset name="ion0" size="1">
+    <group name="Be">
+      <parameter name="charge">4</parameter>
+      <parameter name="valence">4</parameter>
+      <parameter name="atomicnumber">4</parameter>
+    </group>
+    <attrib name="position" datatype="posArray">
+      0.0000000000e+00  0.0000000000e+00  0.0000000000e+00
+    </attrib>
+    <attrib name="ionid" datatype="stringArray">
+      Be
+    </attrib>
+  </particleset>
+
+  <particleset name="e" random="yes" randomsrc="ion0">
+    <group name="u" size="2">
+      <parameter name="charge">-1</parameter>
+    </group>
+    <group name="d" size="2">
+      <parameter name="charge">-1</parameter>
+    </group>
+  </particleset>
+
+  <!-- Wavefunction (merged from Be_STO.wfnoj.xml) -->
+  <!-- Basis from Bunge, Barrientos, and Bunge, Atomic Data and Nuclear Data Tables 53, 113-162 (1993) -->
+  <wavefunction name="psi0" target="e">
+    <sposet_collection type="MolecularOrbital">
+      <basisset keyword="STO" transform="no">
+        <atomicBasisSet elementType="Be" normalized="no" type="STO">
+          <basisGroup l="0" m="0" rid="C0" type="Slater">
+             <radfunc n="1" exponent="5.7531"/>
+          </basisGroup>
+          <basisGroup l="0" m="0" rid="C1" type="Slater">
+             <radfunc n="1" exponent="3.7156"/>
+          </basisGroup>
+          <basisGroup l="0" m="0" rid="C2" type="Slater">
+             <radfunc n="3" exponent="9.9670"/>
+          </basisGroup>
+          <basisGroup l="0" m="0" rid="C3" type="Slater">
+             <radfunc n="3" exponent="3.7128"/>
+          </basisGroup>
+          <basisGroup l="0" m="0" rid="C4" type="Slater">
+             <radfunc n="2" exponent="4.4661"/>
+          </basisGroup>
+          <basisGroup l="0" m="0" rid="C5" type="Slater">
+             <radfunc n="2" exponent="1.2919"/>
+          </basisGroup>
+          <basisGroup l="0" m="0" rid="C6" type="Slater">
+             <radfunc n="2" exponent="0.8555"/>
+          </basisGroup>
+        </atomicBasisSet>
+      </basisset>
+      <sposet basisset="LCAOBSet" name="spo-up">
+          <coefficient id="updetC" size="7" type="Array">
+  0.285107  0.474813 -0.001620  0.052852  0.243499  0.000106 -0.000032
+ -0.016378 -0.155066  0.000426 -0.059234 -0.031925  0.387968  0.685674
+  0.0       0.0       1.0       0.0       0.0       0.0       0.0
+  0.0       0.0       0.0       1.0       0.0       0.0       0.0
+  0.0       0.0       0.0       0.0       1.0       0.0       0.0
+  0.0       0.0       0.0       0.0       0.0       1.0       0.0
+  0.0       0.0       0.0       0.0       0.0       0.0       1.0
+          </coefficient>
+      </sposet>
+    </sposet_collection>
+    <determinantset key="STO" source="ion0" transform="no" type="MO">
+      <slaterdeterminant batch="no">
+        <determinant id="spo-up"/>
+        <determinant id="spo-up"/>
+      </slaterdeterminant>
+    </determinantset>
+  </wavefunction>
+
+  <!-- Hamiltonian -->
+  <hamiltonian name="h0" type="generic" target="e">
+    <pairpot name="ElecElec" type="coulomb" source="e" target="e" physical="true"/>
+    <pairpot name="IonElec" type="coulomb" source="ion0" target="e"/>
+  </hamiltonian>
+
+  <!-- VMC run -->
+  <qmc method="vmc" move="pbyp" checkpoint="-1">
+    <parameter name="blocks">100</parameter>
+    <parameter name="warmupsteps">250</parameter>
+    <parameter name="steps">100</parameter>
+    <parameter name="substeps">10</parameter>
+    <parameter name="timestep">0.5</parameter>
+    <parameter name="useDrift">yes</parameter>
+  </qmc>
+</simulation>

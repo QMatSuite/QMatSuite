@@ -1,0 +1,25 @@
+! B3LYP DEF2-TZVP RIJCOSX DEF2/J D3BJ OPT TIGHTSCF CPCM(Water)
+# Ethanol optimization in water with CPCM solvation
+
+%pal
+  nprocs 4
+end
+
+%maxcore 2000
+
+%cpcm
+  epsilon 80.4
+  refrac 1.33
+end
+
+* xyz 0 1
+C    -1.187701    0.114155   -0.026879
+C     0.286814   -0.227181    0.105849
+O     1.083441    0.891016   -0.171619
+H    -1.398839    1.159424    0.222251
+H    -1.497413   -0.073668   -1.059548
+H    -1.797017   -0.529710    0.614765
+H     0.502618   -0.576174    1.120316
+H     0.545461   -1.048654   -0.567399
+H     0.854972    1.621478    0.409768
+*

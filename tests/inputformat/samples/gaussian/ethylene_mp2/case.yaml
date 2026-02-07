@@ -1,0 +1,8 @@
+case_id: ethylene_mp2
+title: "Ethylene MP2 Single-Point"
+engine: gaussian
+workflow_tags: [scf, post-hf, mp2, small-molecule]
+species: [C, H]
+functional: MP2
+basis_set: STO-3G
+description: "MP2/STO-3G single-point on ethylene; covers post-Hartree-Fock correlated method"

@@ -23,7 +23,7 @@ SAMPLES_DIR = Path(__file__).parent / "samples" / "qmcpack"
 
 
 def _read_sample(name: str) -> str:
-    return (SAMPLES_DIR / name).read_text()
+    return (SAMPLES_DIR / name / "qmc_input.xml").read_text()
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +65,7 @@ class TestStringArray:
 class TestParseHeVmcSto:
     @pytest.fixture
     def parsed(self):
-        return _parse_qmcpack_text(_read_sample("he_vmc_sto.xml"))
+        return _parse_qmcpack_text(_read_sample("he_vmc_sto"))
 
     def test_has_params_and_structure(self, parsed):
         assert "params" in parsed
@@ -136,7 +136,7 @@ class TestParseHeVmcSto:
 class TestParseH2AeVmc:
     @pytest.fixture
     def parsed(self):
-        return _parse_qmcpack_text(_read_sample("h2_ae_vmc.xml"))
+        return _parse_qmcpack_text(_read_sample("h2_ae_vmc"))
 
     def test_project(self, parsed):
         assert parsed["params"]["project_id"] == "H2"
@@ -182,7 +182,7 @@ class TestParseH2AeVmc:
 class TestParseLihSolid:
     @pytest.fixture
     def parsed(self):
-        return _parse_qmcpack_text(_read_sample("lih_solid_vmc_pp.xml"))
+        return _parse_qmcpack_text(_read_sample("lih_solid_vmc_pp"))
 
     def test_project(self, parsed):
         assert parsed["params"]["project_id"] == "LiH"
@@ -258,7 +258,7 @@ class TestParseLihSolid:
 class TestParseHeOptPade:
     @pytest.fixture
     def parsed(self):
-        return _parse_qmcpack_text(_read_sample("he_opt_pade.xml"))
+        return _parse_qmcpack_text(_read_sample("he_opt_pade"))
 
     def test_driver_version_legacy(self, parsed):
         assert parsed["params"]["driver_version"] == "legacy"
@@ -293,7 +293,7 @@ class TestParseHeOptPade:
 class TestParseHegVmc:
     @pytest.fixture
     def parsed(self):
-        return _parse_qmcpack_text(_read_sample("heg_vmc.xml"))
+        return _parse_qmcpack_text(_read_sample("heg_vmc"))
 
     def test_project(self, parsed):
         assert parsed["params"]["project_id"] == "heg_SJ"
@@ -495,35 +495,35 @@ def _assert_semantic_equal(a: dict, b: dict, tolerance: float = 1e-6):
 
 class TestRoundtrip:
     def test_roundtrip_he_vmc_sto(self):
-        text = _read_sample("he_vmc_sto.xml")
+        text = _read_sample("he_vmc_sto")
         parsed1 = _parse_qmcpack_text(text)
         written = _write_qmcpack_text(parsed1)
         parsed2 = _parse_qmcpack_text(written)
         _assert_semantic_equal(parsed1, parsed2)
 
     def test_roundtrip_h2_ae_vmc(self):
-        text = _read_sample("h2_ae_vmc.xml")
+        text = _read_sample("h2_ae_vmc")
         parsed1 = _parse_qmcpack_text(text)
         written = _write_qmcpack_text(parsed1)
         parsed2 = _parse_qmcpack_text(written)
         _assert_semantic_equal(parsed1, parsed2)
 
     def test_roundtrip_lih_solid(self):
-        text = _read_sample("lih_solid_vmc_pp.xml")
+        text = _read_sample("lih_solid_vmc_pp")
         parsed1 = _parse_qmcpack_text(text)
         written = _write_qmcpack_text(parsed1)
         parsed2 = _parse_qmcpack_text(written)
         _assert_semantic_equal(parsed1, parsed2)
 
     def test_roundtrip_he_opt_pade(self):
-        text = _read_sample("he_opt_pade.xml")
+        text = _read_sample("he_opt_pade")
         parsed1 = _parse_qmcpack_text(text)
         written = _write_qmcpack_text(parsed1)
         parsed2 = _parse_qmcpack_text(written)
         _assert_semantic_equal(parsed1, parsed2)
 
     def test_roundtrip_heg_vmc(self):
-        text = _read_sample("heg_vmc.xml")
+        text = _read_sample("heg_vmc")
         parsed1 = _parse_qmcpack_text(text)
         written = _write_qmcpack_text(parsed1)
         parsed2 = _parse_qmcpack_text(written)
@@ -537,7 +537,7 @@ class TestRoundtrip:
 class TestResourceRefs:
     def test_lih_has_refs(self):
         import xml.etree.ElementTree as ET
-        text = _read_sample("lih_solid_vmc_pp.xml")
+        text = _read_sample("lih_solid_vmc_pp")
         root = ET.fromstring(text)
         refs = _extract_resource_refs(root)
         assert refs["wavefunction_hrefs"] == ["LiH.h5"]
@@ -546,20 +546,20 @@ class TestResourceRefs:
 
     def test_he_no_refs(self):
         import xml.etree.ElementTree as ET
-        text = _read_sample("he_vmc_sto.xml")
+        text = _read_sample("he_vmc_sto")
         root = ET.fromstring(text)
         refs = _extract_resource_refs(root)
         assert refs["wavefunction_hrefs"] == []
         assert refs["pseudopotential_hrefs"] == []
 
     def test_refs_in_parsed_params(self):
-        parsed = _parse_qmcpack_text(_read_sample("lih_solid_vmc_pp.xml"))
+        parsed = _parse_qmcpack_text(_read_sample("lih_solid_vmc_pp"))
         assert "_resource_refs" in parsed["params"]
         refs = parsed["params"]["_resource_refs"]
         assert "LiH.h5" in refs["wavefunction_hrefs"]
 
     def test_no_refs_in_ae_params(self):
-        parsed = _parse_qmcpack_text(_read_sample("he_vmc_sto.xml"))
+        parsed = _parse_qmcpack_text(_read_sample("he_vmc_sto"))
         assert "_resource_refs" not in parsed["params"]
 
 
@@ -578,7 +578,7 @@ class TestOrchestratorIntegration:
         from quantumvitas.inputformat.parser import parse_engine_inputs
 
         spec = get_qmcpack_input_spec()
-        xml_text = _read_sample("he_vmc_sto.xml")
+        xml_text = _read_sample("he_vmc_sto")
         (tmp_path / "qmc_input.xml").write_text(xml_text)
 
         result = parse_engine_inputs(spec, tmp_path)
@@ -612,7 +612,7 @@ class TestOrchestratorIntegration:
 
         spec = get_qmcpack_input_spec()
         # Parse sample
-        xml_text = _read_sample("he_vmc_sto.xml")
+        xml_text = _read_sample("he_vmc_sto")
         (tmp_path / "qmc_input.xml").write_text(xml_text)
         result1 = parse_engine_inputs(spec, tmp_path)
 
@@ -625,3 +625,202 @@ class TestOrchestratorIntegration:
         result2 = parse_engine_inputs(spec, out_dir)
         assert result1.params["project_id"] == result2.params["project_id"]
         assert result1.structure["species"] == result2.structure["species"]
+
+
+# ---------------------------------------------------------------------------
+# Parser: He DMC (VMC+DMC chain)
+# ---------------------------------------------------------------------------
+
+class TestParseHeDmc:
+    @pytest.fixture
+    def parsed(self):
+        return _parse_qmcpack_text(_read_sample("he_dmc"))
+
+    def test_project(self, parsed):
+        assert parsed["params"]["project_id"] == "He"
+        assert parsed["params"]["driver_version"] == "batch"
+
+    def test_two_qmc_blocks(self, parsed):
+        qmc = parsed["params"]["qmc"]
+        assert len(qmc) == 2
+        assert qmc[0]["method"] == "vmc"
+        assert qmc[1]["method"] == "dmc"
+
+    def test_dmc_has_pbyp(self, parsed):
+        dmc = parsed["params"]["qmc"][1]
+        assert dmc.get("move") == "pbyp"
+
+    def test_dmc_targetwalkers(self, parsed):
+        dmc = parsed["params"]["qmc"][1]
+        assert dmc["targetwalkers"] == "64"
+
+    def test_species_he(self, parsed):
+        assert parsed["structure"]["species"] == ["He"]
+
+    def test_roundtrip(self):
+        text = _read_sample("he_dmc")
+        p1 = _parse_qmcpack_text(text)
+        w = _write_qmcpack_text(p1)
+        p2 = _parse_qmcpack_text(w)
+        _assert_semantic_equal(p1, p2)
+
+
+# ---------------------------------------------------------------------------
+# Parser: Be STO VMC (sposet_collection MolecularOrbital)
+# ---------------------------------------------------------------------------
+
+class TestParseBeStoVmc:
+    @pytest.fixture
+    def parsed(self):
+        return _parse_qmcpack_text(_read_sample("be_sto_vmc"))
+
+    def test_project(self, parsed):
+        assert parsed["params"]["project_id"] == "be_vmc"
+
+    def test_species(self, parsed):
+        assert parsed["structure"]["species"] == ["Be"]
+
+    def test_cartesian_coords(self, parsed):
+        s = parsed["structure"]
+        assert "cart_coords" in s
+        assert len(s["cart_coords"]) == 1
+
+    def test_electrons(self, parsed):
+        assert parsed["params"]["electrons"] == {"u": 2, "d": 2}
+
+    def test_wavefunction_mo(self, parsed):
+        wf = parsed["params"]["wavefunction"]
+        assert wf["sposet_collection"]["type"] == "MolecularOrbital"
+
+    def test_qmc_vmc(self, parsed):
+        qmc = parsed["params"]["qmc"]
+        assert len(qmc) == 1
+        assert qmc[0]["method"] == "vmc"
+        assert qmc[0]["substeps"] == "10"
+        assert qmc[0]["useDrift"] == "yes"
+
+    def test_roundtrip(self):
+        text = _read_sample("be_sto_vmc")
+        p1 = _parse_qmcpack_text(text)
+        w = _write_qmcpack_text(p1)
+        p2 = _parse_qmcpack_text(w)
+        _assert_semantic_equal(p1, p2)
+
+
+# ---------------------------------------------------------------------------
+# Parser: LiH QE workflow (composite pipeline)
+# ---------------------------------------------------------------------------
+
+class TestParseLihQeWorkflow:
+    @pytest.fixture
+    def parsed(self):
+        return _parse_qmcpack_text(_read_sample("lih_qe_workflow"))
+
+    def test_project(self, parsed):
+        assert parsed["params"]["project_id"] == "LiH"
+
+    def test_einspline_href(self, parsed):
+        wf = parsed["params"]["wavefunction"]
+        ds = wf["determinantset"]
+        assert ds["type"] == "einspline"
+        assert ds["href"] == "./pwscf_output/LiH-gamma.pwscf.h5"
+
+    def test_lattice(self, parsed):
+        s = parsed["structure"]
+        assert "lattice" in s
+        assert len(s["lattice"]) == 3
+
+    def test_fractional_coords(self, parsed):
+        s = parsed["structure"]
+        assert "frac_coords" in s
+        assert s["species"] == ["Li", "H"]
+
+    def test_resource_refs(self, parsed):
+        refs = parsed["params"]["_resource_refs"]
+        assert "./pwscf_output/LiH-gamma.pwscf.h5" in refs["wavefunction_hrefs"]
+        assert "Li.xml" in refs["pseudopotential_hrefs"]
+        assert "H.xml" in refs["pseudopotential_hrefs"]
+
+    def test_single_qmc_block(self, parsed):
+        qmc = parsed["params"]["qmc"]
+        assert len(qmc) == 1
+        assert qmc[0]["method"] == "vmc"
+
+    def test_roundtrip(self):
+        text = _read_sample("lih_qe_workflow")
+        p1 = _parse_qmcpack_text(text)
+        w = _write_qmcpack_text(p1)
+        p2 = _parse_qmcpack_text(w)
+        _assert_semantic_equal(p1, p2)
+
+
+# ---------------------------------------------------------------------------
+# Metadata module tests
+# ---------------------------------------------------------------------------
+
+class TestQMCPACKMetadata:
+    def test_load_metadata(self):
+        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import (
+            safe_load_metadata,
+        )
+        data = safe_load_metadata()
+        assert data["schema_version"] == 1
+        assert data["engine"] == "qmcpack"
+        assert len(data["tags"]) >= 50
+
+    def test_get_tag_info(self):
+        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import get_tag_info
+        info = get_tag_info("vmc_blocks")
+        assert info is not None
+        assert info["category"] == "vmc"
+
+    def test_get_tag_info_case_insensitive(self):
+        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import get_tag_info
+        info = get_tag_info("VMC_BLOCKS")
+        assert info is not None
+
+    def test_get_tag_info_unknown(self):
+        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import get_tag_info
+        assert get_tag_info("nonexistent_tag_xyz") is None
+
+    def test_list_tags(self):
+        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import list_tags
+        tags = list_tags()
+        assert len(tags) >= 50
+        assert "vmc_blocks" in tags
+
+    def test_list_tags_by_category(self):
+        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import list_tags
+        vmc_tags = list_tags(category="vmc")
+        assert len(vmc_tags) >= 3
+        assert "vmc_blocks" in vmc_tags
+
+    def test_list_categories(self):
+        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import list_categories
+        cats = list_categories()
+        assert "qmc" in cats
+        assert "cell" in cats
+        assert "wavefunction" in cats
+
+    def test_validate_params_known(self):
+        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import validate_params
+        unknown = validate_params({"blocks": "100", "steps": "50"})
+        assert unknown == []
+
+    def test_validate_params_unknown(self):
+        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import validate_params
+        unknown = validate_params({"blocks": "100", "bogus_param_xyz": "1"})
+        assert "bogus_param_xyz" in unknown
+
+    def test_validate_params_skips_private(self):
+        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import validate_params
+        unknown = validate_params({"_internal": "x", "blocks": "100"})
+        assert unknown == []
+
+    def test_get_metadata_file_info(self):
+        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import (
+            get_metadata_file_info,
+        )
+        info = get_metadata_file_info()
+        assert info["schema_version"] == 1
+        assert info["tag_count"] >= 50

@@ -1,0 +1,8 @@
+case_id: ethanol_solvation
+title: "Ethanol CPCM Solvation"
+engine: orca
+workflow_tags: [opt, solvation, cpcm, dft]
+species: [C, H, O]
+functional: B3LYP
+basis_set: DEF2-TZVP
+description: "Geometry optimization in implicit water solvent using CPCM model"

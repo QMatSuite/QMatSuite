@@ -1,0 +1,6 @@
+case_id: silicon_bandinterp
+title: "Silicon with disentanglement and band interpolation"
+engine: w90
+workflow_tags: [disentanglement, band_interpolation, kpoint_path]
+species: [Si]
+description: "Silicon diamond-cubic with 8 WFs from 12 bands (Tutorial Example 3). Disentanglement with frozen window, kpoint_path for band structure interpolation along L-G-X-K-G, 4x4x4 k-grid. Tests case-insensitive block delimiters (Begin/End)."

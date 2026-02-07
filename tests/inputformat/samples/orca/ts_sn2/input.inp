@@ -1,0 +1,23 @@
+! B3LYP DEF2-SVP RIJCOSX DEF2/J D3BJ OPTTS TIGHTSCF
+# SN2 transition state: Cl- + CH3Cl -> ClCH3 + Cl-
+
+%pal
+  nprocs 8
+end
+
+%maxcore 3000
+
+%geom
+  Calc_Hess true
+  Recalc_Hess 5
+  MaxIter 100
+end
+
+* xyz -1 1
+C     0.000000    0.000000    0.000000
+H     0.000000    1.026719    0.386106
+H     0.889165   -0.513360    0.386106
+H    -0.889165   -0.513360    0.386106
+Cl    0.000000    0.000000   -2.200000
+Cl    0.000000    0.000000    2.200000
+*

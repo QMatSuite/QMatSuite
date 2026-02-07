@@ -1,373 +1,1239 @@
 {
   "engine": "gaussian",
   "schema_version": 1,
-  "target_version": "G09 Rev D.01 / G16",
+  "engine_version": "G09 Rev D.01 / G16",
+  "doc_url": "https://gaussian.com/keywords/",
   "generated_at": "2026-02-06",
   "provenance": "gaussian.com official documentation + thiele.ruc.dk G09 keyword reference",
   "keywords": {
     "HF": {
+      "name": "HF",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
       "description": "Hartree-Fock self-consistent field",
-      "prefixes": ["R", "U", "RO"]
+      "prefixes": ["R", "U", "RO"],
+      "status": "active"
     },
     "B3LYP": {
+      "name": "B3LYP",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Becke 3-parameter Lee-Yang-Parr hybrid DFT"
+      "description": "Becke 3-parameter Lee-Yang-Parr hybrid DFT",
+      "status": "active"
     },
     "PBE0": {
+      "name": "PBE0",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
       "description": "Perdew-Burke-Ernzerhof hybrid (PBE1PBE synonym)",
-      "aliases": ["PBE1PBE"]
+      "aliases": ["PBE1PBE"],
+      "status": "active"
     },
     "M06-2X": {
+      "name": "M06-2X",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Minnesota 06 with 2x Hartree-Fock exchange"
+      "description": "Minnesota 06 with 2x Hartree-Fock exchange",
+      "aliases": ["M062X"],
+      "status": "active"
+    },
+    "M06": {
+      "name": "M06",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Minnesota 06 hybrid meta-GGA",
+      "status": "active"
+    },
+    "M06-L": {
+      "name": "M06-L",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Minnesota 06 local meta-GGA",
+      "aliases": ["M06L"],
+      "status": "active"
+    },
+    "M06-HF": {
+      "name": "M06-HF",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Minnesota 06 with 100% HF exchange",
+      "aliases": ["M06HF"],
+      "status": "active"
     },
     "wB97XD": {
+      "name": "wB97XD",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Long-range corrected with empirical dispersion"
+      "description": "Long-range corrected with empirical dispersion",
+      "status": "active"
+    },
+    "wB97X": {
+      "name": "wB97X",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Long-range corrected Becke 97 exchange",
+      "status": "active"
     },
     "LC-wPBE": {
+      "name": "LC-wPBE",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Long-range corrected wPBE"
+      "description": "Long-range corrected wPBE",
+      "status": "active"
     },
     "CAM-B3LYP": {
+      "name": "CAM-B3LYP",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Coulomb-attenuating B3LYP"
+      "description": "Coulomb-attenuating B3LYP",
+      "status": "active"
     },
     "HSE06": {
+      "name": "HSE06",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
       "description": "Heyd-Scuseria-Ernzerhof screened hybrid",
-      "aliases": ["HSEh1PBE"]
+      "aliases": ["HSEh1PBE", "HSEHPBE"],
+      "status": "active"
     },
     "BLYP": {
+      "name": "BLYP",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Becke exchange + LYP correlation (pure GGA)"
+      "description": "Becke exchange + LYP correlation (pure GGA)",
+      "status": "active"
     },
     "PBE": {
+      "name": "PBE",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
       "description": "Perdew-Burke-Ernzerhof pure GGA",
-      "aliases": ["PBEPBE"]
+      "aliases": ["PBEPBE"],
+      "status": "active"
     },
     "BP86": {
+      "name": "BP86",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Becke exchange + Perdew 86 correlation"
+      "description": "Becke exchange + Perdew 86 correlation",
+      "status": "active"
     },
     "TPSS": {
+      "name": "TPSS",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
       "description": "Tao-Perdew-Staroverov-Scuseria meta-GGA",
-      "aliases": ["TPSSTPSS"]
+      "aliases": ["TPSSTPSS"],
+      "status": "active"
     },
     "LSDA": {
+      "name": "LSDA",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Local spin density approximation"
+      "description": "Local spin density approximation",
+      "aliases": ["SVWN"],
+      "status": "active"
+    },
+    "B3PW91": {
+      "name": "B3PW91",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Becke 3-parameter with PW91 correlation",
+      "status": "active"
+    },
+    "mPW1PW91": {
+      "name": "mPW1PW91",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Modified Perdew-Wang 1-parameter hybrid",
+      "aliases": ["MPW1PW91"],
+      "status": "active"
+    },
+    "B97D": {
+      "name": "B97D",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Becke 97 with Grimme D2 dispersion",
+      "aliases": ["B97D3"],
+      "status": "active"
+    },
+    "N12": {
+      "name": "N12",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Minnesota N12 nonseparable GGA",
+      "status": "active"
+    },
+    "MN12-L": {
+      "name": "MN12-L",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Minnesota MN12-L local meta-NGA",
+      "aliases": ["MN12L"],
+      "status": "active"
     },
     "B2PLYP": {
+      "name": "B2PLYP",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Grimme double-hybrid (HF exchange + MP2 correlation)"
+      "description": "Grimme double-hybrid (HF exchange + MP2 correlation)",
+      "status": "active"
+    },
+    "B2PLYPD": {
+      "name": "B2PLYPD",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "B2PLYP with Grimme D2 dispersion",
+      "status": "active"
+    },
+    "B2PLYPD3": {
+      "name": "B2PLYPD3",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "B2PLYP with Grimme D3 dispersion",
+      "status": "active"
+    },
+    "MPW2PLYP": {
+      "name": "MPW2PLYP",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Modified PW exchange double-hybrid",
+      "status": "active"
     },
     "MP2": {
+      "name": "MP2",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
       "description": "2nd-order Moller-Plesset perturbation theory",
-      "options": ["Full", "FC", "FullDirect", "SemiDirect", "InCore"]
+      "options": ["Full", "FC", "FullDirect", "SemiDirect", "InCore"],
+      "status": "active"
     },
     "MP3": {
+      "name": "MP3",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "3rd-order Moller-Plesset"
+      "description": "3rd-order Moller-Plesset",
+      "status": "active"
     },
     "MP4": {
+      "name": "MP4",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "4th-order Moller-Plesset (default: SDTQ)"
+      "description": "4th-order Moller-Plesset (default: SDTQ)",
+      "options": ["SDQ", "SDTQ", "DQ"],
+      "status": "active"
+    },
+    "MP5": {
+      "name": "MP5",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "5th-order Moller-Plesset",
+      "status": "active"
+    },
+    "CCD": {
+      "name": "CCD",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Coupled cluster doubles",
+      "status": "active"
     },
     "CCSD": {
+      "name": "CCSD",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Coupled cluster singles and doubles"
+      "description": "Coupled cluster singles and doubles",
+      "status": "active"
     },
     "CCSD(T)": {
+      "name": "CCSD(T)",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Coupled cluster singles and doubles with perturbative triples"
+      "description": "Coupled cluster singles and doubles with perturbative triples",
+      "status": "active"
     },
     "QCISD": {
+      "name": "QCISD",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Quadratic configuration interaction singles and doubles"
+      "description": "Quadratic configuration interaction singles and doubles",
+      "status": "active"
+    },
+    "QCISD(T)": {
+      "name": "QCISD(T)",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "QCISD with perturbative triples",
+      "status": "active"
+    },
+    "BD": {
+      "name": "BD",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Brueckner doubles",
+      "status": "active"
+    },
+    "BD(T)": {
+      "name": "BD(T)",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Brueckner doubles with perturbative triples",
+      "status": "active"
+    },
+    "CID": {
+      "name": "CID",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Configuration interaction doubles",
+      "status": "active"
+    },
+    "CISD": {
+      "name": "CISD",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Configuration interaction singles and doubles",
+      "status": "active"
     },
     "CIS": {
+      "name": "CIS",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Configuration interaction singles (excited states)"
+      "description": "Configuration interaction singles (excited states)",
+      "status": "active"
+    },
+    "CIS(D)": {
+      "name": "CIS(D)",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "CIS with perturbative doubles correction",
+      "status": "active"
+    },
+    "SAC-CI": {
+      "name": "SAC-CI",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Symmetry-adapted cluster CI",
+      "aliases": ["SACCI"],
+      "status": "active"
+    },
+    "EOMCCSD": {
+      "name": "EOMCCSD",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Equation-of-motion coupled cluster",
+      "status": "active"
     },
     "CASSCF": {
+      "name": "CASSCF",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "method",
-      "description": "Complete active space SCF"
+      "description": "Complete active space SCF",
+      "status": "active"
+    },
+    "GVB": {
+      "name": "GVB",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "method",
+      "description": "Generalized valence bond",
+      "status": "active"
     },
     "AM1": {
+      "name": "AM1",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "semiempirical",
-      "description": "Austin Model 1 semi-empirical"
+      "description": "Austin Model 1 semi-empirical",
+      "status": "active"
     },
     "PM3": {
+      "name": "PM3",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "semiempirical",
-      "description": "Parametric Method 3 semi-empirical"
+      "description": "Parametric Method 3 semi-empirical",
+      "status": "active"
     },
     "PM6": {
+      "name": "PM6",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "semiempirical",
-      "description": "Parametric Method 6 semi-empirical"
+      "description": "Parametric Method 6 semi-empirical",
+      "status": "active"
+    },
+    "PM7": {
+      "name": "PM7",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "semiempirical",
+      "description": "Parametric Method 7 semi-empirical (G16 only)",
+      "status": "active"
     },
     "MNDO": {
+      "name": "MNDO",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "semiempirical",
-      "description": "Modified neglect of diatomic overlap"
+      "description": "Modified neglect of diatomic overlap",
+      "status": "active"
+    },
+    "MINDO3": {
+      "name": "MINDO3",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "semiempirical",
+      "description": "Modified intermediate neglect of differential overlap v3",
+      "aliases": ["MINDO/3"],
+      "status": "active"
+    },
+    "CNDO": {
+      "name": "CNDO",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "semiempirical",
+      "description": "Complete neglect of differential overlap",
+      "status": "active"
+    },
+    "INDO": {
+      "name": "INDO",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "semiempirical",
+      "description": "Intermediate neglect of differential overlap",
+      "status": "active"
+    },
+    "ZINDO": {
+      "name": "ZINDO",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "semiempirical",
+      "description": "Zerner INDO for spectroscopy",
+      "status": "active"
     },
     "DFTB": {
+      "name": "DFTB",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "semiempirical",
-      "description": "Density functional tight binding"
+      "description": "Density functional tight binding",
+      "status": "active"
+    },
+    "DFTBA": {
+      "name": "DFTBA",
+      "type": "method",
+      "default": null,
+      "kind": "method",
+      "category": "semiempirical",
+      "description": "DFTB with analytical gradients",
+      "status": "active"
     },
     "Amber": {
+      "name": "Amber",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "mm",
-      "description": "AMBER molecular mechanics force field"
+      "description": "AMBER molecular mechanics force field",
+      "status": "active"
     },
     "UFF": {
+      "name": "UFF",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "mm",
-      "description": "Universal Force Field molecular mechanics"
+      "description": "Universal Force Field molecular mechanics",
+      "status": "active"
     },
     "Dreiding": {
+      "name": "Dreiding",
+      "type": "method",
+      "default": null,
       "kind": "method",
       "category": "mm",
-      "description": "Dreiding molecular mechanics force field"
+      "description": "Dreiding molecular mechanics force field",
+      "status": "active"
     },
     "SP": {
+      "name": "SP",
+      "type": "keyword",
+      "default": null,
       "kind": "job_type",
       "category": "job_type",
-      "description": "Single point energy (default job type)"
+      "description": "Single point energy (default job type)",
+      "status": "active"
     },
     "Opt": {
+      "name": "Opt",
+      "type": "keyword",
+      "default": null,
       "kind": "job_type",
       "category": "job_type",
       "description": "Geometry optimization",
-      "options": ["Tight", "CalcFC", "MaxCycles", "GDIIS", "QST2", "QST3", "TS", "ModRedundant", "EF"]
+      "options": ["Tight", "VeryTight", "CalcFC", "CalcAll", "MaxCycles", "GDIIS", "QST2", "QST3", "TS", "ModRedundant", "EF", "RFO", "Redundant", "Cartesian", "Z-Matrix"],
+      "status": "active"
     },
     "Freq": {
+      "name": "Freq",
+      "type": "keyword",
+      "default": null,
       "kind": "job_type",
       "category": "job_type",
       "description": "Frequency/vibrational analysis",
-      "options": ["Analytic", "Numer", "Anharm", "VCD", "ROA", "Raman", "HPModes"]
+      "options": ["Analytic", "Numer", "Anharm", "VCD", "ROA", "Raman", "HPModes", "ReadFC", "ReadAnharm"],
+      "status": "active"
     },
     "Force": {
+      "name": "Force",
+      "type": "keyword",
+      "default": null,
       "kind": "job_type",
       "category": "job_type",
-      "description": "Compute forces on nuclei"
+      "description": "Compute forces on nuclei",
+      "status": "active"
     },
     "IRC": {
+      "name": "IRC",
+      "type": "keyword",
+      "default": null,
       "kind": "job_type",
       "category": "job_type",
       "description": "Intrinsic reaction coordinate path following",
-      "options": ["Forward", "Reverse", "Downhill", "CalcFC", "MaxPoints", "StepSize", "HPC"]
+      "options": ["Forward", "Reverse", "Downhill", "CalcFC", "CalcAll", "MaxPoints", "StepSize", "HPC", "RCFC", "Phase"],
+      "status": "active"
     },
     "Scan": {
+      "name": "Scan",
+      "type": "keyword",
+      "default": null,
       "kind": "job_type",
       "category": "job_type",
-      "description": "Rigid potential energy surface scan"
+      "description": "Rigid potential energy surface scan",
+      "status": "active"
     },
     "Stable": {
+      "name": "Stable",
+      "type": "keyword",
+      "default": null,
       "kind": "job_type",
       "category": "job_type",
       "description": "Wavefunction stability test",
-      "options": ["Opt", "RepOpt"]
+      "options": ["Opt", "RepOpt", "RRHF", "RUHF"],
+      "status": "active"
     },
     "Volume": {
+      "name": "Volume",
+      "type": "keyword",
+      "default": null,
       "kind": "job_type",
       "category": "job_type",
-      "description": "Compute molecular volume"
+      "description": "Compute molecular volume",
+      "status": "active"
     },
     "ADMP": {
+      "name": "ADMP",
+      "type": "keyword",
+      "default": null,
       "kind": "job_type",
       "category": "job_type",
-      "description": "Atom-centered density matrix propagation (MD)"
+      "description": "Atom-centered density matrix propagation (MD)",
+      "options": ["MaxPoints", "StepSize", "FullStep", "NKE"],
+      "status": "active"
     },
     "BOMD": {
+      "name": "BOMD",
+      "type": "keyword",
+      "default": null,
       "kind": "job_type",
       "category": "job_type",
-      "description": "Born-Oppenheimer molecular dynamics"
+      "description": "Born-Oppenheimer molecular dynamics",
+      "options": ["MaxPoints", "StepSize", "FullStep", "NKE"],
+      "status": "active"
     },
     "Counterpoise": {
+      "name": "Counterpoise",
+      "type": "keyword",
+      "default": null,
       "kind": "job_type",
       "category": "job_type",
-      "description": "BSSE correction via counterpoise method"
+      "description": "BSSE correction via counterpoise method",
+      "status": "active"
+    },
+    "Prop": {
+      "name": "Prop",
+      "type": "keyword",
+      "default": null,
+      "kind": "property",
+      "category": "property",
+      "description": "Electrostatic property calculation",
+      "options": ["FitCharge", "Potential", "Field", "EFG", "EPR", "OptRot", "Read"],
+      "status": "active"
     },
     "TD": {
+      "name": "TD",
+      "type": "keyword",
+      "default": null,
       "kind": "property",
       "category": "property",
       "description": "Time-dependent HF/DFT for excited states",
-      "options": ["NStates", "Root", "Singlets", "Triplets", "TDA", "SOS", "NAC"]
+      "options": ["NStates", "Root", "Singlets", "Triplets", "TDA", "SOS", "NAC", "Read", "50-50"],
+      "status": "active"
     },
     "NMR": {
+      "name": "NMR",
+      "type": "keyword",
+      "default": null,
       "kind": "property",
       "category": "property",
       "description": "Nuclear magnetic resonance properties",
-      "options": ["GIAO", "CSGT", "SpinSpin", "All"]
+      "options": ["GIAO", "CSGT", "IGAIM", "SpinSpin", "All", "Mixed", "PrintEigenvectors"],
+      "status": "active"
     },
     "Polar": {
+      "name": "Polar",
+      "type": "keyword",
+      "default": null,
       "kind": "property",
       "category": "property",
       "description": "Polarizability and hyperpolarizability",
-      "options": ["ROA", "Raman", "OptRot", "DCSHG", "Gamma"]
+      "options": ["ROA", "Raman", "OptRot", "DCSHG", "Gamma", "Cubic", "Analytic", "Numer"],
+      "status": "active"
     },
     "Pop": {
+      "name": "Pop",
+      "type": "keyword",
+      "default": null,
       "kind": "property",
       "category": "property",
       "description": "Population analysis",
-      "options": ["Full", "Minimal", "NBO", "NPA", "MK", "CHelpG", "ESP", "CM5"]
+      "options": ["Full", "Minimal", "NBO", "NPA", "MK", "CHelpG", "ESP", "CM5", "Hirshfeld", "Regular", "Orbitals"],
+      "status": "active"
+    },
+    "Density": {
+      "name": "Density",
+      "type": "keyword",
+      "default": null,
+      "kind": "property",
+      "category": "property",
+      "description": "Density matrix source for properties",
+      "options": ["Current", "All", "SCF", "MP2", "CI", "CC", "Transition"],
+      "status": "active"
+    },
+    "Field": {
+      "name": "Field",
+      "type": "keyword",
+      "default": null,
+      "kind": "property",
+      "category": "property",
+      "description": "Apply external electric field",
+      "status": "active"
     },
     "SCF": {
+      "name": "SCF",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
       "category": "scf_control",
       "description": "SCF convergence procedure control",
-      "options": ["DIIS", "QC", "XQC", "Fermi", "Damp", "Tight", "Direct", "InCore", "Conver", "MaxCycle", "VShift"]
+      "options": ["DIIS", "QC", "XQC", "YQC", "DM", "Fermi", "Damp", "NoDamp", "Tight", "VeryTight", "Direct", "InCore", "Conventional", "Conver", "MaxCycle", "VShift", "NoVarAcc", "IntRep", "Symm", "NoSymm"],
+      "status": "active"
     },
     "SCRF": {
+      "name": "SCRF",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
       "category": "solvation",
       "description": "Self-consistent reaction field (solvation)",
-      "models": ["PCM", "IEFPCM", "SMD", "IPCM", "SCIPCM", "Onsager"],
-      "common_solvents": ["Water", "Methanol", "Ethanol", "Acetone", "DMSO", "THF", "Dichloromethane", "Chloroform", "Toluene", "Hexane", "Acetonitrile", "DMF"]
+      "models": ["PCM", "IEFPCM", "SMD", "CPCM", "IPCM", "SCIPCM", "Onsager", "COSMO"],
+      "common_solvents": ["Water", "Methanol", "Ethanol", "Acetone", "DMSO", "THF", "Dichloromethane", "Chloroform", "Toluene", "Hexane", "Acetonitrile", "DMF", "CarbonTetrachloride", "Cyclohexane"],
+      "status": "active"
     },
     "Geom": {
+      "name": "Geom",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
       "category": "geometry_control",
       "description": "Geometry input/output control",
-      "options": ["Checkpoint", "AllCheck", "ModRedundant", "Connectivity"]
+      "options": ["Checkpoint", "AllCheck", "ModRedundant", "Connectivity", "PrintInputOrient", "CrowdRound"],
+      "status": "active"
     },
     "Guess": {
+      "name": "Guess",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
-      "category": "geometry_control",
+      "category": "guess_control",
       "description": "Initial guess control",
-      "options": ["Harris", "Huckel", "Core", "Mix", "Read", "Only", "Always", "Fragment"]
+      "options": ["Harris", "Huckel", "Core", "Mix", "Read", "Only", "Always", "Fragment", "Alter", "Save", "Print", "LowSymm"],
+      "status": "active"
     },
     "EmpiricalDispersion": {
+      "name": "EmpiricalDispersion",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
       "category": "dispersion",
       "description": "Empirical dispersion corrections for DFT",
-      "options": ["GD2", "GD3", "GD3BJ"]
+      "options": ["GD2", "GD3", "GD3BJ"],
+      "status": "active"
     },
     "Integral": {
+      "name": "Integral",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
       "category": "integral",
       "description": "Two-electron integral control",
-      "grids": ["UltraFine", "SuperFineGrid", "FineGrid", "SG1Grid", "CoarseGrid"]
+      "grids": ["UltraFine", "SuperFineGrid", "FineGrid", "SG1Grid", "CoarseGrid"],
+      "options": ["Grid", "UltraFine", "SuperFine", "FineGrid"],
+      "status": "active"
     },
     "PBC": {
+      "name": "PBC",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
       "category": "periodic",
       "description": "Periodic boundary conditions",
-      "options": ["GammaOnly", "NKPoint", "CellRange"]
+      "options": ["GammaOnly", "NKPoint", "CellRange"],
+      "status": "active"
     },
     "Symmetry": {
+      "name": "Symmetry",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
       "category": "geometry_control",
-      "description": "Symmetry control"
+      "description": "Symmetry control",
+      "options": ["PG", "Loose", "Axis", "Follow", "Int", "None", "On"],
+      "status": "active"
     },
     "NoSymm": {
+      "name": "NoSymm",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
       "category": "geometry_control",
-      "description": "Disable symmetry"
+      "description": "Disable symmetry",
+      "status": "active"
     },
     "Pseudo": {
+      "name": "Pseudo",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
       "category": "basis",
-      "description": "Pseudopotential/ECP specification"
+      "description": "Pseudopotential/ECP specification",
+      "options": ["Read", "Cards", "LanL2"],
+      "status": "active"
+    },
+    "Gen": {
+      "name": "Gen",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "basis",
+      "description": "General basis set specification from input",
+      "status": "active"
+    },
+    "GenECP": {
+      "name": "GenECP",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "basis",
+      "description": "General basis set + ECP from input",
+      "status": "active"
+    },
+    "ChkBasis": {
+      "name": "ChkBasis",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "basis",
+      "description": "Read basis set from checkpoint file",
+      "status": "active"
+    },
+    "ExtraBasis": {
+      "name": "ExtraBasis",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "basis",
+      "description": "Augment standard basis with additional functions",
+      "status": "active"
+    },
+    "ExtraDensityBasis": {
+      "name": "ExtraDensityBasis",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "basis",
+      "description": "Augment density fitting basis set",
+      "status": "active"
     },
     "DensityFit": {
+      "name": "DensityFit",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
       "category": "output_control",
-      "description": "Enable density fitting"
+      "description": "Enable density fitting",
+      "status": "active"
     },
     "Restart": {
+      "name": "Restart",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
       "category": "output_control",
-      "description": "Restart failed calculation"
+      "description": "Restart failed calculation",
+      "status": "active"
     },
     "Pressure": {
+      "name": "Pressure",
+      "type": "keyword",
+      "default": "1.0 atm",
       "kind": "control",
-      "category": "output_control",
-      "description": "Thermochemistry pressure"
+      "category": "thermo",
+      "description": "Thermochemistry pressure",
+      "status": "active"
     },
     "Temperature": {
+      "name": "Temperature",
+      "type": "keyword",
+      "default": "298.15 K",
+      "kind": "control",
+      "category": "thermo",
+      "description": "Thermochemistry temperature",
+      "status": "active"
+    },
+    "Scale": {
+      "name": "Scale",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "thermo",
+      "description": "Frequency scaling factor for thermochemistry",
+      "status": "active"
+    },
+    "Charge": {
+      "name": "Charge",
+      "type": "keyword",
+      "default": null,
       "kind": "control",
       "category": "output_control",
-      "description": "Thermochemistry temperature"
+      "description": "Specify molecular charge (alternative to charge/mult line)",
+      "status": "active"
+    },
+    "Sparse": {
+      "name": "Sparse",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "output_control",
+      "description": "Use sparse matrix storage",
+      "status": "active"
+    },
+    "FormCheck": {
+      "name": "FormCheck",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "output_control",
+      "description": "Write formatted checkpoint file (.fchk)",
+      "aliases": ["FChk"],
+      "status": "active"
+    },
+    "Output": {
+      "name": "Output",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "output_control",
+      "description": "Control output detail level",
+      "options": ["WFN", "WFX", "MatrixElement"],
+      "status": "active"
+    },
+    "GFInput": {
+      "name": "GFInput",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "output_control",
+      "description": "Print basis set in Gaussian format",
+      "status": "active"
+    },
+    "GFPrint": {
+      "name": "GFPrint",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "output_control",
+      "description": "Print basis set and fitting basis",
+      "status": "active"
+    },
+    "Constants": {
+      "name": "Constants",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "output_control",
+      "description": "Control physical constants (2006 or 2010 CODATA)",
+      "options": ["2006", "2010"],
+      "status": "active"
+    },
+    "MaxDisk": {
+      "name": "MaxDisk",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "resource",
+      "description": "Maximum disk space allocation",
+      "status": "active"
+    },
+    "Test": {
+      "name": "Test",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "output_control",
+      "description": "Test mode; produce no output files",
+      "status": "active"
     },
     "G4": {
+      "name": "G4",
+      "type": "keyword",
+      "default": null,
       "kind": "composite",
       "category": "composite",
-      "description": "Gaussian-4 theory"
+      "description": "Gaussian-4 theory",
+      "status": "active"
+    },
+    "G4MP2": {
+      "name": "G4MP2",
+      "type": "keyword",
+      "default": null,
+      "kind": "composite",
+      "category": "composite",
+      "description": "Gaussian-4 theory with MP2 correlation",
+      "status": "active"
     },
     "G3": {
+      "name": "G3",
+      "type": "keyword",
+      "default": null,
       "kind": "composite",
       "category": "composite",
-      "description": "Gaussian-3 theory"
+      "description": "Gaussian-3 theory",
+      "status": "active"
+    },
+    "G3MP2": {
+      "name": "G3MP2",
+      "type": "keyword",
+      "default": null,
+      "kind": "composite",
+      "category": "composite",
+      "description": "Gaussian-3 theory with MP2",
+      "status": "active"
+    },
+    "G3B3": {
+      "name": "G3B3",
+      "type": "keyword",
+      "default": null,
+      "kind": "composite",
+      "category": "composite",
+      "description": "Gaussian-3 theory with B3LYP geometries",
+      "status": "active"
+    },
+    "G3MP2B3": {
+      "name": "G3MP2B3",
+      "type": "keyword",
+      "default": null,
+      "kind": "composite",
+      "category": "composite",
+      "description": "G3 with MP2 correlation and B3LYP geometries",
+      "status": "active"
     },
     "G2": {
+      "name": "G2",
+      "type": "keyword",
+      "default": null,
       "kind": "composite",
       "category": "composite",
-      "description": "Gaussian-2 theory"
+      "description": "Gaussian-2 theory",
+      "status": "active"
+    },
+    "G2MP2": {
+      "name": "G2MP2",
+      "type": "keyword",
+      "default": null,
+      "kind": "composite",
+      "category": "composite",
+      "description": "Gaussian-2 theory with MP2",
+      "status": "active"
     },
     "G1": {
+      "name": "G1",
+      "type": "keyword",
+      "default": null,
       "kind": "composite",
       "category": "composite",
-      "description": "Gaussian-1 theory"
+      "description": "Gaussian-1 theory",
+      "status": "active"
     },
     "CBS-QB3": {
+      "name": "CBS-QB3",
+      "type": "keyword",
+      "default": null,
       "kind": "composite",
       "category": "composite",
-      "description": "Complete basis set QB3 model"
+      "description": "Complete basis set QB3 model",
+      "status": "active"
+    },
+    "CBS-4M": {
+      "name": "CBS-4M",
+      "type": "keyword",
+      "default": null,
+      "kind": "composite",
+      "category": "composite",
+      "description": "Complete basis set 4M model",
+      "status": "active"
+    },
+    "CBS-APNO": {
+      "name": "CBS-APNO",
+      "type": "keyword",
+      "default": null,
+      "kind": "composite",
+      "category": "composite",
+      "description": "Complete basis set APNO model",
+      "status": "active"
     },
     "W1U": {
+      "name": "W1U",
+      "type": "keyword",
+      "default": null,
       "kind": "composite",
       "category": "composite",
-      "description": "Weizmann-1 theory (unrestricted)"
+      "description": "Weizmann-1 theory (unrestricted)",
+      "status": "active"
+    },
+    "W1BD": {
+      "name": "W1BD",
+      "type": "keyword",
+      "default": null,
+      "kind": "composite",
+      "category": "composite",
+      "description": "Weizmann-1 theory (Brueckner doubles)",
+      "status": "active"
+    },
+    "W1RO": {
+      "name": "W1RO",
+      "type": "keyword",
+      "default": null,
+      "kind": "composite",
+      "category": "composite",
+      "description": "Weizmann-1 theory (restricted open-shell)",
+      "status": "active"
     },
     "ONIOM": {
+      "name": "ONIOM",
+      "type": "keyword",
+      "default": null,
       "kind": "multilayer",
       "category": "multilayer",
-      "description": "N-layered integrated molecular orbital + molecular mechanics"
+      "description": "N-layered integrated molecular orbital + molecular mechanics",
+      "options": ["EmbedCharge", "MK", "InputFiles"],
+      "status": "active"
+    },
+    "Iop": {
+      "name": "Iop",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "advanced",
+      "description": "Internal option (low-level Gaussian control)",
+      "status": "active"
+    },
+    "ExtraLinks": {
+      "name": "ExtraLinks",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "advanced",
+      "description": "Execute additional Gaussian link programs",
+      "status": "active"
+    },
+    "Units": {
+      "name": "Units",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "geometry_control",
+      "description": "Specify coordinate input units",
+      "options": ["Ang", "AU", "Bohr"],
+      "status": "active"
+    },
+    "Complex": {
+      "name": "Complex",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "advanced",
+      "description": "Complex wavefunction (for magnetic field calculations)",
+      "status": "active"
+    },
+    "FMM": {
+      "name": "FMM",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "integral",
+      "description": "Fast multipole method for integral evaluation",
+      "options": ["On", "Off"],
+      "status": "active"
+    },
+    "CacheSize": {
+      "name": "CacheSize",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "resource",
+      "description": "Set cache size for integral computation",
+      "status": "active"
+    },
+    "Transformation": {
+      "name": "Transformation",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "integral",
+      "description": "Control AO-to-MO integral transformation",
+      "options": ["Full", "InCore", "Conventional"],
+      "status": "active"
+    },
+    "Window": {
+      "name": "Window",
+      "type": "keyword",
+      "default": null,
+      "kind": "control",
+      "category": "advanced",
+      "description": "Frozen core window for post-HF methods",
+      "status": "active"
     }
   },
   "builtin_basis_sets": [
     "STO-3G", "3-21G", "6-21G", "4-31G",
-    "6-31G", "6-31G(d)", "6-31G(d,p)", "6-31+G(d)", "6-31++G(d,p)",
+    "6-31G", "6-31G(d)", "6-31G(d,p)", "6-31+G(d)", "6-31+G(d,p)", "6-31++G(d,p)",
     "6-311G", "6-311G(d,p)", "6-311+G(d,p)", "6-311++G(d,p)",
     "6-311G(2d,2p)", "6-311+G(2d,2p)", "6-311++G(3df,3pd)",
-    "cc-pVDZ", "cc-pVTZ", "cc-pVQZ", "cc-pV5Z",
-    "aug-cc-pVDZ", "aug-cc-pVTZ", "aug-cc-pVQZ",
-    "def2-SVP", "def2-TZVP", "def2-TZVPP", "def2-QZVP",
+    "cc-pVDZ", "cc-pVTZ", "cc-pVQZ", "cc-pV5Z", "cc-pV6Z",
+    "aug-cc-pVDZ", "aug-cc-pVTZ", "aug-cc-pVQZ", "aug-cc-pV5Z",
+    "def2-SVP", "def2-SVPP", "def2-TZVP", "def2-TZVPP", "def2-QZVP", "def2-QZVPP",
     "LANL2DZ", "LANL2MB", "SDD", "DGDZVP", "DGDZVP2",
-    "CEP-4G", "CEP-31G", "CEP-121G"
+    "CEP-4G", "CEP-31G", "CEP-121G",
+    "D95", "D95V", "SHC"
   ],
   "link0_directives": {
     "%Mem": {"description": "Memory allocation", "syntax": "%Mem=NMB or %Mem=NGB"},

@@ -1,0 +1,19 @@
+! B3LYP DEF2-SVP RIJCOSX DEF2/J D3BJ OPT TIGHTOPT TIGHTSCF
+# Geometry optimization of water molecule
+
+%pal
+  nprocs 4
+end
+
+%maxcore 2000
+
+%geom
+  MaxIter 100
+  Calc_Hess true
+end
+
+* xyz 0 1
+O    0.000000    0.000000    0.100000
+H    0.000000    0.800000   -0.500000
+H    0.000000   -0.800000   -0.500000
+*
