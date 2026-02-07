@@ -5,6 +5,9 @@ hostnames, and absolute home paths. Fails if any are found.
 
 IMPORTANT: This test must NOT echo the actual sensitive strings in
 its output. It only reports rule ID, file path, and line number.
+
+Known identifiers are stored hex-encoded so they survive git-filter-repo
+rewrites without being replaced by placeholders.
 """
 
 import re
@@ -17,49 +20,68 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 # ── Rules ────────────────────────────────────────────────────────────
 # Each rule: (rule_id, compiled_regex, description)
-# Patterns are defined indirectly to avoid the gate itself being a leak.
-
-# Build patterns from components to avoid literal sensitive strings in source
 _SENSITIVE_RULES: list[tuple[str, re.Pattern, str]] = []
 
 
-def _add_user_rule(username: str, rule_id: str) -> None:
-    """Register a rule that catches a real username as a whole word."""
-    pat = re.compile(r"\b" + re.escape(username) + r"\b")
-    _SENSITIVE_RULES.append((rule_id, pat, f"real username ({len(username)} chars)"))
+def _from_hex(hex_str: str) -> str:
+    """Decode a hex-encoded string."""
+    return bytes.fromhex(hex_str).decode("utf-8")
 
 
-def _add_host_rule(hostname: str, rule_id: str) -> None:
-    """Register a rule that catches a real hostname."""
-    pat = re.compile(re.escape(hostname), re.IGNORECASE)
-    _SENSITIVE_RULES.append((rule_id, pat, f"real hostname ({len(hostname)} chars)"))
+def _add_word_rule(hex_encoded: str, rule_id: str, desc: str) -> None:
+    """Register a rule from a hex-encoded string, matched as whole word."""
+    word = _from_hex(hex_encoded)
+    pat = re.compile(r"\b" + re.escape(word) + r"\b")
+    _SENSITIVE_RULES.append((rule_id, pat, desc))
 
 
-def _add_path_rule(path_prefix: str, rule_id: str) -> None:
-    """Register a rule that catches an absolute home path."""
-    pat = re.compile(re.escape(path_prefix))
-    _SENSITIVE_RULES.append((rule_id, pat, f"absolute home path"))
+def _add_literal_rule(hex_encoded: str, rule_id: str, desc: str) -> None:
+    """Register a rule from a hex-encoded string, matched literally (case-insensitive)."""
+    literal = _from_hex(hex_encoded)
+    pat = re.compile(re.escape(literal), re.IGNORECASE)
+    _SENSITIVE_RULES.append((rule_id, pat, desc))
 
 
-# Known sensitive identifiers (add new ones here when discovered)
+# ── Known sensitive identifiers (hex-encoded) ───────────────────────
+# To add a new identifier: python3 -c "print('mystring'.encode().hex())"
+#
 # Usernames
-_add_user_rule("<USER>", "S1-U1")
-_add_user_rule("<USER>", "S1-U2")
+_add_word_rule("686837343635", "S1-U1", "known username")            # hh7465
+_add_word_rule("6b6672616e6b65", "S1-U2", "known username")         # kfranke
 
 # Hostnames
-_add_host_rule("<HOST>", "S1-H1")
+_add_literal_rule(                                                    # PHY-K3302477DD
+    "5048592d4b333330323437374444", "S1-H1", "known hostname"
+)
 
-# Absolute home paths — catch /Users/<known-user>
-_add_path_rule("<HOME>", "S1-P1")
-_add_path_rule("<HOME>", "S1-P2")
-_add_path_rule("<HOME>/", "S1-P3")
-_add_path_rule("<HOME>/", "S1-P4")
+# ── Generic pattern rules (catch future leaks too) ──────────────────
+# /Users/<name> paths — exclude placeholders and generic example names
+_GENERIC_ALLOWED_NAMES = r"(?:user|example|testuser|username|nobody|root)"
+_SENSITIVE_RULES.append((
+    "S1-P1",
+    re.compile(
+        r"/Users/(?!<)(?!" + _GENERIC_ALLOWED_NAMES + r"(?:/|$))"
+        r"[a-zA-Z][a-zA-Z0-9_.-]+"
+    ),
+    "absolute macOS home path",
+))
+_SENSITIVE_RULES.append((
+    "S1-P3",
+    re.compile(
+        r"C:\\Users\\(?!<)(?!" + _GENERIC_ALLOWED_NAMES + r"(?:\\|$))"
+        r"[a-zA-Z][a-zA-Z0-9_.-]+"
+    ),
+    "absolute Windows home path",
+))
 
-# Temp session paths
-_add_path_rule("claude-504/", "S1-T1")
+# Claude session temp paths
+_SENSITIVE_RULES.append((
+    "S1-T1",
+    re.compile(r"claude-\d+/"),
+    "Claude session temp path",
+))
 
 # ── Allowlist ────────────────────────────────────────────────────────
-# Files that are allowed to contain these patterns (e.g., this gate itself)
 _ALLOWED_FILES = {
     "tests/gates/test_no_sensitive_paths.py",  # this file defines the rules
 }
@@ -86,7 +108,6 @@ def _mask_match(line: str, match: re.Match) -> str:
         masked = "**"
     else:
         masked = matched[0] + "*" * (len(matched) - 2) + matched[-1]
-    # Show 20 chars of context on each side
     ctx_start = max(0, s - 20)
     ctx_end = min(len(line), e + 20)
     prefix = line[ctx_start:s]
@@ -106,7 +127,6 @@ class TestNoSensitivePaths:
 
         tracked = _get_tracked_files()
         for relpath in tracked:
-            # Skip allowlisted files and .tmp
             if relpath in _ALLOWED_FILES:
                 continue
             if relpath.startswith(".tmp/"):
@@ -116,7 +136,6 @@ class TestNoSensitivePaths:
             if not filepath.is_file():
                 continue
 
-            # Skip binary files
             try:
                 lines = filepath.read_text(encoding="utf-8").splitlines()
             except (UnicodeDecodeError, PermissionError):
@@ -133,7 +152,6 @@ class TestNoSensitivePaths:
                         break  # one violation per line is enough
 
         if violations:
-            # Cap output to avoid flooding
             shown = violations[:50]
             extra = len(violations) - len(shown)
             msg = (
