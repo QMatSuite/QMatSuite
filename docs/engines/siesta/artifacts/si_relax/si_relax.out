@@ -10,7 +10,7 @@ NetCDF-4 MPI-IO support
 Lua support
 
 Runtime information:
-* Directory : /private/tmp/claude-504/-Users-<USER>-QMatSuite/e1e03c49-0b91-412a-97a8-e08c11f2a9df/scratchpad/siesta_si_relax
+* Directory : <TMPDIR>/siesta_si_relax
 * Running in serial mode (only 1 MPI rank).
 >> Start of run:   3-FEB-2026  20:32:30
 

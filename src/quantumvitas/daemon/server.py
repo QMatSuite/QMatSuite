@@ -4974,7 +4974,7 @@ class QVDaemon:
         Fixtures root discovery priority:
         1. Environment variable QMATSUITE_WANNIER_3D_FIXTURES (if set)
         2. Repo root derivation: Path(__file__).resolve().parents[3] / "tests/data/wannier_3d_test"
-        3. DEV fallback: <HOME>/QMatSuite/tests/data/wannier_3d_test (only if exists)
+        3. DEV fallback: $HOME/QMatSuite/tests/data/wannier_3d_test (only if exists)
         
         Enumeration priority:
         1. If manifest.json exists, use manifest (stable order)
@@ -5011,7 +5011,7 @@ class QVDaemon:
         
         # Priority 3: DEV fallback (only if exists)
         if fixtures_root is None:
-            dev_fallback = Path("<HOME>/QMatSuite/tests/data/wannier_3d_test")
+            dev_fallback = Path.home() / "QMatSuite" / "tests" / "data" / "wannier_3d_test"
             attempted_paths.append(("dev_fallback", str(dev_fallback)))
             if dev_fallback.exists() and dev_fallback.is_dir():
                 fixtures_root = dev_fallback

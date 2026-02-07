@@ -1,27 +1,27 @@
 total 3144
-drwxr-xr-x@ 23 <USER>  staff     736 Jan 18 22:50 .
-drwxr-xr-x@  5 <USER>  staff     160 Jan 18 22:58 ..
--rw-r--r--@  1 <USER>  staff   97051 Jan 18 23:26 CHG
--rw-r--r--@  1 <USER>  staff  146386 Jan 18 23:26 CHGCAR
--rw-r--r--@  1 <USER>  staff     421 Jan 18 23:26 CONTCAR
--rw-r--r--@  1 <USER>  staff   11075 Jan 18 23:26 DOSCAR
--rw-r--r--@  1 <USER>  staff   16099 Jan 18 23:26 EIGENVAL
--rw-r--r--@  1 <USER>  staff    3014 Jan 18 22:51 EXPLORATION_RESULTS.md
--rw-r--r--@  1 <USER>  staff    4257 Jan 18 23:26 IBZKPT
--rw-r--r--@  1 <USER>  staff     200 Jan 18 22:54 INCAR
--rw-r--r--@  1 <USER>  staff      46 Jan 18 22:54 KPOINTS
--rw-r--r--@  1 <USER>  staff     832 Jan 18 23:26 OSZICAR
--rw-r--r--@  1 <USER>  staff   71885 Jan 18 23:26 OUTCAR
--rw-r--r--@  1 <USER>  staff     234 Jan 18 23:26 PCDAT
--rw-r--r--@  1 <USER>  staff     159 Jan 18 22:57 POSCAR
--r--r--r--@  1 <USER>  staff  196046 Jan 18 22:46 POTCAR
--rw-r--r--@  1 <USER>  staff       0 Jan 18 22:46 REPORT
--rw-r--r--@  1 <USER>  staff  434976 Jan 18 23:26 WAVECAR
--rw-r--r--@  1 <USER>  staff     247 Jan 18 23:26 XDATCAR
--rw-r--r--@  1 <USER>  staff     863 Jan 18 22:50 stderr.log
--rw-r--r--@  1 <USER>  staff       0 Jan 18 22:50 stdout.log
--rw-r--r--@  1 <USER>  staff  331910 Jan 18 23:26 vaspout.h5
--rw-r--r--@  1 <USER>  staff   57521 Jan 18 23:26 vasprun.xml
+drwxr-xr-x@ 23 user  staff     736 Jan 18 22:50 .
+drwxr-xr-x@  5 user  staff     160 Jan 18 22:58 ..
+-rw-r--r--@  1 user  staff   97051 Jan 18 23:26 CHG
+-rw-r--r--@  1 user  staff  146386 Jan 18 23:26 CHGCAR
+-rw-r--r--@  1 user  staff     421 Jan 18 23:26 CONTCAR
+-rw-r--r--@  1 user  staff   11075 Jan 18 23:26 DOSCAR
+-rw-r--r--@  1 user  staff   16099 Jan 18 23:26 EIGENVAL
+-rw-r--r--@  1 user  staff    3014 Jan 18 22:51 EXPLORATION_RESULTS.md
+-rw-r--r--@  1 user  staff    4257 Jan 18 23:26 IBZKPT
+-rw-r--r--@  1 user  staff     200 Jan 18 22:54 INCAR
+-rw-r--r--@  1 user  staff      46 Jan 18 22:54 KPOINTS
+-rw-r--r--@  1 user  staff     832 Jan 18 23:26 OSZICAR
+-rw-r--r--@  1 user  staff   71885 Jan 18 23:26 OUTCAR
+-rw-r--r--@  1 user  staff     234 Jan 18 23:26 PCDAT
+-rw-r--r--@  1 user  staff     159 Jan 18 22:57 POSCAR
+-r--r--r--@  1 user  staff  196046 Jan 18 22:46 POTCAR
+-rw-r--r--@  1 user  staff       0 Jan 18 22:46 REPORT
+-rw-r--r--@  1 user  staff  434976 Jan 18 23:26 WAVECAR
+-rw-r--r--@  1 user  staff     247 Jan 18 23:26 XDATCAR
+-rw-r--r--@  1 user  staff     863 Jan 18 22:50 stderr.log
+-rw-r--r--@  1 user  staff       0 Jan 18 22:50 stdout.log
+-rw-r--r--@  1 user  staff  331910 Jan 18 23:26 vaspout.h5
+-rw-r--r--@  1 user  staff   57521 Jan 18 23:26 vasprun.xml
 132K	OUTCAR
 4.0K	OSZICAR
 196K	CHGCAR

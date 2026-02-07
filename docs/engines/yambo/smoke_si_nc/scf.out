@@ -66,7 +66,7 @@
 
 
      PseudoPot. # 1 for Si read from file:
-     <HOME>/Downloads/sg15_oncv_upf_2020-02-06/Si_ONCV_PBE-1.2.upf
+     $HOME/Downloads/sg15_oncv_upf_2020-02-06/Si_ONCV_PBE-1.2.upf
      MD5 check sum: 7f029a58b69e3aa87b46a36c608bf45e
      Pseudo is Norm-conserving, Zval =  4.0
      Generated using ONCVPSP code by D. R. Hamann

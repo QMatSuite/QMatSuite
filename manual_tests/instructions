@@ -40,7 +40,7 @@ qv analyze dos raw/si.dos.dat --scf si.nscf.out --plot
 
 # ------------------------ band structure calculation ------------------------
 
-export PYTHONSRC="<HOME>/Code/quantumVITAS"
+export PYTHONSRC="<repo root>/
 qv init project --name project2_bands
 cd project2_bands
 qv import-structure $PYTHONSRC/tests/data/7_Si_bandStructure/si.0_scf.in

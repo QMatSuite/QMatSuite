@@ -2,7 +2,7 @@
   calculation = 'nscf'
   prefix = 'si'
   outdir = './work'
-  pseudo_dir = '<HOME>/Downloads/sg15_oncv_upf_2020-02-06'
+  pseudo_dir = '$HOME/Downloads/sg15_oncv_upf_2020-02-06'
 /
 &SYSTEM
   ibrav = 2

@@ -9,14 +9,14 @@ User:   <USER>@<HOST>
 Date:   Tue Feb  3 15:12:28 2026
 Arch:   arm64
 Pid:    30992
-CWD:    /private/tmp/claude-504/-Users-<USER>-QMatSuite/2ca580e6-dbdb-404d-b863-abf6c0ea0337/scratchpad/gpaw_calcs/calc2_si_bands
+CWD:    <TMPDIR>/gpaw_calcs/calc2_si_bands
 Python: 3.14.2
-gpaw:   <HOME>/QMatSuite/.venv/lib/python3.14/site-packages/gpaw
-_gpaw:  <HOME>/QMatSuite/.venv/lib/python3.14/site-packages/
+gpaw:   <repo root>/.venv/lib/python3.14/site-packages/gpaw
+_gpaw:  <repo root>/.venv/lib/python3.14/site-packages/
         _gpaw.cpython-314-darwin.so
-ase:    <HOME>/QMatSuite/.venv/lib/python3.14/site-packages/ase (version 3.27.0)
-numpy:  <HOME>/QMatSuite/.venv/lib/python3.14/site-packages/numpy (version 1.26.4)
-scipy:  <HOME>/QMatSuite/.venv/lib/python3.14/site-packages/scipy (version 1.17.0)
+ase:    <repo root>/.venv/lib/python3.14/site-packages/ase (version 3.27.0)
+numpy:  <repo root>/.venv/lib/python3.14/site-packages/numpy (version 1.26.4)
+scipy:  <repo root>/.venv/lib/python3.14/site-packages/scipy (version 1.17.0)
 libxc:  2.x.y
 units:  Angstrom and eV
 cores: 1
@@ -50,7 +50,7 @@ species:
     valence: 4
     core: 10
     charge: 0.0
-    file: <HOME>/QMatSuite/.venv/lib/python3.14/site-packages/gpaw_data/setups/Si.PBE.gz
+    file: <repo root>/.venv/lib/python3.14/site-packages/gpaw_data/setups/Si.PBE.gz
     compensation charges: {type: gauss,
                            rc: 0.33,
                            lmax: 2}
