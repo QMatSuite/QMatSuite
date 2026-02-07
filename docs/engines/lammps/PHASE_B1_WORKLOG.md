@@ -95,7 +95,82 @@
 - Updated inputspec.py, test_lammps_parse.py to use new field names
 - Gate test passes clean
 
-### Final Test Run
+### Final Test Run (Pre-Playbook)
 - **3691 passed, 24 skipped, 0 failed** (+119 new tests from baseline 3572)
 - All acceptance criteria met
-- Phase B1 COMPLETE
+- Phase B1 functionally COMPLETE
+
+---
+
+## 2026-02-07 Session (Playbook Compliance Remediation)
+
+### Audit
+- Audited LAMMPS against `docs/architecture/B1_ENGINE_PLAYBOOK.md` (binding SOP)
+- Found 5 of 14 acceptance criteria NOT MET:
+  1. ❌ No `data/` directory (missing parameter metadata catalog)
+  2. ❌ No metadata access layer
+  3. ❌ Writer functions inline in `inputspec.py` (not extracted to `io/`)
+  4. ❌ No `engine/` directory for resource staging
+  5. ⚠️ SOURCES.md case issue (lowercase `sources.md`)
+  6. ⚠️ No CURATED_INDEX.md with diversity rationale
+
+### Fix 1: SOURCES.md Case (§1.3 R2)
+- Renamed `docs/engines/lammps/sources.md` → `SOURCES.md` via two-step git mv
+- Status: DONE
+
+### Fix 2: Parameter Metadata Catalog (Phase 1)
+- Created `src/quantumvitas/drivers/lammps/data/__init__.py`
+- Created `src/quantumvitas/drivers/lammps/data/lammps_commands.json`
+  - 114 commands (playbook minimum: 100+ for classical MD)
+  - Schema v1, 13 categories, all required fields present
+  - Converted 79 seed commands + added 35 new commands
+- Status: DONE
+
+### Fix 3: Metadata Access Layer (Phase 2)
+- Created `src/quantumvitas/drivers/lammps/data/lammps_metadata.py`
+  - Full API: safe_load_metadata, get_tag_info (case-insensitive), list_tags, list_categories, validate_params, get_tag_type, get_tag_default, reload_metadata, get_metadata_file_info
+  - Module-level cache with QV_LAMMPS_METADATA_HOT_RELOAD support
+  - importlib.resources-based loading, stdlib only
+- Status: DONE
+
+### Fix 4: Extract Parser/Writer to io/ Module (Phase 4)
+- Created `src/quantumvitas/drivers/lammps/io/__init__.py`
+- Created `src/quantumvitas/drivers/lammps/io/script.py`
+  - Extracted: parse_lammps_script_text, write_lammps_script_text, join_continuation_lines
+  - Public names (no underscore prefix)
+- Created `src/quantumvitas/drivers/lammps/io/data.py`
+  - Extracted: parse_lammps_data_text, write_lammps_data_text, cart_to_frac
+- Rewrote `inputspec.py` to delegate: 806 → 63 lines (imports + get_lammps_input_spec only)
+- Updated `tests/inputformat/test_lammps_parse.py` imports to use io/ modules
+- LAMMPS parse tests: **91 passed**, 0 failures
+- Status: DONE
+
+### Fix 5: Resource Staging (Phase 5)
+- Created `src/quantumvitas/drivers/lammps/engine/__init__.py`
+- Created `src/quantumvitas/drivers/lammps/engine/lammps_potential.py`
+  - get_default_potential_root(): env var + QMatSuite default + Homebrew
+  - extract_potential_refs(): scans pair_coeff and _commands for potential files
+  - stage_potentials(): copies referenced potentials, raises FileNotFoundError if missing
+- Status: DONE
+
+### Fix 6: CURATED_INDEX.md (§1.7 + §1.11 D2)
+- Created `docs/engines/lammps/CURATED_INDEX.md`
+  - 8 samples listed with slugs, workflow tags, potential types
+  - Diversity rationale per sample (§1.11 D2)
+  - Coverage assessment: Category A (workflow), B (force fields), C (syntax features)
+  - Near-duplicate check passed
+  - Composite pipeline: N/A for LAMMPS (downstream consumer)
+- Status: DONE
+
+### Fix 7: Metadata Tests
+- Created `tests/drivers/lammps/test_lammps_metadata.py` (22 tests):
+  - TestLAMMPSCatalogJSON: 8 tests (JSON validity, 100+ count, required fields, type/category enums, no duplicates, see_also, core commands)
+  - TestMetadataAccessLayer: 14 tests (safe_load, get_tag_info, case-insensitive, missing, list_tags, by_category, list_categories, validate_params valid/unknown/internal, reload, debug_info, get_tag_type, get_tag_default)
+- All 22 tests pass
+
+### Final Test Run (Playbook Compliant)
+- **4036 passed, 24 skipped**
+- Zero regressions from LAMMPS changes
+- +22 new metadata tests, all existing 91 LAMMPS parse/digest tests still pass
+- All 14 playbook acceptance criteria NOW MET
+- Phase B1 PLAYBOOK COMPLIANT

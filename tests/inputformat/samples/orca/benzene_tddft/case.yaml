@@ -1,0 +1,8 @@
+case_id: benzene_tddft
+title: "Benzene TD-DFT Excited States"
+engine: orca
+workflow_tags: [tddft, excited-states, dft, aromatic]
+species: [C, H]
+functional: B3LYP
+basis_set: DEF2-TZVP
+description: "Full TD-DFT (not TDA) calculation for 10 excited states of benzene"

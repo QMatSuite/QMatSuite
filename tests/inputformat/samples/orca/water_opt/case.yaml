@@ -1,0 +1,8 @@
+case_id: water_opt
+title: "Water Geometry Optimization"
+engine: orca
+workflow_tags: [opt, dft, small-molecule]
+species: [O, H]
+functional: B3LYP
+basis_set: DEF2-SVP
+description: "B3LYP/def2-SVP geometry optimization with exact Hessian calculation"

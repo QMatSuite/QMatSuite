@@ -1,0 +1,8 @@
+case_id: hcn_scan
+title: "HCN Bond Length Scan"
+engine: gaussian
+workflow_tags: [scan, z-matrix, small-molecule]
+species: [H, C, N]
+functional: HF
+basis_set: STO-3G
+description: "HF/STO-3G Scan with Z-matrix scan variables (R1=1.07 5 0.05); covers PES scan"

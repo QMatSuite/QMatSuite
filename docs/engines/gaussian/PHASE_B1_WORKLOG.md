@@ -211,4 +211,87 @@ Each run has: `run_manifest.json`, `digest.json`, `output.log`
 2. `src/quantumvitas/drivers/gaussian/inputspec.py` — full rewrite with custom_parser
 
 ### Phase B1 Stages 4–8 COMPLETE
-### Phase B1 ALL STAGES COMPLETE
+
+---
+
+## 2026-02-07 Session (Playbook Compliance Remediation)
+
+Audited all Gaussian artifacts against `docs/architecture/B1_ENGINE_PLAYBOOK.md` Definition of Done.
+Identified and remediated all gaps.
+
+### Gap 1: Metadata JSON below 100+ minimum (Phase 1)
+- Expanded `gaussian_route_keywords.json` from 66 to **130 keywords**
+- Added required per-keyword fields: `name`, `type`, `default`, `status`
+- Added 30+ new methods (M06, wB97X, B3PW91, MPW2PLYP, etc.)
+- Added 9 new composite methods (G4MP2, CBS-4M, CBS-APNO, W1BD, etc.)
+- Added 30+ new control keywords (Gen, GenECP, ChkBasis, Prop, etc.)
+
+### Gap 2: Missing metadata API functions (Phase 2)
+- Added `get_tag_type(name)` → Optional[str]
+- Added `get_tag_default(name)` → Optional[str]
+- Added `validate_params(params)` → List[str]
+- Added `get_metadata_file_info()` → Dict[str, Any]
+
+### Gap 3: Writer/parser inline in inputspec.py (Phase 4)
+- Created `drivers/gaussian/io/__init__.py`
+- Created `drivers/gaussian/io/gaussian_input.py` — extracted all pure I/O functions
+- Rewrote `inputspec.py` to delegate entirely to `io/gaussian_input.py`
+- Backward-compatible re-exports: `_write_gaussian_text`, `_parse_gaussian_text`, `_parse_route_keywords`
+
+### Gap 4: Curated samples in flat files, only 6 (Phase 3)
+- Restructured all 6 existing samples into subdirectories with `case.yaml`
+- Promoted 4 cases from normalized corpus: ethylene_mp2, o2_triplet_uhf, water_opt_freq, multi_step_link1
+- **10 curated cases total** (playbook minimum 8–12)
+- Updated all test references to use new paths
+
+### Gap 5: Missing CURATED_INDEX.md
+- Created `docs/engines/gaussian/CURATED_INDEX.md`
+- Full diversity rationale: 7 calc types, 4 electronic structure categories, 2 geometry formats
+- Parser coverage matrix: 20+ features
+- Validation status table
+
+### Gap 6: Missing tests/drivers/gaussian/
+- Created `tests/drivers/gaussian/test_gaussian_driver.py` — 16 tests:
+  - TestGaussianDriver (9): properties, step_types, handler, recipe, materialization, workdir, capabilities, input_spec, artifact_patterns
+  - TestGaussianRegistration (3): registered, step_types_registered, handler_via_registry
+  - TestGaussianIsolation (4): no handler leak, no recipe leak, io no kernel imports, metadata no kernel imports
+
+### Verification
+- All Gaussian tests pass: **118 passed** (46 parse + 26 metadata + 30 digest + 16 driver)
+- No kernel imports in leaf modules (`io/`, `data/`)
+- `inputformat/` package untouched (empty git diff)
+- All docs in `docs/engines/gaussian/` (not in .claude/)
+- Research artifacts in `.tmp/engine_research/gaussian/`
+- Phase 7 (execution framework) is optional per playbook — existing real_run evidence adequate
+
+### Files Created (this session)
+1. `src/quantumvitas/drivers/gaussian/io/__init__.py`
+2. `src/quantumvitas/drivers/gaussian/io/gaussian_input.py`
+3. `tests/inputformat/samples/gaussian/{ethylene_mp2,o2_triplet_uhf,water_opt_freq,multi_step_link1}/input.gjf`
+4. `tests/inputformat/samples/gaussian/*/case.yaml` (10 files)
+5. `tests/drivers/gaussian/test_gaussian_driver.py`
+6. `docs/engines/gaussian/CURATED_INDEX.md`
+
+### Files Modified (this session)
+1. `src/quantumvitas/drivers/gaussian/data/gaussian_route_keywords.json` — 66→130 keywords
+2. `src/quantumvitas/drivers/gaussian/data/gaussian_metadata.py` — +4 functions
+3. `src/quantumvitas/drivers/gaussian/inputspec.py` — delegates to io/
+4. `tests/inputformat/test_gaussian_parse.py` — subdirectory paths + 4 new tests
+
+### Definition of Done Checklist
+- [x] Full pytest green (zero failures) — 118 Gaussian tests pass
+- [x] Parameter metadata catalog: 130 keywords (minimum 100+ for QC engines)
+- [x] Metadata access layer: get_keyword_info, validate_route_keywords, list_keywords, list_categories, get_tag_type, get_tag_default, validate_params
+- [x] 10 curated cases with 100% parse + roundtrip success
+- [x] Writer functions extracted to `io/` module (not inline in inputspec.py)
+- [x] Output parser produces digest with energy/structure/convergence fields
+- [x] Output parser registered: `get_parser("gaussian", "scf_digest")` succeeds
+- [x] Resource staging: N/A (Gaussian uses internal checkpoint)
+- [x] No kernel/API surface changes
+- [x] `inputformat/` leaf package untouched
+- [x] `docs/engines/gaussian/PHASE_B1_PLAN.md` exists
+- [x] `docs/engines/gaussian/PHASE_B1_WORKLOG.md` exists and is complete
+- [x] `docs/engines/gaussian/SOURCES.md` exists
+- [x] `.tmp/engine_research/gaussian/` has research corpus
+
+### Phase B1 PLAYBOOK COMPLIANT

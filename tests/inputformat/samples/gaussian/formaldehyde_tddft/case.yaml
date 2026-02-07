@@ -1,0 +1,8 @@
+case_id: formaldehyde_tddft
+title: "Formaldehyde TDDFT Excited States"
+engine: gaussian
+workflow_tags: [td, dft, excited-states, small-molecule]
+species: [C, O, H]
+functional: B3LYP
+basis_set: STO-3G
+description: "B3LYP/STO-3G TD=(NStates=3); covers TDDFT keyword with options parsing"

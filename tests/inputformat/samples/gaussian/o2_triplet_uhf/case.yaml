@@ -1,0 +1,8 @@
+case_id: o2_triplet_uhf
+title: "O2 Triplet Open-Shell UHF"
+engine: gaussian
+workflow_tags: [scf, open-shell, uhf, small-molecule]
+species: [O]
+functional: UHF
+basis_set: 6-31G*
+description: "UHF/6-31G* on O2 triplet (mult=3); covers open-shell unrestricted calculation"

@@ -1,0 +1,22 @@
+! CASSCF DEF2-TZVP TIGHTSCF
+# CASSCF(4,4) for formaldehyde - pi/pi* and n/pi* states
+
+%pal
+  nprocs 4
+end
+
+%maxcore 4000
+
+%casscf
+  nel 4
+  norb 4
+  nroots 4
+  weights[0] = 1,1,1,1
+end
+
+* xyz 0 1
+C    0.000000    0.000000   -0.529219
+O    0.000000    0.000000    0.675247
+H    0.000000    0.938637   -1.110433
+H    0.000000   -0.938637   -1.110433
+*

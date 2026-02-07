@@ -1,0 +1,6 @@
+case_id: he_dmc
+title: "He atom VMC+DMC chain"
+engine: qmcpack
+workflow_tags: [vmc, dmc, all-electron, atom]
+species: [He]
+description: "He atom VMC followed by DMC projection with pbyp moves. STO basis, Pade Jastrow. Tests multi-QMC-block chains."

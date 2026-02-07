@@ -1,0 +1,14 @@
+! B3LYP DEF2-TZVP RIJCOSX DEF2/J D3BJ TIGHTSCF
+# Simple single-point energy calculation for water molecule
+
+%pal
+  nprocs 4
+end
+
+%maxcore 2000
+
+* xyz 0 1
+O    0.000000    0.000000    0.117369
+H    0.000000    0.757918   -0.469476
+H    0.000000   -0.757918   -0.469476
+*

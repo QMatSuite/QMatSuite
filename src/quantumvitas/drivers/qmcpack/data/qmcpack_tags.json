@@ -1,0 +1,481 @@
+{
+  "schema_version": 1,
+  "engine": "qmcpack",
+  "engine_version": "4.1.0",
+  "doc_url": "https://qmcpack.readthedocs.io/en/develop/",
+  "provenance": "QMCPACK 4.1.0 XSD schema + readthedocs + example analysis",
+  "generated_at": "2026-02-06",
+  "tags": {
+    "lattice": {
+      "name": "lattice",
+      "type": "array",
+      "default": null,
+      "category": "cell",
+      "description": "3x3 matrix of lattice vectors (9 floats, Bohr). Each row is a lattice vector."
+    },
+    "bconds": {
+      "name": "bconds",
+      "type": "string",
+      "default": null,
+      "category": "cell",
+      "description": "Boundary conditions per lattice direction, space-separated. 'p'=periodic, 'n'=open."
+    },
+    "LR_dim_cutoff": {
+      "name": "LR_dim_cutoff",
+      "type": "float",
+      "default": null,
+      "category": "cell",
+      "description": "Cutoff parameter for long-range Ewald interactions. Higher=more accurate. Typical: 6-15."
+    },
+    "rs": {
+      "name": "rs",
+      "type": "float",
+      "default": null,
+      "category": "cell",
+      "description": "Wigner-Seitz radius for homogeneous electron gas (HEG). condition attrib sets particle count."
+    },
+    "scale": {
+      "name": "scale",
+      "type": "float",
+      "default": "1.0",
+      "category": "cell",
+      "description": "Global scale factor applied to lattice vectors."
+    },
+    "project_id": {
+      "name": "project_id",
+      "type": "string",
+      "default": null,
+      "category": "project",
+      "description": "Project identifier, used as prefix for output filenames (project@id attribute)."
+    },
+    "series": {
+      "name": "series",
+      "type": "integer",
+      "default": "0",
+      "category": "project",
+      "description": "Serial number for managing multiple runs (project@series attribute). Auto-incremented in loops."
+    },
+    "driver_version": {
+      "name": "driver_version",
+      "type": "string",
+      "default": null,
+      "category": "project",
+      "description": "QMCPACK driver selector: 'legacy' or 'batched'. Batched driver is default in 4.x.",
+      "allowed_values": ["legacy", "batched"]
+    },
+    "seed": {
+      "name": "seed",
+      "type": "integer",
+      "default": "-1",
+      "category": "project",
+      "description": "RNG seed (random@seed). -1=auto from date/time, positive integer for reproducible runs."
+    },
+    "charge": {
+      "name": "charge",
+      "type": "float",
+      "default": null,
+      "category": "particles",
+      "description": "Charge of particles in a group. Electrons=-1; ions=nuclear or PP valence charge."
+    },
+    "valence": {
+      "name": "valence",
+      "type": "float",
+      "default": null,
+      "category": "particles",
+      "description": "Number of valence electrons for an ionic species (used with pseudopotentials)."
+    },
+    "atomicnumber": {
+      "name": "atomicnumber",
+      "type": "float",
+      "default": null,
+      "category": "particles",
+      "description": "Atomic number Z of an ionic species."
+    },
+    "mass": {
+      "name": "mass",
+      "type": "float",
+      "default": "1.0",
+      "category": "particles",
+      "description": "Particle mass in electron mass units."
+    },
+    "determinantset_type": {
+      "name": "determinantset_type",
+      "type": "string",
+      "default": null,
+      "category": "wavefunction",
+      "description": "SPO type/builder for the determinant set.",
+      "allowed_values": ["PW", "bspline", "MolecularOrbital", "MO", "einspline", "electron-gas"]
+    },
+    "determinantset_href": {
+      "name": "determinantset_href",
+      "type": "string",
+      "default": null,
+      "category": "wavefunction",
+      "description": "Path to HDF5 file containing DFT orbitals (for bspline/einspline SPO type)."
+    },
+    "determinantset_source": {
+      "name": "determinantset_source",
+      "type": "string",
+      "default": "i",
+      "category": "wavefunction",
+      "description": "Source ion particleset name for orbital centers."
+    },
+    "determinantset_tilematrix": {
+      "name": "determinantset_tilematrix",
+      "type": "string",
+      "default": null,
+      "category": "wavefunction",
+      "description": "3x3 tiling matrix (9 integers) for supercell construction from primitive cell orbitals."
+    },
+    "determinantset_twistnum": {
+      "name": "determinantset_twistnum",
+      "type": "integer",
+      "default": null,
+      "category": "wavefunction",
+      "description": "Twist/k-point index. -1 for auto-detect from twist attribute."
+    },
+    "determinantset_meshfactor": {
+      "name": "determinantset_meshfactor",
+      "type": "float",
+      "default": null,
+      "category": "wavefunction",
+      "description": "Mesh density factor for bspline orbital representation. 1.0 is standard."
+    },
+    "determinantset_precision": {
+      "name": "determinantset_precision",
+      "type": "string",
+      "default": null,
+      "category": "wavefunction",
+      "description": "Floating-point precision: 'single'/'float' (32-bit) or 'double' (64-bit).",
+      "allowed_values": ["single", "float", "double"]
+    },
+    "jastrow_type": {
+      "name": "jastrow_type",
+      "type": "string",
+      "default": null,
+      "category": "wavefunction",
+      "description": "Jastrow correlation function type.",
+      "allowed_values": ["One-Body", "Two-Body", "Three-Body", "Polarization"]
+    },
+    "jastrow_function": {
+      "name": "jastrow_function",
+      "type": "string",
+      "default": null,
+      "category": "wavefunction",
+      "description": "Jastrow functional form: 'pade', 'Bspline'/'bspline', 'pade2', 'no-cusp'."
+    },
+    "jastrow_rcut": {
+      "name": "jastrow_rcut",
+      "type": "float",
+      "default": null,
+      "category": "wavefunction",
+      "description": "Cutoff radius (Bohr) for Jastrow correlation. Beyond this, contribution is zero."
+    },
+    "jastrow_cusp": {
+      "name": "jastrow_cusp",
+      "type": "float",
+      "default": null,
+      "category": "wavefunction",
+      "description": "Cusp value at r=0. Set to 0.0 when using pseudopotentials."
+    },
+    "jastrow_size": {
+      "name": "jastrow_size",
+      "type": "integer",
+      "default": null,
+      "category": "wavefunction",
+      "description": "Number of B-spline knots for Bspline Jastrow."
+    },
+    "pairpot_type": {
+      "name": "pairpot_type",
+      "type": "string",
+      "default": null,
+      "category": "hamiltonian",
+      "description": "Type of pair potential operator in the Hamiltonian.",
+      "allowed_values": ["coulomb", "pseudo", "cpp", "MPC"]
+    },
+    "pairpot_source": {
+      "name": "pairpot_source",
+      "type": "string",
+      "default": "i",
+      "category": "hamiltonian",
+      "description": "Source particleset for pair potential."
+    },
+    "pairpot_wavefunction": {
+      "name": "pairpot_wavefunction",
+      "type": "string",
+      "default": "psi0",
+      "category": "hamiltonian",
+      "description": "Wavefunction name for nonlocal PP evaluation."
+    },
+    "pairpot_format": {
+      "name": "pairpot_format",
+      "type": "string",
+      "default": "xml",
+      "category": "hamiltonian",
+      "description": "Format of pseudopotential files."
+    },
+    "pseudo_href": {
+      "name": "pseudo_href",
+      "type": "string",
+      "default": null,
+      "category": "hamiltonian",
+      "description": "Path to pseudopotential XML file for a specific element."
+    },
+    "vmc_blocks": {
+      "name": "blocks",
+      "type": "integer",
+      "default": null,
+      "category": "vmc",
+      "description": "Number of Monte Carlo blocks for statistical averaging in VMC."
+    },
+    "vmc_steps": {
+      "name": "steps",
+      "type": "integer",
+      "default": null,
+      "category": "vmc",
+      "description": "Number of steps per block in VMC."
+    },
+    "vmc_substeps": {
+      "name": "substeps",
+      "type": "integer",
+      "default": "1",
+      "category": "vmc",
+      "description": "Substeps per step for cheap decorrelation moves without full evaluation.",
+      "aliases": ["subSteps"]
+    },
+    "vmc_timestep": {
+      "name": "timestep",
+      "type": "float",
+      "default": null,
+      "category": "vmc",
+      "description": "VMC timestep controlling Metropolis random walk step size.",
+      "aliases": ["time_step", "tau"]
+    },
+    "vmc_warmupsteps": {
+      "name": "warmupsteps",
+      "type": "integer",
+      "default": "0",
+      "category": "vmc",
+      "description": "Equilibration steps before sampling begins.",
+      "aliases": ["warmupSteps"]
+    },
+    "vmc_walkers": {
+      "name": "walkers",
+      "type": "integer",
+      "default": "1",
+      "category": "vmc",
+      "description": "Number of walkers per MPI rank (legacy driver). Batch driver auto-manages."
+    },
+    "vmc_useDrift": {
+      "name": "useDrift",
+      "type": "string",
+      "default": "yes",
+      "category": "vmc",
+      "description": "Enable drift in VMC moves. 'no'=pure diffusion, allows larger timestep.",
+      "allowed_values": ["yes", "no"],
+      "aliases": ["usedrift"]
+    },
+    "vmc_samples": {
+      "name": "samples",
+      "type": "integer",
+      "default": null,
+      "category": "vmc",
+      "description": "Total samples to collect (legacy driver, feeds DMC/optimization with walkers)."
+    },
+    "vmc_total_walkers": {
+      "name": "total_walkers",
+      "type": "integer",
+      "default": null,
+      "category": "vmc",
+      "description": "Total walkers across all MPI ranks (batched driver only)."
+    },
+    "vmc_checkpoint": {
+      "name": "checkpoint",
+      "type": "integer",
+      "default": "-1",
+      "category": "vmc",
+      "description": "Checkpoint frequency: -1=disable, 0=end-of-run only, N=every N blocks."
+    },
+    "dmc_blocks": {
+      "name": "blocks",
+      "type": "integer",
+      "default": null,
+      "category": "dmc",
+      "description": "Number of DMC blocks for statistical averaging."
+    },
+    "dmc_steps": {
+      "name": "steps",
+      "type": "integer",
+      "default": null,
+      "category": "dmc",
+      "description": "Number of steps per block in DMC."
+    },
+    "dmc_timestep": {
+      "name": "timestep",
+      "type": "float",
+      "default": null,
+      "category": "dmc",
+      "description": "DMC timestep. Should be small for time-step extrapolation (typical: 0.005-0.02)."
+    },
+    "dmc_warmupsteps": {
+      "name": "warmupsteps",
+      "type": "integer",
+      "default": "0",
+      "category": "dmc",
+      "description": "DMC equilibration steps before sampling."
+    },
+    "dmc_targetwalkers": {
+      "name": "targetwalkers",
+      "type": "integer",
+      "default": null,
+      "category": "dmc",
+      "description": "Target number of walkers for DMC population control."
+    },
+    "dmc_nonlocalmoves": {
+      "name": "nonlocalmoves",
+      "type": "string",
+      "default": "no",
+      "category": "dmc",
+      "description": "T-moves for nonlocal PPs. 'yes'=default algo, 'v0'/'v1'/'v3' for specific versions.",
+      "allowed_values": ["yes", "no", "v0", "v1", "v3"]
+    },
+    "dmc_reconfiguration": {
+      "name": "reconfiguration",
+      "type": "string",
+      "default": "no",
+      "category": "dmc",
+      "description": "Use reconfiguration (fixed population) instead of standard branching DMC.",
+      "allowed_values": ["yes", "no"]
+    },
+    "opt_MinMethod": {
+      "name": "MinMethod",
+      "type": "string",
+      "default": null,
+      "category": "optimization",
+      "description": "Minimization sub-algorithm: 'quartic'=robust line-search, 'adaptive'=shift-based.",
+      "allowed_values": ["quartic", "adaptive", "rescale"]
+    },
+    "opt_exp0": {
+      "name": "exp0",
+      "type": "integer",
+      "default": "-6",
+      "category": "optimization",
+      "description": "Starting exponent for stabilizer (10^exp0) in quartic optimizer."
+    },
+    "opt_stepsize": {
+      "name": "stepsize",
+      "type": "float",
+      "default": null,
+      "category": "optimization",
+      "description": "Step size for parameter update in quartic line search."
+    },
+    "opt_nstabilizers": {
+      "name": "nstabilizers",
+      "type": "integer",
+      "default": null,
+      "category": "optimization",
+      "description": "Number of stabilizer values to try per optimization step."
+    },
+    "opt_alloweddifference": {
+      "name": "alloweddifference",
+      "type": "float",
+      "default": null,
+      "category": "optimization",
+      "description": "Allowed energy difference for optimization convergence check."
+    },
+    "opt_bigchange": {
+      "name": "bigchange",
+      "type": "float",
+      "default": null,
+      "category": "optimization",
+      "description": "Maximum allowed parameter change per step. Rejects updates exceeding threshold."
+    },
+    "opt_minwalkers": {
+      "name": "minwalkers",
+      "type": "float",
+      "default": "0.5",
+      "category": "optimization",
+      "description": "Minimum fraction of walkers surviving reweighting for update acceptance."
+    },
+    "opt_shift_i": {
+      "name": "shift_i",
+      "type": "float",
+      "default": "1.0",
+      "category": "optimization",
+      "description": "Identity shift for adaptive optimizer (Levenberg-Marquardt regularization)."
+    },
+    "opt_shift_s": {
+      "name": "shift_s",
+      "type": "float",
+      "default": "1.0",
+      "category": "optimization",
+      "description": "Overlap shift for adaptive optimizer."
+    },
+    "opt_max_param_change": {
+      "name": "max_param_change",
+      "type": "float",
+      "default": null,
+      "category": "optimization",
+      "description": "Maximum allowed parameter change per optimization step (adaptive method)."
+    },
+    "cost_energy": {
+      "name": "energy",
+      "type": "float",
+      "default": null,
+      "category": "optimization",
+      "description": "Weight of energy in optimization cost function (0.0 to 1.0). All cost weights sum to 1."
+    },
+    "cost_unreweightedvariance": {
+      "name": "unreweightedvariance",
+      "type": "float",
+      "default": null,
+      "category": "optimization",
+      "description": "Weight of unreweighted variance in optimization cost function."
+    },
+    "cost_reweightedvariance": {
+      "name": "reweightedvariance",
+      "type": "float",
+      "default": null,
+      "category": "optimization",
+      "description": "Weight of reweighted variance in optimization cost function."
+    },
+    "loop_max": {
+      "name": "max",
+      "type": "integer",
+      "default": "1",
+      "category": "control",
+      "description": "Maximum loop iterations. project@series auto-increments each iteration."
+    },
+    "include_href": {
+      "name": "href",
+      "type": "string",
+      "default": null,
+      "category": "control",
+      "description": "Path to external XML file to include (inlined at this position)."
+    },
+    "qmc_method": {
+      "name": "method",
+      "type": "string",
+      "default": "test",
+      "category": "qmc",
+      "description": "QMC method type.",
+      "allowed_values": ["vmc", "dmc", "rmc", "optimize", "linear", "test"]
+    },
+    "qmc_move": {
+      "name": "move",
+      "type": "string",
+      "default": "walker",
+      "category": "qmc",
+      "description": "Update mode: 'pbyp'=particle-by-particle, 'walker'=walker-by-walker.",
+      "allowed_values": ["pbyp", "walker"]
+    },
+    "estimator_type": {
+      "name": "type",
+      "type": "string",
+      "default": null,
+      "category": "estimator",
+      "description": "Estimator type for observable measurements during QMC runs.",
+      "allowed_values": ["LocalEnergy", "density", "spindensity", "gofr", "sk", "dm1b", "Force", "Pressure", "chiesa"]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+case_id: water_hf_sp
+title: "Water HF Single-Point"
+engine: gaussian
+workflow_tags: [scf, hartree-fock, small-molecule]
+species: [O, H]
+functional: HF
+basis_set: STO-3G
+description: "HF/STO-3G single-point energy on water; minimal basis baseline"

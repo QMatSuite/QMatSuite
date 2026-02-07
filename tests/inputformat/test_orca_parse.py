@@ -68,22 +68,24 @@ class TestORCAParser:
         assert result["structure"] == {}
 
     def test_curated_sample_parse(self):
-        """Parse the curated benzene_opt.inp sample."""
-        text = (SAMPLES_DIR / "benzene_opt.inp").read_text()
+        """Parse the curated water_sp sample."""
+        text = (SAMPLES_DIR / "water_sp" / "input.inp").read_text()
         result = _parse_orca_text(text)
 
         assert result["params"]["method"] == "B3LYP"
-        assert result["params"]["basis"] == "def2-SVP"
-        assert result["params"]["keywords"] == ["Opt"]
-        assert result["params"]["maxcore"] == 4000
+        assert result["params"]["basis"] == "DEF2-TZVP"
+        assert "RIJCOSX" in result["params"]["keywords"]
+        assert "D3BJ" in result["params"]["keywords"]
+        assert "TIGHTSCF" in result["params"]["keywords"]
+        assert result["params"]["maxcore"] == 2000
         assert result["params"]["nprocs"] == 4
         assert result["params"]["charge"] == 0
         assert result["params"]["multiplicity"] == 1
 
-        assert len(result["structure"]["species"]) == 12
-        assert result["structure"]["species"].count("C") == 6
-        assert result["structure"]["species"].count("H") == 6
-        assert len(result["structure"]["cart_coords"]) == 12
+        assert len(result["structure"]["species"]) == 3
+        assert result["structure"]["species"].count("O") == 1
+        assert result["structure"]["species"].count("H") == 2
+        assert len(result["structure"]["cart_coords"]) == 3
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -154,7 +156,7 @@ class TestORCARoundtrip:
 
     def test_curated_sample_roundtrip(self):
         """Parse curated sample -> write -> parse -> compare Cartesian coords."""
-        original_text = (SAMPLES_DIR / "benzene_opt.inp").read_text()
+        original_text = (SAMPLES_DIR / "water_sp" / "input.inp").read_text()
         parsed1 = _parse_orca_text(original_text)
 
         # Write from parsed result (using cart_coords as frac_coords without lattice)

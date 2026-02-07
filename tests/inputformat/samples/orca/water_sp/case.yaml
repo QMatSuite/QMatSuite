@@ -1,0 +1,8 @@
+case_id: water_sp
+title: "Water Single-Point Energy"
+engine: orca
+workflow_tags: [scf, dft, small-molecule]
+species: [O, H]
+functional: B3LYP
+basis_set: DEF2-TZVP
+description: "B3LYP/def2-TZVP single-point energy for water with D3BJ dispersion and RIJCOSX"

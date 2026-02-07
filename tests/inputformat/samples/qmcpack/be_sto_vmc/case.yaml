@@ -1,0 +1,6 @@
+case_id: be_sto_vmc
+title: "Be atom VMC with STO Bunge basis"
+engine: qmcpack
+workflow_tags: [vmc, all-electron, atom, sto-basis, sposet-collection]
+species: [Be]
+description: "Be atom all-electron VMC with 7-term STO Bunge basis. Uses sposet_collection MolecularOrbital with explicit MO coefficients. No Jastrow — determinant-only wavefunction."

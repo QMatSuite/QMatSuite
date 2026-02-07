@@ -58,3 +58,36 @@
 - [x] No kernel imports in leaf modules
 - [x] inputformat/ leaf package untouched
 - [x] Docs moved to docs/engines/vasp/
+
+---
+
+## Playbook v2.2 Compliance Update (2026-02-06)
+
+### Binary Record (§1.8 E3)
+
+| Field | Value |
+|-------|-------|
+| **Engine** | VASP |
+| **Binary (std)** | `.qmatsuite/engines/vasp/vasp.6.5.0/bin/vasp_std` |
+| **Binary (gam)** | `.qmatsuite/engines/vasp/vasp.6.5.0/bin/vasp_gam` |
+| **Binary (ncl)** | `.qmatsuite/engines/vasp/vasp.6.5.0/bin/vasp_ncl` |
+| **Version string** | `vasp.6.5.0 16Dec24 (build Jan 28 2026 14:23:06) complex` |
+| **POTCAR library** | `.qmatsuite/engines/vasp/potpaw_PBE.64/` |
+| **Discovery date** | 2026-02-07 |
+| **Smoke test** | si_scf: 6 SCF iterations, SUCCESS |
+
+### Compliance Remediation Summary
+
+| Gap | Description | Resolution |
+|-----|-------------|------------|
+| G1 | SOURCES.md only in .tmp/ | Promoted to `docs/engines/vasp/SOURCES.md` |
+| G2 | No CURATED_INDEX.md | Created `docs/engines/vasp/CURATED_INDEX.md` with 13 cases |
+| G3 | CORPUS_INDEX.json sparse | Expanded to 25+ entries |
+| G4 | Binary not formally recorded | Added binary record to worklog (above) |
+| G5 | 11/12 curated samples lack real_run | All 13 cases validated with V3 layout |
+| G6 | No VASP->W90 composite pipeline | Created si_w90_pipeline curated sample + real run |
+| G7 | No repo-level rollup index | Created `docs/architecture/B1_ENGINE_CORPUS_INDEX.md` |
+| G8 | .tmp/ corpus sparse | Backfilled extracted/, normalized/, metadata_seed/ |
+| G9 | Wannier90 tags missing | Added 6 tags (LWANNIER90_RUN, LWRITE_MMN_AMN, NUM_WANN, WANNIER90_WIN, LWRITE_WANNIER_XSF, LINTPOL_KPATH) |
+
+**Status**: NOW COMPLIANT with B1 Playbook v2.2

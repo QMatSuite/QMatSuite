@@ -1,0 +1,6 @@
+case_id: copper_disentangle
+title: "Copper with disentanglement and band interpolation"
+engine: w90
+workflow_tags: [disentanglement, band_interpolation, kpoint_path]
+species: [Cu]
+description: "Copper FCC with 7 WFs from 12 bands (Tutorial Example 4). Disentanglement with frozen window, kpoint_path for band interpolation, Fortran d0 notation in dis_mix_ratio, and f-centred projections."

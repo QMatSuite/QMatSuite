@@ -1,0 +1,6 @@
+case_id: lih_solid_vmc_pp
+title: "LiH solid VMC+DMC with pseudopotentials"
+engine: qmcpack
+workflow_tags: [vmc, dmc, pseudopotential, solid, periodic, einspline]
+species: [Li, H]
+description: "LiH rocksalt solid with einspline/HDF5 wavefunction, XML pseudopotentials, Bspline J1+J2 Jastrow, PBC. VMC sampling followed by DMC projection."

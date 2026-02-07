@@ -1,0 +1,20 @@
+%mem=500MB
+%nproc=1
+%chk=link1_test.chk
+#p HF/STO-3G
+
+Step 1: HF single point on water
+
+0 1
+O    0.000000    0.000000    0.117499
+H    0.000000    0.756950   -0.469996
+H    0.000000   -0.756950   -0.469996
+
+--Link1--
+%mem=500MB
+%nproc=1
+%chk=link1_test.chk
+#p MP2/STO-3G Geom=AllCheck Guess=Read
+
+Step 2: MP2 on same geometry from checkpoint
+

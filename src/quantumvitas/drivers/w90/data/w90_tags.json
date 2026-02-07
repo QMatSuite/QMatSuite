@@ -1,0 +1,1503 @@
+{
+  "schema_version": 1,
+  "engine": "w90",
+  "engine_version": "3.1.0",
+  "doc_url": "https://wannier90.readthedocs.io/",
+  "tags": {
+    "num_wann": {
+      "name": "num_wann",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": null,
+      "category": "system",
+      "description": "Number of Wannier functions to compute.",
+      "status": "active"
+    },
+    "num_bands": {
+      "name": "num_bands",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "num_wann",
+      "category": "system",
+      "description": "Total number of bands passed to Wannier90. If num_bands > num_wann, a disentanglement procedure is activated.",
+      "status": "active"
+    },
+    "unit_cell_cart": {
+      "name": "unit_cell_cart",
+      "type": "REAL",
+      "kind": "block",
+      "default": null,
+      "category": "system",
+      "description": "Lattice vectors of the unit cell in Cartesian coordinates. Optional first line specifies units (Bohr or Ang). Three lines of three real numbers each (a1, a2, a3).",
+      "status": "active",
+      "units": "Ang (default) or Bohr"
+    },
+    "atoms_cart": {
+      "name": "atoms_cart",
+      "type": "CHARACTER",
+      "kind": "block",
+      "default": null,
+      "category": "system",
+      "description": "Atomic positions in Cartesian coordinates. Optional first line specifies units (Bohr or Ang). Each subsequent line: species x y z.",
+      "status": "active",
+      "units": "Ang (default) or Bohr"
+    },
+    "atoms_frac": {
+      "name": "atoms_frac",
+      "type": "CHARACTER",
+      "kind": "block",
+      "default": null,
+      "category": "system",
+      "description": "Atomic positions in fractional (crystallographic) coordinates. Each line: species f1 f2 f3.",
+      "status": "active",
+      "units": "fractional"
+    },
+    "mp_grid": {
+      "name": "mp_grid",
+      "type": "INTEGER",
+      "kind": "list",
+      "default": null,
+      "category": "system",
+      "description": "Dimensions of the Monkhorst-Pack k-point grid. Three integers: n1 n2 n3.",
+      "status": "active"
+    },
+    "kpoints": {
+      "name": "kpoints",
+      "type": "REAL",
+      "kind": "block",
+      "default": null,
+      "category": "system",
+      "description": "Explicit list of k-points in fractional coordinates of the reciprocal lattice vectors. One k-point per line: k1 k2 k3. Total number must equal product of mp_grid.",
+      "status": "active",
+      "units": "fractional (reciprocal lattice units)"
+    },
+    "gamma_only": {
+      "name": "gamma_only",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "system",
+      "description": "If true, use a Gamma-point-only branch of the code. Only mp_grid = 1 1 1 is permitted.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "spinors": {
+      "name": "spinors",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "system",
+      "description": "If true, WFs are spinor (two-component) functions. Requires num_bands and num_wann to be even.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "shell_list": {
+      "name": "shell_list",
+      "type": "INTEGER",
+      "kind": "list",
+      "default": "automatic",
+      "category": "system",
+      "description": "List of shells to use in determining k-point nearest neighbours. If not set, determined automatically.",
+      "status": "active"
+    },
+    "search_shells": {
+      "name": "search_shells",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "36",
+      "category": "system",
+      "description": "Number of shells to search when automatically determining nearest-neighbour k-points.",
+      "status": "active"
+    },
+    "skip_b1_tests": {
+      "name": "skip_b1_tests",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "system",
+      "description": "If true, skip the B1 completeness tests on the k-point nearest-neighbour shells.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "nnkpts": {
+      "name": "nnkpts",
+      "type": "INTEGER",
+      "kind": "block",
+      "default": "no default (auto-generated)",
+      "category": "system",
+      "description": "Explicit specification of nearest-neighbour k-point pairs. First line: number of neighbours per k-point. Subsequent lines: k-point index, neighbour index, G-vector (g1, g2, g3).",
+      "status": "active"
+    },
+    "kmesh_tol": {
+      "name": "kmesh_tol",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "1e-06",
+      "category": "system",
+      "description": "Tolerance for identifying k-point shells as satisfying the B1 condition.",
+      "status": "active",
+      "units": "Ang"
+    },
+    "projections": {
+      "name": "projections",
+      "type": "CHARACTER",
+      "kind": "block",
+      "default": null,
+      "category": "system",
+      "description": "Defines initial projections for Wannier functions. Format per line: site:ang_mtm[:zaxis=z1,z2,z3][:xaxis=x1,x2,x3][:radial=R][:zona=Z]. site can be a fractional position f=f1,f2,f3 or a Cartesian position c=c1,c2,c3 or an atomic species name. ang_mtm is the angular momentum state (s, p, d, f, sp, sp2, sp3, sp3d, sp3d2, or specific orbitals like px, dxy, etc.). Multiple projections can be separated by newlines within the block. The keyword 'random' may be used for random projections.\n",
+      "status": "active"
+    },
+    "postproc_setup": {
+      "name": "postproc_setup",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "job_control",
+      "description": "If true, Wannier90 outputs the .nnkp file and exits. Used for interface setup before running the first-principles code.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "exclude_bands": {
+      "name": "exclude_bands",
+      "type": "INTEGER",
+      "kind": "list",
+      "default": "no default (no bands excluded)",
+      "category": "job_control",
+      "description": "List of bands to exclude from the calculation. Bands are indexed by their order in the original first-principles calculation.",
+      "status": "active"
+    },
+    "select_projections": {
+      "name": "select_projections",
+      "type": "INTEGER",
+      "kind": "list",
+      "default": "no default (all projections used)",
+      "category": "job_control",
+      "description": "List of projection indices to use from those defined in the projections block. Allows selection of a subset of projections.",
+      "status": "active"
+    },
+    "auto_projections": {
+      "name": "auto_projections",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "job_control",
+      "description": "If true, use the SCDM method to automatically generate initial projections rather than requiring a projections block.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "restart": {
+      "name": "restart",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": "default",
+      "category": "job_control",
+      "description": "Controls restarting from a previous calculation. Determines which stage to restart from.",
+      "status": "active",
+      "enum": [
+        "default",
+        "wannierise",
+        "plot",
+        "transport"
+      ]
+    },
+    "iprint": {
+      "name": "iprint",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "1",
+      "category": "job_control",
+      "description": "Verbosity level for output. Higher values produce more detailed output.",
+      "status": "active",
+      "enum": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    "length_unit": {
+      "name": "length_unit",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": "Ang",
+      "category": "job_control",
+      "description": "Unit of length for output. Determines whether output distances are in Angstroms or Bohr.",
+      "status": "active",
+      "enum": [
+        "Ang",
+        "Bohr"
+      ]
+    },
+    "wvfn_formatted": {
+      "name": "wvfn_formatted",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "job_control",
+      "description": "If true, read wavefunction files (UNK) as formatted (ASCII) files rather than unformatted (binary).",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "spin": {
+      "name": "spin",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": "up",
+      "category": "job_control",
+      "description": "Spin channel to use in a spin-polarised calculation.",
+      "status": "active",
+      "enum": [
+        "up",
+        "down"
+      ]
+    },
+    "devel_flag": {
+      "name": "devel_flag",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": null,
+      "category": "job_control",
+      "description": "Developer flag for activating experimental/debug features. Not intended for production use.",
+      "status": "active"
+    },
+    "timing_level": {
+      "name": "timing_level",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "1",
+      "category": "job_control",
+      "description": "Controls the level of timing information reported in the output.",
+      "status": "active"
+    },
+    "optimisation": {
+      "name": "optimisation",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "3",
+      "category": "job_control",
+      "description": "Level of code optimisation. Higher values enable more aggressive memory/speed trade-offs.",
+      "status": "active"
+    },
+    "translate_home_cell": {
+      "name": "translate_home_cell",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "job_control",
+      "description": "If true, translate the final Wannier function centres to the home unit cell.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "write_xyz": {
+      "name": "write_xyz",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "job_control",
+      "description": "If true, write atomic positions and Wannier function centres to an XYZ file.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "write_vdw_data": {
+      "name": "write_vdw_data",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "job_control",
+      "description": "If true, write data needed for van der Waals energy functional calculations.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "write_hr_diag": {
+      "name": "write_hr_diag",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "job_control",
+      "description": "If true, write the diagonal elements of the Hamiltonian in the WF basis to the output.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "dis_win_min": {
+      "name": "dis_win_min",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "lowest eigenvalue across all k-points",
+      "category": "disentanglement",
+      "description": "Lower bound of the outer (disentanglement) energy window.",
+      "status": "active",
+      "units": "eV"
+    },
+    "dis_win_max": {
+      "name": "dis_win_max",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "highest eigenvalue across all k-points",
+      "category": "disentanglement",
+      "description": "Upper bound of the outer (disentanglement) energy window.",
+      "status": "active",
+      "units": "eV"
+    },
+    "dis_froz_min": {
+      "name": "dis_froz_min",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "dis_win_min (if dis_froz_max is given)",
+      "category": "disentanglement",
+      "description": "Lower bound of the inner (frozen) energy window. States within the frozen window are preserved exactly.",
+      "status": "active",
+      "units": "eV"
+    },
+    "dis_froz_max": {
+      "name": "dis_froz_max",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": null,
+      "category": "disentanglement",
+      "description": "Upper bound of the inner (frozen) energy window. Must be set to activate the frozen window.",
+      "status": "active",
+      "units": "eV"
+    },
+    "dis_num_iter": {
+      "name": "dis_num_iter",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "200",
+      "category": "disentanglement",
+      "description": "Maximum number of iterations in the disentanglement procedure.",
+      "status": "active"
+    },
+    "dis_mix_ratio": {
+      "name": "dis_mix_ratio",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "0.5",
+      "category": "disentanglement",
+      "description": "Mixing ratio for the disentanglement iterations. Controls how much of the new subspace is mixed with the previous iteration.",
+      "status": "active"
+    },
+    "dis_conv_tol": {
+      "name": "dis_conv_tol",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "1e-10",
+      "category": "disentanglement",
+      "description": "Convergence tolerance for the disentanglement Omega_I spread functional.",
+      "status": "active",
+      "units": "Ang^2"
+    },
+    "dis_conv_window": {
+      "name": "dis_conv_window",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "3",
+      "category": "disentanglement",
+      "description": "Number of consecutive iterations over which the convergence criterion (dis_conv_tol) must be satisfied.",
+      "status": "active"
+    },
+    "dis_spheres_num": {
+      "name": "dis_spheres_num",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "0",
+      "category": "disentanglement",
+      "description": "Number of k-space spheres for constraining the disentanglement.",
+      "status": "active"
+    },
+    "dis_spheres_first_wann": {
+      "name": "dis_spheres_first_wann",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "1",
+      "category": "disentanglement",
+      "description": "Index of the first Wannier function associated with the disentanglement spheres constraint.",
+      "status": "active"
+    },
+    "dis_spheres": {
+      "name": "dis_spheres",
+      "type": "REAL",
+      "kind": "block",
+      "default": null,
+      "category": "disentanglement",
+      "description": "Defines spheres in k-space for constraining disentanglement. Each line: k1 k2 k3 radius (in reciprocal lattice units and inverse Angstroms).",
+      "status": "active",
+      "units": "fractional coords + Ang^-1 radius"
+    },
+    "num_iter": {
+      "name": "num_iter",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "100",
+      "category": "wannierise",
+      "description": "Maximum number of iterations for the Wannier function spread minimisation.",
+      "status": "active"
+    },
+    "num_cg_steps": {
+      "name": "num_cg_steps",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "5",
+      "category": "wannierise",
+      "description": "Number of conjugate-gradient steps within each iteration of the spread minimisation.",
+      "status": "active"
+    },
+    "conv_window": {
+      "name": "conv_window",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "-1",
+      "category": "wannierise",
+      "description": "Number of consecutive iterations over which convergence is assessed. A value of -1 disables convergence-based termination.",
+      "status": "active"
+    },
+    "conv_tol": {
+      "name": "conv_tol",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "1e-10",
+      "category": "wannierise",
+      "description": "Convergence tolerance for the total spread Omega. Minimisation stops when the change in Omega is less than this over conv_window iterations.",
+      "status": "active",
+      "units": "Ang^2"
+    },
+    "precond": {
+      "name": "precond",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "wannierise",
+      "description": "If true, use a preconditioner in the minimisation of the spread functional.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "conv_noise_amp": {
+      "name": "conv_noise_amp",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "-1.0",
+      "category": "wannierise",
+      "description": "Amplitude of random noise added to the gradient when convergence stalls. A negative value disables noise injection.",
+      "status": "active"
+    },
+    "conv_noise_num": {
+      "name": "conv_noise_num",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "3",
+      "category": "wannierise",
+      "description": "Number of iterations over which random noise is applied when convergence stalls.",
+      "status": "active"
+    },
+    "num_dump_cycles": {
+      "name": "num_dump_cycles",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "100",
+      "category": "wannierise",
+      "description": "Frequency (in iterations) at which checkpoint files are written during the minimisation.",
+      "status": "active"
+    },
+    "num_print_cycles": {
+      "name": "num_print_cycles",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "1",
+      "category": "wannierise",
+      "description": "Frequency (in iterations) at which spread functional values are printed to output.",
+      "status": "active"
+    },
+    "write_r2mn": {
+      "name": "write_r2mn",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "wannierise",
+      "description": "If true, write the matrix elements <m|r^2|n> to the seedname.r2mn file.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "guiding_centres": {
+      "name": "guiding_centres",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "wannierise",
+      "description": "If true, use guiding centres to improve the minimisation of the spread functional. Adds a penalty term that penalises centres drifting far from initial projections.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "num_guide_cycles": {
+      "name": "num_guide_cycles",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "1",
+      "category": "wannierise",
+      "description": "Number of iterations in each guiding-centre cycle before the guiding penalty is updated.",
+      "status": "active"
+    },
+    "num_no_guide_iter": {
+      "name": "num_no_guide_iter",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "0",
+      "category": "wannierise",
+      "description": "Number of initial iterations to perform without the guiding centres penalty.",
+      "status": "active"
+    },
+    "trial_step": {
+      "name": "trial_step",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "2.0",
+      "category": "wannierise",
+      "description": "Size of the trial step in the line search during minimisation.",
+      "status": "active"
+    },
+    "fixed_step": {
+      "name": "fixed_step",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "no default (line search used)",
+      "category": "wannierise",
+      "description": "If set, use a fixed step size instead of a line search in the minimisation.",
+      "status": "active"
+    },
+    "use_bloch_phases": {
+      "name": "use_bloch_phases",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "wannierise",
+      "description": "If true, use the Bloch phases of the wavefunctions as the starting gauge rather than projections.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "site_symmetry": {
+      "name": "site_symmetry",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "wannierise",
+      "description": "If true, construct symmetry-adapted Wannier functions using site symmetry.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "symmetrize_eps": {
+      "name": "symmetrize_eps",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "0.001",
+      "category": "wannierise",
+      "description": "Tolerance for symmetrisation of the Wannier function centres when site_symmetry is true.",
+      "status": "active"
+    },
+    "slwf_num": {
+      "name": "slwf_num",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "num_wann",
+      "category": "wannierise",
+      "description": "Number of objective Wannier functions in selectively-localised Wannier function (SLWF) calculations.",
+      "status": "active"
+    },
+    "slwf_constrain": {
+      "name": "slwf_constrain",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "wannierise",
+      "description": "If true, constrain the centres of the selectively-localised Wannier functions to specified positions.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "slwf_lambda": {
+      "name": "slwf_lambda",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "0.0",
+      "category": "wannierise",
+      "description": "Lagrange multiplier (constraint strength) for the SLWF centre constraint.",
+      "status": "active"
+    },
+    "slwf_centres": {
+      "name": "slwf_centres",
+      "type": "REAL",
+      "kind": "block",
+      "default": null,
+      "category": "wannierise",
+      "description": "Target centres for constrained SLWF. Each line: f1 f2 f3 (fractional coordinates). Number of lines must equal slwf_num.",
+      "status": "active",
+      "units": "fractional"
+    },
+    "wannier_plot": {
+      "name": "wannier_plot",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "plot",
+      "description": "If true, plot the Wannier functions in real space.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "wannier_plot_list": {
+      "name": "wannier_plot_list",
+      "type": "INTEGER",
+      "kind": "list",
+      "default": "all WFs",
+      "category": "plot",
+      "description": "List of Wannier function indices to plot. If not set, all Wannier functions are plotted.",
+      "status": "active"
+    },
+    "wannier_plot_supercell": {
+      "name": "wannier_plot_supercell",
+      "type": "INTEGER",
+      "kind": "list",
+      "default": "2",
+      "category": "plot",
+      "description": "Size of the supercell for plotting. A single integer applies to all directions; three integers specify each direction independently.",
+      "status": "active"
+    },
+    "wannier_plot_format": {
+      "name": "wannier_plot_format",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": "xcrysden",
+      "category": "plot",
+      "description": "Output file format for Wannier function plots.",
+      "status": "active",
+      "enum": [
+        "xcrysden",
+        "cube"
+      ]
+    },
+    "wannier_plot_mode": {
+      "name": "wannier_plot_mode",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": "crystal",
+      "category": "plot",
+      "description": "Plotting mode for Wannier functions. 'crystal' uses periodic boundary conditions; 'molecule' does not.",
+      "status": "active",
+      "enum": [
+        "crystal",
+        "molecule"
+      ]
+    },
+    "wannier_plot_radius": {
+      "name": "wannier_plot_radius",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "3.5",
+      "category": "plot",
+      "description": "Cutoff radius for plotting Wannier functions in molecule mode.",
+      "status": "active",
+      "units": "Ang"
+    },
+    "wannier_plot_scale": {
+      "name": "wannier_plot_scale",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "1.0",
+      "category": "plot",
+      "description": "Scaling factor applied to the Wannier function isosurface in the plot.",
+      "status": "active"
+    },
+    "wannier_plot_spinor_mode": {
+      "name": "wannier_plot_spinor_mode",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": "total",
+      "category": "plot",
+      "description": "Controls which spinor component to plot for spinor Wannier functions.",
+      "status": "active",
+      "enum": [
+        "total",
+        "up",
+        "down"
+      ]
+    },
+    "wannier_plot_spinor_phase": {
+      "name": "wannier_plot_spinor_phase",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "plot",
+      "description": "If true, plot the phase of the spinor Wannier functions.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "bands_plot": {
+      "name": "bands_plot",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "plot",
+      "description": "If true, compute and plot the band structure along a specified k-point path using Wannier interpolation.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "kpoint_path": {
+      "name": "kpoint_path",
+      "type": "CHARACTER",
+      "kind": "block",
+      "default": null,
+      "category": "plot",
+      "description": "Defines the k-point path for band structure interpolation. Each line specifies a segment: label_start k1_s k2_s k3_s  label_end k1_e k2_e k3_e. Labels are used for the x-axis of the band plot. k-points are in fractional reciprocal-lattice coordinates.\n",
+      "status": "active",
+      "units": "fractional (reciprocal lattice units)"
+    },
+    "bands_num_points": {
+      "name": "bands_num_points",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "100",
+      "category": "plot",
+      "description": "Number of k-points along each segment of the band structure path.",
+      "status": "active"
+    },
+    "bands_plot_format": {
+      "name": "bands_plot_format",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": "gnuplot",
+      "category": "plot",
+      "description": "Output format for band structure plot data files.",
+      "status": "active",
+      "enum": [
+        "gnuplot",
+        "xmgrace"
+      ]
+    },
+    "bands_plot_project": {
+      "name": "bands_plot_project",
+      "type": "INTEGER",
+      "kind": "list",
+      "default": "no default (no projection)",
+      "category": "plot",
+      "description": "List of Wannier function indices onto which to project the band structure (fat bands).",
+      "status": "active"
+    },
+    "bands_plot_mode": {
+      "name": "bands_plot_mode",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": "s-k",
+      "category": "plot",
+      "description": "Mode for band structure plotting. 's-k' for standard path plotting; 'cut' for k-space cuts.",
+      "status": "active",
+      "enum": [
+        "s-k",
+        "cut"
+      ]
+    },
+    "bands_plot_dim": {
+      "name": "bands_plot_dim",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "3",
+      "category": "plot",
+      "description": "Dimensionality of the system for band structure plotting.",
+      "status": "active",
+      "enum": [
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    "fermi_surface_plot": {
+      "name": "fermi_surface_plot",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "plot",
+      "description": "If true, compute the Fermi surface using Wannier interpolation.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "fermi_surface_num_points": {
+      "name": "fermi_surface_num_points",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "50",
+      "category": "plot",
+      "description": "Number of divisions along each reciprocal lattice vector for Fermi surface sampling.",
+      "status": "active"
+    },
+    "fermi_energy": {
+      "name": "fermi_energy",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "0.0",
+      "category": "plot",
+      "description": "Fermi energy for band structure and Fermi surface plots.",
+      "status": "active",
+      "units": "eV"
+    },
+    "fermi_energy_min": {
+      "name": "fermi_energy_min",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": null,
+      "category": "plot",
+      "description": "Minimum Fermi energy when scanning over a range (for DOS and transport calculations).",
+      "status": "active",
+      "units": "eV"
+    },
+    "fermi_energy_max": {
+      "name": "fermi_energy_max",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": null,
+      "category": "plot",
+      "description": "Maximum Fermi energy when scanning over a range (for DOS and transport calculations).",
+      "status": "active",
+      "units": "eV"
+    },
+    "fermi_energy_step": {
+      "name": "fermi_energy_step",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "0.01",
+      "category": "plot",
+      "description": "Step size for Fermi energy scans.",
+      "status": "active",
+      "units": "eV"
+    },
+    "fermi_surface_plot_format": {
+      "name": "fermi_surface_plot_format",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": "xcrysden",
+      "category": "plot",
+      "description": "Output format for Fermi surface data.",
+      "status": "active",
+      "enum": [
+        "xcrysden"
+      ]
+    },
+    "write_hr": {
+      "name": "write_hr",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "plot",
+      "description": "If true, write the Hamiltonian in the Wannier function basis to seedname_hr.dat.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "write_rmn": {
+      "name": "write_rmn",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "plot",
+      "description": "If true, write the position operator matrix elements <m|r|n> in the WF basis to seedname_r.dat.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "write_bvec": {
+      "name": "write_bvec",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "plot",
+      "description": "If true, write the b-vectors (k-point differences) to seedname.bvec.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "write_tb": {
+      "name": "write_tb",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "plot",
+      "description": "If true, write the tight-binding Hamiltonian in the WF basis for use in external codes.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "write_u_matrices": {
+      "name": "write_u_matrices",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "plot",
+      "description": "If true, write the unitary matrices U(k) and U_dis(k) to files.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "hr_cutoff": {
+      "name": "hr_cutoff",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "0.0",
+      "category": "plot",
+      "description": "Cutoff threshold for Hamiltonian matrix elements in the WF basis. Elements with magnitude below this are set to zero.",
+      "status": "active",
+      "units": "eV"
+    },
+    "dist_cutoff": {
+      "name": "dist_cutoff",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "1000.0",
+      "category": "plot",
+      "description": "Distance cutoff for Hamiltonian matrix elements. Hopping terms between WFs separated by more than this distance are set to zero.",
+      "status": "active",
+      "units": "Ang"
+    },
+    "dist_cutoff_mode": {
+      "name": "dist_cutoff_mode",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": "three_dim",
+      "category": "plot",
+      "description": "Dimensionality mode for the distance cutoff. Controls whether the distance is measured in 3D, projected onto a 2D plane, or along a 1D axis.",
+      "status": "active",
+      "enum": [
+        "three_dim",
+        "two_dim",
+        "one_dim"
+      ]
+    },
+    "one_dim_axis": {
+      "name": "one_dim_axis",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": null,
+      "category": "plot",
+      "description": "Axis along which to measure distance when dist_cutoff_mode is one_dim.",
+      "status": "active",
+      "enum": [
+        "x",
+        "y",
+        "z"
+      ]
+    },
+    "translation_centre_frac": {
+      "name": "translation_centre_frac",
+      "type": "REAL",
+      "kind": "list",
+      "default": "[0.0, 0.0, 0.0]",
+      "category": "plot",
+      "description": "Fractional coordinates of the translation centre for the Wigner-Seitz supercell used in real-space Hamiltonian construction.",
+      "status": "active",
+      "units": "fractional"
+    },
+    "use_ws_distance": {
+      "name": "use_ws_distance",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "true",
+      "category": "plot",
+      "description": "If true, use the Wigner-Seitz cell to determine inter-cell distances for Fourier transforms, improving convergence.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "ws_distance_tol": {
+      "name": "ws_distance_tol",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "1e-05",
+      "category": "plot",
+      "description": "Tolerance for determining degenerate lattice vectors in the Wigner-Seitz distance calculation.",
+      "status": "active"
+    },
+    "ws_search_size": {
+      "name": "ws_search_size",
+      "type": "INTEGER",
+      "kind": "list",
+      "default": "2",
+      "category": "plot",
+      "description": "Size of the supercell searched to identify Wigner-Seitz lattice vectors. A single integer applies to all directions; three integers specify each independently.",
+      "status": "active"
+    },
+    "transport": {
+      "name": "transport",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "transport",
+      "description": "If true, perform quantum transport calculations using the Wannier function Hamiltonian.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "transport_mode": {
+      "name": "transport_mode",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": "bulk",
+      "category": "transport",
+      "description": "Mode of transport calculation. 'bulk' for bulk systems; 'lcr' for lead-conductor-lead geometry.",
+      "status": "active",
+      "enum": [
+        "bulk",
+        "lcr"
+      ]
+    },
+    "tran_win_min": {
+      "name": "tran_win_min",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "-3.0",
+      "category": "transport",
+      "description": "Lower bound of the energy window for transport calculations.",
+      "status": "active",
+      "units": "eV"
+    },
+    "tran_win_max": {
+      "name": "tran_win_max",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "3.0",
+      "category": "transport",
+      "description": "Upper bound of the energy window for transport calculations.",
+      "status": "active",
+      "units": "eV"
+    },
+    "tran_energy_step": {
+      "name": "tran_energy_step",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "0.01",
+      "category": "transport",
+      "description": "Energy step for the grid in transport calculations.",
+      "status": "active",
+      "units": "eV"
+    },
+    "tran_num_bb": {
+      "name": "tran_num_bb",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "0",
+      "category": "transport",
+      "description": "Number of Wannier functions in a bulk principal layer.",
+      "status": "active"
+    },
+    "tran_num_ll": {
+      "name": "tran_num_ll",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "0",
+      "category": "transport",
+      "description": "Number of Wannier functions in the left lead principal layer.",
+      "status": "active"
+    },
+    "tran_num_rr": {
+      "name": "tran_num_rr",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "0",
+      "category": "transport",
+      "description": "Number of Wannier functions in the right lead principal layer.",
+      "status": "active"
+    },
+    "tran_num_cc": {
+      "name": "tran_num_cc",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "0",
+      "category": "transport",
+      "description": "Number of Wannier functions in the conductor region.",
+      "status": "active"
+    },
+    "tran_num_lc": {
+      "name": "tran_num_lc",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "0",
+      "category": "transport",
+      "description": "Number of Wannier functions in the left lead-conductor coupling region.",
+      "status": "active"
+    },
+    "tran_num_cr": {
+      "name": "tran_num_cr",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "0",
+      "category": "transport",
+      "description": "Number of Wannier functions in the conductor-right lead coupling region.",
+      "status": "active"
+    },
+    "tran_num_cell_ll": {
+      "name": "tran_num_cell_ll",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "0",
+      "category": "transport",
+      "description": "Number of unit cells in the left lead used for transport calculation.",
+      "status": "active"
+    },
+    "tran_num_cell_rr": {
+      "name": "tran_num_cell_rr",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "0",
+      "category": "transport",
+      "description": "Number of unit cells in the right lead used for transport calculation.",
+      "status": "active"
+    },
+    "tran_num_bandc": {
+      "name": "tran_num_bandc",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "0",
+      "category": "transport",
+      "description": "Number of bands in the conductor region for transport.",
+      "status": "active"
+    },
+    "tran_write_ht": {
+      "name": "tran_write_ht",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "transport",
+      "description": "If true, write the tight-binding Hamiltonian for the transport calculation to file.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "tran_read_ht": {
+      "name": "tran_read_ht",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "transport",
+      "description": "If true, read the tight-binding Hamiltonian for transport from a file instead of computing it.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "tran_use_same_lead": {
+      "name": "tran_use_same_lead",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "true",
+      "category": "transport",
+      "description": "If true, assume the left and right leads are identical, reducing computational cost.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "tran_group_threshold": {
+      "name": "tran_group_threshold",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "0.15",
+      "category": "transport",
+      "description": "Threshold distance for grouping Wannier functions in the transport calculation.",
+      "status": "active",
+      "units": "Ang"
+    },
+    "kpath": {
+      "name": "kpath",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "postw90",
+      "description": "If true, enable k-path related postprocessing in postw90 (e.g., band structure interpolation with spin texture).",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "kpath_task": {
+      "name": "kpath_task",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": null,
+      "category": "postw90",
+      "description": "Task to perform along the k-path in postw90.",
+      "status": "active",
+      "enum": [
+        "bands"
+      ]
+    },
+    "kpath_bands_colour": {
+      "name": "kpath_bands_colour",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": null,
+      "category": "postw90",
+      "description": "Quantity used to colour the band structure plot along the k-path.",
+      "status": "active",
+      "enum": [
+        "spin"
+      ]
+    },
+    "kpath_num_points": {
+      "name": "kpath_num_points",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "100",
+      "category": "postw90",
+      "description": "Number of k-points per segment along the k-path for postw90 band interpolation.",
+      "status": "active"
+    },
+    "kslice": {
+      "name": "kslice",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "postw90",
+      "description": "If true, enable k-slice (2D k-space sampling) postprocessing in postw90.",
+      "status": "active",
+      "enum": [
+        "True",
+        "False"
+      ]
+    },
+    "kslice_task": {
+      "name": "kslice_task",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": null,
+      "category": "postw90",
+      "description": "Task to perform on the k-slice in postw90.",
+      "status": "active",
+      "enum": [
+        "fermi_lines"
+      ]
+    },
+    "kslice_2dkmesh": {
+      "name": "kslice_2dkmesh",
+      "type": "INTEGER",
+      "kind": "list",
+      "default": null,
+      "category": "postw90",
+      "description": "Dimensions of the 2D k-mesh for the k-slice. Two integers: n1 n2.",
+      "status": "active"
+    },
+    "kslice_corner": {
+      "name": "kslice_corner",
+      "type": "REAL",
+      "kind": "list",
+      "default": null,
+      "category": "postw90",
+      "description": "Origin (corner) of the k-slice in fractional reciprocal-lattice coordinates. Three reals: k1 k2 k3.",
+      "status": "active",
+      "units": "fractional (reciprocal lattice units)"
+    },
+    "kslice_b1": {
+      "name": "kslice_b1",
+      "type": "REAL",
+      "kind": "list",
+      "default": null,
+      "category": "postw90",
+      "description": "First spanning vector of the k-slice in fractional reciprocal-lattice coordinates. Three reals.",
+      "status": "active",
+      "units": "fractional (reciprocal lattice units)"
+    },
+    "kslice_b2": {
+      "name": "kslice_b2",
+      "type": "REAL",
+      "kind": "list",
+      "default": null,
+      "category": "postw90",
+      "description": "Second spanning vector of the k-slice in fractional reciprocal-lattice coordinates. Three reals.",
+      "status": "active",
+      "units": "fractional (reciprocal lattice units)"
+    },
+    "berry": {
+      "name": "berry",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "postw90",
+      "description": "If true, enable Berry phase related postprocessing in postw90 (e.g., anomalous Hall conductivity, orbital magnetisation, spin Hall conductivity).",
+      "status": "active",
+      "enum": ["True", "False"]
+    },
+    "berry_task": {
+      "name": "berry_task",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": null,
+      "category": "postw90",
+      "description": "Task to perform for Berry phase calculations. Options include anomalous Hall conductivity (ahc), orbital magnetisation (morb), Kubo conductivity (kubo), spin Hall conductivity (sc/eval_shc).",
+      "status": "active",
+      "enum": ["ahc", "morb", "kubo", "sc", "eval_shc"]
+    },
+    "berry_kmesh": {
+      "name": "berry_kmesh",
+      "type": "INTEGER",
+      "kind": "list",
+      "default": null,
+      "category": "postw90",
+      "description": "Dimensions of the interpolated k-mesh for Berry phase calculations. One or three integers.",
+      "status": "active"
+    },
+    "berry_curv_unit": {
+      "name": "berry_curv_unit",
+      "type": "CHARACTER",
+      "kind": "scalar",
+      "default": "bohr2",
+      "category": "postw90",
+      "description": "Unit for the Berry curvature output.",
+      "status": "active",
+      "enum": ["bohr2", "ang2"]
+    },
+    "berry_curv_adpt_kmesh": {
+      "name": "berry_curv_adpt_kmesh",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "1",
+      "category": "postw90",
+      "description": "Size of the adaptive refinement k-mesh around points where the Berry curvature is large.",
+      "status": "active"
+    },
+    "berry_curv_adpt_kmesh_thresh": {
+      "name": "berry_curv_adpt_kmesh_thresh",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "100.0",
+      "category": "postw90",
+      "description": "Threshold for adaptive refinement of the Berry curvature k-mesh.",
+      "status": "active"
+    },
+    "shc_freq_scan": {
+      "name": "shc_freq_scan",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "false",
+      "category": "postw90",
+      "description": "If true, compute the spin Hall conductivity as a function of frequency.",
+      "status": "active",
+      "enum": ["True", "False"]
+    },
+    "shc_alpha": {
+      "name": "shc_alpha",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "1",
+      "category": "postw90",
+      "description": "Cartesian index alpha for the spin Hall conductivity tensor sigma_alpha_beta^gamma.",
+      "status": "active"
+    },
+    "shc_beta": {
+      "name": "shc_beta",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "2",
+      "category": "postw90",
+      "description": "Cartesian index beta for the spin Hall conductivity tensor sigma_alpha_beta^gamma.",
+      "status": "active"
+    },
+    "shc_gamma": {
+      "name": "shc_gamma",
+      "type": "INTEGER",
+      "kind": "scalar",
+      "default": "3",
+      "category": "postw90",
+      "description": "Cartesian index gamma (spin direction) for the spin Hall conductivity tensor sigma_alpha_beta^gamma.",
+      "status": "active"
+    },
+    "kubo_adpt_smr": {
+      "name": "kubo_adpt_smr",
+      "type": "LOGICAL",
+      "kind": "scalar",
+      "default": "true",
+      "category": "postw90",
+      "description": "If true, use adaptive smearing in Kubo formula calculations.",
+      "status": "active",
+      "enum": ["True", "False"]
+    },
+    "kubo_smr_fixed_en_width": {
+      "name": "kubo_smr_fixed_en_width",
+      "type": "REAL",
+      "kind": "scalar",
+      "default": "0.0",
+      "category": "postw90",
+      "description": "Fixed energy width for smearing in Kubo formula when adaptive smearing is disabled.",
+      "status": "active",
+      "units": "eV"
+    }
+  }
+}

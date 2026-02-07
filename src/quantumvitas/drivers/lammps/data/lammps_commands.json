@@ -1,0 +1,1034 @@
+{
+  "schema_version": 1,
+  "engine": "lammps",
+  "lammps_version": "22 Jul 2025 Update 3",
+  "doc_url": "https://docs.lammps.org/Commands_all.html",
+  "commands": {
+    "units": {
+      "name": "units",
+      "type": "command",
+      "default": "lj",
+      "category": "setup",
+      "description": "Set the unit system for the simulation. All physical quantities are defined in terms of the chosen unit system.",
+      "see_also": ["dimension", "boundary"],
+      "status": "active"
+    },
+    "atom_style": {
+      "name": "atom_style",
+      "type": "command",
+      "default": "atomic",
+      "category": "setup",
+      "description": "Define the attributes associated with each atom. Determines what per-atom data is stored and communicated.",
+      "see_also": ["atom_modify", "read_data"],
+      "status": "active"
+    },
+    "dimension": {
+      "name": "dimension",
+      "type": "command",
+      "default": "3",
+      "category": "setup",
+      "description": "Set the dimensionality of the simulation. Must be set before the simulation box is defined.",
+      "see_also": ["boundary", "units"],
+      "status": "active"
+    },
+    "boundary": {
+      "name": "boundary",
+      "type": "command",
+      "default": "p p p",
+      "category": "setup",
+      "description": "Set the boundary conditions for each dimension of the simulation box. Controls periodicity and shrink-wrapping.",
+      "see_also": ["dimension", "change_box"],
+      "status": "active"
+    },
+    "newton": {
+      "name": "newton",
+      "type": "command",
+      "default": "on",
+      "category": "setup",
+      "description": "Turn Newton's 3rd law on or off for pairwise and bonded interactions. Affects communication patterns for parallel runs.",
+      "see_also": ["pair_style", "bond_style"],
+      "status": "active"
+    },
+    "processors": {
+      "name": "processors",
+      "type": "command",
+      "default": null,
+      "category": "setup",
+      "description": "Specify how processors are mapped to the 3D simulation box. Allows explicit control of the processor grid decomposition.",
+      "see_also": ["partition", "balance"],
+      "status": "active"
+    },
+    "comm_style": {
+      "name": "comm_style",
+      "type": "command",
+      "default": "brick",
+      "category": "setup",
+      "description": "Set the style of inter-processor communication of atom information. Brick is default; tiled allows irregular decomposition.",
+      "see_also": ["comm_modify", "processors"],
+      "status": "active"
+    },
+    "comm_modify": {
+      "name": "comm_modify",
+      "type": "command",
+      "default": null,
+      "category": "setup",
+      "description": "Modify parameters of the inter-processor communication. Controls cutoff, mode, and velocity communication.",
+      "see_also": ["comm_style", "neighbor"],
+      "status": "active"
+    },
+    "lattice": {
+      "name": "lattice",
+      "type": "command",
+      "default": null,
+      "category": "lattice_geometry",
+      "description": "Define a lattice for use by create_atoms and other geometry commands. Sets the lattice type and scale factor.",
+      "see_also": ["create_atoms", "region", "create_box"],
+      "status": "active"
+    },
+    "region": {
+      "name": "region",
+      "type": "command",
+      "default": null,
+      "category": "lattice_geometry",
+      "description": "Define a geometric region of space. Used by create_atoms, delete_atoms, fix wall, group, and other commands.",
+      "see_also": ["create_box", "create_atoms", "group", "delete_atoms"],
+      "status": "active"
+    },
+    "create_box": {
+      "name": "create_box",
+      "type": "command",
+      "default": null,
+      "category": "lattice_geometry",
+      "description": "Create a simulation box based on a previously defined region. Defines the number of atom types and optional bond/angle/dihedral/improper types.",
+      "see_also": ["region", "create_atoms", "read_data"],
+      "status": "active"
+    },
+    "create_atoms": {
+      "name": "create_atoms",
+      "type": "command",
+      "default": null,
+      "category": "lattice_geometry",
+      "description": "Create atoms on a lattice or at specified positions within the simulation box. Supports single atoms, random placement, and lattice filling.",
+      "see_also": ["lattice", "region", "create_box", "delete_atoms"],
+      "status": "active"
+    },
+    "mass": {
+      "name": "mass",
+      "type": "command",
+      "default": null,
+      "category": "lattice_geometry",
+      "description": "Set the mass of an atom type. Required for all atom types before a simulation can be run.",
+      "see_also": ["atom_style", "units"],
+      "status": "active"
+    },
+    "replicate": {
+      "name": "replicate",
+      "type": "command",
+      "default": null,
+      "category": "lattice_geometry",
+      "description": "Replicate the simulation box in each dimension. Creates a larger system by tiling the current box.",
+      "see_also": ["create_box", "create_atoms", "change_box"],
+      "status": "active"
+    },
+    "read_data": {
+      "name": "read_data",
+      "type": "command",
+      "default": null,
+      "category": "io",
+      "description": "Read a LAMMPS data file containing atom coordinates, topology, and force-field coefficients. Primary way to define a molecular system.",
+      "see_also": ["write_data", "read_restart", "atom_style"],
+      "status": "active"
+    },
+    "read_restart": {
+      "name": "read_restart",
+      "type": "command",
+      "default": null,
+      "category": "io",
+      "description": "Read a previously saved binary restart file to continue a simulation. Restores atom positions, velocities, and force-field settings.",
+      "see_also": ["write_restart", "restart", "read_data"],
+      "status": "active"
+    },
+    "read_dump": {
+      "name": "read_dump",
+      "type": "command",
+      "default": null,
+      "category": "io",
+      "description": "Read atom coordinates from a dump file snapshot and assign them to the current simulation. Useful for post-processing or restarting from dump files.",
+      "see_also": ["dump", "write_dump", "rerun"],
+      "status": "active"
+    },
+    "write_data": {
+      "name": "write_data",
+      "type": "command",
+      "default": null,
+      "category": "io",
+      "description": "Write the current simulation state to a LAMMPS data file. Can be used to save the system for later read_data or as a checkpoint.",
+      "see_also": ["read_data", "write_restart", "write_dump"],
+      "status": "active"
+    },
+    "write_restart": {
+      "name": "write_restart",
+      "type": "command",
+      "default": null,
+      "category": "io",
+      "description": "Write a binary restart file of the current simulation state. Restart files store all information needed to continue a simulation.",
+      "see_also": ["read_restart", "restart", "write_data"],
+      "status": "active"
+    },
+    "write_dump": {
+      "name": "write_dump",
+      "type": "command",
+      "default": null,
+      "category": "io",
+      "description": "Write a snapshot of atom data to a dump file at the current timestep. Useful for one-time output without setting up a recurring dump.",
+      "see_also": ["dump", "dump_modify", "write_data"],
+      "status": "active"
+    },
+    "include": {
+      "name": "include",
+      "type": "command",
+      "default": null,
+      "category": "io",
+      "description": "Read and execute commands from another LAMMPS input script file. Allows modular script organization.",
+      "see_also": ["jump", "shell"],
+      "status": "active"
+    },
+    "pair_style": {
+      "name": "pair_style",
+      "type": "style",
+      "default": null,
+      "category": "potential",
+      "description": "Set the formula(s) LAMMPS uses to compute pairwise interactions. Must be set before pair_coeff. The choice determines what arguments pair_coeff requires.",
+      "see_also": ["pair_coeff", "pair_modify", "pair_write"],
+      "status": "active"
+    },
+    "pair_coeff": {
+      "name": "pair_coeff",
+      "type": "command",
+      "default": null,
+      "category": "potential",
+      "description": "Specify pairwise force-field coefficients for one or more pairs of atom types. Arguments depend on the pair_style in use.",
+      "see_also": ["pair_style", "pair_modify"],
+      "status": "active"
+    },
+    "pair_modify": {
+      "name": "pair_modify",
+      "type": "command",
+      "default": null,
+      "category": "potential",
+      "description": "Modify parameters of the currently defined pair style. Can change mixing rules, tail corrections, table settings, and more.",
+      "see_also": ["pair_style", "pair_coeff"],
+      "status": "active"
+    },
+    "pair_write": {
+      "name": "pair_write",
+      "type": "command",
+      "default": null,
+      "category": "potential",
+      "description": "Write a table of the currently defined pairwise energy and force to a file. Useful for verifying or visualizing the pair potential.",
+      "see_also": ["pair_style", "pair_coeff"],
+      "status": "active"
+    },
+    "bond_style": {
+      "name": "bond_style",
+      "type": "style",
+      "default": null,
+      "category": "bonded_interaction",
+      "description": "Set the formula LAMMPS uses to compute bond interactions between bonded atom pairs. Required before bond_coeff.",
+      "see_also": ["bond_coeff", "special_bonds"],
+      "status": "active"
+    },
+    "bond_coeff": {
+      "name": "bond_coeff",
+      "type": "command",
+      "default": null,
+      "category": "bonded_interaction",
+      "description": "Specify bond coefficients for a particular bond type. Arguments depend on the bond_style.",
+      "see_also": ["bond_style"],
+      "status": "active"
+    },
+    "bond_write": {
+      "name": "bond_write",
+      "type": "command",
+      "default": null,
+      "category": "bonded_interaction",
+      "description": "Write a table of the currently defined bond energy and force as a function of distance to a file.",
+      "see_also": ["bond_style", "bond_coeff"],
+      "status": "active"
+    },
+    "angle_style": {
+      "name": "angle_style",
+      "type": "style",
+      "default": null,
+      "category": "bonded_interaction",
+      "description": "Set the formula for computing angle interactions between triplets of bonded atoms.",
+      "see_also": ["angle_coeff", "special_bonds"],
+      "status": "active"
+    },
+    "angle_coeff": {
+      "name": "angle_coeff",
+      "type": "command",
+      "default": null,
+      "category": "bonded_interaction",
+      "description": "Specify angle coefficients for a particular angle type. Arguments depend on the angle_style.",
+      "see_also": ["angle_style"],
+      "status": "active"
+    },
+    "dihedral_style": {
+      "name": "dihedral_style",
+      "type": "style",
+      "default": null,
+      "category": "bonded_interaction",
+      "description": "Set the formula for computing dihedral (torsional) interactions between quadruplets of bonded atoms.",
+      "see_also": ["dihedral_coeff", "special_bonds"],
+      "status": "active"
+    },
+    "dihedral_coeff": {
+      "name": "dihedral_coeff",
+      "type": "command",
+      "default": null,
+      "category": "bonded_interaction",
+      "description": "Specify dihedral coefficients for a particular dihedral type. Arguments depend on the dihedral_style.",
+      "see_also": ["dihedral_style"],
+      "status": "active"
+    },
+    "improper_style": {
+      "name": "improper_style",
+      "type": "style",
+      "default": null,
+      "category": "bonded_interaction",
+      "description": "Set the formula for computing improper (out-of-plane) interactions between quadruplets of atoms.",
+      "see_also": ["improper_coeff", "special_bonds"],
+      "status": "active"
+    },
+    "improper_coeff": {
+      "name": "improper_coeff",
+      "type": "command",
+      "default": null,
+      "category": "bonded_interaction",
+      "description": "Specify improper coefficients for a particular improper type. Arguments depend on the improper_style.",
+      "see_also": ["improper_style"],
+      "status": "active"
+    },
+    "kspace_style": {
+      "name": "kspace_style",
+      "type": "style",
+      "default": null,
+      "category": "potential",
+      "description": "Define a long-range solver for Coulomb or dispersion interactions. Required when using pair styles with long-range components (e.g., coul/long).",
+      "see_also": ["kspace_modify", "pair_style"],
+      "status": "active"
+    },
+    "kspace_modify": {
+      "name": "kspace_modify",
+      "type": "command",
+      "default": null,
+      "category": "potential",
+      "description": "Modify parameters of the long-range kspace solver. Controls mesh size, order, slab correction, and other solver-specific settings.",
+      "see_also": ["kspace_style"],
+      "status": "active"
+    },
+    "special_bonds": {
+      "name": "special_bonds",
+      "type": "command",
+      "default": "0.0 0.0 0.0",
+      "category": "potential",
+      "description": "Set weighting factors for 1-2, 1-3, and 1-4 pairwise interactions. Controls how bonded atoms interact via pair potentials.",
+      "see_also": ["pair_style", "bond_style"],
+      "status": "active"
+    },
+    "neighbor": {
+      "name": "neighbor",
+      "type": "command",
+      "default": "0.3 bin",
+      "category": "neighbor",
+      "description": "Set parameters that affect the building of pairwise neighbor lists. Controls the skin distance and binning style.",
+      "see_also": ["neigh_modify", "pair_style"],
+      "status": "active"
+    },
+    "neigh_modify": {
+      "name": "neigh_modify",
+      "type": "command",
+      "default": null,
+      "category": "neighbor",
+      "description": "Modify parameters of the neighbor list build process. Controls rebuild frequency, delay, communication settings, and exclusions.",
+      "see_also": ["neighbor"],
+      "status": "active"
+    },
+    "fix": {
+      "name": "fix",
+      "type": "style",
+      "default": null,
+      "category": "fix",
+      "description": "Apply a fix to the simulation. Fixes perform operations during timestepping: time integration, constraints, force modifications, diagnostics, and more. Each fix has a unique ID and applies to a group of atoms.",
+      "see_also": ["unfix", "fix_modify"],
+      "status": "active"
+    },
+    "unfix": {
+      "name": "unfix",
+      "type": "command",
+      "default": null,
+      "category": "fix",
+      "description": "Remove a previously defined fix from the simulation.",
+      "see_also": ["fix"],
+      "status": "active"
+    },
+    "fix_modify": {
+      "name": "fix_modify",
+      "type": "command",
+      "default": null,
+      "category": "fix",
+      "description": "Modify parameters of a previously defined fix. Can change energy/virial contributions, temperature/pressure compute IDs, and other fix-specific settings.",
+      "see_also": ["fix", "unfix"],
+      "status": "active"
+    },
+    "compute": {
+      "name": "compute",
+      "type": "style",
+      "default": null,
+      "category": "compute",
+      "description": "Define a computation that will be performed on atoms or the system. Computes do not produce output directly; use thermo_style, dump, or fix ave/time to access computed values.",
+      "see_also": ["uncompute", "compute_modify", "thermo_style"],
+      "status": "active"
+    },
+    "uncompute": {
+      "name": "uncompute",
+      "type": "command",
+      "default": null,
+      "category": "compute",
+      "description": "Remove a previously defined compute from the simulation.",
+      "see_also": ["compute"],
+      "status": "active"
+    },
+    "compute_modify": {
+      "name": "compute_modify",
+      "type": "command",
+      "default": null,
+      "category": "compute",
+      "description": "Modify parameters of a previously defined compute. Can change the dynamic flag or extra/dof settings.",
+      "see_also": ["compute", "uncompute"],
+      "status": "active"
+    },
+    "thermo": {
+      "name": "thermo",
+      "type": "command",
+      "default": "0",
+      "category": "output",
+      "description": "Set the frequency (in timesteps) for printing thermodynamic output to the screen and log file.",
+      "see_also": ["thermo_style", "thermo_modify"],
+      "status": "active"
+    },
+    "thermo_style": {
+      "name": "thermo_style",
+      "type": "command",
+      "default": "one",
+      "category": "output",
+      "description": "Set the style and content of thermodynamic output. Custom style allows choosing specific quantities (step, temp, pe, ke, etotal, press, vol, density, etc.).",
+      "see_also": ["thermo", "thermo_modify"],
+      "status": "active"
+    },
+    "thermo_modify": {
+      "name": "thermo_modify",
+      "type": "command",
+      "default": null,
+      "category": "output",
+      "description": "Modify thermo output settings: temperature/pressure compute IDs, lost atom behavior, output format, and flushing.",
+      "see_also": ["thermo", "thermo_style"],
+      "status": "active"
+    },
+    "dump": {
+      "name": "dump",
+      "type": "command",
+      "default": null,
+      "category": "output",
+      "description": "Define a dump command to write atom snapshots to a file periodically during a simulation. Supports multiple output formats.",
+      "see_also": ["dump_modify", "undump", "write_dump"],
+      "status": "active"
+    },
+    "dump_modify": {
+      "name": "dump_modify",
+      "type": "command",
+      "default": null,
+      "category": "output",
+      "description": "Modify parameters of a previously defined dump command. Controls element names, sorting, file format details, thresholds, and more.",
+      "see_also": ["dump", "undump"],
+      "status": "active"
+    },
+    "undump": {
+      "name": "undump",
+      "type": "command",
+      "default": null,
+      "category": "output",
+      "description": "Delete a previously defined dump command so that it no longer produces output.",
+      "see_also": ["dump", "dump_modify"],
+      "status": "active"
+    },
+    "restart": {
+      "name": "restart",
+      "type": "command",
+      "default": "0",
+      "category": "output",
+      "description": "Write periodic restart files during a simulation. Alternates between two filenames for safety.",
+      "see_also": ["write_restart", "read_restart"],
+      "status": "active"
+    },
+    "velocity": {
+      "name": "velocity",
+      "type": "command",
+      "default": null,
+      "category": "atom_manipulation",
+      "description": "Set or modify velocities of atoms. Can create initial velocities from a temperature distribution, set explicit values, or ramp velocities.",
+      "see_also": ["fix", "run"],
+      "status": "active"
+    },
+    "set": {
+      "name": "set",
+      "type": "command",
+      "default": null,
+      "category": "atom_manipulation",
+      "description": "Set per-atom properties for atoms matching a selection criterion. Can set type, charge, position, velocity, image flags, and more.",
+      "see_also": ["create_atoms", "group"],
+      "status": "active"
+    },
+    "group": {
+      "name": "group",
+      "type": "command",
+      "default": null,
+      "category": "group",
+      "description": "Define a named group of atoms based on type, region, ID, molecule, or Boolean operations. Groups are used by fix, compute, dump, and other commands.",
+      "see_also": ["fix", "compute", "dump"],
+      "status": "active"
+    },
+    "delete_atoms": {
+      "name": "delete_atoms",
+      "type": "command",
+      "default": null,
+      "category": "atom_manipulation",
+      "description": "Delete atoms from the simulation based on group, region, overlap distance, or random selection.",
+      "see_also": ["create_atoms", "group", "region"],
+      "status": "active"
+    },
+    "delete_bonds": {
+      "name": "delete_bonds",
+      "type": "command",
+      "default": null,
+      "category": "atom_manipulation",
+      "description": "Delete bonds (and optionally angles, dihedrals, impropers) based on type, group membership, or other criteria.",
+      "see_also": ["bond_style", "special_bonds"],
+      "status": "active"
+    },
+    "displace_atoms": {
+      "name": "displace_atoms",
+      "type": "command",
+      "default": null,
+      "category": "atom_manipulation",
+      "description": "Displace a group of atoms by a fixed vector, random amount, or via rotation.",
+      "see_also": ["set", "change_box", "velocity"],
+      "status": "active"
+    },
+    "change_box": {
+      "name": "change_box",
+      "type": "command",
+      "default": null,
+      "category": "atom_manipulation",
+      "description": "Change the simulation box dimensions or shape and remap atoms accordingly.",
+      "see_also": ["boundary", "fix"],
+      "status": "active"
+    },
+    "reset_atoms": {
+      "name": "reset_atoms",
+      "type": "command",
+      "default": null,
+      "category": "atom_manipulation",
+      "description": "Reset atom IDs to be contiguous (1 to N) after atoms have been deleted.",
+      "see_also": ["delete_atoms", "create_atoms"],
+      "status": "active"
+    },
+    "atom_modify": {
+      "name": "atom_modify",
+      "type": "command",
+      "default": null,
+      "category": "atom_manipulation",
+      "description": "Modify properties of the atom style before the simulation box is created. Controls atom ID assignment, sorting, and mapping.",
+      "see_also": ["atom_style", "read_data"],
+      "status": "active"
+    },
+    "variable": {
+      "name": "variable",
+      "type": "command",
+      "default": null,
+      "category": "variable",
+      "description": "Define a variable for use in other commands. Variables can be simple strings, loops, mathematical expressions, per-atom formulas, or references to external files and Python functions.",
+      "see_also": ["next", "if", "print"],
+      "status": "active"
+    },
+    "run": {
+      "name": "run",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Run the simulation for N timesteps. Invokes the time integrator (fix nve/nvt/npt) and all other fixes/computes/dumps.",
+      "see_also": ["fix", "minimize", "timestep"],
+      "status": "active"
+    },
+    "minimize": {
+      "name": "minimize",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Perform an energy minimization of the system using the current min_style algorithm. Iterates until convergence criteria are met.",
+      "see_also": ["min_style", "min_modify", "fix"],
+      "status": "active"
+    },
+    "min_style": {
+      "name": "min_style",
+      "type": "command",
+      "default": "cg",
+      "category": "run_control",
+      "description": "Set the minimization algorithm used by the minimize command.",
+      "see_also": ["minimize", "min_modify"],
+      "status": "active"
+    },
+    "min_modify": {
+      "name": "min_modify",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Modify parameters of the minimization algorithm (line search parameters, convergence settings).",
+      "see_also": ["minimize", "min_style"],
+      "status": "active"
+    },
+    "neb": {
+      "name": "neb",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Perform a nudged elastic band (NEB) calculation to find the minimum energy pathway between an initial and final state.",
+      "see_also": ["fix", "minimize"],
+      "status": "active"
+    },
+    "prd": {
+      "name": "prd",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Perform a parallel replica dynamics (PRD) simulation for accelerating rare event detection across multiple replicas.",
+      "see_also": ["tad", "temper", "hyper"],
+      "status": "active"
+    },
+    "tad": {
+      "name": "tad",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Perform a temperature accelerated dynamics (TAD) simulation to accelerate rare events by running at elevated temperature.",
+      "see_also": ["prd", "neb", "hyper"],
+      "status": "active"
+    },
+    "hyper": {
+      "name": "hyper",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Perform a hyperdynamics simulation to accelerate rare events using a bias potential.",
+      "see_also": ["prd", "tad", "fix"],
+      "status": "active"
+    },
+    "temper": {
+      "name": "temper",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Perform a parallel tempering (replica exchange) simulation. Requires running LAMMPS with multiple partitions.",
+      "see_also": ["prd", "fix"],
+      "status": "active"
+    },
+    "rerun": {
+      "name": "rerun",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Re-process snapshots from a dump file, computing forces/energies for each snapshot without time integration. Useful for post-processing.",
+      "see_also": ["read_dump", "dump"],
+      "status": "active"
+    },
+    "timestep": {
+      "name": "timestep",
+      "type": "setting",
+      "default": null,
+      "category": "run_control",
+      "description": "Set the timestep size for subsequent MD runs. Units depend on the units command setting.",
+      "see_also": ["run", "units", "reset_timestep"],
+      "status": "active"
+    },
+    "reset_timestep": {
+      "name": "reset_timestep",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Reset the current timestep counter to a specified value. Useful after equilibration or when restarting.",
+      "see_also": ["timestep", "run"],
+      "status": "active"
+    },
+    "clear": {
+      "name": "clear",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Delete all atoms, restore all settings to their default values, and prepare for a new simulation. Equivalent to starting a fresh LAMMPS instance.",
+      "see_also": [],
+      "status": "active"
+    },
+    "label": {
+      "name": "label",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Define a label that can be jumped to with the jump command. Used for scripting control flow.",
+      "see_also": ["jump", "next", "if"],
+      "status": "active"
+    },
+    "jump": {
+      "name": "jump",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Jump to a label in the current input script or to a different input script file. Used for looping and conditional execution.",
+      "see_also": ["label", "next", "if", "variable"],
+      "status": "active"
+    },
+    "next": {
+      "name": "next",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Advance one or more variables to their next value (for index, loop, file, universe, uloop styles). Used in loops.",
+      "see_also": ["variable", "jump", "label"],
+      "status": "active"
+    },
+    "if": {
+      "name": "if",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Conditionally execute one or more LAMMPS commands based on a Boolean expression. Supports then/elif/else clauses.",
+      "see_also": ["variable", "jump", "label"],
+      "status": "active"
+    },
+    "print": {
+      "name": "print",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Print a string to the screen and/or log file immediately. Can include variable substitutions and be appended to a file.",
+      "see_also": ["variable", "log", "echo"],
+      "status": "active"
+    },
+    "log": {
+      "name": "log",
+      "type": "command",
+      "default": "log.lammps",
+      "category": "run_control",
+      "description": "Switch the log file where thermodynamic output is written. Can also turn off logging.",
+      "see_also": ["thermo", "print", "echo"],
+      "status": "active"
+    },
+    "echo": {
+      "name": "echo",
+      "type": "command",
+      "default": "log",
+      "category": "run_control",
+      "description": "Control whether input script commands are echoed to the screen and/or log file as they are read.",
+      "see_also": ["log", "print"],
+      "status": "active"
+    },
+    "info": {
+      "name": "info",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Print information about the current LAMMPS setup: system, communication, computes, dumps, fixes, groups, regions, variables, etc.",
+      "see_also": ["print", "thermo_style"],
+      "status": "active"
+    },
+    "timer": {
+      "name": "timer",
+      "type": "command",
+      "default": "normal",
+      "category": "run_control",
+      "description": "Control the granularity and format of LAMMPS timing information output at end of run.",
+      "see_also": ["run", "info"],
+      "status": "active"
+    },
+    "shell": {
+      "name": "shell",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Execute a shell command from within a LAMMPS input script. Can run external programs, create directories, etc.",
+      "see_also": ["python", "include"],
+      "status": "active"
+    },
+    "python": {
+      "name": "python",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Define a Python function that can be called from a LAMMPS input script via the variable python style or as a direct invocation.",
+      "see_also": ["variable", "shell"],
+      "status": "active"
+    },
+    "balance": {
+      "name": "balance",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Perform a one-time static load balance of atoms across processors. Adjusts sub-domain boundaries to equalize atom counts or computational cost.",
+      "see_also": ["processors", "comm_style", "fix"],
+      "status": "active"
+    },
+    "partition": {
+      "name": "partition",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Execute a command on a subset of partitions when LAMMPS is running with multiple partitions (e.g., for replica exchange or NEB).",
+      "see_also": ["temper", "neb", "prd"],
+      "status": "active"
+    },
+    "suffix": {
+      "name": "suffix",
+      "type": "command",
+      "default": "off",
+      "category": "setup",
+      "description": "Enable use of accelerated styles by appending a suffix (gpu, intel, kk, omp, opt) to style names.",
+      "see_also": ["package"],
+      "status": "active"
+    },
+    "package": {
+      "name": "package",
+      "type": "command",
+      "default": null,
+      "category": "setup",
+      "description": "Configure settings for an accelerator package (gpu, intel, kokkos, omp, opt). Controls number of threads, GPUs, etc.",
+      "see_also": ["suffix"],
+      "status": "active"
+    },
+    "molecule": {
+      "name": "molecule",
+      "type": "command",
+      "default": null,
+      "category": "lattice_geometry",
+      "description": "Define a molecule template from a file. Used by create_atoms, fix deposit, fix pour, fix gcmc, and other commands to insert molecules.",
+      "see_also": ["create_atoms", "fix", "read_data"],
+      "status": "active"
+    },
+    "labelmap": {
+      "name": "labelmap",
+      "type": "command",
+      "default": null,
+      "category": "setup",
+      "description": "Define a mapping between numeric type IDs and string labels for atom, bond, angle, dihedral, and improper types.",
+      "see_also": ["atom_style", "read_data"],
+      "status": "active"
+    },
+    "run_style": {
+      "name": "run_style",
+      "type": "command",
+      "default": "verlet",
+      "category": "run_control",
+      "description": "Set the style of time integrator used for MD runs. Options include Verlet and respa (rRESPA multi-timescale).",
+      "see_also": ["run", "fix"],
+      "status": "active"
+    },
+    "dielectric": {
+      "name": "dielectric",
+      "type": "setting",
+      "default": "1.0",
+      "category": "potential",
+      "description": "Set the dielectric constant for Coulomb interactions. All Coulomb pair styles multiply the energy and force by this factor.",
+      "see_also": ["pair_style", "kspace_style"],
+      "status": "active"
+    },
+    "box": {
+      "name": "box",
+      "type": "command",
+      "default": null,
+      "category": "lattice_geometry",
+      "description": "Set attributes of the simulation box. Currently controls the tilt limit for triclinic boxes.",
+      "see_also": ["boundary", "change_box", "create_box"],
+      "status": "active"
+    },
+    "create_bonds": {
+      "name": "create_bonds",
+      "type": "command",
+      "default": null,
+      "category": "atom_manipulation",
+      "description": "Create bonds between atom pairs based on distance criteria or explicit atom ID pairs. Can also create single bonds, angles, dihedrals.",
+      "see_also": ["delete_bonds", "bond_style"],
+      "status": "active"
+    },
+    "minimize/kk": {
+      "name": "minimize/kk",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Kokkos-accelerated version of the minimize command for energy minimization.",
+      "see_also": ["minimize", "suffix"],
+      "status": "active"
+    },
+    "neb/spin": {
+      "name": "neb/spin",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Perform a nudged elastic band (NEB) calculation for spin systems to find the minimum energy pathway between spin configurations.",
+      "see_also": ["neb", "fix"],
+      "status": "active"
+    },
+    "temper/npt": {
+      "name": "temper/npt",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Perform parallel tempering (replica exchange) with NPT ensemble. Swaps both temperature and pressure between replicas.",
+      "see_also": ["temper", "fix"],
+      "status": "active"
+    },
+    "temper/grem": {
+      "name": "temper/grem",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Perform generalized replica exchange method (gREM) simulation for enhanced sampling of complex free-energy landscapes.",
+      "see_also": ["temper", "fix"],
+      "status": "active"
+    },
+    "fitpod": {
+      "name": "fitpod",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Fit a Proper Orthogonal Decomposition (POD) machine learning interatomic potential to training data within LAMMPS.",
+      "see_also": ["pair_style"],
+      "status": "active"
+    },
+    "third_order": {
+      "name": "third_order",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Compute the third-order force constants (anharmonic) using finite differences. Used for phonon-phonon scattering calculations.",
+      "see_also": ["dynamical_matrix"],
+      "status": "active"
+    },
+    "dynamical_matrix": {
+      "name": "dynamical_matrix",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Compute the dynamical matrix (second-order force constants) of the system using finite differences. Used for phonon calculations.",
+      "see_also": ["third_order", "minimize"],
+      "status": "active"
+    },
+    "kim": {
+      "name": "kim",
+      "type": "command",
+      "default": null,
+      "category": "potential",
+      "description": "Interface to the KIM (Knowledgebase of Interatomic Models) API. Allows use of any KIM-compliant interatomic potential model.",
+      "see_also": ["pair_style"],
+      "status": "active"
+    },
+    "mdi": {
+      "name": "mdi",
+      "type": "command",
+      "default": null,
+      "category": "setup",
+      "description": "Configure the MolSSI Driver Interface (MDI) for coupling LAMMPS to external codes as a driver or engine.",
+      "see_also": ["fix"],
+      "status": "active"
+    },
+    "plugin": {
+      "name": "plugin",
+      "type": "command",
+      "default": null,
+      "category": "setup",
+      "description": "Load or query LAMMPS style plugins from shared libraries at runtime.",
+      "see_also": ["suffix", "package"],
+      "status": "active"
+    },
+    "message": {
+      "name": "message",
+      "type": "command",
+      "default": null,
+      "category": "setup",
+      "description": "Setup messaging for client/server coupling between LAMMPS and another code using CSlib.",
+      "see_also": ["server", "fix"],
+      "status": "active"
+    },
+    "server": {
+      "name": "server",
+      "type": "command",
+      "default": null,
+      "category": "run_control",
+      "description": "Operate LAMMPS in server mode, listening for commands from a client program via the CSlib messaging library.",
+      "see_also": ["message"],
+      "status": "active"
+    },
+    "angle_write": {
+      "name": "angle_write",
+      "type": "command",
+      "default": null,
+      "category": "bonded_interaction",
+      "description": "Write a table of the currently defined angle energy and force as a function of angle to a file.",
+      "see_also": ["angle_style", "angle_coeff"],
+      "status": "active"
+    },
+    "dihedral_write": {
+      "name": "dihedral_write",
+      "type": "command",
+      "default": null,
+      "category": "bonded_interaction",
+      "description": "Write a table of the currently defined dihedral energy and torque as a function of dihedral angle to a file.",
+      "see_also": ["dihedral_style", "dihedral_coeff"],
+      "status": "active"
+    },
+    "write_coeff": {
+      "name": "write_coeff",
+      "type": "command",
+      "default": null,
+      "category": "io",
+      "description": "Write the current force-field coefficients (pair, bond, angle, dihedral, improper) to a file in a format readable by read_data.",
+      "see_also": ["write_data", "pair_coeff", "bond_coeff"],
+      "status": "active"
+    },
+    "reset_mol_ids": {
+      "name": "reset_mol_ids",
+      "type": "command",
+      "default": null,
+      "category": "atom_manipulation",
+      "description": "Reset molecule IDs for a group of atoms based on bond connectivity. Assigns contiguous molecule IDs from 1 to Nmols.",
+      "see_also": ["reset_atoms", "set"],
+      "status": "active"
+    },
+    "group2ndx": {
+      "name": "group2ndx",
+      "type": "command",
+      "default": null,
+      "category": "group",
+      "description": "Write a GROMACS-style index file (.ndx) for the currently defined groups. Useful for cross-code analysis workflows.",
+      "see_also": ["group", "ndx2group"],
+      "status": "active"
+    },
+    "ndx2group": {
+      "name": "ndx2group",
+      "type": "command",
+      "default": null,
+      "category": "group",
+      "description": "Read a GROMACS-style index file (.ndx) and create LAMMPS groups from the index entries.",
+      "see_also": ["group", "group2ndx"],
+      "status": "active"
+    }
+  }
+}

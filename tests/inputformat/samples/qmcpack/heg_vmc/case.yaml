@@ -1,0 +1,6 @@
+case_id: heg_vmc
+title: "Homogeneous electron gas VMC"
+engine: qmcpack
+workflow_tags: [vmc, periodic, electron-gas, no-ions]
+species: []
+description: "14-electron homogeneous electron gas (jellium) at rs=5. Free-particle sposet, Bspline Jastrow, PBC. No ion particleset — electron-only system."

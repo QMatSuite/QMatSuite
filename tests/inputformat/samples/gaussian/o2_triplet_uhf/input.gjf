@@ -1,0 +1,11 @@
+%mem=500MB
+%nproc=1
+%chk=o2_triplet.chk
+#p UHF/6-31G*
+
+O2 triplet ground state (open-shell)
+
+0 3
+O    0.000000    0.000000    0.607500
+O    0.000000    0.000000   -0.607500
+

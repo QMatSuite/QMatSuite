@@ -168,3 +168,100 @@ Created `lih_qe_workflow` normalized case (14th case):
 3. **Ion position diversity**: QMCPACK uses both flat (with ionid) and grouped position formats; parser must handle both
 4. **condition="1" means fractional**: Position attrib with condition="1" uses lattice coordinates
 5. **QE→QMCPACK pipeline is fast**: LiH solid complete workflow under 2 seconds total
+
+---
+
+## 2026-02-07 — Playbook Compliance Audit & Remediation
+
+### Audit Against B1_ENGINE_PLAYBOOK.md
+
+Systematic audit identified 6 compliance gaps relative to the final playbook spec:
+
+| Gap | Playbook Requirement | Status Before |
+|-----|---------------------|---------------|
+| G1 | `data/` directory with 50+ tags JSON | MISSING |
+| G2 | `data/<engine>_metadata.py` access layer | MISSING |
+| G3 | Parser/writer in `io/` module, not inline | MISSING (inline in inputspec.py) |
+| G4 | 8+ curated samples in subdirectories with `case.yaml` | 5 flat XML files |
+| G5 | `CURATED_INDEX.md` with diversity rationale | MISSING |
+| G6 | `CORPUS_INDEX.json` in `.tmp/engine_research/` | Already existed |
+
+### Fix G1: data/qmcpack_tags.json — DONE
+
+- Created `src/quantumvitas/drivers/qmcpack/data/__init__.py`
+- Created `src/quantumvitas/drivers/qmcpack/data/qmcpack_tags.json`
+  - 65 tags across 11 categories: cell, control, dmc, estimator, hamiltonian, optimization, particles, project, qmc, vmc, wavefunction
+  - Schema version 1, engine "qmcpack"
+  - Exceeds 50-tag minimum for specialized engines
+
+### Fix G2: data/qmcpack_metadata.py — DONE
+
+- Created `src/quantumvitas/drivers/qmcpack/data/qmcpack_metadata.py` (261 lines)
+- Full API: safe_load_metadata, reload_metadata, get_tag_info (case-insensitive), list_tags, list_categories, validate_params, get_tag_type, get_tag_default, get_metadata_file_info
+- Module-level cache with optional hot-reload via `QV_QMCPACK_METADATA_HOT_RELOAD=1`
+- Uses `importlib.resources`, stdlib only
+
+### Fix G3: io/qmcpack_xml.py — DONE
+
+- Created `src/quantumvitas/drivers/qmcpack/io/__init__.py`
+- Created `src/quantumvitas/drivers/qmcpack/io/qmcpack_xml.py` (550+ lines)
+  - Moved ALL parse/write functions from inputspec.py
+  - Public: `parse_qmcpack_text`, `write_qmcpack_text`
+  - Helpers: `_parse_pos_array`, `_parse_lattice_text`, `_parse_string_array`, `_find_ion_particleset`, `_parse_ion_particleset`, `_parse_qmc_block`, `_extract_resource_refs`
+- Rewrote `inputspec.py` to 59-line wiring module (imports from io.qmcpack_xml)
+
+### Fix G4: Curated samples restructured — DONE
+
+- Deleted 5 flat XML files
+- Created 8 subdirectories, each with `qmc_input.xml` + `case.yaml`
+- 3 new cases promoted from normalized corpus: he_dmc, be_sto_vmc, lih_qe_workflow
+
+| Case ID | Type | Boundary | Special Features |
+|---------|------|----------|------------------|
+| he_vmc_sto | VMC | Open | Simplest, STO basis |
+| h2_ae_vmc | VMC | Open | Gaussian LCAO, J1+J2 |
+| lih_solid_vmc_pp | VMC+DMC | PBC | Einspline, PPs, 2 QMC blocks |
+| he_opt_pade | Opt+VMC | Open | Loop wrapper, linear method |
+| heg_vmc | VMC | PBC | Electron gas, no ions |
+| he_dmc | VMC+DMC | Open | DMC chain, pbyp moves |
+| be_sto_vmc | VMC | Open | STO Bunge basis, sposet_collection |
+| lih_qe_workflow | VMC | PBC | QE→QMCPACK composite (§1.12 W1) |
+
+### Fix G5: CURATED_INDEX.md — DONE
+
+- Created `docs/engines/qmcpack/CURATED_INDEX.md` (161 lines)
+- Diversity rationale: 4 QMC methods, 4 wavefunction types, 3 Jastrow forms, PBC + open, 5 system types
+- Parser coverage matrix: 25+ features mapped to cases
+- Validation status table
+
+### Fix G6: CORPUS_INDEX.json — Already existed
+
+- Updated `.tmp/engine_research/qmcpack/CORPUS_INDEX.json` (9 entries, comprehensive)
+
+### Tests Updated — DONE
+
+- Updated `_read_sample()` to use subdirectory paths (`name / "qmc_input.xml"`)
+- All call sites updated (no `.xml` extensions)
+- Added 3 new parser test classes: TestParseHeDmc (6 tests), TestParseBeStoVmc (7 tests), TestParseLihQeWorkflow (7 tests)
+- Added TestQMCPACKMetadata class (12 tests): load, lookup, case-insensitive, categories, validation
+- **Total QMCPACK tests**: 123 (parse + digest), all passing
+
+### Final Compliance Status: COMPLETE
+
+All 15 Definition of Done items from B1_ENGINE_PLAYBOOK.md §Phase 8 are satisfied:
+
+1. ✅ Full pytest green
+2. ✅ Parameter metadata catalog: 65 tags (min 50)
+3. ✅ Metadata access layer: all 8 functions
+4. ✅ 8 curated cases, 100% parse + roundtrip
+5. ✅ Writer extracted to io/qmcpack_xml.py
+6. ✅ Output parser: QMCPACKDigest (14 fields)
+7. ✅ Parser registered: @register_parser("qmcpack", "scf_digest")
+8. ✅ Resource staging: wavefunction + pseudopotentials
+9. ✅ No kernel/API changes
+10. ✅ inputformat/ untouched
+11. ✅ PHASE_B1_PLAN.md exists
+12. ✅ PHASE_B1_WORKLOG.md complete (this file)
+13. ✅ SOURCES.md exists
+14. ✅ .tmp/engine_research/qmcpack/ has corpus
+15. ✅ CURATED_INDEX.md exists

@@ -1,0 +1,6 @@
+case_id: he_opt_pade
+title: "He atom Jastrow optimization with linear method"
+engine: qmcpack
+workflow_tags: [optimization, vmc, all-electron, atom, loop]
+species: [He]
+description: "He atom wavefunction optimization using linear method with loop wrapper. Pade Jastrow B parameter optimized over 4 iterations, followed by final VMC evaluation."
