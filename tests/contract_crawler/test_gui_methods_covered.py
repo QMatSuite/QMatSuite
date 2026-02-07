@@ -106,11 +106,9 @@ def test_gui_methods_covered_soft():
         missing_methods.append(method_name)
     
     if missing_methods:
-        # Use xfail to show the issue without failing the test suite
         missing_list = ', '.join(sorted(missing_methods)[:10])
         if len(missing_methods) > 10:
             missing_list += f" ... and {len(missing_methods) - 10} more"
-        pytest.xfail(
+        pytest.skip(
             f"GUI methods missing coverage ({len(missing_methods)}): {missing_list}"
         )
-

@@ -1,0 +1,1 @@
+"""Yambo metadata package."""

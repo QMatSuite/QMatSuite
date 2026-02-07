@@ -1,0 +1,6 @@
+$md
+   temp=300
+   time=0.02
+   step=1.0
+   dump=5.0
+$end

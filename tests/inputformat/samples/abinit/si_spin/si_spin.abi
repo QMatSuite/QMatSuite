@@ -1,0 +1,42 @@
+# Silicon spin-polarized — ferromagnetic test
+# 2-atom diamond Si with artificial ferromagnetic initialization
+
+# System definition
+acell 3*10.26311  # Bohr
+rprim
+  0.0  0.5  0.5
+  0.5  0.0  0.5
+  0.5  0.5  0.0
+ntypat 1
+znucl 14
+natom 2
+typat 1 1
+xred
+  0.00  0.00  0.00
+  0.25  0.25  0.25
+
+# Plane-wave basis
+ecut 10
+
+# Spin-polarized settings
+nsppol 2
+spinat
+  0.0  0.0  1.0
+  0.0  0.0  1.0
+
+# Metallic occupation for spin convergence
+occopt 7
+tsmear 0.01
+
+# K-point grid
+ngkpt 4 4 4
+nshiftk 1
+shiftk 0.5 0.5 0.5
+
+# SCF convergence
+nstep 50
+toldfe 1.0d-8
+
+# Pseudopotentials
+pp_dirpath "./pseudos"
+pseudos "Si.psp8"

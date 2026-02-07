@@ -1,0 +1,40 @@
+# Aluminum SCF — metal with smearing
+# 1-atom Al in FCC conventional primitive cell
+
+# System definition
+acell 3*7.60  # Bohr
+rprim
+  0.0  0.5  0.5
+  0.5  0.0  0.5
+  0.5  0.5  0.0
+ntypat 1
+znucl 13
+natom 1
+typat 1
+xred
+  0.00  0.00  0.00
+
+# Plane-wave basis
+ecut 10
+
+# Metallic occupation
+occopt 7       # Gaussian smearing
+tsmear 0.04    # Ha
+nband 8
+
+# K-point grid (dense for metal)
+ngkpt 8 8 8
+nshiftk 4
+shiftk
+  0.5  0.5  0.5
+  0.5  0.0  0.0
+  0.0  0.5  0.0
+  0.0  0.0  0.5
+
+# SCF convergence
+nstep 30
+toldfe 1.0d-8
+
+# Pseudopotentials
+pp_dirpath "./pseudos"
+pseudos "Al.psp8"

@@ -1,0 +1,6 @@
+case_id: water_solvation_alpb
+title: "Water ALPB solvation"
+engine: xtb
+workflow_tags: [singlepoint, solvation, alpb]
+species: [O, H]
+description: "Implicit solvent workflow with ALPB model."

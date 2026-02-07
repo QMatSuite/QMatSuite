@@ -1,0 +1,6 @@
+case_id: si_bands
+title: "Silicon band structure"
+engine: abinit
+workflow_tags: [bands, multi_dataset]
+species: [Si]
+description: "Two-dataset calculation for silicon band structure: SCF on uniform grid followed by NSCF along L-Gamma-X-K-Gamma high-symmetry path."

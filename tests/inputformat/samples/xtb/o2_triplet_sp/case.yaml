@@ -1,0 +1,6 @@
+case_id: o2_triplet_sp
+title: "O2 triplet single-point"
+engine: xtb
+workflow_tags: [singlepoint, open_shell, uhf]
+species: [O]
+description: "Open-shell single-point using unpaired electrons."

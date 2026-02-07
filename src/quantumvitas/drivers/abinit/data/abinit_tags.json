@@ -1,0 +1,2249 @@
+{
+  "schema_version": 1,
+  "engine": "abinit",
+  "engine_version": "10.4.7",
+  "doc_url": "https://docs.abinit.org/variables/",
+  "tags": {
+    "ecut": {
+      "name": "ecut",
+      "type": "real",
+      "default": null,
+      "category": "basic",
+      "description": "Kinetic energy cutoff controlling the number of planewaves at each k-point (Hartree).",
+      "see_also": ["ecutsm", "pawecutdg"],
+      "status": "active"
+    },
+    "ecutsm": {
+      "name": "ecutsm",
+      "type": "real",
+      "default": "0.0",
+      "category": "basic",
+      "description": "Smearing energy for the kinetic energy cutoff, needed for cell optimization to ensure smooth energy derivatives.",
+      "see_also": ["ecut", "optcell", "dilatmx"],
+      "status": "active"
+    },
+    "nstep": {
+      "name": "nstep",
+      "type": "integer",
+      "default": "30",
+      "category": "basic",
+      "description": "Maximum number of SCF iteration steps.",
+      "see_also": ["toldfe", "tolvrs"],
+      "status": "active"
+    },
+    "nband": {
+      "name": "nband",
+      "type": "integer",
+      "default": null,
+      "category": "basic",
+      "description": "Number of bands to compute at each k-point.",
+      "see_also": ["occopt", "nbdbuf"],
+      "status": "active"
+    },
+    "occopt": {
+      "name": "occopt",
+      "type": "integer",
+      "default": "1",
+      "category": "basic",
+      "description": "Occupation option controlling how bands are populated (1=insulator, 3-7=metals with smearing).",
+      "see_also": ["tsmear", "nband"],
+      "status": "active"
+    },
+    "tsmear": {
+      "name": "tsmear",
+      "type": "real",
+      "default": "0.01",
+      "category": "basic",
+      "description": "Smearing width for metallic occupation schemes in Hartree.",
+      "see_also": ["occopt"],
+      "status": "active"
+    },
+    "ixc": {
+      "name": "ixc",
+      "type": "integer",
+      "default": "1",
+      "category": "exchange_correlation",
+      "description": "Index of the exchange-correlation functional (1=Teter-Pade LDA, 11=PBE GGA, etc.).",
+      "see_also": ["xc_denpos", "usekden"],
+      "status": "active"
+    },
+    "iscf": {
+      "name": "iscf",
+      "type": "integer",
+      "default": "7",
+      "category": "basic",
+      "description": "Controls the self-consistency algorithm (7=Pulay mixing, 17=PAW Pulay, -2=non-SCF).",
+      "see_also": ["diemac", "diemix", "nstep"],
+      "status": "active"
+    },
+    "accuracy": {
+      "name": "accuracy",
+      "type": "integer",
+      "default": "0",
+      "category": "basic",
+      "description": "Allows tuning of calculation accuracy by automatically setting related variables (1-6 scale).",
+      "see_also": ["ecut", "ngkpt"],
+      "status": "active"
+    },
+    "charge": {
+      "name": "charge",
+      "type": "real",
+      "default": "0.0",
+      "category": "basic",
+      "description": "Total charge of the cell, for charged systems or defect calculations.",
+      "see_also": ["cellcharge"],
+      "status": "active"
+    },
+    "cellcharge": {
+      "name": "cellcharge",
+      "type": "real",
+      "default": "0.0",
+      "category": "basic",
+      "description": "Target cell charge (synonym for charge in newer ABINIT).",
+      "see_also": ["charge"],
+      "status": "active"
+    },
+    "enunit": {
+      "name": "enunit",
+      "type": "integer",
+      "default": "0",
+      "category": "basic",
+      "description": "Energy unit for eigenvalue output (0=Hartree, 1=eV, 2=both).",
+      "see_also": [],
+      "status": "active"
+    },
+    "acell": {
+      "name": "acell",
+      "type": "array_real",
+      "default": "3*1.0",
+      "category": "structure",
+      "description": "Length scales by which dimensionless primitive translations (rprim) are multiplied.",
+      "see_also": ["rprim", "angdeg"],
+      "status": "active"
+    },
+    "rprim": {
+      "name": "rprim",
+      "type": "array_real",
+      "default": "identity matrix",
+      "category": "structure",
+      "description": "Dimensionless primitive translation vectors (3x3 matrix), scaled by acell.",
+      "see_also": ["acell", "angdeg"],
+      "status": "active"
+    },
+    "angdeg": {
+      "name": "angdeg",
+      "type": "array_real",
+      "default": null,
+      "category": "structure",
+      "description": "Angles between primitive vectors in degrees (alternative to rprim).",
+      "see_also": ["acell", "rprim"],
+      "status": "active"
+    },
+    "natom": {
+      "name": "natom",
+      "type": "integer",
+      "default": null,
+      "category": "structure",
+      "description": "Total number of atoms in the unit cell.",
+      "see_also": ["ntypat", "typat", "xred"],
+      "status": "active"
+    },
+    "ntypat": {
+      "name": "ntypat",
+      "type": "integer",
+      "default": null,
+      "category": "structure",
+      "description": "Number of distinct atom types in the unit cell.",
+      "see_also": ["natom", "znucl", "typat"],
+      "status": "active"
+    },
+    "typat": {
+      "name": "typat",
+      "type": "array_int",
+      "default": null,
+      "category": "structure",
+      "description": "Type index for each atom, referring to the ordering in znucl.",
+      "see_also": ["natom", "ntypat", "znucl"],
+      "status": "active"
+    },
+    "znucl": {
+      "name": "znucl",
+      "type": "array_real",
+      "default": null,
+      "category": "structure",
+      "description": "Nuclear charge (atomic number) for each atom type.",
+      "see_also": ["ntypat", "typat"],
+      "status": "active"
+    },
+    "xred": {
+      "name": "xred",
+      "type": "array_real",
+      "default": null,
+      "category": "structure",
+      "description": "Reduced (fractional) coordinates of atoms within the unit cell.",
+      "see_also": ["xcart", "xangst", "natom"],
+      "status": "active"
+    },
+    "xcart": {
+      "name": "xcart",
+      "type": "array_real",
+      "default": null,
+      "category": "structure",
+      "description": "Cartesian coordinates of atoms in Bohr.",
+      "see_also": ["xred", "xangst"],
+      "status": "active"
+    },
+    "xangst": {
+      "name": "xangst",
+      "type": "array_real",
+      "default": null,
+      "category": "structure",
+      "description": "Cartesian coordinates of atoms in Angstrom.",
+      "see_also": ["xred", "xcart"],
+      "status": "active"
+    },
+    "amu": {
+      "name": "amu",
+      "type": "array_real",
+      "default": "database values",
+      "category": "structure",
+      "description": "Atomic mass for each type of atom, in atomic mass units.",
+      "see_also": ["znucl", "ntypat"],
+      "status": "active"
+    },
+    "ngkpt": {
+      "name": "ngkpt",
+      "type": "array_int",
+      "default": null,
+      "category": "kpoints",
+      "description": "Number of k-point grid divisions along each reciprocal lattice vector.",
+      "see_also": ["kptopt", "nshiftk", "shiftk"],
+      "status": "active"
+    },
+    "kptopt": {
+      "name": "kptopt",
+      "type": "integer",
+      "default": "1",
+      "category": "kpoints",
+      "description": "Option for k-point generation (1=Monkhorst-Pack with time-reversal, 2=without, 3=no symmetry, negative=band structure).",
+      "see_also": ["ngkpt", "nshiftk", "shiftk", "kptbounds"],
+      "status": "active"
+    },
+    "nshiftk": {
+      "name": "nshiftk",
+      "type": "integer",
+      "default": "1",
+      "category": "kpoints",
+      "description": "Number of shifts for the k-point grid.",
+      "see_also": ["shiftk", "ngkpt"],
+      "status": "active"
+    },
+    "shiftk": {
+      "name": "shiftk",
+      "type": "array_real",
+      "default": "0.5 0.5 0.5",
+      "category": "kpoints",
+      "description": "Shifts for the k-point grid (fractional coordinates in reciprocal space).",
+      "see_also": ["nshiftk", "ngkpt"],
+      "status": "active"
+    },
+    "kptrlatt": {
+      "name": "kptrlatt",
+      "type": "array_int",
+      "default": null,
+      "category": "kpoints",
+      "description": "K-point lattice as a 3x3 integer matrix (alternative to ngkpt).",
+      "see_also": ["ngkpt", "kptopt"],
+      "status": "active"
+    },
+    "nkpt": {
+      "name": "nkpt",
+      "type": "integer",
+      "default": null,
+      "category": "kpoints",
+      "description": "Number of k-points in the calculation.",
+      "see_also": ["kpt", "wtk", "ngkpt"],
+      "status": "active"
+    },
+    "kpt": {
+      "name": "kpt",
+      "type": "array_real",
+      "default": null,
+      "category": "kpoints",
+      "description": "Explicit k-point coordinates in reduced (reciprocal) space.",
+      "see_also": ["nkpt", "wtk", "kptnrm"],
+      "status": "active"
+    },
+    "wtk": {
+      "name": "wtk",
+      "type": "array_real",
+      "default": null,
+      "category": "kpoints",
+      "description": "Weights of the k-points for Brillouin zone integration.",
+      "see_also": ["nkpt", "kpt"],
+      "status": "active"
+    },
+    "kptbounds": {
+      "name": "kptbounds",
+      "type": "array_real",
+      "default": null,
+      "category": "kpoints",
+      "description": "High-symmetry k-point boundaries for band structure paths.",
+      "see_also": ["ndivk", "ndivsm", "kptopt"],
+      "status": "active"
+    },
+    "ndivk": {
+      "name": "ndivk",
+      "type": "array_int",
+      "default": null,
+      "category": "kpoints",
+      "description": "Number of divisions for each segment of the band structure k-path.",
+      "see_also": ["kptbounds", "ndivsm"],
+      "status": "active"
+    },
+    "ndivsm": {
+      "name": "ndivsm",
+      "type": "integer",
+      "default": null,
+      "category": "kpoints",
+      "description": "Number of divisions for the smallest segment of the band structure k-path.",
+      "see_also": ["kptbounds", "ndivk"],
+      "status": "active"
+    },
+    "kptnrm": {
+      "name": "kptnrm",
+      "type": "real",
+      "default": "1.0",
+      "category": "kpoints",
+      "description": "Normalizing denominator for explicit k-point coordinates.",
+      "see_also": ["kpt"],
+      "status": "active"
+    },
+    "istwfk": {
+      "name": "istwfk",
+      "type": "array_int",
+      "default": "0",
+      "category": "kpoints",
+      "description": "Storage mode for wavefunctions at each k-point, exploiting time-reversal symmetry.",
+      "see_also": ["nkpt", "kpt"],
+      "status": "active"
+    },
+    "toldfe": {
+      "name": "toldfe",
+      "type": "real",
+      "default": "0.0",
+      "category": "scf",
+      "description": "Tolerance on the total energy difference for SCF convergence (Hartree).",
+      "see_also": ["tolvrs", "tolwfr", "nstep"],
+      "status": "active"
+    },
+    "tolvrs": {
+      "name": "tolvrs",
+      "type": "real",
+      "default": "0.0",
+      "category": "scf",
+      "description": "Tolerance on the residual of the SCF potential for convergence.",
+      "see_also": ["toldfe", "tolwfr"],
+      "status": "active"
+    },
+    "tolwfr": {
+      "name": "tolwfr",
+      "type": "real",
+      "default": "0.0",
+      "category": "scf",
+      "description": "Tolerance on the wavefunction residual for convergence (used in NSCF runs).",
+      "see_also": ["toldfe", "tolvrs"],
+      "status": "active"
+    },
+    "toldff": {
+      "name": "toldff",
+      "type": "real",
+      "default": "0.0",
+      "category": "scf",
+      "description": "Tolerance on the force difference for SCF convergence (Hartree/Bohr).",
+      "see_also": ["tolrff", "toldfe"],
+      "status": "active"
+    },
+    "tolrff": {
+      "name": "tolrff",
+      "type": "real",
+      "default": "0.0",
+      "category": "scf",
+      "description": "Tolerance on the relative force difference for SCF convergence.",
+      "see_also": ["toldff", "toldfe"],
+      "status": "active"
+    },
+    "diemac": {
+      "name": "diemac",
+      "type": "real",
+      "default": "1000000.0",
+      "category": "scf",
+      "description": "Model macroscopic dielectric constant for SCF preconditioning (use ~12 for semiconductors).",
+      "see_also": ["diemix", "iscf"],
+      "status": "active"
+    },
+    "diemix": {
+      "name": "diemix",
+      "type": "real",
+      "default": "0.7",
+      "category": "scf",
+      "description": "Mixing factor for the SCF density update.",
+      "see_also": ["diemac", "diemixmag", "iscf"],
+      "status": "active"
+    },
+    "diemixmag": {
+      "name": "diemixmag",
+      "type": "real",
+      "default": null,
+      "category": "scf",
+      "description": "Separate mixing factor for the magnetization density in spin-polarized calculations.",
+      "see_also": ["diemix", "nsppol"],
+      "status": "active"
+    },
+    "nline": {
+      "name": "nline",
+      "type": "integer",
+      "default": "4",
+      "category": "scf",
+      "description": "Number of line minimization steps for each band during wavefunction optimization.",
+      "see_also": ["nnsclo", "nstep"],
+      "status": "active"
+    },
+    "nnsclo": {
+      "name": "nnsclo",
+      "type": "integer",
+      "default": "0",
+      "category": "scf",
+      "description": "Number of non-self-consistent loops for each SCF step.",
+      "see_also": ["nline", "nstep"],
+      "status": "active"
+    },
+    "dielng": {
+      "name": "dielng",
+      "type": "real",
+      "default": "1.0774841",
+      "category": "scf",
+      "description": "Length scale for the model dielectric function in Bohr.",
+      "see_also": ["diemac", "diecut"],
+      "status": "active"
+    },
+    "diecut": {
+      "name": "diecut",
+      "type": "real",
+      "default": "2.2",
+      "category": "scf",
+      "description": "Energy cutoff for the dielectric matrix in Hartree.",
+      "see_also": ["diemac", "dielng"],
+      "status": "active"
+    },
+    "ionmov": {
+      "name": "ionmov",
+      "type": "integer",
+      "default": "0",
+      "category": "relaxation",
+      "description": "Selects the algorithm for ionic motion (0=none, 2=BFGS, 22=L-BFGS, 3=viscous damping, 12=Verlet NVE, 13=Langevin).",
+      "see_also": ["optcell", "ntime", "tolmxf"],
+      "status": "active"
+    },
+    "optcell": {
+      "name": "optcell",
+      "type": "integer",
+      "default": "0",
+      "category": "relaxation",
+      "description": "Controls cell shape/size optimization (0=fixed, 1=isotropic, 2=full, 3-9=constrained).",
+      "see_also": ["ionmov", "dilatmx", "ecutsm", "strprecon"],
+      "status": "active"
+    },
+    "ntime": {
+      "name": "ntime",
+      "type": "integer",
+      "default": "0",
+      "category": "relaxation",
+      "description": "Maximum number of molecular dynamics or structural optimization steps.",
+      "see_also": ["ionmov", "tolmxf"],
+      "status": "active"
+    },
+    "tolmxf": {
+      "name": "tolmxf",
+      "type": "real",
+      "default": "5.0e-5",
+      "category": "relaxation",
+      "description": "Tolerance on the maximum force for structural relaxation convergence (Hartree/Bohr).",
+      "see_also": ["tolmxde", "ionmov", "ntime"],
+      "status": "active"
+    },
+    "tolmxde": {
+      "name": "tolmxde",
+      "type": "real",
+      "default": "0.0",
+      "category": "relaxation",
+      "description": "Tolerance on the maximum energy change for relaxation convergence (Hartree).",
+      "see_also": ["tolmxf", "ionmov"],
+      "status": "active"
+    },
+    "dilatmx": {
+      "name": "dilatmx",
+      "type": "real",
+      "default": "1.0",
+      "category": "relaxation",
+      "description": "Maximum allowed dilation of the unit cell during variable-cell optimization.",
+      "see_also": ["optcell", "ecutsm"],
+      "status": "active"
+    },
+    "strprecon": {
+      "name": "strprecon",
+      "type": "real",
+      "default": "1.0",
+      "category": "relaxation",
+      "description": "Stress preconditioning factor for variable-cell relaxation.",
+      "see_also": ["optcell", "dilatmx"],
+      "status": "active"
+    },
+    "strtarget": {
+      "name": "strtarget",
+      "type": "array_real",
+      "default": "6*0.0",
+      "category": "relaxation",
+      "description": "Target stress tensor components for constrained cell optimization (Hartree/Bohr^3).",
+      "see_also": ["optcell", "strprecon"],
+      "status": "active"
+    },
+    "iatfix": {
+      "name": "iatfix",
+      "type": "array_int",
+      "default": null,
+      "category": "relaxation",
+      "description": "Indices of atoms held fixed during geometry optimization or MD.",
+      "see_also": ["ionmov", "natom"],
+      "status": "active"
+    },
+    "vis": {
+      "name": "vis",
+      "type": "real",
+      "default": "100.0",
+      "category": "dynamics",
+      "description": "Viscosity coefficient for viscous damping molecular dynamics.",
+      "see_also": ["ionmov", "dtion"],
+      "status": "active"
+    },
+    "dtion": {
+      "name": "dtion",
+      "type": "real",
+      "default": "100.0",
+      "category": "dynamics",
+      "description": "Time step for molecular dynamics in atomic units.",
+      "see_also": ["ionmov", "ntime"],
+      "status": "active"
+    },
+    "mdtemp": {
+      "name": "mdtemp",
+      "type": "array_real",
+      "default": "300.0 300.0",
+      "category": "dynamics",
+      "description": "Initial and final temperatures for molecular dynamics simulations (Kelvin).",
+      "see_also": ["ionmov", "dtion"],
+      "status": "active"
+    },
+    "noseinert": {
+      "name": "noseinert",
+      "type": "real",
+      "default": "1.0e5",
+      "category": "dynamics",
+      "description": "Inertia factor for the Nose-Hoover thermostat.",
+      "see_also": ["ionmov", "mdtemp"],
+      "status": "active"
+    },
+    "friction": {
+      "name": "friction",
+      "type": "real",
+      "default": "0.001",
+      "category": "dynamics",
+      "description": "Friction coefficient for Langevin dynamics (ionmov 13).",
+      "see_also": ["ionmov", "mdtemp"],
+      "status": "active"
+    },
+    "nsppol": {
+      "name": "nsppol",
+      "type": "integer",
+      "default": "1",
+      "category": "spin",
+      "description": "Number of spin polarizations (1=non-spin-polarized, 2=spin-polarized).",
+      "see_also": ["nspinor", "nspden", "spinat"],
+      "status": "active"
+    },
+    "nspinor": {
+      "name": "nspinor",
+      "type": "integer",
+      "default": "1",
+      "category": "spin",
+      "description": "Number of spinor components (1=scalar, 2=spinor for spin-orbit coupling).",
+      "see_also": ["nsppol", "nspden", "so_psp"],
+      "status": "active"
+    },
+    "nspden": {
+      "name": "nspden",
+      "type": "integer",
+      "default": "1",
+      "category": "spin",
+      "description": "Number of spin-density components (1=no spin, 2=collinear, 4=non-collinear).",
+      "see_also": ["nsppol", "nspinor"],
+      "status": "active"
+    },
+    "spinat": {
+      "name": "spinat",
+      "type": "array_real",
+      "default": "0.0",
+      "category": "spin",
+      "description": "Initial spin magnetization for each atom (3 components per atom for non-collinear).",
+      "see_also": ["nsppol", "nspden"],
+      "status": "active"
+    },
+    "so_psp": {
+      "name": "so_psp",
+      "type": "array_int",
+      "default": null,
+      "category": "spin",
+      "description": "Spin-orbit pseudopotential treatment per atom type (0=no SOC, 1=from PSP).",
+      "see_also": ["nspinor"],
+      "status": "active"
+    },
+    "usepawu": {
+      "name": "usepawu",
+      "type": "integer",
+      "default": "0",
+      "category": "dftu",
+      "description": "Activates the DFT+U method (1=Liechtenstein, 2=Dudarev simplified).",
+      "see_also": ["lpawu", "upawu", "jpawu"],
+      "status": "active"
+    },
+    "lpawu": {
+      "name": "lpawu",
+      "type": "array_int",
+      "default": "-1",
+      "category": "dftu",
+      "description": "Angular momentum channel for DFT+U per atom type (-1=none, 2=d, 3=f).",
+      "see_also": ["usepawu", "upawu", "jpawu"],
+      "status": "active"
+    },
+    "upawu": {
+      "name": "upawu",
+      "type": "array_real",
+      "default": "0.0",
+      "category": "dftu",
+      "description": "Screened Coulomb U parameter for DFT+U per atom type (eV).",
+      "see_also": ["usepawu", "lpawu", "jpawu"],
+      "status": "active"
+    },
+    "jpawu": {
+      "name": "jpawu",
+      "type": "array_real",
+      "default": "0.0",
+      "category": "dftu",
+      "description": "Exchange J parameter for DFT+U per atom type (eV).",
+      "see_also": ["usepawu", "lpawu", "upawu"],
+      "status": "active"
+    },
+    "dmatpawu": {
+      "name": "dmatpawu",
+      "type": "array_real",
+      "default": null,
+      "category": "dftu",
+      "description": "Initial occupation density matrix for PAW+U calculations.",
+      "see_also": ["usepawu", "dmatpuopt"],
+      "status": "active"
+    },
+    "dmatpuopt": {
+      "name": "dmatpuopt",
+      "type": "integer",
+      "default": "2",
+      "category": "dftu",
+      "description": "Method for computing DFT+U atomic occupations (1=trace, 2=full, 3=PAW augmentation, 4=Bloch decomp).",
+      "see_also": ["usepawu", "dmatpawu"],
+      "status": "active"
+    },
+    "optdriver": {
+      "name": "optdriver",
+      "type": "integer",
+      "default": "0",
+      "category": "gw",
+      "description": "Main driver option (0=GS, 1=DFPT, 3=susceptibility, 4=sigma, 7=EPH, 8=WFK post-processing).",
+      "see_also": ["gwcalctyp", "ecuteps", "ecutwfn"],
+      "status": "active"
+    },
+    "gwcalctyp": {
+      "name": "gwcalctyp",
+      "type": "integer",
+      "default": "0",
+      "category": "gw",
+      "description": "GW calculation type (0=one-shot G0W0, 2=COHSEX, 5=HF, 8=model GW, 10+=SCGW variants).",
+      "see_also": ["optdriver", "ecuteps"],
+      "status": "active"
+    },
+    "ecutwfn": {
+      "name": "ecutwfn",
+      "type": "real",
+      "default": "ecut",
+      "category": "gw",
+      "description": "Energy cutoff for wavefunctions in GW calculations (Hartree).",
+      "see_also": ["ecut", "ecuteps", "ecutsigx"],
+      "status": "active"
+    },
+    "ecuteps": {
+      "name": "ecuteps",
+      "type": "real",
+      "default": "0.0",
+      "category": "gw",
+      "description": "Energy cutoff for the dielectric matrix in GW (Hartree).",
+      "see_also": ["ecutwfn", "ecutsigx"],
+      "status": "active"
+    },
+    "ecutsigx": {
+      "name": "ecutsigx",
+      "type": "real",
+      "default": "0.0",
+      "category": "gw",
+      "description": "Energy cutoff for the exchange self-energy in GW (Hartree).",
+      "see_also": ["ecuteps", "ecutwfn"],
+      "status": "active"
+    },
+    "nfreqsp": {
+      "name": "nfreqsp",
+      "type": "integer",
+      "default": "0",
+      "category": "gw",
+      "description": "Number of frequency points for the spectral function in GW.",
+      "see_also": ["nfreqre", "nfreqim"],
+      "status": "active"
+    },
+    "nfreqre": {
+      "name": "nfreqre",
+      "type": "integer",
+      "default": "0",
+      "category": "gw",
+      "description": "Number of real frequency points for GW self-energy.",
+      "see_also": ["nfreqsp", "nfreqim"],
+      "status": "active"
+    },
+    "nfreqim": {
+      "name": "nfreqim",
+      "type": "integer",
+      "default": "0",
+      "category": "gw",
+      "description": "Number of imaginary frequency points for GW contour deformation.",
+      "see_also": ["nfreqre", "nfreqsp"],
+      "status": "active"
+    },
+    "ppmodel": {
+      "name": "ppmodel",
+      "type": "integer",
+      "default": "1",
+      "category": "gw",
+      "description": "Plasmon-pole model selection (1=Godby-Needs, 2=Hybertsen-Louie, 3=von der Linden-Horsch, 4=Farid-Engel).",
+      "see_also": ["optdriver", "gwcalctyp"],
+      "status": "active"
+    },
+    "gw_icutcoul": {
+      "name": "gw_icutcoul",
+      "type": "integer",
+      "default": "6",
+      "category": "gw",
+      "description": "Coulomb interaction cutoff method in GW (3=sphere, 6=full periodic).",
+      "see_also": ["optdriver"],
+      "status": "active"
+    },
+    "awtr": {
+      "name": "awtr",
+      "type": "integer",
+      "default": "1",
+      "category": "gw",
+      "description": "Evaluate Adler-Wiser chi0 assuming time-reversal symmetry (1=yes, 0=no).",
+      "see_also": ["optdriver"],
+      "status": "active"
+    },
+    "nkptgw": {
+      "name": "nkptgw",
+      "type": "integer",
+      "default": "0",
+      "category": "gw",
+      "description": "Number of k-points for GW self-energy computation.",
+      "see_also": ["kptgw", "bdgw"],
+      "status": "active"
+    },
+    "kptgw": {
+      "name": "kptgw",
+      "type": "array_real",
+      "default": null,
+      "category": "gw",
+      "description": "K-point coordinates for GW self-energy calculation.",
+      "see_also": ["nkptgw", "bdgw"],
+      "status": "active"
+    },
+    "bdgw": {
+      "name": "bdgw",
+      "type": "array_int",
+      "default": "0",
+      "category": "gw",
+      "description": "Band range for GW self-energy per k-point (pairs of min/max band indices).",
+      "see_also": ["nkptgw", "kptgw"],
+      "status": "active"
+    },
+    "gw_qprange": {
+      "name": "gw_qprange",
+      "type": "integer",
+      "default": "0",
+      "category": "gw",
+      "description": "Quasiparticle k-point and band range policy for GW (0=manual, positive=around gap).",
+      "see_also": ["bdgw", "nkptgw"],
+      "status": "active"
+    },
+    "fftgw": {
+      "name": "fftgw",
+      "type": "integer",
+      "default": "21",
+      "category": "gw",
+      "description": "FFT mesh selection for oscillator matrix elements in GW.",
+      "see_also": ["optdriver"],
+      "status": "active"
+    },
+    "gwpara": {
+      "name": "gwpara",
+      "type": "integer",
+      "default": "2",
+      "category": "gw",
+      "description": "GW parallelization level (1=over k-points, 2=over bands).",
+      "see_also": ["optdriver"],
+      "status": "active"
+    },
+    "rfphon": {
+      "name": "rfphon",
+      "type": "integer",
+      "default": "0",
+      "category": "dfpt",
+      "description": "Activates phonon response function calculations (1=yes).",
+      "see_also": ["rfatpol", "rfdir", "nqpt", "qpt"],
+      "status": "active"
+    },
+    "rfatpol": {
+      "name": "rfatpol",
+      "type": "array_int",
+      "default": "1 1",
+      "category": "dfpt",
+      "description": "Range of atoms for phonon perturbation (first and last atom index).",
+      "see_also": ["rfphon", "rfdir"],
+      "status": "active"
+    },
+    "rfdir": {
+      "name": "rfdir",
+      "type": "array_int",
+      "default": "0 0 0",
+      "category": "dfpt",
+      "description": "Directions of the perturbation (1 or 0 for each of the three reduced directions).",
+      "see_also": ["rfphon", "rfelfd", "rfstrs"],
+      "status": "active"
+    },
+    "nqpt": {
+      "name": "nqpt",
+      "type": "integer",
+      "default": "0",
+      "category": "dfpt",
+      "description": "Number of q-points for the phonon perturbation (0 or 1).",
+      "see_also": ["qpt", "rfphon"],
+      "status": "active"
+    },
+    "qpt": {
+      "name": "qpt",
+      "type": "array_real",
+      "default": "0.0 0.0 0.0",
+      "category": "dfpt",
+      "description": "Q-point in reduced coordinates for the phonon perturbation.",
+      "see_also": ["nqpt", "rfphon"],
+      "status": "active"
+    },
+    "rfstrs": {
+      "name": "rfstrs",
+      "type": "integer",
+      "default": "0",
+      "category": "dfpt",
+      "description": "Activates strain perturbation for elastic constants (1=uniaxial, 2=shear, 3=both).",
+      "see_also": ["rfdir", "rfphon"],
+      "status": "active"
+    },
+    "rfelfd": {
+      "name": "rfelfd",
+      "type": "integer",
+      "default": "0",
+      "category": "dfpt",
+      "description": "Activates electric field response (1=homogeneous, 2=d/dk, 3=both).",
+      "see_also": ["rfdir", "rfphon"],
+      "status": "active"
+    },
+    "asr": {
+      "name": "asr",
+      "type": "integer",
+      "default": "1",
+      "category": "dfpt",
+      "description": "Acoustic sum rule enforcement in phonon calculations (0=none, 1=impose, 2=also correct IFC).",
+      "see_also": ["rfphon", "chneut"],
+      "status": "active"
+    },
+    "chneut": {
+      "name": "chneut",
+      "type": "integer",
+      "default": "1",
+      "category": "dfpt",
+      "description": "Charge neutrality for Born effective charges (0=none, 1=impose, 2=also correct Z*).",
+      "see_also": ["rfelfd", "asr"],
+      "status": "active"
+    },
+    "efmas": {
+      "name": "efmas",
+      "type": "integer",
+      "default": "0",
+      "category": "dfpt",
+      "description": "Enables effective mass tensor computation via DFPT.",
+      "see_also": ["efmas_bands", "efmas_deg"],
+      "status": "active"
+    },
+    "efmas_bands": {
+      "name": "efmas_bands",
+      "type": "array_int",
+      "default": null,
+      "category": "dfpt",
+      "description": "Band range for effective mass computation.",
+      "see_also": ["efmas"],
+      "status": "active"
+    },
+    "efmas_deg": {
+      "name": "efmas_deg",
+      "type": "integer",
+      "default": "1",
+      "category": "dfpt",
+      "description": "Activates degenerate band formalism for effective mass (0=non-degenerate, 1=degenerate).",
+      "see_also": ["efmas"],
+      "status": "active"
+    },
+    "ieig2rf": {
+      "name": "ieig2rf",
+      "type": "integer",
+      "default": "0",
+      "category": "dfpt",
+      "description": "Compute second-order eigenvalue corrections for electron-phonon (1=Sternheimer, 2=sum-over-states).",
+      "see_also": ["rfphon"],
+      "status": "active"
+    },
+    "pawecutdg": {
+      "name": "pawecutdg",
+      "type": "real",
+      "default": "-1.0",
+      "category": "paw",
+      "description": "Energy cutoff for the fine (double) FFT grid in PAW calculations (Hartree).",
+      "see_also": ["ecut", "usepaw", "ngfftdg"],
+      "status": "active"
+    },
+    "pawxcdev": {
+      "name": "pawxcdev",
+      "type": "integer",
+      "default": "1",
+      "category": "paw",
+      "description": "XC functional development level in PAW spheres (0=exact, 1=first-order, 2=second-order).",
+      "see_also": ["usepaw"],
+      "status": "active"
+    },
+    "pawovlp": {
+      "name": "pawovlp",
+      "type": "real",
+      "default": "5.0",
+      "category": "paw",
+      "description": "Maximum allowed percentage of PAW sphere overlap.",
+      "see_also": ["usepaw"],
+      "status": "active"
+    },
+    "pawnhatxc": {
+      "name": "pawnhatxc",
+      "type": "integer",
+      "default": "1",
+      "category": "paw",
+      "description": "Include compensation charge density (nhat) in the XC potential (1=yes, 0=no).",
+      "see_also": ["usepaw"],
+      "status": "active"
+    },
+    "usepaw": {
+      "name": "usepaw",
+      "type": "integer",
+      "default": "0",
+      "category": "paw",
+      "description": "Enables PAW method (0=norm-conserving, 1=PAW). Auto-detected from pseudopotential files.",
+      "see_also": ["pawecutdg"],
+      "status": "active"
+    },
+    "pawspnorb": {
+      "name": "pawspnorb",
+      "type": "integer",
+      "default": "0",
+      "category": "paw",
+      "description": "Enables spin-orbit coupling within the PAW framework.",
+      "see_also": ["nspinor", "usepaw"],
+      "status": "active"
+    },
+    "spnorbscl": {
+      "name": "spnorbscl",
+      "type": "real",
+      "default": "1.0",
+      "category": "paw",
+      "description": "Scaling factor for spin-orbit coupling strength in PAW.",
+      "see_also": ["pawspnorb"],
+      "status": "active"
+    },
+    "pawprtvol": {
+      "name": "pawprtvol",
+      "type": "integer",
+      "default": "0",
+      "category": "paw",
+      "description": "Controls PAW output verbosity (-3 to 3).",
+      "see_also": ["usepaw"],
+      "status": "active"
+    },
+    "pawmixdg": {
+      "name": "pawmixdg",
+      "type": "integer",
+      "default": null,
+      "category": "paw",
+      "description": "Grid selection for density mixing during SCF in PAW.",
+      "see_also": ["usepaw", "diemix"],
+      "status": "active"
+    },
+    "pawlcutd": {
+      "name": "pawlcutd",
+      "type": "integer",
+      "default": "10",
+      "category": "paw",
+      "description": "Maximum angular momentum for on-site density expansion in PAW.",
+      "see_also": ["usepaw"],
+      "status": "active"
+    },
+    "prtwf": {
+      "name": "prtwf",
+      "type": "integer",
+      "default": "1",
+      "category": "output",
+      "description": "Controls printing of the wavefunction file (_WFK) (0=no, 1=yes).",
+      "see_also": ["prtden", "prteig"],
+      "status": "active"
+    },
+    "prtden": {
+      "name": "prtden",
+      "type": "integer",
+      "default": "1",
+      "category": "output",
+      "description": "Controls printing of the electron density file (_DEN) (0=no, 1=yes).",
+      "see_also": ["prtwf", "prteig"],
+      "status": "active"
+    },
+    "prteig": {
+      "name": "prteig",
+      "type": "integer",
+      "default": "1",
+      "category": "output",
+      "description": "Controls printing of the eigenvalue file (_EIG).",
+      "see_also": ["prtwf", "prtdos"],
+      "status": "active"
+    },
+    "prtdos": {
+      "name": "prtdos",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Controls DOS output (0=no, 1=total, 2=projected, 3=l-projected).",
+      "see_also": ["prteig", "prtebands"],
+      "status": "active"
+    },
+    "prtebands": {
+      "name": "prtebands",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print electron band structure data in specified format (0=no, 1=xmgrace, 2=gnuplot).",
+      "see_also": ["prtdos", "prteig"],
+      "status": "active"
+    },
+    "prtgsr": {
+      "name": "prtgsr",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print the GSR.nc NetCDF file containing ground-state results.",
+      "see_also": ["prtwf", "prtden"],
+      "status": "active"
+    },
+    "prtnabla": {
+      "name": "prtnabla",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print matrix elements of the nabla (momentum) operator.",
+      "see_also": ["prtwf"],
+      "status": "active"
+    },
+    "prtpot": {
+      "name": "prtpot",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print the total potential (_POT file).",
+      "see_also": ["prtden", "prtvha", "prtvhxc"],
+      "status": "active"
+    },
+    "prtvha": {
+      "name": "prtvha",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print the Hartree potential.",
+      "see_also": ["prtpot", "prtvhxc"],
+      "status": "active"
+    },
+    "prtvhxc": {
+      "name": "prtvhxc",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print the sum of Hartree and XC potentials.",
+      "see_also": ["prtpot", "prtvha"],
+      "status": "active"
+    },
+    "prtvxc": {
+      "name": "prtvxc",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print the XC potential.",
+      "see_also": ["prtpot"],
+      "status": "active"
+    },
+    "prtvol": {
+      "name": "prtvol",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Controls the verbosity of the main output file (0=normal, negative=less, positive=more).",
+      "see_also": [],
+      "status": "active"
+    },
+    "prtddb": {
+      "name": "prtddb",
+      "type": "integer",
+      "default": "1",
+      "category": "output",
+      "description": "Print the derivative database (_DDB) for DFPT calculations.",
+      "see_also": ["rfphon"],
+      "status": "active"
+    },
+    "pp_dirpath": {
+      "name": "pp_dirpath",
+      "type": "string",
+      "default": null,
+      "category": "pseudo",
+      "description": "Directory path containing pseudopotential files.",
+      "see_also": ["pseudos"],
+      "status": "active"
+    },
+    "pseudos": {
+      "name": "pseudos",
+      "type": "string",
+      "default": null,
+      "category": "pseudo",
+      "description": "Comma-separated list of pseudopotential file names (one per atom type).",
+      "see_also": ["pp_dirpath"],
+      "status": "active"
+    },
+    "paral_kgb": {
+      "name": "paral_kgb",
+      "type": "integer",
+      "default": "0",
+      "category": "parallel",
+      "description": "Enables k-point, G-vector, and band parallelization scheme.",
+      "see_also": ["npband", "npfft", "npkpt"],
+      "status": "active"
+    },
+    "npband": {
+      "name": "npband",
+      "type": "integer",
+      "default": "1",
+      "category": "parallel",
+      "description": "Number of processors for band-level parallelization.",
+      "see_also": ["paral_kgb", "npfft"],
+      "status": "active"
+    },
+    "npfft": {
+      "name": "npfft",
+      "type": "integer",
+      "default": "1",
+      "category": "parallel",
+      "description": "Number of processors for FFT-level parallelization.",
+      "see_also": ["paral_kgb", "npband"],
+      "status": "active"
+    },
+    "npkpt": {
+      "name": "npkpt",
+      "type": "integer",
+      "default": "1",
+      "category": "parallel",
+      "description": "Number of processors for k-point parallelization (deprecated, use np_spkpt).",
+      "see_also": ["paral_kgb", "np_spkpt"],
+      "status": "active"
+    },
+    "np_spkpt": {
+      "name": "np_spkpt",
+      "type": "integer",
+      "default": "1",
+      "category": "parallel",
+      "description": "Number of processors for spin/k-point level parallelization.",
+      "see_also": ["paral_kgb"],
+      "status": "active"
+    },
+    "autoparal": {
+      "name": "autoparal",
+      "type": "integer",
+      "default": "0",
+      "category": "parallel",
+      "description": "Automatic determination of parallel work distribution parameters.",
+      "see_also": ["paral_kgb", "max_ncpus"],
+      "status": "active"
+    },
+    "bandpp": {
+      "name": "bandpp",
+      "type": "integer",
+      "default": "1",
+      "category": "parallel",
+      "description": "Number of bands per processor in LOBPCG block algorithm.",
+      "see_also": ["paral_kgb", "npband"],
+      "status": "active"
+    },
+    "max_ncpus": {
+      "name": "max_ncpus",
+      "type": "integer",
+      "default": "0",
+      "category": "parallel",
+      "description": "Maximum number of processors for autoparal optimization analysis.",
+      "see_also": ["autoparal"],
+      "status": "active"
+    },
+    "npimage": {
+      "name": "npimage",
+      "type": "integer",
+      "default": "1",
+      "category": "parallel",
+      "description": "Number of processors for image-level parallelization (NEB, string method).",
+      "see_also": ["paral_kgb", "nimage"],
+      "status": "active"
+    },
+    "nppert": {
+      "name": "nppert",
+      "type": "integer",
+      "default": "1",
+      "category": "parallel",
+      "description": "Number of processors for perturbation-level parallelization in DFPT.",
+      "see_also": ["paral_rf"],
+      "status": "active"
+    },
+    "paral_rf": {
+      "name": "paral_rf",
+      "type": "integer",
+      "default": "0",
+      "category": "parallel",
+      "description": "Enables parallelization over perturbations in DFPT response functions.",
+      "see_also": ["nppert"],
+      "status": "active"
+    },
+    "paral_atom": {
+      "name": "paral_atom",
+      "type": "integer",
+      "default": "1",
+      "category": "parallel",
+      "description": "Enables parallelization over PAW atomic sites.",
+      "see_also": ["usepaw"],
+      "status": "active"
+    },
+    "use_slk": {
+      "name": "use_slk",
+      "type": "integer",
+      "default": "0",
+      "category": "parallel",
+      "description": "Enables ScaLAPACK for linear algebra within LOBPCG.",
+      "see_also": ["np_slk", "paral_kgb"],
+      "status": "active"
+    },
+    "np_slk": {
+      "name": "np_slk",
+      "type": "integer",
+      "default": "1000000",
+      "category": "parallel",
+      "description": "Number of processors used for ScaLAPACK calls.",
+      "see_also": ["use_slk"],
+      "status": "active"
+    },
+    "boxcutmin": {
+      "name": "boxcutmin",
+      "type": "real",
+      "default": "2.0",
+      "category": "memory",
+      "description": "Minimum ratio of FFT box size to sphere cutoff (2.0 is exact, lower saves memory).",
+      "see_also": ["ngfft", "ecut"],
+      "status": "active"
+    },
+    "ngfft": {
+      "name": "ngfft",
+      "type": "array_int",
+      "default": "auto",
+      "category": "memory",
+      "description": "FFT grid dimensions (3 integers). Usually auto-set from ecut.",
+      "see_also": ["ecut", "boxcutmin"],
+      "status": "active"
+    },
+    "ngfftdg": {
+      "name": "ngfftdg",
+      "type": "array_int",
+      "default": "auto",
+      "category": "memory",
+      "description": "Fine (double) FFT grid dimensions for PAW calculations.",
+      "see_also": ["pawecutdg", "ngfft"],
+      "status": "active"
+    },
+    "nbdbuf": {
+      "name": "nbdbuf",
+      "type": "integer",
+      "default": "0",
+      "category": "memory",
+      "description": "Number of buffer bands (extra bands above occupied states for convergence help).",
+      "see_also": ["nband"],
+      "status": "active"
+    },
+    "xc_denpos": {
+      "name": "xc_denpos",
+      "type": "real",
+      "default": "1.0e-14",
+      "category": "exchange_correlation",
+      "description": "Minimum density value passed to XC functional to avoid numerical issues.",
+      "see_also": ["ixc"],
+      "status": "active"
+    },
+    "usekden": {
+      "name": "usekden",
+      "type": "integer",
+      "default": "0",
+      "category": "exchange_correlation",
+      "description": "Compute kinetic energy density for meta-GGA functionals (0=no, 1=yes).",
+      "see_also": ["ixc"],
+      "status": "active"
+    },
+    "nsym": {
+      "name": "nsym",
+      "type": "integer",
+      "default": "0",
+      "category": "symmetry",
+      "description": "Number of symmetry operations (0=auto-detect from structure).",
+      "see_also": ["symrel", "tnons"],
+      "status": "active"
+    },
+    "symrel": {
+      "name": "symrel",
+      "type": "array_int",
+      "default": "identity",
+      "category": "symmetry",
+      "description": "Symmetry operation matrices in reduced coordinates (3x3 integer matrices).",
+      "see_also": ["nsym", "tnons"],
+      "status": "active"
+    },
+    "tnons": {
+      "name": "tnons",
+      "type": "array_real",
+      "default": "0.0",
+      "category": "symmetry",
+      "description": "Non-symmorphic translation vectors associated with each symmetry operation.",
+      "see_also": ["nsym", "symrel"],
+      "status": "active"
+    },
+    "chksymbreak": {
+      "name": "chksymbreak",
+      "type": "integer",
+      "default": "1",
+      "category": "symmetry",
+      "description": "Check if k-point grid breaks crystal symmetry (0=no check, 1=check and warn).",
+      "see_also": ["nsym", "ngkpt"],
+      "status": "active"
+    },
+    "spgroup": {
+      "name": "spgroup",
+      "type": "integer",
+      "default": "0",
+      "category": "symmetry",
+      "description": "Space group number to generate symmetry operations and Wyckoff positions.",
+      "see_also": ["nsym", "symrel"],
+      "status": "active"
+    },
+    "chkprim": {
+      "name": "chkprim",
+      "type": "integer",
+      "default": "1",
+      "category": "symmetry",
+      "description": "Check whether the unit cell is primitive (1=check, 0=skip).",
+      "see_also": ["spgroup"],
+      "status": "active"
+    },
+    "chksymtnons": {
+      "name": "chksymtnons",
+      "type": "integer",
+      "default": "1",
+      "category": "symmetry",
+      "description": "Check compatibility of non-symmorphic translations with k-point grid.",
+      "see_also": ["tnons", "chksymbreak"],
+      "status": "active"
+    },
+    "ndtset": {
+      "name": "ndtset",
+      "type": "integer",
+      "default": "0",
+      "category": "dataset",
+      "description": "Number of datasets to run sequentially in a single input file.",
+      "see_also": ["jdtset", "udtset"],
+      "status": "active"
+    },
+    "jdtset": {
+      "name": "jdtset",
+      "type": "array_int",
+      "default": null,
+      "category": "dataset",
+      "description": "Explicit dataset index list (alternative to sequential 1..ndtset).",
+      "see_also": ["ndtset", "udtset"],
+      "status": "active"
+    },
+    "udtset": {
+      "name": "udtset",
+      "type": "array_int",
+      "default": null,
+      "category": "dataset",
+      "description": "Upper dataset generation: two integers defining outer and inner loop counts.",
+      "see_also": ["ndtset", "jdtset"],
+      "status": "active"
+    },
+    "getden": {
+      "name": "getden",
+      "type": "integer",
+      "default": "0",
+      "category": "dataset",
+      "description": "Get the density from a previous dataset (dataset index, 0=none, -1=previous).",
+      "see_also": ["getwfk", "irdden"],
+      "status": "active"
+    },
+    "getwfk": {
+      "name": "getwfk",
+      "type": "integer",
+      "default": "0",
+      "category": "dataset",
+      "description": "Get wavefunctions from a previous dataset (dataset index, 0=none, -1=previous).",
+      "see_also": ["getden", "irdwfk"],
+      "status": "active"
+    },
+    "getscr": {
+      "name": "getscr",
+      "type": "integer",
+      "default": "0",
+      "category": "dataset",
+      "description": "Get the screening file from a previous dataset for GW calculations.",
+      "see_also": ["optdriver", "getwfk"],
+      "status": "active"
+    },
+    "getwfq": {
+      "name": "getwfq",
+      "type": "integer",
+      "default": "0",
+      "category": "dataset",
+      "description": "Get k+q wavefunctions from a previous dataset for DFPT.",
+      "see_also": ["getwfk", "nqpt"],
+      "status": "active"
+    },
+    "getddb": {
+      "name": "getddb",
+      "type": "integer",
+      "default": "0",
+      "category": "dataset",
+      "description": "Get the DDB (derivative database) from a previous dataset.",
+      "see_also": ["rfphon", "getdvdb"],
+      "status": "active"
+    },
+    "getdvdb": {
+      "name": "getdvdb",
+      "type": "integer",
+      "default": "0",
+      "category": "dataset",
+      "description": "Get the DVDB (derivative of potential database) from a previous dataset.",
+      "see_also": ["getddb"],
+      "status": "active"
+    },
+    "irdwfk": {
+      "name": "irdwfk",
+      "type": "integer",
+      "default": "0",
+      "category": "dataset",
+      "description": "Read ground-state wavefunctions from _WFK file (1=yes).",
+      "see_also": ["getwfk", "irdden"],
+      "status": "active"
+    },
+    "irdden": {
+      "name": "irdden",
+      "type": "integer",
+      "default": "0",
+      "category": "dataset",
+      "description": "Read electron density from _DEN file (1=yes).",
+      "see_also": ["getden", "irdwfk"],
+      "status": "active"
+    },
+    "irdddb": {
+      "name": "irdddb",
+      "type": "integer",
+      "default": "0",
+      "category": "dataset",
+      "description": "Read phonon derivative database from _DDB file (1=yes).",
+      "see_also": ["getddb"],
+      "status": "active"
+    },
+    "irddvdb": {
+      "name": "irddvdb",
+      "type": "integer",
+      "default": "0",
+      "category": "dataset",
+      "description": "Read derivative of potential database from _DVDB file (1=yes).",
+      "see_also": ["getdvdb"],
+      "status": "active"
+    },
+    "irdwfq": {
+      "name": "irdwfq",
+      "type": "integer",
+      "default": "0",
+      "category": "dataset",
+      "description": "Read k+q wavefunctions from _WFQ file (1=yes).",
+      "see_also": ["getwfq"],
+      "status": "active"
+    },
+    "prtwant": {
+      "name": "prtwant",
+      "type": "integer",
+      "default": "0",
+      "category": "wannier",
+      "description": "Activate Wannier90 interface (0=no, 2=Wannier90 v2, 3=Wannier90 v3).",
+      "see_also": ["w90iniprj", "w90prtunk"],
+      "status": "active"
+    },
+    "w90iniprj": {
+      "name": "w90iniprj",
+      "type": "integer",
+      "default": "1",
+      "category": "wannier",
+      "description": "Initial projections for Wannier90 (1=random, 2=hydrogenic atomic orbitals from .win file).",
+      "see_also": ["prtwant", "w90prtunk"],
+      "status": "active"
+    },
+    "w90prtunk": {
+      "name": "w90prtunk",
+      "type": "integer",
+      "default": "0",
+      "category": "wannier",
+      "description": "Print UNK files for Wannier90 (0=no, 1=fine grid, >1=coarse grid).",
+      "see_also": ["prtwant", "w90iniprj"],
+      "status": "active"
+    },
+    "bs_calctype": {
+      "name": "bs_calctype",
+      "type": "integer",
+      "default": "1",
+      "category": "bse_tddft",
+      "description": "Source of transition energies for BSE (1=KS, 2=GW, 3=QP data file).",
+      "see_also": ["bs_exchange_term", "bs_coupling"],
+      "status": "active"
+    },
+    "bs_exchange_term": {
+      "name": "bs_exchange_term",
+      "type": "integer",
+      "default": "1",
+      "category": "bse_tddft",
+      "description": "Include exchange term in BSE kernel (0=off, 1=on).",
+      "see_also": ["bs_calctype", "bs_coulomb_term"],
+      "status": "active"
+    },
+    "bs_coupling": {
+      "name": "bs_coupling",
+      "type": "integer",
+      "default": "0",
+      "category": "bse_tddft",
+      "description": "Include coupling block in BSE (0=Tamm-Dancoff approximation, 1=full).",
+      "see_also": ["bs_calctype"],
+      "status": "active"
+    },
+    "bs_loband": {
+      "name": "bs_loband",
+      "type": "integer",
+      "default": "0",
+      "category": "bse_tddft",
+      "description": "Lowest occupied band index for the electron-hole basis in BSE.",
+      "see_also": ["bs_calctype", "nband"],
+      "status": "active"
+    },
+    "zcut": {
+      "name": "zcut",
+      "type": "real",
+      "default": "0.0036749",
+      "category": "bse_tddft",
+      "description": "Small imaginary broadening for BSE spectral functions in Hartree (default ~0.1 eV).",
+      "see_also": ["bs_calctype"],
+      "status": "active"
+    },
+    "inclvkb": {
+      "name": "inclvkb",
+      "type": "integer",
+      "default": "2",
+      "category": "bse_tddft",
+      "description": "Include commutator of non-local potential with position operator in optics (0=no, 2=yes).",
+      "see_also": ["bs_calctype", "optdriver"],
+      "status": "active"
+    },
+    "bs_algorithm": {
+      "name": "bs_algorithm",
+      "type": "integer",
+      "default": "2",
+      "category": "bse_tddft",
+      "description": "BSE solver (1=direct diagonalization, 2=Haydock iterative, 3=conjugate-gradient).",
+      "see_also": ["bs_calctype", "bs_haydock_niter"],
+      "status": "active"
+    },
+    "bs_coulomb_term": {
+      "name": "bs_coulomb_term",
+      "type": "integer",
+      "default": "11",
+      "category": "bse_tddft",
+      "description": "Coulomb interaction treatment in BSE (two-digit code for inclusion level and locality).",
+      "see_also": ["bs_exchange_term"],
+      "status": "active"
+    },
+    "bs_freq_mesh": {
+      "name": "bs_freq_mesh",
+      "type": "array_real",
+      "default": "0.0 0.0 0.01",
+      "category": "bse_tddft",
+      "description": "Frequency mesh for BSE dielectric function: start, end, step (Hartree).",
+      "see_also": ["bs_calctype"],
+      "status": "active"
+    },
+    "bs_haydock_niter": {
+      "name": "bs_haydock_niter",
+      "type": "integer",
+      "default": "100",
+      "category": "bse_tddft",
+      "description": "Maximum number of iterations for the Haydock BSE solver.",
+      "see_also": ["bs_algorithm", "bs_haydock_tol"],
+      "status": "active"
+    },
+    "bs_haydock_tol": {
+      "name": "bs_haydock_tol",
+      "type": "array_real",
+      "default": "0.02 0.0",
+      "category": "bse_tddft",
+      "description": "Convergence tolerance and component selection for Haydock BSE iterations.",
+      "see_also": ["bs_haydock_niter", "bs_algorithm"],
+      "status": "active"
+    },
+    "bs_nstates": {
+      "name": "bs_nstates",
+      "type": "integer",
+      "default": "0",
+      "category": "bse_tddft",
+      "description": "Maximum number of excitonic states for direct BSE diagonalization.",
+      "see_also": ["bs_algorithm"],
+      "status": "active"
+    },
+    "occ": {
+      "name": "occ",
+      "type": "array_real",
+      "default": null,
+      "category": "basic",
+      "description": "Explicit occupation numbers for each band at each k-point.",
+      "see_also": ["occopt", "nband"],
+      "status": "active"
+    },
+    "einterp": {
+      "name": "einterp",
+      "type": "array_real",
+      "default": "0 0 0 0",
+      "category": "basic",
+      "description": "Activates the interpolation of electronic eigenvalues (star-function method).",
+      "see_also": ["nband"],
+      "status": "active"
+    },
+    "iomode": {
+      "name": "iomode",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "I/O format selection (0=Fortran binary, 1=MPI-IO, 3=NetCDF).",
+      "see_also": ["prtwf"],
+      "status": "active"
+    },
+    "densfor_pred": {
+      "name": "densfor_pred",
+      "type": "integer",
+      "default": "2",
+      "category": "scf",
+      "description": "Density and force prediction method between ionic steps (2=extrapolation, 6=Harris).",
+      "see_also": ["ionmov"],
+      "status": "active"
+    },
+    "wfoptalg": {
+      "name": "wfoptalg",
+      "type": "integer",
+      "default": "0",
+      "category": "scf",
+      "description": "Wavefunction optimization algorithm (0=conjugate gradient, 1=Chebyshev, 14=LOBPCG).",
+      "see_also": ["nline", "paral_kgb"],
+      "status": "active"
+    },
+    "fftalg": {
+      "name": "fftalg",
+      "type": "integer",
+      "default": "312",
+      "category": "memory",
+      "description": "FFT algorithm selection (three-digit code: library/padding/transform type).",
+      "see_also": ["ngfft"],
+      "status": "active"
+    },
+    "nimage": {
+      "name": "nimage",
+      "type": "integer",
+      "default": "1",
+      "category": "relaxation",
+      "description": "Number of images for path-finding methods (NEB, string method, PIMD).",
+      "see_also": ["imgmov", "npimage"],
+      "status": "active"
+    },
+    "imgmov": {
+      "name": "imgmov",
+      "type": "integer",
+      "default": "0",
+      "category": "relaxation",
+      "description": "Image movement algorithm (0=none, 2=string method, 5=NEB, 9=PIMD, 13=Langevin NEB).",
+      "see_also": ["nimage", "npimage"],
+      "status": "active"
+    },
+    "vdw_xc": {
+      "name": "vdw_xc",
+      "type": "integer",
+      "default": "0",
+      "category": "exchange_correlation",
+      "description": "Van der Waals functional selection (0=none, 1=vdW-DF1, 2=vdW-DF2, 5=DFT-D2, 6=DFT-D3, 7=DFT-D3(BJ)).",
+      "see_also": ["ixc", "vdw_tol"],
+      "status": "active"
+    },
+    "vdw_tol": {
+      "name": "vdw_tol",
+      "type": "real",
+      "default": "1.0e-10",
+      "category": "exchange_correlation",
+      "description": "Tolerance for van der Waals pair potential inclusion.",
+      "see_also": ["vdw_xc"],
+      "status": "active"
+    },
+    "vdw_nfrag": {
+      "name": "vdw_nfrag",
+      "type": "integer",
+      "default": "1",
+      "category": "exchange_correlation",
+      "description": "Number of interacting van der Waals fragments.",
+      "see_also": ["vdw_xc", "vdw_typfrag"],
+      "status": "active"
+    },
+    "vdw_supercell": {
+      "name": "vdw_supercell",
+      "type": "array_int",
+      "default": "0 0 0",
+      "category": "exchange_correlation",
+      "description": "Supercell dimensions for Wannier-based van der Waals calculations.",
+      "see_also": ["vdw_xc"],
+      "status": "active"
+    },
+    "vdw_typfrag": {
+      "name": "vdw_typfrag",
+      "type": "array_int",
+      "default": "1",
+      "category": "exchange_correlation",
+      "description": "Fragment assignment for each atom in vdW calculations.",
+      "see_also": ["vdw_nfrag", "vdw_xc"],
+      "status": "active"
+    },
+    "eph_task": {
+      "name": "eph_task",
+      "type": "integer",
+      "default": "1",
+      "category": "dfpt",
+      "description": "Electron-phonon calculation task selector for optdriver=7.",
+      "see_also": ["optdriver"],
+      "status": "active"
+    },
+    "eph_intmeth": {
+      "name": "eph_intmeth",
+      "type": "integer",
+      "default": "2",
+      "category": "dfpt",
+      "description": "BZ integration method for electron-phonon (1=Gaussian, 2=tetrahedron).",
+      "see_also": ["eph_task", "eph_fsewin"],
+      "status": "active"
+    },
+    "eph_fsewin": {
+      "name": "eph_fsewin",
+      "type": "real",
+      "default": "0.04",
+      "category": "dfpt",
+      "description": "Fermi surface energy window for electron-phonon calculations (Hartree).",
+      "see_also": ["eph_task", "eph_fsmear"],
+      "status": "active"
+    },
+    "eph_fsmear": {
+      "name": "eph_fsmear",
+      "type": "real",
+      "default": "0.01",
+      "category": "dfpt",
+      "description": "Gaussian broadening for Fermi surface in electron-phonon (Hartree).",
+      "see_also": ["eph_fsewin", "eph_intmeth"],
+      "status": "active"
+    },
+    "eph_mustar": {
+      "name": "eph_mustar",
+      "type": "real",
+      "default": "0.1",
+      "category": "dfpt",
+      "description": "Coulomb pseudopotential parameter (mu*) for superconductivity estimates.",
+      "see_also": ["eph_task"],
+      "status": "active"
+    },
+    "eph_transport": {
+      "name": "eph_transport",
+      "type": "integer",
+      "default": "0",
+      "category": "dfpt",
+      "description": "Enable transport property calculations within electron-phonon framework.",
+      "see_also": ["eph_task"],
+      "status": "active"
+    },
+    "ph_ngqpt": {
+      "name": "ph_ngqpt",
+      "type": "array_int",
+      "default": null,
+      "category": "dfpt",
+      "description": "Q-point mesh for phonon DOS and thermodynamic properties.",
+      "see_also": ["ph_ndivsm", "ph_qpath"],
+      "status": "active"
+    },
+    "ph_ndivsm": {
+      "name": "ph_ndivsm",
+      "type": "integer",
+      "default": "20",
+      "category": "dfpt",
+      "description": "Number of divisions for the smallest segment of the phonon band structure q-path.",
+      "see_also": ["ph_qpath", "ph_nqpath"],
+      "status": "active"
+    },
+    "ph_nqpath": {
+      "name": "ph_nqpath",
+      "type": "integer",
+      "default": null,
+      "category": "dfpt",
+      "description": "Number of q-point path segments for phonon band structure.",
+      "see_also": ["ph_qpath", "ph_ndivsm"],
+      "status": "active"
+    },
+    "ph_qpath": {
+      "name": "ph_qpath",
+      "type": "array_real",
+      "default": null,
+      "category": "dfpt",
+      "description": "Q-point path coordinates for phonon band structure.",
+      "see_also": ["ph_nqpath", "ph_ndivsm"],
+      "status": "active"
+    },
+    "ph_smear": {
+      "name": "ph_smear",
+      "type": "real",
+      "default": null,
+      "category": "dfpt",
+      "description": "Gaussian broadening for phonon DOS calculation.",
+      "see_also": ["ph_ngqpt"],
+      "status": "active"
+    },
+    "dipdip": {
+      "name": "dipdip",
+      "type": "integer",
+      "default": "1",
+      "category": "dfpt",
+      "description": "Dipole-dipole interaction treatment in phonon calculations (0=off, 1=on).",
+      "see_also": ["asr", "chneut"],
+      "status": "active"
+    },
+    "symdynmat": {
+      "name": "symdynmat",
+      "type": "integer",
+      "default": "1",
+      "category": "dfpt",
+      "description": "Symmetrize the dynamical matrix (1=yes, 0=no).",
+      "see_also": ["rfphon"],
+      "status": "active"
+    },
+    "nphf": {
+      "name": "nphf",
+      "type": "integer",
+      "default": "1",
+      "category": "parallel",
+      "description": "Number of processors for Hartree-Fock exact exchange parallelization.",
+      "see_also": ["paral_kgb"],
+      "status": "active"
+    },
+    "npspinor": {
+      "name": "npspinor",
+      "type": "integer",
+      "default": "1",
+      "category": "parallel",
+      "description": "Number of processors for spinor component parallelization.",
+      "see_also": ["nspinor", "paral_kgb"],
+      "status": "active"
+    },
+    "gpu_option": {
+      "name": "gpu_option",
+      "type": "integer",
+      "default": "0",
+      "category": "parallel",
+      "description": "GPU implementation mode (0=disabled, 1=legacy, 2=OpenMP offload, 3=Kokkos).",
+      "see_also": ["paral_kgb"],
+      "status": "active"
+    },
+    "localrdwf": {
+      "name": "localrdwf",
+      "type": "integer",
+      "default": "1",
+      "category": "parallel",
+      "description": "Controls local vs broadcast wavefunction file reading in parallel (1=local, 0=broadcast).",
+      "see_also": [],
+      "status": "active"
+    },
+    "expert_user": {
+      "name": "expert_user",
+      "type": "integer",
+      "default": "0",
+      "category": "basic",
+      "description": "Disable safety checks for expert users (0=all checks, 1=disable some).",
+      "see_also": [],
+      "status": "active"
+    },
+    "mem_test": {
+      "name": "mem_test",
+      "type": "integer",
+      "default": "1",
+      "category": "memory",
+      "description": "Level of memory estimation at start (0=no test, 1=soft, 2=hard limit).",
+      "see_also": [],
+      "status": "active"
+    },
+    "nspinor_mem": {
+      "name": "nspinor_mem",
+      "type": "integer",
+      "default": null,
+      "category": "memory",
+      "description": "Controls memory usage for spinor calculations (can reduce memory at cost of speed).",
+      "see_also": ["nspinor"],
+      "status": "active"
+    },
+    "kptrlen": {
+      "name": "kptrlen",
+      "type": "real",
+      "default": "30.0",
+      "category": "kpoints",
+      "description": "Minimum length of smallest reciprocal lattice vector in the k-point grid (Bohr).",
+      "see_also": ["ngkpt", "kptrlatt"],
+      "status": "active"
+    },
+    "prtkpt": {
+      "name": "prtkpt",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print the list of k-points and their weights.",
+      "see_also": ["kpt", "ngkpt"],
+      "status": "active"
+    },
+    "prtcif": {
+      "name": "prtcif",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print the crystal structure in CIF format.",
+      "see_also": ["prtgsr"],
+      "status": "active"
+    },
+    "prtstm": {
+      "name": "prtstm",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print STM (scanning tunneling microscopy) image data.",
+      "see_also": ["prtden"],
+      "status": "active"
+    },
+    "prtelf": {
+      "name": "prtelf",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print the electron localization function (ELF).",
+      "see_also": ["prtden"],
+      "status": "active"
+    },
+    "prtspcur": {
+      "name": "prtspcur",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print spin current density.",
+      "see_also": ["nspinor"],
+      "status": "active"
+    },
+    "timopt": {
+      "name": "timopt",
+      "type": "integer",
+      "default": "1",
+      "category": "output",
+      "description": "Controls timing analysis output (0=suppress, 1=summary, -1=detailed, 2=YAML).",
+      "see_also": [],
+      "status": "active"
+    },
+    "mkmem": {
+      "name": "mkmem",
+      "type": "integer",
+      "default": null,
+      "category": "memory",
+      "description": "Number of k-points stored in memory (0=all on disk, nkpt=all in memory).",
+      "see_also": ["nkpt"],
+      "status": "active"
+    },
+    "mkqmem": {
+      "name": "mkqmem",
+      "type": "integer",
+      "default": null,
+      "category": "memory",
+      "description": "Number of k+q points stored in memory for DFPT.",
+      "see_also": ["mkmem", "nqpt"],
+      "status": "active"
+    },
+    "mk1mem": {
+      "name": "mk1mem",
+      "type": "integer",
+      "default": null,
+      "category": "memory",
+      "description": "Number of k-points for first-order wavefunctions stored in memory.",
+      "see_also": ["mkmem"],
+      "status": "active"
+    },
+    "fband": {
+      "name": "fband",
+      "type": "real",
+      "default": "0.5",
+      "category": "basic",
+      "description": "Fraction of extra bands to add beyond the number of occupied bands.",
+      "see_also": ["nband"],
+      "status": "active"
+    },
+    "cpus": {
+      "name": "cpus",
+      "type": "real",
+      "default": "0.0",
+      "category": "basic",
+      "description": "CPU time limit in seconds (0=no limit). Calculation stops cleanly if exceeded.",
+      "see_also": ["cpum", "cpuh"],
+      "status": "active"
+    },
+    "cpum": {
+      "name": "cpum",
+      "type": "real",
+      "default": "0.0",
+      "category": "basic",
+      "description": "CPU time limit in minutes.",
+      "see_also": ["cpus", "cpuh"],
+      "status": "active"
+    },
+    "cpuh": {
+      "name": "cpuh",
+      "type": "real",
+      "default": "0.0",
+      "category": "basic",
+      "description": "CPU time limit in hours.",
+      "see_also": ["cpus", "cpum"],
+      "status": "active"
+    },
+    "nucefg": {
+      "name": "nucefg",
+      "type": "integer",
+      "default": "0",
+      "category": "paw",
+      "description": "Calculate electric field gradient at nuclear sites (NMR/NQR).",
+      "see_also": ["quadmom", "nucfc"],
+      "status": "active"
+    },
+    "nucfc": {
+      "name": "nucfc",
+      "type": "integer",
+      "default": "0",
+      "category": "paw",
+      "description": "Compute Fermi contact term at nuclear sites.",
+      "see_also": ["nucefg"],
+      "status": "active"
+    },
+    "quadmom": {
+      "name": "quadmom",
+      "type": "array_real",
+      "default": "0.0",
+      "category": "paw",
+      "description": "Nuclear quadrupole moments in barns for EFG calculations.",
+      "see_also": ["nucefg"],
+      "status": "active"
+    },
+    "prtphbands": {
+      "name": "prtphbands",
+      "type": "integer",
+      "default": "1",
+      "category": "output",
+      "description": "Print phonon band structure data.",
+      "see_also": ["prtphdos", "ph_qpath"],
+      "status": "active"
+    },
+    "prtphdos": {
+      "name": "prtphdos",
+      "type": "integer",
+      "default": "1",
+      "category": "output",
+      "description": "Print phonon density of states.",
+      "see_also": ["prtphbands", "ph_ngqpt"],
+      "status": "active"
+    },
+    "prtnest": {
+      "name": "prtnest",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print the electronic nesting function.",
+      "see_also": ["eph_task"],
+      "status": "active"
+    },
+    "prteliash": {
+      "name": "prteliash",
+      "type": "integer",
+      "default": "0",
+      "category": "output",
+      "description": "Print the Eliashberg function for superconductivity analysis.",
+      "see_also": ["eph_task", "eph_mustar"],
+      "status": "active"
+    },
+    "orbmag": {
+      "name": "orbmag",
+      "type": "integer",
+      "default": "0",
+      "category": "dfpt",
+      "description": "Compute orbital magnetization and nuclear magnetic shielding.",
+      "see_also": ["nucefg"],
+      "status": "active"
+    },
+    "prepanl": {
+      "name": "prepanl",
+      "type": "integer",
+      "default": "0",
+      "category": "dfpt",
+      "description": "Prepare nonlinear response by preserving full k-point sets.",
+      "see_also": ["rfphon", "rfelfd"],
+      "status": "active"
+    },
+    "constraint_kind": {
+      "name": "constraint_kind",
+      "type": "array_int",
+      "default": null,
+      "category": "spin",
+      "description": "Defines DFT constraint type per atom type for constrained DFT (charge/magnetization).",
+      "see_also": ["spinat"],
+      "status": "active"
+    },
+    "magconon": {
+      "name": "magconon",
+      "type": "integer",
+      "default": "0",
+      "category": "spin",
+      "description": "Turn on constrained magnetic moment (0=off, 1=constrain direction, 2=constrain amplitude).",
+      "see_also": ["spinat", "magcon_lambda"],
+      "status": "active"
+    },
+    "magcon_lambda": {
+      "name": "magcon_lambda",
+      "type": "real",
+      "default": "0.01",
+      "category": "spin",
+      "description": "Penalty function scaling for constrained magnetic moment calculations.",
+      "see_also": ["magconon", "spinat"],
+      "status": "active"
+    },
+    "ddb_ngqpt": {
+      "name": "ddb_ngqpt",
+      "type": "array_int",
+      "default": "0 0 0",
+      "category": "dfpt",
+      "description": "Q-point mesh divisions for the DDB (derivative database) file.",
+      "see_also": ["getddb"],
+      "status": "active"
+    },
+    "ddb_shiftq": {
+      "name": "ddb_shiftq",
+      "type": "array_real",
+      "default": "0.0 0.0 0.0",
+      "category": "dfpt",
+      "description": "Q-point mesh shift for DDB.",
+      "see_also": ["ddb_ngqpt"],
+      "status": "active"
+    },
+    "dvdb_add_lr": {
+      "name": "dvdb_add_lr",
+      "type": "integer",
+      "default": "1",
+      "category": "dfpt",
+      "description": "Add long-range DFPT potentials to the DVDB file.",
+      "see_also": ["getdvdb"],
+      "status": "active"
+    },
+    "tolrde": {
+      "name": "tolrde",
+      "type": "real",
+      "default": "0.005",
+      "category": "scf",
+      "description": "Tolerance for the ratio of density change, used as a secondary convergence criterion.",
+      "see_also": ["toldfe", "tolvrs"],
+      "status": "active"
+    },
+    "nqptdm": {
+      "name": "nqptdm",
+      "type": "integer",
+      "default": "0",
+      "category": "gw",
+      "description": "Number of q-points for the dielectric matrix computation.",
+      "see_also": ["optdriver"],
+      "status": "active"
+    },
+    "qptdm": {
+      "name": "qptdm",
+      "type": "array_real",
+      "default": null,
+      "category": "gw",
+      "description": "Q-point coordinates for dielectric matrix computation.",
+      "see_also": ["nqptdm", "optdriver"],
+      "status": "active"
+    }
+  }
+}

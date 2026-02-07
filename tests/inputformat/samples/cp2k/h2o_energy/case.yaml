@@ -1,0 +1,6 @@
+case_id: h2o_energy
+title: "Water molecule single-point energy"
+engine: cp2k
+workflow_tags: [scf, energy, molecule]
+species: [O, H]
+description: "Basic PBE/DZVP single-point energy for water molecule in cubic box. Validated against real CP2K 2026.1 run: E = -17.2197 Ha."

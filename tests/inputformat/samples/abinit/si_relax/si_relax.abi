@@ -1,0 +1,40 @@
+# Silicon relaxation — ionic + cell optimization
+# 2-atom diamond Si with compressed lattice to test relaxation
+
+# System definition
+acell 3*10.0  # Bohr (compressed from equilibrium ~10.26)
+rprim
+  0.0  0.5  0.5
+  0.5  0.0  0.5
+  0.5  0.5  0.0
+ntypat 1
+znucl 14
+natom 2
+typat 1 1
+xred
+  0.00  0.00  0.00
+  0.25  0.25  0.25
+
+# Plane-wave basis
+ecut 10
+ecutsm 0.5  # Smearing for variable-cell
+
+# Relaxation settings
+ionmov 2    # BFGS
+optcell 1   # Optimize cell volume only (isotropic)
+ntime 10
+tolmxf 5.0d-4
+dilatmx 1.05
+
+# K-point grid
+ngkpt 4 4 4
+nshiftk 1
+shiftk 0.5 0.5 0.5
+
+# SCF convergence
+nstep 30
+toldfe 1.0d-8
+
+# Pseudopotentials
+pp_dirpath "./pseudos"
+pseudos "Si.psp8"

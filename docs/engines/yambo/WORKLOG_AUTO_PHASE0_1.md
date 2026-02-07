@@ -12,7 +12,7 @@
 ### Timestamp: 2026-02-06T22:17:00Z
 
 **Executable Location**:
-- Absolute path: `/Users/hh7465/QMatSuite/.qmatsuite/engines/yambo/yambo-5.3.0/bin/yambo`
+- Absolute path: `$HOME/QMatSuite/.qmatsuite/engines/yambo/yambo-5.3.0/bin/yambo`
 - Version: 5.3.0 Revision 23927 Hash 1730222ea
 - Build: Serial+HDF5_IO
 

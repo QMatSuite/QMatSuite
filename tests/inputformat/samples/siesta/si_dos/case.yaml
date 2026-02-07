@@ -1,0 +1,7 @@
+case_id: si_dos
+title: "Silicon projected DOS"
+engine: siesta
+workflow_tags: [dos, pdos, periodic]
+species: [Si]
+functional: PBE
+description: "Projected DOS request through ProjectedDensityOfStates block."

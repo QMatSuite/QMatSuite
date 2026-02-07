@@ -1,0 +1,50 @@
+SystemName        Silicon bulk relaxation
+SystemLabel       si_relax
+
+NumberOfAtoms     2
+NumberOfSpecies   1
+
+%block ChemicalSpeciesLabel
+ 1  14  Si
+%endblock ChemicalSpeciesLabel
+
+PAO.BasisSize     DZP
+PAO.EnergyShift   100 meV
+
+LatticeConstant   5.50 Ang
+%block LatticeVectors
+  0.500  0.500  0.000
+  0.000  0.500  0.500
+  0.500  0.000  0.500
+%endblock LatticeVectors
+
+AtomicCoordinatesFormat  ScaledCartesian
+%block AtomicCoordinatesAndAtomicSpecies
+  0.000  0.000  0.000  1
+  0.260  0.260  0.260  1
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+%block kgrid_Monkhorst_Pack
+  4  0  0  0.5
+  0  4  0  0.5
+  0  0  4  0.5
+%endblock kgrid_Monkhorst_Pack
+
+MeshCutoff        200.0 Ry
+MaxSCFIterations  100
+DM.MixingWeight   0.3
+DM.Tolerance      1.d-4
+SolutionMethod    diagon
+XC.functional     GGA
+XC.authors        PBE
+
+MD.TypeOfRun      CG
+MD.NumCGsteps     20
+MD.MaxForceTol    0.02 eV/Ang
+MD.VariableCell   T
+MD.MaxStressTol   0.5 GPa
+
+WriteForces       T
+WriteCoorXmol     T
+WriteMDXmol       T
+WriteMDhistory    T

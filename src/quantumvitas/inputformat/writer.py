@@ -61,6 +61,8 @@ def write_engine_inputs(
             )
 
         content = file_spec.custom_writer(fragment)
+        if file_spec.optional and (content is None or content == ""):
+            continue
         out_path = workdir / file_spec.filename
         out_path.write_text(content)
         written.append(out_path)

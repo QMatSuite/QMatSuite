@@ -1,0 +1,50 @@
+SystemName        Silicon molecular dynamics
+SystemLabel       si_md
+
+NumberOfAtoms     2
+NumberOfSpecies   1
+
+%block ChemicalSpeciesLabel
+ 1  14  Si
+%endblock ChemicalSpeciesLabel
+
+PAO.BasisSize     SZ
+PAO.EnergyShift   100 meV
+
+LatticeConstant   5.43 Ang
+%block LatticeVectors
+  0.500  0.500  0.000
+  0.000  0.500  0.500
+  0.500  0.000  0.500
+%endblock LatticeVectors
+
+AtomicCoordinatesFormat  ScaledCartesian
+%block AtomicCoordinatesAndAtomicSpecies
+  0.000  0.000  0.000  1
+  0.250  0.250  0.250  1
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+%block kgrid_Monkhorst_Pack
+  2  0  0  0.5
+  0  2  0  0.5
+  0  0  2  0.5
+%endblock kgrid_Monkhorst_Pack
+
+MeshCutoff        120.0 Ry
+MaxSCFIterations  60
+DM.MixingWeight   0.3
+DM.Tolerance      1.d-4
+SolutionMethod    diagon
+XC.functional     GGA
+XC.authors        PBE
+
+MD.TypeOfRun      Verlet
+MD.Steps          5
+MD.LengthTimeStep 1.0 fs
+MD.InitialTemperature 300 K
+MD.TargetTemperature 300 K
+
+WriteForces       T
+WriteCoorXmol     T
+WriteMDXmol       T
+WriteMDhistory    T

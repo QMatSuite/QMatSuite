@@ -1,0 +1,7 @@
+case_id: si_vcrelax
+title: "Silicon fast vc-relax"
+engine: siesta
+workflow_tags: [relax, vc_relax, periodic]
+species: [Si]
+functional: PBE
+description: "Fast variable-cell CG relaxation with reduced k-grid."

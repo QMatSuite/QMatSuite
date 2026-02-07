@@ -1,0 +1,7 @@
+case_id: si_md
+title: "Silicon short MD"
+engine: siesta
+workflow_tags: [md, periodic]
+species: [Si]
+functional: PBE
+description: "Short Verlet MD trajectory for Si with 5 steps."

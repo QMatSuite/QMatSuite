@@ -1,0 +1,6 @@
+case_id: caffeine_grad
+title: "Caffeine gradient"
+engine: xtb
+workflow_tags: [gradient, medium_molecule]
+species: [C, H, N, O]
+description: "Gradient workflow with energy/gradient artifacts."

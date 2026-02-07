@@ -1,0 +1,6 @@
+case_id: si_bse_haydock
+title: "Silicon BSE Haydock"
+engine: yambo
+workflow_tags: [bse, optics, excitonic]
+species: [Si]
+description: "BSE optical spectrum using SEX kernel and Haydock iterative solver with static screening."

@@ -1,0 +1,665 @@
+{
+  "schema_version": 1,
+  "engine": "yambo",
+  "engine_version": "5.3.0",
+  "doc_url": "https://www.yambo-code.eu/wiki/",
+  "tags": {
+    "AC_E_Rng": {
+      "name": "AC_E_Rng",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "acfdt",
+      "description": "AC_E_Rng block variable",
+      "status": "active"
+    },
+    "AC_n_FR": {
+      "name": "AC_n_FR",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "acfdt",
+      "description": "[ACFDT] Integration frequency points",
+      "status": "active"
+    },
+    "AC_n_LAM": {
+      "name": "AC_n_LAM",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "acfdt",
+      "description": "[ACFDT] Coupling Costant GL-grid points",
+      "status": "active"
+    },
+    "BDmRange": {
+      "name": "BDmRange",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "general",
+      "description": "BDmRange block variable",
+      "status": "active"
+    },
+    "BEnRange": {
+      "name": "BEnRange",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "general",
+      "description": "BEnRange block variable",
+      "status": "active"
+    },
+    "BEnSteps": {
+      "name": "BEnSteps",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "bse_solver",
+      "description": "[BSS] Energy steps",
+      "status": "active"
+    },
+    "BLongDir": {
+      "name": "BLongDir",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "general",
+      "description": "BLongDir block variable",
+      "status": "active"
+    },
+    "BSEBands": {
+      "name": "BSEBands",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "bse",
+      "description": "BSEBands block variable",
+      "status": "active"
+    },
+    "BSENGBlk": {
+      "name": "BSENGBlk",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "bse_kernel",
+      "description": "[BSK] Screened interaction block size [if -1 uses all the G-vectors of W(q,G,Gp)]",
+      "status": "active"
+    },
+    "BSENGexx": {
+      "name": "BSENGexx",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "bse_kernel",
+      "description": "[BSK] Exchange components",
+      "status": "active"
+    },
+    "BSEQptR": {
+      "name": "BSEQptR",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "bse",
+      "description": "BSEQptR block variable",
+      "status": "active"
+    },
+    "BSEdips": {
+      "name": "BSEdips",
+      "type": "string",
+      "kind": "scalar",
+      "default": null,
+      "category": "bse_solver",
+      "description": "[BSS] Can be \"trace/none\" or \"xy/xz/yz\" to define off-diagonal rotation plane",
+      "status": "active"
+    },
+    "BSEmod": {
+      "name": "BSEmod",
+      "type": "string",
+      "kind": "scalar",
+      "default": null,
+      "category": "bse",
+      "description": "[BSE] resonant/retarded/coupling",
+      "status": "active"
+    },
+    "BSEprop": {
+      "name": "BSEprop",
+      "type": "string",
+      "kind": "scalar",
+      "default": null,
+      "category": "bse_solver",
+      "description": "[BSS] Can be any among abs/jdos/kerr/asymm/anHAll/magn/dich/photolum/esrt",
+      "status": "active"
+    },
+    "BSHayTrs": {
+      "name": "BSHayTrs",
+      "type": "float",
+      "kind": "scalar",
+      "default": null,
+      "category": "bse_solver",
+      "description": "[BSS] Relative [o/o] Haydock threshold. Strict(>0)/Average(<0)",
+      "status": "active"
+    },
+    "BSKmod": {
+      "name": "BSKmod",
+      "type": "string",
+      "kind": "scalar",
+      "default": null,
+      "category": "bse",
+      "description": "[BSE] IP/Hartree/HF/ALDA/SEX/BSfxc",
+      "status": "active"
+    },
+    "BSSmod": {
+      "name": "BSSmod",
+      "type": "string",
+      "kind": "scalar",
+      "default": null,
+      "category": "bse_solver",
+      "description": "[BSS] (h)aydock/(d)iagonalization/(s)lepc/(i)nversion/(t)ddft`",
+      "status": "active"
+    },
+    "BndsRnXd": {
+      "name": "BndsRnXd",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "optics",
+      "description": "BndsRnXd block variable",
+      "status": "active"
+    },
+    "BndsRnXp": {
+      "name": "BndsRnXp",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "screening",
+      "description": "BndsRnXp block variable",
+      "status": "active"
+    },
+    "BndsRnXs": {
+      "name": "BndsRnXs",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "screening",
+      "description": "BndsRnXs block variable",
+      "status": "active"
+    },
+    "BndsRnXx": {
+      "name": "BndsRnXx",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "screening",
+      "description": "BndsRnXx block variable",
+      "status": "active"
+    },
+    "CUTBox": {
+      "name": "CUTBox",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "general",
+      "description": "CUTBox block variable",
+      "status": "active"
+    },
+    "CUTCylLen": {
+      "name": "CUTCylLen",
+      "type": "float",
+      "kind": "scalar",
+      "default": null,
+      "category": "cut",
+      "description": "[CUT] [au] Cylinder length",
+      "status": "active"
+    },
+    "CUTGeo": {
+      "name": "CUTGeo",
+      "type": "string",
+      "kind": "scalar",
+      "default": null,
+      "category": "cut",
+      "description": "[CUT] Coulomb Cutoff geometry: box/cylinder/sphere/ws/slab X/Y/Z/XY..",
+      "status": "active"
+    },
+    "CUTRadius": {
+      "name": "CUTRadius",
+      "type": "float",
+      "kind": "scalar",
+      "default": null,
+      "category": "cut",
+      "description": "[CUT] [au] Sphere/Cylinder radius",
+      "status": "active"
+    },
+    "CUTwsGvec": {
+      "name": "CUTwsGvec",
+      "type": "float",
+      "kind": "scalar",
+      "default": null,
+      "category": "cut",
+      "description": "[CUT] WS cutoff: number of G to be modified",
+      "status": "active"
+    },
+    "ChiDmRnge": {
+      "name": "ChiDmRnge",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "optics",
+      "description": "ChiDmRnge block variable",
+      "status": "active"
+    },
+    "ChiEnRnge": {
+      "name": "ChiEnRnge",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "optics",
+      "description": "ChiEnRnge block variable",
+      "status": "active"
+    },
+    "ChiEnStps": {
+      "name": "ChiEnStps",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "response",
+      "description": "[X] Energy steps",
+      "status": "active"
+    },
+    "Chimod": {
+      "name": "Chimod",
+      "type": "string",
+      "kind": "scalar",
+      "default": null,
+      "category": "response",
+      "description": "[X] IP/Hartree/ALDA/LRC/PF/BSfxc",
+      "status": "active"
+    },
+    "DmRngeXd": {
+      "name": "DmRngeXd",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "optics",
+      "description": "DmRngeXd block variable",
+      "status": "active"
+    },
+    "DysSolver": {
+      "name": "DysSolver",
+      "type": "string",
+      "kind": "scalar",
+      "default": null,
+      "category": "gw",
+      "description": "[GW] Dyson Equation solver (\"n\",\"s\",\"g\",\"q\")",
+      "status": "active"
+    },
+    "ETStpsXd": {
+      "name": "ETStpsXd",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "response",
+      "description": "[Xd] Total Energy steps",
+      "status": "active"
+    },
+    "EXXRLvcs": {
+      "name": "EXXRLvcs",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "exchange",
+      "description": "[XX] Exchange RL components",
+      "status": "active"
+    },
+    "EnRngeXd": {
+      "name": "EnRngeXd",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "optics",
+      "description": "EnRngeXd block variable",
+      "status": "active"
+    },
+    "FxcGRLc": {
+      "name": "FxcGRLc",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "tddft",
+      "description": "[TDDFT] XC-kernel RL size",
+      "status": "active"
+    },
+    "GTermKind": {
+      "name": "GTermKind",
+      "type": "string",
+      "kind": "scalar",
+      "default": null,
+      "category": "gw",
+      "description": "[GW] GW terminator (\"none\",\"BG\" Bruneval-Gonze,\"BRS\" Berger-Reining-Sottile)",
+      "status": "active"
+    },
+    "GbndRnge": {
+      "name": "GbndRnge",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "general",
+      "description": "GbndRnge block variable",
+      "status": "active"
+    },
+    "HF_and_locXC": {
+      "name": "HF_and_locXC",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R] Hartree-Fock",
+      "status": "active"
+    },
+    "LRC_alpha": {
+      "name": "LRC_alpha",
+      "type": "float",
+      "kind": "scalar",
+      "default": null,
+      "category": "tddft",
+      "description": "[TDDFT] LRC alpha factor",
+      "status": "active"
+    },
+    "LifeTrCG": {
+      "name": "LifeTrCG",
+      "type": "float",
+      "kind": "scalar",
+      "default": null,
+      "category": "gw",
+      "description": "[GW] [o/o] Lifetime transition reduction",
+      "status": "active"
+    },
+    "LongDrXd": {
+      "name": "LongDrXd",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "optics",
+      "description": "LongDrXd block variable",
+      "status": "active"
+    },
+    "LongDrXp": {
+      "name": "LongDrXp",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "general",
+      "description": "LongDrXp block variable",
+      "status": "active"
+    },
+    "LongDrXs": {
+      "name": "LongDrXs",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "general",
+      "description": "LongDrXs block variable",
+      "status": "active"
+    },
+    "LongDrXx": {
+      "name": "LongDrXx",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "general",
+      "description": "LongDrXx block variable",
+      "status": "active"
+    },
+    "NGsBlkXd": {
+      "name": "NGsBlkXd",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "response",
+      "description": "[Xd] Response block size",
+      "status": "active"
+    },
+    "NGsBlkXp": {
+      "name": "NGsBlkXp",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "screening",
+      "description": "[Xp] Response block size",
+      "status": "active"
+    },
+    "NGsBlkXs": {
+      "name": "NGsBlkXs",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "screening",
+      "description": "[Xs] Response block size",
+      "status": "active"
+    },
+    "NGsBlkXx": {
+      "name": "NGsBlkXx",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "exchange",
+      "description": "[Xx] Response block size",
+      "status": "active"
+    },
+    "PPAPntXp": {
+      "name": "PPAPntXp",
+      "type": "float",
+      "kind": "scalar",
+      "default": null,
+      "category": "screening",
+      "description": "[Xp] PPA imaginary energy",
+      "status": "active"
+    },
+    "QPkrange": {
+      "name": "QPkrange",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "gw",
+      "description": "[GW] QP generalized Kpoint/Band indices",
+      "status": "active"
+    },
+    "QpntsRXd": {
+      "name": "QpntsRXd",
+      "type": "block",
+      "kind": "block",
+      "default": null,
+      "category": "optics",
+      "description": "QpntsRXd block variable",
+      "status": "active"
+    },
+    "RandGvec": {
+      "name": "RandGvec",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "rim",
+      "description": "[RIM] Coulomb interaction RS components",
+      "status": "active"
+    },
+    "RandGvecW": {
+      "name": "RandGvecW",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "rim-w",
+      "description": "[RIM-W] Screened interaction RS components",
+      "status": "active"
+    },
+    "RandQpts": {
+      "name": "RandQpts",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "rim",
+      "description": "[RIM] Number of random q-points in the BZ",
+      "status": "active"
+    },
+    "VXCRLvcs": {
+      "name": "VXCRLvcs",
+      "type": "int",
+      "kind": "scalar",
+      "default": null,
+      "category": "exchange",
+      "description": "[XC] XCpotential RL components",
+      "status": "active"
+    },
+    "acfdt": {
+      "name": "acfdt",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R] ACFDT Total Energy",
+      "status": "active"
+    },
+    "bse": {
+      "name": "bse",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R][BSE] Bethe Salpeter Equation.",
+      "status": "active"
+    },
+    "bss": {
+      "name": "bss",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R] BSE solver",
+      "status": "active"
+    },
+    "chi": {
+      "name": "chi",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R][CHI] Dyson equation for Chi.",
+      "status": "active"
+    },
+    "dipoles": {
+      "name": "dipoles",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R] Oscillator strenghts (or dipoles)",
+      "status": "active"
+    },
+    "dyson": {
+      "name": "dyson",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R] Dyson Equation solver",
+      "status": "active"
+    },
+    "el_el_corr": {
+      "name": "el_el_corr",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R] Electron-Electron Correlation",
+      "status": "active"
+    },
+    "em1d": {
+      "name": "em1d",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R][X] Dynamically Screened Interaction",
+      "status": "active"
+    },
+    "em1s": {
+      "name": "em1s",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R][Xs] Statically Screened Interaction",
+      "status": "active"
+    },
+    "gw0": {
+      "name": "gw0",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R] GW approximation",
+      "status": "active"
+    },
+    "life": {
+      "name": "life",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R] GoWo Quasiparticle lifetimes",
+      "status": "active"
+    },
+    "optics": {
+      "name": "optics",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R] Linear Response optical properties",
+      "status": "active"
+    },
+    "ppa": {
+      "name": "ppa",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R][Xp] Plasmon Pole Approximation for the Screened Interaction",
+      "status": "active"
+    },
+    "rim_w": {
+      "name": "rim_w",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R] Screened coulomb potential",
+      "status": "active"
+    },
+    "rimw_type": {
+      "name": "rimw_type",
+      "type": "string",
+      "kind": "scalar",
+      "default": null,
+      "category": "rim-w",
+      "description": "[RIM-W] Screened interaction limit metal/semiconductor/graphene",
+      "status": "active"
+    },
+    "screen": {
+      "name": "screen",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R] Inverse Dielectric/Response Matrix",
+      "status": "active"
+    },
+    "tddft": {
+      "name": "tddft",
+      "type": "runlevel",
+      "kind": "runlevel",
+      "default": null,
+      "category": "runlevel",
+      "description": "[R][K] Use TDDFT kernel",
+      "status": "active"
+    }
+  }
+}

@@ -392,11 +392,17 @@ class TestQMCPACKResolver:
     def test_resolver_not_found(self, monkeypatch):
         """Test resolver when QMCPACK is not found."""
         from quantumvitas.core.engines.qmcpack_resolver import resolve_qmcpack_bin
+        import quantumvitas.core.engines.qmcpack_resolver as qr
 
         monkeypatch.delenv("QMATS_QMCPACK_BIN", raising=False)
         monkeypatch.delenv("CONDA_PREFIX", raising=False)
         # Override PATH to exclude qmcpack
         monkeypatch.setenv("PATH", "/nonexistent")
+        # Prevent finding bundled binary via repo root detection
+        monkeypatch.setattr(
+            "quantumvitas.core.engines.discovery._find_repo_root",
+            lambda: None,
+        )
         with pytest.raises(FileNotFoundError, match="QMCPACK not found"):
             resolve_qmcpack_bin()
 

@@ -1,0 +1,6 @@
+case_id: water_opt
+title: "Water geometry optimization"
+engine: xtb
+workflow_tags: [relax, gfn2]
+species: [O, H]
+description: "Geometry optimization workflow with xtbopt.xyz output."

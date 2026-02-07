@@ -1,0 +1,6 @@
+case_id: si_tddft_lrc
+title: "Silicon TDDFT LRC optics"
+engine: yambo
+workflow_tags: [optics, tddft, lrc]
+species: [Si]
+description: "TDDFT optics using LRC kernel (Chimod=LRC) to exercise non-IP optics writer/parser path."

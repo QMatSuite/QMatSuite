@@ -10,4 +10,7 @@ from .driver import XTBDriver
 # Register driver at import time
 DriverRegistry.register(XTBDriver())
 
+# Trigger parser registration (XTBOutputParser -> registry)
+from . import parsers  # noqa: F401, E402
+
 __all__ = ["XTBDriver"]

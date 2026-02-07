@@ -1,0 +1,6 @@
+case_id: si_relax
+title: "Silicon ionic and cell relaxation"
+engine: abinit
+workflow_tags: [relax]
+species: [Si]
+description: "Relaxation of 2-atom diamond silicon from a compressed lattice using BFGS with isotropic cell optimization."

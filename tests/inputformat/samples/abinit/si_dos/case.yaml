@@ -1,0 +1,6 @@
+case_id: si_dos
+title: "Silicon density of states"
+engine: abinit
+workflow_tags: [dos, multi_dataset]
+species: [Si]
+description: "Two-dataset calculation for silicon DOS: SCF on 4x4x4 grid followed by NSCF on dense 8x8x8 grid with DOS output."
