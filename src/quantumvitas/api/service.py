@@ -3586,11 +3586,13 @@ class QVService:
                     "calculation_id": calc_ulid,
                     "name": calc_resolved.meta.name if calc_resolved.meta else selector,
                     "slug": calc_resolved.meta.slug if calc_resolved.meta else None,
+                    "path": str(calc_dir.relative_to(self._service.project_root)),
+                    "absolute_path": str(calc_dir),
                     "structure": structure_name,
-                    "structure_ulid": structure_ulid,  # structure_ulid is actually a ULID
-                    "structure_ulid": structure_ulid,  # Backwards compat
+                    "structure_ulid": structure_ulid,
                     "structure_name": structure_name,
                     "structure_elements": structure_elements,
+                    "engine_family": getattr(calc_model, 'engine_family', None),
                     "steps": step_summaries,
                     "n_steps": len(step_summaries),
                     "mode": calc_model.mode.value if hasattr(calc_model.mode, "value") else str(calc_model.mode) if calc_model.mode else "normal",

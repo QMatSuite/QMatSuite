@@ -72,10 +72,6 @@ def _get_vasp_roots() -> list[Path]:
     cwd_candidate = Path(".qmatsuite") / "engines" / "vasp"
     if cwd_candidate.is_dir() and cwd_candidate.resolve() not in [r.resolve() for r in roots]:
         roots.append(cwd_candidate)
-    # Home directory
-    home_candidate = Path.home() / ".qmatsuite" / "engines" / "vasp"
-    if home_candidate.is_dir() and home_candidate.resolve() not in [r.resolve() for r in roots]:
-        roots.append(home_candidate)
     return roots
 
 

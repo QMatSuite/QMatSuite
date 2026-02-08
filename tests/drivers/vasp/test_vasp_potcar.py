@@ -17,20 +17,25 @@ from quantumvitas.drivers.vasp.engine.vasp_potcar import (
 )
 
 
-def _potcar_root_available() -> bool:
-    """Check if a POTCAR library is accessible."""
+def _real_potcars_available() -> bool:
+    """Check if a POTCAR library with actual POTCAR files is accessible."""
     root = get_default_potcar_root()
     if root is None:
         return False
+    # Check that at least one library dir exists AND has element POTCARs
     for lib in POTCAR_LIBRARY_DIRS.values():
-        if (root / lib).is_dir():
-            return True
+        lib_dir = root / lib
+        if lib_dir.is_dir():
+            # Must have at least one element subdir with a POTCAR file
+            for elem_dir in lib_dir.iterdir():
+                if elem_dir.is_dir() and (elem_dir / "POTCAR").is_file():
+                    return True
     return False
 
 
 skip_no_potcar = pytest.mark.skipif(
-    not _potcar_root_available(),
-    reason="POTCAR library not found",
+    not _real_potcars_available(),
+    reason="Real VASP POTCAR library not found (set VASP_PP_PATH or install in .qmatsuite/engines/vasp/)",
 )
 
 

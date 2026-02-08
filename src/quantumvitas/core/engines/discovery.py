@@ -223,7 +223,6 @@ def _search_bundled(
     search_bases: List[Path] = []
     if project_root:
         search_bases.append(project_root / ".qmatsuite" / "engines")
-    search_bases.append(Path.home() / ".qmatsuite" / "engines")
 
     for base in search_bases:
         for engine_dir_name in engine_dirs:

@@ -52,26 +52,44 @@ def ensure_provenance_initialized(project_root: Path) -> bool:
     Initialize provenance for a project if needed.
 
     Lazy initialization: creates .provenance/ directory and database
-    on first provenance-aware operation.
+    on first provenance-aware operation. Also repairs corrupt/incomplete
+    databases (e.g., directory exists but DB is missing or has no schema).
 
     Args:
         project_root: Project root directory
 
     Returns:
-        True if newly initialized, False if already existed
+        True if newly initialized or repaired, False if already valid
     """
     provenance_dir = get_provenance_dir(project_root)
+    db_path = provenance_dir / "provenance.db"
 
     if provenance_dir.exists():
-        return False
+        # Directory exists — check if DB is valid
+        if db_path.exists():
+            try:
+                conn = sqlite3.connect(str(db_path))
+                try:
+                    get_schema_version(conn)
+                    return False  # Already initialized and valid
+                except Exception:
+                    pass  # DB exists but schema is invalid
+                finally:
+                    conn.close()
+            except Exception:
+                pass  # Can't connect to DB
+        # Directory exists but DB is missing/invalid — reinitialize DB
+        if db_path.exists():
+            db_path.unlink()  # Remove corrupt/invalid DB file
+        (provenance_dir / ".cas" / "objects").mkdir(parents=True, exist_ok=True)
+        (provenance_dir / ".cas" / "tmp").mkdir(parents=True, exist_ok=True)
+    else:
+        # Fresh init
+        provenance_dir.mkdir(parents=True)
+        (provenance_dir / ".cas" / "objects").mkdir(parents=True)
+        (provenance_dir / ".cas" / "tmp").mkdir(parents=True)
 
-    # Create directory structure
-    provenance_dir.mkdir(parents=True)
-    (provenance_dir / ".cas" / "objects").mkdir(parents=True)
-    (provenance_dir / ".cas" / "tmp").mkdir(parents=True)
-
-    # Initialize database
-    db_path = provenance_dir / "provenance.db"
+    # Initialize/reinitialize database
     conn = sqlite3.connect(str(db_path))
     try:
         create_schema(conn)
