@@ -66,9 +66,9 @@ def get_analysis_dir(calculation_dir: Path) -> Path:
     
     Convention: <calculation_dir>/analysis/
     
-    NOTE: The new Analysis Objects Framework uses .analysis/ (hidden).
-    This function maintains backward compatibility with the existing
-    analysis/ directory. New code should use quantumvitas.core.analysis.cache.get_cache_dir().
+    NOTE: The Analysis Objects Framework now persists canonical objects via
+    CAS/SQLite provenance linkage. This helper remains for legacy `analysis/`
+    artifact files only.
     
     Args:
         calculation_dir: Path to calculation directory
@@ -693,4 +693,3 @@ def ensure_analysis_artifact(
             analysis_type=str(analysis_type),
             error=f"Unsupported analysis type: {analysis_type}",
         )
-

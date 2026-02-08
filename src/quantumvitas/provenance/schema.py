@@ -5,6 +5,7 @@ Per PROVENANCE_VERSIONED_HISTORY_SPEC.md §3.3:
 - operations table: Records all SSOT-writing operations
 - runs table: Records calculation run events
 - run_steps table: Normalized per-step execution records
+- analysis_snapshots table: Run/object linkage to canonical analysis CAS blobs
 - cas_objects table: Metadata for objects in .cas/objects/
 
 Law P4 (Append-Only Timeline): Events and runs are NEVER deleted or modified.
@@ -12,7 +13,7 @@ Law P4 (Append-Only Timeline): Events and runs are NEVER deleted or modified.
 
 from __future__ import annotations
 
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 
 # SQLite DDL for provenance database
 SCHEMA_DDL = """
@@ -131,6 +132,25 @@ CREATE INDEX IF NOT EXISTS idx_run_steps_run_ulid ON run_steps(run_ulid);
 CREATE INDEX IF NOT EXISTS idx_run_steps_step_ulid ON run_steps(step_ulid);
 
 --------------------------------------------------------------------------------
+-- ANALYSIS_SNAPSHOTS TABLE: Links run/object analysis snapshots to CAS blobs
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS analysis_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_ulid TEXT NOT NULL,
+    object_type TEXT NOT NULL,
+    canonical_sha TEXT NOT NULL,
+    thumbnail_sha TEXT,
+    step_ulids TEXT NOT NULL,             -- JSON array of step ULIDs
+    gen_steps TEXT NOT NULL,              -- JSON array of GEN step names
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(run_ulid, object_type),
+    FOREIGN KEY (run_ulid) REFERENCES runs(run_ulid)
+);
+
+CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_run ON analysis_snapshots(run_ulid);
+CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_sha ON analysis_snapshots(canonical_sha);
+
+--------------------------------------------------------------------------------
 -- CAS_OBJECTS TABLE: Metadata for objects in .cas/objects/
 --------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS cas_objects (
@@ -194,6 +214,41 @@ def migrate_schema(conn, from_version: int, to_version: int) -> None:
         from_version: Current schema version
         to_version: Target schema version
     """
-    # Future migrations would be implemented here
-    # For now, we only have version 1
-    pass
+    if from_version >= to_version:
+        return
+
+    version = from_version
+
+    while version < to_version:
+        if version == 1:
+            conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS analysis_snapshots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_ulid TEXT NOT NULL,
+                    object_type TEXT NOT NULL,
+                    canonical_sha TEXT NOT NULL,
+                    thumbnail_sha TEXT,
+                    step_ulids TEXT NOT NULL,
+                    gen_steps TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    UNIQUE(run_ulid, object_type),
+                    FOREIGN KEY (run_ulid) REFERENCES runs(run_ulid)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_run ON analysis_snapshots(run_ulid);
+                CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_sha ON analysis_snapshots(canonical_sha);
+                """
+            )
+            version = 2
+            conn.execute(
+                "INSERT INTO schema_version (version) VALUES (?)",
+                (version,),
+            )
+            continue
+
+        raise ValueError(
+            f"Unsupported schema migration path: {version} -> {version + 1}"
+        )
+
+    conn.commit()

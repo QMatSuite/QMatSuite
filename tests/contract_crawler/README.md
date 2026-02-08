@@ -100,3 +100,4 @@ QV_ENFORCE_GUI_RPC_COVERAGE=1 pytest tests/contract_crawler/test_gui_methods_cov
    - Adding exemptions to `EXEMPT_METHODS` in `test_coverage.py` (with reasons)
 
 
+

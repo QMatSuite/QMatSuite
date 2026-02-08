@@ -6882,6 +6882,7 @@ class QVService:
             analysis_kind: str,
             png_data: bytes | None = None,
             json_payload: dict | None = None,
+            run_ulid_source: str = "exact",
         ) -> dict:
             """
             Pin analysis to history.
@@ -6892,6 +6893,7 @@ class QVService:
                 analysis_kind: Type of analysis (e.g., "bands", "dos")
                 png_data: Optional PNG image data
                 json_payload: Optional JSON data to store
+                run_ulid_source: Provenance confidence ("exact" | "inferred" | "unknown")
 
             Returns:
                 Pin result dict
@@ -6910,6 +6912,7 @@ class QVService:
                         analysis_kind=analysis_kind,
                         png_data=png_data,
                         json_payload=json_payload,
+                        run_ulid_source=run_ulid_source,
                     )
                     return result.to_dict()
                 except PinError as e:

@@ -1,5 +1,6 @@
 """QE Driver."""
 
+from quantumvitas.core.analysis.capability import AnalysisCapability
 from quantumvitas.core.driver_protocol import BaseEngineDriver, StepTypeSpec, WorkdirPolicy
 
 
@@ -13,6 +14,18 @@ class QEDriver(BaseEngineDriver):
     })
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset({"w90", "qmcpack", "yambo"})
+    ANALYSIS_CAPABILITIES = [
+        AnalysisCapability(
+            object_type="bands",
+            gen_step_sequence=["bandspw"],
+            evidence_files=["*.bands.dat.gnu"],
+        ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["relax"],
+            evidence_files=["*.relax.out"],
+        ),
+    ]
 
     @property
     def engine_family(self) -> str:
@@ -45,4 +58,3 @@ class QEDriver(BaseEngineDriver):
 
     def get_workdir_policy(self) -> WorkdirPolicy:
         return WorkdirPolicy.SHARED
-

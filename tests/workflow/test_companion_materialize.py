@@ -73,3 +73,4 @@ class TestMaterializeWorkflow:
         with pytest.raises(ValueError, match="not supported"):
             materialize_workflow(["scf", "nonexistent"], "qe")
 
+

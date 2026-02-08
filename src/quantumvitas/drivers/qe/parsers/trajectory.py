@@ -45,8 +45,10 @@ class QETrajectoryParser:
         calc_dir: Path,
         *,
         run_ulid: Optional[str] = None,
-        step_ulid: Optional[str] = None,
+        step_ulids: Optional[List[str]] = None,
+        gen_steps: Optional[List[str]] = None,
         calc_ulid: Optional[str] = None,
+        engine_name: Optional[str] = None,
     ) -> Trajectory:
         """
         Parse QE output to canonical Trajectory.
@@ -80,7 +82,9 @@ class QETrajectoryParser:
             source_files=source_files,
             run_ulid=run_ulid,
             calc_ulid=calc_ulid,
-            step_ulid=step_ulid,
+            step_ulids=step_ulids or [],
+            gen_steps=gen_steps or [],
+            engine_name=engine_name or "qe",
             parser_name="qe_trajectory",
             parser_version="1.0",
         )
@@ -291,4 +295,3 @@ class QETrajectoryParser:
         # Similar structure to relax but with time steps
         logger.warning("QE MD parsing not yet fully implemented")
         return []
-

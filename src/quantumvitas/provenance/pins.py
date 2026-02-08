@@ -12,7 +12,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Literal
 
 from quantumvitas.provenance.cas import CAS
 from quantumvitas.provenance.db import open_provenance_db
@@ -26,6 +26,7 @@ from quantumvitas.provenance.opctx import (
 from quantumvitas.provenance.recording import record_operation_event, generate_ulid
 
 logger = logging.getLogger(__name__)
+RunUlidSource = Literal["exact", "inferred", "unknown"]
 
 
 class PinError(Exception):
@@ -40,6 +41,7 @@ class PinResult:
     pin_ulid: Optional[str] = None
     png_sha: Optional[str] = None
     json_sha: Optional[str] = None
+    run_ulid_source: RunUlidSource = "exact"
     error: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -48,6 +50,7 @@ class PinResult:
             "pin_ulid": self.pin_ulid,
             "png_sha": self.png_sha,
             "json_sha": self.json_sha,
+            "run_ulid_source": self.run_ulid_source,
             "error": self.error,
         }
 
@@ -112,6 +115,7 @@ def pin_analysis_to_history(
     analysis_kind: str,
     png_data: Optional[bytes] = None,
     json_payload: Optional[Dict[str, Any]] = None,
+    run_ulid_source: RunUlidSource = "exact",
 ) -> PinResult:
     """
     Pin analysis results to provenance.
@@ -123,6 +127,8 @@ def pin_analysis_to_history(
         analysis_kind: Type of analysis (e.g., "bands", "dos")
         png_data: Optional PNG image data
         json_payload: Optional JSON data to store
+        run_ulid_source: Provenance confidence for run linkage
+            ("exact" | "inferred" | "unknown")
 
     Returns:
         PinResult with success status and storage references
@@ -137,6 +143,8 @@ def pin_analysis_to_history(
 
     if not png_data and not json_payload:
         raise PinError("At least png_data or json_payload required")
+    if run_ulid_source not in {"exact", "inferred", "unknown"}:
+        raise PinError(f"Invalid run_ulid_source: {run_ulid_source}")
 
     try:
         cas = CAS(project_root)
@@ -156,6 +164,7 @@ def pin_analysis_to_history(
         pin_metadata = {
             "pin_ulid": pin_ulid,
             "run_ulid": run_ulid,
+            "run_ulid_source": run_ulid_source,
             "step_ulid": step_ulid,
             "analysis_kind": analysis_kind,
             "png_sha": png_sha,
@@ -169,7 +178,7 @@ def pin_analysis_to_history(
         # Record operation event
         opctx = OperationContext(
             op=OperationType.PIN_CREATE,
-            actor=ActorType.USER,
+            actor=ActorType.HUMAN,
             scope=ScopeType.STEP,
             source="pin_analysis_to_history",
             payload={
@@ -177,6 +186,7 @@ def pin_analysis_to_history(
                 "step_ulid": step_ulid,
                 "analysis_kind": analysis_kind,
                 "pin_ulid": pin_ulid,
+                "run_ulid_source": run_ulid_source,
                 "pin_index_sha": pin_index_sha,
             },
         )
@@ -204,6 +214,7 @@ def pin_analysis_to_history(
             pin_ulid=pin_ulid,
             png_sha=png_sha,
             json_sha=json_sha,
+            run_ulid_source=run_ulid_source,
         )
 
     except Exception as e:
@@ -269,6 +280,7 @@ def get_pin_data(
                         "pin_ulid": payload.get("pin_ulid"),
                         "png_data": None,
                         "json_data": None,
+                        "run_ulid_source": payload.get("run_ulid_source", "unknown"),
                         "error": None,
                     }
 
@@ -279,6 +291,10 @@ def get_pin_data(
                             pin_metadata = cas.retrieve_json(pin_index_sha)
                             png_sha = pin_metadata.get("png_sha")
                             json_sha = pin_metadata.get("json_sha")
+                            result["run_ulid_source"] = pin_metadata.get(
+                                "run_ulid_source",
+                                result["run_ulid_source"],
+                            )
 
                             if png_sha:
                                 result["png_data"] = cas.retrieve(png_sha)

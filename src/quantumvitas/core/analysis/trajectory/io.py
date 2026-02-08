@@ -1,52 +1,48 @@
 """
-Trajectory I/O: serialization to/from cache.
+Trajectory serialization helpers.
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
-from quantumvitas.core.analysis.cache import CacheManager, get_cache_path
 from quantumvitas.core.analysis.trajectory.model import Trajectory
+
+_ANALYSIS_OBJECTS_DIR = "analysis_objects"
+_TRAJECTORY_FILENAME = "trajectory.json"
+
+
+def _trajectory_path(calc_dir: Path) -> Path:
+    return calc_dir / _ANALYSIS_OBJECTS_DIR / _TRAJECTORY_FILENAME
 
 
 def save_trajectory(
     trajectory: Trajectory,
     calc_dir: Path,
-    cache_manager: Optional[CacheManager] = None,
-) -> Optional[Path]:
+    cache_manager: Optional[Any] = None,
+) -> Path:
     """
-    Save trajectory to cache.
-    
-    Returns:
-        Path to cache file, or None if caching disabled
+    Save trajectory JSON payload to a deterministic local path.
     """
-    if cache_manager is None:
-        cache_manager = CacheManager(calc_dir)
-    
-    if not cache_manager.cache_enabled():
-        return None
-    
-    return cache_manager.save_cache("trajectory", trajectory.to_dict())
+    del cache_manager
+    target_path = _trajectory_path(calc_dir)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(json.dumps(trajectory.to_dict(), indent=2), encoding="utf-8")
+    return target_path
 
 
 def load_trajectory(
     calc_dir: Path,
-    cache_manager: Optional[CacheManager] = None,
+    cache_manager: Optional[Any] = None,
 ) -> Optional[Trajectory]:
     """
-    Load trajectory from cache if exists and not stale.
-    
-    Returns:
-        Trajectory or None if not cached/stale
+    Load trajectory if present at the deterministic local path.
     """
-    if cache_manager is None:
-        cache_manager = CacheManager(calc_dir)
-    
-    data = cache_manager.get_cached("trajectory")
-    if data is None:
+    del cache_manager
+    target_path = _trajectory_path(calc_dir)
+    if not target_path.exists():
         return None
-    
-    return Trajectory.from_dict(data)
 
+    data = json.loads(target_path.read_text(encoding="utf-8"))
+    return Trajectory.from_dict(data)

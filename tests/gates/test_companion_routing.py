@@ -79,3 +79,4 @@ def test_base_steps_still_resolve():
     assert DriverRegistry.resolve_companion_step("vasp", "scf") == "vasp_scf"
     assert DriverRegistry.resolve_companion_step("orca", "scf") == "orca_scf"
 
+

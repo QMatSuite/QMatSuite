@@ -9,7 +9,6 @@ from pathlib import Path
 
 from quantumvitas.calculation.public import Calculation, CalculationResult
 from .dos import analyze_dos
-from .bands import analyze_bands
 from .energy import summarize_calculation_energies
 
 
@@ -22,5 +21,3 @@ def analyze_calculation(calculation: Calculation, result: CalculationResult) -> 
 
     summarize_calculation_energies(calculation, result, results_dir)
     analyze_dos(calculation, result, results_dir)
-    analyze_bands(calculation, result, results_dir)
-
