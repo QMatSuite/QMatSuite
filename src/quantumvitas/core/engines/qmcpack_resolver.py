@@ -32,11 +32,6 @@ def _search_qmatsuite_engines(binary_name: str, engine_subdir: str) -> Path | No
     if cwd_candidate not in search_roots:
         search_roots.append(cwd_candidate)
 
-    # Home directory
-    home_candidate = Path.home() / ".qmatsuite" / "engines" / engine_subdir
-    if home_candidate not in search_roots:
-        search_roots.append(home_candidate)
-
     for root in search_roots:
         if root.is_dir():
             for candidate in sorted(root.iterdir(), reverse=True):

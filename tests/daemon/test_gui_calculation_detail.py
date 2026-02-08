@@ -274,6 +274,31 @@ class TestGetCalculationDetail:
             f"Step order mismatch. calculation.yaml: {calculation_yaml_step_ids}, API: {api_step_ids}"
 
 
+    def test_get_calculation_detail_has_engine_family_and_paths(self, temp_project: Path, daemon: QVDaemon):
+        """Test that get_calculation_detail returns engine_family, absolute_path, and path fields."""
+        svc = QVService(temp_project)
+        calculations = svc.calculation.list()
+        assert len(calculations) > 0
+        calculation_slug = calculations[0].slug
+
+        result = send_request(daemon, "get_calculation_detail", {
+            "project_root": str(temp_project.resolve()),
+            "calculation": calculation_slug,
+        })
+
+        # engine_family must be present and correct (fixture creates with engine_family="qe")
+        assert "engine_family" in result, "Response must include engine_family"
+        assert result["engine_family"] == "qe", f"Expected engine_family='qe', got '{result['engine_family']}'"
+
+        # absolute_path must be present and point to a real directory
+        assert "absolute_path" in result, "Response must include absolute_path"
+        assert Path(result["absolute_path"]).is_dir(), f"absolute_path should be a directory: {result['absolute_path']}"
+
+        # path must be present and be a relative path
+        assert "path" in result, "Response must include path"
+        assert not Path(result["path"]).is_absolute(), f"path should be relative: {result['path']}"
+
+
 class TestChangeCalculationStructure:
     """Test change_calculation_structure endpoint."""
     

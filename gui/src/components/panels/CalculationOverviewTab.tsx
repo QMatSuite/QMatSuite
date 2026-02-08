@@ -285,9 +285,10 @@ function CompactStepList({
   // Step palette for dynamic step type dropdown (fetched via RPC)
   const [stepPalette, setStepPalette] = useState<StepPaletteResult | null>(null);
 
-  // Fetch step palette (engine family is null for now, returns all available steps)
+  // Fetch step palette based on calculation's engine family
   useEffect(() => {
-    qv.listStepPalette(null)
+    const engineFamily = (calculation && 'engine_family' in calculation) ? (calculation as CalculationDetailResult).engine_family : null;
+    qv.listStepPalette(engineFamily ?? null)
       .then(response => {
         if (response.ok && response.data) {
           setStepPalette(response.data);
@@ -296,7 +297,7 @@ function CompactStepList({
       .catch(() => {
         // Silently fail - step palette is non-critical
       });
-  }, [qv]);
+  }, [qv, calculation]);
 
   const handleAddStep = useCallback(async () => {
     if (!window.qv || !calculation || !newStepType) return;
@@ -308,7 +309,7 @@ function CompactStepList({
         throw new Error('Project root is required');
       }
 
-      const response = await window.qv.request('add_step', {
+      const response = await window.qv.request('add_step_to_calculation', {
         project_root: normalizedProjectRoot,
         calculation: calculation.slug,
         step_type_gen: newStepType,

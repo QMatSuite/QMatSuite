@@ -18,8 +18,9 @@ def get_default_potential_root() -> Optional[Path]:
 
     Search order:
       1. ``LAMMPS_POTENTIALS`` environment variable
-      2. ``~/.qmatsuite/engines/lammps/potentials/``
-      3. Homebrew share location (macOS)
+      2. ``<repo_root>/.qmatsuite/engines/lammps/potentials/`` (via repo root detection)
+      3. Walked up from CWD
+      4. Homebrew share location (macOS)
     """
     # Check env var first
     env_path = os.environ.get("LAMMPS_POTENTIALS")
@@ -28,10 +29,27 @@ def get_default_potential_root() -> Optional[Path]:
         if p.is_dir():
             return p
 
-    # Default QMatSuite location
-    default = Path.home() / ".qmatsuite" / "engines" / "lammps" / "potentials"
-    if default.is_dir():
-        return default
+    # Repo-root via centralized detection
+    try:
+        from quantumvitas.core.engines.discovery import _find_repo_root
+        repo_root = _find_repo_root()
+        if repo_root:
+            candidate = repo_root / ".qmatsuite" / "engines" / "lammps" / "potentials"
+            if candidate.is_dir():
+                return candidate
+    except ImportError:
+        pass
+
+    # Walk up from CWD
+    current = Path.cwd().resolve()
+    for _ in range(20):
+        candidate = current / ".qmatsuite" / "engines" / "lammps" / "potentials"
+        if candidate.is_dir():
+            return candidate
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
 
     # Homebrew location (macOS)
     brew_path = Path("/opt/homebrew/share/lammps/potentials")

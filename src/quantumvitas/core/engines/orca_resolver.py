@@ -2,7 +2,7 @@
 
 Resolves the path to the ORCA binary following priority:
 1. Environment variable QMATSUITE_ORCA_BIN
-2. Bundled ORCA in ~/.qmatsuite/engines/orca/
+2. Bundled ORCA in <repo_root>/.qmatsuite/engines/orca/
 """
 from __future__ import annotations
 
@@ -13,19 +13,16 @@ from typing import Optional
 
 # Bundled ORCA location patterns (checked in order)
 # The actual directory name includes version and architecture
-BUNDLED_ORCA_BASES = [
-    Path.home() / ".qmatsuite/engines/orca",  # User's home directory
-]
+BUNDLED_ORCA_BASES: list[Path] = []
 
-# Try to add repo-relative path if we can find it
+# Add repo-relative path via centralized repo root detection
 try:
-    import quantumvitas
-    _pkg_path = Path(quantumvitas.__file__).parent
-    # Go up from src/quantumvitas to repo root
-    _repo_root = _pkg_path.parent.parent
-    _repo_orca = _repo_root / ".qmatsuite/engines/orca"
-    if _repo_orca.exists():
-        BUNDLED_ORCA_BASES.insert(0, _repo_orca)  # Prefer repo-local
+    from quantumvitas.core.engines.discovery import _find_repo_root
+    _repo_root = _find_repo_root()
+    if _repo_root:
+        _repo_orca = _repo_root / ".qmatsuite" / "engines" / "orca"
+        if _repo_orca.exists():
+            BUNDLED_ORCA_BASES.append(_repo_orca)
 except Exception:
     pass
 
@@ -43,8 +40,7 @@ def resolve_orca_bin() -> Path:
 
     Resolution order:
     1. QMATSUITE_ORCA_BIN environment variable
-    2. Bundled ORCA in repo-relative .qmatsuite/engines/orca/
-    3. Bundled ORCA in ~/.qmatsuite/engines/orca/
+    2. Bundled ORCA in <repo_root>/.qmatsuite/engines/orca/
 
     Returns:
         Path to ORCA binary

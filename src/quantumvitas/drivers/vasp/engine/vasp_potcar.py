@@ -27,7 +27,6 @@ def get_default_potcar_root() -> Optional[Path]:
         1. ``VASP_PP_PATH`` environment variable
         2. Project-local ``.qmatsuite/engines/vasp/`` (via centralized repo root)
         3. Project-local ``.qmatsuite/engines/vasp/`` (walked up from CWD)
-        4. ``~/.qmatsuite/engines/vasp/``
     """
     # Check env var first
     env_path = os.environ.get("VASP_PP_PATH")
@@ -58,11 +57,6 @@ def get_default_potcar_root() -> Optional[Path]:
         if parent == current:
             break
         current = parent
-
-    # Home directory default
-    default = Path.home() / ".qmatsuite" / "engines" / "vasp"
-    if default.is_dir():
-        return default
 
     return None
 
@@ -103,7 +97,7 @@ def stage_potcar(
     if root is None:
         raise FileNotFoundError(
             "No POTCAR library found. Set VASP_PP_PATH or place POTCARs "
-            "in ~/.qmatsuite/engines/vasp/"
+            "in <repo_root>/.qmatsuite/engines/vasp/"
         )
 
     lib_dir = root / POTCAR_LIBRARY_DIRS[functional]
