@@ -65,3 +65,4 @@ def test_gui_methods_txt_json_consistency():
     assert txt_methods == json_methods, "Text and JSON files have different methods"
 
 
+

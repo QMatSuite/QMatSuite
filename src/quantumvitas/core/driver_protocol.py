@@ -174,6 +174,7 @@ class BaseEngineDriver:
 
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
+    ANALYSIS_CAPABILITIES: list = []  # Override in engine drivers
 
     # ─────────────────────────────────────────────────────────────────────
     # SHOULD: Methods with sensible defaults
@@ -268,4 +269,3 @@ class BaseEngineDriver:
         Override to implement custom executable resolution.
         """
         return None
-

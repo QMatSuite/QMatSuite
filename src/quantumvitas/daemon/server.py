@@ -6094,6 +6094,7 @@ class QVDaemon:
             analysis_kind: str - Type of analysis (e.g., "bands", "dos")
             png_data_base64: Optional[str] - Base64-encoded PNG data
             json_payload: Optional[dict] - JSON data to store
+            run_ulid_source: Optional[str] - "exact" | "inferred" | "unknown"
 
         Returns:
             result: Pin result dict
@@ -6115,6 +6116,7 @@ class QVDaemon:
                 return {"success": False, "error": f"Failed to decode PNG: {e}"}
 
         json_payload = payload.get("json_payload")
+        run_ulid_source = payload.get("run_ulid_source", "exact")
 
         # Use domain API
         svc = get_service(project_root)
@@ -6124,6 +6126,7 @@ class QVDaemon:
             analysis_kind=analysis_kind,
             png_data=png_data,
             json_payload=json_payload,
+            run_ulid_source=run_ulid_source,
         )
 
     def _handle_can_pin_to_run(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -6469,4 +6472,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

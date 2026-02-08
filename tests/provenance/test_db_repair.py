@@ -14,6 +14,7 @@ from quantumvitas.provenance.db import (
     get_provenance_dir,
     open_provenance_db,
 )
+from quantumvitas.provenance.schema import CURRENT_SCHEMA_VERSION, migrate_schema
 
 
 def test_ensure_initialized_fresh(tmp_path):
@@ -28,7 +29,11 @@ def test_ensure_initialized_fresh(tmp_path):
     try:
         cursor = conn.execute("SELECT MAX(version) FROM schema_version")
         row = cursor.fetchone()
-        assert row[0] is not None and row[0] >= 1
+        assert row[0] == CURRENT_SCHEMA_VERSION
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='analysis_snapshots'"
+        )
+        assert cursor.fetchone() is not None
     finally:
         conn.close()
 
@@ -68,7 +73,7 @@ def test_ensure_initialized_repairs_corrupt_db(tmp_path):
     try:
         cursor = conn.execute("SELECT MAX(version) FROM schema_version")
         row = cursor.fetchone()
-        assert row[0] is not None
+        assert row[0] == CURRENT_SCHEMA_VERSION
     finally:
         conn.close()
 
@@ -89,7 +94,7 @@ def test_ensure_initialized_repairs_empty_sqlite(tmp_path):
     try:
         cursor = conn.execute("SELECT MAX(version) FROM schema_version")
         row = cursor.fetchone()
-        assert row[0] is not None
+        assert row[0] == CURRENT_SCHEMA_VERSION
     finally:
         conn.close()
 
@@ -111,3 +116,43 @@ def test_ensure_initialized_repairs_cas_dirs(tmp_path):
     assert result is True
     assert (provenance_dir / ".cas" / "objects").is_dir()
     assert (provenance_dir / ".cas" / "tmp").is_dir()
+
+
+def test_migrate_schema_v1_to_v2_adds_analysis_snapshots_table(tmp_path):
+    """A v1 DB is migrated to v2 with analysis snapshots table/indexes."""
+    provenance_dir = get_provenance_dir(tmp_path)
+    provenance_dir.mkdir(parents=True)
+    db_path = provenance_dir / "provenance.db"
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.executescript(
+            """
+            CREATE TABLE schema_version (
+                version INTEGER PRIMARY KEY,
+                applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            INSERT INTO schema_version (version) VALUES (1);
+
+            CREATE TABLE runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_ulid TEXT NOT NULL UNIQUE
+            );
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        migrate_schema(conn, 1, CURRENT_SCHEMA_VERSION)
+        cursor = conn.execute("SELECT MAX(version) FROM schema_version")
+        assert cursor.fetchone()[0] == CURRENT_SCHEMA_VERSION
+
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='analysis_snapshots'"
+        )
+        assert cursor.fetchone() is not None
+    finally:
+        conn.close()

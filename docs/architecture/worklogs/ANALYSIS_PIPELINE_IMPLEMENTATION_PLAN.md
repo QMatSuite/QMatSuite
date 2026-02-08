@@ -884,3 +884,217 @@ Step 14 is last.
 ---
 
 *End of Implementation Plan*
+
+---
+
+## Implementation Progress Log (Append-Only)
+
+- 2026-02-08T20:02:59Z — Step 1 completed.
+  - Updated `AnalysisObjectMeta` in `src/quantumvitas/core/analysis/base.py`:
+    - Replaced `step_ulid` with `step_ulids: List[str]`
+    - Added `gen_steps`, `engine_name`, `warnings`, `manifest_snapshot`
+    - Updated `create()`, `to_dict()`, and `from_dict()`; `from_dict()` supports legacy singular `step_ulid`.
+  - Updated caller in `src/quantumvitas/drivers/qe/parsers/trajectory.py` to pass `step_ulids=[step_ulid] if step_ulid else []` and `engine_name="qe"`.
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+    - Result: `4555 passed, 19 skipped, 813 warnings`.
+
+- 2026-02-08T20:19:34Z — Step 2 completed.
+  - Added bundle types in `src/quantumvitas/core/analysis/bundles.py`:
+    - `RenderMeta`, `ProvenanceMeta`, `TransformRecord`
+    - `CanonicalPrimitiveBundle`, `DerivedPrimitiveBundle`
+    - Deterministic JSON serialization helpers for arrays/series/geometry
+    - Canonical serialization excludes `created_at` to preserve dedup determinism
+  - Added tests in `tests/core/analysis/test_bundles.py`:
+    - Construction and `to_dict()`/`from_dict()` roundtrip checks
+    - Canonical payload excludes `created_at`
+    - `bundle_kind` literal enforcement checks
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+    - Result: `4559 passed, 20 skipped, 810 warnings`.
+
+- 2026-02-08T20:27:51Z — Step 3 completed.
+  - Added transform package in `src/quantumvitas/core/analysis/transforms/`:
+    - `PrimitiveTransform` abstract base with `apply()` and `validate()`
+    - `FermiShift` transform with `TransformRecord("fermi_shift", {})`
+    - `EnergyCrop` transform with parameterized `TransformRecord`
+    - Pure transform behavior via detached bundle cloning (no in-place mutation)
+  - Added tests in `tests/core/analysis/test_transforms.py`:
+    - Fermi shift correctness and `reference_energy` reset to `0.0`
+    - Energy crop window trimming
+    - Derived-only output contract and transform chain recording
+    - Purity / no input side effects
+    - Transform composition order
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+    - Result: `4564 passed, 20 skipped, 811 warnings`.
+
+- 2026-02-08T20:36:59Z — Step 4 completed.
+  - Added capability matching in `src/quantumvitas/core/analysis/capability.py`:
+    - `AnalysisCapability` declaration dataclass with sequence validation
+    - `CapabilityMatch` result dataclass
+    - `find_contiguous_match()` with deterministic first-occurrence tie-break
+  - Added tests in `tests/core/analysis/test_capability.py`:
+    - Single-step and multi-step matching
+    - Non-match behavior (`None`)
+    - First-match determinism when ambiguous
+    - Overlapping matches across capabilities
+    - Empty sequence rejection and deterministic repeatability
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+    - Result: `4571 passed, 20 skipped, 811 warnings`.
+
+- 2026-02-08T20:46:18Z — Step 5 completed.
+  - Added band structure model package:
+    - `src/quantumvitas/core/analysis/band_structure/__init__.py`
+    - `src/quantumvitas/core/analysis/band_structure/model.py`
+  - Implemented engine-agnostic `BandStructure` and `HighSymPoint`:
+    - Supports 2D and spin-polarized 3D eigenvalue grids
+    - `to_primitives()` returns deterministic `CanonicalPrimitiveBundle`
+    - `RenderMeta` includes axis labels, units, high-symmetry markers, and Fermi reference annotation
+    - `ProvenanceMeta` is mapped from `AnalysisObjectMeta` and excludes runtime-only `created_at`
+  - Added tests in `tests/core/analysis/test_band_structure.py`:
+    - Construction and shape properties
+    - Canonical bundle contract and determinism
+    - Marker/reference energy behavior
+    - Provenance mapping and RenderMeta/provenance separation
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+    - Result: `4580 passed, 19 skipped, 813 warnings`.
+
+- 2026-02-08T20:55:41Z — Step 6 completed.
+  - Added QE bands analysis provider:
+    - `src/quantumvitas/drivers/qe/parsers/bands.py`
+    - Registered with `@register_parser("qe", "bands")`
+    - Parses `bands.dat.gnu` + optional symmetry/scf/nscf outputs
+    - Reuses `parse_bands_gnu()` and `parse_scf_output()` extraction logic
+    - Converts parsed payload to new `BandStructure` AnalysisObject + `AnalysisObjectMeta`
+  - Added provider tests:
+    - `tests/drivers/qe/test_qe_bands_provider.py`
+    - Covers `can_parse()`, parse contract, metadata fields, JSON roundtrip, and determinism
+  - Fixes made during verification:
+    - Normalized fixture paths in tests to absolute repo paths (xdist-safe)
+    - Expanded symmetry-file pattern matching to include QE names like `*_bands.pp.out`
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+    - Result: `4586 passed, 19 skipped, 811 warnings`.
+
+- 2026-02-08T21:05:12Z — Step 7 completed.
+  - Added analysis capability declaration slot to base driver:
+    - `src/quantumvitas/core/driver_protocol.py`
+    - `BaseEngineDriver.ANALYSIS_CAPABILITIES: list = []`
+  - Declared QE analysis capabilities:
+    - `src/quantumvitas/drivers/qe/driver.py`
+    - Added `AnalysisCapability` entries for:
+      - `object_type="bands"`, `gen_step_sequence=["bandspw"]`
+      - `object_type="trajectory"`, `gen_step_sequence=["relax"]`
+  - Added tests in `tests/core/analysis/test_capability.py`:
+    - Base driver default capabilities empty
+    - QE driver capabilities declared and non-empty
+    - Each declared capability has `gen_step_sequence` length >= 1
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+    - Result: `4587 passed, 20 skipped, 807 warnings`.
+
+- 2026-02-08T20:34:11Z — Step 8 completed.
+  - Added kernel orchestrator:
+    - `src/quantumvitas/core/analysis/orchestrator.py`
+    - Implements capability-match loop: registry dispatch → provider parse → `to_primitives()` canonicalization.
+    - Returns pure kernel results (`object_type`, canonical bundle, analysis object) with warning-based partial failure isolation.
+  - Added orchestrator tests:
+    - `tests/core/analysis/test_orchestrator.py`
+    - Covers matching/non-matching capability behavior, provider `can_parse` skip path, failure isolation, and QE bands integration via real fixtures.
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+    - Result: `4592 passed, 19 skipped, 812 warnings`.
+
+- 2026-02-08T21:03:41Z — Step 9 completed.
+  - Retrofitted trajectory model to canonical bundle contract:
+    - `src/quantumvitas/core/analysis/trajectory/model.py`
+    - Replaced `to_visual_primitives()` with `to_primitives()` returning `CanonicalPrimitiveBundle`.
+    - Added proper `RenderMeta`/`ProvenanceMeta` mapping and geometry/series payload emission.
+  - Updated QE trajectory provider signature and metadata mapping:
+    - `src/quantumvitas/drivers/qe/parsers/trajectory.py`
+    - Parse kwargs now accept `step_ulids`, `gen_steps`, `engine_name` (no singular `step_ulid`).
+  - Updated trajectory unit expectations:
+    - `tests/unit/test_trajectory_model.py`
+    - Validates `to_primitives()` returns canonical bundle with geometry payload.
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+    - Result: `4592 passed, 19 skipped, 811 warnings`.
+
+- 2026-02-08T21:14:37Z — Step 10 completed.
+  - Added analysis snapshot persistence schema (SQLite v2):
+    - `src/quantumvitas/provenance/schema.py`
+    - Introduced `analysis_snapshots` table with indexes:
+      - `idx_analysis_snapshots_run`
+      - `idx_analysis_snapshots_sha`
+    - Bumped `CURRENT_SCHEMA_VERSION` from `1` to `2`
+    - Implemented `migrate_schema()` path `v1 -> v2` to create table/indexes and write schema version row
+  - Extended pin metadata with run provenance confidence:
+    - `src/quantumvitas/provenance/pins.py`
+    - Added `run_ulid_source` (`exact` | `inferred` | `unknown`) to:
+      - `PinResult`
+      - `pin_analysis_to_history()` input validation and stored CAS pin metadata
+      - operation payload and `get_pin_data()` response mapping
+    - Corrected pin actor enum usage to `ActorType.HUMAN`
+  - Wired API/daemon pass-through for optional pin source field:
+    - `src/quantumvitas/api/service.py`
+    - `src/quantumvitas/daemon/server.py`
+  - Added provenance tests:
+    - `tests/provenance/test_db_repair.py`
+      - asserts schema initializes at v2 and includes `analysis_snapshots`
+      - adds explicit migration test for `v1 -> v2`
+    - `tests/provenance/test_pins.py` (new)
+      - validates `run_ulid_source` storage path and invalid-value rejection
+  - Verification runs:
+    - `source .venv/bin/activate && python -m pytest tests/provenance/test_db_repair.py tests/provenance/test_pins.py -v --tb=short -n auto --dist=loadfile`
+    - Result: `10 passed`.
+    - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+    - Result: `4595 passed, 19 skipped, 810 warnings`.
+
+- 2026-02-08T21:30:18Z — Step 11 completed.
+  - Added analysis invariant gate suite:
+    - `tests/gates/test_analysis_invariants.py`
+    - Covers Inv-A2, A4, A5, A6, A7, A13 and capability declaration/match determinism checks.
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/gates/test_analysis_invariants.py -v --tb=short -n auto --dist=loadfile`
+    - Result: `9 passed`.
+
+- 2026-02-08T21:30:18Z — Step 12 completed.
+  - Added dedicated QE bands end-to-end proof tests:
+    - `tests/core/analysis/test_qe_bands_e2e.py`
+    - Verifies provider parse -> `BandStructure` -> `CanonicalPrimitiveBundle` determinism -> `FermiShift` derived transform.
+    - Verifies orchestrator integration via `run_post_run_analysis()` for QE `bandspw` capability.
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/core/analysis/test_qe_bands_e2e.py -v --tb=short -n auto --dist=loadfile`
+    - Result: `2 passed`.
+
+- 2026-02-08T21:30:18Z — Step 13 completed.
+  - Added explicit trajectory canonical bundle test:
+    - `tests/unit/test_trajectory_model.py::test_trajectory_to_primitives_returns_bundle`
+  - Confirms `Trajectory.to_primitives()` returns `CanonicalPrimitiveBundle` with canonical bundle kind.
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/unit/test_trajectory_model.py -v --tb=short -n auto --dist=loadfile`
+    - Result: `8 passed`.
+
+- 2026-02-08T21:30:18Z — Step 14 completed.
+  - Deleted legacy pipeline/cache files:
+    - `src/quantumvitas/analysis/bands.py`
+    - `src/quantumvitas/core/analysis/cache.py`
+  - Removed legacy references and updated imports/entrypoints:
+    - `src/quantumvitas/analysis/calculation_analysis.py` (removed legacy bands call path)
+    - `src/quantumvitas/core/analysis/__init__.py` (removed cache exports; exports modern analysis primitives/capabilities/transforms)
+    - `src/quantumvitas/core/analysis/trajectory/io.py` (removed dependency on deleted cache module)
+    - `src/quantumvitas/analysis/artifacts.py` notes updated to CAS/SQLite provenance model wording.
+  - Post-delete import checks:
+    - `rg -n "from quantumvitas\.analysis\.bands import|quantumvitas\.analysis\.bands" src tests -S`
+    - `rg -n "from quantumvitas\.core\.analysis\.cache import|quantumvitas\.core\.analysis\.cache" src tests -S`
+  - Verification run:
+    - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+    - Result: `4607 passed, 19 skipped, 813 warnings`.
+
+- 2026-02-08T21:30:18Z — Plan amendment (minimal, Step 14).
+  - Deleting `src/quantumvitas/core/analysis/cache.py` left `src/quantumvitas/core/analysis/trajectory/io.py` with a hard import to the removed module.
+  - Amended implementation to remove that dependency by making trajectory I/O self-contained.
+  - Justification: required to satisfy the Step 14 deletion while keeping imports valid and test suite green.

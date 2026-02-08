@@ -12,6 +12,11 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import numpy as np
 
 from quantumvitas.core.analysis.base import AnalysisObjectMeta
+from quantumvitas.core.analysis.bundles import (
+    CanonicalPrimitiveBundle,
+    ProvenanceMeta,
+    RenderMeta,
+)
 from quantumvitas.core.analysis.primitives import (
     GeometryFrame,
     GeometryFrames,
@@ -252,35 +257,81 @@ class Trajectory:
         
         return observables
     
-    def to_visual_primitives(self) -> Dict[str, Any]:
-        """Convert to visualization primitives (data only, no style)."""
-        primitives: Dict[str, Any] = {}
-        
-        # Geometry frames
-        primitives["geometry"] = GeometryFrames(
+    def to_primitives(self) -> CanonicalPrimitiveBundle:
+        """Convert trajectory data to canonical primitive bundle."""
+        geometry_frames = GeometryFrames(
             frames=[
                 GeometryFrame(
-                    positions=f.positions,
-                    species=f.species,
-                    cell=f.cell,
-                    pbc=f.pbc,
-                    forces=f.forces,
-                    velocities=f.velocities,
+                    positions=np.array(f.positions, copy=True),
+                    species=list(f.species),
+                    cell=np.array(f.cell, copy=True) if f.cell is not None else None,
+                    pbc=tuple(f.pbc),
+                    forces=np.array(f.forces, copy=True) if f.forces is not None else None,
+                    velocities=np.array(f.velocities, copy=True) if f.velocities is not None else None,
                 )
                 for f in self.frames
             ],
-            time=np.array([f.time for f in self.frames]) if self.frames and self.frames[0].time else None,
-            iteration=np.array([f.iteration or f.frame_index for f in self.frames]),
-            image_indices=np.array([f.image_index for f in self.frames]) if self.frames and self.frames[0].image_index is not None else None,
+            time=(
+                np.array([f.time for f in self.frames], dtype=float)
+                if self.frames and all(f.time is not None for f in self.frames)
+                else None
+            ),
+            iteration=np.array([f.iteration or f.frame_index for f in self.frames], dtype=int),
+            image_indices=(
+                np.array([f.image_index for f in self.frames], dtype=int)
+                if self.frames and all(f.image_index is not None for f in self.frames)
+                else None
+            ),
         )
-        
-        # Observable series
+
+        series: List[Series1D] = []
         for obs in self.get_available_observables():
-            series = self.get_observable_series(obs)
-            if series:
-                primitives[f"series_{obs}"] = series
-        
-        return primitives
+            obs_series = self.get_observable_series(obs)
+            if obs_series is not None:
+                series.append(obs_series)
+
+        if self.trajectory_type == "md":
+            axis_labels = {"x": "Time", "y": "Observable"}
+            units = {"x": "fs", "y": ""}
+        else:
+            axis_labels = {"x": "Iteration", "y": "Observable"}
+            units = {"x": "", "y": ""}
+
+        render_meta = RenderMeta(
+            axis_labels=axis_labels,
+            units=units,
+            series_labels=[s.name for s in series if s.name],
+            extra={
+                "trajectory_type": self.trajectory_type,
+                "n_frames": self.n_frames,
+                "n_atoms": self.n_atoms,
+                "n_images": self.n_images,
+            },
+        )
+
+        provenance_meta = ProvenanceMeta(
+            schema_version=self.meta.schema_version,
+            object_type=self.meta.object_type,
+            run_ulid=self.meta.run_ulid,
+            calc_ulid=self.meta.calc_ulid,
+            step_ulids=list(self.meta.step_ulids),
+            gen_steps=list(self.meta.gen_steps),
+            engine_name=self.meta.engine_name,
+            source_files=list(self.meta.source_files),
+            parser_name=self.meta.parser_name,
+            parser_version=self.meta.parser_version,
+            warnings=list(self.meta.warnings),
+            manifest_snapshot=self.meta.manifest_snapshot,
+        )
+
+        return CanonicalPrimitiveBundle(
+            object_type=self.meta.object_type,
+            render_meta=render_meta,
+            provenance_meta=provenance_meta,
+            series=series,
+            geometry_frames=geometry_frames,
+            arrays={},
+        )
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to JSON-serializable dict."""
@@ -300,4 +351,3 @@ class Trajectory:
             trajectory_type=data["trajectory_type"],
             n_images=data.get("n_images"),
         )
-

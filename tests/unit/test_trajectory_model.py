@@ -4,6 +4,7 @@ import numpy as np
 
 from quantumvitas.core.analysis.trajectory.model import Frame, Trajectory
 from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat
+from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle
 
 
 class TestFrame:
@@ -94,8 +95,8 @@ class TestTrajectory:
         assert len(series.y) == 5
         assert series.y_unit == "eV"
     
-    def test_to_visual_primitives(self):
-        """Test visual primitives extraction."""
+    def test_to_primitives(self):
+        """Test canonical primitive bundle extraction."""
         frames = [
             Frame(
                 frame_index=0,
@@ -109,9 +110,36 @@ class TestTrajectory:
         
         meta = AnalysisObjectMeta.create("trajectory", [])
         traj = Trajectory(meta=meta, frames=frames, trajectory_type="md")
-        
-        primitives = traj.to_visual_primitives()
-        
-        assert "geometry" in primitives
-        assert primitives["geometry"].frames[0].n_atoms == 1
 
+        canonical = traj.to_primitives()
+
+        assert isinstance(canonical, CanonicalPrimitiveBundle)
+        assert canonical.bundle_kind == "canonical"
+        assert canonical.geometry_frames is not None
+        assert canonical.geometry_frames.frames[0].n_atoms == 1
+
+
+def test_trajectory_to_primitives_returns_bundle() -> None:
+    """Trajectory.to_primitives() returns a canonical primitive bundle."""
+    frame = Frame(
+        frame_index=0,
+        positions=np.array([[0.0, 0.0, 0.0]]),
+        species=["H"],
+        cell=np.eye(3),
+        pbc=(True, True, True),
+    )
+    meta = AnalysisObjectMeta.create(
+        object_type="trajectory",
+        source_files=[],
+        step_ulids=["01STEP1"],
+        gen_steps=["relax"],
+        engine_name="qe",
+        parser_name="qe_trajectory",
+        parser_version="1.0",
+    )
+    traj = Trajectory(meta=meta, frames=[frame], trajectory_type="relax")
+
+    canonical = traj.to_primitives()
+
+    assert isinstance(canonical, CanonicalPrimitiveBundle)
+    assert canonical.bundle_kind == "canonical"

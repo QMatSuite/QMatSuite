@@ -65,3 +65,4 @@ class SimpleQueriesRecipe(Recipe):
         return True, None
 
 
+

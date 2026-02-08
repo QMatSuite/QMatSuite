@@ -73,7 +73,11 @@ class AnalysisObjectMeta:
     # Provenance (for UI explanation only, NOT for stale detection)
     run_ulid: Optional[str] = None
     calc_ulid: Optional[str] = None
-    step_ulid: Optional[str] = None
+    step_ulids: List[str] = field(default_factory=list)
+    gen_steps: List[str] = field(default_factory=list)
+    engine_name: str = ""
+    warnings: List[str] = field(default_factory=list)
+    manifest_snapshot: Optional[Dict[str, Any]] = None
     
     # Parser info
     parser_name: str = ""
@@ -87,9 +91,13 @@ class AnalysisObjectMeta:
         *,
         run_ulid: Optional[str] = None,
         calc_ulid: Optional[str] = None,
-        step_ulid: Optional[str] = None,
+        step_ulids: Optional[List[str]] = None,
+        gen_steps: Optional[List[str]] = None,
+        engine_name: str = "",
         parser_name: str = "",
         parser_version: str = "1.0",
+        warnings: Optional[List[str]] = None,
+        manifest_snapshot: Optional[Dict[str, Any]] = None,
     ) -> "AnalysisObjectMeta":
         """Factory method to create metadata."""
         return cls(
@@ -99,9 +107,13 @@ class AnalysisObjectMeta:
             source_files=source_files,
             run_ulid=run_ulid,
             calc_ulid=calc_ulid,
-            step_ulid=step_ulid,
+            step_ulids=step_ulids or [],
+            gen_steps=gen_steps or [],
+            engine_name=engine_name,
             parser_name=parser_name,
             parser_version=parser_version,
+            warnings=warnings or [],
+            manifest_snapshot=manifest_snapshot,
         )
     
     def to_dict(self) -> Dict[str, Any]:
@@ -112,9 +124,13 @@ class AnalysisObjectMeta:
             "source_files": [sf.to_dict() for sf in self.source_files],
             "run_ulid": self.run_ulid,
             "calc_ulid": self.calc_ulid,
-            "step_ulid": self.step_ulid,
+            "step_ulids": self.step_ulids,
+            "gen_steps": self.gen_steps,
+            "engine_name": self.engine_name,
             "parser_name": self.parser_name,
             "parser_version": self.parser_version,
+            "warnings": self.warnings,
+            "manifest_snapshot": self.manifest_snapshot,
         }
     
     @classmethod
@@ -126,8 +142,11 @@ class AnalysisObjectMeta:
             source_files=[SourceFileStat.from_dict(sf) for sf in data.get("source_files", [])],
             run_ulid=data.get("run_ulid", data.get("run_id")),
             calc_ulid=data.get("calc_ulid"),
-            step_ulid=data.get("step_ulid"),
+            step_ulids=data.get("step_ulids") or ([data["step_ulid"]] if data.get("step_ulid") else []),
+            gen_steps=data.get("gen_steps", []),
+            engine_name=data.get("engine_name", ""),
             parser_name=data.get("parser_name", ""),
             parser_version=data.get("parser_version", ""),
+            warnings=data.get("warnings", []),
+            manifest_snapshot=data.get("manifest_snapshot"),
         )
-
