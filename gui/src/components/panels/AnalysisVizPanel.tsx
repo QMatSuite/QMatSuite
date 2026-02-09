@@ -70,6 +70,8 @@ export function AnalysisVizPanel({
   const markers = bundle?.render_meta.markers ?? [];
   const xAxisLabel = bundle?.render_meta.axis_labels?.x ?? 'x';
   const yAxisLabel = bundle?.render_meta.axis_labels?.y ?? 'y';
+  const fermiEnergy = bundle?.render_meta.reference_energy ?? null;
+  const kpathLabels = markers.map((m) => m.label).filter(Boolean).join(' → ');
 
   if (availableObjectTypes.length === 0) {
     return (
@@ -111,7 +113,15 @@ export function AnalysisVizPanel({
       {error ? <div className="analysis-surface__error">{error}</div> : null}
       {!loading && !error && bundle ? (
         <>
-          <div className="analysis-viz__plot">
+          <div className="analysis-viz__info">
+            {fermiEnergy != null ? (
+              <span data-testid="qv-analysis-fermi">E_F = {fermiEnergy.toFixed(4)} eV</span>
+            ) : null}
+            {kpathLabels ? (
+              <span data-testid="qv-analysis-kpath">{kpathLabels}</span>
+            ) : null}
+          </div>
+          <div className="analysis-viz__plot" data-testid={`qv-analysis-${selectedObjectType ?? 'unknown'}-chart`}>
             <ResponsiveContainer height={420} width="100%">
               <LineChart data={chartData} margin={{ top: 18, right: 20, left: 16, bottom: 16 }}>
                 <CartesianGrid strokeDasharray="3 3" />

@@ -363,6 +363,8 @@ export function CalculationAnalysisPanel({
             className={`calculation-analysis-panel__step-tab${
               step.ulid === selectedStepId ? ' calculation-analysis-panel__step-tab--active' : ''
             }`}
+            data-testid={`qv-analysis-step-tab-${step.step_type_gen}`}
+            data-step-type-gen={step.step_type_gen}
             onClick={() => setSelectedStepId(step.ulid)}
             type="button"
           >
@@ -373,22 +375,22 @@ export function CalculationAnalysisPanel({
 
       <div className="calculation-analysis-panel__surface-tabs">
         <button
-          className={`calculation-analysis-panel__surface-tab${
+          className={`calculation-analysis-panel__view-mode-tab calculation-analysis-panel__surface-tab${
             viewMode === 'raw' ? ' calculation-analysis-panel__surface-tab--active' : ''
           }`}
           onClick={() => setViewMode('raw')}
           type="button"
         >
-          Raw Text
+          Raw
         </button>
         <button
-          className={`calculation-analysis-panel__surface-tab${
+          className={`calculation-analysis-panel__view-mode-tab calculation-analysis-panel__surface-tab${
             viewMode === 'analysis' ? ' calculation-analysis-panel__surface-tab--active' : ''
           }`}
           onClick={() => setViewMode('analysis')}
           type="button"
         >
-          Analysis
+          Plot
         </button>
       </div>
 
