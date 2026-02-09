@@ -115,9 +115,8 @@ def get_methods_needing_recipes() -> set[str]:
         "get_step_preset_footprints",
         
         # Analysis requiring completed runs
-        "ensure_calculation_analysis", "get_structure_vis",
-        "get_scf_convergence", "get_dos_data", "get_band_structure_data",
-        "get_reference_analysis", "list_step_artifacts", "read_step_artifact_text",
+        "get_structure_vis", "get_reference_analysis",
+        "list_step_artifacts", "read_step_artifact_text",
         
         # Job operations requiring running jobs
         "run_calculation", "run_step", "run_single_step",
@@ -162,4 +161,3 @@ def get_methods_needing_recipes() -> set[str]:
         # Workflow requiring calculation context
         "detect_workflow", "instantiate_workflow",
     }
-

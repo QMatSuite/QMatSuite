@@ -26,7 +26,7 @@ MANIFEST_PATH = Path(__file__).parent.parent.parent / "gui_required_fields_manif
 
 # Hard redline: Missing these fields = test FAILS (GUI breaks)
 # Covers ALL manifest methods with successful golden fixtures.
-# Methods with failed golden fixtures (get_band_structure_data, get_dos_data, import_structure)
+# Methods with failed golden fixtures (import_structure)
 # are tested in soft layer only since baseline itself failed.
 HARD_REDLINE_FIELDS = {
     # Core project/structure/calculation methods
@@ -284,4 +284,3 @@ class TestGUIFieldEnforcementSoftManifest:
 
         # This test always passes - it's informational
         assert True
-

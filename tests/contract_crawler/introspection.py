@@ -133,8 +133,7 @@ def get_method_categories() -> dict[str, list[str]]:
         "preflight": ["preflight_check"],
         "demo": ["create_demo_project", "list_demo_projects"],
         "analysis": [
-            "ensure_calculation_analysis", "get_structure_vis", "get_scf_convergence",
-            "get_dos_data", "get_band_structure_data", "get_reference_analysis",
+            "get_structure_vis", "get_reference_analysis",
             "list_step_artifacts", "read_step_artifact_text",
             "list_raw_files", "read_raw_file",
             "get_step_digest", "get_analysis", "get_analysis_snapshot",

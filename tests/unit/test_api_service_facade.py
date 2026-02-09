@@ -212,9 +212,12 @@ calculations: []
         assert hasattr(svc.run, "run_calculation")
         assert hasattr(svc.run, "run_step")
 
-        # Check analysis methods
-        assert hasattr(svc.analysis, "get_summary")
-        assert hasattr(svc.analysis, "list_properties")
+        # Check analysis methods (new pipeline surfaces)
+        assert hasattr(svc.analysis, "list_raw_files")
+        assert hasattr(svc.analysis, "read_raw_file")
+        assert hasattr(svc.analysis, "get_step_digest")
+        assert hasattr(svc.analysis, "get_analysis")
+        assert hasattr(svc.analysis, "get_analysis_snapshot")
 
 
 class TestAPIUtils:

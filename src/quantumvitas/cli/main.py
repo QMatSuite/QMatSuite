@@ -4317,8 +4317,17 @@ def analyze_band_command(
         qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
         qv analyze band --plot  # auto-detect files from pwd or enclosing calculation
     """
-    from quantumvitas.api import QVService, APIError
-    
+    from quantumvitas.api import get_service
+    from quantumvitas.api.errors import NotFoundError, ValidationError
+    from quantumvitas.api.utils import (
+        find_band_analysis_files,
+        find_calculation_raw_dir,
+        parse_bands_gnu,
+        parse_scf_output,
+        plot_bands,
+        save_figure,
+    )
+
     # Parse energy range
     e_range = None
     if energy_range:
@@ -4327,78 +4336,91 @@ def analyze_band_command(
             e_range = (float(parts[0]), float(parts[1]))
         except (ValueError, IndexError):
             raise typer.BadParameter("--energy-range must be like '-5,5'")
-    
-    # Determine project root and calculation context
+
     project_root: Optional[Path] = None
-    calculation_selector: Optional[str] = calculation
-    
     if project:
         project_root = Path(project).resolve()
     else:
-        # Always try to detect project root from pwd
         try:
-            ctx = find_path_context_from_pwd()
-            project_root = ctx.project_root
-            # Only auto-detect calculation if no input file provided
-            if input_file is None and ctx.is_inside_calculation():
-                # Use resolve_enclosing_path to get the actual calculation
-                # This is more reliable than using the selector from calculation.yaml
-                # (which might be stale after a rename)
-                from quantumvitas.api import QVService
-                svc = get_service(project_root)
-                config = svc.project.get_config()
-                calc_dto = svc.calculation.resolve_enclosing_path()
-                if calc_dto:
-                    calculation_selector = calc_ref.calc_ulid
-                    if calculation_selector:
-                        # For display, resolve to get user-friendly name
-                        try:
-                            from quantumvitas.api import QVService
-                            svc = get_service(project_root)
-                            resolved = svc.calculation.require_ref(calculation_selector, config=config)
-                            display_name = resolved.meta.name or resolved.meta.slug or calculation_selector
-                            typer.echo(f"Detected calculation: {display_name}")
-                        except Exception:
-                            typer.echo(f"Detected calculation: {calculation_selector}")
+            project_root = find_path_context_from_pwd().project_root
         except ContextNotFoundError:
-            pass  # Not inside a project
-    
-    # If calculation specified but no project found, error
-    if calculation and project_root is None:
+            project_root = None
+
+    local_bands_file = input_file.resolve() if input_file else None
+    local_symmetry_file = symmetry_file.resolve() if symmetry_file else None
+    local_scf_file = scf_file.resolve() if scf_file else None
+    local_output_dir = output.resolve() if output else None
+
+    # Optional auto-location from calculation context.
+    if local_bands_file is None and calculation:
+        if project_root is None:
+            raise typer.BadParameter(
+                "Cannot resolve --calculation without being in a project. Use --project."
+            )
+        svc = get_service(project_root)
+        calc_resolved = svc.calculation.require_ref(calculation)
+        calc_dir = calc_resolved.absolute_path
+        if calc_dir.name == "calculation.yaml":
+            calc_dir = calc_dir.parent
+        raw_dir = find_calculation_raw_dir(calc_dir)
+        found_files = find_band_analysis_files(raw_dir)
+        local_bands_file = found_files.bands_gnu
+        local_symmetry_file = local_symmetry_file or found_files.bands_pp_out
+        local_scf_file = local_scf_file or found_files.pw_output
+        if local_output_dir is None:
+            local_output_dir = calc_dir / "results"
+
+    if local_bands_file is None:
         raise typer.BadParameter(
-            "Cannot resolve --calculation without being in a project. Use --project to specify project root."
+            "No bands input file provided. Pass a .dat.gnu path or use --calculation inside a project."
         )
-    
-    # Call QVService (will raise NotFoundError if calculation not found)
+    if not local_bands_file.exists():
+        raise typer.BadParameter(f"Bands file not found: {local_bands_file}")
+
+    # Best-effort default output path for files under calculation/raw/.
+    if local_output_dir is None and local_bands_file.parent.name == "raw":
+        local_output_dir = local_bands_file.parent.parent / "results"
+
+    local_fermi = fermi
+    if local_fermi is None and local_scf_file and local_scf_file.exists():
+        try:
+            local_fermi = parse_scf_output(local_scf_file).fermi_energy
+        except Exception:
+            local_fermi = None
+
     try:
-        svc = QVService(project_root)
-        result = svc.analysis.analyze_band(
-            bands_file=input_file,
-            calculation_selector=calculation_selector,
-            symmetry_file=symmetry_file,
-            scf_file=scf_file,
-            fermi_energy=fermi,
-            plot=plot,
-            output_dir=output,
-            plot_format=plot_format,
-            energy_range=e_range,
-            shift_fermi=not no_shift,
+        band_data = parse_bands_gnu(
+            local_bands_file,
+            symmetry_file=local_symmetry_file,
+            fermi_energy=local_fermi,
+            pw_output_file=local_scf_file,
         )
-        
-        # Print summary
-        summary = {
-            "n_bands": result["n_bands"],
-            "n_kpoints": result["n_kpoints"],
-            "fermi_energy_ev": result["fermi_energy_ev"],
-            "high_symmetry_points": result["high_symmetry_points"],
-        }
-        typer.echo(json.dumps(summary, indent=2))
-        
-        if result["plot_path"]:
-            typer.echo(f"Plot saved to {result['plot_path']}")
-            
-    except APIError as e:
-        raise typer.BadParameter(str(e))
+    except (NotFoundError, ValidationError, FileNotFoundError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    parsed = band_data.to_dict()
+    plot_path: Optional[Path] = None
+    if plot:
+        if local_output_dir is not None:
+            local_output_dir.mkdir(parents=True, exist_ok=True)
+            figure, _axis = plot_bands(
+                band_data,
+                shift_fermi=not no_shift,
+                energy_range=e_range,
+            )
+            saved = save_figure(figure, local_output_dir / f"bands.{plot_format}")
+            if saved:
+                plot_path = saved[0]
+
+    summary = {
+        "n_bands": parsed.get("n_bands"),
+        "n_kpoints": parsed.get("n_kpoints"),
+        "fermi_energy_ev": parsed.get("fermi_energy_ev"),
+        "high_symmetry_points": parsed.get("high_symmetry_points", []),
+    }
+    typer.echo(json.dumps(summary, indent=2))
+    if plot_path:
+        typer.echo(f"Plot saved to {plot_path}")
 
 
 @analyze_app.command("dos")
@@ -4434,8 +4456,8 @@ def analyze_dos_command(
         qv analyze dos si.dos.dat --plot
         qv analyze dos si.dos.dat --scf si.nscf.out --plot --energy-range -5,5
     """
-    from quantumvitas.api import QVService, APIError
-    
+    from quantumvitas.api.utils import parse_dos_data, parse_scf_output, plot_dos, save_figure
+
     # Parse energy range
     e_range = None
     if energy_range:
@@ -4444,45 +4466,48 @@ def analyze_dos_command(
             e_range = (float(parts[0]), float(parts[1]))
         except (ValueError, IndexError):
             raise typer.BadParameter("--energy-range must be like '-5,5'")
-    
-    # Determine project root (optional for DOS analysis, but helps with output dir)
-    project_root: Optional[Path] = None
-    if project:
-        project_root = Path(project).resolve()
-    else:
-        try:
-            ctx = find_path_context_from_pwd()
-            project_root = ctx.project_root
-        except ContextNotFoundError:
-            pass
 
-    # Call QVService
-    try:
-        svc = QVService(project_root)
-        result = svc.analysis.analyze_dos(
-            dos_file=input_file,
-            fermi_energy=fermi,
-            scf_file=scf_file,
-            plot=plot,
-            output_dir=output,
-            plot_format=plot_format,
-            energy_range=e_range,
-            shift_fermi=not no_shift,
-        )
-        
-        # Print summary
-        summary = {
-            "n_points": result["n_points"],
-            "energy_range_ev": result["energy_range_ev"],
-            "fermi_energy_ev": result["fermi_energy_ev"],
-        }
-        typer.echo(json.dumps(summary, indent=2))
-        
-        if result["plot_path"]:
-            typer.echo(f"Plot saved to {result['plot_path']}")
-            
-    except APIError as e:
-        raise typer.BadParameter(str(e))
+    dos_file = input_file.resolve()
+    if not dos_file.exists():
+        raise typer.BadParameter(f"DOS file not found: {dos_file}")
+
+    local_output_dir = output.resolve() if output else None
+    if local_output_dir is None and dos_file.parent.name == "raw":
+        local_output_dir = dos_file.parent.parent / "results"
+
+    local_fermi = fermi
+    if local_fermi is None and scf_file and scf_file.exists():
+        try:
+            local_fermi = parse_scf_output(scf_file.resolve()).fermi_energy
+        except Exception:
+            local_fermi = None
+
+    dos_data = parse_dos_data(dos_file)
+    if local_fermi is not None:
+        dos_data.fermi_energy = local_fermi
+
+    parsed = dos_data.to_dict()
+    plot_path: Optional[Path] = None
+    if plot:
+        if local_output_dir is not None:
+            local_output_dir.mkdir(parents=True, exist_ok=True)
+            figure, _axis = plot_dos(
+                dos_data,
+                shift_fermi=not no_shift,
+                energy_range=e_range,
+            )
+            saved = save_figure(figure, local_output_dir / f"dos.{plot_format}")
+            if saved:
+                plot_path = saved[0]
+
+    summary = {
+        "n_points": parsed.get("n_points"),
+        "energy_range_ev": parsed.get("energy_range_ev"),
+        "fermi_energy_ev": parsed.get("fermi_energy_ev"),
+    }
+    typer.echo(json.dumps(summary, indent=2))
+    if plot_path:
+        typer.echo(f"Plot saved to {plot_path}")
 
 
 @analyze_app.command("energy")
@@ -5225,4 +5250,3 @@ def _execute_step_spec(
 
 if __name__ == "__main__":
     main()
-

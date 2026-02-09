@@ -1,0 +1,200 @@
+version: 1
+project:
+  meta:
+    ulid: 01KCF6B6QF7WQ2A2VY00B5P001
+    name: project_vasp_bands
+    slug: project_vasp_bands
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KCF6B6QF7WQ2A2VY00B5P002
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.7546079563238743
+        - 0.0
+        - 2.7546079563238743
+      - - 0.0
+        - 2.7546079563238743
+        - 2.7546079563238743
+      - - -2.7546079563238743
+        - 2.7546079563238743
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.8956039308540573
+      b: 3.8956039308540573
+      c: 3.8956039308540573
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 41.803186562694144
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - -0.25
+      - 0.75
+      - -0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.3773039781619372
+      - 1.3773039781619374
+      - 1.3773039781619374
+calculations:
+- meta:
+    ulid: 01KCF6B6QF7WQ2A2VY00B5P003
+    name: Si bands VASP
+    slug: si-bands-vasp
+    path: calculations/si-bands-vasp
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: vasp
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/si-bands-vasp/steps/scf.step.yaml
+      kind: step
+      ulid: 01KCF6B6QF7WQ2A2VY00B5P004
+    parameters:
+      engine_params:
+        vasp:
+          incar:
+            SYSTEM: Si diamond SCF
+            ENCUT: 300
+            ISMEAR: 0
+            SIGMA: 0.05
+            PREC: Accurate
+            IBRION: -1
+            NSW: 0
+            LWAVE: true
+            LCHARG: true
+          kpoints:
+            mode: automatic
+            mesh:
+            - 8
+            - 8
+            - 8
+            shift:
+            - 0
+            - 0
+            - 0
+          potcar_type: PBE
+    step_type_spec: vasp_scf
+  - meta:
+      name: bandspw
+      slug: bandspw
+      path: calculations/si-bands-vasp/steps/bandspw.step.yaml
+      kind: step
+      ulid: 01KCF6B6QF7WQ2A2VY00B5P005
+    parameters:
+      engine_params:
+        vasp:
+          incar:
+            SYSTEM: Si diamond band structure
+            ENCUT: 300
+            ICHARG: 11
+            ISMEAR: 0
+            SIGMA: 0.05
+            NBANDS: 16
+            LORBIT: 11
+            PREC: Accurate
+            IBRION: -1
+            NSW: 0
+            LWAVE: false
+            LCHARG: false
+          kpoints:
+            mode: line
+            npoints: 40
+            path:
+            - - - 0.0
+                - 0.0
+                - 0.0
+              - - 0.5
+                - 0.0
+                - 0.5
+            - - - 0.5
+                - 0.0
+                - 0.5
+              - - 0.5
+                - 0.25
+                - 0.75
+            - - - 0.5
+                - 0.25
+                - 0.75
+              - - 0.375
+                - 0.375
+                - 0.75
+            - - - 0.375
+                - 0.375
+                - 0.75
+              - - 0.0
+                - 0.0
+                - 0.0
+            - - - 0.0
+                - 0.0
+                - 0.0
+              - - 0.5
+                - 0.5
+                - 0.5
+            labels:
+              "[0.0, 0.0, 0.0]": G
+              "[0.5, 0.0, 0.5]": X
+              "[0.5, 0.25, 0.75]": W
+              "[0.375, 0.375, 0.75]": K
+              "[0.5, 0.5, 0.5]": L
+          potcar_type: PBE
+    step_type_spec: vasp_bandspw
+  structure_ulid: 01KCF6B6QF7WQ2A2VY00B5P002
+  species_map:
+    Si:
+      mass: 28.0855
+      pseudo: Si
+      pseudopot: Si
+      pseudo_basename: Si
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+pseudo:
+  directory: pseudo
+  files: []
+meta:
+  ulid: si_bands_vasp_demo
+  title: Silicon band structure (VASP)
+  subtitle: SCF -> Bands
+  tags:
+  - bands
+  - Si
+  - VASP
+  - tutorial
+  - beginner
+  recommended_analysis: bands
+  difficulty: beginner

@@ -117,3 +117,85 @@ def setup_qe_bands_run(tmp_path: Path) -> dict[str, object]:
         "calc_ulid": calc_ulid,
         "calc_dir": calc_dir,
     }
+
+
+def setup_vasp_bands_run(tmp_path: Path) -> dict[str, object]:
+    """Create a minimal project with one VASP bands step and persisted analysis snapshots."""
+    project_root = tmp_path / "project"
+    QVService.init_project(project_root, name="analysis-test")
+    svc = QVService(project_root)
+
+    calc_dto = svc.calculation.create(engine="vasp", name="vasp_bands_calc")
+    calc_ulid = calc_dto.calc_ulid
+    calc_dir = project_root / (calc_dto.path or "calculations/vasp_bands_calc")
+    raw_dir = calc_dir / "raw"
+    steps_dir = calc_dir / "steps"
+    steps_dir.mkdir(parents=True, exist_ok=True)
+
+    fixture_raw = Path(__file__).resolve().parents[1] / "data" / "analysis_vasp_bands"
+    shutil.copytree(fixture_raw, raw_dir, dirs_exist_ok=True)
+
+    step_ulid = generate_ulid()
+    step_slug = "vasp_bands_step"
+    step_file = steps_dir / f"{step_slug}.step.yaml"
+    step_file.write_text(
+        yaml.safe_dump(
+            {
+                "meta": {
+                    "ulid": step_ulid,
+                    "name": step_slug,
+                    "slug": step_slug,
+                    "path": f"{calc_dto.path}/steps/{step_file.name}",
+                    "kind": "step",
+                },
+                "step_type_spec": "vasp_bandspw",
+                "parameters": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    calc_yaml = calc_dir / "calculation.yaml"
+    calc_doc = yaml.safe_load(calc_yaml.read_text(encoding="utf-8")) or {}
+    calc_doc["engine_family"] = "vasp"
+    calc_doc["working_dir"] = "raw"
+    calc_doc["steps"] = [{"step_ulid": step_ulid, "step_type_spec": "vasp_bandspw"}]
+    calc_yaml.write_text(yaml.safe_dump(calc_doc), encoding="utf-8")
+
+    run_ulid = generate_ulid()
+    record_run_start(
+        project_root=project_root,
+        run_ulid=run_ulid,
+        calc_ulid=calc_ulid,
+        engine="vasp",
+    )
+
+    run_result = _RunResult(
+        run_ulid=run_ulid,
+        status=StepStatus.SUCCESS,
+        steps=[
+            _StepSummary(
+                step_ulid=step_ulid,
+                step_type_spec="vasp_bandspw",
+                status=StepStatus.SUCCESS,
+                working_dir=raw_dir,
+            )
+        ],
+    )
+    calc_stub = _CalculationStub(
+        ulid=calc_ulid,
+        engine_family="vasp",
+        dir=calc_dir,
+    )
+
+    svc._finalize_run_analysis_pipeline(calc_stub, run_result)
+    record_run_complete(project_root=project_root, run_ulid=run_ulid, status="success")
+
+    return {
+        "project_root": project_root,
+        "service": svc,
+        "run_ulid": run_ulid,
+        "step_ulid": step_ulid,
+        "calc_ulid": calc_ulid,
+        "calc_dir": calc_dir,
+    }

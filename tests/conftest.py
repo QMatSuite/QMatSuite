@@ -204,6 +204,7 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "extended: Extended tests")
     config.addinivalue_line("markers", "unit: Tests that do not run QE")
     config.addinivalue_line("markers", "qe_core: Tests that run QE via the engine helpers")
+    config.addinivalue_line("markers", "vasp_core: Tests that run VASP via the engine helpers")
     config.addinivalue_line("markers", "qe_cli: Tests that run QE via the CLI")
 
 
