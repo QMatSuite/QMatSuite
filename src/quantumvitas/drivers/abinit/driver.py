@@ -6,6 +6,7 @@ This driver handles ABINIT DFT calculations including:
 - Structure relaxation (ionic + optional cell)
 """
 
+from quantumvitas.core.analysis.capability import AnalysisCapability
 from quantumvitas.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
@@ -23,6 +24,18 @@ class AbinitDriver(BaseEngineDriver):
     })
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
+    ANALYSIS_CAPABILITIES = [
+        AnalysisCapability(
+            object_type="bands",
+            gen_step_sequence=["nscf"],
+            evidence_files=["*_EIG"],
+        ),
+        AnalysisCapability(
+            object_type="dos",
+            gen_step_sequence=["nscf"],
+            evidence_files=["*_DOS"],
+        ),
+    ]
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties

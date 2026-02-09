@@ -642,6 +642,56 @@ def test_vasp_analysis_capabilities_cover_five_types() -> None:
     )
 
 
+def test_field3d_bundle_excludes_full_grid() -> None:
+    """Gate: field3d bundle must NOT contain full grid_data in arrays."""
+    import inspect
+    from quantumvitas.drivers.vasp.parsers.field3d import Field3D
+    source = inspect.getsource(Field3D.to_primitives)
+    assert '"grid_data": self.grid_data' not in source
+
+
+def test_band_structure_supports_projections() -> None:
+    """Gate: BandStructure must have projections + projection_labels fields."""
+    from quantumvitas.core.analysis.band_structure import BandStructure
+    fields = set(BandStructure.__dataclass_fields__)
+    assert "projections" in fields
+    assert "projection_labels" in fields
+
+
+@pytest.mark.parametrize("engine,object_type", [
+    ("qe", "bands"), ("qe", "dos"),
+    ("vasp", "bands"), ("vasp", "dos"),
+    ("abinit", "bands"), ("abinit", "dos"),
+    ("siesta", "bands"), ("siesta", "dos"),
+    ("cp2k", "bands"), ("cp2k", "dos"),
+    ("gpaw", "bands"), ("gpaw", "dos"),
+])
+def test_bands_dos_parser_matrix(engine: str, object_type: str) -> None:
+    """Gate: every engine in the bands/DOS matrix has a registered parser."""
+    import quantumvitas.drivers  # noqa: F401 — trigger registration
+
+    from quantumvitas.parsers.registry import _PARSERS
+
+    key = (engine, object_type)
+    assert key in _PARSERS, (
+        f"Missing parser for {engine}/{object_type}. "
+        f"Registered: {sorted(k for k in _PARSERS if k[1] in ('bands', 'dos'))}"
+    )
+
+
+@pytest.mark.parametrize("engine", ["qe", "vasp", "abinit", "siesta", "cp2k", "gpaw"])
+def test_bands_dos_engine_has_analysis_capabilities(engine: str) -> None:
+    """Gate: every engine with bands/dos parsers declares ANALYSIS_CAPABILITIES."""
+    import quantumvitas.drivers  # noqa: F401
+
+    driver = DriverRegistry.get_driver(engine)
+    caps = getattr(driver, "ANALYSIS_CAPABILITIES", [])
+    object_types = {c.object_type for c in caps}
+    assert {"bands", "dos"}.issubset(object_types), (
+        f"Engine '{engine}' missing bands/dos capabilities: has {sorted(object_types)}"
+    )
+
+
 def test_frontend_no_kernel_import() -> None:
     """Inv-A12: frontend must consume API only, never kernel modules directly."""
     frontend_root = REPO_ROOT / "gui" / "src"

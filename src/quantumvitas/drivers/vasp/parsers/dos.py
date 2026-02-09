@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 import xml.etree.ElementTree as ET
@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat
 from quantumvitas.core.analysis.dos import DOS
 from quantumvitas.core.analysis.evidence import EvidenceBundle
+from quantumvitas.drivers.vasp.io.poscar import parse_poscar_text
 from quantumvitas.parsers.registry import register_parser
 
 
@@ -102,78 +103,72 @@ def _parse_doscar(doscar_path: Path) -> dict:
 
     next_line_idx = 6 + nedos
     if next_line_idx < len(lines) and lines[next_line_idx].strip():
-        # PDOS data present - parse per-atom blocks
-        # First, try to determine n_atoms from first atom block
-        # Count lines until blank line or end
-        atom_block_start = next_line_idx
-        atom_block_lines = 0
-        while atom_block_start + atom_block_lines < len(lines):
-            if not lines[atom_block_start + atom_block_lines].strip():
+        # PDOS data present - each atom block has:
+        #   1 header line (same format as total DOS header: emax emin nedos efermi ...)
+        #   nedos data lines (energy + orbital projections)
+        pdos_blocks: list[list[list[float]]] = []
+        current_idx = next_line_idx
+
+        while current_idx < len(lines):
+            # Skip blank lines
+            while current_idx < len(lines) and not lines[current_idx].strip():
+                current_idx += 1
+            if current_idx >= len(lines):
                 break
-            atom_block_lines += 1
 
-        if atom_block_lines == nedos:
-            # Standard PDOS block format
-            # Count number of atoms by counting blocks
-            n_atoms = 0
-            current_idx = next_line_idx
-            while current_idx < len(lines) and lines[current_idx].strip():
-                # Skip blank lines between atoms
-                if not lines[current_idx].strip():
-                    current_idx += 1
-                    continue
-                # Count nedos lines for this atom
-                atom_lines = 0
-                while current_idx + atom_lines < len(lines) and lines[current_idx + atom_lines].strip():
-                    atom_lines += 1
-                if atom_lines == nedos:
-                    n_atoms += 1
-                    current_idx += nedos
-                else:
+            # Per-atom header line (5 fields: emax, emin, nedos, efermi, weight)
+            header_parts = lines[current_idx].split()
+            if len(header_parts) >= 4:
+                try:
+                    block_nedos = int(float(header_parts[2]))
+                except (ValueError, IndexError):
                     break
+                if block_nedos != nedos:
+                    break
+                current_idx += 1  # skip header
+            else:
+                break
 
-            if n_atoms > 0:
-                # Parse PDOS blocks
-                pdos_blocks: list[list[list[float]]] = []
-                current_idx = next_line_idx
-                for atom_idx in range(n_atoms):
-                    atom_data: list[list[float]] = []
-                    for _ in range(nedos):
-                        if current_idx >= len(lines):
-                            break
-                        parts = lines[current_idx].split()
-                        if len(parts) >= 2:
-                            atom_data.append([float(x) for x in parts])
-                        current_idx += 1
-                    if len(atom_data) == nedos:
-                        pdos_blocks.append(atom_data)
-                    # Skip blank line if present
-                    if current_idx < len(lines) and not lines[current_idx].strip():
-                        current_idx += 1
+            # Read nedos data lines for this atom
+            atom_data: list[list[float]] = []
+            for _ in range(nedos):
+                if current_idx >= len(lines):
+                    break
+                parts = lines[current_idx].split()
+                if len(parts) >= 2:
+                    try:
+                        atom_data.append([float(x) for x in parts])
+                    except ValueError:
+                        break
+                current_idx += 1
+            if len(atom_data) == nedos:
+                pdos_blocks.append(atom_data)
+            else:
+                break
 
-                if pdos_blocks:
-                    # Determine orbital count from first atom's first line
-                    n_orbitals = len(pdos_blocks[0][0]) - 1  # minus energy column
-                    pdos_array = np.zeros((len(pdos_blocks), nedos, n_orbitals), dtype=float)
-                    for atom_idx, atom_data in enumerate(pdos_blocks):
-                        for energy_idx, row in enumerate(atom_data):
-                            # Skip energy (first column), take orbitals
-                            pdos_array[atom_idx, energy_idx, :] = row[1 : 1 + n_orbitals]
+        if pdos_blocks:
+            # Determine orbital count from first atom's first line
+            n_orbitals = len(pdos_blocks[0][0]) - 1  # minus energy column
+            pdos_array = np.zeros((len(pdos_blocks), nedos, n_orbitals), dtype=float)
+            for atom_idx, atom_data in enumerate(pdos_blocks):
+                for energy_idx, row in enumerate(atom_data):
+                    # Skip energy (first column), take orbitals
+                    pdos_array[atom_idx, energy_idx, :] = row[1 : 1 + n_orbitals]
 
-                    pdos = pdos_array
+            pdos = pdos_array
 
-                    # Generate orbital labels based on count
-                    # LORBIT=10: s, p, d (3 orbitals)
-                    # LORBIT=11: s, py, pz, px, dxy, dyz, dz2, dxz, dx2-y2 (9 orbitals)
-                    if n_orbitals == 3:
-                        orbital_labels = ["s", "p", "d"]
-                    elif n_orbitals == 9:
-                        orbital_labels = ["s", "py", "pz", "px", "dxy", "dyz", "dz2", "dxz", "dx2-y2"]
-                    else:
-                        orbital_labels = [f"orb_{i}" for i in range(n_orbitals)]
+            # Generate orbital labels based on count
+            # LORBIT=10: s, p, d (3 orbitals)
+            # LORBIT=11: s, py, pz, px, dxy, dyz, dz2, dxz, dx2-y2 (9 orbitals)
+            if n_orbitals == 3:
+                orbital_labels = ["s", "p", "d"]
+            elif n_orbitals == 9:
+                orbital_labels = ["s", "py", "pz", "px", "dxy", "dyz", "dz2", "dxz", "dx2-y2"]
+            else:
+                orbital_labels = [f"orb_{i}" for i in range(n_orbitals)]
 
-                    # Atom labels would need POSCAR - for now use generic
-                    atom_labels = [f"atom_{i+1}" for i in range(len(pdos_blocks))]
+            # Atom labels: generic for now (enriched by POSCAR in provider)
+            atom_labels = [f"atom_{i+1}" for i in range(len(pdos_blocks))]
 
     return {
         "nedos": nedos,
@@ -205,6 +200,25 @@ class VASPDOSProvider:
             raise FileNotFoundError(f"DOSCAR not found: {doscar_path}")
 
         parsed = _parse_doscar(doscar_path)
+
+        # Enrich PDOS atom labels from POSCAR species (py4vasp convention)
+        if parsed["atom_labels"] and parsed["pdos"] is not None:
+            poscar_path = evidence.primary_raw_dir / "POSCAR"
+            if poscar_path.exists():
+                try:
+                    structure = parse_poscar_text(
+                        poscar_path.read_text(encoding="utf-8", errors="replace")
+                    )
+                    species: List[str] = structure["species"]
+                    if len(species) == len(parsed["atom_labels"]):
+                        counts: Dict[str, int] = {}
+                        labels: List[str] = []
+                        for sp in species:
+                            counts[sp] = counts.get(sp, 0) + 1
+                            labels.append(f"{sp}_{counts[sp]}")
+                        parsed["atom_labels"] = labels
+                except (ValueError, KeyError):
+                    pass  # keep generic atom_1, atom_2, ... labels
 
         # Try to get Fermi energy from vasprun.xml if not in DOSCAR
         fermi_energy = parsed["efermi"]

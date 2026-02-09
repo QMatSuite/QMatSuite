@@ -26,6 +26,14 @@ class VASPDriver(BaseEngineDriver):
     })
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
+    # Analysis capability routing:
+    # - One object_type may have multiple capabilities with different
+    #   gen_step_sequences (e.g., convergence → scf/relax/md).
+    # - The orchestrator picks ONE match per object_type, preferring the
+    #   longest gen_step_sequence (most specific context), then declaration
+    #   order as tiebreaker.
+    # - All three convergence entries route to VASPConvergenceProvider
+    #   (one-provider-three-trigger pattern: same OSZICAR format for all).
     ANALYSIS_CAPABILITIES = [
         AnalysisCapability(
             object_type="bands",

@@ -1,6 +1,7 @@
 """VASP trajectory analysis provider (vasprun.xml / XDATCAR parser)."""
 from __future__ import annotations
 
+import logging
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -13,10 +14,15 @@ from quantumvitas.core.analysis.evidence import EvidenceBundle
 from quantumvitas.core.analysis.trajectory.model import Frame, Trajectory
 from quantumvitas.parsers.registry import register_parser
 
+logger = logging.getLogger(__name__)
+
 # OSZICAR ionic line: "   1 F= -.10586221E+02 ..."
 _VFLOAT = r"[-+]?\d*\.\d+E[+-]\d+"
 _IONIC_RE = re.compile(rf"^\s*(\d+)\s+F=\s*({_VFLOAT})")
 _MD_RE = re.compile(rf"^\s*(\d+)\s+T=\s*([-+]?\d*\.?\d+)\s+E=\s*({_VFLOAT})")
+
+# Files larger than this threshold trigger a warning when XDATCAR fallback exists
+_SIZE_WARN_THRESHOLD = 100 * 1024 * 1024  # 100 MB
 
 
 def _parse_varray(elem: ET.Element) -> np.ndarray:
@@ -29,9 +35,21 @@ def _parse_varray(elem: ET.Element) -> np.ndarray:
 
 
 def _extract_species(root: ET.Element) -> List[str]:
-    """Extract species list from <atominfo>."""
+    """Extract species list from <atominfo> (for DOM-based callers)."""
     species = []
     atom_array = root.find(".//atominfo/array[@name='atoms']/set")
+    if atom_array is not None:
+        for rc in atom_array.findall("rc"):
+            cols = rc.findall("c")
+            if cols:
+                species.append(cols[0].text.strip() if cols[0].text else "X")
+    return species
+
+
+def _extract_species_from_elem(atominfo_elem: ET.Element) -> List[str]:
+    """Extract species list from an <atominfo> element (iterparse-compatible)."""
+    species = []
+    atom_array = atominfo_elem.find("array[@name='atoms']/set")
     if atom_array is not None:
         for rc in atom_array.findall("rc"):
             cols = rc.findall("c")
@@ -48,55 +66,53 @@ def _frac_to_cart(frac_coords: np.ndarray, lattice: np.ndarray) -> np.ndarray:
 def parse_vasprun_trajectory(path: Path) -> dict:
     """Parse vasprun.xml into trajectory frames using iterparse.
 
+    Uses streaming ElementTree iterparse to avoid loading the entire DOM
+    into memory. Each ``<calculation>`` element is processed and then
+    cleared to free memory immediately.
+
     Returns dict with:
     - species: list[str]
     - frames: list of dicts with positions, cell, energy, forces, stress
     """
-    tree = ET.parse(path)
-    root = tree.getroot()
+    species: List[str] = []
+    frames: list[dict] = []
 
-    species = _extract_species(root)
+    for event, elem in ET.iterparse(str(path), events=("end",)):
+        if elem.tag == "atominfo" and not species:
+            species = _extract_species_from_elem(elem)
+
+        elif elem.tag == "calculation":
+            struct = elem.find("structure")
+            if struct is not None:
+                basis = struct.find("crystal/varray[@name='basis']")
+                if basis is not None:
+                    lattice = _parse_varray(basis)
+
+                    pos_elem = struct.find("varray[@name='positions']")
+                    if pos_elem is not None:
+                        frac_positions = _parse_varray(pos_elem)
+                        cart_positions = _frac_to_cart(frac_positions, lattice)
+
+                        energy_elem = elem.find("energy/i[@name='e_fr_energy']")
+                        energy = float(energy_elem.text.strip()) if energy_elem is not None and energy_elem.text else None
+
+                        forces_elem = elem.find("varray[@name='forces']")
+                        forces = _parse_varray(forces_elem) if forces_elem is not None else None
+
+                        stress_elem = elem.find("varray[@name='stress']")
+                        stress = _parse_varray(stress_elem) if stress_elem is not None else None
+
+                        frames.append({
+                            "positions": cart_positions,
+                            "cell": lattice,
+                            "energy": energy,
+                            "forces": forces,
+                            "stress": stress,
+                        })
+            elem.clear()  # free memory for this <calculation>
+
     if not species:
         raise ValueError(f"No species found in {path}")
-
-    frames = []
-    for calc_elem in root.findall(".//calculation"):
-        struct = calc_elem.find("structure")
-        if struct is None:
-            continue
-
-        # Lattice
-        basis = struct.find("crystal/varray[@name='basis']")
-        if basis is None:
-            continue
-        lattice = _parse_varray(basis)
-
-        # Positions (fractional)
-        pos_elem = struct.find("varray[@name='positions']")
-        if pos_elem is None:
-            continue
-        frac_positions = _parse_varray(pos_elem)
-        cart_positions = _frac_to_cart(frac_positions, lattice)
-
-        # Energy
-        energy_elem = calc_elem.find("energy/i[@name='e_fr_energy']")
-        energy = float(energy_elem.text.strip()) if energy_elem is not None and energy_elem.text else None
-
-        # Forces
-        forces_elem = calc_elem.find("varray[@name='forces']")
-        forces = _parse_varray(forces_elem) if forces_elem is not None else None
-
-        # Stress
-        stress_elem = calc_elem.find("varray[@name='stress']")
-        stress = _parse_varray(stress_elem) if stress_elem is not None else None
-
-        frames.append({
-            "positions": cart_positions,
-            "cell": lattice,
-            "energy": energy,
-            "forces": forces,
-            "stress": stress,
-        })
 
     return {"species": species, "frames": frames}
 
@@ -198,6 +214,16 @@ class VASPTrajectoryProvider:
 
         if vasprun_path.exists():
             # Primary path: vasprun.xml
+            vasprun_size = vasprun_path.stat().st_size
+            if vasprun_size > _SIZE_WARN_THRESHOLD and xdatcar_path.exists():
+                warnings.append(
+                    f"vasprun.xml is large ({vasprun_size / 1024 / 1024:.0f} MB); "
+                    "consider XDATCAR fallback for lower memory usage."
+                )
+                logger.warning(
+                    "vasprun.xml is %d MB; XDATCAR fallback available",
+                    vasprun_size // (1024 * 1024),
+                )
             source_files.append(SourceFileStat.from_path(vasprun_path, evidence.calc_dir))
             parsed = parse_vasprun_trajectory(vasprun_path)
             species = parsed["species"]

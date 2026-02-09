@@ -96,7 +96,21 @@ def parse_oszicar(oszicar_path: Path) -> dict:
 
 @register_parser("vasp", "convergence")
 class VASPConvergenceProvider:
-    """VASP convergence analysis provider."""
+    """VASP convergence analysis provider.
+
+    Architecture: One-Provider, Three-Trigger Pattern
+    ==================================================
+    Three AnalysisCapability entries (scf/relax/md) all route to this single
+    provider because VASP writes the same OSZICAR format regardless of calc type.
+    The orchestrator picks ONE match per object_type (ranked by
+    -len(gen_step_sequence), then declaration order).
+
+    Generality for future engines:
+    - Multi-step analysis: gen_step_sequence=["bandspw","bands"] matches only
+      contiguous runs. EvidenceBundle.evidence_steps carries per-step dirs.
+    - Artifact-driven submodes: same object_type + optional fields (e.g., PROCAR
+      projections on bands). No new object_type needed.
+    """
 
     engine = "vasp"
     object_type = "convergence"

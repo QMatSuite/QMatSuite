@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<modeling>
+ <calculation>
+  <dos>
+   <i name="efermi"> -2.46067775</i>
+  </dos>
+ </calculation>
+</modeling>

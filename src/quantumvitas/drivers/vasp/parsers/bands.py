@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -14,6 +14,103 @@ from quantumvitas.core.analysis.evidence import EvidenceBundle
 from quantumvitas.drivers.vasp.io.poscar import parse_poscar_text
 from quantumvitas.parsers.registry import register_parser
 _EFERMI_RE = re.compile(r"E-fermi\s*:\s*([-+]?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?)")
+
+# PROCAR parsing regexes
+_PROCAR_HEADER_RE = re.compile(
+    r"#\s*of\s+k-points:\s*(\d+)\s+#\s*of\s+bands:\s*(\d+)\s+#\s*of\s+ions:\s*(\d+)"
+)
+_PROCAR_KPOINT_RE = re.compile(r"k-point\s+(\d+)")
+_PROCAR_BAND_RE = re.compile(r"band\s+(\d+)\s+#\s+energy\s+([-+]?\d+\.\d+)")
+_PROCAR_ION_HEADER_RE = re.compile(r"^ion\s+")
+
+
+def parse_procar(procar_path: Path) -> Dict[str, Any]:
+    """Parse VASP PROCAR (LORBIT=10/11) into projection arrays.
+
+    Returns dict with:
+        n_kpoints: int
+        n_bands: int
+        n_atoms: int
+        n_orbitals: int
+        projections: ndarray (n_kpoints, n_bands, n_atoms, n_orbitals)
+        orbital_labels: list[str]
+    """
+    text = procar_path.read_text(encoding="utf-8", errors="replace")
+    lines = text.splitlines()
+
+    # Parse header
+    n_kpoints = n_bands = n_atoms = 0
+    for line in lines[:5]:
+        m = _PROCAR_HEADER_RE.search(line)
+        if m:
+            n_kpoints = int(m.group(1))
+            n_bands = int(m.group(2))
+            n_atoms = int(m.group(3))
+            break
+    if n_kpoints == 0:
+        raise ValueError(f"Could not parse PROCAR header: {procar_path}")
+
+    # Find orbital labels from first "ion" header line
+    orbital_labels: List[str] = []
+    for line in lines:
+        if _PROCAR_ION_HEADER_RE.match(line):
+            parts = line.split()
+            # Skip "ion" and trailing "tot"
+            orbital_labels = parts[1:-1]
+            break
+    if not orbital_labels:
+        raise ValueError(f"Could not find orbital labels in PROCAR: {procar_path}")
+
+    n_orbitals = len(orbital_labels)
+    projections = np.zeros((n_kpoints, n_bands, n_atoms, n_orbitals), dtype=np.float64)
+
+    # Parse k-point/band/atom blocks
+    current_k = -1
+    current_band = -1
+    in_ion_block = False
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            in_ion_block = False
+            continue
+
+        km = _PROCAR_KPOINT_RE.match(stripped)
+        if km:
+            current_k = int(km.group(1)) - 1
+            continue
+
+        bm = _PROCAR_BAND_RE.match(stripped)
+        if bm:
+            current_band = int(bm.group(1)) - 1
+            continue
+
+        if _PROCAR_ION_HEADER_RE.match(stripped):
+            in_ion_block = True
+            continue
+
+        if in_ion_block and current_k >= 0 and current_band >= 0:
+            parts = stripped.split()
+            if parts[0] == "tot":
+                in_ion_block = False
+                continue
+            try:
+                atom_idx = int(parts[0]) - 1
+                if 0 <= atom_idx < n_atoms:
+                    # Skip first (atom index) and last (tot) columns
+                    values = [float(x) for x in parts[1 : 1 + n_orbitals]]
+                    projections[current_k, current_band, atom_idx, :] = values
+            except (ValueError, IndexError):
+                continue
+
+    return {
+        "n_kpoints": n_kpoints,
+        "n_bands": n_bands,
+        "n_atoms": n_atoms,
+        "n_orbitals": n_orbitals,
+        "projections": projections,
+        "orbital_labels": orbital_labels,
+    }
 
 
 def parse_eigenval(eigenval_path: Path) -> dict[str, Any]:
@@ -352,6 +449,64 @@ class VASPBandsProvider:
             warnings=warnings,
         )
 
+        # Check for PROCAR (fatband projections from LORBIT=10/11)
+        projections: Optional[np.ndarray] = None
+        projection_labels: Optional[Dict[str, List[str]]] = None
+        procar_path = next(
+            (d / "PROCAR" for d in candidate_dirs if (d / "PROCAR").exists()),
+            None,
+        )
+        if procar_path is not None:
+            try:
+                procar_data = parse_procar(procar_path)
+                # Verify dimensions match EIGENVAL
+                if (
+                    procar_data["n_kpoints"] == parsed["n_kpoints"]
+                    and procar_data["n_bands"] == parsed["n_bands"]
+                ):
+                    projections = procar_data["projections"]
+                    source_files.append(
+                        SourceFileStat.from_path(procar_path, evidence.calc_dir)
+                    )
+                    # Build atom labels from POSCAR species (py4vasp convention)
+                    atom_labels: List[str] = []
+                    if lattice is not None:
+                        # We already parsed POSCAR above — re-read for species
+                        for d in candidate_dirs:
+                            poscar_p = d / "POSCAR"
+                            if poscar_p.exists():
+                                try:
+                                    struct = parse_poscar_text(
+                                        poscar_p.read_text(encoding="utf-8", errors="replace")
+                                    )
+                                    species_list = struct["species"]
+                                    if len(species_list) == procar_data["n_atoms"]:
+                                        counts: Dict[str, int] = {}
+                                        for sp in species_list:
+                                            counts[sp] = counts.get(sp, 0) + 1
+                                            atom_labels.append(f"{sp}_{counts[sp]}")
+                                except (ValueError, KeyError):
+                                    pass
+                                break
+
+                    if not atom_labels:
+                        atom_labels = [
+                            f"atom_{i + 1}" for i in range(procar_data["n_atoms"])
+                        ]
+                    projection_labels = {
+                        "atoms": atom_labels,
+                        "orbitals": procar_data["orbital_labels"],
+                    }
+                else:
+                    warnings.append(
+                        f"PROCAR dimensions ({procar_data['n_kpoints']}k, "
+                        f"{procar_data['n_bands']}b) mismatch EIGENVAL "
+                        f"({parsed['n_kpoints']}k, {parsed['n_bands']}b); "
+                        "projections skipped."
+                    )
+            except (ValueError, OSError) as exc:
+                warnings.append(f"Failed to parse PROCAR: {exc}")
+
         return BandStructure(
             meta=meta,
             k_distances=k_distances,
@@ -359,4 +514,6 @@ class VASPBandsProvider:
             high_symmetry_points=labels,
             fermi_energy=fermi_energy,
             spin_polarized=bool(parsed["n_spin"] == 2),
+            projections=projections,
+            projection_labels=projection_labels,
         )

@@ -110,6 +110,21 @@ def test_sha_deterministic() -> None:
     assert sha1 == sha2
 
 
+def test_parse_uses_iterparse() -> None:
+    """Verify parse_vasprun_trajectory uses iterparse, not ET.parse()."""
+    import inspect
+    from quantumvitas.drivers.vasp.parsers.trajectory import parse_vasprun_trajectory
+    source = inspect.getsource(parse_vasprun_trajectory)
+    assert "iterparse" in source, "parse_vasprun_trajectory must use iterparse"
+    assert "ET.parse(" not in source, "parse_vasprun_trajectory must not use ET.parse()"
+
+
+def test_size_warn_threshold_exists() -> None:
+    """Verify _SIZE_WARN_THRESHOLD constant is defined and reasonable."""
+    from quantumvitas.drivers.vasp.parsers.trajectory import _SIZE_WARN_THRESHOLD
+    assert _SIZE_WARN_THRESHOLD == 100 * 1024 * 1024  # 100 MB
+
+
 def test_fallback_xdatcar_oszicar() -> None:
     """Verify fallback path using XDATCAR+OSZICAR (no vasprun.xml)."""
     with tempfile.TemporaryDirectory() as tmpdir:
