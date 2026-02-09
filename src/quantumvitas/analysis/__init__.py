@@ -1,5 +1,5 @@
 """
-Calculation analysis utilities (DOS, bands, energy summaries, structure visualization).
+Calculation analysis utilities (parsers, plotting, structure visualization).
 
 This module provides:
 - Parsers for QE output files (SCF, DOS, Bands)
@@ -7,21 +7,7 @@ This module provides:
 - Data structures for analysis results
 - K-path generation for band structure calculations
 - 3D crystal structure visualization
-- JSON artifact management for GUI integration
 """
-
-from .artifacts import (
-    AnalysisType,
-    AnalysisStatus,
-    get_analysis_dir,
-    get_artifact_path,
-    artifact_exists,
-    read_artifact,
-    write_artifact,
-    delete_artifact,
-    clear_analysis_artifacts,
-    ensure_analysis_artifact,
-)
 from .parsers import (
     # Data classes
     SCFResult,
@@ -67,17 +53,6 @@ from .structure_viz import (
 )
 
 __all__ = [
-    # Analysis artifacts
-    "AnalysisType",
-    "AnalysisStatus",
-    "get_analysis_dir",
-    "get_artifact_path",
-    "artifact_exists",
-    "read_artifact",
-    "write_artifact",
-    "delete_artifact",
-    "clear_analysis_artifacts",
-    "ensure_analysis_artifact",
     # Data classes
     "SCFResult",
     "SCFIteration",

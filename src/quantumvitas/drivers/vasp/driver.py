@@ -14,6 +14,7 @@ from quantumvitas.core.driver_protocol import (
     PreflightRequirement,
     ErrorClass,
 )
+from quantumvitas.core.analysis.capability import AnalysisCapability
 
 
 class VASPDriver(BaseEngineDriver):
@@ -25,6 +26,13 @@ class VASPDriver(BaseEngineDriver):
     })
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
+    ANALYSIS_CAPABILITIES = [
+        AnalysisCapability(
+            object_type="bands",
+            gen_step_sequence=["bandspw"],
+            evidence_files=["EIGENVAL"],
+        ),
+    ]
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties
@@ -260,4 +268,3 @@ class VASPDriver(BaseEngineDriver):
             reverse=True,
         )
         return matches[0] if matches else None
-

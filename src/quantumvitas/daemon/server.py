@@ -354,14 +354,8 @@ class QVDaemon:
             "create_demo_project": self._handle_create_demo_project,
             "list_demo_projects": self._handle_list_demo_projects,
             
-            # Analysis (ensure artifacts exist, parse if needed)
-            "ensure_calculation_analysis": self._handle_ensure_calculation_analysis,
-            
             # Visualization data (pure data, no matplotlib)
             "get_structure_vis": self._handle_get_structure_vis,
-            "get_scf_convergence": self._handle_get_scf_convergence,
-            "get_dos_data": self._handle_get_dos_data,
-            "get_band_structure_data": self._handle_get_band_structure_data,
             "get_reference_analysis": self._handle_get_reference_analysis,
             "get_analysis": self._handle_get_analysis,
             "get_analysis_snapshot": self._handle_get_analysis_snapshot,
@@ -4605,44 +4599,6 @@ class QVDaemon:
     # Analysis handlers
     # -------------------------------------------------------------------------
     
-    def _handle_ensure_calculation_analysis(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Ensure analysis artifacts exist for a calculation.
-        
-        Payload:
-            project_root: str - Path to project root
-            calculation: str - Calculation selector
-            analysis_type: str - Type of analysis ("scf", "dos", "bands")
-            step: str - Optional step selector (for SCF)
-            force: bool - Force re-parse even if artifact exists (default false)
-            
-        Returns:
-            ok: bool - Whether analysis succeeded
-            analysis_type: str - Type of analysis
-            artifact_path: str | null - Path to JSON artifact
-            parsed_fresh: bool - True if just parsed (vs loaded from cache)
-            error: str | null - Error message if failed
-            summary: dict | null - Quick summary data
-        """
-        project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
-        analysis_type = self._require_str(payload, "analysis_type")
-        step = payload.get("step")
-        force = payload.get("force", False)
-        
-        # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_calculation_with_fallback(project_root, calculation)
-        if step:
-            self._resolve_step_with_fallback(project_root, calculation, step)
-        
-        svc = get_service(project_root)
-        return svc.analysis.ensure_analysis(
-            calculation_selector=calculation,
-            analysis_type=analysis_type,
-            step_selector=step,
-            force=force,
-        )
-    
     # -------------------------------------------------------------------------
     # Visualization data handlers
     # -------------------------------------------------------------------------
@@ -4678,87 +4634,6 @@ class QVDaemon:
             display_mode=display_mode,
             box_bounds=box_bounds,
         )
-    
-    def _handle_get_scf_convergence(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Get SCF convergence data.
-        
-        Payload:
-            project_root: str - Path to project root
-            calculation: str - Calculation selector
-            step: str - Step selector
-        """
-        project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
-        step = self._require_str(payload, "step")
-        
-        # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_step_with_fallback(project_root, calculation, step)
-        
-        svc = get_service(project_root)
-        return svc.analysis.get_scf_convergence_data(
-            calculation_selector=calculation,
-            step_selector=step,
-        )
-    
-    def _handle_get_dos_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Get DOS data for plotting.
-        
-        Payload:
-            project_root: str - Path to project root
-            calculation: str - Calculation selector
-            step: str - Optional step selector
-        """
-        project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
-        step = payload.get("step")
-        
-        # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_calculation_with_fallback(project_root, calculation)
-        if step:
-            self._resolve_step_with_fallback(project_root, calculation, step)
-        
-        svc = get_service(project_root)
-        return svc.analysis.get_dos_data(
-            calculation_selector=calculation,
-            step_selector=step,
-        )
-    
-    def _handle_get_band_structure_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Get band structure data for plotting.
-        
-        Payload:
-            project_root: str - Path to project root
-            calculation: str - Calculation selector
-            step: str - Optional step selector
-        """
-        project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
-        step = payload.get("step")
-        
-        # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_calculation_with_fallback(project_root, calculation)
-        if step:
-            self._resolve_step_with_fallback(project_root, calculation, step)
-        
-        try:
-            svc = get_service(project_root)
-            return svc.analysis.get_band_structure_data(
-                calculation_selector=calculation,
-                step_selector=step,
-            )
-        except APIError as e:
-            # Log failure details at error boundary
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(
-                f"[GET_BAND_STRUCTURE_DATA] Failed: step={step}, calculation={calculation}, "
-                f"project_root={project_root}, error={e}"
-            )
-            # Re-raise to be caught by outer handler that returns ok=false
-            raise
     
     def _handle_get_reference_analysis(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

@@ -1930,6 +1930,51 @@ def parse_scf_output(output_file):
     return _parse(output_file)
 
 
+def parse_dos_data(dos_file):
+    """
+    Parse DOS data file.
+
+    Args:
+        dos_file: Path to DOS .dat file
+
+    Returns:
+        DOSData object
+    """
+    from quantumvitas.analysis.parsers import parse_dos_data as _parse
+    return _parse(dos_file)
+
+
+def parse_bands_gnu(
+    bands_file,
+    symmetry_file=None,
+    fermi_energy=None,
+    pw_output_file=None,
+    structure_file=None,
+):
+    """
+    Parse bands.dat.gnu file with optional symmetry metadata.
+
+    Args:
+        bands_file: Path to bands .dat.gnu file
+        symmetry_file: Optional bands.x output path
+        fermi_energy: Optional Fermi level in eV
+        pw_output_file: Optional pw.x output path
+        structure_file: Optional structure file path
+
+    Returns:
+        BandStructureData object
+    """
+    from quantumvitas.analysis.parsers import parse_bands_gnu as _parse
+
+    return _parse(
+        bands_file,
+        symmetry_file=symmetry_file,
+        fermi_energy=fermi_energy,
+        pw_output_file=pw_output_file,
+        structure_file=structure_file,
+    )
+
+
 def plot_scf_convergence(scf_result, ax=None):
     """
     Plot SCF convergence from result.
@@ -1943,6 +1988,100 @@ def plot_scf_convergence(scf_result, ax=None):
     """
     from quantumvitas.analysis.plotting import plot_scf_convergence as _plot
     return _plot(scf_result, ax)
+
+
+def plot_dos(
+    dos_data,
+    ax=None,
+    shift_fermi: bool = True,
+    show_fermi: bool = True,
+    energy_range=None,
+    color=None,
+    fill: bool = True,
+    fill_alpha: float = 0.3,
+    label=None,
+    **kwargs,
+):
+    """
+    Plot DOS data.
+
+    Args:
+        dos_data: DOSData object
+        ax: Optional matplotlib axis
+        shift_fermi: Shift energy axis by Fermi level
+        show_fermi: Show Fermi marker line
+        energy_range: Optional energy range tuple
+        color: Optional line color
+        fill: Fill area under curve
+        fill_alpha: Fill alpha
+        label: Optional legend label
+        **kwargs: Additional plotting kwargs
+
+    Returns:
+        Tuple of (figure, axis)
+    """
+    from quantumvitas.analysis.plotting import plot_dos as _plot
+
+    call_kwargs = {
+        "ax": ax,
+        "shift_fermi": shift_fermi,
+        "show_fermi": show_fermi,
+        "energy_range": energy_range,
+        "fill": fill,
+        "fill_alpha": fill_alpha,
+        "label": label,
+        **kwargs,
+    }
+    if color is not None:
+        call_kwargs["color"] = color
+    return _plot(dos_data, **call_kwargs)
+
+
+def plot_bands(
+    band_data,
+    ax=None,
+    shift_fermi: bool = True,
+    show_fermi: bool = True,
+    energy_range=None,
+    color=None,
+    show_symmetry_lines: bool = True,
+    symmetry_labels=None,
+    linewidth: float = 1.0,
+    **kwargs,
+):
+    """
+    Plot band structure data.
+
+    Args:
+        band_data: BandStructureData object
+        ax: Optional matplotlib axis
+        shift_fermi: Shift energy axis by Fermi level
+        show_fermi: Show Fermi marker line
+        energy_range: Optional energy range tuple
+        color: Optional line color
+        show_symmetry_lines: Show symmetry guide lines
+        symmetry_labels: Optional custom labels
+        linewidth: Band line width
+        **kwargs: Additional plotting kwargs
+
+    Returns:
+        Tuple of (figure, axis)
+    """
+    from quantumvitas.analysis.plotting import plot_bands as _plot
+
+    call_kwargs = {
+        "ax": ax,
+        "shift_fermi": shift_fermi,
+        "show_fermi": show_fermi,
+        "energy_range": energy_range,
+        "show_symmetry_lines": show_symmetry_lines,
+        "symmetry_labels": symmetry_labels,
+        "linewidth": linewidth,
+        **kwargs,
+    }
+    if color is not None:
+        call_kwargs["color"] = color
+    return _plot(band_data, **call_kwargs)
 
 
 def save_figure(fig, output_path, **kwargs):
@@ -2138,6 +2277,4 @@ def create_precision_advisor(
         lattice_matrix=lattice_matrix,
         repo_root=repo_root,
     )
-
-
 

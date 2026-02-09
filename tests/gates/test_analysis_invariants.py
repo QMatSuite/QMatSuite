@@ -532,6 +532,24 @@ def test_no_tmp_corpus_in_runtime() -> None:
             )
 
 
+def test_no_legacy_analysis_artifact_imports() -> None:
+    """Legacy analysis/artifacts.py must not be imported by runtime code."""
+    runtime_roots = [
+        REPO_ROOT / "src" / "quantumvitas" / "api",
+        REPO_ROOT / "src" / "quantumvitas" / "daemon",
+        REPO_ROOT / "src" / "quantumvitas" / "core",
+    ]
+    for root in runtime_roots:
+        for path in root.rglob("*.py"):
+            text = path.read_text(encoding="utf-8")
+            assert "from quantumvitas.analysis.artifacts" not in text, (
+                f"{path} imports deprecated analysis/artifacts module"
+            )
+            assert "quantumvitas.analysis.artifacts" not in text, (
+                f"{path} references deprecated analysis/artifacts module"
+            )
+
+
 def test_derived_never_persisted() -> None:
     """Inv-A11: API persistence paths must not write derived bundles."""
     service_path = REPO_ROOT / "src" / "quantumvitas" / "api" / "service.py"
@@ -594,6 +612,22 @@ def test_cas_is_content_addressed() -> None:
     assert "canonical_sha TEXT NOT NULL" in schema_src
     assert "UNIQUE(run_ulid, object_type)" in schema_src
     assert "owner_step_ulid" not in schema_src
+
+
+def test_golden_daemon_tests_exist() -> None:
+    """Gate: golden daemon E2E tests must exist with correct markers and assertions."""
+    tests_dir = REPO_ROOT / "tests" / "daemon"
+    checks = [
+        ("test_si_bands_golden_daemon.py", "pytest.mark.qe_core"),
+        ("test_vasp_bands_golden_daemon.py", "pytest.mark.vasp_core"),
+    ]
+    for filename, marker in checks:
+        path = tests_dir / filename
+        assert path.exists(), f"Golden daemon test missing: {path}"
+        text = path.read_text(encoding="utf-8")
+        assert marker in text, f"{filename} missing marker {marker}"
+        assert "analysis_snapshots" in text, f"{filename} missing SQLite assertion"
+        assert '".cas"' in text, f"{filename} missing CAS blob assertion"
 
 
 def test_frontend_no_kernel_import() -> None:
