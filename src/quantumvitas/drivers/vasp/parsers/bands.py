@@ -10,6 +10,7 @@ import numpy as np
 
 from quantumvitas.core.analysis.band_structure import BandStructure, HighSymPoint
 from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat
+from quantumvitas.drivers.vasp.io.poscar import parse_poscar_text
 from quantumvitas.parsers.registry import register_parser
 
 
@@ -116,8 +117,31 @@ def parse_eigenval(eigenval_path: Path) -> dict[str, Any]:
     }
 
 
-def _read_kpoints_labels(raw_dir: Path) -> list[HighSymPoint]:
-    """Extract high-symmetry labels from line-mode KPOINTS."""
+def _reciprocal_lattice(lattice: np.ndarray) -> np.ndarray:
+    """Compute reciprocal lattice B = 2π * inv(A)^T.
+
+    Args:
+        lattice: Real-space lattice matrix (3x3), rows = lattice vectors.
+
+    Returns:
+        Reciprocal lattice matrix (3x3), rows = reciprocal vectors.
+    """
+    return 2.0 * np.pi * np.linalg.inv(lattice).T
+
+
+def _read_kpoints_labels(
+    raw_dir: Path,
+    lattice: np.ndarray | None = None,
+) -> list[HighSymPoint]:
+    """Extract high-symmetry labels from line-mode KPOINTS.
+
+    Args:
+        raw_dir: Directory containing KPOINTS file.
+        lattice: Real-space lattice matrix (3x3, rows = vectors). When
+            provided, k-point distances are computed in reciprocal Cartesian
+            space (correct metric). When ``None``, fractional Euclidean is
+            used as fallback.
+    """
     kpoints_path = raw_dir / "KPOINTS"
     if not kpoints_path.exists():
         return []
@@ -127,6 +151,8 @@ def _read_kpoints_labels(raw_dir: Path) -> list[HighSymPoint]:
         return []
     if "line" not in lines[2].strip().lower():
         return []
+
+    recip = _reciprocal_lattice(lattice) if lattice is not None else None
 
     segments: list[tuple[np.ndarray, np.ndarray, str, str]] = []
     point_entries: list[tuple[np.ndarray, str]] = []
@@ -163,7 +189,11 @@ def _read_kpoints_labels(raw_dir: Path) -> list[HighSymPoint]:
         points.append(HighSymPoint(k_distance=0.0, label=start_label))
 
     for _, (start_coords, end_coords, _start_label, end_label) in enumerate(segments):
-        cumulative += float(np.linalg.norm(end_coords - start_coords))
+        if recip is not None:
+            delta_cart = recip.T @ (end_coords - start_coords)
+            cumulative += float(np.linalg.norm(delta_cart))
+        else:
+            cumulative += float(np.linalg.norm(end_coords - start_coords))
         if not end_label:
             continue
         if points and points[-1].label == end_label and abs(points[-1].k_distance - cumulative) < 1e-8:
@@ -173,11 +203,33 @@ def _read_kpoints_labels(raw_dir: Path) -> list[HighSymPoint]:
     return points
 
 
-def _compute_k_distances(kpoints: np.ndarray) -> np.ndarray:
+def _compute_k_distances(
+    kpoints: np.ndarray,
+    lattice: np.ndarray | None = None,
+) -> np.ndarray:
+    """Compute cumulative k-path distances.
+
+    Args:
+        kpoints: Fractional k-point coordinates, shape ``(n_kpoints, 3)``.
+        lattice: Real-space lattice matrix (3x3, rows = vectors). When
+            provided, distances are computed in reciprocal Cartesian space
+            (the physically correct metric). When ``None``, fractional
+            Euclidean is used as fallback.
+
+    Returns:
+        Cumulative k-path distances, shape ``(n_kpoints,)``, in units of
+        1/Angstrom when lattice is provided.
+    """
     distances = np.zeros(kpoints.shape[0], dtype=float)
     if kpoints.shape[0] <= 1:
         return distances
-    deltas = np.linalg.norm(np.diff(kpoints, axis=0), axis=1)
+    dk_frac = np.diff(kpoints, axis=0)  # (n-1, 3)
+    if lattice is not None:
+        recip = _reciprocal_lattice(lattice)
+        dk_cart = dk_frac @ recip  # (n-1, 3) in Cartesian reciprocal space
+        deltas = np.linalg.norm(dk_cart, axis=1)
+    else:
+        deltas = np.linalg.norm(dk_frac, axis=1)
     distances[1:] = np.cumsum(deltas)
     return distances
 
@@ -262,19 +314,39 @@ class VASPBandsProvider:
 
         parsed = parse_eigenval(eigenval_path)
         kpoints = parsed["kpoints"]
-        k_distances = _compute_k_distances(kpoints)
 
-        labels = _read_kpoints_labels(eigenval_path.parent)
+        # Read lattice from POSCAR for reciprocal Cartesian k-distances
+        lattice: np.ndarray | None = None
+        for d in candidate_dirs:
+            poscar_path = d / "POSCAR"
+            if poscar_path.exists():
+                try:
+                    structure = parse_poscar_text(
+                        poscar_path.read_text(encoding="utf-8", errors="replace")
+                    )
+                    lattice = np.array(structure["lattice"], dtype=float)
+                except (ValueError, KeyError):
+                    pass
+                break
+
+        k_distances = _compute_k_distances(kpoints, lattice)
+
+        labels = _read_kpoints_labels(eigenval_path.parent, lattice)
         fermi_energy, fermi_source = _read_fermi_energy(candidate_dirs)
 
         source_files = [SourceFileStat.from_path(eigenval_path, calc_dir)]
         kpoints_path = eigenval_path.parent / "KPOINTS"
         if kpoints_path.exists():
             source_files.append(SourceFileStat.from_path(kpoints_path, calc_dir))
+        poscar_used = eigenval_path.parent / "POSCAR"
+        if poscar_used.exists():
+            source_files.append(SourceFileStat.from_path(poscar_used, calc_dir))
         if fermi_source is not None:
             source_files.append(SourceFileStat.from_path(fermi_source, calc_dir))
 
         warnings: list[str] = []
+        if lattice is None:
+            warnings.append("No POSCAR found; k-distances use fractional Euclidean (incorrect for non-cubic cells).")
         if not labels:
             warnings.append("No line-mode KPOINTS labels found.")
         if fermi_energy is None:

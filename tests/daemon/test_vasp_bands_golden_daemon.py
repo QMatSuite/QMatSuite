@@ -210,7 +210,11 @@ def test_vasp_bands_demo_runs_new_analysis_pipeline_end_to_end(
 
     k_distances = bundle["arrays"]["k_distances"]
     eigenvalues = bundle["arrays"]["eigenvalues"]
-    assert len(k_distances) >= 8
+    # Demo specifies 5 segments × 40 npoints = 200 k-points.
+    # This catches the materializer-default bug (only 8 k-points from 4×4×4 grid).
+    assert len(k_distances) == 200, (
+        f"Expected 200 k-points (5 segments × 40 npoints), got {len(k_distances)}"
+    )
     assert len(eigenvalues) == len(k_distances)
     n_bands = len(eigenvalues[0])
     assert n_bands >= 8

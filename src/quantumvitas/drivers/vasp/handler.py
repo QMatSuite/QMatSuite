@@ -145,9 +145,22 @@ def vasp_step_handler(
                     error=str(e),
                 )
         
+        # Load VASP parameters from step YAML (handler reads YAML, engine stays pure)
+        vasp_params: dict = {}
+        try:
+            from quantumvitas.core.yamldoc import StepDoc
+
+            step_yaml = calculation.dir / "steps" / f"{step.meta.slug}.step.yaml"
+            if step_yaml.exists():
+                doc = StepDoc.load(step_yaml)
+                data = doc.to_dict()
+                vasp_params = data.get("parameters", {}).get("engine_params", {}).get("vasp", {})
+        except Exception:
+            logger.warning("Failed to load step YAML params for %s", step.meta.slug, exc_info=True)
+
         # Materialize inputs
         try:
-            engine.materialize_inputs(step, working_dir, calculation)
+            engine.materialize_inputs(step, working_dir, calculation, vasp_params=vasp_params)
         except Exception as e:
             return JobResult(
                 job_id=job.id,
