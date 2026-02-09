@@ -261,9 +261,10 @@ def test_vasp_bands_demo_runs_new_analysis_pipeline_end_to_end(
     finally:
         conn.close()
 
-    assert len(rows) == 1
-    assert rows[0][1] == "bands"
-    assert rows[0][0] == canonical_sha
+    object_types = {row[1] for row in rows}
+    assert "bands" in object_types
+    bands_row = next(row for row in rows if row[1] == "bands")
+    assert bands_row[0] == canonical_sha
 
     cas_blob = project_root / ".provenance" / ".cas" / "analysis" / f"{canonical_sha}.json.gz"
     assert cas_blob.exists()

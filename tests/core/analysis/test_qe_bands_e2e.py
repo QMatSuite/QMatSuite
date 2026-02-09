@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from quantumvitas.core.analysis.band_structure import BandStructure
+from quantumvitas.core.analysis.evidence import EvidenceBundle
 from quantumvitas.core.analysis.orchestrator import run_post_run_analysis
 from quantumvitas.core.analysis.transforms.fermi_shift import FermiShift
 from quantumvitas.drivers.qe.driver import QEDriver
@@ -25,15 +26,17 @@ def test_qe_bands_end_to_end() -> None:
     provider = QEBandsProvider()
     assert provider.can_parse(raw_dir)
 
-    band_struct = provider.parse(
-        raw_dir=raw_dir,
+    evidence = EvidenceBundle(
+        primary_raw_dir=raw_dir,
         calc_dir=calc_dir,
         run_ulid="01RUN",
         calc_ulid="01CALC",
         step_ulids=["01STEP1"],
         gen_steps=["bandspw"],
         engine_name="qe",
+        evidence_steps=[],
     )
+    band_struct = provider.parse(evidence)
     assert isinstance(band_struct, BandStructure)
     assert band_struct.meta.object_type == "bands"
     assert band_struct.n_kpoints > 0

@@ -2,17 +2,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence
 
 import numpy as np
 
 from quantumvitas.analysis.parsers import parse_bands_gnu, parse_scf_output
 from quantumvitas.core.analysis.band_structure import BandStructure, HighSymPoint
 from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat
+from quantumvitas.core.analysis.evidence import EvidenceBundle
 from quantumvitas.parsers.registry import register_parser
-
-
-EvidenceStep = Tuple[str, str, Path]
 
 
 @register_parser("qe", "bands")
@@ -28,27 +26,16 @@ class QEBandsProvider:
             or list(raw_dir.glob("bands.dat.gnu"))
         )
 
-    def parse(
-        self,
-        raw_dir: Path,
-        calc_dir: Path,
-        *,
-        run_ulid: Optional[str] = None,
-        step_ulids: Optional[List[str]] = None,
-        gen_steps: Optional[List[str]] = None,
-        calc_ulid: Optional[str] = None,
-        evidence_steps: Optional[Sequence[EvidenceStep]] = None,
-        engine_name: Optional[str] = None,
-    ) -> BandStructure:
+    def parse(self, evidence: EvidenceBundle) -> BandStructure:
         """Parse QE bands output and return engine-agnostic BandStructure."""
-        candidate_dirs = self._candidate_raw_dirs(raw_dir, evidence_steps)
+        candidate_dirs = self._candidate_raw_dirs(evidence.primary_raw_dir, evidence.evidence_steps)
 
         bands_file = self._find_first(
             candidate_dirs,
             ["*.bands.dat.gnu", "bands.dat.gnu"],
         )
         if bands_file is None:
-            raise FileNotFoundError(f"No QE bands.dat.gnu file found in {raw_dir}")
+            raise FileNotFoundError(f"No QE bands.dat.gnu file found in {evidence.primary_raw_dir}")
 
         symmetry_file = self._find_first(
             [bands_file.parent],
@@ -87,20 +74,20 @@ class QEBandsProvider:
             pw_output_file=pw_output,
         )
 
-        source_files = [SourceFileStat.from_path(bands_file, calc_dir)]
+        source_files = [SourceFileStat.from_path(bands_file, evidence.calc_dir)]
         if symmetry_file is not None:
-            source_files.append(SourceFileStat.from_path(symmetry_file, calc_dir))
+            source_files.append(SourceFileStat.from_path(symmetry_file, evidence.calc_dir))
         if pw_output is not None:
-            source_files.append(SourceFileStat.from_path(pw_output, calc_dir))
+            source_files.append(SourceFileStat.from_path(pw_output, evidence.calc_dir))
 
         meta = AnalysisObjectMeta.create(
             object_type="bands",
             source_files=source_files,
-            run_ulid=run_ulid,
-            calc_ulid=calc_ulid,
-            step_ulids=step_ulids or [],
-            gen_steps=gen_steps or [],
-            engine_name=engine_name or "qe",
+            run_ulid=evidence.run_ulid,
+            calc_ulid=evidence.calc_ulid,
+            step_ulids=evidence.step_ulids,
+            gen_steps=evidence.gen_steps,
+            engine_name=evidence.engine_name,
             parser_name="qe_bands",
             parser_version="1.0",
             warnings=warnings,
@@ -121,7 +108,7 @@ class QEBandsProvider:
     def _candidate_raw_dirs(
         self,
         raw_dir: Path,
-        evidence_steps: Optional[Sequence[EvidenceStep]],
+        evidence_steps: list[tuple[str, str, Path]],
     ) -> list[Path]:
         dirs = [raw_dir]
         if evidence_steps:

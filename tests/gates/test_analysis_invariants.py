@@ -379,10 +379,10 @@ def test_no_redundant_canonical(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
         def can_parse(self, raw_dir: Path) -> bool:
             return True
 
-        def parse(self, raw_dir: Path, calc_dir: Path, **kwargs: object) -> BandStructure:
+        def parse(self, evidence: object) -> BandStructure:
             return _make_test_band_structure(
-                step_ulids=list(kwargs.get("step_ulids", [])),
-                gen_steps=list(kwargs.get("gen_steps", [])),
+                step_ulids=list(getattr(evidence, "step_ulids", [])),
+                gen_steps=list(getattr(evidence, "gen_steps", [])),
             )
 
     class _DriverOne:
@@ -628,6 +628,18 @@ def test_golden_daemon_tests_exist() -> None:
         assert marker in text, f"{filename} missing marker {marker}"
         assert "analysis_snapshots" in text, f"{filename} missing SQLite assertion"
         assert '".cas"' in text, f"{filename} missing CAS blob assertion"
+
+
+def test_vasp_analysis_capabilities_cover_five_types() -> None:
+    """VASP driver must declare capabilities for all five analysis types."""
+    from quantumvitas.drivers.vasp.driver import VASPDriver
+
+    driver = VASPDriver()
+    types = {cap.object_type for cap in driver.ANALYSIS_CAPABILITIES}
+    expected = {"bands", "dos", "convergence", "trajectory", "field3d"}
+    assert expected.issubset(types), (
+        f"Missing analysis types: {expected - types}"
+    )
 
 
 def test_frontend_no_kernel_import() -> None:

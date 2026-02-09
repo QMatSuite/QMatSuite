@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from quantumvitas.core.analysis.band_structure import BandStructure
+from quantumvitas.core.analysis.evidence import EvidenceBundle
 from quantumvitas.drivers.qe.parsers.bands import QEBandsProvider
 
 
@@ -39,14 +40,17 @@ def test_parse_returns_band_structure(tmp_path: Path) -> None:
     raw_dir = _prepare_provider_raw_dir(tmp_path)
     provider = QEBandsProvider()
 
-    band_structure = provider.parse(
-        raw_dir=raw_dir,
+    evidence = EvidenceBundle(
+        primary_raw_dir=raw_dir,
         calc_dir=tmp_path,
-        step_ulids=["01STEP1"],
-        gen_steps=["bandspw"],
         run_ulid="01RUN",
         calc_ulid="01CALC",
+        step_ulids=["01STEP1"],
+        gen_steps=["bandspw"],
+        engine_name="qe",
+        evidence_steps=[],
     )
+    band_structure = provider.parse(evidence)
 
     assert isinstance(band_structure, BandStructure)
     assert band_structure.n_kpoints == 91
@@ -59,14 +63,17 @@ def test_parse_sets_metadata_fields(tmp_path: Path) -> None:
     raw_dir = _prepare_provider_raw_dir(tmp_path)
     provider = QEBandsProvider()
 
-    band_structure = provider.parse(
-        raw_dir=raw_dir,
+    evidence = EvidenceBundle(
+        primary_raw_dir=raw_dir,
         calc_dir=tmp_path,
-        step_ulids=["01STEP1"],
-        gen_steps=["bandspw"],
         run_ulid="01RUN",
         calc_ulid="01CALC",
+        step_ulids=["01STEP1"],
+        gen_steps=["bandspw"],
+        engine_name="qe",
+        evidence_steps=[],
     )
+    band_structure = provider.parse(evidence)
 
     meta = band_structure.meta
     assert meta.engine_name == "qe"
@@ -84,7 +91,17 @@ def test_parse_to_primitives_roundtrip_json(tmp_path: Path) -> None:
     raw_dir = _prepare_provider_raw_dir(tmp_path)
     provider = QEBandsProvider()
 
-    band_structure = provider.parse(raw_dir=raw_dir, calc_dir=tmp_path)
+    evidence = EvidenceBundle(
+        primary_raw_dir=raw_dir,
+        calc_dir=tmp_path,
+        run_ulid=None,
+        calc_ulid=None,
+        step_ulids=[],
+        gen_steps=[],
+        engine_name="qe",
+        evidence_steps=[],
+    )
+    band_structure = provider.parse(evidence)
     payload = band_structure.to_primitives().to_dict()
     restored = json.loads(json.dumps(payload))
 
@@ -98,7 +115,17 @@ def test_provider_is_deterministic_for_identical_input(tmp_path: Path) -> None:
     raw_dir = _prepare_provider_raw_dir(tmp_path)
     provider = QEBandsProvider()
 
-    first = provider.parse(raw_dir=raw_dir, calc_dir=tmp_path).to_primitives().to_dict()
-    second = provider.parse(raw_dir=raw_dir, calc_dir=tmp_path).to_primitives().to_dict()
+    evidence = EvidenceBundle(
+        primary_raw_dir=raw_dir,
+        calc_dir=tmp_path,
+        run_ulid=None,
+        calc_ulid=None,
+        step_ulids=[],
+        gen_steps=[],
+        engine_name="qe",
+        evidence_steps=[],
+    )
+    first = provider.parse(evidence).to_primitives().to_dict()
+    second = provider.parse(evidence).to_primitives().to_dict()
 
     assert json.dumps(first, sort_keys=True) == json.dumps(second, sort_keys=True)

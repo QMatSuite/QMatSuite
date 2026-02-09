@@ -32,6 +32,41 @@ class VASPDriver(BaseEngineDriver):
             gen_step_sequence=["bandspw"],
             evidence_files=["EIGENVAL"],
         ),
+        AnalysisCapability(
+            object_type="dos",
+            gen_step_sequence=["dos"],
+            evidence_files=["DOSCAR"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["scf"],
+            evidence_files=["OSZICAR"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["relax"],
+            evidence_files=["OSZICAR"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["md"],
+            evidence_files=["OSZICAR"],
+        ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["relax"],
+            evidence_files=["vasprun.xml"],
+        ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["md"],
+            evidence_files=["vasprun.xml"],
+        ),
+        AnalysisCapability(
+            object_type="field3d",
+            gen_step_sequence=["scf"],
+            evidence_files=["CHGCAR"],
+        ),
     ]
 
     # ─────────────────────────────────────────────────────────────────────

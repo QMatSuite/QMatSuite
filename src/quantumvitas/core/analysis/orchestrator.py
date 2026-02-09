@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from quantumvitas.core.analysis.capability import find_contiguous_match
+from quantumvitas.core.analysis.evidence import EvidenceBundle
 from quantumvitas.parsers.registry import get_parser
 
 
@@ -77,14 +78,9 @@ def run_post_run_analysis(
         if hasattr(provider, "can_parse") and not provider.can_parse(primary_raw_dir):
             continue
 
-        parse_kwargs: Dict[str, Any] = {
-            "run_ulid": run_ulid,
-            "step_ulids": selected_match.step_ulids,
-            "gen_steps": selected_match.gen_steps,
-            "calc_ulid": calc_ulid,
-        }
+        evidence_steps: List[Tuple[str, str, Path]] = []
         if len(selected_match.step_ulids) > 1:
-            parse_kwargs["evidence_steps"] = list(
+            evidence_steps = list(
                 zip(
                     selected_match.step_ulids,
                     selected_match.gen_steps,
@@ -92,12 +88,19 @@ def run_post_run_analysis(
                 )
             )
 
+        evidence = EvidenceBundle(
+            primary_raw_dir=primary_raw_dir,
+            calc_dir=calc_dir if calc_dir is not None else primary_raw_dir.parent,
+            run_ulid=run_ulid,
+            calc_ulid=calc_ulid,
+            step_ulids=selected_match.step_ulids,
+            gen_steps=selected_match.gen_steps,
+            engine_name=engine,
+            evidence_steps=evidence_steps,
+        )
+
         try:
-            obj = provider.parse(
-                primary_raw_dir,
-                calc_dir if calc_dir is not None else primary_raw_dir.parent,
-                **parse_kwargs,
-            )
+            obj = provider.parse(evidence)
             canonical = obj.to_primitives()
         except Exception as exc:
             warnings.warn(
