@@ -237,84 +237,67 @@ export interface ProjectSummary {
 // Data Types - Analysis
 // =============================================================================
 
-/** Analysis type for ensure_calculation_analysis */
-export type AnalysisType = 'scf' | 'dos' | 'bands';
-
-/** Result of ensure_calculation_analysis RPC call */
-export interface AnalysisStatus {
-  ok: boolean;
-  analysis_type: AnalysisType;
-  artifact_path: string | null;
-  parsed_fresh: boolean;  // True if just parsed (vs loaded from cache)
-  error: string | null;
-  summary: {
-    // SCF summary
-    converged?: boolean;
-    n_iterations?: number;
-    total_energy_ry?: number;
-    // DOS/bands summary
-    n_points?: number;
-    n_bands?: number;
-    n_kpoints?: number;
-    n_high_symmetry_points?: number;
-    // Common
-    fermi_energy_ev?: number | null;
-    energy_range_ev?: [number, number];
-  } | null;
+export interface AnalysisSourceFileStat {
+  path: string;
+  size_bytes: number;
+  mtime: number;
 }
 
-export interface ScfIteration {
-  iteration: number;
-  total_energy_ry: number;
-  scf_accuracy_ry: number;
-}
-
-export interface ScfConvergenceData {
-  calculation: string;
-  step: string;
-  output_file: string;
-  converged: boolean;
-  n_iterations: number;
-  total_energy_ry: number;
-  fermi_energy_ev: number | null;
-  iterations: ScfIteration[];
-  calculation_type: string;
-  n_electrons: number;
-  n_kpoints: number;
-  ecutwfc_ry: number;
-  units: { energy: string; fermi: string };
-}
-
-export interface DosData {
-  calculation: string;
-  step: string;
-  data_file: string;
-  n_points: number;
-  fermi_energy_ev: number | null;
-  energy_range_ev: [number, number];
-  energies_ev: number[];
-  dos_states_per_ev: number[];
-  idos: number[];
-  units: { energy: string; dos: string };
-}
-
-export interface HighSymmetryPoint {
+export interface AnalysisMarker {
+  position: number;
   label: string;
-  k_distance: number;
-  k_coords: [number, number, number] | null;
+  axis: string;
 }
 
-export interface BandStructureData {
-  calculation: string;
-  step: string;
-  data_file: string;
-  n_bands: number;
-  n_kpoints: number;
-  fermi_energy_ev: number | null;
-  k_distances: number[];
-  energies_ev: number[][];
-  high_symmetry_points: HighSymmetryPoint[];
-  units: { energy: string; k_distance: string };
+export interface PrimitiveSeries1D {
+  x: number[];
+  y: number[];
+  x_label: string;
+  y_label: string;
+  x_unit: string;
+  y_unit: string;
+  name?: string | null;
+}
+
+export interface PrimitiveRenderMeta {
+  axis_labels: Record<string, string>;
+  units: Record<string, string>;
+  series_labels?: string[] | null;
+  reference_energy?: number | null;
+  reference_position?: number | null;
+  markers: AnalysisMarker[];
+  extra: Record<string, unknown>;
+}
+
+export interface PrimitiveProvenanceMeta {
+  schema_version: string;
+  object_type: string;
+  run_ulid?: string | null;
+  calc_ulid?: string | null;
+  step_ulids: string[];
+  gen_steps: string[];
+  engine_name: string;
+  source_files: AnalysisSourceFileStat[];
+  parser_name: string;
+  parser_version: string;
+  warnings: string[];
+  manifest_snapshot?: Record<string, unknown> | null;
+}
+
+export interface PrimitiveTransformRecord {
+  transform_name: string;
+  parameters: Record<string, unknown>;
+}
+
+export interface PrimitiveBundleData {
+  bundle_kind: 'canonical' | 'derived';
+  object_type: string;
+  render_meta: PrimitiveRenderMeta;
+  provenance_meta: PrimitiveProvenanceMeta;
+  series: PrimitiveSeries1D[];
+  geometry_frames?: Record<string, unknown> | null;
+  arrays: Record<string, unknown>;
+  transform_chain?: PrimitiveTransformRecord[];
 }
 
 // =============================================================================
@@ -787,18 +770,6 @@ export interface QVCommandMap {
     };
   };
   
-  // Analysis - ensure artifacts exist
-  ensure_calculation_analysis: {
-    payload: {
-      project_root: string;
-      calculation: string;
-      analysis_type: AnalysisType;
-      step?: string;
-      force?: boolean;
-    };
-    result: AnalysisStatus;
-  };
-  
   // Visualization data
   get_structure_vis: {
     payload: {
@@ -812,43 +783,6 @@ export interface QVCommandMap {
     };
     result: StructureVisData;
   };
-  get_scf_convergence: {
-    payload: {
-      project_root: string;
-      calculation: string;
-      step: string;
-    };
-    result: ScfConvergenceData;
-  };
-  get_dos_data: {
-    payload: {
-      project_root: string;
-      calculation: string;
-      step?: string;
-    };
-    result: DosData;
-  };
-  get_band_structure_data: {
-    payload: {
-      project_root: string;
-      calculation: string;
-      step?: string;
-    };
-    result: BandStructureData;
-  };
-  
-  get_reference_analysis: {
-    payload: {
-      project_root: string;
-      calculation: string;
-      analysis_type: 'scf' | 'dos' | 'bands';
-    };
-    result: {
-      data: ScfConvergenceData | DosData | BandStructureData | null;
-      has_reference: boolean;
-    };
-  };
-  
   list_step_artifacts: {
     payload: {
       project_root: string;
@@ -881,6 +815,85 @@ export interface QVCommandMap {
       truncated: boolean;
       total_bytes: number;
       resolved_path: string;
+    };
+  };
+
+  list_raw_files: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      step: string;
+    };
+    result: {
+      raw_dir: string;
+      files: string[];
+      artifacts: Array<{
+        path_relative_to_raw: string;
+        kind: string;
+        size_bytes: number;
+        mtime: number;
+        is_default_candidate: boolean;
+      }>;
+    };
+  };
+
+  read_raw_file: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      step: string;
+      filename: string;
+      head_lines?: number;
+      tail_lines?: number;
+    };
+    result: {
+      content: string;
+      truncated: boolean;
+      total_bytes: number;
+      resolved_path: string;
+    };
+  };
+
+  get_step_digest: {
+    payload: {
+      project_root: string;
+      run_ulid: string;
+      step_ulid: string;
+    };
+    result: {
+      available: boolean;
+      digest_sha: string | null;
+      engine?: string | null;
+      digest: Record<string, unknown> | null;
+    };
+  };
+
+  get_analysis: {
+    payload: {
+      project_root: string;
+      run_ulid: string;
+      object_type: string;
+      transforms?: string[];
+    };
+    result: {
+      run_ulid: string;
+      object_type: string;
+      canonical_sha: string;
+      bundle: PrimitiveBundleData;
+    };
+  };
+
+  get_analysis_snapshot: {
+    payload: {
+      project_root: string;
+      run_ulid: string;
+      object_type: string;
+    };
+    result: {
+      run_ulid: string;
+      object_type: string;
+      canonical_sha: string;
+      bundle: PrimitiveBundleData;
     };
   };
   
@@ -1654,15 +1667,21 @@ export interface QVCommandMap {
   pin_analysis_to_history: {
     payload: {
       project_root: string;
-      run_ulid: string;
+      run_ulid?: string | null;
       step_ulid: string;
       analysis_kind: string;
       png_data_base64?: string;
       json_payload?: Record<string, unknown>;
+      run_ulid_source?: 'exact' | 'inferred' | 'unknown';
     };
     result: {
       success: boolean;
-      pin_path?: string;
+      pin_ulid?: string;
+      run_ulid?: string | null;
+      run_ulid_source?: 'exact' | 'inferred' | 'unknown';
+      run_ulid_source_details?: Record<string, unknown> | null;
+      png_sha?: string | null;
+      json_sha?: string | null;
       error?: string;
     };
   };

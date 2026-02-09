@@ -20,6 +20,12 @@ EXEMPT_METHODS: dict[str, str] = {
     "compile_fixture_volume": "Dev-only endpoint requiring specific Wannier90 fixture files that are not part of standard test setup",
     # Daemon lifecycle method
     "shutdown": "Terminates daemon process; cannot be tested in golden generation as it stops the daemon",
+    # Analysis pipeline endpoints requiring completed run snapshots/artifacts
+    "list_raw_files": "Requires deterministic run artifacts for a selected step; contract crawler does not create stable step-bound raw payloads",
+    "read_raw_file": "Requires deterministic run artifacts plus text-selection parameters; covered by dedicated endpoint tests instead",
+    "get_step_digest": "Requires run_steps digest linkage and CAS payload created by a completed run",
+    "get_analysis": "Operational derivation requires completed run evidence and parser-capability matching setup",
+    "get_analysis_snapshot": "Explicit replay path requires SQLite snapshot linkage and CAS objects from completed runs",
 }
 
 
@@ -169,4 +175,3 @@ def test_all_methods_covered_or_exempt():
     print(f"  Exempt: {len(EXEMPT_METHODS)}")
     print(f"  Total methods: {len(all_methods)}")
     print(f"  Coverage: {len(actually_covered)}/{len(all_methods)} ({len(actually_covered)*100//len(all_methods)}%)")
-

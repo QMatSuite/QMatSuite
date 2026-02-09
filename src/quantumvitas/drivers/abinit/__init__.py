@@ -10,6 +10,7 @@ multi-dataset mode and comprehensive DFPT support.
 
 from quantumvitas.core.driver_registry import DriverRegistry
 from .driver import AbinitDriver
+from . import parsers  # noqa: F401, E402
 
 # Register driver at import time
 DriverRegistry.register(AbinitDriver())

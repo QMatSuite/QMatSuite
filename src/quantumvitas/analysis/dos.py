@@ -1,5 +1,8 @@
 """
 DOS analysis utilities.
+
+DEPRECATED: Legacy DOS helper module kept for compatibility with old analysis
+artifact workflows. New operational analysis should use the primitive pipeline.
 """
 
 from __future__ import annotations

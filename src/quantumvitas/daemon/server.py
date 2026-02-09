@@ -363,8 +363,13 @@ class QVDaemon:
             "get_dos_data": self._handle_get_dos_data,
             "get_band_structure_data": self._handle_get_band_structure_data,
             "get_reference_analysis": self._handle_get_reference_analysis,
+            "get_analysis": self._handle_get_analysis,
+            "get_analysis_snapshot": self._handle_get_analysis_snapshot,
+            "get_step_digest": self._handle_get_step_digest,
             "list_step_artifacts": self._handle_list_step_artifacts,
             "read_step_artifact_text": self._handle_read_step_artifact_text,
+            "list_raw_files": self._handle_list_raw_files,
+            "read_raw_file": self._handle_read_raw_file,
             
             # Volume visualization (dev sandbox)
             "list_wannier_3d_fixtures": self._handle_list_wannier_3d_fixtures,
@@ -4788,6 +4793,104 @@ class QVDaemon:
         )
         
         return result
+
+    def _handle_get_analysis(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Operational analysis derivation (raw evidence -> primitive bundle).
+
+        Payload:
+            project_root: str
+            run_ulid: str
+            object_type: str
+            transforms: Optional[list[str]]
+        """
+        project_root = self._require_path(payload, "project_root")
+        run_ulid = self._require_str(payload, "run_ulid")
+        object_type = self._require_str(payload, "object_type")
+        transforms = payload.get("transforms")
+        if transforms is not None and not isinstance(transforms, list):
+            raise ValueError("transforms must be a list of transform names")
+
+        svc = get_service(project_root)
+        return svc.analysis.get_analysis(
+            run_ulid=run_ulid,
+            object_type=object_type,
+            transforms=transforms,
+        )
+
+    def _handle_get_analysis_snapshot(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Explicit provenance replay endpoint (SQLite + CAS snapshot path).
+
+        Payload:
+            project_root: str
+            run_ulid: str
+            object_type: str
+        """
+        project_root = self._require_path(payload, "project_root")
+        run_ulid = self._require_str(payload, "run_ulid")
+        object_type = self._require_str(payload, "object_type")
+
+        svc = get_service(project_root)
+        return svc.analysis.get_analysis_snapshot(
+            run_ulid=run_ulid,
+            object_type=object_type,
+        )
+
+    def _handle_get_step_digest(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Step digest endpoint for Surface B.
+
+        Payload:
+            project_root: str
+            run_ulid: str
+            step_ulid: str
+        """
+        project_root = self._require_path(payload, "project_root")
+        run_ulid = self._require_str(payload, "run_ulid")
+        step_ulid = self._require_str(payload, "step_ulid")
+
+        svc = get_service(project_root)
+        return svc.analysis.get_step_digest(
+            run_ulid=run_ulid,
+            step_ulid=step_ulid,
+        )
+
+    def _handle_list_raw_files(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Surface A endpoint: list raw files for a step.
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step = self._require_str(payload, "step")
+
+        self._resolve_step_with_fallback(project_root, calculation, step)
+        svc = get_service(project_root)
+        return svc.analysis.list_raw_files(
+            calculation_selector=calculation,
+            step_selector=step,
+        )
+
+    def _handle_read_raw_file(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Surface A endpoint: read raw file content for a step.
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step = self._require_str(payload, "step")
+        filename = self._require_str(payload, "filename")
+        head_lines = payload.get("head_lines", 1000)
+        tail_lines = payload.get("tail_lines", 100)
+
+        self._resolve_step_with_fallback(project_root, calculation, step)
+        svc = get_service(project_root)
+        return svc.analysis.read_raw_file(
+            calculation_selector=calculation,
+            step_selector=step,
+            filename=filename,
+            head_lines=head_lines,
+            tail_lines=tail_lines,
+        )
     
     def _handle_list_wannier_3d_fixtures(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -6089,7 +6192,7 @@ class QVDaemon:
 
         Payload:
             project_root: str - Path to project root
-            run_ulid: str - Run ULID
+            run_ulid: Optional[str] - Run ULID
             step_ulid: str - Step ULID
             analysis_kind: str - Type of analysis (e.g., "bands", "dos")
             png_data_base64: Optional[str] - Base64-encoded PNG data
@@ -6102,7 +6205,9 @@ class QVDaemon:
         import base64
 
         project_root = Path(self._require_str(payload, "project_root"))
-        run_ulid = self._require_str(payload, "run_ulid")
+        run_ulid = payload.get("run_ulid")
+        if run_ulid is not None and not isinstance(run_ulid, str):
+            raise ValueError("run_ulid must be a string when provided")
         step_ulid = self._require_str(payload, "step_ulid")
         analysis_kind = self._require_str(payload, "analysis_kind")
 
@@ -6116,7 +6221,7 @@ class QVDaemon:
                 return {"success": False, "error": f"Failed to decode PNG: {e}"}
 
         json_payload = payload.get("json_payload")
-        run_ulid_source = payload.get("run_ulid_source", "exact")
+        run_ulid_source = payload.get("run_ulid_source")
 
         # Use domain API
         svc = get_service(project_root)

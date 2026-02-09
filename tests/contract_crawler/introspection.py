@@ -136,6 +136,8 @@ def get_method_categories() -> dict[str, list[str]]:
             "ensure_calculation_analysis", "get_structure_vis", "get_scf_convergence",
             "get_dos_data", "get_band_structure_data", "get_reference_analysis",
             "list_step_artifacts", "read_step_artifact_text",
+            "list_raw_files", "read_raw_file",
+            "get_step_digest", "get_analysis", "get_analysis_snapshot",
         ],
         "visualization_dev": ["list_wannier_3d_fixtures", "compile_fixture_volume"],
         "jobs": [
@@ -179,4 +181,3 @@ def print_method_inventory():
 
 if __name__ == "__main__":
     print_method_inventory()
-

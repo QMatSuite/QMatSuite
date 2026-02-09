@@ -1,24 +1,15 @@
-/**
- * CalculationAnalysisPanel - Step-driven analysis view for a specific calculation
- * 
- * Shows one entry per calculation step with:
- * - Text view: Step output file content (StepOutputTextViewer)
- * - Plot view: Analysis plots for supported step types (scf/dos/bands)
- * - Pin to History: Save analysis plots to project history (bands/dos)
- */
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQVClient } from '../../hooks/useQVClient';
-import { ScfConvergenceChart, DosChart, BandsChart } from './AnalysisPanel';
-import { StepOutputTextViewer } from './StepOutputTextViewer';
-import type { 
-  CalculationInfo, 
+import type {
   CalculationDetailResult,
-  ScfConvergenceData,
-  DosData,
-  BandStructureData,
+  CalculationInfo,
+  PrimitiveBundleData,
 } from '../../types/qv';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
+import { AnalysisVizPanel } from './AnalysisVizPanel';
+import { RawFileViewer } from './RawFileViewer';
+import { StepDigestPanel } from './StepDigestPanel';
 import './CalculationAnalysisPanel.css';
 
 interface CalculationAnalysisPanelProps {
@@ -26,512 +17,412 @@ interface CalculationAnalysisPanelProps {
   calculation: CalculationInfo | CalculationDetailResult | null;
 }
 
-// Analysis provider registry: maps step types to plot components
-type StepViewMode = 'text' | 'plot';
+type StepViewMode = 'raw' | 'analysis';
 
-// Helper: Get step type label for display
-// Show actual step types (no collapsing) to avoid duplicates
-function getStepTypeLabel(stepType: string): string {
-  const upper = stepType.toUpperCase();
-  // Keep labels readable but preserve distinction between bands_pw and bands
-  return upper;
-}
+type AnalysisResponse = {
+  run_ulid: string;
+  object_type: string;
+  canonical_sha: string;
+  bundle: PrimitiveBundleData;
+};
 
+const ANALYSIS_OBJECT_TYPES = ['bands'];
 
-export function CalculationAnalysisPanel({ projectRoot, calculation }: CalculationAnalysisPanelProps) {
+export function CalculationAnalysisPanel({
+  projectRoot,
+  calculation,
+}: CalculationAnalysisPanelProps) {
   const qv = useQVClient();
-  
-  // Get steps from calculation
-  const steps = calculation 
-    ? ((calculation as CalculationDetailResult).steps || (calculation as CalculationInfo).steps || [])
+  const steps = calculation
+    ? ((calculation as CalculationDetailResult).steps ??
+      (calculation as CalculationInfo).steps ??
+      [])
     : [];
-  
-  // Step selection state
+  const calcSelector = calculation ? calculation.slug || calculation.name : null;
+
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<StepViewMode>('text');
-  
-  // Auto-select first step if none selected and steps are available
+  const [viewMode, setViewMode] = useState<StepViewMode>('raw');
+
+  const [runInfo, setRunInfo] = useState<{ run_ulid: string | null; can_pin: boolean; reason: string | null } | null>(null);
+  const [runInfoError, setRunInfoError] = useState<string | null>(null);
+
+  const [digestLoading, setDigestLoading] = useState(false);
+  const [digestError, setDigestError] = useState<string | null>(null);
+  const [digestPayload, setDigestPayload] = useState<Record<string, unknown> | null>(null);
+  const [digestSha, setDigestSha] = useState<string | null>(null);
+  const [digestEngine, setDigestEngine] = useState<string | null>(null);
+
+  const [availableObjectTypes, setAvailableObjectTypes] = useState<string[]>([]);
+  const [selectedObjectType, setSelectedObjectType] = useState<string | null>(null);
+  const [shiftToFermi, setShiftToFermi] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [analysisResponse, setAnalysisResponse] = useState<AnalysisResponse | null>(null);
+  const analysisCacheRef = useRef<Record<string, AnalysisResponse>>({});
+
+  const [pinning, setPinning] = useState(false);
+  const [pinMessage, setPinMessage] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!selectedStepId && steps.length > 0) {
-      setSelectedStepId(steps[0].ulid);
-    }
-  }, [steps, selectedStepId]);
-  
-  // Plot data state (keyed by step ID)
-  const [scfDataMap, setScfDataMap] = useState<Record<string, ScfConvergenceData | null>>({});
-  const [dosDataMap, setDosDataMap] = useState<Record<string, DosData | null>>({});
-  const [bandsDataMap, setBandsDataMap] = useState<Record<string, BandStructureData | null>>({});
-  
-  // Loading state (keyed by step ID)
-  const [isLoadingMap, setIsLoadingMap] = useState<Record<string, boolean>>({});
-  
-  // Auto-select first step when calculation changes
-  useEffect(() => {
-    if (steps.length > 0 && !selectedStepId) {
-      setSelectedStepId(steps[0].ulid);
-    } else if (steps.length === 0) {
+    if (!steps.length) {
       setSelectedStepId(null);
-    } else if (selectedStepId && !steps.find(s => s.ulid === selectedStepId)) {
-      // Selected step no longer exists, select first step
+      return;
+    }
+    if (!selectedStepId || !steps.some((step) => step.ulid === selectedStepId)) {
       setSelectedStepId(steps[0].ulid);
     }
-  }, [steps, selectedStepId]);
-  
-  // Get selected step
-  const selectedStep = steps.find(s => s.ulid === selectedStepId) || null;
-  const selectedStepType = selectedStep?.step_type_gen?.toLowerCase() || '';
-  
-  // Check if plot is supported (based on step type and artifacts)
-  const [supportsPlot, setSupportsPlot] = useState(false);
-  const [artifactsCache, setArtifactsCache] = useState<Record<string, any[]>>({});
-  
+  }, [selectedStepId, steps]);
+
   useEffect(() => {
-    if (!selectedStep || !qv || !calculation) {
-      setSupportsPlot(false);
+    if (!selectedStepId || !calcSelector) {
+      setRunInfo(null);
+      setRunInfoError(null);
       return;
     }
-    
-    const typeLower = selectedStep.step_type_gen.toLowerCase();
-    const calcSelector = calculation.slug || calculation.name;
-    
-    // Fast path for scf/dos (always support plot if step type matches)
-    if (typeLower === 'scf' || typeLower === 'dos') {
-      setSupportsPlot(true);
-      return;
-    }
-    
-    // For bands: only 'bands' step (post-processing) supports plot, not 'bands_pw'
-    if (typeLower === 'bands') {
-      // Check artifacts to see if this step has bands data files
-      const cachedArtifacts = artifactsCache[selectedStep.ulid];
-      if (cachedArtifacts) {
-        const hasBandsData = cachedArtifacts.some((a: any) => 
-          a.path_relative_to_raw.endsWith('.gnu') || 
-          a.path_relative_to_raw.includes('.dat.gnu')
-        );
-        setSupportsPlot(hasBandsData);
-        return;
-      }
-      
-      // Load artifacts if not cached
-      const normalizedRoot = normalizeProjectRoot(projectRoot);
-      if (!normalizedRoot) {
-        setSupportsPlot(false);
-        return;
-      }
-      
-      qv.call('list_step_artifacts', {
-        project_root: normalizedRoot,
-        calculation: calcSelector,
-        step: selectedStep.ulid,
-      }).then((response: any) => {
-        if (response.ok && response.data) {
-          const artifacts = response.data.artifacts || [];
-          setArtifactsCache(prev => ({ ...prev, [selectedStep.ulid]: artifacts }));
-          const hasBandsData = artifacts.some((a: any) => 
-            a.path_relative_to_raw.endsWith('.gnu') || 
-            a.path_relative_to_raw.includes('.dat.gnu')
-          );
-          setSupportsPlot(hasBandsData);
-        } else {
-          setSupportsPlot(false);
-        }
-      }).catch(() => setSupportsPlot(false));
-    } else {
-      setSupportsPlot(false);
-    }
-  }, [selectedStep, qv, calculation, projectRoot, artifactsCache]);
-  
-  // Load plot data for a step
-  const loadPlotData = useCallback(async (stepId: string, stepType: string) => {
-    if (!calculation || !qv) return;
-    
-    setIsLoadingMap(prev => ({ ...prev, [stepId]: true }));
-    
-    try {
-      const normalizedRoot = normalizeProjectRoot(projectRoot);
-      if (!normalizedRoot) return;
-      
-      const calcSelector = calculation.slug || calculation.name;
-      const stepTypeLower = stepType.toLowerCase();
-      
-      if (stepTypeLower === 'scf') {
-        const response = await qv.call('get_scf_convergence', {
-          project_root: normalizedRoot,
-          calculation: calcSelector,
-          step: stepId,
-        });
-        if (response.ok && response.data) {
-          setScfDataMap(prev => ({ ...prev, [stepId]: response.data as ScfConvergenceData }));
-          setFailedLoads(prev => {
-            const next = new Set(prev);
-            next.delete(stepId);
-            return next;
-          });
-        } else {
-          setScfDataMap(prev => ({ ...prev, [stepId]: null }));
-          setFailedLoads(prev => new Set(prev).add(stepId));
-        }
-      } else if (stepTypeLower === 'dos') {
-        const response = await qv.call('get_dos_data', {
-          project_root: normalizedRoot,
-          calculation: calcSelector,
-          step: stepId,
-        });
-        if (response.ok && response.data) {
-          setDosDataMap(prev => ({ ...prev, [stepId]: response.data as DosData }));
-          setFailedLoads(prev => {
-            const next = new Set(prev);
-            next.delete(stepId);
-            return next;
-          });
-        } else {
-          setDosDataMap(prev => ({ ...prev, [stepId]: null }));
-          setFailedLoads(prev => new Set(prev).add(stepId));
-        }
-      } else if (stepTypeLower === 'bands') {
-        // Only load bands plot data for 'bands' step (post-processing), not 'bands_pw'
-        if (process.env.NODE_ENV === 'development') {
-          console.debug(`[Analysis] Calling get_band_structure_data for step=${stepId}, calculation=${calcSelector}`);
-        }
-        const response = await qv.call('get_band_structure_data', {
-          project_root: normalizedRoot,
-          calculation: calcSelector,
-          step: stepId,  // Use stepId (ULID) as step selector
-        });
-        if (response.ok && response.data) {
-          if (process.env.NODE_ENV === 'development') {
-            console.debug(`[Analysis] Received bands data: n_bands=${response.data.n_bands}, n_kpoints=${response.data.n_kpoints}, n_labels=${response.data.high_symmetry_points?.length || 0}`);
-          }
-          setBandsDataMap(prev => ({ ...prev, [stepId]: response.data as BandStructureData }));
-          // Clear failure flag on success
-          setFailedLoads(prev => {
-            const next = new Set(prev);
-            next.delete(stepId);
-            return next;
-          });
-        } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.debug(`[Analysis] Failed to load bands data:`, response.error || 'Unknown error');
-          }
-          setBandsDataMap(prev => ({ ...prev, [stepId]: null }));
-          // Mark as failed to prevent infinite retries
-          setFailedLoads(prev => new Set(prev).add(stepId));
-        }
-      }
-    } catch (e) {
-      console.error(`Failed to load plot data for step ${stepId}`, e);
-      // Set data to null on error and mark as failed
-      if (selectedStepType === 'scf') {
-        setScfDataMap(prev => ({ ...prev, [stepId]: null }));
-      } else if (selectedStepType === 'dos') {
-        setDosDataMap(prev => ({ ...prev, [stepId]: null }));
-      } else if (selectedStepType === 'bands') {
-        setBandsDataMap(prev => ({ ...prev, [stepId]: null }));
-      }
-      setFailedLoads(prev => new Set(prev).add(stepId));
-    } finally {
-      setIsLoadingMap(prev => ({ ...prev, [stepId]: false }));
-    }
-  }, [calculation, qv, projectRoot, selectedStepType]);
-  
-  // Track failed loads to prevent infinite retries
-  const [failedLoads, setFailedLoads] = useState<Set<string>>(new Set());
-  
-  // Pin to History state
-  const [pinInfo, setPinInfo] = useState<{ run_ulid: string | null; can_pin: boolean; reason: string | null } | null>(null);
-  const [isPinning, setIsPinning] = useState(false);
-  const [pinSuccess, setPinSuccess] = useState<string | null>(null);
-  const plotContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Load plot data when switching to plot view
-  useEffect(() => {
-    // Only proceed if we're in plot mode and have a selected step
-    if (!selectedStepId || viewMode !== 'plot' || !selectedStep) {
-      return;
-    }
-    
-    const stepId = selectedStepId;
-    const stepType = selectedStep.step_type_gen;
-    const stepTypeLower = stepType.toLowerCase();
-    
-    // For bands, we need to wait for supportsPlot to be determined
-    // For scf/dos, supportsPlot is true immediately if step type matches
-    if (stepTypeLower === 'bands' && !supportsPlot) {
-      // Wait for supportsPlot to be determined (async artifacts check)
-      return;
-    }
-    
-    // If plot is not supported, don't try to load
-    if (!supportsPlot) {
-      return;
-    }
-    
-    // Don't retry if this step has already failed to load
-    if (failedLoads.has(stepId)) {
-      return;
-    }
-    
-    // Check if we already have valid data for this step
-    // Distinguish between: undefined (not loaded), null (error/empty), or actual data
-    let hasData = false;
-    if (stepTypeLower === 'scf') {
-      hasData = scfDataMap[stepId] !== undefined && scfDataMap[stepId] !== null;
-    } else if (stepTypeLower === 'dos') {
-      hasData = dosDataMap[stepId] !== undefined && dosDataMap[stepId] !== null;
-    } else if (stepTypeLower === 'bands') {
-      hasData = bandsDataMap[stepId] !== undefined && bandsDataMap[stepId] !== null;
-    }
-    
-    // Load data if we don't have it and we're not already loading
-    if (!hasData && !isLoadingMap[stepId]) {
-      if (process.env.NODE_ENV === 'development') {
-        console.debug(`[Analysis] Loading ${stepTypeLower} plot data for step=${stepId}`);
-      }
-      loadPlotData(stepId, stepType);
-    }
-  }, [selectedStepId, viewMode, supportsPlot, selectedStep, scfDataMap, dosDataMap, bandsDataMap, isLoadingMap, loadPlotData, failedLoads]);
-  
-  // Fetch pin info for selected step when in plot mode (bands/dos only)
-  useEffect(() => {
-    if (!selectedStepId || viewMode !== 'plot' || !qv) {
-      setPinInfo(null);
-      return;
-    }
-    
-    const stepTypeLower = selectedStepType.toLowerCase();
-    // Only bands and dos support pinning
-    if (stepTypeLower !== 'bands' && stepTypeLower !== 'dos') {
-      setPinInfo(null);
-      return;
-    }
-    
     const normalizedRoot = normalizeProjectRoot(projectRoot);
     if (!normalizedRoot) {
-      setPinInfo(null);
+      setRunInfo(null);
+      setRunInfoError('Invalid project path');
       return;
     }
-    
-    // Check if this step can be pinned
+
+    let cancelled = false;
+    setRunInfoError(null);
     qv.call('get_latest_run_for_step', {
       project_root: normalizedRoot,
       step_ulid: selectedStepId,
-    }).then((response: any) => {
-      if (response.ok && response.data) {
-        setPinInfo({
-          run_ulid: response.data.run_ulid,
-          can_pin: response.data.can_pin,
-          reason: response.data.reason,
-        });
-      } else {
-        setPinInfo({ run_ulid: null, can_pin: false, reason: 'Failed to check pin status' });
-      }
-    }).catch(() => {
-      setPinInfo({ run_ulid: null, can_pin: false, reason: 'Error checking pin status' });
-    });
-  }, [selectedStepId, viewMode, selectedStepType, qv, projectRoot]);
-  
-  // Clear pin success message after 3 seconds
+    })
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+        if (!response.ok || !response.data) {
+          setRunInfo(null);
+          setRunInfoError(response.error?.message ?? 'Failed to resolve run for step');
+          return;
+        }
+        setRunInfo(response.data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setRunInfo(null);
+          setRunInfoError(err instanceof Error ? err.message : 'Failed to resolve run for step');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [calcSelector, projectRoot, qv, selectedStepId]);
+
   useEffect(() => {
-    if (pinSuccess) {
-      const timer = setTimeout(() => setPinSuccess(null), 3000);
-      return () => clearTimeout(timer);
+    if (!runInfo?.run_ulid || !selectedStepId) {
+      setDigestPayload(null);
+      setDigestSha(null);
+      setDigestEngine(null);
+      setDigestLoading(false);
+      setDigestError(null);
+      return;
     }
-  }, [pinSuccess]);
-  
-  // Handle Pin to History click
-  const handlePinToHistory = useCallback(async () => {
-    if (!selectedStepId || !pinInfo?.run_ulid || !pinInfo?.can_pin || !qv) return;
-    
-    setIsPinning(true);
-    setPinSuccess(null);
-    
-    try {
-      const normalizedRoot = normalizeProjectRoot(projectRoot);
-      if (!normalizedRoot) {
-        throw new Error('Invalid project root');
-      }
-      
-      const stepTypeLower = selectedStepType.toLowerCase();
-      
-      // Get PNG data from the plot canvas
-      let pngDataBase64: string | undefined;
-      if (plotContainerRef.current) {
-        const canvas = plotContainerRef.current.querySelector('canvas');
-        if (canvas) {
-          const dataUrl = canvas.toDataURL('image/png');
-          // Remove "data:image/png;base64," prefix
-          pngDataBase64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+
+    const normalizedRoot = normalizeProjectRoot(projectRoot);
+    if (!normalizedRoot) {
+      setDigestError('Invalid project path');
+      return;
+    }
+
+    let cancelled = false;
+    setDigestLoading(true);
+    setDigestError(null);
+    qv.call('get_step_digest', {
+      project_root: normalizedRoot,
+      run_ulid: runInfo.run_ulid,
+      step_ulid: selectedStepId,
+    })
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+        if (!response.ok || !response.data) {
+          setDigestPayload(null);
+          setDigestSha(null);
+          setDigestEngine(null);
+          setDigestError(response.error?.message ?? 'Failed to load step digest');
+          return;
+        }
+        setDigestPayload(response.data.available ? response.data.digest : null);
+        setDigestSha(response.data.digest_sha);
+        setDigestEngine(response.data.engine ?? null);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setDigestPayload(null);
+          setDigestSha(null);
+          setDigestEngine(null);
+          setDigestError(err instanceof Error ? err.message : 'Failed to load step digest');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setDigestLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectRoot, qv, runInfo?.run_ulid, selectedStepId]);
+
+  useEffect(() => {
+    const runUlid = runInfo?.run_ulid;
+    if (!selectedStepId || !runUlid) {
+      setAvailableObjectTypes([]);
+      setSelectedObjectType(null);
+      setAnalysisResponse(null);
+      setAnalysisError(null);
+      return;
+    }
+
+    const normalizedRoot = normalizeProjectRoot(projectRoot);
+    if (!normalizedRoot) {
+      setAvailableObjectTypes([]);
+      setSelectedObjectType(null);
+      return;
+    }
+
+    let cancelled = false;
+    const detect = async () => {
+      const matched: string[] = [];
+      for (const objectType of ANALYSIS_OBJECT_TYPES) {
+        const cacheKey = `${runUlid}:${objectType}:canonical`;
+        let payload = analysisCacheRef.current[cacheKey];
+        if (!payload) {
+          const response = await qv.call('get_analysis', {
+            project_root: normalizedRoot,
+            run_ulid: runUlid,
+            object_type: objectType,
+          });
+          if (!response.ok || !response.data) {
+            continue;
+          }
+          payload = response.data;
+          analysisCacheRef.current[cacheKey] = payload;
+        }
+
+        if (payload.bundle.provenance_meta.step_ulids.includes(selectedStepId)) {
+          matched.push(objectType);
         }
       }
-      
-      // Get JSON payload (the raw plot data)
-      let jsonPayload: Record<string, unknown> | undefined;
-      if (stepTypeLower === 'dos') {
-        jsonPayload = dosDataMap[selectedStepId] as unknown as Record<string, unknown>;
-      } else if (stepTypeLower === 'bands') {
-        jsonPayload = bandsDataMap[selectedStepId] as unknown as Record<string, unknown>;
+
+      if (cancelled) {
+        return;
       }
-      
+      setAvailableObjectTypes(matched);
+      setShiftToFermi(false);
+      if (!matched.length) {
+        setSelectedObjectType(null);
+        return;
+      }
+      setSelectedObjectType((previous) => (previous && matched.includes(previous) ? previous : matched[0]));
+    };
+
+    void detect();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectRoot, qv, runInfo?.run_ulid, selectedStepId]);
+
+  useEffect(() => {
+    const runUlid = runInfo?.run_ulid;
+    if (!runUlid || !selectedObjectType) {
+      setAnalysisLoading(false);
+      setAnalysisError(null);
+      setAnalysisResponse(null);
+      return;
+    }
+
+    const normalizedRoot = normalizeProjectRoot(projectRoot);
+    if (!normalizedRoot) {
+      setAnalysisError('Invalid project path');
+      setAnalysisResponse(null);
+      return;
+    }
+
+    const transforms = shiftToFermi ? ['FermiShift'] : [];
+    const transformKey = transforms.length ? transforms.join(',') : 'canonical';
+    const cacheKey = `${runUlid}:${selectedObjectType}:${transformKey}`;
+    const cached = analysisCacheRef.current[cacheKey];
+    if (cached) {
+      setAnalysisResponse(cached);
+      setAnalysisError(null);
+      setAnalysisLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setAnalysisLoading(true);
+    setAnalysisError(null);
+    qv.call('get_analysis', {
+      project_root: normalizedRoot,
+      run_ulid: runUlid,
+      object_type: selectedObjectType,
+      transforms,
+    })
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+        if (!response.ok || !response.data) {
+          setAnalysisResponse(null);
+          setAnalysisError(response.error?.message ?? 'Failed to derive analysis bundle');
+          return;
+        }
+        analysisCacheRef.current[cacheKey] = response.data;
+        setAnalysisResponse(response.data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setAnalysisResponse(null);
+          setAnalysisError(err instanceof Error ? err.message : 'Failed to derive analysis bundle');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setAnalysisLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectRoot, qv, runInfo?.run_ulid, selectedObjectType, shiftToFermi]);
+
+  useEffect(() => {
+    if (!pinMessage) {
+      return;
+    }
+    const timer = setTimeout(() => setPinMessage(null), 3500);
+    return () => clearTimeout(timer);
+  }, [pinMessage]);
+
+  const handlePin = useCallback(async () => {
+    if (!selectedStepId || !analysisResponse) {
+      return;
+    }
+    const normalizedRoot = normalizeProjectRoot(projectRoot);
+    if (!normalizedRoot) {
+      setPinMessage('Invalid project path');
+      return;
+    }
+
+    setPinning(true);
+    setPinMessage(null);
+    try {
       const response = await qv.call('pin_analysis_to_history', {
         project_root: normalizedRoot,
-        run_ulid: pinInfo.run_ulid,
         step_ulid: selectedStepId,
-        analysis_kind: stepTypeLower,
-        png_data_base64: pngDataBase64,
-        json_payload: jsonPayload,
+        analysis_kind: analysisResponse.object_type,
+        json_payload: analysisResponse,
       });
-      
-      if (response.ok && response.data?.success) {
-        setPinSuccess(`Pinned ${stepTypeLower.toUpperCase()} analysis to history`);
-        // Update pinInfo to reflect that we've already pinned
-        setPinInfo(prev => prev ? { ...prev, can_pin: false, reason: 'Already pinned' } : null);
-      } else {
-        const errorMsg = response.data?.error || response.error?.message || 'Failed to pin';
-        console.error('[Analysis] Pin failed:', errorMsg);
-        // Show error briefly but don't throw
-        setPinSuccess(`⚠️ ${errorMsg}`);
+      if (!response.ok || !response.data?.success) {
+        setPinMessage(response.error?.message ?? response.data?.error ?? 'Pin failed');
+        return;
       }
-    } catch (e) {
-      console.error('[Analysis] Pin error:', e);
-      setPinSuccess(`⚠️ ${e instanceof Error ? e.message : 'Failed to pin'}`);
+      const source = response.data.run_ulid_source ?? 'unknown';
+      setPinMessage(`Pinned (${source})`);
+    } catch (err) {
+      setPinMessage(err instanceof Error ? err.message : 'Pin failed');
     } finally {
-      setIsPinning(false);
+      setPinning(false);
     }
-  }, [selectedStepId, selectedStepType, pinInfo, qv, projectRoot, dosDataMap, bandsDataMap]);
-  
+  }, [analysisResponse, projectRoot, qv, selectedStepId]);
+
   if (!calculation) {
     return (
       <div className="calculation-analysis-panel calculation-analysis-panel--empty">
-        <p>No calculation selected</p>
+        No calculation selected.
       </div>
     );
   }
-  
-  if (steps.length === 0) {
+
+  if (!steps.length || !selectedStepId || !calcSelector) {
     return (
       <div className="calculation-analysis-panel calculation-analysis-panel--empty">
-        <p>No steps in this calculation</p>
+        No calculation steps are available.
       </div>
     );
   }
-  
-  const calcSelector = calculation.slug || calculation.name;
-  const isLoading = selectedStepId ? (isLoadingMap[selectedStepId] || false) : false;
-  
-  // Get plot data for selected step
-  let plotData: ScfConvergenceData | DosData | BandStructureData | null = null;
-    if (selectedStepId && supportsPlot) {
-      if (selectedStepType === 'scf') {
-        plotData = scfDataMap[selectedStepId] || null;
-      } else if (selectedStepType === 'dos') {
-        plotData = dosDataMap[selectedStepId] || null;
-      } else if (selectedStepType === 'bands') {
-        plotData = bandsDataMap[selectedStepId] || null;
-      }
-    }
-  
+
   return (
     <div className="calculation-analysis-panel" data-testid="qv-calc-analysis-panel">
       <div className="calculation-analysis-panel__header">
         <h3>Analysis: {calculation.name}</h3>
       </div>
-      
-      {/* Step selector (pills) */}
+
       <div className="calculation-analysis-panel__step-tabs">
-        {steps.map((step) => {
-          const stepTypeLabel = getStepTypeLabel(step.step_type_gen);
-          const isSelected = step.ulid === selectedStepId;
-          // Use step.ulid for unique testid to avoid duplicates
-          return (
-            <button
-              key={step.ulid}
-              className={`calculation-analysis-panel__step-tab ${isSelected ? 'calculation-analysis-panel__step-tab--active' : ''}`}
-              onClick={() => {
-                setSelectedStepId(step.ulid);
-                // Reset to text view when switching steps
-                setViewMode('text');
-              }}
-              title={`${stepTypeLabel} (${step.ulid.slice(0, 8)}...)`}
-              data-testid={`qv-analysis-step-tab-${step.step_type_gen.toLowerCase()}`}
-              data-step-ulid={step.ulid}
-              data-step-type-gen={step.step_type_gen}
-            >
-              {stepTypeLabel}
-            </button>
-          );
-        })}
-      </div>
-      
-      {/* View mode tabs (Text / Plot) */}
-      {selectedStep && (
-        <div className="calculation-analysis-panel__view-mode-tabs">
+        {steps.map((step) => (
           <button
-            className={`calculation-analysis-panel__view-mode-tab ${viewMode === 'text' ? 'calculation-analysis-panel__view-mode-tab--active' : ''}`}
-            onClick={() => setViewMode('text')}
+            key={step.ulid}
+            className={`calculation-analysis-panel__step-tab${
+              step.ulid === selectedStepId ? ' calculation-analysis-panel__step-tab--active' : ''
+            }`}
+            onClick={() => setSelectedStepId(step.ulid)}
+            type="button"
           >
-            Text
+            {step.step_type_gen.toUpperCase()}
           </button>
-          {supportsPlot && (
-            <button
-              className={`calculation-analysis-panel__view-mode-tab ${viewMode === 'plot' ? 'calculation-analysis-panel__view-mode-tab--active' : ''}`}
-              onClick={() => setViewMode('plot')}
-            >
-              Plot
-            </button>
-          )}
-        </div>
-      )}
-      
-      {/* Content area */}
+        ))}
+      </div>
+
+      <div className="calculation-analysis-panel__surface-tabs">
+        <button
+          className={`calculation-analysis-panel__surface-tab${
+            viewMode === 'raw' ? ' calculation-analysis-panel__surface-tab--active' : ''
+          }`}
+          onClick={() => setViewMode('raw')}
+          type="button"
+        >
+          Raw Text
+        </button>
+        <button
+          className={`calculation-analysis-panel__surface-tab${
+            viewMode === 'analysis' ? ' calculation-analysis-panel__surface-tab--active' : ''
+          }`}
+          onClick={() => setViewMode('analysis')}
+          type="button"
+        >
+          Analysis
+        </button>
+      </div>
+
       <div className="calculation-analysis-panel__content">
-        {selectedStep && selectedStepId && (
-          <>
-            {viewMode === 'text' && (
-              <StepOutputTextViewer
-                projectRoot={projectRoot}
-                calculation={calcSelector}
-                stepId={selectedStepId}
-              />
-            )}
-            {viewMode === 'plot' && supportsPlot && (
-              <div className="calculation-analysis-panel__plot-container" ref={plotContainerRef}>
-                {selectedStepType === 'scf' && (
-                  <ScfConvergenceChart data={plotData as ScfConvergenceData | null} isLoading={isLoading} />
-                )}
-                {selectedStepType === 'dos' && (
-                  <DosChart data={plotData as DosData | null} isLoading={isLoading} />
-                )}
-                {selectedStepType === 'bands' && (
-                  <BandsChart data={plotData as BandStructureData | null} isLoading={isLoading} />
-                )}
-                
-                {/* Pin to History button - only for bands/dos */}
-                {(selectedStepType === 'bands' || selectedStepType === 'dos') && pinInfo && (
-                  <div className="calculation-analysis-panel__pin-bar">
-                    <button
-                      className={`calculation-analysis-panel__pin-button ${!pinInfo.can_pin ? 'calculation-analysis-panel__pin-button--disabled' : ''}`}
-                      onClick={handlePinToHistory}
-                      disabled={!pinInfo.can_pin || isPinning || !plotData}
-                      title={pinInfo.can_pin ? 'Save this plot to project history' : pinInfo.reason || 'Cannot pin'}
-                    >
-                      {isPinning ? '📌 Pinning...' : '📌 Pin to History'}
-                    </button>
-                    {!pinInfo.can_pin && pinInfo.reason && (
-                      <span className="calculation-analysis-panel__pin-reason" title={pinInfo.reason}>
-                        {pinInfo.reason}
-                      </span>
-                    )}
-                    {pinSuccess && (
-                      <span className={`calculation-analysis-panel__pin-success ${pinSuccess.startsWith('⚠️') ? 'calculation-analysis-panel__pin-success--error' : ''}`}>
-                        {pinSuccess}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </>
+        <StepDigestPanel
+          digest={digestPayload}
+          digestSha={digestSha}
+          engine={digestEngine}
+          error={digestError ?? runInfoError}
+          loading={digestLoading}
+        />
+
+        {viewMode === 'raw' ? (
+          <RawFileViewer
+            calculation={calcSelector}
+            projectRoot={projectRoot}
+            stepId={selectedStepId}
+          />
+        ) : (
+          <AnalysisVizPanel
+            availableObjectTypes={availableObjectTypes}
+            bundle={analysisResponse?.bundle ?? null}
+            canPin={Boolean(analysisResponse)}
+            error={analysisError}
+            loading={analysisLoading}
+            onPin={handlePin}
+            onSelectObjectType={setSelectedObjectType}
+            onShiftToFermiChange={setShiftToFermi}
+            pinMessage={pinMessage}
+            pinning={pinning}
+            pinReason={runInfo?.reason ?? null}
+            selectedObjectType={selectedObjectType}
+            shiftToFermi={shiftToFermi}
+          />
         )}
       </div>
     </div>

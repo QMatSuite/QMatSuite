@@ -150,3 +150,31 @@ class AnalysisObjectMeta:
             warnings=data.get("warnings", []),
             manifest_snapshot=data.get("manifest_snapshot"),
         )
+
+
+def check_staleness(meta: AnalysisObjectMeta, *, calc_dir: Path | None = None) -> bool:
+    """
+    Return True when any tracked source file differs from stored size/mtime.
+
+    Relative source file paths are resolved against ``calc_dir``.
+    If ``calc_dir`` is omitted and a relative path is present, the source is
+    treated as stale because it cannot be validated.
+    """
+    for source_file in meta.source_files:
+        source_path = Path(source_file.path)
+        if not source_path.is_absolute():
+            if calc_dir is None:
+                return True
+            source_path = Path(calc_dir) / source_path
+
+        try:
+            stat = source_path.stat()
+        except OSError:
+            return True
+
+        if stat.st_size != source_file.size_bytes:
+            return True
+        if abs(stat.st_mtime - source_file.mtime) > 1e-6:
+            return True
+
+    return False

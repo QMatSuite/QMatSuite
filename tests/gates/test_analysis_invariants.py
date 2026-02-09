@@ -9,11 +9,14 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from pathlib import Path
 from typing import Iterable
 
 import numpy as np
+import pytest
 
+import quantumvitas.core.analysis.orchestrator as orchestrator_mod
 from quantumvitas.core.analysis.band_structure import BandStructure, HighSymPoint
 from quantumvitas.core.analysis.base import AnalysisObjectMeta
 from quantumvitas.core.analysis.bundles import RenderMeta
@@ -346,3 +349,268 @@ def test_capability_match_deterministic() -> None:
     assert first == second == third
     assert first is not None
     assert first.step_ulids == ["01STEPA", "01STEPB"]
+
+
+def _make_test_band_structure(step_ulids: list[str], gen_steps: list[str]) -> BandStructure:
+    meta = AnalysisObjectMeta.create(
+        object_type="bands",
+        source_files=[],
+        run_ulid="01RUN",
+        calc_ulid="01CALC",
+        step_ulids=step_ulids,
+        gen_steps=gen_steps,
+        engine_name="qe",
+        parser_name="test_provider",
+        parser_version="1.0",
+    )
+    return BandStructure(
+        meta=meta,
+        k_distances=np.array([0.0, 1.0]),
+        eigenvalues=np.array([[0.0, 0.5], [1.0, 1.5]]),
+        high_symmetry_points=[HighSymPoint(k_distance=0.0, label="G")],
+        fermi_energy=0.25,
+    )
+
+
+def test_no_redundant_canonical(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """§5.3: overlapping capabilities for one object_type produce one canonical bundle."""
+
+    class _Provider:
+        def can_parse(self, raw_dir: Path) -> bool:
+            return True
+
+        def parse(self, raw_dir: Path, calc_dir: Path, **kwargs: object) -> BandStructure:
+            return _make_test_band_structure(
+                step_ulids=list(kwargs.get("step_ulids", [])),
+                gen_steps=list(kwargs.get("gen_steps", [])),
+            )
+
+    class _DriverOne:
+        ANALYSIS_CAPABILITIES = [
+            AnalysisCapability(object_type="bands", gen_step_sequence=["bandspw"], evidence_files=[]),
+        ]
+
+    class _DriverOverlap:
+        ANALYSIS_CAPABILITIES = [
+            AnalysisCapability(object_type="bands", gen_step_sequence=["bandspw"], evidence_files=[]),
+            AnalysisCapability(object_type="bands", gen_step_sequence=["scf", "bandspw"], evidence_files=[]),
+        ]
+
+    monkeypatch.setattr(orchestrator_mod, "get_parser", lambda engine, object_type: _Provider)
+    ordered_gen_steps = [
+        ("01SCF", "scf", tmp_path / "scf"),
+        ("01BANDS", "bandspw", tmp_path / "bands"),
+    ]
+
+    result_single = orchestrator_mod.run_post_run_analysis(
+        engine="qe",
+        driver=_DriverOne(),
+        ordered_gen_steps=ordered_gen_steps,
+        run_ulid="01RUN",
+        calc_ulid="01CALC",
+        calc_dir=tmp_path,
+    )
+    assert len(result_single) == 1
+    assert result_single[0]["object_type"] == "bands"
+
+    result_overlap = orchestrator_mod.run_post_run_analysis(
+        engine="qe",
+        driver=_DriverOverlap(),
+        ordered_gen_steps=ordered_gen_steps,
+        run_ulid="01RUN",
+        calc_ulid="01CALC",
+        calc_dir=tmp_path,
+    )
+    assert len(result_overlap) == 1
+    assert result_overlap[0]["object_type"] == "bands"
+    assert result_overlap[0]["canonical"].provenance_meta.step_ulids == ["01SCF", "01BANDS"]
+
+
+def test_unknown_engine_analysis_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """
+    Inv-A13: unknown parser resolution must not silently succeed.
+
+    Batch orchestrator currently warns and skips; this test also accepts a hard
+    error if behavior is tightened in the future.
+    """
+
+    class _Driver:
+        ANALYSIS_CAPABILITIES = [
+            AnalysisCapability(object_type="unknown_object", gen_step_sequence=["scf"], evidence_files=[]),
+        ]
+
+    monkeypatch.setattr(orchestrator_mod, "get_parser", lambda engine, object_type: None)
+
+    try:
+        with pytest.warns(UserWarning, match="No analysis provider registered"):
+            result = orchestrator_mod.run_post_run_analysis(
+                engine="qe",
+                driver=_Driver(),
+                ordered_gen_steps=[("01STEP", "scf", tmp_path / "scf")],
+                calc_dir=tmp_path,
+            )
+        assert result == []
+    except RuntimeError:
+        # Accept hard error behavior if orchestrator changes to strict mode.
+        pass
+
+
+def test_no_analysis_disk_cache() -> None:
+    """Inv-A10: analysis core modules do not write/read disk cache artifacts."""
+    for path in _python_files(ANALYSIS_DIR):
+        # cas_writer is an explicit CAS persistence helper used by the API layer.
+        # It is not an analysis-core memo/cache path.
+        if path.name == "cas_writer.py":
+            continue
+
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+
+            fn_name = ""
+            qualifier = ""
+            if isinstance(node.func, ast.Name):
+                fn_name = node.func.id
+            elif isinstance(node.func, ast.Attribute):
+                fn_name = node.func.attr
+                if isinstance(node.func.value, ast.Name):
+                    qualifier = node.func.value.id
+
+            if fn_name == "open":
+                raise AssertionError(f"{path}:{node.lineno} contains forbidden disk-cache call 'open'")
+            if fn_name == "write_text":
+                raise AssertionError(
+                    f"{path}:{node.lineno} contains forbidden disk-cache call 'write_text'"
+                )
+            if fn_name == "write" and qualifier == "Path":
+                raise AssertionError(
+                    f"{path}:{node.lineno} contains forbidden disk-cache call 'Path.write'"
+                )
+            if fn_name == "dump" and qualifier in {"json", "pickle"}:
+                raise AssertionError(
+                    f"{path}:{node.lineno} contains forbidden disk-cache call '{qualifier}.dump'"
+                )
+
+
+def test_no_lazy_payloads() -> None:
+    """Inv-A9: no lazy payload wrappers inside analysis core."""
+    forbidden = ["LazyArray", "LateList", "deferred", "proxy"]
+    for path in _python_files(ANALYSIS_DIR):
+        text = path.read_text(encoding="utf-8")
+        for token in forbidden:
+            assert token not in text, f"{path} contains forbidden lazy token '{token}'"
+
+
+def _iter_non_comment_lines(path: Path) -> Iterable[tuple[int, str]]:
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        yield line_number, stripped
+
+
+def test_no_tmp_corpus_in_runtime() -> None:
+    """Inv-A14: analysis runtime paths do not reference .tmp corpus inputs."""
+    runtime_roots = [
+        REPO_ROOT / "src" / "quantumvitas" / "core" / "analysis",
+        REPO_ROOT / "src" / "quantumvitas" / "drivers",
+        REPO_ROOT / "src" / "quantumvitas" / "api",
+    ]
+    runtime_files = sorted(
+        path
+        for root in runtime_roots
+        for path in root.rglob("*.py")
+        if "tests" not in str(path)
+    )
+
+    tmp_pattern = re.compile(r"\.tmp/")
+    for path in runtime_files:
+        for line_number, line in _iter_non_comment_lines(path):
+            assert not tmp_pattern.search(line), (
+                f"{path}:{line_number} references '.tmp/' in runtime analysis path: {line}"
+            )
+
+
+def test_derived_never_persisted() -> None:
+    """Inv-A11: API persistence paths must not write derived bundles."""
+    service_path = REPO_ROOT / "src" / "quantumvitas" / "api" / "service.py"
+    source = service_path.read_text(encoding="utf-8")
+    tree = ast.parse(source, filename=str(service_path))
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        fn_name = ""
+        if isinstance(node.func, ast.Name):
+            fn_name = node.func.id
+        elif isinstance(node.func, ast.Attribute):
+            fn_name = node.func.attr
+        if fn_name != "write_canonical_to_cas":
+            continue
+
+        if node.args:
+            first_arg_src = ast.unparse(node.args[0]).lower()
+            assert "derived" not in first_arg_src, (
+                f"{service_path}:{node.lineno} persists derived bundle path: {first_arg_src}"
+            )
+
+
+def test_operational_path_no_cas_read() -> None:
+    """Inv-A11: operational get_analysis path must not read CAS snapshots."""
+    service_path = REPO_ROOT / "src" / "quantumvitas" / "api" / "service.py"
+    source = service_path.read_text(encoding="utf-8")
+    tree = ast.parse(source, filename=str(service_path))
+
+    analysis_get_analysis = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == "Analysis":
+            for item in node.body:
+                if isinstance(item, ast.FunctionDef) and item.name == "get_analysis":
+                    analysis_get_analysis = item
+                    break
+    assert analysis_get_analysis is not None, "QVService.Analysis.get_analysis not found"
+
+    forbidden_calls = {"_load_snapshot_bundle", "retrieve", "retrieve_json"}
+    for subnode in ast.walk(analysis_get_analysis):
+        if not isinstance(subnode, ast.Call):
+            continue
+        fn_name = ""
+        if isinstance(subnode.func, ast.Name):
+            fn_name = subnode.func.id
+        elif isinstance(subnode.func, ast.Attribute):
+            fn_name = subnode.func.attr
+        assert fn_name not in forbidden_calls, (
+            f"{service_path}:{subnode.lineno} operational path calls forbidden CAS read API '{fn_name}'"
+        )
+
+
+def test_cas_is_content_addressed() -> None:
+    """Inv-A11: analysis snapshots link runs to canonical_sha content hashes."""
+    schema_path = REPO_ROOT / "src" / "quantumvitas" / "provenance" / "schema.py"
+    schema_src = schema_path.read_text(encoding="utf-8")
+
+    assert "analysis_snapshots" in schema_src
+    assert "canonical_sha TEXT NOT NULL" in schema_src
+    assert "UNIQUE(run_ulid, object_type)" in schema_src
+    assert "owner_step_ulid" not in schema_src
+
+
+def test_frontend_no_kernel_import() -> None:
+    """Inv-A12: frontend must consume API only, never kernel modules directly."""
+    frontend_root = REPO_ROOT / "gui" / "src"
+    assert frontend_root.exists(), "gui/src not found"
+
+    forbidden = [
+        "quantumvitas.core",
+        "quantumvitas.analysis",
+        "quantumvitas.drivers",
+    ]
+    ts_like = list(frontend_root.rglob("*.ts")) + list(frontend_root.rglob("*.tsx"))
+
+    for path in ts_like:
+        text = path.read_text(encoding="utf-8")
+        for token in forbidden:
+            assert token not in text, (
+                f"{path} imports forbidden backend kernel path '{token}'"
+            )

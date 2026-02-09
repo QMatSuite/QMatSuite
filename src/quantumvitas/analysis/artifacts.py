@@ -1,6 +1,12 @@
 """
 Analysis artifacts module.
 
+DEPRECATED: Legacy JSON artifact pipeline.
+
+This module is retained for backward compatibility with older RPC contracts.
+New analysis behavior is implemented through the AnalysisObject/PrimitiveBundle
+pipeline (core analysis orchestrator + API CAS/SQLite linkage).
+
 Manages JSON artifacts for analysis data (SCF, DOS, bands).
 Convention: <calculation_dir>/analysis/<type>.json
 

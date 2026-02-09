@@ -3,6 +3,8 @@ Primitive bundle data models for analysis visualization.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -107,8 +109,8 @@ def _geometry_frames_from_dict(data: Dict[str, Any]) -> GeometryFrames:
 
 @dataclass
 class RenderMeta:
-    axis_labels: Dict[str, str]
-    units: Dict[str, str]
+    axis_labels: Dict[str, str] = field(default_factory=dict)
+    units: Dict[str, str] = field(default_factory=dict)
     series_labels: Optional[List[str]] = None
     reference_energy: Optional[float] = None
     reference_position: Optional[float] = None
@@ -320,3 +322,15 @@ class DerivedPrimitiveBundle:
             ],
         )
 
+
+def compute_canonical_sha(bundle: CanonicalPrimitiveBundle) -> str:
+    """Compute content-addressed hash for canonical bundles."""
+    if not isinstance(bundle, CanonicalPrimitiveBundle):
+        raise TypeError("compute_canonical_sha expects CanonicalPrimitiveBundle")
+
+    canonical_payload = json.dumps(
+        bundle.to_dict(),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical_payload).hexdigest()
