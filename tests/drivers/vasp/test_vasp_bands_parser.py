@@ -9,6 +9,7 @@ import pytest
 
 from quantumvitas.core.analysis.band_structure import BandStructure
 from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from quantumvitas.core.analysis.evidence import EvidenceBundle
 from quantumvitas.drivers.vasp.parsers.bands import (
     VASPBandsProvider,
     _compute_k_distances,
@@ -59,14 +60,17 @@ def test_can_parse_false_when_no_eigenval(tmp_path: Path) -> None:
 
 def test_parse_returns_band_structure() -> None:
     provider = VASPBandsProvider()
-    band_structure = provider.parse(
-        raw_dir=FIXTURE_DIR,
+    evidence = EvidenceBundle(
+        primary_raw_dir=FIXTURE_DIR,
         calc_dir=FIXTURE_DIR.parent,
         run_ulid="01TESTRUN",
+        calc_ulid="01CALC",
         step_ulids=["01STEP"],
         gen_steps=["bandspw"],
-        calc_ulid="01CALC",
+        engine_name="vasp",
+        evidence_steps=[],
     )
+    band_structure = provider.parse(evidence)
     assert isinstance(band_structure, BandStructure)
     assert band_structure.meta.object_type == "bands"
     assert band_structure.meta.engine_name == "vasp"
@@ -76,7 +80,17 @@ def test_parse_returns_band_structure() -> None:
 
 def test_k_distance_monotonic() -> None:
     provider = VASPBandsProvider()
-    band_structure = provider.parse(raw_dir=FIXTURE_DIR, calc_dir=FIXTURE_DIR.parent)
+    evidence = EvidenceBundle(
+        primary_raw_dir=FIXTURE_DIR,
+        calc_dir=FIXTURE_DIR.parent,
+        run_ulid=None,
+        calc_ulid=None,
+        step_ulids=[],
+        gen_steps=[],
+        engine_name="vasp",
+        evidence_steps=[],
+    )
+    band_structure = provider.parse(evidence)
     diffs = np.diff(band_structure.k_distances)
     assert np.all(diffs >= -1e-10)
 
@@ -90,7 +104,17 @@ def test_kpoints_labels_from_real_kpoints() -> None:
 
 def test_to_primitives_valid() -> None:
     provider = VASPBandsProvider()
-    band_structure = provider.parse(raw_dir=FIXTURE_DIR, calc_dir=FIXTURE_DIR.parent)
+    evidence = EvidenceBundle(
+        primary_raw_dir=FIXTURE_DIR,
+        calc_dir=FIXTURE_DIR.parent,
+        run_ulid=None,
+        calc_ulid=None,
+        step_ulids=[],
+        gen_steps=[],
+        engine_name="vasp",
+        evidence_steps=[],
+    )
+    band_structure = provider.parse(evidence)
     canonical = band_structure.to_primitives()
     assert isinstance(canonical, CanonicalPrimitiveBundle)
     assert canonical.object_type == "bands"
@@ -107,7 +131,17 @@ def test_to_primitives_valid() -> None:
 
 def test_fermi_energy_extraction() -> None:
     provider = VASPBandsProvider()
-    band_structure = provider.parse(raw_dir=FIXTURE_DIR, calc_dir=FIXTURE_DIR.parent)
+    evidence = EvidenceBundle(
+        primary_raw_dir=FIXTURE_DIR,
+        calc_dir=FIXTURE_DIR.parent,
+        run_ulid=None,
+        calc_ulid=None,
+        step_ulids=[],
+        gen_steps=[],
+        engine_name="vasp",
+        evidence_steps=[],
+    )
+    band_structure = provider.parse(evidence)
     assert band_structure.fermi_energy == pytest.approx(-2.36540459, rel=1e-9, abs=1e-9)
 
 
@@ -200,7 +234,17 @@ def test_k_distances_noncubic_differs_from_fractional() -> None:
 def test_k_distances_with_poscar_in_fixture() -> None:
     """The Si fixture has POSCAR; k-distances should use reciprocal Cartesian."""
     provider = VASPBandsProvider()
-    band_structure = provider.parse(raw_dir=FIXTURE_DIR, calc_dir=FIXTURE_DIR.parent)
+    evidence = EvidenceBundle(
+        primary_raw_dir=FIXTURE_DIR,
+        calc_dir=FIXTURE_DIR.parent,
+        run_ulid=None,
+        calc_ulid=None,
+        step_ulids=[],
+        gen_steps=[],
+        engine_name="vasp",
+        evidence_steps=[],
+    )
+    band_structure = provider.parse(evidence)
 
     # Si cubic a=5.4309: reciprocal Cartesian scale = 2*pi/a
     a = 5.4309

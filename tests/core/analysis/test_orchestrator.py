@@ -13,6 +13,7 @@ from quantumvitas.core.analysis.band_structure import BandStructure, HighSymPoin
 from quantumvitas.core.analysis.base import AnalysisObjectMeta
 from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle
 from quantumvitas.core.analysis.capability import AnalysisCapability
+from quantumvitas.core.analysis.evidence import EvidenceBundle
 from quantumvitas.core.analysis.orchestrator import run_post_run_analysis
 from quantumvitas.drivers.qe.driver import QEDriver
 from quantumvitas.drivers.qe.parsers.bands import QEBandsProvider  # noqa: F401
@@ -34,13 +35,13 @@ class SuccessfulBandsProvider:
     def can_parse(self, raw_dir: Path) -> bool:
         return True
 
-    def parse(self, raw_dir: Path, calc_dir: Path, **_: object) -> BandStructure:
+    def parse(self, evidence: EvidenceBundle) -> BandStructure:
         meta = AnalysisObjectMeta.create(
             object_type="bands",
             source_files=[],
-            step_ulids=["01STEP"],
-            gen_steps=["bandspw"],
-            engine_name="qe",
+            step_ulids=evidence.step_ulids,
+            gen_steps=evidence.gen_steps,
+            engine_name=evidence.engine_name,
             parser_name="mock_bands",
             parser_version="1.0",
         )
@@ -60,7 +61,7 @@ class FailingProvider:
     def can_parse(self, raw_dir: Path) -> bool:
         return True
 
-    def parse(self, raw_dir: Path, calc_dir: Path, **_: object) -> BandStructure:
+    def parse(self, evidence: EvidenceBundle) -> BandStructure:
         raise RuntimeError("synthetic parse failure")
 
 

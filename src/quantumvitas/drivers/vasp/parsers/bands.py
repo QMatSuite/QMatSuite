@@ -4,17 +4,15 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any, Optional, Sequence, Tuple
+from typing import Any, Optional, Sequence
 
 import numpy as np
 
 from quantumvitas.core.analysis.band_structure import BandStructure, HighSymPoint
 from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat
+from quantumvitas.core.analysis.evidence import EvidenceBundle
 from quantumvitas.drivers.vasp.io.poscar import parse_poscar_text
 from quantumvitas.parsers.registry import register_parser
-
-
-EvidenceStep = Tuple[str, str, Path]
 _EFERMI_RE = re.compile(r"E-fermi\s*:\s*([-+]?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?)")
 
 
@@ -290,21 +288,10 @@ class VASPBandsProvider:
     def can_parse(self, raw_dir: Path) -> bool:
         return (raw_dir / "EIGENVAL").exists()
 
-    def parse(
-        self,
-        raw_dir: Path,
-        calc_dir: Path,
-        *,
-        run_ulid: Optional[str] = None,
-        step_ulids: Optional[list[str]] = None,
-        gen_steps: Optional[list[str]] = None,
-        calc_ulid: Optional[str] = None,
-        evidence_steps: Optional[Sequence[EvidenceStep]] = None,
-        engine_name: Optional[str] = None,
-    ) -> BandStructure:
-        candidate_dirs = [raw_dir]
-        if evidence_steps:
-            for _step_ulid, _gen_step, evidence_dir in evidence_steps:
+    def parse(self, evidence: EvidenceBundle) -> BandStructure:
+        candidate_dirs = [evidence.primary_raw_dir]
+        if evidence.evidence_steps:
+            for _step_ulid, _gen_step, evidence_dir in evidence.evidence_steps:
                 if evidence_dir not in candidate_dirs:
                     candidate_dirs.append(evidence_dir)
 
@@ -334,15 +321,15 @@ class VASPBandsProvider:
         labels = _read_kpoints_labels(eigenval_path.parent, lattice)
         fermi_energy, fermi_source = _read_fermi_energy(candidate_dirs)
 
-        source_files = [SourceFileStat.from_path(eigenval_path, calc_dir)]
+        source_files = [SourceFileStat.from_path(eigenval_path, evidence.calc_dir)]
         kpoints_path = eigenval_path.parent / "KPOINTS"
         if kpoints_path.exists():
-            source_files.append(SourceFileStat.from_path(kpoints_path, calc_dir))
+            source_files.append(SourceFileStat.from_path(kpoints_path, evidence.calc_dir))
         poscar_used = eigenval_path.parent / "POSCAR"
         if poscar_used.exists():
-            source_files.append(SourceFileStat.from_path(poscar_used, calc_dir))
+            source_files.append(SourceFileStat.from_path(poscar_used, evidence.calc_dir))
         if fermi_source is not None:
-            source_files.append(SourceFileStat.from_path(fermi_source, calc_dir))
+            source_files.append(SourceFileStat.from_path(fermi_source, evidence.calc_dir))
 
         warnings: list[str] = []
         if lattice is None:
@@ -355,11 +342,11 @@ class VASPBandsProvider:
         meta = AnalysisObjectMeta.create(
             object_type="bands",
             source_files=source_files,
-            run_ulid=run_ulid,
-            calc_ulid=calc_ulid,
-            step_ulids=step_ulids or [],
-            gen_steps=gen_steps or [],
-            engine_name=engine_name or "vasp",
+            run_ulid=evidence.run_ulid,
+            calc_ulid=evidence.calc_ulid,
+            step_ulids=evidence.step_ulids,
+            gen_steps=evidence.gen_steps,
+            engine_name=evidence.engine_name,
             parser_name="vasp_bands",
             parser_version="1.0",
             warnings=warnings,

@@ -302,3 +302,103 @@ Expected: all existing tests pass + new tests for DOS, convergence, trajectory, 
 | Phase 2b | Trajectory | Phase 1 | trajectory.py, vasprun.xml streaming |
 | Phase 2c | field3d | Phase 1 | field3d.py, CHGCAR parser, BlobStore |
 | Gate | 5-type coverage gate test | Phase 2 | test_analysis_invariants.py |
+
+---
+
+## Progress Log
+
+### Phase 1: EvidenceBundle Refactor (COMPLETED ✓)
+
+**Date:** 2026-02-09
+
+**Completed tasks:**
+- ✓ Created `src/quantumvitas/core/analysis/evidence.py` with `EvidenceBundle` dataclass
+- ✓ Modified `src/quantumvitas/core/analysis/orchestrator.py` to build and pass `EvidenceBundle`
+- ✓ Updated `src/quantumvitas/drivers/vasp/parsers/bands.py` to accept `EvidenceBundle`
+- ✓ Updated `src/quantumvitas/drivers/qe/parsers/bands.py` to accept `EvidenceBundle`
+- ✓ Updated all test files to use `EvidenceBundle`
+
+**Verification:**
+```bash
+source .venv/bin/activate && python -m pytest tests/drivers/vasp/test_vasp_bands_parser.py tests/drivers/qe/test_qe_bands_provider.py -v --tb=short
+```
+**Result:** 20/20 passed ✓
+
+### Phase 1: DOS Provider (COMPLETED ✓)
+
+**Date:** 2026-02-09
+
+**Completed tasks:**
+- ✓ Created `src/quantumvitas/core/analysis/dos/model.py` with `DOS` dataclass and `to_primitives()`
+- ✓ Created `src/quantumvitas/core/analysis/dos/__init__.py`
+- ✓ Created `src/quantumvitas/drivers/vasp/parsers/dos.py` with `VASPDOSProvider`
+- ✓ Registered DOS capability in `src/quantumvitas/drivers/vasp/driver.py`
+- ✓ Generated real VASP fixtures using `scripts/generate_vasp_dos_fixtures.py`:
+  - `tests/data/analysis_vasp_dos/DOSCAR` (Si non-spin, NEDOS=301)
+  - `tests/data/analysis_vasp_dos/DOSCAR_spin` (Fe spin-polarized, NEDOS=301)
+  - `tests/data/analysis_vasp_dos/DOSCAR_pdos` (TiO2 with LORBIT=11, NEDOS=301)
+  - `tests/data/analysis_vasp_dos/vasprun.xml` (minimal, for efermi)
+  - `tests/data/analysis_vasp_dos/README.md` (documentation)
+- ✓ Created `tests/drivers/vasp/test_vasp_dos_parser.py` with 8 test cases
+
+**Verification:**
+```bash
+source .venv/bin/activate && python -m pytest tests/drivers/vasp/test_vasp_dos_parser.py -v --tb=short
+```
+**Result:** 8/8 passed ✓
+
+**Test coverage:**
+- NEDOS count matches header
+- Energy range spans Fermi level
+- Spin-polarized DOS shape (2, nedos)
+- PDOS shape (n_atoms, nedos, n_orbitals) for LORBIT=11
+- `to_primitives()` produces valid `CanonicalPrimitiveBundle`
+- Deterministic SHA computation
+
+### Phase 2: Fix Failures + Convergence + Trajectory + field3d (COMPLETED ✓)
+
+**Date:** 2026-02-09
+
+**Step 0: Fix 4 test failures + missing import (COMPLETED ✓)**
+- ✓ Added `Sequence` to `from typing import` in `drivers/vasp/parsers/bands.py`
+- ✓ Updated `SuccessfulBandsProvider.parse()` and `FailingProvider.parse()` to accept `EvidenceBundle` in `tests/core/analysis/test_orchestrator.py`
+- ✓ Updated `provider.parse()` call to use `EvidenceBundle` in `tests/core/analysis/test_qe_bands_e2e.py`
+- ✓ Fixed `_Provider.parse()` in `tests/gates/test_analysis_invariants.py`
+
+**Step 1: Convergence Model + VASP Provider (COMPLETED ✓)**
+- ✓ Created `src/quantumvitas/core/analysis/convergence/__init__.py` and `model.py`
+  - Engine-agnostic `Convergence` dataclass: SCF steps, ionic steps, algorithm, converged flag
+  - `to_primitives()` produces `Series1D` for SCF energy, SCF dE, ionic energy, and ionic max force
+- ✓ Created `src/quantumvitas/drivers/vasp/parsers/convergence.py` with `VASPConvergenceProvider`
+  - OSZICAR parser: DAV/CG/RMM electronic lines, F= ionic lines, T= MD lines
+  - VASP Fortran float regex: `[-+]?\d*\.\d+E[+-]\d+` (handles `-.10586221E+02`)
+- ✓ Created fixtures: `tests/data/analysis_vasp_convergence/OSZICAR` (3 ionic steps, 21 SCF) + `OSZICAR_md`
+- ✓ Created `tests/drivers/vasp/test_vasp_convergence_parser.py` (10 tests)
+
+**Step 2: Trajectory Provider (COMPLETED ✓)**
+- ✓ Created `src/quantumvitas/drivers/vasp/parsers/trajectory.py` with `VASPTrajectoryProvider`
+  - Primary: vasprun.xml full parse (species, positions, forces, stress, energy per calculation)
+  - Fallback: XDATCAR (positions) + OSZICAR (energies)
+  - Reuses existing `Trajectory` + `Frame` from `core/analysis/trajectory/model.py`
+- ✓ Created fixtures: `tests/data/analysis_vasp_trajectory/vasprun.xml` (3 ionic steps, 2-atom Si), `XDATCAR`, `OSZICAR`
+- ✓ Created `tests/drivers/vasp/test_vasp_trajectory_parser.py` (11 tests, including fallback path)
+
+**Step 3: field3d Provider (COMPLETED ✓)**
+- ✓ Created `src/quantumvitas/drivers/vasp/parsers/field3d.py` with `VASPField3DProvider` + `Field3D` class
+  - Parses CHGCAR/LOCPOT/ELFCAR/PARCHG format (POSCAR header + grid + values)
+  - `Field3D.to_primitives()` produces volume_metadata, preview via factor-4 downsampling
+  - Discovery: detects all volumetric files, parses primary (CHGCAR > LOCPOT > ELFCAR > PARCHG)
+- ✓ Created fixtures: `tests/data/analysis_vasp_field3d/CHGCAR` (2-atom Si, 4x4x4 grid) + `LOCPOT`
+- ✓ Created `tests/drivers/vasp/test_vasp_field3d_parser.py` (11 tests)
+
+**Step 4: Wiring + Gate Test (COMPLETED ✓)**
+- ✓ Updated `src/quantumvitas/drivers/vasp/parsers/__init__.py` — all 6 providers registered
+- ✓ Updated `src/quantumvitas/drivers/vasp/driver.py` — 8 capabilities (bands, dos, convergence×3, trajectory×2, field3d)
+- ✓ Added `test_vasp_analysis_capabilities_cover_five_types()` gate test
+- ✓ Updated `tests/daemon/test_vasp_bands_golden_daemon.py` — analysis_snapshots now expects multiple rows
+
+**Final verification:**
+```bash
+source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+```
+**Result:** 4630 passed, 0 failed, 19 skipped ✓ (+37 new tests vs pre-Phase 2)
