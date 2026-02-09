@@ -11,7 +11,9 @@ from quantumvitas.core.analysis.band_structure import BandStructure
 from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
 from quantumvitas.drivers.vasp.parsers.bands import (
     VASPBandsProvider,
+    _compute_k_distances,
     _read_kpoints_labels,
+    _reciprocal_lattice,
     parse_eigenval,
 )
 
@@ -107,3 +109,110 @@ def test_fermi_energy_extraction() -> None:
     provider = VASPBandsProvider()
     band_structure = provider.parse(raw_dir=FIXTURE_DIR, calc_dir=FIXTURE_DIR.parent)
     assert band_structure.fermi_energy == pytest.approx(-2.36540459, rel=1e-9, abs=1e-9)
+
+
+# ---- Reciprocal Cartesian k-distance regression tests ----
+
+
+def test_reciprocal_lattice_cubic() -> None:
+    """For a cubic cell, B = 2*pi/a * I."""
+    a = 5.4309
+    lattice = np.diag([a, a, a])
+    recip = _reciprocal_lattice(lattice)
+    expected = np.diag([2.0 * np.pi / a] * 3)
+    np.testing.assert_allclose(recip, expected, atol=1e-12)
+
+
+def test_k_distances_cubic_vs_fractional() -> None:
+    """For cubic cells, Cartesian k-dist = (2*pi/a) * fractional dist."""
+    a = 5.4309
+    lattice = np.array([[a, 0, 0], [0, a, 0], [0, 0, a]])
+    kpoints = np.array([
+        [0.0, 0.0, 0.0],
+        [0.5, 0.0, 0.0],
+        [0.5, 0.5, 0.0],
+    ])
+    dist_cart = _compute_k_distances(kpoints, lattice)
+    dist_frac = _compute_k_distances(kpoints, None)
+    scale = 2.0 * np.pi / a
+    np.testing.assert_allclose(dist_cart, dist_frac * scale, atol=1e-12)
+
+
+def test_k_distances_noncubic_differs_from_fractional() -> None:
+    """For a non-cubic FCC conventional cell, reciprocal Cartesian distances
+    must differ from fractional Euclidean distances.
+
+    FCC conventional lattice (a=3.5 Angstrom Al-like):
+        a1 = [a, 0, 0]
+        a2 = [0, a, 0]
+        a3 = [0, 0, a]
+    This is actually cubic (trivially), so use a hexagonal cell instead.
+
+    Hexagonal BN-like lattice (a=2.504, c=6.661):
+        a1 = [a, 0, 0]
+        a2 = [-a/2, a*sqrt(3)/2, 0]
+        a3 = [0, 0, c]
+    """
+    a, c = 2.504, 6.661
+    lattice = np.array([
+        [a, 0.0, 0.0],
+        [-a / 2, a * np.sqrt(3) / 2, 0.0],
+        [0.0, 0.0, c],
+    ])
+
+    # K-path: Gamma -> M -> K -> Gamma
+    kpoints = np.array([
+        [0.0, 0.0, 0.0],       # Gamma
+        [0.5, 0.0, 0.0],       # M
+        [1.0 / 3, 1.0 / 3, 0.0],  # K
+        [0.0, 0.0, 0.0],       # Gamma
+    ])
+
+    dist_cart = _compute_k_distances(kpoints, lattice)
+    dist_frac = _compute_k_distances(kpoints, None)
+
+    # Both must be monotonically non-decreasing
+    assert np.all(np.diff(dist_cart) >= -1e-10)
+    assert np.all(np.diff(dist_frac) >= -1e-10)
+
+    # They must NOT be proportional (ratio varies per segment)
+    # because the reciprocal metric is anisotropic for hex
+    ratios = []
+    for i in range(1, len(dist_cart)):
+        if dist_frac[i] > 1e-12:
+            ratios.append(dist_cart[i] / dist_frac[i])
+    assert len(ratios) >= 2
+    # If they were simply proportional, all ratios would be equal
+    assert max(ratios) - min(ratios) > 0.01, (
+        f"Ratios should vary for non-cubic cell but are nearly constant: {ratios}"
+    )
+
+    # Verify analytically: Gamma->M distance in reciprocal Cartesian
+    # B = 2*pi * inv(A)^T
+    recip = _reciprocal_lattice(lattice)
+    # Gamma = [0,0,0], M = [0.5, 0, 0] in fractional
+    delta_frac = np.array([0.5, 0.0, 0.0])
+    delta_cart = recip.T @ delta_frac
+    expected_GM = np.linalg.norm(delta_cart)
+    assert dist_cart[1] == pytest.approx(expected_GM, rel=1e-10)
+
+
+def test_k_distances_with_poscar_in_fixture() -> None:
+    """The Si fixture has POSCAR; k-distances should use reciprocal Cartesian."""
+    provider = VASPBandsProvider()
+    band_structure = provider.parse(raw_dir=FIXTURE_DIR, calc_dir=FIXTURE_DIR.parent)
+
+    # Si cubic a=5.4309: reciprocal Cartesian scale = 2*pi/a
+    a = 5.4309
+    scale = 2.0 * np.pi / a
+
+    # First segment: Gamma (0,0,0) -> X (0.5,0,0.5)
+    # Fractional distance = sqrt(0.25+0.25) = sqrt(0.5)
+    # Cartesian distance = scale * sqrt(0.5)
+    expected_GX = scale * np.sqrt(0.5)
+    # k_distances[39] is the last point of the first 40-point segment (G->X)
+    assert band_structure.k_distances[39] == pytest.approx(expected_GX, rel=1e-4)
+
+    # Monotonicity still holds
+    diffs = np.diff(band_structure.k_distances)
+    assert np.all(diffs >= -1e-10)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import subprocess
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
 from quantumvitas.core.public import StepResult
@@ -56,27 +56,36 @@ class VaspEngine(Engine):
         step: "Step",
         working_dir: Path,
         calculation: "Calculation",
+        *,
+        vasp_params: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Materialize VASP input files (POSCAR, INCAR, KPOINTS, POTCAR) into working_dir.
-        
+
         Args:
             step: Step object
             working_dir: Working directory (will be created if needed)
             calculation: Calculation context
+            vasp_params: Pre-loaded ``parameters.engine_params.vasp`` dict from
+                the step YAML.  The handler is responsible for reading the YAML
+                via StepDoc and passing this here (engines must not import SSOT
+                modules directly).
         """
         working_dir.mkdir(parents=True, exist_ok=True)
-        
+
+        if vasp_params is None:
+            vasp_params = {}
+
         # Get structure from calculation
         structure_ulid = calculation.structure_ulid
         if structure_ulid is None:
             raise ValueError("Calculation has no structure_ulid")
-        
+
         # Load structure from project
         structure_ref = calculation.project.get_structure(structure_ulid)
         structure_path = structure_ref.resolve_path(calculation.project.root)
         structure = read_structure(structure_path)
-        
+
         # Convert to pymatgen Structure if needed
         if not isinstance(structure, Structure):
             # Assume structure has as_dict() or similar
@@ -84,33 +93,37 @@ class VaspEngine(Engine):
                 structure = Structure.from_dict(structure.as_dict())
             else:
                 raise ValueError(f"Cannot convert structure type {type(structure)}")
-        
+
         # Write POSCAR
         write_poscar(structure, working_dir / "POSCAR")
-        
+
         # Get INCAR parameters from step
-        incar_params = self._get_incar_params(step)
+        incar_params = self._get_incar_params(step, vasp_params)
         write_incar(incar_params, working_dir / "INCAR")
-        
+
         # Get KPOINTS parameters from step
-        kpoints_params = self._get_kpoints_params(step)
+        kpoints_params = self._get_kpoints_params(step, vasp_params)
         write_kpoints(kpoints_params, working_dir / "KPOINTS")
-        
+
         # Write POTCAR
         species_map = calculation.species_map or {}
-        potcar_type = self._get_potcar_type(step)
+        potcar_type = self._get_potcar_type(step, vasp_params)
         write_potcar(structure, species_map, working_dir / "POTCAR", potcar_type)
     
-    def _get_incar_params(self, step: "Step") -> dict[str, Any]:
-        """Extract INCAR parameters from step."""
-        # Get from step.parameters or step.options
-        params = {}
-        
-        if hasattr(step, "parameters") and step.parameters:
-            # Check for engine_params.vasp.incar
+    def _get_incar_params(
+        self, step: "Step", vasp_params: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Extract INCAR parameters from step YAML or fallback defaults."""
+        params: Dict[str, Any] = {}
+
+        # Primary path: use vasp_params read from step YAML
+        if vasp_params:
+            params.update(vasp_params.get("incar", {}))
+        elif hasattr(step, "parameters") and step.parameters:
+            # Legacy fallback
             if isinstance(step.parameters, dict):
-                vasp_params = step.parameters.get("engine_params", {}).get("vasp", {})
-                params.update(vasp_params.get("incar", {}))
+                sp = step.parameters.get("engine_params", {}).get("vasp", {})
+                params.update(sp.get("incar", {}))
         
         # Set defaults based on step type (SPEC type)
         step_type_spec = getattr(step, "step_type_spec", None)
@@ -167,16 +180,21 @@ class VaspEngine(Engine):
         
         return params
     
-    def _get_kpoints_params(self, step: "Step") -> dict[str, Any]:
-        """Extract KPOINTS parameters from step."""
-        # Get from step.parameters
-        params = {}
-        
-        if hasattr(step, "parameters") and step.parameters:
+    def _get_kpoints_params(
+        self, step: "Step", vasp_params: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Extract KPOINTS parameters from step YAML or fallback defaults."""
+        params: Dict[str, Any] = {}
+
+        # Primary path: use vasp_params read from step YAML
+        if vasp_params:
+            params.update(vasp_params.get("kpoints", {}))
+        elif hasattr(step, "parameters") and step.parameters:
+            # Legacy fallback
             if isinstance(step.parameters, dict):
-                vasp_params = step.parameters.get("engine_params", {}).get("vasp", {})
-                params.update(vasp_params.get("kpoints", {}))
-        
+                sp = step.parameters.get("engine_params", {}).get("vasp", {})
+                params.update(sp.get("kpoints", {}))
+
         # Defaults: automatic mesh
         if not params:
             params = {
@@ -184,15 +202,19 @@ class VaspEngine(Engine):
                 "mesh": [4, 4, 4],
                 "shift": [0, 0, 0],
             }
-        
+
         return params
     
-    def _get_potcar_type(self, step: "Step") -> str:
-        """Get POTCAR type from step (default: PBE)."""
+    def _get_potcar_type(
+        self, step: "Step", vasp_params: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Get POTCAR type from step YAML (default: PBE)."""
+        if vasp_params:
+            return vasp_params.get("potcar_type", "PBE")
         if hasattr(step, "parameters") and step.parameters:
             if isinstance(step.parameters, dict):
-                vasp_params = step.parameters.get("engine_params", {}).get("vasp", {})
-                return vasp_params.get("potcar_type", "PBE")
+                sp = step.parameters.get("engine_params", {}).get("vasp", {})
+                return sp.get("potcar_type", "PBE")
         return "PBE"
     
     def run_step(
