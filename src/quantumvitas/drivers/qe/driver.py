@@ -21,6 +21,11 @@ class QEDriver(BaseEngineDriver):
             evidence_files=["*.bands.dat.gnu"],
         ),
         AnalysisCapability(
+            object_type="dos",
+            gen_step_sequence=["dos"],
+            evidence_files=["*.dos.dat"],
+        ),
+        AnalysisCapability(
             object_type="trajectory",
             gen_step_sequence=["relax"],
             evidence_files=["*.relax.out"],

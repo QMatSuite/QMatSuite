@@ -16,10 +16,12 @@ from quantumvitas.drivers.vasp.parsers.bands import (
     _read_kpoints_labels,
     _reciprocal_lattice,
     parse_eigenval,
+    parse_procar,
 )
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_vasp_bands"
+PROCAR_FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_vasp_bands_procar"
 
 
 def test_parse_eigenval_header() -> None:
@@ -260,3 +262,149 @@ def test_k_distances_with_poscar_in_fixture() -> None:
     # Monotonicity still holds
     diffs = np.diff(band_structure.k_distances)
     assert np.all(diffs >= -1e-10)
+
+
+# ---- PROCAR fatband tests (real VASP output) ----
+
+_procar_available = (PROCAR_FIXTURE_DIR / "PROCAR").exists()
+
+
+@pytest.mark.skipif(not _procar_available, reason="PROCAR fixture not found")
+def test_parse_procar_header() -> None:
+    """Verify PROCAR header dimensions: 15 kpts, 8 bands, 2 atoms."""
+    result = parse_procar(PROCAR_FIXTURE_DIR / "PROCAR")
+    assert result["n_kpoints"] == 15
+    assert result["n_bands"] == 8
+    assert result["n_atoms"] == 2
+
+
+@pytest.mark.skipif(not _procar_available, reason="PROCAR fixture not found")
+def test_parse_procar_projections_shape() -> None:
+    """Verify projections array shape: (15, 8, 2, 9)."""
+    result = parse_procar(PROCAR_FIXTURE_DIR / "PROCAR")
+    assert result["projections"].shape == (15, 8, 2, 9)
+
+
+@pytest.mark.skipif(not _procar_available, reason="PROCAR fixture not found")
+def test_parse_procar_orbital_labels() -> None:
+    """Verify orbital labels from PROCAR header."""
+    result = parse_procar(PROCAR_FIXTURE_DIR / "PROCAR")
+    assert result["orbital_labels"] == ["s", "py", "pz", "px", "dxy", "dyz", "dz2", "dxz", "x2-y2"]
+
+
+@pytest.mark.skipif(not _procar_available, reason="PROCAR fixture not found")
+def test_parse_procar_weights_physical() -> None:
+    """Verify projection weights are non-negative and reasonable."""
+    result = parse_procar(PROCAR_FIXTURE_DIR / "PROCAR")
+    proj = result["projections"]
+    # All weights non-negative
+    assert np.all(proj >= 0.0)
+    # Per-band total across atoms should be < 1.0 per orbital
+    # (some charge is in the interstitial)
+    per_band_total = proj.sum(axis=2)  # sum over atoms -> (k, b, orb)
+    assert np.all(per_band_total <= 1.5)  # generous bound
+
+
+@pytest.mark.skipif(not _procar_available, reason="PROCAR fixture not found")
+def test_procar_integrated_in_parse() -> None:
+    """Verify provider.parse() picks up PROCAR projections."""
+    provider = VASPBandsProvider()
+    evidence = EvidenceBundle(
+        primary_raw_dir=PROCAR_FIXTURE_DIR,
+        calc_dir=PROCAR_FIXTURE_DIR.parent,
+        run_ulid="01TESTRUN",
+        calc_ulid="01CALC",
+        step_ulids=["01STEP"],
+        gen_steps=["bandspw"],
+        engine_name="vasp",
+        evidence_steps=[],
+    )
+    band_structure = provider.parse(evidence)
+    assert band_structure.projections is not None
+    assert band_structure.projections.shape == (15, 8, 2, 9)
+    assert band_structure.projection_labels is not None
+    assert band_structure.projection_labels["atoms"] == ["Si_1", "Si_2"]
+
+
+@pytest.mark.skipif(not _procar_available, reason="PROCAR fixture not found")
+def test_procar_in_primitives() -> None:
+    """Verify canonical bundle arrays contain projections."""
+    provider = VASPBandsProvider()
+    evidence = EvidenceBundle(
+        primary_raw_dir=PROCAR_FIXTURE_DIR,
+        calc_dir=PROCAR_FIXTURE_DIR.parent,
+        run_ulid="01TESTRUN",
+        calc_ulid="01CALC",
+        step_ulids=["01STEP"],
+        gen_steps=["bandspw"],
+        engine_name="vasp",
+        evidence_steps=[],
+    )
+    band_structure = provider.parse(evidence)
+    canonical = band_structure.to_primitives()
+    assert "projections" in canonical.arrays
+    assert "projection_labels" in canonical.arrays
+    assert canonical.arrays["projection_labels"]["atoms"] == ["Si_1", "Si_2"]
+
+
+@pytest.mark.skipif(not _procar_available, reason="PROCAR fixture not found")
+def test_procar_display_hints() -> None:
+    """Verify render_meta.extra has fatband display hints."""
+    provider = VASPBandsProvider()
+    evidence = EvidenceBundle(
+        primary_raw_dir=PROCAR_FIXTURE_DIR,
+        calc_dir=PROCAR_FIXTURE_DIR.parent,
+        run_ulid="01TESTRUN",
+        calc_ulid="01CALC",
+        step_ulids=["01STEP"],
+        gen_steps=["bandspw"],
+        engine_name="vasp",
+        evidence_steps=[],
+    )
+    band_structure = provider.parse(evidence)
+    canonical = band_structure.to_primitives()
+    extra = canonical.render_meta.extra
+    assert extra["has_projections"] is True
+    assert extra["projection_shape"] == [15, 8, 2, 9]
+    assert extra["fatband_display_hint"] == "width"
+    assert extra["fatband_width_eV"] == 0.5
+
+
+@pytest.mark.skipif(not _procar_available, reason="PROCAR fixture not found")
+def test_procar_sha_deterministic() -> None:
+    """Verify SHA is stable across two calls with PROCAR data."""
+    provider = VASPBandsProvider()
+    evidence = EvidenceBundle(
+        primary_raw_dir=PROCAR_FIXTURE_DIR,
+        calc_dir=PROCAR_FIXTURE_DIR.parent,
+        run_ulid="01TESTRUN",
+        calc_ulid="01CALC",
+        step_ulids=["01STEP"],
+        gen_steps=["bandspw"],
+        engine_name="vasp",
+        evidence_steps=[],
+    )
+    bs1 = provider.parse(evidence)
+    bs2 = provider.parse(evidence)
+    sha1 = compute_canonical_sha(bs1.to_primitives())
+    sha2 = compute_canonical_sha(bs2.to_primitives())
+    assert len(sha1) == 64
+    assert sha1 == sha2
+
+
+def test_no_procar_yields_none_projections() -> None:
+    """Existing fixture (no PROCAR) → projections is None."""
+    provider = VASPBandsProvider()
+    evidence = EvidenceBundle(
+        primary_raw_dir=FIXTURE_DIR,
+        calc_dir=FIXTURE_DIR.parent,
+        run_ulid="01TESTRUN",
+        calc_ulid="01CALC",
+        step_ulids=["01STEP"],
+        gen_steps=["bandspw"],
+        engine_name="vasp",
+        evidence_steps=[],
+    )
+    band_structure = provider.parse(evidence)
+    assert band_structure.projections is None
+    assert band_structure.projection_labels is None

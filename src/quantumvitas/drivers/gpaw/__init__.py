@@ -7,6 +7,7 @@ with PW, FD, and LCAO modes.
 
 from quantumvitas.core.driver_registry import DriverRegistry
 from .driver import GPAWDriver
+from . import parsers  # noqa: F401, E402
 
 # Register driver at import time
 DriverRegistry.register(GPAWDriver())

@@ -145,6 +145,69 @@ def test_parse_pdos_shape() -> None:
             assert len(dos.orbital_labels) == dos.pdos.shape[2]
 
 
+def test_pdos_atom_labels_from_poscar() -> None:
+    """TiO2 fixture: PDOS labels come from POSCAR species (Ti_1, Ti_2, O_1, ...)."""
+    doscar_pdos = FIXTURE_DIR / "DOSCAR_pdos"
+    poscar_tio2 = FIXTURE_DIR / "POSCAR_tio2"
+    if not doscar_pdos.exists() or not poscar_tio2.exists():
+        pytest.skip("DOSCAR_pdos or POSCAR_tio2 fixture not found")
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        (tmp_path / "DOSCAR").write_bytes(doscar_pdos.read_bytes())
+        (tmp_path / "POSCAR").write_bytes(poscar_tio2.read_bytes())
+
+        provider = VASPDOSProvider()
+        evidence = EvidenceBundle(
+            primary_raw_dir=tmp_path,
+            calc_dir=tmp_path,
+            run_ulid=None,
+            calc_ulid=None,
+            step_ulids=[],
+            gen_steps=[],
+            engine_name="vasp",
+            evidence_steps=[],
+        )
+        dos = provider.parse(evidence)
+        assert dos.atom_labels is not None
+        # TiO2 rutile: 2 Ti + 4 O = 6 atoms
+        assert len(dos.atom_labels) == 6
+        assert dos.atom_labels[0] == "Ti_1"
+        assert dos.atom_labels[1] == "Ti_2"
+        assert dos.atom_labels[2] == "O_1"
+        assert dos.atom_labels[5] == "O_4"
+
+
+def test_pdos_atom_labels_generic_without_poscar() -> None:
+    """Without POSCAR, PDOS labels should be generic atom_1, atom_2, ..."""
+    doscar_pdos = FIXTURE_DIR / "DOSCAR_pdos"
+    if not doscar_pdos.exists():
+        pytest.skip("DOSCAR_pdos fixture not found")
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        (tmp_path / "DOSCAR").write_bytes(doscar_pdos.read_bytes())
+        # No POSCAR copied
+
+        provider = VASPDOSProvider()
+        evidence = EvidenceBundle(
+            primary_raw_dir=tmp_path,
+            calc_dir=tmp_path,
+            run_ulid=None,
+            calc_ulid=None,
+            step_ulids=[],
+            gen_steps=[],
+            engine_name="vasp",
+            evidence_steps=[],
+        )
+        dos = provider.parse(evidence)
+        if dos.atom_labels is not None:
+            # Should be generic: atom_1, atom_2, ...
+            assert dos.atom_labels[0] == "atom_1"
+
+
 def test_to_primitives_valid() -> None:
     """Verify to_primitives() produces valid CanonicalPrimitiveBundle."""
     provider = VASPDOSProvider()

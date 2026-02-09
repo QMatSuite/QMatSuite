@@ -33,6 +33,8 @@ class BandStructure:
     high_symmetry_points: List[HighSymPoint] = field(default_factory=list)
     fermi_energy: Optional[float] = None
     spin_polarized: bool = False
+    projections: Optional[np.ndarray] = None
+    projection_labels: Optional[Dict[str, List[str]]] = None
 
     def __post_init__(self) -> None:
         if self.k_distances.ndim != 1:
@@ -47,6 +49,14 @@ class BandStructure:
             if self.eigenvalues.shape[1] != self.k_distances.shape[0]:
                 raise ValueError("3D eigenvalues must have shape (n_spin, n_kpoints, n_bands)")
             self.spin_polarized = True
+
+        if self.projections is not None:
+            if self.projections.ndim != 4:
+                raise ValueError("projections must be 4D (n_kpoints, n_bands, n_atoms, n_orbitals)")
+            if self.projections.shape[0] != self.n_kpoints:
+                raise ValueError("projections shape[0] must equal n_kpoints")
+            if self.projections.shape[1] != self.n_bands:
+                raise ValueError("projections shape[1] must equal n_bands")
 
     @property
     def n_kpoints(self) -> int:
@@ -94,6 +104,15 @@ class BandStructure:
                         )
                     )
 
+        extra: Dict[str, Any] = {}
+        if self.projections is not None:
+            extra = {
+                "has_projections": True,
+                "projection_shape": list(self.projections.shape),
+                "fatband_display_hint": "width",
+                "fatband_width_eV": 0.5,
+            }
+
         render_meta = RenderMeta(
             axis_labels={"x": "k-path", "y": "Energy"},
             units={"x": "1/A", "y": "eV"},
@@ -107,6 +126,7 @@ class BandStructure:
                 )
                 for point in self.high_symmetry_points
             ],
+            extra=extra,
         )
 
         provenance_meta = ProvenanceMeta(
@@ -124,19 +144,25 @@ class BandStructure:
             manifest_snapshot=self.meta.manifest_snapshot,
         )
 
+        arrays: Dict[str, Any] = {
+            "k_distances": np.array(self.k_distances, copy=True),
+            "eigenvalues": np.array(self.eigenvalues, copy=True),
+        }
+        if self.projections is not None:
+            arrays["projections"] = np.array(self.projections, copy=True)
+        if self.projection_labels is not None:
+            arrays["projection_labels"] = dict(self.projection_labels)
+
         return CanonicalPrimitiveBundle(
             object_type=self.meta.object_type,
             render_meta=render_meta,
             provenance_meta=provenance_meta,
             series=series,
-            arrays={
-                "k_distances": np.array(self.k_distances, copy=True),
-                "eigenvalues": np.array(self.eigenvalues, copy=True),
-            },
+            arrays=arrays,
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result: Dict[str, Any] = {
             "meta": self.meta.to_dict(),
             "k_distances": self.k_distances.tolist(),
             "eigenvalues": self.eigenvalues.tolist(),
@@ -147,9 +173,17 @@ class BandStructure:
             "fermi_energy": self.fermi_energy,
             "spin_polarized": self.spin_polarized,
         }
+        if self.projections is not None:
+            result["projections"] = self.projections.tolist()
+        if self.projection_labels is not None:
+            result["projection_labels"] = self.projection_labels
+        return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "BandStructure":
+        projections = None
+        if "projections" in data:
+            projections = np.array(data["projections"])
         return cls(
             meta=AnalysisObjectMeta.from_dict(data["meta"]),
             k_distances=np.array(data["k_distances"]),
@@ -163,5 +197,7 @@ class BandStructure:
             ],
             fermi_energy=data.get("fermi_energy"),
             spin_polarized=bool(data.get("spin_polarized", False)),
+            projections=projections,
+            projection_labels=data.get("projection_labels"),
         )
 

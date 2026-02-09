@@ -7,6 +7,7 @@ norm-conserving pseudopotentials in PSF/PSML format.
 
 from __future__ import annotations
 
+from quantumvitas.core.analysis.capability import AnalysisCapability
 from quantumvitas.core.driver_protocol import (
     BaseEngineDriver,
     ErrorClass,
@@ -28,6 +29,18 @@ class SiestaDriver(BaseEngineDriver):
     })
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
+    ANALYSIS_CAPABILITIES = [
+        AnalysisCapability(
+            object_type="bands",
+            gen_step_sequence=["bands"],
+            evidence_files=["*.EIG"],
+        ),
+        AnalysisCapability(
+            object_type="dos",
+            gen_step_sequence=["dos"],
+            evidence_files=["*.DOS"],
+        ),
+    ]
 
     # ── MUST: Properties ──────────────────────────────────────────────
 

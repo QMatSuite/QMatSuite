@@ -1,5 +1,15 @@
-"""CP2K output parser bundle."""
+"""CP2K output parser bundle.
 
+Importing this package triggers parser registration via @register_parser.
+"""
+
+from .bands import CP2KBandsProvider
+from .dos import CP2KDOSProvider
 from .output import CP2KDigest, CP2KOutputParser
 
-__all__ = ["CP2KDigest", "CP2KOutputParser"]
+__all__ = [
+    "CP2KBandsProvider",
+    "CP2KDOSProvider",
+    "CP2KDigest",
+    "CP2KOutputParser",
+]

@@ -1,0 +1,48 @@
+# Silicon DOS calculation (two-dataset)
+# DS1: SCF with moderate k-mesh
+# DS2: NSCF with dense k-mesh + prtdos
+ndtset 2
+
+# Dataset 1: SCF
+kptopt1 1
+ngkpt1 4 4 4
+nshiftk1 1
+shiftk1 0.0 0.0 0.0
+tolvrs1 1.0d-10
+prtden1 1
+
+# Dataset 2: NSCF with dense k-mesh for DOS
+iscf2 -2
+getden2 1
+kptopt2 1
+ngkpt2 8 8 8
+nshiftk2 1
+shiftk2 0.0 0.0 0.0
+tolwfr2 1.0d-12
+prtdos2 1
+
+# Common settings
+ecut 10.0
+nband 8
+occopt 3
+tsmear 0.01
+nstep 30
+diemac 12.0
+chksymbreak 0
+
+# Structure: Si diamond
+acell 3*10.26311
+rprim
+  0.0 0.5 0.5
+  0.5 0.0 0.5
+  0.5 0.5 0.0
+ntypat 1
+znucl 14
+natom 2
+typat 1 1
+xred
+  0.0 0.0 0.0
+  0.25 0.25 0.25
+
+pp_dirpath "."
+pseudos "14si.pspnc"

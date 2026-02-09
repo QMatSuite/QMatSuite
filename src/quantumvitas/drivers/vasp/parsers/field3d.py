@@ -193,6 +193,9 @@ class Field3D:
             "value_mean": value_mean,
             "preview_downsample_factor": factor,
             "preview_grid_shape": list(preview_shape),
+            "grid_data_nbytes": int(self.grid_data.nbytes),
+            "grid_data_dtype": str(self.grid_data.dtype),
+            "grid_data_available": True,
         }
 
         render_meta = RenderMeta(
@@ -221,9 +224,10 @@ class Field3D:
             manifest_snapshot=self.meta.manifest_snapshot,
         )
 
-        # Store grid data and preview in arrays (not BlobStore — keep simple)
+        # Primitive-by-reference: full grid_data is NOT embedded in the bundle
+        # (a 200^3 CHGCAR = 8M floats = ~100MB JSON). The grid lives on the
+        # Field3D object; the bundle carries only a preview + metadata.
         arrays: Dict[str, Any] = {
-            "grid_data": self.grid_data.tolist(),
             "preview_data": preview_data.tolist(),
             "lattice": self.lattice.tolist(),
         }

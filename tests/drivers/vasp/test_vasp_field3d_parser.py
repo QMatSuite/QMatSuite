@@ -99,7 +99,7 @@ def test_to_primitives_valid() -> None:
     assert isinstance(canonical, CanonicalPrimitiveBundle)
     assert canonical.object_type == "field3d"
     assert canonical.provenance_meta.engine_name == "vasp"
-    assert "grid_data" in canonical.arrays
+    assert "grid_data" not in canonical.arrays  # primitive-by-reference: no full grid
     assert "preview_data" in canonical.arrays
     assert "lattice" in canonical.arrays
 
@@ -121,6 +121,29 @@ def test_preview_dimensions() -> None:
     # 4x4x4 with factor=4 -> 1x1x1
     assert vol_meta["preview_grid_shape"] == [1, 1, 1]
     assert len(canonical.arrays["preview_data"]) == 1
+
+
+def test_grid_data_not_in_bundle() -> None:
+    """Gate: grid_data must be absent from bundle but present on Field3D."""
+    provider = VASPField3DProvider()
+    result = provider.parse(_make_evidence(FIXTURE_DIR))
+    # Full grid is on the object
+    assert result.grid_data is not None
+    assert len(result.grid_data) == 64
+    # But NOT in the canonical bundle
+    canonical = result.to_primitives()
+    assert "grid_data" not in canonical.arrays
+
+
+def test_volume_metadata_grid_info() -> None:
+    """Verify grid metadata (nbytes/dtype/available) in volume_metadata."""
+    provider = VASPField3DProvider()
+    result = provider.parse(_make_evidence(FIXTURE_DIR))
+    canonical = result.to_primitives()
+    vol_meta = canonical.render_meta.extra["volume_metadata"]
+    assert vol_meta["grid_data_available"] is True
+    assert vol_meta["grid_data_dtype"] == "float64"
+    assert vol_meta["grid_data_nbytes"] == 64 * 8  # 64 floats * 8 bytes
 
 
 def test_sha_deterministic() -> None:

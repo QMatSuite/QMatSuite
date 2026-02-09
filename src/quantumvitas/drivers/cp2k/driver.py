@@ -9,6 +9,7 @@ This driver handles all CP2K calculations including:
 
 from pathlib import Path
 
+from quantumvitas.core.analysis.capability import AnalysisCapability
 from quantumvitas.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
@@ -27,6 +28,18 @@ class CP2KDriver(BaseEngineDriver):
     })
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
+    ANALYSIS_CAPABILITIES = [
+        AnalysisCapability(
+            object_type="bands",
+            gen_step_sequence=["bandspw"],
+            evidence_files=["*.bs"],
+        ),
+        AnalysisCapability(
+            object_type="dos",
+            gen_step_sequence=["dos"],
+            evidence_files=["*.pdos"],
+        ),
+    ]
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties
