@@ -11,6 +11,7 @@ from quantumvitas.core.analysis.bundles import (
     ProvenanceMeta,
     RenderMeta,
     TransformRecord,
+    compute_canonical_sha,
 )
 from quantumvitas.core.analysis.primitives import GeometryFrame, GeometryFrames, Marker, Series1D
 
@@ -144,3 +145,31 @@ def test_bundle_kind_literals() -> None:
     assert canonical.bundle_kind == "canonical"
     assert derived.bundle_kind == "derived"
 
+
+def test_compute_canonical_sha_is_deterministic() -> None:
+    bundle = CanonicalPrimitiveBundle(
+        object_type="dos",
+        render_meta=_make_render_meta(),
+        provenance_meta=_make_provenance_meta(),
+        arrays={"values": np.array([1.0, 2.0, 3.0])},
+    )
+
+    first = compute_canonical_sha(bundle)
+    second = compute_canonical_sha(bundle)
+
+    assert first == second
+    assert len(first) == 64
+
+
+def test_compute_canonical_sha_rejects_derived_bundle() -> None:
+    derived = DerivedPrimitiveBundle(
+        object_type="dos",
+        render_meta=_make_render_meta(),
+        provenance_meta=_make_provenance_meta(),
+    )
+
+    try:
+        compute_canonical_sha(derived)  # type: ignore[arg-type]
+        assert False, "Expected TypeError"
+    except TypeError:
+        pass

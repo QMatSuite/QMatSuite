@@ -39,18 +39,22 @@ class PinResult:
     """Result of a pin operation."""
     success: bool
     pin_ulid: Optional[str] = None
+    run_ulid: Optional[str] = None
     png_sha: Optional[str] = None
     json_sha: Optional[str] = None
     run_ulid_source: RunUlidSource = "exact"
+    run_ulid_source_details: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "success": self.success,
             "pin_ulid": self.pin_ulid,
+            "run_ulid": self.run_ulid,
             "png_sha": self.png_sha,
             "json_sha": self.json_sha,
             "run_ulid_source": self.run_ulid_source,
+            "run_ulid_source_details": self.run_ulid_source_details,
             "error": self.error,
         }
 
@@ -110,25 +114,27 @@ def can_pin_to_run(
 
 def pin_analysis_to_history(
     project_root: Path,
-    run_ulid: str,
+    run_ulid: Optional[str],
     step_ulid: str,
     analysis_kind: str,
     png_data: Optional[bytes] = None,
     json_payload: Optional[Dict[str, Any]] = None,
     run_ulid_source: RunUlidSource = "exact",
+    run_ulid_source_details: Optional[Dict[str, Any]] = None,
 ) -> PinResult:
     """
     Pin analysis results to provenance.
 
     Args:
         project_root: Project root directory
-        run_ulid: Run ULID
+        run_ulid: Optional run ULID
         step_ulid: Step ULID
         analysis_kind: Type of analysis (e.g., "bands", "dos")
         png_data: Optional PNG image data
         json_payload: Optional JSON data to store
         run_ulid_source: Provenance confidence for run linkage
             ("exact" | "inferred" | "unknown")
+        run_ulid_source_details: Optional details describing inference/match path
 
     Returns:
         PinResult with success status and storage references
@@ -137,9 +143,12 @@ def pin_analysis_to_history(
         PinError: If pinning fails
     """
     # Validate
-    can_pin = can_pin_to_run(project_root, run_ulid, step_ulid)
-    if not can_pin["allowed"]:
-        raise PinError(can_pin["reason"])
+    if run_ulid:
+        can_pin = can_pin_to_run(project_root, run_ulid, step_ulid)
+        if not can_pin["allowed"]:
+            raise PinError(can_pin["reason"])
+    elif run_ulid_source != "unknown":
+        raise PinError("run_ulid is required unless run_ulid_source is 'unknown'")
 
     if not png_data and not json_payload:
         raise PinError("At least png_data or json_payload required")
@@ -165,6 +174,7 @@ def pin_analysis_to_history(
             "pin_ulid": pin_ulid,
             "run_ulid": run_ulid,
             "run_ulid_source": run_ulid_source,
+            "run_ulid_source_details": run_ulid_source_details,
             "step_ulid": step_ulid,
             "analysis_kind": analysis_kind,
             "png_sha": png_sha,
@@ -187,6 +197,7 @@ def pin_analysis_to_history(
                 "analysis_kind": analysis_kind,
                 "pin_ulid": pin_ulid,
                 "run_ulid_source": run_ulid_source,
+                "run_ulid_source_details": run_ulid_source_details,
                 "pin_index_sha": pin_index_sha,
             },
         )
@@ -212,9 +223,11 @@ def pin_analysis_to_history(
         return PinResult(
             success=True,
             pin_ulid=pin_ulid,
+            run_ulid=run_ulid,
             png_sha=png_sha,
             json_sha=json_sha,
             run_ulid_source=run_ulid_source,
+            run_ulid_source_details=run_ulid_source_details,
         )
 
     except Exception as e:

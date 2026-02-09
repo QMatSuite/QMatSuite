@@ -35,33 +35,61 @@ def run_post_run_analysis(
     results: List[Dict[str, Any]] = []
     capabilities = getattr(driver, "ANALYSIS_CAPABILITIES", []) or []
 
-    for capability in capabilities:
-        match = find_contiguous_match(capability, ordered_gen_steps)
-        if match is None:
+    # Deterministic capability resolution:
+    # - Evaluate one match per object_type
+    # - Prefer longest contiguous sequence, then declaration order
+    capabilities_by_type: Dict[str, List[Tuple[int, Any]]] = {}
+    type_order: List[str] = []
+    for index, capability in enumerate(capabilities):
+        object_type = capability.object_type.lower()
+        if object_type not in capabilities_by_type:
+            capabilities_by_type[object_type] = []
+            type_order.append(object_type)
+        capabilities_by_type[object_type].append((index, capability))
+
+    for object_type in type_order:
+        selected_capability = None
+        selected_match = None
+        ranked = sorted(
+            capabilities_by_type[object_type],
+            key=lambda row: (-len(row[1].gen_step_sequence), row[0]),
+        )
+        for _, candidate in ranked:
+            candidate_match = find_contiguous_match(candidate, ordered_gen_steps)
+            if candidate_match is not None:
+                selected_capability = candidate
+                selected_match = candidate_match
+                break
+
+        if selected_capability is None or selected_match is None:
             continue
 
-        provider_cls = get_parser(engine, capability.object_type)
+        provider_cls = get_parser(engine, selected_capability.object_type)
         if provider_cls is None:
             warnings.warn(
-                f"No analysis provider registered for ({engine}, {capability.object_type}).",
+                f"No analysis provider registered for ({engine}, {selected_capability.object_type}).",
                 stacklevel=2,
             )
             continue
 
         provider = provider_cls()
-        primary_raw_dir = match.evidence_dirs[0]
+        primary_raw_dir = selected_match.evidence_dirs[0]
         if hasattr(provider, "can_parse") and not provider.can_parse(primary_raw_dir):
             continue
 
         parse_kwargs: Dict[str, Any] = {
             "run_ulid": run_ulid,
-            "step_ulids": match.step_ulids,
-            "gen_steps": match.gen_steps,
+            "step_ulids": selected_match.step_ulids,
+            "gen_steps": selected_match.gen_steps,
             "calc_ulid": calc_ulid,
         }
-        if len(match.step_ulids) > 1:
+        if len(selected_match.step_ulids) > 1:
             parse_kwargs["evidence_steps"] = list(
-                zip(match.step_ulids, match.gen_steps, match.evidence_dirs)
+                zip(
+                    selected_match.step_ulids,
+                    selected_match.gen_steps,
+                    selected_match.evidence_dirs,
+                )
             )
 
         try:
@@ -73,18 +101,17 @@ def run_post_run_analysis(
             canonical = obj.to_primitives()
         except Exception as exc:
             warnings.warn(
-                f"Analysis capability '{capability.object_type}' failed: {exc}",
+                f"Analysis capability '{selected_capability.object_type}' failed: {exc}",
                 stacklevel=2,
             )
             continue
 
         results.append(
             {
-                "object_type": capability.object_type,
+                "object_type": selected_capability.object_type,
                 "canonical": canonical,
                 "analysis_object": obj,
             }
         )
 
     return results
-

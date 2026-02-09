@@ -7,9 +7,9 @@ band structure, DOS, and various property calculations.
 
 from quantumvitas.core.driver_registry import DriverRegistry
 from .driver import VASPDriver
+from . import parsers  # noqa: F401, E402
 
 # Register driver at import time
 DriverRegistry.register(VASPDriver())
 
 __all__ = ["VASPDriver"]
-

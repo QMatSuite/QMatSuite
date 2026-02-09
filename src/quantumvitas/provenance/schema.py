@@ -13,7 +13,7 @@ Law P4 (Append-Only Timeline): Events and runs are NEVER deleted or modified.
 
 from __future__ import annotations
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 # SQLite DDL for provenance database
 SCHEMA_DDL = """
@@ -140,6 +140,8 @@ CREATE TABLE IF NOT EXISTS analysis_snapshots (
     object_type TEXT NOT NULL,
     canonical_sha TEXT NOT NULL,
     thumbnail_sha TEXT,
+    match_key TEXT,
+    evidence_fingerprint TEXT,
     step_ulids TEXT NOT NULL,             -- JSON array of step ULIDs
     gen_steps TEXT NOT NULL,              -- JSON array of GEN step names
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -149,6 +151,8 @@ CREATE TABLE IF NOT EXISTS analysis_snapshots (
 
 CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_run ON analysis_snapshots(run_ulid);
 CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_sha ON analysis_snapshots(canonical_sha);
+CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_match_key ON analysis_snapshots(match_key);
+CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_fingerprint ON analysis_snapshots(evidence_fingerprint);
 
 --------------------------------------------------------------------------------
 -- CAS_OBJECTS TABLE: Metadata for objects in .cas/objects/
@@ -229,6 +233,8 @@ def migrate_schema(conn, from_version: int, to_version: int) -> None:
                     object_type TEXT NOT NULL,
                     canonical_sha TEXT NOT NULL,
                     thumbnail_sha TEXT,
+                    match_key TEXT,
+                    evidence_fingerprint TEXT,
                     step_ulids TEXT NOT NULL,
                     gen_steps TEXT NOT NULL,
                     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -238,9 +244,38 @@ def migrate_schema(conn, from_version: int, to_version: int) -> None:
 
                 CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_run ON analysis_snapshots(run_ulid);
                 CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_sha ON analysis_snapshots(canonical_sha);
+                CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_match_key ON analysis_snapshots(match_key);
+                CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_fingerprint ON analysis_snapshots(evidence_fingerprint);
                 """
             )
             version = 2
+            conn.execute(
+                "INSERT INTO schema_version (version) VALUES (?)",
+                (version,),
+            )
+            continue
+
+        if version == 2:
+            # v3 adds optional linkage detail columns for analysis snapshot matching.
+            existing_columns = {
+                row[1]
+                for row in conn.execute("PRAGMA table_info(analysis_snapshots)").fetchall()
+            }
+            if "match_key" not in existing_columns:
+                conn.execute("ALTER TABLE analysis_snapshots ADD COLUMN match_key TEXT")
+            if "evidence_fingerprint" not in existing_columns:
+                conn.execute(
+                    "ALTER TABLE analysis_snapshots ADD COLUMN evidence_fingerprint TEXT"
+                )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_match_key "
+                "ON analysis_snapshots(match_key)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_fingerprint "
+                "ON analysis_snapshots(evidence_fingerprint)"
+            )
+            version = 3
             conn.execute(
                 "INSERT INTO schema_version (version) VALUES (?)",
                 (version,),

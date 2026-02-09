@@ -603,7 +603,7 @@ class BandStructureData:
                 {
                     "label": pt.label,
                     "k_distance": pt.k_distance,
-                    "k_coords": pt.k_coords,
+                    "k_coords": list(pt.k_coords) if pt.k_coords is not None else None,
                 }
                 for pt in self.high_symmetry_points
             ],
@@ -1092,4 +1092,3 @@ def find_dos_files(
                 result['scf_out'] = file
     
     return result
-

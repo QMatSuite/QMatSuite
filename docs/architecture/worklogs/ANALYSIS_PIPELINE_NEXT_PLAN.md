@@ -479,3 +479,186 @@ B5 (frontend gate test) — after B3 + B4
 - [ ] Three GUI surfaces are isolated (no shared code paths)
 - [ ] Digest (Surface B) is NOT an AnalysisObject — separate path
 - [ ] Parser registration chain works for all engines with analysis providers
+
+---
+
+## Progress Log
+
+### 2026-02-08 — Step G1 (QE parser registration chain)
+- Changed paths:
+  - `src/quantumvitas/drivers/qe/parsers/__init__.py`
+  - `src/quantumvitas/drivers/qe/__init__.py`
+- Verification command:
+  - `source .venv/bin/activate && python -c "from quantumvitas.parsers.registry import get_parser; import quantumvitas.drivers.qe; p = get_parser('qe','bands'); assert p is not None, 'QE bands parser not registered'; p = get_parser('qe','trajectory'); assert p is not None, 'QE trajectory parser not registered'; print('OK: both QE parsers registered')"`
+- Result: PASS (`OK: both QE parsers registered`)
+
+### 2026-02-08 — Step G2 (all engine parser registration)
+- Changed paths:
+  - `src/quantumvitas/drivers/vasp/__init__.py`
+  - `src/quantumvitas/drivers/orca/__init__.py`
+  - `src/quantumvitas/drivers/abinit/__init__.py`
+  - `src/quantumvitas/drivers/cp2k/__init__.py`
+  - `src/quantumvitas/drivers/w90/__init__.py`
+  - parser package `__init__.py` imports for affected engines
+- Verification command:
+  - `source .venv/bin/activate && python -c "from quantumvitas.parsers.registry import get_parser; import quantumvitas.drivers; engines=['vasp','orca','abinit','cp2k','w90','qe'];\nfor e in engines:\n p=get_parser(e,'scf_digest'); assert p is not None, f'{e} scf_digest parser not registered';\nprint('OK: all engine parsers registered')"`
+- Result: PASS (`OK: all engine parsers registered`)
+
+### 2026-02-08 — Step G3 (missing high-priority gate tests)
+- Changed paths:
+  - `tests/gates/test_analysis_invariants.py`
+- Verification command:
+  - `source .venv/bin/activate && python -m pytest tests/gates/test_analysis_invariants.py -v --tb=short -n auto --dist=loadfile`
+- Result: PASS (18 passed)
+
+### 2026-02-08 — Step G4 (orchestrator integration test)
+- Changed paths:
+  - `tests/core/analysis/test_orchestrator_integration.py`
+- Verification command:
+  - `source .venv/bin/activate && python -m pytest tests/core/analysis/test_orchestrator_integration.py -v --tb=short -n auto --dist=loadfile`
+- Result: PASS
+
+### 2026-02-08 — Step G5 (spin-polarized band structure test)
+- Changed paths:
+  - `tests/core/analysis/test_band_structure.py`
+- Verification command:
+  - `source .venv/bin/activate && python -m pytest tests/core/analysis/test_band_structure.py -v --tb=short -n auto --dist=loadfile`
+- Result: PASS
+
+### 2026-02-08 — Step A1 (canonical_sha computation)
+- Changed paths:
+  - `src/quantumvitas/core/analysis/bundles.py`
+- Plan amendment (minimal):
+  - The original one-liner verification instantiated `RenderMeta()` with no args; `RenderMeta` now supports empty defaults via `field(default_factory=dict)` for `axis_labels`/`units`, preserving compatibility and determinism.
+- Verification command:
+  - `source .venv/bin/activate && python -c "from quantumvitas.core.analysis.bundles import compute_canonical_sha, CanonicalPrimitiveBundle, RenderMeta, ProvenanceMeta; import numpy as np; bundle=CanonicalPrimitiveBundle(object_type='test', render_meta=RenderMeta(), provenance_meta=ProvenanceMeta(schema_version='1.0', object_type='test', parser_name='test', parser_version='1.0'), series=[], arrays={'x': np.array([1.0, 2.0])}); sha1=compute_canonical_sha(bundle); sha2=compute_canonical_sha(bundle); assert sha1==sha2; assert len(sha1)==64; print(f'OK: canonical_sha = {sha1}')"`
+- Result: PASS
+
+### 2026-02-08 — Step A2 (eager CAS write helpers)
+- Changed paths:
+  - `src/quantumvitas/core/analysis/cas_writer.py`
+  - `tests/core/analysis/test_cas_writer.py`
+- Verification command:
+  - `source .venv/bin/activate && python -m pytest tests/core/analysis/test_cas_writer.py -v --tb=short -n auto --dist=loadfile`
+- Result: PASS
+
+### 2026-02-08 — Step A3 (end-of-run eager write wiring)
+- Changed paths:
+  - `src/quantumvitas/api/service.py`
+  - `src/quantumvitas/provenance/schema.py`
+  - `tests/api/test_analysis_eager_write.py`
+- Verification command:
+  - `source .venv/bin/activate && python -m pytest tests/api/test_analysis_eager_write.py -v --tb=short -n auto --dist=loadfile`
+- Result: PASS
+
+### 2026-02-08 — Step A4 (operational GET /analysis)
+- Changed paths:
+  - `src/quantumvitas/api/service.py`
+  - `src/quantumvitas/daemon/server.py`
+  - `tests/api/test_analysis_endpoint.py`
+- Verification command:
+  - `source .venv/bin/activate && python -m pytest tests/api/test_analysis_endpoint.py -v --tb=short -n auto --dist=loadfile`
+- Result: PASS
+
+### 2026-02-08 — Step A5 (provenance replay GET /analysis/snapshot)
+- Changed paths:
+  - `src/quantumvitas/api/service.py`
+  - `src/quantumvitas/daemon/server.py`
+  - `tests/api/test_analysis_snapshot_endpoint.py`
+- Verification command:
+  - `source .venv/bin/activate && python -m pytest tests/api/test_analysis_snapshot_endpoint.py -v --tb=short -n auto --dist=loadfile`
+- Result: PASS
+
+### 2026-02-08 — Step A6 (staleness detection)
+- Changed paths:
+  - `src/quantumvitas/core/analysis/base.py`
+  - `src/quantumvitas/api/service.py`
+  - `tests/core/analysis/test_staleness.py`
+- Verification command:
+  - `source .venv/bin/activate && python -m pytest tests/core/analysis/test_staleness.py -v --tb=short -n auto --dist=loadfile`
+- Result: PASS
+
+### 2026-02-08 — Step A7 (CAS/persistence gate tests)
+- Changed paths:
+  - `tests/gates/test_analysis_invariants.py`
+- Verification command:
+  - `source .venv/bin/activate && python -m pytest tests/gates/test_analysis_invariants.py -v --tb=short -n auto --dist=loadfile`
+- Result: PASS
+
+### 2026-02-08 — Step B1 (raw text viewer surface)
+- Changed paths:
+  - `src/quantumvitas/api/service.py`
+  - `src/quantumvitas/daemon/server.py`
+  - `gui/src/components/panels/RawFileViewer.tsx`
+  - `tests/api/test_raw_file_endpoints.py`
+- Verification command:
+  - `source .venv/bin/activate && python -m pytest tests/api/test_raw_file_endpoints.py -v --tb=short -n auto --dist=loadfile`
+- Result: PASS
+
+### 2026-02-08 — Step B2 (digest display surface)
+- Changed paths:
+  - `src/quantumvitas/api/service.py`
+  - `src/quantumvitas/daemon/server.py`
+  - `gui/src/components/panels/StepDigestPanel.tsx`
+  - `tests/api/test_digest_endpoint.py`
+- Verification command:
+  - `source .venv/bin/activate && python -m pytest tests/api/test_digest_endpoint.py -v --tb=short -n auto --dist=loadfile`
+- Result: PASS
+
+### 2026-02-08 — Step B3 (analysis visualization surface)
+- Changed paths:
+  - `gui/src/components/panels/CalculationAnalysisPanel.tsx`
+  - `gui/src/components/panels/CalculationAnalysisPanel.css`
+  - `gui/src/components/panels/AnalysisVizPanel.tsx`
+  - `gui/src/types/qv.ts`
+- Verification commands:
+  - `cd gui && npx tsc --noEmit`
+  - `cd gui && npm run build`
+  - `cd gui && npm run build:e2e`
+- Result: PASS
+
+### 2026-02-08 — Step B4 (remove legacy GUI analysis types / keep new primitive path)
+- Changed paths:
+  - `gui/src/components/panels/AnalysisPanel.tsx` (deleted)
+  - `gui/src/components/panels/AnalysisPanel.css` (deleted)
+  - `gui/src/components/panels/index.ts`
+  - `gui/src/types/qv.ts`
+  - `src/quantumvitas/api/service.py` (legacy artifact-ensure call sites removed)
+  - `src/quantumvitas/analysis/artifacts.py` (deprecated marker)
+  - `src/quantumvitas/analysis/dos.py` (deprecated marker)
+- Verification commands:
+  - `rg -n 'BandStructureData|DosData|ScfConvergenceData' gui/src/`
+  - `source .venv/bin/activate && python -m pytest tests/unit/test_api_get_band_structure_data.py -v --tb=short -n auto --dist=loadfile`
+- Result: PASS (no GUI legacy type matches; compatibility unit tests pass)
+
+### 2026-02-08 — Step B5 (frontend gate test)
+- Changed paths:
+  - `tests/gates/test_analysis_invariants.py`
+- Verification command:
+  - `source .venv/bin/activate && python -m pytest tests/gates/test_analysis_invariants.py::test_frontend_no_kernel_import -v --tb=short -n auto --dist=loadfile`
+- Result: PASS
+
+### 2026-02-09 — Post-plan contract alignment fixes (legacy schema/behavior parity)
+- Changed paths:
+  - `src/quantumvitas/analysis/parsers.py`
+  - `src/quantumvitas/api/service.py`
+  - `tests/contract_crawler/introspection.py`
+  - `tests/contract_crawler/test_coverage.py`
+- What changed:
+  - Restored JSON-compatible `k_coords` list serialization in bands output.
+  - Restored expected `ensure_analysis` contract behavior for SCF default selector and string `artifact_path`.
+  - Restored explicit-invalid-run pin behavior to raise `PinError` without fallback inference.
+  - Restored legacy not-found reason string for `get_latest_run_for_step`.
+  - Classified new analysis RPC methods under the `analysis` contract-crawler category and added explicit coverage exemptions with rationale.
+- Verification commands:
+  - `source .venv/bin/activate && python -m pytest tests/contract_crawler/test_introspection.py tests/contract_crawler/test_coverage.py tests/contract_crawler/test_golden_contracts.py tests/contract_crawler/test_schema_preservation.py -v --tb=short -n auto --dist=loadfile`
+  - `source .venv/bin/activate && python -m pytest tests/contract_crawler/test_schema_preservation.py tests/contract_crawler/test_golden_contracts.py -k ensure_calculation_analysis -v --tb=short -n auto --dist=loadfile`
+- Result: PASS
+
+### 2026-02-09 — Final verification (full backend + GUI e2e build)
+- Verification commands:
+  - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+  - `cd gui && npm run build:e2e`
+- Result:
+  - Backend suite: PASS (`4636 passed, 19 skipped`)
+  - GUI e2e build: PASS

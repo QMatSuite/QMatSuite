@@ -42,6 +42,465 @@ class QVService:
         # Stub: minimal validation
         if not (self.project_root / "project.qv.yml").exists():
             raise ValueError(f"Not a project: {self.project_root}")
+        self._analysis_cas_dir = self.project_root / ".provenance" / ".cas" / "analysis"
+        self._analysis_memo_by_sha: dict[str, object] = {}
+        self._analysis_index: dict[tuple[str, str], dict[str, object]] = {}
+
+    def _safe_step_type_gen(self, step_type_spec: str) -> str:
+        """Convert SPEC step type to GEN with robust fallback."""
+        from quantumvitas.api import get_step_type_gen
+        from quantumvitas.workflow.step_type_convert import gen_from
+
+        try:
+            return get_step_type_gen(step_type_spec)
+        except Exception:
+            return gen_from(step_type_spec)
+
+    def _get_analysis_db_path(self) -> Path:
+        from quantumvitas.provenance.db import ensure_provenance_initialized, get_db_path
+
+        ensure_provenance_initialized(self.project_root)
+        return get_db_path(self.project_root)
+
+    def _compute_evidence_fingerprint(
+        self,
+        object_type: str,
+        step_ulids: list[str],
+        gen_steps: list[str],
+        source_files: list[object],
+    ) -> str:
+        import hashlib
+        import json
+
+        normalized_source_files: list[dict] = []
+        for source_file in source_files:
+            if hasattr(source_file, "to_dict"):
+                normalized_source_files.append(source_file.to_dict())
+            elif isinstance(source_file, dict):
+                normalized_source_files.append(
+                    {
+                        "path": source_file.get("path"),
+                        "size_bytes": source_file.get("size_bytes"),
+                        "mtime": source_file.get("mtime"),
+                    }
+                )
+
+        normalized_source_files.sort(key=lambda row: str(row.get("path", "")))
+        payload = {
+            "object_type": object_type,
+            "step_ulids": list(step_ulids),
+            "gen_steps": list(gen_steps),
+            "source_files": normalized_source_files,
+        }
+        blob = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        return hashlib.sha256(blob).hexdigest()
+
+    def _memoize_canonical_bundle(
+        self,
+        *,
+        run_ulid: str,
+        object_type: str,
+        canonical_sha: str,
+        canonical: object,
+        calc_dir: Path,
+        evidence_fingerprint: str,
+    ) -> None:
+        self._analysis_memo_by_sha[canonical_sha] = canonical
+        self._analysis_index[(run_ulid, object_type.lower())] = {
+            "canonical_sha": canonical_sha,
+            "calc_dir": str(calc_dir),
+            "evidence_fingerprint": evidence_fingerprint,
+        }
+
+    def _get_memoized_canonical_bundle(
+        self,
+        run_ulid: str,
+        object_type: str,
+    ) -> object | None:
+        from quantumvitas.core.analysis.base import AnalysisObjectMeta, check_staleness
+
+        index_entry = self._analysis_index.get((run_ulid, object_type.lower()))
+        if not index_entry:
+            return None
+
+        canonical_sha = str(index_entry.get("canonical_sha", ""))
+        bundle = self._analysis_memo_by_sha.get(canonical_sha)
+        if bundle is None or not hasattr(bundle, "provenance_meta"):
+            return None
+
+        provenance_meta = bundle.provenance_meta
+        meta = AnalysisObjectMeta(
+            schema_version=provenance_meta.schema_version,
+            object_type=provenance_meta.object_type,
+            created_at="",
+            source_files=list(provenance_meta.source_files),
+            run_ulid=provenance_meta.run_ulid,
+            calc_ulid=provenance_meta.calc_ulid,
+            step_ulids=list(provenance_meta.step_ulids),
+            gen_steps=list(provenance_meta.gen_steps),
+            engine_name=provenance_meta.engine_name,
+            parser_name=provenance_meta.parser_name,
+            parser_version=provenance_meta.parser_version,
+            warnings=list(provenance_meta.warnings),
+            manifest_snapshot=provenance_meta.manifest_snapshot,
+        )
+        calc_dir = Path(str(index_entry.get("calc_dir", "")))
+        if check_staleness(meta, calc_dir=calc_dir):
+            self._analysis_index.pop((run_ulid, object_type.lower()), None)
+            return None
+        return bundle
+
+    def _persist_step_digest_rows(self, calculation: object, run_result: object) -> None:
+        import json
+        import logging
+        from pathlib import Path as _Path
+
+        from quantumvitas.parsers.registry import get_parser
+        from quantumvitas.provenance import CAS, record_run_step
+        from quantumvitas.workflow.step_type_convert import prefix_from
+
+        logger = logging.getLogger(__name__)
+        run_ulid = getattr(run_result, "run_ulid", None)
+        if not run_ulid:
+            return
+
+        cas = CAS(self.project_root)
+        for step_index, summary in enumerate(getattr(run_result, "steps", [])):
+            status = getattr(summary, "status", None)
+            status_value = status.value if hasattr(status, "value") else str(status or "pending")
+
+            digest_sha = None
+            try:
+                step_type_spec = getattr(summary, "step_type_spec", "") or ""
+                step_engine = getattr(calculation, "engine_family", "") or ""
+                if step_type_spec and "_" in step_type_spec:
+                    step_engine = prefix_from(step_type_spec)
+
+                parser_cls = get_parser(step_engine, "scf_digest") if step_engine else None
+                if parser_cls is not None:
+                    parser = parser_cls()
+                    raw_dir = _Path(getattr(summary, "working_dir"))
+                    if not hasattr(parser, "can_parse") or parser.can_parse(raw_dir):
+                        digest_obj = parser.parse(raw_dir)
+                        if hasattr(digest_obj, "to_dict"):
+                            digest_payload = digest_obj.to_dict()
+                        elif isinstance(digest_obj, dict):
+                            digest_payload = digest_obj
+                        else:
+                            digest_payload = {"value": str(digest_obj)}
+
+                        payload = {
+                            "engine": step_engine,
+                            "step_ulid": getattr(summary, "step_ulid", ""),
+                            "digest": digest_payload,
+                        }
+                        digest_blob = json.dumps(
+                            payload,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ).encode("utf-8")
+                        digest_sha = cas.store(digest_blob, tier=1)
+            except Exception as exc:
+                logger.warning("Step digest parsing failed (non-fatal): %s", exc)
+
+            record_run_step(
+                project_root=self.project_root,
+                run_ulid=run_ulid,
+                step_ulid=getattr(summary, "step_ulid", ""),
+                step_index=step_index,
+                status=status_value,
+                digest_sha=digest_sha,
+            )
+
+    def _build_ordered_gen_steps_for_result(self, run_result: object) -> list[tuple[str, str, Path]]:
+        ordered_steps: list[tuple[str, str, Path]] = []
+        for summary in getattr(run_result, "steps", []):
+            status = getattr(summary, "status", None)
+            status_value = status.value if hasattr(status, "value") else str(status or "")
+            if status_value not in {"success", "skipped"}:
+                continue
+            step_ulid = getattr(summary, "step_ulid", "")
+            step_type_spec = getattr(summary, "step_type_spec", "") or ""
+            if not step_ulid or not step_type_spec:
+                continue
+            gen_step = self._safe_step_type_gen(step_type_spec)
+            raw_dir = Path(getattr(summary, "working_dir"))
+            ordered_steps.append((step_ulid, gen_step, raw_dir))
+        return ordered_steps
+
+    def _persist_eager_analysis_snapshots(self, calculation: object, run_result: object) -> None:
+        import logging
+
+        import quantumvitas.drivers  # noqa: F401 - ensure driver registration
+        from quantumvitas.core.analysis.cas_writer import (
+            write_analysis_snapshot_row,
+            write_canonical_to_cas,
+        )
+        from quantumvitas.core.analysis.orchestrator import run_post_run_analysis
+        from quantumvitas.core.driver_registry import DriverRegistry
+
+        logger = logging.getLogger(__name__)
+        run_ulid = getattr(run_result, "run_ulid", None)
+        if not run_ulid:
+            return
+
+        ordered_gen_steps = self._build_ordered_gen_steps_for_result(run_result)
+        if not ordered_gen_steps:
+            return
+
+        engine = getattr(calculation, "engine_family", "") or ""
+        if not engine:
+            first_step_spec = ""
+            run_steps = list(getattr(run_result, "steps", []))
+            if run_steps:
+                first_step_spec = getattr(run_steps[0], "step_type_spec", "") or ""
+            if first_step_spec and "_" in first_step_spec:
+                from quantumvitas.workflow.step_type_convert import prefix_from
+
+                engine = prefix_from(first_step_spec)
+        if not engine:
+            return
+
+        driver = DriverRegistry.get_driver(engine)
+        calc_ulid = getattr(calculation, "ulid", None)
+        calc_dir = Path(getattr(calculation, "dir"))
+
+        results = run_post_run_analysis(
+            engine=engine,
+            driver=driver,
+            ordered_gen_steps=ordered_gen_steps,
+            run_ulid=run_ulid,
+            calc_ulid=calc_ulid,
+            calc_dir=calc_dir,
+        )
+
+        db_path = self._get_analysis_db_path()
+        for row in results:
+            canonical = row["canonical"]
+            object_type = str(row["object_type"])
+            try:
+                canonical_sha = write_canonical_to_cas(canonical, self._analysis_cas_dir)
+                provenance = canonical.provenance_meta
+                match_key = f"{object_type}:{','.join(provenance.step_ulids)}"
+                evidence_fingerprint = self._compute_evidence_fingerprint(
+                    object_type=object_type,
+                    step_ulids=list(provenance.step_ulids),
+                    gen_steps=list(provenance.gen_steps),
+                    source_files=list(provenance.source_files),
+                )
+                write_analysis_snapshot_row(
+                    db_path=db_path,
+                    run_ulid=run_ulid,
+                    object_type=object_type,
+                    canonical_sha=canonical_sha,
+                    step_ulids=list(provenance.step_ulids),
+                    gen_steps=list(provenance.gen_steps),
+                    match_key=match_key,
+                    evidence_fingerprint=evidence_fingerprint,
+                )
+                self._memoize_canonical_bundle(
+                    run_ulid=run_ulid,
+                    object_type=object_type,
+                    canonical_sha=canonical_sha,
+                    canonical=canonical,
+                    calc_dir=calc_dir,
+                    evidence_fingerprint=evidence_fingerprint,
+                )
+            except Exception as exc:
+                logger.warning("Analysis snapshot persistence failed (non-fatal): %s", exc)
+
+    def _finalize_run_analysis_pipeline(self, calculation: object, run_result: object) -> None:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        try:
+            self._persist_step_digest_rows(calculation, run_result)
+        except Exception as exc:
+            logger.warning("Digest persistence failed (non-fatal): %s", exc)
+
+        status = getattr(run_result, "status", None)
+        status_value = status.value if hasattr(status, "value") else str(status or "")
+        if status_value != "success":
+            return
+
+        try:
+            self._persist_eager_analysis_snapshots(calculation, run_result)
+        except Exception as exc:
+            logger.warning("Eager analysis persistence failed (non-fatal): %s", exc)
+
+    def _resolve_run_analysis_context(
+        self, run_ulid: str
+    ) -> tuple[str, Path, str, object, list[tuple[str, str, Path]]]:
+        from quantumvitas.provenance import get_run_details
+        from quantumvitas.core.models import load_calculation
+        from quantumvitas.core.project_utils import load_project_config
+        from quantumvitas.core.resolution import make_structure_selector_resolver, require_calculation
+        from quantumvitas.core.driver_registry import DriverRegistry
+        from quantumvitas.calculation.naming import find_calculation_raw_dir
+
+        run_details = get_run_details(self.project_root, run_ulid)
+        if not run_details:
+            from quantumvitas.api.errors import NotFoundError
+
+            raise NotFoundError(f"Run not found: {run_ulid}")
+
+        calc_ulid = run_details.get("calc_ulid")
+        calc_resolved = require_calculation(self.project_root, calc_ulid)
+        calc_dir = calc_resolved.absolute_path
+        if calc_dir.name == "calculation.yaml":
+            calc_dir = calc_dir.parent
+
+        config = load_project_config(self.project_root)
+        resolver = make_structure_selector_resolver(self.project_root, config=config)
+        calc_model = load_calculation(
+            calc_dir / "calculation.yaml",
+            project_root=self.project_root,
+            resolve_structure_selector=resolver,
+        )
+
+        engine = getattr(calc_model, "engine_family", "") or run_details.get("engine", "")
+        if not engine and calc_model.steps:
+            first_spec = calc_model.steps[0].step_type_spec or ""
+            if "_" in first_spec:
+                from quantumvitas.workflow.step_type_convert import prefix_from
+
+                engine = prefix_from(first_spec)
+        if not engine:
+            from quantumvitas.api.errors import ValidationError
+
+            raise ValidationError(f"Cannot resolve engine for run {run_ulid}")
+
+        driver = DriverRegistry.get_driver(engine)
+        step_type_by_ulid = {
+            entry.step_ulid: (entry.step_type_spec or "")
+            for entry in calc_model.steps
+        }
+        raw_dir = find_calculation_raw_dir(calc_dir, getattr(calc_model, "working_dir", None))
+
+        ordered_gen_steps: list[tuple[str, str, Path]] = []
+        for step_ulid in run_details.get("step_ulids", []):
+            step_type_spec = step_type_by_ulid.get(step_ulid, "")
+            if not step_type_spec:
+                continue
+            gen_step = self._safe_step_type_gen(step_type_spec)
+            ordered_gen_steps.append((step_ulid, gen_step, raw_dir))
+
+        return str(calc_ulid), calc_dir, engine, driver, ordered_gen_steps
+
+    def _derive_canonical_for_run_object(self, run_ulid: str, object_type: str) -> object:
+        from quantumvitas.core.analysis.bundles import compute_canonical_sha
+        from quantumvitas.core.analysis.cas_writer import (
+            write_analysis_snapshot_row,
+            write_canonical_to_cas,
+        )
+        from quantumvitas.core.analysis.orchestrator import run_post_run_analysis
+
+        calc_ulid, calc_dir, engine, driver, ordered_gen_steps = self._resolve_run_analysis_context(
+            run_ulid
+        )
+        if not ordered_gen_steps:
+            from quantumvitas.api.errors import NotFoundError
+
+            raise NotFoundError(f"No run steps available for run {run_ulid}")
+
+        memoized = self._get_memoized_canonical_bundle(run_ulid, object_type)
+        if memoized is not None:
+            return memoized
+
+        results = run_post_run_analysis(
+            engine=engine,
+            driver=driver,
+            ordered_gen_steps=ordered_gen_steps,
+            run_ulid=run_ulid,
+            calc_ulid=calc_ulid,
+            calc_dir=calc_dir,
+        )
+
+        selected = None
+        for row in results:
+            if str(row.get("object_type", "")).lower() == object_type.lower():
+                selected = row
+                break
+        if selected is None:
+            from quantumvitas.api.errors import NotFoundError
+
+            raise NotFoundError(
+                f"Analysis object '{object_type}' not available for run {run_ulid}"
+            )
+
+        canonical = selected["canonical"]
+        canonical_sha = compute_canonical_sha(canonical)
+        provenance = canonical.provenance_meta
+        match_key = f"{object_type}:{','.join(provenance.step_ulids)}"
+        evidence_fingerprint = self._compute_evidence_fingerprint(
+            object_type=object_type,
+            step_ulids=list(provenance.step_ulids),
+            gen_steps=list(provenance.gen_steps),
+            source_files=list(provenance.source_files),
+        )
+
+        # Operational path derives from raw evidence for correctness; persistence is
+        # best-effort side effect for replay/audit linkage.
+        write_canonical_to_cas(canonical, self._analysis_cas_dir)
+        write_analysis_snapshot_row(
+            db_path=self._get_analysis_db_path(),
+            run_ulid=run_ulid,
+            object_type=object_type,
+            canonical_sha=canonical_sha,
+            step_ulids=list(provenance.step_ulids),
+            gen_steps=list(provenance.gen_steps),
+            match_key=match_key,
+            evidence_fingerprint=evidence_fingerprint,
+        )
+        self._memoize_canonical_bundle(
+            run_ulid=run_ulid,
+            object_type=object_type,
+            canonical_sha=canonical_sha,
+            canonical=canonical,
+            calc_dir=calc_dir,
+            evidence_fingerprint=evidence_fingerprint,
+        )
+        return canonical
+
+    def _load_snapshot_bundle(self, run_ulid: str, object_type: str) -> tuple[str, object]:
+        import gzip
+        import json
+        import sqlite3
+
+        from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle
+
+        conn = sqlite3.connect(str(self._get_analysis_db_path()))
+        try:
+            row = conn.execute(
+                """
+                SELECT canonical_sha
+                FROM analysis_snapshots
+                WHERE run_ulid = ? AND object_type = ?
+                """,
+                (run_ulid, object_type),
+            ).fetchone()
+        finally:
+            conn.close()
+
+        if row is None:
+            from quantumvitas.api.errors import NotFoundError
+
+            raise NotFoundError(
+                f"No snapshot found for run={run_ulid}, object_type={object_type}"
+            )
+
+        canonical_sha = row[0]
+        blob_path = self._analysis_cas_dir / f"{canonical_sha}.json.gz"
+        if not blob_path.exists():
+            from quantumvitas.api.errors import NotFoundError
+
+            raise NotFoundError(
+                f"Snapshot blob missing for sha={canonical_sha} (run={run_ulid}, object_type={object_type})"
+            )
+
+        with gzip.open(blob_path, "rb") as handle:
+            payload = json.loads(handle.read().decode("utf-8"))
+        return canonical_sha, CanonicalPrimitiveBundle.from_dict(payload)
     
     # Analysis domain (PR3)
     class Analysis:
@@ -676,7 +1135,12 @@ class QVService:
                 Dict with band energies, k-distances, high-symmetry points, and Fermi energy
             """
             try:
-                from quantumvitas.analysis.artifacts import read_artifact, ensure_analysis_artifact, AnalysisType
+                from quantumvitas.analysis.artifacts import AnalysisType, read_artifact
+                from quantumvitas.analysis.parsers import (
+                    find_bands_files,
+                    parse_bands_gnu,
+                    parse_scf_output,
+                )
                 from quantumvitas.calculation.naming import find_calculation_raw_dir
                 from quantumvitas.core.resolution import require_calculation
                 import logging
@@ -693,7 +1157,7 @@ class QVService:
                         f"The calculation may not have been run yet."
                     )
 
-                # Try to load from artifact first
+                # Legacy compatibility: if artifact exists, reuse it.
                 cached = read_artifact(calculation_dir, AnalysisType.BANDS)
                 should_reparse = False
                 if cached and step_selector:
@@ -717,43 +1181,40 @@ class QVService:
                         "units": cached.get("units", {"energy": "eV", "k_distance": "2π/a"}),
                     }
 
-                # No artifact or need to re-parse - parse and create one
-                status = ensure_analysis_artifact(
-                    analysis_type=AnalysisType.BANDS,
-                    calculation_dir=calculation_dir,
-                    raw_dir=raw_dir,
-                    step_selector=step_selector,
-                    force=should_reparse,
-                )
+                files = find_bands_files(raw_dir)
+                bands_gnu = files.get("bands_gnu")
+                if bands_gnu is None:
+                    from quantumvitas.api.errors import EngineError
 
-                if not status.ok:
-                    logger = logging.getLogger(__name__)
-                    error_msg = status.error or "Failed to parse band structure data"
-                    logger.error(
-                        f"[GET_BAND_STRUCTURE_DATA] ensure_analysis_artifact failed: "
-                        f"step_selector={step_selector}, calculation={calculation_selector}, "
-                        f"error={error_msg}"
+                    raise EngineError(
+                        f"Band structure data file not found in {raw_dir} (.dat.gnu)"
                     )
-                    from quantumvitas.api.errors import EngineError
-                    raise EngineError(error_msg)
 
-                # Now read the freshly created artifact
-                cached = read_artifact(calculation_dir, AnalysisType.BANDS)
-                if not cached:
-                    from quantumvitas.api.errors import EngineError
-                    raise EngineError("Failed to read bands artifact after creation")
+                fermi_energy = None
+                scf_file = files.get("nscf_out") or files.get("scf_out")
+                if scf_file is not None:
+                    try:
+                        fermi_energy = parse_scf_output(scf_file).fermi_energy
+                    except Exception:
+                        fermi_energy = None
 
+                bands_data = parse_bands_gnu(
+                    bands_gnu,
+                    symmetry_file=files.get("bands_out"),
+                    fermi_energy=fermi_energy,
+                )
+                data = bands_data.to_dict()
                 return {
                     "calculation": calculation_selector,
                     "step": step_selector,
-                    "data_file": cached.get("source_file", ""),
-                    "n_bands": cached.get("n_bands", 0),
-                    "n_kpoints": cached.get("n_kpoints", 0),
-                    "fermi_energy_ev": cached.get("fermi_energy_ev"),
-                    "k_distances": cached.get("k_distances", []),
-                    "energies_ev": cached.get("energies_ev", []),
-                    "high_symmetry_points": cached.get("high_symmetry_points", []),
-                    "units": cached.get("units", {"energy": "eV", "k_distance": "2π/a"}),
+                    "data_file": str(bands_gnu),
+                    "n_bands": data.get("n_bands", 0),
+                    "n_kpoints": data.get("n_kpoints", 0),
+                    "fermi_energy_ev": data.get("fermi_energy_ev"),
+                    "k_distances": data.get("k_distances", []),
+                    "energies_ev": data.get("energies_ev", []),
+                    "high_symmetry_points": data.get("high_symmetry_points", []),
+                    "units": data.get("units", {"energy": "eV", "k_distance": "2π/a"}),
                 }
             except Exception as e:
                 if isinstance(e, APIError):
@@ -776,7 +1237,8 @@ class QVService:
                 Dict with SCF convergence data (iterations, energies, etc.)
             """
             try:
-                from quantumvitas.analysis.artifacts import read_artifact, ensure_analysis_artifact, AnalysisType
+                from quantumvitas.analysis.artifacts import AnalysisType, read_artifact
+                from quantumvitas.analysis.parsers import parse_scf_output
                 from quantumvitas.calculation.naming import find_calculation_raw_dir
                 from quantumvitas.core.resolution import require_calculation
 
@@ -811,39 +1273,38 @@ class QVService:
                         "units": cached.get("units", {"energy": "Ry", "fermi": "eV"}),
                     }
 
-                # No artifact - parse and create one
-                status = ensure_analysis_artifact(
-                    analysis_type=AnalysisType.SCF,
-                    calculation_dir=calculation_dir,
-                    raw_dir=raw_dir,
-                    step_selector=step_selector,
-                    force=False,
+                output_candidates = [
+                    path
+                    for path in raw_dir.iterdir()
+                    if path.is_file() and path.suffix.lower() == ".out"
+                ]
+                if not output_candidates:
+                    from quantumvitas.api.errors import EngineError
+
+                    raise EngineError(f"No QE output (*.out) files found in {raw_dir}")
+
+                output_candidates.sort(
+                    key=lambda path: (
+                        0 if "scf" in path.name.lower() else 1,
+                        path.name.lower(),
+                    )
                 )
-
-                if not status.ok:
-                    from quantumvitas.api.errors import EngineError
-                    raise EngineError(status.error or "Failed to parse SCF output")
-
-                # Now read the freshly created artifact
-                cached = read_artifact(calculation_dir, AnalysisType.SCF)
-                if not cached:
-                    from quantumvitas.api.errors import EngineError
-                    raise EngineError("Failed to read SCF artifact after creation")
+                scf_result = parse_scf_output(output_candidates[0]).to_dict()
 
                 return {
                     "calculation": calculation_selector,
                     "step": step_selector,
-                    "output_file": cached.get("source_file", ""),
-                    "converged": cached.get("converged", False),
-                    "n_iterations": len(cached.get("iterations", [])),
-                    "total_energy_ry": cached.get("total_energy_ry"),
-                    "fermi_energy_ev": cached.get("fermi_energy_ev"),
-                    "iterations": cached.get("iterations", []),
-                    "calculation_type": cached.get("calculation_type"),
-                    "n_electrons": cached.get("n_electrons"),
-                    "n_kpoints": cached.get("n_kpoints"),
-                    "ecutwfc_ry": cached.get("ecutwfc_ry"),
-                    "units": cached.get("units", {"energy": "Ry", "fermi": "eV"}),
+                    "output_file": scf_result.get("source_file", str(output_candidates[0])),
+                    "converged": scf_result.get("converged", False),
+                    "n_iterations": len(scf_result.get("iterations", [])),
+                    "total_energy_ry": scf_result.get("total_energy_ry"),
+                    "fermi_energy_ev": scf_result.get("fermi_energy_ev"),
+                    "iterations": scf_result.get("iterations", []),
+                    "calculation_type": scf_result.get("calculation_type"),
+                    "n_electrons": scf_result.get("n_electrons"),
+                    "n_kpoints": scf_result.get("n_kpoints"),
+                    "ecutwfc_ry": scf_result.get("ecutwfc_ry"),
+                    "units": scf_result.get("units", {"energy": "Ry", "fermi": "eV"}),
                 }
             except Exception as e:
                 if isinstance(e, APIError):
@@ -1218,6 +1679,190 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
+        def list_raw_files(
+            self,
+            calculation_selector: str,
+            step_selector: str,
+        ) -> dict:
+            """
+            Surface A wrapper: list raw text artifacts for a step.
+            """
+            from quantumvitas.calculation.naming import find_calculation_raw_dir
+            from quantumvitas.core.resolution import require_calculation, require_step
+
+            calculation = require_calculation(self._service.project_root, calculation_selector)
+            require_step(self._service.project_root, calculation_selector, step_selector)
+
+            if calculation.absolute_path.name == "calculation.yaml":
+                calculation_dir = calculation.absolute_path.parent
+            else:
+                calculation_dir = calculation.absolute_path
+
+            raw_dir = find_calculation_raw_dir(calculation_dir)
+            if not raw_dir.exists():
+                from quantumvitas.api.errors import NotFoundError
+
+                raise NotFoundError(f"Raw directory not found: {raw_dir}")
+
+            entries: list[dict] = []
+            for file_path in sorted(raw_dir.rglob("*")):
+                if not file_path.is_file():
+                    continue
+                try:
+                    # Avoid binary blobs in text viewer lists.
+                    with file_path.open("rb") as handle:
+                        head = handle.read(2048)
+                    if b"\x00" in head:
+                        continue
+                except OSError:
+                    continue
+
+                stat = file_path.stat()
+                rel = str(file_path.relative_to(raw_dir))
+                suffix = file_path.suffix.lstrip(".").lower() or "file"
+                name_lower = file_path.name.lower()
+                rank = 3
+                if name_lower.endswith((".out", ".stdout", ".log")):
+                    rank = 0
+                elif ".out" in name_lower:
+                    rank = 1
+                elif name_lower.endswith((".txt", ".gnu", ".dat")):
+                    rank = 2
+                entries.append(
+                    {
+                        "path_relative_to_raw": rel,
+                        "kind": suffix,
+                        "size_bytes": int(stat.st_size),
+                        "mtime": float(stat.st_mtime),
+                        "_rank": rank,
+                    }
+                )
+
+            entries.sort(key=lambda row: (row["_rank"], -row["mtime"], row["path_relative_to_raw"]))
+            artifacts = []
+            for idx, row in enumerate(entries):
+                artifacts.append(
+                    {
+                        "path_relative_to_raw": row["path_relative_to_raw"],
+                        "kind": row["kind"],
+                        "size_bytes": row["size_bytes"],
+                        "mtime": row["mtime"],
+                        "is_default_candidate": idx == 0,
+                    }
+                )
+
+            return {
+                "raw_dir": str(raw_dir.relative_to(self._service.project_root)),
+                "files": [artifact["path_relative_to_raw"] for artifact in artifacts],
+                "artifacts": artifacts,
+            }
+
+        def read_raw_file(
+            self,
+            calculation_selector: str,
+            step_selector: str,
+            filename: str,
+            *,
+            head_lines: int | None = 1000,
+            tail_lines: int | None = 100,
+        ) -> dict:
+            """
+            Surface A wrapper: read one raw text artifact for a step.
+            """
+            return self.read_step_artifact_text(
+                calculation_selector=calculation_selector,
+                step_selector=step_selector,
+                artifact_path=filename,
+                head_lines=head_lines,
+                tail_lines=tail_lines,
+            )
+
+        def get_step_digest(self, run_ulid: str, step_ulid: str) -> dict:
+            """
+            Surface B: return post-run digest payload for one step.
+            """
+            import json
+            import sqlite3
+
+            from quantumvitas.provenance import CAS
+
+            conn = sqlite3.connect(str(self._service._get_analysis_db_path()))
+            try:
+                row = conn.execute(
+                    """
+                    SELECT digest_sha
+                    FROM run_steps
+                    WHERE run_ulid = ? AND step_ulid = ?
+                    """,
+                    (run_ulid, step_ulid),
+                ).fetchone()
+            finally:
+                conn.close()
+
+            if row is None:
+                from quantumvitas.api.errors import NotFoundError
+
+                raise NotFoundError(
+                    f"Run step not found for digest lookup: run={run_ulid}, step={step_ulid}"
+                )
+
+            digest_sha = row[0]
+            if not digest_sha:
+                return {"available": False, "digest_sha": None, "digest": None}
+
+            cas = CAS(self._service.project_root)
+            payload = json.loads(cas.retrieve(digest_sha).decode("utf-8"))
+            digest = payload.get("digest", payload)
+            return {
+                "available": True,
+                "digest_sha": digest_sha,
+                "engine": payload.get("engine"),
+                "digest": digest,
+            }
+
+        def get_analysis(
+            self,
+            run_ulid: str,
+            object_type: str,
+            transforms: list[str] | None = None,
+        ) -> dict:
+            """
+            Surface C operational path: derive from present raw evidence.
+            """
+            from quantumvitas.api.errors import ValidationError
+            from quantumvitas.core.analysis.bundles import compute_canonical_sha
+            from quantumvitas.core.analysis.transforms.fermi_shift import FermiShift
+
+            canonical = self._service._derive_canonical_for_run_object(run_ulid, object_type)
+            canonical_sha = compute_canonical_sha(canonical)
+
+            bundle = canonical
+            for transform_name in transforms or []:
+                normalized = transform_name.strip().lower()
+                if normalized in {"fermishift", "fermi_shift", "fermi-shift"}:
+                    bundle = FermiShift().apply(bundle)
+                    continue
+                raise ValidationError(f"Unknown transform: {transform_name}")
+
+            return {
+                "run_ulid": run_ulid,
+                "object_type": object_type,
+                "canonical_sha": canonical_sha,
+                "bundle": bundle.to_dict(),
+            }
+
+        def get_analysis_snapshot(self, run_ulid: str, object_type: str) -> dict:
+            """
+            Explicit replay endpoint: reads SQLite linkage + CAS blob.
+            """
+            canonical_sha, bundle = self._service._load_snapshot_bundle(run_ulid, object_type)
+            return {
+                "run_ulid": run_ulid,
+                "object_type": object_type,
+                "canonical_sha": canonical_sha,
+                "bundle": bundle.to_dict(),
+            }
+
         def ensure_analysis(
             self,
             calculation_selector: str,
@@ -1241,41 +1886,56 @@ class QVService:
                 Dict with ok, analysis_type, artifact_path, parsed_fresh, error, summary
             """
             try:
-                from quantumvitas.analysis.artifacts import ensure_analysis_artifact
-                from quantumvitas.calculation.naming import find_calculation_raw_dir
-                from quantumvitas.core.resolution import require_calculation
-
-                project_root = self._service.project_root
-                calculation = require_calculation(project_root, calculation_selector)
-                calculation_dir = calculation.absolute_path
-                raw_dir = find_calculation_raw_dir(calculation_dir)
-
-                if not raw_dir.exists():
-                    return {
-                        "ok": False,
-                        "analysis_type": analysis_type,
-                        "artifact_path": None,
-                        "parsed_fresh": False,
-                        "error": f"Calculation raw directory not found: {raw_dir}. The calculation may not have been run yet.",
-                        "summary": None,
+                artifact_path: str | None = None
+                normalized = analysis_type.lower()
+                if normalized == "bands":
+                    payload = self.get_band_structure_data(
+                        calculation_selector=calculation_selector,
+                        step_selector=step_selector,
+                    )
+                    artifact_path = payload.get("data_file")
+                    summary = {
+                        "n_bands": payload.get("n_bands"),
+                        "n_kpoints": payload.get("n_kpoints"),
+                        "fermi_energy_ev": payload.get("fermi_energy_ev"),
                     }
+                elif normalized == "dos":
+                    payload = self.get_dos_data(
+                        calculation_selector=calculation_selector,
+                        step_selector=step_selector,
+                    )
+                    artifact_path = payload.get("data_file")
+                    summary = {
+                        "n_points": payload.get("n_points"),
+                        "energy_range_ev": payload.get("energy_range_ev"),
+                        "fermi_energy_ev": payload.get("fermi_energy_ev"),
+                    }
+                elif normalized == "scf":
+                    # Keep legacy behavior: SCF analysis can run without an explicit step.
+                    scf_step_selector = step_selector or ""
+                    payload = self.get_scf_convergence_data(
+                        calculation_selector=calculation_selector,
+                        step_selector=scf_step_selector,
+                    )
+                    artifact_path = payload.get("output_file")
+                    summary = {
+                        "converged": payload.get("converged"),
+                        "n_iterations": payload.get("n_iterations"),
+                        "total_energy_ry": payload.get("total_energy_ry"),
+                        "fermi_energy_ev": payload.get("fermi_energy_ev"),
+                    }
+                else:
+                    from quantumvitas.api.errors import ValidationError
 
-                # Delegate to the artifacts module
-                status = ensure_analysis_artifact(
-                    analysis_type=analysis_type,
-                    calculation_dir=calculation_dir,
-                    raw_dir=raw_dir,
-                    step_selector=step_selector,
-                    force=force,
-                )
+                    raise ValidationError(f"Unsupported analysis type: {analysis_type}")
 
                 return {
-                    "ok": status.ok,
-                    "analysis_type": analysis_type,
-                    "artifact_path": str(status.artifact_path) if status.artifact_path else None,
-                    "parsed_fresh": status.parsed_fresh,
-                    "error": status.error,
-                    "summary": status.summary,
+                    "ok": True,
+                    "analysis_type": normalized,
+                    "artifact_path": artifact_path if isinstance(artifact_path, str) else "",
+                    "parsed_fresh": True,
+                    "error": None,
+                    "summary": summary,
                 }
             except Exception as e:
                 if isinstance(e, APIError):
@@ -1301,7 +1961,13 @@ class QVService:
                 Dict with DOS data arrays and Fermi energy
             """
             try:
-                from quantumvitas.analysis.artifacts import read_artifact, ensure_analysis_artifact, AnalysisType
+                from quantumvitas.analysis.artifacts import AnalysisType, read_artifact
+                from quantumvitas.analysis.parsers import (
+                    DOSData,
+                    find_dos_files,
+                    parse_dos_data,
+                    parse_scf_output,
+                )
                 from quantumvitas.calculation.naming import find_calculation_raw_dir
                 from quantumvitas.core.resolution import require_calculation
 
@@ -1333,36 +1999,40 @@ class QVService:
                         "units": cached.get("units", {"energy": "eV", "dos": "states/eV"}),
                     }
 
-                # No artifact - parse and create one
-                status = ensure_analysis_artifact(
-                    analysis_type=AnalysisType.DOS,
-                    calculation_dir=calculation_dir,
-                    raw_dir=raw_dir,
-                    step_selector=step_selector,
-                    force=False,
-                )
-
-                if not status.ok:
+                files = find_dos_files(raw_dir)
+                dos_file = files.get("dos_dat")
+                if dos_file is None:
                     from quantumvitas.api.errors import EngineError
-                    raise EngineError(status.error or "Failed to parse DOS data")
 
-                # Now read the freshly created artifact
-                cached = read_artifact(calculation_dir, AnalysisType.DOS)
-                if not cached:
-                    from quantumvitas.api.errors import EngineError
-                    raise EngineError("Failed to read DOS artifact after creation")
+                    raise EngineError(f"DOS data file not found in {raw_dir} (*.dos.dat)")
+
+                dos_data = parse_dos_data(dos_file)
+                if dos_data.fermi_energy is None:
+                    scf_file = files.get("nscf_out") or files.get("scf_out")
+                    if scf_file is not None:
+                        try:
+                            fermi = parse_scf_output(scf_file).fermi_energy
+                            dos_data = DOSData(
+                                energies=dos_data.energies,
+                                dos=dos_data.dos,
+                                idos=dos_data.idos,
+                                fermi_energy=fermi,
+                            )
+                        except Exception:
+                            pass
+                parsed = dos_data.to_dict()
 
                 return {
                     "calculation": calculation_selector,
                     "step": step_selector,
-                    "data_file": cached.get("source_file", ""),
-                    "n_points": cached.get("n_points", 0),
-                    "fermi_energy_ev": cached.get("fermi_energy_ev"),
-                    "energy_range_ev": cached.get("energy_range_ev", [0, 0]),
-                    "energies_ev": cached.get("energies_ev", []),
-                    "dos_states_per_ev": cached.get("dos_states_per_ev", []),
-                    "idos": cached.get("idos"),
-                    "units": cached.get("units", {"energy": "eV", "dos": "states/eV"}),
+                    "data_file": str(dos_file),
+                    "n_points": parsed.get("n_points", 0),
+                    "fermi_energy_ev": parsed.get("fermi_energy_ev"),
+                    "energy_range_ev": parsed.get("energy_range_ev", [0, 0]),
+                    "energies_ev": parsed.get("energies_ev", []),
+                    "dos_states_per_ev": parsed.get("dos_states_per_ev", []),
+                    "idos": parsed.get("idos"),
+                    "units": parsed.get("units", {"energy": "eV", "dos": "states/eV"}),
                 }
             except Exception as e:
                 if isinstance(e, APIError):
@@ -5175,6 +5845,10 @@ class QVService:
                     error.code = "CALCULATION_LOCKED"
                     raise error
 
+                # Post-run pipeline (digest persistence + eager analysis snapshots).
+                # Failures are non-fatal and must not change run completion status.
+                self._service._finalize_run_analysis_pipeline(calculation, results)
+
                 # Convert results to dict
                 result_dict = {
                     "calculation": calc_selector,
@@ -5292,6 +5966,9 @@ class QVService:
                         "run_ulid": run_ulid,
                     }
                     return self._result_dict_to_dto(result_dict, calc_ulid)
+
+                # Post-run pipeline (digest persistence + eager analysis snapshots).
+                self._service._finalize_run_analysis_pipeline(calculation, result)
 
                 # Find target step's result
                 target_summary = None
@@ -6877,44 +7554,173 @@ class QVService:
 
         def pin_analysis(
             self,
-            run_ulid: str,
+            run_ulid: str | None,
             step_ulid: str,
             analysis_kind: str,
             png_data: bytes | None = None,
             json_payload: dict | None = None,
-            run_ulid_source: str = "exact",
+            run_ulid_source: str | None = None,
         ) -> dict:
             """
             Pin analysis to history.
 
             Args:
-                run_ulid: Run ULID
+                run_ulid: Optional run ULID
                 step_ulid: Step ULID
                 analysis_kind: Type of analysis (e.g., "bands", "dos")
                 png_data: Optional PNG image data
                 json_payload: Optional JSON data to store
-                run_ulid_source: Provenance confidence ("exact" | "inferred" | "unknown")
+                run_ulid_source: Optional caller override for provenance confidence
+                    ("exact" | "inferred" | "unknown")
 
             Returns:
                 Pin result dict
             """
             try:
+                normalized_analysis_kind = analysis_kind.lower()
+                import json
+                import sqlite3
+
                 from quantumvitas.provenance import (
+                    can_pin_to_run,
                     pin_analysis_to_history,
                     PinError,
                 )
 
+                def _extract_pin_evidence_fingerprint() -> str | None:
+                    if not isinstance(json_payload, dict):
+                        return None
+
+                    bundle_payload = json_payload.get("bundle")
+                    if isinstance(bundle_payload, dict):
+                        payload = bundle_payload
+                    else:
+                        payload = json_payload
+
+                    provenance = payload.get("provenance_meta")
+                    if not isinstance(provenance, dict):
+                        return None
+
+                    source_files = provenance.get("source_files")
+                    step_ulids = provenance.get("step_ulids")
+                    gen_steps = provenance.get("gen_steps")
+                    if not (
+                        isinstance(source_files, list)
+                        and isinstance(step_ulids, list)
+                        and isinstance(gen_steps, list)
+                    ):
+                        return None
+
+                    object_type = str(
+                        payload.get("object_type")
+                        or provenance.get("object_type")
+                        or normalized_analysis_kind
+                    ).lower()
+
+                    return self._service._compute_evidence_fingerprint(
+                        object_type=object_type,
+                        step_ulids=[str(step) for step in step_ulids],
+                        gen_steps=[str(step) for step in gen_steps],
+                        source_files=source_files,
+                    )
+
+                def _infer_run_link() -> tuple[str | None, str, dict]:
+                    details: dict[str, object] = {
+                        "analysis_kind": analysis_kind,
+                        "analysis_kind_normalized": normalized_analysis_kind,
+                        "step_ulid": step_ulid,
+                    }
+
+                    if run_ulid:
+                        can_pin = can_pin_to_run(
+                            self._service.project_root,
+                            run_ulid,
+                            step_ulid,
+                        )
+                        if not can_pin.get("allowed"):
+                            reason = can_pin.get("reason")
+                            if reason:
+                                raise PinError(str(reason))
+                            raise PinError(f"Run not found: {run_ulid}")
+                        details["strategy"] = "provided_run_ulid"
+                        return run_ulid, "exact", details
+
+                    evidence_fingerprint = _extract_pin_evidence_fingerprint()
+                    if evidence_fingerprint:
+                        details["evidence_fingerprint"] = evidence_fingerprint
+                        conn = sqlite3.connect(str(self._service._get_analysis_db_path()))
+                        try:
+                            rows = conn.execute(
+                                """
+                                SELECT s.run_ulid, s.step_ulids
+                                FROM analysis_snapshots s
+                                JOIN runs r ON r.run_ulid = s.run_ulid
+                                WHERE s.object_type = ? AND s.evidence_fingerprint = ?
+                                  AND r.status = 'success'
+                                ORDER BY COALESCE(r.finished_at, r.started_at) DESC, s.id DESC
+                                """,
+                                (normalized_analysis_kind, evidence_fingerprint),
+                            ).fetchall()
+                        finally:
+                            conn.close()
+
+                        details["fingerprint_match_count"] = len(rows)
+                        for matched_run_ulid, step_ulids_json in rows:
+                            try:
+                                matched_step_ulids = json.loads(step_ulids_json or "[]")
+                            except Exception:
+                                matched_step_ulids = []
+                            if step_ulid in matched_step_ulids:
+                                details["strategy"] = "evidence_fingerprint"
+                                details["matched_run_ulid"] = matched_run_ulid
+                                return str(matched_run_ulid), "exact", details
+
+                    conn = sqlite3.connect(str(self._service._get_analysis_db_path()))
+                    try:
+                        fallback = conn.execute(
+                            """
+                            SELECT r.run_ulid
+                            FROM runs r
+                            JOIN run_steps rs ON rs.run_ulid = r.run_ulid
+                            WHERE rs.step_ulid = ? AND r.status = 'success'
+                            ORDER BY COALESCE(r.finished_at, r.started_at) DESC
+                            LIMIT 1
+                            """,
+                            (step_ulid,),
+                        ).fetchone()
+                    finally:
+                        conn.close()
+
+                    if fallback is not None:
+                        details["strategy"] = "latest_success_fallback"
+                        details["matched_run_ulid"] = fallback[0]
+                        return str(fallback[0]), "inferred", details
+
+                    details["strategy"] = "unknown"
+                    details["reason"] = "no_matching_run_found"
+                    return None, "unknown", details
+
                 try:
+                    resolved_run_ulid, resolved_source, source_details = _infer_run_link()
+                    if run_ulid_source is not None:
+                        if run_ulid_source not in {"exact", "inferred", "unknown"}:
+                            raise PinError(f"Invalid run_ulid_source: {run_ulid_source}")
+                        resolved_source = run_ulid_source
+
                     result = pin_analysis_to_history(
                         project_root=self._service.project_root,
-                        run_ulid=run_ulid,
+                        run_ulid=resolved_run_ulid,
                         step_ulid=step_ulid,
-                        analysis_kind=analysis_kind,
+                        analysis_kind=normalized_analysis_kind,
                         png_data=png_data,
                         json_payload=json_payload,
-                        run_ulid_source=run_ulid_source,
+                        run_ulid_source=resolved_source,
+                        run_ulid_source_details=source_details,
                     )
-                    return result.to_dict()
+                    payload = result.to_dict()
+                    payload["run_ulid"] = resolved_run_ulid
+                    payload["run_ulid_source_details"] = source_details
+                    return payload
                 except PinError as e:
                     return {"success": False, "error": str(e)}
             except Exception as e:
@@ -6979,31 +7785,32 @@ class QVService:
                 Dict with run_ulid, can_pin, reason
             """
             try:
-                from quantumvitas.provenance import (
-                    get_latest_run_ulid,
-                    get_run_step_ulids,
-                )
+                import sqlite3
 
-                latest_run_ulid = get_latest_run_ulid(self._service.project_root)
+                conn = sqlite3.connect(str(self._service._get_analysis_db_path()))
+                try:
+                    row = conn.execute(
+                        """
+                        SELECT r.run_ulid
+                        FROM runs r
+                        JOIN run_steps rs ON rs.run_ulid = r.run_ulid
+                        WHERE rs.step_ulid = ? AND r.status = 'success'
+                        ORDER BY COALESCE(r.finished_at, r.started_at) DESC
+                        LIMIT 1
+                        """,
+                        (step_ulid,),
+                    ).fetchone()
+                finally:
+                    conn.close()
 
-                if not latest_run_ulid:
+                if row is None:
                     return {
                         "run_ulid": None,
                         "can_pin": False,
                         "reason": "No runs found in history",
                     }
 
-                step_ulids_in_run = get_run_step_ulids(
-                    self._service.project_root,
-                    latest_run_ulid,
-                )
-
-                if step_ulid not in step_ulids_in_run:
-                    return {
-                        "run_ulid": None,
-                        "can_pin": False,
-                        "reason": "Step not in latest run",
-                    }
+                latest_run_ulid = str(row[0])
 
                 return {
                     "run_ulid": latest_run_ulid,

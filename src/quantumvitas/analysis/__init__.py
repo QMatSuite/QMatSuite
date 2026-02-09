@@ -10,7 +10,6 @@ This module provides:
 - JSON artifact management for GUI integration
 """
 
-from .calculation_analysis import analyze_calculation
 from .artifacts import (
     AnalysisType,
     AnalysisStatus,
@@ -68,8 +67,6 @@ from .structure_viz import (
 )
 
 __all__ = [
-    # Calculation analysis
-    "analyze_calculation",
     # Analysis artifacts
     "AnalysisType",
     "AnalysisStatus",

@@ -122,3 +122,46 @@ def test_render_meta_has_no_provenance_fields() -> None:
     assert "engine_name" not in render_payload
     assert "parser_name" not in render_payload
     assert "source_files" not in render_payload
+
+
+def test_spin_polarized_to_primitives_contains_spin_series() -> None:
+    """3D eigenvalues serialize as explicit spin-resolved series."""
+    spin_bands = BandStructure(
+        meta=_make_meta(),
+        k_distances=np.array([0.0, 0.5, 1.0]),
+        eigenvalues=np.array(
+            [
+                [[-5.0, 0.2], [-4.5, 0.5], [-4.0, 0.8]],  # spin 0
+                [[-4.8, 0.3], [-4.2, 0.6], [-3.9, 1.0]],  # spin 1
+            ]
+        ),
+        high_symmetry_points=[HighSymPoint(k_distance=0.0, label="G")],
+        fermi_energy=0.2,
+    )
+
+    assert spin_bands.spin_polarized is True
+
+    bundle = spin_bands.to_primitives()
+    names = [series.name for series in bundle.series if series.name is not None]
+    assert any(name.startswith("spin_0_band_") for name in names)
+    assert any(name.startswith("spin_1_band_") for name in names)
+
+
+def test_spin_polarized_to_primitives_is_deterministic() -> None:
+    """3D spin-resolved canonical output remains deterministic."""
+    spin_bands = BandStructure(
+        meta=_make_meta(),
+        k_distances=np.array([0.0, 0.4, 0.8]),
+        eigenvalues=np.array(
+            [
+                [[-2.0, 0.1], [-1.5, 0.3], [-1.1, 0.6]],
+                [[-1.9, 0.2], [-1.4, 0.4], [-1.0, 0.7]],
+            ]
+        ),
+        high_symmetry_points=[HighSymPoint(k_distance=0.0, label="G")],
+        fermi_energy=0.1,
+    )
+
+    first = json.dumps(spin_bands.to_primitives().to_dict(), sort_keys=True)
+    second = json.dumps(spin_bands.to_primitives().to_dict(), sort_keys=True)
+    assert first == second
