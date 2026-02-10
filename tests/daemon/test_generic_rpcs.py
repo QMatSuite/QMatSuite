@@ -77,3 +77,4 @@ class TestResolveCompanionStep:
         assert DriverRegistry.resolve_companion_step("vasp", "wannierprep") is None
 
 
+
