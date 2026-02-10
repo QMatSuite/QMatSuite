@@ -11,7 +11,7 @@
 
 ### Broad Scan (PASS 1)
 **Directories scanned:**
-- Repository root (`/Users/hh7465/QMatSuite`)
+- Repository root (`<project_root>`)
 - `src/quantumvitas/` (main source tree)
 - `docs/` (documentation tree)
 - `tests/` (test suites)
@@ -84,7 +84,7 @@
   - `find src/quantumvitas/drivers -mindepth 1 -maxdepth 1 -type d | wc -l` → 16 engine drivers
 
 **Evidence pointers:**
-- Repository root: `/Users/hh7465/QMatSuite`
+- Repository root: `<project_root>`
 - Git state: `git rev-parse HEAD` output
 
 ---
