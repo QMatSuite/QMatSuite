@@ -692,6 +692,37 @@ def test_bands_dos_engine_has_analysis_capabilities(engine: str) -> None:
     )
 
 
+@pytest.mark.parametrize("engine", ["vasp", "qe"])
+def test_fatbands_parser_registers_with_bands(engine: str) -> None:
+    """Gate: engines with fatband support register as (engine, bands) parser."""
+    import quantumvitas.drivers  # noqa: F401
+
+    from quantumvitas.parsers.registry import _PARSERS
+
+    key = (engine, "bands")
+    assert key in _PARSERS, f"No bands parser registered for {engine}"
+
+
+@pytest.mark.parametrize("engine", ["vasp", "qe", "siesta", "cp2k", "abinit"])
+def test_pdos_engine_has_dos_parser(engine: str) -> None:
+    """Gate: engines with PDOS support register as (engine, dos) parser."""
+    import quantumvitas.drivers  # noqa: F401
+
+    from quantumvitas.parsers.registry import _PARSERS
+
+    key = (engine, "dos")
+    assert key in _PARSERS, f"No dos parser registered for {engine}"
+
+
+def test_final_matrix_documented() -> None:
+    """Gate: acceptance doc exists with all cells closed."""
+    doc = REPO_ROOT / "docs" / "architecture" / "worklogs" / "MULTI_ENGINE_FATBANDS_PDOS_CLOSEOUT_ACCEPTANCE.md"
+    assert doc.exists(), f"Acceptance doc not found: {doc}"
+    text = doc.read_text(encoding="utf-8")
+    assert "NOT SUPPORTED" in text, "Acceptance doc must contain NOT SUPPORTED justifications"
+    assert "DONE" in text, "Acceptance doc must contain DONE entries"
+
+
 def test_frontend_no_kernel_import() -> None:
     """Inv-A12: frontend must consume API only, never kernel modules directly."""
     frontend_root = REPO_ROOT / "gui" / "src"

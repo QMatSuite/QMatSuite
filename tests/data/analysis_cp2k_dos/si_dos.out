@@ -19,10 +19,10 @@
 
 
   **** **** ******  **  PROGRAM STARTED AT               2026-02-09 16:47:24.546
- ***** ** ***  *** **   PROGRAM STARTED ON                        PHY-K3302477DD
- **    ****   ******    PROGRAM STARTED BY                                hh7465
+ ***** ** ***  *** **   PROGRAM STARTED ON                        <hostname>
+ **    ****   ******    PROGRAM STARTED BY                                <user>
  ***** **    ** ** **   PROGRAM PROCESS ID                                 24889
-  **** **  *******  **  PROGRAM STARTED IN /Users/hh7465/QMatSuite/.tmp/engine_r
+  **** **  *******  **  PROGRAM STARTED IN /Users/<user>/QMatSuite/.tmp/engine_r
                                            uns/cp2k_dos
 
  CP2K| version string:                                       CP2K version 2026.1
@@ -737,8 +737,8 @@
  
  -------------------------------------------------------------------------------
   **** **** ******  **  PROGRAM ENDED AT                 2026-02-09 16:47:30.730
- ***** ** ***  *** **   PROGRAM RAN ON                            PHY-K3302477DD
- **    ****   ******    PROGRAM RAN BY                                    hh7465
+ ***** ** ***  *** **   PROGRAM RAN ON                            <hostname>
+ **    ****   ******    PROGRAM RAN BY                                    <user>
  ***** **    ** ** **   PROGRAM PROCESS ID                                 24889
-  **** **  *******  **  PROGRAM STOPPED IN /Users/hh7465/QMatSuite/.tmp/engine_r
+  **** **  *******  **  PROGRAM STOPPED IN /Users/<user>/QMatSuite/.tmp/engine_r
                                            uns/cp2k_dos
