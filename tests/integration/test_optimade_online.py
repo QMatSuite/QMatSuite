@@ -16,6 +16,8 @@ These tests WILL FAIL if:
 This is intentional - these are "external dependency health checks".
 """
 
+import time
+
 import pytest
 from quantumvitas.io.online_search import (
     search_optimade,
@@ -25,13 +27,33 @@ from quantumvitas.io.online_search import (
 )
 
 
+# Retry decorator for flaky network tests
+def retry_on_network_error(max_attempts: int = 3, wait_seconds: float = 5.0):
+    """Decorator to retry test on network failures."""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            last_error = None
+            for attempt in range(max_attempts):
+                try:
+                    return func(*args, **kwargs)
+                except (AssertionError, Exception) as e:
+                    last_error = e
+                    if attempt < max_attempts - 1:
+                        time.sleep(wait_seconds)
+            raise last_error
+        return wrapper
+    return decorator
+
+
 @pytest.mark.integration
 @pytest.mark.network
+@retry_on_network_error(max_attempts=3, wait_seconds=5.0)
 def test_optimade_search_basic():
     """
     Test basic OPTIMADE search functionality.
-    
+
     This test requires network access and will fail if OPTIMADE is down.
+    Uses retry logic (3 attempts, 5s wait) for transient network issues.
     """
     # Use Materials Cloud OPTIMADE endpoint
     base_url = OPTIMADE_DEFAULT_BASE
@@ -60,11 +82,13 @@ def test_optimade_search_basic():
 
 @pytest.mark.integration
 @pytest.mark.network
+@retry_on_network_error(max_attempts=3, wait_seconds=5.0)
 def test_optimade_fetch_structure():
     """
     Test fetching structure from OPTIMADE.
-    
+
     This test requires network access and will fail if OPTIMADE is down.
+    Uses retry logic (3 attempts, 5s wait) for transient network issues.
     """
     # Use Materials Cloud OPTIMADE endpoint
     base_url = OPTIMADE_DEFAULT_BASE
@@ -96,14 +120,17 @@ def test_optimade_fetch_structure():
 
 @pytest.mark.integration
 @pytest.mark.network
+@retry_on_network_error(max_attempts=3, wait_seconds=5.0)
 def test_optimade_structure_has_required_fields():
     """
     Test that fetched OPTIMADE structure has required fields for visualization.
-    
+
     Required fields:
     - nsites
     - lattice_vectors or elements + cartesian_site_positions
     - species information
+
+    Uses retry logic (3 attempts, 5s wait) for transient network issues.
     """
     # Use Materials Cloud OPTIMADE endpoint
     base_url = OPTIMADE_DEFAULT_BASE
