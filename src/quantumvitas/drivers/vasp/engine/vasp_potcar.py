@@ -20,6 +20,39 @@ POTCAR_LIBRARY_DIRS: Dict[str, str] = {
 }
 
 
+def _format_path_for_error(path: Path) -> str:
+    """Format a path for error messages, using relative path from repo root if possible."""
+    # Try to get repo root and make path relative
+    try:
+        from quantumvitas.core.engines.discovery import _find_repo_root
+        repo_root = _find_repo_root()
+        if repo_root is not None:
+            try:
+                rel_path = path.resolve().relative_to(repo_root.resolve())
+                return str(rel_path)
+            except (ValueError, RuntimeError):
+                pass
+    except ImportError:
+        pass
+    
+    # Fallback: try paths.get_repo_root()
+    try:
+        from quantumvitas.core.paths import get_repo_root
+        repo_root = get_repo_root()
+        try:
+            rel_path = path.resolve().relative_to(repo_root.resolve())
+            return str(rel_path)
+        except (ValueError, RuntimeError):
+            pass
+    except (ImportError, RuntimeError):
+        pass
+    
+    # Last resort: return just the path name or a generic message
+    if path.name:
+        return f".../{path.name}"
+    return "<path>"
+
+
 def get_default_potcar_root() -> Optional[Path]:
     """Return the default POTCAR root directory, or None if not found.
 
@@ -102,8 +135,9 @@ def stage_potcar(
 
     lib_dir = root / POTCAR_LIBRARY_DIRS[functional]
     if not lib_dir.is_dir():
+        rel_path = _format_path_for_error(lib_dir)
         raise FileNotFoundError(
-            f"POTCAR library directory not found: {lib_dir}"
+            f"POTCAR library directory not found: {rel_path}"
         )
 
     overrides = potcar_overrides or {}
@@ -115,9 +149,10 @@ def stage_potcar(
             variant = overrides.get(element, element)
             element_potcar = lib_dir / variant / "POTCAR"
             if not element_potcar.is_file():
+                rel_path = _format_path_for_error(element_potcar)
                 raise FileNotFoundError(
                     f"POTCAR not found for {element} "
-                    f"(variant={variant!r}): {element_potcar}"
+                    f"(variant={variant!r}): {rel_path}"
                 )
             with open(element_potcar, "r", encoding="utf-8") as in_fh:
                 out_fh.write(in_fh.read())

@@ -68,6 +68,50 @@ def _parse_abinit_dos(dos_path: Path) -> dict:
     }
 
 
+_L_LABELS = ["s", "p", "d", "f", "g"]
+
+
+def _parse_abinit_pdos_at(path: Path) -> dict:
+    """Parse ABINIT _DOS_AT file (l-projected per-atom DOS from prtdos 3).
+
+    Format:
+        # energy(Ha)  l=0  l=1  l=2  l=3  l=4  (integral=>)  l=0  l=1  l=2  l=3  l=4
+        -0.30000  0.0000  0.0000  0.0000  0.0000  0.0000  0.00  0.00  0.00  0.00  0.00
+
+    Returns dict with energies_eV, projections (nedos, 5), integrated (nedos, 5).
+    """
+    text = path.read_text(encoding="utf-8", errors="replace")
+    lines = text.strip().split("\n")
+
+    energies: list[float] = []
+    proj_rows: list[list[float]] = []
+    integ_rows: list[list[float]] = []
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("#") or not stripped:
+            continue
+        parts = stripped.split()
+        if len(parts) < 6:
+            continue
+        try:
+            energy_ha = float(parts[0])
+            ldos = [float(x) for x in parts[1:6]]
+            energies.append(energy_ha * HA_TO_EV)
+            # Convert DOS from states/Ha to states/eV
+            proj_rows.append([v / HA_TO_EV for v in ldos])
+            if len(parts) >= 11:
+                integ_rows.append([float(x) for x in parts[6:11]])
+        except ValueError:
+            continue
+
+    return {
+        "energies_eV": np.array(energies, dtype=float),
+        "projections": np.array(proj_rows, dtype=float),
+        "integrated": np.array(integ_rows, dtype=float) if integ_rows else None,
+    }
+
+
 def _extract_fermi_from_abo(abo_path: Path) -> Optional[float]:
     """Extract Fermi energy from ABINIT .abo output file. Returns eV."""
     text = abo_path.read_text(encoding="utf-8", errors="replace")
@@ -94,20 +138,29 @@ class ABINITDOSProvider:
     object_type = "dos"
 
     def can_parse(self, raw_dir: Path) -> bool:
-        return bool(list(raw_dir.glob("*_DOS")))
+        # Accept *_DOS (total) or *_DOS_TOTAL (prtdos 3 total file)
+        return bool(list(raw_dir.glob("*_DOS")) or list(raw_dir.glob("*_DOS_TOTAL")))
 
     def parse(self, evidence: EvidenceBundle) -> DOS:
         """Parse ABINIT _DOS file and return engine-agnostic DOS."""
         raw_dir = evidence.primary_raw_dir
         warnings: list[str] = []
 
+        dos_at_files = sorted(raw_dir.glob("*_DOS_AT*"))
         dos_files = sorted(raw_dir.glob("*_DOS"))
-        if not dos_files:
-            raise FileNotFoundError(f"No ABINIT _DOS file found in {raw_dir}")
-        dos_file = dos_files[0]
+        dos_total_files = sorted(raw_dir.glob("*_DOS_TOTAL"))
 
-        parsed = _parse_abinit_dos(dos_file)
-        source_files = [SourceFileStat.from_path(dos_file, evidence.calc_dir)]
+        # Prefer *_DOS (standard total DOS) over *_DOS_TOTAL (prtdos 3 variant)
+        if dos_files:
+            total_dos_file = dos_files[0]
+        elif dos_total_files:
+            total_dos_file = dos_total_files[0]
+        else:
+            raise FileNotFoundError(f"No ABINIT _DOS or _DOS_TOTAL file found in {raw_dir}")
+
+        parsed = _parse_abinit_dos(total_dos_file)
+        source_files = [SourceFileStat.from_path(total_dos_file, evidence.calc_dir)]
+        nedos = len(parsed["energies_eV"])
 
         # Fermi energy: prefer DOS header, fallback to .abo
         fermi_energy: Optional[float] = parsed.get("fermi_eV")
@@ -120,6 +173,50 @@ class ABINITDOSProvider:
 
         if fermi_energy is None:
             warnings.append("No Fermi energy found in ABINIT output.")
+
+        # PDOS: parse _DOS_AT files if present (from prtdos 3)
+        pdos: Optional[np.ndarray] = None
+        atom_labels: Optional[list[str]] = None
+        orbital_labels: Optional[list[str]] = None
+
+        if dos_at_files:
+            per_atom_data: list[np.ndarray] = []
+            for at_file in dos_at_files:
+                source_files.append(SourceFileStat.from_path(at_file, evidence.calc_dir))
+                at_parsed = _parse_abinit_pdos_at(at_file)
+                per_atom_data.append(at_parsed["projections"])  # (nedos_pdos, 5)
+
+            if per_atom_data:
+                # Stack into (n_atoms, nedos_pdos, 5)
+                pdos_full = np.stack(per_atom_data, axis=0)
+
+                # Verify grid matches total DOS
+                if pdos_full.shape[1] != nedos:
+                    warnings.append(
+                        f"PDOS grid ({pdos_full.shape[1]}) != total DOS grid ({nedos}); "
+                        "skipping PDOS."
+                    )
+                else:
+                    # Determine active l-channels (any non-zero across all atoms)
+                    max_l_plus_1 = pdos_full.shape[2]
+                    active_mask = np.any(pdos_full > 1e-12, axis=(0, 1))
+                    n_active = int(np.sum(active_mask))
+                    if n_active == 0:
+                        n_active = min(2, max_l_plus_1)  # at least s, p
+                        active_mask[:n_active] = True
+
+                    pdos = pdos_full[:, :, :n_active]
+                    orbital_labels = _L_LABELS[:n_active]
+
+                    # Atom labels: extract index from filename pattern _DOS_AT####
+                    atom_labels = []
+                    for at_file in dos_at_files:
+                        # e.g. si_pdoso_DS2_DOS_AT0001 -> atom_1
+                        match = re.search(r"_DOS_AT(\d+)", at_file.name)
+                        if match:
+                            atom_labels.append(f"atom_{int(match.group(1))}")
+                        else:
+                            atom_labels.append(f"atom_{len(atom_labels) + 1}")
 
         meta = AnalysisObjectMeta.create(
             object_type="dos",
@@ -141,4 +238,7 @@ class ABINITDOSProvider:
             fermi_energy=fermi_energy,
             integrated_dos=parsed["integrated_dos"],
             spin_polarized=False,
+            pdos=pdos,
+            atom_labels=atom_labels,
+            orbital_labels=orbital_labels,
         )

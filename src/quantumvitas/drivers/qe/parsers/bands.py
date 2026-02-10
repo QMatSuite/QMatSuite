@@ -1,8 +1,9 @@
 """QE bands analysis provider."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -11,6 +12,133 @@ from quantumvitas.core.analysis.band_structure import BandStructure, HighSymPoin
 from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat
 from quantumvitas.core.analysis.evidence import EvidenceBundle
 from quantumvitas.parsers.registry import register_parser
+
+# Regex for atomic wfc header in projwfc_up:
+#   "    1    1 Si   3S     1    0    1"
+#   wfc_idx  atom_idx  element  nl_label  n  l  m
+_PROJWFC_WFC_RE = re.compile(
+    r"^\s+(\d+)\s+(\d+)\s+(\w+)\s+(\w+)\s+(\d+)\s+(\d+)\s+(\d+)\s*$"
+)
+
+
+def parse_projwfc_up(projwfc_path: Path) -> Dict[str, Any]:
+    """Parse QE projwfc_up file (from filproj output) into projection arrays.
+
+    The filproj file has:
+      - Global header (9 lines): grid, cell, species, positions
+      - Line 8: n_atomwfc, n_kpoints, n_bands
+      - For each atomic wfc: 1 header line + n_kpoints * n_bands data lines
+        Data lines: kpoint_idx  band_idx  |<psi_nk|phi_i>|^2
+
+    We group projections by (atom, l) and sum over m-components.
+
+    Returns dict with:
+        n_kpoints: int
+        n_bands: int
+        n_atoms: int
+        n_orbitals: int  (number of distinct l values)
+        projections: ndarray (n_kpoints, n_bands, n_atoms, n_orbitals)
+        orbital_labels: list[str]
+        atom_labels: list[str]
+    """
+    text = projwfc_path.read_text(encoding="utf-8", errors="replace")
+    lines = text.splitlines()
+
+    if len(lines) < 10:
+        raise ValueError(f"projwfc_up file too short: {projwfc_path}")
+
+    # Parse header line 8 (0-indexed line 7): n_atomwfc, n_kpoints, n_bands
+    # Account for possible blank first line
+    header_offset = 0
+    if lines[0].strip() == "":
+        header_offset = 1
+
+    dim_line = lines[6 + header_offset].strip().split()
+    if len(dim_line) < 3:
+        raise ValueError(f"Cannot parse dimensions from projwfc_up: {lines[6 + header_offset]!r}")
+
+    n_atomwfc = int(dim_line[0])
+    n_kpoints = int(dim_line[1])
+    n_bands = int(dim_line[2])
+
+    # Parse atomic wfc definitions to build atom/orbital mapping
+    # Each wfc header: wfc_idx, atom_idx, element, nl_label, n, l, m
+    wfc_defs: list[dict] = []
+    atom_elements: dict[int, str] = {}  # atom_idx -> element
+    data_start = 8 + header_offset  # skip header + F/F line
+
+    line_idx = data_start
+    for _wfc_i in range(n_atomwfc):
+        if line_idx >= len(lines):
+            raise ValueError("Unexpected EOF parsing projwfc_up wfc headers")
+
+        m = _PROJWFC_WFC_RE.match(lines[line_idx])
+        if not m:
+            raise ValueError(f"Cannot parse wfc header: {lines[line_idx]!r}")
+
+        atom_idx = int(m.group(2))  # 1-based
+        element = m.group(3)
+        l_val = int(m.group(6))
+
+        wfc_defs.append({"atom_idx": atom_idx, "element": element, "l": l_val})
+        atom_elements[atom_idx] = element
+        line_idx += 1
+
+        # Skip n_kpoints * n_bands data lines for this wfc
+        line_idx += n_kpoints * n_bands
+
+    # Determine unique atoms and l-values
+    n_atoms = len(atom_elements)
+    all_l_values = sorted({w["l"] for w in wfc_defs})
+    n_orbitals = len(all_l_values)
+    l_to_idx = {l_val: i for i, l_val in enumerate(all_l_values)}
+
+    l_label_map = {0: "s", 1: "p", 2: "d", 3: "f", 4: "g"}
+    orbital_labels = [l_label_map.get(l_val, f"l={l_val}") for l_val in all_l_values]
+
+    # Build atom labels
+    atom_counts: Dict[str, int] = {}
+    atom_labels: list[str] = []
+    for atom_idx in sorted(atom_elements.keys()):
+        elem = atom_elements[atom_idx]
+        atom_counts[elem] = atom_counts.get(elem, 0) + 1
+        atom_labels.append(f"{elem}_{atom_counts[elem]}")
+
+    # Now re-parse data lines to build projection array
+    projections = np.zeros((n_kpoints, n_bands, n_atoms, n_orbitals), dtype=np.float64)
+
+    line_idx = data_start
+    for wfc_def in wfc_defs:
+        # Skip wfc header line
+        line_idx += 1
+
+        atom_array_idx = wfc_def["atom_idx"] - 1  # 0-based
+        l_array_idx = l_to_idx[wfc_def["l"]]
+
+        for _ in range(n_kpoints * n_bands):
+            if line_idx >= len(lines):
+                break
+            parts = lines[line_idx].strip().split()
+            if len(parts) >= 3:
+                try:
+                    k_idx = int(parts[0]) - 1  # 1-based -> 0-based
+                    b_idx = int(parts[1]) - 1
+                    proj_val = float(parts[2])
+                    # Sum over m-components for same (atom, l)
+                    projections[k_idx, b_idx, atom_array_idx, l_array_idx] += proj_val
+                except (ValueError, IndexError):
+                    pass
+            line_idx += 1
+
+    return {
+        "n_kpoints": n_kpoints,
+        "n_bands": n_bands,
+        "n_atoms": n_atoms,
+        "n_orbitals": n_orbitals,
+        "projections": projections,
+        "orbital_labels": orbital_labels,
+        "atom_labels": atom_labels,
+    }
 
 
 @register_parser("qe", "bands")
@@ -80,6 +208,43 @@ class QEBandsProvider:
         if pw_output is not None:
             source_files.append(SourceFileStat.from_path(pw_output, evidence.calc_dir))
 
+        eigenvalues = np.array(band_data.energies, copy=True).T
+        n_kpoints_bands = eigenvalues.shape[0]
+        n_bands_bands = eigenvalues.shape[1]
+
+        # Check for projwfc_up file (fatband projections from projwfc.x)
+        projections: Optional[np.ndarray] = None
+        projection_labels: Optional[Dict[str, List[str]]] = None
+
+        projwfc_file = self._find_first(
+            candidate_dirs,
+            ["*.projwfc_up", "projwfc_up"],
+        )
+        if projwfc_file is not None:
+            try:
+                projwfc_data = parse_projwfc_up(projwfc_file)
+                if (
+                    projwfc_data["n_kpoints"] == n_kpoints_bands
+                    and projwfc_data["n_bands"] == n_bands_bands
+                ):
+                    projections = projwfc_data["projections"]
+                    projection_labels = {
+                        "atoms": projwfc_data["atom_labels"],
+                        "orbitals": projwfc_data["orbital_labels"],
+                    }
+                    source_files.append(
+                        SourceFileStat.from_path(projwfc_file, evidence.calc_dir)
+                    )
+                else:
+                    warnings.append(
+                        f"projwfc_up dimensions ({projwfc_data['n_kpoints']}k, "
+                        f"{projwfc_data['n_bands']}b) mismatch bands "
+                        f"({n_kpoints_bands}k, {n_bands_bands}b); "
+                        "projections skipped."
+                    )
+            except (ValueError, OSError) as exc:
+                warnings.append(f"Failed to parse projwfc_up: {exc}")
+
         meta = AnalysisObjectMeta.create(
             object_type="bands",
             source_files=source_files,
@@ -96,13 +261,15 @@ class QEBandsProvider:
         return BandStructure(
             meta=meta,
             k_distances=np.array(band_data.k_distances, copy=True),
-            eigenvalues=np.array(band_data.energies, copy=True).T,
+            eigenvalues=eigenvalues,
             high_symmetry_points=[
                 HighSymPoint(k_distance=point.k_distance, label=point.label)
                 for point in band_data.high_symmetry_points
             ],
             fermi_energy=band_data.fermi_energy,
             spin_polarized=False,
+            projections=projections,
+            projection_labels=projection_labels,
         )
 
     def _candidate_raw_dirs(
