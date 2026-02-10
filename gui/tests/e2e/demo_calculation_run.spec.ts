@@ -259,19 +259,20 @@ test.describe('E2E Test 3: Run calculation → Run & Logs → Analysis (within c
     await appPage.waitForTimeout(2000);
     
     // With the new step-driven Analysis UX, we need to:
-    // 1. Select the 'bands' step chip (NOT 'bands_pw' - only 'bands' step has plot capability)
+    // 1. Select the 'bandspw' step chip - this step runs bands.x and produces bands.dat.gnu
     // 2. Click the "Plot" view mode tab
     // 3. Wait for the bands chart to appear
-    
-    // Find and click the 'bands' step chip (step_type_gen is "bands", not "bands_pw")
-    // Constitution v1.1: test IDs use step_type_gen format (e.g., "bands" not "qe_bands")
-    const bandsStepChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-bands"]');
+
+    // Find and click the 'bandspw' step chip (step_type_gen is "bandspw", no underscore)
+    // Note: The 'bandspw' step actually produces the band structure data (runs bands.x)
+    // The analysis bundle's step_ulids contains the bandspw step, not the bands step
+    const bandsStepChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-bandspw"]');
     await expect(bandsStepChip).toBeVisible({ timeout: 5000 });
 
-    // Verify it's the correct step (not bands_pw)
+    // Verify it's the correct step
     const stepTypeGen = await bandsStepChip.getAttribute('data-step-type-gen');
-    expect(stepTypeGen?.toLowerCase()).toBe('bands');
-    
+    expect(stepTypeGen?.toLowerCase()).toBe('bandspw');
+
     await bandsStepChip.click();
     
     // Wait for the view mode tabs to appear
@@ -280,9 +281,33 @@ test.describe('E2E Test 3: Run calculation → Run & Logs → Analysis (within c
     
     // Click the Plot tab to switch to plot view
     await plotTab.click();
-    
-    // Wait for bands chart to appear (loading may take time)
-    await expect(appPage.getByTestId('qv-analysis-bands-chart')).toBeVisible({ timeout: 30000 });
+
+    // Wait for the Plot tab to become active (React state update)
+    await expect(plotTab).toHaveClass(/--active/, { timeout: 5000 });
+
+    // Wait for loading to complete - the loading indicator should disappear
+    // or the chart should appear. Use a polling approach to handle the async chain.
+    const loadingIndicator = appPage.getByTestId('qv-analysis-loading');
+    const bandsChart = appPage.getByTestId('qv-analysis-bands-chart');
+    const errorIndicator = appPage.getByTestId('qv-analysis-error');
+    const noObjectsIndicator = appPage.getByTestId('qv-analysis-no-objects');
+
+    // Wait up to 30 seconds for either the chart to appear or loading to finish
+    await expect(async () => {
+      // Check if any terminal state is reached
+      const isLoading = await loadingIndicator.isVisible().catch(() => false);
+      const hasChart = await bandsChart.isVisible().catch(() => false);
+      const hasError = await errorIndicator.isVisible().catch(() => false);
+      const hasNoObjects = await noObjectsIndicator.isVisible().catch(() => false);
+
+      // If still loading, throw to retry
+      if (isLoading && !hasChart && !hasError && !hasNoObjects) {
+        throw new Error('Still loading analysis...');
+      }
+    }).toPass({ timeout: 30000 });
+
+    // Now verify the chart is visible
+    await expect(bandsChart).toBeVisible({ timeout: 5000 });
     
     // Optionally check that the chart container has some child elements (e.g. band paths)
     const chartContainer = appPage.getByTestId('qv-analysis-bands-chart');

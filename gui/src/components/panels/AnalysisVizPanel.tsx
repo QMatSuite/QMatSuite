@@ -75,7 +75,7 @@ export function AnalysisVizPanel({
 
   if (availableObjectTypes.length === 0) {
     return (
-      <div className="analysis-surface__placeholder">
+      <div className="analysis-surface__placeholder" data-testid="qv-analysis-no-objects">
         No analysis object is available for this step in the current run.
       </div>
     );
@@ -109,8 +109,8 @@ export function AnalysisVizPanel({
         </label>
       </div>
 
-      {loading ? <div className="analysis-surface__placeholder">Loading analysis...</div> : null}
-      {error ? <div className="analysis-surface__error">{error}</div> : null}
+      {loading ? <div className="analysis-surface__placeholder" data-testid="qv-analysis-loading">Loading analysis...</div> : null}
+      {error ? <div className="analysis-surface__error" data-testid="qv-analysis-error">{error}</div> : null}
       {!loading && !error && bundle ? (
         <>
           <div className="analysis-viz__info">
