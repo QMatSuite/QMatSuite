@@ -1,0 +1,6 @@
+&DOS
+  fildos = 'al.dos.dat'
+  emin = -15
+  emax = 35
+/
+

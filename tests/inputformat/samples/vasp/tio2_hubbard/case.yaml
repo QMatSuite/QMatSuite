@@ -1,7 +1,18 @@
 case_id: tio2_hubbard
-title: "TiO2 rutile DFT+U"
+title: TiO2 rutile DFT+U
 engine: vasp
-workflow_tags: [scf, hubbard, dft_plus_u]
-species: [Ti, O]
+workflow_tags:
+- scf
+- hubbard
+- dft_plus_u
+species:
+- Ti
+- O
 functional: PBE+U
-description: "TiO2 rutile with Dudarev DFT+U (LDATYPE=2, U=4.0 on Ti-d)"
+description: TiO2 rutile with Dudarev DFT+U (LDATYPE=2, U=4.0 on Ti-d)
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: vasp_scf
+required_engine: vasp
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

@@ -450,17 +450,17 @@ class TestPySCFDemoProject:
         from pathlib import Path
         
         repo_root = Path(__file__).parent.parent.parent
-        demo_path = repo_root / "resources" / "demo_projects" / "water_pyscf_scf.yml"
-        
+        demo_path = repo_root / "resources" / "demo_projects" / "pyscf_water_scf.yml"
+
         assert demo_path.exists(), f"Demo not found at {demo_path}"
-    
+
     def test_demo_project_structure(self):
         """Demo project has correct structure."""
         import yaml
         from pathlib import Path
-        
+
         repo_root = Path(__file__).parent.parent.parent
-        demo_path = repo_root / "resources" / "demo_projects" / "water_pyscf_scf.yml"
+        demo_path = repo_root / "resources" / "demo_projects" / "pyscf_water_scf.yml"
         
         with open(demo_path) as f:
             demo = yaml.safe_load(f)
@@ -476,19 +476,17 @@ class TestPySCFDemoProject:
         assert "data" in structure
         data = structure["data"]
         assert "lattice" not in data, "Molecular structure should not have lattice"
-        assert "atoms" in data
-        
+        assert "sites" in data, "Molecular structure should have sites"
+
         # Check calculation has pyscf_scf step
         calc = demo["calculations"][0]
         assert len(calc["steps"]) >= 1
         step = calc["steps"][0]
         assert step["step_type_spec"] == "pyscf_scf"
-        
+
         # Check step parameters
         params = step["parameters"]
-        assert params["method"] == "rhf"
         assert "basis" in params
-        assert "atoms" in params
 
 
 class TestPySCFPhase3CMaterialization:

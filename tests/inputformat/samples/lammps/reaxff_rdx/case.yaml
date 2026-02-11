@@ -1,5 +1,15 @@
 case_id: reaxff_rdx
-title: "ReaxFF RDX"
+title: ReaxFF RDX
 engine: lammps
-workflow_tags: [md, reactive, reaxff]
-description: "ReaxFF reactive potential with charge equilibration, variables, line continuation"
+workflow_tags:
+- md
+- reactive
+- reaxff
+description: ReaxFF reactive potential with charge equilibration, variables, line
+  continuation
+demo_eligible: false
+step_type_gen: md
+step_type_spec: lammps_md
+required_engine: lammps
+availability: open_source
+exclusion_reason: Parser/writer test case only

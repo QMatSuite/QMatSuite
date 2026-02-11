@@ -1,0 +1,138 @@
+version: 1
+project:
+  meta:
+    ulid: 01K5WT9BEZHRV71G7FGRVFKC6F
+    name: Iron BCC spin-polarised SCF
+    slug: iron-bcc-spin-polarised-scf
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KSNE9B4J5HJ337N25Y8QJ9HQ
+    name: Fe
+    slug: fe
+    path: structures/fe.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 2.87
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 2.87
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 2.87
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.87
+      b: 2.87
+      c: 2.87
+      alpha: 90.0
+      beta: 90.0
+      gamma: 90.0
+      volume: 23.63990300000001
+    properties: {}
+    sites:
+    - species:
+      - element: Fe
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Fe
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Fe
+        occu: 1
+      abc:
+      - 0.5
+      - 0.5
+      - 0.5
+      properties: {}
+      label: Fe
+      xyz:
+      - 1.435
+      - 1.435
+      - 1.435
+calculations:
+- meta:
+    ulid: 01K6SJP1PXKAV15DYSGW8EG8TS
+    name: Iron BCC spin-polarised SCF
+    slug: iron-bcc-spin-polarised-scf
+    path: calculations/iron-bcc-spin-polarised-scf
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: vasp
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/iron-bcc-spin-polarised-scf/steps/scf.step.yaml
+      kind: step
+      ulid: 01K5VD6SJA9YXYSMSR5PNP74V0
+    parameters:
+      SYSTEM: Fe BCC magnetic
+      EDIFF: 1.0e-06
+      ENCUT: 350
+      ISMEAR: 1
+      ISPIN: 2
+      LCHARG: true
+      LORBIT: 11
+      LWAVE: false
+      MAGMOM: 2*3.0
+      NSW: 0
+      PREC: Accurate
+      SIGMA: 0.1
+      kpoints:
+        mode: automatic
+        mesh:
+        - 8
+        - 8
+        - 8
+        shift:
+        - 0.0
+        - 0.0
+        - 0.0
+        centering: Monkhorst-Pack
+    step_type_spec: vasp_scf
+  structure_ulid: 01KSNE9B4J5HJ337N25Y8QJ9HQ
+  species_map:
+    Fe:
+      mass: 55.845
+      pseudo: Fe
+      pseudopot: Fe
+      pseudo_basename: Fe
+      pseudo_sha256: 1d305d43d85d0f14f8b082805126a9f790bb9a68c62f83d2ad072da529ae62b0
+      pseudo_sha_family: 552db02a71bc5909258b58f979dd06bd99f8aee13ee4b46a069975d128056538
+meta:
+  ulid: vasp_fe_magnetic
+  title: Iron BCC spin-polarised SCF
+  subtitle: scf
+  tags:
+  - scf
+  - magnetic
+  - spin
+  recommended_analysis: scf
+  difficulty: beginner
+  asset_policy: proprietary
+  required_engine: vasp
+  availability: requires_local_install
+  generator_version: 1.0.0
+  corpus_engine: vasp
+  corpus_case_id: fe_magnetic
+  corpus_checksum: 2954c01f8b9432db24a34886e583403f634c69a23caac289ef6edea543e172a2

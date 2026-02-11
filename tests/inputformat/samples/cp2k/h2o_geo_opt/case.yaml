@@ -1,6 +1,18 @@
 case_id: h2o_geo_opt
-title: "Water molecule geometry optimization"
+title: Water molecule geometry optimization
 engine: cp2k
-workflow_tags: [geo_opt, relaxation, molecule]
-species: [O, H]
-description: "CG geometry optimization for water with PBE/DZVP. Tests MOTION/GEO_OPT section. Validated against real CP2K 2026.1 run."
+workflow_tags:
+- geo_opt
+- relaxation
+- molecule
+species:
+- O
+- H
+description: CG geometry optimization for water with PBE/DZVP. Tests MOTION/GEO_OPT
+  section. Validated against real CP2K 2026.1 run.
+demo_eligible: false
+step_type_gen: relax
+step_type_spec: cp2k_relax
+required_engine: cp2k
+availability: open_source
+exclusion_reason: Parser/writer test case only

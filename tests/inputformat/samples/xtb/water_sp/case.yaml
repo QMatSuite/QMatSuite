@@ -1,6 +1,16 @@
 case_id: water_sp
-title: "Water single-point"
+title: Water single-point
 engine: xtb
-workflow_tags: [singlepoint, gfn2]
-species: [O, H]
-description: "Basic xTB single-point on water."
+workflow_tags:
+- singlepoint
+- gfn2
+species:
+- O
+- H
+description: Basic xTB single-point on water.
+demo_eligible: false
+step_type_gen: relax
+step_type_spec: xtb_relax
+required_engine: xtb
+availability: bundled
+exclusion_reason: Parser/writer test case only

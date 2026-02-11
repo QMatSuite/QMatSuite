@@ -1,6 +1,15 @@
 case_id: al_scf
-title: "Aluminum SCF with metallic smearing"
+title: Aluminum SCF with metallic smearing
 engine: abinit
-workflow_tags: [scf]
-species: [Al]
-description: "SCF calculation for 1-atom FCC aluminum with Gaussian smearing (occopt 7), dense 8x8x8 k-mesh, and 8 bands."
+workflow_tags:
+- scf
+species:
+- Al
+description: SCF calculation for 1-atom FCC aluminum with Gaussian smearing (occopt
+  7), dense 8x8x8 k-mesh, and 8 bands.
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: abinit_scf
+required_engine: abinit
+availability: open_source
+exclusion_reason: Parser/writer test case only

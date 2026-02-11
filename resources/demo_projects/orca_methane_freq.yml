@@ -1,0 +1,115 @@
+version: 1
+project:
+  meta:
+    ulid: 01KD55S8B4ENJN55PN9G6HQF9K
+    name: Methane ORCA Frequency
+    slug: methane-orca-freq
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KM4PK5P7SENFM6AV4M2A9948
+    name: CH4
+    slug: ch4
+    path: structures/ch4.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: C
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.629118
+      - 0.629118
+      - 0.629118
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - -0.629118
+      - -0.629118
+      - 0.629118
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - -0.629118
+      - 0.629118
+      - -0.629118
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.629118
+      - -0.629118
+      - -0.629118
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01K237AV31WAZTN0QEP807JCBC
+    name: CH4 SCF + Frequency
+    slug: ch4-scf--plus-frequency
+    path: calculations/ch4-scf--plus-frequency
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  structure_ulid: 01KM4PK5P7SENFM6AV4M2A9948
+  structure_kind: molecule
+  engine_family: orca
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/ch4-scf--plus-frequency/steps/scf.step.yaml
+      kind: step
+      ulid: 01K70W6CMS871SDZERQEC0ET63
+    parameters:
+      functional: B3LYP
+      basis: def2-TZVP
+      charge: 0
+      spin: 0
+    step_type_spec: orca_scf
+meta:
+  ulid: orca_methane_freq
+  title: Methane Vibrational Frequencies
+  subtitle: SCF + numerical frequency calculation
+  tags:
+  - freq
+  - frequencies
+  - thermochemistry
+  - dft
+  recommended_analysis: energy
+  difficulty: intermediate
+  required_engine: orca
+  availability: requires_local_install
+  generator_version: 1.0.0
+  corpus_engine: orca
+  corpus_case_id: methane_freq
+  corpus_checksum: 0a31bf64e4e2f779f6779100a7dc08bee31cb41558d22eae69de53c39b2dd3d3

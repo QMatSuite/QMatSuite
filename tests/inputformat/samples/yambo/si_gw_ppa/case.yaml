@@ -1,6 +1,20 @@
 case_id: si_gw_ppa
-title: "Silicon G0W0 (PPA)"
+title: Silicon G0W0 (PPA)
 engine: yambo
-workflow_tags: [gw, quasiparticle, periodic]
-species: [Si]
-description: "G0W0 quasiparticle correction run with PPA, dyson+em1d, and explicit QP band/k range."
+workflow_tags:
+- gw
+- quasiparticle
+- periodic
+species:
+- Si
+description: G0W0 quasiparticle correction run with PPA, dyson+em1d, and explicit
+  QP band/k range.
+demo_eligible: true
+step_type_gen: gw
+step_type_spec: yambo_gw
+required_engine: yambo
+availability: open_source
+demo_slug: yambo_si_gw
+asset_policy: none
+recommended_analysis: energy
+exclusion_reason: null

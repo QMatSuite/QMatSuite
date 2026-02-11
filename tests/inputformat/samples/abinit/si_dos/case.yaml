@@ -1,6 +1,16 @@
 case_id: si_dos
-title: "Silicon density of states"
+title: Silicon density of states
 engine: abinit
-workflow_tags: [dos, multi_dataset]
-species: [Si]
-description: "Two-dataset calculation for silicon DOS: SCF on 4x4x4 grid followed by NSCF on dense 8x8x8 grid with DOS output."
+workflow_tags:
+- dos
+- multi_dataset
+species:
+- Si
+description: 'Two-dataset calculation for silicon DOS: SCF on 4x4x4 grid followed
+  by NSCF on dense 8x8x8 grid with DOS output.'
+demo_eligible: false
+step_type_gen: dos
+step_type_spec: abinit_dos
+required_engine: abinit
+availability: open_source
+exclusion_reason: Parser/writer test case only

@@ -1,8 +1,21 @@
 case_id: multi_step_link1
-title: "Multi-Step Link1 Chain"
+title: Multi-Step Link1 Chain
 engine: gaussian
-workflow_tags: [link1, multi-step, post-hf, small-molecule]
-species: [O, H]
+workflow_tags:
+- link1
+- multi-step
+- post-hf
+- small-molecule
+species:
+- O
+- H
 functional: HF
 basis_set: STO-3G
-description: "HF/STO-3G → MP2/STO-3G via --Link1--; covers multi-job chaining with Geom=AllCheck"
+description: HF/STO-3G → MP2/STO-3G via --Link1--; covers multi-job chaining with
+  Geom=AllCheck
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: gaussian_scf
+required_engine: gaussian
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

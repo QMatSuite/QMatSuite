@@ -1,6 +1,17 @@
 case_id: si_scf
-title: "Silicon diamond SCF with k-points"
+title: Silicon diamond SCF with k-points
 engine: cp2k
-workflow_tags: [scf, periodic, kpoints]
-species: [Si]
-description: "Periodic Si diamond FCC with Monkhorst-Pack 4x4x4 k-mesh, PBE/DZVP. Tests KPOINTS, MGRID, QS, SCF/MIXING sections, and fractional coordinates."
+workflow_tags:
+- scf
+- periodic
+- kpoints
+species:
+- Si
+description: Periodic Si diamond FCC with Monkhorst-Pack 4x4x4 k-mesh, PBE/DZVP. Tests
+  KPOINTS, MGRID, QS, SCF/MIXING sections, and fractional coordinates.
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: cp2k_scf
+required_engine: cp2k
+availability: open_source
+exclusion_reason: Parser/writer test case only

@@ -1,8 +1,23 @@
 case_id: fe_complex_uks
-title: "Fe(II) High-Spin Hexaquo Complex"
+title: Fe(II) High-Spin Hexaquo Complex
 engine: orca
-workflow_tags: [scf, open-shell, uks, transition-metal, cation]
-species: [Fe, O, H]
+workflow_tags:
+- scf
+- open-shell
+- uks
+- transition-metal
+- cation
+species:
+- Fe
+- O
+- H
 functional: B3LYP
 basis_set: DEF2-SVP
-description: "Unrestricted Kohn-Sham calculation for Fe(II) hexaquo complex, quintet state (S=2)"
+description: Unrestricted Kohn-Sham calculation for Fe(II) hexaquo complex, quintet
+  state (S=2)
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: orca_scf
+required_engine: orca
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

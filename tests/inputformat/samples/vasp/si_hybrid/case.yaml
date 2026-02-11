@@ -1,7 +1,17 @@
 case_id: si_hybrid
-title: "Silicon diamond HSE06 hybrid functional"
+title: Silicon diamond HSE06 hybrid functional
 engine: vasp
-workflow_tags: [scf, hybrid, hse]
-species: [Si]
+workflow_tags:
+- scf
+- hybrid
+- hse
+species:
+- Si
 functional: HSE06
-description: "Si HSE06 with HFSCREEN=0.2, AEXX=0.25, damped algorithm"
+description: Si HSE06 with HFSCREEN=0.2, AEXX=0.25, damped algorithm
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: vasp_scf
+required_engine: vasp
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

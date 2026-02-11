@@ -1,7 +1,18 @@
 case_id: mgo_slab
-title: "MgO(001) slab with dipole correction"
+title: MgO(001) slab with dipole correction
 engine: vasp
-workflow_tags: [scf, slab, dipole]
-species: [Mg, O]
+workflow_tags:
+- scf
+- slab
+- dipole
+species:
+- Mg
+- O
 functional: PBE
-description: "MgO(001) slab with IDIPOL=3 and LDIPOL dipole correction"
+description: MgO(001) slab with IDIPOL=3 and LDIPOL dipole correction
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: vasp_scf
+required_engine: vasp
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

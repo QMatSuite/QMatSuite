@@ -1,7 +1,16 @@
 case_id: graphene_vdw
-title: "Graphene with DFT-D3(BJ) vdW correction"
+title: Graphene with DFT-D3(BJ) vdW correction
 engine: vasp
-workflow_tags: [scf, vdw]
-species: [C]
+workflow_tags:
+- scf
+- vdw
+species:
+- C
 functional: PBE-D3
-description: "Graphene monolayer with DFT-D3(BJ) van der Waals correction (IVDW=12)"
+description: Graphene monolayer with DFT-D3(BJ) van der Waals correction (IVDW=12)
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: vasp_scf
+required_engine: vasp
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

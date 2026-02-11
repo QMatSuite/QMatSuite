@@ -1,0 +1,90 @@
+version: 1
+project:
+  meta:
+    ulid: 01KD95TFCDP14F89W72H5PY47G
+    name: 13 Graphene
+    slug: 13-graphene
+    path: .
+    kind: project
+  settings: {}
+structures: []
+calculations:
+- meta:
+    ulid: 01K8WF5115WM6SH1JM6Y30Z31C
+    name: 13 Graphene
+    slug: 13-graphene
+    path: calculations/13-graphene
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: qe
+  steps:
+  - meta:
+      name: relax
+      slug: relax
+      path: calculations/13-graphene/steps/relax.step.yaml
+      kind: step
+      ulid: 01K1HJQCDG8XBBJTA2VAXWE1J5
+    parameters: {}
+    step_type_spec: qe_relax
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/13-graphene/steps/scf.step.yaml
+      kind: step
+      ulid: 01KTR77HDE9P5CH9HA183VVZKK
+    parameters: {}
+    step_type_spec: qe_scf
+  - meta:
+      name: bandspw
+      slug: bandspw
+      path: calculations/13-graphene/steps/bandspw.step.yaml
+      kind: step
+      ulid: 01K5MKK11CT8TJ3W999ST6S5RM
+    parameters: {}
+    step_type_spec: qe_bandspw
+  - meta:
+      name: bands
+      slug: bands
+      path: calculations/13-graphene/steps/bands.step.yaml
+      kind: step
+      ulid: 01K7C78SRX4TXN6BXAGVNCBMN3
+    parameters: {}
+    step_type_spec: qe_bands
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/13-graphene/steps/scf.step.yaml
+      kind: step
+      ulid: 01KTR77HDE9P5CH9HA183VVZKK
+    parameters: {}
+    step_type_spec: qe_custom
+  species_map:
+    C:
+      pseudopot: C.pbe-n-kjpaw_psl.1.0.0.UPF
+      pseudo_basename: C.pbe-n-kjpaw_psl.1.0.0.UPF
+      pseudo_sha256: 8a25fbf64c4fa257c68c01dc9a96e5b23c6a5ac0b09f45f271e1c946a65ed657
+      pseudo_sha_family: 07a23f908c6aad37e6590e764f5125604bb44cf7ad2782e5b028e57c49743901
+pseudo:
+  directory: pseudo
+  files:
+  - C.pbe-n-kjpaw_psl.1.0.0.UPF
+meta:
+  ulid: qe_graphene_bands
+  title: 13 Graphene
+  subtitle: VC-Relax → SCF → Bands → Bands → custom
+  tags:
+  - bands
+  - graphene
+  - 2D
+  - PW
+  - tutorial
+  recommended_analysis: bands
+  difficulty: beginner
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: qe
+  corpus_case_id: graphene_bands
+  corpus_checksum: e5cb22db274d695f3fe150823342db0e97572d9983752353ba3c6ffdeb11fc9d

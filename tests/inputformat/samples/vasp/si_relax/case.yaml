@@ -1,7 +1,25 @@
 case_id: si_relax
-title: "Silicon diamond ionic relaxation"
+title: Silicon diamond ionic relaxation
 engine: vasp
-workflow_tags: [relax, ionic]
-species: [Si]
+workflow_tags:
+- relax
+- ionic
+species: &id001
+- Si
 functional: PBE
-description: "Si diamond CG relaxation with ISIF=2 (ions only)"
+description: Si diamond CG relaxation with ISIF=2 (ions only)
+demo_eligible: true
+step_type_gen: relax
+step_type_spec: vasp_relax
+required_engine: vasp
+availability: requires_local_install
+demo_slug: vasp_si_relax
+asset_policy: proprietary
+asset_requirements:
+  proprietary:
+  - type: potcar
+    description: VASP PAW PBE pseudopotentials for Si
+    species: *id001
+    obtain_from: VASP POTCAR library (requires VASP license)
+recommended_analysis: scf
+exclusion_reason: null

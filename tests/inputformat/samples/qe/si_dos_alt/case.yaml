@@ -1,0 +1,46 @@
+case_id: si_dos_alt
+engine: qe
+title: 4 Si Dos
+description: SCF → NSCF → DOS
+workflow_tags:
+- scf
+- nscf
+- dos
+- electronic
+species:
+- Si
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: qe_scf
+required_engine: qe
+availability: open_source
+demo_slug: qe_si_dos_alt
+asset_policy: redistributable
+recommended_analysis: dos
+difficulty: beginner
+subtitle: SCF → NSCF → DOS
+tags:
+- dos
+- Si
+- PW
+- tutorial
+exclusion_reason: null
+asset_requirements:
+  pseudopotentials:
+  - file: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+    element: Si
+    source: resources/pseudo
+multi_step: true
+steps:
+- step_type_gen: scf
+  step_type_spec: qe_scf
+  input_files:
+  - si.1_scf.in
+- step_type_gen: nscf
+  step_type_spec: qe_nscf
+  input_files:
+  - si.2_nscf.in
+- step_type_gen: dos
+  step_type_spec: qe_dos
+  input_files:
+  - si.3_dos.in

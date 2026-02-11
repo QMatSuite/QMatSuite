@@ -1,0 +1,98 @@
+version: 1
+project:
+  meta:
+    ulid: 01KAXA0J7P182YDNHXKCTD63Q5
+    name: Water B3LYP Geometry Optimization
+    slug: water-b3lyp-geometry-optimization
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KNZG514VC0SKT86T7C9A5ENK
+    name: HO
+    slug: ho
+    path: structures/ho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.117499
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.75695
+      - -0.469996
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - -0.75695
+      - -0.469996
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01KVRZX1WZXAAERBR9F6ZZBKFG
+    name: Water B3LYP Geometry Optimization
+    slug: water-b3lyp-geometry-optimization
+    path: calculations/water-b3lyp-geometry-optimization
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: gaussian
+  steps:
+  - meta:
+      name: relax
+      slug: relax
+      path: calculations/water-b3lyp-geometry-optimization/steps/relax.step.yaml
+      kind: step
+      ulid: 01K25JYQ4HHWHYRR2BA4B8KD19
+    parameters:
+      mem: 500MB
+      nproc: 1
+      chk_name: water_opt.chk
+      method: B3LYP
+      basis: 6-31G*
+      gen_type: relax
+      title: Water geometry optimization
+      charge: 0
+      multiplicity: 1
+    step_type_spec: gaussian_relax
+  structure_ulid: 01KNZG514VC0SKT86T7C9A5ENK
+meta:
+  ulid: gaussian_water_opt
+  title: Water B3LYP Geometry Optimization
+  subtitle: relax
+  tags:
+  - relax
+  - dft
+  - small-molecule
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: gaussian
+  availability: requires_local_install
+  generator_version: 1.0.0
+  corpus_engine: gaussian
+  corpus_case_id: water_b3lyp_opt
+  corpus_checksum: de5367b7721b4337d8c983cb7fe619b577dd24ebd290207e1c6d79a9afbedf73

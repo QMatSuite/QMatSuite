@@ -1,6 +1,17 @@
 case_id: si_tddft_lrc
-title: "Silicon TDDFT LRC optics"
+title: Silicon TDDFT LRC optics
 engine: yambo
-workflow_tags: [optics, tddft, lrc]
-species: [Si]
-description: "TDDFT optics using LRC kernel (Chimod=LRC) to exercise non-IP optics writer/parser path."
+workflow_tags:
+- optics
+- tddft
+- lrc
+species:
+- Si
+description: TDDFT optics using LRC kernel (Chimod=LRC) to exercise non-IP optics
+  writer/parser path.
+demo_eligible: false
+step_type_gen: optics
+step_type_spec: yambo_optics
+required_engine: yambo
+availability: open_source
+exclusion_reason: Parser/writer test case only

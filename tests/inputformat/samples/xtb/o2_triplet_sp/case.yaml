@@ -1,6 +1,16 @@
 case_id: o2_triplet_sp
-title: "O2 triplet single-point"
+title: O2 triplet single-point
 engine: xtb
-workflow_tags: [singlepoint, open_shell, uhf]
-species: [O]
-description: "Open-shell single-point using unpaired electrons."
+workflow_tags:
+- singlepoint
+- open_shell
+- uhf
+species:
+- O
+description: Open-shell single-point using unpaired electrons.
+demo_eligible: false
+step_type_gen: relax
+step_type_spec: xtb_relax
+required_engine: xtb
+availability: bundled
+exclusion_reason: Parser/writer test case only

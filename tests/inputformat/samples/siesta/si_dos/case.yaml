@@ -1,7 +1,17 @@
 case_id: si_dos
-title: "Silicon projected DOS"
+title: Silicon projected DOS
 engine: siesta
-workflow_tags: [dos, pdos, periodic]
-species: [Si]
+workflow_tags:
+- dos
+- pdos
+- periodic
+species:
+- Si
 functional: PBE
-description: "Projected DOS request through ProjectedDensityOfStates block."
+description: Projected DOS request through ProjectedDensityOfStates block.
+demo_eligible: false
+step_type_gen: dos
+step_type_spec: siesta_dos
+required_engine: siesta
+availability: open_source
+exclusion_reason: Parser/writer test case only

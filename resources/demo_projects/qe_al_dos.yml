@@ -1,0 +1,82 @@
+version: 1
+project:
+  meta:
+    ulid: 01KJKCW7GAQXSKH2RXJFX6FSHK
+    name: 6 Al Dos
+    slug: 6-al-dos
+    path: .
+    kind: project
+  settings: {}
+structures: []
+calculations:
+- meta:
+    ulid: 01K04YGRDK5BCRDBZE20HVG198
+    name: 6 Al Dos
+    slug: 6-al-dos
+    path: calculations/6-al-dos
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: qe
+  steps:
+  - meta:
+      name: relax
+      slug: relax
+      path: calculations/6-al-dos/steps/relax.step.yaml
+      kind: step
+      ulid: 01K05ME1DD370515YZ26V0ZQ3K
+    parameters: {}
+    step_type_spec: qe_relax
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/6-al-dos/steps/scf.step.yaml
+      kind: step
+      ulid: 01KZ25446JJHF19PCCT8YX6X4Z
+    parameters: {}
+    step_type_spec: qe_scf
+  - meta:
+      name: nscf
+      slug: nscf
+      path: calculations/6-al-dos/steps/nscf.step.yaml
+      kind: step
+      ulid: 01KY0SF6Z3RGBF5BD1VJCC0HN5
+    parameters: {}
+    step_type_spec: qe_nscf
+  - meta:
+      name: dos
+      slug: dos
+      path: calculations/6-al-dos/steps/dos.step.yaml
+      kind: step
+      ulid: 01KF9WAA251MRGQE9D123HZ0H7
+    parameters: {}
+    step_type_spec: qe_dos
+  species_map:
+    Al:
+      pseudopot: Al.pbe-n-kjpaw_psl.1.0.0.UPF
+      pseudo_basename: Al.pbe-n-kjpaw_psl.1.0.0.UPF
+      pseudo_sha256: 450c947cbbf30c33a5a77685bbe9a270947816f8a93837c02c749d0ee4e3ab4a
+      pseudo_sha_family: 9dff5c226d2cdc6442d9f5264619ea1c8997caa9d5070b5cb7dfe0f609f88e0c
+pseudo:
+  directory: pseudo
+  files:
+  - Al.pbe-n-kjpaw_psl.1.0.0.UPF
+meta:
+  ulid: qe_al_dos
+  title: 6 Al Dos
+  subtitle: VC-Relax → SCF → NSCF → DOS
+  tags:
+  - dos
+  - Al
+  - PW
+  - metal
+  - tutorial
+  recommended_analysis: dos
+  difficulty: beginner
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: qe
+  corpus_case_id: al_dos
+  corpus_checksum: 4d0118566c2f788aa7b1e311e338a084d36819561c1dd6f2b178395477ead709

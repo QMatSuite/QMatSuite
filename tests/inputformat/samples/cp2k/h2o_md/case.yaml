@@ -1,6 +1,18 @@
 case_id: h2o_md
-title: "Water molecule NVT molecular dynamics"
+title: Water molecule NVT molecular dynamics
 engine: cp2k
-workflow_tags: [md, nvt, molecule]
-species: [O, H]
-description: "NVT Born-Oppenheimer MD with Nose-Hoover thermostat at 300 K. Tests MOTION/MD section with nested THERMOSTAT/NOSE subsections."
+workflow_tags:
+- md
+- nvt
+- molecule
+species:
+- O
+- H
+description: NVT Born-Oppenheimer MD with Nose-Hoover thermostat at 300 K. Tests MOTION/MD
+  section with nested THERMOSTAT/NOSE subsections.
+demo_eligible: false
+step_type_gen: md
+step_type_spec: cp2k_md
+required_engine: cp2k
+availability: open_source
+exclusion_reason: Parser/writer test case only

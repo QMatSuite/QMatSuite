@@ -1,7 +1,20 @@
 case_id: si_relax
-title: "Silicon variable-cell CG relaxation"
+title: Silicon variable-cell CG relaxation
 engine: siesta
-workflow_tags: [relax, vc_relax, periodic]
-species: [Si]
+workflow_tags:
+- relax
+- vc_relax
+- periodic
+species:
+- Si
 functional: PBE
-description: "Variable-cell CG relaxation for bulk silicon."
+description: Variable-cell CG relaxation for bulk silicon.
+demo_eligible: true
+step_type_gen: relax
+step_type_spec: siesta_relax
+required_engine: siesta
+availability: open_source
+demo_slug: siesta_si_relax
+asset_policy: none
+recommended_analysis: scf
+exclusion_reason: null

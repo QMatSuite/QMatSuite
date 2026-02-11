@@ -1,6 +1,17 @@
 case_id: ethanol_opt_tight
-title: "Ethanol tight optimization"
+title: Ethanol tight optimization
 engine: xtb
-workflow_tags: [relax, tight]
-species: [C, H, O]
-description: "Tight optimization regime for medium-size molecule."
+workflow_tags:
+- relax
+- tight
+species:
+- C
+- H
+- O
+description: Tight optimization regime for medium-size molecule.
+demo_eligible: false
+step_type_gen: relax
+step_type_spec: xtb_relax
+required_engine: xtb
+availability: bundled
+exclusion_reason: Parser/writer test case only

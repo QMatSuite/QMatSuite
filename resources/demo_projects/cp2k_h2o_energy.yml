@@ -1,0 +1,137 @@
+version: 1
+project:
+  meta:
+    ulid: 01K56H5RV5W0J8W8W29GDT297G
+    name: Water molecule single-point energy
+    slug: water-molecule-single-point-energy
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01K760PXE1RS850PEZ8978SY35
+    name: HO
+    slug: ho
+    path: structures/ho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 10.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 10.0
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 10.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 10.0
+      b: 10.0
+      c: 10.0
+      alpha: 90.0
+      beta: 90.0
+      gamma: 90.0
+      volume: 1000.0000000000007
+    properties: {}
+    sites:
+    - species:
+      - element: O
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0117499
+      properties: {}
+      label: O
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.117499
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.0
+      - 0.07569500000000001
+      - -0.0469996
+      properties: {}
+      label: H
+      xyz:
+      - 0.0
+      - 0.7569500000000001
+      - -0.469996
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.0
+      - -0.07569500000000001
+      - -0.0469996
+      properties: {}
+      label: H
+      xyz:
+      - 0.0
+      - -0.7569500000000001
+      - -0.469996
+calculations:
+- meta:
+    ulid: 01KBX72BF8YZTT42VE742J27GF
+    name: Water molecule single-point energy
+    slug: water-molecule-single-point-energy
+    path: calculations/water-molecule-single-point-energy
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: cp2k
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/water-molecule-single-point-energy/steps/scf.step.yaml
+      kind: step
+      ulid: 01K9QHM2N96H6PA4MN9MXZGPHK
+    parameters:
+      GLOBAL:
+        PROJECT: h2o_energy
+        RUN_TYPE: ENERGY
+      FORCE_EVAL:
+        METHOD: Quickstep
+        DFT:
+          BASIS_SET_FILE_NAME: BASIS_MOLOPT
+          POTENTIAL_FILE_NAME: GTH_POTENTIALS
+          XC:
+            XC_FUNCTIONAL:
+              _DEFAULT_KEYWORD: PBE
+        KIND:
+        - BASIS_SET: DZVP-MOLOPT-SR-GTH
+          POTENTIAL: GTH-PBE-q6
+          _DEFAULT_KEYWORD: O
+        - BASIS_SET: DZVP-MOLOPT-SR-GTH
+          POTENTIAL: GTH-PBE-q1
+          _DEFAULT_KEYWORD: H
+    step_type_spec: cp2k_scf
+  structure_ulid: 01K760PXE1RS850PEZ8978SY35
+meta:
+  ulid: cp2k_h2o_energy
+  title: Water molecule single-point energy
+  subtitle: scf
+  tags:
+  - scf
+  - energy
+  - molecule
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: cp2k
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: cp2k
+  corpus_case_id: h2o_energy
+  corpus_checksum: 6e0f569bb3efd6c37888630536eb0996b0658e36ed20920206cf31676cb89b88

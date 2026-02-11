@@ -1,7 +1,25 @@
 case_id: si_scf
-title: "Silicon diamond SCF"
+title: Silicon diamond SCF
 engine: vasp
-workflow_tags: [scf, electronic]
-species: [Si]
+workflow_tags:
+- scf
+- electronic
+species: &id001
+- Si
 functional: PBE
-description: "Basic Si diamond SCF with standard PBE settings"
+description: Basic Si diamond SCF with standard PBE settings
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: vasp_scf
+required_engine: vasp
+availability: requires_local_install
+demo_slug: vasp_si_scf
+asset_policy: proprietary
+asset_requirements:
+  proprietary:
+  - type: potcar
+    description: VASP PAW PBE pseudopotentials for Si
+    species: *id001
+    obtain_from: VASP POTCAR library (requires VASP license)
+recommended_analysis: scf
+exclusion_reason: null

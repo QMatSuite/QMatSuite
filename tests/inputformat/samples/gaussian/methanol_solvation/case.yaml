@@ -1,8 +1,22 @@
 case_id: methanol_solvation
-title: "Methanol SMD Implicit Solvation"
+title: Methanol SMD Implicit Solvation
 engine: gaussian
-workflow_tags: [scf, dft, solvation, small-molecule]
-species: [C, O, H]
+workflow_tags:
+- scf
+- dft
+- solvation
+- small-molecule
+species:
+- C
+- O
+- H
 functional: B3LYP
 basis_set: 6-31G*
-description: "B3LYP/6-31G* with SCRF=(SMD,Solvent=Water); covers implicit solvation parsing"
+description: B3LYP/6-31G* with SCRF=(SMD,Solvent=Water); covers implicit solvation
+  parsing
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: gaussian_scf
+required_engine: gaussian
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

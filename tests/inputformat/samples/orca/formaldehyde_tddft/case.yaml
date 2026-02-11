@@ -1,0 +1,44 @@
+case_id: formaldehyde_tddft
+engine: orca
+title: Formaldehyde ORCA TDDFT
+description: SCF + TDDFT excited states calculation on formaldehyde
+workflow_tags:
+- scf
+- tddft
+- dft
+- small-molecule
+species:
+- C
+- O
+- H
+functional: B3LYP
+basis_set: def2-SVP
+demo_eligible: true
+step_type_gen: td
+step_type_spec: orca_td
+required_engine: orca
+availability: requires_local_install
+demo_slug: orca_formaldehyde_tddft
+asset_policy: none
+recommended_analysis: excited_states
+difficulty: intermediate
+subtitle: SCF + TDDFT excited states calculation
+tags:
+- orca
+- molecular
+- scf
+- tddft
+- excited_states
+- formaldehyde
+- tutorial
+multi_step: true
+steps:
+- step_type_gen: scf
+  step_type_spec: orca_scf
+  input_files:
+  - formaldehyde_tddft.inp
+- step_type_gen: td
+  step_type_spec: orca_td
+  input_files:
+  - formaldehyde_tddft.inp
+exclusion_reason: null

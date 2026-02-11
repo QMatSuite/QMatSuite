@@ -1,0 +1,96 @@
+version: 1
+project:
+  meta:
+    ulid: 01KABX5KN7CX1G8WQDV9AZV1QV
+    name: Water Psi4 SCF
+    slug: water-psi4-scf
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01K8F3V16WMNJRMYWARKEHZ6J6
+    name: HO
+    slug: ho
+    path: structures/ho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.1173
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.75695
+      - -0.4692
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - -0.75695
+      - -0.4692
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01KGQGZ59B3HT4FZ3J092D1K36
+    name: Water Psi4 SCF
+    slug: water-psi4-scf
+    path: calculations/water-psi4-scf
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: psi4
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/water-psi4-scf/steps/scf.step.yaml
+      kind: step
+      ulid: 01K0Q93ZBFTWBTTCFSASYP7B5Z
+    parameters:
+      method: hf
+      basis: cc-pVDZ
+      charge: 0
+      spin: 0
+    step_type_spec: psi4_scf
+  structure_ulid: 01K8F3V16WMNJRMYWARKEHZ6J6
+meta:
+  ulid: psi4_water_scf
+  title: Water Psi4 SCF
+  subtitle: HF/cc-pVDZ calculation on water molecule
+  tags:
+  - psi4
+  - molecular
+  - scf
+  - hf
+  - water
+  - tutorial
+  recommended_analysis: energy
+  difficulty: beginner
+  required_engine: psi4
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: psi4
+  corpus_case_id: water_scf
+  corpus_checksum: dc121f3e8fca8ee749278a0b6fa85a697337e06d427172162c56684ae84ff8a7

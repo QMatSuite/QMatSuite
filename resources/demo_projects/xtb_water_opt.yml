@@ -1,0 +1,88 @@
+version: 1
+project:
+  meta:
+    ulid: 01KDDNDKJ7FA7X2SYNNRT7GAJ5
+    name: Water geometry optimization
+    slug: water-geometry-optimization
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KTTN1YFS4AZ8CWTE7K7QD7K5
+    name: HO
+    slug: ho
+    path: structures/ho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.11737
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.75695
+      - -0.469483
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - -0.75695
+      - -0.469483
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01KSN444A2973Q6G89ZY9CDQ7M
+    name: Water geometry optimization
+    slug: water-geometry-optimization
+    path: calculations/water-geometry-optimization
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: xtb
+  steps:
+  - meta:
+      name: relax
+      slug: relax
+      path: calculations/water-geometry-optimization/steps/relax.step.yaml
+      kind: step
+      ulid: 01KFB5721RG5PEY5AT4C49GHRM
+    parameters: {}
+    step_type_spec: xtb_relax
+  structure_ulid: 01KTTN1YFS4AZ8CWTE7K7QD7K5
+meta:
+  ulid: xtb_water_opt
+  title: Water geometry optimization
+  subtitle: relax
+  tags:
+  - relax
+  - gfn2
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: xtb
+  availability: bundled
+  generator_version: 1.0.0
+  corpus_engine: xtb
+  corpus_case_id: water_opt
+  corpus_checksum: 593a0f85b0a91226010f9660f5d4979761e5c80c97b79154a8c111d4f513e509

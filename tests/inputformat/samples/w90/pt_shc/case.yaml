@@ -1,6 +1,21 @@
 case_id: pt_shc
-title: "Platinum spin Hall conductivity with Berry phase"
+title: Platinum spin Hall conductivity with Berry phase
 engine: w90
-workflow_tags: [spinors, berry_phase, spin_hall, disentanglement, transport, postw90]
-species: [Pt]
-description: "Platinum FCC with 18 spinor WFs for spin Hall conductivity (Tutorial Example 29). Berry phase calculation with SHC evaluation, kpoint_path, kslice, fermi energy scan, guiding_centres, tight convergence (1e-10), 10x10x10 k-grid."
+workflow_tags:
+- spinors
+- berry_phase
+- spin_hall
+- disentanglement
+- transport
+- postw90
+species:
+- Pt
+description: Platinum FCC with 18 spinor WFs for spin Hall conductivity (Tutorial
+  Example 29). Berry phase calculation with SHC evaluation, kpoint_path, kslice, fermi
+  energy scan, guiding_centres, tight convergence (1e-10), 10x10x10 k-grid.
+demo_eligible: false
+step_type_gen: wannier
+step_type_spec: w90_wannier
+required_engine: w90
+availability: open_source
+exclusion_reason: Parser/writer test case only

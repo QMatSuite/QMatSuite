@@ -1,0 +1,96 @@
+version: 1
+project:
+  meta:
+    ulid: 01K0KZ1QMW3NX996CWKRJM43YV
+    name: Water PySCF SCF
+    slug: water-pyscf-scf
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KBKRDD8NQ77W9VZK7M9W8AZH
+    name: HO
+    slug: ho
+    path: structures/ho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.1173
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.75695
+      - -0.4692
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - -0.75695
+      - -0.4692
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01KP1R1E7XHMWVVPZDBT8X823C
+    name: Water PySCF SCF
+    slug: water-pyscf-scf
+    path: calculations/water-pyscf-scf
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: pyscf
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/water-pyscf-scf/steps/scf.step.yaml
+      kind: step
+      ulid: 01KZNM9STYBAPJY4T27Q192TF7
+    parameters:
+      functional: B3LYP
+      basis: cc-pVDZ
+      charge: 0
+      spin: 0
+    step_type_spec: pyscf_scf
+  structure_ulid: 01KBKRDD8NQ77W9VZK7M9W8AZH
+meta:
+  ulid: pyscf_water_scf
+  title: Water PySCF SCF
+  subtitle: B3LYP/cc-pVDZ DFT calculation on water molecule
+  tags:
+  - pyscf
+  - molecular
+  - scf
+  - dft
+  - water
+  - tutorial
+  recommended_analysis: energy
+  difficulty: beginner
+  required_engine: pyscf
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: pyscf
+  corpus_case_id: water_scf
+  corpus_checksum: fc817117b5d03cfac3e7df1bcafee7272cedd7f48270d6cfd30af11cbab607d7

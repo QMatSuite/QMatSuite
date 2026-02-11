@@ -1,0 +1,56 @@
+case_id: graphene_bands
+engine: qe
+title: 13 Graphene
+description: VC-Relax → SCF → Bands → Bands → custom
+workflow_tags:
+- relax
+- scf
+- bandspw
+- bands
+- electronic
+species:
+- C
+demo_eligible: true
+step_type_gen: relax
+step_type_spec: qe_relax
+required_engine: qe
+availability: open_source
+demo_slug: qe_graphene_bands
+asset_policy: redistributable
+recommended_analysis: bands
+difficulty: beginner
+subtitle: VC-Relax → SCF → Bands → Bands → custom
+tags:
+- bands
+- graphene
+- 2D
+- PW
+- tutorial
+exclusion_reason: null
+asset_requirements:
+  pseudopotentials:
+  - file: C.pbe-n-kjpaw_psl.1.0.0.UPF
+    element: C
+    source: resources/pseudo
+multi_step: true
+steps:
+- step_type_gen: relax
+  step_type_spec: qe_relax
+  input_files:
+  - graphene.1_vc_relax.in
+- step_type_gen: scf
+  step_type_spec: qe_scf
+  input_files:
+  - graphene.2_scf.in
+- step_type_gen: bandspw
+  step_type_spec: qe_bandspw
+  input_files:
+  - graphene.3_bands.in
+- step_type_gen: bands
+  step_type_spec: qe_bands
+  input_files:
+  - graphene.4_bands_pp.in
+- step_type_gen: scf
+  step_type_spec: qe_custom
+  input_files:
+  - graphene.5_plotband.in

@@ -1,0 +1,73 @@
+version: 1
+project:
+  meta:
+    ulid: 01KK251Q30G8ZH03RS2W1B4PX9
+    name: 4 Si Dos
+    slug: 4-si-dos
+    path: .
+    kind: project
+  settings: {}
+structures: []
+calculations:
+- meta:
+    ulid: 01KDNHB2AX3JKE1CWS2AAAHS7T
+    name: 4 Si Dos
+    slug: 4-si-dos
+    path: calculations/4-si-dos
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: qe
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/4-si-dos/steps/scf.step.yaml
+      kind: step
+      ulid: 01KQHY537FBBA78XTAAJ9S4X87
+    parameters: {}
+    step_type_spec: qe_scf
+  - meta:
+      name: nscf
+      slug: nscf
+      path: calculations/4-si-dos/steps/nscf.step.yaml
+      kind: step
+      ulid: 01KA2EPNGD597MWAVZB9RW6W4E
+    parameters: {}
+    step_type_spec: qe_nscf
+  - meta:
+      name: dos
+      slug: dos
+      path: calculations/4-si-dos/steps/dos.step.yaml
+      kind: step
+      ulid: 01KDZRWQZS39ZWHQXEQ1YGKXP4
+    parameters: {}
+    step_type_spec: qe_dos
+  species_map:
+    Si:
+      pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_basename: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+pseudo:
+  directory: pseudo
+  files:
+  - Si.pbe-n-rrkjus_psl.1.0.0.UPF
+meta:
+  ulid: qe_si_dos_alt
+  title: 4 Si Dos
+  subtitle: SCF → NSCF → DOS
+  tags:
+  - dos
+  - Si
+  - PW
+  - tutorial
+  recommended_analysis: dos
+  difficulty: beginner
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: qe
+  corpus_case_id: si_dos_alt
+  corpus_checksum: 47e94d541eee8cc7c7d24c9b1dc5c082ec01e590013910b58919af5f7d8f05a6

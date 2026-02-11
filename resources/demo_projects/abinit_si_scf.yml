@@ -1,0 +1,121 @@
+version: 1
+project:
+  meta:
+    ulid: 01KAWBNWQW7YCDHM3QTBZEPFDH
+    name: Silicon SCF ground state
+    slug: silicon-scf-ground-state
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KBFFH4B8TNH1C14Z2YMX69BM
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 0.0
+        - 0.5
+        - 0.5
+      - - 0.5
+        - 0.0
+        - 0.5
+      - - 0.5
+        - 0.5
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 0.7071067811865476
+      b: 0.7071067811865476
+      c: 0.7071067811865476
+      alpha: 60.00000000000001
+      beta: 60.00000000000001
+      gamma: 60.00000000000001
+      volume: 0.25
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.25
+      - 0.25
+      - 0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 0.25
+      - 0.25
+      - 0.25
+calculations:
+- meta:
+    ulid: 01KR5X1WXSAZ4JZHSW6DJC8MWV
+    name: Silicon SCF ground state
+    slug: silicon-scf-ground-state
+    path: calculations/silicon-scf-ground-state
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: abinit
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/silicon-scf-ground-state/steps/scf.step.yaml
+      kind: step
+      ulid: 01KDCWGGH07QV0BNFEG2PJM4RV
+    parameters:
+      ecut: 10
+      ngkpt:
+      - 4
+      - 4
+      - 4
+      nshiftk: 1
+      shiftk:
+      - 0.5
+      - 0.5
+      - 0.5
+      nstep: 30
+      toldfe: 1.0e-08
+      pp_dirpath: ./pseudos
+      pseudos: Si.psp8
+      znucl:
+        Si: 14
+    step_type_spec: abinit_scf
+  structure_ulid: 01KBFFH4B8TNH1C14Z2YMX69BM
+meta:
+  ulid: abinit_si_scf
+  title: Silicon SCF ground state
+  subtitle: scf
+  tags:
+  - scf
+  recommended_analysis: scf
+  difficulty: beginner
+  asset_policy: redistributable
+  required_engine: abinit
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: abinit
+  corpus_case_id: si_scf
+  corpus_checksum: 1e0042f0cf1551cf94db784dc60776f9484630c79a29d47417f8e5048a0c0c45

@@ -1,6 +1,19 @@
 case_id: water_md
-title: "Water molecular dynamics"
+title: Water molecular dynamics
 engine: xtb
-workflow_tags: [md, xcontrol]
-species: [O, H]
-description: "Short MD using xcontrol $md block."
+workflow_tags:
+- md
+- xcontrol
+species:
+- O
+- H
+description: Short MD using xcontrol $md block.
+demo_eligible: true
+step_type_gen: md
+step_type_spec: xtb_md
+required_engine: xtb
+availability: bundled
+demo_slug: xtb_water_md
+asset_policy: none
+recommended_analysis: trajectory
+exclusion_reason: null

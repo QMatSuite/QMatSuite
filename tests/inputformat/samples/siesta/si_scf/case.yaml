@@ -1,7 +1,19 @@
 case_id: si_scf
-title: "Silicon bulk SCF"
+title: Silicon bulk SCF
 engine: siesta
-workflow_tags: [scf, periodic]
-species: [Si]
+workflow_tags:
+- scf
+- periodic
+species:
+- Si
 functional: PBE
-description: "Reference bulk Si SCF with Monkhorst-Pack k-grid."
+description: Reference bulk Si SCF with Monkhorst-Pack k-grid.
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: siesta_scf
+required_engine: siesta
+availability: open_source
+demo_slug: siesta_si_scf
+asset_policy: none
+recommended_analysis: scf
+exclusion_reason: null

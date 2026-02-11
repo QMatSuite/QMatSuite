@@ -1,0 +1,34 @@
+&CONTROL
+  calculation = 'vc-relax'
+  restart_mode = 'from_scratch'
+  pseudo_dir = '/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos'
+  forc_conv_thr = 0.0001
+  etot_conv_thr = 1e-06
+/
+
+&SYSTEM
+  ecutwfc = 40.0
+  ecutrho = 400.0
+  occupations = 'smearing'
+  degauss = 0.0001
+  smearing = 'marzari-vanderbilt'
+/
+
+&ELECTRONS
+  conv_thr = 1e-08
+  mixing_beta = 0.3
+/
+
+&IONS
+  ion_dynamics = 'bfgs'
+/
+
+&CELL
+  press_conv_thr = 0.5
+  cell_dynamics = 'bfgs'
+  cell_dofree = '2Dxy'
+/
+
+K_POINTS {automatic}
+  12 12 1 0 0 0
+

@@ -1,5 +1,14 @@
 case_id: peptide_nvt
-title: "Peptide NVT with CHARMM"
+title: Peptide NVT with CHARMM
 engine: lammps
-workflow_tags: [md, nvt, biomolecular]
-description: "Full atom_style peptide with kspace, shake, bonded styles, read_data"
+workflow_tags:
+- md
+- nvt
+- biomolecular
+description: Full atom_style peptide with kspace, shake, bonded styles, read_data
+demo_eligible: false
+step_type_gen: md
+step_type_spec: lammps_md
+required_engine: lammps
+availability: open_source
+exclusion_reason: Parser/writer test case only

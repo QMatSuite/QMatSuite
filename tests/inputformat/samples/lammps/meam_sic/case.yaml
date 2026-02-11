@@ -1,5 +1,14 @@
 case_id: meam_sic
-title: "MEAM SiC NVE"
+title: MEAM SiC NVE
 engine: lammps
-workflow_tags: [md, nve, meam]
-description: "MEAM potential with read_data, metal units, simple NVE"
+workflow_tags:
+- md
+- nve
+- meam
+description: MEAM potential with read_data, metal units, simple NVE
+demo_eligible: false
+step_type_gen: md
+step_type_spec: lammps_md
+required_engine: lammps
+availability: open_source
+exclusion_reason: Parser/writer test case only

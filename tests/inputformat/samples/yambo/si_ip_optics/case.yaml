@@ -1,6 +1,16 @@
 case_id: si_ip_optics
-title: "Silicon IP optics"
+title: Silicon IP optics
 engine: yambo
-workflow_tags: [optics, ip, linear_response]
-species: [Si]
-description: "Independent-particle optics spectrum (Chimod=IP) on 0-10 eV grid."
+workflow_tags:
+- optics
+- ip
+- linear_response
+species:
+- Si
+description: Independent-particle optics spectrum (Chimod=IP) on 0-10 eV grid.
+demo_eligible: false
+step_type_gen: optics
+step_type_spec: yambo_optics
+required_engine: yambo
+availability: open_source
+exclusion_reason: Parser/writer test case only
