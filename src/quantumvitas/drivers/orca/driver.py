@@ -30,6 +30,11 @@ class ORCADriver(BaseEngineDriver):
             gen_step_sequence=["relax"],
             evidence_files=["*_trj.xyz"],
         ),
+        AnalysisCapability(
+            object_type="field3d",
+            gen_step_sequence=["scf"],
+            evidence_files=["*.cube"],
+        ),
     ]
 
     # ─────────────────────────────────────────────────────────────────────

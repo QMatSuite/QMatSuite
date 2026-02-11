@@ -10,7 +10,8 @@ import pytest
 
 from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
 from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.vasp.parsers.field3d import VASPField3DProvider, Field3D
+from quantumvitas.core.analysis.field3d import Field3D
+from quantumvitas.drivers.vasp.parsers.field3d import VASPField3DProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_vasp_field3d"

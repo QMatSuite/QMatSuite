@@ -55,6 +55,11 @@ class QEDriver(BaseEngineDriver):
             gen_step_sequence=["neb"],
             evidence_files=["*.axsf"],
         ),
+        AnalysisCapability(
+            object_type="field3d",
+            gen_step_sequence=["scf"],
+            evidence_files=["*.cube"],
+        ),
     ]
 
     @property

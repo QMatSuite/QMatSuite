@@ -645,7 +645,7 @@ def test_vasp_analysis_capabilities_cover_five_types() -> None:
 def test_field3d_bundle_excludes_full_grid() -> None:
     """Gate: field3d bundle must NOT contain full grid_data in arrays."""
     import inspect
-    from quantumvitas.drivers.vasp.parsers.field3d import Field3D
+    from quantumvitas.core.analysis.field3d import Field3D
     source = inspect.getsource(Field3D.to_primitives)
     assert '"grid_data": self.grid_data' not in source
 
@@ -828,3 +828,55 @@ def test_frontend_no_kernel_import() -> None:
             assert token not in text, (
                 f"{path} imports forbidden backend kernel path '{token}'"
             )
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Field3D parser matrix — all 11 applicable engines
+# ─────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("engine", [
+    "vasp", "qe", "w90", "cp2k", "abinit", "siesta",
+    "gaussian", "orca", "gpaw", "psi4", "pyscf",
+])
+def test_field3d_parser_matrix(engine: str) -> None:
+    """Gate: every field3d-capable engine has a registered parser."""
+    import quantumvitas.drivers  # noqa: F401 — trigger registration
+
+    from quantumvitas.parsers.registry import _PARSERS
+
+    key = (engine, "field3d")
+    assert key in _PARSERS, (
+        f"Missing field3d parser for {engine}. "
+        f"Registered: {sorted(k for k in _PARSERS if k[1] == 'field3d')}"
+    )
+
+
+@pytest.mark.parametrize("engine", [
+    "vasp", "qe", "w90", "cp2k", "abinit", "siesta",
+    "gaussian", "orca", "gpaw", "psi4", "pyscf",
+])
+def test_field3d_engine_has_analysis_capabilities(engine: str) -> None:
+    """Gate: every field3d-capable engine declares field3d in ANALYSIS_CAPABILITIES."""
+    import quantumvitas.drivers  # noqa: F401
+
+    driver = DriverRegistry.get_driver(engine)
+    caps = getattr(driver, "ANALYSIS_CAPABILITIES", [])
+    object_types = {c.object_type for c in caps}
+    assert "field3d" in object_types, (
+        f"Engine '{engine}' missing field3d capability: has {sorted(object_types)}"
+    )
+
+
+def test_field3d_core_importable() -> None:
+    """Gate: Field3D is importable from core analysis package."""
+    from quantumvitas.core.analysis.field3d import Field3D
+    assert hasattr(Field3D, "to_primitives")
+    assert "grid_data" in Field3D.__init__.__code__.co_varnames
+
+
+def test_field3d_cube_parser_importable() -> None:
+    """Gate: shared cube parser is importable from io/parser."""
+    from quantumvitas.io.parser.cube_parser import parse_cube_file, parse_xsf_field3d
+    assert callable(parse_cube_file)
+    assert callable(parse_xsf_field3d)

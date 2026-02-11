@@ -60,6 +60,11 @@ class SiestaDriver(BaseEngineDriver):
             gen_step_sequence=["md"],
             evidence_files=["*.ANI"],
         ),
+        AnalysisCapability(
+            object_type="field3d",
+            gen_step_sequence=["scf"],
+            evidence_files=["*.cube"],
+        ),
     ]
 
     # ── MUST: Properties ──────────────────────────────────────────────

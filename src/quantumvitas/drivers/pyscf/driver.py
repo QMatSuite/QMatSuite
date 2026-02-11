@@ -32,6 +32,11 @@ class PySCFDriver(BaseEngineDriver):
             gen_step_sequence=["relax"],
             evidence_files=["*.out"],
         ),
+        AnalysisCapability(
+            object_type="field3d",
+            gen_step_sequence=["scf"],
+            evidence_files=["*.cube"],
+        ),
     ]
 
     # ─────────────────────────────────────────────────────────────────────
