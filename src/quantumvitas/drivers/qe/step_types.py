@@ -107,6 +107,12 @@ QE_STEP_TYPE_SPECS: list[StepTypeSpec] = [
         description="QE to Wannier90 interface",
     ),
     StepTypeSpec(
+        step_type_spec="qe_neb",
+        engine="qe",
+        executable="neb.x",
+        description="QE nudged elastic band calculation",
+    ),
+    StepTypeSpec(
         step_type_spec="qe_custom",
         engine="qe",
         executable="pw.x",

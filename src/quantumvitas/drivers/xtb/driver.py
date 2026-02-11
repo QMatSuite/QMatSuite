@@ -25,7 +25,7 @@ class XTBDriver(BaseEngineDriver):
     """
 
     PREFIX: str = "xtb"
-    SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({"relax"})
+    SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({"relax", "md"})
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
     ANALYSIS_CAPABILITIES = [
@@ -33,6 +33,11 @@ class XTBDriver(BaseEngineDriver):
             object_type="trajectory",
             gen_step_sequence=["relax"],
             evidence_files=["xtbopt.log"],
+        ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["md"],
+            evidence_files=["xtb.trj"],
         ),
     ]
 
@@ -63,6 +68,15 @@ class XTBDriver(BaseEngineDriver):
                 supports_restart=False,
                 mpi_aware=False,
             ),
+            StepTypeSpec(
+                step_type_spec="xtb_md",
+                engine="xtb",
+                executable="xtb",
+                description="xTB molecular dynamics",
+                category="calculation",
+                supports_restart=False,
+                mpi_aware=False,
+            ),
         ]
 
     def get_handler(self):
@@ -84,7 +98,7 @@ class XTBDriver(BaseEngineDriver):
         return WorkdirPolicy.ISOLATED
 
     def get_capabilities(self) -> set[str]:
-        return {"relax", "molecular"}
+        return {"relax", "md", "molecular"}
 
     def supports_incremental_skip(self, step_type_spec: str) -> bool:
         return True

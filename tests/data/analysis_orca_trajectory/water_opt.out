@@ -169,9 +169,9 @@ interface, adapt or use parts of their codes:
 
   ***********************************
   * Starting time: Tue Feb 10 18:12:55 2026
-  * Host name:     PHY-K3302477DD
+  * Host name:     <HOST>
   * Process ID:    72501
-  * Working dir.:  /Users/hh7465/QMatSuite/.tmp/traj_fixture_runs/orca_opt
+  * Working dir.:  <HOME>/QMatSuite/.tmp/traj_fixture_runs/orca_opt
   ***********************************
 
 Warning: RI is on but no J-basis has been assigned. Assigning Def2/J (nothing to worry about!)

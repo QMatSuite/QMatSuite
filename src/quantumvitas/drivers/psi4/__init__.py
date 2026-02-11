@@ -7,3 +7,6 @@ from quantumvitas.core.driver_registry import DriverRegistry
 from .driver import Psi4Driver
 
 DriverRegistry.register(Psi4Driver())
+
+# Import parsers to trigger @register_parser registration
+from . import parsers as _parsers  # noqa: F401, E402

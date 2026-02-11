@@ -725,7 +725,7 @@ def test_final_matrix_documented() -> None:
 
 @pytest.mark.parametrize("engine", [
     "qe", "vasp", "abinit", "siesta", "cp2k", "gpaw",
-    "lammps", "xtb", "orca", "gaussian",
+    "lammps", "xtb", "orca", "gaussian", "psi4", "pyscf",
 ])
 def test_trajectory_parser_matrix(engine: str) -> None:
     """Gate: every trajectory-capable engine has a registered trajectory parser."""
@@ -742,7 +742,7 @@ def test_trajectory_parser_matrix(engine: str) -> None:
 
 @pytest.mark.parametrize("engine", [
     "qe", "vasp", "abinit", "siesta", "cp2k", "gpaw",
-    "lammps", "xtb", "orca", "gaussian",
+    "lammps", "xtb", "orca", "gaussian", "psi4", "pyscf",
 ])
 def test_trajectory_engine_has_analysis_capabilities(engine: str) -> None:
     """Gate: every engine with trajectory parser declares trajectory in ANALYSIS_CAPABILITIES."""
@@ -754,6 +754,60 @@ def test_trajectory_engine_has_analysis_capabilities(engine: str) -> None:
     assert "trajectory" in object_types, (
         f"Engine '{engine}' missing trajectory capability: has {sorted(object_types)}"
     )
+
+
+@pytest.mark.parametrize("engine", ["qe", "vasp", "abinit", "siesta", "cp2k"])
+def test_convergence_parser_matrix(engine: str) -> None:
+    """Gate: every convergence-capable engine has a registered convergence parser."""
+    import quantumvitas.drivers  # noqa: F401
+
+    from quantumvitas.parsers.registry import _PARSERS
+
+    key = (engine, "convergence")
+    assert key in _PARSERS, (
+        f"Missing parser for {engine}/convergence. "
+        f"Registered: {sorted(k for k in _PARSERS if k[1] == 'convergence')}"
+    )
+
+
+@pytest.mark.parametrize("engine", ["qe", "vasp", "abinit", "siesta", "cp2k"])
+def test_convergence_engine_has_analysis_capabilities(engine: str) -> None:
+    """Gate: every engine with convergence parser declares convergence in ANALYSIS_CAPABILITIES."""
+    import quantumvitas.drivers  # noqa: F401
+
+    driver = DriverRegistry.get_driver(engine)
+    caps = getattr(driver, "ANALYSIS_CAPABILITIES", [])
+    object_types = {c.object_type for c in caps}
+    assert "convergence" in object_types, (
+        f"Engine '{engine}' missing convergence capability: has {sorted(object_types)}"
+    )
+
+
+def test_trajectory_transforms_importable() -> None:
+    """Gate: all 6 trajectory transforms are importable."""
+    from quantumvitas.core.analysis.transforms.frame_slice import FrameSlice
+    from quantumvitas.core.analysis.transforms.smoothing import Smoothing
+    from quantumvitas.core.analysis.transforms.msd import MSD
+    from quantumvitas.core.analysis.transforms.rdf import RDF
+    from quantumvitas.core.analysis.transforms.vacf import VACF
+    from quantumvitas.core.analysis.transforms.diffusion import DiffusionCoefficient
+
+    assert FrameSlice is not None
+    assert Smoothing is not None
+    assert MSD is not None
+    assert RDF is not None
+    assert VACF is not None
+    assert DiffusionCoefficient is not None
+
+
+def test_neb_trajectory_parser_registered() -> None:
+    """Gate: QE NEB trajectory parser is registered."""
+    import quantumvitas.drivers  # noqa: F401
+
+    from quantumvitas.parsers.registry import _PARSERS
+
+    key = ("qe", "neb_trajectory")
+    assert key in _PARSERS, f"Missing parser for qe/neb_trajectory"
 
 
 def test_frontend_no_kernel_import() -> None:

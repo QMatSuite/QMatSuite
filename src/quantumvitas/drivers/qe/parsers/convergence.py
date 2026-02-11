@@ -1,0 +1,206 @@
+"""QE convergence analysis provider."""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+from typing import List
+
+import numpy as np
+
+from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat
+from quantumvitas.core.analysis.convergence import Convergence
+from quantumvitas.core.analysis.evidence import EvidenceBundle
+from quantumvitas.parsers.registry import register_parser
+
+# Ry -> eV
+_RY_TO_EV = 13.605693122994
+
+# SCF iteration line:
+#   iteration #  1     ecut=    20.00 Ry     beta= 0.70
+_SCF_ITER_RE = re.compile(r"^\s+iteration\s+#\s*(\d+)")
+
+# Total energy in SCF block:
+#   total energy              =     -15.74359441 Ry
+_TOTAL_ENERGY_RE = re.compile(
+    r"^\s+total energy\s+=\s+([-+]?\d+\.\d+)\s+Ry"
+)
+
+# Estimated scf accuracy:
+#   estimated scf accuracy    <       0.05640246 Ry
+# or estimated scf accuracy    <          8.6E-09 Ry
+_SCF_ACCURACY_RE = re.compile(
+    r"^\s+estimated scf accuracy\s+<\s+([-+]?\d+\.?\d*(?:[eE][-+]?\d+)?)\s+Ry"
+)
+
+# Final total energy (ionic summary):
+#  !    total energy              =     -15.74697012 Ry
+_FINAL_ENERGY_RE = re.compile(
+    r"^\s*!\s+total energy\s+=\s+([-+]?\d+\.\d+)\s+Ry"
+)
+
+# Total force:
+#      Total force =     0.039171     Total SCF correction =     0.000064
+_TOTAL_FORCE_RE = re.compile(
+    r"^\s+Total force\s+=\s+([-+]?\d+\.\d+)"
+)
+
+# Convergence marker:
+#   convergence has been achieved in   5 iterations
+_CONVERGED_RE = re.compile(
+    r"^\s+convergence has been achieved"
+)
+
+# Algorithm:
+#   Davidson diagonalization with overlap
+_ALGORITHM_RE = re.compile(
+    r"^\s+(Davidson|CG|Lanczos|PPCG)\s+diagonalization"
+)
+
+
+def parse_qe_convergence(output_path: Path) -> dict:
+    """Parse QE pw.x output for convergence data.
+
+    Returns dict with:
+    - scf_steps, scf_energies, scf_des: cumulative SCF data (eV)
+    - ionic_steps, ionic_energies, ionic_max_forces: ionic data (eV, eV/A)
+    - algorithm, converged
+    """
+    text = output_path.read_text(encoding="utf-8", errors="replace")
+    lines = text.splitlines()
+
+    scf_steps: List[int] = []
+    scf_energies: List[float] = []
+    scf_des: List[float] = []
+    ionic_steps: List[int] = []
+    ionic_energies: List[float] = []
+    ionic_max_forces: List[float] = []
+    algorithm = ""
+    converged = False
+    cumulative_scf = 0
+    prev_energy: float | None = None
+    ionic_index = 0
+
+    for line in lines:
+        # Algorithm detection
+        if not algorithm:
+            alg_m = _ALGORITHM_RE.match(line)
+            if alg_m:
+                algorithm = alg_m.group(1)
+
+        # SCF iteration
+        scf_m = _SCF_ITER_RE.match(line)
+        if scf_m:
+            cumulative_scf += 1
+            continue
+
+        # Total energy in SCF block
+        te_m = _TOTAL_ENERGY_RE.match(line)
+        if te_m:
+            energy_ry = float(te_m.group(1))
+            energy_ev = energy_ry * _RY_TO_EV
+            scf_steps.append(cumulative_scf)
+            scf_energies.append(energy_ev)
+            de = energy_ev - prev_energy if prev_energy is not None else energy_ev
+            scf_des.append(de)
+            prev_energy = energy_ev
+            continue
+
+        # Convergence achieved marker
+        if _CONVERGED_RE.match(line):
+            converged = True
+            continue
+
+        # Final energy (ionic step summary)
+        fe_m = _FINAL_ENERGY_RE.match(line)
+        if fe_m:
+            ionic_index += 1
+            ionic_steps.append(ionic_index)
+            ionic_energies.append(float(fe_m.group(1)) * _RY_TO_EV)
+            continue
+
+        # Total force
+        tf_m = _TOTAL_FORCE_RE.match(line)
+        if tf_m:
+            # QE Total force is in Ry/Bohr, convert to eV/A
+            # force_ry_bohr * 13.605693 / 0.529177 = eV/A
+            force_val = float(tf_m.group(1)) * _RY_TO_EV / 0.529177249
+            ionic_max_forces.append(force_val)
+            continue
+
+    return {
+        "scf_steps": scf_steps,
+        "scf_energies": scf_energies,
+        "scf_des": scf_des,
+        "ionic_steps": ionic_steps,
+        "ionic_energies": ionic_energies,
+        "ionic_max_forces": ionic_max_forces,
+        "algorithm": algorithm,
+        "converged": converged,
+    }
+
+
+@register_parser("qe", "convergence")
+class QEConvergenceProvider:
+    """QE convergence analysis provider.
+
+    One-Provider, Multiple-Trigger Pattern:
+    AnalysisCapability entries for scf/relax/md all route to this provider
+    because QE writes the same pw.x output format regardless of calc type.
+    """
+
+    engine = "qe"
+    object_type = "convergence"
+
+    def can_parse(self, raw_dir: Path) -> bool:
+        for p in raw_dir.iterdir():
+            if p.suffix == ".out" and p.is_file():
+                return True
+        return False
+
+    def parse(self, evidence: EvidenceBundle) -> Convergence:
+        """Parse QE output and return Convergence object."""
+        # Find .out file
+        out_files = list(evidence.primary_raw_dir.glob("*.out"))
+        if not out_files:
+            raise FileNotFoundError(
+                f"No .out file found in {evidence.primary_raw_dir}"
+            )
+        output_path = out_files[0]
+
+        parsed = parse_qe_convergence(output_path)
+
+        source_files = [SourceFileStat.from_path(output_path, evidence.calc_dir)]
+
+        warnings: list[str] = []
+        if not parsed["scf_energies"]:
+            warnings.append("No SCF steps found in output.")
+
+        meta = AnalysisObjectMeta.create(
+            object_type="convergence",
+            source_files=source_files,
+            run_ulid=evidence.run_ulid,
+            calc_ulid=evidence.calc_ulid,
+            step_ulids=evidence.step_ulids,
+            gen_steps=evidence.gen_steps,
+            engine_name=evidence.engine_name,
+            parser_name="qe_convergence",
+            parser_version="1.0",
+            warnings=warnings,
+        )
+
+        return Convergence(
+            meta=meta,
+            scf_step=np.array(parsed["scf_steps"], dtype=int),
+            scf_energy=np.array(parsed["scf_energies"], dtype=float),
+            scf_de=np.array(parsed["scf_des"], dtype=float),
+            ionic_step=np.array(parsed["ionic_steps"], dtype=int),
+            ionic_energy=np.array(parsed["ionic_energies"], dtype=float),
+            ionic_max_force=(
+                np.array(parsed["ionic_max_forces"], dtype=float)
+                if parsed["ionic_max_forces"]
+                else None
+            ),
+            converged=parsed["converged"],
+            n_ionic_steps=len(parsed["ionic_steps"]),
+            algorithm=parsed["algorithm"],
+        )

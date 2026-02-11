@@ -20,7 +20,7 @@ class AbinitDriver(BaseEngineDriver):
 
     PREFIX: str = "abinit"
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
-        "scf", "nscf", "relax",
+        "scf", "nscf", "relax", "md",
     })
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
@@ -36,8 +36,23 @@ class AbinitDriver(BaseEngineDriver):
             evidence_files=["*_DOS"],
         ),
         AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["scf"],
+            evidence_files=["*.abo"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["relax"],
+            evidence_files=["*.abo"],
+        ),
+        AnalysisCapability(
             object_type="trajectory",
             gen_step_sequence=["relax"],
+            evidence_files=["*_HIST.nc"],
+        ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["md"],
             evidence_files=["*_HIST.nc"],
         ),
     ]
@@ -89,6 +104,15 @@ class AbinitDriver(BaseEngineDriver):
                 category="calculation",
                 mpi_aware=True,
             ),
+            StepTypeSpec(
+                step_type_spec="abinit_md",
+                engine="abinit",
+                executable="abinit",
+                description="ABINIT molecular dynamics",
+                category="calculation",
+                supports_restart=False,
+                mpi_aware=True,
+            ),
         ]
 
     def get_handler(self):
@@ -117,7 +141,7 @@ class AbinitDriver(BaseEngineDriver):
     def get_capabilities(self) -> set[str]:
         """ABINIT capabilities."""
         return {
-            "scf", "nscf", "relax",
+            "scf", "nscf", "relax", "md",
             "periodic",
             "mpi",
             "plane_wave",

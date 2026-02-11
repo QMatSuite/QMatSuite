@@ -7,6 +7,7 @@ This driver handles all Psi4 quantum chemistry calculations including:
 - TDDFT excited states
 """
 
+from quantumvitas.core.analysis.capability import AnalysisCapability
 from quantumvitas.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
@@ -24,6 +25,13 @@ class Psi4Driver(BaseEngineDriver):
     })
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
+    ANALYSIS_CAPABILITIES = [
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["relax"],
+            evidence_files=["*.dat"],
+        ),
+    ]
 
     @property
     def engine_family(self) -> str:

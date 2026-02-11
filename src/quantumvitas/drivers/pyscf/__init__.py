@@ -11,5 +11,8 @@ from .driver import PySCFDriver
 # Register driver at import time
 DriverRegistry.register(PySCFDriver())
 
+# Import parsers to trigger @register_parser registration
+from . import parsers as _parsers  # noqa: F401, E402
+
 __all__ = ["PySCFDriver"]
 
