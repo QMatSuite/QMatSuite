@@ -7,6 +7,7 @@ MP2, CCSD, TDDFT, geometry optimization, and frequency calculations.
 
 from __future__ import annotations
 
+from quantumvitas.core.analysis.capability import AnalysisCapability
 from quantumvitas.core.driver_protocol import (
     BaseEngineDriver,
     ErrorClass,
@@ -29,6 +30,13 @@ class GaussianDriver(BaseEngineDriver):
     })
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
+    ANALYSIS_CAPABILITIES = [
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["relax"],
+            evidence_files=["*.log"],
+        ),
+    ]
 
     # ── MUST: Properties ──────────────────────────────────────────────
 

@@ -13,6 +13,7 @@ handled by this driver.
 from pathlib import Path
 from typing import Any
 
+from quantumvitas.core.analysis.capability import AnalysisCapability
 from quantumvitas.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
@@ -32,6 +33,18 @@ class LAMMPSDriver(BaseEngineDriver):
     })
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
+    ANALYSIS_CAPABILITIES = [
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["md"],
+            evidence_files=["*.lammpstrj"],
+        ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["minimize"],
+            evidence_files=["*.lammpstrj"],
+        ),
+    ]
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties

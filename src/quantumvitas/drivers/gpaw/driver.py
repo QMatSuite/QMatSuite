@@ -38,6 +38,16 @@ class GPAWDriver(BaseEngineDriver):
             gen_step_sequence=["dos"],
             evidence_files=["dos.json"],
         ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["relax"],
+            evidence_files=["*.traj"],
+        ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["md"],
+            evidence_files=["*.traj"],
+        ),
     ]
 
     # ─────────────────────────────────────────────────────────────────────

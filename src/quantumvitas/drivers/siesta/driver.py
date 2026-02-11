@@ -40,6 +40,16 @@ class SiestaDriver(BaseEngineDriver):
             gen_step_sequence=["dos"],
             evidence_files=["*.DOS"],
         ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["relax"],
+            evidence_files=["*.ANI"],
+        ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["md"],
+            evidence_files=["*.ANI"],
+        ),
     ]
 
     # ── MUST: Properties ──────────────────────────────────────────────

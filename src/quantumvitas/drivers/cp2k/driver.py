@@ -39,6 +39,16 @@ class CP2KDriver(BaseEngineDriver):
             gen_step_sequence=["dos"],
             evidence_files=["*.pdos"],
         ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["relax"],
+            evidence_files=["*-pos-*.xyz"],
+        ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["md"],
+            evidence_files=["*-pos-*.xyz"],
+        ),
     ]
 
     # ─────────────────────────────────────────────────────────────────────

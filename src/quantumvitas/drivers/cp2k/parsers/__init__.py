@@ -6,10 +6,12 @@ Importing this package triggers parser registration via @register_parser.
 from .bands import CP2KBandsProvider
 from .dos import CP2KDOSProvider
 from .output import CP2KDigest, CP2KOutputParser
+from .trajectory import CP2KTrajectoryParser
 
 __all__ = [
     "CP2KBandsProvider",
     "CP2KDOSProvider",
     "CP2KDigest",
     "CP2KOutputParser",
+    "CP2KTrajectoryParser",
 ]
