@@ -146,15 +146,18 @@ _NORMALIZED_DIR = Path(__file__).resolve().parents[2] / ".tmp" / "engine_researc
 
 @pytest.mark.skipif(not _NORMALIZED_DIR.is_dir(), reason="No normalized xTB corpus in .tmp")
 class TestXTBNormalizedCorpus:
-    def test_parse_available_normalized_xyz_cases(self):
+    def test_parse_available_normalized_xyz_cases(self, tmp_path):
         spec = get_xtb_input_spec()
-        xyz_files = sorted(_NORMALIZED_DIR.glob("*/**/*.xyz"))
+        xyz_files = sorted(
+            p for p in _NORMALIZED_DIR.glob("*/**/*.xyz")
+            if "_parse_tmp" not in p.parts
+        )
         # Corpus may not include xyz for every normalized case.
         assert xyz_files, "Expected at least one normalized xyz case"
 
         for xyz_path in xyz_files:
-            case_dir = xyz_path.parent
-            workdir = case_dir / "_parse_tmp"
+            case_name = xyz_path.parent.name
+            workdir = tmp_path / case_name
             workdir.mkdir(parents=True, exist_ok=True)
             (workdir / "input.xyz").write_text(xyz_path.read_text(encoding="utf-8"), encoding="utf-8")
             result = parse_engine_inputs(spec, workdir)
