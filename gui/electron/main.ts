@@ -723,6 +723,49 @@ ipcMain.handle('qv-read-blob', async (_event, blobId: string, calcDir: string): 
   }
 });
 
+/**
+ * Read a file from the .scratch/ directory (secure, path-validated)
+ *
+ * Security:
+ * 1. Validate relativePath starts with ".scratch/"
+ * 2. Reject path traversal (..)
+ * 3. Resolve realpath and verify it's within calcDir/.scratch/
+ * 4. Read file and return ArrayBuffer
+ */
+ipcMain.handle('qv-read-scratch-file', async (_event, calcDir: string, relativePath: string): Promise<ArrayBuffer> => {
+  try {
+    // Validate relativePath starts with .scratch/
+    if (!relativePath.startsWith('.scratch/') && !relativePath.startsWith('.scratch\\')) {
+      throw new Error(`Path must start with .scratch/: ${relativePath}`);
+    }
+
+    // Reject path traversal
+    if (relativePath.includes('..')) {
+      throw new Error(`Path traversal detected: ${relativePath}`);
+    }
+
+    const calcPath = path.resolve(calcDir);
+    const scratchDir = path.join(calcPath, '.scratch');
+    const filePath = path.resolve(calcPath, relativePath);
+
+    // Security check: ensure resolved path is within .scratch/
+    const scratchDirResolved = path.resolve(scratchDir);
+    if (!filePath.startsWith(scratchDirResolved)) {
+      throw new Error(`Path traversal detected: ${filePath} is outside ${scratchDirResolved}`);
+    }
+
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Scratch file not found: ${filePath}`);
+    }
+
+    const buffer = fs.readFileSync(filePath);
+    return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+  } catch (error) {
+    console.error('[main] Failed to read scratch file:', error);
+    throw error;
+  }
+});
+
 // =============================================================================
 // Remote Debugging for E2E Tests
 // =============================================================================

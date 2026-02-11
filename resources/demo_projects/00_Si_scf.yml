@@ -106,7 +106,7 @@ calculations:
       Si:
         mass: 28.086
     step_type_spec: qe_scf
-  structure_ulid: 01KE2KYNFBA76RAM5E04QRDRS9
+  structure_ulid: 01KE2KYNFRQGJGGVK0TZ99TNPG
   species_map:
     Si:
       mass: 28.086

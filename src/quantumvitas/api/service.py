@@ -1062,6 +1062,63 @@ class QVService:
                 "bundle": bundle.to_dict(),
             }
 
+        def get_field3d_grid(self, run_ulid: str) -> dict:
+            """Materialize full Field3D grid data to .scratch/ for frontend consumption."""
+            import json
+            import os
+
+            from quantumvitas.core.analysis.field3d import Field3D
+            from quantumvitas.core.analysis.orchestrator import run_post_run_analysis
+
+            calc_ulid, calc_dir, engine, driver, ordered_gen_steps = (
+                self._service._resolve_run_analysis_context(run_ulid)
+            )
+            if not ordered_gen_steps:
+                from quantumvitas.api.errors import NotFoundError
+
+                raise NotFoundError(f"No run steps available for run {run_ulid}")
+
+            results = run_post_run_analysis(
+                engine=engine,
+                driver=driver,
+                ordered_gen_steps=ordered_gen_steps,
+                run_ulid=run_ulid,
+                calc_ulid=calc_ulid,
+                calc_dir=calc_dir,
+            )
+
+            field3d_obj = None
+            for row in results:
+                if str(row.get("object_type", "")).lower() == "field3d":
+                    field3d_obj = row.get("analysis_object")
+                    break
+
+            if field3d_obj is None or not isinstance(field3d_obj, Field3D):
+                from quantumvitas.api.errors import NotFoundError
+
+                raise NotFoundError(
+                    f"Field3D analysis object not available for run {run_ulid}"
+                )
+
+            # Materialize to .scratch/ (I/O stays in API layer, not analysis core)
+            scratch_dir = calc_dir / ".scratch" / "field3d"
+            scratch_dir.mkdir(parents=True, exist_ok=True)
+
+            tmp_f32 = scratch_dir / "active.f32.tmp"
+            final_f32 = scratch_dir / "active.f32"
+            field3d_obj.get_grid_as_float32().tofile(str(tmp_f32))
+            os.rename(str(tmp_f32), str(final_f32))
+
+            metadata = field3d_obj.get_scratch_metadata()
+
+            tmp_json = scratch_dir / "active.json.tmp"
+            final_json = scratch_dir / "active.json"
+            with open(str(tmp_json), "w") as f:
+                json.dump(metadata, f)
+            os.rename(str(tmp_json), str(final_json))
+
+            return {"calc_dir": str(calc_dir), **metadata}
+
         def get_reference_analysis(
             self,
             calculation_selector: str,
