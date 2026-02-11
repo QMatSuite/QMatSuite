@@ -112,7 +112,7 @@ calculations:
       Si:
         mass: 28.0855
     step_type_spec: qe_relax
-  structure_ulid: 01KE2M087ACNW7EWMBP23SQZHF
+  structure_ulid: 01KE2M087NGQ9WQ2SM27A8KATG
   species_map:
     Si:
       mass: 28.0855

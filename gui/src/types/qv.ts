@@ -912,7 +912,26 @@ export interface QVCommandMap {
       bundle: PrimitiveBundleData;
     };
   };
-  
+
+  get_field3d_grid: {
+    payload: {
+      project_root: string;
+      run_ulid: string;
+    };
+    result: {
+      calc_dir: string;
+      grid_shape: [number, number, number];
+      origin_cart: [number, number, number];
+      grid_vectors_cart: [[number, number, number], [number, number, number], [number, number, number]];
+      data_order: string;
+      length_units: string;
+      field_kind: string;
+      value_min: number;
+      value_max: number;
+      value_mean: number;
+    };
+  };
+
   // Job management
   run_calculation: {
     payload: {

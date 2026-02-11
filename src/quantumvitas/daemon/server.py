@@ -359,6 +359,7 @@ class QVDaemon:
             "get_reference_analysis": self._handle_get_reference_analysis,
             "get_analysis": self._handle_get_analysis,
             "get_analysis_snapshot": self._handle_get_analysis_snapshot,
+            "get_field3d_grid": self._handle_get_field3d_grid,
             "get_step_digest": self._handle_get_step_digest,
             "list_step_artifacts": self._handle_list_step_artifacts,
             "read_step_artifact_text": self._handle_read_step_artifact_text,
@@ -4711,6 +4712,20 @@ class QVDaemon:
             run_ulid=run_ulid,
             object_type=object_type,
         )
+
+    def _handle_get_field3d_grid(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Materialize full Field3D grid to .scratch/ for frontend 3D rendering.
+
+        Payload:
+            project_root: str
+            run_ulid: str
+        """
+        project_root = self._require_path(payload, "project_root")
+        run_ulid = self._require_str(payload, "run_ulid")
+
+        svc = get_service(project_root)
+        return svc.analysis.get_field3d_grid(run_ulid=run_ulid)
 
     def _handle_get_step_digest(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

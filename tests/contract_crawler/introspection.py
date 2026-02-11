@@ -137,6 +137,7 @@ def get_method_categories() -> dict[str, list[str]]:
             "list_step_artifacts", "read_step_artifact_text",
             "list_raw_files", "read_raw_file",
             "get_step_digest", "get_analysis", "get_analysis_snapshot",
+            "get_field3d_grid",
         ],
         "visualization_dev": ["list_wannier_3d_fixtures", "compile_fixture_volume"],
         "jobs": [

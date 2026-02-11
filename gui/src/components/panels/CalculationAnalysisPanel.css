@@ -527,3 +527,90 @@
   color: var(--text-muted);
   min-width: 28px;
 }
+
+/* ─── Field3D 3D Viz ─── */
+
+.field3d-viz__load-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.field3d-viz__load-btn {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  border-radius: var(--radius-sm);
+  padding: 8px 20px;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.field3d-viz__load-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.field3d-viz__error {
+  color: var(--color-danger-text, #b12);
+  font-size: var(--text-xs);
+}
+
+.field3d-viz__canvas-container {
+  position: relative;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  height: 420px;
+  background: #0a0e18;
+  margin-bottom: var(--space-2);
+}
+
+.field3d-viz__canvas-warning {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  color: #ffa;
+  font-size: var(--text-xs);
+  opacity: 0.8;
+}
+
+.field3d-viz__controls {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  padding: var(--space-2) var(--space-3);
+}
+
+.field3d-viz__control-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.field3d-viz__control-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.field3d-viz__control-row input[type="range"] {
+  width: 160px;
+}
+
+.field3d-viz__value {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  min-width: 70px;
+}
+
+.field3d-viz__stats {
+  margin-top: var(--space-1);
+  font-size: 11px;
+  color: var(--text-muted);
+}

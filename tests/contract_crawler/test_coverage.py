@@ -26,6 +26,7 @@ EXEMPT_METHODS: dict[str, str] = {
     "get_step_digest": "Requires run_steps digest linkage and CAS payload created by a completed run",
     "get_analysis": "Operational derivation requires completed run evidence and parser-capability matching setup",
     "get_analysis_snapshot": "Explicit replay path requires SQLite snapshot linkage and CAS objects from completed runs",
+    "get_field3d_grid": "Requires completed run with field3d evidence (cube files) and parser-capability matching setup",
 }
 
 

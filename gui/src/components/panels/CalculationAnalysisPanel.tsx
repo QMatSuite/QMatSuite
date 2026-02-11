@@ -9,6 +9,7 @@ import type {
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 import { AnalysisVizPanel } from './AnalysisVizPanel';
 import { FatbandsVizPanel } from './FatbandsVizPanel';
+import { Field3DVizPanel } from './Field3DVizPanel';
 import { RawFileViewer } from './RawFileViewer';
 import { StepDigestPanel } from './StepDigestPanel';
 import { TrajectoryVizPanel } from './TrajectoryVizPanel';
@@ -410,6 +411,22 @@ export function CalculationAnalysisPanel({
             calculation={calcSelector}
             projectRoot={projectRoot}
             stepId={selectedStepId}
+          />
+        ) : selectedObjectType === 'field3d' ? (
+          <Field3DVizPanel
+            availableObjectTypes={availableObjectTypes}
+            bundle={analysisResponse?.bundle ?? null}
+            canPin={Boolean(analysisResponse)}
+            error={analysisError}
+            loading={analysisLoading}
+            onPin={handlePin}
+            onSelectObjectType={setSelectedObjectType}
+            pinMessage={pinMessage}
+            pinning={pinning}
+            pinReason={runInfo?.reason ?? null}
+            projectRoot={projectRoot}
+            runUlid={runInfo?.run_ulid ?? null}
+            selectedObjectType={selectedObjectType}
           />
         ) : selectedObjectType === 'trajectory' || selectedObjectType === 'neb_trajectory' ? (
           <TrajectoryVizPanel

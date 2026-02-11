@@ -214,13 +214,24 @@ const qvApi = {
   
   /**
    * Read binary blob file (secure, via index.json allowlist)
-   * 
+   *
    * @param blobId - Blob ID to read
    * @param calcDir - Calculation directory (for blob store)
    * @returns ArrayBuffer with blob data
    */
   readBlob: async (blobId: string, calcDir: string): Promise<ArrayBuffer> => {
     return ipcRenderer.invoke('qv-read-blob', blobId, calcDir);
+  },
+
+  /**
+   * Read a file from the .scratch/ directory (secure, path-validated)
+   *
+   * @param calcDir - Calculation directory containing .scratch/
+   * @param relativePath - Path relative to calcDir (must start with .scratch/)
+   * @returns ArrayBuffer with file contents
+   */
+  readScratchFile: async (calcDir: string, relativePath: string): Promise<ArrayBuffer> => {
+    return ipcRenderer.invoke('qv-read-scratch-file', calcDir, relativePath);
   },
 };
 

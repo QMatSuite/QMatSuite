@@ -130,3 +130,32 @@ class Field3D:
             series=[],
             arrays=arrays,
         )
+
+    def get_scratch_metadata(self) -> Dict[str, Any]:
+        """Return metadata dict for scratch materialization (pure compute, no I/O).
+
+        The caller (API layer) is responsible for writing the binary grid
+        and this metadata to disk.
+        """
+        ngx, ngy, ngz = self.grid_shape
+        grid_vectors = np.array([
+            self.lattice[0] / ngx,
+            self.lattice[1] / ngy,
+            self.lattice[2] / ngz,
+        ], dtype=float)
+
+        return {
+            "grid_shape": list(self.grid_shape),
+            "origin_cart": [0.0, 0.0, 0.0],
+            "grid_vectors_cart": grid_vectors.tolist(),
+            "data_order": "fortran_i_fastest",
+            "length_units": "A",
+            "field_kind": self.field_kind,
+            "value_min": float(np.min(self.grid_data)),
+            "value_max": float(np.max(self.grid_data)),
+            "value_mean": float(np.mean(self.grid_data)),
+        }
+
+    def get_grid_as_float32(self) -> np.ndarray:
+        """Return grid data as a contiguous float32 array for binary serialization."""
+        return np.asarray(self.grid_data, dtype=np.float32)
