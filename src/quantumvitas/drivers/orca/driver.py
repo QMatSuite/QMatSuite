@@ -6,6 +6,7 @@ This driver handles all ORCA quantum chemistry calculations including:
 - TD-DFT excited state calculations
 """
 
+from quantumvitas.core.analysis.capability import AnalysisCapability
 from quantumvitas.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
@@ -23,6 +24,13 @@ class ORCADriver(BaseEngineDriver):
     })
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
+    ANALYSIS_CAPABILITIES = [
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["relax"],
+            evidence_files=["*_trj.xyz"],
+        ),
+    ]
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties

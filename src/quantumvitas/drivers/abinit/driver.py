@@ -35,6 +35,11 @@ class AbinitDriver(BaseEngineDriver):
             gen_step_sequence=["nscf"],
             evidence_files=["*_DOS"],
         ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["relax"],
+            evidence_files=["*_HIST.nc"],
+        ),
     ]
 
     # ─────────────────────────────────────────────────────────────────────

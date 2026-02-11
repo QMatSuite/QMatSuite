@@ -5,5 +5,6 @@ with the parser registry.
 """
 
 from .output import GaussianDigest, GaussianOutputParser
+from .trajectory import GaussianTrajectoryParser
 
-__all__ = ["GaussianDigest", "GaussianOutputParser"]
+__all__ = ["GaussianDigest", "GaussianOutputParser", "GaussianTrajectoryParser"]

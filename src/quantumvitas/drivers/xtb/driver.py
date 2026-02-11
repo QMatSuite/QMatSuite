@@ -7,6 +7,7 @@ with CLI flags. Primary use case: fast geometry optimization (relax).
 
 from __future__ import annotations
 
+from quantumvitas.core.analysis.capability import AnalysisCapability
 from quantumvitas.core.driver_protocol import (
     BaseEngineDriver,
     ErrorClass,
@@ -27,6 +28,13 @@ class XTBDriver(BaseEngineDriver):
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({"relax"})
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset()
+    ANALYSIS_CAPABILITIES = [
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["relax"],
+            evidence_files=["xtbopt.log"],
+        ),
+    ]
 
     # ── MUST: Properties ──────────────────────────────────────────────
 

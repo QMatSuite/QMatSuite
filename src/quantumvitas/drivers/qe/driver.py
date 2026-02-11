@@ -30,6 +30,11 @@ class QEDriver(BaseEngineDriver):
             gen_step_sequence=["relax"],
             evidence_files=["*.relax.out"],
         ),
+        AnalysisCapability(
+            object_type="trajectory",
+            gen_step_sequence=["md"],
+            evidence_files=["*.md.out"],
+        ),
     ]
 
     @property

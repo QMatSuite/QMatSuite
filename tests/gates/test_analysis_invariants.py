@@ -723,6 +723,39 @@ def test_final_matrix_documented() -> None:
     assert "DONE" in text, "Acceptance doc must contain DONE entries"
 
 
+@pytest.mark.parametrize("engine", [
+    "qe", "vasp", "abinit", "siesta", "cp2k", "gpaw",
+    "lammps", "xtb", "orca", "gaussian",
+])
+def test_trajectory_parser_matrix(engine: str) -> None:
+    """Gate: every trajectory-capable engine has a registered trajectory parser."""
+    import quantumvitas.drivers  # noqa: F401 — trigger registration
+
+    from quantumvitas.parsers.registry import _PARSERS
+
+    key = (engine, "trajectory")
+    assert key in _PARSERS, (
+        f"Missing parser for {engine}/trajectory. "
+        f"Registered: {sorted(k for k in _PARSERS if k[1] == 'trajectory')}"
+    )
+
+
+@pytest.mark.parametrize("engine", [
+    "qe", "vasp", "abinit", "siesta", "cp2k", "gpaw",
+    "lammps", "xtb", "orca", "gaussian",
+])
+def test_trajectory_engine_has_analysis_capabilities(engine: str) -> None:
+    """Gate: every engine with trajectory parser declares trajectory in ANALYSIS_CAPABILITIES."""
+    import quantumvitas.drivers  # noqa: F401
+
+    driver = DriverRegistry.get_driver(engine)
+    caps = getattr(driver, "ANALYSIS_CAPABILITIES", [])
+    object_types = {c.object_type for c in caps}
+    assert "trajectory" in object_types, (
+        f"Engine '{engine}' missing trajectory capability: has {sorted(object_types)}"
+    )
+
+
 def test_frontend_no_kernel_import() -> None:
     """Inv-A12: frontend must consume API only, never kernel modules directly."""
     frontend_root = REPO_ROOT / "gui" / "src"
