@@ -55,6 +55,11 @@ class AbinitDriver(BaseEngineDriver):
             gen_step_sequence=["md"],
             evidence_files=["*_HIST.nc"],
         ),
+        AnalysisCapability(
+            object_type="field3d",
+            gen_step_sequence=["scf"],
+            evidence_files=["*.cube"],
+        ),
     ]
 
     # ─────────────────────────────────────────────────────────────────────

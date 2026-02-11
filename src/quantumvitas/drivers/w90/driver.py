@@ -10,6 +10,7 @@ the W90 engine. This driver handles the main Wannier90 execution (wannier).
 from pathlib import Path
 from typing import Any
 
+from quantumvitas.core.analysis.capability import AnalysisCapability
 from quantumvitas.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
@@ -34,6 +35,13 @@ class W90Driver(BaseEngineDriver):
     })
     ENGINE_ROLE: str = "postprocessing"
     COMPANION_ENGINES: frozenset = frozenset()
+    ANALYSIS_CAPABILITIES = [
+        AnalysisCapability(
+            object_type="field3d",
+            gen_step_sequence=["wannier"],
+            evidence_files=["*_00001.xsf"],
+        ),
+    ]
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties

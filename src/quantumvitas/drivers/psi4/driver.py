@@ -31,6 +31,11 @@ class Psi4Driver(BaseEngineDriver):
             gen_step_sequence=["relax"],
             evidence_files=["*.dat"],
         ),
+        AnalysisCapability(
+            object_type="field3d",
+            gen_step_sequence=["scf"],
+            evidence_files=["*.cube"],
+        ),
     ]
 
     @property
