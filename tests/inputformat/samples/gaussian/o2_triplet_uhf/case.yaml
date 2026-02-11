@@ -1,8 +1,19 @@
 case_id: o2_triplet_uhf
-title: "O2 Triplet Open-Shell UHF"
+title: O2 Triplet Open-Shell UHF
 engine: gaussian
-workflow_tags: [scf, open-shell, uhf, small-molecule]
-species: [O]
+workflow_tags:
+- scf
+- open-shell
+- uhf
+- small-molecule
+species:
+- O
 functional: UHF
 basis_set: 6-31G*
-description: "UHF/6-31G* on O2 triplet (mult=3); covers open-shell unrestricted calculation"
+description: UHF/6-31G* on O2 triplet (mult=3); covers open-shell unrestricted calculation
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: gaussian_scf
+required_engine: gaussian
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

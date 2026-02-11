@@ -1,0 +1,32 @@
+case_id: si_bulk_modulus
+engine: qe
+title: 15 Bulk Modulus Si
+description: SCF → SCF → SCF
+workflow_tags:
+- scf
+- electronic
+species:
+- Si
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: qe_scf
+required_engine: qe
+availability: open_source
+demo_slug: qe_si_bulk_modulus
+asset_policy: redistributable
+recommended_analysis: scf
+difficulty: beginner
+subtitle: SCF → SCF → SCF
+tags:
+- scf
+- Si
+- PW
+- equation-of-state
+- tutorial
+exclusion_reason: null
+asset_requirements:
+  pseudopotentials:
+  - file: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+    element: Si
+    source: resources/pseudo
+multi_step: false

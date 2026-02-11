@@ -1,0 +1,26 @@
+&CONTROL
+  calculation = 'cp'
+  restart_mode = 'from_scratch'
+  pseudo_dir = '/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos'
+  ndr = 50
+  ndw = 50
+  tstress = .true.
+  tprnfor = .true.
+/
+
+&SYSTEM
+  ecutwfc = 50
+  ecutrho = 400
+  nr1b = 20
+  nr2b = 20
+  nr3b = 20
+/
+
+&ELECTRONS
+  electron_dynamics = 'cg'
+/
+
+&IONS
+  ion_dynamics = 'none'
+/
+

@@ -1,6 +1,22 @@
 case_id: batio3_excludebands
-title: "BaTiO3 perovskite with exclude_bands and band plot"
+title: BaTiO3 perovskite with exclude_bands and band plot
 engine: w90
-workflow_tags: [exclude_bands, guiding_centres, band_interpolation, kpoint_path]
-species: [Ba, Ti, O]
-description: "Barium titanate perovskite with 9 WFs from O 2p projections (Tutorial Example 9). Excludes bands 1-11 to isolate O 2p manifold, guiding_centres enabled, kpoint_path for band interpolation, cubic unit cell in bohr. Tests exclude_bands parsing and multi-species oxide."
+workflow_tags:
+- exclude_bands
+- guiding_centres
+- band_interpolation
+- kpoint_path
+species:
+- Ba
+- Ti
+- O
+description: Barium titanate perovskite with 9 WFs from O 2p projections (Tutorial
+  Example 9). Excludes bands 1-11 to isolate O 2p manifold, guiding_centres enabled,
+  kpoint_path for band interpolation, cubic unit cell in bohr. Tests exclude_bands
+  parsing and multi-species oxide.
+demo_eligible: false
+step_type_gen: wannier
+step_type_spec: w90_wannier
+required_engine: w90
+availability: open_source
+exclusion_reason: Parser/writer test case only

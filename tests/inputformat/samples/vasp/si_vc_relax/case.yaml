@@ -1,7 +1,17 @@
 case_id: si_vc_relax
-title: "Silicon diamond variable-cell relaxation"
+title: Silicon diamond variable-cell relaxation
 engine: vasp
-workflow_tags: [vc-relax, ionic, cell]
-species: [Si]
+workflow_tags:
+- vc-relax
+- ionic
+- cell
+species:
+- Si
 functional: PBE
-description: "Si diamond CG relaxation with ISIF=3 (ions + cell shape + volume)"
+description: Si diamond CG relaxation with ISIF=3 (ions + cell shape + volume)
+demo_eligible: false
+step_type_gen: relax
+step_type_spec: vasp_relax
+required_engine: vasp
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

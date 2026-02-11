@@ -1,7 +1,18 @@
 case_id: gaas_soc
-title: "GaAs zinc-blende spin-orbit coupling"
+title: GaAs zinc-blende spin-orbit coupling
 engine: vasp
-workflow_tags: [scf, soc, noncollinear]
-species: [Ga, As]
+workflow_tags:
+- scf
+- soc
+- noncollinear
+species:
+- Ga
+- As
 functional: PBE
-description: "GaAs with LSORBIT, LNONCOLLINEAR, and SAXIS along z"
+description: GaAs with LSORBIT, LNONCOLLINEAR, and SAXIS along z
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: vasp_scf
+required_engine: vasp
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

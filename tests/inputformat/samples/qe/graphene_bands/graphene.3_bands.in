@@ -1,0 +1,26 @@
+&CONTROL
+  calculation = 'bands'
+  restart_mode = 'from_scratch'
+  pseudo_dir = '/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos'
+/
+
+&SYSTEM
+  ecutwfc = 40.0
+  ecutrho = 400.0
+  occupations = 'smearing'
+  degauss = 0.0001
+  smearing = 'marzari-vanderbilt'
+/
+
+&ELECTRONS
+  conv_thr = 1e-10
+  mixing_beta = 0.3
+/
+
+K_POINTS {crystal_b}
+  4
+  0.0000000000 0.000000000 0.000000000 30
+  -0.333333333 0.666666667 0.000000000 30
+  0.000000000 0.500000000 0.000000000 30
+  0.0000000000 0.000000000 0.000000000 30
+

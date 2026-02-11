@@ -13,6 +13,17 @@ import traceback
 import pytest
 
 
+def pytest_ignore_collect(collection_path, config):
+    """C4: Integrity tests must NOT run under default pytest invocation.
+
+    Run explicitly: python -m pytest tests/integrity/ -v --tb=short
+    """
+    if "integrity" in str(collection_path):
+        # Only collect if user explicitly requested an integrity path
+        args = config.getoption("file_or_dir", [])
+        return not any("integrity" in str(a) for a in args)
+
+
 def _find_repo_root() -> Path:
     """Find repository root (directory containing pyproject.toml or .git)."""
     current = Path(__file__).resolve().parent

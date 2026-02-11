@@ -1,0 +1,24 @@
+&CONTROL
+  calculation = 'bands'
+  restart_mode = 'from_scratch'
+  pseudo_dir = '/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos'
+/
+
+&SYSTEM
+  ecutwfc = 40
+  ecutrho = 320
+  nbnd = 8
+/
+
+&ELECTRONS
+  conv_thr = 1e-08
+/
+
+K_POINTS {crystal_b}
+  5
+  0.0000 0.5000 0.0000 20
+  0.0000 0.0000 0.0000 30
+  -0.500 0.0000 -0.500 10
+  -0.375 0.2500 -0.375 30
+  0.0000 0.0000 0.0000 20
+

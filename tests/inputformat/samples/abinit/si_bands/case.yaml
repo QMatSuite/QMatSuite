@@ -1,6 +1,16 @@
 case_id: si_bands
-title: "Silicon band structure"
+title: Silicon band structure
 engine: abinit
-workflow_tags: [bands, multi_dataset]
-species: [Si]
-description: "Two-dataset calculation for silicon band structure: SCF on uniform grid followed by NSCF along L-Gamma-X-K-Gamma high-symmetry path."
+workflow_tags:
+- bands
+- multi_dataset
+species:
+- Si
+description: 'Two-dataset calculation for silicon band structure: SCF on uniform grid
+  followed by NSCF along L-Gamma-X-K-Gamma high-symmetry path.'
+demo_eligible: false
+step_type_gen: bandspw
+step_type_spec: abinit_bandspw
+required_engine: abinit
+availability: open_source
+exclusion_reason: Parser/writer test case only

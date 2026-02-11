@@ -1,0 +1,32 @@
+case_id: fe_dos
+engine: qe
+title: 08 Fe Dos  2 Noncolinear
+description: SCF
+workflow_tags:
+- scf
+- electronic
+species:
+- Fe
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: qe_scf
+required_engine: qe
+availability: open_source
+demo_slug: qe_fe_dos
+asset_policy: redistributable
+recommended_analysis: dos
+difficulty: beginner
+subtitle: SCF
+tags:
+- dos
+- Fe
+- PW
+- magnetic
+- tutorial
+exclusion_reason: null
+asset_requirements:
+  pseudopotentials:
+  - file: Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
+    element: Fe
+    source: resources/pseudo
+multi_step: false

@@ -1,7 +1,25 @@
 case_id: si_bands
-title: "Silicon diamond band structure"
+title: Silicon diamond band structure
 engine: vasp
-workflow_tags: [bands, nscf]
-species: [Si]
+workflow_tags:
+- bands
+- nscf
+species: &id001
+- Si
 functional: PBE
-description: "Si band structure along G-X-W-K-G-L with ICHARG=11"
+description: Si band structure along G-X-W-K-G-L with ICHARG=11
+demo_eligible: true
+step_type_gen: bandspw
+step_type_spec: vasp_bandspw
+required_engine: vasp
+availability: requires_local_install
+demo_slug: vasp_si_bands
+asset_policy: proprietary
+asset_requirements:
+  proprietary:
+  - type: potcar
+    description: VASP PAW PBE pseudopotentials for Si
+    species: *id001
+    obtain_from: VASP POTCAR library (requires VASP license)
+recommended_analysis: bands
+exclusion_reason: null

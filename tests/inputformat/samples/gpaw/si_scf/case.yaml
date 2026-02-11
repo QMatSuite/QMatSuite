@@ -1,0 +1,51 @@
+case_id: si_scf
+engine: gpaw
+title: Silicon GPAW SCF
+description: PBE ground-state calculation for diamond silicon
+workflow_tags:
+- scf
+- dft
+- solid
+species:
+- Si
+functional: PBE
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: gpaw_scf
+required_engine: gpaw
+availability: open_source
+demo_slug: gpaw_si_scf
+asset_policy: none
+recommended_analysis: scf
+difficulty: beginner
+parser_mode: direct_snapshot
+inline_parameters:
+  xc: PBE
+  mode: pw
+  ecut: 300
+  kpts:
+    size:
+    - 4
+    - 4
+    - 4
+inline_structure:
+  type: structure
+  species:
+  - Si
+  - Si
+  lattice:
+  - [-2.7546, 0.0, 2.7546]
+  - [0.0, 2.7546, 2.7546]
+  - [-2.7546, 2.7546, 0.0]
+  frac_coords:
+  - [0.0, 0.0, 0.0]
+  - [0.25, 0.25, 0.25]
+subtitle: PBE ground-state calculation for silicon
+tags:
+- gpaw
+- solid
+- scf
+- dft
+- Si
+- tutorial
+exclusion_reason: null

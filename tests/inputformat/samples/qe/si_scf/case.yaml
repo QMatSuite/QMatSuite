@@ -1,0 +1,32 @@
+case_id: si_scf
+engine: qe
+title: 0 Si Scf
+description: SCF
+workflow_tags:
+- scf
+- electronic
+species:
+- Si
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: qe_scf
+required_engine: qe
+availability: open_source
+demo_slug: qe_si_scf
+asset_policy: redistributable
+recommended_analysis: scf
+difficulty: beginner
+subtitle: SCF
+tags:
+- scf
+- Si
+- PW
+- tutorial
+- beginner
+exclusion_reason: null
+asset_requirements:
+  pseudopotentials:
+  - file: Si.pz-vbc.UPF
+    element: Si
+    source: resources/pseudo
+multi_step: false

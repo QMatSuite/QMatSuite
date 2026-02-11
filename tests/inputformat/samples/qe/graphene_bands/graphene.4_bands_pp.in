@@ -1,0 +1,4 @@
+&BANDS
+  filband = 'graphene.bands.dat'
+/
+

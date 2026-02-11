@@ -1,0 +1,117 @@
+version: 1
+project:
+  meta:
+    ulid: 01KB1XQJAHZM5Y7678WHN4WE2E
+    name: Silicon GPAW SCF
+    slug: silicon-gpaw-scf
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KS82BXKERQ6KEX03XS8WPAQ4
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.7546
+        - 0.0
+        - 2.7546
+      - - 0.0
+        - 2.7546
+        - 2.7546
+      - - -2.7546
+        - 2.7546
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.8955926789129274
+      b: 3.8955926789129274
+      c: 3.8955926789129274
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 41.802824334671975
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.25
+      - 0.25
+      - 0.25
+      properties: {}
+      label: Si
+      xyz:
+      - -1.3773
+      - 1.3773
+      - 1.3773
+calculations:
+- meta:
+    ulid: 01K6MAHHT69TNV7AJ5PGV5QKBZ
+    name: Silicon GPAW SCF
+    slug: silicon-gpaw-scf
+    path: calculations/silicon-gpaw-scf
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: gpaw
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/silicon-gpaw-scf/steps/scf.step.yaml
+      kind: step
+      ulid: 01KVT31VGPW4K9BDP1XNF07AXH
+    parameters:
+      xc: PBE
+      mode: pw
+      ecut: 300
+      kpts:
+        size:
+        - 4
+        - 4
+        - 4
+    step_type_spec: gpaw_scf
+  structure_ulid: 01KS82BXKERQ6KEX03XS8WPAQ4
+meta:
+  ulid: gpaw_si_scf
+  title: Silicon GPAW SCF
+  subtitle: PBE ground-state calculation for silicon
+  tags:
+  - gpaw
+  - solid
+  - scf
+  - dft
+  - Si
+  - tutorial
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: gpaw
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: gpaw
+  corpus_case_id: si_scf
+  corpus_checksum: 8c01408e10e8e685ee04f78cfdd8281e2fea15906f271939640d8038c94fc748

@@ -1,6 +1,15 @@
 case_id: si_spin
-title: "Silicon spin-polarized calculation"
+title: Silicon spin-polarized calculation
 engine: abinit
-workflow_tags: [spin]
-species: [Si]
-description: "Spin-polarized SCF for 2-atom diamond silicon with ferromagnetic initialization and Gaussian smearing."
+workflow_tags:
+- spin
+species:
+- Si
+description: Spin-polarized SCF for 2-atom diamond silicon with ferromagnetic initialization
+  and Gaussian smearing.
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: abinit_scf
+required_engine: abinit
+availability: open_source
+exclusion_reason: Parser/writer test case only

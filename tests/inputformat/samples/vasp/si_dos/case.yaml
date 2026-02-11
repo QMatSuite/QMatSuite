@@ -1,7 +1,16 @@
 case_id: si_dos
-title: "Silicon diamond density of states"
+title: Silicon diamond density of states
 engine: vasp
-workflow_tags: [dos, nscf]
-species: [Si]
+workflow_tags:
+- dos
+- nscf
+species:
+- Si
 functional: PBE
-description: "Si DOS with tetrahedron method (ISMEAR=-5) and fine k-mesh"
+description: Si DOS with tetrahedron method (ISMEAR=-5) and fine k-mesh
+demo_eligible: false
+step_type_gen: dos
+step_type_spec: vasp_dos
+required_engine: vasp
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

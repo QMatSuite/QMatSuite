@@ -1,0 +1,45 @@
+case_id: nmr_gipaw
+engine: qe
+title: 12 Nmr Gipaw  2 Benzene
+description: SCF → GIPAW
+workflow_tags:
+- scf
+- gipaw
+- electronic
+species:
+- C
+- H
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: qe_scf
+required_engine: qe
+availability: open_source
+demo_slug: qe_nmr_gipaw
+asset_policy: redistributable
+recommended_analysis: scf
+difficulty: beginner
+subtitle: SCF → GIPAW
+tags:
+- NMR
+- GIPAW
+- PW
+- advanced
+exclusion_reason: null
+asset_requirements:
+  pseudopotentials:
+  - file: C.pbe-tm-gipaw.UPF
+    element: C
+    source: resources/pseudo
+  - file: H.pbe-tm-gipaw.UPF
+    element: H
+    source: resources/pseudo
+multi_step: true
+steps:
+- step_type_gen: scf
+  step_type_spec: qe_scf
+  input_files:
+  - benzene.1_scf.in
+- step_type_gen: gipaw
+  step_type_spec: qe_gipaw
+  input_files:
+  - benzene.2_gipaw.in

@@ -1,5 +1,14 @@
 case_id: eam_hyper
-title: "EAM hyperdynamics"
+title: EAM hyperdynamics
 engine: lammps
-workflow_tags: [accelerated_dynamics, eam, hyper]
-description: "EAM alloy with variables, line continuation, multi-phase, hyper/local"
+workflow_tags:
+- accelerated_dynamics
+- eam
+- hyper
+description: EAM alloy with variables, line continuation, multi-phase, hyper/local
+demo_eligible: false
+step_type_gen: md
+step_type_spec: lammps_md
+required_engine: lammps
+availability: open_source
+exclusion_reason: Parser/writer test case only

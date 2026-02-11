@@ -1,5 +1,14 @@
 case_id: elastic_sw
-title: "Elastic constants SW Si"
+title: Elastic constants SW Si
 engine: lammps
-workflow_tags: [minimize, elastic, sw]
-description: "Elastic constants via Stillinger-Weber with variables, minimize, unfix"
+workflow_tags:
+- minimize
+- elastic
+- sw
+description: Elastic constants via Stillinger-Weber with variables, minimize, unfix
+demo_eligible: false
+step_type_gen: md
+step_type_spec: lammps_md
+required_engine: lammps
+availability: open_source
+exclusion_reason: Parser/writer test case only

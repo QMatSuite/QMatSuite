@@ -1,0 +1,47 @@
+case_id: si_dos
+engine: qe
+title: Silicon density of states
+description: SCF → NSCF → DOS
+workflow_tags:
+- scf
+- nscf
+- dos
+- electronic
+species:
+- Si
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: qe_scf
+required_engine: qe
+availability: open_source
+demo_slug: si_dos_demo
+asset_policy: redistributable
+recommended_analysis: dos
+difficulty: beginner
+subtitle: SCF → NSCF → DOS
+tags:
+- dos
+- Si
+- PW
+- tutorial
+- beginner
+exclusion_reason: null
+asset_requirements:
+  pseudopotentials:
+  - file: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+    element: Si
+    source: resources/pseudo
+multi_step: true
+steps:
+- step_type_gen: scf
+  step_type_spec: qe_scf
+  input_files:
+  - scf.in
+- step_type_gen: nscf
+  step_type_spec: qe_nscf
+  input_files:
+  - nscf.in
+- step_type_gen: dos
+  step_type_spec: qe_dos
+  input_files:
+  - dos.in

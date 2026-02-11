@@ -1,6 +1,15 @@
 case_id: si_paw
-title: "Silicon PAW calculation"
+title: Silicon PAW calculation
 engine: abinit
-workflow_tags: [paw]
-species: [Si]
-description: "PAW calculation for 2-atom diamond silicon with usepaw 1, pawecutdg 40 Ha double-grid cutoff, and ecut 15 Ha."
+workflow_tags:
+- paw
+species:
+- Si
+description: PAW calculation for 2-atom diamond silicon with usepaw 1, pawecutdg 40
+  Ha double-grid cutoff, and ecut 15 Ha.
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: abinit_scf
+required_engine: abinit
+availability: open_source
+exclusion_reason: Parser/writer test case only

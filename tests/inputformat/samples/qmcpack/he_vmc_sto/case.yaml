@@ -1,6 +1,20 @@
 case_id: he_vmc_sto
-title: "He atom VMC with STO basis"
+title: He atom VMC with STO basis
 engine: qmcpack
-workflow_tags: [vmc, all-electron, atom]
-species: [He]
-description: "Simplest QMCPACK case: He atom VMC with STO basis and Pade Jastrow. No external assets."
+workflow_tags:
+- vmc
+- all-electron
+- atom
+species:
+- He
+description: 'Simplest QMCPACK case: He atom VMC with STO basis and Pade Jastrow.
+  No external assets.'
+demo_eligible: true
+step_type_gen: vmc
+step_type_spec: qmcpack_vmc
+required_engine: qmcpack
+availability: open_source
+demo_slug: qmcpack_he_vmc
+asset_policy: none
+recommended_analysis: energy
+exclusion_reason: null

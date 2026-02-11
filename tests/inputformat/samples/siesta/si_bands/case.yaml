@@ -1,7 +1,16 @@
 case_id: si_bands
-title: "Silicon band-structure path"
+title: Silicon band-structure path
 engine: siesta
-workflow_tags: [bands, periodic]
-species: [Si]
+workflow_tags:
+- bands
+- periodic
+species:
+- Si
 functional: PBE
-description: "SCF + BandLines path in one Siesta run."
+description: SCF + BandLines path in one Siesta run.
+demo_eligible: false
+step_type_gen: bandspw
+step_type_spec: siesta_bandspw
+required_engine: siesta
+availability: open_source
+exclusion_reason: Parser/writer test case only

@@ -1,8 +1,21 @@
 case_id: water_zmatrix
-title: "Water Z-Matrix Input"
+title: Water Z-Matrix Input
 engine: gaussian
-workflow_tags: [scf, hartree-fock, z-matrix, small-molecule]
-species: [O, H]
+workflow_tags:
+- scf
+- hartree-fock
+- z-matrix
+- small-molecule
+species:
+- O
+- H
 functional: HF
 basis_set: STO-3G
-description: "HF/STO-3G using Z-matrix internal coordinates; covers Z-matrix parser branch"
+description: HF/STO-3G using Z-matrix internal coordinates; covers Z-matrix parser
+  branch
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: gaussian_scf
+required_engine: gaussian
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

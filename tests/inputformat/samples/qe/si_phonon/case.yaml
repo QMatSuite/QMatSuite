@@ -1,0 +1,56 @@
+case_id: si_phonon
+engine: qe
+title: 09 Si Phonon  3 Phonon Dispersion
+description: SCF → Phonon → q2r → matdyn → custom
+workflow_tags:
+- scf
+- ph
+- q2r
+- matdyn
+- electronic
+species:
+- Si
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: qe_scf
+required_engine: qe
+availability: open_source
+demo_slug: qe_si_phonon
+asset_policy: redistributable
+recommended_analysis: scf
+difficulty: beginner
+subtitle: SCF → Phonon → q2r → matdyn → custom
+tags:
+- phonon
+- Si
+- PW
+- DFPT
+- tutorial
+exclusion_reason: null
+asset_requirements:
+  pseudopotentials:
+  - file: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+    element: Si
+    source: resources/pseudo
+multi_step: true
+steps:
+- step_type_gen: scf
+  step_type_spec: qe_scf
+  input_files:
+  - si.1_scf.in
+- step_type_gen: ph
+  step_type_spec: qe_ph
+  input_files:
+  - si.2_ph.in
+- step_type_gen: q2r
+  step_type_spec: qe_q2r
+  input_files:
+  - si.3_q2r.in
+- step_type_gen: matdyn
+  step_type_spec: qe_matdyn
+  input_files:
+  - si.4_matdyn_2_dispersion.in
+- step_type_gen: scf
+  step_type_spec: qe_custom
+  input_files:
+  - si.5_plotband.in

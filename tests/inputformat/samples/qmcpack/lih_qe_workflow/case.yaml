@@ -1,6 +1,22 @@
 case_id: lih_qe_workflow
-title: "LiH QE-to-QMCPACK composite workflow"
+title: LiH QE-to-QMCPACK composite workflow
 engine: qmcpack
-workflow_tags: [vmc, pseudopotential, solid, periodic, composite-pipeline, qe-to-qmcpack]
-species: [Li, H]
-description: "QE→pw2qmcpack→QMCPACK composite pipeline. LiH solid with einspline wavefunction from QE SCF, XML pseudopotentials, Bspline J2 Jastrow, PBC. Tests cross-engine workflow (§1.12 W1)."
+workflow_tags:
+- vmc
+- pseudopotential
+- solid
+- periodic
+- composite-pipeline
+- qe-to-qmcpack
+species:
+- Li
+- H
+description: QE→pw2qmcpack→QMCPACK composite pipeline. LiH solid with einspline wavefunction
+  from QE SCF, XML pseudopotentials, Bspline J2 Jastrow, PBC. Tests cross-engine workflow
+  (§1.12 W1).
+demo_eligible: false
+step_type_gen: vmc
+step_type_spec: qmcpack_vmc
+required_engine: qmcpack
+availability: open_source
+exclusion_reason: Parser/writer test case only

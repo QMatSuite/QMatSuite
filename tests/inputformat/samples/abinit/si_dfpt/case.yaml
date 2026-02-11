@@ -1,6 +1,16 @@
 case_id: si_dfpt
-title: "Silicon DFPT phonon calculation"
+title: Silicon DFPT phonon calculation
 engine: abinit
-workflow_tags: [dfpt, phonon]
-species: [Si]
-description: "Two-dataset DFPT phonon calculation for silicon: SCF ground state followed by phonon response at the Gamma point."
+workflow_tags:
+- dfpt
+- phonon
+species:
+- Si
+description: 'Two-dataset DFPT phonon calculation for silicon: SCF ground state followed
+  by phonon response at the Gamma point.'
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: abinit_scf
+required_engine: abinit
+availability: open_source
+exclusion_reason: Parser/writer test case only

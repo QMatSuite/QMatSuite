@@ -1,8 +1,22 @@
 case_id: ts_sn2
-title: "SN2 Transition State Optimization"
+title: SN2 Transition State Optimization
 engine: orca
-workflow_tags: [ts, transition-state, anion, reaction]
-species: [C, H, Cl]
+workflow_tags:
+- ts
+- transition-state
+- anion
+- reaction
+species:
+- C
+- H
+- Cl
 functional: B3LYP
 basis_set: DEF2-SVP
-description: "OPTTS transition state search for SN2 reaction (Cl- + CH3Cl), anionic system"
+description: OPTTS transition state search for SN2 reaction (Cl- + CH3Cl), anionic
+  system
+demo_eligible: false
+step_type_gen: relax
+step_type_spec: orca_relax
+required_engine: orca
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

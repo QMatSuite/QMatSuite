@@ -1,0 +1,47 @@
+case_id: water_scf
+engine: pyscf
+title: Water PySCF SCF
+description: B3LYP/cc-pVDZ single-point DFT calculation on water molecule
+workflow_tags:
+- scf
+- dft
+- small-molecule
+species:
+- O
+- H
+functional: B3LYP
+basis_set: cc-pVDZ
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: pyscf_scf
+required_engine: pyscf
+availability: open_source
+demo_slug: pyscf_water_scf
+asset_policy: none
+recommended_analysis: energy
+difficulty: beginner
+parser_mode: direct_snapshot
+inline_parameters:
+  functional: B3LYP
+  basis: cc-pVDZ
+  charge: 0
+  spin: 0
+inline_structure:
+  type: molecule
+  species:
+  - O
+  - H
+  - H
+  cart_coords:
+  - [0.0, 0.0, 0.1173]
+  - [0.0, 0.75695, -0.4692]
+  - [0.0, -0.75695, -0.4692]
+subtitle: B3LYP/cc-pVDZ DFT calculation on water molecule
+tags:
+- pyscf
+- molecular
+- scf
+- dft
+- water
+- tutorial
+exclusion_reason: null

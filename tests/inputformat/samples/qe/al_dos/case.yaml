@@ -1,0 +1,52 @@
+case_id: al_dos
+engine: qe
+title: 6 Al Dos
+description: VC-Relax → SCF → NSCF → DOS
+workflow_tags:
+- relax
+- scf
+- nscf
+- dos
+- electronic
+species:
+- Al
+demo_eligible: true
+step_type_gen: relax
+step_type_spec: qe_relax
+required_engine: qe
+availability: open_source
+demo_slug: qe_al_dos
+asset_policy: redistributable
+recommended_analysis: dos
+difficulty: beginner
+subtitle: VC-Relax → SCF → NSCF → DOS
+tags:
+- dos
+- Al
+- PW
+- metal
+- tutorial
+exclusion_reason: null
+asset_requirements:
+  pseudopotentials:
+  - file: Al.pbe-n-kjpaw_psl.1.0.0.UPF
+    element: Al
+    source: resources/pseudo
+multi_step: true
+steps:
+- step_type_gen: relax
+  step_type_spec: qe_relax
+  input_files:
+  - al.1_vc_relax.in
+- step_type_gen: scf
+  step_type_spec: qe_scf
+  input_files:
+  - al.2_scf.in
+- step_type_gen: nscf
+  step_type_spec: qe_nscf
+  input_files:
+  - al.3_nscf.in
+- step_type_gen: dos
+  step_type_spec: qe_dos
+  input_files:
+  - al.4_dos.in

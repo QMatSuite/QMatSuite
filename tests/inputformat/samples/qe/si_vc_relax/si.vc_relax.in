@@ -1,0 +1,22 @@
+&CONTROL
+  calculation = 'vc-relax'
+  pseudo_dir = '/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos'
+  etot_conv_thr = 1e-05
+  forc_conv_thr = 0.0001
+/
+
+&SYSTEM
+  ecutwfc = 30
+/
+
+&ELECTRONS
+  conv_thr = 1e-07
+/
+
+&CELL
+  cell_dofree = 'ibrav'
+/
+
+K_POINTS {automatic}
+  4 4 4 0 0 0
+

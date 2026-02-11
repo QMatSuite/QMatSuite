@@ -1,0 +1,378 @@
+{
+  "generator_version": "1.0.0",
+  "generated_at": "2026-02-11T17:28:16Z",
+  "corpus_root": "tests/inputformat/samples",
+  "corpus_index_checksum": "6f3ec73d2aa4ce93ecafc02a048a273330aa516c47e62250cec9949e519e126a",
+  "demos": {
+    "abinit_si_relax": {
+      "engine": "abinit",
+      "case_id": "si_relax",
+      "dir_name": "si_relax",
+      "corpus_path": "tests/inputformat/samples/abinit/si_relax",
+      "corpus_checksum": "52a1d42aa27de6a9259bfde5443d3b301b19b95845225abd3932192d9de993bf",
+      "output_file": "resources/demo_projects/abinit_si_relax.yml",
+      "output_checksum": "51b405db16d9dece1d510921c4bb8f3860dbdf4e01df8ef6a97cd3fe73a9f2ee",
+      "asset_policy": "redistributable"
+    },
+    "abinit_si_scf": {
+      "engine": "abinit",
+      "case_id": "si_scf",
+      "dir_name": "si_scf",
+      "corpus_path": "tests/inputformat/samples/abinit/si_scf",
+      "corpus_checksum": "1e0042f0cf1551cf94db784dc60776f9484630c79a29d47417f8e5048a0c0c45",
+      "output_file": "resources/demo_projects/abinit_si_scf.yml",
+      "output_checksum": "945d4df02b33a65a357b86297154a72f17676934454eb7a1df3010330adae786",
+      "asset_policy": "redistributable"
+    },
+    "cp2k_h2o_energy": {
+      "engine": "cp2k",
+      "case_id": "h2o_energy",
+      "dir_name": "h2o_energy",
+      "corpus_path": "tests/inputformat/samples/cp2k/h2o_energy",
+      "corpus_checksum": "6e0f569bb3efd6c37888630536eb0996b0658e36ed20920206cf31676cb89b88",
+      "output_file": "resources/demo_projects/cp2k_h2o_energy.yml",
+      "output_checksum": "3e83bdafc30be1ec27455ccc2959d0585a58a9e1489979a261fcaa9d6427af20",
+      "asset_policy": "none"
+    },
+    "cp2k_si_relax": {
+      "engine": "cp2k",
+      "case_id": "si_relax",
+      "dir_name": "si_relax",
+      "corpus_path": "tests/inputformat/samples/cp2k/si_relax",
+      "corpus_checksum": "b19fe4db1682a8ad01f6f5cf16e8041dad259c113e3b8b3f1637ba5c1e6c27d2",
+      "output_file": "resources/demo_projects/cp2k_si_relax.yml",
+      "output_checksum": "36fc2f92b3a7487153d26d888ccc3bac9158a6594681d90c635973fd176684e7",
+      "asset_policy": "none"
+    },
+    "gaussian_water_opt": {
+      "engine": "gaussian",
+      "case_id": "water_b3lyp_opt",
+      "dir_name": "water_b3lyp_opt",
+      "corpus_path": "tests/inputformat/samples/gaussian/water_b3lyp_opt",
+      "corpus_checksum": "de5367b7721b4337d8c983cb7fe619b577dd24ebd290207e1c6d79a9afbedf73",
+      "output_file": "resources/demo_projects/gaussian_water_opt.yml",
+      "output_checksum": "b4b3376c1c1bcd935270a08f0f65ec02f363994a95d92ba2f14cf26d2481b608",
+      "asset_policy": "none"
+    },
+    "gaussian_water_hf": {
+      "engine": "gaussian",
+      "case_id": "water_hf_sp",
+      "dir_name": "water_hf_sp",
+      "corpus_path": "tests/inputformat/samples/gaussian/water_hf_sp",
+      "corpus_checksum": "83da2e6c14c1a4b31a7651652a377f2bda252001b5eb45a7187272594e66ac2a",
+      "output_file": "resources/demo_projects/gaussian_water_hf.yml",
+      "output_checksum": "12bd731ffd1817d4e6325d6de47a3f27e38b3efc7d41567000dbb91e5035b78b",
+      "asset_policy": "none"
+    },
+    "gpaw_si_scf": {
+      "engine": "gpaw",
+      "case_id": "si_scf",
+      "dir_name": "si_scf",
+      "corpus_path": "tests/inputformat/samples/gpaw/si_scf",
+      "corpus_checksum": "8c01408e10e8e685ee04f78cfdd8281e2fea15906f271939640d8038c94fc748",
+      "output_file": "resources/demo_projects/gpaw_si_scf.yml",
+      "output_checksum": "c3b50317cc6d67d1339d2245361ff13910edc1a84f5c84a026d20b6fd01e99f1",
+      "asset_policy": "none"
+    },
+    "lammps_lj_melt": {
+      "engine": "lammps",
+      "case_id": "melt_lj_nve",
+      "dir_name": "melt_lj_nve",
+      "corpus_path": "tests/inputformat/samples/lammps/melt_lj_nve",
+      "corpus_checksum": "d06a9a66cb341a53caa99cb2f8cdc4b56cab85bfa17ed2ba9d2bdd3c78d19615",
+      "output_file": "resources/demo_projects/lammps_lj_melt.yml",
+      "output_checksum": "eb39ac340207dbc28adee366f72bffe1377a5359c5e0652422ad5459c0df1c2d",
+      "asset_policy": "none"
+    },
+    "lammps_lj_minimize": {
+      "engine": "lammps",
+      "case_id": "minimize_2d_lj",
+      "dir_name": "minimize_2d_lj",
+      "corpus_path": "tests/inputformat/samples/lammps/minimize_2d_lj",
+      "corpus_checksum": "16d4716c7c09d14ee20713dc5d86a527b0f8eb3a73d1e52ef857b87bfd89be95",
+      "output_file": "resources/demo_projects/lammps_lj_minimize.yml",
+      "output_checksum": "9a491cc1470443f2815496b96902c6d41c9876f13fa8124fd0754744e6bcc7ca",
+      "asset_policy": "none"
+    },
+    "orca_formaldehyde_tddft": {
+      "engine": "orca",
+      "case_id": "formaldehyde_tddft",
+      "dir_name": "formaldehyde_tddft",
+      "corpus_path": "tests/inputformat/samples/orca/formaldehyde_tddft",
+      "corpus_checksum": "76413bd9d9be936dfba10bc9ce7a2a777a5280cc0b13df5b49e39a537590a434",
+      "output_file": "resources/demo_projects/orca_formaldehyde_tddft.yml",
+      "output_checksum": "9400c57a9ebedf40d53859931748241bf0dd8d975a6c22c9b6ac8a8aa9f3c84a",
+      "asset_policy": "none"
+    },
+    "orca_methane_freq": {
+      "engine": "orca",
+      "case_id": "methane_freq",
+      "dir_name": "methane_freq",
+      "corpus_path": "tests/inputformat/samples/orca/methane_freq",
+      "corpus_checksum": "0a31bf64e4e2f779f6779100a7dc08bee31cb41558d22eae69de53c39b2dd3d3",
+      "output_file": "resources/demo_projects/orca_methane_freq.yml",
+      "output_checksum": "6e675e1afd158994207996d07f97d13654eccde905bdbe3bfd142c12b8a9762e",
+      "asset_policy": "none"
+    },
+    "orca_water_sp": {
+      "engine": "orca",
+      "case_id": "water_sp",
+      "dir_name": "water_sp",
+      "corpus_path": "tests/inputformat/samples/orca/water_sp",
+      "corpus_checksum": "e0ab21fe482cdf83bd2f5e790b99c059a7b065bbddd4413da305a76703e5e008",
+      "output_file": "resources/demo_projects/orca_water_sp.yml",
+      "output_checksum": "c459fec78bf6ec94da86a9f87a46458cdf6e1a3989a46681da580845c645b6a9",
+      "asset_policy": "none"
+    },
+    "psi4_water_scf": {
+      "engine": "psi4",
+      "case_id": "water_scf",
+      "dir_name": "water_scf",
+      "corpus_path": "tests/inputformat/samples/psi4/water_scf",
+      "corpus_checksum": "dc121f3e8fca8ee749278a0b6fa85a697337e06d427172162c56684ae84ff8a7",
+      "output_file": "resources/demo_projects/psi4_water_scf.yml",
+      "output_checksum": "1ab5aab4f41bb79855016145576d24e381c2391b1ae71585cf48581befd95cec",
+      "asset_policy": "none"
+    },
+    "pyscf_water_scf": {
+      "engine": "pyscf",
+      "case_id": "water_scf",
+      "dir_name": "water_scf",
+      "corpus_path": "tests/inputformat/samples/pyscf/water_scf",
+      "corpus_checksum": "fc817117b5d03cfac3e7df1bcafee7272cedd7f48270d6cfd30af11cbab607d7",
+      "output_file": "resources/demo_projects/pyscf_water_scf.yml",
+      "output_checksum": "d3e46208f3c2f589034389dfdd6bdd4e23eb7f151d8c7b0faa8cdb94bef0618c",
+      "asset_policy": "none"
+    },
+    "qe_al_dos": {
+      "engine": "qe",
+      "case_id": "al_dos",
+      "dir_name": "al_dos",
+      "corpus_path": "tests/inputformat/samples/qe/al_dos",
+      "corpus_checksum": "4d0118566c2f788aa7b1e311e338a084d36819561c1dd6f2b178395477ead709",
+      "output_file": "resources/demo_projects/qe_al_dos.yml",
+      "output_checksum": "5522580b363f4287f15a789ca19c5bc9848046221595ff58c6ff739e0d2ee6f3",
+      "asset_policy": "redistributable"
+    },
+    "qe_fe_dos": {
+      "engine": "qe",
+      "case_id": "fe_dos",
+      "dir_name": "fe_dos",
+      "corpus_path": "tests/inputformat/samples/qe/fe_dos",
+      "corpus_checksum": "7709d83cbc74e63591f54fcdf536b23cc57caac3defee3247e0d62623fcccb52",
+      "output_file": "resources/demo_projects/qe_fe_dos.yml",
+      "output_checksum": "36e4fa7cf1ab31a1021bed06ce073c415e8f72fa03c3becf19ae6c83a2752644",
+      "asset_policy": "redistributable"
+    },
+    "qe_graphene_bands": {
+      "engine": "qe",
+      "case_id": "graphene_bands",
+      "dir_name": "graphene_bands",
+      "corpus_path": "tests/inputformat/samples/qe/graphene_bands",
+      "corpus_checksum": "e5cb22db274d695f3fe150823342db0e97572d9983752353ba3c6ffdeb11fc9d",
+      "output_file": "resources/demo_projects/qe_graphene_bands.yml",
+      "output_checksum": "6e8716657c00210c5fbcb9593d2930ee9f1f6c999d4c06d7c983222df84129b4",
+      "asset_policy": "redistributable"
+    },
+    "qe_nmr_gipaw": {
+      "engine": "qe",
+      "case_id": "nmr_gipaw",
+      "dir_name": "nmr_gipaw",
+      "corpus_path": "tests/inputformat/samples/qe/nmr_gipaw",
+      "corpus_checksum": "a79f87ed53045b35e582e58c8eba9caeb2c80a624e48eed1ad6ec6e0557ba92c",
+      "output_file": "resources/demo_projects/qe_nmr_gipaw.yml",
+      "output_checksum": "7fc9cd78233584ed5ead7589b01ec2bd7edd9f3aa9566f77faee7a1edc940e0b",
+      "asset_policy": "redistributable"
+    },
+    "si_bands_demo": {
+      "engine": "qe",
+      "case_id": "si_bands",
+      "dir_name": "si_bands",
+      "corpus_path": "tests/inputformat/samples/qe/si_bands",
+      "corpus_checksum": "059638b939c829cacb4575ee5bf416e8099035be89c0244b86df45900928e4bd",
+      "output_file": "resources/demo_projects/si_bands_demo.yml",
+      "output_checksum": "acbb1dbd6a274329b599977200ec7ed04d23f286747666701e5e90d08c726e99",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_bands_alt": {
+      "engine": "qe",
+      "case_id": "si_bands_alt",
+      "dir_name": "si_bands_alt",
+      "corpus_path": "tests/inputformat/samples/qe/si_bands_alt",
+      "corpus_checksum": "5005b853fc4bdc7f07316c48223cc12fbf529346335a90db88364b8287e58375",
+      "output_file": "resources/demo_projects/qe_si_bands_alt.yml",
+      "output_checksum": "2ff064f48b47fdf1cf1eb7e16ffe833bdac080cc1fc27c4112b0825da3cc8288",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_bulk_modulus": {
+      "engine": "qe",
+      "case_id": "si_bulk_modulus",
+      "dir_name": "si_bulk_modulus",
+      "corpus_path": "tests/inputformat/samples/qe/si_bulk_modulus",
+      "corpus_checksum": "3df2c847eb6a4a3b52c521ec49d47c7254f817cb4fcac0830e653f91d4daed73",
+      "output_file": "resources/demo_projects/qe_si_bulk_modulus.yml",
+      "output_checksum": "4d6f3c9c0b8065a531504adb1ed288f86ef58c06ac34207257e81ba913087cdf",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_cpmd": {
+      "engine": "qe",
+      "case_id": "si_cpmd",
+      "dir_name": "si_cpmd",
+      "corpus_path": "tests/inputformat/samples/qe/si_cpmd",
+      "corpus_checksum": "54c7b683df3c879be242cb7f3662c1cec063b8d20b8f0939ac71bd50de88711f",
+      "output_file": "resources/demo_projects/qe_si_cpmd.yml",
+      "output_checksum": "27574d2772b2c4b43c0f015df227f7ae0937e57c792ca99c6d579575a5493e9f",
+      "asset_policy": "redistributable"
+    },
+    "si_dos_demo": {
+      "engine": "qe",
+      "case_id": "si_dos",
+      "dir_name": "si_dos",
+      "corpus_path": "tests/inputformat/samples/qe/si_dos",
+      "corpus_checksum": "9a688b11ac66d48ad73a89805585ef9dd95538078c4cf638888335da75f71674",
+      "output_file": "resources/demo_projects/si_dos_demo.yml",
+      "output_checksum": "420c029ca5c0a1f20780c4b3810e03f26bdee4a742821fd44b56b233b40c4d79",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_dos_alt": {
+      "engine": "qe",
+      "case_id": "si_dos_alt",
+      "dir_name": "si_dos_alt",
+      "corpus_path": "tests/inputformat/samples/qe/si_dos_alt",
+      "corpus_checksum": "47e94d541eee8cc7c7d24c9b1dc5c082ec01e590013910b58919af5f7d8f05a6",
+      "output_file": "resources/demo_projects/qe_si_dos_alt.yml",
+      "output_checksum": "dbb1e560c1bc6b0cdca666476beb7dece523c2d48e6e41d40454df88ab252c6a",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_phonon": {
+      "engine": "qe",
+      "case_id": "si_phonon",
+      "dir_name": "si_phonon",
+      "corpus_path": "tests/inputformat/samples/qe/si_phonon",
+      "corpus_checksum": "fac84ef468ab938983068f1f6a924d22a50de7d41529f1fe092e1f583436b905",
+      "output_file": "resources/demo_projects/qe_si_phonon.yml",
+      "output_checksum": "b3f6c6f95cc6456bf10d038f75b9cb2fa94270e1b60b0018d2f086dc4e3345f7",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_scf": {
+      "engine": "qe",
+      "case_id": "si_scf",
+      "dir_name": "si_scf",
+      "corpus_path": "tests/inputformat/samples/qe/si_scf",
+      "corpus_checksum": "159ec6ea30a20f4d31d9b1e8b729014e8c5a70b97a7d574fc1a3e238ffa71319",
+      "output_file": "resources/demo_projects/qe_si_scf.yml",
+      "output_checksum": "4ec61457fe8d1f3a9df68be9f10159d7e8dea1b8eec5cd904afcc33433ebbb00",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_vc_relax": {
+      "engine": "qe",
+      "case_id": "si_vc_relax",
+      "dir_name": "si_vc_relax",
+      "corpus_path": "tests/inputformat/samples/qe/si_vc_relax",
+      "corpus_checksum": "7c6cfed5e310e0fe52e7ccf52257781d9e3355521bd8e47fd02e3b726368b3d1",
+      "output_file": "resources/demo_projects/qe_si_vc_relax.yml",
+      "output_checksum": "6e79ccd7c38e3af3f98081ab66339d0b37acf3785ed529343871e73ac8e16963",
+      "asset_policy": "redistributable"
+    },
+    "qmcpack_he_vmc": {
+      "engine": "qmcpack",
+      "case_id": "he_vmc_sto",
+      "dir_name": "he_vmc_sto",
+      "corpus_path": "tests/inputformat/samples/qmcpack/he_vmc_sto",
+      "corpus_checksum": "3e5c6da848bd4744dbdb4144dcb370950b9c09857b01a2d7db2346b364e4dea0",
+      "output_file": "resources/demo_projects/qmcpack_he_vmc.yml",
+      "output_checksum": "f332835dc85cfa34141e61ba2a50c0262605abe72e1d616d5dabf3e704293427",
+      "asset_policy": "none"
+    },
+    "siesta_si_relax": {
+      "engine": "siesta",
+      "case_id": "si_relax",
+      "dir_name": "si_relax",
+      "corpus_path": "tests/inputformat/samples/siesta/si_relax",
+      "corpus_checksum": "660bd237b2d0017cf7cc7acb99f87efa7c2265a0381fe2e2bb51b8cf8c44bb4a",
+      "output_file": "resources/demo_projects/siesta_si_relax.yml",
+      "output_checksum": "4a8691bdc5db31e1e7844461e352a5fdd20b2123d345e06aafd81cd0e0d72288",
+      "asset_policy": "none"
+    },
+    "siesta_si_scf": {
+      "engine": "siesta",
+      "case_id": "si_scf",
+      "dir_name": "si_scf",
+      "corpus_path": "tests/inputformat/samples/siesta/si_scf",
+      "corpus_checksum": "f9a0c4a4157c5bc47a1926be8f86382cf6399062f6e1b2525c01f586b55dc4b2",
+      "output_file": "resources/demo_projects/siesta_si_scf.yml",
+      "output_checksum": "f62023b3a923917067d3a88b0647e8a08f56dfb4ad594ce03b9f445121605229",
+      "asset_policy": "none"
+    },
+    "vasp_fe_magnetic": {
+      "engine": "vasp",
+      "case_id": "fe_magnetic",
+      "dir_name": "fe_magnetic",
+      "corpus_path": "tests/inputformat/samples/vasp/fe_magnetic",
+      "corpus_checksum": "2954c01f8b9432db24a34886e583403f634c69a23caac289ef6edea543e172a2",
+      "output_file": "resources/demo_projects/vasp_fe_magnetic.yml",
+      "output_checksum": "cc90f989947768d72383b25eb2c42f42c14528075d2172241ba84bd0af470437",
+      "asset_policy": "proprietary"
+    },
+    "vasp_si_bands": {
+      "engine": "vasp",
+      "case_id": "si_bands",
+      "dir_name": "si_bands",
+      "corpus_path": "tests/inputformat/samples/vasp/si_bands",
+      "corpus_checksum": "a76d77bdae8f5e5c05b7d0af10c0f1504100b2a59fbc74dc98c3cb1cbc1133b6",
+      "output_file": "resources/demo_projects/vasp_si_bands.yml",
+      "output_checksum": "e7ada4f1b4d46b6f2afb39bc270b07c08f712ed950495adeea3b3e8deb8deef9",
+      "asset_policy": "proprietary"
+    },
+    "vasp_si_relax": {
+      "engine": "vasp",
+      "case_id": "si_relax",
+      "dir_name": "si_relax",
+      "corpus_path": "tests/inputformat/samples/vasp/si_relax",
+      "corpus_checksum": "180d1220f2cb2a8491e3db11ad934ed424c09e99f75e46e558adb71be3820533",
+      "output_file": "resources/demo_projects/vasp_si_relax.yml",
+      "output_checksum": "ce21e6441aca27af476b2a038f1511a25f74f6fe9088c6cae8a4750d69a53d6d",
+      "asset_policy": "proprietary"
+    },
+    "vasp_si_scf": {
+      "engine": "vasp",
+      "case_id": "si_scf",
+      "dir_name": "si_scf",
+      "corpus_path": "tests/inputformat/samples/vasp/si_scf",
+      "corpus_checksum": "2b9272d0158bfb22ce9f51f2d02c1448a7eab9e8a3baf78e8be5f6e3267904d4",
+      "output_file": "resources/demo_projects/vasp_si_scf.yml",
+      "output_checksum": "4dd8f5898f2d43d16d782750ac8b19c41c111cccec24d833d036f645c20eb50b",
+      "asset_policy": "proprietary"
+    },
+    "xtb_water_md": {
+      "engine": "xtb",
+      "case_id": "water_md",
+      "dir_name": "water_md",
+      "corpus_path": "tests/inputformat/samples/xtb/water_md",
+      "corpus_checksum": "5d1a73005615edd488109405bd29f06a5a0a852811393570262c87917c1f3e9f",
+      "output_file": "resources/demo_projects/xtb_water_md.yml",
+      "output_checksum": "366280a9941a2f5f6360db9d598e18dc30be000e058a7f43dff3f15cca8f9cd5",
+      "asset_policy": "none"
+    },
+    "xtb_water_opt": {
+      "engine": "xtb",
+      "case_id": "water_opt",
+      "dir_name": "water_opt",
+      "corpus_path": "tests/inputformat/samples/xtb/water_opt",
+      "corpus_checksum": "593a0f85b0a91226010f9660f5d4979761e5c80c97b79154a8c111d4f513e509",
+      "output_file": "resources/demo_projects/xtb_water_opt.yml",
+      "output_checksum": "c672cccbaac92c66475829fb1539b47be8e27cea8892f1e614e16860530d5441",
+      "asset_policy": "none"
+    },
+    "yambo_si_gw": {
+      "engine": "yambo",
+      "case_id": "si_gw_ppa",
+      "dir_name": "si_gw_ppa",
+      "corpus_path": "tests/inputformat/samples/yambo/si_gw_ppa",
+      "corpus_checksum": "3c6c6342d755ed9aefbaa051300d40921e56b1e5f34aaecfbc229bcc3b7116c9",
+      "output_file": "resources/demo_projects/yambo_si_gw.yml",
+      "output_checksum": "dd9963e2bbe6dec1fcf4b7e3d6d45df9dfabb5214163efaf3512784583e57c04",
+      "asset_policy": "none"
+    }
+  }
+}

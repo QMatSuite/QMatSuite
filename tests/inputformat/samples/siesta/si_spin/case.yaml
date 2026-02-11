@@ -1,7 +1,17 @@
 case_id: si_spin
-title: "Silicon spin-polarized SCF"
+title: Silicon spin-polarized SCF
 engine: siesta
-workflow_tags: [scf, spin, periodic]
-species: [Si]
+workflow_tags:
+- scf
+- spin
+- periodic
+species:
+- Si
 functional: PBE
-description: "SpinPolarized SCF setup for bulk silicon."
+description: SpinPolarized SCF setup for bulk silicon.
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: siesta_scf
+required_engine: siesta
+availability: open_source
+exclusion_reason: Parser/writer test case only

@@ -1,7 +1,16 @@
 case_id: al_md
-title: "Aluminium FCC molecular dynamics"
+title: Aluminium FCC molecular dynamics
 engine: vasp
-workflow_tags: [md, ionic]
-species: [Al]
+workflow_tags:
+- md
+- ionic
+species:
+- Al
 functional: PBE
-description: "Al FCC NVT-MD with Nose-Hoover thermostat at 300 K"
+description: Al FCC NVT-MD with Nose-Hoover thermostat at 300 K
+demo_eligible: false
+step_type_gen: md
+step_type_spec: vasp_md
+required_engine: vasp
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

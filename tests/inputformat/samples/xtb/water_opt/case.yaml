@@ -1,6 +1,19 @@
 case_id: water_opt
-title: "Water geometry optimization"
+title: Water geometry optimization
 engine: xtb
-workflow_tags: [relax, gfn2]
-species: [O, H]
-description: "Geometry optimization workflow with xtbopt.xyz output."
+workflow_tags:
+- relax
+- gfn2
+species:
+- O
+- H
+description: Geometry optimization workflow with xtbopt.xyz output.
+demo_eligible: true
+step_type_gen: relax
+step_type_spec: xtb_relax
+required_engine: xtb
+availability: bundled
+demo_slug: xtb_water_opt
+asset_policy: none
+recommended_analysis: scf
+exclusion_reason: null

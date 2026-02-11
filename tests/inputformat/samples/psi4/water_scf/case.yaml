@@ -1,0 +1,46 @@
+case_id: water_scf
+engine: psi4
+title: Water Psi4 SCF
+description: HF/cc-pVDZ single-point calculation on water molecule
+workflow_tags:
+- scf
+- hf
+- small-molecule
+species:
+- O
+- H
+basis_set: cc-pVDZ
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: psi4_scf
+required_engine: psi4
+availability: open_source
+demo_slug: psi4_water_scf
+asset_policy: none
+recommended_analysis: energy
+difficulty: beginner
+parser_mode: direct_snapshot
+inline_parameters:
+  method: hf
+  basis: cc-pVDZ
+  charge: 0
+  spin: 0
+inline_structure:
+  type: molecule
+  species:
+  - O
+  - H
+  - H
+  cart_coords:
+  - [0.0, 0.0, 0.1173]
+  - [0.0, 0.75695, -0.4692]
+  - [0.0, -0.75695, -0.4692]
+subtitle: HF/cc-pVDZ calculation on water molecule
+tags:
+- psi4
+- molecular
+- scf
+- hf
+- water
+- tutorial
+exclusion_reason: null

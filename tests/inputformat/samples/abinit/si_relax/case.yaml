@@ -1,6 +1,18 @@
 case_id: si_relax
-title: "Silicon ionic and cell relaxation"
+title: Silicon ionic and cell relaxation
 engine: abinit
-workflow_tags: [relax]
-species: [Si]
-description: "Relaxation of 2-atom diamond silicon from a compressed lattice using BFGS with isotropic cell optimization."
+workflow_tags:
+- relax
+species:
+- Si
+description: Relaxation of 2-atom diamond silicon from a compressed lattice using
+  BFGS with isotropic cell optimization.
+demo_eligible: true
+step_type_gen: relax
+step_type_spec: abinit_relax
+required_engine: abinit
+availability: open_source
+demo_slug: abinit_si_relax
+asset_policy: redistributable
+recommended_analysis: scf
+exclusion_reason: null

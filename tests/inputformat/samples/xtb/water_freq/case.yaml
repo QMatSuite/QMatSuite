@@ -1,6 +1,17 @@
 case_id: water_freq
-title: "Water optimize+hessian"
+title: Water optimize+hessian
 engine: xtb
-workflow_tags: [frequency, hessian, ohess]
-species: [O, H]
-description: "Optimization plus Hessian and thermochemistry."
+workflow_tags:
+- frequency
+- hessian
+- ohess
+species:
+- O
+- H
+description: Optimization plus Hessian and thermochemistry.
+demo_eligible: false
+step_type_gen: relax
+step_type_spec: xtb_relax
+required_engine: xtb
+availability: bundled
+exclusion_reason: Parser/writer test case only

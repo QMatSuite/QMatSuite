@@ -1,0 +1,97 @@
+version: 1
+project:
+  meta:
+    ulid: 01KQXEQG9PS4QPP8N509FRE2R8
+    name: Water HF Single-Point
+    slug: water-hf-single-point
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KG3AZ183H0WVCRMZEJ1EQEA1
+    name: HO
+    slug: ho
+    path: structures/ho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.117499
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.75695
+      - -0.469996
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - -0.75695
+      - -0.469996
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01K50NXHEB04P4W8X53SH7B37E
+    name: Water HF Single-Point
+    slug: water-hf-single-point
+    path: calculations/water-hf-single-point
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: gaussian
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/water-hf-single-point/steps/scf.step.yaml
+      kind: step
+      ulid: 01K4B1T1GQ848JJ1CP68JMW80P
+    parameters:
+      mem: 500MB
+      nproc: 1
+      chk_name: water.chk
+      method: HF
+      basis: STO-3G
+      title: Water single point energy
+      charge: 0
+      multiplicity: 1
+    step_type_spec: gaussian_scf
+  structure_ulid: 01KG3AZ183H0WVCRMZEJ1EQEA1
+meta:
+  ulid: gaussian_water_hf
+  title: Water HF Single-Point
+  subtitle: scf
+  tags:
+  - scf
+  - hartree-fock
+  - small-molecule
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: gaussian
+  availability: requires_local_install
+  generator_version: 1.0.0
+  corpus_engine: gaussian
+  corpus_case_id: water_hf_sp
+  corpus_checksum: 83da2e6c14c1a4b31a7651652a377f2bda252001b5eb45a7187272594e66ac2a

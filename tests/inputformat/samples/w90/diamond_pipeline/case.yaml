@@ -1,6 +1,16 @@
 case_id: diamond_pipeline
-title: "Diamond QE pipeline with WF plotting"
+title: Diamond QE pipeline with WF plotting
 engine: w90
-workflow_tags: [qe_pipeline, wannier_plot]
-species: [C]
-description: "Diamond with 4 WFs from QE pipeline (Tutorial Example 5). Tests wannier_plot parameters, 4x4x4 k-grid with 64 explicit kpoints, and f-centred projections."
+workflow_tags:
+- qe_pipeline
+- wannier_plot
+species:
+- C
+description: Diamond with 4 WFs from QE pipeline (Tutorial Example 5). Tests wannier_plot
+  parameters, 4x4x4 k-grid with 64 explicit kpoints, and f-centred projections.
+demo_eligible: false
+step_type_gen: wannier
+step_type_spec: w90_wannier
+required_engine: w90
+availability: open_source
+exclusion_reason: Parser/writer test case only

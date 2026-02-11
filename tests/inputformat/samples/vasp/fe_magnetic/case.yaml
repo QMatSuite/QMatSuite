@@ -1,7 +1,26 @@
 case_id: fe_magnetic
-title: "Iron BCC spin-polarised SCF"
+title: Iron BCC spin-polarised SCF
 engine: vasp
-workflow_tags: [scf, magnetic, spin]
-species: [Fe]
+workflow_tags:
+- scf
+- magnetic
+- spin
+species: &id001
+- Fe
 functional: PBE
-description: "Fe BCC with ISPIN=2 and initial MAGMOM=3.0 per atom"
+description: Fe BCC with ISPIN=2 and initial MAGMOM=3.0 per atom
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: vasp_scf
+required_engine: vasp
+availability: requires_local_install
+demo_slug: vasp_fe_magnetic
+asset_policy: proprietary
+asset_requirements:
+  proprietary:
+  - type: potcar
+    description: VASP PAW PBE pseudopotentials for Fe
+    species: *id001
+    obtain_from: VASP POTCAR library (requires VASP license)
+recommended_analysis: scf
+exclusion_reason: null

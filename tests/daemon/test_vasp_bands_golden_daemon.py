@@ -120,7 +120,7 @@ def test_vasp_bands_demo_runs_new_analysis_pipeline_end_to_end(
         {
             "target_dir": str(workspace),
             "name": "vasp-bands-golden",
-            "demo_id": "si_bands_vasp_demo",
+            "demo_id": "vasp_si_bands",
         },
     )
     project_root = Path(created["project_root"])
@@ -128,7 +128,7 @@ def test_vasp_bands_demo_runs_new_analysis_pipeline_end_to_end(
 
     calc_listing = _send_request(daemon, "list_calculations", {"project_root": str(project_root)})
     calculations = calc_listing.get("calculations", [])
-    target_calc = next((row for row in calculations if row.get("slug") == "si-bands-vasp"), None)
+    target_calc = next((row for row in calculations if row.get("slug") == "silicon-diamond-band-structure"), None)
     assert target_calc is not None, calculations
     calc_selector = str(target_calc.get("slug") or target_calc.get("ulid") or target_calc.get("name"))
     assert calc_selector

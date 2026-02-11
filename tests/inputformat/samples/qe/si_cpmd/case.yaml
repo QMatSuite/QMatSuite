@@ -1,0 +1,32 @@
+case_id: si_cpmd
+engine: qe
+title: 19 Si Cpmd  4 Bomd Nvt
+description: custom → custom → custom
+workflow_tags:
+- scf
+- electronic
+species:
+- Si
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: qe_custom
+required_engine: qe
+availability: open_source
+demo_slug: qe_si_cpmd
+asset_policy: redistributable
+recommended_analysis: trajectory
+difficulty: beginner
+subtitle: custom → custom → custom
+tags:
+- md
+- Si
+- PW
+- CPMD
+- advanced
+exclusion_reason: null
+asset_requirements:
+  pseudopotentials:
+  - file: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+    element: Si
+    source: resources/pseudo
+multi_step: false

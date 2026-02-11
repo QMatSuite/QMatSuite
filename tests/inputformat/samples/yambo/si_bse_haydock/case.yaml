@@ -1,6 +1,17 @@
 case_id: si_bse_haydock
-title: "Silicon BSE Haydock"
+title: Silicon BSE Haydock
 engine: yambo
-workflow_tags: [bse, optics, excitonic]
-species: [Si]
-description: "BSE optical spectrum using SEX kernel and Haydock iterative solver with static screening."
+workflow_tags:
+- bse
+- optics
+- excitonic
+species:
+- Si
+description: BSE optical spectrum using SEX kernel and Haydock iterative solver with
+  static screening.
+demo_eligible: false
+step_type_gen: bse
+step_type_spec: yambo_bse
+required_engine: yambo
+availability: open_source
+exclusion_reason: Parser/writer test case only

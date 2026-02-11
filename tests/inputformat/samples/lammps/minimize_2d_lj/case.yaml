@@ -1,5 +1,17 @@
 case_id: minimize_2d_lj
-title: "2D LJ melt + minimize"
+title: 2D LJ melt + minimize
 engine: lammps
-workflow_tags: [md, minimize, 2d]
-description: "2D LJ melt NVE followed by energy minimization, multi-phase"
+workflow_tags:
+- md
+- minimize
+- 2d
+description: 2D LJ melt NVE followed by energy minimization, multi-phase
+demo_eligible: true
+step_type_gen: minimize
+step_type_spec: lammps_minimize
+required_engine: lammps
+availability: open_source
+demo_slug: lammps_lj_minimize
+asset_policy: none
+recommended_analysis: scf
+exclusion_reason: null

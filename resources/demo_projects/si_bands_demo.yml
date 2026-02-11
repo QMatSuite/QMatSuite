@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    ulid: 01KC38Z11XMKJWB5HGV58QHEJZ
+    ulid: 01KCG45GH68V3WJBPSJ8J7DG9M
     name: project2_bands
     slug: project2_bands
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    ulid: 01KC38ZCMZZQ8DAA61A6SC8X23
+    ulid: 01K9H4XV5ZKSQ7V4HQ9RE605Y5
     name: Si
     slug: si
     path: structures/si.json
@@ -70,7 +70,7 @@ structures:
       - 1.3773039781619374
 calculations:
 - meta:
-    ulid: 01KC38ZHBGWW0T1W9BV7ASEP2Z
+    ulid: 01KMBRV5RCR60X0HT9P1CFAXVS
     name: Si bands
     slug: si-bands
     path: calculations/si-bands
@@ -84,7 +84,7 @@ calculations:
       slug: scf
       path: calculations/si-bands/steps/scf.step.yaml
       kind: step
-      ulid: 01KC3901JEVJJ7S8G3E7Z9K2RZ
+      ulid: 01KSNEXXW7Z6PHKWJ03DVACQNJ
     parameters:
       CONTROL:
         calculation: scf
@@ -115,7 +115,7 @@ calculations:
       slug: nscf
       path: calculations/si-bands/steps/nscf.step.yaml
       kind: step
-      ulid: 01KC39AWHWQ5EQSNFQADAA2AGP
+      ulid: 01K2N41MTQBXWHGA88BNRZEZKK
     parameters:
       CONTROL:
         calculation: nscf
@@ -147,7 +147,7 @@ calculations:
       slug: bandspw
       path: calculations/si-bands/steps/bandspw.step.yaml
       kind: step
-      ulid: 01KC39C21NREKW2YVZJY8E40RN
+      ulid: 01KF5KAE1TKHSK7W5ZTBDF7Y7C
     parameters:
       CONTROL:
         calculation: bands
@@ -193,12 +193,12 @@ calculations:
       slug: bands
       path: calculations/si-bands/steps/bands.step.yaml
       kind: step
-      ulid: 01KC39BB6NNP4AF070GWPKK0J0
+      ulid: 01KG1BHZK3YGP71158R9CDP5V7
     parameters:
       BANDS:
         filband: si.bands.dat
     step_type_spec: qe_bands
-  structure_ulid: 01KC38ZCMZZQ8DAA61A6SC8X23
+  structure_ulid: 01K9H4XV5ZKSQ7V4HQ9RE605Y5
   species_map:
     Si:
       mass: 28.0855
@@ -213,7 +213,7 @@ pseudo:
 meta:
   ulid: si_bands_demo
   title: Silicon band structure
-  subtitle: "SCF \u2192 NSCF \u2192 Bands"
+  subtitle: SCF → NSCF → Bands
   tags:
   - bands
   - Si
@@ -222,6 +222,13 @@ meta:
   - beginner
   recommended_analysis: bands
   difficulty: beginner
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: qe
+  corpus_case_id: si_bands
+  corpus_checksum: 059638b939c829cacb4575ee5bf416e8099035be89c0244b86df45900928e4bd
   reference_artifacts:
     bands: si_bands_demo.bands.json
     scf: si_bands_demo.scf.json

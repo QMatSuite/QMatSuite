@@ -1,8 +1,21 @@
 case_id: water_opt_freq
-title: "Water Combined Opt+Freq"
+title: Water Combined Opt+Freq
 engine: gaussian
-workflow_tags: [relax, freq, combined-job, small-molecule]
-species: [O, H]
+workflow_tags:
+- relax
+- freq
+- combined-job
+- small-molecule
+species:
+- O
+- H
 functional: HF
 basis_set: STO-3G
-description: "HF/STO-3G Opt Freq; covers combined optimization + frequency in single job"
+description: HF/STO-3G Opt Freq; covers combined optimization + frequency in single
+  job
+demo_eligible: false
+step_type_gen: freq
+step_type_spec: gaussian_freq
+required_engine: gaussian
+availability: requires_local_install
+exclusion_reason: Parser/writer test case only

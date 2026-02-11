@@ -1,6 +1,17 @@
 case_id: si_bands
-title: "Silicon band structure calculation"
+title: Silicon band structure calculation
 engine: cp2k
-workflow_tags: [bands, periodic, electronic]
-species: [Si]
-description: "Band structure calculation for Si with smearing, added MOs, and BAND_STRUCTURE print section. Tests SCF/SMEAR, SCF/DIAGONALIZATION, and DFT/PRINT nested sections."
+workflow_tags:
+- bands
+- periodic
+- electronic
+species:
+- Si
+description: Band structure calculation for Si with smearing, added MOs, and BAND_STRUCTURE
+  print section. Tests SCF/SMEAR, SCF/DIAGONALIZATION, and DFT/PRINT nested sections.
+demo_eligible: false
+step_type_gen: bandspw
+step_type_spec: cp2k_bandspw
+required_engine: cp2k
+availability: open_source
+exclusion_reason: Parser/writer test case only

@@ -1,6 +1,16 @@
 case_id: fe_magnetic
-title: "Iron BCC magnetic calculation"
+title: Iron BCC magnetic calculation
 engine: abinit
-workflow_tags: [spin, magnetic]
-species: [Fe]
-description: "Spin-polarized SCF for 1-atom BCC iron with ferromagnetic initialization (4 muB), Gaussian smearing, and 8x8x8 k-mesh."
+workflow_tags:
+- spin
+- magnetic
+species:
+- Fe
+description: Spin-polarized SCF for 1-atom BCC iron with ferromagnetic initialization
+  (4 muB), Gaussian smearing, and 8x8x8 k-mesh.
+demo_eligible: false
+step_type_gen: scf
+step_type_spec: abinit_scf
+required_engine: abinit
+availability: open_source
+exclusion_reason: Parser/writer test case only
