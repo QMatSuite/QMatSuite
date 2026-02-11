@@ -10,7 +10,7 @@ class QEDriver(BaseEngineDriver):
     PREFIX: str = "qe"
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
         "scf", "nscf", "relax", "bands", "bandspw", "dos",
-        "pw2wannier", "ph", "gipaw", "md", "custom"
+        "pw2wannier", "ph", "gipaw", "md", "neb", "custom"
     })
     ENGINE_ROLE: str = "base"
     COMPANION_ENGINES: frozenset = frozenset({"w90", "qmcpack", "yambo"})
@@ -26,6 +26,21 @@ class QEDriver(BaseEngineDriver):
             evidence_files=["*.dos.dat"],
         ),
         AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["scf"],
+            evidence_files=["*.out"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["relax"],
+            evidence_files=["*.out"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["md"],
+            evidence_files=["*.out"],
+        ),
+        AnalysisCapability(
             object_type="trajectory",
             gen_step_sequence=["relax"],
             evidence_files=["*.relax.out"],
@@ -34,6 +49,11 @@ class QEDriver(BaseEngineDriver):
             object_type="trajectory",
             gen_step_sequence=["md"],
             evidence_files=["*.md.out"],
+        ),
+        AnalysisCapability(
+            object_type="neb_trajectory",
+            gen_step_sequence=["neb"],
+            evidence_files=["*.axsf"],
         ),
     ]
 

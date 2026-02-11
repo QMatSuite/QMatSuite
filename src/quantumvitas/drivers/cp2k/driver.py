@@ -40,6 +40,16 @@ class CP2KDriver(BaseEngineDriver):
             evidence_files=["*.pdos"],
         ),
         AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["scf"],
+            evidence_files=["*.out"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["relax"],
+            evidence_files=["*.out"],
+        ),
+        AnalysisCapability(
             object_type="trajectory",
             gen_step_sequence=["relax"],
             evidence_files=["*-pos-*.xyz"],

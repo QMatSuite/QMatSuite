@@ -180,9 +180,10 @@ def test_qe_bands_demo_runs_new_analysis_pipeline_end_to_end(
     finally:
         conn.close()
 
-    assert len(rows) == 1
-    assert rows[0][1] == "bands"
-    assert rows[0][0] == canonical_sha
+    assert len(rows) >= 1
+    bands_rows = [r for r in rows if r[1] == "bands"]
+    assert len(bands_rows) == 1
+    assert bands_rows[0][0] == canonical_sha
 
     cas_blob = project_root / ".provenance" / ".cas" / "analysis" / f"{canonical_sha}.json.gz"
     assert cas_blob.exists()

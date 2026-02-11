@@ -39,6 +39,7 @@ class GenStepRegistry:
         # Dynamics
         "md",  # VC vs non-VC is a parameter, not a separate gen step
         "minimize",  # Energy minimization (LAMMPS, etc.)
+        "neb",  # Nudged elastic band
         # Post-HF (molecular)
         "mp2",
         "td",
