@@ -289,13 +289,29 @@ export interface PrimitiveTransformRecord {
   parameters: Record<string, unknown>;
 }
 
+export interface PrimitiveGeometryFrame {
+  positions: number[][];    // [N, 3]
+  species: string[];
+  cell: number[][] | null;  // [3, 3] or null
+  pbc: boolean[];
+  forces?: number[][] | null;
+  velocities?: number[][] | null;
+}
+
+export interface PrimitiveGeometryFrames {
+  frames: PrimitiveGeometryFrame[];
+  time?: number[] | null;
+  iteration?: number[] | null;
+  image_indices?: number[] | null;
+}
+
 export interface PrimitiveBundleData {
   bundle_kind: 'canonical' | 'derived';
   object_type: string;
   render_meta: PrimitiveRenderMeta;
   provenance_meta: PrimitiveProvenanceMeta;
   series: PrimitiveSeries1D[];
-  geometry_frames?: Record<string, unknown> | null;
+  geometry_frames?: PrimitiveGeometryFrames | null;
   arrays: Record<string, unknown>;
   transform_chain?: PrimitiveTransformRecord[];
 }

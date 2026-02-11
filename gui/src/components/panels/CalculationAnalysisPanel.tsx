@@ -8,8 +8,10 @@ import type {
 } from '../../types/qv';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 import { AnalysisVizPanel } from './AnalysisVizPanel';
+import { FatbandsVizPanel } from './FatbandsVizPanel';
 import { RawFileViewer } from './RawFileViewer';
 import { StepDigestPanel } from './StepDigestPanel';
+import { TrajectoryVizPanel } from './TrajectoryVizPanel';
 import './CalculationAnalysisPanel.css';
 
 interface CalculationAnalysisPanelProps {
@@ -26,7 +28,7 @@ type AnalysisResponse = {
   bundle: PrimitiveBundleData;
 };
 
-const ANALYSIS_OBJECT_TYPES = ['bands'];
+const ANALYSIS_OBJECT_TYPES = ['bands', 'dos', 'convergence', 'trajectory', 'neb_trajectory', 'field3d'];
 
 export function CalculationAnalysisPanel({
   projectRoot,
@@ -408,6 +410,36 @@ export function CalculationAnalysisPanel({
             calculation={calcSelector}
             projectRoot={projectRoot}
             stepId={selectedStepId}
+          />
+        ) : selectedObjectType === 'trajectory' || selectedObjectType === 'neb_trajectory' ? (
+          <TrajectoryVizPanel
+            availableObjectTypes={availableObjectTypes}
+            bundle={analysisResponse?.bundle ?? null}
+            canPin={Boolean(analysisResponse)}
+            error={analysisError}
+            loading={analysisLoading}
+            onPin={handlePin}
+            onSelectObjectType={setSelectedObjectType}
+            pinMessage={pinMessage}
+            pinning={pinning}
+            pinReason={runInfo?.reason ?? null}
+            selectedObjectType={selectedObjectType}
+          />
+        ) : selectedObjectType === 'bands' && analysisResponse?.bundle?.render_meta?.extra?.has_projections ? (
+          <FatbandsVizPanel
+            availableObjectTypes={availableObjectTypes}
+            bundle={analysisResponse?.bundle ?? null}
+            canPin={Boolean(analysisResponse)}
+            error={analysisError}
+            loading={analysisLoading}
+            onPin={handlePin}
+            onSelectObjectType={setSelectedObjectType}
+            onShiftToFermiChange={setShiftToFermi}
+            pinMessage={pinMessage}
+            pinning={pinning}
+            pinReason={runInfo?.reason ?? null}
+            selectedObjectType={selectedObjectType}
+            shiftToFermi={shiftToFermi}
           />
         ) : (
           <AnalysisVizPanel

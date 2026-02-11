@@ -75,7 +75,7 @@ class DOS:
             series.append(
                 Series1D(
                     x=energies,
-                    y=np.array(self.total_dos[1], copy=True),
+                    y=-np.array(self.total_dos[1], copy=True),
                     x_label="Energy",
                     y_label="DOS",
                     x_unit="eV",
@@ -95,6 +95,44 @@ class DOS:
                     name="Total DOS",
                 )
             )
+
+        # Emit PDOS as individual Series1D entries per (atom, orbital)
+        if self.pdos is not None:
+            atom_labels = self.atom_labels or [
+                f"atom_{i}" for i in range(self.pdos.shape[0])
+            ]
+            orbital_labels = self.orbital_labels or [
+                f"orb_{j}" for j in range(self.pdos.shape[2])
+            ]
+            for i, atom_lbl in enumerate(atom_labels):
+                for j, orb_lbl in enumerate(orbital_labels):
+                    pdos_y = self.pdos[i, :, j]
+                    if self.spin_polarized:
+                        # For spin-polarized PDOS, assume pdos is per-spin-channel
+                        # and emit as-is (spin labeling handled by total DOS context)
+                        series.append(
+                            Series1D(
+                                x=np.array(energies, copy=True),
+                                y=np.array(pdos_y, copy=True),
+                                x_label="Energy",
+                                y_label="DOS",
+                                x_unit="eV",
+                                y_unit="states/eV",
+                                name=f"{atom_lbl} {orb_lbl}",
+                            )
+                        )
+                    else:
+                        series.append(
+                            Series1D(
+                                x=np.array(energies, copy=True),
+                                y=np.array(pdos_y, copy=True),
+                                x_label="Energy",
+                                y_label="DOS",
+                                x_unit="eV",
+                                y_unit="states/eV",
+                                name=f"{atom_lbl} {orb_lbl}",
+                            )
+                        )
 
         arrays: Dict[str, Any] = {
             "energies": np.array(self.energies, copy=True),
