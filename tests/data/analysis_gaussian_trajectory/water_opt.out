@@ -1,7 +1,7 @@
- Entering Gaussian System, Link 0=/Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/g09
+ Entering Gaussian System, Link 0=<ENGINE_ROOT>/g09
  Initial command:
- /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l1.exe "/tmp/Gau-23385.inp" -scrdir="/tmp/"
- Entering Link 1 = /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l1.exe PID=     23386.
+ <ENGINE_ROOT>/l1.exe "/tmp/Gau-23385.inp" -scrdir="/tmp/"
+ Entering Link 1 = <ENGINE_ROOT>/l1.exe PID=     23386.
   
  Copyright (c) 1988,1990,1992,1993,1995,1998,2003,2009,2013,
             Gaussian, Inc.  All Rights Reserved.
@@ -102,7 +102,7 @@
  6/7=2,8=2,9=2,10=2,19=2,28=1/1;
  99/9=1/99;
  Leave Link    1 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l101.exe)
+ (Enter <ENGINE_ROOT>/l101.exe)
  ------------------------
  Water B3LYP optimization
  ------------------------
@@ -127,7 +127,7 @@
  NMagM=    0.0000000   2.7928460   2.7928460
  AtZNuc=   8.0000000   1.0000000   1.0000000
  Leave Link  101 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l103.exe)
+ (Enter <ENGINE_ROOT>/l103.exe)
 
  GradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGrad
  Berny optimization.
@@ -147,7 +147,7 @@
  GradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGrad
 
  Leave Link  103 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l202.exe)
+ (Enter <ENGINE_ROOT>/l202.exe)
                           Input orientation:                          
  ---------------------------------------------------------------------
  Center     Atomic      Atomic             Coordinates (Angstroms)
@@ -179,7 +179,7 @@
  ---------------------------------------------------------------------
  Rotational constants (GHZ):    817.9732684    437.5902840    285.0808739
  Leave Link  202 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l301.exe)
+ (Enter <ENGINE_ROOT>/l301.exe)
  Standard basis: 6-31G(d) (6D, 7F)
  Ernie: Thresh=  0.10000D-02 Tol=  0.10000D-05 Strict=F.
  There are    10 symmetry adapted cartesian basis functions of A1  symmetry.
@@ -201,7 +201,7 @@
  Raffenetti 2 integral format.
  Two-electron integral symmetry is turned on.
  Leave Link  301 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l302.exe)
+ (Enter <ENGINE_ROOT>/l302.exe)
  NPDir=0 NMtPBC=     1 NCelOv=     1 NCel=       1 NClECP=     1 NCelD=      1
          NCelK=      1 NCelE2=     1 NClLst=     1 CellRange=     0.0.
  One-electron integrals computed using PRISM.
@@ -213,10 +213,10 @@
  Generated NRdTot=       0 NPtTot=           0 NUsed=           0 NTot=          32
  NSgBfM=    19    19    19    19    19 MxSgAt=     3 MxSgA2=     3.
  Leave Link  302 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l303.exe)
+ (Enter <ENGINE_ROOT>/l303.exe)
  DipDrv:  MaxL=1.
  Leave Link  303 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l401.exe)
+ (Enter <ENGINE_ROOT>/l401.exe)
  ExpMin= 1.61D-01 ExpMax= 5.48D+03 ExpMxC= 8.25D+02 IAcc=1 IRadAn=         1 AccDes= 0.00D+00
  Harris functional with IExCor=  402 and IRadAn=       1 diagonalized for initial guess.
  HarFok:  IExCor=  402 AccDes= 0.00D+00 IRadAn=         1 IDoV= 1 UseB2=F ITyADJ=14
@@ -234,7 +234,7 @@
                  (B1) (A1) (B2) (A1)
  The electronic state of the initial guess is 1-A1.
  Leave Link  401 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l502.exe)
+ (Enter <ENGINE_ROOT>/l502.exe)
  Closed shell SCF:
  Using DIIS extrapolation, IDIIS=  1040.
  Integral symmetry usage will be decided dynamically.
@@ -362,7 +362,7 @@
             NFock=  9  Conv=0.71D-08     -V/T= 2.0073
  KE= 7.585490050325D+01 PE=-1.989680098973D+02 EE= 3.751851426617D+01
  Leave Link  502 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.1
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l601.exe)
+ (Enter <ENGINE_ROOT>/l601.exe)
  Copying SCF densities to generalized density rwf, IOpCl= 0 IROHF=0.
 
  **********************************************************************
@@ -420,14 +420,14 @@
  Symmetry B2   KE= 3.582166619784D+00
  No NMR shielding tensors so no spin-rotation constants.
  Leave Link  601 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l701.exe)
+ (Enter <ENGINE_ROOT>/l701.exe)
  Compute integral first derivatives.
  ... and contract with generalized density number  0.
  Leave Link  701 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l702.exe)
+ (Enter <ENGINE_ROOT>/l702.exe)
  L702 exits ... SP integral derivatives will be done elsewhere.
  Leave Link  702 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l703.exe)
+ (Enter <ENGINE_ROOT>/l703.exe)
  Compute integral first derivatives, UseDBF=F ICtDFT=           0.
  Integral derivatives from FoFJK, PRISM(SPDF).
  Calling FoFJK, ICntrl=      2127 FMM=F ISym2X=1 I1Cent= 0 IOpClX= 0 NMat=1 NMatS=1 NMatT=0.
@@ -439,7 +439,7 @@
          NMat0=    1 NMatS0=      1 NMatT0=    0 NMatD0=    1 NMtDS0=    0 NMtDT0=    0
  Petite list used in FoFCou.
  Leave Link  703 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.1
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l716.exe)
+ (Enter <ENGINE_ROOT>/l716.exe)
  Dipole        =-6.57220102D-17 0.00000000D+00-8.18698963D-01
  ***** Axes restored to original set *****
  -------------------------------------------------------------------
@@ -452,7 +452,7 @@
  -------------------------------------------------------------------
  Cartesian Forces:  Max     0.013248325 RMS     0.006502873
  Leave Link  716 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l103.exe)
+ (Enter <ENGINE_ROOT>/l103.exe)
 
  GradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGrad
  Berny optimization.
@@ -493,7 +493,7 @@
  GradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGrad
 
  Leave Link  103 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l202.exe)
+ (Enter <ENGINE_ROOT>/l202.exe)
                           Input orientation:                          
  ---------------------------------------------------------------------
  Center     Atomic      Atomic             Coordinates (Angstroms)
@@ -526,7 +526,7 @@
  ---------------------------------------------------------------------
  Rotational constants (GHZ):    795.6497453    431.0075753    279.5655003
  Leave Link  202 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l301.exe)
+ (Enter <ENGINE_ROOT>/l301.exe)
  Standard basis: 6-31G(d) (6D, 7F)
  Ernie: Thresh=  0.10000D-02 Tol=  0.10000D-05 Strict=F.
  There are    10 symmetry adapted cartesian basis functions of A1  symmetry.
@@ -548,7 +548,7 @@
  Raffenetti 2 integral format.
  Two-electron integral symmetry is turned on.
  Leave Link  301 at Fri Feb  6 12:52:12 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l302.exe)
+ (Enter <ENGINE_ROOT>/l302.exe)
  NPDir=0 NMtPBC=     1 NCelOv=     1 NCel=       1 NClECP=     1 NCelD=      1
          NCelK=      1 NCelE2=     1 NClLst=     1 CellRange=     0.0.
  One-electron integrals computed using PRISM.
@@ -560,10 +560,10 @@
  Generated NRdTot=       0 NPtTot=           0 NUsed=           0 NTot=          32
  NSgBfM=    19    19    19    19    19 MxSgAt=     3 MxSgA2=     3.
  Leave Link  302 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.1
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l303.exe)
+ (Enter <ENGINE_ROOT>/l303.exe)
  DipDrv:  MaxL=1.
  Leave Link  303 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l401.exe)
+ (Enter <ENGINE_ROOT>/l401.exe)
  Initial guess from the checkpoint file:  "/tmp/Gau-23386.chk"
  B after Tr=     0.000000    0.000000    0.000000
          Rot=    1.000000    0.000000    0.000000    0.000000 Ang=   0.00 deg.
@@ -575,7 +575,7 @@
                  (B2) (B2) (B2) (B2)
  The electronic state of the initial guess is 1-A1.
  Leave Link  401 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l502.exe)
+ (Enter <ENGINE_ROOT>/l502.exe)
  Closed shell SCF:
  Using DIIS extrapolation, IDIIS=  1040.
  Integral symmetry usage will be decided dynamically.
@@ -679,14 +679,14 @@
             NFock=  7  Conv=0.24D-08     -V/T= 2.0077
  KE= 7.582205105893D+01 PE=-1.987739779528D+02 EE= 3.744716740083D+01
  Leave Link  502 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.1
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l701.exe)
+ (Enter <ENGINE_ROOT>/l701.exe)
  Compute integral first derivatives.
  ... and contract with generalized density number  0.
  Leave Link  701 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l702.exe)
+ (Enter <ENGINE_ROOT>/l702.exe)
  L702 exits ... SP integral derivatives will be done elsewhere.
  Leave Link  702 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l703.exe)
+ (Enter <ENGINE_ROOT>/l703.exe)
  Compute integral first derivatives, UseDBF=F ICtDFT=           0.
  Integral derivatives from FoFJK, PRISM(SPDF).
  Calling FoFJK, ICntrl=      2127 FMM=F ISym2X=1 I1Cent= 0 IOpClX= 0 NMat=1 NMatS=1 NMatT=0.
@@ -698,7 +698,7 @@
          NMat0=    1 NMatS0=      1 NMatT0=    0 NMatD0=    1 NMtDS0=    0 NMtDT0=    0
  Petite list used in FoFCou.
  Leave Link  703 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.1
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l716.exe)
+ (Enter <ENGINE_ROOT>/l716.exe)
  Dipole        =-6.60634388D-17 0.00000000D+00-8.22041865D-01
  ***** Axes restored to original set *****
  -------------------------------------------------------------------
@@ -711,7 +711,7 @@
  -------------------------------------------------------------------
  Cartesian Forces:  Max     0.001805136 RMS     0.000745943
  Leave Link  716 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l103.exe)
+ (Enter <ENGINE_ROOT>/l103.exe)
 
  GradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGrad
  Berny optimization.
@@ -757,7 +757,7 @@
  GradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGrad
 
  Leave Link  103 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l202.exe)
+ (Enter <ENGINE_ROOT>/l202.exe)
                           Input orientation:                          
  ---------------------------------------------------------------------
  Center     Atomic      Atomic             Coordinates (Angstroms)
@@ -790,7 +790,7 @@
  ---------------------------------------------------------------------
  Rotational constants (GHZ):    786.7265769    432.5773387    279.1101419
  Leave Link  202 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l301.exe)
+ (Enter <ENGINE_ROOT>/l301.exe)
  Standard basis: 6-31G(d) (6D, 7F)
  Ernie: Thresh=  0.10000D-02 Tol=  0.10000D-05 Strict=F.
  There are    10 symmetry adapted cartesian basis functions of A1  symmetry.
@@ -812,7 +812,7 @@
  Raffenetti 2 integral format.
  Two-electron integral symmetry is turned on.
  Leave Link  301 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l302.exe)
+ (Enter <ENGINE_ROOT>/l302.exe)
  NPDir=0 NMtPBC=     1 NCelOv=     1 NCel=       1 NClECP=     1 NCelD=      1
          NCelK=      1 NCelE2=     1 NClLst=     1 CellRange=     0.0.
  One-electron integrals computed using PRISM.
@@ -824,10 +824,10 @@
  Generated NRdTot=       0 NPtTot=           0 NUsed=           0 NTot=          32
  NSgBfM=    19    19    19    19    19 MxSgAt=     3 MxSgA2=     3.
  Leave Link  302 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l303.exe)
+ (Enter <ENGINE_ROOT>/l303.exe)
  DipDrv:  MaxL=1.
  Leave Link  303 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l401.exe)
+ (Enter <ENGINE_ROOT>/l401.exe)
  Initial guess from the checkpoint file:  "/tmp/Gau-23386.chk"
  B after Tr=     0.000000    0.000000    0.000000
          Rot=    1.000000    0.000000    0.000000    0.000000 Ang=   0.00 deg.
@@ -839,7 +839,7 @@
                  (B2) (B2) (B2) (B2)
  The electronic state of the initial guess is 1-A1.
  Leave Link  401 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l502.exe)
+ (Enter <ENGINE_ROOT>/l502.exe)
  Closed shell SCF:
  Using DIIS extrapolation, IDIIS=  1040.
  Integral symmetry usage will be decided dynamically.
@@ -942,14 +942,14 @@
             NFock=  7  Conv=0.46D-09     -V/T= 2.0078
  KE= 7.581955660869D+01 PE=-1.987551700875D+02 EE= 3.743914244575D+01
  Leave Link  502 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.1
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l701.exe)
+ (Enter <ENGINE_ROOT>/l701.exe)
  Compute integral first derivatives.
  ... and contract with generalized density number  0.
  Leave Link  701 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l702.exe)
+ (Enter <ENGINE_ROOT>/l702.exe)
  L702 exits ... SP integral derivatives will be done elsewhere.
  Leave Link  702 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l703.exe)
+ (Enter <ENGINE_ROOT>/l703.exe)
  Compute integral first derivatives, UseDBF=F ICtDFT=           0.
  Integral derivatives from FoFJK, PRISM(SPDF).
  Calling FoFJK, ICntrl=      2127 FMM=F ISym2X=1 I1Cent= 0 IOpClX= 0 NMat=1 NMatS=1 NMatT=0.
@@ -961,7 +961,7 @@
          NMat0=    1 NMatS0=      1 NMatT0=    0 NMatD0=    1 NMtDS0=    0 NMtDT0=    0
  Petite list used in FoFCou.
  Leave Link  703 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l716.exe)
+ (Enter <ENGINE_ROOT>/l716.exe)
  Dipole        =-6.58765493D-17 0.00000000D+00-8.24663435D-01
  ***** Axes restored to original set *****
  -------------------------------------------------------------------
@@ -974,7 +974,7 @@
  -------------------------------------------------------------------
  Cartesian Forces:  Max     0.000096034 RMS     0.000050063
  Leave Link  716 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l103.exe)
+ (Enter <ENGINE_ROOT>/l103.exe)
 
  GradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGradGrad
  Berny optimization.
@@ -1035,7 +1035,7 @@
 
  Largest change from initial coordinates is atom    2       0.010 Angstoms.
  Leave Link  103 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l202.exe)
+ (Enter <ENGINE_ROOT>/l202.exe)
                           Input orientation:                          
  ---------------------------------------------------------------------
  Center     Atomic      Atomic             Coordinates (Angstroms)
@@ -1068,7 +1068,7 @@
  ---------------------------------------------------------------------
  Rotational constants (GHZ):    786.7265769    432.5773387    279.1101419
  Leave Link  202 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l601.exe)
+ (Enter <ENGINE_ROOT>/l601.exe)
  Copying SCF densities to generalized density rwf, IOpCl= 0 IROHF=0.
 
  **********************************************************************
@@ -1126,8 +1126,8 @@
  Symmetry B2   KE= 3.560527591057D+00
  No NMR shielding tensors so no spin-rotation constants.
  Leave Link  601 at Fri Feb  6 12:52:13 2026, MaxMem=    65536000 cpu:         0.0
- (Enter /Users/hh7465/QMatSuite/.qmatsuite/engines/gaussian/gaussian09/g09/l9999.exe)
- 1\1\GINC-PHY-K3302477DD\FOpt\RB3LYP\6-31G(d)\H2O1\HH7465\06-Feb-2026\0
+ (Enter <ENGINE_ROOT>/l9999.exe)
+ 1\1\GINC-HOST\FOpt\RB3LYP\6-31G(d)\H2O1\USER\06-Feb-2026\0
  \\#p B3LYP/6-31G* Opt\\Water B3LYP optimization\\0,1\O,0.,0.,0.1252011
  811\H,0.,0.7613233437,-0.4738470906\H,0.,-0.7613233437,-0.4738470906\\
  Version=EM64M-G09RevD.01\State=1-A1\HF=-76.4089533\RMSD=4.626e-10\RMSF
