@@ -72,25 +72,25 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "bands",
-    "run_ulid": "REFPACK",
-    "calc_ulid": "REFPACK",
+    "run_ulid": "01KH8CZBDMGH7NC3BN2WRE7XRP",
+    "calc_ulid": "01KH8CZBAPGMT305YG094K913H",
     "step_ulids": [
-      "REFPACK"
+      "01KH8CZBAPGMT305YG094K913J"
     ],
     "gen_steps": [
-      "scf"
+      "bands"
     ],
     "engine_name": "siesta",
     "source_files": [
       {
-        "path": "si_bands.EIG",
+        "path": "raw/01KH8CZBAPGMT305YG094K913J/siesta_bands.EIG",
         "size_bytes": 16075,
-        "mtime": 1770673267.8616264
+        "mtime": 1770882317.8782835
       },
       {
-        "path": "si_bands.out",
-        "size_bytes": 25295,
-        "mtime": 1770680032.8424559
+        "path": "raw/01KH8CZBAPGMT305YG094K913J/siesta_bands.out",
+        "size_bytes": 25462,
+        "mtime": 1770882317.8799253
       }
     ],
     "parser_name": "siesta_bands",

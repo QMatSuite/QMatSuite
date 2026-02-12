@@ -1,13 +1,17 @@
 {
   "demo_slug": "cp2k_h2o_geo_opt",
   "engine": "cp2k",
-  "generated_at": "2026-02-12T03:22:36.006455+00:00",
+  "generated_at": "2026-02-12T07:40:04.279266+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "8d2f6c2c8d2b8769c1b63c7deed879cac7ef2d1ac23c421d8085b8890ab7869a"
+    },
     "trajectory": {
       "file": "trajectory.json",
-      "sha256": "9a28db39e11e20bafb321eefaab62cb5c525f0b1b9c9a871699c00178d926120"
+      "sha256": "aab5e0f092c53bde1a2f27df38191fda771c29f8332377d7e6896cdeaf3c74ca"
     }
   }
 }

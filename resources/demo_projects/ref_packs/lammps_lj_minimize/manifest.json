@@ -1,13 +1,13 @@
 {
   "demo_slug": "lammps_lj_minimize",
   "engine": "lammps",
-  "generated_at": "2026-02-12T03:22:47.778583+00:00",
+  "generated_at": "2026-02-12T07:40:17.719087+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "trajectory": {
       "file": "trajectory.json",
-      "sha256": "29f7e0878c3a4b6c93062f93be231fe49a7bcb4cfc2259b677a354a585c695bf"
+      "sha256": "c7cd4113ed8f975fc39cd381af76c407594b94ff417205b17d6f3cffc5fed405"
     }
   }
 }

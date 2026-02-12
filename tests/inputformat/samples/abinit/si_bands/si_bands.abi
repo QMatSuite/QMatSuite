@@ -20,6 +20,7 @@ xred
 
 ecut 10
 nstep 30
+chksymbreak 0
 
 # Dataset 1: SCF
 toldfe1 1.0d-8

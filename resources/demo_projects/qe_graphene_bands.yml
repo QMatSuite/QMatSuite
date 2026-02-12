@@ -88,9 +88,7 @@ calculations:
     parameters:
       CONTROL:
         calculation: scf
-        prefix: graphene
         restart_mode: from_scratch
-        outdir: ./outdir
         pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
       SYSTEM:
         ibrav: 0
@@ -115,9 +113,7 @@ calculations:
     parameters:
       CONTROL:
         calculation: bands
-        prefix: graphene
         restart_mode: from_scratch
-        outdir: ./outdir
         pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
       SYSTEM:
         ibrav: 0
@@ -141,18 +137,8 @@ calculations:
       ulid: 01KG3BWHV4T83ZATY8NFQ2J0SQ
     parameters:
       BANDS:
-        outdir: ./outdir
-        prefix: graphene
         filband: graphene.bands.dat
     step_type_spec: qe_bands
-  - meta:
-      name: scf
-      slug: scf
-      path: calculations/graphene-band-structure/steps/scf.step.yaml
-      kind: step
-      ulid: 01KR3VD9VT81674JGEQJQSH9FB
-    parameters: {}
-    step_type_spec: qe_custom
   structure_ulid: 01K0GHY2RDTPTJT7E628SM65CW
   species_map:
     C:
@@ -167,7 +153,7 @@ pseudo:
 meta:
   ulid: qe_graphene_bands
   title: Graphene Band Structure
-  subtitle: SCF → Bands → Bands → custom
+  subtitle: SCF → Bands → Bands
   tags:
   - bands
   - graphene
@@ -177,14 +163,9 @@ meta:
   recommended_analysis: bands
   difficulty: beginner
   asset_policy: redistributable
-  asset_requirements:
-    pseudopotentials:
-    - file: C.pbe-n-kjpaw_psl.1.0.0.UPF
-      element: C
-      source: resources/pseudo
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: graphene_bands
-  corpus_checksum: 84a061d172fb5b642bd95d9cfc8246a8fa89b91c161abc199827b60f044a00c8
+  corpus_checksum: 57cacde406e31ed6652f33ee017872704fb68ad7ac5e31734fc1740926da71a7

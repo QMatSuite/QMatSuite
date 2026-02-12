@@ -316,11 +316,8 @@ def main():
     if REF_PACKS_DIR.exists():
         for existing in REF_PACKS_DIR.iterdir():
             if existing.is_dir() and existing.name not in demo_slugs:
-                # Only remove if it was a real-run pack or if the demo no longer exists
                 manifest_path = existing / "manifest.json"
                 if manifest_path.exists():
-                    manifest = json.loads(manifest_path.read_text())
-                    # Keep packs from demos we didn't process (e.g. --only filter)
                     if existing.name not in {d["slug"] for d in _discover_demos()}:
                         log.info("Removing stale ref pack: %s", existing.name)
                         shutil.rmtree(existing)
@@ -336,9 +333,61 @@ def main():
     print("-" * 110)
     for r in results:
         types_str = ", ".join(r["types"]) if r["types"] else r.get("error", "—")[:30]
-        print(f"{r['slug']:40s} {r['engine']:10s} {r['status']:20s} {types_str:30s} {r['elapsed_s']:>7.1f}s")
+        flag = " ⚠ >10min" if r["elapsed_s"] > 600 else ""
+        print(f"{r['slug']:40s} {r['engine']:10s} {r['status']:20s} {types_str:30s} {r['elapsed_s']:>7.1f}s{flag}")
+
+    # Flag demos exceeding 10-minute threshold (Rule CS6)
+    slow_demos = [r for r in results if r["elapsed_s"] > 600]
+    if slow_demos:
+        print(f"\n{'⚠ DROPOUT CANDIDATES (>10 min):':=^70}")
+        for r in slow_demos:
+            print(f"  {r['slug']:40s} {r['elapsed_s']/60:.1f} min  ({r['status']})")
+        print("  NOTE: These demos are flagged for review only. Human decision required to drop.")
+
+    # Write machine-readable results matrix JSON (Rule CS6)
+    _write_results_matrix(results)
 
     return fail_count == 0
+
+
+RESULTS_MATRIX_PATH = REPO_ROOT / ".tmp" / "refpack_results_matrix.json"
+
+
+def _write_results_matrix(results: list[dict[str, Any]]) -> None:
+    """Write machine-readable results matrix JSON after each run (Rule CS6)."""
+    matrix = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generator_version": GENERATOR_VERSION,
+        "summary": {
+            "total": len(results),
+            "ok": sum(1 for r in results if r["status"] == "OK"),
+            "no_analysis": sum(1 for r in results if r["status"] == "NO_ANALYSIS"),
+            "failed": sum(
+                1 for r in results
+                if r["status"] not in ("OK", "NO_ANALYSIS")
+            ),
+        },
+        "dropout_threshold_s": 600,
+        "dropout_candidates": [
+            r["slug"] for r in results if r["elapsed_s"] > 600
+        ],
+        "demos": [
+            {
+                "slug": r["slug"],
+                "engine": r["engine"],
+                "status": r["status"],
+                "analysis_types": r["types"],
+                "elapsed_s": r["elapsed_s"],
+                "error": r.get("error"),
+                "flagged_slow": r["elapsed_s"] > 600,
+            }
+            for r in results
+        ],
+    }
+
+    RESULTS_MATRIX_PATH.parent.mkdir(parents=True, exist_ok=True)
+    RESULTS_MATRIX_PATH.write_text(json.dumps(matrix, indent=2) + "\n")
+    log.info("Results matrix written to %s", RESULTS_MATRIX_PATH)
 
 
 if __name__ == "__main__":

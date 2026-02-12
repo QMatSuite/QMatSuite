@@ -10,8 +10,8 @@ description: 'Two-dataset calculation for silicon band structure: SCF on uniform
   followed by NSCF along L-Gamma-X-K-Gamma high-symmetry path.'
 demo_eligible: true
 demo_slug: abinit_si_bands
-step_type_gen: bandspw
-step_type_spec: abinit_bandspw
+step_type_gen: nscf
+step_type_spec: abinit_nscf
 required_engine: abinit
 availability: open_source
 asset_policy: redistributable

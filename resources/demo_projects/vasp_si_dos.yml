@@ -80,34 +80,20 @@ calculations:
   engine_family: vasp
   steps:
   - meta:
+      name: scf
+      slug: scf
+      path: calculations/silicon-diamond-density-of-states/steps/scf.step.yaml
+      kind: step
+      ulid: 01KY3T34YRM40JQ7NM5PP8QW12
+    parameters: {}
+    step_type_spec: vasp_scf
+  - meta:
       name: dos
       slug: dos
       path: calculations/silicon-diamond-density-of-states/steps/dos.step.yaml
       kind: step
       ulid: 01KM28V8QG5C3GWYHPRFGQ38GT
-    parameters:
-      SYSTEM: Si diamond DOS
-      EMAX: 10.0
-      EMIN: -10.0
-      ENCUT: 300
-      ICHARG: 11
-      ISMEAR: -5
-      LORBIT: 11
-      LWAVE: false
-      NEDOS: 2001
-      NSW: 0
-      PREC: Accurate
-      kpoints:
-        mode: automatic
-        mesh:
-        - 8
-        - 8
-        - 8
-        shift:
-        - 0.0
-        - 0.0
-        - 0.0
-        centering: Gamma
+    parameters: {}
     step_type_spec: vasp_dos
   structure_ulid: 01KJZAJHQ7JXTS29H6TBS1PH3Y
   species_map:
@@ -121,11 +107,12 @@ calculations:
 meta:
   ulid: vasp_si_dos
   title: Silicon diamond density of states
-  subtitle: dos
+  subtitle: SCF → DOS
   tags:
+  - scf
   - dos
   - nscf
-  recommended_analysis: scf
+  recommended_analysis: dos
   difficulty: beginner
   asset_policy: proprietary
   required_engine: vasp
@@ -133,4 +120,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: vasp
   corpus_case_id: si_dos
-  corpus_checksum: f5b1c7fc3f339a6e93d8f306b0b3a4f9c3bcf8903550666c330908da9203088c
+  corpus_checksum: e7a8bdab8831107c30ceba2688632ccf3106fb87797aae79d0f69fb905757fd3

@@ -27,10 +27,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "trajectory",
-    "run_ulid": "01KH7Y5RWB7P4Y6H5HSCMTQ5ZZ",
-    "calc_ulid": "01KH7Y5RSZBK4PKK7YG5MA50SH",
+    "run_ulid": "01KH8D0DN04NS9ADS560WC9S5N",
+    "calc_ulid": "01KH8D0DJMES4R41M6065HENVT",
     "step_ulids": [
-      "01KH7Y5RSZBK4PKK7YG5MA50SJ"
+      "01KH8D0DJMES4R41M6065HENVV"
     ],
     "gen_steps": [
       "relax"
@@ -38,9 +38,9 @@
     "engine_name": "vasp",
     "source_files": [
       {
-        "path": "raw/01KH7Y5RSZBK4PKK7YG5MA50SJ/vasprun.xml",
+        "path": "raw/01KH8D0DJMES4R41M6065HENVV/vasprun.xml",
         "size_bytes": 44413,
-        "mtime": 1770866796.9262545
+        "mtime": 1770882350.1993895
       }
     ],
     "parser_name": "vasp_trajectory",
@@ -67,7 +67,7 @@
         1
       ],
       "y": [
-        0.6001565054890359
+        0.6001565228095439
       ],
       "x_label": "Iteration",
       "y_label": "Max Force",
@@ -119,14 +119,14 @@
         ],
         "forces": [
           [
-            0.34650052,
-            0.34650052,
-            0.34650052
+            0.34650053,
+            0.34650053,
+            0.34650053
           ],
           [
-            -0.34650052,
-            -0.34650052,
-            -0.34650052
+            -0.34650053,
+            -0.34650053,
+            -0.34650053
           ]
         ],
         "velocities": null

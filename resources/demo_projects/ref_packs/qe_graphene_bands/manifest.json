@@ -1,12 +1,17 @@
 {
   "demo_slug": "qe_graphene_bands",
   "engine": "qe",
-  "generated_at": "2026-02-12T01:40:08.243327+00:00",
-  "generator_version": "2.0.0",
+  "generated_at": "2026-02-12T07:42:23.689546+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
   "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "e634024112f4e80fb696874d47193f2ca51ecdadbf30d5f8ffec4c0f0683b4ca"
+    },
     "bands": {
       "file": "bands.json",
-      "sha256": "d9e13ebb2da091f222b7534228159ea4a9b2f6773610f9473d5923362889772a"
+      "sha256": "28bfcdd42475c993a3b1674df33ca50b280edc3d0b167da777441704df27575f"
     }
   }
 }

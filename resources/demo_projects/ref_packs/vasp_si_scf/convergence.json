@@ -27,10 +27,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "convergence",
-    "run_ulid": "01KH7Y5TFQN1SD27S7ZEDK1NKT",
-    "calc_ulid": "01KH7Y5TDB483QTRD3BDRJS9B5",
+    "run_ulid": "01KH8D0F7B8RN2G144X26XJ227",
+    "calc_ulid": "01KH8D0F50RW5PBYJCJVEJG7QD",
     "step_ulids": [
-      "01KH7Y5TDB483QTRD3BDRJS9B6"
+      "01KH8D0F50RW5PBYJCJVEJG7QE"
     ],
     "gen_steps": [
       "scf"
@@ -38,9 +38,9 @@
     "engine_name": "vasp",
     "source_files": [
       {
-        "path": "raw/01KH7Y5TDB483QTRD3BDRJS9B6/OSZICAR",
+        "path": "raw/01KH8D0F50RW5PBYJCJVEJG7QE/OSZICAR",
         "size_bytes": 1018,
-        "mtime": 1770866798.5569024
+        "mtime": 1770882351.8372927
       }
     ],
     "parser_name": "vasp_convergence",
@@ -66,12 +66,12 @@
         6.21650719134,
         -5.20663017919,
         -5.59009731675,
-        -5.59304859051,
+        -5.5930485905,
         -5.59305121932,
         -5.42885472864,
         -5.37807590339,
         -5.37884557634,
-        -5.37932826319,
+        -5.3793282632,
         -5.37928919809
       ],
       "x_label": "SCF Step",
@@ -143,12 +143,12 @@
       6.21650719134,
       -5.20663017919,
       -5.59009731675,
-      -5.59304859051,
+      -5.5930485905,
       -5.59305121932,
       -5.42885472864,
       -5.37807590339,
       -5.37884557634,
-      -5.37932826319,
+      -5.3793282632,
       -5.37928919809
     ],
     "scf_de": [

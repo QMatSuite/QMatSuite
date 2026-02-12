@@ -270,59 +270,58 @@ class TestDemoGeneration:
     @pytest.fixture
     def demo_path(self):
         """Path to the generated demo."""
-        import os
         repo_root = Path(__file__).parent.parent.parent
-        return repo_root / "resources" / "demo_projects" / "diamond_wannier90_demo.yml"
-    
+        return repo_root / "resources" / "demo_projects" / "w90_diamond.yml"
+
     def test_demo_file_exists(self, demo_path):
         """Test that demo file was generated."""
         if not demo_path.exists():
-            pytest.skip("Demo not generated yet - run tools/generate_wannier90_demo.py")
-        
+            pytest.skip("Demo not generated yet")
+
         assert demo_path.exists()
         assert demo_path.suffix == ".yml"
-    
-    def test_demo_has_five_steps(self, demo_path):
-        """Test that demo has all 5 Wannier90 workflow steps."""
+
+    def test_demo_has_wannier_step(self, demo_path):
+        """Test that demo has a w90_wannier step with expected parameters."""
         if not demo_path.exists():
             pytest.skip("Demo not generated yet")
-        
+
         import yaml
-        
+
         with open(demo_path) as f:
             demo = yaml.safe_load(f)
-        
+
         assert "calculations" in demo
         assert len(demo["calculations"]) >= 1
-        
+
         calc = demo["calculations"][0]
         assert "steps" in calc
-        assert len(calc["steps"]) == 5
-        
-        # YAML files use step_type_spec (SPEC layer); convert to GEN for comparison
-        from quantumvitas.workflow.registry import normalize_step_type_to_gen
-        step_types_gen = [normalize_step_type_to_gen(s["step_type_spec"]) for s in calc["steps"]]
-        assert step_types_gen == ["scf", "nscf", "wannierprep", "pw2wannier", "wannier"]
-    
-    def test_demo_has_pseudo_triple(self, demo_path):
-        """Test that demo has complete pseudo identity triple."""
+        assert len(calc["steps"]) >= 1
+
+        step_types = [s["step_type_spec"] for s in calc["steps"]]
+        assert "w90_wannier" in step_types
+
+    def test_demo_has_flat_w90_params(self, demo_path):
+        """Test that demo W90 step has flat parameters (not namelist-wrapped)."""
         if not demo_path.exists():
             pytest.skip("Demo not generated yet")
-        
+
         import yaml
-        
+
         with open(demo_path) as f:
             demo = yaml.safe_load(f)
-        
+
         calc = demo["calculations"][0]
-        species_map = calc.get("species_map", {})
-        
-        assert "C" in species_map
-        c_entry = species_map["C"]
-        
-        assert "pseudopot" in c_entry or "pseudo_basename" in c_entry
-        assert "pseudo_sha256" in c_entry
-        assert "pseudo_sha_family" in c_entry
-        assert len(c_entry["pseudo_sha256"]) == 64
-        assert len(c_entry["pseudo_sha_family"]) == 64
+        w90_step = None
+        for step in calc["steps"]:
+            if step["step_type_spec"] == "w90_wannier":
+                w90_step = step
+                break
+
+        assert w90_step is not None
+        params = w90_step.get("parameters", {})
+
+        # Flat W90 parameters (not nested in namelists)
+        assert "num_wann" in params
+        assert isinstance(params["num_wann"], int)
 

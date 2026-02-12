@@ -138,11 +138,11 @@ class LammpsEngine(Engine):
                 calculation=calculation,
             )
         
-        # Detect if script uses embedded structure (lattice/create_atoms commands)
-        # instead of reading from an external structure file
+        # Detect if script uses embedded structure (lattice/create_atoms commands
+        # or read_data from an external data file) instead of a structure_ulid
         commands = params.get("_commands", [])
         has_embedded_structure = any(
-            entry.get("cmd") in ("create_atoms", "create_box", "lattice")
+            entry.get("cmd") in ("create_atoms", "create_box", "lattice", "read_data")
             for entry in commands
             if isinstance(entry, dict)
         )
@@ -311,10 +311,12 @@ class LammpsEngine(Engine):
             return
 
         # Try to find and stage each referenced file
+        repo_root = Path(__file__).resolve().parents[3]  # src/quantumvitas/engine/file -> repo root
         search_dirs = [
             project_root,
             project_root / "potentials",
             project_root / "lammps" / "potentials",
+            repo_root / "resources" / "lammps" / "potentials",
         ]
 
         for filename in referenced_files:

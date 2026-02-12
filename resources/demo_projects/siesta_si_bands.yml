@@ -80,11 +80,11 @@ calculations:
   engine_family: siesta
   steps:
   - meta:
-      name: bandspw
-      slug: bandspw
-      path: calculations/silicon-band-structure-path/steps/bandspw.step.yaml
+      name: bands
+      slug: bands
+      path: calculations/silicon-band-structure-path/steps/bands.step.yaml
       kind: step
-      ulid: 01KJSE54XGV64961WZJCZR569M
+      ulid: 01K831A0EFXTW1CC50NSG1KCTV
     parameters:
       SystemName: Silicon band path
       SystemLabel: si_bands
@@ -145,12 +145,12 @@ calculations:
         Si: 14
       system_name: Silicon band path
       system_label: si_bands
-    step_type_spec: siesta_bandspw
+    step_type_spec: siesta_bands
   structure_ulid: 01KFN8E80DJXJDMPBB8M6KA4M5
 meta:
   ulid: siesta_si_bands
   title: Silicon band-structure path
-  subtitle: bandspw
+  subtitle: bands
   tags:
   - bands
   - periodic
@@ -161,4 +161,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: siesta
   corpus_case_id: si_bands
-  corpus_checksum: 3753be3bb20520f13d6fe00fab2052accd2b794a479cb9b7f0a58140e7582037
+  corpus_checksum: e3a72baa1fcc30d1f8d8ba38d81c9d7ebee6ae0f8a4177d2260e36d127e0a831

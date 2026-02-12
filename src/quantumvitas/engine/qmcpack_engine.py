@@ -91,6 +91,11 @@ class QmcpackEngine(Engine):
                 pseudo_file=sp.get("pseudo_file"),
             ))
 
+        # Extract electron counts from top-level ELECTRONS field
+        electrons = params_lower.get("electrons", {})
+        num_up = electrons.get("u", wf_params.get("num_up", 0))
+        num_down = electrons.get("d", wf_params.get("num_down", 0))
+
         # Build wavefunction
         wavefunction = QMCPACKWavefunction(
             href=wf_params.get("href", "wavefunction.h5"),
@@ -98,8 +103,8 @@ class QmcpackEngine(Engine):
             twistnum=wf_params.get("twistnum", 0),
             meshfactor=wf_params.get("meshfactor", 1.0),
             precision=wf_params.get("precision", "double"),
-            num_up=wf_params.get("num_up", 0),
-            num_down=wf_params.get("num_down", 0),
+            num_up=num_up,
+            num_down=num_down,
             num_orbitals=wf_params.get("num_orbitals", 0),
             j1_coeffs=wf_params.get("j1_coeffs"),
             j2_uu_coeffs=wf_params.get("j2_uu_coeffs"),

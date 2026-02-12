@@ -19,7 +19,7 @@ from .naming import CalculationFileNaming
 
 @dataclass(slots=True)
 class Calculation:
-    ulid: str  # CANONICAL: renamed from id
+    meta: ResourceMeta
     project: Project
     dir: Path
     mode: StepMode
@@ -31,6 +31,11 @@ class Calculation:
     _species_map: Optional[Dict[str, Dict[str, Any]]] = field(default=None, init=False, repr=False)  # Cached species_map
     _potential_map: Optional[Dict[str, Dict[str, Any]]] = field(default=None, init=False, repr=False)  # Cached potential_map (LAMMPS)
     _engine_family: Optional[str] = field(default=None, init=False, repr=False)  # Cached engine_family from model
+
+    @property
+    def ulid(self) -> str:
+        """Backward-compat property: delegates to meta.ulid."""
+        return self.meta.ulid
 
     @property
     def raw_dir(self) -> Path:
@@ -185,6 +190,25 @@ class Calculation:
         calculation_id = data.get("ulid") or data.get("meta", {}).get("ulid") or calculation_dir.name
         mode = StepMode(data.get("mode", StepMode.NORMAL.value))
 
+        # Build ResourceMeta from the meta block (same pattern as Step)
+        meta_data = data.get("meta")
+        if meta_data and isinstance(meta_data, dict):
+            calc_meta = ResourceMeta.from_dict(
+                meta_data,
+                kind="calculation",
+                default_name=calculation_dir.name,
+                default_path=ensure_relative_path(calculation_dir, base=project.root),
+            )
+        else:
+            # Fallback: construct ResourceMeta from available data
+            calc_meta = ResourceMeta(
+                ulid=calculation_id,
+                name=data.get("name", calculation_dir.name),
+                slug=data.get("slug", calculation_dir.name),
+                path=ensure_relative_path(calculation_dir, base=project.root),
+                kind="calculation",
+            )
+
         calculation_meta = data.get("calculation", {})
         
         # Detect legacy structure selector (NOT SUPPORTED)
@@ -252,7 +276,7 @@ class Calculation:
 
         # Create calculation instance
         calculation = cls(
-            ulid=calculation_id,  # CANONICAL: renamed from id
+            meta=calc_meta,
             project=project,
             dir=calculation_dir,
             mode=mode,

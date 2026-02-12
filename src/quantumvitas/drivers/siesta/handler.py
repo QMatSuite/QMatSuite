@@ -91,12 +91,21 @@ def siesta_step_handler(
     system_label = job.metadata.get("system_label", gen_type)
     fdf_name = job.metadata.get("fdf_name", f"{system_label}.fdf")
 
-    # Extract step parameters
+    # Load parameters from step YAML
     params: dict[str, Any] = {}
-    if hasattr(step, "params") and step.params:
-        params = dict(step.params)
-    if hasattr(step, "options") and step.options:
-        params.update(step.options)
+    try:
+        from quantumvitas.core.yamldoc import StepDoc
+        step_yaml = calculation.dir / "steps" / f"{step.meta.slug}.step.yaml"
+        if step_yaml.exists():
+            doc = StepDoc.load(step_yaml)
+            data = doc.to_dict()
+            params = dict(data.get("parameters", {}))
+    except Exception as e:
+        logger.warning("Failed to load step YAML params: %s", e)
+    # Fallback: try step.options
+    if not params:
+        if hasattr(step, "options") and step.options:
+            params = dict(step.options)
 
     # Build species and atoms from calculation structure
     species, atoms, lattice_constant, lattice_vectors, coord_format = (
@@ -130,6 +139,8 @@ def siesta_step_handler(
     pp_dir = params.get("pseudopotential_dir")
     if pp_dir:
         _stage_pseudopotentials(Path(pp_dir), species, working_dir)
+    # Auto-stage from repo's bundled pseudopotentials if not already staged
+    _auto_stage_pseudopotentials(species, working_dir)
 
     # Execute siesta
     siesta_bin = _find_siesta_executable()
@@ -210,24 +221,37 @@ def _extract_structure(
 
     # Try to get from calculation structure if not in params
     if not species and hasattr(calculation, "structure") and calculation.structure:
-        structure = calculation.structure
-        if hasattr(structure, "symbols"):
-            unique_symbols = list(dict.fromkeys(structure.symbols))
-            species = [
-                {"index": i + 1, "atomic_number": _symbol_to_z(sym), "label": sym}
-                for i, sym in enumerate(unique_symbols)
-            ]
-            symbol_to_idx = {sym: i + 1 for i, sym in enumerate(unique_symbols)}
-            positions = structure.positions if hasattr(structure, "positions") else []
-            atoms = [
-                {
-                    "x": float(pos[0]),
-                    "y": float(pos[1]),
-                    "z": float(pos[2]),
-                    "species_index": symbol_to_idx[sym],
-                }
-                for sym, pos in zip(structure.symbols, positions)
-            ]
+        structure_ref = calculation.structure
+        # StructureRef only has meta + absolute_path; load actual pymatgen Structure
+        struct_path = getattr(structure_ref, "absolute_path", None)
+        if struct_path and Path(struct_path).exists():
+            try:
+                from quantumvitas.io import read_structure
+                pmg_struct = read_structure(Path(struct_path))
+                symbols = [str(s) for s in pmg_struct.species]
+                unique_symbols = list(dict.fromkeys(symbols))
+                species = [
+                    {"index": i + 1, "atomic_number": _symbol_to_z(sym), "label": sym}
+                    for i, sym in enumerate(unique_symbols)
+                ]
+                symbol_to_idx = {sym: i + 1 for i, sym in enumerate(unique_symbols)}
+                atoms = [
+                    {
+                        "x": float(site.coords[0]),
+                        "y": float(site.coords[1]),
+                        "z": float(site.coords[2]),
+                        "species_index": symbol_to_idx[str(site.specie)],
+                    }
+                    for site in pmg_struct
+                ]
+                # Extract lattice
+                lattice_vectors = [
+                    [float(x) for x in row]
+                    for row in pmg_struct.lattice.matrix
+                ]
+                lattice_constant = 1.0  # Vectors already in Angstrom
+            except Exception as e:
+                logger.warning("Failed to load structure from %s: %s", struct_path, e)
 
     return species, atoms, lattice_constant, lattice_vectors, coord_format
 
@@ -286,6 +310,32 @@ def _stage_pseudopotentials(
                 if not dst.exists():
                     shutil.copy2(src, dst)
                 break
+
+
+def _auto_stage_pseudopotentials(
+    species: list[dict], working_dir: Path
+) -> None:
+    """Auto-stage pseudopotentials from known repo locations if not already present."""
+    # Search in repo's bundled pseudopotentials
+    repo_root = Path(__file__).resolve().parents[4]  # src/quantumvitas/drivers/siesta/handler.py -> repo root
+    pp_search_dirs = [
+        repo_root / "docs" / "engines" / "siesta" / "pseudopotentials",
+    ]
+    for sp in species:
+        label = sp["label"]
+        # Skip if already staged
+        if any((working_dir / f"{label}{ext}").exists() for ext in (".psml", ".psf")):
+            continue
+        for search_dir in pp_search_dirs:
+            if not search_dir.is_dir():
+                continue
+            for ext in (".psml", ".psf"):
+                src = search_dir / f"{label}{ext}"
+                if src.exists():
+                    dst = working_dir / f"{label}{ext}"
+                    shutil.copy2(src, dst)
+                    logger.info("Auto-staged PP %s from %s", f"{label}{ext}", search_dir)
+                    break
 
 
 # Minimal periodic table for structure extraction

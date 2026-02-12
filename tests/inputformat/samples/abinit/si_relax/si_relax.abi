@@ -34,6 +34,7 @@ shiftk 0.5 0.5 0.5
 # SCF convergence
 nstep 30
 toldfe 1.0d-8
+chksymbreak 0
 
 # Pseudopotentials
 pp_dirpath "./pseudos"

@@ -2,19 +2,22 @@ case_id: si_dos
 title: Silicon diamond density of states
 engine: vasp
 workflow_tags:
+- scf
 - dos
 - nscf
 species:
 - Si
 functional: PBE
-description: Si DOS with tetrahedron method (ISMEAR=-5) and fine k-mesh
+description: SCF → DOS with tetrahedron method (ISMEAR=-5) and fine k-mesh
 demo_eligible: true
 demo_slug: vasp_si_dos
-step_type_gen: dos
-step_type_spec: vasp_dos
+step_type_gen: scf
+step_type_spec: vasp_scf
 required_engine: vasp
 availability: requires_local_install
 asset_policy: proprietary
+recommended_analysis: dos
+subtitle: SCF → DOS
 required_assets:
 - type: potcar
   species:
@@ -23,6 +26,14 @@ required_assets:
   vendored: false
   obtain_from: VASP POTCAR library (requires VASP license)
 exclusion_reason: null
+multi_step: true
+steps:
+- step_type_gen: scf
+  step_type_spec: vasp_scf
+  input_files: []
+- step_type_gen: dos
+  step_type_spec: vasp_dos
+  input_files: []
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
