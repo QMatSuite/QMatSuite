@@ -1,8 +1,8 @@
 # Demo Store Specification
 
-**Status**: Draft v5 (adds Route-1/Route-2 definitions and Layer-2 policy)
+**Status**: Draft v6 (Level-1/Level-2 naming, two materialization paths, two roundtrips, semantic diff)
 **Authority**: Governance-level spec. All demo-related code, tests, and CI MUST conform.
-**Scope**: Defines the two-layer demo system, ULID lifecycle, translation contract, snapshot roundtrip contract, integrity suites, Demo Baseline acceptance criteria, and governance rules.
+**Scope**: Defines the two-level demo system (Level-1 corpus, Level-2 demo YAML), Route-1/Route-2 policy, two materialization paths (Load / Authoring), two roundtrip contracts, real-run validation, integrity suites, Demo Baseline acceptance criteria, semantic diff rules, and governance rules.
 
 ---
 
@@ -10,32 +10,38 @@
 
 | Term | Definition |
 |------|-----------|
-| **Corpus case** (Layer A) | A self-contained directory of raw engine input files plus a manifest (`case.yaml`), representing one calculation workflow for one engine. Corpus cases are human-authored or curated from external sources. The full corpus serves parser testing; a subset is eligible for demo generation. |
-| **Demo project** (Layer B) | A single generated QMatSuite project snapshot (`.yml` file) under `resources/demo_projects/`. A demo project IS the `.yml` file. It is loadable by the daemon, renderable in the GUI gallery, and materializable into a live project workspace. Demo projects are **generated artifacts** — never hand-edited. |
-| **Demo slug** | A stable, human-friendly identifier for a demo, independent of the corpus directory name. Defined in `case.yaml` as `demo_slug`. Used as the Layer B filename stem (e.g., `demo_slug: si_scf` → `si_scf.yml`). |
-| **Translator** (Generator) | The single deterministic program that reads eligible corpus cases (Layer A) and produces demo projects (Layer B). It uses the `inputformat` parse pipeline and `ProjectSnapshot` serialization. It is also the prototype for the future "import user project" feature. |
+| **Level-1 store** (Corpus / Source Material) | Raw upstream/tutorial/example folders committed verbatim as engine-native inputs under `tests/inputformat/samples/`. May contain BOTH Route-1 and Route-2 source materials (because it is "as-downloaded"). Not user-facing; serves as the canonical source for deterministic translation to Level-2, and for parser/writer testing. Historically called "Layer A". |
+| **Level-2 store** (Demo Projects) | Generated, user-facing demo artifacts stored as single `.yml` snapshot files under `resources/demo_projects/`. The Level-2 `.yml` IS the basis artifact — it is loadable by the daemon, renderable in the GUI gallery, and materializable into a live project workspace. Level-2 is generated deterministically from Level-1 by the translator (single-writer). The `.yml` format is also the future "project snapshot / export" format. Historically called "Layer B". |
+| **Corpus case** (Level-1 entry) | A self-contained directory of raw engine input files plus a manifest (`case.yaml`), representing one calculation workflow for one engine. Corpus cases are human-authored or curated from external sources. The full corpus serves parser testing; a subset is eligible for demo generation. |
+| **Demo project** (Level-2 entry) | A single generated QMatSuite project snapshot (`.yml` file) under `resources/demo_projects/`. A demo project IS the `.yml` file. Demo projects are **generated artifacts** — never hand-edited. |
+| **Demo slug** | A stable, human-friendly identifier for a demo, independent of the corpus directory name. Defined in `case.yaml` as `demo_slug`. Used as the Level-2 filename stem (e.g., `demo_slug: si_scf` → `si_scf.yml`). |
+| **Translator** (Generator) | The single deterministic program that reads eligible Level-1 corpus cases and produces Level-2 demo projects. It uses the `inputformat` parse pipeline and `ProjectSnapshot` serialization. It is also the prototype for the future "import user project" feature. |
 | **Corpus root index** | A machine-readable index file at the corpus root (`tests/inputformat/samples/corpus_index.yaml`) that classifies every corpus case: demo eligibility, runnability, asset status, and exclusion reasons. This is the authoritative registry for which cases become demos. |
 | **Snapshot ULIDs** | The ULIDs embedded inside a demo snapshot `.yml`. These are **stable and deterministic** — regenerating the same demo from the same corpus input produces the same snapshot ULIDs. They serve as portable package-level identifiers. |
 | **Materialized ULIDs** | The ULIDs written into the on-disk SSOT files (`project.yaml`, `calculation.yaml`, `*.step.yaml`, structure JSON) when a snapshot is loaded/materialized into a workspace. These are **always freshly generated** to avoid collisions between projects. Once written, they MUST NOT be edited or rewritten. |
 | **Snapshot roundtrip** | The contract that loading a demo snapshot → materializing a project → re-snapshotting produces an equivalent snapshot. ULIDs will differ (snapshot ULIDs → fresh materialized ULIDs → preserved in re-snapshot). Equivalence is defined on content, not identity. See S6. |
 | **Demo gallery metadata** | The top-level `meta` section in a demo snapshot: title, subtitle, tags, difficulty, attribution, etc. This is display/catalog metadata for the GUI gallery. It is NOT SSOT and is NOT part of project/calculation/step/structure metadata. It MAY be omitted by a generic project snapshot/export. |
 | **SSOT metadata** | The `meta` blocks inside `project`, `structures[]`, `calculations[]`, and `steps[]`: ulid, name, slug, path, kind. This IS structural project metadata and MUST be preserved through materialization (with ULID rewrite per the lifecycle rules). |
-| **Integrity suite** | A FAST test suite (`tests/integrity/backend/`) that validates demo load and materialize correctness. It DOES NOT execute engines and DOES NOT prove demos are runnable. It is Stage (B) of the Demo Baseline. Not part of default test collection. Iterates ONLY Layer B demos. |
+| **Integrity suite** | A FAST test suite (`tests/integrity/backend/`) that validates demo load and materialize correctness. It DOES NOT execute engines and DOES NOT prove demos are runnable. It is Stage (B) of the Demo Baseline. Not part of default test collection. Iterates ONLY Level-2 demos. See SE.4. |
 | **Real-run baseline** | The process of executing every runnable demo through a real engine binary via the daemon/service pipeline (`tools/demo_store/generate_ref_packs_realrun.py`). This is Stage (C) of the Demo Baseline and is the authoritative proof that demos work. |
 | **Demo Baseline** | The four mandatory acceptance stages (A: pytest, B: integrity, C: real-run, D: ref-packs) that MUST ALL pass before any demo-store work can be claimed complete. Defined in section DB. |
 | **Assets** | External files required to run a calculation: pseudopotentials, basis sets, force-field potentials, PAW datasets, etc. |
 | **Redistributable assets** | Assets whose license permits inclusion in the repository (e.g., QE SSSP pseudopotentials under CC-BY, LAMMPS bundled potentials). |
 | **Proprietary assets** | Assets that MUST NOT be committed to the repository (e.g., VASP POTCARs, commercial basis sets). Demos requiring proprietary assets MAY be demo-eligible but MUST be clearly labeled with their requirements so that integrity suites can skip or fail appropriately depending on the test environment. |
 | **Route-1** (end-to-end runnable) | A demo whose entire execution chain is representable as YAML parameters and materializable into a real engine run. All step inputs come from the demo YAML; only external *assets* (pseudopotentials, potentials, basis sets) are staged separately. Composite multi-engine workflows (e.g., QE→W90) are Route-1 provided every step in the chain is runnable. See section RT. |
-| **Route-2** (prebaked-upstream) | Source material that depends on upstream artifacts NOT produced within the demo's own runnable chain (e.g., precomputed `.amn`/`.mmn`/`.eig`, `prefix.save/`, HDF5 wavefunctions, Yambo `SAVE/` databases). Useful as corpus (Layer A) but NOT end-to-end runnable under current demo infrastructure. See section RT. |
+| **Route-2** (prebaked-upstream) | Source material that depends on upstream artifacts NOT produced within the demo's own runnable chain (e.g., precomputed `.amn`/`.mmn`/`.eig`, `prefix.save/`, HDF5 wavefunctions, Yambo `SAVE/` databases). Useful as corpus (Level-1) but NOT end-to-end runnable under current demo infrastructure. See section RT. |
+| **Path A** (Load Demo) | Materializing a Level-2 demo by loading/importing the `.yml` snapshot into a live project via `create_demo_project()`. This is the primary user-facing gallery workflow. See section MP. |
+| **Path B** (Authoring) | Materializing a Level-2 demo by replaying its content as a sequence of user-granularity authoring operations (create project, add structure, add step, set parameters one-by-one) through the daemon/service APIs — the same endpoints used by GUI/CLI. No snapshot import, no bulk YAML write. See section MP. |
+| **Roundtrip A** (Load roundtrip) | Level-2 `.yml` → Path A load → re-snapshot → semantic diff ≈ original. Validates demo import/export correctness. See section SE. |
+| **Roundtrip B** (Authoring roundtrip) | Level-2 `.yml` → compile to authoring ops → Path B replay → re-snapshot → semantic diff ≈ original. Validates that the authoring capability can express the same semantics as demos. See section SE. |
 
 ### Goals
 
 This spec serves three explicit goals:
 
-**G1 — Two-layer demo system.** Layer A (corpus) provides reference input examples for engine direct users and serves as authoritative upstream source material ingested from the internet, manuals, and tutorials. Layer B (demo projects) provides QMatSuite-native snapshots for the GUI gallery and daemon. Both layers are maintained because: (1) they serve different infrastructure targets (corpus → engine users; demo projects → QMatSuite); (2) web-found materials map naturally to corpus and the translation to Layer B validates parser robustness; (3) the future "import user project" pipeline reuses the same translation machinery. Only a **subset** of the full corpus is translated to Layer B; the remainder serves parser/writer testing.
+**G1 — Two-level demo system.** Level-1 (corpus) provides reference input examples for engine direct users and serves as authoritative upstream source material ingested from the internet, manuals, and tutorials. Level-2 (demo projects) provides QMatSuite-native `.yml` snapshots for the GUI gallery and daemon. Both levels are maintained because: (1) they serve different infrastructure targets (corpus → engine users; demo projects → QMatSuite); (2) web-found materials map naturally to corpus and the translation to Level-2 validates parser robustness; (3) the future "import user project" pipeline reuses the same translation machinery. Only a **subset** of the full corpus is translated to Level-2; the remainder serves parser/writer testing.
 
-**G2 — Deterministic translation and robustness.** There is exactly ONE translator from Layer A → Layer B. Demo projects are generated artifacts and MUST NOT be hand-edited. Any fix MUST be made in corpus and re-generated. The demo `.yml` snapshot is the single deliverable — it must survive a load → materialize → re-snapshot roundtrip (with well-defined equivalence rules that account for the ULID lifecycle).
+**G2 — Deterministic translation and robustness.** There is exactly ONE translator from Level-1 → Level-2. Demo projects are generated artifacts and MUST NOT be hand-edited. Any fix MUST be made in corpus and re-generated. The Level-2 demo `.yml` is the **basis artifact** — it must survive both Roundtrip A (load path) and Roundtrip B (authoring path) with well-defined semantic equivalence rules (see section SE).
 
 **G3 — Verification at two levels.** The FAST integrity suite (`tests/integrity/backend/`) validates structural correctness (load + materialize) but DOES NOT execute engines. The real-run baseline (`tools/demo_store/generate_ref_packs_realrun.py`) executes every runnable demo through real engine binaries and is the authoritative proof that demos work. Both are mandatory stages of the Demo Baseline (section DB). A GUI e2e suite (T2) provides additional browser-level verification. The integrity suite and real-run baseline run separately from default test collection. Demos with only redistributable or no assets MUST pass the real-run baseline when the engine binary is present. Demos requiring proprietary assets or missing engine binaries follow Rule DB-EA (install or demote — no third option).
 
@@ -47,7 +53,7 @@ This spec serves three explicit goals:
 
 **Route-1 (end-to-end runnable, SSOT/YAML path):**
 
-- All step inputs are represented in the single demo YAML (Layer B) as parameters.
+- All step inputs are represented in the single demo YAML (Level-2) as parameters.
 - Execution is: YAML → materialize (clean rewrite) → `raw/` → real engine run.
 - Only external *assets* (pseudopotentials, potentials, basis sets, PAW datasets) may be staged from outside the YAML; all step input definitions MUST come from the YAML itself.
 - Composite multi-engine workflows are permitted: an upstream engine (e.g., QE) produces intermediate artifacts, then a companion engine (e.g., Wannier90, QMCPACK, Yambo) consumes them as a subsequent step. The full chain is runnable end-to-end within a single demo project.
@@ -56,7 +62,7 @@ This spec serves three explicit goals:
 
 - Requires upstream artifacts that are NOT produced within the demo's own runnable chain — for example, precomputed Wannier `.amn`/`.mmn`/`.eig` files, a `prefix.save/` directory, an HDF5 wavefunction, or a Yambo `SAVE/` database.
 - The demo cannot run end-to-end because the artifact-producing step is absent; the prebaked files are supplied as static data.
-- Useful as source corpus material (Layer A) for parser testing and as reference examples, but NOT representable as a self-contained runnable demo under current infrastructure.
+- Useful as source corpus material (Level-1) for parser testing and as reference examples, but NOT representable as a self-contained runnable demo under current infrastructure.
 
 ### RT.2 Examples
 
@@ -69,13 +75,183 @@ This spec serves three explicit goals:
 
 ### RT.3 Current Policy (MUST)
 
-**Rule RT-L1** (Layer A — corpus): The corpus (Layer A) MAY contain both Route-1 and Route-2 folders. Layer A is a verbatim collection of source material downloaded from the internet, upstream tutorials, and engine manuals. Both routes serve parser/writer testing.
+**Rule RT-L1** (Level-1 — corpus): The Level-1 corpus MAY contain both Route-1 and Route-2 folders. Level-1 is a verbatim collection of source material downloaded from the internet, upstream tutorials, and engine manuals. Both routes serve parser/writer testing.
 
-**Rule RT-L2** (Layer B — demo projects): Layer B (`resources/demo_projects/`) MUST contain Route-1 demos ONLY. Route-2 material is FORBIDDEN in Layer B until a dedicated implementation for prebaked-upstream demos exists. No such implementation currently exists.
+**Rule RT-L2** (Level-2 — demo projects): Level-2 (`resources/demo_projects/`) MUST contain Route-1 demos ONLY. Route-2 material is FORBIDDEN in Level-2 until a dedicated implementation for prebaked-upstream demos exists. No such implementation currently exists.
 
-**Rule RT-D** (demotion requirement): Any corpus entry that requires Route-2 artifacts MUST be marked `demo_eligible: false` in both `case.yaml` and `corpus_index.yaml`, with a non-empty `exclusion_reason` (e.g., `"Route-2: requires prebaked upstream artifacts (*.amn/*.mmn/*.eig) not produced within demo chain"`). Such entries MUST NOT be generated into Layer B demos.
+**Rule RT-D** (demotion requirement): Any corpus entry that requires Route-2 artifacts MUST be marked `demo_eligible: false` in both `case.yaml` and `corpus_index.yaml`, with a non-empty `exclusion_reason` (e.g., `"Route-2: requires prebaked upstream artifacts (*.amn/*.mmn/*.eig) not produced within demo chain"`). Such entries MUST NOT be generated into Level-2 demos.
 
-**Rule RT-E** (existing demo enforcement): If an existing Layer B demo is discovered to require Route-2 artifacts (i.e., it cannot pass Demo Baseline Stage C without prebaked files that are not produced by any step in its chain), it MUST be demoted: remove the `.yml` from `resources/demo_projects/`, set `demo_eligible: false` and `runnable: false` in the corpus index, and provide an `exclusion_reason`. There is no grandfather clause.
+**Rule RT-E** (existing demo enforcement): If an existing Level-2 demo is discovered to require Route-2 artifacts (i.e., it cannot pass Demo Baseline Stage C without prebaked files that are not produced by any step in its chain), it MUST be demoted: remove the `.yml` from `resources/demo_projects/`, set `demo_eligible: false` and `runnable: false` in the corpus index, and provide an `exclusion_reason`. There is no grandfather clause.
+
+---
+
+## MP. Materializing a Level-2 Demo into a Project (Two Paths)
+
+A Level-2 demo `.yml` is the **basis artifact**. There are exactly TWO equally important ways to materialize it into a live project. Both MUST be supported and both MUST produce semantically equivalent results.
+
+### MP.1 Path A — Load Demo (Snapshot Import)
+
+This is the primary user-facing workflow for the demo gallery.
+
+**Input**: Level-2 demo `.yml` file.
+
+**Action**: Load the demo `.yml` into a live project via `create_demo_project()` (snapshot import). This creates a fully materialized project workspace with canonical SSOT files on disk, fresh ULIDs, and staged assets.
+
+**After materialization, the project can**:
+- Be real-run via daemon `run_calc` (engine execution).
+- Be re-snapshotted back to a single `.yml` (Roundtrip A).
+
+**Rule MP-A1**: Path A MUST be supported for every Level-2 demo. A demo that cannot be loaded via `create_demo_project()` is broken.
+
+### MP.2 Path B — Authoring from Scratch (User-Granularity Replay)
+
+This simulates a user who reads the source material and builds a project manually through the GUI or CLI — the same authoring operations available to any user.
+
+**Input**: Level-2 demo `.yml` (used ONLY as an oracle/specification of the intended semantics — it is NOT imported).
+
+**Action**: Compile the demo `.yml` into a sequence of **user-granularity authoring operations**, then replay that sequence through daemon/service authoring APIs:
+1. Create project.
+2. Create structure(s) — set lattice, species, coordinates.
+3. Create calculation — set `engine_family`.
+4. Add step(s) — set `step_type_gen`, `step_type_spec`.
+5. Set parameters **one field at a time** (UI granularity) — set/unset/replace individual parameter keys.
+6. Configure `species_map` / `potential_map` if applicable.
+
+**After materialization, the project can**:
+- Be real-run via daemon `run_calc` (engine execution).
+- Be re-snapshotted back to a single `.yml` (Roundtrip B).
+
+**Rule MP-B1**: Path B MUST NOT shortcut by importing the snapshot, bulk-writing YAML, or staging engine input files directly. Every operation MUST go through the same production authoring endpoints used by GUI/CLI.
+
+**Rule MP-B2**: The authoring operation sequence MUST be at "user/UI granularity" — individual field-level set/unset/replace calls, not bulk tree patches. This validates that the authoring API is expressive enough to construct any demo from scratch.
+
+**Rule MP-B3**: Path B MUST be supported for every Level-2 demo. A demo whose semantics cannot be expressed through the authoring API has an API coverage gap that MUST be fixed.
+
+### MP.3 Why Both Paths Matter
+
+| Concern | Path A validates | Path B validates |
+|---------|-----------------|-----------------|
+| Demo import/export | Yes | No |
+| Authoring API completeness | No | Yes |
+| Parameter-level API fidelity | No | Yes |
+| Snapshot format correctness | Yes | Indirectly |
+| User can reproduce a demo manually | No | Yes |
+
+Neither path alone is sufficient. Path A proves the snapshot pipeline works. Path B proves the authoring pipeline can express the same semantics — which is the foundation for the GUI/CLI user experience.
+
+---
+
+## SE. Semantic Equivalence and Roundtrip Contracts
+
+### SE.1 Two Roundtrips
+
+Both roundtrips use the Level-2 demo `.yml` as the reference and produce a re-snapshot for comparison. The comparison uses the **canonical semantic diff** defined in SE.3.
+
+#### Roundtrip A — Load Path
+
+```
+Level-2 demo.yml
+  → Path A: create_demo_project() (snapshot import)
+  → live project on disk
+  → export_project_to_snapshot()
+  → re-snapshot.yml
+  → canonical semantic diff ≈ original demo.yml
+```
+
+**Purpose**: Validates that demo import/export is semantically lossless.
+
+#### Roundtrip B — Authoring Path
+
+```
+Level-2 demo.yml
+  → compile to user-granularity authoring operations
+  → Path B: replay ops through daemon/service authoring APIs
+  → live project on disk
+  → export_project_to_snapshot()
+  → re-snapshot.yml
+  → canonical semantic diff ≈ original demo.yml
+```
+
+**Purpose**: Validates that the authoring API can express the same semantics as any demo. This is the stronger contract — it proves the API is complete for the demo's domain.
+
+**Rule SE-1**: Both Roundtrip A and Roundtrip B MUST produce re-snapshots that are **semantically equivalent** to the original Level-2 demo `.yml`, per the canonical diff rules in SE.3.
+
+**Rule SE-2**: Roundtrip B authoring operations MUST go through the same production daemon/service endpoints used by GUI/CLI. No direct YAML writing, no snapshot import as a shortcut, no staging of engine input files.
+
+### SE.2 Real-Run Validation (Two Paths)
+
+Real-run validation exists for BOTH paths. After materialization (via either path), the project can be executed with a real engine binary.
+
+**Path A real-run**: Mandatory. This is the primary mechanism by which demos uncover real execution bugs. Defined as Demo Baseline Stage (C).
+
+**Canonical entrypoint**:
+```bash
+python tools/demo_store/generate_ref_packs_realrun.py
+```
+
+**Path B real-run**: Defined as ultimate validation. Once Roundtrip B proves semantic equivalence, Path B real-run confirms that semantic equivalence translates to identical runtime behavior.
+
+**Current priority**:
+- Path A real-run is **mandatory** (Demo Baseline Stage C — no deferrals per Rule DB-ND).
+- Path B real-run is **not as time-urgent** once Roundtrip B passes, but MUST still be defined as the ultimate validation target. Semantic equivalence alone is not a proof of identical runtime behavior (e.g., parameter ordering, whitespace sensitivity in engine input files, or engine-specific materialization quirks could cause divergence).
+
+**Rule SE-RR**: When both Path A and Path B real-runs are executed for the same demo, the engine outputs (energy, forces, convergence) MUST agree within engine-level numerical tolerance.
+
+### SE.3 Canonical Semantic Diff Rules
+
+Two snapshots are **semantically equivalent** if and only if they agree on all fields after applying the following normalization.
+
+#### Fields that MUST be IGNORED (permitted variance)
+
+| Category | Fields | Reason |
+|----------|--------|--------|
+| Identity | `*.meta.ulid` (all ULIDs) | Fresh ULIDs generated at materialization (Rule UL1). |
+| Paths | `*.meta.path`, filesystem paths | Workspace-dependent. |
+| Timestamps | `generated_at`, `materialized_at`, `created_at` | Non-deterministic. |
+| Provenance | Provenance IDs, CAS hashes, timeline entries | Generated per-session. |
+| Generator metadata | `generator_version`, `corpus_checksum`, generator manifest data | Build-time metadata. |
+| Demo gallery display | Top-level `meta` section (title, subtitle, tags, difficulty, etc.) | NOT SSOT; MAY be omitted by generic export. |
+| Runtime-managed keys | Engine-specific keys injected/overridden at materialization (e.g., QE `outdir`, `pseudo_dir`, `wfcdir`; VASP `SYSTEM`) | Each engine driver declares its managed keys. |
+| Cross-reference ULIDs | `structure_ulid`, step-to-step references | Verified as **structurally isomorphic** (same entity referenced), not by ULID value match. |
+| Settings augmentation | `project.settings` (additional keys) | Materialization may add runtime settings; original keys MUST be preserved. |
+| Caches | Any cached/derived data | Ephemeral. |
+| YAML formatting | Key order, whitespace, quoting style | Equivalence is semantic (parsed dict), not textual. |
+
+#### Fields that MUST MATCH
+
+| Category | Fields |
+|----------|--------|
+| Engine identity | `engine_family` on every calculation |
+| Step ordering | Order of `steps[]` within each calculation |
+| Step types | `step_type_gen`, `step_type_spec` for every step |
+| Effective parameters | All `steps[].parameters` keys/values EXCLUDING runtime-managed keys |
+| Structures | Canonical structure content: lattice vectors, species, coordinates (fractional or Cartesian as appropriate) |
+| Scan definitions | Scan parameter names, values, and ordering (if present) |
+| Component names | `*.meta.name`, `*.meta.slug`, `*.meta.kind` |
+| Pseudo/asset specs | `pseudo.files`, `pseudo.pseudo_sha256` (if present) |
+
+#### Fields that MUST NOT be introduced
+
+No fields may appear in the re-snapshot that were not either (a) in the original snapshot or (b) in the permitted-variance list above. Unexpected new fields are a semantic diff violation.
+
+### SE.4 Integrity Tests Are FAST Checks (NOT Real Runs)
+
+The **integrity suite** (`tests/integrity/backend/`) is a FAST structural validation of Level-2 demos.
+
+**Canonical command**:
+```bash
+python -m pytest tests/integrity/backend/ -v --tb=short
+```
+
+**What it does**: Validates that every Level-2 demo can be loaded, materialized, and passes structural correctness checks (ULID freshness, field presence, cross-reference validity).
+
+**What it does NOT do**:
+- It DOES NOT execute any engine binaries.
+- It DOES NOT prove that demos are runnable.
+- It DOES NOT perform real-run validation.
+- Passing integrity DOES NOT imply demos work end-to-end.
+
+**Rule SE-INT**: The integrity suite is Demo Baseline Stage (B) — necessary but not sufficient. Real-run validation (Stage C) is the authoritative proof that demos work. See section DB.
 
 ---
 
@@ -770,53 +946,13 @@ on-disk SSOT               →  materialized ULIDs (fresh, unique)
 re-snapshot.yml            →  materialized ULIDs (preserved from disk)
 ```
 
-The roundtrip equivalence contract (S6.3) accounts for this.
+The semantic equivalence contract (section SE) accounts for this. The ULID lifecycle rules (UL1–UL4) apply equally to both Path A (load) and Path B (authoring) materialization.
 
-### S6.2 Roundtrip Definition
+### S6.2 Roundtrip and Equivalence
 
-The roundtrip is:
+The detailed roundtrip definitions (Roundtrip A — load path, Roundtrip B — authoring path), the canonical semantic diff rules, and the real-run validation contracts are defined in **section SE** (Semantic Equivalence and Roundtrip Contracts).
 
-1. **Start**: A demo snapshot `.yml` file (Layer B), containing snapshot ULIDs.
-2. **Load + Materialize**: Load the snapshot via `create_demo_project()` (or equivalent). This produces a live project workspace with canonical SSOT files on disk — all with **fresh ULIDs** per Rule UL1.
-3. **Re-snapshot**: Compile the live project workspace back into a single `.yml` snapshot via `export_project_to_snapshot()` (or equivalent). The re-snapshot **preserves the materialized ULIDs** per Rule UL4.
-
-**Rule RT1**: The re-snapshot (step 3) MUST produce a snapshot that is **content-equivalent** to the original (step 1), subject to the canonicalization rules below. Content-equivalence compares structure, parameters, and domain content — not identity (ULIDs) or display metadata (demo gallery `meta`).
-
-### S6.3 Equivalence Rules
-
-Two snapshots are considered content-equivalent if and only if they agree on all fields after applying the following canonicalization:
-
-#### Fields that MUST be identical
-- `version`
-- `project.meta.name`, `project.meta.slug`, `project.meta.kind`
-- All `structures[].meta.name`, `structures[].meta.slug`, `structures[].meta.kind`
-- All `structures[].data` content (lattice, sites, species, coordinates)
-- All `calculations[].meta.name`, `calculations[].meta.slug`, `calculations[].meta.kind`
-- All `calculations[].engine_family`, `calculations[].mode`
-- All `steps[].meta.name`, `steps[].meta.slug`, `steps[].meta.kind`
-- All `steps[].step_type_gen`, `steps[].step_type_spec`
-- All `steps[].parameters` — with the exception of runtime-managed keys (see below)
-- `pseudo.files`, `pseudo.pseudo_sha256` (if present)
-
-#### Fields that MAY differ (permitted variance)
-| Field | Reason |
-|-------|--------|
-| `*.meta.ulid` | Snapshot ULIDs are replaced with fresh materialized ULIDs at load time (Rule UL1), and preserved in re-snapshot (Rule UL4). The two sets of ULIDs are different by design. |
-| `*.meta.path` | Materialized paths may differ from snapshot paths (e.g., different workspace root). Equivalence ignores path values. |
-| `structure_ulid` (cross-references) | Remapped from snapshot ULIDs to materialized ULIDs. Equivalence verifies that the reference graph is structurally isomorphic (same structure is referenced), not that the ULID values match. |
-| `project.settings` | Runtime settings may be augmented at materialize time. Equivalence requires original keys are preserved; additional keys are allowed. |
-| Runtime-managed parameter keys | Keys that the engine materialization injects or overrides at runtime (e.g., QE `outdir`, `pseudo_dir`, `wfcdir`; VASP `SYSTEM`). These MAY be absent in the original snapshot but present after roundtrip, or vice versa. Each engine driver MUST declare its managed keys. |
-| `meta` (top-level demo gallery metadata) | The demo gallery `meta` section is NOT SSOT and MAY be omitted by a generic project export (see S5.3). Equivalence ignores the top-level `meta` section entirely. |
-| YAML formatting | Key order, whitespace, quoting style. Equivalence is semantic (parsed dict), not textual. |
-
-#### Fields that MUST NOT be introduced
-- No fields may appear in the re-snapshot that were not either (a) in the original snapshot, or (b) in the permitted-variance list above. Unexpected new fields are a roundtrip violation.
-
-### S6.4 Verification
-
-**Rule RT2**: A roundtrip verification function MUST exist that takes two snapshot dicts, applies the canonicalization rules (stripping ULIDs, paths, managed keys, and demo gallery `meta`), and returns pass/fail with a diff of any non-equivalent fields.
-
-**Rule RT3**: The backend integrity suite (S7) SHOULD include a roundtrip check for every demo: after materializing, re-snapshot and verify content-equivalence.
+**Rule SE-ref**: All references to "roundtrip" or "content-equivalence" in this spec refer to the canonical semantic diff defined in SE.3. The ULID lifecycle rules in this section (S6) define how ULIDs flow through materialization; section SE defines how to compare the results.
 
 ---
 
@@ -824,7 +960,9 @@ Two snapshots are considered content-equivalent if and only if they agree on all
 
 ### S7.1 Scope
 
-Both integrity suites iterate ONLY the demo projects in Layer B (`resources/demo_projects/*.yml`). Corpus cases that are not demo-eligible are not tested by these suites (they are tested by parser/writer unit tests and the corpus harness instead).
+Both integrity suites iterate ONLY the demo projects in Level-2 (`resources/demo_projects/*.yml`). Corpus cases that are not demo-eligible are not tested by these suites (they are tested by parser/writer unit tests and the corpus harness instead).
+
+> **See also SE.4** for a concise statement of what integrity tests are and are NOT.
 
 ### S7.2 Backend Integrity Suite (T1)
 
@@ -837,7 +975,7 @@ Both integrity suites iterate ONLY the demo projects in Layer B (`resources/demo
 1. **Load**: `service.create_demo_project(target_dir, name, demo_id)` — MUST succeed for all demos regardless of asset policy.
 2. **Materialize**: Verify that materialized project directory contains expected files (YAML, structure JSON, step YAML) with fresh ULIDs (per Rule UL1).
 3. **Asset staging**: For `redistributable`/`none` demos: verify assets are correctly staged; missing redistributable assets are a hard **FAIL**. For `proprietary` demos: check if proprietary assets are available in the test environment (see S7.4).
-4. **Roundtrip** (RECOMMENDED): Re-snapshot the materialized project and verify content-equivalence per S6.
+4. **Roundtrip A** (RECOMMENDED): Re-snapshot the materialized project and verify semantic equivalence per SE.3.
 5. **Run** (conditional): Execute the calculation if the engine binary AND all required assets are available. Otherwise, skip per S7.4.
 6. **Parse output**: If run completed, parse outputs using the engine's `OutputParser`. Verify `Digest` fields are populated.
 7. **Analysis**: If run completed, invoke analysis transforms (SCF convergence, band structure, DOS, etc. per `recommended_analysis`). Verify return types and array shapes.
