@@ -842,8 +842,8 @@ entries:
 - engine: qe
   case_id: si_bulk_modulus
   dir_name: si_bulk_modulus
-  demo_eligible: true
-  demo_slug: qe_si_bulk_modulus
+  demo_eligible: false
+  demo_slug: null
   runnable: true
   asset_policy: redistributable
   required_engine: qe
@@ -861,8 +861,8 @@ entries:
 - engine: qe
   case_id: si_cpmd
   dir_name: si_cpmd
-  demo_eligible: true
-  demo_slug: qe_si_cpmd
+  demo_eligible: false
+  demo_slug: null
   runnable: true
   asset_policy: redistributable
   required_engine: qe
@@ -918,8 +918,8 @@ entries:
 - engine: qe
   case_id: si_phonon
   dir_name: si_phonon
-  demo_eligible: true
-  demo_slug: qe_si_phonon
+  demo_eligible: false
+  demo_slug: null
   runnable: true
   asset_policy: redistributable
   required_engine: qe

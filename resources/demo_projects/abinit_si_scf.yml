@@ -21,25 +21,25 @@ structures:
     lattice:
       matrix:
       - - 0.0
-        - 0.5
-        - 0.5
-      - - 0.5
+        - 2.7155021579921947
+        - 2.7155021579921947
+      - - 2.7155021579921947
         - 0.0
-        - 0.5
-      - - 0.5
-        - 0.5
+        - 2.7155021579921947
+      - - 2.7155021579921947
+        - 2.7155021579921947
         - 0.0
       pbc:
       - true
       - true
       - true
-      a: 0.7071067811865476
-      b: 0.7071067811865476
-      c: 0.7071067811865476
-      alpha: 60.00000000000001
-      beta: 60.00000000000001
-      gamma: 60.00000000000001
-      volume: 0.25
+      a: 3.8402999804859688
+      b: 3.8402999804859688
+      c: 3.8402999804859688
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 40.0479649752589
     properties: {}
     sites:
     - species:
@@ -65,9 +65,9 @@ structures:
       properties: {}
       label: Si
       xyz:
-      - 0.25
-      - 0.25
-      - 0.25
+      - 1.3577510789960974
+      - 1.3577510789960974
+      - 1.3577510789960974
 calculations:
 - meta:
     ulid: 01KR5X1WXSAZ4JZHSW6DJC8MWV
@@ -98,6 +98,7 @@ calculations:
       - 0.5
       nstep: 30
       toldfe: 1.0e-08
+      chksymbreak: 0
       pp_dirpath: ./pseudos
       pseudos: Si.psp8
       znucl:
@@ -118,4 +119,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: abinit
   corpus_case_id: si_scf
-  corpus_checksum: 899e898b1b39e6e5a6ec7124675e7651b3f50e4f49708126149622beba3c341a
+  corpus_checksum: 73ee6555f1e4cb88d03e88a6e86f4f13da70ba3e871b10dac281db6726c7ea23

@@ -20,81 +20,61 @@ import pytest
 class TestW90ParameterStructure:
     """Test that W90 step parameters are correctly structured."""
     
-    def test_diamond_w90_wannierprep_has_flat_params(self, project_root_path):
-        """Verify diamond demo w90_wannierprep step has flat parameters."""
+    def test_diamond_w90_wannier_has_flat_params(self, project_root_path):
+        """Verify diamond demo w90_wannier step has flat parameters."""
         import yaml
 
-        demo_file = project_root_path / "resources" / "demo_projects" / "diamond_wannier90_demo.yml"
+        demo_file = project_root_path / "resources" / "demo_projects" / "w90_diamond.yml"
         if not demo_file.exists():
             pytest.skip("Diamond demo not found")
 
         with open(demo_file) as f:
             demo = yaml.safe_load(f)
 
-        # Find w90_wannierprep step
-        # Note: demo uses step_type_spec (canonical SPEC type)
-        w90_wannierprep = None
+        # Find w90_wannier step
+        w90_step = None
         for calc in demo.get("calculations", []):
             for step in calc.get("steps", []):
                 step_type = step.get("step_type_spec")
-                if step_type == "w90_wannierprep":
-                    w90_wannierprep = step
+                if step_type == "w90_wannier":
+                    w90_step = step
                     break
 
-        assert w90_wannierprep is not None, "w90_wannierprep step not found in demo"
-        
-        params = w90_wannierprep.get("parameters", {})
+        assert w90_step is not None, "w90_wannier step not found in demo"
+
+        params = w90_step.get("parameters", {})
 
         # These should be flat parameters (not wrapped in namelists)
-        assert "seedname" in params, "seedname not in parameters"
         assert "num_wann" in params, "num_wann not in parameters"
+        assert "num_iter" in params, "num_iter not in parameters"
 
         # Verify they are scalar values, not nested dicts
-        assert isinstance(params["seedname"], str), f"seedname should be string, got {type(params['seedname'])}"
         assert isinstance(params["num_wann"], int), f"num_wann should be int, got {type(params['num_wann'])}"
+        assert isinstance(params["num_iter"], int), f"num_iter should be int, got {type(params['num_iter'])}"
 
-        # seedname should be "diamond", not a list of chars
-        assert params["seedname"] == "diamond", f"seedname should be 'diamond', got '{params['seedname']}'"
-    
-    def test_diamond_pw2wannier_has_flat_params(self, project_root_path):
-        """Verify diamond demo qe_pw2wannier step has flat parameters."""
+    def test_diamond_w90_wannier_plot_is_bool(self, project_root_path):
+        """Verify diamond demo wannier_plot is a boolean, not iterated as string."""
         import yaml
 
-        demo_file = project_root_path / "resources" / "demo_projects" / "diamond_wannier90_demo.yml"
+        demo_file = project_root_path / "resources" / "demo_projects" / "w90_diamond.yml"
         if not demo_file.exists():
             pytest.skip("Diamond demo not found")
 
         with open(demo_file) as f:
             demo = yaml.safe_load(f)
 
-        # Find qe_pw2wannier step
-        # Note: demo uses step_type_spec (canonical SPEC type)
-        pw2wannier = None
+        w90_step = None
         for calc in demo.get("calculations", []):
             for step in calc.get("steps", []):
-                step_type = step.get("step_type_spec")
-                if step_type in ("pw2wannier", "qe_pw2wannier"):
-                    pw2wannier = step
+                if step.get("step_type_spec") == "w90_wannier":
+                    w90_step = step
                     break
 
-        assert pw2wannier is not None, "qe_pw2wannier step not found in demo"
+        assert w90_step is not None
+        params = w90_step.get("parameters", {})
 
-        params = pw2wannier.get("parameters", {})
-        
-        # E1: prefix/outdir are injected at execution time (from calculation.meta.slug), not in user parameters
-        # They should NOT be in step YAML parameters (they're injected via effective_parameters)
-        # Only seedname should be in user parameters
-        assert "seedname" in params, "seedname not in parameters"
-        
-        # E1: prefix should NOT be in step YAML parameters (it's injected at execution)
-        # If it exists, it should be ignored/overridden by calculation prefix
-        # We don't assert prefix in params - it's injected, not user-provided
-        
-        # Verify seedname is scalar value
-        assert isinstance(params["seedname"], str), f"seedname should be string, got {type(params['seedname'])}"
-        
-        # Verify seedname value
-        assert params["seedname"] == "diamond", f"seedname should be 'diamond', got '{params['seedname']}'"
+        assert "wannier_plot" in params, "wannier_plot not in parameters"
+        assert isinstance(params["wannier_plot"], bool), f"wannier_plot should be bool, got {type(params['wannier_plot'])}"
 
 
 class TestFlatParameterDetection:

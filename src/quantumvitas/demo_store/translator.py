@@ -617,6 +617,15 @@ def _translate_multi_step(
             "params": step_params,
         })
 
+    # Fallback: if no structure found from step input files, try parsing
+    # structure files directly from the case directory (e.g., VASP POSCAR).
+    if first_structure is None:
+        from quantumvitas.inputformat.parser import parse_engine_inputs
+        adapted_spec = _adapt_input_spec_to_corpus(input_spec, case_dir)
+        fallback_result = parse_engine_inputs(adapted_spec, case_dir)
+        if fallback_result.structure:
+            first_structure = fallback_result.structure
+
     # Build pymatgen structure from first step's structure
     structure_data = None
     if first_structure:

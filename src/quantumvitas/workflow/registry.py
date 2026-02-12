@@ -822,6 +822,17 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         produces_charge_density=False,
         is_structure_transform=True,
     ),
+    "xtb_md": StepTypeSpec(
+        step_type_spec="xtb_md",
+        step_type_gen="md",
+        engine="xtb",
+        executable="xtb",
+        description="xTB molecular dynamics (GFN2-xTB)",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        is_structure_transform=False,
+    ),
 
     # -------------------------------------------------------------------------
     # Yambo engine (MBPT: GW, BSE, TDDFT)

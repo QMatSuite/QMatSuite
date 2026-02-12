@@ -42,12 +42,12 @@ class CP2KDriver(BaseEngineDriver):
         AnalysisCapability(
             object_type="convergence",
             gen_step_sequence=["scf"],
-            evidence_files=["*.out"],
+            evidence_files=["*.out", "output.log"],
         ),
         AnalysisCapability(
             object_type="convergence",
             gen_step_sequence=["relax"],
-            evidence_files=["*.out"],
+            evidence_files=["*.out", "output.log"],
         ),
         AnalysisCapability(
             object_type="trajectory",

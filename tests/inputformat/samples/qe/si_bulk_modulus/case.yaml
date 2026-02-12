@@ -7,12 +7,12 @@ workflow_tags:
 - electronic
 species:
 - Si
-demo_eligible: true
+demo_eligible: false
 step_type_gen: scf
 step_type_spec: qe_scf
 required_engine: qe
 availability: open_source
-demo_slug: qe_si_bulk_modulus
+demo_slug: null
 asset_policy: redistributable
 recommended_analysis: scf
 difficulty: beginner
@@ -23,7 +23,7 @@ tags:
 - PW
 - equation-of-state
 - tutorial
-exclusion_reason: null
+exclusion_reason: "EOS scan with multiple SCF at different lattice constants; too complex for single demo"
 asset_requirements:
   pseudopotentials:
   - file: Si.pbe-n-rrkjus_psl.1.0.0.UPF

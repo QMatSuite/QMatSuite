@@ -124,14 +124,22 @@ class CP2KConvergenceProvider:
     object_type = "convergence"
 
     def can_parse(self, raw_dir: Path) -> bool:
-        return any(p.suffix == ".out" for p in raw_dir.iterdir() if p.is_file())
+        return any(
+            p.suffix == ".out" or p.name == "output.log"
+            for p in raw_dir.iterdir() if p.is_file()
+        )
 
     def parse(self, evidence: EvidenceBundle) -> Convergence:
         """Parse CP2K output and return Convergence object."""
         out_files = list(evidence.primary_raw_dir.glob("*.out"))
         if not out_files:
+            # CP2K may use output.log instead of *.out
+            log_file = evidence.primary_raw_dir / "output.log"
+            if log_file.exists():
+                out_files = [log_file]
+        if not out_files:
             raise FileNotFoundError(
-                f"No .out file found in {evidence.primary_raw_dir}"
+                f"No .out or output.log file found in {evidence.primary_raw_dir}"
             )
         output_path = out_files[0]
 

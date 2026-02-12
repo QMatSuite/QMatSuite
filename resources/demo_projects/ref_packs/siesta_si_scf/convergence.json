@@ -27,10 +27,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "convergence",
-    "run_ulid": "REFPACK",
-    "calc_ulid": "REFPACK",
+    "run_ulid": "01KH8CZKRNAR38V5YYZXK8D3GW",
+    "calc_ulid": "01KH8CZKPAHC74EZ5G472C229K",
     "step_ulids": [
-      "REFPACK"
+      "01KH8CZKPAHC74EZ5G472C229M"
     ],
     "gen_steps": [
       "scf"
@@ -38,9 +38,9 @@
     "engine_name": "siesta",
     "source_files": [
       {
-        "path": "si_dos.out",
-        "size_bytes": 26184,
-        "mtime": 1770680032.842527
+        "path": "raw/01KH8CZKPAHC74EZ5G472C229M/siesta_scf.out",
+        "size_bytes": 25762,
+        "mtime": 1770882326.4155197
       }
     ],
     "parser_name": "siesta_convergence",

@@ -1,13 +1,13 @@
 {
   "demo_slug": "lammps_lj_melt",
   "engine": "lammps",
-  "generated_at": "2026-02-12T03:22:47.532532+00:00",
+  "generated_at": "2026-02-12T07:40:17.460478+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "trajectory": {
       "file": "trajectory.json",
-      "sha256": "01d64fe4db27c1d20558a6077cd5b58ee47fdeb7cc8880e2e0027012e7825c27"
+      "sha256": "fea121b0fb36a5b0d2b0ea6c853663b20b7928c3dec8a147574eea951f2d7c5f"
     }
   }
 }

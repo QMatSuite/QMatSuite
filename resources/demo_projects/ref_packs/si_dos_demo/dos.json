@@ -21,10 +21,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "dos",
-    "run_ulid": "01KH7Y3K7KBCXAXBKKFWNG026F",
-    "calc_ulid": "01KH7Y3K2F6V6Q3V37D6WN9VM9",
+    "run_ulid": "01KH8CXVWG2SX796P33BPJJRS2",
+    "calc_ulid": "01KH8CXVQ1RQ181BH4GC9V6H8Q",
     "step_ulids": [
-      "01KH7Y3K2F6V6Q3V37D6WN9VMC"
+      "01KH8CXVQ1RQ181BH4GC9V6H8T"
     ],
     "gen_steps": [
       "dos"
@@ -34,7 +34,7 @@
       {
         "path": "raw/si.dos.dat",
         "size_bytes": 82588,
-        "mtime": 1770866772.9129615
+        "mtime": 1770882313.490157
       }
     ],
     "parser_name": "qe_dos",

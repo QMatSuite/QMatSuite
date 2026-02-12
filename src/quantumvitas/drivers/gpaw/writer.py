@@ -140,7 +140,10 @@ def _write_standard_script(
     """Generate standard SCF/NSCF/relax/MD script."""
     lines.append("from gpaw import GPAW, PW, FermiDirac")
     lines.append("")
-    lines.append(f"atoms = read('{structure_file}')")
+    lines.append(f"with open('{structure_file}') as _sf:")
+    lines.append("    _struct = json.load(_sf)")
+    lines.append("atoms = Atoms(symbols=_struct['symbols'], positions=_struct['positions'],")
+    lines.append("              cell=_struct.get('cell'), pbc=_struct.get('pbc', [True, True, True]))")
     lines.append("")
 
     mode = params.get("mode", "pw")

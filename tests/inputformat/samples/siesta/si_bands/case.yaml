@@ -10,8 +10,8 @@ functional: PBE
 description: SCF + BandLines path in one Siesta run.
 demo_eligible: true
 demo_slug: siesta_si_bands
-step_type_gen: bandspw
-step_type_spec: siesta_bandspw
+step_type_gen: bands
+step_type_spec: siesta_bands
 required_engine: siesta
 availability: open_source
 asset_policy: none

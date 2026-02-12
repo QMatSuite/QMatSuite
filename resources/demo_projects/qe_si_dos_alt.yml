@@ -89,8 +89,6 @@ calculations:
       CONTROL:
         calculation: scf
         restart_mode: from_scratch
-        prefix: si
-        outdir: ./outdir
         pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
       SYSTEM:
         ibrav: 2
@@ -111,8 +109,6 @@ calculations:
       CONTROL:
         calculation: nscf
         restart_mode: from_scratch
-        prefix: si
-        outdir: ./outdir
         pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
       SYSTEM:
         ibrav: 2
@@ -132,8 +128,6 @@ calculations:
       ulid: 01KDZRWQZS39ZWHQXEQ1YGKXP4
     parameters:
       DOS:
-        prefix: si
-        outdir: ./outdir/
         fildos: si.dos.dat
         emin: -9.0
         emax: 16.0

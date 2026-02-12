@@ -261,17 +261,54 @@ def _coerce_single(s: str) -> Any:
 
 
 def _reconstruct_structure(struct_raw: dict[str, list[str]]) -> dict[str, Any]:
-    """Reconstruct StructureDoc dict from ABINIT structure variables."""
+    """Reconstruct StructureDoc dict from ABINIT structure variables.
+
+    Applies acell scaling to rprim so that the lattice matrix is always
+    in Angstrom.  ABINIT convention: real_lattice[i] = rprim[i] * acell[i].
+    Default acell unit is Bohr; "Angstrom" may appear as a trailing token.
+    """
     structure: dict[str, Any] = {}
 
-    # Lattice: rprim (3x3 matrix)
+    # ── Parse acell (default: 1 1 1 Bohr) ────────────────────────────
+    _BOHR_TO_ANG = 0.529177249
+    acell_ang = [1.0 * _BOHR_TO_ANG] * 3          # default 1 Bohr each
+    if "acell" in struct_raw:
+        acell_tokens = struct_raw["acell"]
+        unit = "bohr"                               # ABINIT default
+        nums: list[float] = []
+        for tok in acell_tokens:
+            low = tok.lower()
+            if low in ("angstrom", "ang"):
+                unit = "angstrom"
+            elif low in ("bohr", "au"):
+                unit = "bohr"
+            else:
+                try:
+                    nums.append(float(tok))
+                except ValueError:
+                    pass
+        if nums:
+            while len(nums) < 3:
+                nums.append(nums[-1])
+            if unit == "bohr":
+                acell_ang = [v * _BOHR_TO_ANG for v in nums[:3]]
+            else:
+                acell_ang = list(nums[:3])
+
+    # ── Lattice: rprim scaled by acell (→ Angstrom) ──────────────────
     if "rprim" in struct_raw:
         rprim_vals = [float(v) for v in struct_raw["rprim"]]
         if len(rprim_vals) >= 9:
             lattice = [
-                [rprim_vals[0], rprim_vals[1], rprim_vals[2]],
-                [rprim_vals[3], rprim_vals[4], rprim_vals[5]],
-                [rprim_vals[6], rprim_vals[7], rprim_vals[8]],
+                [rprim_vals[0] * acell_ang[0],
+                 rprim_vals[1] * acell_ang[0],
+                 rprim_vals[2] * acell_ang[0]],
+                [rprim_vals[3] * acell_ang[1],
+                 rprim_vals[4] * acell_ang[1],
+                 rprim_vals[5] * acell_ang[1]],
+                [rprim_vals[6] * acell_ang[2],
+                 rprim_vals[7] * acell_ang[2],
+                 rprim_vals[8] * acell_ang[2]],
             ]
             structure["lattice"] = lattice
 

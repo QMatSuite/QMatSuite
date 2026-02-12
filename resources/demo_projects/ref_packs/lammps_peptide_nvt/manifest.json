@@ -1,0 +1,13 @@
+{
+  "demo_slug": "lammps_peptide_nvt",
+  "engine": "lammps",
+  "generated_at": "2026-02-12T07:40:19.895903+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "trajectory": {
+      "file": "trajectory.json",
+      "sha256": "ebefdff596a2238d0a4ac80035b163ac937dcce6beda838ed8965ff1cb213d25"
+    }
+  }
+}

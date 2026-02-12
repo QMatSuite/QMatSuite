@@ -89,12 +89,23 @@ def abinit_step_handler(
         )
 
     working_dir = job.working_dir
+    working_dir.mkdir(parents=True, exist_ok=True)
     timeout = context.get("timeout", 3600)
 
     # Get the input file from job metadata or infer from job id
     step_prefix = job.metadata.get("step_prefix", job.id)
     input_file = working_dir / f"{step_prefix}.abi"
     output_file = working_dir / f"{step_prefix}.abo"
+
+    # Write .abi input file if it doesn't exist yet
+    if not input_file.exists():
+        try:
+            _write_abinit_input(step, calculation, input_file)
+        except Exception as e:
+            return JobResult(
+                job_id=job.id, success=False,
+                error=f"Failed to write ABINIT input: {e}",
+            )
 
     if not input_file.exists():
         return JobResult(
@@ -182,3 +193,105 @@ def abinit_step_handler(
         success=True,
         step_results={step_ulid: step_result_data},
     )
+
+
+def _write_abinit_input(
+    step: "Step",
+    calculation: "Calculation",
+    output_path: Path,
+) -> None:
+    """Write ABINIT .abi input file from step params + calculation structure."""
+    import shutil as _shutil
+    from .io.abinit_input import write_abinit_text
+
+    # Load parameters from step YAML (demo projects store params at top level)
+    params: dict = {}
+    try:
+        from quantumvitas.core.yamldoc import StepDoc
+        step_yaml = calculation.dir / "steps" / f"{step.meta.slug}.step.yaml"
+        if step_yaml.exists():
+            doc = StepDoc.load(step_yaml)
+            data = doc.to_dict()
+            params = dict(data.get("parameters", {}))
+    except Exception as e:
+        logger.warning("Failed to load step YAML params: %s", e)
+    # Fallback: try step.options
+    if not params:
+        if hasattr(step, "options") and step.options:
+            params = dict(step.options)
+
+    # Stage pseudopotential files into working directory
+    working_dir = output_path.parent
+    pp_dirpath = params.get("pp_dirpath", "./")
+    pseudos_val = params.get("pseudos", "")
+    if pseudos_val and isinstance(pseudos_val, str):
+        pp_files = [f.strip() for f in pseudos_val.split(",")]
+    elif isinstance(pseudos_val, list):
+        pp_files = pseudos_val
+    else:
+        pp_files = []
+
+    if pp_files:
+        # Resolve pp_dirpath relative to working_dir, create if needed
+        if Path(pp_dirpath).is_absolute():
+            pp_target = Path(pp_dirpath)
+        else:
+            pp_target = working_dir / pp_dirpath
+        pp_target.mkdir(parents=True, exist_ok=True)
+
+        # Build search directories for PP files
+        pp_search_dirs: list[Path] = []
+        from quantumvitas.core.engines.discovery import discover_engine
+        result = discover_engine("abinit")
+        if result.available and result.executable_path:
+            abinit_root = result.executable_path.parent.parent
+            # Search build directory for test PPs (PseudoDojo, GTH, etc.)
+            build_root = abinit_root.parent.parent / "_build" / "abinit"
+            for psp_dir in sorted(build_root.glob("abinit-*/tests/Pspdir")):
+                pp_search_dirs.append(psp_dir)
+                # Add subdirectories (PseudoDojo, GTH, etc.)
+                for sub in sorted(psp_dir.iterdir()):
+                    if sub.is_dir():
+                        pp_search_dirs.append(sub)
+
+        for pp_file in pp_files:
+            dst = pp_target / pp_file
+            if dst.exists():
+                continue
+            # Search in known locations
+            found = False
+            for search_dir in pp_search_dirs:
+                src = search_dir / pp_file
+                if src.exists():
+                    _shutil.copy2(src, dst)
+                    found = True
+                    logger.info("Staged PP %s from %s", pp_file, search_dir)
+                    break
+            if not found:
+                logger.warning("PP file %s not found in any search directory", pp_file)
+
+    # Load structure from calculation
+    structure_dict: dict = {}
+    structure_ref = getattr(calculation, "structure", None)
+    if structure_ref is not None:
+        struct_path = getattr(structure_ref, "absolute_path", None)
+        if struct_path and Path(struct_path).exists():
+            try:
+                from quantumvitas.io import read_structure
+                pmg_struct = read_structure(Path(struct_path))
+                structure_dict = {
+                    "species": [str(s) for s in pmg_struct.species],
+                    "frac_coords": [list(site.frac_coords) for site in pmg_struct],
+                    "lattice": [
+                        [float(x) for x in row]
+                        for row in pmg_struct.lattice.matrix
+                    ],
+                }
+            except Exception as e:
+                logger.warning("Failed to load structure for ABINIT input: %s", e)
+
+    fragment = {"params": params, "structure": structure_dict}
+    text = write_abinit_text(fragment)
+    output_path.write_text(text)
+
+

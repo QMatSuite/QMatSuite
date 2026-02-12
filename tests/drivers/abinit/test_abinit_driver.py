@@ -167,11 +167,13 @@ toldfe 1.0d-8
         from quantumvitas.drivers.abinit.io.abinit_input import parse_abinit_text
         text = "acell 3*10.26\nrprim\n1.0 0.0 0.0\n0.0 1.0 0.0\n0.0 0.0 1.0\n"
         result = parse_abinit_text(text)
-        # acell 3*10.26 expands to [10.26, 10.26, 10.26]
-        # rprim is stored as raw dimensionless matrix (writer applies acell)
+        # acell 3*10.26 expands to [10.26, 10.26, 10.26] Bohr
+        # rprim scaled by acell and converted to Angstrom:
+        # 10.26 * 0.529177 ≈ 5.4294 Å
+        expected_a = 10.26 * 0.529177249
         assert result["structure"]["lattice"] is not None
-        assert result["structure"]["lattice"][0][0] == pytest.approx(1.0)
-        assert result["structure"]["lattice"][1][1] == pytest.approx(1.0)
+        assert result["structure"]["lattice"][0][0] == pytest.approx(expected_a, rel=1e-6)
+        assert result["structure"]["lattice"][1][1] == pytest.approx(expected_a, rel=1e-6)
 
     def test_fortran_d_notation(self):
         from quantumvitas.drivers.abinit.io.abinit_input import parse_abinit_text

@@ -239,6 +239,8 @@ For multi-step demos (e.g., QE SCF → NSCF → Bands), `case.yaml` MUST include
 
 **Rule CS5** (demo atom count): Demos SHOULD use small systems (typically ≤ 20 atoms). Demos with more than ~30 atoms SHOULD NOT be demo-eligible unless the calculation type inherently requires a larger system (e.g., a minimal slab). Systems like full surface reconstructions (56+ atoms), vacancy supercells (64 atoms), or NEB chains are too large for demos.
 
+**Rule CS6** (runtime flagging): The ref pack generator (`tools/demo_store/generate_ref_packs_realrun.py`) MUST emit a machine-readable results matrix JSON after each run. Any demo whose wall-clock time exceeds **10 minutes** MUST be flagged as a potential dropout candidate in the report. Flagging does NOT automatically remove the demo — only a human decision can drop a demo. The generator SHOULD print a clear warning for flagged demos. See also Rule CS4 (5-minute soft limit for demo eligibility).
+
 ---
 
 ## S3. Corpus Root Index

@@ -549,13 +549,34 @@ def generate_qe_input_from_spec(
     # Ensure empty namelists from parameters are preserved (e.g., IONS: {} for relax).
     # parameter_dict_to_overrides drops empty sections since they have no keys,
     # but QE requires the namelist header to be present (e.g., &IONS / for relax).
+    from quantumvitas.drivers.qe.io.model import QENamelist
     if spec.parameters and isinstance(spec.parameters, dict):
-        from quantumvitas.drivers.qe.io.model import QENamelist
         for section_name, section_params in spec.parameters.items():
             if isinstance(section_params, dict) and not section_params:
                 nl_name = section_name.upper().lstrip("&")
                 if qe_input.get_namelist(nl_name) is None:
                     qe_input.namelists.append(QENamelist(name=nl_name))
+
+    # QE requires &IONS for relax/vc-relax and &CELL for vc-relax even if empty.
+    # The translator may drop these sections entirely if the corpus input has
+    # empty namelists (e.g., &IONS /). Ensure they exist in correct order.
+    # QE namelist order: CONTROL → SYSTEM → ELECTRONS → IONS → CELL
+    control_nl = qe_input.get_namelist("CONTROL")
+    calc_type = None
+    if control_nl:
+        calc_type = control_nl.parameters.get("calculation", "").strip("'\"")
+    if calc_type in ("relax", "vc-relax"):
+        if qe_input.get_namelist("IONS") is None:
+            qe_input.namelists.append(QENamelist(name="IONS"))
+    if calc_type == "vc-relax":
+        if qe_input.get_namelist("CELL") is None:
+            qe_input.namelists.append(QENamelist(name="CELL"))
+
+    # Enforce QE namelist ordering (CONTROL → SYSTEM → ELECTRONS → IONS → CELL)
+    _QE_NL_ORDER = {"CONTROL": 0, "SYSTEM": 1, "ELECTRONS": 2, "IONS": 3, "CELL": 4}
+    qe_input.namelists.sort(
+        key=lambda nl: _QE_NL_ORDER.get(nl.name.upper(), 99)
+    )
 
     # Check if ibrav != 0 is set in the actual QEInput (after overrides applied)
     # If so, remove CELL_PARAMETERS as it's redundant with ibrav != 0

@@ -1,17 +1,17 @@
 {
   "generator_version": "1.0.0",
-  "generated_at": "2026-02-12T03:16:18Z",
+  "generated_at": "2026-02-12T14:08:47Z",
   "corpus_root": "tests/inputformat/samples",
-  "corpus_index_checksum": "2f72f20df8b1526df7a70f7066e343b1c19ad17ab92b8088329945d911094b0c",
+  "corpus_index_checksum": "daffe111f7658af6a8355dc62c8595d01e767256b0be2e66d39e07d4681f98ea",
   "demos": {
     "abinit_si_bands": {
       "engine": "abinit",
       "case_id": "si_bands",
       "dir_name": "si_bands",
       "corpus_path": "tests/inputformat/samples/abinit/si_bands",
-      "corpus_checksum": "934a364a0e0c15730f73751a5692d81cae349dbb8a8ed6f2118ee366b80974fa",
+      "corpus_checksum": "148cc39b0ccebe85c564fdfff5f644338000bfd116ffdf48dd7b3ee79ea6c33b",
       "output_file": "resources/demo_projects/abinit_si_bands.yml",
-      "output_checksum": "196736c8f4a91c510650f070de5534d3426edbf6ae2f6c6d6d626b603c19e51e",
+      "output_checksum": "11be0ca5a54decd967fda4d053e936f8d9637e798ca92d26512c59ab052819af",
       "asset_policy": "redistributable"
     },
     "abinit_si_relax": {
@@ -19,9 +19,9 @@
       "case_id": "si_relax",
       "dir_name": "si_relax",
       "corpus_path": "tests/inputformat/samples/abinit/si_relax",
-      "corpus_checksum": "0fe1bc7d847cb4f7ea971bcfb61462bb8ec50d9bd0261b7b72e959168b216e18",
+      "corpus_checksum": "5abae317cf9403ba5491b3bc2563a005ad94ea3a2da00adde7dc03ae0bd5bc62",
       "output_file": "resources/demo_projects/abinit_si_relax.yml",
-      "output_checksum": "72f3bcadef7ff633f8d6360477c3b40e79b1ad2e33f855a7e4c02e2da3d8145f",
+      "output_checksum": "84b57ae986b0dd245c13803b1c0cfc6a6ae53bd4909a3e5d46220632dd30b277",
       "asset_policy": "redistributable"
     },
     "abinit_si_scf": {
@@ -29,9 +29,9 @@
       "case_id": "si_scf",
       "dir_name": "si_scf",
       "corpus_path": "tests/inputformat/samples/abinit/si_scf",
-      "corpus_checksum": "899e898b1b39e6e5a6ec7124675e7651b3f50e4f49708126149622beba3c341a",
+      "corpus_checksum": "73ee6555f1e4cb88d03e88a6e86f4f13da70ba3e871b10dac281db6726c7ea23",
       "output_file": "resources/demo_projects/abinit_si_scf.yml",
-      "output_checksum": "099ff1bfa5773b278381b9becb543ede2399c4e7576b9082573f8f5151a4f156",
+      "output_checksum": "be6356cc9e92a2fd10789aa8c670b976a2c6742107b90a5033af936fe8dc44ff",
       "asset_policy": "redistributable"
     },
     "cp2k_h2o_energy": {
@@ -251,7 +251,7 @@
       "corpus_path": "tests/inputformat/samples/qe/al_dos",
       "corpus_checksum": "e0e456affdf8081516e60c5f84eaf9837e52eac42d764fb82d192711f088bc1a",
       "output_file": "resources/demo_projects/qe_al_dos.yml",
-      "output_checksum": "1a72b41cb18dd20ecdc253c98c2cb000b44023aa9f2c18aa7019d446c0245402",
+      "output_checksum": "30966107ec4a4ed2540acbabdb5eda91e7b2d6a4b08f1ad73715a815a6587968",
       "asset_policy": "redistributable"
     },
     "qe_fe_dos": {
@@ -269,9 +269,9 @@
       "case_id": "graphene_bands",
       "dir_name": "graphene_bands",
       "corpus_path": "tests/inputformat/samples/qe/graphene_bands",
-      "corpus_checksum": "84a061d172fb5b642bd95d9cfc8246a8fa89b91c161abc199827b60f044a00c8",
+      "corpus_checksum": "57cacde406e31ed6652f33ee017872704fb68ad7ac5e31734fc1740926da71a7",
       "output_file": "resources/demo_projects/qe_graphene_bands.yml",
-      "output_checksum": "8a81eda61cabbe3d55c5bb6e84f31edc4e2ec3aa2dc9b064b4a80fcdd2bfa6a2",
+      "output_checksum": "42b8b196aaa4d2f2ed6a8c63e27e5dee26729a028a8d3e4a1c6133fe06baaca5",
       "asset_policy": "redistributable"
     },
     "si_bands_demo": {
@@ -289,29 +289,9 @@
       "case_id": "si_bands_alt",
       "dir_name": "si_bands_alt",
       "corpus_path": "tests/inputformat/samples/qe/si_bands_alt",
-      "corpus_checksum": "cb8db42cbb7a4a179880c965dbad2107dcfbc8d0a657e62d6e26241852a4bc95",
+      "corpus_checksum": "001eef48f9ca1eed76cc8ca5aea9174523fa6aacbb4b3cae39b398cda2ae1d78",
       "output_file": "resources/demo_projects/qe_si_bands_alt.yml",
-      "output_checksum": "e8f2d0a1a7e147a7d5481dc5c77be84ae1a5aad52ed98ddbb0a4ce988f271233",
-      "asset_policy": "redistributable"
-    },
-    "qe_si_bulk_modulus": {
-      "engine": "qe",
-      "case_id": "si_bulk_modulus",
-      "dir_name": "si_bulk_modulus",
-      "corpus_path": "tests/inputformat/samples/qe/si_bulk_modulus",
-      "corpus_checksum": "78ae4da4f30ea4766d01aea0923d3975b496354d5d9204dfeecf699289cead33",
-      "output_file": "resources/demo_projects/qe_si_bulk_modulus.yml",
-      "output_checksum": "2f32aa6f2861c7478588e498726942c60b469d5d9a68eb78c0929c56afded956",
-      "asset_policy": "redistributable"
-    },
-    "qe_si_cpmd": {
-      "engine": "qe",
-      "case_id": "si_cpmd",
-      "dir_name": "si_cpmd",
-      "corpus_path": "tests/inputformat/samples/qe/si_cpmd",
-      "corpus_checksum": "f26364ba06315cb64b79863a24d74b297bda0a9ad00fc8eb1641f745855e3e49",
-      "output_file": "resources/demo_projects/qe_si_cpmd.yml",
-      "output_checksum": "4a75ef5eb97bf48a42604922d561f0f49a8515bf0e4074846b75a28d2fe0a243",
+      "output_checksum": "bd8eb0c6214a5325e1964cd0298a890203c4c4bbe24dbf3ab7e9bc3dfc711bcd",
       "asset_policy": "redistributable"
     },
     "si_dos_demo": {
@@ -331,17 +311,7 @@
       "corpus_path": "tests/inputformat/samples/qe/si_dos_alt",
       "corpus_checksum": "b744aed662cbc791dbabad60c1169290e21258d0cbdf475802e0f4b3fd9631d8",
       "output_file": "resources/demo_projects/qe_si_dos_alt.yml",
-      "output_checksum": "618d89a043318994ae999b785426bead4636c3b849e179c32ae4cbf19c795df4",
-      "asset_policy": "redistributable"
-    },
-    "qe_si_phonon": {
-      "engine": "qe",
-      "case_id": "si_phonon",
-      "dir_name": "si_phonon",
-      "corpus_path": "tests/inputformat/samples/qe/si_phonon",
-      "corpus_checksum": "bc613a9af10c9ea7af555c65553f045e64ef13c0b38a49ff175e1d9d058b5748",
-      "output_file": "resources/demo_projects/qe_si_phonon.yml",
-      "output_checksum": "721ae44b73fd9dafb5c94224955ff06b4541103a6eec8ab579ba0773b7f45007",
+      "output_checksum": "0e2e0b6f0771b6c5ab79dc29df16c13d459f9b75c31a62aadd457c4a0730d165",
       "asset_policy": "redistributable"
     },
     "qe_si_scf": {
@@ -399,9 +369,9 @@
       "case_id": "si_bands",
       "dir_name": "si_bands",
       "corpus_path": "tests/inputformat/samples/siesta/si_bands",
-      "corpus_checksum": "3753be3bb20520f13d6fe00fab2052accd2b794a479cb9b7f0a58140e7582037",
+      "corpus_checksum": "e3a72baa1fcc30d1f8d8ba38d81c9d7ebee6ae0f8a4177d2260e36d127e0a831",
       "output_file": "resources/demo_projects/siesta_si_bands.yml",
-      "output_checksum": "ead2fea4b1dbcce67fc285bf10dbaa106b5e01343fab3e0b180d5122a31c61e9",
+      "output_checksum": "bb0987a3012512a05110fa1ad36ee2707c2b82a512691787392f13d76eb6ec10",
       "asset_policy": "none"
     },
     "siesta_si_relax": {
@@ -449,9 +419,9 @@
       "case_id": "si_dos",
       "dir_name": "si_dos",
       "corpus_path": "tests/inputformat/samples/vasp/si_dos",
-      "corpus_checksum": "f5b1c7fc3f339a6e93d8f306b0b3a4f9c3bcf8903550666c330908da9203088c",
+      "corpus_checksum": "e7a8bdab8831107c30ceba2688632ccf3106fb87797aae79d0f69fb905757fd3",
       "output_file": "resources/demo_projects/vasp_si_dos.yml",
-      "output_checksum": "3bb8d314e217fe3aa127f2547146b6531d70d5af75a573e6fb863ff66631c021",
+      "output_checksum": "bb763aafbc6b32404b696b7a1eacbf77c66f4c2012140580c5e764881ec695e7",
       "asset_policy": "proprietary"
     },
     "vasp_si_relax": {

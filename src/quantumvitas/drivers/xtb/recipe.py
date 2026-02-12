@@ -76,8 +76,9 @@ class XTBRecipe(BaseRecipe):
             if hasattr(step, "params") and step.params:
                 params = dict(step.params)
 
+            _runtype_map = {"relax": "opt", "md": "md", "grad": "grad", "hess": "hess"}
             cmd = build_xtb_command(
-                runtype="opt" if gen_type == "relax" else "sp",
+                runtype=_runtype_map.get(gen_type, "sp"),
                 gfn_level=params.get("gfn_level", 2),
                 opt_level=params.get("opt_level"),
                 charge=params.get("charge", 0),
