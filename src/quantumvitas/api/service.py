@@ -2160,6 +2160,257 @@ class QVService:
         """Access structure capabilities."""
         return QVService.Structure(self)
 
+    # Online structure search domain (PR0)
+    class OnlineSearch:
+        """Online structure search capabilities."""
+        
+        @staticmethod
+        def search_structures(
+            query: str,
+            *,
+            mode: str = "auto",
+            sources: Any = None,
+            limit: int = 10,
+            timeout_s: float = 8.0,
+            refresh_registry: bool = False,
+        ) -> Any:
+            """
+            Search online structures (OPTIMADE crystals + PubChem molecules).
+            
+            Temporary passthrough to existing implementation (PR0).
+            
+            Args:
+                query: Chemical formula or molecule name (e.g., "Si", "caffeine", "H2O")
+                mode: Search mode - "crystal" (OPTIMADE only), "molecule" (PubChem only), "auto" (both)
+                sources: Source configuration (provider enable/disable, ordering). If None, uses settings defaults.
+                limit: Maximum total results to return
+                timeout_s: Per-provider timeout in seconds
+                refresh_registry: If True, force refresh OPTIMADE provider registry cache
+                
+            Returns:
+                SearchResultDTO with candidates, session_id, providers_queried, partial flag
+            """
+            from quantumvitas.api.types.online_search import (
+                SearchResultDTO,
+                CandidateDTO,
+            )
+            from quantumvitas.io.online_search import search_online_structures
+            import uuid
+            
+            # Temporary passthrough: call existing search_online_structures
+            # TODO (PR6): Replace with provider system integration
+            source_summary, candidates, structures, optimade_base = search_online_structures(
+                query, max_results=limit
+            )
+            
+            # Convert to DTOs
+            session_id = str(uuid.uuid4())
+            candidate_dtos = []
+            providers_queried = []
+            
+            # Extract providers from source_summary
+            if "optimade" in source_summary:
+                providers_queried.append("optimade")
+            if "cod" in source_summary:
+                providers_queried.append("cod")
+            
+            for candidate in candidates:
+                candidate_dto = CandidateDTO(
+                    candidate_id=candidate.candidate_id,
+                    label=candidate.label,
+                    source=candidate.source,
+                    source_id=candidate.source_id,
+                    structure_type="crystal",  # Default for now (PR4 will add molecule support)
+                    formula=candidate.label.split("(")[0].strip() if "(" in candidate.label else candidate.label,
+                    nsites=candidate.nsites,
+                    spacegroup=candidate.spacegroup,
+                    providers=[candidate.source],  # Single provider for now
+                    score=candidate.score,
+                    flags=candidate.flags or [],
+                    metadata={},
+                )
+                candidate_dtos.append(candidate_dto)
+            
+            return SearchResultDTO(
+                session_id=session_id,
+                candidates=candidate_dtos,
+                providers_queried=providers_queried,
+                partial=False,  # TODO: Track partial results in provider system
+                query=query,
+                mode=mode,
+            )
+        
+        @staticmethod
+        def fetch_structure(ref: Any) -> Any:
+            """
+            Fetch full structure from online source (2-step fetch for OPTIMADE).
+            
+            Uses global user cache at ~/.qmatsuite/cache/online_structures (not project-specific).
+            
+            Temporary passthrough to existing implementation (PR0).
+            
+            Args:
+                ref: StructureRefDTO with session_id + candidate_id, or direct_ref
+                
+            Returns:
+                StructureDocDTO with full structure data (atoms, lattice if crystal, etc.)
+            """
+            from quantumvitas.api.types.online_search import StructureDocDTO
+            from quantumvitas.io.online_search import fetch_structure_from_optimade
+            from quantumvitas.io.online_cache import OnlineStructureCache
+            from quantumvitas.core.paths import get_qmatsuite_home_root
+            
+            # Use global cache location (not project-specific)
+            cache_dir = get_qmatsuite_home_root() / "cache" / "online_structures"
+            cache = OnlineStructureCache(cache_dir)
+            
+            # TODO (PR6): Replace with provider system integration
+            # For now, handle session_id + candidate_id case
+            if hasattr(ref, 'session_id') and ref.session_id and hasattr(ref, 'candidate_id') and ref.candidate_id:
+                # Get candidate from cache
+                candidates = cache.get_candidates(ref.session_id)
+                candidate = next((c for c in candidates if c.candidate_id == ref.candidate_id), None)
+                if not candidate:
+                    from quantumvitas.api.errors import NotFoundError
+                    raise NotFoundError(f"Candidate not found: {ref.candidate_id}")
+                
+                # Try to get structure from cache first
+                structure = cache.get_structure(ref.session_id, ref.candidate_id)
+                raw_data = {}
+                
+                # Fetch structure if needed (OPTIMADE case)
+                if structure is None and candidate.source == "optimade":
+                    # Extract optimade_base from session or candidate metadata
+                    session_info = cache.get_session_info(ref.session_id)
+                    if not session_info:
+                        from quantumvitas.api.errors import NotFoundError
+                        raise NotFoundError(f"Session not found: {ref.session_id}")
+                    
+                    # Parse optimade_base from source_summary
+                    optimade_base = None
+                    if "base=" in session_info.source_summary:
+                        optimade_base = session_info.source_summary.split("base=")[1]
+                    
+                    if not optimade_base:
+                        # Fallback to default
+                        from quantumvitas.io.online_search import OPTIMADE_DEFAULT_BASE
+                        optimade_base = OPTIMADE_DEFAULT_BASE
+                    
+                    from quantumvitas.io.online_search import fetch_structure_from_optimade
+                    structure, raw_data = fetch_structure_from_optimade(optimade_base, candidate.source_id)
+                    if not structure:
+                        from quantumvitas.api.errors import APIError
+                        raise APIError(f"Failed to fetch structure from OPTIMADE: {candidate.source_id}")
+                    
+                    # Cache the fetched structure
+                    rank = next((i for i, c in enumerate(candidates) if c.candidate_id == ref.candidate_id), 0)
+                    cache.add_candidate(ref.session_id, candidate, structure, rank)
+            else:
+                from quantumvitas.api.errors import APIError
+                raise APIError("Invalid structure reference: must provide session_id + candidate_id")
+            
+            # Convert to StructureDocDTO
+            from pymatgen.core import Structure as PMGStructure
+            if isinstance(structure, PMGStructure):
+                atoms = []
+                for site in structure:
+                    atoms.append({
+                        "element": str(site.specie),
+                        "coords": site.coords.tolist() if hasattr(site.coords, 'tolist') else list(site.coords),
+                    })
+                
+                lattice = structure.lattice.matrix.tolist() if structure.lattice else None
+                pbc = [True, True, True] if structure.lattice else [False, False, False]
+                
+                return StructureDocDTO(
+                    structure_type="crystal",
+                    formula=structure.composition.reduced_formula,
+                    atoms=atoms,
+                    lattice=lattice,
+                    pbc=pbc,
+                    provenance={"source": candidate.source, "source_id": candidate.source_id},
+                )
+            else:
+                from quantumvitas.api.errors import APIError
+                raise APIError(f"Unsupported structure type: {type(structure)}")
+        
+        @staticmethod
+        def list_providers(*, refresh_registry: bool = False) -> Any:
+            """
+            List available online structure providers.
+            
+            Temporary stub (PR0). Will be implemented in PR1.
+            
+            Args:
+                refresh_registry: If True, force refresh OPTIMADE provider registry cache
+                
+            Returns:
+                ProviderListDTO with optimade_providers, pubchem_enabled, materials_project_enabled
+            """
+            from quantumvitas.api.types.online_search import ProviderListDTO, ProviderInfoDTO
+            
+            # Temporary stub: return minimal provider list
+            # TODO (PR1): Implement registry fetching
+            return ProviderListDTO(
+                optimade_providers=[
+                    ProviderInfoDTO(
+                        id="mp",
+                        name="Materials Project",
+                        base_url="https://optimade.materialsproject.org",
+                        enabled=True,
+                        requires_api_key=False,
+                    ),
+                ],
+                pubchem_enabled=False,  # TODO (PR4): Enable when PubChem implemented
+                materials_project_enabled=False,  # TODO (PR5): Enable when MP native implemented
+                materials_project_has_key=False,
+            )
+        
+        @staticmethod
+        def update_online_sources(patch: Any) -> Any:
+            """
+            Update online structure source settings.
+            
+            Reuses existing settings update capability (set_settings in api.utils).
+            
+            Args:
+                patch: OnlineSourcesPatchDTO with fields to update
+                
+            Returns:
+                OnlineSourcesSettingsDTO with current settings after patch
+            """
+            from quantumvitas.api.utils import set_settings
+            from quantumvitas.api.types.online_search import (
+                OnlineSourcesSettingsDTO,
+                ProviderInfoDTO,
+                MaterialsProjectConfigDTO,
+            )
+            
+            # TODO (PR1): Implement settings schema extension
+            # For now, just return stub response
+            # TODO (PR6): Implement actual settings update
+            return OnlineSourcesSettingsDTO(
+                optimade_providers=[
+                    ProviderInfoDTO(
+                        id="mp",
+                        name="Materials Project",
+                        base_url="https://optimade.materialsproject.org",
+                        enabled=True,
+                        requires_api_key=False,
+                    ),
+                ],
+                pubchem_enabled=False,
+                materials_project=MaterialsProjectConfigDTO(enabled=False, has_key=False),
+                timeout_seconds=8.0,
+                max_results_per_provider=10,
+                max_total_results=50,
+            )
+
+    @property
+    def online_search(self) -> OnlineSearch:
+        """Access online structure search capabilities."""
+        return QVService.OnlineSearch
+
     # Calculation domain (PR5)
     class Calculation:
         """Calculation read capabilities."""

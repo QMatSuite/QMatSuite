@@ -64,15 +64,23 @@ class OnlineStructureCache:
     - Structures (full structure data as binary blobs)
     
     Uses MessagePack for binary serialization (fallback to pickle if unavailable).
+    
+    PR0: Cache location migrated to global user cache (~/.qmatsuite/cache/online_structures/).
     """
     
-    def __init__(self, cache_dir: Path):
+    def __init__(self, cache_dir: Path | None = None):
         """
         Initialize cache.
         
         Args:
-            cache_dir: Directory for cache (structures/cache/)
+            cache_dir: Directory for cache. If None, uses global cache location
+                      (~/.qmatsuite/cache/online_structures/).
         """
+        if cache_dir is None:
+            # PR0: Use global cache location (not project-specific)
+            from quantumvitas.core.paths import get_qmatsuite_home_root
+            cache_dir = get_qmatsuite_home_root() / "cache" / "online_structures"
+        
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         

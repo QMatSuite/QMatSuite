@@ -1681,37 +1681,9 @@ def reduce_formula(formula: str) -> str:
 # Online search utilities
 # =============================================================================
 
-def search_online_structures(
-    query: str,
-    max_results: int = 50,
-):
-    """
-    Search online structure databases.
-
-    Args:
-        query: Search query (formula or text)
-        max_results: Maximum number of results
-
-    Returns:
-        Tuple of (source_summary, candidates, structures, optimade_base)
-    """
-    from quantumvitas.io.online_search import search_online_structures as _search
-    return _search(query, max_results=max_results)
-
-
-def fetch_structure_from_optimade(optimade_base: str, source_id: str):
-    """
-    Fetch a structure from OPTIMADE API.
-
-    Args:
-        optimade_base: OPTIMADE API base URL
-        source_id: Structure source ID
-
-    Returns:
-        Tuple of (structure, raw_data)
-    """
-    from quantumvitas.io.online_search import fetch_structure_from_optimade as _fetch
-    return _fetch(optimade_base, source_id)
+# PR0: Removed search_online_structures and fetch_structure_from_optimade re-exports.
+# These functions are now accessed via QVService.OnlineSearch.* methods only.
+# This enforces Law H3: Online search is domain capability, not utility.
 
 
 def score_candidate(structure, source: str, query_reduced: str, raw_data: dict) -> tuple:

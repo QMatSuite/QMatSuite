@@ -55,9 +55,6 @@ from quantumvitas.api.utils import (
     find_path_context_from_pwd,
     canonicalize_structure,
     reduce_formula,
-    search_online_structures,
-    fetch_structure_from_optimade,
-    score_candidate,
     extract_provenance,
     set_settings,
 )
@@ -2147,53 +2144,82 @@ class QVDaemon:
         """
         Search online structures (OPTIMADE + COD).
         
+        PR0: Updated to call QVService.OnlineSearch.search_structures() (API facade).
+        
         Payload:
             query: str - Chemical formula (e.g., "Si", "MoS2")
             max_results: int - Maximum number of results (default: 10)
+            mode: str - Optional search mode: "crystal", "molecule", "auto" (default: "auto")
         """
-        from quantumvitas.api import QVService, CandidateSummary
+        from quantumvitas.api import QVService
+        from quantumvitas.api.types.online_search import StructureRefDTO
+        from quantumvitas.io.online_cache import OnlineStructureCache
         import uuid
-        import json
         
         query = self._require_str(payload, "query")
         max_results = payload.get("max_results", 10)
+        mode = payload.get("mode", "auto")
         
-        # Generate session ID
-        session_id = str(uuid.uuid4())
+        # PR0: Call API method (not kernel directly)
+        # Note: QVService.OnlineSearch methods are static, but we need a service instance
+        # for compatibility. Create a minimal service instance (project_root not needed for online search)
+        # Actually, OnlineSearch methods are static, so we can call them directly
+        result_dto = QVService.OnlineSearch.search_structures(
+            query=query,
+            mode=mode,
+            limit=max_results,
+        )
         
-        # Search online (returns optimade_base for 2-step fetch)
-        source_summary, candidates, structures, optimade_base = search_online_structures(query, max_results=max_results)
+        # Cache results using global cache (PR0: no project_root needed)
+        cache = OnlineStructureCache()  # Uses global cache location
         
-        # Cache results
-        project_root = self._require_path(payload, "project_root")
-        cache_dir = project_root / "structures" / "cache"
-        from quantumvitas.api.utils import OnlineStructureCache
-        cache = OnlineStructureCache(cache_dir)
+        # Store session in cache
+        source_summary = "+".join(result_dto.providers_queried) if result_dto.providers_queried else "none"
+        cache.create_session(result_dto.session_id, query, source_summary)
         
-        # Store optimade_base in source_summary if available
-        source_summary_with_base = source_summary
-        if optimade_base:
-            source_summary_with_base = f"{source_summary}|base={optimade_base}"
+        # Cache candidates (structures will be fetched on demand)
+        for rank, candidate_dto in enumerate(result_dto.candidates):
+            from quantumvitas.io.online_cache import CandidateSummary
+            candidate = CandidateSummary(
+                candidate_id=candidate_dto.candidate_id,
+                label=candidate_dto.label,
+                source=candidate_dto.source,
+                source_id=candidate_dto.source_id,
+                nsites=candidate_dto.nsites,
+                spacegroup=candidate_dto.spacegroup,
+                flags=candidate_dto.flags,
+                score=candidate_dto.score,
+            )
+            # OPTIMADE entries: store metadata only (structure fetched later)
+            cache.add_candidate_metadata_only(result_dto.session_id, candidate, rank, None)
         
-        cache.create_session(session_id, query, source_summary_with_base)
-        
-        # Cache candidates and structures (structures may be None for OPTIMADE)
-        for rank, (candidate, structure) in enumerate(zip(candidates, structures)):
-            if structure is not None:
-                # COD entry - cache structure now
-                cache.add_candidate(session_id, candidate, structure, rank)
-            else:
-                # OPTIMADE entry - store metadata only, structure fetched later
-                # Store optimade_base in candidate metadata
-                cache.add_candidate_metadata_only(session_id, candidate, rank, optimade_base)
-        
-        # Convert candidates to dict using dataclasses.asdict (standard serialization)
+        # Convert candidates to dict for RPC response
         from dataclasses import asdict
-        candidates_dict = [asdict(c) for c in candidates]
+        candidates_dict = [
+            {
+                "candidate_id": c.candidate_id,
+                "label": c.label,
+                "source": c.source,
+                "source_id": c.source_id,
+                "structure_type": c.structure_type,
+                "formula": c.formula,
+                "nsites": c.nsites,
+                "spacegroup": c.spacegroup,
+                "providers": c.providers,
+                "score": c.score,
+                "flags": c.flags,
+                "metadata": c.metadata,
+            }
+            for c in result_dto.candidates
+        ]
         
         return {
-            "session_id": session_id,
+            "session_id": result_dto.session_id,
             "candidates": candidates_dict,
+            "providers_queried": result_dto.providers_queried,
+            "partial": result_dto.partial,
+            "query": result_dto.query,
+            "mode": result_dto.mode,
         }
     
     def _handle_structure_get_online_candidate(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -2234,10 +2260,9 @@ class QVDaemon:
             f"[ONLINE] get_candidate trace={trace_id or 'none'} session={session_id} candidate={candidate_id}"
         )
         
-        # Load from cache
-        cache_dir = project_root / "structures" / "cache"
-        from quantumvitas.api.utils import OnlineStructureCache
-        cache = OnlineStructureCache(cache_dir)
+        # PR0: Use global cache (not project-specific)
+        from quantumvitas.io.online_cache import OnlineStructureCache
+        cache = OnlineStructureCache()  # Uses global cache location
         
         # Always get candidate first (needed for provenance building)
         candidates = cache.get_candidates(session_id)
@@ -2273,7 +2298,9 @@ class QVDaemon:
                 optimade_base = metadata.get("optimade_base") if metadata else None
                 
                 if optimade_base and candidate.source_id:
-                    # Fetch structure from OPTIMADE
+                    # PR0: Fetch structure from OPTIMADE (temporary: still using kernel function)
+                    # TODO (PR6): Replace with QVService.OnlineSearch.fetch_structure()
+                    from quantumvitas.io.online_search import fetch_structure_from_optimade
                     structure, optimade_raw_data = fetch_structure_from_optimade(optimade_base, candidate.source_id)
                     
                     if structure:
@@ -2282,6 +2309,9 @@ class QVDaemon:
                         session_info = cache.get_session_info(session_id)
                         query = session_info.query if session_info else ""
                         query_reduced = reduce_formula(query) if query else ""
+                        # PR0: Score candidate (temporary: still using kernel function)
+                        # TODO (PR6): Replace with provider system scoring
+                        from quantumvitas.io.online_search import score_candidate
                         score, flags = score_candidate(structure, "optimade", query_reduced, {})
                         candidate.score = score
                         candidate.flags = flags
