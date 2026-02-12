@@ -88,7 +88,6 @@ calculations:
     parameters:
       CONTROL:
         calculation: vc-relax
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         etot_conv_thr: 1.0e-05
         forc_conv_thr: 0.0001
       SYSTEM:

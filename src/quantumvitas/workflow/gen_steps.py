@@ -30,6 +30,8 @@ class GenStepRegistry:
         "wannierprep",
         "pw2wannier",
         "wannier",
+        # QE->QMCPACK interface
+        "pw2qmcpack",
         # Phonon
         "ph",  # ph.x uses "ph" not "phonon"
         "q2r",

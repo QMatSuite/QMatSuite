@@ -1,0 +1,63 @@
+case_id: diamond_wannier
+engine: qe
+title: Diamond sp3 Wannier functions (QE to W90 pipeline)
+description: >-
+  Full QE->Wannier90 composite pipeline for diamond sp3 Wannier functions.
+  SCF -> NSCF -> wannier90 -pp -> pw2wannier90 -> wannier90.
+  Based on Wannier90 Tutorial Example 5. The .win file is PARSED by the W90
+  engine parser into YAML params (not staged as raw file).
+workflow_tags:
+- scf
+- nscf
+- wannierprep
+- pw2wannier
+- wannier
+- composite_pipeline
+species:
+- C
+demo_eligible: true
+demo_slug: qe_diamond_wannier
+step_type_gen: scf
+step_type_spec: qe_scf
+required_engine: qe
+availability: open_source
+asset_policy: redistributable
+recommended_analysis: scf
+difficulty: intermediate
+subtitle: QE SCF -> NSCF -> W90 Wannierize
+tags:
+- wannier90
+- composite
+- C
+- diamond
+- tutorial
+multi_step: true
+steps:
+- step_type_gen: scf
+  step_type_spec: qe_scf
+  input_files:
+  - scf.in
+- step_type_gen: nscf
+  step_type_spec: qe_nscf
+  input_files:
+  - nscf.in
+- step_type_gen: wannierprep
+  step_type_spec: w90_wannierprep
+  input_files:
+  - diamond.win
+- step_type_gen: pw2wannier
+  step_type_spec: qe_pw2wannier
+  input_files:
+  - pw2wan.in
+- step_type_gen: wannier
+  step_type_spec: w90_wannier
+  input_files:
+  - diamond.win
+asset_requirements:
+  pseudopotentials:
+  - file: C.pz-vbc.UPF
+    element: C
+    source: resources/pseudo
+attribution:
+  source: Constructed for QMatSuite, based on Wannier90 Tutorial Example 5
+  license: MIT (QMatSuite)

@@ -27,10 +27,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "trajectory",
-    "run_ulid": "01KH8D0DN04NS9ADS560WC9S5N",
-    "calc_ulid": "01KH8D0DJMES4R41M6065HENVT",
+    "run_ulid": "01KH9VH6KKPBJPWB3SGSPFYQNY",
+    "calc_ulid": "01KH9VH6H31919WCHYE8MGBFAY",
     "step_ulids": [
-      "01KH8D0DJMES4R41M6065HENVV"
+      "01KH9VH6H31919WCHYE8MGBFAZ"
     ],
     "gen_steps": [
       "relax"
@@ -38,9 +38,9 @@
     "engine_name": "vasp",
     "source_files": [
       {
-        "path": "raw/01KH8D0DJMES4R41M6065HENVV/vasprun.xml",
+        "path": "raw/01KH9VH6H31919WCHYE8MGBFAZ/vasprun.xml",
         "size_bytes": 44413,
-        "mtime": 1770882350.1993895
+        "mtime": 1770931135.5313125
       }
     ],
     "parser_name": "vasp_trajectory",

@@ -88,7 +88,6 @@ calculations:
     parameters:
       CONTROL:
         calculation: scf
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/q-e-qe-6.4.1_2_MPICH/pseudo
       SYSTEM:
         ecutwfc: 20.0
     input_name: si.scf.in

@@ -46,6 +46,11 @@ class QmcpackEngine(Engine):
         """
         Generate qmc_input.xml and stage supporting files.
 
+        If qmc_input.xml already exists in working_dir (e.g., from the
+        inputformat materializer), skip regeneration — the existing file
+        was produced by the lossless roundtrip writer and is more faithful
+        to the original corpus input.
+
         Args:
             step: Step or StructureStepSpec object
             working_dir: Working directory (will be created if needed)
@@ -59,7 +64,19 @@ class QmcpackEngine(Engine):
 
         working_dir.mkdir(parents=True, exist_ok=True)
 
+        # If the inputformat materializer already generated qmc_input.xml,
+        # only stage supporting files and skip regeneration.
+        existing_xml = working_dir / "qmc_input.xml"
         params = getattr(step, "parameters", None) or {}
+        if existing_xml.exists() and existing_xml.stat().st_size > 100:
+            logger.info(
+                f"QMCPACK input already materialized at {existing_xml}, "
+                f"skipping engine writer. Staging supporting files only."
+            )
+            params_lower = {k.lower(): v for k, v in params.items()}
+            self._stage_supporting_files(params_lower, working_dir, calculation)
+            return
+
         step_type_spec = getattr(step, "step_type_spec", None) or ""
 
         # Build case-insensitive lookup (StepDoc may uppercase keys like "cell" -> "CELL")

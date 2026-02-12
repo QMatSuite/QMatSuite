@@ -26,10 +26,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "trajectory",
-    "run_ulid": "01KH8CNXC7PN6A17BJ1GW3FAD5",
-    "calc_ulid": "01KH8CNX9WCKQST4H7G96DK30W",
+    "run_ulid": "01KH9TXMPW6P00BS7TAZ9RPQN8",
+    "calc_ulid": "01KH9TXMMDKD655BRDKHZMR1KS",
     "step_ulids": [
-      "01KH8CNX9WCKQST4H7G96DK30X"
+      "01KH9TXMMDKD655BRDKHZMR1KT"
     ],
     "gen_steps": [
       "relax"
@@ -37,14 +37,14 @@
     "engine_name": "cp2k",
     "source_files": [
       {
-        "path": "raw/01KH8CNX9WCKQST4H7G96DK30X/cp2k_calc-pos-1.xyz",
+        "path": "raw/01KH9TXMMDKD655BRDKHZMR1KT/cp2k_calc-pos-1.xyz",
         "size_bytes": 358,
-        "mtime": 1770882010.2590964
+        "mtime": 1770930498.0894072
       },
       {
-        "path": "raw/01KH8CNX9WCKQST4H7G96DK30X/cp2k_calc-1.cell",
+        "path": "raw/01KH9TXMMDKD655BRDKHZMR1KT/cp2k_calc-1.cell",
         "size_bytes": 452,
-        "mtime": 1770882009.6051075
+        "mtime": 1770930497.4426084
       }
     ],
     "parser_name": "cp2k_trajectory",

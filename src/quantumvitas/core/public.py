@@ -14,6 +14,7 @@ from quantumvitas.core.resolution import (
 from quantumvitas.core.resources import (
     ResourceMeta, generate_resource_id, meta_from_name, slugify,
     ensure_relative_path, generate_unique_name_and_slug,
+    get_resources_dir,
 )
 # Project Utils
 from quantumvitas.core.project_utils import (

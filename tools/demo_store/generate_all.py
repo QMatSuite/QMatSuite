@@ -89,6 +89,7 @@ def generate_demo_from_existing(
     """
     from quantumvitas.demo_store.ulid_seed import deterministic_ulid
     from quantumvitas.demo_store.manifest import _compute_dir_checksum, GENERATOR_VERSION
+    from quantumvitas.demo_store.translator import _strip_managed_params
 
     with open(existing_demo_path) as f:
         existing = yaml.safe_load(f)
@@ -120,12 +121,18 @@ def generate_demo_from_existing(
         if old_struct_ulid and old_struct_ulid in old_to_new_struct:
             calc["structure_ulid"] = old_to_new_struct[old_struct_ulid]
 
-        # Step ULIDs
+        # Step ULIDs + strip managed keys
+        engine = calc.get("engine_family", case_data.get("engine", ""))
         for step in calc.get("steps", []):
             s_slug = step["meta"].get("slug", "step")
             step["meta"]["ulid"] = deterministic_ulid(
                 demo_slug, f"step:{c_slug}:{s_slug}"
             )
+            # Strip runtime-managed keys (prefix, outdir, etc.) from parameters
+            if "parameters" in step:
+                step["parameters"] = _strip_managed_params(
+                    step["parameters"], engine
+                )
 
     # Update gallery metadata
     tags = case_data.get("tags", case_data.get("workflow_tags", []))

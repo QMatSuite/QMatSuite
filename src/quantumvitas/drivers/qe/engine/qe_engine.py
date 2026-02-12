@@ -62,6 +62,8 @@ class QuantumEspressoEngine(Engine):
         "wannierprep": "wannier90.x",
         "pw2wannier": "pw2wannier90.x",
         "wannier": "wannier90.x",
+        # QMCPACK interface
+        "pw2qmcpack": "pw2qmcpack.x",
     }
     
     # Mapping of QE modules to their primary namelists.

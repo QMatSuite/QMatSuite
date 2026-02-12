@@ -1,0 +1,6 @@
+&inputpp
+   outdir = './'
+   prefix = 'cu'
+   seedname = 'copper'
+   spin_component = 'none'
+/

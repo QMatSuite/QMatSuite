@@ -57,7 +57,20 @@ def _parse_qe_text(text: str) -> dict[str, Any]:
         except Exception:
             pass  # If structure extraction fails, return None
 
-    return {"params": params, "structure": structure}
+    # Extract QE cards (K_POINTS, etc.) — needed for faithful roundtrip
+    cards: dict[str, dict[str, Any]] = {}
+    kpoints_card = qe_input.get_card(QECardType.K_POINTS)
+    if kpoints_card and kpoints_card.data:
+        kp: dict[str, Any] = {}
+        if kpoints_card.option:
+            kp["option"] = kpoints_card.option
+        kp["data"] = kpoints_card.data
+        cards["K_POINTS"] = kp
+
+    result: dict[str, Any] = {"params": params, "structure": structure}
+    if cards:
+        result["cards"] = cards
+    return result
 
 
 def _write_qe_text(fragment: dict[str, Any]) -> str:

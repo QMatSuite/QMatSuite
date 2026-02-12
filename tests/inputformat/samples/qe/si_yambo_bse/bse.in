@@ -1,0 +1,30 @@
+optics
+bss
+bse
+em1s
+dipoles
+Chimod= "HARTREE"
+BSEmod= "resonant"
+BSSmod= "h"
+BSKmod= "HARTREE"
+% BndsRnXs
+  1 | 8 |
+%
+NGsBlkXs= 1 RL
+BSENGexx= 51 RL
+BSENGBlk= 1 RL
+% BSEBands
+  3 | 6 |
+%
+% BEnRange
+  0.0 | 10.0 | eV
+%
+% BDmRange
+  0.1 | 0.1 | eV
+%
+BEnSteps= 200
+% LongDrXs
+ 1.000000 | 0.000000 | 0.000000 |
+%
+BSSProp= "abs"
+BSSHayTrs= -0.02

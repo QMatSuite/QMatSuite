@@ -48,7 +48,16 @@ class QERecipe(BaseRecipe):
 
             # Get step type info from registry
             step_type = step.step_type_spec
-            spec = registry.get(str(step_type)) if step_type else None
+            spec = None
+            if step_type:
+                # Registry.get() takes step_type_gen, not spec.
+                # First try gen_from() to extract gen from spec.
+                from quantumvitas.workflow.step_type_convert import gen_from
+                try:
+                    gen = gen_from(str(step_type))
+                    spec = registry.get(gen)
+                except Exception:
+                    spec = registry.get(str(step_type))
 
             # Determine executable and input file
             if spec:
@@ -82,7 +91,12 @@ class QERecipe(BaseRecipe):
                 deps=[],  # Conservative: no explicit deps, use prefix selection
                 fingerprint=fingerprint,
                 metadata={
-                    "engine": "qe",
+                    # W90 companion steps (wannierprep, wannier) use QE binaries
+                # (wannier90.x from QE's external/) and are run by the QE
+                # handler.  Route them to "qe" so the executor dispatches
+                # correctly instead of sending them to the standalone W90
+                # handler which expects prebaked .amn/.mmn/.eig.
+                "engine": "qe" if gen_type in ("wannierprep", "wannier", "pw2wannier") else (spec.engine if spec else "qe"),
                     "step_type_spec": spec.step_type_spec if spec else None,
                     "step_type_gen": gen_type,
                     "scratch_dir": calc_raw_dir / "outdir",

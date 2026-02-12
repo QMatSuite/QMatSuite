@@ -216,41 +216,53 @@ def _handle_calculation(
     input_file = f"{gen_type}.in"
     output_dir = f"{gen_type}_output"
 
-    if gen_type == "gw":
-        gw_params = GWParams(
-            polarization_bands=tuple(params.get("polarization_bands", (1, 50))),
-            self_energy_bands=tuple(params.get("self_energy_bands", (1, 50))),
-            ngs_blk_xp=params.get("ngs_blk_xp", 1),
-            kpt_range=tuple(params.get("kpt_range", (1, 1))),
-            band_range=tuple(params.get("band_range", (1, 8))),
-            dyson_solver=params.get("dyson_solver", "n"),
-            gw_terminator=params.get("gw_terminator", "none"),
-        )
-        write_gw_input(working_dir / input_file, gw_params)
-    elif gen_type == "bse":
-        bse_params = BSEParams(
-            screening_bands=tuple(params.get("screening_bands", (1, 20))),
-            bse_bands=tuple(params.get("bse_bands", (1, 8))),
-            energy_steps=params.get("energy_steps", 200),
-            bsk_mod=params.get("bsk_mod", "SEX"),
-            bss_mod=params.get("bss_mod", "h"),
-        )
-        # Optionally use GW QP corrections
-        qp_db = find_gw_qp_db(calc_raw_dir)
-        if qp_db is not None:
-            bse_params.qp_db = f"E < {qp_db}"
-        write_bse_input(working_dir / input_file, bse_params)
-    elif gen_type == "optics":
-        ip_params = IPOpticsParams(
-            bands=tuple(params.get("bands", (1, 50))),
-            energy_steps=params.get("energy_steps", 100),
-            chi_mod=params.get("chi_mod", "IP"),
-        )
-        write_ip_optics_input(working_dir / input_file, ip_params)
+    # If the materializer already created the input file with canonical yambo
+    # params (via inputformat writer), use it directly instead of regenerating
+    # from semantic keys.  Canonical-form files contain yambo keywords like
+    # "Chimod", "BSEBands", "BndsRnXp" which the writer.py dataclasses do
+    # not understand.
+    materialized_input = working_dir / input_file
+    if not materialized_input.exists() or materialized_input.stat().st_size == 0:
+        if gen_type == "gw":
+            gw_params = GWParams(
+                polarization_bands=tuple(params.get("polarization_bands", (1, 50))),
+                self_energy_bands=tuple(params.get("self_energy_bands", (1, 50))),
+                ngs_blk_xp=params.get("ngs_blk_xp", 1),
+                kpt_range=tuple(params.get("kpt_range", (1, 1))),
+                band_range=tuple(params.get("band_range", (1, 8))),
+                dyson_solver=params.get("dyson_solver", "n"),
+                gw_terminator=params.get("gw_terminator", "none"),
+            )
+            write_gw_input(working_dir / input_file, gw_params)
+        elif gen_type == "bse":
+            bse_params = BSEParams(
+                screening_bands=tuple(params.get("screening_bands", (1, 20))),
+                bse_bands=tuple(params.get("bse_bands", (1, 8))),
+                energy_steps=params.get("energy_steps", 200),
+                bsk_mod=params.get("bsk_mod", "SEX"),
+                bss_mod=params.get("bss_mod", "h"),
+            )
+            # Optionally use GW QP corrections
+            qp_db = find_gw_qp_db(calc_raw_dir)
+            if qp_db is not None:
+                bse_params.qp_db = f"E < {qp_db}"
+            write_bse_input(working_dir / input_file, bse_params)
+        elif gen_type == "optics":
+            ip_params = IPOpticsParams(
+                bands=tuple(params.get("bands", (1, 50))),
+                energy_steps=params.get("energy_steps", 100),
+                chi_mod=params.get("chi_mod", "IP"),
+            )
+            write_ip_optics_input(working_dir / input_file, ip_params)
+        else:
+            return JobResult(
+                job_id=job.id, success=False,
+                error=f"Unknown yambo gen type: {gen_type}",
+            )
     else:
-        return JobResult(
-            job_id=job.id, success=False,
-            error=f"Unknown yambo gen type: {gen_type}",
+        logger.info(
+            "Using materialized input file %s (skipping handler regeneration)",
+            materialized_input,
         )
 
     # Execute yambo

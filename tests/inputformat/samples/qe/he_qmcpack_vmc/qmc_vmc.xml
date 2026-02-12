@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<simulation>
+  <project id="he" series="0">
+    <application name="qmcpack" role="molecu" class="serial" version="1.0"/>
+  </project>
+
+  <random seed="13"/>
+
+  <qmcsystem>
+    <simulationcell>
+      <parameter name="lattice" units="bohr">
+        20.0  0.0  0.0
+        0.0  20.0  0.0
+        0.0  0.0  20.0
+      </parameter>
+      <parameter name="bconds">n n n</parameter>
+    </simulationcell>
+
+    <particleset name="ion0" size="1">
+      <group name="He" size="1">
+        <attrib name="position" datatype="posArray">
+          0.0  0.0  0.0
+        </attrib>
+      </group>
+    </particleset>
+
+    <particleset name="e" random="yes">
+      <group name="u" size="1">
+        <parameter name="charge">-1</parameter>
+      </group>
+      <group name="d" size="1">
+        <parameter name="charge">-1</parameter>
+      </group>
+    </particleset>
+
+    <wavefunction name="psi0" target="e">
+      <determinantset type="MO" key="STO" transform="no" source="ion0">
+        <basisset>
+          <atomicBasisSet type="STO" elementType="He">
+            <basisGroup rid="R0" n="1" l="0" type="Slater">
+              <radfunc exponent="2.0"/>
+            </basisGroup>
+          </atomicBasisSet>
+        </basisset>
+        <slaterdeterminant>
+          <determinant id="updet" size="1">
+            <occupation mode="ground"/>
+          </determinant>
+          <determinant id="downdet" size="1">
+            <occupation mode="ground"/>
+          </determinant>
+        </slaterdeterminant>
+      </determinantset>
+      <jastrow name="Jee" type="Two-Body" function="pade">
+        <correlation speciesA="u" speciesB="d">
+          <var id="B" name="B">0.821683</var>
+        </correlation>
+      </jastrow>
+    </wavefunction>
+
+    <hamiltonian name="h0" type="generic" target="e">
+      <pairpot name="ElecElec" type="coulomb" source="e" target="e"/>
+      <pairpot name="Coulomb" type="coulomb" source="ion0" target="e"/>
+    </hamiltonian>
+  </qmcsystem>
+
+  <qmc method="vmc" move="pbyp">
+    <parameter name="blocks">100</parameter>
+    <parameter name="steps">50</parameter>
+    <parameter name="warmupSteps">50</parameter>
+    <parameter name="timestep">0.1</parameter>
+  </qmc>
+</simulation>

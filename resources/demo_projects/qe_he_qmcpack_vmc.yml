@@ -1,0 +1,180 @@
+version: 1
+project:
+  meta:
+    ulid: 01KRZ41Y032PNT319D26HENTRS
+    name: He atom QE to QMCPACK VMC pipeline
+    slug: he-atom-qe-to-qmcpack-vmc-pipeline
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KD3JDB2PVWNJX64KDR8PTTP9
+    name: He
+    slug: he
+    path: structures/he.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 10.5835442184
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 10.5835442184
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 10.5835442184
+      pbc:
+      - true
+      - true
+      - true
+      a: 10.5835442184
+      b: 10.5835442184
+      c: 10.5835442184
+      alpha: 90.0
+      beta: 90.0
+      gamma: 90.0
+      volume: 1185.4776918915543
+    properties: {}
+    sites:
+    - species:
+      - element: He
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: He
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+calculations:
+- meta:
+    ulid: 01K9Q3ZK2KXSM3BGV5454K6M3P
+    name: He atom QE to QMCPACK VMC pipeline
+    slug: he-atom-qe-to-qmcpack-vmc-pipeline
+    path: calculations/he-atom-qe-to-qmcpack-vmc-pipeline
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: qe
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/he-atom-qe-to-qmcpack-vmc-pipeline/steps/scf.step.yaml
+      kind: step
+      ulid: 01K6Q3SZEDHDNV1QTZ4FG6X2QB
+    parameters:
+      CONTROL:
+        calculation: scf
+      SYSTEM:
+        ibrav: 1
+        celldm(1): 20.0
+        nat: 1
+        ntyp: 1
+        ecutwfc: 80.0
+        nosym: true
+      ELECTRONS:
+        conv_thr: 1.0e-10
+    step_type_spec: qe_scf
+  - meta:
+      name: pw2qmcpack
+      slug: pw2qmcpack
+      path: calculations/he-atom-qe-to-qmcpack-vmc-pipeline/steps/pw2qmcpack.step.yaml
+      kind: step
+      ulid: 01K8G39MX601835Y456SJ7XKWY
+    parameters:
+      INPUTPP:
+        write_psir: false
+    step_type_spec: qe_pw2qmcpack
+  - meta:
+      name: vmc
+      slug: vmc
+      path: calculations/he-atom-qe-to-qmcpack-vmc-pipeline/steps/vmc.step.yaml
+      kind: step
+      ulid: 01K4MQ3Z4A6M4WZK3FYJPR1FZK
+    parameters:
+      qmc_project_id: he
+      series: '0'
+      random_seed: '13'
+      bconds: n n n
+      electrons:
+        u: 1
+        d: 1
+      _wavefunction_xml: "<wavefunction name=\"psi0\" target=\"e\">\n      <determinantset type=\"MO\" key=\"STO\" transform=\"\
+        no\" source=\"ion0\">\n        <basisset>\n          <atomicBasisSet type=\"STO\" elementType=\"He\">\n          \
+        \  <basisGroup rid=\"R0\" n=\"1\" l=\"0\" type=\"Slater\">\n              <radfunc exponent=\"2.0\" />\n         \
+        \   </basisGroup>\n          </atomicBasisSet>\n        </basisset>\n        <slaterdeterminant>\n          <determinant\
+        \ id=\"updet\" size=\"1\">\n            <occupation mode=\"ground\" />\n          </determinant>\n          <determinant\
+        \ id=\"downdet\" size=\"1\">\n            <occupation mode=\"ground\" />\n          </determinant>\n        </slaterdeterminant>\n\
+        \      </determinantset>\n      <jastrow name=\"Jee\" type=\"Two-Body\" function=\"pade\">\n        <correlation speciesA=\"\
+        u\" speciesB=\"d\">\n          <var id=\"B\" name=\"B\">0.821683</var>\n        </correlation>\n      </jastrow>\n\
+        \    </wavefunction>\n\n    "
+      wavefunction:
+        name: psi0
+        target: e
+        determinantset:
+          type: MO
+          key: STO
+          source: ion0
+          transform: 'no'
+        jastrow:
+        - name: Jee
+          type: Two-Body
+          function: pade
+      _hamiltonian_xml: "<hamiltonian name=\"h0\" type=\"generic\" target=\"e\">\n      <pairpot name=\"ElecElec\" type=\"\
+        coulomb\" source=\"e\" target=\"e\" />\n      <pairpot name=\"Coulomb\" type=\"coulomb\" source=\"ion0\" target=\"\
+        e\" />\n    </hamiltonian>\n  "
+      hamiltonian:
+        name: h0
+        pairpots:
+        - name: ElecElec
+          type: coulomb
+        - name: Coulomb
+          type: coulomb
+      qmc:
+      - method: vmc
+        move: pbyp
+        blocks: '100'
+        steps: '50'
+        warmupSteps: '50'
+        timestep: '0.1'
+    step_type_spec: qmcpack_vmc
+  structure_ulid: 01KD3JDB2PVWNJX64KDR8PTTP9
+  species_map:
+    He:
+      pseudopot: He_ONCV_PBE_sr.upf
+      pseudo_basename: He_ONCV_PBE_sr.upf
+      pseudo_sha256: 2a1ec0e8dc7e4586247bcfb361e00acda38bf6f37fde857268993524eef65f8d
+      pseudo_sha_family: 8ca4149d370148caa1f767c0390a628c842500acd08ef14496f1e467946b6862
+pseudo:
+  directory: pseudo
+  files:
+  - He_ONCV_PBE_sr.upf
+meta:
+  ulid: qe_he_qmcpack_vmc
+  title: He atom QE to QMCPACK VMC pipeline
+  subtitle: QE SCF -> pw2qmcpack -> QMCPACK VMC
+  tags:
+  - qmcpack
+  - composite
+  - He
+  - vmc
+  - atom
+  recommended_analysis: energy
+  difficulty: intermediate
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: qe
+  corpus_case_id: he_qmcpack_vmc
+  corpus_checksum: fea9b4149d57c51f8e7cc017acf6838464fbcc892f6e50bf6cc7013ccd11f2e9

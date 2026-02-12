@@ -1,0 +1,23 @@
+ &control
+    calculation = 'scf'
+    restart_mode = 'from_scratch'
+    prefix = 'he'
+    pseudo_dir = './pseudo/'
+    outdir = './'
+ /
+ &system
+    ibrav = 1
+    celldm(1) = 20.0
+    nat = 1
+    ntyp = 1
+    ecutwfc = 80.0
+    nosym = .true.
+ /
+ &electrons
+    conv_thr = 1.0d-10
+ /
+ATOMIC_SPECIES
+ He 4.003  He_ONCV_PBE_sr.upf
+ATOMIC_POSITIONS {bohr}
+He  0.0  0.0  0.0
+K_POINTS {gamma}

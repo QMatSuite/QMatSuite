@@ -414,11 +414,23 @@ def write_qmcpack_text(fragment: dict[str, Any]) -> str:
     if random_seed:
         ET.SubElement(root, "random", seed=str(random_seed))
 
-    # --- Simulationcell ---
+    # --- qmcsystem container ---
+    # QMCPACK requires simulationcell, particlesets, wavefunction, and
+    # hamiltonian to live inside a <qmcsystem> element.
     lattice = structure.get("lattice", [])
     has_cell = lattice or params.get("bconds") or params.get("rs")
-    if has_cell:
+    # Always create qmcsystem when we have cell/particles/wavefunction
+    has_particles = structure.get("species") and (
+        structure.get("frac_coords") or structure.get("cart_coords")
+    )
+    has_wf_or_ham = params.get("_wavefunction_xml") or params.get("_hamiltonian_xml")
+    if has_cell or has_particles or has_wf_or_ham:
         qmcsystem = ET.SubElement(root, "qmcsystem")
+    else:
+        qmcsystem = root  # fallback: attach directly to root
+
+    # --- Simulationcell ---
+    if has_cell:
         sc = ET.SubElement(qmcsystem, "simulationcell")
         if lattice:
             lat_el = ET.SubElement(sc, "parameter", name="lattice")
@@ -448,15 +460,31 @@ def write_qmcpack_text(fragment: dict[str, Any]) -> str:
     is_fractional = "frac_coords" in structure
     ion_pset_name = params.get("_ion_particleset_name", "ion0")
     if species and coords:
-        ions = ET.SubElement(root, "particleset", name=ion_pset_name,
+        ions = ET.SubElement(qmcsystem, "particleset", name=ion_pset_name,
                              size=str(len(coords)))
         # Group definitions
         unique_species: list[str] = []
         for sp in species:
             if sp not in unique_species:
                 unique_species.append(sp)
+        species_zval = params.get("_species_zval", {})
         for sp in unique_species:
-            ET.SubElement(ions, "group", name=sp)
+            grp_el = ET.SubElement(ions, "group", name=sp)
+            # QMCPACK requires charge/valence on ion groups for PP matching.
+            # Use zval from PP (extracted by _inject_species_zval) when
+            # available, otherwise fall back to full nuclear charge Z.
+            try:
+                from pymatgen.core.periodic_table import Element
+                z = Element(sp).Z
+                zval = species_zval.get(sp, z)
+                charge_el = ET.SubElement(grp_el, "parameter", name="charge")
+                charge_el.text = f"{zval:.6f}"
+                valence_el = ET.SubElement(grp_el, "parameter", name="valence")
+                valence_el.text = f"{zval:.6f}"
+                an_el = ET.SubElement(grp_el, "parameter", name="atomicnumber")
+                an_el.text = str(z)
+            except Exception:
+                pass
         # Flat position attrib
         pos_el = ET.SubElement(ions, "attrib", name="position",
                                datatype="posArray")
@@ -473,9 +501,11 @@ def write_qmcpack_text(fragment: dict[str, Any]) -> str:
             ionid_el.text = " " + " ".join(species) + " "
 
     # --- Electron particleset ---
-    electrons = params.get("electrons", {})
+    # StepDoc._normalize_sections() uppercases dict keys matching QE namelist
+    # names, so "electrons" may appear as "ELECTRONS" in the step YAML.
+    electrons = params.get("electrons") or params.get("ELECTRONS", {})
     if electrons:
-        e_pset = ET.SubElement(root, "particleset", name="e", random="yes")
+        e_pset = ET.SubElement(qmcsystem, "particleset", name="e", random="yes")
         if species and coords:
             e_pset.set("randomsrc", ion_pset_name)
         for gname, gsize in electrons.items():
@@ -487,13 +517,13 @@ def write_qmcpack_text(fragment: dict[str, Any]) -> str:
     wf_xml = params.get("_wavefunction_xml")
     if wf_xml:
         wf_el = ET.fromstring(wf_xml)
-        root.append(wf_el)
+        qmcsystem.append(wf_el)
 
     # --- Hamiltonian ---
     ham_xml = params.get("_hamiltonian_xml")
     if ham_xml:
         ham_el = ET.fromstring(ham_xml)
-        root.append(ham_el)
+        qmcsystem.append(ham_el)
 
     # --- QMC blocks ---
     qmc_blocks = params.get("qmc", [])

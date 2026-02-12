@@ -1,0 +1,25 @@
+HF_and_locXC
+gw0
+ppa
+dyson
+em1d
+el_el_corr
+EXXRLvcs= 5961 RL
+VXCRLvcs= 5961 RL
+Chimod= "HARTREE"
+% BndsRnXp
+  1 | 50 |
+%
+NGsBlkXp= 1 RL
+% LongDrXp
+ 1.000000 | 0.000000 | 0.000000 |
+%
+PPAPntXp= 27.21138 eV
+% GbsRnge
+  1 | 50 |
+%
+GTermKind= "none"
+DysSolver= "n"
+% QPkrange
+ 1 | 10 | 3 | 6 |
+%

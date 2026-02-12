@@ -1,0 +1,65 @@
+case_id: copper_wannier
+engine: qe
+title: Copper Wannier functions with disentanglement (QE to W90 pipeline)
+description: >-
+  Full QE->Wannier90 composite pipeline for copper with disentanglement.
+  SCF -> NSCF -> wannier90 -pp -> pw2wannier90 -> wannier90.
+  Based on Wannier90 Tutorial Example 6. Tests disentanglement parameters
+  (dis_win_max, dis_froz_max, dis_num_iter) and kpoint_path for band
+  interpolation. The .win file is PARSED by the W90 engine parser.
+workflow_tags:
+- scf
+- nscf
+- wannierprep
+- pw2wannier
+- wannier
+- disentanglement
+- composite_pipeline
+species:
+- Cu
+demo_eligible: true
+demo_slug: qe_copper_wannier
+step_type_gen: scf
+step_type_spec: qe_scf
+required_engine: qe
+availability: open_source
+asset_policy: redistributable
+recommended_analysis: scf
+difficulty: intermediate
+subtitle: QE SCF -> NSCF -> W90 Disentangle + Wannierize
+tags:
+- wannier90
+- composite
+- Cu
+- disentanglement
+- tutorial
+multi_step: true
+steps:
+- step_type_gen: scf
+  step_type_spec: qe_scf
+  input_files:
+  - scf.in
+- step_type_gen: nscf
+  step_type_spec: qe_nscf
+  input_files:
+  - nscf.in
+- step_type_gen: wannierprep
+  step_type_spec: w90_wannierprep
+  input_files:
+  - copper.win
+- step_type_gen: pw2wannier
+  step_type_spec: qe_pw2wannier
+  input_files:
+  - pw2wan.in
+- step_type_gen: wannier
+  step_type_spec: w90_wannier
+  input_files:
+  - copper.win
+asset_requirements:
+  pseudopotentials:
+  - file: Cu.pz-n-van_ak.UPF
+    element: Cu
+    source: resources/pseudo
+attribution:
+  source: Constructed for QMatSuite, based on Wannier90 Tutorial Example 6
+  license: MIT (QMatSuite)
