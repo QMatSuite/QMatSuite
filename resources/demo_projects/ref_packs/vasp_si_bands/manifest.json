@@ -1,17 +1,17 @@
 {
   "demo_slug": "vasp_si_bands",
   "engine": "vasp",
-  "generated_at": "2026-02-12T21:18:48.218435+00:00",
+  "generated_at": "2026-02-12T23:16:54.171796+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "d53c1070ac6c4a996afe94e1bcf9f2fd38c779066e57b5da254b7ccd2b0f337f"
+      "sha256": "ad84f523f4fbb077ebdede1ef6611a32cdaec1ddd8e0bd94222547c8bd6a3680"
     },
     "bands": {
       "file": "bands.json",
-      "sha256": "094f349043f5b57d0254ffa03674dc292bfde7aa00ffbbe29be519c611f9bcfa"
+      "sha256": "b9a1d5fff73e4203ea9e56a8c183c1aafb951002123d5b3b3913ed2876286f90"
     }
   }
 }

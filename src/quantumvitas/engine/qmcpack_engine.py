@@ -82,6 +82,48 @@ class QmcpackEngine(Engine):
         # Build case-insensitive lookup (StepDoc may uppercase keys like "cell" -> "CELL")
         params_lower = {k.lower(): v for k, v in params.items()}
 
+        # If params contain preserved XML subtrees (_wavefunction_xml), use the
+        # lossless roundtrip writer which correctly handles inline analytic
+        # wavefunctions (STO, Gaussian LCAO).  The legacy writer below only
+        # supports HDF5/bspline wavefunctions from QE→pw2qmcpack workflows.
+        if params_lower.get("_wavefunction_xml"):
+            from quantumvitas.drivers.qmcpack.io.qmcpack_xml import write_qmcpack_text
+
+            # Build structure dict from calculation's structure file.
+            # Structure JSON uses QMatSuite envelope: {"__qv_meta__": ..., "structure": {pymatgen dict}}
+            structure_dict: dict = {}
+            try:
+                struct_ref = calculation.structure
+                if struct_ref is not None and hasattr(struct_ref, "absolute_path"):
+                    import json
+                    envelope = json.loads(struct_ref.absolute_path.read_text())
+                    struct_json = envelope.get("structure", envelope)
+                    from pymatgen.core import Structure, Molecule
+                    cls_name = struct_json.get("@class", "")
+                    if cls_name == "Molecule":
+                        mol = Molecule.from_dict(struct_json)
+                        structure_dict = {
+                            "species": [str(s) for s in mol.species],
+                            "cart_coords": mol.cart_coords.tolist(),
+                        }
+                    else:
+                        struct = Structure.from_dict(struct_json)
+                        structure_dict = {
+                            "lattice": struct.lattice.matrix.tolist(),
+                            "species": [str(s) for s in struct.species],
+                            "frac_coords": struct.frac_coords.tolist(),
+                        }
+            except Exception as e:
+                logger.warning(f"Could not extract structure for roundtrip writer: {e}")
+
+            fragment = {"params": params, "structure": structure_dict}
+            xml_text = write_qmcpack_text(fragment)
+            output_path = working_dir / "qmc_input.xml"
+            output_path.write_text(xml_text)
+            logger.info(f"Generated QMCPACK input via roundtrip writer: {output_path}")
+            self._stage_supporting_files(params_lower, working_dir, calculation)
+            return
+
         # Extract QMC-specific parameters
         cell_params = params_lower.get("cell", {})
         species_params = params_lower.get("species", [])

@@ -138,6 +138,34 @@ imported directly from `quantumvitas.core.driver_registry` and
 **Fix**: Updated golden fixture count from 53 to 52 in
 `tests/fixtures/golden_0873ebf/daemon/list_demo_projects.json`.
 
+### Bug 10: QMCPACK Standalone Demos Broken (Legacy Writer vs Roundtrip Writer)
+
+**Symptom**: `qmcpack_he_vmc` and `qmcpack_h2_vmc` fail with QMCPACK fatal error
+"Failed in figuring out the total number of particles".
+
+**Root cause**: `QmcpackEngine.materialize_inputs()` always used the legacy writer
+(`drivers/qmcpack/writer.py`) which only supports HDF5/bspline wavefunctions from
+QE->pw2qmcpack workflows. The standalone QMCPACK demos use inline analytic
+wavefunctions (STO, Gaussian LCAO) stored as preserved XML subtrees
+(`_wavefunction_xml`, `_hamiltonian_xml`). The legacy writer cannot handle these
+and produces XML without ion particleset, causing QMCPACK to crash.
+
+**Fix**: Added roundtrip writer dispatch in `qmcpack_engine.py`:
+1. When `_wavefunction_xml` is present in params, route to `write_qmcpack_text()`
+   from `drivers/qmcpack/io/qmcpack_xml.py` (the lossless roundtrip writer)
+2. Extract structure from `calculation.structure` (a `StructureRef` with
+   `absolute_path` pointing to a JSON file)
+3. Handle QMatSuite structure envelope format: unwrap
+   `{"__qv_meta__": ..., "structure": {pymatgen dict}}` before creating
+   pymatgen Structure/Molecule objects
+4. Build structure dict (`{species, cart_coords}` for molecules,
+   `{lattice, species, frac_coords}` for crystals)
+5. Pass `{"params": params, "structure": structure_dict}` to roundtrip writer
+
+**Result**: Both standalone demos now pass:
+- `qmcpack_he_vmc`: 0.7s (NO_ANALYSIS)
+- `qmcpack_h2_vmc`: 2.0s (NO_ANALYSIS)
+
 ## Engine Binaries Used
 
 | Engine | Binary Path | Version |
@@ -166,6 +194,16 @@ imported directly from `quantumvitas.core.driver_registry` and
 | `tests/fixtures/golden_0873ebf/daemon/list_demo_projects.json` | Count 53 -> 52 |
 | `tests/inputformat/samples/qe/si_yambo_bse/bse.in` | BSKmod SEX -> HARTREE |
 | `tests/inputformat/samples/corpus_index.yaml` | 6 new entries, 7 demoted |
+| `src/quantumvitas/engine/qmcpack_engine.py` | Roundtrip writer dispatch for preserved XML wavefunctions |
+
+## Final Demo Sweep Results
+
+**52 demos total: 36 OK, 16 NO_ANALYSIS, 0 FAILED**
+
+All demos that have analysis parsers wired produce correct output. The 16
+NO_ANALYSIS demos (GPAW, Psi4, PySCF, Gaussian, ORCA, standalone QMCPACK)
+run successfully but don't have output parsers wired yet — this is expected
+and tracked separately from this task.
 
 ## Known Limitations
 
@@ -186,4 +224,6 @@ imported directly from `quantumvitas.core.driver_registry` and
 - [x] Yambo setup step has no input files (p2y runs internally)
 - [x] pytest fully green: 5459 passed, 0 failed, 30 skipped
 - [x] Demo generation succeeds: 52 demos
-- [x] All 9 test failures from regression resolved
+- [x] All 10 bugs found and fixed (9 regressions + 1 QMCPACK standalone)
+- [x] Full demo sweep: 52 demos, 0 FAILED (36 OK + 16 NO_ANALYSIS)
+- [x] Standalone QMCPACK demos pass: he_vmc (0.7s) + h2_vmc (2.0s)
