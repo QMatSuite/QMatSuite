@@ -18,6 +18,314 @@ import type { QEDetectionResult, EnvironmentInfo, EngineFamilyInfo } from '../..
 import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './SettingsPanel.css';
 
+// Online Structures Settings Section Component
+interface OnlineStructuresSettingsSectionProps {
+  qv: ReturnType<typeof useQVClient>;
+}
+
+function OnlineStructuresSettingsSection({ qv }: OnlineStructuresSettingsSectionProps) {
+  const [providers, setProviders] = useState<Array<{
+    provider_key: string;
+    name: string;
+    enabled: boolean;
+    base_url?: string | null;
+    structure_count?: number | null;
+    requires_api_key: boolean;
+  }>>([]);
+  const [pubchemEnabled, setPubchemEnabled] = useState(true);
+  const [materialsProjectEnabled, setMaterialsProjectEnabled] = useState(false);
+  const [materialsProjectHasKey, setMaterialsProjectHasKey] = useState(false);
+  const [mpApiKey, setMpApiKey] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Load providers on mount
+  useEffect(() => {
+    const loadProviders = async () => {
+      if (!qv) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await qv.call('structure_list_providers', {});
+        if (response.ok && response.data) {
+          setProviders(response.data.optimade_providers || []);
+          setPubchemEnabled(response.data.pubchem_enabled ?? true);
+          setMaterialsProjectEnabled(response.data.materials_project_enabled ?? false);
+          setMaterialsProjectHasKey(response.data.materials_project_has_key ?? false);
+        } else {
+          setError(response.error?.message || 'Failed to load providers');
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to load providers');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadProviders();
+  }, [qv]);
+  
+  const handleToggleProvider = useCallback(async (providerId: string, enabled: boolean) => {
+    if (!qv || isSaving) return;
+    
+    setIsSaving(true);
+    setError(null);
+    
+    try {
+      const currentProviders = providers.map(p => ({ provider_key: p.provider_key, enabled: p.enabled }));
+      const updatedProviders = currentProviders.map(p => 
+        p.provider_key === providerId ? { ...p, enabled } : p
+      );
+      
+      const response = await qv.call('structure_update_online_sources', {
+        patch: {
+          optimade_providers: updatedProviders,
+        },
+      });
+      
+      if (response.ok && response.data) {
+        setProviders(response.data.settings.optimade_providers || []);
+        setPubchemEnabled(response.data.settings.pubchem_enabled);
+        setMaterialsProjectEnabled(response.data.settings.materials_project.enabled);
+        setMaterialsProjectHasKey(response.data.settings.materials_project.has_key);
+      } else {
+        setError(response.error?.message || 'Failed to update provider');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update provider');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [qv, providers, isSaving]);
+  
+  const handleTogglePubChem = useCallback(async (enabled: boolean) => {
+    if (!qv || isSaving) return;
+    
+    setIsSaving(true);
+    setError(null);
+    
+    try {
+      const response = await qv.call('structure_update_online_sources', {
+        patch: {
+          pubchem_enabled: enabled,
+        },
+      });
+      
+      if (response.ok && response.data) {
+        setPubchemEnabled(response.data.settings.pubchem_enabled);
+      } else {
+        setError(response.error?.message || 'Failed to update PubChem setting');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update PubChem setting');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [qv, isSaving]);
+  
+  const handleToggleMaterialsProject = useCallback(async (enabled: boolean) => {
+    if (!qv || isSaving) return;
+    
+    setIsSaving(true);
+    setError(null);
+    
+    try {
+      const response = await qv.call('structure_update_online_sources', {
+        patch: {
+          materials_project: {
+            enabled: enabled,
+          },
+        },
+      });
+      
+      if (response.ok && response.data) {
+        setMaterialsProjectEnabled(response.data.settings.materials_project.enabled);
+        setMaterialsProjectHasKey(response.data.settings.materials_project.has_key);
+      } else {
+        setError(response.error?.message || 'Failed to update Materials Project setting');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update Materials Project setting');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [qv, isSaving]);
+  
+  const handleSaveMpApiKey = useCallback(async () => {
+    if (!qv || isSaving || !mpApiKey.trim()) return;
+    
+    setIsSaving(true);
+    setError(null);
+    
+    try {
+      const response = await qv.call('structure_update_online_sources', {
+        patch: {
+          materials_project: {
+            enabled: materialsProjectEnabled,
+            api_key: mpApiKey.trim(),
+          },
+        },
+      });
+      
+      if (response.ok && response.data) {
+        setMaterialsProjectEnabled(response.data.settings.materials_project.enabled);
+        setMaterialsProjectHasKey(response.data.settings.materials_project.has_key);
+        setMpApiKey(''); // Clear input after successful save
+      } else {
+        setError(response.error?.message || 'Failed to save API key');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save API key');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [qv, mpApiKey, materialsProjectEnabled, isSaving]);
+  
+  return (
+    <div className="settings-section">
+      <div className="settings-section__header">
+        <h3 className="settings-section__title">
+          <span className="settings-icon">🌐</span>
+          Online Structure Sources
+        </h3>
+      </div>
+      
+      <div className="settings-section__content">
+        {error && (
+          <div className="settings-error" style={{ marginBottom: '1rem' }}>
+            <span className="error-icon">⚠️</span>
+            <span className="error-text">{error}</span>
+          </div>
+        )}
+        
+        {isLoading ? (
+          <p className="settings-empty">Loading providers...</p>
+        ) : (
+          <>
+            {/* OPTIMADE Providers */}
+            <div className="settings-field">
+              <label className="settings-field__label">OPTIMADE Providers</label>
+              <div className="online-sources-providers-list">
+                {providers.map((provider) => (
+                  <div key={provider.provider_key} className="settings-option">
+                    <div className="settings-option__info">
+                      <span className="settings-option__label">{provider.name || provider.provider_key}</span>
+                      {provider.base_url && (
+                        <span className="settings-option__description" style={{ fontSize: '0.75rem', opacity: 0.7 }}>
+                          {provider.base_url}
+                        </span>
+                      )}
+                      {provider.structure_count !== null && provider.structure_count !== undefined && (
+                        <span className="settings-option__description" style={{ fontSize: '0.75rem', opacity: 0.7 }}>
+                          {provider.structure_count.toLocaleString()} structures
+                        </span>
+                      )}
+                    </div>
+                    <div className="settings-option__control">
+                      <label className="toggle-switch">
+                        <input
+                          type="checkbox"
+                          checked={provider.enabled}
+                          onChange={(e) => handleToggleProvider(provider.provider_key, e.target.checked)}
+                          disabled={isSaving}
+                        />
+                        <span className="toggle-slider" />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* PubChem */}
+            <div className="settings-field" style={{ marginTop: '1.5rem' }}>
+              <div className="settings-option">
+                <div className="settings-option__info">
+                  <span className="settings-option__label">PubChem</span>
+                  <span className="settings-option__description">
+                    Search for molecular structures by name or formula
+                  </span>
+                </div>
+                <div className="settings-option__control">
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={pubchemEnabled}
+                      onChange={(e) => handleTogglePubChem(e.target.checked)}
+                      disabled={isSaving}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+            {/* Materials Project Native API */}
+            <div className="settings-field" style={{ marginTop: '1.5rem' }}>
+              <div className="settings-option">
+                <div className="settings-option__info">
+                  <span className="settings-option__label">Materials Project Native API</span>
+                  <span className="settings-option__description">
+                    Access Materials Project via native API (requires API key). Provides richer metadata than OPTIMADE.
+                  </span>
+                  {materialsProjectHasKey && (
+                    <span className="settings-option__description" style={{ fontSize: '0.75rem', color: '#4caf50' }}>
+                      ✓ API key configured
+                    </span>
+                  )}
+                </div>
+                <div className="settings-option__control">
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={materialsProjectEnabled}
+                      onChange={(e) => handleToggleMaterialsProject(e.target.checked)}
+                      disabled={isSaving || !materialsProjectHasKey}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+              </div>
+              
+              {/* API Key Input */}
+              <div className="settings-path-input" style={{ marginTop: '0.75rem' }}>
+                <input
+                  type="password"
+                  className="settings-path-input__field"
+                  value={mpApiKey}
+                  onChange={(e) => setMpApiKey(e.target.value)}
+                  placeholder="Enter Materials Project API key"
+                  disabled={isSaving}
+                />
+                <button
+                  className="settings-path-input__browse"
+                  onClick={handleSaveMpApiKey}
+                  disabled={isSaving || !mpApiKey.trim()}
+                  title="Save API key"
+                >
+                  💾
+                </button>
+                {mpApiKey && (
+                  <button
+                    className="settings-path-input__clear"
+                    onClick={() => setMpApiKey('')}
+                    title="Clear"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <p className="settings-option__description" style={{ fontSize: '0.75rem', marginTop: '0.5rem', opacity: 0.7 }}>
+                Get your API key from <a href="https://next-gen.materialsproject.org/api" target="_blank" rel="noopener noreferrer">Materials Project</a>
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export interface AppSettings {
   theme: 'dark' | 'light';
   autoAnalysis: boolean;
@@ -525,6 +833,9 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
         
         {/* Pseudopotential Archives Section */}
         <PseudoArchivesPanel />
+        
+        {/* Online Structure Sources Section */}
+        <OnlineStructuresSettingsSection qv={qv} />
         
         {/* Python/Daemon Section */}
         <div className="settings-section">

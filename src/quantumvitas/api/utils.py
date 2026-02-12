@@ -604,8 +604,9 @@ def build_structure_vis_payload(
     return _build_structure_vis_payload(structure, params, structure_meta)
 
 
-# Re-export OnlineStructureCache class for type hints
-from quantumvitas.io.online_cache import OnlineStructureCache  # noqa: E402, F401
+# Re-export OnlineStructureCache and CandidateSummary for daemon use (PR0 temporary)
+# TODO (PR6): Remove these re-exports when caching logic moves into API facade
+from quantumvitas.io.online_cache import OnlineStructureCache, CandidateSummary  # noqa: E402, F401
 
 
 # =============================================================================

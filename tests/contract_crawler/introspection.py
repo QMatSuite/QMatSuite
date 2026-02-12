@@ -107,6 +107,7 @@ def get_method_categories() -> dict[str, list[str]]:
         "structure": [
             "import_structure", "structure_search_online",
             "structure_get_online_candidate", "structure_import_online_candidate",
+            "structure_list_providers", "structure_update_online_sources",
             "rename_structure", "delete_structure", "can_delete_structure",
         ],
         "calculation": [

@@ -37,6 +37,8 @@ class NetworkMethodsRecipe(Recipe):
         "structure_search_online",
         "structure_get_online_candidate",
         "structure_import_online_candidate",
+        "structure_list_providers",
+        "structure_update_online_sources",
         "download_sssp_library",
         "download_all_sssp",
         "download_pseudo_by_filename",
@@ -78,6 +80,18 @@ class NetworkMethodsRecipe(Recipe):
         """Build payload based on method name."""
         base = {}
         
+        if self.method_name == "structure_list_providers":
+            return {
+                "refresh_registry": False,
+            }
+
+        if self.method_name == "structure_update_online_sources":
+            return {
+                "patch": {
+                    "pubchem_enabled": True,
+                },
+            }
+
         if self.method_name == "structure_search_online":
             return {
                 "project_root": str(self.project_root),

@@ -25,6 +25,28 @@ class QEConfig:
 
 
 @dataclass
+class MaterialsProjectConfig:
+    """Materials Project native API configuration (PR5)."""
+    enabled: bool = False  # Default: disabled (requires key)
+    api_key: Optional[str] = None  # User-provided API key
+    
+    def has_key(self) -> bool:
+        """Check if API key is present and non-empty."""
+        return self.api_key is not None and self.api_key.strip() != ""
+
+
+@dataclass
+class OnlineStructuresConfig:
+    """Online structure sources configuration (PR1)."""
+    optimade_providers: List[Dict[str, Any]] = field(default_factory=list)  # [{"provider_key": "mp", "enabled": true}, ...]
+    pubchem_enabled: bool = True  # PubChem enabled by default
+    materials_project: MaterialsProjectConfig = field(default_factory=MaterialsProjectConfig)  # MP native API config (PR5)
+    timeout_seconds: float = 8.0  # Per-provider timeout
+    max_results_per_provider: int = 10  # Max results per provider
+    max_total_results: int = 50  # Max total results after aggregation
+
+
+@dataclass
 class QMatSuiteSettings:
     """
     QMatSuite global settings.
@@ -39,6 +61,7 @@ class QMatSuiteSettings:
     debug_resolution: bool = False  # Enable detailed resolution/addressing debug logs
     max_concurrent_calcs: int = 2  # Maximum concurrent calculation runs (default 2)
     analysis_cache_enabled: bool = True  # Enable analysis object caching (default: enabled)
+    online_structures: OnlineStructuresConfig = field(default_factory=OnlineStructuresConfig)  # PR1: Online structure sources
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -48,6 +71,7 @@ class QMatSuiteSettings:
             "debug_resolution": self.debug_resolution,
             "max_concurrent_calcs": self.max_concurrent_calcs,
             "analysis_cache_enabled": self.analysis_cache_enabled,
+            "online_structures": asdict(self.online_structures),
         }
     
     @classmethod
@@ -89,12 +113,33 @@ class QMatSuiteSettings:
             # Default: null (use internal QE)
             qe = QEConfig(bin_dir=None)
         
+        # Parse online_structures config
+        online_structures_data = data.get("online_structures", {})
+        mp_data = online_structures_data.get("materials_project", {})
+        if isinstance(mp_data, dict):
+            materials_project = MaterialsProjectConfig(
+                enabled=mp_data.get("enabled", False),
+                api_key=mp_data.get("api_key", None),
+            )
+        else:
+            # Fallback for old format
+            materials_project = MaterialsProjectConfig()
+        online_structures = OnlineStructuresConfig(
+            optimade_providers=online_structures_data.get("optimade_providers", []),
+            pubchem_enabled=online_structures_data.get("pubchem_enabled", True),
+            materials_project=materials_project,
+            timeout_seconds=online_structures_data.get("timeout_seconds", 8.0),
+            max_results_per_provider=online_structures_data.get("max_results_per_provider", 10),
+            max_total_results=online_structures_data.get("max_total_results", 50),
+        )
+        
         return cls(
             version=data.get("version", 1),
             qe=qe,
             debug_resolution=data.get("debug_resolution", False),  # Default: OFF
             max_concurrent_calcs=data.get("max_concurrent_calcs", 2),  # Default: 2
             analysis_cache_enabled=data.get("analysis_cache_enabled", True),  # Default: enabled
+            online_structures=online_structures,
         )
 
 
