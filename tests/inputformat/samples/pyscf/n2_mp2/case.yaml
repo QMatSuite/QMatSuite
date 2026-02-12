@@ -1,0 +1,50 @@
+case_id: n2_mp2
+engine: pyscf
+title: N2 PySCF MP2
+description: MP2/cc-pVDZ correlation energy for nitrogen molecule
+workflow_tags:
+- mp2
+- correlation
+- small-molecule
+species:
+- N
+basis_set: cc-pVDZ
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: pyscf_scf
+required_engine: pyscf
+availability: open_source
+demo_slug: pyscf_n2_mp2
+asset_policy: none
+recommended_analysis: energy
+difficulty: intermediate
+parser_mode: direct_snapshot
+inline_parameters:
+  method: mp2
+  basis: cc-pVDZ
+  charge: 0
+  spin: 0
+inline_structure:
+  type: molecule
+  species:
+  - N
+  - N
+  cart_coords:
+  - - 0.0
+    - 0.0
+    - 0.0
+  - - 0.0
+    - 0.0
+    - 1.0977
+subtitle: MP2/cc-pVDZ correlation energy for N2
+tags:
+- pyscf
+- molecular
+- mp2
+- correlation
+- nitrogen
+- tutorial
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

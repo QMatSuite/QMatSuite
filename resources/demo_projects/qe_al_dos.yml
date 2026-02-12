@@ -2,55 +2,137 @@ version: 1
 project:
   meta:
     ulid: 01KJKCW7GAQXSKH2RXJFX6FSHK
-    name: 6 Al Dos
-    slug: 6-al-dos
+    name: Al DOS
+    slug: al-dos
     path: .
     kind: project
   settings: {}
-structures: []
+structures:
+- meta:
+    ulid: 01KKPRWF5EJY6FMEAZYGBTARQE
+    name: Al
+    slug: al
+    path: structures/al.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.0192514319873993
+        - 0.0
+        - 2.0192514319873993
+      - - 0.0
+        - 2.0192514319873993
+        - 2.0192514319873993
+      - - -2.0192514319873993
+        - 2.0192514319873993
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.8556527609578737
+      b: 2.8556527609578737
+      c: 2.8556527609578737
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 16.466496049140705
+    properties: {}
+    sites:
+    - species:
+      - element: Al
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Al
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
 calculations:
 - meta:
-    ulid: 01K04YGRDK5BCRDBZE20HVG198
-    name: 6 Al Dos
-    slug: 6-al-dos
-    path: calculations/6-al-dos
+    ulid: 01KAEZEEH7TBH3S0QYTAH3FRVR
+    name: Al DOS
+    slug: al-dos
+    path: calculations/al-dos
     kind: calculation
   mode: normal
   working_dir: raw
   engine_family: qe
   steps:
   - meta:
-      name: relax
-      slug: relax
-      path: calculations/6-al-dos/steps/relax.step.yaml
-      kind: step
-      ulid: 01K05ME1DD370515YZ26V0ZQ3K
-    parameters: {}
-    step_type_spec: qe_relax
-  - meta:
       name: scf
       slug: scf
-      path: calculations/6-al-dos/steps/scf.step.yaml
+      path: calculations/al-dos/steps/scf.step.yaml
       kind: step
-      ulid: 01KZ25446JJHF19PCCT8YX6X4Z
-    parameters: {}
+      ulid: 01K2QXHJW744J7N2H8CXF40AFS
+    parameters:
+      CONTROL:
+        calculation: scf
+        restart_mode: from_scratch
+        prefix: al
+        outdir: ./outdir
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ibrav: 2
+        celldm(1): 7.631664366184
+        nat: 1
+        ntyp: 1
+        ecutwfc: 40
+        ecutrho: 320
+        occupations: smearing
+        smearing: gaussian
+        degauss: 0.01
+      ELECTRONS:
+        conv_thr: 1.0e-08
     step_type_spec: qe_scf
   - meta:
       name: nscf
       slug: nscf
-      path: calculations/6-al-dos/steps/nscf.step.yaml
+      path: calculations/al-dos/steps/nscf.step.yaml
       kind: step
-      ulid: 01KY0SF6Z3RGBF5BD1VJCC0HN5
-    parameters: {}
+      ulid: 01KC3XDEPZ14FDGQ7974X4TYT7
+    parameters:
+      CONTROL:
+        calculation: nscf
+        restart_mode: from_scratch
+        prefix: al
+        outdir: ./outdir
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ibrav: 2
+        celldm(1): 7.631664366184
+        nat: 1
+        ntyp: 1
+        ecutwfc: 40
+        ecutrho: 320
+        occupations: smearing
+        smearing: gaussian
+        degauss: 0.01
+      ELECTRONS:
+        conv_thr: 1.0e-08
     step_type_spec: qe_nscf
   - meta:
       name: dos
       slug: dos
-      path: calculations/6-al-dos/steps/dos.step.yaml
+      path: calculations/al-dos/steps/dos.step.yaml
       kind: step
-      ulid: 01KF9WAA251MRGQE9D123HZ0H7
-    parameters: {}
+      ulid: 01K044QHZ34FQ22WBNX0J83FRW
+    parameters:
+      DOS:
+        prefix: al
+        outdir: ./outdir/
+        fildos: al.dos.dat
+        emin: -15
+        emax: 35
     step_type_spec: qe_dos
+  structure_ulid: 01KKPRWF5EJY6FMEAZYGBTARQE
   species_map:
     Al:
       pseudopot: Al.pbe-n-kjpaw_psl.1.0.0.UPF
@@ -63,8 +145,8 @@ pseudo:
   - Al.pbe-n-kjpaw_psl.1.0.0.UPF
 meta:
   ulid: qe_al_dos
-  title: 6 Al Dos
-  subtitle: VC-Relax → SCF → NSCF → DOS
+  title: Al DOS
+  subtitle: SCF → NSCF → DOS
   tags:
   - dos
   - Al
@@ -74,9 +156,14 @@ meta:
   recommended_analysis: dos
   difficulty: beginner
   asset_policy: redistributable
+  asset_requirements:
+    pseudopotentials:
+    - file: Al.pbe-n-kjpaw_psl.1.0.0.UPF
+      element: Al
+      source: resources/pseudo
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: al_dos
-  corpus_checksum: 4d0118566c2f788aa7b1e311e338a084d36819561c1dd6f2b178395477ead709
+  corpus_checksum: e0e456affdf8081516e60c5f84eaf9837e52eac42d764fb82d192711f088bc1a

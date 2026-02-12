@@ -44,3 +44,6 @@ steps:
   step_type_spec: qe_dos
   input_files:
   - si.3_dos.in
+attribution:
+  source: Constructed for QMatSuite, inspired by QE tutorials
+  license: MIT (QMatSuite)

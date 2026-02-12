@@ -275,7 +275,7 @@ def diamond_workflow_project(tmp_path: Path):
         step_selector=step_id,
         params={
             "parameters": {
-                "project_id": "qmc_smoke",
+                "qmc_project_id": "qmc_smoke",
                 "cell": {
                     "lattice": [
                         [3.37316115, 3.37316115, 0.0],

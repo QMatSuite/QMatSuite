@@ -29,3 +29,6 @@ asset_requirements:
     element: Si
     source: resources/pseudo
 multi_step: false
+attribution:
+  source: Constructed for QMatSuite, inspired by QE tutorials
+  license: MIT (QMatSuite)

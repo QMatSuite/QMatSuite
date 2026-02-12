@@ -1,0 +1,13 @@
+{
+  "demo_slug": "xtb_caffeine_grad",
+  "engine": "xtb",
+  "generated_at": "2026-02-12T03:26:40.193161+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "trajectory": {
+      "file": "trajectory.json",
+      "sha256": "c72aac9ac8d93e9fc38f64e37a3c439718cde568e592a948dad0dcd9533289b8"
+    }
+  }
+}

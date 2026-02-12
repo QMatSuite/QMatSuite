@@ -1,0 +1,56 @@
+case_id: h2o_dft
+engine: pyscf
+title: Water PySCF PBE DFT
+description: PBE/cc-pVDZ DFT single-point calculation on water molecule
+workflow_tags:
+- scf
+- dft
+- small-molecule
+species:
+- O
+- H
+functional: PBE
+basis_set: cc-pVDZ
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: pyscf_scf
+required_engine: pyscf
+availability: open_source
+demo_slug: pyscf_h2o_dft
+asset_policy: none
+recommended_analysis: energy
+difficulty: beginner
+parser_mode: direct_snapshot
+inline_parameters:
+  functional: PBE
+  basis: cc-pVDZ
+  charge: 0
+  spin: 0
+inline_structure:
+  type: molecule
+  species:
+  - O
+  - H
+  - H
+  cart_coords:
+  - - 0.0
+    - 0.0
+    - 0.1173
+  - - 0.0
+    - 0.75695
+    - -0.4692
+  - - 0.0
+    - -0.75695
+    - -0.4692
+subtitle: PBE/cc-pVDZ DFT calculation on water molecule
+tags:
+- pyscf
+- molecular
+- scf
+- dft
+- water
+- tutorial
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

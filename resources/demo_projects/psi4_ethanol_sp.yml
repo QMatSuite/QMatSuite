@@ -1,0 +1,156 @@
+version: 1
+project:
+  meta:
+    ulid: 01KM9PK2QNE88MR7V00G49G12H
+    name: Ethanol Psi4 Single Point
+    slug: ethanol-psi4-single-point
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KXDGTSVAWJ2T7V3J38XKDSWW
+    name: CHO
+    slug: cho
+    path: structures/cho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - -0.7516
+      - 0.0211
+      - -0.0267
+      properties: {}
+      label: C
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - 0.7516
+      - -0.0211
+      - 0.0267
+      properties: {}
+      label: C
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 1.1651
+      - -0.0148
+      - 1.3726
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - -1.1661
+      - 1.0075
+      - 0.21
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - -1.1661
+      - -0.7565
+      - 0.6251
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - -1.0966
+      - -0.2225
+      - -1.0372
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 1.1661
+      - -0.8984
+      - -0.4843
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 1.1661
+      - 0.8562
+      - -0.5275
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 2.127
+      - -0.0399
+      - 1.4023
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01K7GYKMB537HFF92W32WMF4C5
+    name: Ethanol Psi4 Single Point
+    slug: ethanol-psi4-single-point
+    path: calculations/ethanol-psi4-single-point
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: psi4
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/ethanol-psi4-single-point/steps/scf.step.yaml
+      kind: step
+      ulid: 01KD97637B2CWM3GRJ4SW08B99
+    parameters:
+      method: hf
+      basis: 6-31G*
+      charge: 0
+      spin: 0
+    step_type_spec: psi4_scf
+  structure_ulid: 01KXDGTSVAWJ2T7V3J38XKDSWW
+meta:
+  ulid: psi4_ethanol_sp
+  title: Ethanol Psi4 Single Point
+  subtitle: HF/6-31G* single-point for ethanol
+  tags:
+  - psi4
+  - molecular
+  - scf
+  - hf
+  - ethanol
+  - tutorial
+  recommended_analysis: energy
+  difficulty: beginner
+  required_engine: psi4
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: psi4
+  corpus_case_id: ethanol_sp
+  corpus_checksum: 9ac2ed6d02d94db592073868376781b8d7eca432f50c6341d53c48ca04d61060

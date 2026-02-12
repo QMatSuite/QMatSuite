@@ -111,7 +111,7 @@ def diamond_vmc_project(tmp_path: Path):
         step_selector=step_id,
         params={
             "parameters": {
-                "project_id": "qmc",
+                "qmc_project_id": "qmc",
                 "cell": {
                     "lattice": [
                         [3.37316115, 3.37316115, 0.0],

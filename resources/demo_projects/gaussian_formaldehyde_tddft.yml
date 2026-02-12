@@ -1,0 +1,110 @@
+version: 1
+project:
+  meta:
+    ulid: 01K14T8HSSWA3X6SFV0J0K1Q3B
+    name: Formaldehyde TDDFT Excited States
+    slug: formaldehyde-tddft-excited-states
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01K67VKQ4T0AZEA9K6NNKG6TQS
+    name: CHO
+    slug: cho
+    path: structures/cho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - -0.5298
+      properties: {}
+      label: C
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.6672
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.9357
+      - -1.1098
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - -0.9357
+      - -1.1098
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01KRC0WMCHTFX74ZGR8PX6HXYV
+    name: Formaldehyde TDDFT Excited States
+    slug: formaldehyde-tddft-excited-states
+    path: calculations/formaldehyde-tddft-excited-states
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: gaussian
+  steps:
+  - meta:
+      name: td
+      slug: td
+      path: calculations/formaldehyde-tddft-excited-states/steps/td.step.yaml
+      kind: step
+      ulid: 01K79DV727NBHKKZM8M967N284
+    parameters:
+      mem: 500MB
+      nproc: 1
+      chk_name: formaldehyde.chk
+      method: B3LYP
+      basis: STO-3G
+      gen_type: td
+      td_nstates: 3
+      title: Formaldehyde TDDFT excited states
+      charge: 0
+      multiplicity: 1
+    step_type_spec: gaussian_td
+  structure_ulid: 01K67VKQ4T0AZEA9K6NNKG6TQS
+meta:
+  ulid: gaussian_formaldehyde_tddft
+  title: Formaldehyde TDDFT Excited States
+  subtitle: td
+  tags:
+  - td
+  - dft
+  - excited-states
+  - small-molecule
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: gaussian
+  availability: requires_local_install
+  generator_version: 1.0.0
+  corpus_engine: gaussian
+  corpus_case_id: formaldehyde_tddft
+  corpus_checksum: 04c9c1b7b6af63e20c204848b37c1d7d472a7bfa275a8dfe43ca28513b7fb0a4

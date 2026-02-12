@@ -17,3 +17,6 @@ demo_slug: siesta_si_scf
 asset_policy: none
 recommended_analysis: scf
 exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

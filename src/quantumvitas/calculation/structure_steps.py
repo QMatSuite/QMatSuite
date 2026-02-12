@@ -545,7 +545,18 @@ def generate_qe_input_from_spec(
         step_type_gen=step_gen_type,  # Use GEN type (e.g., "nscf"), not SPEC type (e.g., "qe_nscf")
         parameter_overrides=combined_overrides,
     )
-    
+
+    # Ensure empty namelists from parameters are preserved (e.g., IONS: {} for relax).
+    # parameter_dict_to_overrides drops empty sections since they have no keys,
+    # but QE requires the namelist header to be present (e.g., &IONS / for relax).
+    if spec.parameters and isinstance(spec.parameters, dict):
+        from quantumvitas.drivers.qe.io.model import QENamelist
+        for section_name, section_params in spec.parameters.items():
+            if isinstance(section_params, dict) and not section_params:
+                nl_name = section_name.upper().lstrip("&")
+                if qe_input.get_namelist(nl_name) is None:
+                    qe_input.namelists.append(QENamelist(name=nl_name))
+
     # Check if ibrav != 0 is set in the actual QEInput (after overrides applied)
     # If so, remove CELL_PARAMETERS as it's redundant with ibrav != 0
     system_namelist = qe_input.get_namelist("SYSTEM") or qe_input.get_namelist("system")

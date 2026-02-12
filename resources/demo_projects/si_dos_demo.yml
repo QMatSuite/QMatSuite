@@ -180,7 +180,7 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_dos
-  corpus_checksum: 9a688b11ac66d48ad73a89805585ef9dd95538078c4cf638888335da75f71674
+  corpus_checksum: 71ba004ba73bdbe0f6a018df8ab423ebc93eb1d4c33249b75341b2d0c4a5b2a9
   reference_artifacts:
     dos: si_dos_demo.dos.json
     scf: si_dos_demo.scf.json

@@ -1,0 +1,67 @@
+case_id: si_bands
+engine: gpaw
+title: Silicon GPAW Band Structure
+description: PBE band structure calculation for diamond silicon along high-symmetry
+  path
+workflow_tags:
+- bands
+- dft
+- solid
+species:
+- Si
+functional: PBE
+demo_eligible: true
+step_type_gen: bandspw
+step_type_spec: gpaw_bandspw
+required_engine: gpaw
+availability: open_source
+demo_slug: gpaw_si_bands
+asset_policy: none
+recommended_analysis: bands
+difficulty: intermediate
+parser_mode: direct_snapshot
+inline_parameters:
+  xc: PBE
+  mode: pw
+  ecut: 300
+  kpts:
+    size:
+    - 8
+    - 8
+    - 8
+  convergence:
+    bands: 8
+inline_structure:
+  type: structure
+  species:
+  - Si
+  - Si
+  lattice:
+  - - -2.7546
+    - 0.0
+    - 2.7546
+  - - 0.0
+    - 2.7546
+    - 2.7546
+  - - -2.7546
+    - 2.7546
+    - 0.0
+  frac_coords:
+  - - 0.0
+    - 0.0
+    - 0.0
+  - - 0.25
+    - 0.25
+    - 0.25
+subtitle: PBE band structure for silicon
+tags:
+- gpaw
+- solid
+- bands
+- dft
+- Si
+- tutorial
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

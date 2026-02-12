@@ -27,15 +27,17 @@ entries:
 - engine: abinit
   case_id: si_bands
   dir_name: si_bands
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: abinit_si_bands
   runnable: true
-  asset_policy: none
+  asset_policy: redistributable
   required_engine: abinit
   availability: open_source
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by ABINIT tutorials
+    license: MIT (QMatSuite)
 - engine: abinit
   case_id: si_dfpt
   dir_name: si_dfpt
@@ -83,7 +85,9 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by ABINIT tutorials
+    license: MIT (QMatSuite)
 - engine: abinit
   case_id: si_scf
   dir_name: si_scf
@@ -95,7 +99,9 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by ABINIT tutorials
+    license: MIT (QMatSuite)
 - engine: abinit
   case_id: si_spin
   dir_name: si_spin
@@ -155,19 +161,23 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by CP2K examples
+    license: MIT (QMatSuite)
 - engine: cp2k
   case_id: h2o_geo_opt
   dir_name: h2o_geo_opt
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: cp2k_h2o_geo_opt
   runnable: true
   asset_policy: none
   required_engine: cp2k
   availability: open_source
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by CP2K examples
+    license: MIT (QMatSuite)
 - engine: cp2k
   case_id: h2o_md
   dir_name: h2o_md
@@ -227,7 +237,9 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by CP2K examples
+    license: MIT (QMatSuite)
 - engine: cp2k
   case_id: si_scf
   dir_name: si_scf
@@ -255,15 +267,17 @@ entries:
 - engine: gaussian
   case_id: formaldehyde_tddft
   dir_name: formaldehyde_tddft
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: gaussian_formaldehyde_tddft
   runnable: true
   asset_policy: none
   required_engine: gaussian
   availability: requires_local_install
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: gaussian
   case_id: hcn_scan
   dir_name: hcn_scan
@@ -323,7 +337,9 @@ entries:
   availability: requires_local_install
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: gaussian
   case_id: water_hf_sp
   dir_name: water_hf_sp
@@ -335,7 +351,9 @@ entries:
   availability: requires_local_install
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: gaussian
   case_id: water_opt_freq
   dir_name: water_opt_freq
@@ -361,6 +379,34 @@ entries:
   exclusion_reason: Parser/writer test case only
   attribution: null
 - engine: gpaw
+  case_id: al_scf
+  dir_name: al_scf
+  demo_eligible: true
+  demo_slug: gpaw_al_scf
+  runnable: true
+  asset_policy: none
+  required_engine: gpaw
+  availability: open_source
+  required_assets: []
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
+- engine: gpaw
+  case_id: si_bands
+  dir_name: si_bands
+  demo_eligible: true
+  demo_slug: gpaw_si_bands
+  runnable: true
+  asset_policy: none
+  required_engine: gpaw
+  availability: open_source
+  required_assets: []
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
+- engine: gpaw
   case_id: si_scf
   dir_name: si_scf
   demo_eligible: true
@@ -371,7 +417,9 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: lammps
   case_id: coreshell
   dir_name: coreshell
@@ -431,7 +479,9 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by LAMMPS examples
+    license: MIT (QMatSuite)
 - engine: lammps
   case_id: minimize_2d_lj
   dir_name: minimize_2d_lj
@@ -443,19 +493,23 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by LAMMPS examples
+    license: MIT (QMatSuite)
 - engine: lammps
   case_id: peptide_nvt
   dir_name: peptide_nvt
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: lammps_peptide_nvt
   runnable: true
   asset_policy: none
   required_engine: lammps
   availability: open_source
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by LAMMPS examples
+    license: MIT (QMatSuite)
 - engine: lammps
   case_id: reaxff_rdx
   dir_name: reaxff_rdx
@@ -527,7 +581,9 @@ entries:
   availability: requires_local_install
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: orca
   case_id: methane_freq
   dir_name: methane_freq
@@ -539,7 +595,9 @@ entries:
   availability: requires_local_install
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: orca
   case_id: ts_sn2
   dir_name: ts_sn2
@@ -575,7 +633,37 @@ entries:
   availability: requires_local_install
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
+- engine: psi4
+  case_id: ethanol_sp
+  dir_name: ethanol_sp
+  demo_eligible: true
+  demo_slug: psi4_ethanol_sp
+  runnable: true
+  asset_policy: none
+  required_engine: psi4
+  availability: open_source
+  required_assets: []
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
+- engine: psi4
+  case_id: h2o_opt
+  dir_name: h2o_opt
+  demo_eligible: true
+  demo_slug: psi4_h2o_opt
+  runnable: true
+  asset_policy: none
+  required_engine: psi4
+  availability: open_source
+  required_assets: []
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: psi4
   case_id: water_scf
   dir_name: water_scf
@@ -587,7 +675,37 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
+- engine: pyscf
+  case_id: h2o_dft
+  dir_name: h2o_dft
+  demo_eligible: true
+  demo_slug: pyscf_h2o_dft
+  runnable: true
+  asset_policy: none
+  required_engine: pyscf
+  availability: open_source
+  required_assets: []
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
+- engine: pyscf
+  case_id: n2_mp2
+  dir_name: n2_mp2
+  demo_eligible: true
+  demo_slug: pyscf_n2_mp2
+  runnable: true
+  asset_policy: none
+  required_engine: pyscf
+  availability: open_source
+  required_assets: []
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: pyscf
   case_id: water_scf
   dir_name: water_scf
@@ -599,7 +717,9 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: al_dos
   dir_name: al_dos
@@ -616,7 +736,9 @@ entries:
     source: resources/pseudo
     vendored: true
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: fe_dos
   dir_name: fe_dos
@@ -633,7 +755,9 @@ entries:
     source: resources/pseudo
     vendored: true
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: graphene_bands
   dir_name: graphene_bands
@@ -650,12 +774,14 @@ entries:
     source: resources/pseudo
     vendored: true
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: nmr_gipaw
   dir_name: nmr_gipaw
-  demo_eligible: true
-  demo_slug: qe_nmr_gipaw
+  demo_eligible: false
+  demo_slug: null
   runnable: true
   asset_policy: redistributable
   required_engine: qe
@@ -671,8 +797,10 @@ entries:
     element: H
     source: resources/pseudo
     vendored: true
-  exclusion_reason: null
-  attribution: null
+  exclusion_reason: "Runtime exceeds demo limit (~24 min for GIPAW NMR); Rule CS4"
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: si_bands
   dir_name: si_bands
@@ -689,7 +817,9 @@ entries:
     source: resources/pseudo
     vendored: true
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: si_bands_alt
   dir_name: si_bands_alt
@@ -706,7 +836,9 @@ entries:
     source: resources/pseudo
     vendored: true
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: si_bulk_modulus
   dir_name: si_bulk_modulus
@@ -723,7 +855,9 @@ entries:
     source: resources/pseudo
     vendored: true
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: si_cpmd
   dir_name: si_cpmd
@@ -740,7 +874,9 @@ entries:
     source: resources/pseudo
     vendored: true
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: si_dos
   dir_name: si_dos
@@ -757,7 +893,9 @@ entries:
     source: resources/pseudo
     vendored: true
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: si_dos_alt
   dir_name: si_dos_alt
@@ -774,7 +912,9 @@ entries:
     source: resources/pseudo
     vendored: true
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: si_phonon
   dir_name: si_phonon
@@ -791,7 +931,9 @@ entries:
     source: resources/pseudo
     vendored: true
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: si_scf
   dir_name: si_scf
@@ -808,7 +950,9 @@ entries:
     source: resources/pseudo
     vendored: true
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qe
   case_id: si_vc_relax
   dir_name: si_vc_relax
@@ -825,7 +969,9 @@ entries:
     source: resources/pseudo
     vendored: true
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QE tutorials
+    license: MIT (QMatSuite)
 - engine: qmcpack
   case_id: be_sto_vmc
   dir_name: be_sto_vmc
@@ -841,15 +987,17 @@ entries:
 - engine: qmcpack
   case_id: h2_ae_vmc
   dir_name: h2_ae_vmc
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: qmcpack_h2_vmc
   runnable: true
   asset_policy: none
   required_engine: qmcpack
   availability: open_source
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QMCPACK test suite
+    license: MIT (QMatSuite)
 - engine: qmcpack
   case_id: he_dmc
   dir_name: he_dmc
@@ -885,7 +1033,9 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QMCPACK test suite
+    license: MIT (QMatSuite)
 - engine: qmcpack
   case_id: heg_vmc
   dir_name: heg_vmc
@@ -913,15 +1063,17 @@ entries:
 - engine: qmcpack
   case_id: lih_solid_vmc_pp
   dir_name: lih_solid_vmc_pp
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: qmcpack_lih_solid
   runnable: true
   asset_policy: none
   required_engine: qmcpack
   availability: open_source
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QMCPACK test suite
+    license: MIT (QMatSuite)
 - engine: siesta
   case_id: h2o_scf
   dir_name: h2o_scf
@@ -937,15 +1089,17 @@ entries:
 - engine: siesta
   case_id: si_bands
   dir_name: si_bands
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: siesta_si_bands
   runnable: true
   asset_policy: none
   required_engine: siesta
   availability: open_source
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: siesta
   case_id: si_dos
   dir_name: si_dos
@@ -981,7 +1135,9 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: siesta
   case_id: si_scf
   dir_name: si_scf
@@ -993,7 +1149,9 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: siesta
   case_id: si_spin
   dir_name: si_spin
@@ -1047,7 +1205,9 @@ entries:
     vendored: false
     obtain_from: VASP POTCAR library (requires VASP license)
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: vasp
   case_id: gaas_soc
   dir_name: gaas_soc
@@ -1101,19 +1261,23 @@ entries:
     vendored: false
     obtain_from: VASP POTCAR library (requires VASP license)
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: vasp
   case_id: si_dos
   dir_name: si_dos
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: vasp_si_dos
   runnable: true
-  asset_policy: none
+  asset_policy: proprietary
   required_engine: vasp
   availability: requires_local_install
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: vasp
   case_id: si_hybrid
   dir_name: si_hybrid
@@ -1143,7 +1307,9 @@ entries:
     vendored: false
     obtain_from: VASP POTCAR library (requires VASP license)
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: vasp
   case_id: si_scf
   dir_name: si_scf
@@ -1161,7 +1327,9 @@ entries:
     vendored: false
     obtain_from: VASP POTCAR library (requires VASP license)
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: vasp
   case_id: si_vc_relax
   dir_name: si_vc_relax
@@ -1213,27 +1381,31 @@ entries:
 - engine: w90
   case_id: copper_disentangle
   dir_name: copper_disentangle
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: w90_copper
   runnable: true
   asset_policy: none
   required_engine: w90
   availability: open_source
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: w90
   case_id: diamond_pipeline
   dir_name: diamond_pipeline
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: w90_diamond
   runnable: true
   asset_policy: none
   required_engine: w90
   availability: open_source
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: w90
   case_id: gaas_basic
   dir_name: gaas_basic
@@ -1285,27 +1457,31 @@ entries:
 - engine: w90
   case_id: silicon_bandinterp
   dir_name: silicon_bandinterp
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: w90_silicon
   runnable: true
   asset_policy: none
   required_engine: w90
   availability: open_source
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: xtb
   case_id: caffeine_grad
   dir_name: caffeine_grad
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: xtb_caffeine_grad
   runnable: true
   asset_policy: none
   required_engine: xtb
   availability: bundled
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: xtb
   case_id: ethanol_opt_tight
   dir_name: ethanol_opt_tight
@@ -1353,7 +1529,9 @@ entries:
   availability: bundled
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: xtb
   case_id: water_opt
   dir_name: water_opt
@@ -1365,7 +1543,9 @@ entries:
   availability: bundled
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: xtb
   case_id: water_solvation_alpb
   dir_name: water_solvation_alpb
@@ -1393,15 +1573,17 @@ entries:
 - engine: yambo
   case_id: si_bse_haydock
   dir_name: si_bse_haydock
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: yambo_si_bse
   runnable: true
   asset_policy: none
   required_engine: yambo
   availability: open_source
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: yambo
   case_id: si_gw_ppa
   dir_name: si_gw_ppa
@@ -1413,19 +1595,23 @@ entries:
   availability: open_source
   required_assets: []
   exclusion_reason: null
-  attribution: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: yambo
   case_id: si_ip_optics
   dir_name: si_ip_optics
-  demo_eligible: false
-  demo_slug: null
+  demo_eligible: true
+  demo_slug: yambo_si_optics
   runnable: true
   asset_policy: none
   required_engine: yambo
   availability: open_source
   required_assets: []
-  exclusion_reason: Parser/writer test case only
-  attribution: null
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite test coverage
+    license: MIT (QMatSuite)
 - engine: yambo
   case_id: si_tddft_lrc
   dir_name: si_tddft_lrc

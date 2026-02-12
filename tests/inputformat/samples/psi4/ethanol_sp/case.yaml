@@ -1,0 +1,80 @@
+case_id: ethanol_sp
+engine: psi4
+title: Ethanol Psi4 Single Point
+description: HF/6-31G* single-point energy calculation on ethanol molecule
+workflow_tags:
+- scf
+- hf
+- small-molecule
+species:
+- C
+- O
+- H
+basis_set: 6-31G*
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: psi4_scf
+required_engine: psi4
+availability: open_source
+demo_slug: psi4_ethanol_sp
+asset_policy: none
+recommended_analysis: energy
+difficulty: beginner
+parser_mode: direct_snapshot
+inline_parameters:
+  method: hf
+  basis: 6-31G*
+  charge: 0
+  spin: 0
+inline_structure:
+  type: molecule
+  species:
+  - C
+  - C
+  - O
+  - H
+  - H
+  - H
+  - H
+  - H
+  - H
+  cart_coords:
+  - - -0.7516
+    - 0.0211
+    - -0.0267
+  - - 0.7516
+    - -0.0211
+    - 0.0267
+  - - 1.1651
+    - -0.0148
+    - 1.3726
+  - - -1.1661
+    - 1.0075
+    - 0.21
+  - - -1.1661
+    - -0.7565
+    - 0.6251
+  - - -1.0966
+    - -0.2225
+    - -1.0372
+  - - 1.1661
+    - -0.8984
+    - -0.4843
+  - - 1.1661
+    - 0.8562
+    - -0.5275
+  - - 2.127
+    - -0.0399
+    - 1.4023
+subtitle: HF/6-31G* single-point for ethanol
+tags:
+- psi4
+- molecular
+- scf
+- hf
+- ethanol
+- tutorial
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

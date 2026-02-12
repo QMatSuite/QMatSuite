@@ -73,7 +73,7 @@ class TestParseHeVmcSto:
 
     def test_project(self, parsed):
         p = parsed["params"]
-        assert p["project_id"] == "He"
+        assert p["qmc_project_id"] == "He"
         assert p["series"] == "0"
         assert p["driver_version"] == "batch"
 
@@ -139,7 +139,7 @@ class TestParseH2AeVmc:
         return _parse_qmcpack_text(_read_sample("h2_ae_vmc"))
 
     def test_project(self, parsed):
-        assert parsed["params"]["project_id"] == "H2"
+        assert parsed["params"]["qmc_project_id"] == "H2"
 
     def test_random_seed(self, parsed):
         assert parsed["params"]["random_seed"] == "130"
@@ -185,7 +185,7 @@ class TestParseLihSolid:
         return _parse_qmcpack_text(_read_sample("lih_solid_vmc_pp"))
 
     def test_project(self, parsed):
-        assert parsed["params"]["project_id"] == "LiH"
+        assert parsed["params"]["qmc_project_id"] == "LiH"
         assert parsed["params"]["series"] == "1"
 
     def test_lattice(self, parsed):
@@ -296,7 +296,7 @@ class TestParseHegVmc:
         return _parse_qmcpack_text(_read_sample("heg_vmc"))
 
     def test_project(self, parsed):
-        assert parsed["params"]["project_id"] == "heg_SJ"
+        assert parsed["params"]["qmc_project_id"] == "heg_SJ"
 
     def test_rs_parameter(self, parsed):
         assert parsed["params"]["rs"] == "5"
@@ -340,7 +340,7 @@ class TestParseMinimal:
     def test_project_only(self):
         xml = '<simulation><project id="test" series="5"/></simulation>'
         result = _parse_qmcpack_text(xml)
-        assert result["params"]["project_id"] == "test"
+        assert result["params"]["qmc_project_id"] == "test"
         assert result["params"]["series"] == "5"
 
     def test_no_wavefunction(self):
@@ -365,7 +365,7 @@ class TestWriter:
 
     def test_write_project(self):
         xml = _write_qmcpack_text({
-            "params": {"project_id": "Test", "series": "3",
+            "params": {"qmc_project_id": "Test", "series": "3",
                        "driver_version": "batch"},
             "structure": {},
         })
@@ -457,7 +457,7 @@ def _assert_semantic_equal(a: dict, b: dict, tolerance: float = 1e-6):
     pa, pb = a["params"], b["params"]
 
     # Compare top-level scalar params
-    for key in ("project_id", "series", "driver_version", "bconds",
+    for key in ("qmc_project_id", "series", "driver_version", "bconds",
                 "LR_dim_cutoff", "rs", "rs_condition"):
         assert pa.get(key) == pb.get(key), f"Mismatch on params[{key!r}]"
 
@@ -582,7 +582,7 @@ class TestOrchestratorIntegration:
         (tmp_path / "qmc_input.xml").write_text(xml_text)
 
         result = parse_engine_inputs(spec, tmp_path)
-        assert result.params["project_id"] == "He"
+        assert result.params["qmc_project_id"] == "He"
         assert result.structure is not None
         assert result.structure["species"] == ["He"]
 
@@ -591,7 +591,7 @@ class TestOrchestratorIntegration:
 
         spec = get_qmcpack_input_spec()
         params = {
-            "project_id": "Test",
+            "qmc_project_id": "Test",
             "driver_version": "batch",
             "qmc": [{"method": "vmc", "blocks": "10"}],
         }
@@ -623,7 +623,7 @@ class TestOrchestratorIntegration:
 
         # Re-parse
         result2 = parse_engine_inputs(spec, out_dir)
-        assert result1.params["project_id"] == result2.params["project_id"]
+        assert result1.params["qmc_project_id"] == result2.params["qmc_project_id"]
         assert result1.structure["species"] == result2.structure["species"]
 
 
@@ -637,7 +637,7 @@ class TestParseHeDmc:
         return _parse_qmcpack_text(_read_sample("he_dmc"))
 
     def test_project(self, parsed):
-        assert parsed["params"]["project_id"] == "He"
+        assert parsed["params"]["qmc_project_id"] == "He"
         assert parsed["params"]["driver_version"] == "batch"
 
     def test_two_qmc_blocks(self, parsed):
@@ -675,7 +675,7 @@ class TestParseBeStoVmc:
         return _parse_qmcpack_text(_read_sample("be_sto_vmc"))
 
     def test_project(self, parsed):
-        assert parsed["params"]["project_id"] == "be_vmc"
+        assert parsed["params"]["qmc_project_id"] == "be_vmc"
 
     def test_species(self, parsed):
         assert parsed["structure"]["species"] == ["Be"]
@@ -717,7 +717,7 @@ class TestParseLihQeWorkflow:
         return _parse_qmcpack_text(_read_sample("lih_qe_workflow"))
 
     def test_project(self, parsed):
-        assert parsed["params"]["project_id"] == "LiH"
+        assert parsed["params"]["qmc_project_id"] == "LiH"
 
     def test_einspline_href(self, parsed):
         wf = parsed["params"]["wavefunction"]

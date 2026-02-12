@@ -9,12 +9,12 @@ workflow_tags:
 species:
 - C
 - H
-demo_eligible: true
+demo_eligible: false
 step_type_gen: scf
 step_type_spec: qe_scf
 required_engine: qe
 availability: open_source
-demo_slug: qe_nmr_gipaw
+demo_slug: null
 asset_policy: redistributable
 recommended_analysis: scf
 difficulty: beginner
@@ -24,7 +24,7 @@ tags:
 - GIPAW
 - PW
 - advanced
-exclusion_reason: null
+exclusion_reason: "Runtime exceeds demo limit (~24 min for GIPAW NMR, ecutwfc=90, 12 atoms); Rule CS4"
 asset_requirements:
   pseudopotentials:
   - file: C.pbe-tm-gipaw.UPF
@@ -43,3 +43,6 @@ steps:
   step_type_spec: qe_gipaw
   input_files:
   - benzene.2_gipaw.in
+attribution:
+  source: Constructed for QMatSuite, inspired by QE tutorials
+  license: MIT (QMatSuite)

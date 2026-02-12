@@ -10,9 +10,14 @@ species:
 description: Silicon diamond-cubic with 8 WFs from 12 bands (Tutorial Example 3).
   Disentanglement with frozen window, kpoint_path for band structure interpolation
   along L-G-X-K-G, 4x4x4 k-grid. Tests case-insensitive block delimiters (Begin/End).
-demo_eligible: false
+demo_eligible: true
+demo_slug: w90_silicon
 step_type_gen: wannier
 step_type_spec: w90_wannier
 required_engine: w90
 availability: open_source
-exclusion_reason: Parser/writer test case only
+asset_policy: none
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

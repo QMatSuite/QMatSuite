@@ -84,7 +84,7 @@ calculations:
       slug: scf
       path: calculations/silicon-diamond-band-structure/steps/scf.step.yaml
       kind: step
-      ulid: 01KH6WW4GC06378SKNV5H7600M
+      ulid: 01KE3JF65W0SAM6DCGECB2HGBB
     parameters:
       engine_params:
         vasp:
@@ -167,11 +167,11 @@ calculations:
                 - 0.5
                 - 0.5
             labels:
-              "[0.0, 0.0, 0.0]": G
-              "[0.5, 0.0, 0.5]": X
-              "[0.5, 0.25, 0.75]": W
-              "[0.375, 0.375, 0.75]": K
-              "[0.5, 0.5, 0.5]": L
+              '[0.0, 0.0, 0.0]': G
+              '[0.5, 0.0, 0.5]': X
+              '[0.5, 0.25, 0.75]': W
+              '[0.375, 0.375, 0.75]': K
+              '[0.5, 0.5, 0.5]': L
           potcar_type: PBE
     step_type_spec: vasp_bandspw
   structure_ulid: 01KCBWQ3N0WFS47P1HV0E5QC4Q
@@ -189,10 +189,7 @@ meta:
   subtitle: SCF -> Bands
   tags:
   - bands
-  - Si
-  - VASP
-  - tutorial
-  - beginner
+  - nscf
   recommended_analysis: bands
   difficulty: beginner
   asset_policy: proprietary
@@ -201,3 +198,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: vasp
   corpus_case_id: si_bands
+  corpus_checksum: 712a26d5ac2e1a4af0201511cc2473efce9534f978e70b8cabb73ea7767b1958

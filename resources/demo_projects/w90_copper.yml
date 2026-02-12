@@ -1,0 +1,173 @@
+version: 1
+project:
+  meta:
+    ulid: 01K0GXSFJ8FNSJKR4X5967QZY8
+    name: Copper with disentanglement and band interpolation
+    slug: copper-with-disentanglement-and-band-interpolation
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KFHBV36GG9S7G0VR8XMTSH5S
+    name: Cu
+    slug: cu
+    path: structures/cu.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -1.8050234663901328
+        - 0.0
+        - 1.8050234663901328
+      - - 0.0
+        - 1.8050234663901328
+        - 1.8050234663901328
+      - - -1.8050234663901328
+        - 1.8050234663901328
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.552688666570622
+      b: 2.552688666570622
+      c: 2.552688666570622
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 11.761928980478073
+    properties: {}
+    sites:
+    - species:
+      - element: Cu
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Cu
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+calculations:
+- meta:
+    ulid: 01KJVNYX341DEBDF69X0XSWD6F
+    name: Copper with disentanglement and band interpolation
+    slug: copper-with-disentanglement-and-band-interpolation
+    path: calculations/copper-with-disentanglement-and-band-interpolation
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: w90
+  steps:
+  - meta:
+      name: wannier
+      slug: wannier
+      path: calculations/copper-with-disentanglement-and-band-interpolation/steps/wannier.step.yaml
+      kind: step
+      ulid: 01KPWZMTMXC6SJBH902J50VNVF
+    parameters:
+      num_bands: 12
+      num_wann: 7
+      num_iter: 200
+      dis_win_max: 38.0
+      dis_froz_max: 13.0
+      dis_num_iter: 60
+      dis_mix_ratio: 1.0
+      projections:
+      - Cu:d
+      - f=0.25,0.25,0.25:s
+      - f=-0.25,-0.25,-0.25:s
+      kpoint_path:
+      - start_label: G
+        start:
+        - 0.0
+        - 0.0
+        - 0.0
+        end_label: X
+        end:
+        - 0.5
+        - 0.5
+        - 0.0
+      - start_label: X
+        start:
+        - 0.5
+        - 0.5
+        - 0.0
+        end_label: W
+        end:
+        - 0.5
+        - 0.75
+        - 0.25
+      - start_label: W
+        start:
+        - 0.5
+        - 0.75
+        - 0.25
+        end_label: L
+        end:
+        - 0.0
+        - 0.5
+        - 0.0
+      - start_label: L
+        start:
+        - 0.0
+        - 0.5
+        - 0.0
+        end_label: G
+        end:
+        - 0.0
+        - 0.0
+        - 0.0
+      - start_label: G
+        start:
+        - 0.0
+        - 0.0
+        - 0.0
+        end_label: K
+        end:
+        - 0.0
+        - 0.5
+        - -0.5
+      mp_grid:
+      - 4
+      - 4
+      - 4
+      kpoints:
+        points:
+        - - 0.0
+          - 0.0
+          - 0.0
+        - - 0.0
+          - 0.25
+          - 0.0
+        - - 0.0
+          - 0.5
+          - 0.0
+        - - 0.0
+          - 0.75
+          - 0.0
+    step_type_spec: w90_wannier
+  structure_ulid: 01KFHBV36GG9S7G0VR8XMTSH5S
+meta:
+  ulid: w90_copper
+  title: Copper with disentanglement and band interpolation
+  subtitle: wannier
+  tags:
+  - disentanglement
+  - band_interpolation
+  - kpoint_path
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: w90
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: w90
+  corpus_case_id: copper_disentangle
+  corpus_checksum: 387e946ccd2478f49cef5c40caf4afc91faab385820364b22b1d91c8b87c5fb7

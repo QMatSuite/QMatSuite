@@ -41,8 +41,8 @@
       "category": "cell",
       "description": "Global scale factor applied to lattice vectors."
     },
-    "project_id": {
-      "name": "project_id",
+    "qmc_project_id": {
+      "name": "qmc_project_id",
       "type": "string",
       "default": null,
       "category": "project",

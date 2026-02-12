@@ -34,12 +34,22 @@ inline_structure:
   - Si
   - Si
   lattice:
-  - [-2.7546, 0.0, 2.7546]
-  - [0.0, 2.7546, 2.7546]
-  - [-2.7546, 2.7546, 0.0]
+  - - -2.7546
+    - 0.0
+    - 2.7546
+  - - 0.0
+    - 2.7546
+    - 2.7546
+  - - -2.7546
+    - 2.7546
+    - 0.0
   frac_coords:
-  - [0.0, 0.0, 0.0]
-  - [0.25, 0.25, 0.25]
+  - - 0.0
+    - 0.0
+    - 0.0
+  - - 0.25
+    - 0.25
+    - 0.25
 subtitle: PBE ground-state calculation for silicon
 tags:
 - gpaw
@@ -49,3 +59,6 @@ tags:
 - Si
 - tutorial
 exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

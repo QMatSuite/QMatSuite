@@ -913,6 +913,15 @@ export interface QVCommandMap {
     };
   };
 
+  get_reference_analysis: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      analysis_type: string;
+    };
+    result: Record<string, unknown> | null;
+  };
+
   get_field3d_grid: {
     payload: {
       project_root: string;

@@ -1,6 +1,7 @@
 &DOS
-  fildos = 'al.dos.dat'
-  emin = -15
-  emax = 35
+    prefix='al'
+    outdir='./outdir/'
+    fildos='al.dos.dat'
+    emin=-15
+    emax=35
 /
-

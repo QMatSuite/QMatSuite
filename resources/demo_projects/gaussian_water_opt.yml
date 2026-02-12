@@ -95,4 +95,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: gaussian
   corpus_case_id: water_b3lyp_opt
-  corpus_checksum: de5367b7721b4337d8c983cb7fe619b577dd24ebd290207e1c6d79a9afbedf73
+  corpus_checksum: e32d97f7654e43ad68b312af75365e9782c47f79a1f0b43cd2f661a22c0a6c6c

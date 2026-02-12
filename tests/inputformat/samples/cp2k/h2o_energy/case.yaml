@@ -19,3 +19,6 @@ demo_slug: cp2k_h2o_energy
 asset_policy: none
 recommended_analysis: scf
 exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite, inspired by CP2K examples
+  license: MIT (QMatSuite)

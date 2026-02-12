@@ -1,0 +1,134 @@
+{
+  "bundle_kind": "canonical",
+  "object_type": "convergence",
+  "render_meta": {
+    "axis_labels": {
+      "x": "Step",
+      "y": "Energy"
+    },
+    "units": {
+      "x": "",
+      "y": "eV"
+    },
+    "series_labels": [
+      "SCF Energy",
+      "SCF dE"
+    ],
+    "reference_energy": null,
+    "reference_position": null,
+    "markers": [],
+    "extra": {
+      "n_ionic_steps": 0,
+      "converged": false,
+      "algorithm": "Broyden"
+    }
+  },
+  "provenance_meta": {
+    "schema_version": "1.0",
+    "object_type": "convergence",
+    "run_ulid": "REFPACK",
+    "calc_ulid": "REFPACK",
+    "step_ulids": [
+      "REFPACK"
+    ],
+    "gen_steps": [
+      "scf"
+    ],
+    "engine_name": "abinit",
+    "source_files": [
+      {
+        "path": "si_dos.abo",
+        "size_bytes": 44249,
+        "mtime": 1770673368.6168892
+      }
+    ],
+    "parser_name": "abinit_convergence",
+    "parser_version": "1.0",
+    "warnings": [],
+    "manifest_snapshot": null
+  },
+  "series": [
+    {
+      "x": [
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        7.0
+      ],
+      "y": [
+        -241.09410670884256,
+        -241.2973705629811,
+        -241.29953744313792,
+        -241.29956409734652,
+        -241.29956433671148,
+        -241.29956433777002,
+        -241.29956433778634
+      ],
+      "x_label": "SCF Step",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "SCF Energy"
+    },
+    {
+      "x": [
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        7.0
+      ],
+      "y": [
+        -241.09288213945365,
+        -0.20326905525753036,
+        -0.0021668426867680244,
+        -2.6653552827945243e-05,
+        -2.393785648059564e-07,
+        -1.0596113804187726e-09,
+        -1.6628878134923265e-11
+      ],
+      "x_label": "SCF Step",
+      "y_label": "dE",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "SCF dE"
+    }
+  ],
+  "geometry_frames": null,
+  "arrays": {
+    "scf_step": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "scf_energy": [
+      -241.09410670884256,
+      -241.2973705629811,
+      -241.29953744313792,
+      -241.29956409734652,
+      -241.29956433671148,
+      -241.29956433777002,
+      -241.29956433778634
+    ],
+    "scf_de": [
+      -241.09288213945365,
+      -0.20326905525753036,
+      -0.0021668426867680244,
+      -2.6653552827945243e-05,
+      -2.393785648059564e-07,
+      -1.0596113804187726e-09,
+      -1.6628878134923265e-11
+    ],
+    "ionic_step": [],
+    "ionic_energy": []
+  }
+}

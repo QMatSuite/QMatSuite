@@ -10,9 +10,14 @@ species:
 - H
 description: CG geometry optimization for water with PBE/DZVP. Tests MOTION/GEO_OPT
   section. Validated against real CP2K 2026.1 run.
-demo_eligible: false
+demo_eligible: true
+demo_slug: cp2k_h2o_geo_opt
 step_type_gen: relax
 step_type_spec: cp2k_relax
 required_engine: cp2k
 availability: open_source
-exclusion_reason: Parser/writer test case only
+asset_policy: none
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite, inspired by CP2K examples
+  license: MIT (QMatSuite)

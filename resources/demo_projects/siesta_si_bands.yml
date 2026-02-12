@@ -1,0 +1,164 @@
+version: 1
+project:
+  meta:
+    ulid: 01KE3HR79PHSX2J8H5FMF1C4CP
+    name: Silicon band-structure path
+    slug: silicon-band-structure-path
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KFN8E80DJXJDMPBB8M6KA4M5
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 2.715
+        - 2.715
+        - 0.0
+      - - 0.0
+        - 2.715
+        - 2.715
+      - - 2.715
+        - 0.0
+        - 2.715
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.839589821842953
+      b: 3.839589821842953
+      c: 3.839589821842953
+      alpha: 60.00000000000001
+      beta: 60.00000000000001
+      gamma: 60.00000000000001
+      volume: 40.02575174999998
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.25
+      - 0.25
+      - 0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.3575
+      - 1.3575
+      - 1.3575
+calculations:
+- meta:
+    ulid: 01K6BE6WQG7N57K05P35GR6RYX
+    name: Silicon band-structure path
+    slug: silicon-band-structure-path
+    path: calculations/silicon-band-structure-path
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: siesta
+  steps:
+  - meta:
+      name: bandspw
+      slug: bandspw
+      path: calculations/silicon-band-structure-path/steps/bandspw.step.yaml
+      kind: step
+      ulid: 01KJSE54XGV64961WZJCZR569M
+    parameters:
+      SystemName: Silicon band path
+      SystemLabel: si_bands
+      NumberOfAtoms: 2
+      NumberOfSpecies: 1
+      PAO.BasisSize: DZP
+      PAO.EnergyShift: 100 meV
+      LatticeConstant: 5.43 Ang
+      AtomicCoordinatesFormat: ScaledCartesian
+      kgrid:
+      - - 4
+        - 0
+        - 0
+        - 0.5
+      - - 0
+        - 4
+        - 0
+        - 0.5
+      - - 0
+        - 0
+        - 4
+        - 0.5
+      MeshCutoff: 200.0 Ry
+      MaxSCFIterations: 100
+      DM.MixingWeight: 0.3
+      DM.Tolerance: 0.0001
+      SolutionMethod: diagon
+      XC.functional: GGA
+      XC.authors: PBE
+      BandLinesScale: pi/a
+      BandLines:
+      - npoints: 1
+        kx: 0.0
+        ky: 0.0
+        kz: 0.0
+        label: \Gamma
+      - npoints: 20
+        kx: 1.0
+        ky: 0.0
+        kz: 0.0
+        label: X
+      - npoints: 20
+        kx: 1.0
+        ky: 0.5
+        kz: 0.5
+        label: W
+      - npoints: 20
+        kx: 0.5
+        ky: 0.5
+        kz: 0.5
+        label: L
+      - npoints: 20
+        kx: 0.0
+        ky: 0.0
+        kz: 0.0
+        label: \Gamma
+      znucl:
+        Si: 14
+      system_name: Silicon band path
+      system_label: si_bands
+    step_type_spec: siesta_bandspw
+  structure_ulid: 01KFN8E80DJXJDMPBB8M6KA4M5
+meta:
+  ulid: siesta_si_bands
+  title: Silicon band-structure path
+  subtitle: bandspw
+  tags:
+  - bands
+  - periodic
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: siesta
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: siesta
+  corpus_case_id: si_bands
+  corpus_checksum: 3753be3bb20520f13d6fe00fab2052accd2b794a479cb9b7f0a58140e7582037

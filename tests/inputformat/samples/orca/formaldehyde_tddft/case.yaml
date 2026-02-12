@@ -42,3 +42,6 @@ steps:
   input_files:
   - formaldehyde_tddft.inp
 exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

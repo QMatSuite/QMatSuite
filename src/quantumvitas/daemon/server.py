@@ -4656,8 +4656,15 @@ class QVDaemon:
         calculation = self._require_str(payload, "calculation")
         analysis_type = self._require_str(payload, "analysis_type")
         
-        if analysis_type not in ("scf", "dos", "bands"):
-            raise ValueError(f"Invalid analysis_type: {analysis_type}. Must be one of: scf, dos, bands")
+        _VALID_ANALYSIS_TYPES = (
+            "scf", "dos", "bands", "convergence",
+            "trajectory", "neb_trajectory", "field3d",
+        )
+        if analysis_type not in _VALID_ANALYSIS_TYPES:
+            raise ValueError(
+                f"Invalid analysis_type: {analysis_type}. "
+                f"Must be one of: {', '.join(_VALID_ANALYSIS_TYPES)}"
+            )
         
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_calculation_with_fallback(project_root, calculation)

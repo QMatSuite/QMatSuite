@@ -1,9 +1,8 @@
 case_id: graphene_bands
 engine: qe
-title: 13 Graphene
-description: VC-Relax → SCF → Bands → Bands → custom
+title: Graphene Band Structure
+description: SCF → Bands → Bands post-processing for graphene
 workflow_tags:
-- relax
 - scf
 - bandspw
 - bands
@@ -11,15 +10,15 @@ workflow_tags:
 species:
 - C
 demo_eligible: true
-step_type_gen: relax
-step_type_spec: qe_relax
+step_type_gen: scf
+step_type_spec: qe_scf
 required_engine: qe
 availability: open_source
 demo_slug: qe_graphene_bands
 asset_policy: redistributable
 recommended_analysis: bands
 difficulty: beginner
-subtitle: VC-Relax → SCF → Bands → Bands → custom
+subtitle: SCF → Bands → Bands → custom
 tags:
 - bands
 - graphene
@@ -34,10 +33,6 @@ asset_requirements:
     source: resources/pseudo
 multi_step: true
 steps:
-- step_type_gen: relax
-  step_type_spec: qe_relax
-  input_files:
-  - graphene.1_vc_relax.in
 - step_type_gen: scf
   step_type_spec: qe_scf
   input_files:
@@ -54,3 +49,6 @@ steps:
   step_type_spec: qe_custom
   input_files:
   - graphene.5_plotband.in
+attribution:
+  source: QE tutorial (tests/data/13_graphene), relaxation step removed per Rule CS3
+  license: MIT (QMatSuite)

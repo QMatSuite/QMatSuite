@@ -33,9 +33,15 @@ inline_structure:
   - H
   - H
   cart_coords:
-  - [0.0, 0.0, 0.1173]
-  - [0.0, 0.75695, -0.4692]
-  - [0.0, -0.75695, -0.4692]
+  - - 0.0
+    - 0.0
+    - 0.1173
+  - - 0.0
+    - 0.75695
+    - -0.4692
+  - - 0.0
+    - -0.75695
+    - -0.4692
 subtitle: B3LYP/cc-pVDZ DFT calculation on water molecule
 tags:
 - pyscf
@@ -45,3 +51,6 @@ tags:
 - water
 - tutorial
 exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

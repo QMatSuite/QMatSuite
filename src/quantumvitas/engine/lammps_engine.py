@@ -138,13 +138,22 @@ class LammpsEngine(Engine):
                 calculation=calculation,
             )
         
-        # Get structure (unless restart_from)
+        # Detect if script uses embedded structure (lattice/create_atoms commands)
+        # instead of reading from an external structure file
+        commands = params.get("_commands", [])
+        has_embedded_structure = any(
+            entry.get("cmd") in ("create_atoms", "create_box", "lattice")
+            for entry in commands
+            if isinstance(entry, dict)
+        )
+
+        # Get structure (unless restart_from or embedded structure)
         structure = None
-        if not restart_file:
+        if not restart_file and not has_embedded_structure:
             structure = self._get_structure(calculation)
             if structure is None:
                 raise ValueError("Calculation has no structure_ulid and restart_from not specified")
-            
+
             # Write structure.data
             step_ulid = step.meta.ulid if hasattr(step, "meta") and hasattr(step.meta, "ulid") else ""
             atom_style = params.get("atom_style", "atomic")
@@ -154,7 +163,19 @@ class LammpsEngine(Engine):
                 atom_style=atom_style,
                 step_ulid=step_ulid,
             )
-        
+        elif not restart_file and has_embedded_structure:
+            # Try to get structure anyway (useful for analysis), but don't fail
+            structure = self._get_structure(calculation)
+
+        # Handle _commands mode: write script from structured command list
+        if "_commands" in params:
+            from quantumvitas.drivers.lammps.io.script import write_lammps_script_text
+            script_text = write_lammps_script_text(params)
+            (working_dir / "in.lammps").write_text(script_text)
+            # Stage potential files referenced in the script
+            self._stage_script_potentials(params, working_dir, calculation)
+            return
+
         # Handle custom_script mode
         if "custom_script" in params:
             self._materialize_custom_script(
@@ -252,6 +273,61 @@ class LammpsEngine(Engine):
                 raise ValueError(f"Cannot convert structure type {type(structure)}")
         
         return structure
+
+    def _stage_script_potentials(
+        self,
+        params: dict,
+        working_dir: Path,
+        calculation: "Calculation",
+    ) -> None:
+        """Stage potential/data files referenced by a _commands-based script.
+
+        Scans _commands for read_data, pair_coeff, and similar commands
+        that reference external files, and copies them from the project's
+        LAMMPS potentials directory or project root.
+        """
+        import shutil
+
+        commands = params.get("_commands", [])
+        project_root = calculation.project.root if hasattr(calculation, "project") else None
+
+        # Collect filenames referenced in the script
+        referenced_files: set[str] = set()
+        data_file = params.get("data_file")
+        if data_file:
+            referenced_files.add(data_file)
+
+        for entry in commands:
+            if not isinstance(entry, dict):
+                continue
+            cmd = entry.get("cmd", "")
+            args = entry.get("args", [])
+            if cmd == "read_data" and args:
+                referenced_files.add(str(args[0]))
+            elif cmd == "include" and args:
+                referenced_files.add(str(args[0]))
+
+        if not referenced_files or not project_root:
+            return
+
+        # Try to find and stage each referenced file
+        search_dirs = [
+            project_root,
+            project_root / "potentials",
+            project_root / "lammps" / "potentials",
+        ]
+
+        for filename in referenced_files:
+            dst = working_dir / filename
+            if dst.exists():
+                continue
+            for search_dir in search_dirs:
+                src = search_dir / filename
+                if src.exists():
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dst)
+                    logger.debug(f"Staged LAMMPS file: {src} -> {dst}")
+                    break
 
     def _build_inline_pair_style(
         self,

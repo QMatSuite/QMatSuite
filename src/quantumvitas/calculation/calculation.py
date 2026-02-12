@@ -182,7 +182,7 @@ class Calculation:
 
         from quantumvitas.core.public import CalcDoc
         data = CalcDoc.load(calculation_yaml).to_dict()
-        calculation_id = data.get("ulid", calculation_dir.name)
+        calculation_id = data.get("ulid") or data.get("meta", {}).get("ulid") or calculation_dir.name
         mode = StepMode(data.get("mode", StepMode.NORMAL.value))
 
         calculation_meta = data.get("calculation", {})
@@ -343,12 +343,13 @@ def _build_step(
             if wf_ref.absolute_path == calculation_dir:
                 calculation_ref = wf_ref
                 break
-        
+
         if calculation_ref:
-            calculation_selector = calculation_ref.meta.slug or calculation_ref.meta.name
+            # Use ULID for reliable resolution (slugs can collide with structures)
+            calculation_selector = calculation_ref.meta.ulid or calculation_ref.meta.slug or calculation_ref.meta.name
         else:
             calculation_selector = calculation_dir.name
-        
+
         step_resolved = require_step(project.root, calculation_selector, step_ulid)
         step_file_path = step_resolved.absolute_path
     except ResourceNotFoundError as e:
@@ -513,7 +514,7 @@ def _build_step_inspection(
                 break
         
         if calculation_ref:
-            calculation_selector = calculation_ref.meta.slug or calculation_ref.meta.name
+            calculation_selector = calculation_ref.meta.ulid or calculation_ref.meta.slug or calculation_ref.meta.name
         else:
             calculation_selector = calculation_dir.name
         
@@ -593,7 +594,7 @@ def _build_step_inspection(
                     break
             
             if calculation_ref:
-                calculation_selector = calculation_ref.meta.slug or calculation_ref.meta.name
+                calculation_selector = calculation_ref.meta.ulid or calculation_ref.meta.slug or calculation_ref.meta.name
             else:
                 calculation_selector = calculation_dir.name
             

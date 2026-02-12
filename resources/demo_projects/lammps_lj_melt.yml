@@ -113,6 +113,21 @@ calculations:
         - '1'
         - all
         - nve
+      - cmd: dump
+        args:
+        - '1'
+        - all
+        - custom
+        - '50'
+        - dump.lammpstrj
+        - id
+        - type
+        - x
+        - y
+        - z
+        - vx
+        - vy
+        - vz
       - cmd: thermo
         args:
         - '50'
@@ -136,4 +151,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: lammps
   corpus_case_id: melt_lj_nve
-  corpus_checksum: d06a9a66cb341a53caa99cb2f8cdc4b56cab85bfa17ed2ba9d2bdd3c78d19615
+  corpus_checksum: dcfa7419f43ce3615e227bd705933668fa5424f1e1078516ca6e766499c0cbfe

@@ -2,63 +2,158 @@ version: 1
 project:
   meta:
     ulid: 01KD95TFCDP14F89W72H5PY47G
-    name: 13 Graphene
-    slug: 13-graphene
+    name: Graphene Band Structure
+    slug: graphene-band-structure
     path: .
     kind: project
   settings: {}
-structures: []
+structures:
+- meta:
+    ulid: 01K0GHY2RDTPTJT7E628SM65CW
+    name: C
+    slug: c
+    path: structures/c.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 2.4656699853214272
+        - 0.0
+        - 0.0
+      - - -1.2328349938907135
+        - 2.1353328467065533
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 20.000000101863897
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.4656699853214272
+      b: 2.465669987728574
+      c: 20.000000101863897
+      alpha: 90.0
+      beta: 90.0
+      gamma: 120.00000000070908
+      volume: 105.30052271222218
+    properties: {}
+    sites:
+    - species:
+      - element: C
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.25
+      properties: {}
+      label: C
+      xyz:
+      - 0.0
+      - 0.0
+      - 5.000000025465974
+    - species:
+      - element: C
+        occu: 1
+      abc:
+      - 0.333333333
+      - 0.666666667
+      - 0.25
+      properties: {}
+      label: C
+      xyz:
+      - -2.052834902066536e-09
+      - 1.4235552318494797
+      - 5.000000025465974
 calculations:
 - meta:
-    ulid: 01K8WF5115WM6SH1JM6Y30Z31C
-    name: 13 Graphene
-    slug: 13-graphene
-    path: calculations/13-graphene
+    ulid: 01KBJ2Y2S2BXZB5V5PGJ1BQ59V
+    name: Graphene Band Structure
+    slug: graphene-band-structure
+    path: calculations/graphene-band-structure
     kind: calculation
   mode: normal
   working_dir: raw
   engine_family: qe
   steps:
   - meta:
-      name: relax
-      slug: relax
-      path: calculations/13-graphene/steps/relax.step.yaml
-      kind: step
-      ulid: 01K1HJQCDG8XBBJTA2VAXWE1J5
-    parameters: {}
-    step_type_spec: qe_relax
-  - meta:
       name: scf
       slug: scf
-      path: calculations/13-graphene/steps/scf.step.yaml
+      path: calculations/graphene-band-structure/steps/scf.step.yaml
       kind: step
-      ulid: 01KTR77HDE9P5CH9HA183VVZKK
-    parameters: {}
+      ulid: 01KR3VD9VT81674JGEQJQSH9FB
+    parameters:
+      CONTROL:
+        calculation: scf
+        prefix: graphene
+        restart_mode: from_scratch
+        outdir: ./outdir
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ibrav: 0
+        celldm(1): 4.64872629
+        nat: 2
+        ntyp: 1
+        ecutwfc: 40.0
+        ecutrho: 400.0
+        occupations: smearing
+        degauss: 0.0001
+        smearing: marzari-vanderbilt
+      ELECTRONS:
+        conv_thr: 1.0e-10
+        mixing_beta: 0.3
     step_type_spec: qe_scf
   - meta:
       name: bandspw
       slug: bandspw
-      path: calculations/13-graphene/steps/bandspw.step.yaml
+      path: calculations/graphene-band-structure/steps/bandspw.step.yaml
       kind: step
-      ulid: 01K5MKK11CT8TJ3W999ST6S5RM
-    parameters: {}
+      ulid: 01K77GQ1A50DN5M3WHX263Q029
+    parameters:
+      CONTROL:
+        calculation: bands
+        prefix: graphene
+        restart_mode: from_scratch
+        outdir: ./outdir
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ibrav: 0
+        celldm(1): 4.64872629
+        nat: 2
+        ntyp: 1
+        ecutwfc: 40.0
+        ecutrho: 400.0
+        occupations: smearing
+        degauss: 0.0001
+        smearing: marzari-vanderbilt
+      ELECTRONS:
+        conv_thr: 1.0e-10
+        mixing_beta: 0.3
     step_type_spec: qe_bandspw
   - meta:
       name: bands
       slug: bands
-      path: calculations/13-graphene/steps/bands.step.yaml
+      path: calculations/graphene-band-structure/steps/bands.step.yaml
       kind: step
-      ulid: 01K7C78SRX4TXN6BXAGVNCBMN3
-    parameters: {}
+      ulid: 01KG3BWHV4T83ZATY8NFQ2J0SQ
+    parameters:
+      BANDS:
+        outdir: ./outdir
+        prefix: graphene
+        filband: graphene.bands.dat
     step_type_spec: qe_bands
   - meta:
       name: scf
       slug: scf
-      path: calculations/13-graphene/steps/scf.step.yaml
+      path: calculations/graphene-band-structure/steps/scf.step.yaml
       kind: step
-      ulid: 01KTR77HDE9P5CH9HA183VVZKK
+      ulid: 01KR3VD9VT81674JGEQJQSH9FB
     parameters: {}
     step_type_spec: qe_custom
+  structure_ulid: 01K0GHY2RDTPTJT7E628SM65CW
   species_map:
     C:
       pseudopot: C.pbe-n-kjpaw_psl.1.0.0.UPF
@@ -71,8 +166,8 @@ pseudo:
   - C.pbe-n-kjpaw_psl.1.0.0.UPF
 meta:
   ulid: qe_graphene_bands
-  title: 13 Graphene
-  subtitle: VC-Relax → SCF → Bands → Bands → custom
+  title: Graphene Band Structure
+  subtitle: SCF → Bands → Bands → custom
   tags:
   - bands
   - graphene
@@ -82,9 +177,14 @@ meta:
   recommended_analysis: bands
   difficulty: beginner
   asset_policy: redistributable
+  asset_requirements:
+    pseudopotentials:
+    - file: C.pbe-n-kjpaw_psl.1.0.0.UPF
+      element: C
+      source: resources/pseudo
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: graphene_bands
-  corpus_checksum: e5cb22db274d695f3fe150823342db0e97572d9983752353ba3c6ffdeb11fc9d
+  corpus_checksum: 84a061d172fb5b642bd95d9cfc8246a8fa89b91c161abc199827b60f044a00c8

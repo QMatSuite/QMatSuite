@@ -1,4 +1,5 @@
-&BANDS
-  filband = 'graphene.bands.dat'
+&bands
+outdir = './outdir'
+prefix = 'graphene'
+filband = 'graphene.bands.dat'
 /
-

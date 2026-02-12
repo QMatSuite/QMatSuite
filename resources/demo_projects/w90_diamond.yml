@@ -1,0 +1,312 @@
+version: 1
+project:
+  meta:
+    ulid: 01KSSMB2ERY7VB3BGQN44V39WZ
+    name: Diamond QE pipeline with WF plotting
+    slug: diamond-qe-pipeline-with-wf-plotting
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01K6XVQG6PKJTY7PW82WVBEB01
+    name: C
+    slug: c
+    path: structures/c.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -1.61399
+        - 0.0
+        - 1.61399
+      - - 0.0
+        - 1.61399
+        - 1.61399
+      - - -1.61399
+        - 1.61399
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.2825265475345518
+      b: 2.2825265475345518
+      c: 2.2825265475345518
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 8.408770789208399
+    properties: {}
+    sites:
+    - species:
+      - element: C
+        occu: 1
+      abc:
+      - -0.125
+      - -0.125
+      - -0.125
+      properties: {}
+      label: C
+      xyz:
+      - 0.4034975
+      - -0.4034975
+      - -0.4034975
+    - species:
+      - element: C
+        occu: 1
+      abc:
+      - 0.125
+      - 0.125
+      - 0.125
+      properties: {}
+      label: C
+      xyz:
+      - -0.4034975
+      - 0.4034975
+      - 0.4034975
+calculations:
+- meta:
+    ulid: 01K59AXWK6NNYK7DWDCBZN0KTY
+    name: Diamond QE pipeline with WF plotting
+    slug: diamond-qe-pipeline-with-wf-plotting
+    path: calculations/diamond-qe-pipeline-with-wf-plotting
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: w90
+  steps:
+  - meta:
+      name: wannier
+      slug: wannier
+      path: calculations/diamond-qe-pipeline-with-wf-plotting/steps/wannier.step.yaml
+      kind: step
+      ulid: 01KD06Q74YVCXCMBVM8ZGN77WB
+    parameters:
+      num_wann: 4
+      num_iter: 20
+      wannier_plot: true
+      wannier_plot_supercell: 3
+      projections:
+      - f=0.0,0.0,0.0:s
+      - f=0.0,0.0,0.5:s
+      - f=0.0,0.5,0.0:s
+      - f=0.5,0.0,0.0:s
+      mp_grid:
+      - 4
+      - 4
+      - 4
+      kpoints:
+        points:
+        - - 0.0
+          - 0.0
+          - 0.0
+        - - 0.0
+          - 0.25
+          - 0.0
+        - - 0.0
+          - 0.5
+          - 0.0
+        - - 0.0
+          - 0.75
+          - 0.0
+        - - 0.25
+          - 0.0
+          - 0.0
+        - - 0.25
+          - 0.25
+          - 0.0
+        - - 0.25
+          - 0.5
+          - 0.0
+        - - 0.25
+          - 0.75
+          - 0.0
+        - - 0.5
+          - 0.0
+          - 0.0
+        - - 0.5
+          - 0.25
+          - 0.0
+        - - 0.5
+          - 0.5
+          - 0.0
+        - - 0.5
+          - 0.75
+          - 0.0
+        - - 0.75
+          - 0.0
+          - 0.0
+        - - 0.75
+          - 0.25
+          - 0.0
+        - - 0.75
+          - 0.5
+          - 0.0
+        - - 0.75
+          - 0.75
+          - 0.0
+        - - 0.0
+          - 0.0
+          - 0.25
+        - - 0.0
+          - 0.25
+          - 0.25
+        - - 0.0
+          - 0.5
+          - 0.25
+        - - 0.0
+          - 0.75
+          - 0.25
+        - - 0.25
+          - 0.0
+          - 0.25
+        - - 0.25
+          - 0.25
+          - 0.25
+        - - 0.25
+          - 0.5
+          - 0.25
+        - - 0.25
+          - 0.75
+          - 0.25
+        - - 0.5
+          - 0.0
+          - 0.25
+        - - 0.5
+          - 0.25
+          - 0.25
+        - - 0.5
+          - 0.5
+          - 0.25
+        - - 0.5
+          - 0.75
+          - 0.25
+        - - 0.75
+          - 0.0
+          - 0.25
+        - - 0.75
+          - 0.25
+          - 0.25
+        - - 0.75
+          - 0.5
+          - 0.25
+        - - 0.75
+          - 0.75
+          - 0.25
+        - - 0.0
+          - 0.0
+          - 0.5
+        - - 0.0
+          - 0.25
+          - 0.5
+        - - 0.0
+          - 0.5
+          - 0.5
+        - - 0.0
+          - 0.75
+          - 0.5
+        - - 0.25
+          - 0.0
+          - 0.5
+        - - 0.25
+          - 0.25
+          - 0.5
+        - - 0.25
+          - 0.5
+          - 0.5
+        - - 0.25
+          - 0.75
+          - 0.5
+        - - 0.5
+          - 0.0
+          - 0.5
+        - - 0.5
+          - 0.25
+          - 0.5
+        - - 0.5
+          - 0.5
+          - 0.5
+        - - 0.5
+          - 0.75
+          - 0.5
+        - - 0.75
+          - 0.0
+          - 0.5
+        - - 0.75
+          - 0.25
+          - 0.5
+        - - 0.75
+          - 0.5
+          - 0.5
+        - - 0.75
+          - 0.75
+          - 0.5
+        - - 0.0
+          - 0.0
+          - 0.75
+        - - 0.0
+          - 0.25
+          - 0.75
+        - - 0.0
+          - 0.5
+          - 0.75
+        - - 0.0
+          - 0.75
+          - 0.75
+        - - 0.25
+          - 0.0
+          - 0.75
+        - - 0.25
+          - 0.25
+          - 0.75
+        - - 0.25
+          - 0.5
+          - 0.75
+        - - 0.25
+          - 0.75
+          - 0.75
+        - - 0.5
+          - 0.0
+          - 0.75
+        - - 0.5
+          - 0.25
+          - 0.75
+        - - 0.5
+          - 0.5
+          - 0.75
+        - - 0.5
+          - 0.75
+          - 0.75
+        - - 0.75
+          - 0.0
+          - 0.75
+        - - 0.75
+          - 0.25
+          - 0.75
+        - - 0.75
+          - 0.5
+          - 0.75
+        - - 0.75
+          - 0.75
+          - 0.75
+    step_type_spec: w90_wannier
+  structure_ulid: 01K6XVQG6PKJTY7PW82WVBEB01
+meta:
+  ulid: w90_diamond
+  title: Diamond QE pipeline with WF plotting
+  subtitle: wannier
+  tags:
+  - qe_pipeline
+  - wannier_plot
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: w90
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: w90
+  corpus_case_id: diamond_pipeline
+  corpus_checksum: 9856962d5622ce87ec88a248034b61107b707736638df2844e12eea30b9d84bb

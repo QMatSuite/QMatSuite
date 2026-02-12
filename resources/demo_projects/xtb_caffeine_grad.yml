@@ -1,0 +1,298 @@
+version: 1
+project:
+  meta:
+    ulid: 01KHE4SG0WY1G8MQXRKY1HZ40W
+    name: Caffeine gradient
+    slug: caffeine-gradient
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01K7BZNE23N2Z331Y0D3CD9X2G
+    name: CHNO
+    slug: chno
+    path: structures/chno.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - 3.343
+      - 1.152
+      - 0.0
+      properties: {}
+      label: C
+    - name: N
+      species:
+      - element: N
+        occu: 1
+      xyz:
+      - 2.081
+      - 1.753
+      - 0.0
+      properties: {}
+      label: N
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - 0.907
+      - 0.913
+      - 0.0
+      properties: {}
+      label: C
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.889
+      - -0.322
+      - 0.0
+      properties: {}
+      label: O
+    - name: N
+      species:
+      - element: N
+        occu: 1
+      xyz:
+      - -0.269
+      - 1.651
+      - 0.0
+      properties: {}
+      label: N
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - -0.293
+      - 3.008
+      - 0.0
+      properties: {}
+      label: C
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - -1.363
+      - 3.588
+      - 0.0
+      properties: {}
+      label: O
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - 0.968
+      - 3.602
+      - 0.0
+      properties: {}
+      label: C
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - 2.09
+      - 3.099
+      - 0.0
+      properties: {}
+      label: C
+    - name: N
+      species:
+      - element: N
+        occu: 1
+      xyz:
+      - 3.234
+      - 3.849
+      - 0.0
+      properties: {}
+      label: N
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - 4.431
+      - 3.096
+      - 0.0
+      properties: {}
+      label: C
+    - name: N
+      species:
+      - element: N
+        occu: 1
+      xyz:
+      - 4.296
+      - 1.826
+      - 0.0
+      properties: {}
+      label: N
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - 3.153
+      - 4.964
+      - 0.0
+      properties: {}
+      label: C
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 3.287
+      - 0.068
+      - 0.0
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - -1.157
+      - 1.172
+      - 0.0
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.962
+      - 4.681
+      - 0.0
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 5.366
+      - 3.636
+      - 0.0
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 4.105
+      - 5.487
+      - 0.0
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 2.653
+      - 5.424
+      - 0.88
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 2.653
+      - 5.424
+      - -0.88
+      properties: {}
+      label: H
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - -0.41
+      - -1.108
+      - 0.0
+      properties: {}
+      label: C
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - -1.024
+      - -0.89
+      - 0.884
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - -1.024
+      - -0.89
+      - -0.884
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - -0.116
+      - -2.154
+      - 0.0
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01K5J01NGSKWFGBJFWG0EFMVVZ
+    name: Caffeine gradient
+    slug: caffeine-gradient
+    path: calculations/caffeine-gradient
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: xtb
+  steps:
+  - meta:
+      name: relax
+      slug: relax
+      path: calculations/caffeine-gradient/steps/relax.step.yaml
+      kind: step
+      ulid: 01KMZX2MMVBHZNDB7TKZMSN0N9
+    parameters: {}
+    step_type_spec: xtb_relax
+  structure_ulid: 01K7BZNE23N2Z331Y0D3CD9X2G
+meta:
+  ulid: xtb_caffeine_grad
+  title: Caffeine gradient
+  subtitle: relax
+  tags:
+  - gradient
+  - medium_molecule
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: xtb
+  availability: bundled
+  generator_version: 1.0.0
+  corpus_engine: xtb
+  corpus_case_id: caffeine_grad
+  corpus_checksum: de6a2ebfd4b63d6628657cda625ee864ad66b956abda60cc577c99855ffe13b1

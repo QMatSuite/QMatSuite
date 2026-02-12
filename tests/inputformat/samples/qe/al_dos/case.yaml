@@ -1,9 +1,8 @@
 case_id: al_dos
 engine: qe
-title: 6 Al Dos
-description: VC-Relax → SCF → NSCF → DOS
+title: Al DOS
+description: SCF → NSCF → DOS for aluminum (FCC metal)
 workflow_tags:
-- relax
 - scf
 - nscf
 - dos
@@ -11,15 +10,15 @@ workflow_tags:
 species:
 - Al
 demo_eligible: true
-step_type_gen: relax
-step_type_spec: qe_relax
+step_type_gen: scf
+step_type_spec: qe_scf
 required_engine: qe
 availability: open_source
 demo_slug: qe_al_dos
 asset_policy: redistributable
 recommended_analysis: dos
 difficulty: beginner
-subtitle: VC-Relax → SCF → NSCF → DOS
+subtitle: SCF → NSCF → DOS
 tags:
 - dos
 - Al
@@ -34,10 +33,6 @@ asset_requirements:
     source: resources/pseudo
 multi_step: true
 steps:
-- step_type_gen: relax
-  step_type_spec: qe_relax
-  input_files:
-  - al.1_vc_relax.in
 - step_type_gen: scf
   step_type_spec: qe_scf
   input_files:
@@ -50,3 +45,6 @@ steps:
   step_type_spec: qe_dos
   input_files:
   - al.4_dos.in
+attribution:
+  source: QE tutorial (tests/data/6_Al_DOS), relaxation step removed per Rule CS3
+  license: MIT (QMatSuite)

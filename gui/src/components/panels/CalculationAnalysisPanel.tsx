@@ -66,6 +66,11 @@ export function CalculationAnalysisPanel({
   const [pinning, setPinning] = useState(false);
   const [pinMessage, setPinMessage] = useState<string | null>(null);
 
+  // Reference data from demo ref packs
+  const [referenceData, setReferenceData] = useState<AnalysisResponse | null>(null);
+  const [showReference, setShowReference] = useState(false);
+  const [referenceOnlyMode, setReferenceOnlyMode] = useState(false);
+
   useEffect(() => {
     if (!steps.length) {
       setSelectedStepId(null);
@@ -177,11 +182,19 @@ export function CalculationAnalysisPanel({
   useEffect(() => {
     const runUlid = runInfo?.run_ulid;
     if (!selectedStepId || !runUlid) {
-      setAvailableObjectTypes([]);
-      setSelectedObjectType(null);
+      // Don't clear available types if reference-only mode is active
+      if (!referenceOnlyMode) {
+        setAvailableObjectTypes([]);
+        setSelectedObjectType(null);
+      }
       setAnalysisResponse(null);
       setAnalysisError(null);
       return;
+    }
+
+    // If we have a real run, exit reference-only mode
+    if (referenceOnlyMode) {
+      setReferenceOnlyMode(false);
     }
 
     const normalizedRoot = normalizeProjectRoot(projectRoot);
@@ -231,7 +244,7 @@ export function CalculationAnalysisPanel({
     return () => {
       cancelled = true;
     };
-  }, [projectRoot, qv, runInfo?.run_ulid, selectedStepId]);
+  }, [projectRoot, qv, referenceOnlyMode, runInfo?.run_ulid, selectedStepId]);
 
   useEffect(() => {
     const runUlid = runInfo?.run_ulid;
@@ -297,6 +310,119 @@ export function CalculationAnalysisPanel({
     };
   }, [projectRoot, qv, runInfo?.run_ulid, selectedObjectType, shiftToFermi]);
 
+  // Reference-only mode: when no run available, probe for reference types
+  const REFERENCE_PROBE_TYPES = ['convergence', 'dos', 'bands'];
+
+  useEffect(() => {
+    if (!calcSelector || !selectedStepId) {
+      setReferenceOnlyMode(false);
+      setReferenceData(null);
+      return;
+    }
+
+    // If there's a real run, don't activate reference-only mode
+    if (runInfo?.run_ulid) {
+      setReferenceOnlyMode(false);
+      return;
+    }
+
+    // Wait for run resolution: runInfo is null while loading.
+    // runInfo = { run_ulid: null } means "no run exists" (resolved).
+    // runInfoError being set also means resolution complete.
+    const resolved = (runInfo !== null && !runInfo.run_ulid) || runInfoError !== null;
+    if (!resolved) {
+      return;
+    }
+
+    const normalizedRoot = normalizeProjectRoot(projectRoot);
+    if (!normalizedRoot) {
+      return;
+    }
+
+    let cancelled = false;
+    const probeReferenceTypes = async () => {
+      const matched: string[] = [];
+      const refCache: Record<string, AnalysisResponse> = {};
+
+      for (const objType of REFERENCE_PROBE_TYPES) {
+        const response = await qv.call('get_reference_analysis', {
+          project_root: normalizedRoot,
+          calculation: calcSelector,
+          analysis_type: objType,
+        });
+        if (cancelled) return;
+        if (response.ok && response.data) {
+          matched.push(objType);
+          refCache[objType] = response.data as AnalysisResponse;
+        }
+      }
+
+      if (cancelled) return;
+
+      if (matched.length > 0) {
+        setReferenceOnlyMode(true);
+        setShowReference(true);
+        setAvailableObjectTypes(matched);
+        setViewMode('analysis');
+        setSelectedObjectType(prev => prev && matched.includes(prev) ? prev : matched[0]);
+        // Set initial reference data for the first type
+        const firstType = matched[0];
+        setReferenceData(refCache[firstType] ?? null);
+        // Store full cache in ref for later use
+        referenceCacheRef.current = refCache;
+      } else {
+        setReferenceOnlyMode(false);
+        setReferenceData(null);
+      }
+    };
+
+    void probeReferenceTypes();
+    return () => { cancelled = true; };
+  }, [calcSelector, projectRoot, qv, runInfo, runInfoError, selectedStepId]);
+
+  // Fetch reference data when selectedObjectType changes (for reference-only mode or overlay)
+  const referenceCacheRef = useRef<Record<string, AnalysisResponse>>({});
+
+  useEffect(() => {
+    if (!calcSelector || !selectedObjectType) {
+      setReferenceData(null);
+      return;
+    }
+
+    // Check cache first
+    const cached = referenceCacheRef.current[selectedObjectType];
+    if (cached) {
+      setReferenceData(cached);
+      return;
+    }
+
+    const normalizedRoot = normalizeProjectRoot(projectRoot);
+    if (!normalizedRoot) {
+      return;
+    }
+
+    let cancelled = false;
+    qv.call('get_reference_analysis', {
+      project_root: normalizedRoot,
+      calculation: calcSelector,
+      analysis_type: selectedObjectType,
+    })
+      .then((response) => {
+        if (cancelled) return;
+        if (response.ok && response.data) {
+          const refResp = response.data as AnalysisResponse;
+          referenceCacheRef.current[selectedObjectType] = refResp;
+          setReferenceData(refResp);
+        } else {
+          setReferenceData(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setReferenceData(null);
+      });
+    return () => { cancelled = true; };
+  }, [calcSelector, projectRoot, qv, selectedObjectType]);
+
   useEffect(() => {
     if (!pinMessage) {
       return;
@@ -357,6 +483,16 @@ export function CalculationAnalysisPanel({
     <div className="calculation-analysis-panel" data-testid="qv-calc-analysis-panel">
       <div className="calculation-analysis-panel__header">
         <h3>Analysis: {calculation.name}</h3>
+        {(referenceData || referenceOnlyMode) && (
+          <label className="calculation-analysis-panel__ref-toggle">
+            <input
+              checked={showReference}
+              onChange={(e) => setShowReference(e.target.checked)}
+              type="checkbox"
+            />
+            Reference
+          </label>
+        )}
       </div>
 
       <div className="calculation-analysis-panel__step-tabs">
@@ -398,83 +534,104 @@ export function CalculationAnalysisPanel({
       </div>
 
       <div className="calculation-analysis-panel__content">
-        <StepDigestPanel
-          digest={digestPayload}
-          digestSha={digestSha}
-          engine={digestEngine}
-          error={digestError ?? runInfoError}
-          loading={digestLoading}
-        />
-
-        {viewMode === 'raw' ? (
-          <RawFileViewer
-            calculation={calcSelector}
-            projectRoot={projectRoot}
-            stepId={selectedStepId}
-          />
-        ) : selectedObjectType === 'field3d' ? (
-          <Field3DVizPanel
-            availableObjectTypes={availableObjectTypes}
-            bundle={analysisResponse?.bundle ?? null}
-            canPin={Boolean(analysisResponse)}
-            error={analysisError}
-            loading={analysisLoading}
-            onPin={handlePin}
-            onSelectObjectType={setSelectedObjectType}
-            pinMessage={pinMessage}
-            pinning={pinning}
-            pinReason={runInfo?.reason ?? null}
-            projectRoot={projectRoot}
-            runUlid={runInfo?.run_ulid ?? null}
-            selectedObjectType={selectedObjectType}
-          />
-        ) : selectedObjectType === 'trajectory' || selectedObjectType === 'neb_trajectory' ? (
-          <TrajectoryVizPanel
-            availableObjectTypes={availableObjectTypes}
-            bundle={analysisResponse?.bundle ?? null}
-            canPin={Boolean(analysisResponse)}
-            error={analysisError}
-            loading={analysisLoading}
-            onPin={handlePin}
-            onSelectObjectType={setSelectedObjectType}
-            pinMessage={pinMessage}
-            pinning={pinning}
-            pinReason={runInfo?.reason ?? null}
-            selectedObjectType={selectedObjectType}
-          />
-        ) : selectedObjectType === 'bands' && analysisResponse?.bundle?.render_meta?.extra?.has_projections ? (
-          <FatbandsVizPanel
-            availableObjectTypes={availableObjectTypes}
-            bundle={analysisResponse?.bundle ?? null}
-            canPin={Boolean(analysisResponse)}
-            error={analysisError}
-            loading={analysisLoading}
-            onPin={handlePin}
-            onSelectObjectType={setSelectedObjectType}
-            onShiftToFermiChange={setShiftToFermi}
-            pinMessage={pinMessage}
-            pinning={pinning}
-            pinReason={runInfo?.reason ?? null}
-            selectedObjectType={selectedObjectType}
-            shiftToFermi={shiftToFermi}
-          />
-        ) : (
-          <AnalysisVizPanel
-            availableObjectTypes={availableObjectTypes}
-            bundle={analysisResponse?.bundle ?? null}
-            canPin={Boolean(analysisResponse)}
-            error={analysisError}
-            loading={analysisLoading}
-            onPin={handlePin}
-            onSelectObjectType={setSelectedObjectType}
-            onShiftToFermiChange={setShiftToFermi}
-            pinMessage={pinMessage}
-            pinning={pinning}
-            pinReason={runInfo?.reason ?? null}
-            selectedObjectType={selectedObjectType}
-            shiftToFermi={shiftToFermi}
+        {!referenceOnlyMode && (
+          <StepDigestPanel
+            digest={digestPayload}
+            digestSha={digestSha}
+            engine={digestEngine}
+            error={digestError ?? runInfoError}
+            loading={digestLoading}
           />
         )}
+
+        {referenceOnlyMode && showReference && referenceData && (
+          <div
+            className="calculation-analysis-panel__reference-banner"
+            data-testid="qv-analysis-reference-banner"
+          >
+            Reference data (pre-computed, no engine run required)
+          </div>
+        )}
+
+        {(() => {
+          // In reference-only mode, use reference bundle; otherwise use analysis response
+          const activeBundle: PrimitiveBundleData | null =
+            referenceOnlyMode && showReference && referenceData
+              ? referenceData.bundle
+              : analysisResponse?.bundle ?? null;
+          const activeLoading = referenceOnlyMode ? false : analysisLoading;
+          const activeError = referenceOnlyMode ? null : analysisError;
+
+          return viewMode === 'raw' ? (
+            <RawFileViewer
+              calculation={calcSelector}
+              projectRoot={projectRoot}
+              stepId={selectedStepId}
+            />
+          ) : selectedObjectType === 'field3d' ? (
+            <Field3DVizPanel
+              availableObjectTypes={availableObjectTypes}
+              bundle={activeBundle}
+              canPin={!referenceOnlyMode && Boolean(analysisResponse)}
+              error={activeError}
+              loading={activeLoading}
+              onPin={handlePin}
+              onSelectObjectType={setSelectedObjectType}
+              pinMessage={pinMessage}
+              pinning={pinning}
+              pinReason={runInfo?.reason ?? null}
+              projectRoot={projectRoot}
+              runUlid={runInfo?.run_ulid ?? null}
+              selectedObjectType={selectedObjectType}
+            />
+          ) : selectedObjectType === 'trajectory' || selectedObjectType === 'neb_trajectory' ? (
+            <TrajectoryVizPanel
+              availableObjectTypes={availableObjectTypes}
+              bundle={activeBundle}
+              canPin={!referenceOnlyMode && Boolean(analysisResponse)}
+              error={activeError}
+              loading={activeLoading}
+              onPin={handlePin}
+              onSelectObjectType={setSelectedObjectType}
+              pinMessage={pinMessage}
+              pinning={pinning}
+              pinReason={runInfo?.reason ?? null}
+              selectedObjectType={selectedObjectType}
+            />
+          ) : selectedObjectType === 'bands' && activeBundle?.render_meta?.extra?.has_projections ? (
+            <FatbandsVizPanel
+              availableObjectTypes={availableObjectTypes}
+              bundle={activeBundle}
+              canPin={!referenceOnlyMode && Boolean(analysisResponse)}
+              error={activeError}
+              loading={activeLoading}
+              onPin={handlePin}
+              onSelectObjectType={setSelectedObjectType}
+              onShiftToFermiChange={setShiftToFermi}
+              pinMessage={pinMessage}
+              pinning={pinning}
+              pinReason={runInfo?.reason ?? null}
+              selectedObjectType={selectedObjectType}
+              shiftToFermi={shiftToFermi}
+            />
+          ) : (
+            <AnalysisVizPanel
+              availableObjectTypes={availableObjectTypes}
+              bundle={activeBundle}
+              canPin={!referenceOnlyMode && Boolean(analysisResponse)}
+              error={activeError}
+              loading={activeLoading}
+              onPin={handlePin}
+              onSelectObjectType={setSelectedObjectType}
+              onShiftToFermiChange={setShiftToFermi}
+              pinMessage={pinMessage}
+              pinning={pinning}
+              pinReason={runInfo?.reason ?? null}
+              selectedObjectType={selectedObjectType}
+              shiftToFermi={shiftToFermi}
+            />
+          );
+        })()}
       </div>
     </div>
   );

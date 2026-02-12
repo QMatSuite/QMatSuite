@@ -41,6 +41,26 @@ Integrity tests are excluded from default `pytest` runs (C4 constraint). Run exp
 python -m pytest tests/integrity/backend/ -v --tb=short
 ```
 
+### Why integrity tests are excluded
+
+Integrity tests validate the full demo lifecycle (load snapshot → materialize → roundtrip verify) and are excluded from the default `pytest` invocation for several reasons:
+
+1. **Runtime cost**: Each demo lifecycle test takes ~1-5 seconds. With 37+ demos, the full suite adds 30s+ to the test run.
+2. **External dependencies**: Some demos require engine binaries or large assets that may not be available in CI environments.
+3. **C4 constraint**: The DEMO_STORE_SPEC.md mandates that integrity tests must NOT run under default pytest.
+4. **Stability**: Integrity tests are sensitive to corpus/translator changes and should be run explicitly after regeneration.
+
+**Mechanism**: The `pytest_ignore_collect` hook in `tests/conftest.py` (lines 16-24) checks for the string `"integrity"` in the collection path and skips unless the user explicitly targets an integrity path.
+
+**How to run**:
+```bash
+# Backend integrity suite
+python -m pytest tests/integrity/backend/ -v --tb=short
+
+# All integrity tests
+python -m pytest tests/integrity/ -v --tb=short
+```
+
 ## Gate Tests
 
 Two gate tests enforce demo store invariants:
