@@ -145,6 +145,7 @@ def get_methods_needing_recipes() -> set[str]:
         # Online search requiring network
         "structure_search_online", "structure_get_online_candidate",
         "structure_import_online_candidate",
+        "structure_list_providers", "structure_update_online_sources",
         
         # Preflight requiring calculation context
         "preflight_check",

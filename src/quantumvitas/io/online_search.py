@@ -1,8 +1,8 @@
 """
-Online structure search via OPTIMADE and COD.
+Online structure search via OPTIMADE.
 
-Primary: Materials Cloud OPTIMADE endpoint
-Fallback: COD via pymatgen.ext.cod.COD
+PR3: COD MySQL fallback removed - use COD OPTIMADE provider instead.
+COD is now accessed via OPTIMADE endpoint configured in providers.
 """
 
 from __future__ import annotations
@@ -21,11 +21,7 @@ except ImportError:
 from pymatgen.core import Composition, Structure as PMGStructure
 from pymatgen.core.periodic_table import Element
 
-try:
-    from pymatgen.ext.cod import COD
-    COD_AVAILABLE = True
-except ImportError:
-    COD_AVAILABLE = False
+# PR3: COD MySQL fallback removed - use COD OPTIMADE instead
 
 # Import CandidateSummary from cache module to avoid duplication
 from quantumvitas.io.online_cache import CandidateSummary
@@ -172,86 +168,9 @@ def search_optimade(query: str, max_results: int = 10) -> tuple[Optional[str], L
     return None, []
 
 
-def search_cod(query: str, max_results: int = 10) -> List[Dict[str, Any]]:
-    """
-    Search COD (Crystallography Open Database) via pymatgen.
-    
-    Args:
-        query: Chemical formula
-        max_results: Maximum number of results
-        
-    Returns:
-        List of structure entries from COD
-    """
-    if not COD_AVAILABLE:
-        logger.warning("pymatgen.ext.cod not available, skipping COD search")
-        return []
-    
-    try:
-        normalized = normalize_formula(query)
-        reduced = reduce_formula(normalized)
-        
-        cod = COD()
-        
-        # Try get_structure_by_formula first (single result, faster)
-        try:
-            structure = cod.get_structure_by_formula(reduced)
-            if structure:
-                formula = structure.composition.reduced_formula
-                # Generate a candidate entry ID
-                entry_id = f"cod_formula_{reduced}"
-                return [{
-                    "id": f"cod_{entry_id}",
-                    "entry_id": entry_id,
-                    "structure": structure,
-                    "formula": formula,
-                    "nsites": len(structure),
-                    "source": "cod",
-                }]
-        except AttributeError:
-            # get_structure_by_formula not available in this COD version
-            pass
-        except Exception as e:
-            # Other errors (e.g., MySQL not available)
-            logger.debug(f"COD get_structure_by_formula failed: {e}")
-            pass
-        
-        # Use query() - note: COD.query() does NOT accept max_results parameter
-        # Query returns list of (entry_id, structure) tuples
-        try:
-            results = cod.query(reduced)
-        except (FileNotFoundError, OSError) as e:
-            # COD requires MySQL database file - if not available, skip COD
-            logger.warning(f"COD database not available (MySQL file missing): {e}")
-            return []
-        except Exception as e:
-            logger.warning(f"COD query failed: {e}")
-            return []
-        
-        # Slice results in Python (limit to small cap <= 10)
-        entries = []
-        for entry_id, structure in results[:min(max_results, 10)]:
-            try:
-                # Convert to dict-like format for consistency
-                formula = structure.composition.reduced_formula
-                entries.append({
-                    "id": f"cod_{entry_id}",
-                    "entry_id": str(entry_id),
-                    "structure": structure,
-                    "formula": formula,
-                    "nsites": len(structure),
-                    "source": "cod",
-                })
-            except Exception as e:
-                logger.warning(f"Failed to process COD entry {entry_id}: {e}")
-                continue
-        
-        logger.info(f"COD search for '{query}' returned {len(entries)} results")
-        return entries
-        
-    except Exception as e:
-        logger.warning(f"COD search failed: {e}")
-        return []
+# PR3: search_cod() removed - COD is now accessed via OPTIMADE provider
+# COD OPTIMADE endpoint: https://www.crystallography.net/cod/optimade/v1
+# Configured in CURATED_DEFAULT_PROVIDERS in quantumvitas.io.providers.optimade
 
 
 def score_candidate(
@@ -809,86 +728,9 @@ def search_online_structures(
                 logger.warning(f"Failed to process OPTIMADE entry {idx}: {e}")
                 continue
     
-    # Fallback to COD if OPTIMADE returned no results
-    if not candidates:
-        cod_entries = search_cod(query, max_results=max_results)
-        
-        if cod_entries:
-            source_summary = "cod"
-            for idx, entry in enumerate(cod_entries[:max_results]):
-                try:
-                    structure = entry.get("structure")
-                    if structure is None:
-                        continue
-                    
-                    # Score candidate
-                    score, flags = score_candidate(structure, "cod", query, entry)
-                    
-                    # Skip if formula mismatch (hard filter)
-                    if "formula_mismatch" in flags:
-                        continue
-                    
-                    # Create candidate summary
-                    formula = entry.get("formula", "?")
-                    nsites = entry.get("nsites", len(structure))
-                    
-                    candidate_id = f"cod_{entry.get('entry_id', idx)}"
-                    candidate = CandidateSummary(
-                        candidate_id=candidate_id,
-                        label=f"{formula} ({nsites} sites)",
-                        source="cod",
-                        source_id=entry.get("entry_id", ""),
-                        nsites=nsites,
-                        flags=flags,
-                        score=score,
-                    )
-                    
-                    candidates.append(candidate)
-                    structures.append(structure)
-                    
-                except Exception as e:
-                    logger.warning(f"Failed to process COD entry {idx}: {e}")
-                    continue
-    else:
-        # OPTIMADE had results, but we might supplement with COD if needed
-        if len(candidates) < max_results:
-            cod_entries = search_cod(query, max_results=max_results - len(candidates))
-            source_summary = "optimade+cod"
-            
-            for idx, entry in enumerate(cod_entries[:max_results - len(candidates)]):
-                try:
-                    structure = entry.get("structure")
-                    if structure is None:
-                        continue
-                    
-                    # Score candidate
-                    score, flags = score_candidate(structure, "cod", query, entry)
-                    
-                    # Skip if formula mismatch
-                    if "formula_mismatch" in flags:
-                        continue
-                    
-                    # Create candidate summary
-                    formula = entry.get("formula", "?")
-                    nsites = entry.get("nsites", len(structure))
-                    
-                    candidate_id = f"cod_{entry.get('entry_id', len(candidates) + idx)}"
-                    candidate = CandidateSummary(
-                        candidate_id=candidate_id,
-                        label=f"{formula} ({nsites} sites)",
-                        source="cod",
-                        source_id=entry.get("entry_id", ""),
-                        nsites=nsites,
-                        flags=flags,
-                        score=score,
-                    )
-                    
-                    candidates.append(candidate)
-                    structures.append(structure)
-                    
-                except Exception as e:
-                    logger.warning(f"Failed to process COD entry {idx}: {e}")
-                    continue
+    # PR3: COD MySQL fallback removed - COD is now accessed via OPTIMADE provider
+    # COD OPTIMADE is configured in CURATED_DEFAULT_PROVIDERS and will be queried
+    # in parallel with other OPTIMADE providers when using the new provider system (PR6)
     
     # For COD entries, score them now (they have structures)
     # For OPTIMADE entries, structures are None and will be scored when fetched

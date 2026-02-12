@@ -70,7 +70,7 @@ class StructureDocDTO(BaseDTO):
 @dataclass
 class ProviderInfoDTO(BaseDTO):
     """Provider information."""
-    id: str  # Provider ID (e.g., "mp", "cod", "pubchem")
+    provider_key: str  # Provider key (e.g., "mp", "cod", "pubchem")
     name: str  # Display name
     enabled: bool
     base_url: Optional[str] = None  # OPTIMADE base URL (if applicable)
@@ -90,7 +90,7 @@ class ProviderListDTO(BaseDTO):
 @dataclass
 class ProviderPatchDTO(BaseDTO):
     """Patch for a single provider."""
-    id: str
+    provider_key: str
     enabled: bool
 
 

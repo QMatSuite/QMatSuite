@@ -660,19 +660,43 @@ function App() {
     if (!m.id || typeof m.id !== 'string') {
       return { ok: false, msg: 'Missing or invalid id field' };
     }
-    if (!m.lattice || !Array.isArray(m.lattice) || m.lattice.length !== 3) {
-      return { ok: false, msg: 'Missing or invalid lattice (must be 3x3 matrix)' };
-    }
-    for (const row of m.lattice) {
-      if (!Array.isArray(row) || row.length !== 3) {
-        return { ok: false, msg: 'Lattice must be 3x3 matrix' };
+    
+    // Lattice validation: required for crystals, optional (null) for molecules
+    const isMolecule = m.structure_type === 'molecule' || (m.pbc && Array.isArray(m.pbc) && m.pbc.every((p: boolean) => p === false));
+    if (!isMolecule) {
+      // For crystals, lattice is required
+      if (!m.lattice || !Array.isArray(m.lattice) || m.lattice.length !== 3) {
+        return { ok: false, msg: 'Missing or invalid lattice (must be 3x3 matrix)' };
       }
-      for (const val of row) {
-        if (typeof val !== 'number' || !isFinite(val)) {
-          return { ok: false, msg: 'Lattice contains non-numeric values' };
+      for (const row of m.lattice) {
+        if (!Array.isArray(row) || row.length !== 3) {
+          return { ok: false, msg: 'Lattice must be 3x3 matrix' };
+        }
+        for (const val of row) {
+          if (typeof val !== 'number' || !isFinite(val)) {
+            return { ok: false, msg: 'Lattice contains non-numeric values' };
+          }
+        }
+      }
+    } else {
+      // For molecules, lattice should be null or undefined
+      if (m.lattice !== null && m.lattice !== undefined) {
+        // Allow null/undefined, but if present, it should be valid
+        if (Array.isArray(m.lattice) && m.lattice.length === 3) {
+          // If lattice is provided for a molecule, validate it but don't require it
+          for (const row of m.lattice) {
+            if (Array.isArray(row) && row.length === 3) {
+              for (const val of row) {
+                if (typeof val !== 'number' || !isFinite(val)) {
+                  return { ok: false, msg: 'Lattice contains non-numeric values' };
+                }
+              }
+            }
+          }
         }
       }
     }
+    
     if (!m.atoms || !Array.isArray(m.atoms)) {
       return { ok: false, msg: 'Missing or invalid atoms array' };
     }
@@ -940,8 +964,11 @@ function App() {
         const species = Array.from(speciesSet).sort();
         
         // Validate required fields - bonds are optional, but ensure defaults
-        if (!visData.lattice || !visData.lattice.matrix) {
-          throw new Error('Missing lattice data in response');
+        // Lattice is required for crystals, optional for molecules
+        const isMolecule = visData.structure_type === 'molecule' || 
+          (visData.pbc && Array.isArray(visData.pbc) && visData.pbc.every((p: boolean) => p === false));
+        if (!isMolecule && (!visData.lattice || !visData.lattice.matrix)) {
+          throw new Error('Missing lattice data in response (required for crystals)');
         }
         if (!visData.atoms || !Array.isArray(visData.atoms)) {
           throw new Error('Missing or invalid atoms array in response');
@@ -958,7 +985,9 @@ function App() {
           formula: formula,
           nsites: nsites,
           species: species,
-          lattice: visData.lattice.matrix,
+          lattice: isMolecule ? null : (visData.lattice?.matrix || null),
+          structure_type: visData.structure_type || (isMolecule ? 'molecule' : 'crystal'),
+          pbc: visData.pbc || (isMolecule ? [false, false, false] : [true, true, true]),
           atoms: visData.atoms.map(atom => ({
             element: atom.element,
             frac: atom.frac_coords,

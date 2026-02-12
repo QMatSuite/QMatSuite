@@ -159,7 +159,7 @@ export interface StructureModel {
   formula: string;
   nsites: number;
   species: string[];  // unique species symbols
-  lattice: number[][];  // 3x3 matrix
+  lattice: number[][] | null;  // 3x3 matrix for crystals, null for molecules
   atoms: Array<{
     element: string;
     frac: [number, number, number];
@@ -181,6 +181,10 @@ export interface StructureModel {
   supercell?: [number, number, number];
   display_mode?: 'primitive' | 'supercell' | 'conventional' | 'box';
   element_colors?: Record<string, string>;
+  // Structure type (crystal vs molecule)
+  structure_type?: "crystal" | "molecule";
+  // Periodic boundary conditions (for molecules: [false, false, false])
+  pbc?: [boolean, boolean, boolean];
 }
 
 export type RightSelection =
@@ -1018,7 +1022,6 @@ export interface QVCommandMap {
   // Online structure operations
   structure_get_online_candidate: {
     payload: {
-      project_root: string;
       session_id: string;
       candidate_id: string;
       supercell?: [number, number, number];
@@ -1522,9 +1525,16 @@ export interface QVCommandMap {
   // Online structure search
   structure_search_online: {
     payload: {
-      project_root: string;
       query: string;
-      max_results?: number;
+      mode?: "crystal" | "molecule" | "auto";
+      sources?: {
+        optimade_provider_ids?: string[];
+        pubchem_enabled?: boolean;
+        materials_project_enabled?: boolean;
+      };
+      limit?: number;
+      timeout_s?: number;
+      refresh_registry?: boolean;
     };
     result: {
       session_id: string;
@@ -1533,11 +1543,73 @@ export interface QVCommandMap {
         label: string;
         source: string;
         source_id: string;
+        structure_type: "crystal" | "molecule";
+        formula: string;
         nsites: number;
         spacegroup?: string | null;
+        providers: string[];
         flags: string[];
         score: number;
+        metadata?: Record<string, unknown>;
       }>;
+      providers_queried: string[];
+      partial: boolean;
+      query: string;
+      mode: string;
+    };
+  };
+  
+  // List online structure providers
+  structure_list_providers: {
+    payload: {
+      refresh_registry?: boolean;
+    };
+    result: {
+      optimade_providers: Array<{
+        provider_key: string;
+        name: string;
+        enabled: boolean;
+        base_url?: string | null;
+        structure_count?: number | null;
+        requires_api_key: boolean;
+      }>;
+      pubchem_enabled: boolean;
+      materials_project_enabled: boolean;
+      materials_project_has_key: boolean;
+    };
+  };
+  
+  // Update online structure sources settings
+  structure_update_online_sources: {
+    payload: {
+      patch: {
+        optimade_providers?: Array<{provider_key: string, enabled: boolean}>;
+        pubchem_enabled?: boolean;
+        materials_project?: {enabled?: boolean, api_key?: string};
+        timeout_seconds?: number;
+        max_results_per_provider?: number;
+        max_total_results?: number;
+      };
+    };
+    result: {
+      settings: {
+        optimade_providers: Array<{
+          provider_key: string;
+          name: string;
+          enabled: boolean;
+          base_url?: string | null;
+          structure_count?: number | null;
+          requires_api_key: boolean;
+        }>;
+        pubchem_enabled: boolean;
+        materials_project: {
+          enabled: boolean;
+          has_key: boolean;
+        };
+        timeout_seconds: number;
+        max_results_per_provider: number;
+        max_total_results: number;
+      };
     };
   };
   

@@ -37,9 +37,14 @@ dev = [
 pyscf = [
     "pyscf>=2.0.0"
 ]
+# Materials Project native API (optional, requires API key)
+mp-api = [
+    "mp-api>=0.30.0"
+]
 # All optional dependencies
 all = [
-    "pyscf>=2.0.0"
+    "pyscf>=2.0.0",
+    "mp-api>=0.30.0"
 ]
 
 [tool.setuptools]

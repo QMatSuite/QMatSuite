@@ -45,7 +45,8 @@ def test_get_online_candidate_missing_candidate(temp_project, daemon):
     from quantumvitas.io.online_cache import OnlineStructureCache
     
     # Create a cache with a session but no matching candidate
-    cache = OnlineStructureCache(temp_project / "structures" / "cache")
+    # Handler uses global cache, so we need to use the global cache location
+    cache = OnlineStructureCache()  # Uses global cache location
     
     # Add a session using cache method
     import time
@@ -54,7 +55,6 @@ def test_get_online_candidate_missing_candidate(temp_project, daemon):
     
     # Try to get a candidate that doesn't exist
     payload = {
-        "project_root": str(temp_project),
         "session_id": session_id,
         "candidate_id": "nonexistent_candidate",
         "trace_id": "test_trace",
@@ -91,7 +91,8 @@ def test_get_online_candidate_missing_structure(temp_project, daemon):
     from quantumvitas.io.online_cache import CandidateSummary
     
     # Create a cache with a session and candidate, but no structure
-    cache = OnlineStructureCache(temp_project / "structures" / "cache")
+    # Handler uses global cache, so we need to use the global cache location
+    cache = OnlineStructureCache()  # Uses global cache location
     
     import time
     session_id = "test_session_456"
@@ -110,7 +111,6 @@ def test_get_online_candidate_missing_structure(temp_project, daemon):
     cache.add_candidate_metadata_only(session_id, candidate, rank=0, optimade_base=None)
     
     payload = {
-        "project_root": str(temp_project),
         "session_id": session_id,
         "candidate_id": "test_candidate_1",
         "trace_id": "test_trace",
@@ -148,7 +148,8 @@ def test_get_online_candidate_cached_structure_has_candidate(temp_project, daemo
     from pymatgen.core import Structure, Lattice
     
     # Create a cache with session, candidate, and structure
-    cache = OnlineStructureCache(temp_project / "structures" / "cache")
+    # Handler uses global cache, so we need to use the global cache location
+    cache = OnlineStructureCache()  # Uses global cache location
     
     import time
     session_id = "test_session_789"
@@ -171,7 +172,6 @@ def test_get_online_candidate_cached_structure_has_candidate(temp_project, daemo
     cache.add_candidate(session_id, candidate, structure, rank=0)
     
     payload = {
-        "project_root": str(temp_project),
         "session_id": session_id,
         "candidate_id": "test_candidate_2",
         "trace_id": "test_trace",

@@ -11,10 +11,14 @@ export interface OnlineCandidate {
   label: string;
   source: string;
   source_id: string;
+  structure_type: "crystal" | "molecule";
+  formula: string;
   nsites: number;
   spacegroup?: string | null;
+  providers: string[];
   flags: string[];
   score: number;
+  metadata?: Record<string, unknown>;
 }
 
 interface OnlineImportPanelProps {
@@ -36,27 +40,32 @@ export function OnlineImportPanel({
 }: OnlineImportPanelProps) {
   const qv = useQVClient();
   const [query, setQuery] = useState('');
+  const [mode, setMode] = useState<"crystal" | "molecule" | "auto">("auto");
   const [isSearching, setIsSearching] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<OnlineCandidate[]>([]);
+  const [providersQueried, setProvidersQueried] = useState<string[]>([]);
+  const [partial, setPartial] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSearch = useCallback(async () => {
-    if (!query.trim() || !projectRoot) return;
+    if (!query.trim()) return;
     
     setIsSearching(true);
     setError(null);
     
     try {
       const response = await qv.call('structure_search_online', {
-        project_root: projectRoot,
         query: query.trim(),
-        max_results: 10,
+        mode: mode,
+        limit: 50,
       });
       
       if (response.ok && response.data) {
         setSessionId(response.data.session_id);
         setCandidates(response.data.candidates || []);
+        setProvidersQueried(response.data.providers_queried || []);
+        setPartial(response.data.partial || false);
         // Auto-select first candidate if available
         if (response.data.candidates && response.data.candidates.length > 0) {
           onSelectCandidate(response.data.session_id, response.data.candidates[0].candidate_id);
@@ -65,15 +74,19 @@ export function OnlineImportPanel({
         setError(response.error?.message || 'Search failed');
         setCandidates([]);
         setSessionId(null);
+        setProvidersQueried([]);
+        setPartial(false);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
       setCandidates([]);
       setSessionId(null);
+      setProvidersQueried([]);
+      setPartial(false);
     } finally {
       setIsSearching(false);
     }
-  }, [query, projectRoot, qv, onSelectCandidate]);
+  }, [query, mode, qv, onSelectCandidate]);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isSearching) {
@@ -115,11 +128,39 @@ export function OnlineImportPanel({
       </div>
       
       <div className="online-import-panel__content">
+        {/* Mode Selection Tabs */}
+        <div className="online-import-panel__mode-tabs">
+          <button
+            className={`online-import-panel__mode-tab ${mode === "crystal" ? "online-import-panel__mode-tab--active" : ""}`}
+            onClick={() => setMode("crystal")}
+            disabled={isSearching}
+            title="Search only crystal structures"
+          >
+            🔷 Crystals
+          </button>
+          <button
+            className={`online-import-panel__mode-tab ${mode === "molecule" ? "online-import-panel__mode-tab--active" : ""}`}
+            onClick={() => setMode("molecule")}
+            disabled={isSearching}
+            title="Search only molecules"
+          >
+            ⚛️ Molecules
+          </button>
+          <button
+            className={`online-import-panel__mode-tab ${mode === "auto" ? "online-import-panel__mode-tab--active" : ""}`}
+            onClick={() => setMode("auto")}
+            disabled={isSearching}
+            title="Search both crystals and molecules"
+          >
+            🔍 All
+          </button>
+        </div>
+        
         <div className="online-import-panel__search">
           <input
             type="text"
             className="online-import-panel__search-input"
-            placeholder="Enter formula (e.g., MoS2)"
+            placeholder="Enter formula or name (e.g., MoS2, caffeine)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -133,6 +174,25 @@ export function OnlineImportPanel({
             {isSearching ? 'Searching...' : 'Search'}
           </button>
         </div>
+        
+        {/* Providers queried indicator */}
+        {providersQueried.length > 0 && (
+          <div className="online-import-panel__providers-info">
+            <span className="online-import-panel__providers-label">Providers:</span>
+            <div className="online-import-panel__providers-badges">
+              {providersQueried.map((provider) => (
+                <span key={provider} className="online-import-panel__provider-badge">
+                  {provider}
+                </span>
+              ))}
+            </div>
+            {partial && (
+              <span className="online-import-panel__partial-indicator" title="Some providers timed out">
+                ⚠️ Partial results
+              </span>
+            )}
+          </div>
+        )}
         
         {error && (
           <div className="online-import-panel__error">
@@ -156,16 +216,36 @@ export function OnlineImportPanel({
                   }`}
                   onClick={() => handleCandidateClick(candidate.candidate_id)}
                 >
-                  <div className="online-import-panel__candidate-label">
-                    {candidate.label}
+                  <div className="online-import-panel__candidate-header">
+                    <div className="online-import-panel__candidate-label">
+                      {candidate.structure_type === "crystal" ? "🔷" : "⚛️"} {candidate.label}
+                    </div>
+                    <div className="online-import-panel__candidate-type-badge">
+                      {candidate.structure_type === "crystal" ? "Crystal" : "Molecule"}
+                    </div>
                   </div>
                   <div className="online-import-panel__candidate-meta">
-                    <span className="online-import-panel__candidate-source">
-                      {candidate.source}
-                    </span>
+                    <div className="online-import-panel__candidate-providers">
+                      {candidate.providers && candidate.providers.length > 0 ? (
+                        candidate.providers.map((provider) => (
+                          <span key={provider} className="online-import-panel__candidate-provider-badge">
+                            {provider}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="online-import-panel__candidate-source">
+                          {candidate.source}
+                        </span>
+                      )}
+                    </div>
                     <span className="online-import-panel__candidate-sites">
                       {candidate.nsites} sites
                     </span>
+                    {candidate.spacegroup && (
+                      <span className="online-import-panel__candidate-spacegroup">
+                        {candidate.spacegroup}
+                      </span>
+                    )}
                     {candidate.flags.length > 0 && (
                       <span className="online-import-panel__candidate-flags">
                         {candidate.flags.join(', ')}

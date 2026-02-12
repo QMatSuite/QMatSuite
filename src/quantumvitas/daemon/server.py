@@ -294,6 +294,8 @@ class QVDaemon:
             # Online structure search
             "structure_search_online": self._handle_structure_search_online,
             "structure_get_online_candidate": self._handle_structure_get_online_candidate,
+            "structure_list_providers": self._handle_structure_list_providers,
+            "structure_update_online_sources": self._handle_structure_update_online_sources,
             "structure_import_online_candidate": self._handle_structure_import_online_candidate,
             
             # Structure management
@@ -2153,7 +2155,7 @@ class QVDaemon:
         """
         from quantumvitas.api import QVService
         from quantumvitas.api.types.online_search import StructureRefDTO
-        from quantumvitas.io.online_cache import OnlineStructureCache
+        from quantumvitas.api.utils import OnlineStructureCache  # Re-exported for daemon use
         import uuid
         
         query = self._require_str(payload, "query")
@@ -2178,8 +2180,10 @@ class QVDaemon:
         cache.create_session(result_dto.session_id, query, source_summary)
         
         # Cache candidates (structures will be fetched on demand)
+        # PR0: Using OnlineStructureCache and CandidateSummary from api.utils (re-exported for daemon)
+        # TODO (PR6): Move caching logic into API facade
         for rank, candidate_dto in enumerate(result_dto.candidates):
-            from quantumvitas.io.online_cache import CandidateSummary
+            from quantumvitas.api.utils import CandidateSummary  # Re-exported for daemon use
             candidate = CandidateSummary(
                 candidate_id=candidate_dto.candidate_id,
                 label=candidate_dto.label,
@@ -2193,34 +2197,8 @@ class QVDaemon:
             # OPTIMADE entries: store metadata only (structure fetched later)
             cache.add_candidate_metadata_only(result_dto.session_id, candidate, rank, None)
         
-        # Convert candidates to dict for RPC response
-        from dataclasses import asdict
-        candidates_dict = [
-            {
-                "candidate_id": c.candidate_id,
-                "label": c.label,
-                "source": c.source,
-                "source_id": c.source_id,
-                "structure_type": c.structure_type,
-                "formula": c.formula,
-                "nsites": c.nsites,
-                "spacegroup": c.spacegroup,
-                "providers": c.providers,
-                "score": c.score,
-                "flags": c.flags,
-                "metadata": c.metadata,
-            }
-            for c in result_dto.candidates
-        ]
-        
-        return {
-            "session_id": result_dto.session_id,
-            "candidates": candidates_dict,
-            "providers_queried": result_dto.providers_queried,
-            "partial": result_dto.partial,
-            "query": result_dto.query,
-            "mode": result_dto.mode,
-        }
+        # Serialize DTO (no hand-serialization)
+        return result_dto.to_dict()
     
     def _handle_structure_get_online_candidate(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -2241,8 +2219,12 @@ class QVDaemon:
         from quantumvitas.api.utils import write_structure
         import tempfile
         import numpy as np
+        from pathlib import Path
         
-        project_root = self._require_path(payload, "project_root")
+        # PR6: project_root is optional (fetch uses global cache, not project-specific)
+        project_root = payload.get("project_root")
+        if project_root:
+            project_root = Path(project_root).resolve()
         session_id = self._require_str(payload, "session_id")
         candidate_id = self._require_str(payload, "candidate_id")
         supercell = tuple(payload.get("supercell", [1, 1, 1]))
@@ -2261,7 +2243,8 @@ class QVDaemon:
         )
         
         # PR0: Use global cache (not project-specific)
-        from quantumvitas.io.online_cache import OnlineStructureCache
+        # Use OnlineStructureCache from api.utils (re-exported for daemon use)
+        from quantumvitas.api.utils import OnlineStructureCache
         cache = OnlineStructureCache()  # Uses global cache location
         
         # Always get candidate first (needed for provenance building)
@@ -2290,55 +2273,50 @@ class QVDaemon:
         structure = cache.get_structure(session_id, candidate_id)
         found_structure = structure is not None
         
-        # If not in cache, try fetching from OPTIMADE (2-step approach)
+        # If not in cache, try fetching from provider (2-step approach)
         if structure is None:
-            if candidate.source == "optimade":
-                # Get optimade_base from metadata
+            # PR6: Check if source is an OPTIMADE provider (mp, cod, etc.) or "optimade" (legacy)
+            is_optimade_provider = (
+                candidate.source in ["mp", "cod", "alexandria", "oqmd", "jarvis", "mcloud"] or
+                candidate.source == "optimade" or
+                candidate.source.startswith("opt_")
+            )
+            if is_optimade_provider:
+                # Get optimade_base from metadata (stored during search)
                 metadata = cache.get_candidate_metadata(session_id, candidate_id)
                 optimade_base = metadata.get("optimade_base") if metadata else None
                 
+                # If no optimade_base in metadata, the API fetch_structure will handle it
+                # (PR6: API layer has access to provider config, daemon does not)
                 if optimade_base and candidate.source_id:
-                    # PR0: Fetch structure from OPTIMADE (temporary: still using kernel function)
-                    # TODO (PR6): Replace with QVService.OnlineSearch.fetch_structure()
-                    from quantumvitas.io.online_search import fetch_structure_from_optimade
-                    structure, optimade_raw_data = fetch_structure_from_optimade(optimade_base, candidate.source_id)
-                    
-                    if structure:
-                        # Score and update candidate
-                        # Get query from session
-                        session_info = cache.get_session_info(session_id)
-                        query = session_info.query if session_info else ""
-                        query_reduced = reduce_formula(query) if query else ""
-                        # PR0: Score candidate (temporary: still using kernel function)
-                        # TODO (PR6): Replace with provider system scoring
-                        from quantumvitas.io.online_search import score_candidate
-                        score, flags = score_candidate(structure, "optimade", query_reduced, {})
-                        candidate.score = score
-                        candidate.flags = flags
-                        candidate.nsites = len(structure)
+                    # PR0: Use API facade to fetch structure (temporary passthrough in PR0, will be replaced in PR6)
+                    from quantumvitas.api.types.online_search import StructureRefDTO
+                    ref_dto = StructureRefDTO(session_id=session_id, candidate_id=candidate_id)
+                    try:
+                        structure_doc_dto = QVService.OnlineSearch.fetch_structure(ref_dto)
+                        # Convert StructureDocDTO to pymatgen Structure for visualization
+                        from pymatgen.core import Structure as PMGStructure, Lattice
+                        if structure_doc_dto.structure_type == "crystal" and structure_doc_dto.lattice:
+                            lattice = Lattice(structure_doc_dto.lattice)
+                            species = [atom["element"] for atom in structure_doc_dto.atoms]
+                            coords = [atom["coords"] for atom in structure_doc_dto.atoms]
+                            structure = PMGStructure(lattice, species, coords, coords_are_cartesian=True)
+                        else:
+                            # Handle molecule case (no lattice)
+                            from pymatgen.core import Molecule as PMGMolecule
+                            species = [atom["element"] for atom in structure_doc_dto.atoms]
+                            coords = [atom["coords"] for atom in structure_doc_dto.atoms]
+                            structure = PMGMolecule(species, coords)
                         
                         # Cache the fetched structure
                         # Find rank
                         rank = next((i for i, c in enumerate(candidates) if c.candidate_id == candidate_id), 0)
+                        # Update candidate with structure info
+                        candidate.nsites = len(structure)
                         cache.add_candidate(session_id, candidate, structure, rank)
-                        
-                        # Store raw OPTIMADE data in cache metadata for provenance
-                        # We'll store it in the meta BLOB of the structures table
-                        if optimade_raw_data:
-                            import json
-                            import sqlite3
-                            meta_data = json.dumps({"optimade_raw": optimade_raw_data})
-                            # Update structure meta in cache
-                            conn = sqlite3.connect(cache.db_path)
-                            try:
-                                cursor = conn.cursor()
-                                structure_key = cache._compute_structure_key(structure)
-                                cursor.execute("""
-                                    UPDATE structures SET meta = ? WHERE structure_key = ?
-                                """, (meta_data.encode('utf-8'), structure_key))
-                                conn.commit()
-                            finally:
-                                conn.close()
+                    except Exception as e:
+                        logger_local.warning(f"[ONLINE] Failed to fetch structure via API: {e}")
+                        structure = None
         
         if structure is None:
             logger_local.error(f"[ONLINE] Structure not found and could not be fetched for candidate {candidate_id}")
@@ -2594,6 +2572,70 @@ class QVDaemon:
             result["provenance"] = provenance
         
         return result
+    
+    def _handle_structure_list_providers(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List available online structure providers.
+        
+        Payload:
+            refresh_registry: bool - Optional, if True force refresh OPTIMADE provider registry cache
+        """
+        from quantumvitas.api import QVService
+        
+        refresh_registry = payload.get("refresh_registry", False)
+        
+        # Call API method
+        result_dto = QVService.OnlineSearch.list_providers(refresh_registry=refresh_registry)
+        
+        # Serialize DTO (no hand-serialization)
+        return result_dto.to_dict()
+    
+    def _handle_structure_update_online_sources(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update online structure source settings.
+        
+        Payload:
+            patch: dict - OnlineSourcesPatchDTO with fields to update
+        """
+        from quantumvitas.api import QVService
+        from quantumvitas.api.types.online_search import (
+            OnlineSourcesPatchDTO,
+            ProviderPatchDTO,
+            MaterialsProjectPatchDTO,
+        )
+        
+        patch_dict = payload.get("patch", {})
+        
+        # Convert dict to DTO
+        optimade_providers = None
+        if "optimade_providers" in patch_dict:
+            optimade_providers = [
+                ProviderPatchDTO(provider_key=p["provider_key"], enabled=p["enabled"])
+                for p in patch_dict["optimade_providers"]
+            ]
+        
+        materials_project = None
+        if "materials_project" in patch_dict:
+            mp_dict = patch_dict["materials_project"]
+            materials_project = MaterialsProjectPatchDTO(
+                enabled=mp_dict.get("enabled"),
+                api_key=mp_dict.get("api_key"),
+            )
+        
+        patch_dto = OnlineSourcesPatchDTO(
+            optimade_providers=optimade_providers,
+            pubchem_enabled=patch_dict.get("pubchem_enabled"),
+            materials_project=materials_project,
+            timeout_seconds=patch_dict.get("timeout_seconds"),
+            max_results_per_provider=patch_dict.get("max_results_per_provider"),
+            max_total_results=patch_dict.get("max_total_results"),
+        )
+        
+        # Call API method
+        result_dto = QVService.OnlineSearch.update_online_sources(patch_dto)
+        
+        # Serialize DTO (no hand-serialization)
+        return {"settings": result_dto.to_dict()}
     
     def _handle_structure_import_online_candidate(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
