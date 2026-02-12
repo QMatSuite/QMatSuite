@@ -1,0 +1,58 @@
+{
+  "bundle_kind": "canonical",
+  "object_type": "convergence",
+  "render_meta": {
+    "axis_labels": {
+      "x": "Step",
+      "y": "Energy"
+    },
+    "units": {
+      "x": "",
+      "y": "eV"
+    },
+    "series_labels": [],
+    "reference_energy": null,
+    "reference_position": null,
+    "markers": [],
+    "extra": {
+      "n_ionic_steps": 0,
+      "converged": false,
+      "algorithm": "Davidson"
+    }
+  },
+  "provenance_meta": {
+    "schema_version": "1.0",
+    "object_type": "convergence",
+    "run_ulid": "01KH7Y22B5R61T2FE22JGXKFW5",
+    "calc_ulid": "01KH7Y223CMDD9ZTHA7PZ1P56F",
+    "step_ulids": [
+      "01KH7Y223CMDD9ZTHA7PZ1P56G"
+    ],
+    "gen_steps": [
+      "scf"
+    ],
+    "engine_name": "qe",
+    "source_files": [
+      {
+        "path": "raw/bandspw.out",
+        "size_bytes": 25976,
+        "mtime": 1770866712.934014
+      }
+    ],
+    "parser_name": "qe_convergence",
+    "parser_version": "1.0",
+    "warnings": [
+      "No SCF steps found in output."
+    ],
+    "manifest_snapshot": null
+  },
+  "series": [],
+  "geometry_frames": null,
+  "arrays": {
+    "scf_step": [],
+    "scf_energy": [],
+    "scf_de": [],
+    "ionic_step": [],
+    "ionic_energy": []
+  }
+}

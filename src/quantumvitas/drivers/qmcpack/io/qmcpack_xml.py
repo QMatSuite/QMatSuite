@@ -211,7 +211,7 @@ def parse_qmcpack_text(text: str) -> dict[str, Any]:
     project = root.find("project")
     if project is not None:
         if project.get("id"):
-            params["project_id"] = project.get("id")
+            params["qmc_project_id"] = project.get("id")
         params["series"] = project.get("series", "0")
         for p in project.findall("parameter"):
             name = p.get("name", "")
@@ -256,7 +256,7 @@ def parse_qmcpack_text(text: str) -> dict[str, Any]:
                 structure["cart_coords"] = coords
             if lattice_vectors:
                 structure["lattice"] = lattice_vectors
-            structure["comment"] = params.get("project_id", "")
+            structure["comment"] = params.get("qmc_project_id", "")
             # Preserve ion particleset name for roundtrip
             ion_name = ion_pset.get("name", "ion0")
             if ion_name != "ion0":
@@ -401,7 +401,7 @@ def write_qmcpack_text(fragment: dict[str, Any]) -> str:
     root = ET.Element("simulation")
 
     # --- Project ---
-    project_id = params.get("project_id", "qmcpack_calc")
+    project_id = params.get("qmc_project_id", "qmcpack_calc")
     series = params.get("series", "0")
     proj = ET.SubElement(root, "project", id=project_id, series=series)
     driver_version = params.get("driver_version")

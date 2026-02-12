@@ -6,9 +6,14 @@ workflow_tags:
 - nvt
 - biomolecular
 description: Full atom_style peptide with kspace, shake, bonded styles, read_data
-demo_eligible: false
+demo_eligible: true
+demo_slug: lammps_peptide_nvt
 step_type_gen: md
 step_type_spec: lammps_md
 required_engine: lammps
 availability: open_source
-exclusion_reason: Parser/writer test case only
+asset_policy: none
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite, inspired by LAMMPS examples
+  license: MIT (QMatSuite)

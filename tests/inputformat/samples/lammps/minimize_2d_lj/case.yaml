@@ -15,3 +15,6 @@ demo_slug: lammps_lj_minimize
 asset_policy: none
 recommended_analysis: scf
 exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite, inspired by LAMMPS examples
+  license: MIT (QMatSuite)

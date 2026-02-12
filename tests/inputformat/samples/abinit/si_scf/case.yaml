@@ -16,3 +16,6 @@ demo_slug: abinit_si_scf
 asset_policy: redistributable
 recommended_analysis: scf
 exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite, inspired by ABINIT tutorials
+  license: MIT (QMatSuite)

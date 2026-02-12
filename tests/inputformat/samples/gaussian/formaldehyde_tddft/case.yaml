@@ -13,9 +13,14 @@ species:
 functional: B3LYP
 basis_set: STO-3G
 description: B3LYP/STO-3G TD=(NStates=3); covers TDDFT keyword with options parsing
-demo_eligible: false
+demo_eligible: true
+demo_slug: gaussian_formaldehyde_tddft
 step_type_gen: td
 step_type_spec: gaussian_td
 required_engine: gaussian
 availability: requires_local_install
-exclusion_reason: Parser/writer test case only
+asset_policy: none
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

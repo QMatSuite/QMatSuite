@@ -20,3 +20,6 @@ demo_slug: gaussian_water_hf
 asset_policy: none
 recommended_analysis: scf
 exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

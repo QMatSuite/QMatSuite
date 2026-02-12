@@ -14,3 +14,6 @@ demo_slug: lammps_lj_melt
 asset_policy: none
 recommended_analysis: trajectory
 exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite, inspired by LAMMPS examples
+  license: MIT (QMatSuite)

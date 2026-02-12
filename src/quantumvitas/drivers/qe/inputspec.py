@@ -17,6 +17,49 @@ from quantumvitas.inputformat.core import (
 )
 
 
+def _parse_qe_text(text: str) -> dict[str, Any]:
+    """Parse QE input text and return params + structure in StructureDoc format.
+
+    Uses the full QE parser infrastructure including ibrav lattice reconstruction.
+
+    Returns dict with:
+        params: nested dict of namelists (e.g., {"CONTROL": {...}, "SYSTEM": {...}})
+        structure: StructureDoc dict or None (e.g., {lattice, species, frac_coords})
+    """
+    from quantumvitas.drivers.qe.io.model import QECardType
+    from quantumvitas.drivers.qe.io.parser import QEInputParser
+
+    qe_input = QEInputParser.parse_string(text)
+
+    # Extract params from namelists
+    params: dict[str, Any] = {}
+    for nl in qe_input.namelists:
+        params[nl.name.upper()] = dict(nl.parameters)
+
+    # Extract structure using the full QE infrastructure (handles ibrav, alat, etc.)
+    structure = None
+    positions_card = qe_input.get_card(QECardType.ATOMIC_POSITIONS)
+
+    if positions_card and positions_card.data:
+        try:
+            from quantumvitas.drivers.qe.io.structure_io import structure_from_qe_input
+
+            pmg_struct = structure_from_qe_input(qe_input)
+            # Convert to plain Python types (no numpy) for clean YAML serialization
+            lattice = [[float(x) for x in v] for v in pmg_struct.lattice.matrix]
+            species = [str(s) for s in pmg_struct.species]
+            frac_coords = [[float(x) for x in c] for c in pmg_struct.frac_coords]
+            structure = {
+                "lattice": lattice,
+                "species": species,
+                "frac_coords": frac_coords,
+            }
+        except Exception:
+            pass  # If structure extraction fails, return None
+
+    return {"params": params, "structure": structure}
+
+
 def _write_qe_text(fragment: dict[str, Any]) -> str:
     """Write QE input text from combined params + structure.
 
@@ -104,6 +147,7 @@ def get_qe_input_spec(**context: Any) -> EngineInputSpec:
                 content_role="combined",
                 description="QE input file (namelists + cards)",
                 custom_writer=_write_qe_text,
+                custom_parser=_parse_qe_text,
             ),
         ),
         resource_refs=(

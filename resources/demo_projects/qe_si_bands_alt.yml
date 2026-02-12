@@ -7,7 +7,67 @@ project:
     path: .
     kind: project
   settings: {}
-structures: []
+structures:
+- meta:
+    ulid: 01KFMPMA2PJM8PDM1TSEK8Q00W
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.7546079563238743
+        - 0.0
+        - 2.7546079563238743
+      - - 0.0
+        - 2.7546079563238743
+        - 2.7546079563238743
+      - - -2.7546079563238743
+        - 2.7546079563238743
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.8956039308540573
+      b: 3.8956039308540573
+      c: 3.8956039308540573
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 41.80318656269414
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - -0.25
+      - 0.75
+      - -0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.3773039781619372
+      - 1.3773039781619374
+      - 1.3773039781619374
 calculations:
 - meta:
     ulid: 01KJNEXGX0XCZT74X40QN4BN7B
@@ -25,7 +85,23 @@ calculations:
       path: calculations/7-si-bandstructure/steps/scf.step.yaml
       kind: step
       ulid: 01KV669ENV5TXB763G0KMCDE0W
-    parameters: {}
+    parameters:
+      CONTROL:
+        calculation: scf
+        restart_mode: from_scratch
+        prefix: si
+        outdir: ./outdir
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ibrav: 2
+        celldm(1): 10.410909236
+        nat: 2
+        ntyp: 1
+        ecutwfc: 40
+        ecutrho: 320
+        nbnd: 8
+      ELECTRONS:
+        conv_thr: 1.0e-08
     step_type_spec: qe_scf
   - meta:
       name: nscf
@@ -33,7 +109,24 @@ calculations:
       path: calculations/7-si-bandstructure/steps/nscf.step.yaml
       kind: step
       ulid: 01K78F7T2BJKMX05HYZNC7BBDH
-    parameters: {}
+    parameters:
+      CONTROL:
+        calculation: nscf
+        restart_mode: from_scratch
+        prefix: si
+        outdir: ./outdir
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ibrav: 2
+        celldm(1): 10.410909236
+        nat: 2
+        ntyp: 1
+        ecutwfc: 40
+        ecutrho: 320
+        occupations: tetrahedra
+        nbnd: 8
+      ELECTRONS:
+        conv_thr: 1.0e-08
     step_type_spec: qe_nscf
   - meta:
       name: bandspw
@@ -41,7 +134,23 @@ calculations:
       path: calculations/7-si-bandstructure/steps/bandspw.step.yaml
       kind: step
       ulid: 01KNM27XQK6N50WATCYHJNYK4T
-    parameters: {}
+    parameters:
+      CONTROL:
+        calculation: bands
+        restart_mode: from_scratch
+        prefix: si
+        outdir: ./outdir
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ibrav: 2
+        celldm(1): 10.410909236
+        nat: 2
+        ntyp: 1
+        ecutwfc: 40
+        ecutrho: 320
+        nbnd: 8
+      ELECTRONS:
+        conv_thr: 1.0e-08
     step_type_spec: qe_bandspw
   - meta:
       name: bands
@@ -49,7 +158,11 @@ calculations:
       path: calculations/7-si-bandstructure/steps/bands.step.yaml
       kind: step
       ulid: 01KNV5672F5552PEBNMA06EXW6
-    parameters: {}
+    parameters:
+      BANDS:
+        outdir: ./outdir/
+        prefix: si
+        filband: si.bands.dat
     step_type_spec: qe_bands
   - meta:
       name: scf
@@ -59,6 +172,7 @@ calculations:
       ulid: 01KV669ENV5TXB763G0KMCDE0W
     parameters: {}
     step_type_spec: qe_custom
+  structure_ulid: 01KFMPMA2PJM8PDM1TSEK8Q00W
   species_map:
     Si:
       pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
@@ -86,4 +200,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_bands_alt
-  corpus_checksum: 5005b853fc4bdc7f07316c48223cc12fbf529346335a90db88364b8287e58375
+  corpus_checksum: cb8db42cbb7a4a179880c965dbad2107dcfbc8d0a657e62d6e26241852a4bc95

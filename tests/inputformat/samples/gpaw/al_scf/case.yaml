@@ -1,0 +1,63 @@
+case_id: al_scf
+engine: gpaw
+title: Aluminum GPAW SCF
+description: PBE ground-state calculation for FCC aluminum
+workflow_tags:
+- scf
+- dft
+- metal
+species:
+- Al
+functional: PBE
+demo_eligible: true
+step_type_gen: scf
+step_type_spec: gpaw_scf
+required_engine: gpaw
+availability: open_source
+demo_slug: gpaw_al_scf
+asset_policy: none
+recommended_analysis: scf
+difficulty: beginner
+parser_mode: direct_snapshot
+inline_parameters:
+  xc: PBE
+  mode: pw
+  ecut: 300
+  kpts:
+    size:
+    - 8
+    - 8
+    - 8
+  occupations:
+    name: fermi-dirac
+    width: 0.1
+inline_structure:
+  type: structure
+  species:
+  - Al
+  lattice:
+  - - 0.0
+    - 2.025
+    - 2.025
+  - - 2.025
+    - 0.0
+    - 2.025
+  - - 2.025
+    - 2.025
+    - 0.0
+  frac_coords:
+  - - 0.0
+    - 0.0
+    - 0.0
+subtitle: PBE ground-state calculation for aluminum
+tags:
+- gpaw
+- metal
+- scf
+- dft
+- Al
+- tutorial
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

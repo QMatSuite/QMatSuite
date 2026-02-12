@@ -93,4 +93,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: pyscf
   corpus_case_id: water_scf
-  corpus_checksum: fc817117b5d03cfac3e7df1bcafee7272cedd7f48270d6cfd30af11cbab607d7
+  corpus_checksum: 4f7b328a8771131c5c8a000c26582eb1ecee1499986ceffbd01d75767a41ea7c

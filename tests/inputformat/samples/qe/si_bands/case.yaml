@@ -50,3 +50,6 @@ steps:
   step_type_spec: qe_bands
   input_files:
   - bands.in
+attribution:
+  source: Constructed for QMatSuite, inspired by QE tutorials
+  license: MIT (QMatSuite)

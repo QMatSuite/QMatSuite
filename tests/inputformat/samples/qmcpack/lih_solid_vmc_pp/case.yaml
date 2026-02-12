@@ -13,9 +13,14 @@ species:
 - H
 description: LiH rocksalt solid with einspline/HDF5 wavefunction, XML pseudopotentials,
   Bspline J1+J2 Jastrow, PBC. VMC sampling followed by DMC projection.
-demo_eligible: false
+demo_eligible: true
+demo_slug: qmcpack_lih_solid
 step_type_gen: vmc
 step_type_spec: qmcpack_vmc
 required_engine: qmcpack
 availability: open_source
-exclusion_reason: Parser/writer test case only
+asset_policy: none
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite, inspired by QMCPACK test suite
+  license: MIT (QMatSuite)

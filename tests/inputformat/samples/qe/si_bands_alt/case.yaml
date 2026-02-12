@@ -53,3 +53,6 @@ steps:
   step_type_spec: qe_custom
   input_files:
   - si.4_plotband.in
+attribution:
+  source: Constructed for QMatSuite, inspired by QE tutorials
+  license: MIT (QMatSuite)

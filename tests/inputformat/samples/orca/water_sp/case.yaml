@@ -21,3 +21,6 @@ demo_slug: orca_water_sp
 asset_policy: none
 recommended_analysis: scf
 exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)

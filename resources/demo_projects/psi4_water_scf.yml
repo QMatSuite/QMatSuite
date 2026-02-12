@@ -93,4 +93,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: psi4
   corpus_case_id: water_scf
-  corpus_checksum: dc121f3e8fca8ee749278a0b6fa85a697337e06d427172162c56684ae84ff8a7
+  corpus_checksum: 53e1b4070f5047db9544491310bb748e50773cf777b27501bc025fa15645d0e9

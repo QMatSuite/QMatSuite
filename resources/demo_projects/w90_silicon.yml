@@ -1,0 +1,355 @@
+version: 1
+project:
+  meta:
+    ulid: 01KXFFS0BPTGJ6YHTT6BXN62TB
+    name: Silicon with disentanglement and band interpolation
+    slug: silicon-with-disentanglement-and-band-interpolation
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01K8MR4M4TF9SR6AW8GF2ZF97C
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.6988
+        - 0.0
+        - 2.6988
+      - - 0.0
+        - 2.6988
+        - 2.6988
+      - - -2.6988
+        - 2.6988
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.8166795621325087
+      b: 3.8166795621325087
+      c: 3.8166795621325087
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 39.313535324543984
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - -0.25
+      - 0.75
+      - -0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.3494
+      - 1.3493999999999997
+      - 1.3493999999999997
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+calculations:
+- meta:
+    ulid: 01KR7JDMB6T0MDGT5PM531K19P
+    name: Silicon with disentanglement and band interpolation
+    slug: silicon-with-disentanglement-and-band-interpolation
+    path: calculations/silicon-with-disentanglement-and-band-interpolation
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: w90
+  steps:
+  - meta:
+      name: wannier
+      slug: wannier
+      path: calculations/silicon-with-disentanglement-and-band-interpolation/steps/wannier.step.yaml
+      kind: step
+      ulid: 01KBEJRQFTBDWHM1TM17VNKYDZ
+    parameters:
+      num_bands: 12
+      num_wann: 8
+      dis_win_max: 17.0
+      dis_froz_max: 6.4
+      dis_num_iter: 120
+      dis_mix_ratio: 1.d0
+      num_iter: 50
+      num_print_cycles: 10
+      projections:
+      - 'Si : sp3'
+      kpoint_path:
+      - start_label: L
+        start:
+        - 0.5
+        - 0.5
+        - 0.5
+        end_label: G
+        end:
+        - 0.0
+        - 0.0
+        - 0.0
+      - start_label: G
+        start:
+        - 0.0
+        - 0.0
+        - 0.0
+        end_label: X
+        end:
+        - 0.5
+        - 0.0
+        - 0.5
+      - start_label: X
+        start:
+        - 0.5
+        - -0.5
+        - 0.0
+        end_label: K
+        end:
+        - 0.375
+        - -0.375
+        - 0.0
+      - start_label: K
+        start:
+        - 0.375
+        - -0.375
+        - 0.0
+        end_label: G
+        end:
+        - 0.0
+        - 0.0
+        - 0.0
+      mp_grid:
+      - 4
+      - 4
+      - 4
+      kpoints:
+        points:
+        - - 0.0
+          - 0.0
+          - 0.0
+        - - 0.0
+          - 0.25
+          - 0.0
+        - - 0.0
+          - 0.5
+          - 0.0
+        - - 0.0
+          - 0.75
+          - 0.0
+        - - 0.25
+          - 0.0
+          - 0.0
+        - - 0.25
+          - 0.25
+          - 0.0
+        - - 0.25
+          - 0.5
+          - 0.0
+        - - 0.25
+          - 0.75
+          - 0.0
+        - - 0.5
+          - 0.0
+          - 0.0
+        - - 0.5
+          - 0.25
+          - 0.0
+        - - 0.5
+          - 0.5
+          - 0.0
+        - - 0.5
+          - 0.75
+          - 0.0
+        - - 0.75
+          - 0.0
+          - 0.0
+        - - 0.75
+          - 0.25
+          - 0.0
+        - - 0.75
+          - 0.5
+          - 0.0
+        - - 0.75
+          - 0.75
+          - 0.0
+        - - 0.0
+          - 0.0
+          - 0.25
+        - - 0.0
+          - 0.25
+          - 0.25
+        - - 0.0
+          - 0.5
+          - 0.25
+        - - 0.0
+          - 0.75
+          - 0.25
+        - - 0.25
+          - 0.0
+          - 0.25
+        - - 0.25
+          - 0.25
+          - 0.25
+        - - 0.25
+          - 0.5
+          - 0.25
+        - - 0.25
+          - 0.75
+          - 0.25
+        - - 0.5
+          - 0.0
+          - 0.25
+        - - 0.5
+          - 0.25
+          - 0.25
+        - - 0.5
+          - 0.5
+          - 0.25
+        - - 0.5
+          - 0.75
+          - 0.25
+        - - 0.75
+          - 0.0
+          - 0.25
+        - - 0.75
+          - 0.25
+          - 0.25
+        - - 0.75
+          - 0.5
+          - 0.25
+        - - 0.75
+          - 0.75
+          - 0.25
+        - - 0.0
+          - 0.0
+          - 0.5
+        - - 0.0
+          - 0.25
+          - 0.5
+        - - 0.0
+          - 0.5
+          - 0.5
+        - - 0.0
+          - 0.75
+          - 0.5
+        - - 0.25
+          - 0.0
+          - 0.5
+        - - 0.25
+          - 0.25
+          - 0.5
+        - - 0.25
+          - 0.5
+          - 0.5
+        - - 0.25
+          - 0.75
+          - 0.5
+        - - 0.5
+          - 0.0
+          - 0.5
+        - - 0.5
+          - 0.25
+          - 0.5
+        - - 0.5
+          - 0.5
+          - 0.5
+        - - 0.5
+          - 0.75
+          - 0.5
+        - - 0.75
+          - 0.0
+          - 0.5
+        - - 0.75
+          - 0.25
+          - 0.5
+        - - 0.75
+          - 0.5
+          - 0.5
+        - - 0.75
+          - 0.75
+          - 0.5
+        - - 0.0
+          - 0.0
+          - 0.75
+        - - 0.0
+          - 0.25
+          - 0.75
+        - - 0.0
+          - 0.5
+          - 0.75
+        - - 0.0
+          - 0.75
+          - 0.75
+        - - 0.25
+          - 0.0
+          - 0.75
+        - - 0.25
+          - 0.25
+          - 0.75
+        - - 0.25
+          - 0.5
+          - 0.75
+        - - 0.25
+          - 0.75
+          - 0.75
+        - - 0.5
+          - 0.0
+          - 0.75
+        - - 0.5
+          - 0.25
+          - 0.75
+        - - 0.5
+          - 0.5
+          - 0.75
+        - - 0.5
+          - 0.75
+          - 0.75
+        - - 0.75
+          - 0.0
+          - 0.75
+        - - 0.75
+          - 0.25
+          - 0.75
+        - - 0.75
+          - 0.5
+          - 0.75
+        - - 0.75
+          - 0.75
+          - 0.75
+    step_type_spec: w90_wannier
+  structure_ulid: 01K8MR4M4TF9SR6AW8GF2ZF97C
+meta:
+  ulid: w90_silicon
+  title: Silicon with disentanglement and band interpolation
+  subtitle: wannier
+  tags:
+  - disentanglement
+  - band_interpolation
+  - kpoint_path
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: w90
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: w90
+  corpus_case_id: silicon_bandinterp
+  corpus_checksum: cb45bc3e4cb83af0e874b20632312cc588219fa3018add394ee4bde8dded3337

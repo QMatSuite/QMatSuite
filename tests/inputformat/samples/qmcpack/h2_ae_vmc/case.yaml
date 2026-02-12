@@ -10,9 +10,14 @@ species:
 - H
 description: H2 molecule all-electron VMC with Gaussian LCAO basis (cc-pVTZ), Bspline
   J1+J2 Jastrow, open boundary conditions.
-demo_eligible: false
+demo_eligible: true
+demo_slug: qmcpack_h2_vmc
 step_type_gen: vmc
 step_type_spec: qmcpack_vmc
 required_engine: qmcpack
 availability: open_source
-exclusion_reason: Parser/writer test case only
+asset_policy: none
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite, inspired by QMCPACK test suite
+  license: MIT (QMatSuite)

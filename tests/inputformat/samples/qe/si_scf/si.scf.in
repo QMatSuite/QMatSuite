@@ -1,12 +1,19 @@
-&CONTROL
-  calculation = 'scf'
-  pseudo_dir = '/home/anonymous/quantumEspresso_2019/q-e-qe-6.4.1_2_MPICH/pseudo'
+&control
+    calculation = 'scf'
+    prefix = 'si'
+    pseudo_dir = '/home/anonymous/quantumEspresso_2019/q-e-qe-6.4.1_2_MPICH/pseudo'
 /
-
-&SYSTEM
-  ecutwfc = 20.0
+&system
+    ibrav=2, celldm(1) =10.20, 
+    nat=2, ntyp=1,
+    ecutwfc=20.0
 /
-
-K_POINTS {automatic}
+&electrons
+/
+ATOMIC_SPECIES
+ Si  28.086  Si.pz-vbc.UPF
+ATOMIC_POSITIONS (alat)
+ Si 0.00 0.00 0.00
+ Si 0.25 0.25 0.25
+K_POINTS (automatic)
   6 6 6 0 0 0
-

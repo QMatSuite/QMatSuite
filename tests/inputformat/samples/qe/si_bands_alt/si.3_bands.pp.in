@@ -1,4 +1,5 @@
-&BANDS
-  filband = 'si.bands.dat'
+&bands
+  outdir='./outdir/'
+  prefix='si'
+  filband='si.bands.dat'
 /
-

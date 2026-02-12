@@ -1127,68 +1127,53 @@ class QVService:
             """
             Get reference analysis data for demo projects.
 
-            If the project was created from a demo snapshot that includes reference
-            artifacts, this returns the reference data for comparison.
+            If the project was created from a demo snapshot and has a reference
+            pack, this returns the pre-computed analysis data for comparison.
+
+            Uses the demo_source field in project settings (S11) to locate
+            ref packs at resources/demo_projects/ref_packs/<demo_id>/.
 
             Args:
                 calculation_selector: Calculation selector
-                analysis_type: Type of analysis ("scf", "dos", "bands")
+                analysis_type: Type of analysis ("scf", "dos", "bands", "convergence")
 
             Returns:
                 Dict with reference analysis data, or None if not a demo project
+                or no ref pack available
             """
             try:
-                import json
                 from quantumvitas.core.project_utils import load_project_config
-                from quantumvitas.core.resources import get_resources_dir
 
                 project_root = self._service.project_root
                 config = load_project_config(project_root)
 
-                # Check if project has demo origin
+                # Check if project has demo_source (S11)
                 project_settings = config.get("project", {}).get("settings", {})
-                origin = project_settings.get("origin", {})
+                demo_source = project_settings.get("demo_source")
 
-                if origin.get("kind") != "demo":
+                if not demo_source:
                     return None
 
-                demo_id = origin.get("demo_id")
+                demo_id = demo_source.get("demo_id")
                 if not demo_id:
                     return None
 
-                # Get reference_artifacts mapping
-                reference_artifacts = origin.get("reference_artifacts", {})
+                # Load ref pack via ref_packs module
+                from quantumvitas.demo_store.ref_packs import load_ref_pack
 
-                # If no reference_artifacts in project settings, try snapshot meta
-                if not reference_artifacts:
-                    resources_dir = get_resources_dir()
-                    demo_snapshot_path = resources_dir / "demo_projects" / f"{demo_id}.yml"
-                    if demo_snapshot_path.exists():
-                        import yaml
-                        try:
-                            snapshot_data = yaml.safe_load(demo_snapshot_path.read_text())
-                            snapshot_meta = snapshot_data.get("meta", {})
-                            reference_artifacts = snapshot_meta.get("reference_artifacts", {})
-                        except Exception:
-                            pass
-
-                # Check if reference artifact exists for this analysis type
-                artifact_filename = reference_artifacts.get(analysis_type)
-                if not artifact_filename:
+                bundle_data = load_ref_pack(demo_id, analysis_type)
+                if bundle_data is None:
                     return None
 
-                # Load reference JSON from demo_projects directory
-                resources_dir = get_resources_dir()
-                reference_path = resources_dir / "demo_projects" / artifact_filename
-
-                if not reference_path.exists():
-                    return None
-
-                data = json.loads(reference_path.read_text())
-                data["_is_reference"] = True
-                data["_reference_source"] = demo_id
-
-                return data
+                # Wrap in AnalysisResponse shape so frontend can render directly
+                return {
+                    "run_ulid": "REFERENCE",
+                    "object_type": analysis_type,
+                    "canonical_sha": "reference",
+                    "bundle": bundle_data,
+                    "_is_reference": True,
+                    "_reference_source": demo_id,
+                }
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -4899,7 +4884,13 @@ class QVService:
                         project = Project.open(project_root)
                         calculation = Calculation.from_yaml(calculation_dir, project, materialize_steps=True)
 
-                        if not calculation.structure_ulid:
+                        # Engines that embed structure in input (e.g., LAMMPS lattice
+                        # commands, QE ATOMIC_POSITIONS in input file) may not require
+                        # a separate structure assignment.
+                        _structureless_ok = {"lammps", "yambo"}
+                        engine_fam = getattr(calculation, "engine_family", "")
+                        _has_embedded = bool(calculation.steps)  # has steps with params
+                        if not calculation.structure_ulid and engine_fam not in _structureless_ok and not _has_embedded:
                             from quantumvitas.api.errors import ValidationError
                             raise ValidationError(
                                 f"Calculation '{calc_selector}' has no structure. Please set a structure first."
@@ -7283,6 +7274,39 @@ class QVService:
             parent_dir=target_dir,
             new_project_name=name,
         )
+
+        # Inject demo_source into project settings (S11)
+        from quantumvitas.core.project_utils import (
+            load_project_config,
+            save_project_config,
+        )
+        from quantumvitas.demo_store.manifest import read_manifest
+
+        project_config = load_project_config(project_root)
+        project_settings = project_config.get("project", {}).get("settings", {})
+
+        # Read generator manifest for digest
+        resources_dir = get_resources_dir()
+        manifest = read_manifest(resources_dir / "demo_projects")
+        demo_entry = manifest.get("demos", {}).get(demo_name, {})
+
+        # Extract engine from snapshot meta
+        snapshot_meta = snapshot_data.get("meta", {})
+        engine = snapshot_meta.get("corpus_engine", demo_entry.get("engine", ""))
+
+        from datetime import datetime, timezone
+        project_settings["demo_source"] = {
+            "demo_id": demo_name,
+            "generator_digest": demo_entry.get("output_checksum", ""),
+            "engine": engine,
+            "materialized_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Write back the updated settings
+        if "project" not in project_config:
+            project_config["project"] = {}
+        project_config["project"]["settings"] = project_settings
+        save_project_config(project_root, project_config)
 
         return {
             "project_root": str(project_root),

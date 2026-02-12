@@ -1,0 +1,12 @@
+{
+  "demo_slug": "gpaw_si_bands",
+  "engine": "gpaw",
+  "generated_at": "2026-02-12T01:40:08.234902+00:00",
+  "generator_version": "2.0.0",
+  "object_types": {
+    "bands": {
+      "file": "bands.json",
+      "sha256": "87383071923c80ccfa5d34102718cc18929f223937c5315af4b48a5ad7973fdb"
+    }
+  }
+}

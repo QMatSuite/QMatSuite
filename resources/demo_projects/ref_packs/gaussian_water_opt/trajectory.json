@@ -1,0 +1,247 @@
+{
+  "bundle_kind": "canonical",
+  "object_type": "trajectory",
+  "render_meta": {
+    "axis_labels": {
+      "x": "Iteration",
+      "y": "Observable"
+    },
+    "units": {
+      "x": "",
+      "y": ""
+    },
+    "series_labels": [
+      "Total Energy"
+    ],
+    "reference_energy": null,
+    "reference_position": null,
+    "markers": [],
+    "extra": {
+      "trajectory_type": "relax",
+      "n_frames": 5,
+      "n_atoms": 3,
+      "n_images": null
+    }
+  },
+  "provenance_meta": {
+    "schema_version": "1.0",
+    "object_type": "trajectory",
+    "run_ulid": "01KH7XYP5ARXBRP4B4RBR6HC46",
+    "calc_ulid": "01KH7XYP3FW380RP8R7QC7AWKH",
+    "step_ulids": [
+      "01KH7XYP3FW380RP8R7QC7AWKJ"
+    ],
+    "gen_steps": [
+      "relax"
+    ],
+    "engine_name": "gaussian",
+    "source_files": [
+      {
+        "path": "raw/01KH7XYP3FW380RP8R7QC7AWKJ/output.log",
+        "size_bytes": 75430,
+        "mtime": 1770866564.9172854
+      }
+    ],
+    "parser_name": "gaussian_trajectory",
+    "parser_version": "1.0",
+    "warnings": [],
+    "manifest_snapshot": null
+  },
+  "series": [
+    {
+      "x": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "y": [
+        -2039.8502905737994,
+        -2039.9226066858432,
+        -2039.9252390337147,
+        -2039.9260915582822,
+        -2039.9260915582822
+      ],
+      "x_label": "Iteration",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "Total Energy"
+    }
+  ],
+  "geometry_frames": {
+    "frames": [
+      {
+        "positions": [
+          [
+            0.0,
+            0.0,
+            0.117499
+          ],
+          [
+            0.0,
+            0.75695,
+            -0.469996
+          ],
+          [
+            0.0,
+            -0.75695,
+            -0.469996
+          ]
+        ],
+        "species": [
+          "O",
+          "H",
+          "H"
+        ],
+        "cell": null,
+        "pbc": [
+          false,
+          false,
+          false
+        ],
+        "forces": null,
+        "velocities": null
+      },
+      {
+        "positions": [
+          [
+            0.0,
+            0.0,
+            0.129705
+          ],
+          [
+            0.0,
+            0.751749,
+            -0.51882
+          ],
+          [
+            0.0,
+            -0.751749,
+            -0.51882
+          ]
+        ],
+        "species": [
+          "O",
+          "H",
+          "H"
+        ],
+        "cell": null,
+        "pbc": [
+          false,
+          false,
+          false
+        ],
+        "forces": null,
+        "velocities": null
+      },
+      {
+        "positions": [
+          [
+            0.0,
+            0.0,
+            0.126478
+          ],
+          [
+            0.0,
+            0.763257,
+            -0.505911
+          ],
+          [
+            0.0,
+            -0.763257,
+            -0.505911
+          ]
+        ],
+        "species": [
+          "O",
+          "H",
+          "H"
+        ],
+        "cell": null,
+        "pbc": [
+          false,
+          false,
+          false
+        ],
+        "forces": null,
+        "velocities": null
+      },
+      {
+        "positions": [
+          [
+            0.0,
+            0.0,
+            0.127139
+          ],
+          [
+            0.0,
+            0.757949,
+            -0.508556
+          ],
+          [
+            0.0,
+            -0.757949,
+            -0.508556
+          ]
+        ],
+        "species": [
+          "O",
+          "H",
+          "H"
+        ],
+        "cell": null,
+        "pbc": [
+          false,
+          false,
+          false
+        ],
+        "forces": null,
+        "velocities": null
+      },
+      {
+        "positions": [
+          [
+            0.0,
+            0.0,
+            0.127139
+          ],
+          [
+            0.0,
+            0.757949,
+            -0.508556
+          ],
+          [
+            0.0,
+            -0.757949,
+            -0.508556
+          ]
+        ],
+        "species": [
+          "O",
+          "H",
+          "H"
+        ],
+        "cell": null,
+        "pbc": [
+          false,
+          false,
+          false
+        ],
+        "forces": null,
+        "velocities": null
+      }
+    ],
+    "time": null,
+    "iteration": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "image_indices": null
+  },
+  "arrays": {}
+}

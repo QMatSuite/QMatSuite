@@ -141,6 +141,18 @@ calculations:
         - '1'
         - check
         - 'yes'
+      - cmd: dump
+        args:
+        - '1'
+        - all
+        - custom
+        - '100'
+        - dump.lammpstrj
+        - id
+        - type
+        - x
+        - y
+        - z
       - cmd: thermo
         args:
         - '50'
@@ -168,4 +180,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: lammps
   corpus_case_id: minimize_2d_lj
-  corpus_checksum: 16d4716c7c09d14ee20713dc5d86a527b0f8eb3a73d1e52ef857b87bfd89be95
+  corpus_checksum: c04104bfc2075f45cac23b0b1b5afcdf035e2bf33c43215eb9d3f1c6cb86bdde

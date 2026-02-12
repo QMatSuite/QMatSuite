@@ -1,0 +1,136 @@
+version: 1
+project:
+  meta:
+    ulid: 01KVS2F5RW3BWXD66AP4SGBJYZ
+    name: Silicon diamond density of states
+    slug: silicon-diamond-density-of-states
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KJZAJHQ7JXTS29H6TBS1PH3Y
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 5.4309
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 5.4309
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 5.4309
+      pbc:
+      - true
+      - true
+      - true
+      a: 5.4309
+      b: 5.4309
+      c: 5.4309
+      alpha: 90.0
+      beta: 90.0
+      gamma: 90.0
+      volume: 160.18262942562907
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.25
+      - 0.25
+      - 0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.357725
+      - 1.357725
+      - 1.357725
+calculations:
+- meta:
+    ulid: 01KRRYKC5RPEV9N90VKGRYG6FM
+    name: Silicon diamond density of states
+    slug: silicon-diamond-density-of-states
+    path: calculations/silicon-diamond-density-of-states
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: vasp
+  steps:
+  - meta:
+      name: dos
+      slug: dos
+      path: calculations/silicon-diamond-density-of-states/steps/dos.step.yaml
+      kind: step
+      ulid: 01KM28V8QG5C3GWYHPRFGQ38GT
+    parameters:
+      SYSTEM: Si diamond DOS
+      EMAX: 10.0
+      EMIN: -10.0
+      ENCUT: 300
+      ICHARG: 11
+      ISMEAR: -5
+      LORBIT: 11
+      LWAVE: false
+      NEDOS: 2001
+      NSW: 0
+      PREC: Accurate
+      kpoints:
+        mode: automatic
+        mesh:
+        - 8
+        - 8
+        - 8
+        shift:
+        - 0.0
+        - 0.0
+        - 0.0
+        centering: Gamma
+    step_type_spec: vasp_dos
+  structure_ulid: 01KJZAJHQ7JXTS29H6TBS1PH3Y
+  species_map:
+    Si:
+      mass: 28.086
+      pseudo: Si
+      pseudopot: Si
+      pseudo_basename: Si
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+meta:
+  ulid: vasp_si_dos
+  title: Silicon diamond density of states
+  subtitle: dos
+  tags:
+  - dos
+  - nscf
+  recommended_analysis: scf
+  difficulty: beginner
+  asset_policy: proprietary
+  required_engine: vasp
+  availability: requires_local_install
+  generator_version: 1.0.0
+  corpus_engine: vasp
+  corpus_case_id: si_dos
+  corpus_checksum: f5b1c7fc3f339a6e93d8f306b0b3a4f9c3bcf8903550666c330908da9203088c

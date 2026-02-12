@@ -361,13 +361,13 @@ class TestQMCPACKMaterialize:
         return get_qmcpack_input_spec()
 
     def test_produces_xml(self, tmp_path, spec):
-        params = {"project_id": "si_vmc", "walkers": 1, "blocks": 10}
+        params = {"qmc_project_id": "si_vmc", "walkers": 1, "blocks": 10}
         written = write_engine_inputs(spec, tmp_path, params=params, structure=SI_STRUCTURE)
         assert len(written) == 1
         assert written[0].name == "qmc_input.xml"
 
     def test_xml_content(self, tmp_path, spec):
-        params = {"project_id": "si_vmc"}
+        params = {"qmc_project_id": "si_vmc"}
         write_engine_inputs(spec, tmp_path, params=params, structure=SI_STRUCTURE)
         content = (tmp_path / "qmc_input.xml").read_text()
         assert "<simulation" in content

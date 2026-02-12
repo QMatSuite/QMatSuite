@@ -109,4 +109,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qmcpack
   corpus_case_id: he_vmc_sto
-  corpus_checksum: 3e5c6da848bd4744dbdb4144dcb370950b9c09857b01a2d7db2346b364e4dea0
+  corpus_checksum: 18666f75dd8d9291e5470d83330c65ddc63415202d4637bfb6d7ae6e3f1e70f4

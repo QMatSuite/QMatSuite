@@ -22,6 +22,15 @@ export default defineConfig({
   projects: [
     {
       name: 'electron',
+      testIgnore: /integrity\//,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
+      name: 'integrity',
+      testDir: './tests/e2e/integrity',
+      timeout: 10 * 60 * 1000, // 10 minutes for full sweep
       use: {
         ...devices['Desktop Chrome'],
       },

@@ -233,6 +233,12 @@ For multi-step demos (e.g., QE SCF → NSCF → Bands), `case.yaml` MUST include
 
 **Rule CS2**: If `multi_step: false` (default), the root-level `step_type_gen`, `step_type_spec`, and the directory's input files define a single-step workflow.
 
+**Rule CS3** (no leading relaxation in workflow demos): When a research workflow includes a preliminary relaxation step followed by property calculation steps (e.g., `vc-relax → SCF → NSCF → DOS`), the demo MUST omit the relaxation step and start from the property pipeline (e.g., `SCF → NSCF → DOS`). Relaxation is a separate concern and should be its own demo if needed. This keeps workflow demos focused and fast. The SCF step in the property pipeline uses a pre-relaxed structure (equilibrium lattice parameters) from the corpus.
+
+**Rule CS4** (demo runtime limit): A demo MUST complete within approximately 5 minutes of wall-clock time on a single-core desktop (serial execution). Demos that take significantly longer (e.g., large supercells, very high cutoffs, or computationally expensive post-processing like GIPAW NMR) MUST NOT be demo-eligible. Such cases may remain in the corpus for parser testing but with `demo_eligible: false` and `exclusion_reason: "runtime exceeds demo limit"`.
+
+**Rule CS5** (demo atom count): Demos SHOULD use small systems (typically ≤ 20 atoms). Demos with more than ~30 atoms SHOULD NOT be demo-eligible unless the calculation type inherently requires a larger system (e.g., a minimal slab). Systems like full surface reconstructions (56+ atoms), vacancy supercells (64 atoms), or NEB chains are too large for demos.
+
 ---
 
 ## S3. Corpus Root Index
@@ -803,15 +809,32 @@ If the gate fails, the remedy is: fix the corpus, re-run the translator, commit 
 
 ### S8.3 Adding a New Demo
 
-The process for adding a new demo is:
+The process for adding a new demo MUST follow this pipeline. Each step validates the output of the previous step, ensuring end-to-end correctness.
 
-1. **Create corpus entry**: Add directory `tests/inputformat/samples/<engine>/<dir_name>/` with engine input files and `case.yaml` (all required fields per S2.1).
-2. **Stage assets**: If the demo requires redistributable assets not yet in `resources/`, add them with proper `ATTRIBUTION` files. If the demo requires proprietary assets, document them in `asset_requirements.proprietary` with `obtain_from` instructions.
-3. **Add to corpus index**: Add entry to `corpus_index.yaml` with `demo_eligible: true`, globally unique `demo_slug`, and all classification fields.
-4. **Update curated index**: Update `docs/engines/<engine>/CURATED_INDEX.md` with the new case.
-5. **Run translator**: Execute the translator to regenerate all demo projects.
-6. **Run integrity suites**: Execute at least the backend integrity suite (T1) to verify the new demo loads and (if engine/assets available) runs correctly.
-7. **Commit**: Commit corpus entry, corpus index, regenerated demos, manifest, and curated index together.
+**Phase 1: Curate raw input files (Layer A)**
+
+1. **Obtain raw input files**: Get engine-native input files from a trustworthy source — official engine tutorials, published examples, manual appendices, or the project's own `tests/data/` reference collection. Raw files MUST be complete and runnable as-is (all required cards, coordinates, parameters). Record the source in `case.yaml:attribution`.
+2. **Place in corpus directory**: Create `tests/inputformat/samples/<engine>/<dir_name>/` and place the raw input files there **unchanged**. Do not edit, truncate, or "clean up" the files — they must be faithful copies of the originals. Write `case.yaml` with all required fields per S2.1.
+3. **Verify raw files run with real engine** (RECOMMENDED): Before proceeding, run the raw input files directly with the engine binary to confirm they produce correct output. This catches problems at the source before they propagate through the pipeline. Document the verification status (e.g., `estimated_runtime_seconds`, `ref_values.yaml`).
+
+**Phase 2: Generate demo snapshot (Layer B)**
+
+4. **Stage assets**: If the demo requires redistributable assets not yet in `resources/`, add them with proper `ATTRIBUTION` files. If the demo requires proprietary assets, document them in `asset_requirements.proprietary` with `obtain_from` instructions.
+5. **Add to corpus index**: Add entry to `corpus_index.yaml` with `demo_eligible: true`, globally unique `demo_slug`, and all classification fields.
+6. **Run translator**: Execute the translator (`tools/demo_store/generate_all.py`) to regenerate all demo projects. Verify the new demo `.yml` appears in `resources/demo_projects/` with correct structure data, parameters, and step types.
+7. **Update curated index**: Update `docs/engines/<engine>/CURATED_INDEX.md` with the new case.
+
+**Phase 3: Real-run verification and ref pack generation**
+
+8. **Run demo through daemon**: Use the ref pack generator (`tools/demo_store/generate_ref_packs_realrun.py`) or manually via `QVService` to: load the demo → materialize a project → run the calculation with the real engine → parse output → run analysis. This is the definitive proof that the demo works end-to-end.
+9. **Generate ref pack**: If the run succeeds and produces analysis output, serialize the canonical primitive bundles as a ref pack under `resources/demo_projects/ref_packs/<demo_slug>/`.
+10. **Debug failures**: If the real run fails, the defect is in the pipeline (corpus files, parser, translator, materialization, engine handler, or analysis). Fix at the appropriate layer — always fix corpus (Layer A) first, then regenerate Layer B. Do NOT patch Layer B directly.
+
+**Phase 4: Commit**
+
+11. **Commit**: Commit corpus entry, corpus index, regenerated demos, manifest, curated index, and ref pack together. A PR that adds a demo MUST include evidence that the real-run pipeline succeeded (ref pack files or generator log).
+
+**Rule G2a** (real-run gate for new demos): A new demo SHOULD NOT be merged without a successful real-run verification (Phase 3, step 8). If the engine is unavailable in the CI environment, the developer MUST run the verification locally and include the ref pack in the commit as proof.
 
 **Rule G2**: A PR that adds or modifies demo-eligible corpus cases MUST include the regenerated Layer B output in the same commit. Partial updates (corpus without regeneration, or regeneration without corpus change) MUST NOT be merged.
 
@@ -861,11 +884,124 @@ This spec operates within the existing QMatSuite governance framework:
 
 **Q1**: **Python-script engines** (GPAW, Psi4, PySCF). These engines have no parseable input files — their "input" is a Python script. Corpus entries for these engines MAY include the Python script and a `case.yaml` with `parser_mode: script` (or similar), but the translator cannot use `parse_engine_inputs()` for them. The translator MUST support a `direct_snapshot` mode where `case.yaml` includes enough metadata to construct the demo project without parsing. This requires a separate design decision for the script-engine translation contract.
 
-**Q2**: **Reference artifacts generation**. Should the translator also produce reference artifacts (pre-computed JSON), or should that be a separate step? Producing them in the translator requires engine availability at generation time; producing them in the integrity suite allows generation without engines. **Recommendation**: Separate step. The translator produces only the `.yml` snapshot. Reference artifacts are generated by an optional post-step that runs the demo and extracts analysis.
+**Q2**: **Reference artifacts generation**. ~~Should the translator also produce reference artifacts (pre-computed JSON), or should that be a separate step?~~ **RESOLVED**: Ref packs are a separate post-translation step that REQUIRES real engine runs (see S10.4). The translator produces only the `.yml` snapshot. Ref packs are generated by `tools/demo_store/generate_ref_packs_realrun.py` which loads the demo through `QVService`, runs the engine, and serializes the analysis output. This is not optional — it is the authoritative pipeline verification.
 
 **Q3**: **Existing QE demos with numbered names** (e.g., `00_Si_scf.yml`, `07_Si_bandStructure.yml`). These predate the corpus system and were generated by `tools/demo_generators/verified/generate_qe_demos.py` from hardcoded definitions. Migration path: create corresponding corpus entries in `tests/inputformat/samples/qe/`, add them to `corpus_index.yaml`, then regenerate. The old numbered `.yml` files in `resources/demo_projects/` will be replaced by `demo_slug`-named files.
 
 **Q4**: **Whether to include optional reference outputs in corpus**. Some corpus cases could ship with small reference output files (e.g., a truncated log with final energy) for parser round-trip testing. This is already done via `ref_values.yaml`. Adding actual output files would increase repo size but improve parser test coverage. **Recommendation**: Keep `ref_values.yaml` for numerical references; actual output files belong in `docs/engines/<engine>/golden_refs/` (existing convention), not in corpus.
+
+---
+
+## S10. Reference Packs
+
+Reference packs provide pre-computed analysis primitives for demo projects, enabling "plot without run" — users can view reference band structures, DOS, convergence curves, etc. without running the engine.
+
+### S10.1 Definition
+
+A **reference pack** is a set of pre-computed analysis bundles stored as JSON files. Each bundle contains serialized analysis primitives (e.g., `CanonicalPrimitiveBundle.to_dict()`) that can be loaded and displayed by the GUI.
+
+### S10.2 Storage Layout
+
+```
+resources/demo_projects/ref_packs/
+    <demo_slug>/
+        manifest.json        # Lists available object types + checksums
+        bands.json           # Band structure data (if applicable)
+        dos.json             # Density of states data (if applicable)
+        convergence.json     # SCF convergence data (if applicable)
+        ...
+```
+
+### S10.3 Manifest Format
+
+Each ref pack directory contains a `manifest.json`:
+
+```json
+{
+    "demo_slug": "<demo_slug>",
+    "engine": "<engine>",
+    "generated_at": "<ISO timestamp>",
+    "generator_version": "1.0.0",
+    "object_types": {
+        "convergence": {
+            "file": "convergence.json",
+            "sha256": "<hash>"
+        },
+        "bands": {
+            "file": "bands.json",
+            "sha256": "<hash>"
+        }
+    }
+}
+```
+
+### S10.4 Generation — Real-Run Pipeline (REQUIRED)
+
+Reference packs MUST be generated from **real engine runs** through the full `QVService` daemon pipeline. This is the authoritative verification that the entire chain works: corpus → translator → demo YAML → materialize → engine execution → output parse → analysis → canonical primitive serialization. Synthetic or hand-crafted ref packs are prohibited.
+
+**Tool**: `tools/demo_store/generate_ref_packs_realrun.py`
+
+**Pipeline per demo** (mandatory sequence):
+
+1. **Load**: `QVService.create_demo_project(work_dir, demo_slug, demo_slug)` — materializes the demo snapshot into a live project workspace with fresh ULIDs.
+2. **Run**: `svc.run.run_calculation(calc_ulid, run_mode="full")` — executes the calculation using the real engine binary. No mocking, no skip, no synthetic output.
+3. **Analyze**: `svc.analysis.get_analysis(run_ulid, object_type)` — invokes the standard analysis pipeline (output parser → analysis transforms → canonical primitives).
+4. **Serialize**: Write each `CanonicalPrimitiveBundle.to_dict()` as a JSON file in `ref_packs/<demo_slug>/`.
+
+**Rule RP2** (no synthetic ref packs): Every ref pack JSON file MUST originate from a real engine run through the above pipeline. Ref packs MUST NOT be generated from:
+- Hand-crafted JSON
+- Golden test fixtures (`tests/data/`)
+- Synthetic or truncated output files
+- Any source other than a complete daemon-level run
+
+**Rule RP3** (engine availability determines ref pack availability): A demo can only have a ref pack if its engine is available in the generation environment. Demos whose engines are unavailable simply have no ref pack — this is acceptable per S10.6 (incremental growth).
+
+**Rule RP4** (ref packs validate the full pipeline): The ref pack generation process serves double duty: it produces GUI-displayable analysis data AND it validates that the corpus → demo → run → analyze pipeline is end-to-end correct. A ref pack that exists is proof that the demo ran successfully. A demo that cannot produce a ref pack has a pipeline defect that must be fixed.
+
+**Lesson learned**: Previous approaches that generated ref packs from golden test fixtures (synthetic output files in `tests/data/`) masked real pipeline defects — broken materialization, missing structure data, incorrect parameter handling, and incompatible step types. These defects were only discovered when attempting real engine runs. The real-run requirement eliminates this class of bugs by construction.
+
+### S10.5 Gate Test
+
+**Rule RP1**: Every ref pack directory MUST contain a valid `manifest.json`. Every JSON file listed in the manifest MUST exist and its SHA256 MUST match. Gate test: `tests/gates/test_ref_packs.py`.
+
+### S10.6 Incremental Growth
+
+Ref packs are optional and grow incrementally. A demo without a ref pack is fully functional — it just cannot display pre-computed analysis. The `has_ref_pack` column in `docs/demo_store/DEMO_MATRIX.md` tracks availability.
+
+---
+
+## S11. Demo Source Field
+
+### S11.1 Purpose
+
+When a demo project is materialized via `create_demo_project()`, the project needs a way to identify itself as a demo and locate its reference pack (if any). The `demo_source` field serves this purpose.
+
+### S11.2 Schema
+
+New field in `project.qv.yml` → `settings.demo_source`:
+
+```yaml
+settings:
+  demo_source:
+    demo_id: "vasp_si_scf"          # demo slug, used as lookup key
+    generator_digest: "abc123..."    # from manifest, for staleness check
+    engine: "vasp"                   # engine name
+    materialized_at: "2025-..."      # ISO timestamp
+```
+
+### S11.3 Lifecycle
+
+- **Written by**: `create_demo_project()` at materialization time (Step 2a in implementation plan)
+- **Read by**: `get_reference_analysis()` to locate ref packs
+- **Constraint**: No SQLite/CAS/provenance dependency — pure filesystem field (C1)
+- **Absent for non-demo projects**: Regular user-created projects will not have this field
+
+### S11.4 Reference Analysis Lookup
+
+The `get_reference_analysis()` service method uses `settings.demo_source.demo_id` to:
+1. Look up ref pack at `resources/demo_projects/ref_packs/<demo_id>/manifest.json`
+2. If the requested `object_type` is present, load and return the JSON bundle
+3. Return `None` if no ref pack available
 
 ---
 

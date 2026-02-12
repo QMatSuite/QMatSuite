@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 from quantumvitas.execution.job_graph import Job, JobGraph
 from quantumvitas.execution.recipes import BaseRecipe
 from quantumvitas.workflow.registry import get_registry
+from quantumvitas.workflow.step_type_convert import gen_from
 
 if TYPE_CHECKING:
     from quantumvitas.calculation.step import Step
@@ -53,12 +54,16 @@ class GPAWRecipe(BaseRecipe):
             job_id = f"step_{idx:02d}"
 
             step_type = step.step_type_spec
-            spec = registry.get(str(step_type)) if step_type else None
+            # Convert SPEC (e.g., "gpaw_scf") to GEN (e.g., "scf")
+            # before registry lookup, since registry.get() expects GEN types
+            step_type_str = str(step_type) if step_type else None
+            gen_key = gen_from(step_type_str) if step_type_str else None
+            spec = registry.get_for_engine(gen_key, "gpaw") if gen_key else None
 
             if spec:
                 gen_type = spec.step_type_gen
             else:
-                gen_type = str(step_type) if step_type else "scf"
+                gen_type = gen_key if gen_key else "scf"
 
             # Input: generated Python script
             script_name = f"{gen_type}.py"

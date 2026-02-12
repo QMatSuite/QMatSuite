@@ -185,17 +185,39 @@ def gpaw_step_handler(
 
 
 def _write_structure_file(calculation: "Calculation", output_path: Path) -> None:
-    """Write structure to a JSON file readable by ASE."""
+    """Write structure to a JSON file readable by ASE.
+
+    calculation.structure is a StructureRef (pointer to a structure file),
+    not an actual atomic structure object.  We must load the real structure
+    from disk and convert it to a format ASE can read.
+    """
     try:
-        # Try to get structure from calculation
-        if hasattr(calculation, "structure") and calculation.structure is not None:
-            structure = calculation.structure
-            data = {
-                "symbols": list(structure.symbols) if hasattr(structure, "symbols") else [],
-                "positions": structure.positions.tolist() if hasattr(structure, "positions") else [],
-                "cell": structure.cell.tolist() if hasattr(structure, "cell") else [[0, 0, 0]] * 3,
-                "pbc": list(structure.pbc) if hasattr(structure, "pbc") else [True, True, True],
-            }
-            output_path.write_text(json.dumps(data, indent=2))
+        structure_ref = getattr(calculation, "structure", None)
+        if structure_ref is None:
+            logger.warning("No structure reference on calculation; skipping structure.json")
+            return
+
+        # Load the real pymatgen structure from the on-disk JSON
+        struct_path = getattr(structure_ref, "absolute_path", None)
+        if struct_path is None or not Path(struct_path).exists():
+            logger.warning(f"Structure file not found at {struct_path}; skipping structure.json")
+            return
+
+        from quantumvitas.io import read_structure
+        pmg_struct = read_structure(Path(struct_path))
+
+        # Convert pymatgen Structure/Molecule → ASE-compatible dict
+        symbols = [str(s) for s in pmg_struct.species]
+        positions = [list(float(x) for x in site.coords) for site in pmg_struct]
+        cell = [[float(x) for x in row] for row in pmg_struct.lattice.matrix]
+        pbc = list(pmg_struct.lattice.pbc) if hasattr(pmg_struct.lattice, "pbc") else [True, True, True]
+
+        data = {
+            "symbols": symbols,
+            "positions": positions,
+            "cell": cell,
+            "pbc": pbc,
+        }
+        output_path.write_text(json.dumps(data, indent=2))
     except Exception as e:
         logger.warning(f"Could not write structure file: {e}")

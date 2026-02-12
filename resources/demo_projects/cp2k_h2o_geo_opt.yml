@@ -1,0 +1,141 @@
+version: 1
+project:
+  meta:
+    ulid: 01KSWDC80FT17Q3PNR27QHWNM4
+    name: Water molecule geometry optimization
+    slug: water-molecule-geometry-optimization
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01K3FP8MVBDAXDB0Y48WQH9TXD
+    name: HO
+    slug: ho
+    path: structures/ho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 10.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 10.0
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 10.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 10.0
+      b: 10.0
+      c: 10.0
+      alpha: 90.0
+      beta: 90.0
+      gamma: 90.0
+      volume: 1000.0000000000007
+    properties: {}
+    sites:
+    - species:
+      - element: O
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0117499
+      properties: {}
+      label: O
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.117499
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.0
+      - 0.07569500000000001
+      - -0.0469996
+      properties: {}
+      label: H
+      xyz:
+      - 0.0
+      - 0.7569500000000001
+      - -0.469996
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.0
+      - -0.07569500000000001
+      - -0.0469996
+      properties: {}
+      label: H
+      xyz:
+      - 0.0
+      - -0.7569500000000001
+      - -0.469996
+calculations:
+- meta:
+    ulid: 01KP18KPMNYHCHY8T24T1P8J6X
+    name: Water molecule geometry optimization
+    slug: water-molecule-geometry-optimization
+    path: calculations/water-molecule-geometry-optimization
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: cp2k
+  steps:
+  - meta:
+      name: relax
+      slug: relax
+      path: calculations/water-molecule-geometry-optimization/steps/relax.step.yaml
+      kind: step
+      ulid: 01K3B5334S3N7TSZ0YC5RV4XBM
+    parameters:
+      GLOBAL:
+        PROJECT: h2o_geo_opt
+        RUN_TYPE: GEO_OPT
+      FORCE_EVAL:
+        METHOD: Quickstep
+        DFT:
+          BASIS_SET_FILE_NAME: BASIS_MOLOPT
+          POTENTIAL_FILE_NAME: GTH_POTENTIALS
+          XC:
+            XC_FUNCTIONAL:
+              _DEFAULT_KEYWORD: PBE
+        KIND:
+        - BASIS_SET: DZVP-MOLOPT-SR-GTH
+          POTENTIAL: GTH-PBE-q6
+          _DEFAULT_KEYWORD: O
+        - BASIS_SET: DZVP-MOLOPT-SR-GTH
+          POTENTIAL: GTH-PBE-q1
+          _DEFAULT_KEYWORD: H
+      MOTION:
+        GEO_OPT:
+          MAX_ITER: 50
+          OPTIMIZER: CG
+    step_type_spec: cp2k_relax
+  structure_ulid: 01K3FP8MVBDAXDB0Y48WQH9TXD
+meta:
+  ulid: cp2k_h2o_geo_opt
+  title: Water molecule geometry optimization
+  subtitle: relax
+  tags:
+  - geo_opt
+  - relaxation
+  - molecule
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: cp2k
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: cp2k
+  corpus_case_id: h2o_geo_opt
+  corpus_checksum: 7b4518acadede50963a0d37f7457f9ad08145afe85ef1709ce7b510e7fe0ce96

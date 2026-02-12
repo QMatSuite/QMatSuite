@@ -8,9 +8,14 @@ species:
 - Si
 description: 'Two-dataset calculation for silicon band structure: SCF on uniform grid
   followed by NSCF along L-Gamma-X-K-Gamma high-symmetry path.'
-demo_eligible: false
+demo_eligible: true
+demo_slug: abinit_si_bands
 step_type_gen: bandspw
 step_type_spec: abinit_bandspw
 required_engine: abinit
 availability: open_source
-exclusion_reason: Parser/writer test case only
+asset_policy: redistributable
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite, inspired by ABINIT tutorials
+  license: MIT (QMatSuite)
