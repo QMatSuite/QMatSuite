@@ -1,0 +1,230 @@
+version: 1
+project:
+  meta:
+    ulid: 01KD31S3FR94RADT7DJMSQM3MW
+    name: LiH solid QE to QMCPACK VMC pipeline
+    slug: lih-solid-qe-to-qmcpack-vmc-pipeline
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KEGCWEH9X2XXXKJH5XY4KR4N
+    name: HLi
+    slug: hli
+    path: structures/hli.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 4.017090043535904
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 4.017090043535904
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 4.017090043535904
+      pbc:
+      - true
+      - true
+      - true
+      a: 4.017090043535904
+      b: 4.017090043535904
+      c: 4.017090043535904
+      alpha: 90.0
+      beta: 90.0
+      gamma: 90.0
+      volume: 64.8238319162621
+    properties: {}
+    sites:
+    - species:
+      - element: Li
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Li
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.5
+      - 0.5
+      - 0.5
+      properties: {}
+      label: H
+      xyz:
+      - 2.008545021767952
+      - 2.008545021767952
+      - 2.008545021767952
+calculations:
+- meta:
+    ulid: 01KZBXEJ5F2P9J7WPWY928VY0Q
+    name: LiH solid QE to QMCPACK VMC pipeline
+    slug: lih-solid-qe-to-qmcpack-vmc-pipeline
+    path: calculations/lih-solid-qe-to-qmcpack-vmc-pipeline
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: qe
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/lih-solid-qe-to-qmcpack-vmc-pipeline/steps/scf.step.yaml
+      kind: step
+      ulid: 01KXPGXSYYCG7DVF8F6W6FPBBG
+    parameters:
+      CONTROL:
+        calculation: scf
+      SYSTEM:
+        ibrav: 1
+        celldm(1): 7.5912
+        nat: 2
+        ntyp: 2
+        ecutwfc: 40.0
+      ELECTRONS:
+        conv_thr: 1.0e-10
+    step_type_spec: qe_scf
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '4'
+          - '4'
+          - '4'
+          - '0'
+          - '0'
+          - '0'
+  - meta:
+      name: pw2qmcpack
+      slug: pw2qmcpack
+      path: calculations/lih-solid-qe-to-qmcpack-vmc-pipeline/steps/pw2qmcpack.step.yaml
+      kind: step
+      ulid: 01KETZB2NJWSFMR0J32AWGWH7S
+    parameters:
+      INPUTPP:
+        write_psir: false
+    step_type_spec: qe_pw2qmcpack
+  - meta:
+      name: vmc
+      slug: vmc
+      path: calculations/lih-solid-qe-to-qmcpack-vmc-pipeline/steps/vmc.step.yaml
+      kind: step
+      ulid: 01KGJR22ZYWP5W3G8DK2YYDAHH
+    parameters:
+      qmc_project_id: lih
+      series: '0'
+      random_seed: '49154'
+      bconds: p p p
+      LR_dim_cutoff: '15'
+      electrons:
+        u: 2
+        d: 2
+      _wavefunction_xml: "<wavefunction name=\"psi0\" target=\"e\">\n      <determinantset type=\"einspline\" href=\"lih.pwscf.h5\"\
+        \ tilematrix=\"1 0 0 0 1 0 0 0 1\" source=\"ion0\" meshfactor=\"1.0\">\n        <slaterdeterminant>\n          <determinant\
+        \ id=\"updet\" size=\"2\" ref=\"updet\">\n            <occupation mode=\"ground\" spindataset=\"0\" />\n         \
+        \ </determinant>\n          <determinant id=\"downdet\" size=\"2\" ref=\"downdet\">\n            <occupation mode=\"\
+        ground\" spindataset=\"0\" />\n          </determinant>\n        </slaterdeterminant>\n      </determinantset>\n \
+        \     <jastrow name=\"J2\" type=\"Two-Body\" function=\"Bspline\" print=\"yes\">\n        <correlation speciesA=\"\
+        u\" speciesB=\"d\" size=\"8\" rcut=\"3.7\">\n          <coefficients id=\"ud\" type=\"Array\">\n            0.3 0.2\
+        \ 0.15 0.1 0.07 0.04 0.02 0.01\n          </coefficients>\n        </correlation>\n      </jastrow>\n    </wavefunction>\n\
+        \n    "
+      wavefunction:
+        name: psi0
+        target: e
+        determinantset:
+          type: einspline
+          href: lih.pwscf.h5
+          source: ion0
+          tilematrix: 1 0 0 0 1 0 0 0 1
+          meshfactor: '1.0'
+        jastrow:
+        - name: J2
+          type: Two-Body
+          function: Bspline
+          print: 'yes'
+      _hamiltonian_xml: "<hamiltonian name=\"h0\" type=\"generic\" target=\"e\">\n      <pairpot name=\"ElecElec\" type=\"\
+        coulomb\" source=\"e\" target=\"e\" />\n      <pairpot name=\"IonIon\" type=\"coulomb\" source=\"ion0\" target=\"\
+        ion0\" />\n      <pairpot name=\"PseudoPot\" type=\"pseudo\" source=\"ion0\" wavefunction=\"psi0\" format=\"xml\"\
+        >\n        <pseudo elementType=\"Li\" href=\"Li.BFD.xml\" />\n        <pseudo elementType=\"H\" href=\"H.BFD.xml\"\
+        \ />\n      </pairpot>\n    </hamiltonian>\n  "
+      hamiltonian:
+        name: h0
+        pairpots:
+        - name: ElecElec
+          type: coulomb
+        - name: IonIon
+          type: coulomb
+        - name: PseudoPot
+          type: pseudo
+          pseudos:
+          - elementType: Li
+            href: Li.BFD.xml
+          - elementType: H
+            href: H.BFD.xml
+      qmc:
+      - method: vmc
+        move: pbyp
+        warmupSteps: '100'
+        blocks: '10'
+        steps: '50'
+        timestep: '0.3'
+        samples: '64'
+      _resource_refs:
+        wavefunction_hrefs:
+        - lih.pwscf.h5
+        pseudopotential_hrefs:
+        - Li.BFD.xml
+        - H.BFD.xml
+        include_hrefs: []
+    step_type_spec: qmcpack_vmc
+  structure_ulid: 01KEGCWEH9X2XXXKJH5XY4KR4N
+  species_map:
+    Li:
+      pseudopot: Li_ONCV_PBE_sr.upf
+      pseudo_basename: Li_ONCV_PBE_sr.upf
+      pseudo_sha256: 46e368eac3e670bb302c7b09d45e5432b53badc2ab1b2e3b51f4ad7c2c23f626
+      pseudo_sha_family: 47864196f8d6670d26d03c98baa2d0742d70e49a53e9b756f235d3a540dd574d
+    H:
+      pseudopot: H_ONCV_PBE_sr.upf
+      pseudo_basename: H_ONCV_PBE_sr.upf
+      pseudo_sha256: cf0fac667dd159758369227bbecb538fb04d06d05b7ff13a34a359345276ffba
+      pseudo_sha_family: c9ce0c14c704ac04d6ed8f9819b7664b0f6e3e6f301b6aa81a2e337f1fb7782f
+pseudo:
+  directory: pseudo
+  files:
+  - H.BFD.xml
+  - H_ONCV_PBE_sr.upf
+  - Li.BFD.xml
+  - Li_ONCV_PBE_sr.upf
+meta:
+  ulid: qe_lih_qmcpack_vmc
+  title: LiH solid QE to QMCPACK VMC pipeline
+  subtitle: QE SCF -> pw2qmcpack -> QMCPACK VMC
+  tags:
+  - qmcpack
+  - composite
+  - LiH
+  - vmc
+  - solid
+  recommended_analysis: energy
+  difficulty: advanced
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: qe
+  corpus_case_id: lih_qmcpack_vmc
+  corpus_checksum: 9f9b0763f61cc48b08d53b91872904d7d3d99f7d2f753fe1b9fbfa0fa8459117

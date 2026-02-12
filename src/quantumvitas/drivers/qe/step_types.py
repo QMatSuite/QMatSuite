@@ -107,6 +107,12 @@ QE_STEP_TYPE_SPECS: list[StepTypeSpec] = [
         description="QE to Wannier90 interface",
     ),
     StepTypeSpec(
+        step_type_spec="qe_pw2qmcpack",
+        engine="qe",
+        executable="pw2qmcpack.x",
+        description="QE to QMCPACK interface (generate HDF5 wavefunction)",
+    ),
+    StepTypeSpec(
         step_type_spec="qe_neb",
         engine="qe",
         executable="neb.x",

@@ -27,10 +27,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "trajectory",
-    "run_ulid": "01KH8CGF9V36QNJC8RVXKC0DVP",
-    "calc_ulid": "01KH8CGF7RCNTY90K05NSG0Y9A",
+    "run_ulid": "01KH9TR63XGADD30M7PGB16850",
+    "calc_ulid": "01KH9TR61K0P0S0KYDB1K6P5WW",
     "step_ulids": [
-      "01KH8CGF7RCNTY90K05NSG0Y9B"
+      "01KH9TR61K0P0S0KYDB1K6P5WX"
     ],
     "gen_steps": [
       "relax"
@@ -40,7 +40,7 @@
       {
         "path": "raw/step_00o_HIST.nc",
         "size_bytes": 4468,
-        "mtime": 1770881827.520156
+        "mtime": 1770930314.7714365
       }
     ],
     "parser_name": "abinit_trajectory",

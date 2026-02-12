@@ -333,6 +333,16 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=True,  # Needs NSCF wavefunctions
         produces_charge_density=False,
     ),
+    "qe_pw2qmcpack": StepTypeSpec(
+        step_type_spec="qe_pw2qmcpack",
+        step_type_gen="pw2qmcpack",
+        engine="qe",
+        executable="pw2qmcpack.x",
+        description="QE to QMCPACK interface (generate HDF5 wavefunction)",
+        requires_structure=False,
+        requires_charge_density=True,
+        produces_charge_density=False,
+    ),
     "w90_wannier": StepTypeSpec(
         step_type_spec="w90_wannier",
         step_type_gen="wannier",

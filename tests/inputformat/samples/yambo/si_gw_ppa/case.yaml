@@ -9,15 +9,15 @@ species:
 - Si
 description: G0W0 quasiparticle correction run with PPA, dyson+em1d, and explicit
   QP band/k range.
-demo_eligible: true
+demo_eligible: false
 step_type_gen: gw
 step_type_spec: yambo_gw
 required_engine: yambo
 availability: open_source
-demo_slug: yambo_si_gw
+demo_slug: null
 asset_policy: none
 recommended_analysis: energy
-exclusion_reason: null
+exclusion_reason: "Route-2: requires QE prefix.save/ directory; replaced by qe/si_yambo_gw composite"
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)

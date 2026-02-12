@@ -1,8 +1,8 @@
 {
   "generator_version": "1.0.0",
-  "generated_at": "2026-02-12T14:08:47Z",
+  "generated_at": "2026-02-12T21:28:27Z",
   "corpus_root": "tests/inputformat/samples",
-  "corpus_index_checksum": "daffe111f7658af6a8355dc62c8595d01e767256b0be2e66d39e07d4681f98ea",
+  "corpus_index_checksum": "b32069aaf831754fe7f2014e2dfb1423b1ce5b8736904bac5d2efc4255411cb5",
   "demos": {
     "abinit_si_bands": {
       "engine": "abinit",
@@ -251,7 +251,7 @@
       "corpus_path": "tests/inputformat/samples/qe/al_dos",
       "corpus_checksum": "e0e456affdf8081516e60c5f84eaf9837e52eac42d764fb82d192711f088bc1a",
       "output_file": "resources/demo_projects/qe_al_dos.yml",
-      "output_checksum": "30966107ec4a4ed2540acbabdb5eda91e7b2d6a4b08f1ad73715a815a6587968",
+      "output_checksum": "1308cb0ddbf1b0e001a904822c8b7e80f52afe056f0c7bf222268152f0170528",
       "asset_policy": "redistributable"
     },
     "qe_fe_dos": {
@@ -261,7 +261,7 @@
       "corpus_path": "tests/inputformat/samples/qe/fe_dos",
       "corpus_checksum": "3282d3d9b13919baba100bff35cacef9788e2a9a507a479af3ba14dcd4bf2ea7",
       "output_file": "resources/demo_projects/qe_fe_dos.yml",
-      "output_checksum": "bdbca324d3565de4f0021b2ff0ce3544572a1c9f446b4e4c1b5b124407199f1c",
+      "output_checksum": "31fb55849b1a7f81434d8d4da81c385d8e5ac7ae6e650852d8293ced5e06bd14",
       "asset_policy": "redistributable"
     },
     "qe_graphene_bands": {
@@ -271,7 +271,7 @@
       "corpus_path": "tests/inputformat/samples/qe/graphene_bands",
       "corpus_checksum": "57cacde406e31ed6652f33ee017872704fb68ad7ac5e31734fc1740926da71a7",
       "output_file": "resources/demo_projects/qe_graphene_bands.yml",
-      "output_checksum": "42b8b196aaa4d2f2ed6a8c63e27e5dee26729a028a8d3e4a1c6133fe06baaca5",
+      "output_checksum": "882b938a059747a51196c1aec2412f2951da46ebe98a8b3fa2b96801fd933e4b",
       "asset_policy": "redistributable"
     },
     "si_bands_demo": {
@@ -281,7 +281,7 @@
       "corpus_path": "tests/inputformat/samples/qe/si_bands",
       "corpus_checksum": "68360eec0698a68d54abb17f201d4f3c439046943f9ce5be5a8ce97a216bc8ef",
       "output_file": "resources/demo_projects/si_bands_demo.yml",
-      "output_checksum": "e96550a3a08e4373b4d55b7890d1fd1dfb8e6bbc888c1141dc2ad32f40833ce1",
+      "output_checksum": "03bb1c5c7a18c7071440005e8259b2b3c5ff71fe0735753d1d4b051b3e6ef4f2",
       "asset_policy": "redistributable"
     },
     "qe_si_bands_alt": {
@@ -291,7 +291,7 @@
       "corpus_path": "tests/inputformat/samples/qe/si_bands_alt",
       "corpus_checksum": "001eef48f9ca1eed76cc8ca5aea9174523fa6aacbb4b3cae39b398cda2ae1d78",
       "output_file": "resources/demo_projects/qe_si_bands_alt.yml",
-      "output_checksum": "bd8eb0c6214a5325e1964cd0298a890203c4c4bbe24dbf3ab7e9bc3dfc711bcd",
+      "output_checksum": "778ee649c3c13e002914d3c747800f95bc009c6503c94f8c83c63cbf74a94096",
       "asset_policy": "redistributable"
     },
     "si_dos_demo": {
@@ -301,7 +301,7 @@
       "corpus_path": "tests/inputformat/samples/qe/si_dos",
       "corpus_checksum": "71ba004ba73bdbe0f6a018df8ab423ebc93eb1d4c33249b75341b2d0c4a5b2a9",
       "output_file": "resources/demo_projects/si_dos_demo.yml",
-      "output_checksum": "79498984dfc9307aec0f7616c3b0ec7cc39b0dcc162626f5cd9e3f75f092fb39",
+      "output_checksum": "4ca81feb484aa7336a150f688086e4ee573a5ec14f584db5d3fdf662f63683db",
       "asset_policy": "redistributable"
     },
     "qe_si_dos_alt": {
@@ -311,7 +311,7 @@
       "corpus_path": "tests/inputformat/samples/qe/si_dos_alt",
       "corpus_checksum": "b744aed662cbc791dbabad60c1169290e21258d0cbdf475802e0f4b3fd9631d8",
       "output_file": "resources/demo_projects/qe_si_dos_alt.yml",
-      "output_checksum": "0e2e0b6f0771b6c5ab79dc29df16c13d459f9b75c31a62aadd457c4a0730d165",
+      "output_checksum": "a6d5334c089b9f96b9f6d7b9ad1a400a0e12e7fb2d5e861fa2c19bbecb46ec95",
       "asset_policy": "redistributable"
     },
     "qe_si_scf": {
@@ -321,7 +321,7 @@
       "corpus_path": "tests/inputformat/samples/qe/si_scf",
       "corpus_checksum": "3a4d84ecd4a1ac896f263c01feaf78972ec95701469459f9b15248d55d411e56",
       "output_file": "resources/demo_projects/qe_si_scf.yml",
-      "output_checksum": "a508b6bfd7dee5a22161ea78f66c810d0c0b3744021f07f93e4829479da1afd5",
+      "output_checksum": "565614388b78c217f21920b2040e1ca660b6d0c0c52f154be68377d06f26b423",
       "asset_policy": "redistributable"
     },
     "qe_si_vc_relax": {
@@ -331,7 +331,67 @@
       "corpus_path": "tests/inputformat/samples/qe/si_vc_relax",
       "corpus_checksum": "5053dc7f782f24c65643e916576a1986646b786e49f0a94208e56374a16cc1b0",
       "output_file": "resources/demo_projects/qe_si_vc_relax.yml",
-      "output_checksum": "a11dca72b1db2ad7f6e51ed5f3d72a9687289624d2241f27fdb0fe42fd8f704d",
+      "output_checksum": "759f359d45cfb8938e3b3c5ad03cf897a53a419844eab7c29492d7fc244ccce0",
+      "asset_policy": "redistributable"
+    },
+    "qe_copper_wannier": {
+      "engine": "qe",
+      "case_id": "copper_wannier",
+      "dir_name": "copper_wannier",
+      "corpus_path": "tests/inputformat/samples/qe/copper_wannier",
+      "corpus_checksum": "200080d6fcc7b8021cf5973a97592d50ec600c839c1eed26ff82dd88d51600d8",
+      "output_file": "resources/demo_projects/qe_copper_wannier.yml",
+      "output_checksum": "18daffc6bab449cfb8e77d864131b49901f3dce83c0ab255cd3db11f5f31084f",
+      "asset_policy": "redistributable"
+    },
+    "qe_diamond_wannier": {
+      "engine": "qe",
+      "case_id": "diamond_wannier",
+      "dir_name": "diamond_wannier",
+      "corpus_path": "tests/inputformat/samples/qe/diamond_wannier",
+      "corpus_checksum": "f915aca255604276cda3f043ef7ddac58ed0804a05af6a1dd691211a3628cad1",
+      "output_file": "resources/demo_projects/qe_diamond_wannier.yml",
+      "output_checksum": "c5ed1dfe3dc8be448835ca364443a0a002f38b56f975207d37c674ae114a1192",
+      "asset_policy": "redistributable"
+    },
+    "qe_he_qmcpack_vmc": {
+      "engine": "qe",
+      "case_id": "he_qmcpack_vmc",
+      "dir_name": "he_qmcpack_vmc",
+      "corpus_path": "tests/inputformat/samples/qe/he_qmcpack_vmc",
+      "corpus_checksum": "fea9b4149d57c51f8e7cc017acf6838464fbcc892f6e50bf6cc7013ccd11f2e9",
+      "output_file": "resources/demo_projects/qe_he_qmcpack_vmc.yml",
+      "output_checksum": "498b7304afa868ca643e7187a108fc41a9d538422da5e9b1a63d464cc9211fe7",
+      "asset_policy": "redistributable"
+    },
+    "qe_lih_qmcpack_vmc": {
+      "engine": "qe",
+      "case_id": "lih_qmcpack_vmc",
+      "dir_name": "lih_qmcpack_vmc",
+      "corpus_path": "tests/inputformat/samples/qe/lih_qmcpack_vmc",
+      "corpus_checksum": "9f9b0763f61cc48b08d53b91872904d7d3d99f7d2f753fe1b9fbfa0fa8459117",
+      "output_file": "resources/demo_projects/qe_lih_qmcpack_vmc.yml",
+      "output_checksum": "8b32760af245ba941a667ad220956dead632cdf63dd31288b37e216639e97fdf",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_yambo_bse": {
+      "engine": "qe",
+      "case_id": "si_yambo_bse",
+      "dir_name": "si_yambo_bse",
+      "corpus_path": "tests/inputformat/samples/qe/si_yambo_bse",
+      "corpus_checksum": "7710c269a4f49b72323827ffbd55d3fadc2dc6be40b0f23b6f2fbf995ab3ae8b",
+      "output_file": "resources/demo_projects/qe_si_yambo_bse.yml",
+      "output_checksum": "edc5c982ecf3361db54ee86369fad5b56eebab7f596f57bd934ce99f7c3a85a4",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_yambo_gw": {
+      "engine": "qe",
+      "case_id": "si_yambo_gw",
+      "dir_name": "si_yambo_gw",
+      "corpus_path": "tests/inputformat/samples/qe/si_yambo_gw",
+      "corpus_checksum": "b0dda43c98333d6e14a98ae530ac68bcdca850092d1b44e10343f0aee0d16caf",
+      "output_file": "resources/demo_projects/qe_si_yambo_gw.yml",
+      "output_checksum": "2b28fd1f083e71a34a632d92812f40514d0e39479b16d4fd65ee371de0156628",
       "asset_policy": "redistributable"
     },
     "qmcpack_h2_vmc": {
@@ -352,16 +412,6 @@
       "corpus_checksum": "18666f75dd8d9291e5470d83330c65ddc63415202d4637bfb6d7ae6e3f1e70f4",
       "output_file": "resources/demo_projects/qmcpack_he_vmc.yml",
       "output_checksum": "91b3a3c8b4d0c557db64c712dd58aec68ff433f9eefd30b0c5d7615ce75f0716",
-      "asset_policy": "none"
-    },
-    "qmcpack_lih_solid": {
-      "engine": "qmcpack",
-      "case_id": "lih_solid_vmc_pp",
-      "dir_name": "lih_solid_vmc_pp",
-      "corpus_path": "tests/inputformat/samples/qmcpack/lih_solid_vmc_pp",
-      "corpus_checksum": "8afcb7437289f116e800726bb29384c61fd056f03b16304c11ce5d4bda98d24e",
-      "output_file": "resources/demo_projects/qmcpack_lih_solid.yml",
-      "output_checksum": "173251d92bbfde2e920f1741d5f7d525e93e0abcc56aeb12be6b4d5d8f0d58fe",
       "asset_policy": "none"
     },
     "siesta_si_bands": {
@@ -444,36 +494,6 @@
       "output_checksum": "c6d57755134d565a47c4b7a3a3b0f79a9638ffd25f19cc0f98805d1a9d9c17a6",
       "asset_policy": "proprietary"
     },
-    "w90_copper": {
-      "engine": "w90",
-      "case_id": "copper_disentangle",
-      "dir_name": "copper_disentangle",
-      "corpus_path": "tests/inputformat/samples/w90/copper_disentangle",
-      "corpus_checksum": "387e946ccd2478f49cef5c40caf4afc91faab385820364b22b1d91c8b87c5fb7",
-      "output_file": "resources/demo_projects/w90_copper.yml",
-      "output_checksum": "341e75ab44046096320aaf143e48154038438b311dacbd58121c7a69e0dd8163",
-      "asset_policy": "none"
-    },
-    "w90_diamond": {
-      "engine": "w90",
-      "case_id": "diamond_pipeline",
-      "dir_name": "diamond_pipeline",
-      "corpus_path": "tests/inputformat/samples/w90/diamond_pipeline",
-      "corpus_checksum": "9856962d5622ce87ec88a248034b61107b707736638df2844e12eea30b9d84bb",
-      "output_file": "resources/demo_projects/w90_diamond.yml",
-      "output_checksum": "dd79b583e0dc169d7be30abc731e2c31ea020c672565cb55859ce6269121854d",
-      "asset_policy": "none"
-    },
-    "w90_silicon": {
-      "engine": "w90",
-      "case_id": "silicon_bandinterp",
-      "dir_name": "silicon_bandinterp",
-      "corpus_path": "tests/inputformat/samples/w90/silicon_bandinterp",
-      "corpus_checksum": "cb45bc3e4cb83af0e874b20632312cc588219fa3018add394ee4bde8dded3337",
-      "output_file": "resources/demo_projects/w90_silicon.yml",
-      "output_checksum": "3bca952c8abe5c3e69608679e1d3ee04eaf2f33c4a17ca362d9527bd2c847286",
-      "asset_policy": "none"
-    },
     "xtb_caffeine_grad": {
       "engine": "xtb",
       "case_id": "caffeine_grad",
@@ -502,36 +522,6 @@
       "corpus_checksum": "b8567169d96c1cb43150680bd7641ee10bd2a2b2f88ab8f31748c7104b8e30fb",
       "output_file": "resources/demo_projects/xtb_water_opt.yml",
       "output_checksum": "17e4d9822855bccc428e17c28b33b06cc0641fb22ae4f3397f6a86a22a93b376",
-      "asset_policy": "none"
-    },
-    "yambo_si_bse": {
-      "engine": "yambo",
-      "case_id": "si_bse_haydock",
-      "dir_name": "si_bse_haydock",
-      "corpus_path": "tests/inputformat/samples/yambo/si_bse_haydock",
-      "corpus_checksum": "9c150d5ae07989eed7a4134ac1453254c305dc29ff8006afe7f472375e83dfa9",
-      "output_file": "resources/demo_projects/yambo_si_bse.yml",
-      "output_checksum": "ec1425b3124fc92ce6c99635363ac07b480024759f6cc8b95dc04ba6959d683e",
-      "asset_policy": "none"
-    },
-    "yambo_si_gw": {
-      "engine": "yambo",
-      "case_id": "si_gw_ppa",
-      "dir_name": "si_gw_ppa",
-      "corpus_path": "tests/inputformat/samples/yambo/si_gw_ppa",
-      "corpus_checksum": "cf3da611bac81019bfe876c007057c3e02325e7a3b0ecb703927dfab6a6a2fe1",
-      "output_file": "resources/demo_projects/yambo_si_gw.yml",
-      "output_checksum": "178403f5918490d9bafe64c2cd0fbe443210176bb26a43b7d4040071f9994ff7",
-      "asset_policy": "none"
-    },
-    "yambo_si_optics": {
-      "engine": "yambo",
-      "case_id": "si_ip_optics",
-      "dir_name": "si_ip_optics",
-      "corpus_path": "tests/inputformat/samples/yambo/si_ip_optics",
-      "corpus_checksum": "92e2ec32ccf69973be8e5602c39de8dd0f7c0442f3ae5e8f54be6aaec05efd68",
-      "output_file": "resources/demo_projects/yambo_si_optics.yml",
-      "output_checksum": "8719044e081fb6229372768f47bdf0ff4a49b4f806015a676280ee859d3b37dd",
       "asset_policy": "none"
     }
   }

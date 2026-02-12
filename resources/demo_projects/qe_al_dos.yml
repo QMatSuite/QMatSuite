@@ -75,8 +75,6 @@ calculations:
     parameters:
       CONTROL:
         calculation: scf
-        restart_mode: from_scratch
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
       SYSTEM:
         ibrav: 2
         celldm(1): 7.631664366184
@@ -99,8 +97,6 @@ calculations:
     parameters:
       CONTROL:
         calculation: nscf
-        restart_mode: from_scratch
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
       SYSTEM:
         ibrav: 2
         celldm(1): 7.631664366184

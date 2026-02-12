@@ -1,0 +1,54 @@
+case_id: he_qmcpack_vmc
+engine: qe
+title: He atom QE to QMCPACK VMC pipeline
+description: >-
+  Minimal QE->QMCPACK composite pipeline for He atom VMC.
+  SCF -> pw2qmcpack -> QMCPACK VMC. All-electron He atom with STO basis
+  and Pade Jastrow. No pseudopotentials needed for the QMC step.
+  The QMCPACK XML input is parsed by the QMCPACK engine parser.
+workflow_tags:
+- scf
+- pw2qmcpack
+- vmc
+- composite_pipeline
+- all_electron
+species:
+- He
+demo_eligible: true
+demo_slug: qe_he_qmcpack_vmc
+step_type_gen: scf
+step_type_spec: qe_scf
+required_engine: qe
+availability: open_source
+asset_policy: redistributable
+recommended_analysis: energy
+difficulty: intermediate
+subtitle: QE SCF -> pw2qmcpack -> QMCPACK VMC
+tags:
+- qmcpack
+- composite
+- He
+- vmc
+- atom
+multi_step: true
+steps:
+- step_type_gen: scf
+  step_type_spec: qe_scf
+  input_files:
+  - scf.in
+- step_type_gen: pw2qmcpack
+  step_type_spec: qe_pw2qmcpack
+  input_files:
+  - pw2qmcpack.in
+- step_type_gen: vmc
+  step_type_spec: qmcpack_vmc
+  input_files:
+  - qmc_vmc.xml
+asset_requirements:
+  pseudopotentials:
+  - file: He_ONCV_PBE_sr.upf
+    element: He
+    source: resources/pseudo
+attribution:
+  source: Constructed for QMatSuite, inspired by QMCPACK tutorials
+  license: MIT (QMatSuite)

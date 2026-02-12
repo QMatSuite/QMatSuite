@@ -1,13 +1,13 @@
 {
   "demo_slug": "qe_si_scf",
   "engine": "qe",
-  "generated_at": "2026-02-12T07:42:41.812846+00:00",
+  "generated_at": "2026-02-12T21:12:19.549661+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "c6cf6a7f9e6c75ffaafd4227b6e5c0185df12e1399682ed00d2f1f70724d963a"
+      "sha256": "d19ff11c41e472dd7e64bbeab5512c34e418006449b7140667cd3f116e566be9"
     }
   }
 }

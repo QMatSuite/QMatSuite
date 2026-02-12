@@ -1,13 +1,13 @@
 {
   "demo_slug": "vasp_si_scf",
   "engine": "vasp",
-  "generated_at": "2026-02-12T07:45:51.924755+00:00",
+  "generated_at": "2026-02-12T21:18:57.896116+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "584e985c3190d8a3d7d086d253ffbd2853b3f5e4ec49e89c87295e4030b89547"
+      "sha256": "3f5303ff944923805514e5915a7e44366c1d0b885fa62dab8f0cbcd98d67e076"
     }
   }
 }

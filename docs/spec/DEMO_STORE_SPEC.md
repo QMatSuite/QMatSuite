@@ -1,8 +1,8 @@
 # Demo Store Specification
 
-**Status**: Draft v3 (revised per architect clarifications A1–A4)
+**Status**: Draft v5 (adds Route-1/Route-2 definitions and Layer-2 policy)
 **Authority**: Governance-level spec. All demo-related code, tests, and CI MUST conform.
-**Scope**: Defines the two-layer demo system, ULID lifecycle, translation contract, snapshot roundtrip contract, integrity suites, and governance rules.
+**Scope**: Defines the two-layer demo system, ULID lifecycle, translation contract, snapshot roundtrip contract, integrity suites, Demo Baseline acceptance criteria, and governance rules.
 
 ---
 
@@ -20,10 +20,14 @@
 | **Snapshot roundtrip** | The contract that loading a demo snapshot → materializing a project → re-snapshotting produces an equivalent snapshot. ULIDs will differ (snapshot ULIDs → fresh materialized ULIDs → preserved in re-snapshot). Equivalence is defined on content, not identity. See S6. |
 | **Demo gallery metadata** | The top-level `meta` section in a demo snapshot: title, subtitle, tags, difficulty, attribution, etc. This is display/catalog metadata for the GUI gallery. It is NOT SSOT and is NOT part of project/calculation/step/structure metadata. It MAY be omitted by a generic project snapshot/export. |
 | **SSOT metadata** | The `meta` blocks inside `project`, `structures[]`, `calculations[]`, and `steps[]`: ulid, name, slug, path, kind. This IS structural project metadata and MUST be preserved through materialization (with ULID rewrite per the lifecycle rules). |
-| **Integrity suite** | A slow test suite that exercises the full demo lifecycle (load → materialize → run → analyze → assert). Not part of default test collection. Iterates ONLY Layer B demos. |
+| **Integrity suite** | A FAST test suite (`tests/integrity/backend/`) that validates demo load and materialize correctness. It DOES NOT execute engines and DOES NOT prove demos are runnable. It is Stage (B) of the Demo Baseline. Not part of default test collection. Iterates ONLY Layer B demos. |
+| **Real-run baseline** | The process of executing every runnable demo through a real engine binary via the daemon/service pipeline (`tools/demo_store/generate_ref_packs_realrun.py`). This is Stage (C) of the Demo Baseline and is the authoritative proof that demos work. |
+| **Demo Baseline** | The four mandatory acceptance stages (A: pytest, B: integrity, C: real-run, D: ref-packs) that MUST ALL pass before any demo-store work can be claimed complete. Defined in section DB. |
 | **Assets** | External files required to run a calculation: pseudopotentials, basis sets, force-field potentials, PAW datasets, etc. |
 | **Redistributable assets** | Assets whose license permits inclusion in the repository (e.g., QE SSSP pseudopotentials under CC-BY, LAMMPS bundled potentials). |
 | **Proprietary assets** | Assets that MUST NOT be committed to the repository (e.g., VASP POTCARs, commercial basis sets). Demos requiring proprietary assets MAY be demo-eligible but MUST be clearly labeled with their requirements so that integrity suites can skip or fail appropriately depending on the test environment. |
+| **Route-1** (end-to-end runnable) | A demo whose entire execution chain is representable as YAML parameters and materializable into a real engine run. All step inputs come from the demo YAML; only external *assets* (pseudopotentials, potentials, basis sets) are staged separately. Composite multi-engine workflows (e.g., QE→W90) are Route-1 provided every step in the chain is runnable. See section RT. |
+| **Route-2** (prebaked-upstream) | Source material that depends on upstream artifacts NOT produced within the demo's own runnable chain (e.g., precomputed `.amn`/`.mmn`/`.eig`, `prefix.save/`, HDF5 wavefunctions, Yambo `SAVE/` databases). Useful as corpus (Layer A) but NOT end-to-end runnable under current demo infrastructure. See section RT. |
 
 ### Goals
 
@@ -33,7 +37,156 @@ This spec serves three explicit goals:
 
 **G2 — Deterministic translation and robustness.** There is exactly ONE translator from Layer A → Layer B. Demo projects are generated artifacts and MUST NOT be hand-edited. Any fix MUST be made in corpus and re-generated. The demo `.yml` snapshot is the single deliverable — it must survive a load → materialize → re-snapshot roundtrip (with well-defined equivalence rules that account for the ULID lifecycle).
 
-**G3 — Integrity verification (slow, separate).** Two test suites verify demos end-to-end: (T1) backend lifecycle; (T2) GUI e2e. Both run separately from default test/e2e collection (nightly, manual, or release CI), iterate ONLY Layer B demos, and produce machine-readable reports. Demos with only redistributable or no assets MUST pass when the engine binary is present. Demos requiring proprietary assets or missing engine binaries are skipped with explicit status labels.
+**G3 — Verification at two levels.** The FAST integrity suite (`tests/integrity/backend/`) validates structural correctness (load + materialize) but DOES NOT execute engines. The real-run baseline (`tools/demo_store/generate_ref_packs_realrun.py`) executes every runnable demo through real engine binaries and is the authoritative proof that demos work. Both are mandatory stages of the Demo Baseline (section DB). A GUI e2e suite (T2) provides additional browser-level verification. The integrity suite and real-run baseline run separately from default test collection. Demos with only redistributable or no assets MUST pass the real-run baseline when the engine binary is present. Demos requiring proprietary assets or missing engine binaries follow Rule DB-EA (install or demote — no third option).
+
+---
+
+## RT. Route-1 vs Route-2 (Definitions & Policy)
+
+### RT.1 Definitions
+
+**Route-1 (end-to-end runnable, SSOT/YAML path):**
+
+- All step inputs are represented in the single demo YAML (Layer B) as parameters.
+- Execution is: YAML → materialize (clean rewrite) → `raw/` → real engine run.
+- Only external *assets* (pseudopotentials, potentials, basis sets, PAW datasets) may be staged from outside the YAML; all step input definitions MUST come from the YAML itself.
+- Composite multi-engine workflows are permitted: an upstream engine (e.g., QE) produces intermediate artifacts, then a companion engine (e.g., Wannier90, QMCPACK, Yambo) consumes them as a subsequent step. The full chain is runnable end-to-end within a single demo project.
+
+**Route-2 (prebaked-upstream / playback-style source material):**
+
+- Requires upstream artifacts that are NOT produced within the demo's own runnable chain — for example, precomputed Wannier `.amn`/`.mmn`/`.eig` files, a `prefix.save/` directory, an HDF5 wavefunction, or a Yambo `SAVE/` database.
+- The demo cannot run end-to-end because the artifact-producing step is absent; the prebaked files are supplied as static data.
+- Useful as source corpus material (Layer A) for parser testing and as reference examples, but NOT representable as a self-contained runnable demo under current infrastructure.
+
+### RT.2 Examples
+
+| Scenario | Route | Why |
+|----------|-------|-----|
+| Standalone W90 tutorial folder with prebaked `.amn`/`.mmn`/`.eig` (no QE steps) | **Route-2** | Upstream QE→pw2wannier90 artifacts are not produced within the demo. |
+| QE SCF → QE NSCF → pw2wannier90 → Wannier90 composite pipeline demo | **Route-1** | Every intermediate artifact is produced by a prior step in the chain. |
+| QMCPACK demo requiring a prebaked HDF5 wavefunction (no QE→pw2qmcpack) | **Route-2** | The HDF5 is an external prebaked artifact with no producing step. |
+| QE SCF → pw2qmcpack → QMCPACK composite pipeline demo | **Route-1** | QE produces the wavefunction, pw2qmcpack converts it, QMCPACK consumes it. |
+
+### RT.3 Current Policy (MUST)
+
+**Rule RT-L1** (Layer A — corpus): The corpus (Layer A) MAY contain both Route-1 and Route-2 folders. Layer A is a verbatim collection of source material downloaded from the internet, upstream tutorials, and engine manuals. Both routes serve parser/writer testing.
+
+**Rule RT-L2** (Layer B — demo projects): Layer B (`resources/demo_projects/`) MUST contain Route-1 demos ONLY. Route-2 material is FORBIDDEN in Layer B until a dedicated implementation for prebaked-upstream demos exists. No such implementation currently exists.
+
+**Rule RT-D** (demotion requirement): Any corpus entry that requires Route-2 artifacts MUST be marked `demo_eligible: false` in both `case.yaml` and `corpus_index.yaml`, with a non-empty `exclusion_reason` (e.g., `"Route-2: requires prebaked upstream artifacts (*.amn/*.mmn/*.eig) not produced within demo chain"`). Such entries MUST NOT be generated into Layer B demos.
+
+**Rule RT-E** (existing demo enforcement): If an existing Layer B demo is discovered to require Route-2 artifacts (i.e., it cannot pass Demo Baseline Stage C without prebaked files that are not produced by any step in its chain), it MUST be demoted: remove the `.yml` from `resources/demo_projects/`, set `demo_eligible: false` and `runnable: false` in the corpus index, and provide an `exclusion_reason`. There is no grandfather clause.
+
+---
+
+## DB. Demo Baseline (Acceptance Criteria — MANDATORY)
+
+This section defines the **Demo Baseline**: the four mandatory stages that MUST ALL pass before any demo-store work (migration, expansion, new-demo PR, or closeout report) can be claimed as complete. This section has the highest operational authority in the spec — it overrides any softer language elsewhere.
+
+### DB.1 The Four Stages
+
+The Demo Baseline consists of four stages executed **in this exact order**. ALL four MUST pass. Partial completion (e.g., stages A+B pass but C is skipped) means the baseline is **FAILED**.
+
+#### Stage (A): Full pytest suite — MUST be green
+
+The full project test suite MUST pass with zero failures.
+
+**Canonical command** (copy-paste verbatim):
+```bash
+source .venv/bin/activate
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+```
+
+This validates that no demo-store work has regressed any existing functionality.
+
+#### Stage (B): FAST integrity suite — MUST be green
+
+The backend integrity suite under `tests/integrity/backend/` MUST pass with zero failures.
+
+**Canonical command** (copy-paste verbatim):
+```bash
+python -m pytest tests/integrity/backend/ -v --tb=short
+```
+
+> **CRITICAL CLARIFICATION**: This suite DOES NOT execute any engines and DOES NOT prove that demos are runnable. It validates load, materialize, and structural correctness only. Passing stage (B) is necessary but NOT sufficient to claim demos work.
+
+#### Stage (C): Real-run baseline — MUST execute engines
+
+Every runnable demo MUST be executed through a real engine run via the daemon/service pipeline. This is the stage that proves demos actually work end-to-end.
+
+**Canonical command** (copy-paste verbatim):
+```bash
+python tools/demo_store/generate_ref_packs_realrun.py
+```
+
+**Definition**: For each runnable demo, this stage MUST:
+1. Materialize the demo YAML into a live project via the daemon/service layer.
+2. Execute `run_calc` with the **real engine binary** — no mocking, no synthetic output, no skip.
+3. Attempt output parsing and analysis providers.
+4. Write reference packs (see Stage D).
+
+> **CRITICAL RULE**: If this stage is not executed, the Demo Baseline is **FAILED** even if stages (A) and (B) pass. There is no exception to this rule.
+
+#### Stage (D): Ref-pack generation — MUST be attempted for every runnable demo
+
+The real-run in Stage (C) MUST attempt to generate a reference pack for every runnable demo.
+
+- A ref pack MAY be empty (contain only a manifest with no object types) when there is no matching analysis provider implemented for that engine/calculation type. This is acceptable.
+- A ref pack that is "not attempted" or "deferred" is **NEVER** acceptable. Every runnable demo MUST have a ref-pack generation attempt recorded in the results matrix.
+
+### DB.2 Hard Rule: No Deferrals
+
+**Rule DB-ND** (No Deferrals): Any PR, report, or closeout claim that asserts completion of demo-store work WITHOUT having executed Stage (C) is **incorrect** and MUST be treated as FAILED.
+
+- "Requires engine binaries not available" is NOT a valid reason to skip Stage (C). See Rule DB-EA below.
+- "Deferred to follow-up" is NOT a valid reason to skip Stage (C).
+- "Integrity suite passes so demos work" is NOT a valid claim. Stage (B) does not execute engines.
+
+**Acceptance rule**: A completion claim requires evidence of ALL of (A), (B), (C), and (D). If any stage is missing, the work MUST be labeled **incomplete** or **failed**. No other label is permitted.
+
+### DB.3 Hard Rule: Engines Are Expected Available Locally
+
+**Rule DB-EA** (Engine Availability): For demo baseline verification on developer machines and CI-like environments, all engines required by runnable demos MUST be discoverable and executable.
+
+- Engine discovery follows the standard engine discovery mechanism documented in `docs/architecture/ANALYSIS_PIPELINE_PLAYBOOK.md`.
+- "Requires engine binaries / runtime environment" is **NOT** a valid excuse to skip Stage (C).
+- If a runnable demo's required engine cannot be found, there are exactly **two** permitted responses:
+  1. **Fix engine discovery or install the engine** per the playbook and existing engine configuration, then proceed with Stage (C).
+  2. **Demote the demo**: Set `demo_eligible: false`, `runnable: false`, and provide a non-empty `exclusion_reason` in both `case.yaml` and `corpus_index.yaml`.
+- **There is no third option.** Leaving a demo marked as `runnable: true` while skipping its real-run is a spec violation.
+
+### DB.4 Definition of "Runnable Demo"
+
+A demo is **runnable** if and only if ALL of the following hold:
+
+1. The daemon can load the generated demo `.yml` into a real project (materialize succeeds).
+2. The daemon can execute `run_calc` successfully with the real engine binary (engine run completes without error).
+3. Expected output artifacts exist in the working directory after the run.
+4. Ref-pack generation was executed for this demo. The ref pack MAY be empty if no analysis provider exists, but the attempt MUST be recorded.
+
+**Corollary**: "Integrity passing" (Stage B green) is **necessary but not sufficient** to establish runnability. Only a successful Stage (C) execution for a specific demo establishes that it is runnable.
+
+### DB.5 Required Closeout Artifacts
+
+Any PR that performs demo-store migration, expansion, or modification MUST include a committed markdown closeout report.
+
+**File path**: `docs/demo_store/DEMO_BASELINE_CLOSEOUT.md` (or a dated variant, e.g., `DEMO_BASELINE_CLOSEOUT_<date>.md`).
+
+The closeout report MUST include ALL of the following:
+
+1. **Stage (A) summary**: pytest pass/fail/skip counts and the exact command executed.
+2. **Stage (B) summary**: integrity suite pass/fail/skip counts and the exact command executed.
+3. **Stage (C) summary**: Real-run results with per-demo status counts:
+   - `OK` — engine ran, output parsed successfully.
+   - `FAILED` — engine ran but produced errors, or materialization failed.
+   - `NO_ANALYSIS` — engine ran successfully but no analysis provider exists for this calculation type (ref pack is empty).
+4. **Per-demo failure details**: For every demo that is not `OK`, the report MUST include:
+   - The demo slug and engine.
+   - The failure stage (materialize / run / parse / analysis).
+   - A pointer to the log file or output directory (relative path, no absolute paths per Law S1).
+5. **Exact commands executed**: All commands from stages (A) through (D) MUST be included as copy-pasteable blocks. No paraphrasing.
+
+**Rule DB-CO** (Closeout Obligation): A PR that modifies `resources/demo_projects/`, `corpus_index.yaml`, or `tools/demo_store/` without including the closeout report (or updating an existing one) MUST NOT be merged.
 
 ---
 
@@ -675,7 +828,9 @@ Both integrity suites iterate ONLY the demo projects in Layer B (`resources/demo
 
 ### S7.2 Backend Integrity Suite (T1)
 
-**Purpose**: Verify that every demo project can be loaded, materialized, executed (when engine and assets are available), and analyzed through the daemon/service layer.
+> **WARNING**: This suite is a FAST structural validation. It DOES NOT execute engines and DOES NOT prove demos are runnable. See section **DB** (Demo Baseline) for the full acceptance criteria including real engine runs.
+
+**Purpose**: Verify that every demo project can be loaded, materialized, and structurally validated through the daemon/service layer. This is Stage (B) of the Demo Baseline — necessary but not sufficient.
 
 **Lifecycle per demo**:
 
@@ -826,17 +981,17 @@ The process for adding a new demo MUST follow this pipeline. Each step validates
 6. **Run translator**: Execute the translator (`tools/demo_store/generate_all.py`) to regenerate all demo projects. Verify the new demo `.yml` appears in `resources/demo_projects/` with correct structure data, parameters, and step types.
 7. **Update curated index**: Update `docs/engines/<engine>/CURATED_INDEX.md` with the new case.
 
-**Phase 3: Real-run verification and ref pack generation**
+**Phase 3: Real-run verification and ref pack generation (Demo Baseline Stages C+D — MANDATORY)**
 
-8. **Run demo through daemon**: Use the ref pack generator (`tools/demo_store/generate_ref_packs_realrun.py`) or manually via `QVService` to: load the demo → materialize a project → run the calculation with the real engine → parse output → run analysis. This is the definitive proof that the demo works end-to-end.
-9. **Generate ref pack**: If the run succeeds and produces analysis output, serialize the canonical primitive bundles as a ref pack under `resources/demo_projects/ref_packs/<demo_slug>/`.
+8. **Run demo through daemon**: Use the ref pack generator (`tools/demo_store/generate_ref_packs_realrun.py`) or manually via `QVService` to: load the demo → materialize a project → run the calculation with the real engine → parse output → run analysis. This is the definitive proof that the demo works end-to-end. **Per Rule DB-ND, this step MUST NOT be deferred or skipped.** "Engine not available" is not a valid excuse — see Rule DB-EA.
+9. **Generate ref pack**: The real-run MUST attempt ref-pack generation for the demo. If the run succeeds and produces analysis output, serialize the canonical primitive bundles as a ref pack under `resources/demo_projects/ref_packs/<demo_slug>/`. A ref pack MAY be empty if no analysis provider exists, but the attempt MUST be recorded.
 10. **Debug failures**: If the real run fails, the defect is in the pipeline (corpus files, parser, translator, materialization, engine handler, or analysis). Fix at the appropriate layer — always fix corpus (Layer A) first, then regenerate Layer B. Do NOT patch Layer B directly.
 
-**Phase 4: Commit**
+**Phase 4: Commit (with Demo Baseline closeout)**
 
-11. **Commit**: Commit corpus entry, corpus index, regenerated demos, manifest, curated index, and ref pack together. A PR that adds a demo MUST include evidence that the real-run pipeline succeeded (ref pack files or generator log).
+11. **Commit**: Commit corpus entry, corpus index, regenerated demos, manifest, curated index, ref pack, and **Demo Baseline closeout report** (`docs/demo_store/DEMO_BASELINE_CLOSEOUT.md`) together. The closeout report MUST include evidence of all four Demo Baseline stages per section DB.5.
 
-**Rule G2a** (real-run gate for new demos): A new demo SHOULD NOT be merged without a successful real-run verification (Phase 3, step 8). If the engine is unavailable in the CI environment, the developer MUST run the verification locally and include the ref pack in the commit as proof.
+**Rule G2a** (real-run gate for new demos — MANDATORY): A new demo MUST NOT be merged without a successful real-run verification (Phase 3, step 8). Per Rule DB-ND, deferral is not permitted. Per Rule DB-EA, "engine not available" is not a valid excuse — install the engine or demote the demo. The closeout report MUST include the real-run results for the new demo.
 
 **Rule G2**: A PR that adds or modifies demo-eligible corpus cases MUST include the regenerated Layer B output in the same commit. Partial updates (corpus without regeneration, or regeneration without corpus change) MUST NOT be merged.
 

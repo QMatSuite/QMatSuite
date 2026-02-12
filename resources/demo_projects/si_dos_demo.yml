@@ -88,8 +88,6 @@ calculations:
     parameters:
       CONTROL:
         calculation: scf
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
-        restart_mode: from_scratch
       ELECTRONS:
         conv_thr: 1.0e-08
       SYSTEM:
@@ -117,8 +115,6 @@ calculations:
     parameters:
       CONTROL:
         calculation: nscf
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
-        restart_mode: from_scratch
       ELECTRONS:
         conv_thr: 1.0e-08
       SYSTEM:

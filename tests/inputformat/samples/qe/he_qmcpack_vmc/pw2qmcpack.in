@@ -1,0 +1,5 @@
+&inputpp
+   outdir = './'
+   prefix = 'he'
+   write_psir = .false.
+/

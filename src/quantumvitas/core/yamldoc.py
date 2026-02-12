@@ -501,18 +501,25 @@ class StepDoc(YamlDoc):
         self._access_control = access_control
         self._owner = owner or "user"
     
-    def _normalize_sections(self, data: dict) -> dict:
-        """Normalize section names to uppercase for namelists."""
+    def _normalize_sections(self, data: dict, _depth: int = 0) -> dict:
+        """Normalize section names to uppercase for namelists.
+
+        Only recurses one level into dict values (depth 0 → 1) so that
+        QE namelist keys inside ``parameters`` are uppercased but deeper
+        nested keys (e.g. QMCPACK's ``electrons: {u: 2, d: 2}``) are
+        left untouched.
+        """
         result = {}
         for key, value in data.items():
             # Uppercase namelist sections (only for string keys)
             if isinstance(key, str) and key.upper() in self.NAMELIST_SECTIONS:
                 key = key.upper()
-            
-            if isinstance(value, dict):
-                # Recursively normalize nested dicts
-                value = self._normalize_sections(value)
-            
+
+            if isinstance(value, dict) and _depth < 1:
+                # Only recurse one level deep — normalizes keys inside
+                # ``parameters`` but not their sub-dicts.
+                value = self._normalize_sections(value, _depth + 1)
+
             result[key] = value
         return result
     

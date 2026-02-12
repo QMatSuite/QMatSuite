@@ -1,0 +1,66 @@
+case_id: lih_qmcpack_vmc
+engine: qe
+title: LiH solid QE to QMCPACK VMC pipeline
+description: >-
+  Full QE->QMCPACK composite pipeline for LiH solid VMC.
+  SCF -> pw2qmcpack -> QMCPACK VMC. The QE SCF produces the DFT wavefunction,
+  pw2qmcpack converts it to HDF5 format, and QMCPACK runs VMC sampling.
+  The QMCPACK XML input is parsed by the QMCPACK engine parser.
+workflow_tags:
+- scf
+- pw2qmcpack
+- vmc
+- composite_pipeline
+- qmc
+species:
+- Li
+- H
+demo_eligible: true
+demo_slug: qe_lih_qmcpack_vmc
+step_type_gen: scf
+step_type_spec: qe_scf
+required_engine: qe
+availability: open_source
+asset_policy: redistributable
+recommended_analysis: energy
+difficulty: advanced
+subtitle: QE SCF -> pw2qmcpack -> QMCPACK VMC
+tags:
+- qmcpack
+- composite
+- LiH
+- vmc
+- solid
+multi_step: true
+steps:
+- step_type_gen: scf
+  step_type_spec: qe_scf
+  input_files:
+  - scf.in
+- step_type_gen: pw2qmcpack
+  step_type_spec: qe_pw2qmcpack
+  input_files:
+  - pw2qmcpack.in
+- step_type_gen: vmc
+  step_type_spec: qmcpack_vmc
+  input_files:
+  - qmc_vmc.xml
+asset_requirements:
+  pseudopotentials:
+  - file: Li_ONCV_PBE_sr.upf
+    element: Li
+    source: resources/pseudo
+  - file: H_ONCV_PBE_sr.upf
+    element: H
+    source: resources/pseudo
+  - file: Li.BFD.xml
+    element: Li
+    source: resources/pseudo
+    for_engine: qmcpack
+  - file: H.BFD.xml
+    element: H
+    source: resources/pseudo
+    for_engine: qmcpack
+attribution:
+  source: Constructed for QMatSuite, inspired by QMCPACK tutorials
+  license: MIT (QMatSuite)

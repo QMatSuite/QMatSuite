@@ -8,14 +8,14 @@ workflow_tags:
 species:
 - Si
 description: Independent-particle optics spectrum (Chimod=IP) on 0-10 eV grid.
-demo_eligible: true
-demo_slug: yambo_si_optics
+demo_eligible: false
+demo_slug: null
 step_type_gen: optics
 step_type_spec: yambo_optics
 required_engine: yambo
 availability: open_source
 asset_policy: none
-exclusion_reason: null
+exclusion_reason: "Route-2: requires QE prefix.save/ directory; standalone Yambo demo"
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)

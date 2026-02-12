@@ -1,0 +1,58 @@
+case_id: si_yambo_bse
+engine: qe
+title: Silicon BSE Haydock (QE to Yambo BSE pipeline)
+description: >-
+  Full QE->Yambo composite pipeline for Si BSE optical spectrum.
+  SCF -> NSCF -> yambo_setup (runs p2y internally) -> yambo_bse.
+  BSE with SEX kernel and Haydock iterative solver.
+  The Yambo .in file is parsed by the Yambo engine parser.
+workflow_tags:
+- scf
+- nscf
+- setup
+- bse
+- composite_pipeline
+- optics
+species:
+- Si
+demo_eligible: true
+demo_slug: qe_si_yambo_bse
+step_type_gen: scf
+step_type_spec: qe_scf
+required_engine: qe
+availability: open_source
+asset_policy: redistributable
+recommended_analysis: energy
+difficulty: advanced
+subtitle: QE SCF -> NSCF -> Yambo BSE
+tags:
+- yambo
+- composite
+- Si
+- bse
+- optics
+multi_step: true
+steps:
+- step_type_gen: scf
+  step_type_spec: qe_scf
+  input_files:
+  - scf.in
+- step_type_gen: nscf
+  step_type_spec: qe_nscf
+  input_files:
+  - nscf.in
+- step_type_gen: setup
+  step_type_spec: yambo_setup
+  input_files: []
+- step_type_gen: bse
+  step_type_spec: yambo_bse
+  input_files:
+  - bse.in
+asset_requirements:
+  pseudopotentials:
+  - file: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+    element: Si
+    source: resources/pseudo
+attribution:
+  source: Constructed for QMatSuite, inspired by Yambo tutorials
+  license: MIT (QMatSuite)

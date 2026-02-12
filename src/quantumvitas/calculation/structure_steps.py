@@ -801,7 +801,7 @@ def materialize_step_spec(
     step_type_lower = (spec_obj.step_type_spec or "scf").lower()
     # Convert to GEN type for comparison (e.g., "qe_pw2wannier" -> "pw2wannier")
     step_type_gen = _normalize_step_type_to_gen(step_type_lower)
-    WANNIER90_STEP_TYPES = {"wannierprep", "wannier", "pw2wannier"}
+    WANNIER90_STEP_TYPES = {"wannierprep", "wannier", "pw2wannier", "pw2qmcpack"}
     
     # Phase 3C: Check if calculation is PySCF - PySCF steps should NOT go through QE input generation
     # PySCF engine builds input dynamically from structure + parameters
@@ -875,7 +875,23 @@ def materialize_step_spec(
             
             # Create Wannier90Input from spec parameters
             w90_input = Wannier90Input()
-            w90_input.seedname = flat_params.get("seedname", spec_obj.meta.slug or "wannier")
+            # For wannier step (not wannierprep), auto-detect seedname from the prior
+            # wannierprep step's .win file. This ensures the wannier step uses the same
+            # seedname as wannierprep, so it reads the .amn/.mmn/.eig files produced
+            # by pw2wannier under the matching seedname.
+            if step_type_gen == "wannier":
+                win_files = list(output_dir.glob("*.win"))
+                if win_files:
+                    detected_seedname = win_files[0].stem
+                    w90_input.seedname = detected_seedname
+                    logger.info(
+                        f"[SEEDNAME_SYNC] Auto-detected seedname '{detected_seedname}' from .win file "
+                        f"for wannier step (overriding slug '{spec_obj.meta.slug}')"
+                    )
+                else:
+                    w90_input.seedname = flat_params.get("seedname", spec_obj.meta.slug or "wannier")
+            else:
+                w90_input.seedname = flat_params.get("seedname", spec_obj.meta.slug or "wannier")
             if "num_wann" in flat_params and flat_params["num_wann"] is not None:
                 w90_input.num_wann = int(flat_params["num_wann"])
             if "num_bands" in flat_params and flat_params["num_bands"] is not None:
@@ -888,43 +904,68 @@ def materialize_step_spec(
                     # Filter out None values and convert to int
                     w90_input.mp_grid = [int(x) for x in mp_grid if x is not None]
             
-            # CRITICAL: Extract kpoints from nscf step input (preserve exact order)
-            # Do NOT generate from mp_grid - order must match nscf to avoid pw2wannier errors
-            from quantumvitas.calculation.wannier90_kpoints import extract_kpoints_from_nscf_step
-            nscf_kpoints = extract_kpoints_from_nscf_step(
-                calculation_dir=calculation_dir if calculation_dir else Path("."),
-                working_dir=output_dir
-            )
-            
-            if nscf_kpoints:
-                # Use kpoints from nscf (preserving order)
-                w90_input.kpoints = nscf_kpoints
+            # CRITICAL: K-points must match NSCF exactly (order and values) for pw2wannier.
+            # Priority: 1) YAML-stored kpoints (parsed from corpus, guaranteed to match NSCF)
+            #           2) Extract from nscf.in at runtime (if YAML kpoints not available)
+            #           3) Generate from mp_grid (last resort, order may differ)
+            yaml_kpoints = None
+            # Check both original params and flat_params for kpoints.
+            # The flattening loop expands dict values via .update(), so
+            # params["kpoints"]["points"] becomes flat_params["points"] but
+            # flat_params["kpoints"] is lost. Use original params first.
+            kp_data = params.get("kpoints") or flat_params.get("kpoints")
+            if isinstance(kp_data, dict) and "points" in kp_data:
+                points = kp_data["points"]
+                if isinstance(points, list) and len(points) > 0:
+                    yaml_kpoints = [[float(c) for c in pt] for pt in points]
+
+            if yaml_kpoints:
+                w90_input.kpoints = yaml_kpoints
                 logger.info(
-                    f"[MATERIALIZE_STEP_SPEC] Extracted {len(nscf_kpoints)} kpoints from nscf step "
+                    f"[MATERIALIZE_STEP_SPEC] Using {len(yaml_kpoints)} kpoints from YAML params "
                     f"(preserving order for pw2wannier compatibility)"
                 )
-                
-                # Consistency check: verify count matches mp_grid if mp_grid is set
-                if w90_input.mp_grid:
-                    expected_count = w90_input.mp_grid[0] * w90_input.mp_grid[1] * w90_input.mp_grid[2]
-                    if len(nscf_kpoints) != expected_count:
-                        logger.warning(
-                            f"[MATERIALIZE_STEP_SPEC] Kpoints count mismatch: "
-                            f"nscf has {len(nscf_kpoints)} kpoints, but mp_grid={w90_input.mp_grid} "
-                            f"expects {expected_count}. This may cause pw2wannier errors."
-                        )
-            elif w90_input.mp_grid:
-                # Fallback: generate from mp_grid if nscf kpoints not found (but log warning)
-                logger.warning(
-                    f"[MATERIALIZE_STEP_SPEC] Could not extract kpoints from nscf step. "
-                    f"Generating from mp_grid={w90_input.mp_grid}, but order may not match nscf."
+            else:
+                # Fallback: extract from materialized nscf.in
+                from quantumvitas.calculation.wannier90_kpoints import extract_kpoints_from_nscf_step
+                nscf_kpoints = extract_kpoints_from_nscf_step(
+                    calculation_dir=calculation_dir if calculation_dir else Path("."),
+                    working_dir=output_dir
                 )
-                from quantumvitas.io.wannier90_input import generate_kpoints_from_mp_grid
-                w90_input.kpoints = generate_kpoints_from_mp_grid(w90_input.mp_grid)
+                if nscf_kpoints:
+                    w90_input.kpoints = nscf_kpoints
+                    logger.info(
+                        f"[MATERIALIZE_STEP_SPEC] Extracted {len(nscf_kpoints)} kpoints from nscf step"
+                    )
+                elif w90_input.mp_grid:
+                    logger.warning(
+                        f"[MATERIALIZE_STEP_SPEC] No kpoints in YAML or nscf step. "
+                        f"Generating from mp_grid={w90_input.mp_grid}, order may not match nscf."
+                    )
+                    from quantumvitas.io.wannier90_input import generate_kpoints_from_mp_grid
+                    w90_input.kpoints = generate_kpoints_from_mp_grid(w90_input.mp_grid)
+
+            # Consistency check: verify count matches mp_grid if both are set
+            if w90_input.kpoints and w90_input.mp_grid:
+                expected_count = w90_input.mp_grid[0] * w90_input.mp_grid[1] * w90_input.mp_grid[2]
+                if len(w90_input.kpoints) != expected_count:
+                    logger.warning(
+                        f"[MATERIALIZE_STEP_SPEC] Kpoints count mismatch: "
+                        f"have {len(w90_input.kpoints)} kpoints, but mp_grid={w90_input.mp_grid} "
+                        f"expects {expected_count}. This may cause pw2wannier errors."
+                    )
             if "projections" in flat_params and flat_params["projections"] is not None:
-                w90_input.projections_block = str(flat_params["projections"])
+                proj_val = flat_params["projections"]
+                if isinstance(proj_val, list):
+                    w90_input.projections_block = "\n".join(str(p) for p in proj_val)
+                else:
+                    w90_input.projections_block = str(proj_val)
             if "projections_block" in flat_params and flat_params["projections_block"] is not None:
-                w90_input.projections_block = str(flat_params["projections_block"])
+                proj_block_val = flat_params["projections_block"]
+                if isinstance(proj_block_val, list):
+                    w90_input.projections_block = "\n".join(str(p) for p in proj_block_val)
+                else:
+                    w90_input.projections_block = str(proj_block_val)
             
             # Add structure data
             if structure:
@@ -1044,7 +1085,19 @@ def materialize_step_spec(
                     pass
             
             pw2wan_input = Pw2Wannier90Input()
-            pw2wan_input.seedname = flat_params.get("seedname", spec_obj.meta.slug or "wannier")
+            # Auto-detect seedname from .win file produced by the prior wannierprep step.
+            # At materialization time, steps are materialized in order, so the wannierprep
+            # .win file already exists but the .nnkp does not (execution hasn't started yet).
+            win_files = list(output_dir.glob("*.win"))
+            if win_files:
+                detected_seedname = win_files[0].stem
+                pw2wan_input.seedname = detected_seedname
+                logger.info(
+                    f"[SEEDNAME_SYNC] Auto-detected seedname '{detected_seedname}' from .win file "
+                    f"for pw2wannier (overriding YAML seedname '{flat_params.get('seedname', 'N/A')}')"
+                )
+            else:
+                pw2wan_input.seedname = flat_params.get("seedname", spec_obj.meta.slug or "wannier")
             # R1-R3: Use calculation-level prefix, ignore step-level prefix
             if calc_prefix:
                 pw2wan_input.prefix = calc_prefix
@@ -1104,16 +1157,74 @@ def materialize_step_spec(
                     pass
             
             return generated_input, spec_obj
-    
-    # Phase 3C: Non-QE engines — skip QE input generation.
-    # All non-QE engines build input dynamically from structure + parameters.
+
+        elif step_type_gen == "pw2qmcpack":
+            # Generate pw2qmcpack input file (INPUTPP-only, like pw2wannier)
+            params = spec_obj.parameters or {}
+            flat_params = {}
+            if isinstance(params, dict):
+                for key, value in params.items():
+                    if isinstance(value, dict):
+                        flat_params.update(value)
+                    else:
+                        flat_params[key] = value
+
+            # Load calculation context for prefix/outdir injection
+            calc_prefix = None
+            calc_outdir = "./outdir"
+            if calculation_dir and project_root:
+                try:
+                    from quantumvitas.core.public import load_calculation
+                    from quantumvitas.core.public import make_structure_selector_resolver
+                    from quantumvitas.core.public import load_project_config
+                    calc_yaml_path = Path(calculation_dir) / "calculation.yaml"
+                    if calc_yaml_path.exists():
+                        project_root_path = Path(project_root).resolve()
+                        config = load_project_config(project_root_path)
+                        resolver = make_structure_selector_resolver(project_root_path, config=config)
+                        calc_model = load_calculation(calc_yaml_path, project_root=project_root_path, resolve_structure_selector=resolver)
+                        calc_prefix = stable_short_calc_prefix(calc_model.meta.ulid) if calc_model.meta and calc_model.meta.ulid else None
+                except Exception:
+                    pass
+
+            # Build INPUTPP-only file
+            prefix = calc_prefix or flat_params.get("prefix", "pwscf")
+            # Always use calc_outdir (same as SCF step), not YAML outdir
+            outdir = calc_outdir
+            write_psir = flat_params.get("write_psir", False)
+            lines = ["&INPUTPP"]
+            lines.append(f"   outdir = '{outdir}'")
+            lines.append(f"   prefix = '{prefix}'")
+            if isinstance(write_psir, bool):
+                lines.append(f"   write_psir = .{'true' if write_psir else 'false'}.")
+            else:
+                lines.append(f"   write_psir = {write_psir}")
+            lines.append("/")
+            lines.append("")
+
+            from quantumvitas.calculation.naming import CalculationFileNaming
+            filename = input_name or CalculationFileNaming.input_filename("pw2qmcpack")
+            generated_input = (output_dir / filename).resolve()
+            generated_input.parent.mkdir(parents=True, exist_ok=True)
+            generated_input.write_text("\n".join(lines))
+            logger.info(
+                f"[MATERIALIZE_STEP_SPEC] Generated pw2qmcpack input file: {generated_input} "
+                f"(prefix={prefix})"
+            )
+
+            if calculation_dir:
+                calc_dir_path = Path(calculation_dir).resolve()
+                try:
+                    rel_path = generated_input.relative_to(calc_dir_path)
+                    return calc_dir_path / rel_path, spec_obj
+                except ValueError:
+                    pass
+
+            return generated_input, spec_obj
+
+    # Phase 3C: Non-QE engines — use companion engine's writer to generate input.
     # Dispatched via DriverRegistry (no per-engine boolean flags needed).
     if is_non_qe_engine:
-        logger.info(
-            f"[MATERIALIZE_STEP_SPEC] Non-QE engine '{resolved_engine}' detected: "
-            f"step_type_spec={step_type_lower}, skipping QE input generation. "
-            f"Engine will build input dynamically from structure + parameters."
-        )
         from quantumvitas.calculation.naming import CalculationFileNaming
         if input_name:
             filename = input_name
@@ -1124,6 +1235,96 @@ def materialize_step_spec(
         generated_input = Path(output_dir) / filename
         generated_input = generated_input.resolve()
         generated_input.parent.mkdir(parents=True, exist_ok=True)
+
+        # Try to materialize using the companion engine's inputformat writer
+        params = spec_obj.parameters or {}
+        try:
+            from quantumvitas.core.public import DriverRegistry
+            driver = DriverRegistry.get_driver(resolved_engine)
+            input_spec = driver.get_input_spec(gen_type=step_type_gen)
+            if input_spec and input_spec.input_files:
+                file_spec = input_spec.input_files[0]
+                # Use the inputspec's canonical filename (e.g., "qmc_input.xml")
+                # so the engine handler can find it at the expected path.
+                if file_spec.filename:
+                    canonical_name = file_spec.filename
+                    generated_input = Path(output_dir) / canonical_name
+                    generated_input = generated_input.resolve()
+                if file_spec.custom_writer:
+                    # Build the correct fragment based on content_role.
+                    # "combined" writers expect {"params": ..., "structure": ...}
+                    # "parameters" writers expect the params dict directly.
+                    if file_spec.content_role == "combined":
+                        struct_dict = {}
+                        try:
+                            structure = _resolve_structure_for_spec(
+                                spec_obj, resolved_spec_path,
+                                calculation_dir=calculation_dir,
+                                project=project,
+                                project_root=project_root,
+                            )
+                            struct_dict = {
+                                "lattice": structure.lattice.matrix.tolist(),
+                                "species": [str(site.specie) for site in structure],
+                                "frac_coords": structure.frac_coords.tolist(),
+                            }
+                        except Exception as struct_exc:
+                            logger.debug(
+                                f"[MATERIALIZE_STEP_SPEC] Could not resolve structure "
+                                f"for {resolved_engine}: {struct_exc}"
+                            )
+
+                        # QMCPACK uses Bohr internally; pymatgen gives Angstroms.
+                        # Convert lattice vectors to Bohr for QMCPACK XML.
+                        if resolved_engine == "qmcpack" and struct_dict.get("lattice"):
+                            _ANG_TO_BOHR = 1.8897259886
+                            struct_dict["lattice"] = [
+                                [v * _ANG_TO_BOHR for v in row]
+                                for row in struct_dict["lattice"]
+                            ]
+
+                        # Fix HDF5 href in preserved wavefunction XML if calc prefix
+                        # differs from the original corpus prefix.
+                        _fix_qmcpack_hrefs(params, calculation_dir, project_root)
+
+                        # Extract zval from BFD PP files so the writer can set
+                        # correct ion group charges for QMCPACK.
+                        if resolved_engine == "qmcpack":
+                            _inject_species_zval(params, project_root)
+
+                        fragment = {"params": params, "structure": struct_dict}
+                        content = file_spec.custom_writer(fragment)
+                    else:
+                        content = file_spec.custom_writer(params)
+                    if content:
+                        generated_input.write_text(content)
+                        logger.info(
+                            f"[MATERIALIZE_STEP_SPEC] Generated companion engine input "
+                            f"via {resolved_engine} writer: {generated_input}"
+                        )
+                        # Stage referenced resources (e.g., BFD pseudopotentials)
+                        _stage_companion_resources(
+                            params, output_dir, project_root
+                        )
+                        if calculation_dir:
+                            calc_dir_path = Path(calculation_dir).resolve()
+                            try:
+                                rel_path = generated_input.relative_to(calc_dir_path)
+                                return calc_dir_path / rel_path, spec_obj
+                            except ValueError:
+                                pass
+                        return generated_input, spec_obj
+        except Exception as exc:
+            logger.warning(
+                f"[MATERIALIZE_STEP_SPEC] Could not use {resolved_engine} writer: {exc}. "
+                f"Falling back to placeholder."
+            )
+
+        logger.info(
+            f"[MATERIALIZE_STEP_SPEC] Non-QE engine '{resolved_engine}' detected: "
+            f"step_type_spec={step_type_lower}, no writer available. "
+            f"Engine will build input dynamically from structure + parameters."
+        )
         return generated_input, spec_obj
 
     # QE PATH: Standard QE input generation (existing logic)
@@ -1333,6 +1534,178 @@ def materialize_step_spec(
     generated_input = output_dir / filename
     QEInputGenerator.write_file(qe_input, generated_input)
     return generated_input, spec_obj
+
+
+def _fix_qmcpack_hrefs(
+    params: dict,
+    calculation_dir: Optional[Path | str],
+    project_root: Optional[Path | str],
+) -> None:
+    """Fix HDF5 href in preserved wavefunction XML to match actual calc prefix.
+
+    When a QMCPACK XML is parsed from the corpus, ``_wavefunction_xml`` may
+    contain ``href="lih.pwscf.h5"`` (the original corpus prefix).  At runtime
+    pw2qmcpack generates ``<calc_prefix>.pwscf.h5`` using the ULID-based
+    prefix.  This function replaces the old href in-place so the written XML
+    references the correct file.
+    """
+    import logging
+    _logger = logging.getLogger(__name__)
+
+    wf_xml = params.get("_wavefunction_xml")
+    if not wf_xml or ".pwscf.h5" not in wf_xml:
+        return  # nothing to fix
+
+    # Compute the actual calc prefix
+    calc_prefix = None
+    if calculation_dir and project_root:
+        try:
+            from quantumvitas.core.public import (
+                load_calculation,
+                load_project_config,
+                make_structure_selector_resolver,
+            )
+            calc_yaml_path = Path(calculation_dir) / "calculation.yaml"
+            if calc_yaml_path.exists():
+                prp = Path(project_root).resolve()
+                config = load_project_config(prp)
+                resolver = make_structure_selector_resolver(prp, config=config)
+                calc_model = load_calculation(
+                    calc_yaml_path, project_root=prp,
+                    resolve_structure_selector=resolver,
+                )
+                if calc_model.meta and calc_model.meta.ulid:
+                    calc_prefix = stable_short_calc_prefix(calc_model.meta.ulid)
+        except Exception:
+            pass
+
+    if not calc_prefix:
+        return
+
+    import re
+    # pw2qmcpack writes the HDF5 into outdir/ (same as QE scratch).
+    # Replace any href="<old_prefix>.pwscf.h5" with the actual path.
+    new_wf_xml = re.sub(
+        r'href="[^"]*\.pwscf\.h5"',
+        f'href="outdir/{calc_prefix}.pwscf.h5"',
+        wf_xml,
+    )
+    if new_wf_xml != wf_xml:
+        params["_wavefunction_xml"] = new_wf_xml
+        _logger.info(
+            f"[MATERIALIZE_STEP_SPEC] Fixed QMCPACK HDF5 href to "
+            f"outdir/{calc_prefix}.pwscf.h5"
+        )
+
+
+def _stage_companion_resources(
+    params: dict,
+    output_dir: Path,
+    project_root: Optional[Path | str],
+) -> None:
+    """Stage referenced resource files (e.g., BFD pseudopotentials) into the
+    working directory so the companion engine can find them at runtime.
+
+    Extracts hrefs from ``_resource_refs`` in the params dict and copies
+    matching files from the project's ``pseudo/`` directory.
+    """
+    import logging
+    import shutil
+    _logger = logging.getLogger(__name__)
+
+    refs = params.get("_resource_refs", {})
+    pseudo_hrefs = refs.get("pseudopotential_hrefs", [])
+    if not pseudo_hrefs or not project_root:
+        return
+
+    prp = Path(project_root).resolve()
+    # Search candidate directories for the pseudo files.
+    # Include the repo resources/pseudo/ dir (found via the package install path)
+    # so that companion-engine pseudos (e.g., BFD XMLs) that are not in the
+    # project pseudo/ dir can still be located.
+    candidate_dirs = [
+        prp / "pseudo",              # project pseudo dir (demo runtime)
+        prp / "resources" / "pseudo", # repo resources dir (development)
+    ]
+    try:
+        from quantumvitas.core.public import get_resources_dir
+        repo_pseudo = get_resources_dir() / "pseudo"
+        if repo_pseudo.is_dir() and repo_pseudo not in candidate_dirs:
+            candidate_dirs.append(repo_pseudo)
+    except Exception:
+        pass
+    for href in pseudo_hrefs:
+        dst = Path(output_dir) / href
+        if dst.exists():
+            continue
+        for pseudo_dir in candidate_dirs:
+            src = pseudo_dir / href
+            if src.exists():
+                shutil.copy2(src, dst)
+                _logger.info(
+                    f"[MATERIALIZE_STEP_SPEC] Staged companion resource: "
+                    f"{src.name} -> {dst}"
+                )
+                break
+
+
+def _inject_species_zval(
+    params: dict,
+    project_root: Optional[Path | str],
+) -> None:
+    """Extract zval from BFD PP XML files and inject into params as
+    ``_species_zval``.  The QMCPACK writer uses this to set ion group
+    charges correctly.
+    """
+    import logging
+    import xml.etree.ElementTree as _ET
+    _logger = logging.getLogger(__name__)
+
+    refs = params.get("_resource_refs", {})
+    pseudo_hrefs = refs.get("pseudopotential_hrefs", [])
+    if not pseudo_hrefs:
+        return
+
+    # Build candidate dirs (same as _stage_companion_resources)
+    candidate_dirs: list[Path] = []
+    if project_root:
+        prp = Path(project_root).resolve()
+        candidate_dirs.append(prp / "pseudo")
+        candidate_dirs.append(prp / "resources" / "pseudo")
+    try:
+        from quantumvitas.core.public import get_resources_dir
+        repo_pseudo = get_resources_dir() / "pseudo"
+        if repo_pseudo.is_dir():
+            candidate_dirs.append(repo_pseudo)
+    except Exception:
+        pass
+
+    species_zval: dict[str, float] = {}
+    for href in pseudo_hrefs:
+        pp_path = None
+        for d in candidate_dirs:
+            candidate = d / href
+            if candidate.exists():
+                pp_path = candidate
+                break
+        if not pp_path:
+            continue
+        try:
+            tree = _ET.parse(pp_path)
+            header = tree.find(".//header")
+            if header is not None:
+                symbol = header.get("symbol", "")
+                zval_str = header.get("zval", "")
+                if symbol and zval_str:
+                    species_zval[symbol] = float(zval_str)
+        except Exception:
+            pass
+
+    if species_zval:
+        params["_species_zval"] = species_zval
+        _logger.info(
+            f"[MATERIALIZE_STEP_SPEC] Injected species zval from PP: {species_zval}"
+        )
 
 
 def _load_step_spec(

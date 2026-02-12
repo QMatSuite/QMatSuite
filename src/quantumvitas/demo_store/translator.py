@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 
 from quantumvitas.demo_store.ulid_seed import deterministic_ulid
 from quantumvitas.demo_store.corpus import load_case_yaml, validate_case_yaml
+from quantumvitas.demo_store.roundtrip import MANAGED_KEYS_BY_ENGINE
 
 
 # Structure conversion helpers
@@ -185,10 +186,18 @@ def _resolve_pseudo_info(
     for req in pseudo_reqs:
         filename = req.get("file", "")
         element = req.get("element", "")
+        for_engine = req.get("for_engine")
         if not filename:
             continue
 
+        # Always stage the file (all engines need it in the pseudo dir)
         pseudo_files.append(filename)
+
+        # Only add to species_map if this pseudo belongs to the base engine
+        # (companion-engine pseudos like QMCPACK BFD are staged separately)
+        if for_engine and for_engine != engine:
+            continue
+
         entry: Dict[str, Any] = {"pseudopot": filename, "pseudo_basename": filename}
 
         # Compute checksums for redistributable assets
@@ -281,6 +290,27 @@ def _slugify(name: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", slug)
     slug = slug.strip("-")
     return slug or "unnamed"
+
+
+def _strip_managed_params(params: Dict[str, Any], engine: str) -> Dict[str, Any]:
+    """Strip runtime-managed keys (prefix, outdir, etc.) from step parameters.
+
+    These keys are injected at materialization time from calculation metadata
+    and should not be stored in the demo YAML step parameters.
+    """
+    managed = MANAGED_KEYS_BY_ENGINE.get(engine, set())
+    if not managed:
+        return params
+
+    result = {}
+    for section_key, section_val in params.items():
+        if isinstance(section_val, dict):
+            filtered = {k: v for k, v in section_val.items() if k not in managed}
+            if filtered:
+                result[section_key] = filtered
+        else:
+            result[section_key] = section_val
+    return result
 
 
 # Input spec adaptation for corpus
@@ -462,6 +492,9 @@ def _translate_single_step(
     # Build species_map from params or pseudo info
     species_map = pseudo_species_map or _build_species_map_from_params(engine, params, species)
 
+    # Strip runtime-managed keys (prefix, outdir, etc.) before storing in snapshot
+    params = _strip_managed_params(params, engine)
+
     # Build step dict
     step_dict = {
         "meta": {
@@ -562,6 +595,7 @@ def _translate_multi_step(
 
     # Parse each step's input files
     from quantumvitas.inputformat.parser import parse_engine_inputs
+    from quantumvitas.workflow.step_type_convert import prefix_from
 
     parsed_steps = []
     first_structure = None
@@ -571,15 +605,30 @@ def _translate_multi_step(
         step_spec = step_def["step_type_spec"]
         input_files = step_def.get("input_files", [])
 
+        # Determine which engine owns this step (companion engine dispatch)
+        step_engine = prefix_from(step_spec)  # e.g., "w90" from "w90_wannierprep"
+        if step_engine != engine:
+            companion_driver = DriverRegistry.get_driver(step_engine)
+            # Pass gen_type context so the driver returns the correct
+            # input_spec (e.g., Yambo needs gen_type="bse" for BSE steps).
+            step_input_spec = companion_driver.get_input_spec(
+                gen_type=step_gen,
+            )
+        else:
+            step_input_spec = input_spec
+
         # Parse each input file
         step_params: Dict[str, Any] = {}
+        step_cards: Dict[str, Any] = {}
         step_structure = None
 
         for input_file in input_files:
             file_path = case_dir / input_file
             if file_path.exists():
-                # Find the matching file spec from input_spec
-                for fs in input_spec.input_files:
+                # Find the matching file spec from the step's own engine input_spec
+                active_spec = step_input_spec or input_spec
+                matched = False
+                for fs in active_spec.input_files:
                     if fs.filename == input_file and fs.custom_parser:
                         text = file_path.read_text()
                         parsed = fs.custom_parser(text)
@@ -592,13 +641,15 @@ def _translate_multi_step(
                                 step_params.update(parsed["params"])
                             if "structure" in parsed:
                                 step_structure = parsed["structure"]
+                            if "cards" in parsed:
+                                step_cards.update(parsed["cards"])
                         elif fs.content_role == "kpoints":
                             step_params["kpoints"] = parsed
+                        matched = True
                         break
-                else:
-                    # No matching spec - try reading as the primary input
-                    # For QE, all .in files use the same parser
-                    for fs in input_spec.input_files:
+                if not matched:
+                    # No exact filename match — try content_role-based fallback
+                    for fs in active_spec.input_files:
                         if fs.content_role == "combined" and fs.custom_parser:
                             text = file_path.read_text()
                             parsed = fs.custom_parser(text)
@@ -606,15 +657,35 @@ def _translate_multi_step(
                                 step_params.update(parsed["params"])
                             if "structure" in parsed:
                                 step_structure = parsed["structure"]
+                            if "cards" in parsed:
+                                step_cards.update(parsed["cards"])
+                            matched = True
                             break
+                    if not matched:
+                        # Last resort: try base engine's parser (e.g., QE .in files)
+                        for fs in input_spec.input_files:
+                            if fs.content_role == "combined" and fs.custom_parser:
+                                text = file_path.read_text()
+                                parsed = fs.custom_parser(text)
+                                if "params" in parsed:
+                                    step_params.update(parsed["params"])
+                                if "structure" in parsed:
+                                    step_structure = parsed["structure"]
+                                if "cards" in parsed:
+                                    step_cards.update(parsed["cards"])
+                                break
 
         if step_structure and first_structure is None:
             first_structure = step_structure
+
+        # Strip runtime-managed keys (prefix, outdir, etc.) for the step's engine
+        step_params = _strip_managed_params(step_params, step_engine)
 
         parsed_steps.append({
             "step_type_gen": step_gen,
             "step_type_spec": step_spec,
             "params": step_params,
+            "cards": step_cards,
         })
 
     # Fallback: if no structure found from step input files, try parsing
@@ -656,7 +727,7 @@ def _translate_multi_step(
         step_ulid = deterministic_ulid(
             demo_slug, f"step:{calc_slug}:{step_slug}"
         )
-        step_dicts.append({
+        step_dict = {
             "meta": {
                 "name": ps["step_type_gen"],
                 "slug": step_slug,
@@ -666,7 +737,10 @@ def _translate_multi_step(
             },
             "parameters": ps["params"],
             "step_type_spec": ps["step_type_spec"],
-        })
+        }
+        if ps.get("cards"):
+            step_dict["cards"] = ps["cards"]
+        step_dicts.append(step_dict)
 
     # Build calculation
     calc_dict = {

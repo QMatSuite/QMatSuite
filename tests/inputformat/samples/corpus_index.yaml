@@ -972,6 +972,125 @@ entries:
   attribution:
     source: Constructed for QMatSuite, inspired by QE tutorials
     license: MIT (QMatSuite)
+- engine: qe
+  case_id: copper_wannier
+  dir_name: copper_wannier
+  demo_eligible: true
+  demo_slug: qe_copper_wannier
+  runnable: true
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  required_assets:
+  - type: pseudopotential
+    file: Cu.pz-n-van_ak.UPF
+    element: Cu
+    source: resources/pseudo
+    vendored: false
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, based on Wannier90 Tutorial Example 6
+    license: MIT (QMatSuite)
+- engine: qe
+  case_id: diamond_wannier
+  dir_name: diamond_wannier
+  demo_eligible: true
+  demo_slug: qe_diamond_wannier
+  runnable: true
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  required_assets:
+  - type: pseudopotential
+    file: C.pz-vbc.UPF
+    element: C
+    source: resources/pseudo
+    vendored: true
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, based on Wannier90 Tutorial Example 5
+    license: MIT (QMatSuite)
+- engine: qe
+  case_id: he_qmcpack_vmc
+  dir_name: he_qmcpack_vmc
+  demo_eligible: true
+  demo_slug: qe_he_qmcpack_vmc
+  runnable: true
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  required_assets:
+  - type: pseudopotential
+    file: He.pbe-kjpaw_psl.1.0.0.UPF
+    element: He
+    source: resources/pseudo
+    vendored: false
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QMCPACK tutorials
+    license: MIT (QMatSuite)
+- engine: qe
+  case_id: lih_qmcpack_vmc
+  dir_name: lih_qmcpack_vmc
+  demo_eligible: true
+  demo_slug: qe_lih_qmcpack_vmc
+  runnable: true
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  required_assets:
+  - type: pseudopotential
+    file: Li.pbe-s-kjpaw_psl.0.2.1.UPF
+    element: Li
+    source: resources/pseudo
+    vendored: false
+  - type: pseudopotential
+    file: H.pbe-kjpaw_psl.0.1.UPF
+    element: H
+    source: resources/pseudo
+    vendored: false
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QMCPACK tutorials
+    license: MIT (QMatSuite)
+- engine: qe
+  case_id: si_yambo_bse
+  dir_name: si_yambo_bse
+  demo_eligible: true
+  demo_slug: qe_si_yambo_bse
+  runnable: true
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  required_assets:
+  - type: pseudopotential
+    file: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+    element: Si
+    source: resources/pseudo
+    vendored: true
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by Yambo tutorials
+    license: MIT (QMatSuite)
+- engine: qe
+  case_id: si_yambo_gw
+  dir_name: si_yambo_gw
+  demo_eligible: true
+  demo_slug: qe_si_yambo_gw
+  runnable: true
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  required_assets:
+  - type: pseudopotential
+    file: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+    element: Si
+    source: resources/pseudo
+    vendored: true
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by Yambo tutorials
+    license: MIT (QMatSuite)
 - engine: qmcpack
   case_id: be_sto_vmc
   dir_name: be_sto_vmc
@@ -1063,14 +1182,14 @@ entries:
 - engine: qmcpack
   case_id: lih_solid_vmc_pp
   dir_name: lih_solid_vmc_pp
-  demo_eligible: true
-  demo_slug: qmcpack_lih_solid
+  demo_eligible: false
+  demo_slug: null
   runnable: true
   asset_policy: none
   required_engine: qmcpack
   availability: open_source
   required_assets: []
-  exclusion_reason: null
+  exclusion_reason: "Route-2: requires prebaked HDF5 wavefunction from QE; replaced by qe/lih_qmcpack_vmc composite"
   attribution:
     source: Constructed for QMatSuite, inspired by QMCPACK test suite
     license: MIT (QMatSuite)
@@ -1381,28 +1500,28 @@ entries:
 - engine: w90
   case_id: copper_disentangle
   dir_name: copper_disentangle
-  demo_eligible: true
-  demo_slug: w90_copper
+  demo_eligible: false
+  demo_slug: null
   runnable: true
   asset_policy: none
   required_engine: w90
   availability: open_source
   required_assets: []
-  exclusion_reason: null
+  exclusion_reason: "Route-2: requires prebaked .amn/.mmn/.eig from QE; replaced by qe/copper_wannier composite"
   attribution:
     source: Constructed for QMatSuite test coverage
     license: MIT (QMatSuite)
 - engine: w90
   case_id: diamond_pipeline
   dir_name: diamond_pipeline
-  demo_eligible: true
-  demo_slug: w90_diamond
+  demo_eligible: false
+  demo_slug: null
   runnable: true
   asset_policy: none
   required_engine: w90
   availability: open_source
   required_assets: []
-  exclusion_reason: null
+  exclusion_reason: "Route-2: requires prebaked .amn/.mmn/.eig from QE; replaced by qe/diamond_wannier composite"
   attribution:
     source: Constructed for QMatSuite test coverage
     license: MIT (QMatSuite)
@@ -1457,14 +1576,14 @@ entries:
 - engine: w90
   case_id: silicon_bandinterp
   dir_name: silicon_bandinterp
-  demo_eligible: true
-  demo_slug: w90_silicon
+  demo_eligible: false
+  demo_slug: null
   runnable: true
   asset_policy: none
   required_engine: w90
   availability: open_source
   required_assets: []
-  exclusion_reason: null
+  exclusion_reason: "Route-2: requires prebaked .amn/.mmn/.eig from QE; standalone W90 demo"
   attribution:
     source: Constructed for QMatSuite test coverage
     license: MIT (QMatSuite)
@@ -1573,42 +1692,42 @@ entries:
 - engine: yambo
   case_id: si_bse_haydock
   dir_name: si_bse_haydock
-  demo_eligible: true
-  demo_slug: yambo_si_bse
+  demo_eligible: false
+  demo_slug: null
   runnable: true
   asset_policy: none
   required_engine: yambo
   availability: open_source
   required_assets: []
-  exclusion_reason: null
+  exclusion_reason: "Route-2: requires QE prefix.save/ directory; replaced by qe/si_yambo_bse composite"
   attribution:
     source: Constructed for QMatSuite test coverage
     license: MIT (QMatSuite)
 - engine: yambo
   case_id: si_gw_ppa
   dir_name: si_gw_ppa
-  demo_eligible: true
-  demo_slug: yambo_si_gw
+  demo_eligible: false
+  demo_slug: null
   runnable: true
   asset_policy: none
   required_engine: yambo
   availability: open_source
   required_assets: []
-  exclusion_reason: null
+  exclusion_reason: "Route-2: requires QE prefix.save/ directory; replaced by qe/si_yambo_gw composite"
   attribution:
     source: Constructed for QMatSuite test coverage
     license: MIT (QMatSuite)
 - engine: yambo
   case_id: si_ip_optics
   dir_name: si_ip_optics
-  demo_eligible: true
-  demo_slug: yambo_si_optics
+  demo_eligible: false
+  demo_slug: null
   runnable: true
   asset_policy: none
   required_engine: yambo
   availability: open_source
   required_assets: []
-  exclusion_reason: null
+  exclusion_reason: "Route-2: requires QE prefix.save/ directory; standalone Yambo demo"
   attribution:
     source: Constructed for QMatSuite test coverage
     license: MIT (QMatSuite)
