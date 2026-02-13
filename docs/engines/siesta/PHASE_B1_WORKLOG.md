@@ -31,7 +31,7 @@
   - Reworked legacy writer path in `src/quantumvitas/drivers/siesta/writer.py` to delegate to `io/fdf.py`.
 - Evidence/Citations:
   - Design alignment: `docs/design/UNIVERSAL_PARSER_WRITER_DESIGN.md`
-  - Playbook writer extraction requirement: `docs/architecture/B1_ENGINE_PLAYBOOK.md`
+  - Playbook writer extraction requirement: `docs/laws/L2/B1_ENGINE_PLAYBOOK.md`
 - Result:
   - Siesta input parsing and writing are delegated through a robust `io/` leaf module.
 - Status: PASS

@@ -2,29 +2,28 @@
 
 ## Authoritative Laws
 
-This project has a binding constitution and governance specs. Before making changes to any area, you MUST read the relevant governance document(s).
+This project has a binding constitution and law specs. Before making changes to any area, you MUST read the relevant law document(s).
 
 ### Document Hierarchy (highest to lowest authority)
-1. `CONSTITUTION.md` (repo root) — Central constitution (English). Read the relevant section before any architectural decision.
-2. `docs/governance/` — Detailed governance specs. Read the specific spec before working in that domain.
-3. `docs/` — Implementation/design docs. Reference only; not binding.
+1. `CONSTITUTION.md` (repo root) — L0 central constitution. Read the relevant section before any architectural decision.
+2. `docs/laws/L1/` — Laws & constitutions (8 files). Read the specific law before working in that domain.
+3. `docs/laws/L2/` — Specs, policies, playbooks (15 files). Binding operational rules.
+4. `docs/design/` — Design docs. Reference only; not binding.
 
-Note: `CONSTITUTION_ZH.md` is deprecated. The English `CONSTITUTION.md` is authoritative.
-
-### Which Governance Doc to Read by Domain
+### Which Law to Read by Domain
 
 | If working on... | Read these FIRST |
 |-------------------|-----------------|
-| API surface, utils, DTOs, imports | `docs/governance/API_CONSTITUTION.md` + Constitution §18 |
-| Kernel internals, domain boundaries | `docs/governance/KERNEL_DEPENDENCY_SPEC.md` + Constitution §19 |
-| Kernel exceptions, lazy imports | `docs/governance/KERNEL_EXCEPTIONS.md` |
-| Step types (GEN/SPEC), conversion | `docs/governance/STEP_TYPE_GEN_SPEC_CONSTITUTION.md` + Constitution §7 |
-| Engine integration, drivers | `docs/governance/ENGINE_INTEGRATION_CONSTITUTION.md` + Constitution §17 |
-| Engine recipes, runner, adding engines | `docs/governance/ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md` + Constitution §17.4 |
-| Presets, ParamSpace, IR, detection | `docs/governance/PARAMSPACE_SPEC.md` + Constitution §8 |
+| API surface, utils, DTOs, imports | `docs/laws/L1/API_CONSTITUTION.md` + Constitution §18 |
+| Kernel internals, domain boundaries | `docs/laws/L1/KERNEL_DEPENDENCY_SPEC.md` + Constitution §19 |
+| Kernel exceptions, lazy imports | `docs/laws/L1/KERNEL_EXCEPTIONS.md` |
+| Step types (GEN/SPEC), conversion | `docs/laws/L1/STEP_TYPE_GEN_SPEC_CONSTITUTION.md` + Constitution §7 |
+| Engine integration, drivers | `docs/laws/L1/ENGINE_INTEGRATION_CONSTITUTION.md` + Constitution §17 |
+| Engine recipes, runner, adding engines | `docs/laws/L1/ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md` + Constitution §17.4 |
+| Presets, ParamSpace, IR, detection | `docs/laws/L1/PARAMSPACE_SPEC.md` + Constitution §8 |
 | YAML, SSOT, persistence | Constitution §2 |
-| History, runs, revisions | Constitution §3 + `docs/governance/PROVENANCE_VERSIONED_HISTORY_SPEC.md` |
-| Provenance, versioned history, CAS, rollback | `docs/governance/PROVENANCE_VERSIONED_HISTORY_SPEC.md` + `docs/governance/PROVENANCE_IMPLEMENTATION_PLAN.md` |
+| History, runs, revisions | Constitution §3 + `docs/laws/L1/PROVENANCE_VERSIONED_HISTORY_SPEC.md` |
+| Provenance, versioned history, CAS, rollback | `docs/laws/L1/PROVENANCE_VERSIONED_HISTORY_SPEC.md` |
 | Locks, concurrency | Constitution §4 |
 | Incremental run, manifest, skip | Constitution §5 |
 | Identity, ULID, meta | Constitution §6 |
@@ -37,7 +36,7 @@ Note: `CONSTITUTION_ZH.md` is deprecated. The English `CONSTITUTION.md` is autho
 ### Cross-Reference Index
 
 The full cross-reference mapping (invariants to definitions to enforcement gates) is at:
-`docs/governance/README.md`
+`docs/laws/README.md`
 
 ## Test Rules
 
@@ -55,7 +54,7 @@ When working on engine-related code, these are absolute prohibitions (from ENGIN
 
 ## How to Add a New Engine
 
-When adding a new engine, follow the checklist in `docs/governance/ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md` §10. Key points:
+When adding a new engine, follow the checklist in `docs/laws/L1/ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md` §10. Key points:
 
 1. Create driver bundle at `src/quantumvitas/drivers/<engine>/` (driver.py, handler.py, recipe.py, step_types.py, __init__.py)
 2. Implement the 7-item MUST interface in driver.py (engine_family, display_name, driver_api_version, get_step_type_specs, get_handler, get_recipe_class, get_materialization_map)

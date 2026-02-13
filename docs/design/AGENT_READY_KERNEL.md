@@ -1133,7 +1133,7 @@ For understanding the agent-ready kernel concept, read these QMatSuite files in 
    - `docs/DAEMON_API_REFERENCE.md` - Existing RPC surface
 
 6. **Future: Agent API**
-   - `docs/architecture/AGENT_READY_KERNEL.md` (this document) - Design principles
+   - `docs/design/AGENT_READY_KERNEL.md` (this document) - Design principles
    - `src/quantumvitas/mcp/` (to be created) - MCP tool implementations
 
 ---

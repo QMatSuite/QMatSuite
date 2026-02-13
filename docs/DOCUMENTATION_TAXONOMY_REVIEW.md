@@ -1,5 +1,7 @@
 # QMatSuite Documentation Taxonomy Review
 
+> **Note**: This document is the pre-reorganization analysis that led to the `docs/laws/` L0/L1/L2 hierarchy. File paths referenced below reflect the state **before** reorganization. For current paths, see `docs/laws/README.md`.
+
 **Date**: 2026-02-12
 **Scope**: Full repo scan — every `.md` file classified
 **Total files inventoried**: ~720 markdown files

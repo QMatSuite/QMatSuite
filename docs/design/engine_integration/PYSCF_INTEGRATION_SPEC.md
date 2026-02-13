@@ -691,7 +691,7 @@ def _pyscf_available() -> bool:
 
 | File | Action | Description |
 |------|--------|-------------|
-| `docs/architecture/PYSCF_INTEGRATION_SPEC.md` | Create | This spec |
+| `docs/design/engine_integration/PYSCF_INTEGRATION_SPEC.md` | Create | This spec |
 | `src/quantumvitas/calculation/types.py` | Modify | Add PYSCF_SCF to StepType |
 | `src/quantumvitas/workflow/registry.py` | Modify | Add PYSCF_SCF StepTypeSpec |
 | `src/quantumvitas/engine/pyscf_engine.py` | Create | PySCF engine adapter |

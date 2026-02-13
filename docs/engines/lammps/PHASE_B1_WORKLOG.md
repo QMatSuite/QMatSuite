@@ -105,7 +105,7 @@
 ## 2026-02-07 Session (Playbook Compliance Remediation)
 
 ### Audit
-- Audited LAMMPS against `docs/architecture/B1_ENGINE_PLAYBOOK.md` (binding SOP)
+- Audited LAMMPS against `docs/laws/L2/B1_ENGINE_PLAYBOOK.md` (binding SOP)
 - Found 5 of 14 acceptance criteria NOT MET:
   1. ❌ No `data/` directory (missing parameter metadata catalog)
   2. ❌ No metadata access layer

@@ -7,8 +7,8 @@ These tests enforce the PR10 Definition of Done:
 - All exports are API-owned (from quantumvitas.api.*)
 
 Reference:
-- docs/specs/API_FACADE_IMPLEMENTATION_PLAN.md §PR10
-- docs/specs/API_FACADE_CONTRACT.md §6.1
+- docs/history/plans/API_FACADE_IMPLEMENTATION_PLAN.md §PR10
+- docs/laws/L1/API_CONSTITUTION.md §Appendix E.4 (formerly API_FACADE_CONTRACT.md §6.1)
 """
 
 import inspect

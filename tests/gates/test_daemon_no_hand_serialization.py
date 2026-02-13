@@ -9,7 +9,7 @@ This test enforces that daemon endpoint handlers do not use hand-serialization p
 All endpoint responses should use DTO.to_dict() or dataclasses.asdict() for serialization.
 
 Reference:
-- docs/specs/API_FACADE_IMPLEMENTATION_PLAN.md §Priority 3
+- docs/history/plans/API_FACADE_IMPLEMENTATION_PLAN.md §Priority 3
 """
 
 import ast

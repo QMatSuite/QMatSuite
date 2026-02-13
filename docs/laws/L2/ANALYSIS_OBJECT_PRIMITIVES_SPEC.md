@@ -1,7 +1,7 @@
 # AnalysisObject → Primitive Pipeline Specification
 
-**Status:** BINDING v1.4
-**Date:** 2026-02-08
+**Status:** BINDING v1.5
+**Date:** 2026-02-12
 **Scope:** Data model, transform contract, persistence policy, layering, post-run pipeline ordering, run-level capability matching, and GUI result surfaces for analysis output rendering.
 
 ---
@@ -20,6 +20,70 @@
 10. [Caching and Persistence Policy](#10-caching-and-persistence-policy)
 11. [Layering Responsibilities](#11-layering-responsibilities)
 12. [Acceptance Criteria and Future Gate Tests](#12-acceptance-criteria-and-future-gate-tests)
+
+---
+
+## 0. Motivation & Philosophy
+
+> **Merge note**: This section incorporates the "Big Picture & Motivation" from the former `ANALYSIS_OBJECTS_FRAMEWORK.md` (v1.1, 2026-01-19, PROPOSED). The Framework document has been retired; its unique motivational context is preserved here.
+
+### The Two-Layer Philosophy
+
+QMatSuite manages computational materials science workflows across multiple engines (QE, VASP, LAMMPS, ORCA, PySCF, etc.). Each engine has its own:
+- Input format (INCAR vs pw.in vs .inp)
+- Output format (OUTCAR vs .out vs .xyz)
+- Trajectory format (XDATCAR vs .pos/.vel vs .dcd)
+- Units (Ry vs eV, Bohr vs Å)
+- Conventions (stress sign, cell vectors)
+
+**Core Principle**: Separation of concerns between engine artifacts and canonical analysis.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  LAYER 1: Engine Artifacts (raw/)                                │
+│                                                                   │
+│  • Engine-native inputs and outputs                              │
+│  • Engine-specific formats (OUTCAR, .out, XDATCAR, etc.)         │
+│  • Evidence for analysis derivation (not SSOT)                   │
+│  • We do NOT force a universal artifact format                   │
+└──────────────────────────────────────────────────────────────────┘
+                              │
+                              │  Parser (one per engine × object type)
+                              ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  LAYER 2: Canonical Analysis Objects (in-memory)                 │
+│                                                                   │
+│  • Engine-agnostic dataclasses                                   │
+│  • Unified units (Å, eV, eV/Å, fs, GPa, K)                       │
+│  • Common schema for same task type                              │
+│  • All visualization/analysis targets these objects              │
+│  • NO engine-specific fields in core schema                      │
+└──────────────────────────────────────────────────────────────────┘
+                              │
+                              │  to_primitives()
+                              ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  LAYER 2a: Canonical Primitive Bundles                            │
+│                                                                   │
+│  • Renderer-consumable arrays + RenderMeta + ProvenanceMeta      │
+│  • Deterministic, dedup-friendly (CAS by content hash)           │
+│  • Can be regenerated from raw evidence anytime                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Why This Matters
+
+1. **Multi-engine support**: Supporting VASP, QE, LAMMPS, ORCA, etc. trajectory/DOS/bands without separate viewers per engine.
+
+2. **Consistent user experience**: User compares DOS from QE and VASP runs. Same plotting interface, same units.
+
+3. **Future-proofing**: Adding a new engine requires only a parser, not touching UI/viz/analysis code.
+
+### System Boundaries
+
+- **`calc/raw/`** — Engine-native evidence files. Read-only for analysis; never modified by analysis code. Not SSOT (see Inv-A1).
+- **CAS (`.provenance/.cas/`)** — Content-addressed storage for canonical bundle snapshots. For provenance replay only; operational path derives from raw evidence (see Inv-A11).
+- **SQLite** — Post-run digests (`run_steps.digest_json`) and CAS linkage rows (`(run_ulid, object_type) → canonical_sha`). See §10.
 
 ---
 
@@ -1037,4 +1101,13 @@ Frontend                        API/QVService                     Kernel
 
 ---
 
-*End of Specification v1.4*
+## Changelog
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.4 | 2026-02-08 | Run-level capability matching, CAS identity clarification |
+| 1.5 | 2026-02-12 | Merged "Big Picture & Motivation" from ANALYSIS_OBJECTS_FRAMEWORK.md (v1.1) as §0; Framework document retired |
+
+---
+
+*End of Specification v1.5*

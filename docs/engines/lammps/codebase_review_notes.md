@@ -238,7 +238,7 @@ def compute_potential_assets_sha(
 
 ### 4.1 Trajectory Specification
 
-**Location**: `docs/specs/TRAJECTORY_CORE.md`, `docs/specs/ANALYSIS_OBJECTS_FRAMEWORK.md`
+**Location**: `docs/history/archive/TRAJECTORY_CORE.md` (superseded), `docs/laws/L2/ANALYSIS_OBJECT_PRIMITIVES_SPEC.md` (merged from ANALYSIS_OBJECTS_FRAMEWORK.md)
 
 **Canonical Frame:**
 ```python
