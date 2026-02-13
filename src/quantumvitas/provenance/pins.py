@@ -270,7 +270,7 @@ def get_pin_data(
             cursor = conn.execute(
                 """
                 SELECT payload FROM operations
-                WHERE op_type = 'PIN_CREATE'
+                WHERE op_type = 'pin_create'
                 AND target_ulid = ?
                 ORDER BY timestamp DESC
                 """,
@@ -351,7 +351,7 @@ def list_pins_for_step(
             cursor = conn.execute(
                 """
                 SELECT payload, timestamp FROM operations
-                WHERE op_type = 'PIN_CREATE'
+                WHERE op_type = 'pin_create'
                 AND target_ulid = ?
                 ORDER BY timestamp DESC
                 """,

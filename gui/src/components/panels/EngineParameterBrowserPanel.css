@@ -34,6 +34,28 @@
   margin: 0;
 }
 
+/* Engine selector */
+.qe-parameter-browser__engine-select {
+  padding: 0.375rem 0.625rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.qe-parameter-browser__engine-select:hover {
+  border-color: var(--accent-color);
+}
+
+.qe-parameter-browser__engine-select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-color-20);
+}
+
 /* Search (now inline in filters row) */
 .qe-parameter-browser__search-input {
   flex: 1;

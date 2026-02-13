@@ -340,39 +340,37 @@ def build_timeline_entry(
     Returns:
         Timeline entry dict
     """
-    entry = {
+    entry: Dict[str, Any] = {
         "ulid": op["ulid"],
         "timestamp": op["timestamp"],
         "event_type": op["op_type"],
         "calc_ulid": op["calc_ulid"],
         "step_ulid": op.get("target_ulid"),
+        "op_type": op["op_type"],
+        "kind": "operation",
     }
 
     payload = op.get("payload", {})
 
-    # Map operation types to frontend event types
-    if op["op_type"] == "RUN_START":
-        entry["event_type"] = "run_started"
-        # Get step info from run record
-        run_info = get_run_details(project_root, payload.get("run_ulid", ""))
-        if run_info:
-            entry["run_ulid"] = run_info["run_ulid"]
-            entry["step_ulids"] = run_info.get("step_ulids", [])
-
-    elif op["op_type"] == "RUN_COMPLETE":
-        entry["event_type"] = "run_finished"
-        entry["run_ulid"] = payload.get("run_ulid", "")
-        entry["status"] = payload.get("status", "")
-
-    elif op["op_type"] in ("STEP_ADD", "STEP_UPDATE", "PRESET_APPLY", "CALC_CREATE"):
+    # Map operation types to frontend event types (lowercase enum values)
+    if op["op_type"] in ("step_add", "step_update", "preset_apply", "calc_create"):
         entry["event_type"] = "edit"
-        entry["doc_type"] = op.get("scope", "")
+        entry["scope"] = op.get("scope", "")
         entry["summary"] = payload.get("summary", "")
         entry["actor"] = op.get("actor", "")
 
-    elif op["op_type"] == "PIN_CREATE":
+    elif op["op_type"] == "pin_create":
         entry["event_type"] = "pin_created"
+        entry["kind"] = "pin"
         entry["run_ulid"] = payload.get("run_ulid", "")
         entry["analysis_kind"] = payload.get("analysis_kind", "")
+
+    else:
+        # Catch-all for other operation types (structure_import,
+        # species_map_update, calc_update, etc.)
+        entry["event_type"] = "operation"
+        entry["scope"] = op.get("scope", "")
+        entry["summary"] = payload.get("summary", "")
+        entry["actor"] = op.get("actor", "")
 
     return entry

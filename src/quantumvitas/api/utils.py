@@ -662,6 +662,15 @@ def _get_engine_metadata_module(engine_family: str):
     elif engine_family == "qmcpack":
         from quantumvitas.drivers.qmcpack.data import qmcpack_metadata
         return qmcpack_metadata
+    elif engine_family == "yambo":
+        from quantumvitas.drivers.yambo.data import yambo_metadata
+        return yambo_metadata
+    elif engine_family == "w90":
+        from quantumvitas.drivers.w90.data import w90_metadata
+        return w90_metadata
+    elif engine_family == "xtb":
+        from quantumvitas.drivers.xtb.data import xtb_metadata
+        return xtb_metadata
     return None
 
 

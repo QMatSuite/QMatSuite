@@ -47,6 +47,7 @@ def get_minimal_payload(method_name: str, project_root: Path | None = None, tmp_
         "list_journal_entries",
         "get_project_history",
         "list_project_runs",
+        "get_storage_summary",
     }
 
     if method_name in PROJECT_ONLY:
