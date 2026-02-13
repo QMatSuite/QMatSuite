@@ -86,7 +86,7 @@
 | G4 | Binary not formally recorded | Added binary record to worklog (above) |
 | G5 | 11/12 curated samples lack real_run | All 13 cases validated with V3 layout |
 | G6 | No VASP->W90 composite pipeline | Created si_w90_pipeline curated sample + real run |
-| G7 | No repo-level rollup index | Created `docs/architecture/B1_ENGINE_CORPUS_INDEX.md` |
+| G7 | No repo-level rollup index | Created `docs/history/audits/B1_ENGINE_CORPUS_INDEX.md` |
 | G8 | .tmp/ corpus sparse | Backfilled extracted/, normalized/, metadata_seed/ |
 | G9 | Wannier90 tags missing | Added 6 tags (LWANNIER90_RUN, LWRITE_MMN_AMN, NUM_WANN, WANNIER90_WIN, LWRITE_WANNIER_XSF, LINTPOL_KPATH) |
 

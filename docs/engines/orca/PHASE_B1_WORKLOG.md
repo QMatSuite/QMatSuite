@@ -267,7 +267,7 @@
 ### 2026-02-06: B1 Playbook Compliance Upgrade
 
 **Task**: Bring ORCA to full B1 Engine Playbook compliance
-**Reference**: `docs/architecture/B1_ENGINE_PLAYBOOK.md`
+**Reference**: `docs/laws/L2/B1_ENGINE_PLAYBOOK.md`
 
 **Gaps Identified**:
 1. Only 1 curated sample (playbook requires 5+)

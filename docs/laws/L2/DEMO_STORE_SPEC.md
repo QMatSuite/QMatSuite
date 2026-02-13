@@ -324,7 +324,7 @@ The real-run in Stage (C) MUST attempt to generate a reference pack for every ru
 
 **Rule DB-EA** (Engine Availability): For demo baseline verification on developer machines and CI-like environments, all engines required by runnable demos MUST be discoverable and executable.
 
-- Engine discovery follows the standard engine discovery mechanism documented in `docs/architecture/ANALYSIS_PIPELINE_PLAYBOOK.md`.
+- Engine discovery follows the standard engine discovery mechanism documented in `docs/laws/L2/ANALYSIS_PIPELINE_PLAYBOOK.md`.
 - "Requires engine binaries / runtime environment" is **NOT** a valid excuse to skip Stage (C).
 - If a runnable demo's required engine cannot be found, there are exactly **two** permitted responses:
   1. **Fix engine discovery or install the engine** per the playbook and existing engine configuration, then proceed with Stage (C).

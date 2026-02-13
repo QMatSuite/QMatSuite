@@ -9,15 +9,15 @@
 ## Preamble
 
 This document is the QMatSuite project "Constitution". It defines the project's highest-level rules and invariants.
-Detailed mechanics/specs are maintained as standalone documents in `docs/governance/`; this constitution records only high-level invariants and references those specs.
+Detailed mechanics/specs are maintained as standalone documents in `docs/laws/`; this constitution records only high-level invariants and references those specs.
 
 **Document Hierarchy**:
 1. **This constitution** (highest authority)
-2. **Governance specs** (standalone specs under `docs/governance/`, referenced by this constitution)
+2. **Laws** (standalone specs under `docs/laws/`, referenced by this constitution)
 3. **Implementation docs** (design/implementation docs under `docs/`, non-binding)
 
 **One-line instruction for AI**
-> Obey the root-level `CONSTITUTION.md`; detailed specs at `docs/governance/`; improvements go through small PRs.
+> Obey the root-level `CONSTITUTION.md`; detailed specs at `docs/laws/`; improvements go through small PRs.
 
 ---
 
@@ -65,7 +65,7 @@ Scanning/cleaning `outdir/.save` (wavefunctions, etc.) is forbidden. It MUST NOT
 
 All project/calc/step YAML reads and writes must use the Doc layer and centralized yaml_io. Direct use of `yaml.safe_load`/`yaml.safe_dump` is forbidden.
 
-> Detailed spec: [KERNEL_DEPENDENCY_SPEC.md](docs/governance/KERNEL_DEPENDENCY_SPEC.md) §2.1 (Domain: ssot)
+> Detailed spec: [KERNEL_DEPENDENCY_SPEC.md](docs/laws/L1/KERNEL_DEPENDENCY_SPEC.md) §2.1 (Domain: ssot)
 
 ---
 
@@ -188,7 +188,7 @@ step_type_spec = f"{engine_prefix}_{step_type_gen}"
 - `bandspw` is a computation step (implementable by qe/vasp).
 - `bands` is a post-processing step (implementable by qe; vasp may not have it — gen→spec=0 mapping is allowed).
 
-> Detailed spec: [STEP_TYPE_GEN_SPEC_CONSTITUTION.md](docs/governance/STEP_TYPE_GEN_SPEC_CONSTITUTION.md)
+> Detailed spec: [STEP_TYPE_GEN_SPEC_CONSTITUTION.md](docs/laws/L1/STEP_TYPE_GEN_SPEC_CONSTITUTION.md)
 > Gates: `tests/gates/test_step_type_constitution.py`, `test_no_bare_step_type.py`, `test_underscore_ban.py`, `test_no_manual_join_split.py`, `test_banned_legacy_aliases.py`
 
 ---
@@ -221,7 +221,7 @@ Preset is inferred only through "exact persistent pattern matching"; no match �
 - Other dimensions / user-written parameters must remain unchanged.
 - Execution order: Prerequisite ParamSpaces first (those that change applicability), then Dependent ParamSpaces (those depending on Oracle).
 
-> Detailed definition: [PARAMSPACE_SPEC.md](docs/governance/PARAMSPACE_SPEC.md)
+> Detailed definition: [PARAMSPACE_SPEC.md](docs/laws/L1/PARAMSPACE_SPEC.md)
 
 ---
 
@@ -421,8 +421,8 @@ Input files may be versioned (`scf.in`, `scf-1.in`); output is fixed at `{step_t
 - Three recipe archetypes: Directory-state (QE), Strong-chain (ORCA/PySCF/CP2K), Cleanup (VASP).
 
 > Detailed specs:
-> - [ENGINE_INTEGRATION_CONSTITUTION.md](docs/governance/ENGINE_INTEGRATION_CONSTITUTION.md)
-> - [ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md](docs/governance/ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md)
+> - [ENGINE_INTEGRATION_CONSTITUTION.md](docs/laws/L1/ENGINE_INTEGRATION_CONSTITUTION.md)
+> - [ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md](docs/laws/L1/ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md)
 
 ---
 
@@ -451,7 +451,7 @@ All data crossing the API boundary must be DTOs or primitive types.
 
 Only kernel is allowed to modify SSOT filesystem. Frontend MUST NOT directly write YAML / create project structures / modify calculation/step/structure files.
 
-> Detailed spec: [API_CONSTITUTION.md](docs/governance/API_CONSTITUTION.md)
+> Detailed spec: [API_CONSTITUTION.md](docs/laws/L1/API_CONSTITUTION.md)
 > Gates: `tests/gates/test_import_gate.py`, `test_frontend_no_yaml_write.py`, `test_daemon_kernel_ban.py`
 
 ---
@@ -470,8 +470,8 @@ Kernel is organized into 7 domains (ssot, resources, models, runtime, engines, a
 
 Resolution may only read the `meta.*` subtree (metadata); reading non-meta fields is forbidden.
 
-> Detailed spec: [KERNEL_DEPENDENCY_SPEC.md](docs/governance/KERNEL_DEPENDENCY_SPEC.md)
-> Exceptions: [KERNEL_EXCEPTIONS.md](docs/governance/KERNEL_EXCEPTIONS.md)
+> Detailed spec: [KERNEL_DEPENDENCY_SPEC.md](docs/laws/L1/KERNEL_DEPENDENCY_SPEC.md)
+> Exceptions: [KERNEL_EXCEPTIONS.md](docs/laws/L1/KERNEL_EXCEPTIONS.md)
 > Gates: `tests/gates/test_kernel_no_api_import.py`, `test_engine_no_ssot_import.py`, `test_resolution_meta_only.py`
 
 ---
@@ -527,7 +527,7 @@ All computations trust only step parameters; workflow and preset are merely inte
 
 **Structural overhaul**:
 - Constitution rewritten from ~1400-line "full detail" to ~380-line "thin constitution".
-- Detailed mechanics specs migrated to standalone documents under `docs/governance/`.
+- Detailed mechanics specs migrated to standalone documents under `docs/laws/`.
 - Document hierarchy system introduced (constitution > governance specs > implementation docs).
 
 **New laws** (aligned with 13 finalized laws):

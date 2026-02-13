@@ -7,7 +7,7 @@ This module provides:
 - Content-Addressed Store (CAS) for snapshots and artifacts
 - Graceful degradation (provenance failures don't fail YAML writes)
 
-Reference: docs/governance/PROVENANCE_VERSIONED_HISTORY_SPEC.md v1.1
+Reference: docs/laws/L1/PROVENANCE_VERSIONED_HISTORY_SPEC.md v1.1
 
 Key Laws:
 - P1: History World must not participate in runtime logic

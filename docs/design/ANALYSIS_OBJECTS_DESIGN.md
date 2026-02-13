@@ -128,11 +128,11 @@ Each enumerated instance carries:
 
 | Document | Path | Authority | Key content |
 |----------|------|-----------|-------------|
-| **AnalysisObject Primitives Spec** | `docs/architecture/ANALYSIS_OBJECT_PRIMITIVES_SPEC.md` | BINDING v1.4 | 14 invariants (Inv-A1–A14), data model, post-run pipeline, capability matching |
-| **Analysis Objects Framework** | `docs/specs/ANALYSIS_OBJECTS_FRAMEWORK.md` | Proposed v1.1 | Two-layer philosophy, system boundaries, domain objects |
-| **Analysis Pipeline Playbook** | `docs/architecture/ANALYSIS_PIPELINE_PLAYBOOK.md` | Implementation guide | Recipe A (extend engine), Recipe B (add object type), triangle pattern |
-| **Analysis Pipeline Review** | `docs/architecture/ANALYSIS_PIPELINE_REVIEW.md` | Review (2026-02-10) | Spec compliance matrix (13/14 PASS), engine×analysis capability matrix |
-| **Step Type GEN/SPEC Constitution** | `docs/governance/STEP_TYPE_GEN_SPEC_CONSTITUTION.md` | Final v1.1 | GEN/SPEC derivation rule, GenStepRegistry as SSOT |
+| **AnalysisObject Primitives Spec** | `docs/laws/L2/ANALYSIS_OBJECT_PRIMITIVES_SPEC.md` | BINDING v1.5 | 14 invariants (Inv-A1–A14), data model, post-run pipeline, capability matching |
+| **Analysis Objects Framework** | (merged into ANALYSIS_OBJECT_PRIMITIVES_SPEC.md §0) | Retired | Two-layer philosophy, system boundaries, domain objects |
+| **Analysis Pipeline Playbook** | `docs/laws/L2/ANALYSIS_PIPELINE_PLAYBOOK.md` | Implementation guide | Recipe A (extend engine), Recipe B (add object type), triangle pattern |
+| **Analysis Pipeline Review** | `docs/history/audits/ANALYSIS_PIPELINE_REVIEW.md` | Review (2026-02-10) | Spec compliance matrix (13/14 PASS), engine×analysis capability matrix |
+| **Step Type GEN/SPEC Constitution** | `docs/laws/L1/STEP_TYPE_GEN_SPEC_CONSTITUTION.md` | Final v1.1 | GEN/SPEC derivation rule, GenStepRegistry as SSOT |
 | **Driver capabilities** | `src/quantumvitas/drivers/*/driver.py` | Code (SSOT) | `ANALYSIS_CAPABILITIES` list per engine — the ONLY source for what analysis an engine can produce |
 
 ### 2.1 Current Code vs This Design

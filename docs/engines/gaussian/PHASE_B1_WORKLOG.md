@@ -216,7 +216,7 @@ Each run has: `run_manifest.json`, `digest.json`, `output.log`
 
 ## 2026-02-07 Session (Playbook Compliance Remediation)
 
-Audited all Gaussian artifacts against `docs/architecture/B1_ENGINE_PLAYBOOK.md` Definition of Done.
+Audited all Gaussian artifacts against `docs/laws/L2/B1_ENGINE_PLAYBOOK.md` Definition of Done.
 Identified and remediated all gaps.
 
 ### Gap 1: Metadata JSON below 100+ minimum (Phase 1)

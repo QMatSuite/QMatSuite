@@ -2,7 +2,7 @@
 
 **Date**: 2026-01-22  
 **Status**: DESIGN DOCUMENT (No Implementation)  
-**Reference**: `docs/specs/MULTI_FRONTEND_ARCHITECTURE_SPEC.md`, `docs/plan/IMPLEMENTATION_PLAN_MULTI_FRONTEND_REFACTOR.md`
+**Reference**: `docs/laws/L2/MULTI_FRONTEND_ARCHITECTURE_SPEC.md`, `docs/history/plans/IMPLEMENTATION_PLAN_MULTI_FRONTEND_REFACTOR.md`
 
 ---
 
@@ -130,7 +130,7 @@ quantumvitas.io: 13 symbols
 
 **Spec Mismatch**:
 
-The spec (`docs/specs/MULTI_FRONTEND_ARCHITECTURE_SPEC.md`) says:
+The spec (`docs/laws/L2/MULTI_FRONTEND_ARCHITECTURE_SPEC.md`) says:
 > "api/ is the PUBLIC API LAYER (single entry point to kernel)"
 
 But the current implementation treats "entry point" as "re-export everything", not "provide capability endpoints".

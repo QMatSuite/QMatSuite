@@ -3,7 +3,7 @@
 **Engine**: `siesta`
 **Date Started**: 2026-02-07
 **Status**: COMPLETE
-**Authoritative SOP**: `docs/architecture/B1_ENGINE_PLAYBOOK.md`
+**Authoritative SOP**: `docs/laws/L2/B1_ENGINE_PLAYBOOK.md`
 **Input Parser/Writer Design**: `docs/design/UNIVERSAL_PARSER_WRITER_DESIGN.md`
 
 ## Baseline

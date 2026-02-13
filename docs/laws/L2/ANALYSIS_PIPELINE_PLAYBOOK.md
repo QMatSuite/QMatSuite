@@ -576,6 +576,6 @@ Before merging any analysis pipeline addition:
 | Gate tests | `tests/gates/test_analysis_invariants.py` |
 | Parser registry | `src/quantumvitas/parsers/registry.py` |
 | Orchestrator | `src/quantumvitas/core/analysis/orchestrator.py` |
-| Design docs | `docs/architecture/design/` |
+| Design docs | `docs/design/` |
 | Engine docs | `docs/engines/<engine>/` |
 | Research corpus | `.tmp/engine_research/<engine>/` |

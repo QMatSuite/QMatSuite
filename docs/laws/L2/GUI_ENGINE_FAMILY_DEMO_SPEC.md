@@ -3,7 +3,7 @@
 **Status**: ACTIVE (binding design spec)
 **Version**: 1.1
 **Date**: 2026-02-07
-**Authority**: Derived from GUI/Demo audit (`docs/architecture/GUI_ENGINE_DEMO_AUDIT.md`), Constitution, ENGINE_RECIPE_AND_RUNNER_CONSTITUTION, B1_ENGINE_PLAYBOOK
+**Authority**: Derived from GUI/Demo audit (`docs/history/audits/GUI_ENGINE_DEMO_AUDIT.md`), Constitution, ENGINE_RECIPE_AND_RUNNER_CONSTITUTION, B1_ENGINE_PLAYBOOK
 
 ---
 

@@ -749,9 +749,9 @@ test('silicon bands workflow', async ({ page }) => {
 | Constitution | `CONSTITUTION_ZH.md` |
 | Workflow/Preset Design | `docs/WORKFLOW_PRESET_DESIGN_V0.md` |
 | Code Review Audit | `docs/roadmap/CODE_REVIEW_ARCH_AUDIT.md` |
-| Role Inference Spec | `docs/architecture/ROLE_INFERENCE_SPEC.md` |
-| Project Bundle Spec | `docs/architecture/PROJECT_BUNDLE_SPEC.md` |
-| Calc Type Spec | `docs/architecture/CALC_TYPE_SYSTEM_KIND_SPEC.md` |
+| Role Inference Spec | `docs/design/ROLE_INFERENCE_SPEC.md` |
+| Project Bundle Spec | `docs/design/PROJECT_BUNDLE_SPEC.md` |
+| Calc Type Spec | `docs/laws/L2/CALC_TYPE_SYSTEM_KIND_SPEC.md` |
 
 ---
 
@@ -838,7 +838,7 @@ w90_run (wannier90.x) ← requires .win + .mmn + .amn + .eig
 
 ### 13.2 Implementation Checklist
 
-- [x] Create `docs/architecture/WANNIER90_INTEGRATION_SPEC.md`
+- [x] Create `docs/design/engine_integration/WANNIER90_INTEGRATION_SPEC.md`
 - [x] Add `W90_PREPROC`, `PW2WANNIER90`, `W90_RUN` to `StepType` enum
 - [x] Register W90 step types in `workflow/registry.py`
 - [x] Add W90 executables to `EXECUTABLE_MAP` in `core/engines/qe.py`
@@ -993,7 +993,7 @@ After running the demo:
 
 ### 14.2 Implementation Checklist
 
-- [x] Create `docs/architecture/PYSCF_INTEGRATION_SPEC.md`
+- [x] Create `docs/design/engine_integration/PYSCF_INTEGRATION_SPEC.md`
 - [x] Add `PYSCF_SCF` to `StepType` enum in `calculation/types.py`
 - [x] Register `pyscf_scf` in `workflow/registry.py`
 - [x] Add `pyscf_scf` to CLI `KNOWN_STEP_TYPES`

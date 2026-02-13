@@ -1,8 +1,9 @@
 # QMatSuite API Constitution
 
 **Status**: AUTHORITATIVE LAW
-**Version**: 2.1
-**Date**: 2026-02-02
+**Version**: 2.2
+**Date**: 2026-02-12
+**Parent Law**: `CONSTITUTION.md` §18
 
 ---
 
@@ -484,4 +485,92 @@ Location: `api/utils.py`
 
 ---
 
-**End of API Constitution v2.1**
+## Appendix E: API Façade Operational Contract
+
+> **Merge note**: This appendix incorporates non-redundant content from the former `API_FACADE_CONTRACT.md` (v2.0, 2026-01-23). Sections already covered by the main constitution (D1–D3, Prohibitions, DTO Minimalism) were omitted. The API Constitution governs all conflicts.
+
+### E.1 ULID vs Slug
+
+| Field | Purpose | Example |
+|-------|---------|---------|
+| `calc_id` | ULID identity | `01HX7YPVK8DQNZPMJ4GHAB1234` |
+| `meta.slug` | Human-readable name | `si-scf` |
+
+**Rules**:
+- All DTO identity fields MUST be ULIDs
+- Slug is separate metadata in `meta.slug`
+- APIs accept selectors (slug/ULID/patterns), return ULIDs
+
+### E.2 Fail-Closed JSON Conversion
+
+**Rules**:
+- DTO serialization MUST be fail-closed
+- Unknown object types MUST raise `TypeError`
+- Only convert strict whitelist: primitives, list, dict, datetime→ISO, Path→str, Enum→str, UUID→str
+- NO fallback `str(obj)`
+- NaN/Inf MUST raise `ValueError`
+
+### E.3 Large Data by Reference
+
+**Rules**:
+- Analysis/bands/DOS/trajectories MUST NOT be embedded in DTOs
+- Use `AnalysisRefDTO` with: artifact_path, format, sha256, size, summary, preview
+- Full data loaded via `svc.analysis.load_artifact()` (Jupyter-only)
+- Daemon provides artifact download endpoint
+
+### E.4 Final Export List (≤30)
+
+```python
+# quantumvitas.api.__all__
+__all__ = [
+    # Service
+    "QVService",
+    # Errors (9)
+    "APIError", "NotFoundError", "AmbiguousError", "ValidationError",
+    "ConflictError", "EngineError", "ConfigError", "FilesystemError", "InternalError",
+    # DTOs (8)
+    "ErrorDTO", "MetaDTO", "CalculationDTO", "StepDTO",
+    "StructureDTO", "RunResultDTO", "AnalysisRefDTO", "AnalysisSummaryDTO",
+    # Error codes (13)
+    "NOT_FOUND", "AMBIGUOUS_SELECTOR", "INVALID_SELECTOR", "VALIDATION_FAILED",
+    "EDIT_LOCK_HELD", "RUN_LOCK_HELD", "ENGINE_EXEC_FAILED",
+    "ENGINE_OUTPUT_PARSE_FAILED", "ENGINE_NOT_AVAILABLE",
+    "PROJECT_SSOT_MISSING", "MODE_MISMATCH", "FILESYSTEM_ERROR", "INTERNAL_ERROR",
+]
+```
+
+### E.5 QVService Domains
+
+| Domain | Capabilities |
+|--------|--------------|
+| `svc.calculation` | get, list, create, update_meta, update_step_params, duplicate, delete, add_step, remove_step, get_step, list_steps, get_effective_params |
+| `svc.structure` | get, list, get_atoms, visualize |
+| `svc.run` | run_calculation, run_step, get_status, cancel, list_runs |
+| `svc.analysis` | get_summary, list_properties, get_property_ref, load_artifact |
+| `svc.project` | get_config, update_config, get_species_map, get_potential_map, list_calculations |
+| `svc.engine` | list, get_info, list_step_types, validate_installation |
+
+### E.6 Success Metrics (KPIs)
+
+| KPI | Target |
+|-----|--------|
+| K1 | 0 kernel types in API returns |
+| K2 | 0 kernel model instantiation in frontends |
+| K3 | 0 kernel imports in frontends |
+| K4 | ≤30 top-level api exports |
+| K5 | 100% daemon endpoints use DTO |
+| K6 | 0 embedded arrays in DTO |
+
+---
+
+## Changelog
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 2.0 | 2026-01-28 | H-laws formalization; gates and surface governance |
+| 2.1 | 2026-02-02 | Bundle-returning capabilities (Appendix C); anti-regression gates (Appendix D) |
+| 2.2 | 2026-02-12 | Merged API Façade Contract (v2.0) as Appendix E; non-redundant operational details absorbed |
+
+---
+
+**End of API Constitution v2.2**

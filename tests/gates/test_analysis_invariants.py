@@ -2,7 +2,7 @@
 Gate tests for analysis-object/primitive-pipeline invariants.
 
 Reference:
-- docs/architecture/ANALYSIS_OBJECT_PRIMITIVES_SPEC.md (§2, §5, §12.1)
+- docs/laws/L2/ANALYSIS_OBJECT_PRIMITIVES_SPEC.md (§2, §5, §12.1)
 """
 
 from __future__ import annotations
@@ -716,7 +716,7 @@ def test_pdos_engine_has_dos_parser(engine: str) -> None:
 
 def test_final_matrix_documented() -> None:
     """Gate: acceptance doc exists with all cells closed."""
-    doc = REPO_ROOT / "docs" / "architecture" / "worklogs" / "MULTI_ENGINE_FATBANDS_PDOS_CLOSEOUT_ACCEPTANCE.md"
+    doc = REPO_ROOT / "docs" / "history" / "worklogs" / "MULTI_ENGINE_FATBANDS_PDOS_CLOSEOUT_ACCEPTANCE.md"
     assert doc.exists(), f"Acceptance doc not found: {doc}"
     text = doc.read_text(encoding="utf-8")
     assert "NOT SUPPORTED" in text, "Acceptance doc must contain NOT SUPPORTED justifications"
