@@ -508,8 +508,9 @@ class TestStepDocNormalization:
     """Test StepDoc section normalization."""
     
     def test_uppercase_namelist_sections(self):
-        """Namelist sections are uppercased."""
+        """Namelist sections are uppercased for QE step types."""
         data = {
+            "step_type_spec": "qe_scf",
             "system": {"ecutwfc": 60},
             "electrons": {"conv_thr": 1e-8},
         }
@@ -520,9 +521,9 @@ class TestStepDocNormalization:
         assert doc.get(["SYSTEM", "ecutwfc"]) == 60
     
     def test_set_normalizes_section(self):
-        """set() normalizes section names."""
-        doc = StepDoc()
-        
+        """set() normalizes section names for QE step types."""
+        doc = StepDoc({"step_type_spec": "qe_scf"})
+
         doc.set(["system", "ecutwfc"], 60)
         
         assert doc.has(["SYSTEM"])
@@ -644,10 +645,10 @@ class TestYamlIO:
     def test_load_step_doc(self, tmp_path):
         """load_step_doc returns StepDoc."""
         path = tmp_path / "test.step.yaml"
-        _save_yaml_raw({"system": {"ecutwfc": 60}}, path)
-        
+        _save_yaml_raw({"step_type_spec": "qe_scf", "system": {"ecutwfc": 60}}, path)
+
         doc = load_step_doc(path)
-        
+
         assert isinstance(doc, StepDoc)
         assert doc.get(["SYSTEM", "ecutwfc"]) == 60
     

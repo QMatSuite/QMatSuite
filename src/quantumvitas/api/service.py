@@ -3952,6 +3952,190 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
         
+        def set_engine_family(
+            self,
+            calc_selector: str,
+            engine_family: str,
+        ) -> CalculationDTO:
+            """
+            Set engine_family on a calculation (UNDECIDED -> DECIDED transition).
+
+            Args:
+                calc_selector: Calculation selector (slug, ULID, or name)
+                engine_family: Engine to set (e.g., "qe", "vasp")
+
+            Returns:
+                Updated CalculationDTO
+
+            Raises:
+                APIError: If calculation not found or engine_family invalid
+            """
+            try:
+                from quantumvitas.api.utils import validate_engine_family
+                from quantumvitas.core.resolution import require_calculation
+                from quantumvitas.core.models import load_calculation, save_calculation
+
+                # Validate engine_family is registered and is a base engine
+                is_valid, error_msg = validate_engine_family(engine_family)
+                if not is_valid:
+                    raise ValueError(error_msg)
+
+                # Resolve calculation
+                calc_resolved = require_calculation(self._service.project_root, calc_selector)
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calc_dir = calc_resolved.absolute_path.parent
+                else:
+                    calc_dir = calc_resolved.absolute_path
+
+                # Load, update, save
+                calc_yaml = calc_dir / "calculation.yaml"
+                calc_model = load_calculation(calc_yaml, self._service.project_root)
+                calc_model.engine_family = engine_family
+                save_calculation(calc_model, calc_dir)
+
+                # Return updated DTO
+                return self.get(calc_selector)
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
+        def apply_presets(
+            self,
+            calc_selector: str,
+            presets: dict,
+            *,
+            validate_physics: bool = True,
+        ) -> dict:
+            """
+            Apply preset options to ALL steps in a calculation (BROADCAST).
+
+            Per Constitution §10.3.3: This OVERWRITES preset-related parameters.
+
+            Args:
+                calc_selector: Calculation selector (slug, ULID, or name)
+                presets: Dict with preset options (e.g., {"spin": "collinear", "precision": "med"})
+                validate_physics: Validate physics constraints (default True)
+
+            Returns:
+                Dict with status, steps_updated, steps_skipped, step_results, dimension_states
+            """
+            try:
+                import yaml
+                from quantumvitas.api import PresetCompilationError, PrecisionContextError
+                from quantumvitas.api import DIMENSION_PRECISION, PrecisionOption
+                from quantumvitas.api.utils import (
+                    apply_presets_to_step,
+                    resolve_precision_context,
+                    get_calculation_preset_bundle,
+                )
+                from quantumvitas.core.resolution import require_calculation
+
+                calc_resolved = require_calculation(self._service.project_root, calc_selector)
+                if calc_resolved.absolute_path.name == "calculation.yaml":
+                    calculation_dir = calc_resolved.absolute_path.parent
+                else:
+                    calculation_dir = calc_resolved.absolute_path
+                steps_dir = calculation_dir / "steps"
+
+                # Precision advisor setup
+                precision_advisor = None
+                precision_option = presets.get(DIMENSION_PRECISION) or presets.get("precision")
+                if precision_option:
+                    try:
+                        context = resolve_precision_context(
+                            calculation_dir=calculation_dir,
+                            project_root=self._service.project_root,
+                        )
+                        from quantumvitas.api.utils import create_precision_advisor
+                        precision_advisor = create_precision_advisor(
+                            species_map=context.species_map,
+                            lattice_matrix=context.lattice_matrix,
+                            repo_root=self._service.project_root,
+                        )
+                    except PrecisionContextError as e:
+                        raise APIError(f"Failed to resolve precision context: {e}") from e
+
+                step_files = sorted(steps_dir.glob("*.step.yaml"))
+                steps_updated = 0
+                steps_skipped = 0
+                step_results = []
+
+                for step_path in step_files:
+                    step_name = step_path.name
+                    step_type_gen = "unknown"
+                    try:
+                        content = yaml.safe_load(step_path.read_text()) or {}
+                        step_type_gen = content.get("step_type_gen", content.get("step_type_spec", "scf"))
+
+                        precision_advice = None
+                        if precision_advisor and precision_option:
+                            try:
+                                precision_level = PrecisionOption(precision_option)
+                                precision_advice = precision_advisor.advise_for_step(precision_level, step_type_gen)
+                            except (ValueError, KeyError):
+                                pass
+
+                        result = apply_presets_to_step(
+                            step_path, presets,
+                            validate_physics=validate_physics,
+                            precision_advice=precision_advice,
+                        )
+
+                        if result["accepted"]:
+                            steps_updated += 1
+                            step_results.append({
+                                "step_file": step_name,
+                                "step_type_gen": step_type_gen,
+                                "status": "updated",
+                                "applied_presets": list(result["filtered_options"].keys()),
+                                "updated_fields": result.get("updated_fields", []),
+                                "skipped_fields": result.get("skipped_fields", []),
+                            })
+                        else:
+                            steps_skipped += 1
+                            step_results.append({
+                                "step_file": step_name,
+                                "step_type_gen": step_type_gen,
+                                "status": "skipped",
+                                "reason": "non-receiver",
+                                "updated_fields": [],
+                                "skipped_fields": result.get("skipped_fields", ["non-receiver step"]),
+                            })
+                    except PresetCompilationError:
+                        steps_skipped += 1
+                        step_results.append({
+                            "step_file": step_name,
+                            "step_type_gen": step_type_gen,
+                            "status": "error",
+                            "reason": str(e),
+                            "updated_fields": [],
+                            "skipped_fields": [],
+                        })
+                    except Exception as e:
+                        steps_skipped += 1
+                        step_results.append({
+                            "step_file": step_name,
+                            "step_type_gen": step_type_gen,
+                            "status": "error",
+                            "reason": str(e),
+                            "updated_fields": [],
+                            "skipped_fields": [],
+                        })
+
+                bundle = get_calculation_preset_bundle(calculation_dir)
+                return {
+                    "status": "applied",
+                    "steps_updated": steps_updated,
+                    "steps_skipped": steps_skipped,
+                    "step_results": step_results,
+                    "dimension_states": bundle["dimension_states"],
+                }
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
         def add_step(
             self,
             calc_selector: str,
@@ -4027,15 +4211,22 @@ class QVService:
                     )
                 spec = registry.get_for_engine(step_type_gen, engine_family)
                 if not spec:
-                    # Try generic lookup as fallback
-                    spec = registry.get(step_type_gen)
+                    # Try companion engines (e.g., w90 in QE calc, yambo in QE calc)
+                    from quantumvitas.core.driver_registry import DriverRegistry
+                    from quantumvitas.workflow.step_type_convert import gen_from
+                    resolved = DriverRegistry.resolve_companion_step(
+                        engine_family, step_type_gen
+                    )
+                    if resolved is not None:
+                        resolved_step_type_gen = gen_from(resolved)
+                        spec = registry.get(resolved_step_type_gen)
                 if not spec:
-                    # Unknown step_type_gen
                     from quantumvitas.api.errors import ValidationError
                     raise ValidationError(
-                        f"Unknown step type: {step_type_gen}",
+                        f"No step type '{step_type_gen}' registered for engine "
+                        f"'{engine_family}' or its companion engines",
                         code="VALIDATION_FAILED",
-                        context={"step_type_gen": step_type_gen}
+                        context={"step_type_gen": step_type_gen, "engine_family": engine_family}
                     )
                 
                 # Use gen type for calculation.yaml (registry.get() accepts both gen and spec types)
@@ -7594,21 +7785,20 @@ class QVService:
         }
 
     @staticmethod
-    def get_default_step_params(step_type_gen: str) -> dict[str, Any]:
+    def get_default_step_params(step_type_spec: str) -> dict[str, Any]:
         """
-        Get default parameters for a step type.
-        
-        This is a backwards-compatibility wrapper for the legacy QVService.get_default_step_params().
-        
+        Get default parameters for a step type (SPEC-keyed).
+
         Args:
-            step_type_gen: Step type (e.g., "scf", "nscf" - gen type, or "qe_scf", "qe_nscf" - spec type, accepts both)
-            
+            step_type_spec: SPEC step type (e.g., "qe_scf", "pyscf_scf").
+                Non-QE engines return empty defaults.
+
         Returns:
             Dict with "parameters", "cards", and "species_overrides" keys.
-            Returns empty dicts if step_type_gen is not recognized.
+            Returns empty dicts if step_type_spec is not recognized.
         """
         from quantumvitas.calculation.step_defaults import get_default_step_params as _get_default_step_params
-        return _get_default_step_params(step_type_gen)
+        return _get_default_step_params(step_type_spec)
 
     @staticmethod
     def resolve_step_type_spec(step_type_gen: str, engine_family: str) -> str:

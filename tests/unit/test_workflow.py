@@ -103,8 +103,8 @@ class TestStepTypeRegistry:
             assert spec.engine == "qe"
     
     def test_get_defaults_scf(self, registry):
-        """get_defaults returns proper structure for SCF."""
-        defaults = registry.get_defaults("scf")
+        """get_defaults returns proper structure for QE SCF (spec-keyed)."""
+        defaults = registry.get_defaults("qe_scf")
         
         assert "parameters" in defaults
         assert "cards" in defaults

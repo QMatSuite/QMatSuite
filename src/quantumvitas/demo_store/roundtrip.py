@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 
@@ -64,20 +65,54 @@ def _strip_paths(data: Any) -> Any:
     return data
 
 
+def _strip_slugs(data: Any) -> Any:
+    """Recursively strip 'slug' keys from meta blocks (derived from name)."""
+    if isinstance(data, dict):
+        result = {}
+        for k, v in data.items():
+            if k == "meta" and isinstance(v, dict):
+                result[k] = {mk: mv for mk, mv in _strip_slugs(v).items() if mk != "slug"}
+            else:
+                result[k] = _strip_slugs(v)
+        return result
+    if isinstance(data, list):
+        return [_strip_slugs(item) for item in data]
+    return data
+
+
+def _strip_empty_dicts(data: Any) -> Any:
+    """Recursively strip empty dict values (not settable via yamldoc)."""
+    if isinstance(data, dict):
+        result = {}
+        for k, v in data.items():
+            v = _strip_empty_dicts(v)
+            if isinstance(v, dict) and not v:
+                continue  # Skip empty dicts
+            result[k] = v
+        return result
+    if isinstance(data, list):
+        return [_strip_empty_dicts(item) for item in data]
+    return data
+
+
 def _strip_managed_keys(params: Dict[str, Any], engine: str) -> Dict[str, Any]:
-    """Remove managed keys from step parameters."""
+    """Remove managed keys from step parameters (recursively at all depths)."""
     managed = MANAGED_KEYS_BY_ENGINE.get(engine, set())
     if not managed:
         return params
+    return _strip_keys_recursive(params, managed)
 
+
+def _strip_keys_recursive(data: Dict[str, Any], managed: set) -> Dict[str, Any]:
+    """Recursively strip managed keys at any nesting depth."""
     result = {}
-    for section_key, section_val in params.items():
-        if isinstance(section_val, dict):
-            result[section_key] = {
-                k: v for k, v in section_val.items() if k not in managed
-            }
+    for key, val in data.items():
+        if key in managed:
+            continue
+        if isinstance(val, dict):
+            result[key] = _strip_keys_recursive(val, managed)
         else:
-            result[section_key] = section_val
+            result[key] = val
     return result
 
 
@@ -93,9 +128,24 @@ def _canonicalize_snapshot(snap: Dict[str, Any]) -> Dict[str, Any]:
     # Strip top-level demo gallery metadata
     data.pop("meta", None)
 
-    # Strip ULIDs and paths
+    # Strip top-level pseudo section (file metadata, not project content)
+    data.pop("pseudo", None)
+
+    # Strip ULIDs, paths, and slugs (all derived from name, may differ)
     data = _strip_ulids(data)
     data = _strip_paths(data)
+    data = _strip_slugs(data)
+
+    # Canonicalize structure site coordinates
+    # pymatgen wraps fractional coords to [0, 1) on import; strip xyz (derived)
+    for struct in data.get("structures", []):
+        for site in struct.get("data", {}).get("sites", []):
+            # Normalize abc to [0, 1) to handle wrapping differences
+            abc = site.get("abc")
+            if isinstance(abc, list):
+                site["abc"] = [round(c % 1.0, 12) for c in abc]
+            # Strip xyz (derived from abc + lattice, will differ after wrapping)
+            site.pop("xyz", None)
 
     # Strip structure_ulid from calculations (cross-reference differs by design)
     for calc in data.get("calculations", []):
@@ -110,6 +160,20 @@ def _canonicalize_snapshot(snap: Dict[str, Any]) -> Dict[str, Any]:
         for step in calc.get("steps", []):
             if "parameters" in step:
                 step["parameters"] = _strip_managed_keys(step["parameters"], engine)
+                # Recursively strip empty dicts (not settable via yamldoc)
+                step["parameters"] = _strip_empty_dicts(step["parameters"])
+                # Strip entire parameters key if empty after stripping
+                if not step["parameters"]:
+                    del step["parameters"]
+
+        # Strip pseudo file metadata from species_map entries
+        species_map = calc.get("species_map")
+        if isinstance(species_map, dict):
+            for _species, sdata in species_map.items():
+                if isinstance(sdata, dict):
+                    sdata.pop("pseudo_sha256", None)
+                    sdata.pop("pseudo_sha_family", None)
+                    sdata.pop("pseudo_basename", None)
 
     return data
 
@@ -169,3 +233,17 @@ def _deep_diff(a: Any, b: Any, path: str) -> List[str]:
         diffs.append(f"{path}: value mismatch: {a!r} vs {b!r}")
 
     return diffs
+
+
+class MismatchCategory(Enum):
+    """Categories for roundtrip B diagnostics."""
+    ALLOWED_IGNORE = "allowed_ignore"
+    AUTHORSHIP = "authorship_mismatch"
+    SERVICE = "service_inconsistency"
+
+
+def categorize_diff(diff_path: str) -> MismatchCategory:
+    """Categorize a diff path for diagnostic reporting."""
+    if "missing in" in diff_path:
+        return MismatchCategory.AUTHORSHIP
+    return MismatchCategory.SERVICE

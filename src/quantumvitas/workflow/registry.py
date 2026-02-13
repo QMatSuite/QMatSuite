@@ -597,6 +597,16 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     # -------------------------------------------------------------------------
     # LAMMPS step types (Classical Molecular Dynamics)
     # -------------------------------------------------------------------------
+    "lammps_minimize": StepTypeSpec(
+        step_type_spec="lammps_minimize",
+        step_type_gen="minimize",
+        engine="lammps",
+        executable="lmp",
+        description="LAMMPS energy minimization",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
     "lammps_relax": StepTypeSpec(
         step_type_spec="lammps_relax",
         step_type_gen="relax",
@@ -1167,21 +1177,22 @@ class StepTypeRegistry:
         
         return result
     
-    def get_defaults(self, step_type_gen: str) -> Dict[str, Any]:
+    def get_defaults(self, step_type_spec: str) -> Dict[str, Any]:
         """
         Get default parameters for a step type.
-        
+
         Merges from step_defaults.py.
-        
+
         Args:
-            step_type_gen: Gen step type (e.g., "scf", "relax") - GEN only
-        
+            step_type_spec: Spec step type (e.g., "qe_scf", "vasp_scf") — SPEC only.
+                Non-QE engines return empty defaults (by design).
+
         Returns:
             Dict with "parameters", "cards", "species_overrides" keys
         """
         from quantumvitas.calculation.step_defaults import get_default_step_params
-        
-        return get_default_step_params(step_type_gen)
+
+        return get_default_step_params(step_type_spec)
     
     def validate_step_type(
         self,

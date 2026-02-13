@@ -1140,7 +1140,12 @@ def init_step_command(
     apply_defaults = not no_defaults
     
     if apply_defaults:
-        defaults = get_default_step_params(step_type)
+        from quantumvitas.workflow.step_type_convert import spec_from
+        _ef = calculation_data.get("engine_family") if calculation_data else None
+        if _ef:
+            defaults = get_default_step_params(spec_from(_ef, step_type))
+        else:
+            defaults = get_default_step_params(step_type)  # No engine → empty defaults
         default_params = defaults.get("parameters", {})
         default_cards = defaults.get("cards", {})
         default_species = defaults.get("species_overrides", {})
