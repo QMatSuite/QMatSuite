@@ -150,6 +150,7 @@ def get_method_categories() -> dict[str, list[str]]:
             "get_project_history", "get_run_revision", "list_project_runs",
             "pin_analysis_to_history", "can_pin_to_run", "get_pin_data",
             "get_latest_run_for_step", "delete_project_history",
+            "get_storage_summary",
         ],
         "workflow": ["list_workflow_templates", "instantiate_workflow"],
     }

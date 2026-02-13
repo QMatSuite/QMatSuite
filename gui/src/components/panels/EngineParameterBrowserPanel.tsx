@@ -19,7 +19,7 @@ type EngineTagMeta = NonNullable<QVResult<'list_engine_parameter_metadata'>['tag
 type GlobalSearchResult = NonNullable<QVResult<'list_engine_parameter_metadata'>['results']>[number];
 
 interface EngineParameterBrowserPanelProps {
-  engineFamily: string;  // which engine to browse
+  engineFamily?: string;  // optional initial hint; panel derives its own default
   projectRoot?: string;
 }
 
@@ -33,11 +33,55 @@ function normalizeError(err: unknown): string {
   return 'Unknown error';
 }
 
-export function EngineParameterBrowserPanel({ engineFamily }: EngineParameterBrowserPanelProps) {
-  console.debug('[EngineParamBrowser] mount', { engineFamily });
-  
+const STORAGE_KEY = 'qv-reference-engine';
+
+export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: EngineParameterBrowserPanelProps) {
   const qv = useQVClient();
-  
+
+  // Engine selection state — panel owns this, prop is just an initial hint
+  const [selectedEngine, setSelectedEngine] = useState<string>(() => {
+    if (engineFamilyProp) return engineFamilyProp;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) return stored;
+    } catch { /* ignore */ }
+    return 'qe';
+  });
+  const [engineList, setEngineList] = useState<Array<{ engine_family: string; display_name: string }>>([]);
+
+  // Fetch engine list on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await qv.listEngineFamilies();
+        if (cancelled) return;
+        if (res.ok && res.data?.engines) {
+          setEngineList(res.data.engines);
+        }
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [qv]);
+
+  // Derive engineFamily from internal state
+  const engineFamily = selectedEngine;
+
+  const handleEngineChange = useCallback((engine: string) => {
+    setSelectedEngine(engine);
+    try { localStorage.setItem(STORAGE_KEY, engine); } catch { /* ignore */ }
+    // Reset panel state on engine change
+    setCategories([]);
+    setTags([]);
+    setSelectedCategory(null);
+    setSelectedTagKey(null);
+    setSearchTerm('');
+    setGlobalResults(null);
+    setLastGlobalSearchTerm(null);
+  }, []);
+
+  console.debug('[EngineParamBrowser] mount', { engineFamily });
+
   // Simple state model - no caches, no derived objects
   const [categories, setCategories] = useState<EngineCategoryMeta[]>([]);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
@@ -725,6 +769,22 @@ export function EngineParameterBrowserPanel({ engineFamily }: EngineParameterBro
         <h2 className="qe-parameter-browser__title">Parameter Browser</h2>
         </div>
         <div className="qe-parameter-browser__subtitle" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <select
+            value={selectedEngine}
+            onChange={(e) => handleEngineChange(e.target.value)}
+            className="qe-parameter-browser__engine-select"
+            title="Select engine"
+          >
+            {engineList.length > 0 ? (
+              engineList.map((eng) => (
+                <option key={eng.engine_family} value={eng.engine_family}>
+                  {eng.display_name}
+                </option>
+              ))
+            ) : (
+              <option value={selectedEngine}>{selectedEngine.toUpperCase()}</option>
+            )}
+          </select>
           <p style={{ flex: 1, margin: 0 }}>
           Browse {engineFamily.toUpperCase()} input parameters with rich metadata.
         </p>

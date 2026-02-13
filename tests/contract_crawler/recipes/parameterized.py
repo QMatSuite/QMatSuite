@@ -29,7 +29,8 @@ class ProjectMethodsRecipe(Recipe):
     Recipe for project-scoped read-only methods.
     
     Covers: get_project_summary, list_structures, list_calculations,
-            get_project_history, list_journal_entries, rebuild_project_registry
+            get_project_history, list_journal_entries, rebuild_project_registry,
+            get_storage_summary
     """
     
     method_name = ""  # Set per instance
@@ -43,6 +44,7 @@ class ProjectMethodsRecipe(Recipe):
         "get_project_history",
         "list_journal_entries",
         "rebuild_project_registry",
+        "get_storage_summary",
     }
     
     def __init__(self, tmp_path: Path, method_name: str):
@@ -71,7 +73,7 @@ class ProjectMethodsRecipe(Recipe):
         
         # Methods that only need project_root
         if self.method_name in ("get_project_summary", "list_structures", "list_calculations",
-                                 "rebuild_project_registry"):
+                                 "rebuild_project_registry", "get_storage_summary"):
             return base_payload
         
         # Methods that might need additional params

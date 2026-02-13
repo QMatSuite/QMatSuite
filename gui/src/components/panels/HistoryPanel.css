@@ -379,6 +379,11 @@
   color: var(--info-color, #3b82f6);
 }
 
+.history-entry--operation .history-entry__icon {
+  background: var(--info-bg, rgba(139, 92, 246, 0.1));
+  color: var(--info-color, #8b5cf6);
+}
+
 .history-entry__content {
   flex: 1;
   min-width: 0;

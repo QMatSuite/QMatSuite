@@ -392,6 +392,7 @@ class QVDaemon:
             "get_pin_data": self._handle_get_pin_data,
             "get_latest_run_for_step": self._handle_get_latest_run_for_step,
             "delete_project_history": self._handle_delete_project_history,
+            "get_storage_summary": self._handle_get_storage_summary,
             
             # Workflow operations
             "list_workflow_templates": self._handle_list_workflow_templates,
@@ -6095,10 +6096,10 @@ class QVDaemon:
     
     def _handle_delete_project_history(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Delete the entire .history directory for a project.
+        Delete the entire .provenance directory for a project.
 
         Safety:
-        - Only deletes the .history directory
+        - Only deletes the .provenance directory
         - Validates path to prevent traversal attacks
         - Does NOT delete any present-tense truth files
 
@@ -6117,6 +6118,20 @@ class QVDaemon:
         # Use domain API
         svc = get_service(project_root)
         return svc.history.delete(confirm=confirm)
+
+    def _handle_get_storage_summary(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get provenance storage summary for a project.
+
+        Payload:
+            project_root: str - Path to project root
+
+        Returns:
+            tiers, total_objects, total_bytes, run_count, operation_count
+        """
+        project_root = Path(self._require_str(payload, "project_root"))
+        svc = get_service(project_root)
+        return svc.history.get_storage_summary()
 
     # -------------------------------------------------------------------------
     # Workflow Handlers

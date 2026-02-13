@@ -2490,10 +2490,7 @@ function App() {
         );
         
       case 'resources':
-        // EngineParameterBrowserPanel requires engineFamily prop
-        // For now, default to 'qe' for backwards compatibility
-        // TODO: Get engineFamily from current calculation or user selection
-        return <EngineParameterBrowserPanel engineFamily="qe" />;
+        return <EngineParameterBrowserPanel />;
         
       case 'settings':
         return (

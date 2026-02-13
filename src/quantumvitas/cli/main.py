@@ -92,12 +92,15 @@ analyze_app = typer.Typer(
     invoke_without_command=True,
 )
 
+history_app = typer.Typer(help="View and manage project history.", no_args_is_help=True)
+
 app.add_typer(init_app, name="init")
 app.add_typer(rename_app, name="rename")
 app.add_typer(delete_app, name="delete")
 app.add_typer(configure_app, name="configure")
 app.add_typer(run_app, name="run")
 app.add_typer(analyze_app, name="analyze")
+app.add_typer(history_app, name="history")
 
 
 def _svc_from_cwd(cwd: Optional[Path] = None) -> "QVService":
@@ -5234,6 +5237,133 @@ def _execute_step_spec(
         keep_original=False,  # Step spec serves as the source of truth
     )
     return result, prepared, generated_input
+
+
+# ---------------------------------------------------------------------------
+# History commands
+# ---------------------------------------------------------------------------
+
+
+@history_app.command("list")
+def history_list(
+    limit: int = typer.Option(50, "-n", "--limit", help="Maximum events to show"),
+    calc: Optional[str] = typer.Option(None, "--calc", help="Filter by calculation ULID"),
+) -> None:
+    """Show project history timeline (runs and operations)."""
+    svc = _svc_from_cwd()
+    result = svc.history.get_timeline(limit=limit, calc_ulid=calc)
+    timeline = result.get("timeline", [])
+
+    if not timeline:
+        typer.echo("No history recorded yet.")
+        raise typer.Exit()
+
+    icon_map = {
+        "run_started": "\u25B6",  # ▶
+        "run_finished": "\u2713",  # ✓
+        "edit": "\u270E",  # ✎
+        "pin_created": "\U0001F4CC",  # 📌
+        "operation": "\u2022",  # •
+    }
+
+    for entry in timeline:
+        icon = icon_map.get(entry.get("event_type", ""), "\u2022")
+        ts = entry.get("timestamp", "")[:19]
+        event = entry.get("event_type", "unknown")
+        summary = entry.get("summary") or entry.get("op_type") or ""
+        status = entry.get("status", "")
+
+        parts = [f"  {icon} {ts}  {event}"]
+        if status:
+            parts.append(f"[{status}]")
+        if summary:
+            parts.append(f"- {summary}")
+
+        typer.echo(" ".join(parts))
+
+
+@history_app.command("show")
+def history_show(
+    run_ulid: str = typer.Argument(..., help="Run ULID to inspect"),
+) -> None:
+    """Show details of a specific run."""
+    svc = _svc_from_cwd()
+    result = svc.history.get_run_revision(run_ulid)
+
+    if result.get("error"):
+        typer.echo(f"Error: {result['error']}", err=True)
+        raise typer.Exit(code=1)
+
+    rev = result.get("revision")
+    if not rev:
+        typer.echo(f"Run not found: {run_ulid}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Run:      {rev['ulid']}")
+    typer.echo(f"Calc:     {rev['calc_ulid']}")
+    typer.echo(f"Status:   {rev.get('status', 'unknown')}")
+    typer.echo(f"Engine:   {rev.get('engine', '-')}")
+    typer.echo(f"Started:  {rev.get('started_at', '-')}")
+    typer.echo(f"Finished: {rev.get('finished_at', '-')}")
+
+    steps = rev.get("step_ulids", [])
+    if steps:
+        typer.echo(f"Steps:    {len(steps)}")
+        for i, s in enumerate(steps, 1):
+            typer.echo(f"  {i}. {s}")
+
+    sha = rev.get("snapshot_sha")
+    if sha:
+        typer.echo(f"Snapshot: {sha[:16]}...")
+
+
+@history_app.command("storage")
+def history_storage() -> None:
+    """Show provenance storage summary."""
+    svc = _svc_from_cwd()
+    result = svc.history.get_storage_summary()
+
+    typer.echo("Provenance Storage Summary")
+    typer.echo("-" * 40)
+    typer.echo(f"Runs:        {result['run_count']}")
+    typer.echo(f"Operations:  {result['operation_count']}")
+    typer.echo(f"CAS Objects: {result['total_objects']}")
+
+    total_bytes = result.get("total_bytes", 0)
+    if total_bytes > 0:
+        if total_bytes > 1_000_000:
+            typer.echo(f"CAS Size:    {total_bytes / 1_000_000:.1f} MB")
+        elif total_bytes > 1_000:
+            typer.echo(f"CAS Size:    {total_bytes / 1_000:.1f} KB")
+        else:
+            typer.echo(f"CAS Size:    {total_bytes} bytes")
+
+    tiers = result.get("tiers", [])
+    if tiers:
+        typer.echo("\nBy Tier:")
+        for tier in tiers:
+            typer.echo(f"  {tier['tier']}: {tier['count']} objects ({tier['total_bytes']} bytes)")
+
+
+@history_app.command("clear")
+def history_clear(
+    force: bool = typer.Option(False, "-f", "--force", help="Skip confirmation prompt"),
+) -> None:
+    """Delete all project history (provenance data)."""
+    if not force:
+        confirmed = typer.confirm("Delete all project history? This cannot be undone.")
+        if not confirmed:
+            typer.echo("Aborted.")
+            raise typer.Exit()
+
+    svc = _svc_from_cwd()
+    result = svc.history.delete(confirm=True)
+
+    if result.get("success"):
+        typer.echo("History deleted.")
+    else:
+        typer.echo(f"Error: {result.get('error', 'Unknown error')}", err=True)
+        raise typer.Exit(code=1)
 
 
 # ---------------------------------------------------------------------------

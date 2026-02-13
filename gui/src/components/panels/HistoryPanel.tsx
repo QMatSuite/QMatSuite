@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { HistoryTimelineEntry } from '../../types/qv';
+import { RunDetailDrawer } from './RunDetailDrawer';
 import './HistoryPanel.css';
 
 // Limit options for history display
@@ -31,6 +32,7 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
   const [limit, setLimit] = useState<LimitOption>('all');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedRunUlid, setSelectedRunUlid] = useState<string | null>(null);
 
   const fetchHistory = useCallback(async () => {
     if (!projectRoot || !window.qv) return;
@@ -145,6 +147,8 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
         return renderPinEvent(entry);
       case 'baseline':
         return renderBaselineEvent(entry);
+      case 'operation':
+        return renderOperationEvent(entry);
       default:
         return renderGenericEvent(entry);
     }
@@ -162,7 +166,12 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
       >
         <div
           className="history-entry__header"
-          onClick={() => entry.run_ulid && toggleRunExpanded(entry.run_ulid)}
+          onClick={() => {
+            if (entry.run_ulid) {
+              toggleRunExpanded(entry.run_ulid);
+              setSelectedRunUlid(entry.run_ulid);
+            }
+          }}
         >
           <div className="history-entry__icon">
             {isSuccess ? '✓' : '✗'}
@@ -311,6 +320,34 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
     );
   };
 
+  const getOperationIcon = (opType?: string): string => {
+    switch (opType) {
+      case 'step_add': return '+';
+      case 'step_update': return '\u270E'; // ✎
+      case 'preset_apply': return '\u2699'; // ⚙
+      case 'calc_create': return '\u{1F4CB}'; // clipboard
+      case 'structure_import': return '\u{1F4D0}'; // triangular ruler
+      default: return '\u2022'; // bullet
+    }
+  };
+
+  const renderOperationEvent = (entry: HistoryTimelineEntry) => {
+    return (
+      <div key={entry.ulid} className="history-entry history-entry--operation history-entry--compact">
+        <div className="history-entry__icon">{getOperationIcon(entry.op_type)}</div>
+        <div className="history-entry__content">
+          <span className="history-entry__label">
+            {entry.summary || entry.op_type || 'Operation'}
+          </span>
+        </div>
+        <div className="history-entry__meta">
+          {entry.actor && <span className="history-entry__actor">{entry.actor}</span>}
+          <span className="history-entry__time">{formatTimestamp(entry.timestamp)}</span>
+        </div>
+      </div>
+    );
+  };
+
   const renderGenericEvent = (entry: HistoryTimelineEntry) => {
     return (
       <div key={entry.ulid} className="history-entry history-entry--generic history-entry--compact">
@@ -406,6 +443,15 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
         </div>
       )}
       
+      {/* Run detail drawer */}
+      {selectedRunUlid && (
+        <RunDetailDrawer
+          projectRoot={projectRoot}
+          runUlid={selectedRunUlid}
+          onClose={() => setSelectedRunUlid(null)}
+        />
+      )}
+
       {/* Delete confirmation modal */}
       {showDeleteModal && (
         <div className="history-modal-overlay" onClick={() => !isDeleting && setShowDeleteModal(false)}>
@@ -415,7 +461,7 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
             </div>
             <div className="history-modal__body">
               <p>
-                This will permanently delete the <code>.history</code> directory 
+                This will permanently delete the <code>.provenance</code> directory
                 and all recorded runs, edits, and pins.
               </p>
               <p className="history-modal__note">

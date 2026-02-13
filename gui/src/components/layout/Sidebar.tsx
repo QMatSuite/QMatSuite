@@ -264,7 +264,7 @@ export function Sidebar({
           <button
             className={`sidebar__tab ${currentView === 'resources' ? 'active' : ''}`}
             onClick={() => onViewChange('resources')}
-            title="Browse QE parameter metadata and resources"
+            title="Browse engine parameter reference"
             data-testid="qv-nav-resources"
           >
             <span className="sidebar__tab-icon">📚</span>

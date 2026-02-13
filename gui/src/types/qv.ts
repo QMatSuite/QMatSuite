@@ -1814,6 +1814,46 @@ export interface QVCommandMap {
       message?: string;
     };
   };
+
+  get_run_revision: {
+    payload: {
+      project_root: string;
+      run_ulid: string;
+    };
+    result: {
+      revision: {
+        ulid: string;
+        calc_ulid: string;
+        project_ulid?: string;
+        status?: string;
+        started_at?: string;
+        finished_at?: string;
+        step_ulids: string[];
+        engine?: string;
+        snapshot_sha?: string;
+        steps?: Array<Record<string, unknown>>;
+        snapshot?: Record<string, unknown>;
+      } | null;
+      error?: string;
+    };
+  };
+
+  get_storage_summary: {
+    payload: {
+      project_root: string;
+    };
+    result: {
+      tiers: Array<{
+        tier: string;
+        count: number;
+        total_bytes: number;
+      }>;
+      total_objects: number;
+      total_bytes: number;
+      run_count: number;
+      operation_count: number;
+    };
+  };
 }
 
 // =============================================================================
@@ -1944,6 +1984,9 @@ export interface HistoryTimelineEntry {
   pin_path?: string;
   structure_ids?: string[];
   calculation_ids?: string[];
+  op_type?: string;
+  kind?: string;
+  scope?: string;
 }
 
 export interface DemoProjectResult {

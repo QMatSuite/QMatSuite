@@ -7120,19 +7120,20 @@ class QVService:
                     query_runs,
                     get_run_details,
                     get_latest_run_ulid,
+                    query_operations,
+                    build_timeline_entry,
                 )
 
-                # Query runs from provenance database
+                timeline: list[dict] = []
+
+                # 1. Query runs → produce run_started + run_finished entries
                 runs = query_runs(
                     self._service.project_root,
                     calc_ulid=calc_ulid,
                     limit=limit,
                 )
 
-                timeline = []
-
                 for run in runs:
-                    # Create run_started entry
                     started_entry = {
                         "ulid": run["run_ulid"],
                         "timestamp": run["started_at"],
@@ -7140,16 +7141,15 @@ class QVService:
                         "calc_ulid": run["calc_ulid"],
                         "run_ulid": run["run_ulid"],
                         "step_ulid": None,
+                        "kind": "run",
                     }
 
-                    # Get step info from run details
                     run_details = get_run_details(self._service.project_root, run["run_ulid"])
                     if run_details:
                         started_entry["step_ulids"] = run_details.get("step_ulids", [])
 
                     timeline.append(started_entry)
 
-                    # Create run_finished entry if run is complete
                     if run.get("finished_at"):
                         finished_entry = {
                             "ulid": run["run_ulid"] + "_finished",
@@ -7160,19 +7160,32 @@ class QVService:
                             "status": run.get("status", ""),
                             "step_ulid": None,
                             "error_summary": run.get("error_message"),
+                            "kind": "run",
                         }
                         timeline.append(finished_entry)
 
-                # Sort by timestamp descending
+                # 2. Query operations → use canonical build_timeline_entry()
+                operations = query_operations(
+                    self._service.project_root,
+                    calc_ulid=calc_ulid,
+                    limit=limit,
+                )
+
+                for op in operations:
+                    entry = build_timeline_entry(op, self._service.project_root)
+                    timeline.append(entry)
+
+                # 3. Merge: sort by timestamp DESC, truncate to limit
                 timeline.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
 
                 latest_run_ulid = get_latest_run_ulid(self._service.project_root)
 
+                merged = timeline[:limit]
                 return {
-                    "timeline": timeline[:limit],
+                    "timeline": merged,
                     "latest_run_ulid": latest_run_ulid,
                     "latest_run_id": latest_run_ulid,  # Backwards compat alias
-                    "total": len(timeline[:limit]),
+                    "total": len(merged),
                 }
             except Exception as e:
                 if isinstance(e, APIError):
@@ -7216,6 +7229,92 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
+
+        def get_storage_summary(self) -> dict:
+            """
+            Get storage summary for the provenance system.
+
+            Returns:
+                Dict with tier breakdown, total counts, and run/operation counts.
+            """
+            try:
+                from quantumvitas.provenance import (
+                    open_provenance_db,
+                    PROVENANCE_DIR_NAME,
+                )
+
+                project_root = self._service.project_root
+                provenance_dir = project_root / PROVENANCE_DIR_NAME
+
+                if not provenance_dir.exists():
+                    return {
+                        "tiers": [],
+                        "total_objects": 0,
+                        "total_bytes": 0,
+                        "run_count": 0,
+                        "operation_count": 0,
+                    }
+
+                conn = open_provenance_db(project_root)
+                try:
+                    # CAS tier summary
+                    tiers = []
+                    total_objects = 0
+                    total_bytes = 0
+                    try:
+                        cursor = conn.execute(
+                            """
+                            SELECT tier, COUNT(*), COALESCE(SUM(size_bytes), 0)
+                            FROM cas_objects
+                            WHERE deleted = 0
+                            GROUP BY tier
+                            """
+                        )
+                        for row in cursor.fetchall():
+                            tier_info = {
+                                "tier": row[0],
+                                "count": row[1],
+                                "total_bytes": row[2],
+                            }
+                            tiers.append(tier_info)
+                            total_objects += row[1]
+                            total_bytes += row[2]
+                    except Exception:
+                        pass  # cas_objects table may not exist
+
+                    # Run count
+                    run_count = 0
+                    try:
+                        cursor = conn.execute("SELECT COUNT(*) FROM runs")
+                        run_count = cursor.fetchone()[0]
+                    except Exception:
+                        pass
+
+                    # Operation count
+                    operation_count = 0
+                    try:
+                        cursor = conn.execute("SELECT COUNT(*) FROM operations")
+                        operation_count = cursor.fetchone()[0]
+                    except Exception:
+                        pass
+
+                    return {
+                        "tiers": tiers,
+                        "total_objects": total_objects,
+                        "total_bytes": total_bytes,
+                        "run_count": run_count,
+                        "operation_count": operation_count,
+                    }
+                finally:
+                    conn.close()
+            except Exception:
+                return {
+                    "tiers": [],
+                    "total_objects": 0,
+                    "total_bytes": 0,
+                    "run_count": 0,
+                    "operation_count": 0,
+                }
 
         def list_runs(
             self,
