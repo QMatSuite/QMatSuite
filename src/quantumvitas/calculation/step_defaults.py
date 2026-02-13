@@ -3,13 +3,16 @@ In-code default parameters for QuantumVITAS step types.
 
 This module provides default parameter dictionaries for each step type,
 replacing the legacy step template files from templates/step/.
+
+Keys are SPEC step types (e.g., "qe_scf", not "scf").
+No GEN-keyed fallback — unknown spec types get empty defaults.
 """
 
 from typing import Any, Dict
 
-# Default parameters for each step type
+# Default parameters keyed by step_type_spec (engine-specific)
 DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
-    "scf": {
+    "qe_scf": {
         "parameters": {
             "CONTROL": {
                 "calculation": "scf",
@@ -31,7 +34,7 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
         },
         "species_overrides": {},
     },
-    "nscf": {
+    "qe_nscf": {
         "parameters": {
             "CONTROL": {
                 "calculation": "nscf",
@@ -54,7 +57,7 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
         },
         "species_overrides": {},
     },
-    "dos": {
+    "qe_dos": {
         "parameters": {
             "DOS": {
                 "emax": 16.0,
@@ -66,7 +69,7 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
         "cards": {},
         "species_overrides": {},
     },
-    "bands": {
+    "qe_bands": {
         "parameters": {
             "CONTROL": {
                 "calculation": "bands",
@@ -86,7 +89,7 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
         },
         "species_overrides": {},
     },
-    "bandspw": {
+    "qe_bandspw": {
         "parameters": {
             "CONTROL": {
                 "calculation": "bands",  # bandspw step uses calculation='bands' (not 'nscf')
@@ -107,7 +110,7 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
         },
         "species_overrides": {},
     },
-    "relax": {
+    "qe_relax": {
         # Covers both fixed-cell and variable-cell relaxation.
         # VC is controlled via CONTROL.calculation parameter ('relax' or 'vc-relax').
         "parameters": {
@@ -136,7 +139,7 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
         "species_overrides": {},
     },
     # Note: NO "vc-relax" entry - VC is a parameter, not a separate step type
-    "md": {
+    "qe_md": {
         "parameters": {
             "CONTROL": {
                 "calculation": "md",
@@ -181,29 +184,24 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
         "cards": {},
         "species_overrides": {},
     },
-    # Legacy mapping for PySCF steps (for backward compatibility)
-    "mp2": {
-        "parameters": {},
-        "cards": {},
-        "species_overrides": {},
-    },
 }
 
 
-def get_default_step_params(step_type_gen: str) -> Dict[str, Any]:
+def get_default_step_params(step_type_spec: str) -> Dict[str, Any]:
     """
-    Get default parameters for a gen step type.
+    Get default parameters for a step type (SPEC-keyed, no GEN fallback).
 
     Args:
-        step_type_gen: GEN step type (e.g., "scf", "nscf", "relax", "md")
+        step_type_spec: SPEC step type (e.g., "qe_scf", "pyscf_scf").
+            Non-QE engines return empty defaults (by design).
 
     Returns:
         Dict with "parameters", "cards", and "species_overrides" keys.
-        Returns empty dicts if step_type_gen is not recognized.
+        Returns empty dicts if step_type_spec is not recognized.
     """
-    step_type_lower = step_type_gen.lower()
-    
-    # Direct lookup (gen types are stored directly in DEFAULT_STEP_PARAMS)
+    step_type_lower = step_type_spec.lower()
+
+    # Direct lookup by spec type only — no GEN fallback
     defaults = DEFAULT_STEP_PARAMS.get(step_type_lower, {})
     
     return {

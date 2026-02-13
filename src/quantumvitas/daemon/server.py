@@ -1945,44 +1945,15 @@ class QVDaemon:
     def _handle_set_engine_family(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Set engine_family on a calculation (UNDECIDED -> DECIDED transition).
-
-        Payload:
-            project_root: str (required)
-            calculation: str (required) — Calculation selector
-            engine_family: str (required) — Engine to set
-
-        Returns:
-            {"success": true, "engine_family": "vasp"}
+        Thin wrapper — delegates to QVService.calculation.set_engine_family().
         """
-        from quantumvitas.api.utils import validate_engine_family
-        from quantumvitas.api.utils import load_calculation, save_calculation
-
         project_root = self._require_path(payload, "project_root")
         calculation_selector = self._require_str(payload, "calculation")
         engine_family = self._require_str(payload, "engine_family")
 
-        # Validate engine_family is registered and is a base engine
-        is_valid, error_msg = validate_engine_family(engine_family)
-        if not is_valid:
-            raise ValueError(error_msg)
-
-        # Resolve calculation via daemon helper (no kernel imports)
-        calc_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
-
-        # Get calculation directory
-        if calc_resolved.absolute_path.name == "calculation.yaml":
-            calc_dir = calc_resolved.absolute_path.parent
-        else:
-            calc_dir = calc_resolved.absolute_path
-
-        # Load calculation model, update, save (via api.utils proxies)
-        calc_yaml = calc_dir / "calculation.yaml"
-        calc_model = load_calculation(calc_yaml, project_root)
-        calc_model.engine_family = engine_family
-        save_calculation(calc_model, calc_dir)
-
+        svc = get_service(project_root)
+        svc.calculation.set_engine_family(calculation_selector, engine_family)
         self.log(f"[RPC] set_engine_family: {calculation_selector} -> {engine_family}")
-
         return {"success": True, "engine_family": engine_family}
     
     # -------------------------------------------------------------------------
@@ -3879,165 +3850,17 @@ class QVDaemon:
     def _handle_apply_presets_to_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Apply preset options to ALL steps in a calculation (BROADCAST).
-        
-        Per Constitution §10.3.3: This OVERWRITES preset-related parameters.
-        Per UI design principle: Preset application is BROADCAST, not filtered.
-        
-        Each step defines its own preset receiver - it may accept, partially accept,
-        or ignore the preset based on step_type.
-        
-        Payload:
-            project_root: str - Path to project root
-            calculation: str - Calculation selector (slug or ULID)
-            presets: Dict with preset options
-                Example: {"spin": "collinear", "soc": "no_soc", "material": "metal", "precision": "med"}
-            validate_physics: bool (optional, default True) - Validate physics constraints
-        
-        Returns:
-            Dict with:
-                status: "applied"
-                steps_updated: Number of steps that were updated
-                steps_skipped: Number of steps that were skipped (non-receivers)
-                step_results: List of detailed results per step
-                dimension_states: Updated detected dimension states for the calculation
+        Thin wrapper — delegates to QVService.calculation.apply_presets().
         """
-        from quantumvitas.api import (
-            PresetCompilationError,
-            PrecisionContextError,
-            DIMENSION_PRECISION,
-            PrecisionOption,
-        )
-        
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
         presets = payload.get("presets", {})
         validate_physics = payload.get("validate_physics", True)
-        
-        # Resolve calculation
-        resolved = self._resolve_calculation_with_fallback(project_root, calculation)
-        # absolute_path points to calculation.yaml, so get the parent directory
-        if resolved.absolute_path.name == "calculation.yaml":
-            calculation_dir = resolved.absolute_path.parent
-        else:
-            calculation_dir = resolved.absolute_path
-        steps_dir = calculation_dir / "steps"
-        
-        # If precision preset is being applied, load calculation for PrecisionAdvisor
-        precision_advisor = None
-        precision_option = presets.get(DIMENSION_PRECISION) or presets.get("precision")
-        if precision_option:
-            try:
-                # Use unified resolver (single source of truth)
-                try:
-                    context = resolve_precision_context(
-                        calculation_dir=calculation_dir,
-                        project_root=project_root,
-                    )
-                    from quantumvitas.api.utils import create_precision_advisor
-                    precision_advisor = create_precision_advisor(
-                        species_map=context.species_map,
-                        lattice_matrix=context.lattice_matrix,
-                        repo_root=project_root,
-                    )
-                except PrecisionContextError as e:
-                    # Precision context resolution failed - this is an error, not a warning
-                    raise APIError(
-                        f"Failed to resolve precision context: {e}"
-                    ) from e
-            except APIError:
-                # Re-raise service errors
-                raise
-            except Exception as e:
-                # Other errors should also be raised, not silently ignored
-                raise APIError(
-                    f"Failed to create PrecisionAdvisor: {e}"
-                ) from e
-        
-        # Find all step files
-        step_files = sorted(steps_dir.glob("*.step.yaml"))
-        steps_updated = 0
-        steps_skipped = 0
-        step_results = []
-        
-        # Apply presets to each step (BROADCAST)
-        for step_path in step_files:
-            step_name = step_path.name
-            try:
-                # Load step to get step_type for result
-                # Constitution v1.1: Read step_type_gen from file, don't convert
-                content = yaml.safe_load(step_path.read_text()) or {}
-                step_type_gen = content.get("step_type_gen", content.get("step_type_spec", "scf"))
-                
-                # Get step-type-aware precision advice if applicable
-                precision_advice = None
-                if precision_advisor and precision_option:
-                    try:
-                        precision_level = PrecisionOption(precision_option)
-                        precision_advice = precision_advisor.advise_for_step(precision_level, step_type_gen)
-                    except (ValueError, KeyError) as e:
-                        self.logger.warning(f"Invalid precision level '{precision_option}': {e}")
-                
-                result = apply_presets_to_step(
-                    step_path, presets, 
-                    validate_physics=validate_physics,
-                    precision_advice=precision_advice,
-                )
-                
-                if result["accepted"]:
-                    steps_updated += 1
-                    step_results.append({
-                        "step_file": step_name,
-                        "step_type_gen": step_type_gen,
-                        "status": "updated",
-                        "applied_presets": list(result["filtered_options"].keys()),
-                        "updated_fields": result.get("updated_fields", []),
-                        "skipped_fields": result.get("skipped_fields", []),
-                    })
-                else:
-                    steps_skipped += 1
-                    step_results.append({
-                        "step_file": step_name,
-                        "step_type_gen": step_type_gen,
-                        "status": "skipped",
-                        "reason": "non-receiver",
-                        "updated_fields": [],
-                        "skipped_fields": result.get("skipped_fields", ["non-receiver step"]),
-                    })
-                    
-            except PresetCompilationError as e:
-                # Log but continue - some steps may not accept certain presets
-                self.logger.warning(f"Preset application error for {step_name}: {e}")
-                steps_skipped += 1
-                step_results.append({
-                    "step_file": step_name,
-                    "step_type_gen": step_type_gen if 'step_type_gen' in dir() else "unknown",
-                    "status": "error",
-                    "reason": str(e),
-                    "updated_fields": [],
-                    "skipped_fields": [],
-                })
-            except Exception as e:
-                self.logger.warning(f"Unexpected error applying presets to {step_name}: {e}")
-                steps_skipped += 1
-                step_results.append({
-                    "step_file": step_name,
-                    "step_type_gen": "unknown",
-                    "status": "error",
-                    "reason": str(e),
-                    "updated_fields": [],
-                    "skipped_fields": [],
-                })
-        
-        # Return updated dimension states for the calculation
-        bundle = get_calculation_preset_bundle(calculation_dir)
 
-        return {
-            "status": "applied",
-            "steps_updated": steps_updated,
-            "steps_skipped": steps_skipped,
-            "step_results": step_results,
-            "dimension_states": bundle["dimension_states"],
-        }
+        svc = get_service(project_root)
+        return svc.calculation.apply_presets(
+            calculation, presets, validate_physics=validate_physics
+        )
 
     def _handle_get_step_preset_footprints(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

@@ -502,13 +502,18 @@ class StepDoc(YamlDoc):
         self._owner = owner or "user"
     
     def _normalize_sections(self, data: dict, _depth: int = 0) -> dict:
-        """Normalize section names to uppercase for namelists.
+        """Normalize section names to uppercase for QE namelists.
 
-        Only recurses one level into dict values (depth 0 → 1) so that
-        QE namelist keys inside ``parameters`` are uppercased but deeper
-        nested keys (e.g. QMCPACK's ``electrons: {u: 2, d: 2}``) are
-        left untouched.
+        Only applies to QE step types (step_type_spec starts with "qe_").
+        Other engines (QMCPACK, VASP, etc.) keep their original key case.
+        Recurses one level into dict values (depth 0 → 1).
         """
+        # Only normalize for QE step types
+        if _depth == 0:
+            step_type_spec = data.get("step_type_spec", "")
+            if not isinstance(step_type_spec, str) or not step_type_spec.startswith("qe_"):
+                return data
+
         result = {}
         for key, value in data.items():
             # Uppercase namelist sections (only for string keys)
@@ -548,11 +553,13 @@ class StepDoc(YamlDoc):
     def set(self, path: PathType, value: Any) -> None:
         """Set with access control and normalization."""
         self._check_access(path, "write to")
-        
-        # Normalize section name if at root level
+
+        # Normalize section name if at root level (QE step types only)
         path = list(_normalize_path(path))
-        if path and path[0].upper() in self.NAMELIST_SECTIONS:
-            path[0] = path[0].upper()
+        step_type_spec = self._data.get("step_type_spec", "") if self._data else ""
+        if isinstance(step_type_spec, str) and step_type_spec.startswith("qe_"):
+            if path and path[0].upper() in self.NAMELIST_SECTIONS:
+                path[0] = path[0].upper()
         
         # Normalize parameter aliases
         if isinstance(value, str):

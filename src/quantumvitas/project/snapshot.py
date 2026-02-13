@@ -306,6 +306,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
             "meta": calculation_meta_dict,
             "mode": calculation_model.mode,
             "working_dir": calculation_model.working_dir,
+            "engine_family": calculation_model.engine_family,
             "steps": [],
         }
         # Export structure_ulid (canonical reference - ID only)

@@ -140,8 +140,8 @@ calculations: []
     # -------------------------------------------------------------------------
 
     def test_get_default_step_params_wrapper(self):
-        """QVService.get_default_step_params() returns step defaults."""
-        defaults = QVService.get_default_step_params("scf")
+        """QVService.get_default_step_params() returns step defaults (spec-keyed)."""
+        defaults = QVService.get_default_step_params("qe_scf")
 
         assert isinstance(defaults, dict)
         assert "parameters" in defaults

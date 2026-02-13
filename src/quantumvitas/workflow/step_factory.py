@@ -64,8 +64,8 @@ def create_step_doc(
         # For now, default to qe_ prefix for backward compatibility
         machine_step_type = spec_from("qe", step_type_gen)
     
-    # Get defaults for step type (use gen type)
-    defaults = registry.get_defaults(step_type_gen)
+    # Get defaults for step type (use spec type — engine-specific defaults)
+    defaults = registry.get_defaults(machine_step_type)
     
     # Generate meta
     step_ulid = generate_resource_id()

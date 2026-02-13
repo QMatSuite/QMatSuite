@@ -72,7 +72,8 @@ def _build_step_spec_from_qe_input_data(
         # Merge with in-code defaults (defaults provide base, extracted params override)
         from quantumvitas.calculation.step_defaults import get_default_step_params
         
-        defaults = get_default_step_params(step_type_gen)
+        from quantumvitas.workflow.step_type_convert import spec_from
+        defaults = get_default_step_params(spec_from("qe", step_type_gen))
         default_params = defaults.get("parameters", {})
         default_cards = defaults.get("cards", {})
         

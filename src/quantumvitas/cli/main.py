@@ -1218,13 +1218,16 @@ def init_step_command(
                 f"Failed to generate k-path for structure: {exc}"
             ) from exc
 
-    # Get default parameters for this step type (if not in --no-defaults mode)
+    # Resolve GEN step_type to SPEC step_type_spec for defaults lookup
     from quantumvitas.api import QVService
-    
+    engine_family = calculation_data.get("engine_family") if calculation_data else None
+    step_type_spec_resolved = QVService.resolve_step_type_spec(step_type_gen, engine_family)
+
+    # Get default parameters for this step type (if not in --no-defaults mode)
     apply_defaults = not no_defaults
-    
+
     if apply_defaults:
-        defaults = QVService.get_default_step_params(step_type_gen)
+        defaults = QVService.get_default_step_params(step_type_spec_resolved)
         default_params = defaults.get("parameters", {})
         default_cards = defaults.get("cards", {})
         default_species = defaults.get("species_overrides", {})
@@ -1280,17 +1283,6 @@ def init_step_command(
     
     from quantumvitas.api.utils import meta_from_name
     step_meta_dict = meta_from_name("step", name=step_display_name, path="")
-
-    # Resolve GEN step_type to SPEC step_type_spec using API
-    # GEN layer: step_type (e.g., "scf") - used in UI/workflow/presets
-    # SPEC layer: step_type_spec (e.g., "qe_scf") - persisted in step.yaml
-    from quantumvitas.api import QVService
-
-    # Get engine_family from calculation context
-    engine_family = calculation_data.get("engine_family") if calculation_data else None
-
-    # Resolve to engine-specific SPEC type
-    step_type_spec_resolved = QVService.resolve_step_type_spec(step_type_gen, engine_family)
 
     # Build step spec as dict (no StructureStepSpec dependency)
     # DAG model: Step YAML does NOT contain structure_ulid or parent_calculation_id
