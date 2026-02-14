@@ -119,7 +119,7 @@ def test_get_online_candidate_missing_structure(temp_project, daemon):
     # Should return error, not raise UnboundLocalError
     try:
         result = daemon._handle_structure_get_online_candidate(payload)
-        
+
         # If it returns a dict, check structure
         if isinstance(result, dict):
             if "error" in result:
@@ -146,46 +146,45 @@ def test_get_online_candidate_cached_structure_has_candidate(temp_project, daemo
     from quantumvitas.io.online_cache import OnlineStructureCache
     from quantumvitas.io.online_cache import CandidateSummary
     from pymatgen.core import Structure, Lattice
-    
+
     # Create a cache with session, candidate, and structure
     # Handler uses global cache, so we need to use the global cache location
     cache = OnlineStructureCache()  # Uses global cache location
-    
+
     import time
     session_id = "test_session_789"
-    cache.create_session(session_id, "Si", "optimade")
-    
+    cache.create_session(session_id, "Si", "mp")
+
     # Create a simple structure
     lattice = Lattice.cubic(5.43)
     structure = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
-    
+
     # Add candidate with structure
     candidate = CandidateSummary(
         candidate_id="test_candidate_2",
         label="Si (2 sites)",
-        source="optimade",
-        source_id="test_optimade_id_2",
+        source="mp",
+        source_id="mp-149",
         nsites=2,
         flags=[],
         score=1.0,
     )
     cache.add_candidate(session_id, candidate, structure, rank=0)
-    
+
     payload = {
         "session_id": session_id,
         "candidate_id": "test_candidate_2",
-        "trace_id": "test_trace",
     }
-    
+
     # Should succeed - candidate is assigned before provenance building
     result = daemon._handle_structure_get_online_candidate(payload)
-    
+
     # Should not raise UnboundLocalError
     assert "error" not in result or result.get("ok") is not False, (
         f"Handler should succeed for cached structure. Got: {result}"
     )
-    
-    # If successful, should have structure_vis
+
+    # If successful, should have structure_vis (from CandidateDetailDTO)
     if "error" not in result:
         assert "structure_vis" in result or "formula" in result, (
             "Successful response should contain structure data"

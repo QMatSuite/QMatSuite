@@ -114,10 +114,10 @@ class TestOnlineSearchDaemon:
                 
                 # Handler uses global cache now
                 result = daemon._handle_structure_get_online_candidate(payload)
-                
-                # Verify structure was fetched (either via API or from cache)
-                # The handler should return structure data
-                assert result.get("ok") is True or "atoms" in result or "error" in result
+
+                # Verify structure was fetched — handler returns CandidateDetailDTO.to_dict()
+                # or an error dict with "ok": False
+                assert "structure_vis" in result or "error" in result
     
     def test_daemon_list_providers(self):
         """Test daemon list_providers RPC (if exists)."""

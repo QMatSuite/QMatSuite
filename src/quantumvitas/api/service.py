@@ -1838,6 +1838,164 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
+        def import_online(
+            self,
+            session_id: str,
+            candidate_id: str,
+            name: str | None = None,
+        ) -> Any:
+            """
+            Import an online candidate structure into the project.
+
+            Loads the structure from the global online cache, canonicalizes it,
+            generates a unique name/slug, writes the structure file with online
+            provenance, and updates the project config.
+
+            Args:
+                session_id: Session ID from online search
+                candidate_id: Candidate ID to import
+                name: Optional name for the imported structure
+
+            Returns:
+                ImportOnlineResultDTO with structure_ulid, name, slug
+
+            Raises:
+                NotFoundError: If candidate not found in cache
+                APIError: If structure not available
+            """
+            try:
+                import json
+                import time as _time
+
+                from quantumvitas.api.errors import NotFoundError, APIError
+                from quantumvitas.api.types.online_search import (
+                    ImportOnlineResultDTO,
+                    StructureRefDTO,
+                )
+                from quantumvitas.io.online_cache import OnlineStructureCache
+                from quantumvitas.core.paths import get_qmatsuite_home_root
+                from quantumvitas.core.project_utils import (
+                    load_project_config,
+                    save_project_config,
+                    collect_slugs,
+                )
+                from quantumvitas.core.resources import (
+                    generate_unique_name_and_slug,
+                    meta_from_name,
+                    ensure_relative_path,
+                )
+                from quantumvitas.core.structure_canonicalize import (
+                    canonicalize_structure_like_in_place,
+                )
+                from quantumvitas.io import write_structure as _write_structure
+
+                project_root = self._service.project_root
+
+                # Use global cache (not project-local)
+                cache_dir = get_qmatsuite_home_root() / "cache" / "online_structures"
+                cache = OnlineStructureCache(cache_dir)
+
+                # Get candidate metadata
+                candidates_list = cache.get_candidates(session_id)
+                candidate = next(
+                    (c for c in candidates_list if c.candidate_id == candidate_id),
+                    None,
+                )
+
+                # Get structure from cache
+                structure = cache.get_structure(session_id, candidate_id)
+
+                if structure is None:
+                    # Try fetching via API
+                    ref = StructureRefDTO(
+                        session_id=session_id, candidate_id=candidate_id
+                    )
+                    doc_dto = QVService.OnlineSearch.fetch_structure(ref)
+
+                    from pymatgen.core import Structure as PMGStructure, Lattice
+                    from pymatgen.core import Molecule as PMGMolecule
+
+                    if doc_dto.structure_type == "crystal" and doc_dto.lattice:
+                        lattice = Lattice(doc_dto.lattice)
+                        species = [atom["element"] for atom in doc_dto.atoms]
+                        coords = [atom["coords"] for atom in doc_dto.atoms]
+                        structure = PMGStructure(
+                            lattice, species, coords, coords_are_cartesian=True
+                        )
+                    else:
+                        species = [atom["element"] for atom in doc_dto.atoms]
+                        coords = [atom["coords"] for atom in doc_dto.atoms]
+                        structure = PMGMolecule(species, coords)
+
+                if structure is None:
+                    raise APIError(
+                        f"Structure for candidate {candidate_id} not available"
+                    )
+
+                # Determine default name
+                default_name = (
+                    candidate.label
+                    if candidate
+                    else structure.composition.reduced_formula
+                )
+
+                # Canonicalize
+                canonicalize_structure_like_in_place(structure)
+
+                # Generate unique name/slug
+                config = load_project_config(project_root)
+                structures = config.setdefault("structures", [])
+                existing_slugs = collect_slugs(structures, project_root=project_root)
+
+                structure_name = name or default_name
+                final_name, final_slug = generate_unique_name_and_slug(
+                    kind="structure",
+                    preferred_name=structure_name,
+                    existing_slugs=existing_slugs,
+                )
+
+                # Write structure file
+                dest_path = project_root / "structures" / f"{final_slug}.json"
+                dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+                meta = meta_from_name(
+                    "structure",
+                    name=final_name,
+                    path=ensure_relative_path(dest_path, base=project_root),
+                )
+                _write_structure(structure, dest_path, metadata=meta)
+
+                # Add online provenance to structure JSON extra field
+                online_provenance = {
+                    "source": candidate.source if candidate else "unknown",
+                    "source_id": candidate.source_id if candidate else "",
+                    "session_id": session_id,
+                    "fetched_at": int(_time.time()),
+                    "score": candidate.score if candidate else 0.0,
+                    "flags": candidate.flags if candidate else [],
+                }
+
+                structure_data = json.loads(dest_path.read_text())
+                if "extra" not in structure_data:
+                    structure_data["extra"] = {}
+                structure_data["extra"]["online_provenance"] = online_provenance
+                dest_path.write_text(json.dumps(structure_data, indent=2))
+
+                # Add to project config
+                entry = {"structure_ulid": meta.ulid}
+                structures.append(entry)
+                save_project_config(project_root, config)
+
+                return ImportOnlineResultDTO(
+                    structure_ulid=meta.ulid,
+                    name=final_name,
+                    slug=final_slug,
+                )
+            except Exception as e:
+                if isinstance(e, APIError):
+                    raise
+                raise map_kernel_exception(e)
+
         def get_vis_data(
             self,
             selector: str,
@@ -2644,7 +2802,286 @@ class QVService:
                 )
             else:
                 raise APIError(f"Unsupported structure type: {type(structure)}")
-        
+
+        @staticmethod
+        def get_candidate_detail(
+            session_id: str,
+            candidate_id: str,
+            *,
+            display_mode: str = "primitive",
+            supercell: tuple[int, int, int] = (1, 1, 1),
+            box_bounds: tuple | None = None,
+            repeat_boundary: bool = False,
+        ) -> Any:
+            """
+            Get detailed structure data for an online candidate, including visualization.
+
+            Fetches structure from cache (or provider if not cached), converts to
+            primitive cell, builds provenance, runs the shared visualization pipeline,
+            and returns a CandidateDetailDTO ready for display.
+
+            Args:
+                session_id: Session ID from search
+                candidate_id: Candidate ID
+                display_mode: "primitive", "supercell", "conventional", or "box"
+                supercell: Supercell dimensions (used when display_mode="supercell")
+                box_bounds: Box bounds (used when display_mode="box")
+                repeat_boundary: Whether to repeat boundary atoms
+
+            Returns:
+                CandidateDetailDTO with visualization data, structure JSON, and provenance
+            """
+            import logging
+            import tempfile
+            from pathlib import Path
+
+            from quantumvitas.api.errors import NotFoundError, APIError
+            from quantumvitas.api.types.online_search import (
+                CandidateDetailDTO,
+                StructureRefDTO,
+            )
+            from quantumvitas.api.utils import (
+                DisplayModeParams,
+                build_structure_vis_payload,
+                write_structure,
+            )
+            from quantumvitas.io.online_cache import OnlineStructureCache
+            from quantumvitas.io.online_search import (
+                extract_provenance as _extract_provenance,
+            )
+            from quantumvitas.core.paths import get_qmatsuite_home_root
+
+            logger = logging.getLogger(__name__)
+
+            # --- 1. Resolve candidate from global cache ---
+            cache_dir = get_qmatsuite_home_root() / "cache" / "online_structures"
+            cache = OnlineStructureCache(cache_dir)
+
+            candidates = cache.get_candidates(session_id)
+            candidate = next(
+                (c for c in candidates if c.candidate_id == candidate_id), None
+            )
+            if candidate is None:
+                raise NotFoundError(
+                    f"Candidate {candidate_id} not found in session {session_id}",
+                    context={"candidate_id": candidate_id, "session_id": session_id},
+                )
+
+            # --- 2. Get or fetch structure ---
+            structure = cache.get_structure(session_id, candidate_id)
+
+            if structure is None:
+                # Use existing fetch_structure() API method
+                ref = StructureRefDTO(session_id=session_id, candidate_id=candidate_id)
+                doc_dto = QVService.OnlineSearch.fetch_structure(ref)
+
+                # Convert StructureDocDTO back to pymatgen for vis pipeline
+                from pymatgen.core import Structure as PMGStructure, Lattice
+                from pymatgen.core import Molecule as PMGMolecule
+
+                if doc_dto.structure_type == "crystal" and doc_dto.lattice:
+                    lattice = Lattice(doc_dto.lattice)
+                    species = [atom["element"] for atom in doc_dto.atoms]
+                    coords = [atom["coords"] for atom in doc_dto.atoms]
+                    structure = PMGStructure(
+                        lattice, species, coords, coords_are_cartesian=True
+                    )
+                else:
+                    species = [atom["element"] for atom in doc_dto.atoms]
+                    coords = [atom["coords"] for atom in doc_dto.atoms]
+                    structure = PMGMolecule(species, coords)
+
+            # --- 3. Convert to primitive cell ---
+            try:
+                structure = structure.get_primitive_structure()
+            except Exception as e:
+                logger.warning(f"Failed to get primitive structure, using as-is: {e}")
+
+            # --- 4. Build provenance from OPTIMADE metadata ---
+            metadata = cache.get_candidate_metadata(session_id, candidate_id) or {}
+            optimade_base = metadata.get("optimade_base")
+
+            # Retrieve optimade_raw from structure meta in cache
+            optimade_raw = None
+            try:
+                import sqlite3
+                import json as _json
+
+                conn = sqlite3.connect(cache.db_path)
+                try:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "SELECT structure_key FROM candidates "
+                        "WHERE session_id = ? AND candidate_id = ?",
+                        (session_id, candidate_id),
+                    )
+                    row = cursor.fetchone()
+                    if row and row[0]:
+                        cursor.execute(
+                            "SELECT meta FROM structures WHERE structure_key = ?",
+                            (row[0],),
+                        )
+                        meta_row = cursor.fetchone()
+                        if meta_row and meta_row[0]:
+                            meta_data = _json.loads(meta_row[0].decode("utf-8"))
+                            optimade_raw = meta_data.get("optimade_raw")
+                finally:
+                    conn.close()
+            except Exception as e:
+                logger.debug(f"Could not retrieve optimade_raw from cache: {e}")
+
+            provenance = None
+            if candidate.source == "optimade" and optimade_raw:
+                try:
+                    optimade_data = optimade_raw.get("data", {})
+                    optimade_attrs = optimade_data.get("attributes", {})
+
+                    provider = "main"
+                    database = "unknown"
+                    if optimade_base:
+                        parts = optimade_base.rstrip("/").split("/")
+                        if len(parts) >= 2:
+                            provider = (
+                                parts[-2]
+                                if parts[-2] in ["main", "archive"]
+                                else "main"
+                            )
+                            database = (
+                                parts[-1]
+                                if parts[-1]
+                                and parts[-1] not in ["v1", "structures"]
+                                else "unknown"
+                            )
+                        elif len(parts) == 1 and parts[0]:
+                            database = parts[0]
+
+                    provenance = _extract_provenance(
+                        provider=provider,
+                        database=database,
+                        base_url=optimade_base or "",
+                        optimade_id=candidate.source_id,
+                        attributes=optimade_attrs,
+                        raw=optimade_raw,
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to build provenance: {e}")
+                    provenance = {
+                        "source_name": "Materials Cloud OPTIMADE",
+                        "provider": "main",
+                        "database": "unknown",
+                        "base_url": optimade_base or "",
+                        "optimade_id": candidate.source_id,
+                    }
+            elif candidate.source == "cod":
+                provenance = {
+                    "source_name": "Crystallography Open Database (COD)",
+                    "provider": "cod",
+                    "database": "cod",
+                    "cod_id": candidate.source_id,
+                }
+
+            # --- 5. Run shared visualization pipeline ---
+            params = DisplayModeParams(
+                mode=display_mode,
+                supercell=supercell if display_mode == "supercell" else None,
+                box_bounds=box_bounds if display_mode == "box" else None,
+                repeat_boundary=repeat_boundary,
+            )
+
+            vis_payload = build_structure_vis_payload(
+                structure,
+                params,
+                structure_meta={"structure_ulid": f"online:{candidate_id}"},
+            )
+
+            # Format atoms for frontend
+            atoms_data = []
+            for atom in vis_payload.get("atoms", []):
+                atoms_data.append({
+                    "position": atom["cart_coords"],
+                    "cart_coords": atom["cart_coords"],
+                    "frac_coords": atom["frac_coords"],
+                    "symbol": atom["element"],
+                    "color": atom["color"],
+                    "radius": atom["radius"],
+                    "is_boundary": atom.get("is_boundary", False),
+                })
+
+            boundary_atoms_data = []
+            for atom in vis_payload.get("boundary_atoms", []):
+                boundary_atoms_data.append({
+                    "position": atom["cart_coords"],
+                    "cart_coords": atom["cart_coords"],
+                    "frac_coords": atom["frac_coords"],
+                    "symbol": atom["element"],
+                    "color": atom["color"],
+                    "radius": atom["radius"],
+                })
+
+            # Validate and format bonds
+            bonds_data = []
+            max_bond_idx = -1
+            atoms_data_len = len(atoms_data)
+
+            for bond in vis_payload.get("bonds", []):
+                idx1 = bond["idx1"]
+                idx2 = bond["idx2"]
+                max_bond_idx = max(max_bond_idx, idx1, idx2)
+                bonds_data.append({
+                    "idx1": idx1,
+                    "idx2": idx2,
+                    "coord1": bond.get("coord1", []),
+                    "coord2": bond.get("coord2", []),
+                    "distance": bond.get("distance", 0.0),
+                })
+
+            if bonds_data and max_bond_idx >= atoms_data_len:
+                raise ValueError(
+                    f"INVALID ONLINE PAYLOAD: bonds reference invalid atom indices. "
+                    f"maxBondIndex={max_bond_idx} >= atoms_len={atoms_data_len}."
+                )
+
+            vis_data = {
+                "atoms": atoms_data,
+                "boundary_atoms": boundary_atoms_data,
+                "bonds": bonds_data,
+                "lattice": vis_payload["lattice"],
+                "supercell": list(supercell) if display_mode == "supercell" else [1, 1, 1],
+                "display_mode": display_mode,
+            }
+
+            # --- 6. Serialize structure to JSON ---
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            ) as tmp:
+                tmp_path = Path(tmp.name)
+                write_structure(structure, tmp_path)
+                structure_json = tmp_path.read_text()
+                tmp_path.unlink()
+
+            # --- 7. Extract formula ---
+            formula = structure.composition.reduced_formula
+            if candidate.source == "optimade" and optimade_raw:
+                optimade_data = optimade_raw.get("data", {})
+                optimade_attrs = optimade_data.get("attributes", {})
+                opt_formula = optimade_attrs.get(
+                    "chemical_formula_reduced"
+                ) or optimade_attrs.get("chemical_formula_descriptive")
+                if opt_formula:
+                    formula = opt_formula
+
+            perf = vis_payload.get("perf")
+
+            return CandidateDetailDTO(
+                structure_vis=vis_data,
+                structure_json=structure_json,
+                formula=formula,
+                n_atoms=len(structure),
+                n_species=len(structure.composition),
+                provenance=provenance,
+                perf=perf,
+            )
+
         @staticmethod
         def list_providers(*, refresh_registry: bool = False) -> Any:
             """
