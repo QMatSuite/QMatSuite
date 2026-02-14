@@ -44,10 +44,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "bands",
-    "run_ulid": "01KHA1Z86R5AFPE50J2S1G8XWY",
-    "calc_ulid": "01KHA1Z7ZGEHP3EQ23RR0NA62E",
+    "run_ulid": "01KHC8KF5V97M61DQ5ZPKN0NJA",
+    "calc_ulid": "01KHC8KEZ2VP4VMYGX3Y53JM59",
     "step_ulids": [
-      "01KHA1Z7ZHCMRBA6VA34TZGC8B"
+      "01KHC8KEZ2VP4VMYGX3Y53JM5C"
     ],
     "gen_steps": [
       "bandspw"
@@ -57,17 +57,17 @@
       {
         "path": "raw/si.bands.dat.gnu",
         "size_bytes": 1352,
-        "mtime": 1770937893.4978235
+        "mtime": 1771011955.9496865
       },
       {
         "path": "raw/bands.out",
         "size_bytes": 10776,
-        "mtime": 1770937894.4088557
+        "mtime": 1771011956.851543
       },
       {
         "path": "raw/nscf.out",
         "size_bytes": 8140,
-        "mtime": 1770937890.82846
+        "mtime": 1771011953.3981545
       }
     ],
     "parser_name": "qe_bands",

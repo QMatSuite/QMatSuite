@@ -99,23 +99,29 @@ Engine Run Completes
 driver.ANALYSIS_CAPABILITIES  -- declares what this engine can analyze
     |
     v
-orchestrator: find_contiguous_match(capability, ordered_gen_steps)
+orchestrator: enumerate_all_matches(capabilities, ordered_done_steps)
+    |               ↑ Domain A: DONE steps only (incl. reused-skipped; provenance)
+    |               ↑ Domain B: full SSOT step list (UI, GEN-first, step-scoped)
+    v
+list[AnalysisInstance]  -- multiple matches per object_type allowed
     |
-    v  (CapabilityMatch)
+    v  (for each instance)
 get_parser(engine, object_type)  -- from @register_parser registry
     |
     v
 provider.can_parse(raw_dir) -> bool
-    |
+    |                           (False → MISSING_EVIDENCE)
     v
 provider.parse(evidence: EvidenceBundle) -> AnalysisObject
+    |                           (exception → PARSER_ERROR)
+    v
+analysis_object.to_primitives() -> CanonicalPrimitiveBundle  (→ OK)
     |
     v
-analysis_object.to_primitives() -> CanonicalPrimitiveBundle
-    |
-    v
-CAS storage + SQLite linkage (automatic)
+CAS storage + SQLite linkage (automatic, keyed by step_ulids)
 ```
+
+See `ANALYSIS_OBJECT_PRIMITIVES_SPEC.md` §5.3–§5.9 for matching domains, multi-match rules, result states, GEN-first semantics, engine effective-sequence selection (§5.4.9), and reused-skipped step inclusion.
 
 ### Registration Chain
 
@@ -511,8 +517,8 @@ These files are engine-agnostic and must NOT be modified when adding engine supp
 
 | File | Role |
 |------|------|
-| `src/quantumvitas/core/analysis/orchestrator.py` | Capability matching + provider dispatch |
-| `src/quantumvitas/core/analysis/capability.py` | `AnalysisCapability` + `find_contiguous_match()` |
+| `src/quantumvitas/core/analysis/orchestrator.py` | Multi-match enumeration + provider dispatch (see Spec §5.4, §5.9) |
+| `src/quantumvitas/core/analysis/capability.py` | `AnalysisCapability` + `find_contiguous_match()` + `enumerate_all_matches()` |
 | `src/quantumvitas/core/analysis/bundles.py` | `CanonicalPrimitiveBundle` + `DerivedPrimitiveBundle` |
 | `src/quantumvitas/core/analysis/cas_writer.py` | CAS blob write + SQLite row write |
 | `src/quantumvitas/core/analysis/base.py` | `AnalysisObjectMeta` + `SourceFileStat` |

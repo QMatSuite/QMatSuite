@@ -52,7 +52,11 @@ def write_analysis_snapshot_row(
     match_key: str | None = None,
     evidence_fingerprint: str | None = None,
 ) -> None:
-    """Insert or update analysis snapshot linkage in SQLite."""
+    """Insert or update analysis snapshot linkage in SQLite.
+
+    The UNIQUE constraint is (run_ulid, object_type, match_key) to support
+    multi-match semantics (spec v2.2 §10.4).
+    """
     conn = sqlite3.connect(str(db_path))
     try:
         columns = {
@@ -72,10 +76,9 @@ def write_analysis_snapshot_row(
                     run_ulid, object_type, canonical_sha, thumbnail_sha,
                     match_key, evidence_fingerprint, step_ulids, gen_steps
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(run_ulid, object_type) DO UPDATE SET
+                ON CONFLICT(run_ulid, object_type, match_key) DO UPDATE SET
                     canonical_sha = excluded.canonical_sha,
                     thumbnail_sha = COALESCE(excluded.thumbnail_sha, analysis_snapshots.thumbnail_sha),
-                    match_key = COALESCE(excluded.match_key, analysis_snapshots.match_key),
                     evidence_fingerprint = COALESCE(excluded.evidence_fingerprint, analysis_snapshots.evidence_fingerprint),
                     step_ulids = excluded.step_ulids,
                     gen_steps = excluded.gen_steps

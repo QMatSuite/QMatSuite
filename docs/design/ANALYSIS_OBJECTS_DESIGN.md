@@ -1,126 +1,221 @@
 # Analysis Objects — Spec-Aligned Design
 
-**Date**: 2026-02-12
+**Date**: 2026-02-13
 **Status**: Design document (normative for implementation)
+**Spec baseline**: ANALYSIS_OBJECT_PRIMITIVES_SPEC.md v2.2 BINDING (2026-02-13)
 **Empirical baseline**: 52 demos, 36 OK, 16 NO_ANALYSIS, 0 FAILED (post QE Composite Pipelines)
 
 ---
 
 ## 1. Spec-Aligned Definitions
 
-These definitions are derived from the authoritative specs and govern all terminology in this document.
+These definitions are derived from the authoritative spec (v2.2 BINDING) and govern all terminology in this document. Section references (§) refer to `ANALYSIS_OBJECT_PRIMITIVES_SPEC.md`.
 
-| Term | Definition |
-|------|-----------|
-| **Calculation** | An ordered sequence of GEN steps executed by one or more engines. The GEN step sequence is the calculation's identity for analysis enumeration. |
-| **GEN step** | Engine-agnostic intent string (`"scf"`, `"relax"`, `"bandspw"`, `"dos"`, `"vmc"`, `"td"`). Analysis capabilities are defined over ordered GEN step sequences. `step_type_spec = prefix + "_" + gen`. |
-| **AnalysisCapability** | A `(object_type, gen_step_sequence, evidence_files)` tuple declared by an engine driver. States: "this engine can produce object_type X from evidence found at the step(s) matching GEN sequence Y." |
-| **Expected instance** | A single match of an AnalysisCapability pattern against a contiguous slice of the calculation's GEN step sequence. One capability can produce many expected instances in a single calculation. |
-| **Parsed instance** | An expected instance where the parser successfully read evidence files and returned an AnalysisObject + CanonicalPrimitiveBundle. |
-| **Missing instance** | An expected instance that was NOT parsed. Either the capability is undeclared (Category A), the parser failed on evidence (Category B), or the sweep tool didn't probe it (Category C). |
+| Term | Definition | Spec ref |
+|------|-----------|----------|
+| **Calculation** | An ordered sequence of GEN steps executed by one or more engines. The GEN step sequence is the calculation's identity for analysis enumeration. | §1 |
+| **GEN step** | Engine-agnostic intent string (`"scf"`, `"relax"`, `"bandspw"`, `"dos"`, `"vmc"`, `"td"`). **All capability matching, UI selection, and enumeration are defined in GEN terms.** `step_type_spec = prefix + "_" + gen`. | §1, §5.4.1 |
+| **AnalysisCapability** | A `(object_type, gen_step_sequence, evidence_files)` tuple declared by an engine driver. States: "this engine can produce object_type X from evidence found at the step(s) matching GEN sequence Y." `gen_step_sequence` MUST NOT contain repeated step types (§5.4.6). | §5.2 |
+| **CapabilityMatch** | The result of matching an AnalysisCapability against an ordered GEN step list at a specific position. Contains `(object_type, effective_sequence, step_ulids, gen_steps, evidence_dirs)`. A single capability may produce **multiple** matches at different positions. | §5.4.8 |
+| **AnalysisInstance** | A single CapabilityMatch at a specific position. Uniquely identified by `(engine_name, object_type, step_ulids)`. Each instance produces exactly one **result state**: OK, MISSING_EVIDENCE, or PARSER_ERROR. | §5.4.7, §5.5 |
+| **Matching domain** | The context that determines which step list is used for capability matching. Three domains: **A** (Provenance — DONE steps only), **B** (Present-tense UI — full SSOT step list), **C** (Demo tests — equivalent to A). | §5.3 |
+| **Result state** | Each matched AnalysisInstance produces exactly one of: **OK** (parser succeeded), **MISSING_EVIDENCE** (match exists but evidence absent or no provider), **PARSER_ERROR** (evidence exists but parser raised). These are exhaustive and mutually exclusive. | §5.5 |
+| **Engine effective-sequence selection** | The ONLY allowed engine-specific deviation at the matching level: each engine may use the canonical `gen_step_sequence` as-is, OR use a strict in-order subsequence. No arbitrary sequences, reordering, or adding steps. | §5.4.9 |
 
 ### 1.1 Enumeration Semantics (normative)
 
-**Enumeration** is the act of computing ALL expected analysis instances for a calculation. The input is the engine's declared `ANALYSIS_CAPABILITIES` list and the calculation's ordered GEN step sequence. The output is a list of `AnalysisInstance` records.
+**Enumeration** is the act of computing ALL analysis instances for a given step list. The input is the engine's declared `ANALYSIS_CAPABILITIES` list and an ordered step list (which step list depends on the matching domain — see §1.4). The output is a list of `AnalysisInstance` records.
 
-**Core rule: ALL matches, not first match.** The same AnalysisObject type can match multiple times in a single calculation. Different AnalysisObject types can match independently. There is no "one match per object_type" limit.
+**Core matching rules (Spec §5.4):**
 
-**Normative example:**
+1. **Contiguous subsequence matching (§5.4.1):** A capability matches if its `gen_step_sequence` appears as a contiguous, ordered subsequence (sliding window) of the input step list. Matching is always in GEN terms — SPEC step types, engine prefixes, and engine identity play no role.
+2. **Multiple matches required (§5.4.2):** The same `object_type` MAY match multiple times at different positions. There is no "one match per object_type" limit.
+3. **Per-start-index longest-wins (§5.4.3):** If multiple capabilities of the SAME `object_type` match at the SAME start index, only the longest span survives. Ties: lower declaration index wins.
+4. **No cross-index collapse (§5.4.4):** Matches at different start indices are NEVER collapsed.
+5. **Different types are independent (§5.4.5):** Matching for one `object_type` does not affect another.
+6. **No repeated step types in capability (§5.4.6):** `gen_step_sequence` MUST NOT contain repeated step types (e.g., `["scf", "scf"]` is forbidden). Repeated steps in a calculation produce multiple matches of a single-step capability.
 
-Given GEN step sequence `[scf, scf, scf]` and capability `convergence → ["scf"]`:
-- Match at index 0 → Convergence instance #0 covering `[0, 1)`
-- Match at index 1 → Convergence instance #1 covering `[1, 2)`
-- Match at index 2 → Convergence instance #2 covering `[2, 3)`
-- **Result: 3 Convergence instances.**
+**Normative examples (from Spec §5.6):**
 
-Given GEN step sequence `[scf, nscf, bandspw, bands]` and capabilities `convergence → ["scf"]`, `bands → ["scf", "nscf", "bandspw", "bands"]`, `bands → ["bandspw"]`:
-- At index 0: convergence `["scf"]` matches `[0, 1)`; bands `["scf", "nscf", "bandspw", "bands"]` matches `[0, 4)`
-- At index 2: bands `["bandspw"]` matches `[2, 3)`; but bands `["scf", "nscf", "bandspw", "bands"]` does NOT match (wrong start)
-- Per-start-index longest-wins for bands at index 0: `[0, 4)` wins over nothing else at that index
-- Per-start-index longest-wins for bands at index 2: `[2, 3)` is the only candidate
-- **But** indices 0 and 2 are different start indices, so BOTH bands matches survive
-- **Result: 1 Convergence `[0,1)`, 2 Bands `[0,4)` and `[2,3)`**
+**Example 1 — Repeated SCF:**
+Given `[scf, scf, scf]` and capability `convergence → ["scf"]`:
+- Match at index 0 → Convergence #0, `step_ulids=[S0]`
+- Match at index 1 → Convergence #1, `step_ulids=[S1]`
+- Match at index 2 → Convergence #2, `step_ulids=[S2]`
+- **Result: 3 convergence instances with distinct `step_ulids`.**
 
-### 1.2 Algorithm: `enumerate_expected_instances()`
+**Example 2 — Repeated bands pipeline:**
+Given `[scf, bandspw, bands, bandspw, bands]` (S0–S4) and capabilities `convergence → ["scf"]`, `bands → ["bandspw", "bands"]`:
+- Convergence at index 0 → `step_ulids=[S0]`
+- Bands at index 1 → `step_ulids=[S1, S2]`
+- Bands at index 3 → `step_ulids=[S3, S4]`
+- **Result: 1 convergence + 2 bands = 3 instances.**
+
+**Example 3 — Longest-wins:**
+Given `[scf, bandspw, bands]` (S0–S2) and capabilities `convergence → ["scf"]`, `bands → ["bandspw", "bands"]`, `bands → ["bandspw"]`:
+- At index 1: both `bands → ["bandspw", "bands"]` (len=2) and `bands → ["bandspw"]` (len=1) match. Longest wins: `[S1, S2]`.
+- **Result: 1 convergence + 1 bands = 2 instances.**
+
+### 1.2 Algorithm: `enumerate_all_matches()` (Spec §5.9)
 
 ```
-Input:
-  capabilities : list[AnalysisCapability]   — from driver.ANALYSIS_CAPABILITIES
-  gen_steps    : list[str]                  — ordered GEN step names of the calculation
-                                              (e.g., ["scf", "nscf", "dos"])
+enumerate_all_matches(engine_name, capabilities, ordered_steps) -> list[AnalysisInstance]:
 
-Output:
-  list[AnalysisInstance]
+    instances = []
 
-Algorithm:
+    for start_idx in range(len(ordered_steps)):
 
-  instances = []
+        # 1. Collect all capabilities whose pattern matches starting at start_idx
+        matches_at_start = []
+        for cap_idx, cap in enumerate(capabilities):
+            pat = cap.gen_step_sequence
+            end_idx = start_idx + len(pat)
+            if end_idx > len(ordered_steps):
+                continue
+            if [s.gen_step for s in ordered_steps[start_idx:end_idx]] == pat:
+                matches_at_start.append( (cap.object_type, start_idx, end_idx, cap_idx) )
 
-  for start_idx in range(len(gen_steps)):
+        # 2. Per-start-index longest-wins: group by object_type;
+        #    within each group keep only the longest span.
+        #    Tie-break on span length: lower cap_idx (declaration order) wins.
+        best_per_type = {}
+        for (otype, s, e, cidx) in matches_at_start:
+            span_len = e - s
+            prev = best_per_type.get(otype)
+            if prev is None:
+                best_per_type[otype] = (otype, s, e, cidx, span_len)
+            else:
+                _, _, _, prev_cidx, prev_len = prev
+                if span_len > prev_len or (span_len == prev_len and cidx < prev_cidx):
+                    best_per_type[otype] = (otype, s, e, cidx, span_len)
 
-      # 1. Collect all capabilities whose pattern matches starting at start_idx
-      matches_at_start = []
-      for cap_idx, cap in enumerate(capabilities):
-          pat = cap.gen_step_sequence
-          end_idx = start_idx + len(pat)
-          if end_idx > len(gen_steps):
-              continue
-          if gen_steps[start_idx : end_idx] == pat:
-              matches_at_start.append( (cap.object_type, start_idx, end_idx, cap_idx) )
+        # 3. Emit one AnalysisInstance per surviving match at this start_idx
+        for (otype, s, e, cidx, _) in best_per_type.values():
+            eff_seq = capabilities[cidx].gen_step_sequence
+            sulids  = [ordered_steps[i].step_ulid for i in range(s, e)]
+            instances.append( AnalysisInstance(
+                object_type        = otype,
+                effective_sequence = eff_seq,
+                step_ulids         = sulids,
+                gen_steps          = [ordered_steps[i].gen_step for i in range(s, e)],
+                evidence_dirs      = [ordered_steps[i].raw_dir for i in range(s, e)],
+                match_key          = canonical_match_key(engine_name, otype, eff_seq, sulids),
+            ))
 
-      # 2. Group by object_type; within each group keep only the longest span.
-      #    Tie-break on span length: lower cap_idx (declaration order) wins.
-      best_per_type = {}
-      for (otype, s, e, cidx) in matches_at_start:
-          span_len = e - s
-          prev = best_per_type.get(otype)
-          if prev is None:
-              best_per_type[otype] = (otype, s, e, cidx, span_len)
-          else:
-              _, _, _, prev_cidx, prev_len = prev
-              if span_len > prev_len or (span_len == prev_len and cidx < prev_cidx):
-                  best_per_type[otype] = (otype, s, e, cidx, span_len)
-
-      # 3. Emit one AnalysisInstance per surviving match at this start_idx
-      for (otype, s, e, cidx, _) in best_per_type.values():
-          instances.append( AnalysisInstance(
-              object_type = otype,
-              span        = (s, e),            # half-open [start, end)
-              gen_steps   = gen_steps[s : e],   # matched GEN step names
-          ))
-
-  # 4. Assign ordinals: per object_type, number instances 0, 1, 2, ...
-  #    ordered by span start index (stable — start indices are unique per type
-  #    because step 2 keeps at most one match per type per start index).
-  from collections import Counter
-  ordinal_counter = Counter()
-  instances.sort(key=lambda inst: (inst.object_type, inst.span[0]))
-  for inst in instances:
-      inst.ordinal = ordinal_counter[inst.object_type]
-      ordinal_counter[inst.object_type] += 1
-
-  return instances
+    return instances
 ```
 
-**Key properties:**
+**Key properties (from Spec §5.9):**
 
-- **Per-start-index longest-wins**: If two capabilities of the SAME object_type both match starting at the same index, only the longer span survives. This prevents double-counting at a single step.
-- **No cross-index collapse**: Matches at different start indices are NEVER collapsed, even if they overlap. A capability matching at index 0 and another at index 2 are independent instances.
-- **Different types are independent**: Convergence matching at index 0 and Bands matching at index 0 coexist — the longest-wins rule applies only within the same object_type at the same start index.
-- **Declaration order breaks ties**: Among same-length patterns of the same type at the same start, the capability declared earlier in `ANALYSIS_CAPABILITIES` wins.
+- **No "first match" early exit:** The loop visits every start index and emits all matches.
+- **Per-start-index longest-wins:** Prevents double-counting at a single position.
+- **No cross-index collapse:** Matches at different start indices are independent.
+- **Declaration order breaks ties:** Among same-length patterns of the same type at the same start, the capability declared earlier in `ANALYSIS_CAPABILITIES` wins.
+- **Deterministic:** Given the same input, always produces the same output in the same order.
+- **Simple:** Expressible as a for-loop with a sliding window. No graph resolution, no priority queues.
 
-### 1.3 AnalysisInstance Record
+### 1.3 AnalysisInstance Record (Spec §5.4.7–5.4.8)
 
-Each enumerated instance carries:
+Each matched instance is uniquely identified by a **match_key** derived from four identity inputs:
+
+```
+Identity inputs: (engine_name, object_type, effective_sequence, step_ulids)
+
+match_key = canonical_match_key(engine_name, object_type, effective_sequence, step_ulids)
+```
+
+The `match_key` MUST be produced by a single canonical function (`canonical_match_key`) from these inputs. The function must be **stable** (same inputs → same key across process restarts) and **bijective** (different identity tuples → different keys). No ad-hoc string concatenation across layers. All code that needs to identify, compare, or look up instances MUST call this one function.
+
+Each instance carries:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `object_type` | str | e.g., `"convergence"`, `"bands"`, `"spectrum"` |
-| `span` | (int, int) | Half-open `[start, end)` indices into the GEN step sequence |
-| `gen_steps` | list[str] | The matched GEN step names (slice of the calculation's sequence) |
-| `ordinal` | int | 0-based index within this object_type for this calculation |
+| `effective_sequence` | list[str] | The engine's effective GEN step sequence that matched (from §1.6) |
+| `step_ulids` | list[str] | Ordered ULIDs of the matched steps |
+| `gen_steps` | list[str] | Corresponding GEN step names (at matched positions) |
+| `evidence_dirs` | list[Path] | Corresponding raw evidence directories |
+| `match_key` | str | Canonical identity key (derived, not stored independently) |
 
-**Critical framing**: Analysis is not boolean ("has analysis" / "no analysis"). Every calculation has an expected set of analysis instances derived mechanically from its GEN step sequence crossed with the engine's declared capabilities. The gap between expected and parsed is the actionable delta.
+A matched step MAY appear in multiple CapabilityMatches of **different** `object_type` (e.g., an SCF step may be covered by both a convergence match and a bands match whose sequence starts with SCF).
+
+**Why `effective_sequence` is in the identity:** Two engines may declare different effective sequences for the same `object_type` (e.g., VASP bands `["bandspw"]` vs a future engine bands `["bandspw", "bands"]`). If the same `step_ulids` were matched by both (hypothetically, in a multi-engine calculation), they must be distinguishable. Including `effective_sequence` also makes the match_key self-describing for provenance/debug.
+
+**Critical framing**: Analysis is not boolean ("has analysis" / "no analysis"). Every calculation has an expected set of analysis instances derived mechanically from its GEN step sequence crossed with the engine's declared capabilities. Each instance produces a result state (OK / MISSING_EVIDENCE / PARSER_ERROR). The gap between expected and OK is the actionable delta.
+
+### 1.4 Matching Domains (Spec §5.3)
+
+Three distinct contexts trigger capability matching. Each uses a **different input step list**. Confusing the domains leads to incorrect provenance or broken UI.
+
+#### Domain A: Provenance (Post-Run Recording)
+
+**Purpose:** Write ground-truth analysis results into provenance (SQLite/CAS) after a run completes.
+
+**Input step list:** This run's ordered GEN step list, restricted to steps that are DONE/VALID. Reused-skipped steps (incrementally skipped but still DONE/VALID from this run's perspective) MUST be included — they are DONE even though they were not re-executed.
+
+**Rules:**
+- After matching, attempt parse for ALL matched instances.
+- Record each result with its state: OK, MISSING_EVIDENCE, or PARSER_ERROR (§1.5).
+- Invoked once at end-of-run in the post-run pipeline.
+
+**Why reused-skipped steps matter:** If an incremental run reuses steps S1 (scf) and S2 (bandspw) from a previous run, then only executes S3 (bands), the DONE list must be `[scf, bandspw, bands]`. Otherwise, a bands capability `["bandspw", "bands"]` would fail to match, and provenance would lack bands analysis despite the complete pipeline (Spec Example 6, §5.6).
+
+#### Domain B: Present-Tense UI (Interactive Viewing)
+
+**Purpose:** Interactive analysis viewing when a user clicks a step in the GUI.
+
+**Input step list:** The FULL calculation step list from present-tense SSOT (`step.yaml`). NOT filtered by DONE. NOT requiring knowledge of `run_id`.
+
+**Rules:**
+- **Enumeration is step-scoped:** Given a selected step, enumerate ONLY the AnalysisInstances whose matched span contains that step's ULID. A single instance may appear under multiple steps (membership-based, not ownership-based).
+- **Driver selection is PER SELECTED STEP (normative):** Resolve the `engine_prefix` from the selected step's `step_type_spec`, and use that engine's capabilities, effective-sequence selection, and provider/parser dispatch. Do NOT resolve a single driver from the calculation-level `engine_family` — a multi-engine calculation (e.g., QE→W90→QMCPACK) has steps owned by different engines, and each step's analysis must be dispatched through its owning engine's driver.
+- Parsing is best-effort. If evidence is missing, show a missing state. Stale evidence is acceptable.
+- Invoked on-demand when the UI requests analysis for a step.
+
+#### Domain C: Demo Tests (Full-Run Verification)
+
+**Purpose:** Verify analysis completeness after a demo's full calculation run.
+
+**Rules:** Same as Domain A. All steps are expected to be DONE; if any step is not DONE, the demo test itself fails.
+
+#### Domain Selection Table (Spec §5.7)
+
+| API Endpoint / Action | Domain | Input Step List |
+|-----------------------|:------:|----------------|
+| Post-run provenance writer | **A** | This run's DONE steps only |
+| UI "view analysis for step" | **B** | Full present-tense SSOT step list |
+| UI "list available analyses for calculation" | **B** | Full present-tense SSOT step list |
+| Demo verification sweep | **C** | Domain A + full-run expectation |
+| Provenance replay / snapshot comparison | N/A | Reads from CAS; no live matching |
+
+### 1.5 Result States (Spec §5.5)
+
+For each matched AnalysisInstance, parsing is attempted and produces exactly one result:
+
+| State | Meaning | Action |
+|-------|---------|--------|
+| **OK** | Parser produced a valid AnalysisObject + CanonicalPrimitiveBundle | Persist to CAS; link in SQLite |
+| **MISSING_EVIDENCE** | Match exists but evidence absent (`can_parse()` → False) or no provider registered. Reason subfield: `NO_PROVIDER` or `NO_EVIDENCE`. | Record as missing in provenance; do NOT persist an empty bundle; MUST NOT crash (Inv-A13). |
+| **PARSER_ERROR** | Evidence exists but `parse()` or `to_primitives()` raised an exception | Record as error; log exception; do NOT persist |
+
+**Important:** MISSING_EVIDENCE is NOT a success. Do NOT emit an "OK" result with empty/placeholder payload.
+
+### 1.6 Engine Effective-Sequence Selection (Spec §5.4.9)
+
+Each analysis object type has a **canonical gen_step_sequence** (engine-agnostic). Engine specialization at the matching level is restricted to:
+
+- **Option (a):** Use the canonical sequence as-is (common case), OR
+- **Option (b):** Use a strict in-order subsequence of the canonical sequence.
+
+No arbitrary sequences, reordering, or adding steps not in the canonical sequence.
+
+| Object type | Canonical sequence | Engine | Effective sequence | Rationale |
+|---|---|---|---|---|
+| `bands` | `["bandspw", "bands"]` | VASP | `["bandspw"]` | VASP reads EIGENVAL/PROCAR from the NSCF step directory alone; effective sequence is a 1-element subsequence of canonical |
+| `bands` | `["bandspw", "bands"]` | QE | `["bandspw", "bands"]` | QE uses canonical as-is (default) |
+| `convergence` | `["scf"]` | all | `["scf"]` | Already length 1; no subset possible |
+
+Note: The existing QE and VASP driver code both declare `gen_step_sequence=["bandspw"]` in `ANALYSIS_CAPABILITIES`. Whether QE should use the canonical 2-step sequence or the 1-element subset is an implementation decision to be resolved when updating the drivers; the table above shows the spec-default (canonical as-is) for QE. VASP is the clear and uncontroversial subset example.
 
 ---
 
@@ -128,36 +223,46 @@ Each enumerated instance carries:
 
 | Document | Path | Authority | Key content |
 |----------|------|-----------|-------------|
-| **AnalysisObject Primitives Spec** | `docs/laws/L2/ANALYSIS_OBJECT_PRIMITIVES_SPEC.md` | BINDING v1.5 | 14 invariants (Inv-A1–A14), data model, post-run pipeline, capability matching |
+| **AnalysisObject Primitives Spec** | `docs/laws/L2/ANALYSIS_OBJECT_PRIMITIVES_SPEC.md` | BINDING v2.2 | 14 invariants (Inv-A1–A14), data model, post-run pipeline, three matching domains (A/B/C), result states (OK/MISSING_EVIDENCE/PARSER_ERROR), `enumerate_all_matches()` algorithm, engine effective-sequence selection, GEN-first semantics |
 | **Analysis Objects Framework** | (merged into ANALYSIS_OBJECT_PRIMITIVES_SPEC.md §0) | Retired | Two-layer philosophy, system boundaries, domain objects |
-| **Analysis Pipeline Playbook** | `docs/laws/L2/ANALYSIS_PIPELINE_PLAYBOOK.md` | Implementation guide | Recipe A (extend engine), Recipe B (add object type), triangle pattern |
+| **Analysis Pipeline Playbook** | `docs/laws/L2/ANALYSIS_PIPELINE_PLAYBOOK.md` | Implementation guide | Recipe A (extend engine), Recipe B (add object type), triangle pattern, domain-aware data flow |
 | **Analysis Pipeline Review** | `docs/history/audits/ANALYSIS_PIPELINE_REVIEW.md` | Review (2026-02-10) | Spec compliance matrix (13/14 PASS), engine×analysis capability matrix |
 | **Step Type GEN/SPEC Constitution** | `docs/laws/L1/STEP_TYPE_GEN_SPEC_CONSTITUTION.md` | Final v1.1 | GEN/SPEC derivation rule, GenStepRegistry as SSOT |
 | **Driver capabilities** | `src/quantumvitas/drivers/*/driver.py` | Code (SSOT) | `ANALYSIS_CAPABILITIES` list per engine — the ONLY source for what analysis an engine can produce |
 
 ### 2.1 Current Code vs This Design
 
-The current orchestrator (`src/quantumvitas/core/analysis/orchestrator.py`) and matching function (`src/quantumvitas/core/analysis/capability.py`) implement **first-match-per-type** semantics: one result per `object_type`, longest sequence wins globally, `find_contiguous_match()` returns the first sliding-window hit. This is a **spec violation** relative to the all-matches semantics defined in §1.1–1.2 above. The implementation must be updated to match this design before the enumeration semantics are correct.
+The current orchestrator (`src/quantumvitas/core/analysis/orchestrator.py`) and matching function (`src/quantumvitas/core/analysis/capability.py`) have the following spec violations:
+
+1. **First-match-per-type semantics:** `find_contiguous_match()` returns the first sliding-window hit. One result per `object_type`, longest wins globally. Violates §5.4.2 (multiple matches required) and §5.9 (`enumerate_all_matches()`).
+2. **No matching domains:** The code does not distinguish Domain A / Domain B / Domain C (§5.3). All calls use the same undifferentiated step list.
+3. **No result states:** No OK / MISSING_EVIDENCE / PARSER_ERROR distinction (§5.5). Parse failures raise or are silently skipped rather than being recorded as structured states.
+4. **No step-scoped UI enumeration:** No Domain B membership-based association (§5.3, Domain B).
+
+The implementation must be updated to match the Spec §5.3–5.9 before the enumeration semantics are correct.
 
 ---
 
 ## 3. Root Cause Taxonomy
 
-Every missing analysis instance falls into exactly one of three categories:
+Every missing analysis instance falls into exactly one of three categories. Categories B1 and B2 map directly to the spec's result states (§1.5).
 
 ### Category A — Expected capability not declared
 
-The engine COULD produce this analysis (it has the data in its output), but no `AnalysisCapability` entry exists in the driver's `ANALYSIS_CAPABILITIES` list for the relevant `gen_step_sequence`. The orchestrator never even attempts a match.
+The engine COULD produce this analysis (it has the data in its output), but no `AnalysisCapability` entry exists in the driver's `ANALYSIS_CAPABILITIES` list for the relevant `gen_step_sequence`. The `enumerate_all_matches()` algorithm (§1.2) never produces a match — the instance is not enumerated at all.
 
+**Spec result state:** N/A (no match, no instance to record).
 **Fix**: Add the missing `AnalysisCapability` to the driver + create/wire the parser.
 
 ### Category B — Capability declared, parsing failed
 
-An `AnalysisCapability` entry exists, the enumeration produces an expected instance, but either:
-- (B1) `can_parse()` returns False — evidence files not present in `raw/`
-- (B2) `parse()` raises an exception — evidence exists but parser can't handle it
+An `AnalysisCapability` entry exists, `enumerate_all_matches()` produces an AnalysisInstance, but the parse attempt yields a non-OK result state:
 
-**Fix**: For B1, ensure the demo's engine run produces the expected evidence files (may need input parameter changes). For B2, fix the parser.
+- **(B1) MISSING_EVIDENCE (reason: NO_EVIDENCE):** `can_parse()` returns False — evidence files not present in `raw/`. Per Spec §5.5, this records `MISSING_EVIDENCE` with reason `NO_EVIDENCE`, NOT an empty OK.
+- **(B1') MISSING_EVIDENCE (reason: NO_PROVIDER):** No parser is registered for this `(engine, object_type)`. Per Spec §5.5 and Inv-A13, this is non-fatal at runtime but caught by CI gate tests.
+- **(B2) PARSER_ERROR:** Evidence exists but `parse()` raises an exception. Per Spec §5.5, this records `PARSER_ERROR` with exception details logged.
+
+**Fix**: For B1, ensure the demo's engine run produces the expected evidence files. For B1', register the parser. For B2, fix the parser.
 
 ### Category C — Sweep instrumentation incomplete
 
@@ -447,9 +552,14 @@ def _get_engine_analysis_types(engine: str) -> list[str]:
 
 This ensures the sweep tool always probes exactly what the driver declares. No manual sync needed.
 
-### 7.5 Action 5: Update orchestrator to all-matches semantics
+### 7.5 Action 5: Update orchestrator to spec-compliant matching
 
-The current `run_post_run_analysis()` in `orchestrator.py` implements first-match-per-type. It must be updated to implement the `enumerate_expected_instances()` algorithm from §1.2, producing ALL matches across all start indices.
+The current `run_post_run_analysis()` in `orchestrator.py` has four spec violations (§2.1). It must be updated to:
+
+1. **Replace `find_contiguous_match()` with `enumerate_all_matches()`** (Spec §5.9, design §1.2) — producing ALL matches across all start indices.
+2. **Implement matching domains** (Spec §5.3, design §1.4) — Domain A for post-run provenance, Domain B for UI step-scoped enumeration.
+3. **Produce structured result states** (Spec §5.5, design §1.5) — OK / MISSING_EVIDENCE / PARSER_ERROR per matched instance, recorded in provenance.
+4. **Support multi-row SQLite linkage** — Multiple rows per `(run_ulid, object_type)` when multi-match occurs (Spec §10.4).
 
 This is a prerequisite for correct analysis enumeration in multi-step calculations (e.g., scf→scf→scf producing 3 convergence instances, or scf→td producing convergence + spectrum).
 
@@ -461,7 +571,7 @@ This is a prerequisite for correct analysis enumeration in multi-step calculatio
 | 2: Fix evidence for GPAW bands + Psi4 trajectory | 2 | ~0.5 day (investigation + fix) |
 | 3: spectrum for gen="td" (requires new Spectrum domain object) | 2 | ~1.5 days (new domain object + 2 parsers) |
 | 4: Eliminate ENGINE_ANALYSIS_TYPES | 0 (instrumentation) | ~0.5 day |
-| 5: Update orchestrator to all-matches | 0 (correctness) | ~0.5 day |
+| 5: Update orchestrator to spec-compliant matching (§5.3–5.9) | 0 (correctness) | ~1 day |
 | **Total** | **14 + 2** | **~5 days** |
 
 Note: QMCPACK demos (qmcpack_he_vmc, qmcpack_h2_vmc) are resolved by Action 1 via convergence for `["vmc"]`. These are counted in Action 1's 10 demos.
@@ -513,7 +623,10 @@ After closing the 16 NO_ANALYSIS gaps, the next priorities for new types:
 - [ ] GPAW bands evidence issue resolved (gpaw_si_bands produces bands bundle)
 - [ ] Psi4 trajectory evidence issue resolved (psi4_h2o_opt produces trajectory bundle)
 - [ ] `ENGINE_ANALYSIS_TYPES` dict in `generate_ref_packs_realrun.py` replaced with dynamic derivation from `ANALYSIS_CAPABILITIES`
-- [ ] Orchestrator updated to all-matches enumeration (§1.2 algorithm)
+- [ ] Orchestrator updated to `enumerate_all_matches()` (Spec §5.9, design §1.2)
+- [ ] Orchestrator implements matching domains A/B/C (Spec §5.3, design §1.4)
+- [ ] Orchestrator produces result states OK/MISSING_EVIDENCE/PARSER_ERROR (Spec §5.5, design §1.5)
+- [ ] SQLite supports multi-row per `(run_ulid, object_type)` for multi-match (Spec §10.4)
 - [ ] Full demo sweep: 52 demos, ≥52 OK, 0 NO_ANALYSIS, 0 FAILED
 - [ ] pytest green: ≥5459 passed, 0 failed
 
@@ -529,10 +642,28 @@ After closing the 16 NO_ANALYSIS gaps, the next priorities for new types:
 - [x] Document does not contain "first match" or "one match per object_type" semantics
 - [x] Document explicitly states "ALL matches" and gives scf-scf-scf → 3 convergence as a normative example
 - [x] Document does not suggest or imply "td produces Convergence"; td maps to spectrum
-- [x] Algorithmic definition of `enumerate_expected_instances()` is unambiguous and implementable
+- [x] Algorithmic definition of `enumerate_all_matches()` (Spec §5.9) is unambiguous and implementable
 - [x] No mention of "fallback/baseline analysis"
 - [x] No mention of "ENGINE_ANALYSIS_TYPES as probe truth"
 - [x] No boolean "has analysis" framing — uses expected/parsed/missing instances
 - [x] Sources of Truth section cites spec doc paths
 - [x] Type count within 8±2 range (9 types)
 - [x] Framed as a design document, not a review
+
+### For Spec v2.2 alignment:
+
+- [x] References ANALYSIS_OBJECT_PRIMITIVES_SPEC.md v2.2 BINDING (not v1.4 or v1.5)
+- [x] Notes Framework retirement (merged into Spec §0)
+- [x] Algorithm uses spec name `enumerate_all_matches()` (Spec §5.9), not `enumerate_expected_instances()`
+- [x] Three matching domains (A, B, C) documented with purpose, input step list, and rules (§1.4)
+- [x] Domain Selection table included (Spec §5.7)
+- [x] Result states (OK, MISSING_EVIDENCE, PARSER_ERROR) documented with actions (§1.5)
+- [x] MISSING_EVIDENCE reason subfields (NO_PROVIDER, NO_EVIDENCE) distinguished
+- [x] Reused-skipped steps included in Domain A (Spec §5.3, Example 6)
+- [x] UI step-to-analysis association is membership-based (Domain B, §1.4)
+- [x] Engine effective-sequence selection documented (Spec §5.4.9, §1.6)
+- [x] No-repeated-step-types constraint noted (Spec §5.4.6)
+- [x] AnalysisInstance identity key `(engine_name, object_type, effective_sequence, step_ulids)` with canonical `match_key` function documented (§1.3)
+- [x] CapabilityMatch structure includes `step_ulids` and `evidence_dirs` (Spec §5.4.8)
+- [x] Root cause taxonomy maps to result states (§3)
+- [x] Multi-row SQLite linkage noted in acceptance criteria (Spec §10.4)

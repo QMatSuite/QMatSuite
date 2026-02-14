@@ -51,28 +51,25 @@ log = logging.getLogger("refpack_gen")
 
 # ---------------------------------------------------------------------------
 # Analysis object types to probe per engine.
-# Derived from each engine's ANALYSIS_CAPABILITIES in driver.py.
-# The generator probes ALL listed types; missing ones are silently skipped.
+# Dynamically derived from each engine's ANALYSIS_CAPABILITIES in driver.py.
 # ---------------------------------------------------------------------------
-ENGINE_ANALYSIS_TYPES: dict[str, list[str]] = {
-    "qe": ["convergence", "bands", "dos", "trajectory"],
-    "vasp": ["convergence", "bands", "dos", "trajectory"],
-    "abinit": ["convergence", "bands", "dos", "trajectory"],
-    "cp2k": ["convergence", "bands", "dos", "trajectory"],
-    "siesta": ["convergence", "bands", "dos", "trajectory"],
-    "gpaw": ["bands", "dos", "trajectory"],
-    "lammps": ["trajectory"],
-    "xtb": ["trajectory"],
-    "orca": ["trajectory"],
-    "gaussian": ["trajectory"],
-    "psi4": ["trajectory"],
-    "pyscf": ["trajectory"],
-    "w90": ["field3d"],
-    # These engines have no ANALYSIS_CAPABILITIES — run succeeds but no
-    # chart-renderable analysis bundles are produced.
-    "yambo": [],
-    "qmcpack": [],
-}
+def _get_engine_analysis_types(engine: str) -> list[str]:
+    """Derive analysis types from driver's ANALYSIS_CAPABILITIES."""
+    import quantumvitas.drivers  # noqa: F401 — ensure registration
+    from quantumvitas.core.driver_registry import DriverRegistry
+
+    try:
+        driver = DriverRegistry.get_driver(engine)
+    except Exception:
+        return []
+    caps = getattr(driver, "ANALYSIS_CAPABILITIES", []) or []
+    seen: set[str] = set()
+    result: list[str] = []
+    for cap in caps:
+        if cap.object_type not in seen:
+            seen.add(cap.object_type)
+            result.append(cap.object_type)
+    return result
 
 
 def _compute_sha256(data: bytes) -> str:
@@ -203,7 +200,7 @@ def generate_one_demo(
 
         # Step 3: Probe analysis types
         run_ulid = run_dto.run_ulid
-        analysis_types = ENGINE_ANALYSIS_TYPES.get(engine, [])
+        analysis_types = _get_engine_analysis_types(engine)
         bundles: dict[str, dict] = {}
 
         for obj_type in analysis_types:
@@ -275,7 +272,7 @@ def main():
 
     if args.dry_run:
         for d in demos:
-            types = ENGINE_ANALYSIS_TYPES.get(d["engine"], [])
+            types = _get_engine_analysis_types(d["engine"])
             print(f"  {d['slug']:40s} engine={d['engine']:10s} probe={types}")
         return True
 

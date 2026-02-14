@@ -27,6 +27,7 @@ EXEMPT_METHODS: dict[str, str] = {
     "get_analysis": "Operational derivation requires completed run evidence and parser-capability matching setup",
     "get_analysis_snapshot": "Explicit replay path requires SQLite snapshot linkage and CAS objects from completed runs",
     "get_field3d_grid": "Requires completed run with field3d evidence (cube files) and parser-capability matching setup",
+    "get_analysis_instances_for_step": "Domain B step-scoped enumeration requires calculation with steps and parser-capability matching setup",
 }
 
 

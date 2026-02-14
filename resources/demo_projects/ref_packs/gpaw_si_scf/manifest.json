@@ -1,0 +1,13 @@
+{
+  "demo_slug": "gpaw_si_scf",
+  "engine": "gpaw",
+  "generated_at": "2026-02-13T19:42:06.882922+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "1034da4fc4a2bc266266dc8fd46837a347c23f5ce7606c26c5695eff6696be8d"
+    }
+  }
+}

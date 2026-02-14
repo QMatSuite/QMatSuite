@@ -14,7 +14,13 @@ def test_get_analysis_rederives_when_source_files_change(tmp_path: Path) -> None
     calc_dir = Path(ctx["calc_dir"])
 
     first = svc.analysis.get_analysis(run_ulid=run_ulid, object_type="bands")
-    first_entry = dict(svc._analysis_index[(run_ulid, "bands")])
+    # Find the memo entry for bands (match_key varies)
+    first_entry = None
+    for key, val in svc._analysis_index.items():
+        if key[0] == run_ulid and key[1] == "bands":
+            first_entry = dict(val)
+            break
+    assert first_entry is not None
     assert first["bundle"]["bundle_kind"] == "canonical"
 
     bands_file = calc_dir / "raw" / "si.bands.dat.gnu"
@@ -24,7 +30,12 @@ def test_get_analysis_rederives_when_source_files_change(tmp_path: Path) -> None
     )
 
     second = svc.analysis.get_analysis(run_ulid=run_ulid, object_type="bands")
-    second_entry = dict(svc._analysis_index[(run_ulid, "bands")])
+    second_entry = None
+    for key, val in svc._analysis_index.items():
+        if key[0] == run_ulid and key[1] == "bands":
+            second_entry = dict(val)
+            break
+    assert second_entry is not None
 
     assert second["bundle"]["bundle_kind"] == "canonical"
     assert second["object_type"] == "bands"

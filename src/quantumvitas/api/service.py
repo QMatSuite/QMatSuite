@@ -41,7 +41,7 @@ class QVService:
             raise ValueError(f"Not a project: {self.project_root}")
         self._analysis_cas_dir = self.project_root / ".provenance" / ".cas" / "analysis"
         self._analysis_memo_by_sha: dict[str, object] = {}
-        self._analysis_index: dict[tuple[str, str], dict[str, object]] = {}
+        self._analysis_index: dict[tuple[str, str, str], dict[str, object]] = {}
 
     def _safe_step_type_gen(self, step_type_spec: str) -> str:
         """Convert SPEC step type to GEN with robust fallback."""
@@ -101,9 +101,10 @@ class QVService:
         canonical: object,
         calc_dir: Path,
         evidence_fingerprint: str,
+        match_key: str = "",
     ) -> None:
         self._analysis_memo_by_sha[canonical_sha] = canonical
-        self._analysis_index[(run_ulid, object_type.lower())] = {
+        self._analysis_index[(run_ulid, object_type.lower(), match_key)] = {
             "canonical_sha": canonical_sha,
             "calc_dir": str(calc_dir),
             "evidence_fingerprint": evidence_fingerprint,
@@ -113,10 +114,11 @@ class QVService:
         self,
         run_ulid: str,
         object_type: str,
+        match_key: str = "",
     ) -> object | None:
         from quantumvitas.core.analysis.base import AnalysisObjectMeta, check_staleness
 
-        index_entry = self._analysis_index.get((run_ulid, object_type.lower()))
+        index_entry = self._analysis_index.get((run_ulid, object_type.lower(), match_key))
         if not index_entry:
             return None
 
@@ -143,7 +145,7 @@ class QVService:
         )
         calc_dir = Path(str(index_entry.get("calc_dir", "")))
         if check_staleness(meta, calc_dir=calc_dir):
-            self._analysis_index.pop((run_ulid, object_type.lower()), None)
+            self._analysis_index.pop((run_ulid, object_type.lower(), match_key), None)
             return None
         return bundle
 
@@ -222,6 +224,11 @@ class QVService:
                 continue
             gen_step = self._safe_step_type_gen(step_type_spec)
             raw_dir = Path(getattr(summary, "working_dir"))
+            # Python-script engines (Psi4, PySCF, GPAW) store output in
+            # step_artifacts/<ulid>/ rather than the working dir.
+            step_artifacts_dir = raw_dir.parent / "step_artifacts" / step_ulid
+            if step_artifacts_dir.exists() and not any(raw_dir.glob("*.out")) and not any(raw_dir.glob("*.log")):
+                raw_dir = step_artifacts_dir
             ordered_steps.append((step_ulid, gen_step, raw_dir))
         return ordered_steps
 
@@ -271,14 +278,25 @@ class QVService:
             calc_dir=calc_dir,
         )
 
+        from quantumvitas.core.analysis.capability import ResultState
+
         db_path = self._get_analysis_db_path()
         for row in results:
-            canonical = row["canonical"]
-            object_type = str(row["object_type"])
+            if row.state != ResultState.OK:
+                logger.info(
+                    "Analysis match %s [%s]: %s%s",
+                    row.object_type,
+                    ",".join(row.step_ulids),
+                    row.state.value,
+                    f" ({row.reason.value})" if row.reason else "",
+                )
+                continue
+            canonical = row.canonical
+            object_type = str(row.object_type)
             try:
                 canonical_sha = write_canonical_to_cas(canonical, self._analysis_cas_dir)
                 provenance = canonical.provenance_meta
-                match_key = f"{object_type}:{','.join(provenance.step_ulids)}"
+                match_key = row.match_key
                 evidence_fingerprint = self._compute_evidence_fingerprint(
                     object_type=object_type,
                     step_ulids=list(provenance.step_ulids),
@@ -302,6 +320,7 @@ class QVService:
                     canonical=canonical,
                     calc_dir=calc_dir,
                     evidence_fingerprint=evidence_fingerprint,
+                    match_key=match_key,
                 )
             except Exception as exc:
                 logger.warning("Analysis snapshot persistence failed (non-fatal): %s", exc)
@@ -324,6 +343,38 @@ class QVService:
             self._persist_eager_analysis_snapshots(calculation, run_result)
         except Exception as exc:
             logger.warning("Eager analysis persistence failed (non-fatal): %s", exc)
+
+    @staticmethod
+    def _find_step_evidence_dir(raw_dir: Path, step_ulid: str, gen_step: str) -> Path:
+        """Resolve evidence directory for a step within a calculation raw dir.
+
+        Priority:
+        1. raw/<step_ulid>/  (exact ULID match, e.g. VASP ISOLATED)
+        2. raw/step_artifacts/<step_ulid>/  (Python-script engines: Psi4, PySCF, GPAW)
+        3. raw/<gen_step>_<ulid_suffix>/  (recipe-created dirs: ORCA, Gaussian)
+        4. raw/  (SHARED workdir: QE, or any fallback)
+
+        Empty directories are skipped (QE creates empty step_artifacts dirs).
+        """
+        # 1. Exact ULID dir
+        step_raw_dir = raw_dir / step_ulid
+        if step_raw_dir.exists() and any(step_raw_dir.iterdir()):
+            return step_raw_dir
+
+        # 2. step_artifacts/<ulid>
+        step_artifacts_dir = raw_dir / "step_artifacts" / step_ulid
+        if step_artifacts_dir.exists() and any(step_artifacts_dir.iterdir()):
+            return step_artifacts_dir
+
+        # 3. Recipe-created: <gen_step>_<ulid_suffix>/
+        #    e.g. scf_JF0ZXA for ulid ...DEAGJF0ZXA (last 6 chars)
+        ulid_suffix = step_ulid[-6:] if len(step_ulid) >= 6 else step_ulid
+        recipe_dir = raw_dir / f"{gen_step}_{ulid_suffix}"
+        if recipe_dir.exists() and recipe_dir.is_dir():
+            return recipe_dir
+
+        # 4. Fallback: shared raw dir
+        return raw_dir
 
     def _resolve_run_analysis_context(
         self, run_ulid: str
@@ -380,10 +431,9 @@ class QVService:
             if not step_type_spec:
                 continue
             gen_step = self._safe_step_type_gen(step_type_spec)
-            # Prefer per-step raw evidence directory when present; fallback to
-            # calculation raw root for legacy/non-step-scoped outputs.
-            step_raw_dir = raw_dir / step_ulid
-            evidence_dir = step_raw_dir if step_raw_dir.exists() else raw_dir
+            evidence_dir = self._find_step_evidence_dir(
+                raw_dir, step_ulid, gen_step
+            )
             ordered_gen_steps.append((step_ulid, gen_step, evidence_dir))
 
         return str(calc_ulid), calc_dir, engine, driver, ordered_gen_steps
@@ -404,9 +454,16 @@ class QVService:
 
             raise NotFoundError(f"No run steps available for run {run_ulid}")
 
-        memoized = self._get_memoized_canonical_bundle(run_ulid, object_type)
-        if memoized is not None:
-            return memoized
+        # Try memoized first (no match_key = backward compat first-match)
+        # We scan all memo entries for this (run_ulid, object_type) since
+        # caller doesn't specify match_key.
+        for memo_key, memo_val in list(self._analysis_index.items()):
+            if memo_key[0] == run_ulid and memo_key[1] == object_type.lower():
+                memoized = self._get_memoized_canonical_bundle(
+                    run_ulid, object_type, match_key=memo_key[2]
+                )
+                if memoized is not None:
+                    return memoized
 
         results = run_post_run_analysis(
             engine=engine,
@@ -417,9 +474,11 @@ class QVService:
             calc_dir=calc_dir,
         )
 
+        from quantumvitas.core.analysis.capability import ResultState
+
         selected = None
         for row in results:
-            if str(row.get("object_type", "")).lower() == object_type.lower():
+            if row.state == ResultState.OK and row.object_type.lower() == object_type.lower():
                 selected = row
                 break
         if selected is None:
@@ -429,10 +488,10 @@ class QVService:
                 f"Analysis object '{object_type}' not available for run {run_ulid}"
             )
 
-        canonical = selected["canonical"]
+        canonical = selected.canonical
         canonical_sha = compute_canonical_sha(canonical)
         provenance = canonical.provenance_meta
-        match_key = f"{object_type}:{','.join(provenance.step_ulids)}"
+        match_key = selected.match_key
         evidence_fingerprint = self._compute_evidence_fingerprint(
             object_type=object_type,
             step_ulids=list(provenance.step_ulids),
@@ -460,6 +519,7 @@ class QVService:
             canonical=canonical,
             calc_dir=calc_dir,
             evidence_fingerprint=evidence_fingerprint,
+            match_key=match_key,
         )
         return canonical
 
@@ -1062,6 +1122,124 @@ class QVService:
                 "bundle": bundle.to_dict(),
             }
 
+        def get_analysis_instances_for_step(
+            self,
+            calc_selector: str,
+            step_ulid: str,
+        ) -> dict:
+            """
+            Domain B step-scoped enumeration (spec §5.3-B).
+
+            Returns all analysis instances whose matched step_ulids include the
+            given step_ulid. Best-effort: attempts parse if evidence exists.
+            """
+            import logging
+
+            from quantumvitas.core.analysis.capability import (
+                ResultState,
+                enumerate_all_matches,
+            )
+            from quantumvitas.core.analysis.orchestrator import run_post_run_analysis
+            from quantumvitas.core.driver_registry import DriverRegistry
+            from quantumvitas.core.models import load_calculation
+            from quantumvitas.core.project_utils import load_project_config
+            from quantumvitas.core.resolution import (
+                make_structure_selector_resolver,
+                require_calculation,
+            )
+
+            import quantumvitas.drivers  # noqa: F401
+
+            logger = logging.getLogger(__name__)
+            project_root = self._service.project_root
+
+            calc_resolved = require_calculation(project_root, calc_selector)
+            calc_dir = calc_resolved.absolute_path
+            if calc_dir.name == "calculation.yaml":
+                calc_dir = calc_dir.parent
+
+            config = load_project_config(project_root)
+            resolver = make_structure_selector_resolver(project_root, config=config)
+            calc_model = load_calculation(
+                calc_dir / "calculation.yaml",
+                project_root=project_root,
+                resolve_structure_selector=resolver,
+            )
+
+            engine = getattr(calc_model, "engine_family", "") or ""
+            if not engine and calc_model.steps:
+                first_spec = calc_model.steps[0].step_type_spec or ""
+                if "_" in first_spec:
+                    from quantumvitas.workflow.step_type_convert import prefix_from
+                    engine = prefix_from(first_spec)
+            if not engine:
+                return {"instances": []}
+
+            driver = DriverRegistry.get_driver(engine)
+            capabilities = getattr(driver, "ANALYSIS_CAPABILITIES", []) or []
+
+            # Build ordered gen_steps from ALL calculation steps (Domain B)
+            ordered_gen_steps: list[tuple[str, str]] = []
+            for step_entry in calc_model.steps:
+                s_ulid = step_entry.step_ulid or ""
+                s_spec = step_entry.step_type_spec or ""
+                if not s_ulid or not s_spec:
+                    continue
+                gen_step = self._service._safe_step_type_gen(s_spec)
+                from pathlib import Path as _Path
+                from quantumvitas.calculation.naming import find_calculation_raw_dir
+                raw_dir = find_calculation_raw_dir(
+                    calc_dir, getattr(calc_model, "working_dir", None)
+                )
+                evidence_dir = QVService._find_step_evidence_dir(
+                    raw_dir, s_ulid, gen_step
+                )
+                ordered_gen_steps.append((s_ulid, gen_step, evidence_dir))
+
+            matches = enumerate_all_matches(capabilities, ordered_gen_steps)
+            # Filter to instances containing the selected step_ulid
+            relevant = [m for m in matches if step_ulid in m.step_ulids]
+
+            instances = []
+            for match in relevant:
+                entry = {
+                    "object_type": match.object_type,
+                    "step_ulids": match.step_ulids,
+                    "gen_steps": match.gen_steps,
+                    "state": ResultState.MISSING_EVIDENCE.value,
+                    "bundle": None,
+                }
+                # Best-effort parse
+                try:
+                    from quantumvitas.parsers.registry import get_parser
+                    provider_cls = get_parser(engine, match.object_type)
+                    if provider_cls is not None:
+                        provider = provider_cls()
+                        primary_raw_dir = match.evidence_dirs[0]
+                        if not hasattr(provider, "can_parse") or provider.can_parse(primary_raw_dir):
+                            from quantumvitas.core.analysis.evidence import EvidenceBundle
+                            evidence = EvidenceBundle(
+                                primary_raw_dir=primary_raw_dir,
+                                calc_dir=calc_dir,
+                                run_ulid=None,
+                                calc_ulid=None,
+                                step_ulids=match.step_ulids,
+                                gen_steps=match.gen_steps,
+                                engine_name=engine,
+                                evidence_steps=[],
+                            )
+                            obj = provider.parse(evidence)
+                            canonical = obj.to_primitives()
+                            entry["state"] = ResultState.OK.value
+                            entry["bundle"] = canonical.to_dict()
+                except Exception as exc:
+                    logger.debug("Domain B parse attempt failed (non-fatal): %s", exc)
+                    entry["state"] = ResultState.PARSER_ERROR.value
+
+                instances.append(entry)
+
+            return {"instances": instances}
+
         def get_field3d_grid(self, run_ulid: str) -> dict:
             """Materialize full Field3D grid data to .scratch/ for frontend consumption."""
             import json
@@ -1087,10 +1265,12 @@ class QVService:
                 calc_dir=calc_dir,
             )
 
+            from quantumvitas.core.analysis.capability import ResultState
+
             field3d_obj = None
             for row in results:
-                if str(row.get("object_type", "")).lower() == "field3d":
-                    field3d_obj = row.get("analysis_object")
+                if row.state == ResultState.OK and row.object_type.lower() == "field3d":
+                    field3d_obj = row.analysis_object
                     break
 
             if field3d_obj is None or not isinstance(field3d_obj, Field3D):

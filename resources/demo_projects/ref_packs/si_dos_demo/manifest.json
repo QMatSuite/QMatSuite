@@ -1,17 +1,17 @@
 {
   "demo_slug": "si_dos_demo",
   "engine": "qe",
-  "generated_at": "2026-02-12T23:16:20.421863+00:00",
+  "generated_at": "2026-02-13T19:50:34.339575+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
-    "convergence": {
-      "file": "convergence.json",
-      "sha256": "83e9612b5485512a9b8ddfaf35ebdc21226661a6920de8424aed254be3b6fde3"
-    },
     "dos": {
       "file": "dos.json",
-      "sha256": "e404727042ccbff94f727bfda0479bd2f56e0106b6c7887e2a188782d03b133f"
+      "sha256": "1cf722ffe514b76cbfd22723c388a89f8766e0e334093b42db52277c39d7ceaf"
+    },
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "ae63690ab73a31b5c5177650d675ff1d474a7b3e4d939ed77e7f937eed2aceaf"
     }
   }
 }

@@ -1,17 +1,17 @@
 {
   "demo_slug": "abinit_si_relax",
   "engine": "abinit",
-  "generated_at": "2026-02-12T23:02:54.191560+00:00",
+  "generated_at": "2026-02-13T19:38:56.370839+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "8161baaf921e3631667f04e953ada893acad3b6c7aa3cf082711b201bc5441ad"
+      "sha256": "e921a1788706550be176fd46679ab15dc634a2bab013f4a66216fcc7e6b1daaa"
     },
     "trajectory": {
       "file": "trajectory.json",
-      "sha256": "5afa5770d79fad7299164c088d2e4350e4a6982d65dc781bd41c6e4eba786cc5"
+      "sha256": "56d2d03e167d46881ba49c1e3877844226a39ed16f36eb9df287f59b4372b5b5"
     }
   }
 }

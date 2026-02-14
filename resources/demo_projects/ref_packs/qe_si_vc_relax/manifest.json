@@ -1,17 +1,17 @@
 {
   "demo_slug": "qe_si_vc_relax",
   "engine": "qe",
-  "generated_at": "2026-02-12T23:12:37.589351+00:00",
+  "generated_at": "2026-02-13T19:46:58.507538+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "3acd5e46195a250feda807cec13a681d6a0897af77795cfeec2d45e71d8c9a69"
+      "sha256": "03c441eb310b42c42494f3e6447d116558dac33c9b084845959f4781ffab7832"
     },
     "trajectory": {
       "file": "trajectory.json",
-      "sha256": "f2ca92a2fba8b86b6d5b5ebf00cac1e98f45fd83684bda3d38b7bb95cd2ca2e4"
+      "sha256": "fe5510a662300c121e00630383a3acf2781ce97798ec0efcb6023b2f45458120"
     }
   }
 }

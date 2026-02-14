@@ -25,8 +25,11 @@ def test_orchestrator_real_qe_driver_registration_chain() -> None:
         calc_dir=raw_dir.parent,
     )
 
-    assert len(results) == 1
-    entry = results[0]
-    assert entry["object_type"] == "bands"
-    assert isinstance(entry["canonical"], CanonicalPrimitiveBundle)
-    assert entry["canonical"].bundle_kind == "canonical"
+    from quantumvitas.core.analysis.capability import ResultState
+
+    ok_results = [r for r in results if r.state == ResultState.OK]
+    assert len(ok_results) >= 1
+    entry = ok_results[0]
+    assert entry.object_type == "bands"
+    assert isinstance(entry.canonical, CanonicalPrimitiveBundle)
+    assert entry.canonical.bundle_kind == "canonical"

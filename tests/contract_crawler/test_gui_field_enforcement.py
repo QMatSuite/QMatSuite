@@ -22,7 +22,7 @@ from tests.contract_crawler.recipes import get_recipe_for_method
 from tests.contract_crawler.payloads import get_minimal_payload
 from tests.contract_crawler.golden_comparison import load_golden
 
-MANIFEST_PATH = Path(__file__).parent.parent.parent / "gui_required_fields_manifest.json"
+MANIFEST_PATH = Path(__file__).parent / "gui_required_fields_manifest.json"
 
 # Hard redline: Missing these fields = test FAILS (GUI breaks)
 # Covers ALL manifest methods with successful golden fixtures.

@@ -11,4 +11,7 @@ from .driver import QMCPACKDriver
 # Register driver at import time
 DriverRegistry.register(QMCPACKDriver())
 
+# Import parsers to trigger @register_parser registration
+from . import parsers  # noqa: F401, E402
+
 __all__ = ["QMCPACKDriver"]

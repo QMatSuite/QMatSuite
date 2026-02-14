@@ -12,7 +12,12 @@ import quantumvitas.core.analysis.orchestrator as orchestrator_mod
 from quantumvitas.core.analysis.band_structure import BandStructure, HighSymPoint
 from quantumvitas.core.analysis.base import AnalysisObjectMeta
 from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle
-from quantumvitas.core.analysis.capability import AnalysisCapability
+from quantumvitas.core.analysis.capability import (
+    AnalysisCapability,
+    AnalysisResult,
+    MissingReason,
+    ResultState,
+)
 from quantumvitas.core.analysis.evidence import EvidenceBundle
 from quantumvitas.core.analysis.orchestrator import run_post_run_analysis
 from quantumvitas.drivers.qe.driver import QEDriver
@@ -103,9 +108,10 @@ def test_orchestrator_matches_capabilities_and_skips_non_matching(monkeypatch: p
         calc_dir=tmp_path,
     )
 
-    assert len(results) == 1
-    assert results[0]["object_type"] == "bands"
-    assert isinstance(results[0]["canonical"], CanonicalPrimitiveBundle)
+    ok_results = [r for r in results if r.state == ResultState.OK]
+    assert len(ok_results) == 1
+    assert ok_results[0].object_type == "bands"
+    assert isinstance(ok_results[0].canonical, CanonicalPrimitiveBundle)
 
 
 def test_orchestrator_skips_capability_when_provider_cannot_parse(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -128,7 +134,12 @@ def test_orchestrator_skips_capability_when_provider_cannot_parse(monkeypatch: p
         calc_dir=tmp_path,
     )
 
-    assert results == []
+    ok_results = [r for r in results if r.state == ResultState.OK]
+    assert ok_results == []
+    # Should have a MISSING_EVIDENCE result
+    missing = [r for r in results if r.state == ResultState.MISSING_EVIDENCE]
+    assert len(missing) == 1
+    assert missing[0].reason == MissingReason.NO_EVIDENCE
 
 
 def test_orchestrator_continues_after_one_capability_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -161,8 +172,14 @@ def test_orchestrator_continues_after_one_capability_failure(monkeypatch: pytest
             calc_dir=tmp_path,
         )
 
-    assert len(results) == 1
-    assert results[0]["object_type"] == "bands"
+    ok_results = [r for r in results if r.state == ResultState.OK]
+    assert len(ok_results) == 1
+    assert ok_results[0].object_type == "bands"
+
+    error_results = [r for r in results if r.state == ResultState.PARSER_ERROR]
+    assert len(error_results) == 1
+    assert error_results[0].object_type == "dos"
+    assert "synthetic parse failure" in error_results[0].error
 
 
 def test_orchestrator_integration_qe_bands_real_fixture() -> None:
@@ -177,10 +194,117 @@ def test_orchestrator_integration_qe_bands_real_fixture() -> None:
         calc_dir=raw_dir.parent,
     )
 
-    assert len(results) >= 1
-    bands_results = [row for row in results if row["object_type"] == "bands"]
-    assert len(bands_results) == 1
+    ok_results = [r for r in results if r.state == ResultState.OK]
+    bands_results = [r for r in ok_results if r.object_type == "bands"]
+    assert len(bands_results) >= 1
 
     bands_row = bands_results[0]
-    assert bands_row["canonical"].bundle_kind == "canonical"
-    assert bands_row["analysis_object"].meta.object_type == "bands"
+    assert bands_row.canonical.bundle_kind == "canonical"
+    assert bands_row.analysis_object.meta.object_type == "bands"
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Multi-match orchestrator tests (spec v2.2)
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def test_orchestrator_multi_match_scf_scf_scf(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """3 SCF steps → 3 convergence OK results."""
+    driver = MockDriver(
+        ANALYSIS_CAPABILITIES=[
+            AnalysisCapability(object_type="convergence", gen_step_sequence=["scf"]),
+        ]
+    )
+
+    monkeypatch.setattr(orchestrator_mod, "get_parser", lambda e, o: SuccessfulBandsProvider)
+
+    ordered = [
+        ("S1", "scf", tmp_path / "s1"),
+        ("S2", "scf", tmp_path / "s2"),
+        ("S3", "scf", tmp_path / "s3"),
+    ]
+    results = run_post_run_analysis(engine="qe", driver=driver, ordered_gen_steps=ordered, calc_dir=tmp_path)
+    ok = [r for r in results if r.state == ResultState.OK]
+    assert len(ok) == 3
+    assert [r.step_ulids for r in ok] == [["S1"], ["S2"], ["S3"]]
+
+
+def test_orchestrator_missing_provider_returns_missing_evidence(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """AC5: missing provider → MISSING_EVIDENCE(NO_PROVIDER), no crash."""
+    driver = MockDriver(
+        ANALYSIS_CAPABILITIES=[
+            AnalysisCapability(object_type="unknown_thing", gen_step_sequence=["scf"]),
+        ]
+    )
+
+    monkeypatch.setattr(orchestrator_mod, "get_parser", lambda e, o: None)
+
+    with pytest.warns(UserWarning, match="No analysis provider"):
+        results = run_post_run_analysis(
+            engine="qe",
+            driver=driver,
+            ordered_gen_steps=[("S1", "scf", tmp_path)],
+            calc_dir=tmp_path,
+        )
+
+    assert len(results) == 1
+    assert results[0].state == ResultState.MISSING_EVIDENCE
+    assert results[0].reason == MissingReason.NO_PROVIDER
+
+
+def test_orchestrator_parser_error_returns_parser_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """AC11: parse() exception → PARSER_ERROR with error string."""
+    driver = MockDriver(
+        ANALYSIS_CAPABILITIES=[
+            AnalysisCapability(object_type="bands", gen_step_sequence=["bandspw"]),
+        ]
+    )
+
+    monkeypatch.setattr(orchestrator_mod, "get_parser", lambda e, o: FailingProvider)
+
+    with pytest.warns(UserWarning, match="failed"):
+        results = run_post_run_analysis(
+            engine="qe",
+            driver=driver,
+            ordered_gen_steps=[("S1", "bandspw", tmp_path)],
+            calc_dir=tmp_path,
+        )
+
+    assert len(results) == 1
+    assert results[0].state == ResultState.PARSER_ERROR
+    assert "synthetic parse failure" in results[0].error
+
+
+def test_orchestrator_result_states_exhaustive(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Every matched instance gets exactly one of OK/MISSING_EVIDENCE/PARSER_ERROR."""
+    driver = MockDriver(
+        ANALYSIS_CAPABILITIES=[
+            AnalysisCapability(object_type="ok_type", gen_step_sequence=["scf"]),
+            AnalysisCapability(object_type="no_prov", gen_step_sequence=["relax"]),
+            AnalysisCapability(object_type="fail_type", gen_step_sequence=["md"]),
+        ]
+    )
+
+    def _get_parser(engine, object_type):
+        if object_type == "ok_type":
+            return SuccessfulBandsProvider
+        if object_type == "fail_type":
+            return FailingProvider
+        return None
+
+    monkeypatch.setattr(orchestrator_mod, "get_parser", _get_parser)
+
+    ordered = [
+        ("S1", "scf", tmp_path / "s1"),
+        ("S2", "relax", tmp_path / "s2"),
+        ("S3", "md", tmp_path / "s3"),
+    ]
+
+    with pytest.warns(UserWarning):
+        results = run_post_run_analysis(engine="qe", driver=driver, ordered_gen_steps=ordered, calc_dir=tmp_path)
+
+    assert len(results) == 3
+    states = {r.object_type: r.state for r in results}
+    assert states["ok_type"] == ResultState.OK
+    assert states["no_prov"] == ResultState.MISSING_EVIDENCE
+    assert states["fail_type"] == ResultState.PARSER_ERROR

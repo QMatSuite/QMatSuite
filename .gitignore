@@ -31,6 +31,12 @@ env/
 *.swp
 *.swo
 *~
+# Legacy Eclipse project files
+.classpath
+.project
+.settings/
+# Legacy CI
+.travis.yml
 
 # Testing
 .pytest_cache/
@@ -64,8 +70,21 @@ extended-tests/*.log
 *.log
 *.err
 
-# Engine runtime artifacts (Yambo timer, etc.)
+# Engine runtime artifacts
 timer.dat
+# Siesta temp files
+CLOCK
+MESSAGES
+INPUT_TMP.*
+siesta.alloc
+qmmm_block_input
+fdf.*.log
+# Yambo temp files
+l_p2y
+l_setup*
+r_setup*
+# Gaussian temp files
+Gau-*.inp
 
 # Generated test results
 test_results*.txt

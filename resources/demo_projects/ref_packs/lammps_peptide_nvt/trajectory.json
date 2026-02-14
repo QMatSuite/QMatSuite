@@ -24,10 +24,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "trajectory",
-    "run_ulid": "01KHA1RCBQ3TF0ZHQEEZAGPGV8",
-    "calc_ulid": "01KHA1RC8FNHGQBRA9XYKQQR4Z",
+    "run_ulid": "01KHC8CRK4VZXKYF9GJVQX7K7Z",
+    "calc_ulid": "01KHC8CRG4XHHE7Z4QA2Y9BBEZ",
     "step_ulids": [
-      "01KHA1RC8FNHGQBRA9XYKQQR50"
+      "01KHC8CRG4XHHE7Z4QA2Y9BBF0"
     ],
     "gen_steps": [
       "md"
@@ -35,14 +35,14 @@
     "engine_name": "lammps",
     "source_files": [
       {
-        "path": "raw/01KHA1RC8FNHGQBRA9XYKQQR50/dump.lammpstrj",
+        "path": "raw/01KHC8CRG4XHHE7Z4QA2Y9BBF0/dump.lammpstrj",
         "size_bytes": 437694,
-        "mtime": 1770937661.7832868
+        "mtime": 1771011729.9699154
       },
       {
-        "path": "raw/01KHA1RC8FNHGQBRA9XYKQQR50/log.lammps",
+        "path": "raw/01KHC8CRG4XHHE7Z4QA2Y9BBF0/log.lammps",
         "size_bytes": 8235,
-        "mtime": 1770937661.784387
+        "mtime": 1771011729.9705765
       }
     ],
     "parser_name": "lammps_trajectory",

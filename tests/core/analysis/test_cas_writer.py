@@ -96,7 +96,8 @@ def test_write_analysis_snapshot_row_upsert(tmp_path: Path) -> None:
     finally:
         conn.close()
 
-    # Upsert keeps link semantics: same (run_ulid, object_type) points to latest sha.
+    # With multi-match semantics, a different match_key creates a NEW row
+    # (not an upsert), since UNIQUE is (run_ulid, object_type, match_key).
     write_analysis_snapshot_row(
         db_path=db_path,
         run_ulid="01RUN",
@@ -110,19 +111,50 @@ def test_write_analysis_snapshot_row_upsert(tmp_path: Path) -> None:
 
     conn = sqlite3.connect(str(db_path))
     try:
-        row = conn.execute(
+        rows = conn.execute(
             """
             SELECT canonical_sha, step_ulids, gen_steps, match_key, evidence_fingerprint
             FROM analysis_snapshots
             WHERE run_ulid = ? AND object_type = ?
+            ORDER BY match_key
             """,
             ("01RUN", "bands"),
+        ).fetchall()
+        # Two distinct match_keys → two rows (AC9: multi-match SQLite)
+        assert len(rows) == 2
+        # First row: bands:01STEP1
+        assert rows[0][0] == "a" * 64
+        assert rows[0][3] == "bands:01STEP1"
+        # Second row: bands:01STEP1,01STEP2
+        assert rows[1][0] == "b" * 64
+        assert rows[1][3] == "bands:01STEP1,01STEP2"
+    finally:
+        conn.close()
+
+    # Upsert with SAME match_key overwrites the existing row
+    write_analysis_snapshot_row(
+        db_path=db_path,
+        run_ulid="01RUN",
+        object_type="bands",
+        canonical_sha="c" * 64,
+        step_ulids=["01STEP1"],
+        gen_steps=["bandspw"],
+        match_key="bands:01STEP1",
+        evidence_fingerprint="fp-3",
+    )
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        row = conn.execute(
+            """
+            SELECT canonical_sha, evidence_fingerprint
+            FROM analysis_snapshots
+            WHERE run_ulid = ? AND object_type = ? AND match_key = ?
+            """,
+            ("01RUN", "bands", "bands:01STEP1"),
         ).fetchone()
         assert row is not None
-        assert row[0] == "b" * 64
-        assert json.loads(row[1]) == ["01STEP1", "01STEP2"]
-        assert json.loads(row[2]) == ["scf", "bandspw"]
-        assert row[3] == "bands:01STEP1,01STEP2"
-        assert row[4] == "fp-2"
+        assert row[0] == "c" * 64  # Updated
+        assert row[1] == "fp-3"  # Updated
     finally:
         conn.close()
