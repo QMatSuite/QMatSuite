@@ -532,60 +532,46 @@ def _expand_step_ulids_to_steps(step_ulids: list, calc_absolute_path: str) -> li
     """
     Expand step_ulids (list of ULIDs) to full steps array.
 
-    Reads calculation.yaml to get step_ulid → type mapping.
+    Reads calculation.yaml via load_calculation (API layer) to get step_ulid → type mapping.
 
     Args:
         step_ulids: List of step ULIDs
         calc_absolute_path: Absolute path to calculation directory
 
     Returns:
-        List of step dicts with {step_ulid, id, type}
+        List of step dicts with {step_ulid, ulid, step_type_gen}
     """
     if not step_ulids or not calc_absolute_path:
         return []
 
     from pathlib import Path
-    import yaml
 
     calc_dir = Path(calc_absolute_path)
     calc_yaml = calc_dir / "calculation.yaml"
 
     if not calc_yaml.exists():
-        # Fallback: return minimal steps with just IDs
         return [{"step_ulid": sid, "ulid": sid, "step_type_gen": ""} for sid in step_ulids]
 
     try:
+        from quantumvitas.api.utils import load_calculation
         from quantumvitas.api import get_step_type_gen
 
-        with open(calc_yaml) as f:
-            calc_data = yaml.safe_load(f) or {}
+        project_root = calc_dir.parent.parent  # calculations/<slug>/ -> project root
+        wf_model = load_calculation(calc_yaml, project_root=project_root)
 
-        # Build step_ulid → type mapping from calculation.yaml
-        # calculation.yaml uses step_type_spec (e.g., "qe_scf"), need to convert to gen (e.g., "scf")
+        # Build step_ulid → gen type mapping from the model
         step_type_map = {}
-        for step_entry in calc_data.get("steps", []):
-            sid = step_entry.get("step_ulid")
-            # Try step_type_spec first (Constitution v1.1), fallback to type for backwards compat
-            stype_spec = step_entry.get("step_type_spec") or step_entry.get("type", "")
+        for entry in wf_model.steps:
+            sid = entry.step_ulid
+            stype_spec = entry.step_type_spec or ""
             if sid and stype_spec:
                 try:
                     step_type_map[sid] = get_step_type_gen(stype_spec)
                 except (KeyError, ValueError):
-                    # If conversion fails, use spec as-is (strip qe_ prefix as fallback)
-                    step_type_map[sid] = stype_spec.replace("qe_", "") if stype_spec.startswith("qe_") else stype_spec
+                    step_type_map[sid] = ""  # no prefix inference fallback
 
-        # Build steps array
-        steps = []
-        for sid in step_ulids:
-            steps.append({
-                "step_ulid": sid,
-                "ulid": sid,
-                "step_type_gen": step_type_map.get(sid, ""),
-            })
-
-        return steps
+        return [{"step_ulid": sid, "ulid": sid, "step_type_gen": step_type_map.get(sid, "")} for sid in step_ulids]
     except Exception:
-        # Fallback: return minimal steps with just IDs
         return [{"step_ulid": sid, "ulid": sid, "step_type_gen": ""} for sid in step_ulids]
 
 

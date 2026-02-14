@@ -8631,315 +8631,326 @@ class QVService:
     # Pseudo Management (Global Operations)
     # -------------------------------------------------------------------------
 
-    @staticmethod
-    def init_pseudo_dirs() -> dict[str, Any]:
-        """
-        Initialize pseudopotential directories.
+    class Pseudo:
+        """Pseudo-potential management capabilities (global operations)."""
 
-        Returns:
-            Dict with: store_dir_created (bool), seed_dir_created (bool),
-            messages (list), errors (list)
-        """
-        from quantumvitas.core.pseudo_config import load_pseudo_config, init_pseudo_dirs as _init_pseudo_dirs
+        def __init__(self, service: QVService):
+            self._service = service
 
-        config = load_pseudo_config()
-        return _init_pseudo_dirs(config)
+        @staticmethod
+        def init_dirs() -> dict[str, Any]:
+            """
+            Initialize pseudopotential directories.
 
-    @staticmethod
-    def list_pseudo_libraries() -> list[dict[str, Any]]:
-        """
-        List available pseudopotential libraries.
+            Returns:
+                Dict with: store_dir_created (bool), seed_dir_created (bool),
+                messages (list), errors (list)
+            """
+            from quantumvitas.core.pseudo_config import load_pseudo_config, init_pseudo_dirs as _init_pseudo_dirs
 
-        Returns:
-            List of library dicts
-        """
-        from quantumvitas.core.library_manager import get_supported_libraries
+            config = load_pseudo_config()
+            return _init_pseudo_dirs(config)
 
-        libraries = get_supported_libraries()
-        return [lib.to_dict() if hasattr(lib, 'to_dict') else lib for lib in libraries]
+        @staticmethod
+        def list_libraries() -> list[dict[str, Any]]:
+            """
+            List available pseudopotential libraries.
 
-    @staticmethod
-    def get_library_status(library_id: str) -> dict[str, Any]:
-        """
-        Get status of a pseudopotential library.
+            Returns:
+                List of library dicts
+            """
+            from quantumvitas.core.library_manager import get_supported_libraries
 
-        Args:
-            library_id: Library identifier (e.g., "sssp_precision_1.3")
+            libraries = get_supported_libraries()
+            return [lib.to_dict() if hasattr(lib, 'to_dict') else lib for lib in libraries]
 
-        Returns:
-            Dict with library status
-        """
-        from quantumvitas.core.library_manager import get_library_status as _get_library_status
+        @staticmethod
+        def get_library_status(library_id: str) -> dict[str, Any]:
+            """
+            Get status of a pseudopotential library.
 
-        status = _get_library_status(library_id)
-        return status.to_dict() if hasattr(status, 'to_dict') else status
+            Args:
+                library_id: Library identifier (e.g., "sssp_precision_1.3")
 
-    @staticmethod
-    def install_pseudo_library(
-        library_id: str,
-        variants: list[str],
-        source: str = "github_release",
-        local_archive_paths: list[str] | None = None,
-        force: bool = False,
-        allow_download: bool | None = None,
-    ) -> dict[str, Any]:
-        """
-        Install a pseudopotential library.
+            Returns:
+                Dict with library status
+            """
+            from quantumvitas.core.library_manager import get_library_status as _get_library_status
 
-        Args:
-            library_id: Library identifier
-            variants: List of variant names to install
-            source: Installation source ("github_release", "local_archive", or "seed")
-            local_archive_paths: For source="local_archive", paths to archive files
-            force: If True, download even if allow_download is False
-            allow_download: Optional override for allow_download (uses config if None)
+            status = _get_library_status(library_id)
+            return status.to_dict() if hasattr(status, 'to_dict') else status
 
-        Returns:
-            Dict with installation result
-        """
-        from quantumvitas.core.library_manager import install_library as _install_library
-        from quantumvitas.core.pseudo_config import load_pseudo_config, save_pseudo_config
+        @staticmethod
+        def install_library(
+            library_id: str,
+            variants: list[str],
+            source: str = "github_release",
+            local_archive_paths: list[str] | None = None,
+            force: bool = False,
+            allow_download: bool | None = None,
+        ) -> dict[str, Any]:
+            """
+            Install a pseudopotential library.
 
-        config = load_pseudo_config()
-        if allow_download is None:
-            allow_download = config.allow_download
+            Args:
+                library_id: Library identifier
+                variants: List of variant names to install
+                source: Installation source ("github_release", "local_archive", or "seed")
+                local_archive_paths: For source="local_archive", paths to archive files
+                force: If True, download even if allow_download is False
+                allow_download: Optional override for allow_download (uses config if None)
 
-        # If force=True and downloads are disabled, enable them automatically
-        if force and not allow_download and source == "github_release":
-            config.allow_download = True
-            save_pseudo_config(config)
-            allow_download = True
+            Returns:
+                Dict with installation result
+            """
+            from quantumvitas.core.library_manager import install_library as _install_library
+            from quantumvitas.core.pseudo_config import load_pseudo_config, save_pseudo_config
 
-        result = _install_library(
-            library_id=library_id,
-            variants=variants,
-            source=source,
-            local_archive_paths=local_archive_paths,
-            config=config,
-            force=force,
-            allow_download=allow_download,
-        )
-        return result
+            config = load_pseudo_config()
+            if allow_download is None:
+                allow_download = config.allow_download
 
-    @staticmethod
-    def remove_pseudo_library(library_id: str, variants: list[str] | None = None) -> dict[str, Any]:
-        """
-        Remove a pseudopotential library.
+            # If force=True and downloads are disabled, enable them automatically
+            if force and not allow_download and source == "github_release":
+                config.allow_download = True
+                save_pseudo_config(config)
+                allow_download = True
 
-        Args:
-            library_id: Library identifier
-            variants: Optional list of variants to remove (removes all if None)
+            result = _install_library(
+                library_id=library_id,
+                variants=variants,
+                source=source,
+                local_archive_paths=local_archive_paths,
+                config=config,
+                force=force,
+                allow_download=allow_download,
+            )
+            return result
 
-        Returns:
-            Dict with removal result
-        """
-        from quantumvitas.core.library_manager import remove_library as _remove_library
+        @staticmethod
+        def remove_library(library_id: str, variants: list[str] | None = None) -> dict[str, Any]:
+            """
+            Remove a pseudopotential library.
 
-        result = _remove_library(library_id=library_id, variants=variants)
-        return result
+            Args:
+                library_id: Library identifier
+                variants: Optional list of variants to remove (removes all if None)
 
-    @staticmethod
-    def repair_pseudo_library(library_id: str, variants: list[str] | None = None) -> dict[str, Any]:
-        """
-        Repair a pseudopotential library (verify checksums, re-extract if needed).
+            Returns:
+                Dict with removal result
+            """
+            from quantumvitas.core.library_manager import remove_library as _remove_library
 
-        Args:
-            library_id: Library identifier
-            variants: List of variant names to repair (optional, repairs all if not specified)
+            result = _remove_library(library_id=library_id, variants=variants)
+            return result
 
-        Returns:
-            Dict with repair result
-        """
-        from quantumvitas.core.library_manager import repair_library as _repair_library
+        @staticmethod
+        def repair_library(library_id: str, variants: list[str] | None = None) -> dict[str, Any]:
+            """
+            Repair a pseudopotential library (verify checksums, re-extract if needed).
 
-        result = _repair_library(library_id=library_id, variants=variants or [])
-        return result
+            Args:
+                library_id: Library identifier
+                variants: List of variant names to repair (optional, repairs all if not specified)
 
-    @staticmethod
-    def compute_store_size() -> dict[str, Any]:
-        """
-        Compute pseudopotential store size.
+            Returns:
+                Dict with repair result
+            """
+            from quantumvitas.core.library_manager import repair_library as _repair_library
 
-        Returns:
-            Dict with total_bytes and breakdown by library
-        """
-        from quantumvitas.core.library_manager import compute_store_size as _compute_store_size
+            result = _repair_library(library_id=library_id, variants=variants or [])
+            return result
 
-        return _compute_store_size()
+        @staticmethod
+        def compute_store_size() -> dict[str, Any]:
+            """
+            Compute pseudopotential store size.
 
-    @staticmethod
-    def is_pseudo_archive_installed(asset_name: str, expected_sha256: str) -> bool:
-        """
-        Check if a pseudopotential archive is installed.
+            Returns:
+                Dict with total_bytes and breakdown by library
+            """
+            from quantumvitas.core.library_manager import compute_store_size as _compute_store_size
 
-        Args:
-            asset_name: Archive filename
-            expected_sha256: Expected SHA256 hash
+            return _compute_store_size()
 
-        Returns:
-            True if archive is installed with matching hash
-        """
-        from quantumvitas.core.pseudo_installs import is_archive_installed
+        @staticmethod
+        def is_archive_installed(asset_name: str, expected_sha256: str) -> bool:
+            """
+            Check if a pseudopotential archive is installed.
 
-        return is_archive_installed(asset_name=asset_name, expected_sha256=expected_sha256)
+            Args:
+                asset_name: Archive filename
+                expected_sha256: Expected SHA256 hash
 
-    @staticmethod
-    def install_pseudo_archive(
-        asset_url: str,
-        asset_name: str,
-        expected_sha256: str,
-        expected_size: int | None = None,
-        config: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """
-        Install a pseudopotential archive.
+            Returns:
+                True if archive is installed with matching hash
+            """
+            from quantumvitas.core.pseudo_installs import is_archive_installed
 
-        Args:
-            asset_url: URL to download archive from
-            asset_name: Archive filename
-            expected_sha256: Expected SHA256 hash
-            expected_size: Optional expected file size
-            config: Optional pseudo config dict
+            return is_archive_installed(asset_name=asset_name, expected_sha256=expected_sha256)
 
-        Returns:
-            Dict with success, messages, errors
-        """
-        from quantumvitas.core.pseudo_installs import install_archive as _install_archive
-        from quantumvitas.core.pseudo_config import PseudoConfig, load_pseudo_config
+        @staticmethod
+        def install_archive(
+            asset_url: str,
+            asset_name: str,
+            expected_sha256: str,
+            expected_size: int | None = None,
+            config: dict[str, Any] | None = None,
+        ) -> dict[str, Any]:
+            """
+            Install a pseudopotential archive.
 
-        if config is None:
-            pseudo_config = load_pseudo_config()
-        else:
-            pseudo_config = PseudoConfig.from_dict(config)
+            Args:
+                asset_url: URL to download archive from
+                asset_name: Archive filename
+                expected_sha256: Expected SHA256 hash
+                expected_size: Optional expected file size
+                config: Optional pseudo config dict
 
-        result = _install_archive(
-            asset_url=asset_url,
-            asset_name=asset_name,
-            expected_sha256=expected_sha256,
-            expected_size=expected_size,
-            config=pseudo_config,
-        )
-        return result.to_dict() if hasattr(result, 'to_dict') else result
+            Returns:
+                Dict with success, messages, errors
+            """
+            from quantumvitas.core.pseudo_installs import install_archive as _install_archive
+            from quantumvitas.core.pseudo_config import PseudoConfig, load_pseudo_config
 
-    @staticmethod
-    def install_sssp_from_seed(
-        seed_dir: Path | str,
-        store_dir: Path | str,
-        version: str = "1.3.0",
-        flavor: str = "efficiency",
-    ) -> dict[str, Any]:
-        """
-        Install SSSP library from seed to store.
+            if config is None:
+                pseudo_config = load_pseudo_config()
+            else:
+                pseudo_config = PseudoConfig.from_dict(config)
 
-        Args:
-            seed_dir: Path to seed directory
-            store_dir: Path to store directory
-            version: SSSP version (default: "1.3.0")
-            flavor: "efficiency" or "precision" (default: "efficiency")
+            result = _install_archive(
+                asset_url=asset_url,
+                asset_name=asset_name,
+                expected_sha256=expected_sha256,
+                expected_size=expected_size,
+                config=pseudo_config,
+            )
+            return result.to_dict() if hasattr(result, 'to_dict') else result
 
-        Returns:
-            Dict with success, messages, errors, files_installed
-        """
-        from quantumvitas.core.pseudo_config import install_sssp_from_seed as _install_sssp_from_seed
+        @staticmethod
+        def install_sssp_from_seed(
+            seed_dir: Path | str,
+            store_dir: Path | str,
+            version: str = "1.3.0",
+            flavor: str = "efficiency",
+        ) -> dict[str, Any]:
+            """
+            Install SSSP library from seed to store.
 
-        return _install_sssp_from_seed(Path(seed_dir), Path(store_dir), version, flavor)
+            Args:
+                seed_dir: Path to seed directory
+                store_dir: Path to store directory
+                version: SSSP version (default: "1.3.0")
+                flavor: "efficiency" or "precision" (default: "efficiency")
 
-    @staticmethod
-    def install_all_sssp_from_seed(
-        seed_dir: Path | str,
-        store_dir: Path | str,
-    ) -> dict[str, Any]:
-        """
-        Install all available SSSP libraries from seed to store.
+            Returns:
+                Dict with success, messages, errors, files_installed
+            """
+            from quantumvitas.core.pseudo_config import install_sssp_from_seed as _install_sssp_from_seed
 
-        Args:
-            seed_dir: Path to seed directory
-            store_dir: Path to store directory
+            return _install_sssp_from_seed(Path(seed_dir), Path(store_dir), version, flavor)
 
-        Returns:
-            Dict with success, installed, skipped, failed, messages
-        """
-        from quantumvitas.core.pseudo_config import install_all_sssp_from_seed as _install_all_sssp_from_seed
+        @staticmethod
+        def install_all_sssp_from_seed(
+            seed_dir: Path | str,
+            store_dir: Path | str,
+        ) -> dict[str, Any]:
+            """
+            Install all available SSSP libraries from seed to store.
 
-        return _install_all_sssp_from_seed(Path(seed_dir), Path(store_dir))
+            Args:
+                seed_dir: Path to seed directory
+                store_dir: Path to store directory
 
-    @staticmethod
-    def download_sssp_library(
-        store_dir: Path | str,
-        flavor: str,
-        version: str = "1.3.0",
-        force: bool = False,
-        allow_download: bool = True,
-        seed_dir: Path | str | None = None,
-    ) -> dict[str, Any]:
-        """
-        Download SSSP library from GitHub release and install into store.
+            Returns:
+                Dict with success, installed, skipped, failed, messages
+            """
+            from quantumvitas.core.pseudo_config import install_all_sssp_from_seed as _install_all_sssp_from_seed
 
-        Args:
-            store_dir: Path to pseudo store directory
-            flavor: "efficiency" or "precision"
-            version: SSSP version (default: "1.3.0")
-            force: If True, download even if allow_download is False
-            allow_download: Global setting
-            seed_dir: Optional seed directory path
+            return _install_all_sssp_from_seed(Path(seed_dir), Path(store_dir))
 
-        Returns:
-            Dict with success, messages, errors, files_installed
-        """
-        from quantumvitas.core.pseudo_config import download_sssp_library as _download_sssp_library
+        @staticmethod
+        def download_sssp_library(
+            store_dir: Path | str,
+            flavor: str,
+            version: str = "1.3.0",
+            force: bool = False,
+            allow_download: bool = True,
+            seed_dir: Path | str | None = None,
+        ) -> dict[str, Any]:
+            """
+            Download SSSP library from GitHub release and install into store.
 
-        return _download_sssp_library(
-            Path(store_dir),
-            flavor,
-            version,
-            force,
-            allow_download,
-            Path(seed_dir) if seed_dir else None,
-        )
+            Args:
+                store_dir: Path to pseudo store directory
+                flavor: "efficiency" or "precision"
+                version: SSSP version (default: "1.3.0")
+                force: If True, download even if allow_download is False
+                allow_download: Global setting
+                seed_dir: Optional seed directory path
 
-    @staticmethod
-    def download_all_sssp(
-        store_dir: Path | str,
-        force: bool = False,
-        allow_download: bool = True,
-        seed_dir: Path | str | None = None,
-    ) -> dict[str, Any]:
-        """
-        Download all supported SSSP libraries from GitHub release.
+            Returns:
+                Dict with success, messages, errors, files_installed
+            """
+            from quantumvitas.core.pseudo_config import download_sssp_library as _download_sssp_library
 
-        Args:
-            store_dir: Path to pseudo store directory
-            force: If True, download even if allow_download is False
-            allow_download: Global setting
-            seed_dir: Optional seed directory path
+            return _download_sssp_library(
+                Path(store_dir),
+                flavor,
+                version,
+                force,
+                allow_download,
+                Path(seed_dir) if seed_dir else None,
+            )
 
-        Returns:
-            Dict with success, installed, skipped, failed, messages
-        """
-        from quantumvitas.core.pseudo_config import download_all_sssp as _download_all_sssp
+        @staticmethod
+        def download_all_sssp(
+            store_dir: Path | str,
+            force: bool = False,
+            allow_download: bool = True,
+            seed_dir: Path | str | None = None,
+        ) -> dict[str, Any]:
+            """
+            Download all supported SSSP libraries from GitHub release.
 
-        return _download_all_sssp(
-            Path(store_dir),
-            force,
-            allow_download,
-            Path(seed_dir) if seed_dir else None,
-        )
+            Args:
+                store_dir: Path to pseudo store directory
+                force: If True, download even if allow_download is False
+                allow_download: Global setting
+                seed_dir: Optional seed directory path
 
-    @staticmethod
-    def import_seed_archives(
-        seed_dir: Path | str,
-        archive_paths: list[Path | str],
-    ) -> dict[str, Any]:
-        """
-        Import seed archives into seed directory.
+            Returns:
+                Dict with success, installed, skipped, failed, messages
+            """
+            from quantumvitas.core.pseudo_config import download_all_sssp as _download_all_sssp
 
-        Args:
-            seed_dir: Path to seed directory
-            archive_paths: List of paths to archive files to import
+            return _download_all_sssp(
+                Path(store_dir),
+                force,
+                allow_download,
+                Path(seed_dir) if seed_dir else None,
+            )
 
-        Returns:
-            Dict with success, imported, failed, messages, errors
-        """
-        from quantumvitas.core.pseudo_config import import_seed_archives as _import_seed_archives
+        @staticmethod
+        def import_seed_archives(
+            seed_dir: Path | str,
+            archive_paths: list[Path | str],
+        ) -> dict[str, Any]:
+            """
+            Import seed archives into seed directory.
 
-        return _import_seed_archives(Path(seed_dir), [Path(p) for p in archive_paths])
+            Args:
+                seed_dir: Path to seed directory
+                archive_paths: List of paths to archive files to import
+
+            Returns:
+                Dict with success, imported, failed, messages, errors
+            """
+            from quantumvitas.core.pseudo_config import import_seed_archives as _import_seed_archives
+
+            return _import_seed_archives(Path(seed_dir), [Path(p) for p in archive_paths])
+
+    @property
+    def pseudo(self) -> Pseudo:
+        """Access pseudo-potential management capabilities."""
+        return QVService.Pseudo(self)

@@ -31,7 +31,6 @@ from typing import Any, Callable, Dict, Optional, TextIO
 from quantumvitas.api import QVService, APIError, get_service
 from quantumvitas.api.utils import (
     is_ulid_like,
-    validate_ulid,
     load_calculation,
     get_pseudo_status_bundle,
     set_pseudo_config,
@@ -819,7 +818,7 @@ class QVDaemon:
             messages: List[str]
             errors: List[str]
         """
-        return QVService.init_pseudo_dirs()
+        return QVService.Pseudo.init_dirs()
     
     def _handle_install_seed_to_store(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -864,11 +863,11 @@ class QVDaemon:
 
         if version and flavor:
             # Install specific version/flavor
-            result = QVService.install_sssp_from_seed(seed_dir, store_dir, version, flavor)
+            result = QVService.Pseudo.install_sssp_from_seed(seed_dir, store_dir, version, flavor)
             return result
         else:
             # Install all available
-            return QVService.install_all_sssp_from_seed(seed_dir, store_dir)
+            return QVService.Pseudo.install_all_sssp_from_seed(seed_dir, store_dir)
     
     def _handle_list_installed_sssp(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -938,7 +937,7 @@ class QVDaemon:
 
         store_dir = Path(config.get("store_dir"))
         seed_dir = Path(config.get("seed_dir")) if config.get("seed_dir") else None
-        result = QVService.download_sssp_library(
+        result = QVService.Pseudo.download_sssp_library(
             store_dir=store_dir,
             flavor=flavor,
             version=version,
@@ -983,7 +982,7 @@ class QVDaemon:
 
         store_dir = Path(config.get("store_dir"))
         seed_dir = Path(config.get("seed_dir")) if config.get("seed_dir") else None
-        result = QVService.download_all_sssp(
+        result = QVService.Pseudo.download_all_sssp(
             store_dir=store_dir,
             force=force,
             allow_download=config.get("allow_download", False),
@@ -1028,7 +1027,7 @@ class QVDaemon:
         seed_dir = Path(config.get("seed_dir"))
         archive_paths = [Path(p) for p in file_paths]
 
-        return QVService.import_seed_archives(seed_dir, archive_paths)
+        return QVService.Pseudo.import_seed_archives(seed_dir, archive_paths)
     
     def _handle_list_libraries(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -1039,7 +1038,7 @@ class QVDaemon:
         Returns:
             libraries: List of LibraryMetadata dicts
         """
-        libraries = QVService.list_pseudo_libraries()
+        libraries = QVService.Pseudo.list_libraries()
         return {
             "libraries": libraries,
         }
@@ -1062,7 +1061,7 @@ class QVDaemon:
             }
         
         try:
-            status = QVService.get_library_status(library_id)
+            status = QVService.Pseudo.get_library_status(library_id)
             return {
                 "ok": True,
                 "data": status,
@@ -1101,7 +1100,7 @@ class QVDaemon:
                 "warnings": [],
             }
         
-        return QVService.install_pseudo_library(
+        return QVService.Pseudo.install_library(
             library_id=library_id,
             variants=variants,
             source=source,
@@ -1130,7 +1129,7 @@ class QVDaemon:
                 "messages": [],
             }
         
-        return QVService.remove_pseudo_library(library_id=library_id, variants=variants)
+        return QVService.Pseudo.remove_library(library_id=library_id, variants=variants)
     
     def _handle_repair_library(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -1153,7 +1152,7 @@ class QVDaemon:
                 "messages": [],
             }
         
-        return QVService.repair_pseudo_library(library_id=library_id, variants=variants)
+        return QVService.Pseudo.repair_library(library_id=library_id, variants=variants)
     
     def _handle_compute_store_size(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -1164,7 +1163,7 @@ class QVDaemon:
         Returns:
             size_bytes: Optional[int] - Total size in bytes, or None if not configured
         """
-        size_info = QVService.compute_store_size()
+        size_info = QVService.Pseudo.compute_store_size()
         return {
             "size_bytes": size_info.get("size_bytes") if isinstance(size_info, dict) else size_info,
         }
@@ -1297,10 +1296,9 @@ class QVDaemon:
 
             # Check if already installed (unless force)
             if not force:
-                if QVService.is_pseudo_archive_installed(
+                if QVService.Pseudo.is_archive_installed(
                     asset_name=asset_name,
                     expected_sha256=archive.get("sha256", ""),
-                    config=config,
                 ):
                     # Return success with current status from bundle
                     archive_status = None
@@ -1324,7 +1322,7 @@ class QVDaemon:
                     "archive_status": None,
                 }
 
-            result = QVService.install_pseudo_archive(
+            result = QVService.Pseudo.install_archive(
                 asset_url=archive.get("upstream_url", ""),
                 asset_name=archive.get("asset_name", ""),
                 expected_sha256=archive.get("sha256", ""),
@@ -2152,17 +2150,7 @@ class QVDaemon:
         
         # Resolve selector to ULID at boundary
         if calculation_ulid:
-            # Already a ULID, validate it
-            try:
-                calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
-            except ValueError as e:
-                return {
-                    "ok": False,
-                    "error": {
-                        "code": "invalid_argument",
-                        "message": str(e)
-                    }
-                }
+            pass  # Already a ULID — API validates internally
         else:
             # Resolve selector to ULID
             try:
@@ -3358,10 +3346,7 @@ class QVDaemon:
                 f"project_root={project_root}"
             )
         
-        # Validate calculation_ulid
-        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
-        
-        # Pass cached index and config
+        # Pass cached index and config (API validates internally)
         cache = self.state.get_cache(project_root)
         svc = get_service(project_root)
         result = svc.calculation.get_pseudo_mapping(
@@ -4854,74 +4839,10 @@ class QVDaemon:
             reason,
         )
     
-    def _snapshot_dag(self, index: Optional[ResourceIndex]) -> Dict[str, Any]:
-        """
-        Return a lightweight representation of the DAG for diffing.
-        
-        Args:
-            index: ResourceIndex to snapshot (None for empty snapshot)
-            
-        Returns:
-            {
-                "structures": { structure_ulid: { "slug": ..., "name": ... } },
-                "calculations": {
-                    calculation_id: {
-                        "slug": ...,
-                        "name": ...,
-                        "steps": [step_ulid1, step_ulid2, ...]   # in order
-                    },
-                    ...
-                }
-            }
-        """
-        from quantumvitas.api import QVService
-        
-        if index is None:
-            return {"structures": {}, "calculations": {}}
-        
-        snapshot: Dict[str, Any] = {
-            "structures": {},
-            "calculations": {},
-        }
-        
-        # Collect all structures
-        for resource_id, meta in index.by_id.items():
-            if meta.kind == "structure":
-                snapshot["structures"][resource_id] = {
-                    "slug": meta.slug,
-                    "name": meta.name,
-                }
-        
-        # Collect all calculations with their step lists
-        for resource_id, meta in index.by_id.items():
-            if meta.kind == "calculation":
-                # Find calculation.yaml path from index
-                calculation_path = None
-                for path, path_id in index.by_path.items():
-                    if path_id == resource_id and path.name == "calculation.yaml":
-                        calculation_path = path
-                        break
-                
-                if calculation_path and calculation_path.exists():
-                    try:
-                        # Determine project root (calculations/calculation_name/calculation.yaml -> project_root)
-                        project_root = calculation_path.parent.parent.parent
-                        # Load calculation model to get steps
-                        wf_model = load_calculation(calculation_path, project_root=project_root)
-                        step_ulids = [entry.step_ulid for entry in wf_model.steps if entry.step_ulid]
-                    except Exception:
-                        # If we can't load the calculation, just use empty steps
-                        step_ulids = []
-                else:
-                    step_ulids = []
-                
-                snapshot["calculations"][resource_id] = {
-                    "slug": meta.slug,
-                    "name": meta.name,
-                    "steps": step_ulids,
-                }
-        
-        return snapshot
+    def _snapshot_dag(self, index) -> Dict[str, Any]:
+        """Delegate to API utility (no kernel type access in daemon)."""
+        from quantumvitas.api.utils import snapshot_project_dag
+        return snapshot_project_dag(index)
     
     def _diff_dag(self, old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
         """

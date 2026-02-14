@@ -2616,3 +2616,65 @@ def create_precision_advisor(
         repo_root=repo_root,
     )
 
+
+# =============================================================================
+# DAG snapshot utility
+# =============================================================================
+
+def snapshot_project_dag(index) -> dict:
+    """
+    Return a lightweight dict representation of a project's resource DAG.
+
+    Accesses ``index.by_id`` and ``index.by_path`` (kernel ResourceIndex
+    attributes) so that daemon/CLI code never touches kernel types directly.
+
+    Args:
+        index: ResourceIndex instance (or None for empty snapshot).
+
+    Returns:
+        ``{"structures": {ulid: {slug, name}},
+          "calculations": {ulid: {slug, name, steps: [step_ulid, ...]}}}``
+    """
+    if index is None:
+        return {"structures": {}, "calculations": {}}
+
+    snapshot: dict = {
+        "structures": {},
+        "calculations": {},
+    }
+
+    # Collect all structures
+    for resource_id, meta in index.by_id.items():
+        if meta.kind == "structure":
+            snapshot["structures"][resource_id] = {
+                "slug": meta.slug,
+                "name": meta.name,
+            }
+
+    # Collect all calculations with their step lists
+    for resource_id, meta in index.by_id.items():
+        if meta.kind == "calculation":
+            # Find calculation.yaml path from index
+            calculation_path = None
+            for path, path_id in index.by_path.items():
+                if path_id == resource_id and path.name == "calculation.yaml":
+                    calculation_path = path
+                    break
+
+            step_ulids: list = []
+            if calculation_path and calculation_path.exists():
+                try:
+                    project_root = calculation_path.parent.parent.parent
+                    wf_model = load_calculation(calculation_path, project_root=project_root)
+                    step_ulids = [entry.step_ulid for entry in wf_model.steps if entry.step_ulid]
+                except Exception:
+                    pass  # empty steps on failure
+
+            snapshot["calculations"][resource_id] = {
+                "slug": meta.slug,
+                "name": meta.name,
+                "steps": step_ulids,
+            }
+
+    return snapshot
+
