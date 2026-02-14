@@ -105,7 +105,26 @@
 
 ## Milestone 4: QE Metadata Browser → API
 
-**Status**: TODO
+**Status**: DONE
+**Tests**: 5823 passed, 0 failed, 30 skipped
+
+### Task 4.1: Move QE metadata browser from daemon to api.utils
+- Moved ~400 lines of `_qe_parameter_metadata_internal` from `daemon/server.py` to `api/utils.py`
+- New private function `_qe_parameter_metadata()` handles QE's 3-level hierarchy (modules → sections → parameters)
+- Expanded `get_engine_parameter_metadata()` with `section` parameter and QE dispatch
+- `_handle_list_engine_parameter_metadata` in daemon is now a one-call thin wrapper
+- Removed daemon's QE metadata imports (7 imports from `api.utils` no longer needed)
+- Updated 4 tests: direct `_qe_parameter_metadata_internal` calls → generic RPC requests
+- Removed silent `module="pw"` default — now requires explicit category (no silent fallbacks)
+- Jupyter users can now browse QE parameters via `get_engine_parameter_metadata(engine_family="qe", ...)`
+
+### Metrics After Milestone 4
+
+| Metric | Before | After M4 | Delta |
+|--------|--------|----------|-------|
+| Daemon business logic lines | ~400 | ~0 | -400 |
+| API utils functions | same | same | 0 (logic moved to existing function) |
+| Tests passed | 5822 | 5823 | +1 |
 
 ---
 

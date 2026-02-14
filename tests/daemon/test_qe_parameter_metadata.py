@@ -70,10 +70,10 @@ def test_list_modules_preserves_json_order(daemon):
 
 def test_list_sections_for_valid_module(daemon):
     """Test that list_sections returns sections for a valid module (QE-specific)."""
-    # list_sections is QE-specific (not exposed via generic handler)
-    result = daemon._qe_parameter_metadata_internal(
-        {"operation": "list_sections", "module": "pw"}
-    )
+    request = _generic_request("test-3a", "list_sections", category="pw")
+    response = daemon.handle_request(request)
+    assert response.ok is True
+    result = response.data
 
     assert "sections" in result
     sections = result["sections"]
@@ -137,9 +137,10 @@ def test_list_sections_preserves_metadata_order(daemon):
                 expected_namelist_order.append(name)
                 seen_namelists.add(name)
 
-    result = daemon._qe_parameter_metadata_internal(
-        {"operation": "list_sections", "module": "pw"}
-    )
+    request = _generic_request("test-3b", "list_sections", category="pw")
+    response = daemon.handle_request(request)
+    assert response.ok is True
+    result = response.data
 
     sections = result["sections"]
 
@@ -160,10 +161,9 @@ def test_list_sections_preserves_metadata_order(daemon):
 
 def test_list_sections_for_invalid_module(daemon):
     """Test that list_sections returns an error for an invalid module."""
-    with pytest.raises((ValueError, KeyError)):
-        daemon._qe_parameter_metadata_internal(
-            {"operation": "list_sections", "module": "__nonexistent__"}
-        )
+    request = _generic_request("test-3c", "list_sections", category="__nonexistent__")
+    response = daemon.handle_request(request)
+    assert response.ok is False
 
 
 def test_list_parameters_for_valid_module_and_section(daemon):
@@ -318,15 +318,14 @@ def test_invalid_operation_returns_error(daemon):
     assert error is not None
 
 
-def test_list_parameters_missing_category_uses_default(daemon):
-    """Test that list_tags without category defaults to pw."""
+def test_list_parameters_missing_category_returns_error(daemon):
+    """Test that list_tags without category returns an error (no silent default)."""
     request = _generic_request("test-10", "list_tags", section="&SYSTEM")
 
     response = daemon.handle_request(request)
 
-    # Should succeed with default module=pw
-    assert response.ok is True
-    assert "parameters" in response.data
+    # Should fail — category (module) is required, no silent default
+    assert response.ok is False
 
 
 def test_error_not_raw_exception(daemon):
