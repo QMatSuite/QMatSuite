@@ -1235,10 +1235,11 @@ export function StepDetailPanel({
         <div className="panel-header-actions">
           {/* Edit/Apply/Cancel/Reset buttons - always visible in header */}
           {!isEditing ? (
-            <button 
+            <button
               className="panel-action-btn"
               onClick={() => setIsEditing(true)}
               title="Edit step parameters"
+              data-testid="qv-btn-edit-step-params"
             >
               ✏️ Edit
             </button>
@@ -1258,10 +1259,11 @@ export function StepDetailPanel({
               >
                 Reset
               </button>
-              <button 
+              <button
                 className="panel-action-btn panel-action-btn--primary"
                 onClick={handleSaveParams}
                 disabled={!hasChanges || isSaving || kPointsApplying}
+                data-testid="qv-btn-apply-step-params"
               >
                 {isSaving || kPointsApplying ? 'Saving...' : 'Apply'}
               </button>

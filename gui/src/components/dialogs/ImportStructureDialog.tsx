@@ -94,20 +94,21 @@ export function ImportStructureDialog({
       size="medium"
       footer={
         <>
-          <button className="btn btn--secondary" onClick={handleClose}>
+          <button className="btn btn--secondary" onClick={handleClose} data-testid="qv-btn-cancel-import-structure">
             Cancel
           </button>
-          <button 
+          <button
             className={`btn btn--primary ${isImporting ? 'btn--loading' : ''}`}
             onClick={handleImport}
             disabled={isImporting || !sourceFile}
+            data-testid="qv-btn-confirm-import-structure"
           >
             Import
           </button>
         </>
       }
     >
-      <div className="modal-form">
+      <div className="modal-form" data-testid="qv-import-structure-dialog">
         <div className="form-group">
           <label className="form-label form-label--required">
             Structure File
@@ -119,8 +120,9 @@ export function ImportStructureDialog({
               value={sourceFile}
               onChange={(e) => setSourceFile(e.target.value)}
               placeholder="Select a CIF, XSF, or QE input file..."
+              data-testid="qv-import-structure-file"
             />
-            <button className="form-button" onClick={handleBrowse}>
+            <button className="form-button" onClick={handleBrowse} data-testid="qv-import-structure-browse">
               📂
             </button>
           </div>
@@ -139,6 +141,7 @@ export function ImportStructureDialog({
             value={structureName}
             onChange={(e) => setStructureName(e.target.value)}
             placeholder="Silicon bulk"
+            data-testid="qv-import-structure-name"
           />
           <span className="form-hint">
             Optional. Defaults to the filename.

@@ -1020,6 +1020,7 @@ export function CommonCardPseudo({
                                       !currentPseudo ? 'common-card-pseudo__select--unset' : ''
                                     }`}
                                     style={{ width: 'max-content', maxWidth: '520px' }}
+                                    data-testid={`qv-pseudo-select-${species}`}
                                   >
                                     <option value="">— Select —</option>
                                     {useVariants ? (
@@ -1467,6 +1468,7 @@ export function CommonCardPseudo({
               disabled={!canApply()}
               className="common-card-pseudo__apply-btn"
               title={!canApply() ? "Selected pseudo(s) require installing archive(s). Go to Settings → Pseudopotentials." : undefined}
+              data-testid="qv-pseudo-apply"
             >
               Apply
             </button>

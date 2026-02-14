@@ -92,3 +92,177 @@ All 137 daemon tests pass after the server.py change (engine_family passthrough)
 - Pair 1 E2E test (Playwright)
 - Pair 2: Si VC-Relax RPC test
 - Pair 3: Si Bands (multi-step) RPC test
+
+---
+
+## Session 5 (2026-02-14)
+
+### Goal
+Unblock Pair 1 E2E (`gui/tests/e2e/realrun_si_scf.spec.ts`) where the test hangs at Add Step with an empty dropdown.
+
+### Iteration Log: Pair 1 E2E Hang
+
+#### Attempt 1 — Reproduce hang with single-spec run
+**Action:** Ran only `realrun_si_scf.spec.ts` under Playwright with daemon logs visible.
+**Observed:** UI reached `Add New Step`; step-type dropdown had only `-- Select Type --`; no step could be added; test sat in idle polling.
+**Evidence:** Calculation file created during run had no `engine_family` field.
+
+#### Attempt 2 — Trace why engine_family missing
+**Root cause:** `CreateCalculationDialog.handleCreate` used `selectedEngine` but `useCallback` dependencies omitted `selectedEngine`. The callback could submit stale engine value (`""`) even when user selected QE.
+**Fix:** Added `selectedEngine` to `handleCreate` dependency list in `gui/src/components/dialogs/CreateCalculationDialog.tsx`.
+
+#### Attempt 3 — Pseudo modal options failing (secondary blocker)
+**Observed in daemon logs:** `get_pseudo_options_for_calculation` crashed with:
+`AttributeError: type object 'QVService' has no attribute 'get_calculation_detail'`.
+**Root cause:** Debug instrumentation in daemon handler inspected a non-existent class method (`QVService.get_calculation_detail`), causing pseudo option load failure.
+**Fix:** Removed that invalid inspect/signature call from `_handle_get_pseudo_options_for_calculation` in `src/quantumvitas/daemon/server.py`.
+
+#### Attempt 4 — Prevent silent hangs in e2e
+**Issue:** Test previously called `selectOption({ value: 'scf' })` without asserting dropdown population; on empty palette it appeared to hang.
+**Fix:** Added explicit assertions in `gui/tests/e2e/realrun_si_scf.spec.ts`:
+- Pseudo dropdown must have `>1` option before selection.
+- Add-step dropdown must have `>1` option and include `scf` before selection.
+This forces fast, actionable failures with screenshots instead of long idle waits.
+
+### Lessons Learned
+- For engine selection flows, stale React callback dependencies can silently drop critical payload fields (`engine_family`) and surface later as unrelated UI failures (empty step palette).
+- E2E tests for async dropdowns must assert option population before selecting values; otherwise failures look like hangs.
+- Temporary debug code in daemon handlers can break production RPC paths; keep instrumentation side-effect-free.
+
+### Additional Attempts (Same Session)
+
+#### Attempt 5 — Run button selector mismatch in Step Focus mode
+**Observed:** After step creation/edit, test failed to find `qv-btn-run-calculation`.
+**Root cause:** UI was in Step Focus mode; run button there is `qv-btn-run-calculation-focus`.
+**Fix:** Updated e2e to click focus-mode run button when present, fallback to overview run button.
+
+#### Attempt 6 — QE run fails after GUI parameter edit
+**Observed:** QE failed with `STOP 1`; `scf.out` reported:
+`bad line in namelist &system: "conv_thr = 1e-08" (error could be in the previous line)`.
+**Actual generated input issue:** `ecutwfc` was serialized as a quoted string (`ecutwfc = '20.0'`) after GUI edit.
+**Root cause:** Parameter editor was storing INTEGER/REAL edits as strings; serialization then emitted quoted scalars that break QE namelist parsing.
+**Fix:** Updated `ParameterValueEditor` to coerce INTEGER/REAL user edits to numeric values (including `d/D` exponent normalization for REAL), while keeping CHARACTER/LOGICAL behavior unchanged.
+
+#### Attempt 7 — E2E still stalls before `add_step_to_calculation`
+**Observed:** GUI remains in Overview with `0 steps`; daemon logs show only periodic polling RPCs (`list_jobs`/`job_counts`) and never show `add_step_to_calculation`.
+**Interpretation:** Flow is stalling in UI interaction/actionability before step-add RPC is sent.
+**Fix applied in spec:** Added explicit click timeouts and hard checks in Add Step path:
+- enforce pseudo modal overlay is hidden before continuing,
+- `qv-add-step-btn` click with explicit timeout,
+- `qv-confirm-add-step` click with explicit timeout,
+- explicit poll that step row count becomes `> 0` after add.
+This guarantees fail-fast with screenshot at the exact blocker instead of long idle polling.
+
+#### Attempt 8 — Root cause of "hang before add step" and final stabilization
+**Observed (live rerun):**
+- Daemon always received `update_calculation_species_map` right after pseudo selection.
+- In hanging runs, test did not emit add-step markers and no `add_step_to_calculation` RPC was sent.
+
+**Root cause:** Pseudo selector change path already triggers `onUpdate(...)`, which can close/re-render the modal before the test clicks `Apply`. That made the `Apply` click intermittently target a stale element, so the script appeared to "hang" before reaching Add Step.
+
+**Fix in `gui/tests/e2e/realrun_si_scf.spec.ts`:**
+- Handle both pseudo UX paths:
+  - modal stays open and needs `Apply`,
+  - modal auto-closes/re-renders after selection.
+- Added robust fallback close logic and authoritative overlay-hidden assertion.
+- Added `scrollIntoViewIfNeeded()` before clicking Add Step (viewport/actionability hardening).
+- Wrapped Add Step block in try/catch with explicit screenshot attachment (`add-step-failure`) on error.
+- Added `Tab` after `ecutwfc` edit to force blur/commit before Apply.
+
+**Verification command:**
+```bash
+cd gui
+npx playwright test tests/e2e/realrun_si_scf.spec.ts --project=electron --reporter=list
+```
+
+**Result:** PASS (`1 passed`, ~24s). Real QE run executed (`pw.x returncode=0`) and analysis assertions completed.
+
+#### Attempt 9 — Repeatability check (same spec, same environment)
+**Action:** Re-ran the exact same Pair 1 e2e command immediately after Attempt 8.
+
+**Result:** PASS again (`1 passed`, ~24s), with the same critical checkpoints:
+- pseudo mapping set (`mapping_keys=['Si']`)
+- step add succeeded (downstream QE runner materialized `total_steps=1`)
+- QE SCF completed (`pw.x returncode=0`)
+- analysis tab assertions passed.
+
+**Conclusion:** The prior hang condition is resolved in current codepath; behavior is now repeatable across back-to-back runs.
+
+#### Attempt 10 — Strengthen final analysis plot assertions (non-empty curve + x-axis)
+**Request:** Explicitly assert `Analysis → SCF → Plot` and verify real convergence chart content (not empty).
+
+**Changes:**
+- Added `data-testid="qv-analysis-reference-toggle"` to the Analysis reference checkbox in `CalculationAnalysisPanel`.
+- In Pair 1 e2e:
+  - explicitly select `SCF` step tab and `Plot` mode,
+  - force reference toggle off (if shown) and assert reference banner is absent,
+  - assert convergence chart contains:
+    - rendered main Recharts SVG surface,
+    - at least one non-empty data curve path (`d` length check),
+    - rendered x-axis tick labels (`>1`).
+
+**Intermediate failure:** Initial SVG selector was too broad (`svg.recharts-surface`) and matched legend icon SVGs too, causing Playwright strict-mode violation.
+
+**Fix:** Narrowed selector to the main plot surface:
+` .recharts-wrapper > .recharts-surface ` and curve selector to
+` .recharts-line .recharts-line-curve `.
+
+**Verification:** Re-ran Pair 1 e2e; PASS (`1 passed`, ~24s).
+
+### Session 5 Lessons (final addendum)
+- Recharts renders multiple SVG surfaces (chart + legend icons). Assertions must target the plot canvas specifically to avoid false failures under Playwright strict mode.
+
+---
+
+## Session 6 (2026-02-14)
+
+### Goal
+Validate that Pair 1 e2e is CI-safe (GitHub Actions), with no local absolute-path assumptions.
+
+### CI Workflow Recon (tests.yml)
+- Reviewed `.github/workflows/tests.yml` end-to-end.
+- Confirmed GUI E2E job runs from `working-directory: gui` and invokes an explicit file list.
+- Confirmed QE setup is already handled in CI before E2E stage.
+- Found that `tests/e2e/realrun_si_scf.spec.ts` was **not yet included** in the E2E command list.
+
+### Changes for CI Safety
+
+#### 1) Add Pair 1 real-run spec to CI E2E list
+**File:** `.github/workflows/tests.yml`
+
+Added `tests/e2e/realrun_si_scf.spec.ts` to both Linux and macOS Playwright command lists.
+
+#### 2) Add explicit relative-path sanity check in spec
+**File:** `gui/tests/e2e/realrun_si_scf.spec.ts`
+
+Added:
+- `fs.existsSync(siInputFile)` assertion with clear error message.
+
+This ensures CI failures are actionable if repo layout changes (instead of failing later in import flow).
+
+### Absolute Path Audit
+- No hardcoded user-local paths found in:
+  - `gui/tests/e2e/realrun_si_scf.spec.ts`
+  - `.github/workflows/tests.yml`
+- Spec uses `getRepoRoot()` + `path.join(...)` to derive project-relative locations.
+
+### Verification
+Command:
+```bash
+cd gui
+npx playwright test tests/e2e/realrun_si_scf.spec.ts --project=electron --reporter=line
+```
+
+Result:
+- PASS (`1 passed`, ~24s) after CI-safety changes.
+
+### Lessons Learned
+- For CI portability, e2e specs should always derive resource paths from repo root helpers, never from machine-specific absolute paths.
+- If a spec is production-ready but omitted from CI’s explicit test list, it is effectively untested in CI; include it explicitly.
+
+### Session 5 Lessons (addendum)
+- The pseudo modal currently has mixed semantics (change can persist immediately, while an Apply button still exists). E2E must tolerate both behaviors until UI semantics are unified.
+- For flaky UI actions, prefer:
+  - explicit visibility + viewport scroll,
+  - short bounded click timeouts,
+  - fail-fast assertions with targeted screenshot capture.

@@ -274,7 +274,7 @@ export function ActiveParametersPanel({
           
           <div className="active-parameters-panel__parameters">
             {params.map((param) => (
-              <div key={`${namelist}:${param.name}`} className="active-parameters-panel__parameter-row">
+              <div key={`${namelist}:${param.name}`} className="active-parameters-panel__parameter-row" data-testid={`qv-param-row-${namelist.toLowerCase()}-${param.name.toLowerCase()}`}>
                 <div className="active-parameters-panel__parameter-info">
                   <span className="active-parameters-panel__parameter-name" title={getParameterTooltip(param)}>
                     {param.name}
@@ -379,6 +379,7 @@ export function ActiveParametersPanel({
                       value={param.value}
                       onChange={(value) => onParameterChange(namelist, param.name, value)}
                       disabled={false}
+                      testIdSuffix={`${namelist.toLowerCase()}-${param.name.toLowerCase()}`}
                     />
                             </div>
                           )}
@@ -417,6 +418,7 @@ export function ActiveParametersPanel({
                         value={param.value}
                         onChange={(value) => onParameterChange(namelist, param.name, value)}
                         disabled={false}
+                        testIdSuffix={`${namelist.toLowerCase()}-${param.name.toLowerCase()}`}
                       />
                     );
                   })()}

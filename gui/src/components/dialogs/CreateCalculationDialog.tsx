@@ -150,7 +150,7 @@ export function CreateCalculationDialog({
     setIsCreating(false);
     onSuccess(calculationId);
     handleClose();
-  }, [qv, projectRoot, calculationName, selectedStructure, selectedTemplate, selectedWorkflow, structures, onSuccess]);
+  }, [qv, projectRoot, calculationName, selectedStructure, selectedTemplate, selectedWorkflow, selectedEngine, structures, onSuccess]);
   
   const handleClose = useCallback(() => {
     setCalculationName('');
@@ -194,20 +194,21 @@ export function CreateCalculationDialog({
       size="medium"
       footer={
         <>
-          <button className="btn btn--secondary" onClick={handleClose}>
+          <button className="btn btn--secondary" onClick={handleClose} data-testid="qv-btn-cancel-create-calc">
             Cancel
           </button>
-          <button 
+          <button
             className={`btn btn--primary ${isCreating ? 'btn--loading' : ''}`}
             onClick={handleCreate}
             disabled={isCreating || !calculationName.trim()}
+            data-testid="qv-btn-confirm-create-calc"
           >
             Create Calculation
           </button>
         </>
       }
     >
-      <div className="modal-form">
+      <div className="modal-form" data-testid="qv-create-calc-dialog">
         <div className="form-group">
           <label className="form-label form-label--required">
             Calculation Name
@@ -218,6 +219,7 @@ export function CreateCalculationDialog({
             value={calculationName}
             onChange={(e) => setCalculationName(e.target.value)}
             placeholder="si-dos"
+            data-testid="qv-create-calc-name"
           />
         </div>
         
@@ -229,6 +231,7 @@ export function CreateCalculationDialog({
             className="form-select"
             value={selectedStructure}
             onChange={(e) => setSelectedStructure(e.target.value)}
+            data-testid="qv-create-calc-structure"
           >
             <option value="">— None —</option>
             {isLoadingStructures ? (
@@ -253,6 +256,7 @@ export function CreateCalculationDialog({
             className="form-select"
             value={selectedEngine}
             onChange={(e) => setSelectedEngine(e.target.value)}
+            data-testid="qv-create-calc-engine"
           >
             <option value="">Decide later</option>
             {engineFamilies.map((eng) => (
@@ -348,4 +352,3 @@ export function CreateCalculationDialog({
     </Modal>
   );
 }
-

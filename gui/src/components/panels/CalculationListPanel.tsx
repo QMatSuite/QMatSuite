@@ -143,7 +143,7 @@ export function CalculationListPanel({
   
   if (calculations.length === 0) {
     return (
-      <div className="calculation-list-panel calculation-list-panel--empty">
+      <div className="calculation-list-panel calculation-list-panel--empty" data-testid="qv-calculations-view">
         <div className="panel-placeholder">
           <span className="panel-icon">📊</span>
           <h3>No Calculations Found</h3>
@@ -1261,6 +1261,7 @@ export function CalculationDetailPanel({
                       className="meta-form__edit-btn"
                       onClick={() => setIsEditingPseudos(true)}
                       title="Edit pseudopotential mappings"
+                      data-testid="qv-btn-edit-pseudos"
                     >
                       ✏️ Edit
                     </button>
@@ -1357,6 +1358,7 @@ export function CalculationDetailPanel({
                     value={newStepType}
                     onChange={(e) => setNewStepType(e.target.value)}
                     autoFocus
+                    data-testid="qv-add-step-type-select"
                   >
                     <option value="">-- Select Type --</option>
                     {stepPalette?.base_steps.map((step) => (
