@@ -130,23 +130,76 @@
 
 ## Milestone 5: Create `svc.pseudo` Sub-Object
 
-**Status**: SKIPPED
+**Status**: DONE
+**Tests**: 5823 passed, 0 failed, 30 skipped
 
-**Rationale**: Purely cosmetic namespace reorganization (14 static methods from `QVService.method()` → `QVService.pseudo.method()`). HIGH blast radius: 14+ daemon handlers, CLI commands, and tests to update. No functional benefit — no new Jupyter capability, no logic change. Risk-reward ratio too high for a slimdown sprint. Can be done later in a dedicated refactoring pass if the API surface is frozen.
+### Task 5.1: Create `Pseudo` inner class in `service.py`
+- Created `Pseudo` inner class with `__init__(self, service)` + `@property` accessor
+- Moved all 14 `@staticmethod` pseudo methods into the class with simplified names:
+  - `init_pseudo_dirs` → `init_dirs`
+  - `list_pseudo_libraries` → `list_libraries`
+  - `get_library_status` → `get_library_status` (unchanged)
+  - `install_pseudo_library` → `install_library`
+  - `remove_pseudo_library` → `remove_library`
+  - `repair_pseudo_library` → `repair_library`
+  - `compute_store_size` → `compute_store_size` (unchanged)
+  - `is_pseudo_archive_installed` → `is_archive_installed`
+  - `install_pseudo_archive` → `install_archive`
+  - `install_sssp_from_seed` → `install_sssp_from_seed` (unchanged)
+  - `install_all_sssp_from_seed` → `install_all_sssp_from_seed` (unchanged)
+  - `download_sssp_library` → `download_sssp_library` (unchanged)
+  - `download_all_sssp` → `download_all_sssp` (unchanged)
+  - `import_seed_archives` → `import_seed_archives` (unchanged)
+- Deleted old depth-0 methods entirely (no backward-compat shims)
+
+### Task 5.2: Update all daemon handler call sites
+- Updated 14 call sites in `daemon/server.py`:
+  - `QVService.init_pseudo_dirs()` → `QVService.Pseudo.init_dirs()`
+  - `QVService.list_pseudo_libraries()` → `QVService.Pseudo.list_libraries()`
+  - `QVService.get_library_status(...)` → `QVService.Pseudo.get_library_status(...)`
+  - `QVService.install_pseudo_library(...)` → `QVService.Pseudo.install_library(...)`
+  - `QVService.remove_pseudo_library(...)` → `QVService.Pseudo.remove_library(...)`
+  - `QVService.repair_pseudo_library(...)` → `QVService.Pseudo.repair_library(...)`
+  - `QVService.compute_store_size()` → `QVService.Pseudo.compute_store_size()`
+  - `QVService.is_pseudo_archive_installed(...)` → `QVService.Pseudo.is_archive_installed(...)`
+  - `QVService.install_pseudo_archive(...)` → `QVService.Pseudo.install_archive(...)`
+  - `QVService.install_sssp_from_seed(...)` → `QVService.Pseudo.install_sssp_from_seed(...)`
+  - `QVService.install_all_sssp_from_seed(...)` → `QVService.Pseudo.install_all_sssp_from_seed(...)`
+  - `QVService.download_sssp_library(...)` → `QVService.Pseudo.download_sssp_library(...)`
+  - `QVService.download_all_sssp(...)` → `QVService.Pseudo.download_all_sssp(...)`
+  - `QVService.import_seed_archives(...)` → `QVService.Pseudo.import_seed_archives(...)`
+- Confirmed: no CLI or test callers of old names exist
+
+### Task 5.3: Depth-0 cleanup verified
+- 14 pseudo methods removed from depth-0
+- Remaining depth-0 methods: 9 (list_projects, get_settings, list_demo_projects, etc.)
 
 ---
 
 ## Milestone 6: Daemon Cleanup
 
-**Status**: PARTIALLY DONE
+**Status**: DONE
+**Tests**: 5823 passed, 0 failed, 30 skipped
 
-### Task 6.1: Fix `_iter_params` private import
-- **DONE** (completed in M4): Removed daemon's import of `_iter_params` from `api.utils` when the QE metadata logic was moved. No daemon file imports private API symbols now.
+### Task 6.1: Remove double ULID resolution (2 sites)
+- Removed `validate_ulid(calculation_ulid, kind="calculation")` from `_handle_delete_calculation` (API validates internally)
+- Removed `validate_ulid(calculation_ulid, kind="calculation")` from `_handle_get_calculation_pseudo_mapping` (API validates internally)
+- Removed unused `validate_ulid` import from server.py (no remaining callers; only in comments)
 
-### Tasks 6.2-6.4: Remaining items SKIPPED
-- **`_expand_step_ulids_to_steps` YAML read** (compat.py): Reads calculation.yaml directly via yaml.safe_load instead of API. Located in the compat layer (v0 GUI format translation, 1,011 lines) which will be sunset as GUI catches up. Fixing individual functions in a compat shim is low-ROI.
-- **Double ULID resolution** (UW-1): Systemic change affecting dozens of RPC handlers. P3 priority. HIGH risk, LOW reward.
-- **`_snapshot_dag` kernel internals**: GUI convenience feature for DAG diffs. LOW priority. Not critical for API freeze.
+### Task 6.2: Fix `_expand_step_ulids_to_steps` YAML read
+- Replaced raw `yaml.safe_load()` with `load_calculation()` from `api.utils` (canonical YAML loader)
+- Removed constitutional violation: `stype_spec.replace("qe_", "")` prefix inference fallback
+- Unknown types now propagate empty string (no prefix guessing)
+- Removed local `import yaml` (no longer needed)
+
+### Task 6.3: Fix `_iter_params` private import
+- **DONE** (completed in M4): Already removed.
+
+### Task 6.4: Move `_snapshot_dag` to API layer
+- Created `snapshot_project_dag(index) -> dict` in `api/utils.py` (~50 lines)
+- Daemon `_snapshot_dag` now delegates to API utility (3-line thin wrapper)
+- Kernel `ResourceIndex` type annotation removed from daemon (was `Optional[ResourceIndex]`)
+- `_diff_dag` stays in daemon (operates on plain dicts, no kernel access)
 
 ---
 
@@ -158,8 +211,8 @@
 | M2: API Merge Batch 1 | DONE (partial) | -1 duplicate method, 3 skipped (not true duplicates) |
 | M3: Dead Code + RPC Sync | DONE | -2 methods, -80 dead code lines |
 | M4: QE Metadata → API | DONE | -400 daemon lines, QE browsable from Jupyter |
-| M5: svc.pseudo Sub-Object | SKIPPED | Cosmetic reorganization, high blast radius |
-| M6: Daemon Cleanup | PARTIAL | Private import fixed, rest systemic/low-ROI |
+| M5: svc.pseudo Sub-Object | DONE | 14 methods → Pseudo inner class, 14 daemon handlers updated |
+| M6: Daemon Cleanup | DONE | 2 double ULID resolutions removed, prefix inference removed, _snapshot_dag → API |
 
 ### Aggregate Metrics
 
@@ -167,6 +220,8 @@
 |--------|--------|-------|-------|
 | API methods total | 117 | 116 | -1 |
 | API methods added (capability gaps) | 0 | 2 | +2 |
+| Depth-0 methods on QVService | 23 | 9 | -14 (moved to Pseudo) |
 | Daemon business logic lines | ~770 | ~0 | -770 |
 | Dead code removed | 0 | ~80 lines | -80 |
+| Constitutional violations fixed | 0 | 3 | +3 (prefix inference, double ULID, raw YAML read) |
 | Tests passed | 5820 | 5823 | +3 |
