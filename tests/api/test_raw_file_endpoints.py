@@ -30,10 +30,12 @@ def test_read_raw_file_returns_text_payload(tmp_path: Path) -> None:
     calc_ulid = ctx["calc_ulid"]
     step_ulid = ctx["step_ulid"]
 
-    payload = svc.analysis.read_raw_file(
+    payload = svc.analysis.read_step_artifact_text(
         calculation_selector=calc_ulid,
         step_selector=step_ulid,
-        filename="si.bands.dat.gnu",
+        artifact_path="si.bands.dat.gnu",
+        head_lines=1000,
+        tail_lines=100,
     )
 
     assert "content" in payload

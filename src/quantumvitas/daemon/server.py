@@ -4286,10 +4286,10 @@ class QVDaemon:
 
         self._resolve_step_with_fallback(project_root, calculation, step)
         svc = get_service(project_root)
-        return svc.analysis.read_raw_file(
+        return svc.analysis.read_step_artifact_text(
             calculation_selector=calculation,
             step_selector=step,
-            filename=filename,
+            artifact_path=filename,
             head_lines=head_lines,
             tail_lines=tail_lines,
         )
@@ -5586,7 +5586,7 @@ class QVDaemon:
 
         # Use domain API
         svc = get_service(project_root)
-        return svc.history.list_runs(calc_ulid=calc_ulid, limit=limit)
+        return svc.history.list_run_history(calc_ulid=calc_ulid, limit=limit)
     
     def _handle_pin_analysis_to_history(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

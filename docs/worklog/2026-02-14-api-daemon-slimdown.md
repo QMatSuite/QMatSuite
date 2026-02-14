@@ -73,7 +73,33 @@
 
 ## Milestone 3: API Merge Batch 2 — Analysis + Dead Code + RPC Sync
 
-**Status**: TODO
+**Status**: DONE
+**Tests**: 5822 passed, 0 failed, 31 skipped
+
+### Task 3.1: Merge `list_raw_files` into `list_step_artifacts`
+- **SKIPPED**: Review claimed `list_raw_files` is a "Surface A wrapper" calling `list_step_artifacts`, but actual implementation is independent — recursive scan with binary filtering + rank-ordering vs step-type-aware artifact filtering. Different semantics. GUI RawFileViewer depends on it.
+
+### Task 3.2: Remove `svc.analysis.read_raw_file()`
+- `read_raw_file` was a genuine thin wrapper: `return self.read_step_artifact_text(...)` with different defaults (head=1000, tail=100 vs None/None).
+- Removed API method. Daemon RPC `read_raw_file` preserved (GUI compat) — now calls `svc.analysis.read_step_artifact_text()` directly with same defaults.
+- Updated test, facade assertions, contract crawler categories/exemptions.
+
+### Task 3.3: Remove dead `svc.structure.visualize()`
+- Zero callers found in entire codebase (no daemon handler, no CLI, no test, no GUI).
+- Also had duplicate dict key bugs (`"structure_ulid"` repeated twice).
+- Removed ~63 lines of dead code.
+
+### Task 3.4: Rename `svc.history.list_runs()` → `list_run_history()`
+- Prevents confusion with `svc.run.list_runs()` (different domain).
+- Updated daemon handler `_handle_list_project_runs()` to call renamed method.
+
+### Metrics After Milestone 3
+
+| Metric | Before | After M3 | Delta |
+|--------|--------|----------|-------|
+| API methods total | 118 | 116 | -2 |
+| Dead code removed | 0 lines | ~80 lines | -80 |
+| Tests passed | 5822 | 5822 | 0 |
 
 ---
 
