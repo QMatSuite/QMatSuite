@@ -217,7 +217,7 @@ export function CalculationListPanel({
               {isRefreshing ? '⟳' : '🔄'}
             </button>
           )}
-          <span className="panel-count">{calculations.length} total</span>
+          <span className="panel-count" data-testid="qv-calculations-count">{calculations.length} total</span>
         </div>
       </div>
       

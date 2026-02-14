@@ -31,7 +31,7 @@ interface OnlineImportPanelProps {
 }
 
 export function OnlineImportPanel({
-  projectRoot,
+  projectRoot: _projectRoot,
   isExpanded,
   onExpand,
   onCollapse,

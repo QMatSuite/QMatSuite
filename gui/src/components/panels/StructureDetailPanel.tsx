@@ -202,7 +202,7 @@ export function StructureDetailPanel({ model, onClose }: StructureDetailPanelPro
   }, [model.lattice]);
   
   return (
-    <div className="structure-detail-panel">
+    <div className="structure-detail-panel" data-testid="qv-structure-viewer-panel">
       <div className="panel-header">
         <h2 className="panel-title">
           <span className="panel-icon">📐</span>

@@ -128,7 +128,7 @@ export function StructureListPanel({
     }
     
     return (
-      <div className="structure-list-panel">
+      <div className="structure-list-panel" data-testid="qv-structures-view">
         <div className="panel-header">
           <h2 className="panel-title">
             <span className="panel-icon">🔬</span>
@@ -145,15 +145,16 @@ export function StructureListPanel({
                 {isRefreshing ? '⟳' : '🔄'} Refresh
               </button>
             )}
-            <span className="panel-count">{structures.length} total</span>
+            <span className="panel-count" data-testid="qv-structures-count">{structures.length} total</span>
           </div>
         </div>
-        
+
         <div className="structure-list">
           {structures.map((structure) => (
             <div
               key={structure.id}
               className={`structure-item ${selectedId === structure.id ? 'structure-item--selected' : ''}`}
+              data-testid="qv-structure-row"
             >
               <button
                 className="structure-item__content"
