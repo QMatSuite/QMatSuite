@@ -488,6 +488,7 @@ export function CalculationAnalysisPanel({
             <input
               checked={showReference}
               onChange={(e) => setShowReference(e.target.checked)}
+              data-testid="qv-analysis-reference-toggle"
               type="checkbox"
             />
             Reference

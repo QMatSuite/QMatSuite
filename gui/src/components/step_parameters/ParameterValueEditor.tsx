@@ -1,15 +1,13 @@
 /**
  * ParameterValueEditor - Type-aware editor for QE parameter values
- * 
- * STRING-ONLY RULE: All values are stored as strings in YAML.
- * 
+ *
  * Supports:
  * - LOGICAL: select (.true./.false.) with raw string fallback
- * - INTEGER: text input (string, numeric hints only)
- * - REAL: text input (string, numeric hints only)
+ * - INTEGER: text input, coerced to number when possible
+ * - REAL: text input, coerced to number when possible
  * - CHARACTER: text input
  * - Enum: select dropdown with raw string fallback
- * 
+ *
  * Quote-aware: Recognizes both quoted and unquoted enum values (e.g., 'scf' and scf).
  * For CHARACTER enums, writes quoted values by default.
  */
@@ -25,6 +23,8 @@ interface ParameterValueEditorProps {
   onChange: (value: unknown) => void;
   disabled?: boolean;
   placeholder?: string;
+  /** Optional test ID suffix for E2E tests (e.g., "system-ecutwfc") */
+  testIdSuffix?: string;
 }
 
 export function ParameterValueEditor({
@@ -33,6 +33,7 @@ export function ParameterValueEditor({
   onChange,
   disabled = false,
   placeholder,
+  testIdSuffix,
 }: ParameterValueEditorProps) {
   // Always work with string values
   const stringValue = value === null || value === undefined ? '' : String(value);
@@ -120,10 +121,39 @@ export function ParameterValueEditor({
     }
   }, [disabled]);
   
+  const coerceForType = useCallback((newValue: string): unknown => {
+    if (newValue === '') {
+      return undefined;
+    }
+
+    const trimmed = newValue.trim();
+    if (trimmed === '') {
+      return undefined;
+    }
+
+    if (paramType === 'INTEGER') {
+      if (/^[+-]?\d+$/.test(trimmed)) {
+        return Number.parseInt(trimmed, 10);
+      }
+      return newValue;
+    }
+
+    if (paramType === 'REAL') {
+      // Accept common scientific notation, including Fortran d/D exponents.
+      const normalized = trimmed.replace(/[dD]/g, 'e');
+      const parsed = Number.parseFloat(normalized);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+      return newValue;
+    }
+
+    return newValue;
+  }, [paramType]);
+
   const handleChange = useCallback((newValue: string) => {
-    // Always store as string (empty string means unset)
-    onChange(newValue === '' ? undefined : newValue);
-  }, [onChange]);
+    onChange(coerceForType(newValue));
+  }, [onChange, coerceForType]);
   
   // Handle enum dropdown change
   const handleEnumChange = useCallback((selectedValue: string) => {
@@ -232,9 +262,9 @@ export function ParameterValueEditor({
   // Raw mode or types without enum: text input (always string)
   const inputType = paramType === 'INTEGER' || paramType === 'REAL' ? 'text' : 'text';
   const inputPlaceholder = paramType === 'INTEGER' 
-    ? (placeholder || 'Enter integer (as string)')
+    ? (placeholder || 'Enter integer')
     : paramType === 'REAL'
-    ? (placeholder || 'Enter number (as string)')
+    ? (placeholder || 'Enter number')
     : (placeholder || 'Enter text');
   
   return (
@@ -248,6 +278,7 @@ export function ParameterValueEditor({
         }}
         placeholder={inputPlaceholder}
         disabled={disabled}
+        {...(testIdSuffix ? { 'data-testid': `qv-param-input-${testIdSuffix}` } : {})}
       />
       {(hasEnum || paramType === 'LOGICAL') && useRawMode && (
         <button
@@ -266,4 +297,3 @@ export function ParameterValueEditor({
     </div>
   );
 }
-

@@ -1659,10 +1659,13 @@ class QVDaemon:
             name=name,
         )
         
-        # Get structure metadata
+        # Invalidate cache since we added a new structure
+        self.state.invalidate_cache(project_root)
+
+        # Get structure metadata (re-fetch after cache invalidation)
         structure_dtos = svc.structure.list()
         new_struct_dto = next((s for s in structure_dtos if s.id == result_dto.id), None)
-        
+
         return {
             "structure_ulid": result_dto.id,
             "name": result_dto.name,
@@ -1965,10 +1968,13 @@ class QVDaemon:
             config=cache.config,
         )
         
-        # Get calculation details
+        # Invalidate cache since we added a new calculation
+        self.state.invalidate_cache(project_root)
+
+        # Get calculation details (re-fetch after cache invalidation)
         calculation_dtos = svc.calculation.list()
         new_wf_dto = next((w for w in calculation_dtos if w.id == result.meta.ulid), None)
-        
+
         return {
             "calc_ulid": result.meta.ulid,  # Short alias used by GUI
             "calculation_id": result.meta.ulid,
@@ -1977,7 +1983,7 @@ class QVDaemon:
             "slug": result.meta.slug,
             "n_steps": new_wf_dto.n_steps if new_wf_dto else 0,
         }
-    
+
     # -------------------------------------------------------------------------
     # Calculation management handlers
     # -------------------------------------------------------------------------
@@ -3459,10 +3465,7 @@ class QVDaemon:
             Dict with:
             - options_by_element: Dict[str, List[PseudoOption dict]]
         """
-        import inspect
         import logging
-        from quantumvitas.api import QVService
-        from quantumvitas.api import QVService
         
         logger = logging.getLogger(__name__)
         
@@ -3475,13 +3478,6 @@ class QVDaemon:
             f"[GET_PSEUDO_OPTIONS_FOR_CALCULATION] ENTRY "
             f"payload_keys={payload_keys} "
             f"calculation={calculation}"
-        )
-        
-        # Inspect get_calculation_detail signature
-        sig = inspect.signature(QVService.get_calculation_detail)
-        logger.info(
-            f"[GET_PSEUDO_OPTIONS_FOR_CALCULATION] "
-            f"inspect.signature(get_calculation_detail)={list(sig.parameters.keys())}"
         )
         
         # Resolve calculation selector to ULID (boundary resolution, consistent with other endpoints)

@@ -372,6 +372,7 @@ jobs:
             tests/e2e/welcome.spec.ts \
             tests/e2e/demo_calculation.spec.ts \
             tests/e2e/demo_calculation_run.spec.ts \
+            tests/e2e/realrun_si_scf.spec.ts \
             tests/e2e/demo_gallery.spec.ts \
             tests/e2e/step_defaults.spec.ts \
             --project=electron
@@ -381,6 +382,7 @@ jobs:
             tests/e2e/welcome.spec.ts \
             tests/e2e/demo_calculation.spec.ts \
             tests/e2e/demo_calculation_run.spec.ts \
+            tests/e2e/realrun_si_scf.spec.ts \
             tests/e2e/demo_gallery.spec.ts \
             tests/e2e/step_defaults.spec.ts \
             --project=electron

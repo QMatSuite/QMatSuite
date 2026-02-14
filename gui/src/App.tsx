@@ -2127,9 +2127,10 @@ function App() {
                 onlineCandidates={onlineCandidates}
               />
               {leftMode === 'project' && (
-                <button 
+                <button
                   className="view-action-btn"
                   onClick={() => setShowImportStructure(true)}
+                  data-testid="qv-btn-import-structure"
                 >
                   ➕ Import Structure
                 </button>
@@ -2370,9 +2371,10 @@ function App() {
                 onToggleCollapse={handleToggleCalculationsPane}
                 paneRef={calculationsPaneRef}
               />
-              <button 
+              <button
                 className="view-action-btn"
                 onClick={() => setShowCreateCalculation(true)}
+                data-testid="qv-btn-new-calculation"
               >
                 ➕ New Calculation
               </button>
