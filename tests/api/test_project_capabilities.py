@@ -83,16 +83,16 @@ def test_project_potential_map_via_config(tmp_path):
 
 
 def test_project_list_calculations_returns_list(tmp_path):
-    """list_calculations() returns list of CalculationDTO."""
+    """calculation.list() returns list of CalculationDTO."""
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
     (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
-    
+
     svc = QVService(project_root)
-    
+
     try:
-        calcs = svc.project.list_calculations()
+        calcs = svc.calculation.list()
         assert isinstance(calcs, list)
     except Exception:
         # Expected to fail without full project setup

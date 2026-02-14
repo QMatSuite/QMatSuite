@@ -6935,24 +6935,6 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
         
-        def list_calculations(self) -> list[CalculationDTO]:
-            """
-            List all calculations in project.
-            
-            Returns:
-                List of CalculationDTO
-                
-            Raises:
-                APIError: If project invalid
-            """
-            try:
-                # Delegate to calculation.list()
-                return self._service.calculation.list()
-            except Exception as e:
-                if isinstance(e, APIError):
-                    raise
-                raise map_kernel_exception(e)
-        
         def collect_slugs(self, entries: list[dict], *, exclude: dict | None = None) -> list[str]:
             """
             Collect all slugs from a list of structure or calculation entries.
