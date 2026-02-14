@@ -1016,26 +1016,6 @@ class QVService:
                 "artifacts": artifacts,
             }
 
-        def read_raw_file(
-            self,
-            calculation_selector: str,
-            step_selector: str,
-            filename: str,
-            *,
-            head_lines: int | None = 1000,
-            tail_lines: int | None = 100,
-        ) -> dict:
-            """
-            Surface A wrapper: read one raw text artifact for a step.
-            """
-            return self.read_step_artifact_text(
-                calculation_selector=calculation_selector,
-                step_selector=step_selector,
-                artifact_path=filename,
-                head_lines=head_lines,
-                tail_lines=tail_lines,
-            )
-
         def get_step_digest(self, run_ulid: str, step_ulid: str) -> dict:
             """
             Surface B: return post-run digest payload for one step.
@@ -1635,70 +1615,6 @@ class QVService:
             try:
                 from quantumvitas.core.resolution import require_structure
                 return require_structure(self._service.project_root, selector)
-            except Exception as e:
-                if isinstance(e, APIError):
-                    raise
-                raise map_kernel_exception(e)
-        
-        def visualize(self, selector: str, format: str = "json") -> dict:
-            """
-            Get structure visualization data.
-            
-            Args:
-                selector: Structure selector
-                format: Output format ("json" for data, "png"/"svg" for images)
-                
-            Returns:
-                Dict with visualization data
-                
-            Raises:
-                APIError: If structure not found
-            """
-            try:
-                from quantumvitas.core.resolution import require_structure
-                from quantumvitas.io.structure_io import read_structure
-                from quantumvitas.analysis.structure_viz import visualize_structure
-                
-                # Resolve and load structure
-                struct_resolved = require_structure(self._service.project_root, selector)
-                struct_path = struct_resolved.absolute_path
-                
-                if not struct_path.exists():
-                    from quantumvitas.api.errors import NotFoundError
-                    raise NotFoundError(
-                        f"Structure file not found: {struct_path}",
-                        context={"selector": selector}
-                    )
-                
-                pmg_structure = read_structure(struct_path)
-                
-                # Generate visualization
-                if format == "json":
-                    # Return JSON-serializable visualization data
-                    # For now, return basic structure info for visualization
-                    # Full visualization would require the structure_viz module
-                    structure_ulid = struct_resolved.meta.ulid if struct_resolved.meta else ""
-                    return {
-                        "structure_ulid": structure_ulid,
-                        "structure_ulid": structure_ulid,  # Backwards compat
-                        "num_atoms": len(pmg_structure),
-                        "formula": pmg_structure.formula,
-                    }
-                else:
-                    # For image formats, use the visualization function
-                    # This is a simplified version - full implementation would generate images
-                    result = visualize_structure(
-                        structure=pmg_structure,
-                        output_path=None,  # Don't save, just get data
-                        plot_format=format,
-                    )
-                    structure_ulid = struct_resolved.meta.ulid if struct_resolved.meta else ""
-                    return {
-                        "structure_ulid": structure_ulid,
-                        "structure_ulid": structure_ulid,  # Backwards compat
-                        "n_atoms": result.n_atoms if hasattr(result, "n_atoms") else len(pmg_structure),
-                        "format": format,
-                    }
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
@@ -7915,7 +7831,7 @@ class QVService:
                     "operation_count": 0,
                 }
 
-        def list_runs(
+        def list_run_history(
             self,
             calc_ulid: str | None = None,
             limit: int = 50,

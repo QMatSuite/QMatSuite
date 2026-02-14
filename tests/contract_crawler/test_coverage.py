@@ -22,7 +22,7 @@ EXEMPT_METHODS: dict[str, str] = {
     "shutdown": "Terminates daemon process; cannot be tested in golden generation as it stops the daemon",
     # Analysis pipeline endpoints requiring completed run snapshots/artifacts
     "list_raw_files": "Requires deterministic run artifacts for a selected step; contract crawler does not create stable step-bound raw payloads",
-    "read_raw_file": "Requires deterministic run artifacts plus text-selection parameters; covered by dedicated endpoint tests instead",
+    "read_raw_file": "RPC endpoint delegates to read_step_artifact_text; requires deterministic run artifacts",
     "get_step_digest": "Requires run_steps digest linkage and CAS payload created by a completed run",
     "get_analysis": "Operational derivation requires completed run evidence and parser-capability matching setup",
     "get_analysis_snapshot": "Explicit replay path requires SQLite snapshot linkage and CAS objects from completed runs",
