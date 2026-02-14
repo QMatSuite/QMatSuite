@@ -130,10 +130,43 @@
 
 ## Milestone 5: Create `svc.pseudo` Sub-Object
 
-**Status**: TODO
+**Status**: SKIPPED
+
+**Rationale**: Purely cosmetic namespace reorganization (14 static methods from `QVService.method()` → `QVService.pseudo.method()`). HIGH blast radius: 14+ daemon handlers, CLI commands, and tests to update. No functional benefit — no new Jupyter capability, no logic change. Risk-reward ratio too high for a slimdown sprint. Can be done later in a dedicated refactoring pass if the API surface is frozen.
 
 ---
 
 ## Milestone 6: Daemon Cleanup
 
-**Status**: TODO
+**Status**: PARTIALLY DONE
+
+### Task 6.1: Fix `_iter_params` private import
+- **DONE** (completed in M4): Removed daemon's import of `_iter_params` from `api.utils` when the QE metadata logic was moved. No daemon file imports private API symbols now.
+
+### Tasks 6.2-6.4: Remaining items SKIPPED
+- **`_expand_step_ulids_to_steps` YAML read** (compat.py): Reads calculation.yaml directly via yaml.safe_load instead of API. Located in the compat layer (v0 GUI format translation, 1,011 lines) which will be sunset as GUI catches up. Fixing individual functions in a compat shim is low-ROI.
+- **Double ULID resolution** (UW-1): Systemic change affecting dozens of RPC handlers. P3 priority. HIGH risk, LOW reward.
+- **`_snapshot_dag` kernel internals**: GUI convenience feature for DAG diffs. LOW priority. Not critical for API freeze.
+
+---
+
+## Final Summary
+
+| Milestone | Status | Key Outcome |
+|-----------|--------|-------------|
+| M1: Jupyter Capability Gaps | DONE | +2 API methods, -370 daemon lines |
+| M2: API Merge Batch 1 | DONE (partial) | -1 duplicate method, 3 skipped (not true duplicates) |
+| M3: Dead Code + RPC Sync | DONE | -2 methods, -80 dead code lines |
+| M4: QE Metadata → API | DONE | -400 daemon lines, QE browsable from Jupyter |
+| M5: svc.pseudo Sub-Object | SKIPPED | Cosmetic reorganization, high blast radius |
+| M6: Daemon Cleanup | PARTIAL | Private import fixed, rest systemic/low-ROI |
+
+### Aggregate Metrics
+
+| Metric | Before | After | Delta |
+|--------|--------|-------|-------|
+| API methods total | 117 | 116 | -1 |
+| API methods added (capability gaps) | 0 | 2 | +2 |
+| Daemon business logic lines | ~770 | ~0 | -770 |
+| Dead code removed | 0 | ~80 lines | -80 |
+| Tests passed | 5820 | 5823 | +3 |
