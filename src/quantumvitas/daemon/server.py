@@ -2797,18 +2797,20 @@ class QVDaemon:
     def _handle_create_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Create a new calculation.
-        
+
         Payload:
             project_root: str - Path to project root
             name: str - Calculation name
             structure: str - Optional structure selector
             template: str - Optional template name
+            engine_family: str - Optional engine family (e.g., "qe", "vasp")
         """
         project_root = self._require_path(payload, "project_root")
         name = self._require_str(payload, "name")
         structure = payload.get("structure")
         template = payload.get("template")
-        
+        engine_family = payload.get("engine_family")
+
         # Pass cached index and config for in-place registry updates
         cache = self.state.get_cache(project_root)
         svc = get_service(project_root)
@@ -2816,6 +2818,7 @@ class QVDaemon:
             name=name,
             structure_selector=structure,
             template=template,
+            engine_family=engine_family,
             index=cache.index,
             config=cache.config,
         )

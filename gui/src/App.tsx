@@ -810,7 +810,6 @@ function App() {
         // Online candidate path
         const settings = viewerSettingsOverride || viewerSettings;
         const response = await qv.call('structure_get_online_candidate', {
-          project_root: projectRoot,
           session_id: selection.sessionId,
           candidate_id: selection.candidateId,
           supercell: settings.supercell,

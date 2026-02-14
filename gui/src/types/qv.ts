@@ -115,6 +115,8 @@ export interface StructureVisData {
   n_bonds: number;
   supercell: [number, number, number];
   display_mode?: 'primitive' | 'supercell' | 'conventional' | 'box';
+  structure_type?: 'crystal' | 'molecule';  // Structure type (crystal vs molecule)
+  pbc?: [boolean, boolean, boolean];  // Periodic boundary conditions
   lattice: LatticeVisData;
   atoms: AtomVisData[];
   boundary_atoms: AtomVisData[];
