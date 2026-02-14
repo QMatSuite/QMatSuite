@@ -19,7 +19,7 @@ class TestGetStructureVis:
         })
 
         # Validate schema matches actual response
-        assert "structure_ulid" in response or "structure_id" in response
+        assert "structure_ulid" in response
         assert "formula" in response
         assert "atoms" in response
         assert isinstance(response["atoms"], list)

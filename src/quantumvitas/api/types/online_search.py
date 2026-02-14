@@ -120,6 +120,26 @@ class MaterialsProjectConfigDTO(BaseDTO):
 
 
 @dataclass
+class CandidateDetailDTO(BaseDTO):
+    """Detailed structure data for an online candidate (visualization + metadata)."""
+    structure_vis: Dict[str, Any]  # Visualization payload (atoms, bonds, lattice, etc.)
+    structure_json: str  # Serialized structure JSON
+    formula: str
+    n_atoms: int
+    n_species: int
+    provenance: Optional[Dict[str, Any]] = None
+    perf: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class ImportOnlineResultDTO(BaseDTO):
+    """Result of importing an online candidate into the project."""
+    structure_ulid: str
+    name: str
+    slug: str
+
+
+@dataclass
 class OnlineSourcesSettingsDTO(BaseDTO):
     """Current online structure sources settings (returned after patch)."""
     optimade_providers: List[ProviderInfoDTO]
