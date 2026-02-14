@@ -29,6 +29,21 @@ class GPAWDriver(BaseEngineDriver):
     COMPANION_ENGINES: frozenset = frozenset()
     ANALYSIS_CAPABILITIES = [
         AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["scf"],
+            evidence_files=["*.txt"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["relax"],
+            evidence_files=["*.txt"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["bandspw"],
+            evidence_files=["*.txt"],
+        ),
+        AnalysisCapability(
             object_type="bands",
             gen_step_sequence=["bandspw"],
             evidence_files=["bandstructure.json"],

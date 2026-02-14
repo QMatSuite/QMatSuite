@@ -1,13 +1,13 @@
 {
   "demo_slug": "qe_diamond_wannier",
   "engine": "qe",
-  "generated_at": "2026-02-12T23:08:42.652867+00:00",
+  "generated_at": "2026-02-13T19:43:09.475431+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "72d3bf5b8b4a73b1708ff9726a8611da56bea0e7778d96a1bcfb7631fa92f7b0"
+      "sha256": "2b6523f477439db39a264973450ed3a0df041f9721140d238c466568329a47b1"
     }
   }
 }

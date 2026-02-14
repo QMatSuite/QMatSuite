@@ -357,6 +357,7 @@ class QVDaemon:
             "get_structure_vis": self._handle_get_structure_vis,
             "get_reference_analysis": self._handle_get_reference_analysis,
             "get_analysis": self._handle_get_analysis,
+            "get_analysis_instances_for_step": self._handle_get_analysis_instances_for_step,
             "get_analysis_snapshot": self._handle_get_analysis_snapshot,
             "get_field3d_grid": self._handle_get_field3d_grid,
             "get_step_digest": self._handle_get_step_digest,
@@ -4595,6 +4596,25 @@ class QVDaemon:
             run_ulid=run_ulid,
             object_type=object_type,
             transforms=transforms,
+        )
+
+    def _handle_get_analysis_instances_for_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Domain B step-scoped enumeration (spec §5.3-B).
+
+        Payload:
+            project_root: str
+            calculation: str - Calculation selector
+            step_ulid: str
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step_ulid = self._require_str(payload, "step_ulid")
+
+        svc = get_service(project_root)
+        return svc.analysis.get_analysis_instances_for_step(
+            calc_selector=calculation,
+            step_ulid=step_ulid,
         )
 
     def _handle_get_analysis_snapshot(self, payload: Dict[str, Any]) -> Dict[str, Any]:

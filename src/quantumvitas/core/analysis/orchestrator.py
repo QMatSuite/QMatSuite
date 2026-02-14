@@ -3,9 +3,15 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
-from quantumvitas.core.analysis.capability import find_contiguous_match
+from quantumvitas.core.analysis.capability import (
+    AnalysisResult,
+    MissingReason,
+    ResultState,
+    canonical_match_key,
+    enumerate_all_matches,
+)
 from quantumvitas.core.analysis.evidence import EvidenceBundle
 from quantumvitas.parsers.registry import get_parser
 
@@ -21,9 +27,13 @@ def run_post_run_analysis(
     run_ulid: Optional[str] = None,
     calc_ulid: Optional[str] = None,
     calc_dir: Optional[Path] = None,
-) -> List[Dict[str, Any]]:
+) -> List[AnalysisResult]:
     """
     Execute post-run analysis capability matching and canonical bundle production.
+
+    Uses multi-match semantics (spec v2.2 §5.4): ALL capability instances
+    are enumerated and processed independently.  Each instance receives a
+    typed result state (OK / MISSING_EVIDENCE / PARSER_ERROR).
 
     This function is kernel-only orchestration:
     - matches declared engine capabilities against run GEN-step sequence
@@ -33,58 +43,62 @@ def run_post_run_analysis(
 
     It does not write to CAS or SQLite.
     """
-    results: List[Dict[str, Any]] = []
+    results: List[AnalysisResult] = []
     capabilities = getattr(driver, "ANALYSIS_CAPABILITIES", []) or []
 
-    # Deterministic capability resolution:
-    # - Evaluate one match per object_type
-    # - Prefer longest contiguous sequence, then declaration order
-    capabilities_by_type: Dict[str, List[Tuple[int, Any]]] = {}
-    type_order: List[str] = []
-    for index, capability in enumerate(capabilities):
-        object_type = capability.object_type.lower()
-        if object_type not in capabilities_by_type:
-            capabilities_by_type[object_type] = []
-            type_order.append(object_type)
-        capabilities_by_type[object_type].append((index, capability))
+    matches = enumerate_all_matches(capabilities, ordered_gen_steps)
 
-    for object_type in type_order:
-        selected_capability = None
-        selected_match = None
-        ranked = sorted(
-            capabilities_by_type[object_type],
-            key=lambda row: (-len(row[1].gen_step_sequence), row[0]),
-        )
-        for _, candidate in ranked:
-            candidate_match = find_contiguous_match(candidate, ordered_gen_steps)
-            if candidate_match is not None:
-                selected_capability = candidate
-                selected_match = candidate_match
-                break
-
-        if selected_capability is None or selected_match is None:
-            continue
-
-        provider_cls = get_parser(engine, selected_capability.object_type)
+    for match in matches:
+        provider_cls = get_parser(engine, match.object_type)
         if provider_cls is None:
             warnings.warn(
-                f"No analysis provider registered for ({engine}, {selected_capability.object_type}).",
+                f"No analysis provider registered for ({engine}, {match.object_type}).",
                 stacklevel=2,
+            )
+            results.append(
+                AnalysisResult(
+                    object_type=match.object_type,
+                    step_ulids=match.step_ulids,
+                    gen_steps=match.gen_steps,
+                    evidence_dirs=match.evidence_dirs,
+                    state=ResultState.MISSING_EVIDENCE,
+                    reason=MissingReason.NO_PROVIDER,
+                    effective_sequence=match.effective_sequence,
+                    match_key=canonical_match_key(
+                        engine, match.object_type,
+                        match.effective_sequence, match.step_ulids,
+                    ),
+                )
             )
             continue
 
         provider = provider_cls()
-        primary_raw_dir = selected_match.evidence_dirs[0]
+        primary_raw_dir = match.evidence_dirs[0]
         if hasattr(provider, "can_parse") and not provider.can_parse(primary_raw_dir):
+            results.append(
+                AnalysisResult(
+                    object_type=match.object_type,
+                    step_ulids=match.step_ulids,
+                    gen_steps=match.gen_steps,
+                    evidence_dirs=match.evidence_dirs,
+                    state=ResultState.MISSING_EVIDENCE,
+                    reason=MissingReason.NO_EVIDENCE,
+                    effective_sequence=match.effective_sequence,
+                    match_key=canonical_match_key(
+                        engine, match.object_type,
+                        match.effective_sequence, match.step_ulids,
+                    ),
+                )
+            )
             continue
 
         evidence_steps: List[Tuple[str, str, Path]] = []
-        if len(selected_match.step_ulids) > 1:
+        if len(match.step_ulids) > 1:
             evidence_steps = list(
                 zip(
-                    selected_match.step_ulids,
-                    selected_match.gen_steps,
-                    selected_match.evidence_dirs,
+                    match.step_ulids,
+                    match.gen_steps,
+                    match.evidence_dirs,
                 )
             )
 
@@ -93,8 +107,8 @@ def run_post_run_analysis(
             calc_dir=calc_dir if calc_dir is not None else primary_raw_dir.parent,
             run_ulid=run_ulid,
             calc_ulid=calc_ulid,
-            step_ulids=selected_match.step_ulids,
-            gen_steps=selected_match.gen_steps,
+            step_ulids=match.step_ulids,
+            gen_steps=match.gen_steps,
             engine_name=engine,
             evidence_steps=evidence_steps,
         )
@@ -104,17 +118,41 @@ def run_post_run_analysis(
             canonical = obj.to_primitives()
         except Exception as exc:
             warnings.warn(
-                f"Analysis capability '{selected_capability.object_type}' failed: {exc}",
+                f"Analysis capability '{match.object_type}' failed: {exc}",
                 stacklevel=2,
+            )
+            results.append(
+                AnalysisResult(
+                    object_type=match.object_type,
+                    step_ulids=match.step_ulids,
+                    gen_steps=match.gen_steps,
+                    evidence_dirs=match.evidence_dirs,
+                    state=ResultState.PARSER_ERROR,
+                    error=str(exc),
+                    effective_sequence=match.effective_sequence,
+                    match_key=canonical_match_key(
+                        engine, match.object_type,
+                        match.effective_sequence, match.step_ulids,
+                    ),
+                )
             )
             continue
 
         results.append(
-            {
-                "object_type": selected_capability.object_type,
-                "canonical": canonical,
-                "analysis_object": obj,
-            }
+            AnalysisResult(
+                object_type=match.object_type,
+                step_ulids=match.step_ulids,
+                gen_steps=match.gen_steps,
+                evidence_dirs=match.evidence_dirs,
+                state=ResultState.OK,
+                canonical=canonical,
+                analysis_object=obj,
+                effective_sequence=match.effective_sequence,
+                match_key=canonical_match_key(
+                    engine, match.object_type,
+                    match.effective_sequence, match.step_ulids,
+                ),
+            )
         )
 
     return results

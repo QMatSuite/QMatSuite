@@ -27,6 +27,16 @@ class Psi4Driver(BaseEngineDriver):
     COMPANION_ENGINES: frozenset = frozenset()
     ANALYSIS_CAPABILITIES = [
         AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["scf"],
+            evidence_files=["*.dat"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["relax"],
+            evidence_files=["*.dat"],
+        ),
+        AnalysisCapability(
             object_type="trajectory",
             gen_step_sequence=["relax"],
             evidence_files=["*.dat"],

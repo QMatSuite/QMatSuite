@@ -1,0 +1,13 @@
+{
+  "demo_slug": "orca_methane_freq",
+  "engine": "orca",
+  "generated_at": "2026-02-13T19:42:13.625351+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "8e2ba1074f47f7d8aa4f7426e6f814a08290b3a7f43c7084d7b9947a651317bc"
+    }
+  }
+}

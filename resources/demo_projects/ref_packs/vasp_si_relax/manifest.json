@@ -1,17 +1,17 @@
 {
   "demo_slug": "vasp_si_relax",
   "engine": "vasp",
-  "generated_at": "2026-02-12T23:16:58.705639+00:00",
+  "generated_at": "2026-02-13T19:51:11.597803+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "d81d1992251b1a978a379e1fd0fd7e6b8e5e12ded1e0e30c1b6ca1b72c2fedb4"
+      "sha256": "4a4c532045e4e8b6d2c83987cf9eb72c7e57a0f2abfb54605327d2d67dd371b4"
     },
     "trajectory": {
       "file": "trajectory.json",
-      "sha256": "bcccd47e3854713488c9cb832b099cd14735a4c76f47c692216c84a5f9193ef8"
+      "sha256": "1f2f24c8ee20fbeb431673deaa07602fd178895be515e4c8c18d49b82a6582db"
     }
   }
 }

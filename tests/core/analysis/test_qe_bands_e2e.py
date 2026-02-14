@@ -77,6 +77,9 @@ def test_qe_bands_orchestrator_integration() -> None:
         calc_dir=raw_dir.parent,
     )
 
-    assert len(results) >= 1
-    bands_result = next(row for row in results if row["object_type"] == "bands")
-    assert bands_result["canonical"].bundle_kind == "canonical"
+    from quantumvitas.core.analysis.capability import ResultState
+
+    ok_results = [r for r in results if r.state == ResultState.OK]
+    assert len(ok_results) >= 1
+    bands_result = next(r for r in ok_results if r.object_type == "bands")
+    assert bands_result.canonical.bundle_kind == "canonical"

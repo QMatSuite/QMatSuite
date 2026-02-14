@@ -25,7 +25,7 @@ def test_api_export_count_frozen():
     current_count = len(exports)
     
     # Baseline file location
-    baseline_file = Path(__file__).parent.parent.parent / ".api_export_baseline.txt"
+    baseline_file = Path(__file__).parent / ".api_export_baseline.txt"
     
     if baseline_file.exists():
         # Read baseline

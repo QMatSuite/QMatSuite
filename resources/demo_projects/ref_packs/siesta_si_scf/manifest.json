@@ -1,13 +1,13 @@
 {
   "demo_slug": "siesta_si_scf",
   "engine": "siesta",
-  "generated_at": "2026-02-12T23:16:33.884021+00:00",
+  "generated_at": "2026-02-13T19:50:47.433811+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "53fdc79143dc46f12f2cf7b5444363e84d9f276042ca7cf666aa8ea7c55304c5"
+      "sha256": "e658956b088ac24417b46638a531400c24ef17e4fcd2a15dd2cf876c3416542e"
     }
   }
 }

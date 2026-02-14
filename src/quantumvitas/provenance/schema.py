@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS analysis_snapshots (
     step_ulids TEXT NOT NULL,             -- JSON array of step ULIDs
     gen_steps TEXT NOT NULL,              -- JSON array of GEN step names
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(run_ulid, object_type),
+    UNIQUE(run_ulid, object_type, match_key),
     FOREIGN KEY (run_ulid) REFERENCES runs(run_ulid)
 );
 
@@ -238,7 +238,7 @@ def migrate_schema(conn, from_version: int, to_version: int) -> None:
                     step_ulids TEXT NOT NULL,
                     gen_steps TEXT NOT NULL,
                     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                    UNIQUE(run_ulid, object_type),
+                    UNIQUE(run_ulid, object_type, match_key),
                     FOREIGN KEY (run_ulid) REFERENCES runs(run_ulid)
                 );
 

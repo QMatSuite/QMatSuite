@@ -6,6 +6,7 @@ This driver handles all QMCPACK Quantum Monte Carlo calculations including:
 - Wavefunction optimization
 """
 
+from quantumvitas.core.analysis.capability import AnalysisCapability
 from quantumvitas.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
@@ -23,6 +24,18 @@ class QMCPACKDriver(BaseEngineDriver):
     })
     ENGINE_ROLE: str = "postprocessing"
     COMPANION_ENGINES: frozenset = frozenset()
+    ANALYSIS_CAPABILITIES = [
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["vmc"],
+            evidence_files=["*.scalar.dat"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["dmc"],
+            evidence_files=["*.scalar.dat"],
+        ),
+    ]
 
     # ─────────────────────────────────────────────────────────────────────
     # MUST: Required properties

@@ -1,13 +1,13 @@
 {
   "demo_slug": "abinit_si_bands",
   "engine": "abinit",
-  "generated_at": "2026-02-12T23:02:51.556110+00:00",
+  "generated_at": "2026-02-13T19:38:54.772420+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "bands": {
       "file": "bands.json",
-      "sha256": "401f95d96172ad111f80c5a9e2372f715d57b431bf42fdb683125ef544a427fa"
+      "sha256": "9b6c5c4765a96e828117a461893d8af161d9f1b19dc85a1b3f7f3594a5113b88"
     }
   }
 }

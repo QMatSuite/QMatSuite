@@ -32,6 +32,36 @@ class GaussianDriver(BaseEngineDriver):
     COMPANION_ENGINES: frozenset = frozenset()
     ANALYSIS_CAPABILITIES = [
         AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["scf"],
+            evidence_files=["*.log"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["hf"],
+            evidence_files=["*.log"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["relax"],
+            evidence_files=["*.log"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["td"],
+            evidence_files=["*.log"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["mp2"],
+            evidence_files=["*.log"],
+        ),
+        AnalysisCapability(
+            object_type="convergence",
+            gen_step_sequence=["freq"],
+            evidence_files=["*.log"],
+        ),
+        AnalysisCapability(
             object_type="trajectory",
             gen_step_sequence=["relax"],
             evidence_files=["*.log"],

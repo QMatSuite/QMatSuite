@@ -1,17 +1,17 @@
 {
   "demo_slug": "qe_si_dos_alt",
   "engine": "qe",
-  "generated_at": "2026-02-12T23:11:42.677133+00:00",
+  "generated_at": "2026-02-13T19:46:04.872894+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
-    "convergence": {
-      "file": "convergence.json",
-      "sha256": "446ac7df39250b43416a5c28ee10e8a854bfe8cdcb42b25f82f1c36e76dcc50e"
-    },
     "dos": {
       "file": "dos.json",
-      "sha256": "183997ed2107d2199386afff0d7168c8251c526d2caf8d4fac9d125cc4896017"
+      "sha256": "bcdfc3c2cf3d180a15462bf58f7845a6f9ce4a5024c59eff1d95b2ed1311114e"
+    },
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "0e67ca88bb950c4fb3693eb4c22731df1ac43cfc56ccf1a118229f7fb4618b63"
     }
   }
 }

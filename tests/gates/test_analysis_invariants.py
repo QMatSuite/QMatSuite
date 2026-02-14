@@ -22,6 +22,8 @@ from quantumvitas.core.analysis.base import AnalysisObjectMeta
 from quantumvitas.core.analysis.bundles import RenderMeta
 from quantumvitas.core.analysis.capability import (
     AnalysisCapability,
+    MissingReason,
+    ResultState,
     find_contiguous_match,
 )
 from quantumvitas.core.driver_registry import DriverRegistry
@@ -410,8 +412,9 @@ def test_no_redundant_canonical(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
         calc_ulid="01CALC",
         calc_dir=tmp_path,
     )
-    assert len(result_single) == 1
-    assert result_single[0]["object_type"] == "bands"
+    ok_single = [r for r in result_single if r.state == ResultState.OK]
+    assert len(ok_single) == 1
+    assert ok_single[0].object_type == "bands"
 
     result_overlap = orchestrator_mod.run_post_run_analysis(
         engine="qe",
@@ -421,9 +424,13 @@ def test_no_redundant_canonical(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
         calc_ulid="01CALC",
         calc_dir=tmp_path,
     )
-    assert len(result_overlap) == 1
-    assert result_overlap[0]["object_type"] == "bands"
-    assert result_overlap[0]["canonical"].provenance_meta.step_ulids == ["01SCF", "01BANDS"]
+    # With multi-match, overlapping caps at same start → longest wins per type
+    ok_overlap = [r for r in result_overlap if r.state == ResultState.OK]
+    bands_overlap = [r for r in ok_overlap if r.object_type == "bands"]
+    assert len(bands_overlap) >= 1
+    # The longest (["scf","bandspw"]) wins at start_idx=0, single ["bandspw"] at start_idx=1
+    longest = max(bands_overlap, key=lambda r: len(r.step_ulids))
+    assert longest.canonical.provenance_meta.step_ulids == ["01SCF", "01BANDS"]
 
 
 def test_unknown_engine_analysis_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -441,18 +448,19 @@ def test_unknown_engine_analysis_raises(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
     monkeypatch.setattr(orchestrator_mod, "get_parser", lambda engine, object_type: None)
 
-    try:
-        with pytest.warns(UserWarning, match="No analysis provider registered"):
-            result = orchestrator_mod.run_post_run_analysis(
-                engine="qe",
-                driver=_Driver(),
-                ordered_gen_steps=[("01STEP", "scf", tmp_path / "scf")],
-                calc_dir=tmp_path,
-            )
-        assert result == []
-    except RuntimeError:
-        # Accept hard error behavior if orchestrator changes to strict mode.
-        pass
+    with pytest.warns(UserWarning, match="No analysis provider registered"):
+        results = orchestrator_mod.run_post_run_analysis(
+            engine="qe",
+            driver=_Driver(),
+            ordered_gen_steps=[("01STEP", "scf", tmp_path / "scf")],
+            calc_dir=tmp_path,
+        )
+    # Result is MISSING_EVIDENCE(NO_PROVIDER), non-fatal (spec §2 Inv-A13)
+    ok_results = [r for r in results if r.state == ResultState.OK]
+    assert ok_results == []
+    missing = [r for r in results if r.state == ResultState.MISSING_EVIDENCE]
+    assert len(missing) == 1
+    assert missing[0].reason == MissingReason.NO_PROVIDER
 
 
 def test_no_analysis_disk_cache() -> None:
@@ -610,7 +618,7 @@ def test_cas_is_content_addressed() -> None:
 
     assert "analysis_snapshots" in schema_src
     assert "canonical_sha TEXT NOT NULL" in schema_src
-    assert "UNIQUE(run_ulid, object_type)" in schema_src
+    assert "UNIQUE(run_ulid, object_type, match_key)" in schema_src
     assert "owner_step_ulid" not in schema_src
 
 
@@ -880,3 +888,94 @@ def test_field3d_cube_parser_importable() -> None:
     from quantumvitas.io.parser.cube_parser import parse_cube_file, parse_xsf_field3d
     assert callable(parse_cube_file)
     assert callable(parse_xsf_field3d)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Spec v2.2 alignment gates
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def test_declared_capability_has_provider() -> None:
+    """§12.1: every declared capability MUST have a registered provider (gate-strict)."""
+    import quantumvitas.drivers  # noqa: F401
+    from quantumvitas.parsers.registry import get_parser
+
+    registry = DriverRegistry.get_instance()
+    engines_checked = 0
+    for engine_name in list(registry._drivers.keys()):
+        driver = DriverRegistry.get_driver(engine_name)
+        capabilities = getattr(driver, "ANALYSIS_CAPABILITIES", [])
+        if not capabilities:
+            continue
+        engines_checked += 1
+        object_types = {cap.object_type for cap in capabilities}
+        for object_type in object_types:
+            provider = get_parser(engine_name, object_type)
+            assert provider is not None, (
+                f"Engine '{engine_name}' declares capability '{object_type}' "
+                f"but has no registered provider"
+            )
+
+    assert engines_checked > 0, "No engines with ANALYSIS_CAPABILITIES found"
+
+
+def test_capability_no_repeated_gen_steps() -> None:
+    """§5.4.6: no capability may have repeated step types in gen_step_sequence."""
+    import quantumvitas.drivers  # noqa: F401
+
+    registry = DriverRegistry.get_instance()
+    for engine_name in list(registry._drivers.keys()):
+        driver = DriverRegistry.get_driver(engine_name)
+        for cap in getattr(driver, "ANALYSIS_CAPABILITIES", []):
+            assert len(set(cap.gen_step_sequence)) == len(cap.gen_step_sequence), (
+                f"Engine '{engine_name}' capability '{cap.object_type}' has "
+                f"repeated gen_step_sequence: {cap.gen_step_sequence}"
+            )
+
+
+def test_missing_provider_runtime_nonfatal(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Spec §2 Inv-A13: missing provider at runtime = non-fatal MISSING_EVIDENCE."""
+
+    class _Driver:
+        ANALYSIS_CAPABILITIES = [
+            AnalysisCapability(object_type="phantom", gen_step_sequence=["scf"]),
+        ]
+
+    monkeypatch.setattr(orchestrator_mod, "get_parser", lambda e, o: None)
+
+    with pytest.warns(UserWarning, match="No analysis provider"):
+        results = orchestrator_mod.run_post_run_analysis(
+            engine="test_engine",
+            driver=_Driver(),
+            ordered_gen_steps=[("S1", "scf", tmp_path)],
+            calc_dir=tmp_path,
+        )
+
+    assert len(results) == 1
+    assert results[0].state == ResultState.MISSING_EVIDENCE
+    assert results[0].reason == MissingReason.NO_PROVIDER
+
+
+def test_enumerate_all_matches_importable() -> None:
+    """Gate: enumerate_all_matches is available from capability module."""
+    from quantumvitas.core.analysis.capability import enumerate_all_matches
+    assert callable(enumerate_all_matches)
+
+
+def test_result_state_importable() -> None:
+    """Gate: ResultState and AnalysisResult are importable."""
+    from quantumvitas.core.analysis.capability import (
+        AnalysisResult,
+        MissingReason,
+        ResultState,
+    )
+    assert ResultState.OK.value == "ok"
+    assert MissingReason.NO_PROVIDER.value == "no_provider"
+    assert AnalysisResult is not None
+
+
+def test_multi_match_schema_constraint() -> None:
+    """§10.4: SQLite allows multiple rows per (run_ulid, object_type) with different match_key."""
+    schema_path = REPO_ROOT / "src" / "quantumvitas" / "provenance" / "schema.py"
+    schema_src = schema_path.read_text(encoding="utf-8")
+    assert "UNIQUE(run_ulid, object_type, match_key)" in schema_src
