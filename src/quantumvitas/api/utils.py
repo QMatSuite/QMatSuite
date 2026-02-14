@@ -859,18 +859,29 @@ def get_engine_parameter_metadata(
     engine_family: str,
     operation: str,
     category: str = "",
+    section: str = "",
     query: str = "",
 ) -> dict:
     """
     Browse parameter metadata for any engine.
 
-    JUSTIFICATION: Needed by daemon for list_engine_parameter_metadata RPC.
-    Generic replacement for QE-specific parameter metadata queries.
+    JUSTIFICATION: Needed by daemon and Jupyter for parameter browsing.
+    Handles QE's 3-level hierarchy (modules → sections → parameters) natively.
+    Other engines use flat hierarchy (categories → tags).
     Queries static engine metadata modules, no project context.
+
+    Operations:
+        list_categories: List top-level categories (QE: modules, others: categories)
+        list_sections: List sections within a category (QE only; others: empty)
+        list_tags: List parameters/tags within category+section
+        search: Full-text search across all parameters
 
     PROXIES: quantumvitas.drivers.<engine>.data.<engine>_metadata
     """
     engine_family = engine_family.strip().lower()
+
+    if engine_family == "qe":
+        return _qe_parameter_metadata(operation, category, section, query)
 
     try:
         metadata_module = _get_engine_metadata_module(engine_family)
@@ -882,6 +893,9 @@ def get_engine_parameter_metadata(
                 cats = metadata_module.list_categories()
                 return {"categories": [{"id": c, "label": c} for c in sorted(cats)]}
             return {"categories": []}
+
+        elif operation == "list_sections":
+            return {"sections": []}
 
         elif operation == "list_tags":
             if hasattr(metadata_module, 'list_tags'):
@@ -936,11 +950,353 @@ def get_engine_parameter_metadata(
 
         else:
             raise ValueError(
-                f"Unknown operation '{operation}'. Must be: list_categories, list_tags, search"
+                f"Unknown operation '{operation}'. Must be: list_categories, list_sections, list_tags, search"
             )
 
     except (ImportError, AttributeError) as e:
         return {"categories": [], "tags": [], "results": [], "error": str(e)}
+
+
+def _qe_parameter_metadata(
+    operation: str,
+    category: str = "",
+    section: str = "",
+    query: str = "",
+) -> dict:
+    """
+    Browse QE parameter metadata (modules, sections, parameters, search).
+
+    QE has a 3-level hierarchy: modules → sections (namelists/cards) → parameters.
+    The ``operation`` argument maps to the generic API operations:
+        list_categories → list QE modules
+        list_sections → list sections within a module
+        list_tags → list parameters within a module+section
+        search → full-text search across all modules/sections
+    """
+    # Map generic operations to QE-specific operations
+    if operation == "list_categories":
+        qe_op = "list_modules"
+    elif operation == "list_sections":
+        qe_op = "list_sections"
+    elif operation == "list_tags":
+        qe_op = "list_parameters"
+    elif operation == "search":
+        qe_op = "search"
+    else:
+        raise ValueError(
+            f"Unknown operation '{operation}'. Must be: list_categories, list_sections, list_tags, search"
+        )
+
+    module = category  # In QE, "category" maps to "module"
+
+    try:
+        metadata_info = get_metadata_file_info()
+
+        if qe_op == "list_modules":
+            modules = list_supported_modules()
+            result = []
+            for module_id in modules:
+                doc_url = get_module_doc_url(module_id)
+                label = f"{module_id}.x" if module_id else module_id
+                result.append({
+                    "id": module_id,
+                    "ulid": module_id,
+                    "label": label,
+                    "doc_url": doc_url,
+                })
+            return {
+                "modules": result,
+                "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                "schema_version": metadata_info.get("schema_version"),
+            }
+
+        elif qe_op == "list_sections":
+            module = module.strip().lower() if module else ""
+            if not module:
+                raise ValueError("'category' (module) is required for list_sections operation")
+
+            supported_modules = list_supported_modules()
+            if module not in supported_modules:
+                raise ValueError(
+                    f"Unknown module '{module}'. Supported modules: {', '.join(sorted(supported_modules))}"
+                )
+
+            result = []
+            seen_sections = set()
+
+            card_sections = get_module_card_sections(module)
+            card_names_upper = {card_name.upper() for card_name in card_sections}
+
+            raw_data = safe_load_metadata()
+            modules_data = raw_data.get("modules", {})
+            module_entry = modules_data.get(module)
+
+            if not module_entry:
+                return {
+                    "sections": [],
+                    "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                    "schema_version": metadata_info.get("schema_version"),
+                }
+
+            schema_version = raw_data.get("schema_version", 0)
+            section_order = []
+
+            if schema_version in (1, 2, 3):
+                parameters = module_entry.get("parameters", {})
+                for param_key in parameters.keys():
+                    if '.' in param_key:
+                        section_part = param_key.split('.')[0]
+                        section_normalized = section_part[1:].upper() if section_part.startswith('&') else section_part.upper()
+                        if section_normalized not in seen_sections:
+                            seen_sections.add(section_normalized)
+                            section_order.append((section_part, section_normalized))
+            else:
+                sections_dict = module_entry.get("sections", {})
+                for section_name in sections_dict.keys():
+                    section_normalized = section_name[1:].upper() if section_name.startswith("&") else section_name.upper()
+                    if section_normalized not in seen_sections:
+                        seen_sections.add(section_normalized)
+                        section_order.append((section_name, section_normalized))
+
+            for section_part, section_normalized in section_order:
+                if section_normalized in card_names_upper:
+                    result.append({
+                        "id": section_normalized,
+                        "ulid": section_normalized,
+                        "name": section_normalized,
+                        "label": section_normalized,
+                        "kind": "card",
+                    })
+                elif section_part.startswith("&"):
+                    result.append({
+                        "id": section_part,
+                        "ulid": section_part,
+                        "name": section_normalized,
+                        "label": section_part,
+                        "kind": "namelist",
+                    })
+                else:
+                    if section_normalized in card_names_upper:
+                        result.append({
+                            "id": section_normalized,
+                            "ulid": section_normalized,
+                            "name": section_normalized,
+                            "label": section_normalized,
+                            "kind": "card",
+                        })
+                    else:
+                        result.append({
+                            "id": f"&{section_normalized}",
+                            "ulid": f"&{section_normalized}",
+                            "name": section_normalized,
+                            "label": f"&{section_normalized}",
+                            "kind": "namelist",
+                        })
+
+            for card_name in card_sections:
+                card_name_upper = card_name.upper()
+                if card_name_upper not in [s["name"] for s in result]:
+                    result.append({
+                        "id": card_name_upper,
+                        "ulid": card_name_upper,
+                        "name": card_name_upper,
+                        "label": card_name_upper,
+                        "kind": "card",
+                    })
+
+            return {
+                "sections": result,
+                "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                "schema_version": metadata_info.get("schema_version"),
+            }
+
+        elif qe_op == "list_parameters":
+            module = module.strip().lower() if module else ""
+            section = section.strip() if section else ""
+
+            if not module:
+                raise ValueError("'category' (module) is required for list_tags operation")
+            if not section:
+                raise ValueError("'section' is required for list_tags operation")
+
+            section_normalized = section[1:].upper() if section.startswith("&") else section.upper()
+            is_namelist = section.startswith("&")
+
+            result = []
+            raw_data = safe_load_metadata()
+            modules_data = raw_data.get("modules", {})
+            module_entry = modules_data.get(module)
+
+            if not module_entry:
+                return {
+                    "parameters": [],
+                    "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                    "schema_version": metadata_info.get("schema_version"),
+                }
+
+            if is_namelist:
+                section_with_prefix = f"&{section_normalized}"
+                params = _iter_params(module)
+
+                for param in params:
+                    param_namelist = param.get("namelist", "")
+                    param_section = f"&{param_namelist.upper()}" if param_namelist else ""
+
+                    if param_section == section_with_prefix or param_namelist.upper() == section_normalized:
+                        param_name = param.get("name")
+                        param_dict = {
+                            "name": param_name,
+                            "type": param.get("type"),
+                            "default": param.get("default"),
+                            "enum": param.get("enum"),
+                            "description": param.get("description"),
+                            "section": section_with_prefix,
+                            "module": module,
+                        }
+
+                        schema_ver = raw_data.get("schema_version", 0)
+                        if schema_ver in (1, 2, 3):
+                            parameters_map = module_entry.get("parameters", {})
+                            param_key = f"{section_with_prefix}.{param_name}"
+                            param_meta = parameters_map.get(param_key)
+                            if param_meta and "indexing" in param_meta:
+                                param_dict["indexing"] = param_meta["indexing"]
+
+                        is_managed = False
+                        managed_reason = None
+                        if section_normalized == "CONTROL":
+                            if param_name and param_name.lower() in ("prefix", "outdir", "pseudo_dir"):
+                                is_managed = True
+                                managed_reason = "runtime_overridden"
+                            elif param_name and param_name.lower() == "calculation":
+                                is_managed = True
+                                managed_reason = "step_type_owned"
+
+                        param_dict["is_managed"] = is_managed
+                        if managed_reason:
+                            param_dict["managed_reason"] = managed_reason
+
+                        result.append(param_dict)
+            else:
+                card_metadata = module_entry.get("card_metadata", {})
+                card_info = card_metadata.get(section_normalized)
+
+                if card_info:
+                    result.append({
+                        "name": card_info.get("name", section_normalized),
+                        "type": card_info.get("type"),
+                        "default": card_info.get("default"),
+                        "enum": card_info.get("enum"),
+                        "description": card_info.get("description"),
+                        "section": section_normalized,
+                        "module": module,
+                    })
+
+            result.sort(key=lambda x: x.get("name", ""))
+            return {
+                "parameters": result,
+                "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                "schema_version": metadata_info.get("schema_version"),
+            }
+
+        elif qe_op == "search":
+            if not query:
+                return {"results": []}
+
+            query_lower = query.lower()
+            modules = list_supported_modules()
+            results = []
+
+            for mod in modules:
+                card_secs = get_module_card_sections(mod)
+
+                params = _iter_params(mod)
+                for param in params:
+                    param_name = param.get("name", "").lower()
+                    param_desc = (param.get("description") or "").lower()
+                    param_default = str(param.get("default", "")).lower() if param.get("default") is not None else ""
+                    param_enum = param.get("enum") or []
+                    param_section = f"&{param.get('namelist', '').upper()}"
+
+                    searchable_fields = [param_name, param_desc, param_default]
+                    if param_enum:
+                        searchable_fields.extend(str(val).lower() for val in param_enum)
+
+                    searchable_text = " ".join(searchable_fields)
+
+                    if query_lower in searchable_text:
+                        param_dict = {
+                            "module": mod,
+                            "section": param_section,
+                            "name": param.get("name"),
+                            "key": f"{mod}::{param_section}::{param.get('name')}",
+                            "type": param.get("type"),
+                            "default": param.get("default"),
+                            "enum": param.get("enum"),
+                            "description": param.get("description"),
+                        }
+
+                        try:
+                            raw_data = safe_load_metadata()
+                            if raw_data.get("schema_version") in (1, 2, 3):
+                                modules_data = raw_data.get("modules", {})
+                                module_entry = modules_data.get(mod)
+                                if module_entry:
+                                    parameters_map = module_entry.get("parameters", {})
+                                    param_key_str = f"{param_section}.{param.get('name')}"
+                                    param_meta = parameters_map.get(param_key_str)
+                                    if param_meta and "indexing" in param_meta:
+                                        param_dict["indexing"] = param_meta["indexing"]
+                        except Exception:
+                            pass
+
+                        results.append(param_dict)
+
+                raw_data = safe_load_metadata()
+                modules_data = raw_data.get("modules", {})
+                module_entry = modules_data.get(mod)
+                if module_entry:
+                    card_metadata = module_entry.get("card_metadata", {})
+                    for card_name in card_secs:
+                        card_info = card_metadata.get(card_name)
+                        if card_info:
+                            card_name_lower = card_name.lower()
+                            card_desc = (card_info.get("description") or "").lower()
+                            card_default = str(card_info.get("default", "")).lower() if card_info.get("default") is not None else ""
+                            card_enum = card_info.get("enum") or []
+
+                            searchable_fields = [card_name_lower, card_desc, card_default]
+                            if card_enum:
+                                searchable_fields.extend(str(val).lower() for val in card_enum)
+
+                            searchable_text = " ".join(searchable_fields)
+
+                            if query_lower in searchable_text:
+                                results.append({
+                                    "module": mod,
+                                    "section": card_name.upper(),
+                                    "name": card_info.get("name", card_name.upper()),
+                                    "key": f"{mod}::{card_name.upper()}::{card_info.get('name', card_name.upper())}",
+                                    "type": card_info.get("type"),
+                                    "default": card_info.get("default"),
+                                    "enum": card_info.get("enum"),
+                                    "description": card_info.get("description"),
+                                })
+
+            return {
+                "results": results,
+                "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                "schema_version": metadata_info.get("schema_version"),
+            }
+
+        else:
+            raise ValueError(f"Unknown QE operation '{qe_op}'")
+
+    except (RuntimeError, FileNotFoundError) as e:
+        raise ValueError(
+            f"QE parameter metadata is not available: {e}. "
+            "Run `python tools/extract_qe_parameters_v2.py` to generate it."
+        ) from e
 
 
 # =============================================================================
