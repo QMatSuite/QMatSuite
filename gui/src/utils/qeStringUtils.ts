@@ -29,17 +29,18 @@ export function normalizeQeScalar(value: string): string {
   if (!value) return value;
   
   let trimmed = value.trim();
-  
-  // Check for single quotes: '...'
-  if (trimmed.length >= 2 && trimmed.startsWith("'") && trimmed.endsWith("'")) {
-    return trimmed.slice(1, -1);
+
+  // Peel matching wrapping quotes repeatedly so values like ''smearing''
+  // normalize to smearing (not 'smearing').
+  while (trimmed.length >= 2) {
+    const singleQuoted = trimmed.startsWith("'") && trimmed.endsWith("'");
+    const doubleQuoted = trimmed.startsWith('"') && trimmed.endsWith('"');
+    if (!singleQuoted && !doubleQuoted) {
+      break;
+    }
+    trimmed = trimmed.slice(1, -1).trim();
   }
-  
-  // Check for double quotes: "..."
-  if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
-    return trimmed.slice(1, -1);
-  }
-  
+
   return trimmed;
 }
 
@@ -134,4 +135,3 @@ export function storeEnumSelection(value: string, meta: { type: string | null; e
 export function canonicalLogicalSelection(value: boolean): string {
   return value ? '.true.' : '.false.';
 }
-

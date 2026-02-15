@@ -165,7 +165,8 @@ export function ParameterValueEditor({
     // For CHARACTER type enums, write quoted value by default
     // For other types, write unquoted
     if (isCharacter) {
-      handleChange(quoteSingle(selectedValue));
+      // Metadata enums may already include quotes; normalize first to avoid ''value''.
+      handleChange(quoteSingle(normalizeQeScalar(selectedValue)));
     } else {
       handleChange(selectedValue);
     }
