@@ -461,15 +461,17 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
     setIsDirty(true);
     // NO sync to structured state - preserves user raw edits
   }, []);
+
+  const isNewCard = !viewModel && !rawCardData;
   
   // No card data at all
-  if (!viewModel && !rawCardData) {
+  if (isNewCard && !isEditing) {
     return (
-      <div className="kpoints-card">
+      <div className="kpoints-card" data-testid="qv-kpoints-card">
         <div className="kpoints-card__header">
           <span className="kpoints-card__title">K_POINTS</span>
         </div>
-        <div className="kpoints-card__empty">
+        <div className="kpoints-card__empty" data-testid="qv-kpoints-no-card">
           <p>No K_POINTS card found</p>
         </div>
       </div>
@@ -496,7 +498,7 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
   // Non-edit mode: clean summary view (always expanded)
   if (!isEditing) {
     return (
-      <div className="kpoints-card">
+      <div className="kpoints-card" data-testid="qv-kpoints-card">
         <div className="kpoints-card__header">
           <span className="kpoints-card__title">K_POINTS</span>
           <span className="kpoints-card__summary">{getSummaryText()}</span>
@@ -595,7 +597,7 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
   
   // Edit mode
   return (
-    <div className="kpoints-card kpoints-card--editing">
+    <div className="kpoints-card kpoints-card--editing" data-testid="qv-kpoints-card">
       <div className="kpoints-card__header">
         <span className="kpoints-card__title">K_POINTS</span>
         <div className="kpoints-card__edit-toggle">
@@ -604,6 +606,7 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
             className={`kpoints-card__mode-btn ${!useRawEdit ? 'kpoints-card__mode-btn--active' : ''}`}
             onClick={() => useRawEdit && handleToggleRawEdit()}
             title="Structured editor"
+            data-testid="qv-kpoints-editor-structured"
           >
             📊 Structured
           </button>
@@ -612,6 +615,7 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
             className={`kpoints-card__mode-btn ${useRawEdit ? 'kpoints-card__mode-btn--active' : ''}`}
             onClick={() => !useRawEdit && handleToggleRawEdit()}
             title="Raw text editor"
+            data-testid="qv-kpoints-editor-raw"
           >
             📝 Raw
           </button>
@@ -624,11 +628,18 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
             className="kpoints-card__apply-btn-header"
             disabled={isApplyingRef.current}
             title="Apply K_POINTS changes"
+            data-testid="qv-kpoints-apply"
           >
             {isApplyingRef.current ? 'Applying...' : 'Apply'}
           </button>
         )}
       </div>
+
+      {isNewCard && (
+        <div className="kpoints-card__parse-warning" data-testid="qv-kpoints-new-card-hint">
+          Add K_POINTS values below and click Apply to create this card.
+        </div>
+      )}
       
       {/* Parse warning */}
       {parseWarning && (
@@ -645,6 +656,7 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
             value={localMode}
             onChange={(e) => handleModeChange(e.target.value)}
             disabled={useRawEdit}
+            data-testid="qv-kpoints-mode-select"
           >
             {K_POINTS_MODES.map(m => (
               <option key={m.value} value={m.value}>{m.label}</option>
@@ -677,6 +689,7 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
                         onChange={(e) => handleAutomaticChange(field, parseInt(e.target.value) || 0)}
                         min={1}
                         disabled={useRawEdit}
+                        data-testid={`qv-kpoints-auto-${field}`}
                       />
                     </div>
                   ))}
@@ -695,6 +708,7 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
                         min={0}
                         max={1}
                         disabled={useRawEdit}
+                        data-testid={`qv-kpoints-auto-${field}`}
                       />
                     </div>
                   ))}
@@ -712,6 +726,7 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
                   onClick={handleAddPoint}
                   className="kpoints-card__add-btn"
                   disabled={useRawEdit}
+                  data-testid="qv-kpoints-add-point"
                 >
                   + Add Point
                 </button>
@@ -740,6 +755,7 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
                               value={point[field]}
                               onChange={(e) => handlePointChange(i, field, parseFloat(e.target.value) || 0)}
                               disabled={useRawEdit}
+                              data-testid={`qv-kpoints-point-${i}-${field}`}
                             />
                           </td>
                         ))}
@@ -750,6 +766,7 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
                             className="kpoints-card__remove-btn"
                             title="Remove point"
                             disabled={useRawEdit}
+                            data-testid={`qv-kpoints-remove-point-${i}`}
                           >
                             ×
                           </button>
@@ -779,6 +796,7 @@ export const CommonCardKPoints = forwardRef<CommonCardKPointsRef, CommonCardKPoi
             placeholder={localMode === 'gamma' ? '(no body for gamma)' : '8 8 8 0 0 0'}
             disabled={!useRawEdit}
             readOnly={!useRawEdit}
+            data-testid="qv-kpoints-raw-body"
           />
         </div>
         

@@ -164,7 +164,7 @@ export function StepDetailPanel({
   // UI parameters now use generic list_engine_ui_parameters RPC
   const module = stepDetail && engineFamily === 'qe' ? (() => {
     const stepTypeLower = stepDetail.step_type_gen.toLowerCase();
-    if (['scf', 'nscf', 'relax', 'vc-relax', 'md', 'bands_pw', 'dos'].includes(stepTypeLower)) {
+    if (['scf', 'nscf', 'relax', 'vc-relax', 'md', 'bandspw', 'bands_pw', 'dos'].includes(stepTypeLower)) {
       return 'pw';
     }
     if (stepTypeLower === 'bands') {
@@ -1187,8 +1187,8 @@ export function StepDetailPanel({
     return true;
   });
   
-  // Check if we have a K_POINTS card at all (either parsed or raw)
-  const hasKPointsCard = stepDetail.cards?.K_POINTS != null;
+  // QE PW-family steps can create/edit K_POINTS even if card is not present yet.
+  const canEditKPoints = module === 'pw';
   
   // Show breadcrumb if we have calculation name and step position info
   const showBreadcrumb = calculationName && stepIndex != null && stepIndex >= 0 && stepCount != null && stepCount > 0;
@@ -1300,7 +1300,9 @@ export function StepDetailPanel({
           <div className="detail-grid">
             <div className="detail-item">
               <span className="detail-label">Type</span>
-              <span className="detail-value step-type-badge">{stepDetail.step_type_gen}</span>
+              <span className="detail-value step-type-badge" data-testid="qv-step-type-value">
+                {stepDetail.step_type_gen}
+              </span>
             </div>
             <div className="detail-item">
               <span className="detail-label">ID</span>
@@ -1316,7 +1318,7 @@ export function StepDetailPanel({
         </div>
         
         {/* Common Parameters Section (includes K_POINTS) */}
-        {(hasEditableParams || hasKPointsCard) && (
+        {(hasEditableParams || canEditKPoints) && (
           <div className="detail-section">
             <div className="section-header">
               <h3>Common Parameters</h3>
@@ -1384,47 +1386,49 @@ export function StepDetailPanel({
             )}
             
             {/* K_POINTS editor (inline with Common Parameters) */}
-            {hasKPointsCard && module === 'pw' && (
+            {canEditKPoints && (
               isLoadingCommonCards ? (
-                <div className="common-cards-loading">
+                <div className="common-cards-loading" data-testid="qv-kpoints-loading">
                   <p>Loading K_POINTS...</p>
                 </div>
               ) : (
-                <CommonCardKPoints
-                  ref={kPointsRef}
-                  viewModel={commonCards?.k_points || null}
-                  rawCardData={stepDetail.cards?.K_POINTS}
-                  isEditing={isEditing}
-                  onDirtyChange={setKPointsDirty}
-                  onApplyingChange={setKPointsApplying}
-                  onUpdate={async (viewModel) => {
-                    if (!projectRoot || !calculationSelector || !stepSelector) return;
-                    
-                    const response = await qv.setCommonCard(
-                      projectRoot,
-                      calculationSelector,
-                      stepSelector,
-                      'K_POINTS',
-                      viewModel
-                    );
-                    
-                    if (response.ok && response.data) {
-                      setStepDetail(response.data);
-                      const cardsResponse = await qv.getCommonCards(
+                <div data-testid="qv-kpoints-editor">
+                  <CommonCardKPoints
+                    ref={kPointsRef}
+                    viewModel={commonCards?.k_points || null}
+                    rawCardData={stepDetail.cards?.K_POINTS}
+                    isEditing={isEditing}
+                    onDirtyChange={setKPointsDirty}
+                    onApplyingChange={setKPointsApplying}
+                    onUpdate={async (viewModel) => {
+                      if (!projectRoot || !calculationSelector || !stepSelector) return;
+                      
+                      const response = await qv.setCommonCard(
                         projectRoot,
                         calculationSelector,
-                        stepSelector
+                        stepSelector,
+                        'K_POINTS',
+                        viewModel
                       );
-                      if (cardsResponse.ok && cardsResponse.data) {
-                        setCommonCards(cardsResponse.data);
+                      
+                      if (response.ok && response.data) {
+                        setStepDetail(response.data);
+                        const cardsResponse = await qv.getCommonCards(
+                          projectRoot,
+                          calculationSelector,
+                          stepSelector
+                        );
+                        if (cardsResponse.ok && cardsResponse.data) {
+                          setCommonCards(cardsResponse.data);
+                        }
+                        setKPointsDirty(false);
+                        onParametersUpdated?.();
+                      } else {
+                        setError(response.error?.message || 'Failed to update K_POINTS card');
                       }
-                      setKPointsDirty(false);
-                      onParametersUpdated?.();
-                    } else {
-                      setError(response.error?.message || 'Failed to update K_POINTS card');
-                    }
-                  }}
-                />
+                    }}
+                  />
+                </div>
               )
             )}
           </div>

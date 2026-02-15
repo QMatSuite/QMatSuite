@@ -308,7 +308,7 @@ def wait_for_job():
 @pytest.fixture
 def qe_project_with_si(tmp_path: Path, qe_available) -> tuple[Path, str]:
     """
-    Create a project with Si structure imported from test data.
+    Create a project with Si structure imported from local CIF test data.
 
     Returns:
         (project_root, structure_ulid)
@@ -321,15 +321,14 @@ def qe_project_with_si(tmp_path: Path, qe_available) -> tuple[Path, str]:
     # Create service instance
     svc = QVService(project_dir)
 
-    # Import Si structure from existing QE input file
-    si_scf_input = Path(__file__).parent.parent.parent / "data" / "0_Si_scf" / "si.scf.in"
-
-    if not si_scf_input.exists():
-        pytest.fail(f"Si SCF input file not found: {si_scf_input}")
+    # Import Si structure from dedicated smoke-test structure asset
+    si_cif = Path(__file__).parent.parent.parent / "data" / "structures" / "si_diamond.cif"
+    if not si_cif.exists():
+        pytest.fail(f"Si structure file not found: {si_cif}")
 
     # Import structure using the same pattern as demo_project_with_structure
     structure_resolved = svc.structure.import_file(
-        source=si_scf_input,
+        source=si_cif,
         name="Si",
     )
 
@@ -341,3 +340,29 @@ def qe_project_with_si(tmp_path: Path, qe_available) -> tuple[Path, str]:
     # to tell the runner which pseudo file to use — just like a real user would.
 
     return project_dir, structure_ulid
+
+
+@pytest.fixture
+def qe_project_with_al(tmp_path: Path, qe_available) -> tuple[Path, str]:
+    """
+    Create a project with Al structure imported from local CIF test data.
+
+    Returns:
+        (project_root, structure_ulid)
+    """
+    project_dir = tmp_path / "al_test"
+    project_dir.mkdir()
+    QVService.init_project(project_dir, name="Al Test")
+
+    svc = QVService(project_dir)
+
+    al_cif = Path(__file__).parent.parent.parent / "data" / "structures" / "al_fcc.cif"
+    if not al_cif.exists():
+        pytest.fail(f"Al structure file not found: {al_cif}")
+
+    structure_resolved = svc.structure.import_file(
+        source=al_cif,
+        name="Al",
+    )
+
+    return project_dir, structure_resolved.meta.ulid

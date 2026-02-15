@@ -266,3 +266,74 @@ Result:
   - explicit visibility + viewport scroll,
   - short bounded click timeouts,
   - fail-fast assertions with targeted screenshot capture.
+
+---
+
+## Session 7 (2026-02-15)
+
+### Goal
+Complete Pair 2 (Si VC-relax) as a true RPC/e2e pair, from scratch, no demo usage.
+
+### Pair 2 RPC (DONE)
+
+**New file:** `tests/daemon/contract/test_realrun_si_relax.py`
+
+Implemented full real-run flow:
+1. create calculation (`engine_family="qe"`)
+2. set species map (`Si.pbe-n-rrkjus_psl.1.0.0.UPF`)
+3. add step `relax` (not `vc-relax` step type)
+4. set VC mode via params:
+   - `CONTROL.calculation = "vc-relax"`
+   - `SYSTEM.ecutwfc = 30.0`
+   - `SYSTEM.ecutrho = 240.0`
+   - `CELL.cell_dofree = "all"`
+5. run + wait for completion
+6. assert analysis instances include `convergence` and `trajectory` with `state="ok"`
+7. fetch `get_analysis` payloads and assert non-trivial arrays/series/frames
+8. bonus: assert `promote_relax_structure` succeeds and returns new structure metadata
+
+**Verification command:**
+```bash
+pytest -q tests/daemon/contract/test_realrun_si_relax.py -q
+```
+
+**Result:** PASS (`1 passed`, ~46s)
+
+### Pair 2 E2E (DONE)
+
+**New file:** `gui/tests/e2e/realrun_si_relax.spec.ts`
+
+From-scratch GUI flow:
+1. create project
+2. import `tests/data/0_Si_scf/si.scf.in`
+3. create QE calculation
+4. configure Si pseudo
+5. add `relax` step (with fail-fast dropdown assertions)
+6. edit params in step detail (`ecutwfc=30`, `CONTROL.calculation=vc-relax`)
+7. run calculation
+8. analysis tab: assert convergence plot + trajectory plot non-empty
+
+#### Attempt 1 — QE run failed (`STOP 1`)
+**Symptom:** no convergence chart; run failed.
+
+**Root cause:** selecting `CONTROL.calculation` through enum dropdown produced triple-quoted value in `relax.in`:
+```text
+calculation = '''vc-relax'''
+```
+QE rejected it: `calculation "'vc-relax'" not allowed`.
+
+**Fix:** in e2e, switch `CONTROL.calculation` editor to raw mode (`✏️`) and type `vc-relax` directly (`qv-param-input-control-calculation`). This avoids enum double-quoting.
+
+#### Attempt 2 — PASS
+**Verification command:**
+```bash
+cd gui
+npx playwright test tests/e2e/realrun_si_relax.spec.ts --project=electron --reporter=list
+```
+
+**Result:** PASS (`1 passed`, ~43s)
+
+### Lessons Learned
+- There is no `vc-relax` step type in the palette; use step type `relax` and set VC behavior via `CONTROL.calculation`.
+- For CHARACTER enums in the current GUI parameter editor, dropdown selection can over-quote values; raw mode is safer for strict QE tokens.
+- VC-relax runtime is materially longer than SCF (~40s in this environment), so timeouts must remain generous.

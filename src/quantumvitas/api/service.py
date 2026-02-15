@@ -5288,7 +5288,9 @@ class QVService:
                     card_data = k_points_to_card_data(raw)
 
                     step_doc = StepDoc.load(step.absolute_path)
-                    step_doc.set(["cards", "K_POINTS"], card_data)
+                    # cards.K_POINTS is a dict subtree; StepDoc.set() rejects dict writes.
+                    # Use apply_patch() so set_common_card can persist card payloads from GUI/RPC.
+                    step_doc.apply_patch({"cards": {"K_POINTS": card_data}})
                     save_step_doc(step_doc, step.absolute_path)
                 else:
                     from quantumvitas.api.errors import ValidationError
