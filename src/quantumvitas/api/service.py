@@ -3345,17 +3345,24 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
         
-        def list(self, project_selector: str | None = None, status: str | None = None) -> list[CalculationDTO]:
+        def list(
+            self,
+            project_selector: str | None = None,
+            status: str | None = None,
+            detail: bool = False,
+        ) -> list[CalculationDTO] | list[dict]:
             """
             List calculations in project.
-            
+
             Args:
                 project_selector: Unused (for future multi-project support)
                 status: Optional status filter (pending, running, completed, failed)
-                
+                detail: If True, return full detail dicts (as from get_detail)
+                    instead of CalculationDTO objects
+
             Returns:
-                List of CalculationDTO
-                
+                List of CalculationDTO (detail=False) or list of detail dicts (detail=True)
+
             Raises:
                 APIError: If project invalid
             """
@@ -3367,10 +3374,10 @@ class QVService:
 
                 # List all calculations
                 calc_resolved_list = list_calculations(self._service.project_root)
-                
+
                 project = Project.open(self._service.project_root)
-                results = []
-                
+                results: list = []
+
                 for calc_resolved in calc_resolved_list:
                     try:
                         # Get calculation directory
@@ -3378,29 +3385,35 @@ class QVService:
                             calc_dir = calc_resolved.absolute_path.parent
                         else:
                             calc_dir = calc_resolved.absolute_path
-                        
+
                         calc_yaml = calc_dir / "calculation.yaml"
                         if not calc_yaml.exists():
                             continue
-                        
+
                         # Load calculation model and object
                         calc_model = load_calculation(calc_yaml, self._service.project_root)
                         calc_obj = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
-                        
+
                         # Build CalculationDTO
                         dto = calculation_to_dto(
                             calc_resolved=calc_resolved,
                             calc_model=calc_model,
                             calc_obj=calc_obj,
                         )
-                        
+
                         # Filter by status if requested
                         if status is None or dto.status == status:
-                            results.append(dto)
+                            if detail:
+                                try:
+                                    results.append(self.get_detail(dto.calc_ulid))
+                                except Exception:
+                                    results.append(dto.to_dict())
+                            else:
+                                results.append(dto)
                     except Exception:
                         # Skip calculations that can't be loaded
                         continue
-                
+
                 return results
             except Exception as e:
                 if isinstance(e, APIError):

@@ -1537,29 +1537,10 @@ class QVDaemon:
         return {"structures": structures, "count": len(structures)}
     
     def _handle_list_calculations(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        List calculations in project with full GUI-ready fields.
-
-        Calls get_detail for each calculation to provide the full shape
-        the GUI expects (absolute_path, structure, mode, steps with step_file).
-
-        Payload:
-            project_root: str - Path to project root
-        """
+        """List calculations in project with full GUI-ready detail."""
         project_root = self._require_path(payload, "project_root")
         svc = get_service(project_root)
-        calculation_dtos = svc.calculation.list()
-
-        calculations = []
-        for dto in calculation_dtos:
-            calc_ulid = dto.calc_ulid
-            try:
-                detail = svc.calculation.get_detail(calc_ulid)
-                calculations.append(detail)
-            except Exception:
-                # Fall back to DTO dict if detail fails
-                calculations.append(dto.to_dict())
-
+        calculations = svc.calculation.list(detail=True)
         return {
             "calculations": calculations,
             "count": len(calculations),
