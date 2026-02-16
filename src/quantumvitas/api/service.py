@@ -8478,10 +8478,54 @@ class QVService:
         project_config["project"]["settings"] = project_settings
         save_project_config(project_root, project_config)
 
-        return {
+        result: dict[str, Any] = {
             "project_root": str(project_root),
             "demo_id": demo_name,
         }
+
+        # Enrich with structure/calculation summaries for GUI
+        try:
+            svc = QVService(project_root)
+            summary = svc.get_summary()
+            result["project_id"] = summary.get("id", "")
+            result["project_name"] = summary.get("name", name)
+
+            structures = svc.structure.list()
+            if structures:
+                s = structures[0]
+                s_dict = s.to_dict() if hasattr(s, "to_dict") else {}
+                result["structure"] = {
+                    "structure_id": getattr(s, "structure_ulid", "") or s_dict.get("ulid", ""),
+                    "name": getattr(s, "name", "") or s_dict.get("name", ""),
+                    "slug": getattr(s, "slug", "") or s_dict.get("slug", ""),
+                    "formula": getattr(s, "formula", "") or s_dict.get("formula", ""),
+                    "n_atoms": getattr(s, "n_atoms", 0) or s_dict.get("n_atoms", 0),
+                }
+            else:
+                result["structure"] = None
+
+            calcs = svc.calculation.list()
+            if calcs:
+                c = calcs[0]
+                c_dict = c.to_dict() if hasattr(c, "to_dict") else {}
+                result["calculation"] = {
+                    "calculation_id": c.calc_ulid,
+                    "name": c_dict.get("name", ""),
+                    "slug": c_dict.get("slug", ""),
+                    "n_steps": c_dict.get("n_steps", 0) or c_dict.get("step_count", 0) or 0,
+                }
+            else:
+                result["calculation"] = None
+
+            result["ready_to_run"] = bool(result.get("structure") and result.get("calculation"))
+        except Exception:
+            result.setdefault("project_id", "")
+            result.setdefault("project_name", name)
+            result.setdefault("structure", None)
+            result.setdefault("calculation", None)
+            result.setdefault("ready_to_run", False)
+
+        return result
 
     @staticmethod
     def list_demo_projects() -> list[dict[str, Any]]:
