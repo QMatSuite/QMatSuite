@@ -1438,6 +1438,142 @@ class QVService:
                     raise
                 raise map_kernel_exception(e)
 
+        @staticmethod
+        def list_3d_fixtures(fixture_dir: str | None = None) -> dict:
+            """
+            List available Wannier90 3D test fixtures (XSF/BXSF files).
+
+            Fixture root discovery priority:
+            1. ``fixture_dir`` argument (if provided)
+            2. Environment variable ``QMATSUITE_WANNIER_3D_FIXTURES``
+            3. Repo root derivation (tests/data/wannier_3d_test)
+            4. DEV fallback ($HOME/QMatSuite/tests/data/wannier_3d_test)
+
+            Returns dict with ``fixtures`` list.
+            """
+            import json
+            import os
+            from pathlib import Path as _Path
+
+            attempted_paths: list[tuple[str, str]] = []
+            fixtures_root = None
+
+            # When fixture_dir is explicitly provided, use it without fallback
+            if fixture_dir is not None:
+                fixtures_root = _Path(fixture_dir).resolve()
+                attempted_paths.append(("argument", str(fixtures_root)))
+            else:
+                # Auto-discovery priority chain
+                env_path = os.environ.get("QMATSUITE_WANNIER_3D_FIXTURES")
+                if env_path:
+                    fixtures_root = _Path(env_path).resolve()
+                    attempted_paths.append(("env_var", str(fixtures_root)))
+                    if not (fixtures_root.exists() and fixtures_root.is_dir()):
+                        fixtures_root = None
+
+                if fixtures_root is None:
+                    repo_root = _Path(__file__).resolve().parents[2]
+                    fixtures_root = repo_root / "tests" / "data" / "wannier_3d_test"
+                    attempted_paths.append(("repo_derived", str(fixtures_root)))
+                    if not (fixtures_root.exists() and fixtures_root.is_dir()):
+                        fixtures_root = None
+
+                if fixtures_root is None:
+                    dev_fallback = _Path.home() / "QMatSuite" / "tests" / "data" / "wannier_3d_test"
+                    attempted_paths.append(("dev_fallback", str(dev_fallback)))
+                    if dev_fallback.exists() and dev_fallback.is_dir():
+                        fixtures_root = dev_fallback
+
+            if fixtures_root is None or not fixtures_root.exists():
+                attempted_str = "\n".join(f"  {source}: {path}" for source, path in attempted_paths)
+                raise FileNotFoundError(
+                    f"Wannier90 3D fixtures directory not found. Attempted paths:\n{attempted_str}\n"
+                    "Please set QMATSUITE_WANNIER_3D_FIXTURES environment variable or ensure fixtures exist."
+                )
+
+            if not fixtures_root.is_dir():
+                raise ValueError(f"Fixtures root is not a directory: {fixtures_root}")
+
+            fixtures: list[dict] = []
+
+            manifest_path = fixtures_root / "manifest.json"
+            if manifest_path.exists():
+                try:
+                    manifest_data = json.loads(manifest_path.read_text())
+                    for entry in manifest_data.get("fixtures", []):
+                        fixture_path = fixtures_root / entry["path"]
+                        if fixture_path.exists():
+                            fixtures.append({
+                                "ulid": entry.get("ulid", f"{fixture_path.parent.name}_{fixture_path.stem}"),
+                                "label": entry.get("label", str(fixture_path.relative_to(fixtures_root))),
+                                "kind": entry.get("kind", "xsf" if fixture_path.suffix == ".xsf" else "bxsf"),
+                                "path": str(fixture_path.resolve()),
+                            })
+                except Exception:
+                    fixtures = []
+
+            if not fixtures:
+                for xsf_file in sorted(fixtures_root.rglob("*.xsf")):
+                    rel_path = xsf_file.relative_to(fixtures_root)
+                    fixtures.append({
+                        "ulid": f"{xsf_file.parent.name}_{xsf_file.stem}",
+                        "label": str(rel_path),
+                        "kind": "xsf",
+                        "path": str(xsf_file.resolve()),
+                    })
+                for bxsf_file in sorted(fixtures_root.rglob("*.bxsf")):
+                    rel_path = bxsf_file.relative_to(fixtures_root)
+                    fixtures.append({
+                        "ulid": f"{bxsf_file.parent.name}_{bxsf_file.stem}",
+                        "label": str(rel_path),
+                        "kind": "bxsf",
+                        "path": str(bxsf_file.resolve()),
+                    })
+
+            return {"fixtures": fixtures}
+
+        @staticmethod
+        def compile_fixture_volume(
+            file_path: str,
+            calc_dir: str,
+            band_index: int = 1,
+        ) -> dict:
+            """
+            Compile a fixture volume file (XSF/BXSF) into blob storage.
+
+            Args:
+                file_path: Path to XSF or BXSF file
+                calc_dir: Calculation directory for blob storage
+                band_index: Band index for BXSF (1-based, default 1)
+
+            Returns:
+                Dict with artifact_id, kind, metadata, blob_id, preview_blob_id
+            """
+            from pathlib import Path as _Path
+            from quantumvitas.api.utils import parse_volume_artifact
+
+            fp = _Path(file_path).resolve()
+            cd = _Path(calc_dir).resolve()
+
+            if not fp.exists():
+                raise FileNotFoundError(f"File not found: {fp}")
+
+            file_type = fp.suffix.lower().lstrip(".")
+            if not isinstance(band_index, int) or band_index < 1:
+                raise ValueError(f"Invalid band_index: {band_index}. Must be >= 1 (1-based)")
+
+            result = parse_volume_artifact(
+                file_path=fp,
+                calc_dir=cd,
+                file_type=file_type,
+                band_index=band_index,
+            )
+
+            if file_type == "bxsf" and band_index > result.get("n_bands", 0):
+                raise ValueError(f"band_index {band_index} exceeds n_bands {result.get('n_bands', 0)}")
+
+            return result
+
     @property
     def analysis(self) -> Analysis:
         """Access analysis capabilities."""
