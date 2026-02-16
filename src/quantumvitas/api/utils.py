@@ -615,26 +615,6 @@ from quantumvitas.io.online_cache import OnlineStructureCache, CandidateSummary 
 
 
 # =============================================================================
-# QE metadata utilities (re-exports from drivers layer)
-# =============================================================================
-
-# Re-export QE metadata functions for daemon/CLI use
-from quantumvitas.drivers.qe.data.qe_metadata import (  # noqa: E402, F401
-    get_ui_parameters,
-    list_supported_modules,
-    get_module_param_sections,
-    get_module_card_sections,
-    get_module_doc_url,
-    get_metadata_file_info,
-    get_qe_metadata_debug_info,
-    safe_load_metadata,
-    reload_metadata,
-    QEUIParam,
-    _iter_params,  # Private helper needed by daemon
-)
-
-
-# =============================================================================
 # Generic engine registry queries (for daemon RPCs, M4)
 # =============================================================================
 
@@ -809,6 +789,11 @@ def get_engine_ui_parameters(engine_family: str, step_type_gen: str) -> list[dic
 
     # QE: delegate to existing QE metadata infrastructure
     if engine_family == "qe":
+        from quantumvitas.drivers.qe.data.qe_metadata import (
+            get_ui_parameters,
+            list_supported_modules,
+        )
+
         module_map = {
             "scf": "pw", "nscf": "pw", "relax": "pw",
             "bands_pw": "pw", "bandspw": "pw", "dos": "pw", "md": "pw",
@@ -978,6 +963,15 @@ def _qe_parameter_metadata(
         list_tags → list parameters within a module+section
         search → full-text search across all modules/sections
     """
+    from quantumvitas.drivers.qe.data.qe_metadata import (
+        list_supported_modules,
+        get_module_card_sections,
+        get_module_doc_url,
+        get_metadata_file_info,
+        safe_load_metadata,
+        _iter_params,
+    )
+
     # Map generic operations to QE-specific operations
     if operation == "list_categories":
         qe_op = "list_modules"
