@@ -20,11 +20,10 @@ jobs:
     
     env:
       QE_VERSION: "qe-7.5"
-      QE_SRC_DIR: "$HOME/src/q-e-qe-7.5"
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set QE env vars
       run: |
         if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
@@ -32,6 +31,9 @@ jobs:
         else
           echo "QE_BUILD_OPTS=mpi=1 fftw=1 openblas=mac accel=mac" >> $GITHUB_ENV
         fi
+        # Use GITHUB_ENV (not job-level env) so $HOME is expanded by the shell.
+        # actions/cache does NOT expand shell variables like $HOME in path: fields.
+        echo "QE_SRC_DIR=$HOME/src/q-e-$QE_VERSION" >> $GITHUB_ENV
         echo "QE_PREFIX=$HOME/qe-install/${QE_VERSION}/${{ matrix.os }}" >> $GITHUB_ENV
     
     - name: Set up Python ${{ matrix.python-version }}
@@ -123,19 +125,20 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ env.QE_SRC_DIR }}
-        key: qe-source-${{ env.QE_VERSION }}-${{ matrix.os }}-v1
+        key: qe-source-${{ env.QE_VERSION }}-${{ matrix.os }}-v2
         restore-keys: |
           qe-source-${{ env.QE_VERSION }}-${{ matrix.os }}-
-          qe-source-${{ env.QE_VERSION }}-
-    
+        save-always: true
+
     - name: Cache QE install prefix
       id: cache-qe-install
       uses: actions/cache@v4
       with:
         path: ${{ env.QE_PREFIX }}
-        key: qe-install-${{ matrix.os }}-${{ env.QE_VERSION }}-${{ env.QE_BUILD_OPTS }}-v2
+        key: qe-install-${{ matrix.os }}-${{ env.QE_VERSION }}-${{ env.QE_BUILD_OPTS }}-v3
         restore-keys: |
-          qe-install-${{ matrix.os }}-${{ env.QE_VERSION }}-${{ env.QE_BUILD_OPTS }}-v2
+          qe-install-${{ matrix.os }}-${{ env.QE_VERSION }}-
+        save-always: true
     
     - name: Install Quantum ESPRESSO (from source)
       if: steps.cache-qe-install.outputs.cache-hit != 'true'
@@ -231,6 +234,29 @@ jobs:
         
         # Install QE to prefix
         make install
+
+        # macOS fix: make install copies .dSYM/Contents/Resources/DWARF/*.x OVER
+        # the real binaries for wannier90 targets, replacing executables with DWARF
+        # debug symbol files. Re-stage the real binaries from external/wannier90/.
+        if [ "${{ matrix.os }}" != "ubuntu-22.04" ]; then
+          echo "macOS: re-staging wannier90 binaries (fixing .dSYM overwrite)"
+          for bin in external/wannier90/*.x; do
+            if [ -f "$bin" ] && [ ! -d "$bin" ]; then
+              cp -f "$bin" "${{ env.QE_PREFIX }}/bin/"
+              echo "  Re-staged: $(basename "$bin")"
+            fi
+          done
+        fi
+
+        # Post-build verification: wannier90 binaries must exist and be real executables
+        test -f "${{ env.QE_PREFIX }}/bin/wannier90.x" || (echo "ERROR: wannier90.x not built" && exit 1)
+        test -f "${{ env.QE_PREFIX }}/bin/pw2wannier90.x" || (echo "ERROR: pw2wannier90.x not built" && exit 1)
+        test -f "${{ env.QE_PREFIX }}/bin/postw90.x" || (echo "ERROR: postw90.x not built" && exit 1)
+        # Verify they are actual Mach-O / ELF executables, not DWARF debug files
+        file "${{ env.QE_PREFIX }}/bin/wannier90.x" | grep -qi "executable\|mach-o\|elf" || \
+          (echo "ERROR: wannier90.x is not an executable (possibly DWARF debug symbols)" && \
+           file "${{ env.QE_PREFIX }}/bin/wannier90.x" && exit 1)
+        echo "Verified: wannier90.x, pw2wannier90.x, postw90.x built successfully"
     
     - name: Stage QE to .qmatsuite/engines/qe
       run: |
