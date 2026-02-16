@@ -3270,11 +3270,11 @@ class QVService:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
-        
+
         def require_ref(self, selector: str, config: dict | None = None) -> Any:
             """
             Resolve calculation selector to ResolvedResource (for internal use).
-            
+
             Args:
                 selector: Calculation selector (ULID, slug, name, or path)
                 config: Optional project config (for backward compatibility)
@@ -4292,6 +4292,10 @@ class QVService:
                         except (KeyError, ValueError):
                             pass
                     
+                    # Derive step_file (YAML filename) and slug for GUI
+                    step_file = step_path.name if step_path else None
+                    step_slug = step_resolved.meta.slug if step_resolved and step_resolved.meta else None
+
                     step_summaries.append({
                         "ulid": step_ulid,  # Backwards compat
                         "step_ulid": step_ulid,
@@ -4299,12 +4303,15 @@ class QVService:
                         "step_type_gen": step_type_gen if step_type_gen else step_type_spec,
                         "type": step_type_gen if step_type_gen else step_type_spec,  # Backwards compat alias
                         "name": step_name,
+                        "slug": step_slug or step_name,
+                        "step_file": step_file or f"{step_name}.step.yaml",
                         "status": step_status,
                         "missing": not (step_path and step_path.exists()),
                     })
 
                 calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else selector
                 return {
+                    "calc_ulid": calc_ulid,
                     "ulid": calc_ulid,
                     "calculation_id": calc_ulid,
                     "name": calc_resolved.meta.name if calc_resolved.meta else selector,
@@ -4319,6 +4326,7 @@ class QVService:
                     "steps": step_summaries,
                     "n_steps": len(step_summaries),
                     "mode": calc_model.mode.value if hasattr(calc_model.mode, "value") else str(calc_model.mode) if calc_model.mode else "normal",
+                    "species_map": getattr(calc_model, 'species_map', None),
                 }
             except Exception as e:
                 if isinstance(e, APIError):
@@ -8639,6 +8647,11 @@ class QVService:
                     "description": demo_meta.get("description") or project_data.get("description", ""),
                     # tags: Category tags for filtering
                     "tags": demo_meta.get("tags", []),
+                    # Extra fields from snapshot meta (GUI uses these for display)
+                    "recommended_use": demo_meta.get("recommended_use", ""),
+                    "recommended_analysis": demo_meta.get("recommended_analysis"),
+                    "difficulty": demo_meta.get("difficulty"),
+                    "estimated_runtime_scf": demo_meta.get("estimated_runtime_scf"),
                 })
             except Exception:
                 # Skip invalid snapshots

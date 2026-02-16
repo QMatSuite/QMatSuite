@@ -1539,7 +1539,10 @@ class QVDaemon:
     
     def _handle_list_calculations(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        List calculations in project.
+        List calculations in project with full GUI-ready fields.
+
+        Calls get_detail for each calculation to provide the full shape
+        the GUI expects (absolute_path, structure, mode, steps with step_file).
 
         Payload:
             project_root: str - Path to project root
@@ -1547,9 +1550,17 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         svc = get_service(project_root)
         calculation_dtos = svc.calculation.list()
-        # Convert DTOs to dicts for JSON serialization
-        # Note: DTOs have step_ulids but not full steps; compat layer expands these
-        calculations = [dto.to_dict() for dto in calculation_dtos]
+
+        calculations = []
+        for dto in calculation_dtos:
+            calc_ulid = dto.calc_ulid
+            try:
+                detail = svc.calculation.get_detail(calc_ulid)
+                calculations.append(detail)
+            except Exception:
+                # Fall back to DTO dict if detail fails
+                calculations.append(dto.to_dict())
+
         return {
             "calculations": calculations,
             "count": len(calculations),
@@ -3584,6 +3595,52 @@ class QVDaemon:
             # Rebuild registry after demo project creation
             project_root = Path(result.get("project_root", target_dir)).resolve()
             self._rebuild_registry_after_write(project_root, "write_operation:create_demo_project")
+
+            # Enrich response with fields the GUI expects
+            try:
+                svc = get_service(project_root)
+                summary = svc.get_summary()
+                result["project_id"] = summary.get("id", "")
+                result["project_name"] = summary.get("name", name)
+
+                # First structure
+                structures = svc.structure.list()
+                if structures:
+                    s = structures[0]
+                    s_dict = s.to_dict() if hasattr(s, "to_dict") else {}
+                    result["structure"] = {
+                        "structure_id": getattr(s, "structure_ulid", "") or s_dict.get("ulid", ""),
+                        "name": getattr(s, "name", "") or s_dict.get("name", ""),
+                        "slug": getattr(s, "slug", "") or s_dict.get("slug", ""),
+                        "formula": getattr(s, "formula", "") or s_dict.get("formula", ""),
+                        "n_atoms": getattr(s, "n_atoms", 0) or s_dict.get("n_atoms", 0),
+                    }
+                else:
+                    result["structure"] = None
+
+                # First calculation
+                calcs = svc.calculation.list()
+                if calcs:
+                    c = calcs[0]
+                    c_dict = c.to_dict() if hasattr(c, "to_dict") else {}
+                    result["calculation"] = {
+                        "calculation_id": c.calc_ulid,
+                        "name": c_dict.get("name", ""),
+                        "slug": c_dict.get("slug", ""),
+                        "n_steps": c_dict.get("n_steps", 0) or c_dict.get("step_count", 0) or 0,
+                    }
+                else:
+                    result["calculation"] = None
+
+                result["ready_to_run"] = bool(result.get("structure") and result.get("calculation"))
+            except Exception:
+                # Non-fatal: enrichment failure doesn't block project creation
+                result.setdefault("project_id", "")
+                result.setdefault("project_name", name)
+                result.setdefault("structure", None)
+                result.setdefault("calculation", None)
+                result.setdefault("ready_to_run", False)
+
             return result
         except ValueError as e:
             # Re-raise ValueError as-is (for validation errors like "inside existing project")
