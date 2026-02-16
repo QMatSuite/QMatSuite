@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from .base import Recipe
-from ..v0_payloads import build_v0_payload, V0_PAYLOAD_BUILDERS
 
 
 class SimpleQueriesRecipe(Recipe):
@@ -34,11 +33,6 @@ class SimpleQueriesRecipe(Recipe):
 
     def build_payload(self) -> dict[str, Any]:
         """Build payload based on method name."""
-        # Use centralized v0 payload builders for methods with defined schemas
-        if self.method_name in V0_PAYLOAD_BUILDERS:
-            return build_v0_payload(self.method_name, self._world)
-
-        # Methods without v0 payload definitions
         if self.method_name == "list_installed_sssp":
             return {
                 "store_dir": str(self.tmp_path / "pseudo_store"),

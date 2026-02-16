@@ -123,10 +123,7 @@ class TestYamlSpecOnly:
         count = rg_count(r"step_type_gen:", "resources/demo_projects/")
         assert count == 0, "Demo YAML files contain step_type_gen"
 
-    def test_no_bare_step_type_in_golden(self):
-        # Check for bare "step_type": or "type": (should use step_type_spec/step_type_gen)
-        count = rg_count(r'"step_type":', "tests/fixtures/golden_0873ebf/daemon/")
-        assert count == 0, "Golden fixtures have bare step_type (should use step_type_spec/step_type_gen)"
+    # Golden fixtures removed — test_no_bare_step_type_in_golden deleted
 
 
 class TestIdentityFieldsRenamed:

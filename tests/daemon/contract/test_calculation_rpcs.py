@@ -85,15 +85,9 @@ class TestAddStepToCalculation:
             "name": "relax_step"
         })
 
-        # Response should include step ULID
-        assert "step_ulid" in response or "ulid" in response
-
-        # Verify step was added
-        calc_detail = send_request(daemon, "get_calculation_detail", {
-            "project_root": str(project_root),
-            "calculation": calc_ulid
-        })
-        assert len(calc_detail["steps"]) == 2  # Original SCF + new relax
+        # Response includes calculation steps with the new step added
+        assert "steps" in response
+        assert len(response["steps"]) == 2  # Original SCF + new relax
 
     def test_add_step_missing_step_type(self, demo_project_with_calculation, daemon: QVDaemon):
         """add_step_to_calculation errors on missing step_type_gen."""
@@ -121,15 +115,10 @@ class TestAddStepToCalculation:
                 "calculation": calc_ulid,
                 "step_type_gen": step_type
             })
-            assert "step_ulid" in response or "ulid" in response
+            assert "steps" in response
 
-        # Verify all steps were added
-        calc_detail = send_request(daemon, "get_calculation_detail", {
-            "project_root": str(project_root),
-            "calculation": calc_ulid
-        })
-        # 1 original SCF + 3 new = 4 total
-        assert len(calc_detail["steps"]) == 4
+        # Last response should have all steps: 1 original SCF + 3 new = 4 total
+        assert len(response["steps"]) == 4
 
 class TestCreateCalculation:
     """Contract tests for create_calculation RPC."""

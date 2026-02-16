@@ -8,7 +8,7 @@ Allowed imports:
 - stdlib
 - third-party packages
 
-This test scans ALL files in src/quantumvitas/daemon/ including compat.py.
+This test scans ALL files in src/quantumvitas/daemon/.
 
 NOTE: This test has its own DAEMON_KERNEL_PREFIXES constant and does NOT
 modify test_import_rules.py's FORBIDDEN_PREFIXES to avoid collateral.
@@ -148,33 +148,5 @@ def test_daemon_no_kernel_imports():
         )
 
 
-def test_compat_py_specifically():
-    """
-    Specifically verify compat.py has no kernel imports.
-
-    This file is the compat shaping layer and is easy to accidentally
-    add kernel imports to.
-    """
-    compat_file = DAEMON_DIR / "compat.py"
-    if not compat_file.exists():
-        pytest.skip("compat.py does not exist")
-
-    violations = []
-
-    for line_num, import_type, module in find_imports(compat_file):
-        if not module.startswith("quantumvitas"):
-            continue
-
-        is_forbidden = any(module.startswith(prefix) for prefix in DAEMON_KERNEL_PREFIXES)
-        is_allowed = any(module.startswith(prefix) for prefix in DAEMON_ALLOWED_PREFIXES)
-
-        if is_forbidden and not is_allowed:
-            violations.append(f"  Line {line_num}: {import_type} {module}")
-
-    if violations:
-        pytest.fail(
-            f"compat.py has forbidden kernel imports!\n"
-            f"The shaper must only use quantumvitas.api.* capabilities.\n"
-            f"Violations:\n" + "\n".join(violations)
-        )
+    # test_compat_py_specifically removed — compat.py being phased out
 

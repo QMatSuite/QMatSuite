@@ -24,7 +24,6 @@ from tests.contract_crawler.recipes import ALL_RECIPES, get_all_recipe_covered_m
 from tests.contract_crawler.test_coverage import EXEMPT_METHODS
 
 
-GOLDEN_DIR = Path(__file__).parent.parent / "fixtures" / "golden_0873ebf" / "daemon"
 GUI_METHODS_FILE = Path(__file__).parent.parent.parent / "gui" / "tests" / "e2e" / "tools" / "gui_rpc_methods.json"
 OUTPUT_FILE = Path(__file__).parent / "coverage_report.json"
 
@@ -43,29 +42,11 @@ def load_gui_methods() -> set[str]:
 
 
 def load_golden_fixtures() -> dict[str, dict[str, Any]]:
-    """Load all golden fixtures and extract metadata."""
-    fixtures = {}
-    
-    if not GOLDEN_DIR.exists():
-        return fixtures
-    
-    for fixture_file in GOLDEN_DIR.glob("*.json"):
-        if fixture_file.name == "_manifest.json":
-            continue
-        
-        try:
-            with open(fixture_file) as f:
-                data = json.load(f)
-                method_name = fixture_file.stem
-                fixtures[method_name] = {
-                    "source": data.get("source"),
-                    "success": data.get("success", False),
-                    "baseline_commit": data.get("baseline_commit"),
-                }
-        except (json.JSONDecodeError, KeyError):
-            continue
-    
-    return fixtures
+    """Legacy stub — golden fixtures have been removed.
+
+    Returns empty dict. Callers should use recipe coverage instead.
+    """
+    return {}
 
 
 def get_recipe_methods() -> set[str]:
@@ -95,17 +76,6 @@ def generate_coverage_report() -> dict[str, Any]:
             fixture_path = None
             source = None
             exempt_reason = EXEMPT_METHODS[method_name]
-        elif method_name in golden_fixtures:
-            fixture_data = golden_fixtures[method_name]
-            source = fixture_data.get("source")
-            if source == "auto_crawler":
-                coverage_status = "covered_auto"
-            elif source == "recipe":
-                coverage_status = "covered_recipe"
-            else:
-                coverage_status = "covered_unknown"
-            fixture_path = str(GOLDEN_DIR / f"{method_name}.json")
-            exempt_reason = None
         elif method_name in recipe_methods:
             # Recipe exists but no golden fixture yet
             coverage_status = "covered_recipe"

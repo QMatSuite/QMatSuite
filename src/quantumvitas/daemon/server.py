@@ -58,7 +58,6 @@ from quantumvitas.api.utils import (
     set_settings,
 )
 from quantumvitas.daemon.jobs import JobManager, JobStatus
-from quantumvitas.daemon.compat import adapt_payload, shape_response
 
 
 @dataclass
@@ -603,13 +602,7 @@ class QVDaemon:
                     pass
         
         try:
-            # Apply v0 compatibility: adapt payload before handler
-            adapted_payload = adapt_payload(request.type, request.payload)
-
-            result = handler(adapted_payload)
-
-            # Apply v0 compatibility: shape response after handler
-            shaped_result = shape_response(request.type, result)
+            result = handler(request.payload)
 
             duration_ms = (time.time() - start_time) * 1000
 
@@ -624,7 +617,7 @@ class QVDaemon:
             else:
                 self.log(f"[RPC]{tag} {request.type} (req_id={request.id}) took {duration_ms:.1f}ms", level=log_level)
 
-            return RPCResponse(id=request.id, ok=True, data=shaped_result)
+            return RPCResponse(id=request.id, ok=True, data=result)
             
         except ValueError as e:
             # ValueError from handler should be converted to structured error
@@ -763,29 +756,30 @@ class QVDaemon:
             store_dir: str - Path to global pseudo store
             seed_dir: str - Path to seed directory
             allow_download: bool - Whether downloads are allowed
-            repo_pseudo_dir: str - Path to resources/pseudo (committed demos)
             default_store_dir: str - Default store directory
             default_seed_dir: str - Default seed directory
         """
         return get_pseudo_status_bundle()["config"]
-    
+
     def _handle_set_pseudo_config(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Set pseudopotential configuration.
-        
+
         Payload:
             store_dir: Optional[str] - Path to global pseudo store
             seed_dir: Optional[str] - Path to seed directory
             allow_download: Optional[bool] - Whether downloads are allowed
-            
+
         Returns:
             Updated config (same format as get_pseudo_config)
         """
-        return set_pseudo_config(
+        set_pseudo_config(
             store_dir=payload.get("store_dir"),
             seed_dir=payload.get("seed_dir"),
             allow_download=payload.get("allow_download"),
         )
+        # Return updated config with defaults included
+        return get_pseudo_status_bundle()["config"]
     
     def _handle_validate_pseudo_config(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -1559,8 +1553,6 @@ class QVDaemon:
         return {
             "calculations": calculations,
             "count": len(calculations),
-            # Internal: project_root for compat layer to compute absolute paths
-            "_project_root": str(project_root),
         }
     
     def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:

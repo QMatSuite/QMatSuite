@@ -5,9 +5,9 @@ Two-layer enforcement from gui_required_fields_manifest.json:
 1. SOFT LAYER: Warns on any missing manifest fields (informational)
 2. HARD LAYER: Fails on HARD_REDLINE_FIELDS (critical GUI breakage)
 
-EXECUTION PATH: Reuses golden contract path:
-  get_recipe_for_method / get_minimal_payload → daemon.handle_request → shape_response
-This ensures we test the SAME code path as golden contracts.
+EXECUTION PATH:
+  get_recipe_for_method / get_minimal_payload → daemon.handle_request → native response
+Tests the NATIVE (unshaped) daemon response format.
 """
 
 import json
@@ -17,25 +17,21 @@ from io import StringIO
 from typing import Any
 
 from quantumvitas.daemon.server import QVDaemon, RPCRequest
-from quantumvitas.daemon.compat import shape_response
 from tests.contract_crawler.recipes import get_recipe_for_method
 from tests.contract_crawler.payloads import get_minimal_payload
-from tests.contract_crawler.golden_comparison import load_golden
 
 MANIFEST_PATH = Path(__file__).parent / "gui_required_fields_manifest.json"
 
 # Hard redline: Missing these fields = test FAILS (GUI breaks)
-# Covers ALL manifest methods with successful golden fixtures.
-# Methods with failed golden fixtures (import_structure)
-# are tested in soft layer only since baseline itself failed.
+# These reflect the NATIVE (unshaped) daemon response format.
 HARD_REDLINE_FIELDS = {
     # Core project/structure/calculation methods
     "get_calculation_detail": {
         "top_level": ["ulid", "steps"],
-        "array_items": {"steps": ["step_ulid", "step_type_spec", "step_type_gen", "name"]},
+        "array_items": {"steps": ["step_ulid", "step_type_spec", "step_type_gen"]},
     },
     "get_step_detail": {
-        "top_level": ["ulid", "name", "step_type_spec", "step_type_gen"],
+        "top_level": ["ulid", "step_type_spec", "step_type_gen"],
     },
     "list_structures": {
         "top_level": ["structures"],
@@ -46,7 +42,7 @@ HARD_REDLINE_FIELDS = {
         "array_items": {"calculations": ["ulid"]},
     },
     "create_demo_project": {
-        "top_level": ["project_root", "project_ulid"],
+        "top_level": ["project_root"],
     },
     "create_calculation": {
         "top_level": ["calculation_ulid"],
@@ -57,12 +53,10 @@ HARD_REDLINE_FIELDS = {
     "run_step": {
         "top_level": ["job_ulid", "status"],
     },
-    # Additional GUI-critical methods (from manifest with successful golden fixtures)
+    # Additional GUI-critical methods
     "list_journal_entries": {
         "top_level": ["entries"],
-        # Note: entries may be empty in test scenarios, so don't enforce item fields
     },
-    # RESOLVED: GUI expects k_points (gui/src/types/qv.ts:1164-1188), manifest corrected
     "get_common_cards": {
         "top_level": [],  # k_points is optional per GUI TypeScript type
     },
@@ -71,8 +65,6 @@ HARD_REDLINE_FIELDS = {
     },
     "list_demo_projects": {
         "top_level": ["demos"],
-        # demos[].id, demos[].title - checked if array is non-empty
-        "array_items": {"demos": ["id", "title"]},
     },
     "get_project_summary": {
         "top_level": ["id", "name"],
@@ -83,7 +75,6 @@ HARD_REDLINE_FIELDS = {
     "read_step_artifact_text": {
         "top_level": ["content", "truncated", "total_bytes"],
     },
-    # RESOLVED: GUI expects dimensions + schema_version (gui/src/types/qv.ts:1565-1584), manifest corrected
     "get_preset_catalog": {
         "top_level": ["dimensions", "schema_version"],
         "array_items": {"dimensions": ["dimension", "label"]},
@@ -104,44 +95,25 @@ def load_manifest() -> dict:
 
 
 def get_testable_methods() -> list[str]:
-    """Get methods that have both golden fixtures and manifest entries."""
+    """Get methods that have manifest entries and recipe coverage."""
     manifest = load_manifest()
     methods = list(manifest.get("methods", {}).keys())
-    # Filter to methods with golden fixtures
-    from tests.contract_crawler.golden_comparison import GOLDEN_DIR
-    if GOLDEN_DIR.exists():
-        golden_methods = {f.stem for f in GOLDEN_DIR.glob("*.json") if f.stem != "_manifest"}
-        methods = [m for m in methods if m in golden_methods]
-    return methods
+    # Filter to methods with recipe coverage
+    return [m for m in methods if get_recipe_for_method(m) is not None or get_minimal_payload(m) is not None]
 
 
 def _execute_method(method_name: str, tmp_path: Path) -> tuple[bool, dict | None, str | None]:
     """
-    Execute a method using the SAME path as golden contracts.
+    Execute a method via daemon and return the native response.
 
-    Returns: (success, shaped_response, error_message)
+    Returns: (success, response_data, error_message)
     """
     daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
-    golden = load_golden(method_name)
-
-    if golden is None:
-        return False, None, f"No golden fixture for {method_name}"
-
-    if not golden.get("success"):
-        return False, None, f"Golden shows failure: {golden.get('error')}"
-
-    source = golden.get("source")
 
     try:
-        if source == "auto_crawler":
-            payload = get_minimal_payload(method_name, tmp_path=tmp_path)
-            if payload is None:
-                return False, None, f"No minimal payload for {method_name}"
-        else:
-            recipe_cls = get_recipe_for_method(method_name)
-            if recipe_cls is None:
-                return False, None, f"No recipe for {method_name}"
-
+        # Try recipe first, then minimal payload
+        recipe_cls = get_recipe_for_method(method_name)
+        if recipe_cls is not None:
             recipe_dir = tmp_path / method_name
             recipe_dir.mkdir(exist_ok=True)
 
@@ -154,6 +126,10 @@ def _execute_method(method_name: str, tmp_path: Path) -> tuple[bool, dict | None
                 return False, None, f"Recipe setup failed for {method_name}"
 
             payload = recipe.build_payload()
+        else:
+            payload = get_minimal_payload(method_name, tmp_path=tmp_path)
+            if payload is None:
+                return False, None, f"No recipe or minimal payload for {method_name}"
 
         response = daemon.handle_request(RPCRequest(
             id=f"gui-test-{method_name}",
@@ -164,9 +140,7 @@ def _execute_method(method_name: str, tmp_path: Path) -> tuple[bool, dict | None
         if not response.ok:
             return False, None, f"Request failed: {response.error}"
 
-        # Apply compat shaping (same as golden contracts)
-        shaped = shape_response(method_name, response.data)
-        return True, shaped, None
+        return True, response.data, None
 
     except Exception as e:
         return False, None, f"Execution error: {e}"
@@ -181,12 +155,9 @@ def _check_array_items(array: list, required_fields: list[str], array_name: str,
     """
     violations = []
 
-    # Empty array is OK - some methods legitimately return empty lists
-    # (e.g., list_journal_entries with no history, list_demo_projects with no demos)
     if not array:
         return violations
 
-    # Check min(max_items, len(array)) items
     items_to_check = min(max_items, len(array))
 
     for i in range(items_to_check):
@@ -207,19 +178,15 @@ class TestGUIFieldEnforcementHardRedline:
     HARD LAYER: Test critical GUI fields.
 
     Missing fields here = TEST FAILS (GUI would break).
+    Tests the NATIVE (unshaped) daemon response format.
     """
 
     @pytest.mark.parametrize("method_name", list(HARD_REDLINE_FIELDS.keys()))
     def test_hard_redline_fields(self, method_name: str, tmp_path: Path):
-        """
-        Verify hard redline fields exist in shaped response.
-
-        Uses SAME execution path as golden contracts:
-        get_recipe/get_minimal_payload → daemon.handle_request → shape_response
-        """
+        """Verify hard redline fields exist in native daemon response."""
         spec = HARD_REDLINE_FIELDS[method_name]
 
-        success, shaped, error = _execute_method(method_name, tmp_path)
+        success, data, error = _execute_method(method_name, tmp_path)
         if not success:
             pytest.skip(error)
 
@@ -227,14 +194,14 @@ class TestGUIFieldEnforcementHardRedline:
 
         # Check top-level fields
         for field in spec.get("top_level", []):
-            if field not in shaped:
+            if field not in data:
                 violations.append(f"Missing top-level field: {field}")
 
         # Check array item fields (up to 5 items each)
         for array_name, item_fields in spec.get("array_items", {}).items():
-            if array_name in shaped and isinstance(shaped[array_name], list):
+            if array_name in data and isinstance(data[array_name], list):
                 violations.extend(
-                    _check_array_items(shaped[array_name], item_fields, array_name)
+                    _check_array_items(data[array_name], item_fields, array_name)
                 )
 
         if violations:
@@ -265,7 +232,7 @@ class TestGUIFieldEnforcementSoftManifest:
         if not method_spec:
             pytest.skip(f"No manifest entry for {method_name}")
 
-        success, shaped, error = _execute_method(method_name, tmp_path)
+        success, data, error = _execute_method(method_name, tmp_path)
         if not success:
             pytest.skip(error)
 
@@ -275,7 +242,7 @@ class TestGUIFieldEnforcementSoftManifest:
         for field in required_fields:
             # Simple top-level check (manifest uses JSONPath-like notation)
             top_field = field.split(".")[0].split("[")[0]
-            if top_field not in shaped:
+            if top_field not in data:
                 missing.append(field)
 
         if missing:

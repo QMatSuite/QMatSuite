@@ -523,6 +523,11 @@ def get_pseudo_status_bundle() -> dict:
         statuses = _check_archives_status(archives=manifest_archives_raw, config=config_obj)
         archive_statuses = [s.to_dict() if hasattr(s, 'to_dict') else s for s in statuses]
 
+    # Include default dirs for GUI "reset to defaults" feature
+    from quantumvitas.core.pseudo_config import PseudoConfig as _PC
+    config_dict["default_store_dir"] = _PC.get_default_store_dir()
+    config_dict["default_seed_dir"] = _PC.get_default_seed_dir()
+
     return {
         "config": config_dict,
         "validation": validation_dict,

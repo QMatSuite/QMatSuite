@@ -9,7 +9,6 @@ from typing import Any
 
 from .base import Recipe
 from .world import build_demo_world
-from ..v0_payloads import build_v0_payload, V0_PAYLOAD_BUILDERS
 
 # Try to import API
 try:
@@ -320,21 +319,25 @@ class ProjectMutationsRecipe(Recipe):
         if self.world is None:
             return {}
 
-        # Use centralized v0 payload builders for methods with defined schemas
-        if self.method_name in V0_PAYLOAD_BUILDERS:
-            # For import_structure, need to create the file first
-            if self.method_name == "import_structure":
-                from pymatgen.core import Structure, Lattice
-                structure = Structure(Lattice.cubic(4.0), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-                struct_file = self.tmp_path / "nacl_import.cif"
-                structure.to(fmt="cif", filename=str(struct_file))
-                return build_v0_payload(
-                    self.method_name,
-                    self.world,
-                    source_file=str(struct_file),
-                    name="nacl_import"
-                )
-            return build_v0_payload(self.method_name, self.world, new_name="silicon_renamed")
+        base = {"project_root": self.world["project_root"]}
+
+        if self.method_name == "import_structure":
+            from pymatgen.core import Structure, Lattice
+            structure = Structure(Lattice.cubic(4.0), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+            struct_file = self.tmp_path / "nacl_import.cif"
+            structure.to(fmt="cif", filename=str(struct_file))
+            return {
+                **base,
+                "source_file": str(struct_file),
+                "name": "nacl_import",
+            }
+
+        if self.method_name == "rename_structure":
+            return {
+                **base,
+                "selector": {"ulid": self.world["structure_ulid"]},
+                "new_name": "silicon_renamed",
+            }
 
         return {}
 
@@ -410,11 +413,6 @@ class CalculationMutationsRecipe(Recipe):
         if self.world is None:
             return {}
 
-        # Use centralized v0 payload builders for methods with defined schemas
-        if self.method_name in V0_PAYLOAD_BUILDERS:
-            return build_v0_payload(self.method_name, self.world)
-
-        # Methods without v0 payload definitions
         base = {"project_root": self.world["project_root"]}
 
         if self.method_name == "create_calculation":
@@ -438,6 +436,13 @@ class CalculationMutationsRecipe(Recipe):
                 **base,
                 "calculation_ulid": self.world["calculation_selector"],
                 "new_name": "renamed_calc",
+            }
+
+        if self.method_name == "reorder_calculation_steps":
+            return {
+                **base,
+                "calculation": self.world["calculation_selector"],
+                "new_order": list(reversed(self.world.get("step_ids", []))),
             }
 
         if self.method_name == "apply_presets_to_calculation":
@@ -510,11 +515,6 @@ class StepMutationsRecipe(Recipe):
         if self.world is None:
             return {}
 
-        # Use centralized v0 payload builders for methods with defined schemas
-        if self.method_name in V0_PAYLOAD_BUILDERS:
-            return build_v0_payload(self.method_name, self.world)
-
-        # Methods without v0 payload definitions
         base = {
             "project_root": self.world["project_root"],
             "calculation": self.world["calculation_selector"],
@@ -582,11 +582,6 @@ class WorkflowRecipe(Recipe):
         if self.world is None:
             return {}
 
-        # Use centralized v0 payload builders for methods with defined schemas
-        if self.method_name in V0_PAYLOAD_BUILDERS:
-            return build_v0_payload(self.method_name, self.world)
-
-        # Methods without v0 payload definitions
         base = {
             "project_root": self.world["project_root"],
             "structure": self.world["structure_ulid"],
@@ -597,6 +592,15 @@ class WorkflowRecipe(Recipe):
             return {
                 **base,
                 "calculation_path": calc_path,
+            }
+
+        if self.method_name == "instantiate_workflow":
+            calc_path = f"{self.world['project_root']}/calculations/{self.world['calc_slug']}"
+            return {
+                "workflow_id": "scf",
+                "calculation_path": calc_path,
+                "structure_ulid": self.world["structure_ulid"],
+                "calculation_id": self.world["calculation_selector"],
             }
 
         return base
