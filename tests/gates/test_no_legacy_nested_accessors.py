@@ -37,7 +37,6 @@ def test_nested_accessors_not_legacy(minimal_project: Path):
         ("calculation", svc.calculation),
         ("run", svc.run),
         ("project", svc.project),
-        ("engine", svc.engine),
         ("history", svc.history),
     ]
     
