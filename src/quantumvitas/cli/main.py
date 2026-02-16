@@ -46,11 +46,7 @@ from quantumvitas.api.utils import (
 )
 # Kernel utility re-exported via API utils (avoids direct core.* imports per import rules)
 from quantumvitas.api.utils import calculations_using_structure
-from quantumvitas.api.utils import (
-    get_module_doc_url,
-    get_module_param_sections,
-    list_supported_modules,
-)
+from quantumvitas.api.utils import get_engine_parameter_metadata
 # Engine types and functions now via QVService
 # EngineConfig removed - handled via API
 # CalculationRunner now accessed via QVService.run_calculation()
@@ -4736,15 +4732,25 @@ def params_command(
     Inspect module parameter metadata sourced from the QE documentation.
     """
     module_key = module.lower()
-    # Use the centralized helper instead of direct JSON access
-    supported_modules = list_supported_modules()
+
+    # Validate module via engine-agnostic API
+    cat_result = get_engine_parameter_metadata("qe", "list_categories")
+    supported_modules = [m["id"] for m in cat_result.get("modules", [])]
     if module_key not in supported_modules:
         raise typer.BadParameter(
             f"Unknown module '{module}'. Available: {', '.join(sorted(supported_modules))}"
         )
 
-    sections = get_module_param_sections(module_key)
-    doc_url = get_module_doc_url(module_key)
+    # Get doc URL from the categories result
+    doc_url = None
+    for m in cat_result.get("modules", []):
+        if m["id"] == module_key:
+            doc_url = m.get("doc_url")
+            break
+
+    # Get sections for this module
+    sec_result = get_engine_parameter_metadata("qe", "list_sections", category=module_key)
+    sections_list = sec_result.get("sections", [])
 
     def match_section(name: str) -> bool:
         if not section:
@@ -4752,19 +4758,27 @@ def params_command(
         normalized = section.strip().lower().lstrip("&")
         return name.lower().lstrip("&") == normalized
 
-    filtered = {k: v for k, v in sections.items() if match_section(k)}
+    filtered = [s for s in sections_list if match_section(s.get("name", ""))]
     if not filtered:
+        available = ", ".join(s.get("name", "") for s in sections_list)
         raise typer.BadParameter(
             f"Section '{section}' not found for module '{module}'. "
-            f"Available: {', '.join(sections)}"
+            f"Available: {available}"
         )
 
     if doc_url:
         typer.echo(f"Documentation: {doc_url}")
-    for sec_name, params in filtered.items():
+
+    for sec_info in filtered:
+        sec_name = sec_info.get("label", sec_info.get("name", ""))
         typer.echo(f"\n{sec_name}:")
+        # Get parameters for this section
+        tag_result = get_engine_parameter_metadata(
+            "qe", "list_tags", category=module_key, section=sec_name,
+        )
+        params = tag_result.get("parameters", [])
         for param in params:
-            typer.echo(f"  - {param}")
+            typer.echo(f"  - {param.get('name', '')}")
 
 
 def main() -> None:
