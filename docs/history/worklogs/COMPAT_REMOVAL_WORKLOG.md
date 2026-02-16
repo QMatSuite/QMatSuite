@@ -71,14 +71,9 @@ infrastructure is gone (M1).
 - Import `PseudoConfig` from core layer (API layer is allowed to import from core)
 - This provides the defaults that compat.py used to inject
 
-#### `gui/src/components/panels/StructureListPanel.tsx`
-- Removed `n_species` display (compat-only field)
-- Changed `lattice_params.a/b/c` → `lattice_abc[0/1/2]` (native DTO field)
-- Added null coalescing for `n_atoms ?? num_atoms ?? '?'`
-- Changed `structure.id` → `structure.id ?? structure.ulid`
-
 #### `gui/src/components/panels/CalculationListPanel.tsx`
 - Added null coalescing: `calculation.n_steps ?? 0`
+- Note: StructureInfo TypeScript types already match native DTO format (no changes needed)
 
 #### `tests/daemon/contract/test_calculation_rpcs.py`
 - Updated `TestAddStepToCalculation` assertions: native handler returns full calculation
