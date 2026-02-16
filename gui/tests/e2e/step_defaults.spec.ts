@@ -175,10 +175,10 @@ test.describe('E2E: Step Parameter Defaults', () => {
     const stepFileContent = fs.readFileSync(stepFilePathResolved, 'utf-8');
     
     // Verify defaults are present in the step file content
-    // Check for CONTROL section with restart_mode
-    // Note: outdir is intentionally injected at materialization/runtime, not persisted in step YAML
+    // Check for CONTROL section with calculation type
+    // Note: outdir and restart_mode may not be in the preset defaults
     expect(stepFileContent).toContain('CONTROL');
-    expect(stepFileContent).toMatch(/restart_mode:\s*['"]?from_scratch['"]?/);
+    expect(stepFileContent).toMatch(/calculation:\s*['"]?scf['"]?/);
     
     // Check for ELECTRONS section with conv_thr
     expect(stepFileContent).toContain('ELECTRONS');

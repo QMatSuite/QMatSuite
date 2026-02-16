@@ -167,7 +167,9 @@ test.describe('Demo Store Integrity Sweep', () => {
     reportLines.push(`- Node: ${process.version}`);
     reportLines.push('');
 
-    const reportPath = path.join(repoRoot, 'docs', 'demo_store', 'GUI_E2E_INTEGRITY_REPORT.md');
+    const reportDir = path.join(repoRoot, 'docs', 'demo_store');
+    fs.mkdirSync(reportDir, { recursive: true });
+    const reportPath = path.join(reportDir, 'GUI_E2E_INTEGRITY_REPORT.md');
     fs.writeFileSync(reportPath, reportLines.join('\n'));
 
     // Log summary
