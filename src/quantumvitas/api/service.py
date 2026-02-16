@@ -1992,7 +1992,6 @@ class QVService:
                 structure_ulid = resolved.meta.ulid if resolved.meta else None
                 structure_meta = {
                     "structure_ulid": structure_ulid,
-                    "structure_ulid": structure_ulid,  # Backwards compat
                     "structure_name": resolved.meta.name if resolved.meta else None,
                     "formula": original_structure.composition.reduced_formula,
                     "supercell": list(supercell_normalized),

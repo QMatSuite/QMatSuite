@@ -125,7 +125,7 @@ export function CreateCalculationDialog({
     // If workflow is selected, instantiate it
     if (selectedWorkflow && calculationId) {
       const structureId = selectedStructure ? 
-        structures.find(s => s.slug === selectedStructure)?.id || '' : '';
+        structures.find(s => s.slug === selectedStructure)?.ulid || '' : '';
       
       // Construct calculation path from slug (calculations/{slug})
       const calculationPath = `${projectRoot}/calculations/${calculationSlug}`;
@@ -238,7 +238,7 @@ export function CreateCalculationDialog({
               <option disabled>Loading structures...</option>
             ) : (
               effectiveStructures.map((s) => (
-                <option key={s.id} value={s.slug}>
+                <option key={s.ulid} value={s.slug}>
                   {s.name} ({s.formula})
                 </option>
               ))
