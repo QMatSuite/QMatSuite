@@ -240,4 +240,3 @@ class TestPySCFRelaxReal:
         assert 0.70 < relaxed_distance < 0.80, (
             f"H-H bond distance {relaxed_distance:.4f} A is not near equilibrium (~0.74 A)"
         )
-

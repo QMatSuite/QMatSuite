@@ -15,6 +15,8 @@ import os
 import shutil
 import subprocess
 import sys
+import time
+import uuid
 from pathlib import Path
 
 import pytest
@@ -44,10 +46,9 @@ def run_qv(args: list[str], cwd: Path, check: bool = True) -> subprocess.Complet
 @pytest.fixture(scope="module")
 def test_project_dir(project_root_path: Path) -> Path:
     """Create a temporary project directory for the test in .tmp/ folder."""
-    test_dir = project_root_path / ".tmp" / "test_si_dos_calculation"
-    if test_dir.exists():
-        shutil.rmtree(test_dir)
-    test_dir.mkdir(parents=True, exist_ok=True)
+    run_id = f"run_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+    test_dir = project_root_path / ".tmp" / "test_si_dos_calculation" / run_id
+    test_dir.mkdir(parents=True, exist_ok=False)
     return test_dir
 
 
@@ -265,4 +266,3 @@ class TestSiDosCalculation:
             "n_points" in result.stdout
             or "fermi_energy" in result.stdout.lower()
         ), f"Analysis output should contain summary info:\n{result.stdout}"
-

@@ -8253,11 +8253,20 @@ class QVService:
             # Check if target_dir is inside an existing project
             enclosing_project = detect_enclosing_project(target_dir)
             if enclosing_project:
-                raise ValueError(
-                    f"Cannot create a new project inside an existing QuantumVITAS project. "
-                    f"The selected folder is inside a project at: {enclosing_project}. "
-                    f"Please choose a parent folder above your current project directory."
-                )
+                enclosing_project = Path(enclosing_project).resolve()
+                allow_under_tmp = False
+                try:
+                    rel = target_dir.relative_to(enclosing_project)
+                    allow_under_tmp = bool(rel.parts) and rel.parts[0] == ".tmp"
+                except ValueError:
+                    allow_under_tmp = False
+
+                if not allow_under_tmp:
+                    raise ValueError(
+                        f"Cannot create a new project inside an existing QuantumVITAS project. "
+                        f"The selected folder is inside a project at: {enclosing_project}. "
+                        f"Please choose a parent folder above your current project directory."
+                    )
             
             target_dir.mkdir(parents=True, exist_ok=True)
             

@@ -6,7 +6,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import { fileURLToPath } from 'url';
 
 // Get __dirname equivalent in ES modules
@@ -46,7 +45,7 @@ export function getGuiDir(): string {
 
 /**
  * Resolve the root folder for ephemeral E2E projects.
- * Defaults to OS temp dir to avoid nesting test projects inside the repo.
+ * Defaults to repo-local .tmp/e2e_projects for inspectable artifacts.
  *
  * Override with QV_E2E_PROJECTS_ROOT when needed.
  */
@@ -55,7 +54,7 @@ export function getE2EProjectsRoot(): string {
   if (override) {
     return path.resolve(override);
   }
-  return path.join(os.tmpdir(), 'qv_e2e_projects');
+  return path.join(getRepoRoot(), '.tmp', 'e2e_projects');
 }
 
 /**
@@ -76,10 +75,17 @@ export function ensureE2EProjectsRoot(): string {
  */
 export function createUniqueProjectDir(prefix: string): string {
   const e2eRoot = ensureE2EProjectsRoot();
-  const timestamp = Date.now();
-  const uniqueDir = path.join(e2eRoot, `${prefix}-${timestamp}`);
-  fs.mkdirSync(uniqueDir, { recursive: true });
-  return uniqueDir;
+  let attempts = 0;
+  while (attempts < 10) {
+    const uniqueName = `${prefix}-${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+    const uniqueDir = path.join(e2eRoot, uniqueName);
+    if (!fs.existsSync(uniqueDir)) {
+      fs.mkdirSync(uniqueDir, { recursive: false });
+      return uniqueDir;
+    }
+    attempts += 1;
+  }
+  throw new Error(`Failed to create unique E2E project directory for prefix: ${prefix}`);
 }
 
 /**
@@ -93,13 +99,8 @@ export function cleanupProjectDir(dirPath: string): void {
 
 /**
  * Clear all E2E test projects directory
- * Removes all contents of the configured E2E projects root.
+ * Legacy compatibility helper: ensure root exists without deleting artifacts.
  */
 export function clearE2EProjectsRoot(): void {
-  const e2eRoot = getE2EProjectsRoot();
-  if (fs.existsSync(e2eRoot)) {
-    fs.rmSync(e2eRoot, { recursive: true, force: true });
-  }
-  // Recreate the directory
-  fs.mkdirSync(e2eRoot, { recursive: true });
+  ensureE2EProjectsRoot();
 }

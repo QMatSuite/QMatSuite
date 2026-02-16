@@ -330,4 +330,3 @@ class TestRelaxPromoteE2E:
         new_calc_yaml = new_calc_dir / "calculation.yaml"
         new_calc_data = yaml.safe_load(new_calc_yaml.read_text())
         assert new_calc_data["structure_ulid"] == promoted_result.meta.ulid, "New calculation should use promoted structure"
-

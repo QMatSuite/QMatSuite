@@ -1,5 +1,7 @@
 import shlex
 import shutil
+import time
+import uuid
 from pathlib import Path
 
 import pytest
@@ -85,8 +87,9 @@ def test_cli_show_command_executes_against_references(
 ):
     runner = CliRunner()
     from quantumvitas.core.paths import tmp_runs_dir
-    base_dir = tmp_runs_dir() / "cli_show_command_exec"
-    _ensure_clean_directory(base_dir)
+    run_id = f"run_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+    base_dir = tmp_runs_dir() / "cli_show_command_exec" / run_id
+    base_dir.mkdir(parents=True, exist_ok=False)
 
     project_root = base_dir / "project"
     result = runner.invoke(
@@ -266,4 +269,3 @@ def test_cli_show_command_executes_against_references(
                 f"\nOutput file size: {output_file.stat().st_size if output_file.exists() else 0} bytes"
                 f"{output_content_preview}"
             )
-

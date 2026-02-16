@@ -13,7 +13,6 @@ import json
 import pytest
 import time
 import uuid
-import shutil
 from pathlib import Path
 
 from quantumvitas.api import QVService
@@ -93,17 +92,13 @@ def orca_project_with_h2(orca_available):
         },
     )
     
-    yield {
+    return {
         "project_root": project_root,
         "calc_id": calc.ulid,
         "step_ulid": step.ulid,
         "structure_path": project_root / "structures" / f"{struct_result.meta.ulid}.json",
         "initial_h2_distance": 0.8,
     }
-    
-    # Cleanup
-    if test_dir.exists():
-        shutil.rmtree(test_dir, ignore_errors=True)
 
 
 class TestORCARelaxReal:

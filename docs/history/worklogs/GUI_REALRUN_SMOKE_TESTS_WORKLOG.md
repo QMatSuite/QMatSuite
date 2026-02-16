@@ -866,3 +866,68 @@ Result: PASS (`1 passed`, ~52.8s).
    - NSCF k-point inheritance fixed,
    - Wannier projections set to a 4-projection-compatible form (`f=0.0,0.0,0.0:sp3`),
    - convergence parser bound to the correct step output.
+
+### Attempt 6 — Full-suite regression surfaced nested-project guard fallout (in progress)
+
+Goal:
+- Re-validate full backend suite and then GUI e2e after Pair 1-6 + Pair 6 changes.
+
+Command run:
+```bash
+source .venv/bin/activate
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+```
+
+Observed summary:
+- `4 failed, 5813 passed, 30 skipped, 16 errors`.
+- Dominant failure mode: project creation inside repo-local `.tmp` now blocked by nested-project guard.
+
+Representative failing modules:
+- `tests/integration/test_relax_promote_e2e.py`
+- `tests/integration/test_pyscf_relax_real.py`
+- `tests/integration/test_orca_relax_real.py`
+- `tests/integration/test_qe_relax_real.py`
+- `tests/cli/test_si_bands_auto_calculation_cli.py`
+- `tests/cli/test_si_bands_manual_calculation_cli.py`
+- `tests/cli/test_si_dos_calculation_comprehensive.py`
+- `tests/cli/test_cli_show_command_integration.py`
+- `tests/integration/test_gaussian_execution.py`
+- `tests/integration/test_xtb_execution.py`
+
+Fix direction chosen:
+- Keep Pair 1-6 logic untouched.
+- Patch only test temp-root setup to use OS temp directories (`tempfile.mkdtemp(...)`) instead of repo-local `.tmp` / `tmp_runs_dir()` for project roots.
+- Re-run failing subsets, then full backend suite, then full GUI e2e.
+
+Update to Attempt 6 (user-directed path policy):
+- Replaced the temporary OS-temp workaround.
+- Kept all test project roots under `<repo>/.tmp/...` per instruction.
+- Implemented compatibility fix in `QVService.init_project` to allow nested project creation only under `<enclosing_project>/.tmp/...` while preserving the nested-project guard elsewhere.
+- Added unit coverage:
+  - `tests/unit/test_api_service.py::TestQVServiceProject::test_init_project_allows_tmp_subdir_inside_project`
+
+Additional stability policy applied:
+- Do not clear global `<repo>/.tmp`.
+- Avoid deleting previous run artifacts.
+- For CLI test fixtures, switched to unique run folders under `.tmp/<suite>/<run_id>` to avoid parallel collisions and preserve inspection artifacts.
+- Removed ORCA fixture post-run deletion to keep project artifacts inspectable.
+
+Validation run (repo `.tmp` mode):
+```bash
+source .venv/bin/activate
+python -m pytest -q \
+  tests/unit/test_api_service.py::TestQVServiceProject::test_init_project_prevents_nested_project \
+  tests/unit/test_api_service.py::TestQVServiceProject::test_init_project_allows_tmp_subdir_inside_project \
+  tests/cli/test_si_bands_manual_calculation_cli.py \
+  tests/integration/test_relax_promote_e2e.py \
+  tests/integration/test_orca_relax_real.py \
+  tests/integration/test_qe_relax_real.py \
+  tests/cli/test_si_bands_auto_calculation_cli.py \
+  tests/integration/test_pyscf_relax_real.py \
+  tests/cli/test_si_dos_calculation_comprehensive.py \
+  tests/integration/test_gaussian_execution.py \
+  tests/integration/test_xtb_execution.py \
+  tests/cli/test_cli_show_command_integration.py \
+  -n auto --dist=loadfile --tb=short
+```
+Result: PASS (`43 passed`, `~120s`).
