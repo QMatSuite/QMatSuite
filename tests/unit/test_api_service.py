@@ -69,6 +69,17 @@ class TestQVServiceProject:
         with pytest.raises(ValueError, match="inside an existing QuantumVITAS project"):
             QVService.init_project(structures_dir, name="Nested Project")
 
+    def test_init_project_allows_tmp_subdir_inside_project(self, tmp_path):
+        """Test that init_project allows nested projects under <project>/.tmp/."""
+        parent_project = tmp_path / "parent-project"
+        QVService.init_project(parent_project, name="Parent Project")
+
+        nested_tmp_dir = parent_project / ".tmp" / "nested-project"
+        result = QVService.init_project(nested_tmp_dir, name="Nested Tmp Project")
+
+        assert result == nested_tmp_dir
+        assert (nested_tmp_dir / "project.qv.yml").exists()
+
     def test_create_demo_project_prevents_nested_project(self, tmp_path):
         """Test that create_demo_project raises ValueError if target_dir is inside an existing project."""
         # Create a project first
@@ -389,4 +400,3 @@ class TestQVServiceStep:
         step_ids = calc_dto.step_ulids or []
 
         assert step_id not in step_ids
-

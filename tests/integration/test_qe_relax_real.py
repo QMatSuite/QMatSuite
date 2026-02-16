@@ -353,5 +353,3 @@ class TestQERelaxReal:
         # However, we verify that the entry exists and is valid
         assert relax_entry.step_sha is not None, "Step SHA should be set"
 
-
-

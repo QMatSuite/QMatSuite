@@ -15,6 +15,8 @@ import os
 import shutil
 import subprocess
 import sys
+import time
+import uuid
 import yaml
 from pathlib import Path
 
@@ -83,10 +85,9 @@ K_POINTS (automatic)
 @pytest.fixture(scope="module")
 def test_project_dir(project_root_path: Path) -> Path:
     """Create a temporary project directory for AUTO k-path calculation tests."""
-    test_dir = project_root_path / ".tmp" / "test_si_bands_calculation_auto"
-    if test_dir.exists():
-        shutil.rmtree(test_dir)
-    test_dir.mkdir(parents=True, exist_ok=True)
+    run_id = f"run_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+    test_dir = project_root_path / ".tmp" / "test_si_bands_calculation_auto" / run_id
+    test_dir.mkdir(parents=True, exist_ok=False)
     return test_dir
 
 
