@@ -48,8 +48,8 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
 
     // Repo root is needed for the structure file path
     const repoRoot = getRepoRoot();
-    const siInputFile = path.join(repoRoot, 'tests', 'data', '0_Si_scf', 'si.scf.in');
-    expect(fs.existsSync(siInputFile), `Missing test input file at ${siInputFile}`).toBeTruthy();
+    const siCifFile = path.join(repoRoot, 'tests', 'data', 'structures', 'si_diamond.cif');
+    expect(fs.existsSync(siCifFile), `Missing test structure file at ${siCifFile}`).toBeTruthy();
 
     // =========================================
     // STEP 1: Create new project (from scratch)
@@ -92,7 +92,7 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     // Type the file path directly into the input (bypass native file picker)
     const fileInput = appPage.getByTestId('qv-import-structure-file');
     await expect(fileInput).toBeVisible({ timeout: 5000 });
-    await fileInput.fill(siInputFile);
+    await fileInput.fill(siCifFile);
 
     const structureNameInput = appPage.getByTestId('qv-import-structure-name');
     await structureNameInput.fill('Si');

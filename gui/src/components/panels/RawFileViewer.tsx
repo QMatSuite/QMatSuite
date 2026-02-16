@@ -140,6 +140,7 @@ export function RawFileViewer({ projectRoot, calculation, stepId }: RawFileViewe
         <label htmlFor="analysis-raw-file-select">Raw File</label>
         <select
           id="analysis-raw-file-select"
+          data-testid="qv-analysis-raw-file-select"
           value={selectedFile ?? ''}
           onChange={(event) => setSelectedFile(event.target.value)}
         >
@@ -157,11 +158,11 @@ export function RawFileViewer({ projectRoot, calculation, stepId }: RawFileViewe
       </div>
       <div className="analysis-raw-viewer__content">
         {error ? (
-          <div className="analysis-surface__error">{error}</div>
+          <div className="analysis-surface__error" data-testid="qv-analysis-raw-error">{error}</div>
         ) : loadingContent ? (
-          <div className="analysis-surface__placeholder">Loading file content...</div>
+          <div className="analysis-surface__placeholder" data-testid="qv-analysis-raw-loading">Loading file content...</div>
         ) : (
-          <pre>{content || '(empty file)'}</pre>
+          <pre data-testid="qv-analysis-raw-content">{content || '(empty file)'}</pre>
         )}
       </div>
     </div>

@@ -158,7 +158,35 @@ export function ActiveParametersPanel({
     
     return cardList.sort((a, b) => a.name.localeCompare(b.name));
   }, [stepDetail.cards]);
-  
+
+  // Generate tooltip text for a parameter
+  // Keep this hook before any conditional returns to preserve hook ordering.
+  const getParameterTooltip = useCallback((param: ParameterWithMetadata): string => {
+    if (!param.metadata) {
+      return `${param.name}: ${param.value}`;
+    }
+
+    const parts: string[] = [];
+    if (param.metadata.description) {
+      parts.push(param.metadata.description);
+    }
+    parts.push(`Type: ${param.metadata.type || 'UNKNOWN'}`);
+    if (param.metadata.default !== null && param.metadata.default !== undefined) {
+      parts.push(`Default: ${param.metadata.default}`);
+    }
+    if (param.metadata.enum && param.metadata.enum.length > 0) {
+      parts.push(`Enum: ${param.metadata.enum.join(', ')}`);
+    }
+    if (param.metadata.module) {
+      parts.push(`Module: ${param.metadata.module}`);
+    }
+    if (param.metadata.section) {
+      parts.push(`Section: ${param.metadata.section}`);
+    }
+
+    return parts.join(' • ');
+  }, []);
+
   const hasActiveParameters = Object.keys(parametersByNamelist).length > 0 || cards.length > 0;
   
   // Extract prefix/outdir injection metadata
@@ -179,34 +207,7 @@ export function ActiveParametersPanel({
       </div>
     );
   }
-  
-  // Generate tooltip text for a parameter
-  const getParameterTooltip = useCallback((param: ParameterWithMetadata): string => {
-    if (!param.metadata) {
-      return `${param.name}: ${param.value}`;
-    }
-    
-    const parts: string[] = [];
-    if (param.metadata.description) {
-      parts.push(param.metadata.description);
-    }
-    parts.push(`Type: ${param.metadata.type || 'UNKNOWN'}`);
-    if (param.metadata.default !== null && param.metadata.default !== undefined) {
-      parts.push(`Default: ${param.metadata.default}`);
-    }
-    if (param.metadata.enum && param.metadata.enum.length > 0) {
-      parts.push(`Enum: ${param.metadata.enum.join(', ')}`);
-    }
-    if (param.metadata.module) {
-      parts.push(`Module: ${param.metadata.module}`);
-    }
-    if (param.metadata.section) {
-      parts.push(`Section: ${param.metadata.section}`);
-    }
-    
-    return parts.join(' • ');
-  }, []);
-  
+
   return (
     <div className="active-parameters-panel">
       {/* Prefix/Outdir Injection Info */}
@@ -556,4 +557,3 @@ function ManagedParametersSection({
     </div>
   );
 }
-

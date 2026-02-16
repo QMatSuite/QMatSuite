@@ -50,19 +50,19 @@ def test_parse_scf_count() -> None:
     provider = QEConvergenceProvider()
     result = provider.parse(_make_evidence(FIXTURE_DIR))
     assert len(result.scf_step) > 0
-    # Fixture dir has si.md.out (picked first by glob): 5+1+1+1+1 = 9 SCF energy lines
-    assert len(result.scf_energy) == 9
-    assert len(result.scf_de) == 9
+    # Fixture dir has both si.md.out and si.relax.out; gen_step=relax should select si.relax.out.
+    assert len(result.scf_energy) == 10
+    assert len(result.scf_de) == 10
 
 
 def test_parse_ionic_count() -> None:
     """Verify correct number of ionic steps parsed."""
     provider = QEConvergenceProvider()
     result = provider.parse(_make_evidence(FIXTURE_DIR))
-    # Fixture dir has si.md.out (picked first by glob): 5 ionic steps
-    assert len(result.ionic_step) == 5
-    assert len(result.ionic_energy) == 5
-    assert result.n_ionic_steps == 5
+    # si.relax.out contains 4 ionic-step summaries.
+    assert len(result.ionic_step) == 4
+    assert len(result.ionic_energy) == 4
+    assert result.n_ionic_steps == 4
 
 
 def test_parse_algorithm_detected() -> None:
@@ -101,3 +101,41 @@ def test_sha_deterministic() -> None:
     sha2 = compute_canonical_sha(result.to_primitives())
     assert len(sha1) == 64
     assert sha1 == sha2
+
+
+def test_parse_prefers_step_specific_output_in_shared_raw_dir(tmp_path: Path) -> None:
+    """When multiple *.out files exist, parser should choose the one matching gen_step."""
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+
+    # This file is present but unrelated for convergence parsing in scf context.
+    (raw_dir / "wannierprep.out").write_text("", encoding="utf-8")
+
+    # Minimal SCF-like output with one iteration + energy + convergence marker.
+    (raw_dir / "scf.out").write_text(
+        "\n".join(
+            [
+                " iteration #  1     ecut=    30.00 Ry     beta= 0.70",
+                " total energy              =     -22.42698584 Ry",
+                " convergence has been achieved in  1 iterations",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    evidence = EvidenceBundle(
+        primary_raw_dir=raw_dir,
+        calc_dir=tmp_path,
+        run_ulid="01TESTRUN",
+        calc_ulid="01CALC",
+        step_ulids=["01STEP"],
+        gen_steps=["scf"],
+        engine_name="qe",
+        evidence_steps=[],
+    )
+
+    provider = QEConvergenceProvider()
+    result = provider.parse(evidence)
+    assert len(result.scf_energy) == 1
+    assert result.meta.source_files, "Expected source file metadata to be populated"
+    assert result.meta.source_files[0].path.endswith("scf.out")

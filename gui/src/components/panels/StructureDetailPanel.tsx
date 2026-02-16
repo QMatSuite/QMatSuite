@@ -144,22 +144,18 @@ function AccordionSection({ title, defaultExpanded = false, children }: Accordio
 }
 
 export function StructureDetailPanel({ model, onClose }: StructureDetailPanelProps) {
-  if (!model) {
-    return null;
-  }
-  
-  const provenance = model.provenance;
+  const provenance = model?.provenance ?? null;
   const isOnline = provenance != null;
   
   // Extract prioritized fields
-  const formula = model.formula || getFirstAvailable(provenance, [
+  const formula = model?.formula || getFirstAvailable(provenance, [
     'extras.formula_hill',
     'extras.formula_hill_compact',
     'attributes.chemical_formula_reduced',
     'attributes.chemical_formula_descriptive',
   ]) || 'Unknown';
   
-  const nsites = model.nsites || getFirstAvailable(provenance, [
+  const nsites = model?.nsites || getFirstAvailable(provenance, [
     'extras.number_of_sites',
     'attributes.nsites',
   ]) || 0;
@@ -167,6 +163,7 @@ export function StructureDetailPanel({ model, onClose }: StructureDetailPanelPro
   // Step 3: Fix Details panel "Species" - use primary atoms (non-boundary)
   // Species should be derived from primary atoms, never from boundary atoms
   const species = useMemo(() => {
+    if (!model) return '';
     if (model.species.length > 0) {
       return model.species.join(', ');
     }
@@ -176,7 +173,7 @@ export function StructureDetailPanel({ model, onClose }: StructureDetailPanelPro
     const sourceAtoms = primaryAtoms.length > 0 ? primaryAtoms : model.atoms;
     const uniqueElements = Array.from(new Set(sourceAtoms.map(a => a.element))).sort();
     return uniqueElements.join(', ');
-  }, [model.species, model.atoms]);
+  }, [model]);
   
   const spaceGroup = formatSpaceGroup(provenance);
   const bravaisLattice = getFirstAvailable(provenance, [
@@ -188,18 +185,22 @@ export function StructureDetailPanel({ model, onClose }: StructureDetailPanelPro
   
   // Compute lattice lengths and volume
   const latticeLengths = useMemo(() => {
-    if (model.lattice && model.lattice.length === 3) {
+    if (model?.lattice && model.lattice.length === 3) {
       return computeLatticeLengths(model.lattice);
     }
     return null;
-  }, [model.lattice]);
+  }, [model?.lattice]);
   
   const cellVolume = useMemo(() => {
-    if (model.lattice && model.lattice.length === 3) {
+    if (model?.lattice && model.lattice.length === 3) {
       return computeCellVolume(model.lattice);
     }
     return null;
-  }, [model.lattice]);
+  }, [model?.lattice]);
+
+  if (!model) {
+    return null;
+  }
   
   return (
     <div className="structure-detail-panel" data-testid="qv-structure-viewer-panel">
@@ -412,4 +413,3 @@ export function StructureDetailPanel({ model, onClose }: StructureDetailPanelPro
     </div>
   );
 }
-

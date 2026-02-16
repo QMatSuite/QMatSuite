@@ -178,9 +178,20 @@ export function ParameterValueEditor({
       handleChange('');
       return;
     }
-    // Write canonical .true./.false. format
+    // Persist LOGICAL parameters as native booleans so QE writers emit
+    // .true./.false. (not quoted CHARACTER strings).
+    const lower = normalizeQeScalar(selectedValue).toLowerCase();
+    if (logicalTrueTokens.includes(lower)) {
+      onChange(true);
+      return;
+    }
+    if (logicalFalseTokens.includes(lower)) {
+      onChange(false);
+      return;
+    }
+    // Fallback for unexpected tokens entered in raw mode.
     handleChange(selectedValue);
-  }, [handleChange]);
+  }, [handleChange, onChange]);
   
   // If enum is provided, show select with raw toggle (default mode for enum)
   if (hasEnum && !useRawMode) {

@@ -625,3 +625,244 @@ Result: `1 passed` (~24s)
 - For metallic Al smoke workflows, raw unquoted CHARACTER tokens in GUI editing are safer than pre-quoted strings.
 - DOS numeric fields added through generic UI-parameter insertion can serialize as strings; keep defaults in e2e until numeric typing is guaranteed.
 - Add explicit run-error assertions before analysis assertions to avoid false “analysis hang” diagnoses.
+
+---
+
+## Session 12 (2026-02-15)
+
+### Goal
+Perform an independent reviewer audit of QE real-run Pair 1-5 RPC/E2E tests, including pairing parity, assertion depth, analysis-object behavior, and CI readiness.
+
+### Deliverable
+- Review doc: `docs/history/reviews/realrun_qe_pairs_1_5_independent_review_2026-02-15.md`
+
+### Reviewer Findings (Summary)
+1. All five RPC pairs and all five E2E pairs do execute real QE runs (no demo execution path).
+2. Pairing quality is uneven:
+   - strong: Pair 3
+   - medium: Pair 1, Pair 4
+   - medium-low: Pair 2, Pair 5
+3. Major parity drifts:
+   - Pair 2 E2E does not mirror RPC for `nstep`, `cell_dofree`, and explicit K_POINTS.
+   - Pair 4/5 E2E intentionally skip DOS `emin/emax` editing due current UI serialization issue, while RPC enforces them.
+   - Pair 5 online structure-fetch branch is RPC-only.
+4. Pair 1 RPC assertions are shallow versus stated strict goals (instance existence only; no convergence-array/value checks).
+5. CI currently runs only Pair 1 E2E (`realrun_si_scf.spec.ts`); Pair 2-5 E2E specs are not in workflow command lists yet.
+
+### Lessons Learned
+1. "Paired test" quality is not binary. It must be audited at operation-sequence and parameter-level granularity.
+2. For expensive real-run smoke tests, assertion depth should be concentrated into one strong run per pair (payload shape + key physical checks), not only existence checks.
+3. Analysis-law compliance in UI should be validated by explicitly proving step-scoped/membership-based object offering in multi-step workflows, not only by eventually finding one plot.
+
+## Session 13 (2026-02-15)
+
+### Goal
+Complete Pair 6 (QE + Wannier90) with passing RPC+E2E and capture concrete blocker/fix evidence.
+
+### Pair 6 takeover status
+- Ground-truth plan source: `docs/design/gui-testing-realrun-plan.md` (Pair 6 section).
+- Starting branch/worktree already contained Pair 6 RPC/E2E specs and CI wiring.
+
+### Attempt 1 — Reproduce current Pair 6 state
+
+RPC verification:
+```bash
+pytest -q tests/daemon/contract/test_realrun_qe_wannier.py --no-cov
+```
+Result: PASS (`1 passed`, ~22.7s)
+
+E2E reproduction:
+```bash
+cd gui
+npx playwright test tests/e2e/realrun_qe_wannier.spec.ts --project=electron --reporter=line
+```
+Result: FAIL at artifact assertion (`pw2wannier.out` missing `JOB DONE`).
+
+Forensics from failing run (`/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_e2e_projects/realrun-qe-wannier-1771195059936/...`):
+1. `nscf.step.yaml` correctly persisted logicals as native booleans:
+   - `SYSTEM.nosym: true`
+   - `SYSTEM.noinv: true`
+2. `raw/nscf.in` correctly emitted:
+   - `nosym = .true.`
+   - `noinv = .true.`
+3. `raw/wannierprep.win` used default `mp_grid : 4 4 4` and 64 generated k-points.
+4. `raw/pw2wannier.out` failed with:
+   - `Error in routine pw2wannier90 (64): Wrong number of k-points`
+   - `numk=64  iknum=8`
+
+### Root cause discovered
+- In `src/quantumvitas/calculation/wannier90_kpoints.py`, `find_nscf_input_file()` only matches steps by `step_type_gen == "nscf"`.
+- Current `calculation.yaml` stores step entries as `step_type_spec` (`qe_nscf`, etc.), so nscf step discovery can fail in this path.
+- When nscf k-points are not inherited, Wannier materialization falls back to default `mp_grid=[4,4,4]`, producing a `.win/.nnkp` k-grid incompatible with the 8-point NSCF run.
+
+### In-flight fix plan (Session 13)
+1. Patch nscf-step discovery to support current `step_type_spec` representation.
+2. Add robust fallback for logical string tokens in QE writer (`'.true.'`/`'.false.'` should emit unquoted Fortran logicals).
+3. Re-run Pair 6 e2e and verify `pw2wannier` reaches `JOB DONE` plus required artifact checks.
+
+### Attempt 2 — New blocker after k-point/boolean fixes
+
+E2E rerun:
+```bash
+cd gui
+npx playwright test tests/e2e/realrun_qe_wannier.spec.ts --project=electron --reporter=line
+```
+Result: FAIL at final Wannier assertion (`wannierprep.wout` missing `All done: wannier90 exiting`).
+
+Forensics from failing run (`.../realrun-qe-wannier-1771195569573/...`):
+1. `pw2wannier.out` now succeeds (`JOB DONE`), confirming k-point inheritance/mapping fix is active.
+2. `wannierprep.win` had:
+   - `num_wann = 4`
+   - `num_bands = 4`
+   - `mp_grid : 2 2 2`
+   - **no `begin projections` block**
+3. `wannierprep.nnkp` showed:
+   - `begin projections`
+   - `0`
+   - `end projections`
+4. `wannierprep.amn` header line was:
+   - `4 8 0`
+5. `wannierprep.wout` ended with:
+   - `wannierprep.amn has not the right number of projections`
+
+Root cause:
+- Pair 6 GUI flow was not setting W90 `projections`; with `num_wann=4`, zero projections in `.amn` causes Wannier90 to fail.
+
+Fix applied:
+1. Updated Pair 6 e2e to set `projections = Si:sp3` in both `wannierprep` and `wannier` via GUI parameter editing path.
+2. Added raw artifact assertion to require `Si:sp3` in `wannierprep.win`.
+3. Preserved all existing user-flow constraints (no direct YAML/raw edits; GUI-only parameter updates).
+
+### Attempt 3 — Pair 6 run succeeds, but analysis assertion fails (zero curves)
+
+Validation sequence started with rebuilt GUI artifacts to avoid stale `dist-electron`:
+```bash
+cd gui
+npm run build:e2e
+```
+Result: PASS (vite + dist-electron rebuilt).
+
+Then pre-checks:
+```bash
+pytest -q tests/unit/test_no_qe_bool_strings.py tests/unit/test_wannier90_kpoints_inheritance.py --no-cov
+```
+Result: PASS (`19 passed`).
+
+```bash
+pytest -q tests/daemon/contract/test_realrun_qe_wannier.py --no-cov
+```
+Result: PASS (`1 passed`, ~20.5s).
+
+Pair 6 e2e rerun:
+```bash
+cd gui
+npx playwright test tests/e2e/realrun_qe_wannier.spec.ts --project=electron --reporter=line
+```
+Result: FAIL at analysis assertion:
+- `SCF convergence chart has no curve paths`
+
+Forensics from the exact failed run (`.../realrun-qe-wannier-1771196393082/...`):
+1. Workflow execution itself succeeded end-to-end (`JobGraph execution complete: success=True, summaries=5`).
+2. `raw/scf.out` contained normal SCF iterations and `convergence has been achieved in 11 iterations`.
+3. RPC inspection of analysis payload for SCF step showed:
+   - object `convergence` state `ok`
+   - but `series=[]`, `scf_energy=[]`
+   - provenance warning: `No SCF steps found in output.`
+   - provenance source file incorrectly pointed to `raw/wannierprep.out` (empty), not `raw/scf.out`.
+
+Root cause:
+- `QEConvergenceProvider.parse()` selected `out_files[0]` from shared `raw/*.out`.
+- In multi-step QE+Wannier runs, directory order could pick unrelated files (`wannierprep.out`), producing empty convergence bundles.
+
+### Fix C — Step-aware convergence output selection
+
+Updated:
+- `src/quantumvitas/drivers/qe/parsers/convergence.py`
+- `tests/drivers/qe/test_qe_convergence_parser.py`
+
+Changes:
+1. Added `_select_output_file(raw_dir, gen_steps)` in QE convergence parser:
+   - prefer exact `<gen_step>.out` (e.g., `scf.out`)
+   - then token-matching names (e.g., `si.relax.out`)
+   - fallback to largest non-empty `.out`
+   - final fallback to first file
+2. Parser now uses selected output based on `evidence.gen_steps` instead of naive first glob entry.
+3. Added regression test for shared-raw case (`scf.out` + empty `wannierprep.out`) to enforce selecting `scf.out`.
+4. Updated existing parser fixture-count tests to reflect deterministic `relax` selection.
+
+Verification:
+```bash
+pytest -q tests/drivers/qe/test_qe_convergence_parser.py --no-cov
+```
+Result: PASS (`10 passed`).
+
+### Attempt 4 — Pair 6 pass + full Pair 1-6 regressions
+
+Pair 6 re-validation:
+```bash
+pytest -q tests/daemon/contract/test_realrun_qe_wannier.py --no-cov
+```
+Result: PASS (`1 passed`, ~20.3s).
+
+```bash
+cd gui
+npx playwright test tests/e2e/realrun_qe_wannier.spec.ts --project=electron --reporter=line
+```
+Result: PASS (`1 passed`, ~52.3s).
+
+Full RPC sweep (Pairs 1-6):
+```bash
+pytest -q \
+  tests/daemon/contract/test_realrun_si_scf.py \
+  tests/daemon/contract/test_realrun_si_relax.py \
+  tests/daemon/contract/test_realrun_si_bands.py \
+  tests/daemon/contract/test_realrun_si_dos.py \
+  tests/daemon/contract/test_realrun_al_dos.py \
+  tests/daemon/contract/test_realrun_qe_wannier.py \
+  --no-cov
+```
+Result: PASS (`7 passed`, `155.70s`).
+
+Full e2e sweep (Pairs 1-6):
+```bash
+cd gui
+npx playwright test \
+  tests/e2e/realrun_si_scf.spec.ts \
+  tests/e2e/realrun_si_relax.spec.ts \
+  tests/e2e/realrun_si_bands.spec.ts \
+  tests/e2e/realrun_si_dos.spec.ts \
+  tests/e2e/realrun_al_dos.spec.ts \
+  tests/e2e/realrun_qe_wannier.spec.ts \
+  --project=electron --reporter=line
+```
+Result: PASS (`6 passed`, ~4.9m).
+
+### Attempt 5 — Enforce strict unquoted logical tokens in Pair 6 assertions
+
+Per Pair 6 boolean rule, added strict assertions to reject quoted logicals:
+- `tests/daemon/contract/test_realrun_qe_wannier.py`
+- `gui/tests/e2e/realrun_qe_wannier.spec.ts`
+
+New checks require:
+- `nosym = .true.` and `noinv = .true.` in `nscf.in`
+- no `nosym = '.true.'` / `".true."` variants.
+
+Verification:
+```bash
+pytest -q tests/daemon/contract/test_realrun_qe_wannier.py --no-cov
+```
+Result: PASS (`1 passed`, ~20.4s).
+
+```bash
+cd gui
+npx playwright test tests/e2e/realrun_qe_wannier.spec.ts --project=electron --reporter=line
+```
+Result: PASS (`1 passed`, ~52.8s).
+
+### Session 13 Lessons (final)
+1. For shared raw directories, parser input selection must be step-aware; choosing the first `*.out` is not safe in multi-engine chains.
+2. Analysis-state “ok” can still hide empty data if the wrong evidence file is parsed; always inspect `provenance_meta.source_files` and parser warnings.
+3. Pair 6 is now stable only with all three constraints together:
+   - NSCF k-point inheritance fixed,
+   - Wannier projections set to a 4-projection-compatible form (`f=0.0,0.0,0.0:sp3`),
+   - convergence parser bound to the correct step output.

@@ -253,7 +253,54 @@ class TestRealRunSiBands:
         assert "0.0000 0.5000 0.0000 6" in bandspw_in or "0.0 0.5 0.0 6" in bandspw_in, bandspw_in
         assert "-0.5000 0.0000 -0.5000 4" in bandspw_in or "-0.5 0.0 -0.5 4" in bandspw_in, bandspw_in
 
-        # 6) Validate bands analysis availability on bandspw step
+        # 6) Validate SCF convergence analysis exists in this multi-step workflow.
+        scf_instances_response = send_request(
+            daemon,
+            "get_analysis_instances_for_step",
+            {
+                "project_root": str(project_root),
+                "calculation": calc_ulid,
+                "step_ulid": step_map["scf"],
+            },
+        )
+        scf_instances = scf_instances_response.get("instances", [])
+        assert scf_instances, f"No analysis instances for SCF step: {scf_instances_response}"
+        scf_conv_instance = next((i for i in scf_instances if i.get("object_type") == "convergence"), None)
+        assert scf_conv_instance is not None, f"SCF convergence object missing: {scf_instances}"
+        assert scf_conv_instance.get("state") == "ok", scf_conv_instance
+
+        scf_latest_run = send_request(
+            daemon,
+            "get_latest_run_for_step",
+            {
+                "project_root": str(project_root),
+                "step_ulid": step_map["scf"],
+            },
+        )
+        scf_run_ulid = scf_latest_run.get("run_ulid")
+        assert scf_run_ulid, f"Missing SCF run_ulid: {scf_latest_run}"
+
+        # Some runs expose convergence state without dense arrays at this step in multi-step chains.
+        # Verify real SCF convergence evidence directly in raw output.
+        scf_out_resp = send_request(
+            daemon,
+            "read_raw_file",
+            {
+                "project_root": str(project_root),
+                "calculation": calc_ulid,
+                "step": step_map["scf"],
+                "filename": "scf.out",
+                "head_lines": 2000,
+                "tail_lines": 0,
+            },
+        )
+        scf_out = (scf_out_resp.get("text") or scf_out_resp.get("content") or "")
+        assert isinstance(scf_out, str) and scf_out.strip(), scf_out_resp
+        scf_out_lower = scf_out.lower()
+        assert "total energy" in scf_out_lower, scf_out
+        assert ("convergence has been achieved" in scf_out_lower) or ("job done" in scf_out_lower), scf_out
+
+        # 7) Validate bands analysis availability on bandspw step
         bandspw_ulid = step_map["bandspw"]
         instances_response = send_request(
             daemon,

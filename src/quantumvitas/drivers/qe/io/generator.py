@@ -21,6 +21,14 @@ class QEInputGenerator:
         if isinstance(value, bool):
             return ".true." if value else ".false."
         if isinstance(value, str):
+            # Defensive normalization: emit Fortran logical tokens unquoted even if
+            # they arrive as strings (e.g., ".true.", "'.false.'").
+            stripped = value.strip()
+            unquoted = stripped.strip("'\"").lower()
+            if unquoted in {".true.", "true", "t", ".t."}:
+                return ".true."
+            if unquoted in {".false.", "false", "f", ".f."}:
+                return ".false."
             return f"'{value}'"
         if isinstance(value, (list, tuple)):
             formatted = ", ".join(

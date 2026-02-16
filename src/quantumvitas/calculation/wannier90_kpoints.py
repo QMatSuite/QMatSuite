@@ -8,8 +8,7 @@ This module handles:
 """
 
 from pathlib import Path
-from typing import List, Optional, Tuple
-import numpy as np
+from typing import List, Optional
 
 from quantumvitas.io.parser.qe_parser import QEInputParser
 from quantumvitas.io.model import QECardType
@@ -132,12 +131,14 @@ def find_nscf_input_file(calculation_dir: Path, working_dir: Optional[Path] = No
         calc_data = CalcDoc.load(calc_yaml).to_dict()
         steps = calc_data.get("steps", [])
         
-        # Find nscf step
-        # calculation.yaml steps use step_type_gen (GEN layer) for workflow-level representation
+        # Find nscf step.
+        # Accept both GEN and SPEC representations because calculation.yaml has
+        # transitioned to step_type_spec in newer pipelines.
         nscf_step = None
         for step_entry in steps:
-            step_type_gen = step_entry.get("step_type_gen", "").lower()
-            if step_type_gen == "nscf":
+            step_type_gen = str(step_entry.get("step_type_gen", "")).lower()
+            step_type_spec = str(step_entry.get("step_type_spec", "")).lower()
+            if step_type_gen == "nscf" or step_type_spec == "qe_nscf":
                 nscf_step = step_entry
                 break
         
@@ -205,3 +206,30 @@ def extract_kpoints_from_nscf_step(
     
     return extract_kpoints_from_qe_input(nscf_input)
 
+
+def infer_mp_grid_from_kpoints(kpoints: List[List[float]], tol: float = 1e-8) -> Optional[List[int]]:
+    """
+    Infer Monkhorst-Pack grid dimensions from explicit kpoints.
+
+    Returns [n1, n2, n3] when the kpoint list can be represented as a
+    rectangular grid, otherwise None.
+    """
+    if not kpoints:
+        return None
+
+    # Canonicalize first to avoid floating-point noise near 0/1 boundaries.
+    canonical = [canonicalize_kpoint(kpt) for kpt in kpoints]
+
+    counts: List[int] = []
+    for axis in range(3):
+        axis_vals = sorted(float(kpt[axis]) for kpt in canonical)
+        unique_vals: List[float] = []
+        for val in axis_vals:
+            if not unique_vals or abs(val - unique_vals[-1]) > tol:
+                unique_vals.append(val)
+        counts.append(len(unique_vals))
+
+    expected = counts[0] * counts[1] * counts[2]
+    if expected != len(canonical):
+        return None
+    return counts
