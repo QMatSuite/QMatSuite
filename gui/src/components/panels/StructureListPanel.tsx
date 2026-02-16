@@ -167,16 +167,16 @@ export function StructureListPanel({
                 
                 <div className="structure-item__details">
                   <div className="structure-item__stat">
-                    <span className="stat-value">{structure.n_atoms ?? structure.num_atoms ?? '?'}</span>
+                    <span className="stat-value">{structure.n_atoms}</span>
                     <span className="stat-label">atoms</span>
                   </div>
                 </div>
 
-                {structure.lattice_abc && (
+                {structure.lattice_params && (
                 <div className="structure-item__lattice">
-                  <span className="lattice-param">a={structure.lattice_abc[0]?.toFixed(2)}</span>
-                  <span className="lattice-param">b={structure.lattice_abc[1]?.toFixed(2)}</span>
-                  <span className="lattice-param">c={structure.lattice_abc[2]?.toFixed(2)}</span>
+                  <span className="lattice-param">a={structure.lattice_params.a.toFixed(2)}</span>
+                  <span className="lattice-param">b={structure.lattice_params.b.toFixed(2)}</span>
+                  <span className="lattice-param">c={structure.lattice_params.c.toFixed(2)}</span>
                 </div>
                 )}
                 
@@ -274,11 +274,11 @@ export function StructureDetailPanel({ structure, onClose }: StructureDetailPane
             </div>
             <div className="detail-item">
               <span className="detail-label">Atoms</span>
-              <span className="detail-value">{structure.n_atoms ?? structure.num_atoms ?? '?'}</span>
+              <span className="detail-value">{structure.n_atoms}</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">ID</span>
-              <code className="detail-value">{structure.id ?? structure.ulid}</code>
+              <code className="detail-value">{structure.id}</code>
             </div>
           </div>
         </div>
