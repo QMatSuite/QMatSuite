@@ -152,8 +152,8 @@ export function StructureListPanel({
         <div className="structure-list">
           {structures.map((structure) => (
             <div
-              key={structure.id}
-              className={`structure-item ${selectedId === structure.id ? 'structure-item--selected' : ''}`}
+              key={structure.ulid}
+              className={`structure-item ${selectedId === structure.ulid ? 'structure-item--selected' : ''}`}
               data-testid="qv-structure-row"
             >
               <button
@@ -172,11 +172,11 @@ export function StructureListPanel({
                   </div>
                 </div>
 
-                {structure.lattice_params && (
+                {structure.lattice_abc && (
                 <div className="structure-item__lattice">
-                  <span className="lattice-param">a={structure.lattice_params.a.toFixed(2)}</span>
-                  <span className="lattice-param">b={structure.lattice_params.b.toFixed(2)}</span>
-                  <span className="lattice-param">c={structure.lattice_params.c.toFixed(2)}</span>
+                  <span className="lattice-param">a={structure.lattice_abc[0]?.toFixed(2)}</span>
+                  <span className="lattice-param">b={structure.lattice_abc[1]?.toFixed(2)}</span>
+                  <span className="lattice-param">c={structure.lattice_abc[2]?.toFixed(2)}</span>
                 </div>
                 )}
                 
@@ -277,57 +277,59 @@ export function StructureDetailPanel({ structure, onClose }: StructureDetailPane
               <span className="detail-value">{structure.n_atoms}</span>
             </div>
             <div className="detail-item">
-              <span className="detail-label">ID</span>
-              <code className="detail-value">{structure.id}</code>
+              <span className="detail-label">ULID</span>
+              <code className="detail-value">{structure.ulid}</code>
             </div>
           </div>
         </div>
-        
+
+        {structure.lattice_abc && structure.lattice_angles && (
         <div className="detail-section">
           <h3>Lattice Parameters</h3>
           <div className="detail-grid detail-grid--lattice">
             <div className="detail-item">
               <span className="detail-label">a</span>
-              <span className="detail-value">{structure.lattice_params.a.toFixed(4)} Å</span>
+              <span className="detail-value">{structure.lattice_abc[0]?.toFixed(4)} Å</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">b</span>
-              <span className="detail-value">{structure.lattice_params.b.toFixed(4)} Å</span>
+              <span className="detail-value">{structure.lattice_abc[1]?.toFixed(4)} Å</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">c</span>
-              <span className="detail-value">{structure.lattice_params.c.toFixed(4)} Å</span>
+              <span className="detail-value">{structure.lattice_abc[2]?.toFixed(4)} Å</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">α</span>
-              <span className="detail-value">{structure.lattice_params.alpha.toFixed(2)}°</span>
+              <span className="detail-value">{structure.lattice_angles[0]?.toFixed(2)}°</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">β</span>
-              <span className="detail-value">{structure.lattice_params.beta.toFixed(2)}°</span>
+              <span className="detail-value">{structure.lattice_angles[1]?.toFixed(2)}°</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">γ</span>
-              <span className="detail-value">{structure.lattice_params.gamma.toFixed(2)}°</span>
+              <span className="detail-value">{structure.lattice_angles[2]?.toFixed(2)}°</span>
             </div>
-            {structure.lattice_params.volume && (
+            {structure.cell_volume_ang3 && (
               <div className="detail-item detail-item--full">
                 <span className="detail-label">Volume</span>
-                <span className="detail-value">{structure.lattice_params.volume.toFixed(2)} Å³</span>
+                <span className="detail-value">{structure.cell_volume_ang3.toFixed(2)} Å³</span>
               </div>
             )}
           </div>
         </div>
-        
+        )}
+
         <div className="detail-section">
           <h3>File Location</h3>
           <div className="file-location">
-            <code className="file-location__path" title={structure.absolute_path}>
-              {structure.absolute_path}
+            <code className="file-location__path" title={structure.path}>
+              {structure.path}
             </code>
-            <button 
+            <button
               className="file-location__reveal-btn"
-              onClick={() => window.qv?.revealPath?.(structure.absolute_path)}
+              onClick={() => window.qv?.revealPath?.(structure.path)}
               title="Reveal in Finder"
             >
               📂 Reveal

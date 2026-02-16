@@ -1232,7 +1232,7 @@ export function CalculationDetailPanel({
                 >
                   <option value="">-- None --</option>
                   {effectiveStructures.map(s => (
-                    <option key={s.id} value={s.slug}>{s.name} ({s.formula})</option>
+                    <option key={s.ulid} value={s.slug}>{s.name} ({s.formula})</option>
                   ))}
                 </select>
               ) : (

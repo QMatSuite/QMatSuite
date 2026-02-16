@@ -66,15 +66,19 @@ export interface LatticeParams {
 }
 
 export interface StructureInfo {
-  id: string;
+  ulid: string;
+  structure_ulid: string;
   name: string;
   slug: string;
   path: string;
-  absolute_path: string;
   formula: string;
+  num_atoms: number;
   n_atoms: number;
-  n_species: number;
-  lattice_params: LatticeParams;
+  lattice_abc?: number[] | null;
+  lattice_angles?: number[] | null;
+  cell_volume_ang3?: number | null;
+  space_group?: string | null;
+  meta?: { ulid: string; name: string; slug: string; path: string } | null;
 }
 
 export interface AtomVisData {

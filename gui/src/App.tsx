@@ -740,7 +740,7 @@ function App() {
     try {
       if (selection.kind === 'project') {
         // Project structure path
-        const structure = structures?.find(s => s.id === selection.structureId);
+        const structure = structures?.find(s => s.ulid === selection.structureId);
         if (!structure) {
           throw new Error(`Structure not found: ${selection.structureId}`);
         }
@@ -1134,7 +1134,7 @@ function App() {
       return;
     }
     
-    const selectionKey = `project:${structure.id}`;
+    const selectionKey = `project:${structure.ulid}`;
     // P0: Always increment refresh token to force reload (refresh semantics)
     setStructureRefreshToken(t => {
       const newToken = t + 1;
@@ -1151,7 +1151,7 @@ function App() {
     setCurrentBoxBounds(null);
     
     // Log selection
-    console.log(`[PERF] selection mode=project source=project id=${structure.id}`);
+    console.log(`[PERF] selection mode=project source=project id=${structure.ulid}`);
     
     // CRITICAL: Do NOT call loadStructureModel here - only useEffect should call it
     // This prevents double trigger while ensuring refresh on same selection
@@ -1160,7 +1160,7 @@ function App() {
   // Online import mode handlers
   const handleEnterImportMode = useCallback(() => {
     // Save current selection and viewer settings
-    setReturnProjectSelectionId(selectedStructure?.id || null);
+    setReturnProjectSelectionId(selectedStructure?.ulid || null);
     savedProjectViewerSettingsRef.current = { ...viewerSettings };
     
     // Reset viewer settings to defaults for online preview
@@ -1204,7 +1204,7 @@ function App() {
     
     // Restore previous project selection
     if (returnProjectSelectionId && structures) {
-      const structureToRestore = structures.find(s => s.id === returnProjectSelectionId);
+      const structureToRestore = structures.find(s => s.ulid === returnProjectSelectionId);
       if (structureToRestore) {
         setSelectedStructure(structureToRestore);
         // The project useEffect will handle loading the vis data
@@ -1253,7 +1253,7 @@ function App() {
         if (newStructures.ok && newStructures.data) {
           // list_structures returns { structures: StructureInfo[]; count: number }
           const structuresList = newStructures.data.structures || [];
-          const newStructure = structuresList.find((s: StructureInfo) => s.id === (response.data as any).new_structure_id);
+          const newStructure = structuresList.find((s: StructureInfo) => s.ulid === (response.data as any).new_structure_ulid);
           if (newStructure) {
             await handleSelectStructure(newStructure);
           }
@@ -1274,7 +1274,7 @@ function App() {
     
     // Select the newly imported structure
     if (structures) {
-      const newStruct = structures.find(s => s.id === structureId);
+      const newStruct = structures.find(s => s.ulid === structureId);
       if (newStruct) {
         handleSelectStructure(newStruct);
       }
@@ -1382,13 +1382,13 @@ function App() {
       // Use the structure from the list to ensure ID consistency
       const firstStructure = structures[0];
       didAutoSelectStructureRef.current = true;
-      console.log(`[App] Auto-selecting first structure: ${firstStructure.id}`);
+      console.log(`[App] Auto-selecting first structure: ${firstStructure.ulid}`);
       // Set selection and immediately load 3D view (same as manual selection)
       setSelectedStructure(firstStructure);
       // Set rightSelection for consistency
       setRightSelection({
         kind: 'project',
-        structureId: firstStructure.id,
+        structureId: firstStructure.ulid,
       });
       // Note: The useEffect for project structure loading will handle the StructureModel loading
       // No need to call legacy loadStructureVis - the unified loadStructureModel handles everything
@@ -1397,7 +1397,7 @@ function App() {
     // If selected structure disappeared from list, fall back to first element
     // Also sync selectedStructure with list if ID matches but object reference differs
     if (selectedStructure && structures) {
-      const foundInList = structures.find(s => s.id === selectedStructure.id);
+      const foundInList = structures.find(s => s.ulid === selectedStructure.ulid);
       if (!foundInList) {
         // Structure disappeared, fall back to first
         if (structures.length > 0) {
@@ -1420,7 +1420,7 @@ function App() {
   
   // P0: Single source of truth for structure loading (PROJECT MODE ONLY)
   // This is the ONLY place that calls loadStructureModel for project structures
-  // Dependencies include: selectionKey (via selectedStructure.id), refreshToken, and all viewer settings
+  // Dependencies include: selectionKey (via selectedStructure.ulid), refreshToken, and all viewer settings
   useEffect(() => {
     // Guard: only run in project mode
     if (leftMode !== 'project') {
@@ -1428,7 +1428,7 @@ function App() {
     }
     
     if (currentView === 'structures' && selectedStructure && projectRoot && qv) {
-      const selectionKey = `project:${selectedStructure.id}`;
+      const selectionKey = `project:${selectedStructure.ulid}`;
       const refreshToken = structureRefreshToken;
       
       console.log('[LOAD_START]', { 
@@ -1444,7 +1444,7 @@ function App() {
       const token = ++loadTokenRef.current;
       const selection: RightSelection = {
         kind: 'project',
-        structureId: selectedStructure.id,
+        structureId: selectedStructure.ulid,
       };
         
         // Set loading state and clear errors
@@ -1477,7 +1477,7 @@ function App() {
           
           // Validate we're still in the right mode and selection
           const currentLeftMode = leftMode;
-          const currentSelectedId = selectedStructure?.id;
+          const currentSelectedId = selectedStructure?.ulid;
           
           if (currentLeftMode === 'project' && selection.kind === 'project' && selection.structureId === currentSelectedId) {
             const loadStartTime = viewerStartTimeRef.current || performance.now();
@@ -1527,7 +1527,7 @@ function App() {
   }, [
     currentView, 
     leftMode, 
-    selectedStructure?.id,  // selectionKey
+    selectedStructure?.ulid,  // selectionKey
     structureRefreshToken,  // P0: refresh token forces reload on same selection
     projectRoot, 
     qv, 
@@ -1877,7 +1877,7 @@ function App() {
       showNotification(`Renamed structure to "${newName}"`, 'success');
       await fetchStructures();
       // Update selected structure if it was the one being renamed
-      if (selectedStructure?.id === renameStructure.id) {
+      if (selectedStructure?.ulid === renameStructure.ulid) {
         setSelectedStructure(null);
         setStructureVisData(null);
       }
@@ -1904,7 +1904,7 @@ function App() {
       await fetchStructures();
       await refreshSummary();
       // Clear selection if the deleted structure was selected
-      if (selectedStructure?.id === deleteStructure.id) {
+      if (selectedStructure?.ulid === deleteStructure.ulid) {
         setSelectedStructure(null);
         setStructureVisData(null);
       }
@@ -2113,7 +2113,7 @@ function App() {
                 onRefreshProjectRegistry={handleRefreshProjectRegistry}
                 structures={structures}
                 isLoading={isLoadingStructures}
-                selectedId={leftMode === 'project' ? selectedStructure?.id : null}
+                selectedId={leftMode === 'project' ? selectedStructure?.ulid : null}
                 onSelect={leftMode === 'project' ? handleSelectStructure : undefined}
                 onRename={setRenameStructure}
                 onDelete={setDeleteStructure}
@@ -2300,7 +2300,7 @@ function App() {
                         const token = ++loadTokenRef.current;
                         const selection: RightSelection = {
                           kind: 'project',
-                          structureId: selectedStructure.id,
+                          structureId: selectedStructure.ulid,
                         };
                         setIsStructureLoading(true);
                         setStructureLoadError(null);
