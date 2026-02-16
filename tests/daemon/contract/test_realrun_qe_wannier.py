@@ -261,20 +261,8 @@ class TestRealRunQEWannier:
                     raw_files.append(name)
 
         assert "CRASH" not in raw_files, f"Unexpected crash marker present: {raw_files}"
-        for required in (
-            "scf.in",
-            "nscf.in",
-            "wannierprep.win",
-            "pw2wan.in",
-            "wannierprep.nnkp",
-            "wannierprep.amn",
-            "wannierprep.mmn",
-            "wannierprep.wout",
-            "pw2wannier.out",
-        ):
-            assert required in raw_files, f"Missing required artifact {required}: {raw_files}"
 
-        def _read_raw(filename: str) -> str:
+        def _read_raw(filename: str, required: bool = True) -> str:
             content = send_request(
                 daemon,
                 "read_raw_file",
@@ -288,8 +276,31 @@ class TestRealRunQEWannier:
                 },
             )
             text = content.get("text") or content.get("content") or ""
-            assert isinstance(text, str) and text.strip(), f"Could not read raw file {filename}: {content}"
-            return text
+            if required:
+                assert isinstance(text, str) and text.strip(), f"Could not read raw file {filename}: {content}"
+            return text if isinstance(text, str) else ""
+
+        # Check required artifacts with diagnostic output on failure
+        for required in (
+            "scf.in",
+            "nscf.in",
+            "wannierprep.win",
+            "pw2wan.in",
+            "wannierprep.nnkp",
+            "wannierprep.amn",
+            "wannierprep.mmn",
+            "wannierprep.wout",
+            "pw2wannier.out",
+        ):
+            if required not in raw_files:
+                # Read available error/output logs for diagnosis
+                diag_parts = [f"Missing required artifact {required}"]
+                diag_parts.append(f"Available files: {raw_files}")
+                for log_file in ("wannierprep.err", "wannierprep.out"):
+                    if log_file in raw_files:
+                        log_text = _read_raw(log_file, required=False)
+                        diag_parts.append(f"\n--- {log_file} ---\n{log_text[:2000]}")
+                raise AssertionError("\n".join(diag_parts))
 
         scf_in = _read_raw("scf.in")
         nscf_in = _read_raw("nscf.in")
