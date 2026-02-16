@@ -330,7 +330,6 @@ class QVDaemon:
             # Preset detection (Constitution §10.4.1: Detector B is sole state source)
             "get_preset_catalog": self._handle_get_preset_catalog,
             "detect_presets": self._handle_detect_presets,
-            "detect_workflow": self._handle_detect_workflow,
             "apply_presets_to_step": self._handle_apply_presets_to_step,
             "apply_presets_to_calculation": self._handle_apply_presets_to_calculation,
             "get_step_preset_footprints": self._handle_get_step_preset_footprints,
@@ -2900,40 +2899,6 @@ class QVDaemon:
             "dimension_states": bundle["dimension_states"],
         }
 
-    def _handle_detect_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Detect workflow type from a calculation's step sequence.
-        
-        This is informational only - does NOT affect execution.
-        Per Constitution: workflow is runtime interpretation only.
-        
-        Payload:
-            project_root: str - Path to project root
-            calculation: str - Calculation selector (slug or ULID)
-        
-        Returns:
-            Dict with:
-                workflow: Detected workflow type string
-                    ("SCF", "DOS", "BandStructure", "Relaxation", "Phonon", "MD", "Unknown")
-        """
-        project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
-
-        # Resolve calculation with fallback to ensure cache is up-to-date
-        resolved = self._resolve_calculation_with_fallback(project_root, calculation)
-        # absolute_path points to calculation.yaml, so get the parent directory
-        if resolved.absolute_path.name == "calculation.yaml":
-            calculation_dir = resolved.absolute_path.parent
-        else:
-            calculation_dir = resolved.absolute_path
-
-        # Use bundle for workflow detection
-        bundle = get_calculation_preset_bundle(calculation_dir)
-
-        return {
-            "workflow": bundle["workflow_type"],
-        }
-
     def _handle_apply_presets_to_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Apply preset options to a step.
@@ -3880,85 +3845,6 @@ class QVDaemon:
             artifact_path=filename,
             head_lines=head_lines,
             tail_lines=tail_lines,
-        )
-    
-    def _handle_list_wannier_3d_fixtures(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        List available Wannier90 3D test fixtures.
-        
-        Payload: (none required, or {"fixture_dir": str} for custom path)
-        
-        Returns:
-            List of fixture metadata
-        """
-        # Default fixture directory
-        fixture_dir = Path(__file__).parent.parent.parent / "tests" / "data" / "wannier_3d_test"
-        if "fixture_dir" in payload:
-            fixture_dir = Path(payload["fixture_dir"])
-        
-        fixtures = []
-        
-        # Scan fixture directories
-        if fixture_dir.exists():
-            for example_dir in sorted(fixture_dir.iterdir()):
-                if not example_dir.is_dir():
-                    continue
-                
-                # Look for XSF or BXSF files
-                xsf_files = sorted(example_dir.glob("*.xsf"))
-                bxsf_files = sorted(example_dir.glob("*.bxsf"))
-                
-                if xsf_files:
-                    # XSF fixture (MLWF)
-                    for xsf_file in xsf_files:
-                        fixtures.append({
-                            "ulid": f"{example_dir.name}_{xsf_file.stem}",
-                            "name": f"{example_dir.name} - {xsf_file.stem}",
-                            "file_path": str(xsf_file.resolve()),
-                            "type": "xsf",
-                            "example_dir": example_dir.name,
-                        })
-                elif bxsf_files:
-                    # BXSF fixture (Fermi surface)
-                    for bxsf_file in bxsf_files:
-                        fixtures.append({
-                            "ulid": f"{example_dir.name}_{bxsf_file.stem}",
-                            "name": f"{example_dir.name} - {bxsf_file.stem}",
-                            "file_path": str(bxsf_file.resolve()),
-                            "type": "bxsf",
-                            "example_dir": example_dir.name,
-                        })
-        
-        return {"fixtures": fixtures}
-    
-    def _handle_compile_fixture_volume(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Compile fixture volume file (XSF/BXSF) to blob.
-        
-        Payload:
-            file_path: str - Path to XSF or BXSF file
-            calc_dir: str - Calculation directory (sandbox output directory)
-            
-        Returns:
-            Dict with artifact_id, kind, metadata, blob_id, preview_blob_id
-        """
-        from quantumvitas.api import QVService
-        
-        file_path = Path(self._require_str(payload, "file_path")).resolve()
-        calc_dir = Path(self._require_str(payload, "calc_dir")).resolve()
-        
-        if not file_path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
-        
-        # Detect file type
-        file_type = file_path.suffix.lower().lstrip(".")
-        band_index = payload.get("band_index", 1)
-        
-        return parse_volume_artifact(
-            file_path=file_path,
-            calc_dir=calc_dir,
-            file_type=file_type,
-            band_index=band_index,
         )
     
     def _handle_list_step_artifacts(self, payload: Dict[str, Any]) -> Dict[str, Any]:
