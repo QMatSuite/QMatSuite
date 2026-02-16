@@ -213,6 +213,16 @@ jobs:
           fi
         fi
         
+        # macOS: patch PIOUD/src/Makefile to remove -pg profiling flags
+        # (gcrt1.o is not available on modern macOS, causing link failure)
+        # Idempotent: only matches uncommented lines, no-op if already patched or cached
+        if [ "${{ matrix.os }}" != "ubuntu-22.04" ]; then
+          if [ -f PIOUD/src/Makefile ]; then
+            sed -i.bak 's/^[[:space:]]*F90FLAGS[[:space:]]*+=[[:space:]]*-pg/# F90FLAGS += -pg/' PIOUD/src/Makefile
+            sed -i.bak 's/^[[:space:]]*LDFLAGS[[:space:]]*+=[[:space:]]*-pg/# LDFLAGS += -pg/' PIOUD/src/Makefile
+          fi
+        fi
+
         # Build ALL QE modules (pw, ph, pp, wannier90, pw2wannier90, etc.)
         # -j1 is required: parallel make fails for the full QE build (dependency ordering)
         # Build pw first with -j2 (safe), then the rest sequentially
