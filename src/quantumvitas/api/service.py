@@ -8512,13 +8512,22 @@ class QVService:
         target_dir = Path(target_dir).resolve()
         demo_name = demo_id or "si_bands_demo"
 
-        # Check not inside existing project
+        # Check not inside existing project (allow under .tmp/ for E2E tests)
         enclosing = find_project_root(target_dir, max_levels=20)
         if enclosing is not None:
-            raise ValueError(
-                f"Target directory is inside an existing QuantumVITAS project at: {enclosing}. "
-                "Please choose a parent workspace folder, not a project folder."
-            )
+            enclosing_path = Path(enclosing).resolve()
+            allow_under_tmp = False
+            try:
+                rel = target_dir.relative_to(enclosing_path)
+                allow_under_tmp = bool(rel.parts) and rel.parts[0] == ".tmp"
+            except ValueError:
+                allow_under_tmp = False
+
+            if not allow_under_tmp:
+                raise ValueError(
+                    f"Target directory is inside an existing QuantumVITAS project at: {enclosing}. "
+                    "Please choose a parent workspace folder, not a project folder."
+                )
 
         # Locate and load demo snapshot
         resources_dir = get_resources_dir()
