@@ -3539,77 +3539,20 @@ class QVDaemon:
     # -------------------------------------------------------------------------
     
     def _handle_create_demo_project(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Create a demo Si project.
-        
-        Payload:
-            target_dir: str - Directory to create project in
-            name: Optional[str] - Project name (default 'demo-si-project')
-            demo_id: Optional[str] - Demo snapshot ID (default 'si_bands_demo')
-        """
+        """Create a demo project. Delegates to API (enrichment included)."""
         target_dir = self._require_path(payload, "target_dir")
         name = payload.get("name", "demo-si-project")
         demo_id = payload.get("demo_id")
-        
-        try:
-            result = QVService.create_demo_project(
-                target_dir=target_dir,
-                name=name,
-                demo_id=demo_id,
-            )
-            # Rebuild registry after demo project creation
-            project_root = Path(result.get("project_root", target_dir)).resolve()
-            self._rebuild_registry_after_write(project_root, "write_operation:create_demo_project")
 
-            # Enrich response with fields the GUI expects
-            try:
-                svc = get_service(project_root)
-                summary = svc.get_summary()
-                result["project_id"] = summary.get("id", "")
-                result["project_name"] = summary.get("name", name)
-
-                # First structure
-                structures = svc.structure.list()
-                if structures:
-                    s = structures[0]
-                    s_dict = s.to_dict() if hasattr(s, "to_dict") else {}
-                    result["structure"] = {
-                        "structure_id": getattr(s, "structure_ulid", "") or s_dict.get("ulid", ""),
-                        "name": getattr(s, "name", "") or s_dict.get("name", ""),
-                        "slug": getattr(s, "slug", "") or s_dict.get("slug", ""),
-                        "formula": getattr(s, "formula", "") or s_dict.get("formula", ""),
-                        "n_atoms": getattr(s, "n_atoms", 0) or s_dict.get("n_atoms", 0),
-                    }
-                else:
-                    result["structure"] = None
-
-                # First calculation
-                calcs = svc.calculation.list()
-                if calcs:
-                    c = calcs[0]
-                    c_dict = c.to_dict() if hasattr(c, "to_dict") else {}
-                    result["calculation"] = {
-                        "calculation_id": c.calc_ulid,
-                        "name": c_dict.get("name", ""),
-                        "slug": c_dict.get("slug", ""),
-                        "n_steps": c_dict.get("n_steps", 0) or c_dict.get("step_count", 0) or 0,
-                    }
-                else:
-                    result["calculation"] = None
-
-                result["ready_to_run"] = bool(result.get("structure") and result.get("calculation"))
-            except Exception:
-                # Non-fatal: enrichment failure doesn't block project creation
-                result.setdefault("project_id", "")
-                result.setdefault("project_name", name)
-                result.setdefault("structure", None)
-                result.setdefault("calculation", None)
-                result.setdefault("ready_to_run", False)
-
-            return result
-        except ValueError as e:
-            # Re-raise ValueError as-is (for validation errors like "inside existing project")
-            raise
+        result = QVService.create_demo_project(
+            target_dir=target_dir,
+            name=name,
+            demo_id=demo_id,
+        )
+        # Rebuild registry after demo project creation
+        project_root = Path(result.get("project_root", target_dir)).resolve()
+        self._rebuild_registry_after_write(project_root, "write_operation:create_demo_project")
+        return result
     
     def _handle_list_demo_projects(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
