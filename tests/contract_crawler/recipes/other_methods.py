@@ -7,7 +7,6 @@ from typing import Any
 
 from .base import Recipe
 from .world import build_demo_world
-from ..v0_payloads import build_v0_payload, V0_PAYLOAD_BUILDERS
 
 # Try to import API
 try:
@@ -68,11 +67,6 @@ class OtherMethodsRecipe(Recipe):
         if self.world is None:
             return {}
 
-        # Use centralized v0 payload builders for methods with defined schemas
-        if self.method_name in V0_PAYLOAD_BUILDERS:
-            return build_v0_payload(self.method_name, self.world)
-
-        # Methods without v0 payload definitions
         base = {"project_root": self.world["project_root"]}
 
         if self.method_name == "analyze_project_pseudo_effects":
@@ -144,6 +138,21 @@ class OtherMethodsRecipe(Recipe):
                 **base,
                 "calculation": self.world["calculation_selector"],
                 "species_map": {"Si": "Si"},
+            }
+
+        if self.method_name == "can_delete_structure":
+            return {
+                **base,
+                "selector": {"ulid": self.world["structure_ulid"]},
+            }
+
+        if self.method_name == "set_common_card":
+            return {
+                **base,
+                "calculation": self.world["calculation_selector"],
+                "step": self.world["step_selector"],
+                "card_name": "K_POINTS",
+                "view_model": {"grid": [4, 4, 4], "shift": [0, 0, 0]},
             }
 
         return base

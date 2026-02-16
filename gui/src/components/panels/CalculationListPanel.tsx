@@ -272,7 +272,7 @@ export function CalculationListPanel({
               
               <div className="calculation-item__details">
                 <div className="calculation-item__stat">
-                  <span className="stat-value">{calculation.n_steps}</span>
+                  <span className="stat-value">{calculation.n_steps ?? 0}</span>
                   <span className="stat-label">steps</span>
                 </div>
                 <div className="calculation-item__mode">
@@ -1311,7 +1311,7 @@ export function CalculationDetailPanel({
                     <button 
                       className="section-action-btn"
                       onClick={handleStartReorder}
-                      disabled={calculation.n_steps < 2}
+                      disabled={(calculation.n_steps ?? 0) < 2}
                       title="Reorder steps"
                     >
                       ↕️ Reorder

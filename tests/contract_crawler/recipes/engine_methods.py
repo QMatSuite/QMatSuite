@@ -10,7 +10,6 @@ import yaml
 
 from .base import Recipe
 from .world import build_demo_world
-from ..v0_payloads import build_v0_payload, V0_PAYLOAD_BUILDERS
 
 # Try to import API
 try:
@@ -79,11 +78,6 @@ class EngineMethodsRecipe(Recipe):
         if self.world is None:
             return {}
 
-        # Use centralized v0 payload builders for methods with defined schemas
-        if self.method_name in V0_PAYLOAD_BUILDERS:
-            return build_v0_payload(self.method_name, self.world)
-
-        # Methods without v0 payload definitions
         base = {"project_root": self.world["project_root"]}
 
         if self.method_name == "run_calculation":
@@ -119,6 +113,19 @@ class EngineMethodsRecipe(Recipe):
                 "step_ulid": self.world["step_selector"],
                 "run_ulid": "mock_run_ulid",  # canonical field name
                 "analysis_kind": "scf",
+            }
+
+        if self.method_name == "run_single_step":
+            return {
+                **base,
+                "calculation": self.world["calculation_selector"],
+                "step_ulid": self.world["step_selector"],
+            }
+
+        if self.method_name == "get_structure_vis":
+            return {
+                **base,
+                "selector": {"ulid": self.world["structure_ulid"]},
             }
 
         return base

@@ -48,28 +48,15 @@ def test_all_methods_in_report():
     assert not extra, f"Extra methods in report: {extra}"
 
 
-def test_fixture_mapping_consistency():
-    """Each fixture file maps to exactly one method."""
-    from tests.contract_crawler.report_coverage import GOLDEN_DIR
-    
+def test_no_duplicate_methods_in_report():
+    """Each method appears exactly once in coverage report."""
     report = generate_coverage_report()
-    
-    # Collect all fixture paths
-    fixture_paths = {}
+
+    seen = set()
     for method in report["methods"]:
-        if method["fixture_path"]:
-            path = method["fixture_path"]
-            if path in fixture_paths:
-                pytest.fail(f"Fixture path {path} mapped to multiple methods: {fixture_paths[path]} and {method['method_name']}")
-            fixture_paths[path] = method["method_name"]
-    
-    # Verify all actual fixture files are in the report
-    if GOLDEN_DIR.exists():
-        for fixture_file in GOLDEN_DIR.glob("*.json"):
-            if fixture_file.name == "_manifest.json":
-                continue
-            expected_path = str(fixture_file)
-            assert expected_path in fixture_paths, f"Fixture {fixture_file.name} not in report"
+        name = method["method_name"]
+        assert name not in seen, f"Duplicate method in report: {name}"
+        seen.add(name)
 
 
 def test_source_values():
@@ -99,7 +86,7 @@ def test_coverage_status_values():
     """Coverage status values are from allowed set."""
     report = generate_coverage_report()
     
-    allowed_statuses = {"covered_auto", "covered_recipe", "not_covered", "exempt"}
+    allowed_statuses = {"covered_recipe", "not_covered", "exempt"}
     
     for method in report["methods"]:
         status = method["coverage_status"]
