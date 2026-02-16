@@ -500,8 +500,6 @@ test.describe('Pair 5 E2E: Al DOS Real-Run (from scratch)', () => {
     const dosFildos = await ensureDosParam('fildos');
     await dosFildos.fill('al.dos.dat');
     await dosFildos.press('Tab');
-    // Keep DOS energy bounds at defaults in e2e. UI metadata for manually-added
-    // DOS params can be string-typed, which may serialize numeric entries quoted.
     await applyStepParams();
 
     // 8) Run calculation

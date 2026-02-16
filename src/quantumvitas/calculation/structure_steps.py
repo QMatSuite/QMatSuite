@@ -898,11 +898,22 @@ def materialize_step_spec(
                 w90_input.num_bands = int(flat_params["num_bands"])
             if "num_iter" in flat_params and flat_params["num_iter"] is not None:
                 w90_input.num_iter = int(flat_params["num_iter"])
+            explicit_mp_grid = False
             if "mp_grid" in flat_params and flat_params["mp_grid"] is not None:
                 mp_grid = flat_params["mp_grid"]
-                if isinstance(mp_grid, list):
-                    # Filter out None values and convert to int
-                    w90_input.mp_grid = [int(x) for x in mp_grid if x is not None]
+                if isinstance(mp_grid, str):
+                    tokens = [tok for tok in mp_grid.replace(",", " ").split() if tok]
+                    if len(tokens) >= 3:
+                        try:
+                            mp_grid = [int(tok) for tok in tokens[:3]]
+                        except ValueError:
+                            mp_grid = None
+                if isinstance(mp_grid, (list, tuple)):
+                    # Filter out None values and convert to int.
+                    normalized = [int(x) for x in mp_grid if x is not None]
+                    if len(normalized) >= 3:
+                        w90_input.mp_grid = normalized[:3]
+                        explicit_mp_grid = True
             
             # CRITICAL: K-points must match NSCF exactly (order and values) for pw2wannier.
             # Priority: 1) YAML-stored kpoints (parsed from corpus, guaranteed to match NSCF)
@@ -927,13 +938,24 @@ def materialize_step_spec(
                 )
             else:
                 # Fallback: extract from materialized nscf.in
-                from quantumvitas.calculation.wannier90_kpoints import extract_kpoints_from_nscf_step
+                from quantumvitas.calculation.wannier90_kpoints import (
+                    extract_kpoints_from_nscf_step,
+                    infer_mp_grid_from_kpoints,
+                )
                 nscf_kpoints = extract_kpoints_from_nscf_step(
                     calculation_dir=calculation_dir if calculation_dir else Path("."),
                     working_dir=output_dir
                 )
                 if nscf_kpoints:
                     w90_input.kpoints = nscf_kpoints
+                    if not explicit_mp_grid:
+                        inferred_mp_grid = infer_mp_grid_from_kpoints(nscf_kpoints)
+                        if inferred_mp_grid is not None:
+                            w90_input.mp_grid = inferred_mp_grid
+                            logger.info(
+                                f"[MATERIALIZE_STEP_SPEC] Inferred mp_grid={inferred_mp_grid} "
+                                f"from NSCF kpoints ({len(nscf_kpoints)} points)"
+                            )
                     logger.info(
                         f"[MATERIALIZE_STEP_SPEC] Extracted {len(nscf_kpoints)} kpoints from nscf step"
                     )
@@ -2222,4 +2244,3 @@ def _resolve_structure_for_spec(
     raise FileNotFoundError(
         f"Unable to resolve structure '{structure_value}' referenced in {spec_path}"
     )
-

@@ -94,13 +94,19 @@ class TestQEOutputHasFortranBools:
         assert QEInputGenerator.format_value("gaussian") == "'gaussian'"
         assert QEInputGenerator.format_value("Gaussian") == "'Gaussian'"  # Case preserved
     
-    def test_string_dot_true_preserved(self):
-        """String '.true.' is quoted as string, not converted."""
+    def test_string_dot_true_normalized_to_fortran_bool(self):
+        """String '.true.' is normalized to unquoted Fortran logical."""
         from quantumvitas.io.generator.qe_generator import QEInputGenerator
-        
-        # This is for Class B keys where user explicitly types .true.
+
         result = QEInputGenerator.format_value(".true.")
-        assert result == "'.true.'"
+        assert result == ".true."
+
+    def test_string_dot_false_normalized_to_fortran_bool(self):
+        """String '.false.' is normalized to unquoted Fortran logical."""
+        from quantumvitas.io.generator.qe_generator import QEInputGenerator
+
+        result = QEInputGenerator.format_value("'.false.'")
+        assert result == ".false."
     
     def test_int_not_quoted(self):
         """Integer values are not quoted."""
@@ -113,4 +119,3 @@ class TestQEOutputHasFortranBools:
         from quantumvitas.io.generator.qe_generator import QEInputGenerator
         
         assert QEInputGenerator.format_value(1.0e-6) == "1e-06"
-

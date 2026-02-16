@@ -62,17 +62,31 @@ export function StepDetailPanel({
 }: StepDetailPanelProps) {
   const qv = useQVClient();
 
-  // Get engine_family from calculation detail (must be declared before useEngineParameterMetadata)
-  const engineFamily = selectedCalculation?.engine_family ?? null;
+  // Get calculation-level engine family and resolve per-step effective engine.
+  // Companion steps (e.g., w90_* in QE calculations) should use their own engine metadata.
+  const calculationEngineFamily = selectedCalculation?.engine_family ?? null;
+  const selectedStepSummary = useMemo(
+    () => selectedCalculation?.steps?.find((step) => step.ulid === selectedStepId) ?? null,
+    [selectedCalculation?.steps, selectedStepId],
+  );
+  const effectiveEngineFamily = useMemo(() => {
+    const stepTypeSpec = (selectedStepSummary?.step_type_spec || '').toLowerCase();
+    if (stepTypeSpec.startsWith('w90_')) {
+      return 'w90';
+    }
+    if (stepTypeSpec.startsWith('qe_')) {
+      return 'qe';
+    }
+    return (calculationEngineFamily || 'qe').toLowerCase();
+  }, [selectedStepSummary?.step_type_spec, calculationEngineFamily]);
 
   // Store stable reference to listEngineUiParameters to avoid including qv object in dependencies
   // The function is memoized in useQVClient, so this ref will be stable across renders
   const listEngineUiParametersRef = useRef(qv.listEngineUiParameters);
   listEngineUiParametersRef.current = qv.listEngineUiParameters;
 
-  // QE parameter metadata hook (shared with Resources view)
-  // For QE, pass engineFamily='qe' to maintain backwards compatibility
-  const qeMetadata = useEngineParameterMetadata(engineFamily || 'qe');
+  // Engine parameter metadata hook (shared with Resources view)
+  const qeMetadata = useEngineParameterMetadata(effectiveEngineFamily || 'qe');
   // Extract stable function references to avoid effect re-runs
   const { loadSections, loadParameters } = qeMetadata;
 
@@ -162,7 +176,7 @@ export function StepDetailPanel({
   // Get module for current step (for QE metadata loading - still needed for parameter metadata)
   // Note: This is only used for QE parameter metadata (loadSections, loadParameters)
   // UI parameters now use generic list_engine_ui_parameters RPC
-  const module = stepDetail && engineFamily === 'qe' ? (() => {
+  const module = stepDetail && effectiveEngineFamily === 'qe' ? (() => {
     const stepTypeLower = stepDetail.step_type_gen.toLowerCase();
     if (['scf', 'nscf', 'relax', 'vc-relax', 'md', 'bandspw', 'bands_pw', 'dos'].includes(stepTypeLower)) {
       return 'pw';
@@ -378,7 +392,7 @@ export function StepDetailPanel({
           
           // Load parameter metadata for all sections that have parameters (QE only, for metadata lookup)
           const parameters = response.data.parameters;
-          if (module && qeMetadata && parameters && engineFamily === 'qe') {
+          if (module && qeMetadata && parameters && effectiveEngineFamily === 'qe') {
             // Load sections first, then parameters for each section
             qeMetadata.loadSections(module).then(() => {
               const sectionsToLoad = new Set<string>();
@@ -462,9 +476,9 @@ export function StepDetailPanel({
   // Fetch UI parameters when stepDetail changes
   // Generic engine UI params are fetched via list_engine_ui_parameters RPC.
   // CRITICAL: Do not include `qv` in dependencies - it's a new object reference on every render.
-  // Instead, extract engineFamily and stepType as primitive values and depend only on those.
+  // Instead, extract effectiveEngineFamily and stepType as primitive values and depend only on those.
   useEffect(() => {
-    if (!stepDetail || !window.qv || !engineFamily) {
+    if (!stepDetail || !window.qv || !effectiveEngineFamily) {
       setUiParams([]);
       return;
     }
@@ -476,7 +490,7 @@ export function StepDetailPanel({
     
     // Fetch UI parameters (static metadata, no need to refetch on every render)
     // Use ref to avoid including qv object in dependencies
-    listEngineUiParametersRef.current(engineFamily, stepTypeGen)
+    listEngineUiParametersRef.current(effectiveEngineFamily, stepTypeGen)
       .then(response => {
         // Only update state if component is still mounted
         if (cancelled) return;
@@ -493,7 +507,7 @@ export function StepDetailPanel({
           
           // Development logging (can be removed later)
           if (sorted.length > 0) {
-            console.log(`[StepDetailPanel] Loaded ${sorted.length} UI parameters for ${engineFamily}/${stepTypeGen}`, sorted.slice(0, 3).map(p => p.key));
+            console.log(`[StepDetailPanel] Loaded ${sorted.length} UI parameters for ${effectiveEngineFamily}/${stepTypeGen}`, sorted.slice(0, 3).map(p => p.key));
           }
         } else {
           // No parameters available for this engine/step type
@@ -512,7 +526,7 @@ export function StepDetailPanel({
     return () => {
       cancelled = true;
     };
-  }, [stepDetail?.step_type_gen, stepDetail?.ulid, engineFamily]); // Only depend on primitive values - engineFamily and stepType determine when to refetch
+  }, [stepDetail?.step_type_gen, stepDetail?.ulid, effectiveEngineFamily]); // Only depend on primitive values - engine and stepType determine when to refetch
   
   // Handle running the step
   const handleRunStep = useCallback(async () => {
@@ -617,31 +631,37 @@ export function StepDetailPanel({
     setHasChanges(true);
   }, []);
   
-  // Handle add parameter
+  // Handle add parameter from search palette.
+  // Works for both QE namelist parameters and companion-engine flat parameters (e.g., W90).
   const handleAddParameter = useCallback((section: string, paramName: string) => {
-    // Enter edit mode if not already editing
     if (!isEditing) {
       setIsEditing(true);
     }
-    
-    // Load parameter metadata if needed
-    if (module) {
-      const sectionKey = section.startsWith('&') ? section : `&${section}`;
-      qeMetadata.loadParameters(module, sectionKey).then(() => {
-        // After loading, add the parameter with empty string (user will edit it)
-        setEditedParams(prev => {
-          const updated = { ...prev };
-          if (!updated[section]) {
-            updated[section] = {};
-          }
-          // Add parameter with empty string as placeholder (will be edited by user)
-          updated[section][paramName] = '';
-          return updated;
-        });
-        setHasChanges(true);
+
+    const targetSection = (section || 'PARAMETERS').replace(/^&/, '').toUpperCase();
+    const addEntry = () => {
+      setEditedParams((prev) => {
+        const updated = { ...prev };
+        if (!updated[targetSection]) {
+          updated[targetSection] = {};
+        }
+        if (updated[targetSection][paramName] === undefined) {
+          updated[targetSection][paramName] = '';
+        }
+        return updated;
       });
+      setHasChanges(true);
+    };
+
+    // For QE steps, eagerly load section metadata before adding.
+    if (effectiveEngineFamily === 'qe' && module) {
+      const sectionKey = targetSection.startsWith('&') ? targetSection : `&${targetSection}`;
+      qeMetadata.loadParameters(module, sectionKey).then(addEntry).catch(addEntry);
+      return;
     }
-  }, [module, qeMetadata, isEditing]);
+
+    addEntry();
+  }, [effectiveEngineFamily, isEditing, module, qeMetadata]);
   
   // Save parameter changes
   const handleSaveParams = useCallback(async () => {
@@ -1439,8 +1459,9 @@ export function StepDetailPanel({
           <div className="section-header">
             <h3>Active Parameters</h3>
             <div className="section-actions">
-              {module && (
+              {effectiveEngineFamily && (
                 <AddParameterPalette
+                  engineFamily={effectiveEngineFamily}
                   module={module}
                   stepParameters={isEditing ? editedParams : stepDetail.parameters}
                   onAddParameter={handleAddParameter}

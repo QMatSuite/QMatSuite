@@ -1,11 +1,11 @@
 /**
- * Pair 3 E2E: Si Bands Real-Run Smoke Test — FROM SCRATCH
+ * Pair 6 E2E: QE + Wannier90 Real-Run Smoke Test — FROM SCRATCH
  *
  * Workflow:
  * create project -> import Si CIF -> create QE calculation ->
- * set pseudo mapping -> add steps (scf,nscf,bandspw,bands) ->
- * set practical parameters -> run QE ->
- * verify non-empty bands analysis plot.
+ * set pseudo mapping -> add steps (scf,nscf,wannierprep,pw2wannier,wannier) ->
+ * set key parameters via GUI -> run full chain ->
+ * verify raw artifacts and SCF convergence plot.
  */
 
 import * as fs from 'fs';
@@ -16,17 +16,17 @@ import { waitForHomeWelcome } from './helpers/demo_project';
 
 const SKIP_E2E = process.env.SKIP_ELECTRON_E2E === 'true';
 
-test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
+test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
   test.skip(SKIP_E2E, 'Skipped when SKIP_ELECTRON_E2E=true');
 
   let projectDir: string;
 
   test.beforeEach(() => {
     clearE2EProjectsRoot();
-    projectDir = createUniqueProjectDir('realrun-si-bands');
+    projectDir = createUniqueProjectDir('realrun-qe-wannier');
   });
 
-  test('from-scratch Si bands workflow with non-empty bands plot', async ({ appPage }, testInfo) => {
+  test('from-scratch QE+Wannier workflow with artifacts and convergence plot', async ({ appPage }, testInfo) => {
     testInfo.setTimeout(QE_JOB_TEST_TIMEOUT);
 
     const captureStepState = async (name: string) => {
@@ -38,12 +38,14 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
     const repoRoot = getRepoRoot();
     const siCif = path.join(repoRoot, 'tests', 'data', 'structures', 'si_diamond.cif');
     expect(fs.existsSync(siCif), `Missing structure file at ${siCif}`).toBeTruthy();
+    const projectRootPath = path.join(projectDir, 'qe-wannier-e2e');
+    const calculationSlug = 'si-wannier-test';
 
     // 1) Create project
     await waitForHomeWelcome(appPage);
     await appPage.getByTestId('qv-welcome-btn-create-new-project').click();
     await appPage.getByTestId('qv-input-parent-dir').fill(projectDir);
-    await appPage.getByTestId('qv-input-project-name').fill('si-bands-e2e');
+    await appPage.getByTestId('qv-input-project-name').fill('qe-wannier-e2e');
     await appPage.getByTestId('qv-btn-confirm-create').click();
     await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 15000 });
 
@@ -59,7 +61,7 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
     await navigateToView(appPage, 'calculations');
     await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
     await appPage.getByTestId('qv-btn-new-calculation').click();
-    await appPage.getByTestId('qv-create-calc-name').fill('Si Bands Test');
+    await appPage.getByTestId('qv-create-calc-name').fill('Si Wannier Test');
 
     const structureSelect = appPage.getByTestId('qv-create-calc-structure');
     const structureOptions = structureSelect.locator('option');
@@ -161,24 +163,20 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
         .toBe(beforeCount + 1);
     };
 
-    // 6) Add workflow steps: scf -> nscf -> bandspw -> bands
+    // 6) Add workflow steps: scf -> nscf -> wannierprep -> pw2wannier -> wannier
     try {
       await addStep('scf');
       await addStep('nscf');
-      await addStep('bandspw');
-      await addStep('bands');
+      await addStep('wannierprep');
+      await addStep('pw2wannier');
+      await addStep('wannier');
     } catch (e) {
-      await captureStepState('add-steps-failure-bands');
+      await captureStepState('add-steps-failure-qe-wannier');
       throw e;
     }
 
     const normalizeStepType = (value: string) => value.toLowerCase().replace(/[_\s-]/g, '');
-    const buildStepRegex = (stepType: string) => {
-      if (stepType === 'bandspw') {
-        return /\bbands?_?pw\b/i;
-      }
-      return new RegExp(`\\b${stepType}\\b`, 'i');
-    };
+    const buildStepRegex = (stepType: string) => new RegExp(`\\b${stepType}\\b`, 'i');
     const currentStepPanel = () => appPage.locator('.step-detail-panel:visible').first();
 
     const enterFocusModeForStep = async (stepType: string) => {
@@ -196,8 +194,6 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
         })
         .toBeGreaterThan(0);
 
-      // Prefer the requested step; fallback to the first visible step button
-      // to force entry into focus mode when text filtering is brittle.
       let overviewStep = overviewStepButtons.filter({ hasText: targetPattern }).first();
       if (!(await overviewStep.isVisible().catch(() => false))) {
         overviewStep = overviewStepButtons.first();
@@ -221,9 +217,11 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
       const expectedStepOrder: Record<string, number> = {
         scf: 0,
         nscf: 1,
-        bandspw: 2,
-        bands: 3,
+        wannierprep: 2,
+        pw2wannier: 3,
+        wannier: 4,
       };
+
       const waitForDetailStepType = async (expectedStepType: string, timeoutMs = 12000) => {
         try {
           const expected = normalizeStepType(expectedStepType);
@@ -241,6 +239,7 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
           return false;
         }
       };
+
       await enterFocusModeForStep(stepType);
 
       for (let attempt = 0; attempt < 6; attempt += 1) {
@@ -258,13 +257,10 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
           })
           .toBeGreaterThan(0);
 
-        // If detail already shows target step, avoid extra clicks.
         if (await waitForDetailStepType(stepType, 3000)) {
           return;
         }
 
-        // Guard for selected compact-list item: avoid clicking it (would exit focus mode),
-        // but require the detail panel to actually match before returning.
         const selectedFocusStep = focusContainer.locator('.compact-step-list__step-item--selected').first();
         if (await selectedFocusStep.isVisible().catch(() => false)) {
           const selectedText = normalizeStepType((await selectedFocusStep.textContent()) || '');
@@ -272,7 +268,6 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
             if (await waitForDetailStepType(stepType, 5000)) {
               return;
             }
-            // Detail panel is stale; click another step first to force refresh cycle.
             const total = await focusSteps.count();
             if (total > 1) {
               const targetIdx = expectedStepOrder[stepType] ?? 0;
@@ -309,19 +304,15 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
     const applyStepParams = async () => {
       const applyParamsBtn = currentStepPanel().getByTestId('qv-btn-apply-step-params');
       await expect(applyParamsBtn).toBeVisible({ timeout: 5000 });
-
-      // Avoid flake when the panel is auto-saving from blur/change events.
       await expect
         .poll(async () => ((await applyParamsBtn.textContent()) || '').toLowerCase(), {
           timeout: 20000,
           message: 'Step params stayed in Saving... state for too long',
         })
         .not.toContain('saving');
-
       if (await applyParamsBtn.isEnabled()) {
         await applyParamsBtn.click();
       }
-
       await expect(applyParamsBtn).toBeDisabled({ timeout: 10000 });
     };
 
@@ -350,9 +341,6 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
         if (editorCount > 0) {
           break;
         }
-
-        // During card fetch, StepDetailPanel renders a dedicated loading placeholder.
-        // Wait through that state before declaring the editor absent.
         const loadingVisible = await kPointsLoading.isVisible().catch(() => false);
         if (!loadingVisible && Date.now() - start > 3000) {
           break;
@@ -368,7 +356,6 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
         );
       }
 
-      // Ensure the mounted editor is actually visible/actionable in the scroll container.
       for (const ratio of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
         await panelContent.evaluate((el, r) => {
           const node = el as HTMLElement;
@@ -381,7 +368,6 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
         await appPage.waitForTimeout(150);
       }
 
-      // As a final attempt, request native scroll to element.
       await kPointsEditor.scrollIntoViewIfNeeded().catch(() => {});
       if (await kPointsEditor.isVisible().catch(() => false)) {
         return kPointsEditor;
@@ -410,102 +396,262 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
       await expect(nk3Input).toHaveValue(String(nk3));
     };
 
-    const fillKPointRow = async (
-      row: number,
-      values: { x: number; y: number; z: number; w: number },
-    ) => {
+    const applyKPointsCardIfDirty = async () => {
       const panel = currentStepPanel();
-      await panel.getByTestId(`qv-kpoints-point-${row}-x`).fill(String(values.x));
-      await panel.getByTestId(`qv-kpoints-point-${row}-y`).fill(String(values.y));
-      await panel.getByTestId(`qv-kpoints-point-${row}-z`).fill(String(values.z));
-      await panel.getByTestId(`qv-kpoints-point-${row}-w`).fill(String(values.w));
+      const cardApplyBtn = panel.getByTestId('qv-kpoints-apply');
+      if (await cardApplyBtn.isVisible().catch(() => false)) {
+        await expect(cardApplyBtn).toBeEnabled({ timeout: 5000 });
+        await cardApplyBtn.click();
+        await expect(cardApplyBtn).toBeHidden({ timeout: 10000 });
+      }
     };
 
-    const setCrystalBKPath = async () => {
+    const setCrystalKPoints = async (
+      points: Array<{ x: number; y: number; z: number; w: number }>,
+    ) => {
       const panel = currentStepPanel();
       await ensureKPointsEditorVisible();
 
       const modeSelect = panel.getByTestId('qv-kpoints-mode-select');
       await expect(modeSelect).toBeVisible({ timeout: 5000 });
-      await modeSelect.selectOption('crystal_b');
+      await modeSelect.selectOption('crystal');
 
-      // First row appears when switching to list mode; add remaining 4 rows.
-      const addPointBtn = panel.getByTestId('qv-kpoints-add-point');
-      await expect(addPointBtn).toBeVisible({ timeout: 5000 });
-      for (let i = 0; i < 4; i += 1) {
-        await addPointBtn.click();
+      const rawModeBtn = panel.getByTestId('qv-kpoints-editor-raw');
+      await expect(rawModeBtn).toBeVisible({ timeout: 5000 });
+      await rawModeBtn.click();
+
+      const rawBody = panel.getByTestId('qv-kpoints-raw-body');
+      await expect(rawBody).toBeEditable({ timeout: 5000 });
+      const body = [
+        String(points.length),
+        ...points.map((pt) => `${pt.x} ${pt.y} ${pt.z} ${pt.w}`),
+      ].join('\n');
+      await rawBody.fill(body);
+      await expect(rawBody).toHaveValue(body, { timeout: 5000 });
+
+      const preview = panel.locator('.kpoints-card__preview-content');
+      await expect(preview).toContainText('K_POINTS crystal', { timeout: 5000 });
+      await expect(preview).toContainText(`${points.length}\n`, { timeout: 5000 });
+
+      const structuredModeBtn = panel.getByTestId('qv-kpoints-editor-structured');
+      await expect(structuredModeBtn).toBeVisible({ timeout: 5000 });
+      await structuredModeBtn.click();
+      await expect(panel.getByTestId(`qv-kpoints-point-${points.length - 1}-x`)).toBeVisible({ timeout: 10000 });
+      for (let row = 0; row < points.length; row += 1) {
+        const pt = points[row];
+        await expect(panel.getByTestId(`qv-kpoints-point-${row}-x`)).toHaveValue(String(pt.x), { timeout: 5000 });
+        await expect(panel.getByTestId(`qv-kpoints-point-${row}-y`)).toHaveValue(String(pt.y), { timeout: 5000 });
+        await expect(panel.getByTestId(`qv-kpoints-point-${row}-z`)).toHaveValue(String(pt.z), { timeout: 5000 });
+        await expect(panel.getByTestId(`qv-kpoints-point-${row}-w`)).toHaveValue(String(pt.w), { timeout: 5000 });
       }
-
-      await fillKPointRow(0, { x: 0.0, y: 0.5, z: 0.0, w: 6 });
-      await fillKPointRow(1, { x: 0.0, y: 0.0, z: 0.0, w: 8 });
-      await fillKPointRow(2, { x: -0.5, y: 0.0, z: -0.5, w: 4 });
-      await fillKPointRow(3, { x: -0.375, y: 0.25, z: -0.375, w: 8 });
-      await fillKPointRow(4, { x: 0.0, y: 0.0, z: 0.0, w: 0 });
-
-      await expect(panel.getByTestId('qv-kpoints-point-4-x')).toHaveValue('0');
-      await expect(panel.getByTestId('qv-kpoints-point-4-w')).toHaveValue('0');
     };
 
-    // 7) Set parameters per step including K_POINTS edits
+    const ensureSystemParam = async (paramName: string) => {
+      const panel = currentStepPanel();
+      const lower = paramName.toLowerCase();
+      const existingRow = panel.getByTestId(`qv-param-row-system-${lower}`);
+      if ((await existingRow.count()) > 0) {
+        return existingRow.first();
+      }
+
+      const addParamBtn = panel.getByTestId('qv-add-parameter-trigger');
+      await expect(addParamBtn).toBeVisible({ timeout: 10000 });
+      await addParamBtn.click();
+
+      const searchInput = panel.getByTestId('qv-add-parameter-search');
+      await expect(searchInput).toBeVisible({ timeout: 10000 });
+      await searchInput.fill(lower);
+
+      const result = panel.getByTestId(`qv-add-parameter-result-${lower}`).first();
+      await expect(result).toBeVisible({ timeout: 10000 });
+      await result.click();
+
+      const addedRow = panel.getByTestId(`qv-param-row-system-${lower}`).first();
+      await expect(addedRow).toBeVisible({ timeout: 10000 });
+      return addedRow;
+    };
+
+    const setSystemRealParam = async (paramName: string, value: string) => {
+      const panel = currentStepPanel();
+      const lower = paramName.toLowerCase();
+      let input = panel.getByTestId(`qv-param-input-system-${lower}`);
+      if ((await input.count()) === 0) {
+        await ensureSystemParam(lower);
+        input = panel.getByTestId(`qv-param-input-system-${lower}`);
+      }
+      await expect(input.first()).toBeVisible({ timeout: 10000 });
+      await input.first().fill(value);
+      await input.first().press('Tab');
+      const expected = Number.parseFloat(value);
+      await expect
+        .poll(async () => {
+          const raw = await input.first().inputValue();
+          const parsed = Number.parseFloat(raw);
+          return Number.isFinite(parsed) ? parsed : NaN;
+        }, { timeout: 10000 })
+        .toBeCloseTo(expected, 8);
+    };
+
+    const setSystemIntegerParam = async (paramName: string, value: string) => {
+      const panel = currentStepPanel();
+      const lower = paramName.toLowerCase();
+      let input = panel.getByTestId(`qv-param-input-system-${lower}`);
+      if ((await input.count()) === 0) {
+        await ensureSystemParam(lower);
+        input = panel.getByTestId(`qv-param-input-system-${lower}`);
+      }
+      await expect(input.first()).toBeVisible({ timeout: 10000 });
+      await input.first().fill(value);
+      await input.first().press('Tab');
+      await expect(input.first()).toHaveValue(value, { timeout: 10000 });
+    };
+
+    const setSystemLogicalParam = async (paramName: string, enabled: boolean) => {
+      const panel = currentStepPanel();
+      const lower = paramName.toLowerCase();
+      let row = panel.getByTestId(`qv-param-row-system-${lower}`);
+      if ((await row.count()) === 0) {
+        await ensureSystemParam(lower);
+        row = panel.getByTestId(`qv-param-row-system-${lower}`);
+      }
+      await expect(row.first()).toBeVisible({ timeout: 10000 });
+      const logicalSelect = row.first().locator('select.parameter-value-editor--logical');
+      await expect(logicalSelect).toBeVisible({ timeout: 10000 });
+      await logicalSelect.selectOption(enabled ? '.true.' : '.false.');
+      await expect(logicalSelect).toHaveValue(enabled ? '.true.' : '.false.');
+    };
+
+    const ensureParameterViaPalette = async (paramName: string) => {
+      const panel = currentStepPanel();
+      const lower = paramName.toLowerCase();
+
+      const candidateRows = [
+        panel.getByTestId(`qv-param-row-system-${lower}`),
+        panel.getByTestId(`qv-param-row-parameters-${lower}`),
+        panel.getByTestId(`qv-param-row-wannier90-${lower}`),
+      ];
+
+      for (const row of candidateRows) {
+        if ((await row.count()) > 0) {
+          return;
+        }
+      }
+
+      const addParamBtn = panel.getByTestId('qv-add-parameter-trigger');
+      await expect(addParamBtn).toBeVisible({ timeout: 10000 });
+      await addParamBtn.click();
+
+      const searchInput = panel.getByTestId('qv-add-parameter-search');
+      await expect(searchInput).toBeVisible({ timeout: 10000 });
+      await searchInput.fill(lower);
+
+      const result = panel.getByTestId(`qv-add-parameter-result-${lower}`).first();
+      await expect(result).toBeVisible({ timeout: 10000 });
+      await result.click();
+
+      await expect
+        .poll(async () => {
+          for (const row of candidateRows) {
+            if ((await row.count()) > 0) return true;
+          }
+          return false;
+        }, { timeout: 10000 })
+        .toBeTruthy();
+    };
+
+    const setGenericIntegerParam = async (paramName: string, value: string) => {
+      const panel = currentStepPanel();
+      const lower = paramName.toLowerCase();
+      await ensureParameterViaPalette(lower);
+
+      const candidates = [
+        panel.getByTestId(`qv-param-input-system-${lower}`),
+        panel.getByTestId(`qv-param-input-parameters-${lower}`),
+        panel.getByTestId(`qv-param-input-wannier90-${lower}`),
+      ];
+
+      let input = candidates[0];
+      for (const candidate of candidates) {
+        if ((await candidate.count()) > 0) {
+          input = candidate;
+          break;
+        }
+      }
+      await expect(input.first()).toBeVisible({ timeout: 10000 });
+      await input.first().fill(value);
+      await input.first().press('Tab');
+      await expect(input.first()).toHaveValue(value, { timeout: 10000 });
+    };
+
+    const setGenericTextParam = async (paramName: string, value: string) => {
+      const panel = currentStepPanel();
+      const lower = paramName.toLowerCase();
+      await ensureParameterViaPalette(lower);
+
+      const candidates = [
+        panel.getByTestId(`qv-param-input-system-${lower}`),
+        panel.getByTestId(`qv-param-input-parameters-${lower}`),
+        panel.getByTestId(`qv-param-input-wannier90-${lower}`),
+      ];
+
+      let input = candidates[0];
+      for (const candidate of candidates) {
+        if ((await candidate.count()) > 0) {
+          input = candidate;
+          break;
+        }
+      }
+      await expect(input.first()).toBeVisible({ timeout: 10000 });
+      await input.first().fill(value);
+      await input.first().press('Tab');
+      await expect(input.first()).toHaveValue(value, { timeout: 10000 });
+    };
+
+    // 7) Set key parameters through pure GUI editing.
     await openStepByType('scf');
     await ensureEditMode();
-    const scfEcut = appPage.getByTestId('qv-param-input-system-ecutwfc');
-    await expect(scfEcut).toBeVisible({ timeout: 5000 });
-    await scfEcut.fill('30.0');
-    await scfEcut.press('Tab');
+    await setSystemRealParam('ecutwfc', '30.0');
+    await setSystemRealParam('ecutrho', '240.0');
     await setAutomaticKMesh(2, 2, 2);
+    await applyKPointsCardIfDirty();
     await applyStepParams();
 
     await openStepByType('nscf');
     await ensureEditMode();
-    const nscfEcut = appPage.getByTestId('qv-param-input-system-ecutwfc');
-    await expect(nscfEcut).toBeVisible({ timeout: 5000 });
-    await nscfEcut.fill('30.0');
-    await nscfEcut.press('Tab');
-    await setAutomaticKMesh(4, 4, 4);
+    await setSystemRealParam('ecutwfc', '30.0');
+    await setSystemRealParam('ecutrho', '240.0');
+    await setSystemLogicalParam('nosym', true);
+    await setSystemLogicalParam('noinv', true);
+    await setSystemIntegerParam('nbnd', '4');
+    await setCrystalKPoints([
+      { x: 0.0, y: 0.0, z: 0.0, w: 1.0 },
+      { x: 0.0, y: 0.0, z: 0.5, w: 1.0 },
+      { x: 0.0, y: 0.5, z: 0.0, w: 1.0 },
+      { x: 0.0, y: 0.5, z: 0.5, w: 1.0 },
+      { x: 0.5, y: 0.0, z: 0.0, w: 1.0 },
+      { x: 0.5, y: 0.0, z: 0.5, w: 1.0 },
+      { x: 0.5, y: 0.5, z: 0.0, w: 1.0 },
+      { x: 0.5, y: 0.5, z: 0.5, w: 1.0 },
+    ]);
+    await applyKPointsCardIfDirty();
     await applyStepParams();
 
-    await openStepByType('bandspw');
+    // Required Wannier parameters for nnkp generation.
+    await openStepByType('wannierprep');
     await ensureEditMode();
-    const bandspwEcut = appPage.getByTestId('qv-param-input-system-ecutwfc');
-    await expect(bandspwEcut).toBeVisible({ timeout: 5000 });
-    await bandspwEcut.fill('30.0');
-    await bandspwEcut.press('Tab');
-    await setCrystalBKPath();
+    await setGenericIntegerParam('num_wann', '4');
+    await setGenericIntegerParam('num_bands', '4');
+    await setGenericTextParam('projections', 'f=0.0,0.0,0.0:sp3');
     await applyStepParams();
 
-    // bands step: set filband so bands.x emits *.bands.dat.gnu evidence.
-    await openStepByType('bands');
+    await openStepByType('wannier');
     await ensureEditMode();
-
-    const panelContent = appPage.locator('.step-detail-panel .panel-content').first();
-    await panelContent.evaluate((el) => {
-      (el as HTMLElement).scrollTop = (el as HTMLElement).scrollHeight;
-    });
-
-    let filbandInput = appPage.getByTestId('qv-param-input-bands-filband');
-    if ((await filbandInput.count()) === 0) {
-      const addParamBtn = appPage.getByTestId('qv-add-parameter-trigger');
-      await expect(addParamBtn).toBeVisible({ timeout: 10000 });
-      await addParamBtn.click();
-
-      const searchInput = appPage.getByTestId('qv-add-parameter-search');
-      await expect(searchInput).toBeVisible({ timeout: 10000 });
-      await searchInput.fill('filband');
-
-      const filbandResult = appPage.getByTestId('qv-add-parameter-result-filband').first();
-      await expect(filbandResult).toBeVisible({ timeout: 10000 });
-      await filbandResult.click();
-    }
-
-    filbandInput = appPage.getByTestId('qv-param-input-bands-filband');
-    await expect(filbandInput).toBeVisible({ timeout: 10000 });
-    await filbandInput.scrollIntoViewIfNeeded();
-    await filbandInput.fill('bands.dat');
-    await filbandInput.press('Tab');
+    await setGenericIntegerParam('num_wann', '4');
+    await setGenericIntegerParam('num_bands', '4');
+    await setGenericTextParam('projections', 'f=0.0,0.0,0.0:sp3');
     await applyStepParams();
 
-    // 8) Run calculation
+    // 8) Run full chain
     const runButtonFocus = appPage.getByTestId('qv-btn-run-calculation-focus');
     const runButtonOverview = appPage.getByTestId('qv-btn-run-calculation');
     if (await runButtonFocus.isVisible().catch(() => false)) {
@@ -520,7 +666,6 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
     const runLogsPanel = appPage.getByTestId('qv-calc-run-logs-panel');
     await expect(runLogsPanel).toBeVisible({ timeout: 10000 });
 
-    // 9) Wait for completion
     const statusBadge = runLogsPanel.getByTestId('qv-job-status');
     await expect(statusBadge).toBeVisible({ timeout: 30000 });
 
@@ -528,6 +673,14 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
       const lowered = (raw || '').toLowerCase();
       const match = lowered.match(/\b(pending|running|completed|failed|cancelled)\b/);
       return match?.[1] || '';
+    };
+    const waitForNoActiveJobs = async (timeoutMs: number) => {
+      await expect
+        .poll(async () => {
+          const texts = await appPage.locator('.status-bar .status-bar__right .status-bar__text').allTextContents();
+          return texts.join(' | ').toLowerCase();
+        }, { timeout: timeoutMs, message: 'Status bar did not return to "No jobs"' })
+        .toContain('no jobs');
     };
 
     const startTime = Date.now();
@@ -541,18 +694,14 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
       if (status === 'pending' || status === 'running') {
         sawActiveState = true;
       }
-
       if (status === 'failed' || status === 'cancelled') {
         let errorText = 'Unknown error';
         const errorEl = runLogsPanel.locator('.calculation-run-tab__error');
         if (await errorEl.count() > 0) {
           errorText = (await errorEl.textContent()) || errorText;
         }
-        throw new Error(`QE bands calculation failed: ${errorText}`);
+        throw new Error(`QE+Wannier calculation failed: ${errorText}`);
       }
-
-      // Guard against stale "completed" from a previous run: only accept terminal
-      // completion after this test has observed an active run state.
       if (status === 'completed' && sawActiveState) {
         completed = true;
         break;
@@ -561,10 +710,17 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
       await appPage.waitForTimeout(2000);
     }
     if (!completed) {
-      throw new Error(`Bands job did not complete within ${timeoutMs}ms`);
+      throw new Error(`QE+Wannier job did not complete within ${timeoutMs}ms`);
+    }
+    await waitForNoActiveJobs(120000);
+
+    const runError = runLogsPanel.locator('.calculation-run-tab__error');
+    if (await runError.isVisible().catch(() => false)) {
+      const errorText = (await runError.textContent()) || 'unknown run error';
+      throw new Error(`QE+Wannier run reported error: ${errorText}`);
     }
 
-    // 10) Analysis tab, select step that exposes bands object
+    // 9) Analysis tab + raw artifact checks
     const analysisTab = appPage.getByTestId('qv-calc-tab-analysis');
     await analysisTab.click();
     await expect(analysisTab).toHaveClass(/calculations-workspace-tab--active/, { timeout: 5000 });
@@ -572,107 +728,112 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
     const analysisPanel = appPage.getByTestId('qv-calc-analysis-panel');
     await expect(analysisPanel).toBeVisible({ timeout: 5000 });
 
+    const ensureReferenceOff = async () => {
+      const referenceToggle = appPage.getByTestId('qv-analysis-reference-toggle');
+      if ((await referenceToggle.count()) > 0) {
+        await expect(referenceToggle).toBeVisible({ timeout: 10000 });
+        if (await referenceToggle.isChecked()) {
+          await referenceToggle.uncheck({ force: true });
+        }
+        await expect(referenceToggle).not.toBeChecked({ timeout: 10000 });
+      }
+      await expect(appPage.getByTestId('qv-analysis-reference-banner')).toHaveCount(0, { timeout: 10000 });
+    };
+    await ensureReferenceOff();
+
+    const selectStepInAnalysis = async (step: string) => {
+      const stepChip = analysisPanel.locator(`[data-testid="qv-analysis-step-tab-${step}"]`);
+      await expect(stepChip).toBeVisible({ timeout: 10000 });
+      await stepChip.click();
+      await expect(stepChip).toHaveClass(/--active/, { timeout: 5000 });
+    };
+
+    const ensureRawMode = async () => {
+      const rawTab = analysisPanel.locator('.calculation-analysis-panel__view-mode-tab').filter({ hasText: /^Raw$/i });
+      await expect(rawTab).toBeVisible({ timeout: 5000 });
+      await rawTab.click();
+      await expect(rawTab).toHaveClass(/--active/, { timeout: 5000 });
+    };
+
+    const walkFiles = (root: string): string[] => {
+      if (!fs.existsSync(root)) {
+        return [];
+      }
+      const out: string[] = [];
+      const stack = [root];
+      while (stack.length > 0) {
+        const current = stack.pop() as string;
+        const entries = fs.readdirSync(current, { withFileTypes: true });
+        for (const entry of entries) {
+          const nextPath = path.join(current, entry.name);
+          if (entry.isDirectory()) {
+            stack.push(nextPath);
+          } else if (entry.isFile()) {
+            out.push(nextPath);
+          }
+        }
+      }
+      return out;
+    };
+
+    const readArtifactFromCandidates = (stepCandidates: string[], fileMatcher: RegExp): string => {
+      const calculationRoot = path.join(projectRootPath, 'calculations', calculationSlug);
+      const allFiles = walkFiles(calculationRoot);
+      const matchPath = allFiles.find((candidate) => {
+        const rel = path.relative(calculationRoot, candidate).replaceAll(path.sep, '/');
+        return fileMatcher.test(rel) || fileMatcher.test(path.basename(candidate));
+      });
+      if (!matchPath) {
+        throw new Error(
+          `Unable to locate artifact ${fileMatcher} in ${calculationRoot} (step candidates: ${stepCandidates.join(', ')})`,
+        );
+      }
+      return fs.readFileSync(matchPath, 'utf-8');
+    };
+
+    const scfIn = readArtifactFromCandidates(['scf', 'nscf'], /(^|\/)scf\.in$/i);
+    expect(scfIn).toMatch(/ecutwfc\s*=\s*30(\.0+)?/i);
+    expect(scfIn).toMatch(/ecutrho\s*=\s*240(\.0+)?/i);
+    expect(scfIn).toMatch(/K_POINTS\s*[{(]automatic[})]?/i);
+    expect(scfIn).toMatch(/\b2\s+2\s+2\s+0\s+0\s+0\b/);
+
+    const nscfIn = readArtifactFromCandidates(['nscf'], /(^|\/)nscf\.in$/i);
+    expect(nscfIn).toMatch(/ecutwfc\s*=\s*30(\.0+)?/i);
+    expect(nscfIn).toMatch(/ecutrho\s*=\s*240(\.0+)?/i);
+    expect(nscfIn).toMatch(/^\s*nosym\s*=\s*\.true\.\s*$/im);
+    expect(nscfIn).toMatch(/^\s*noinv\s*=\s*\.true\.\s*$/im);
+    expect(nscfIn).not.toMatch(/^\s*nosym\s*=\s*['"]\s*\.true\.\s*['"]\s*$/im);
+    expect(nscfIn).not.toMatch(/^\s*noinv\s*=\s*['"]\s*\.true\.\s*['"]\s*$/im);
+    expect(nscfIn).toMatch(/nbnd\s*=\s*4/i);
+    expect(nscfIn).toMatch(/K_POINTS\s*[{(]crystal[})]?/i);
+    expect(nscfIn).toMatch(/\n\s*8\s*\n/);
+
+    const wprepWin = readArtifactFromCandidates(['wannierprep', 'wannier'], /wannierprep\.win$/i);
+    expect(wprepWin).toMatch(/num_wann\s*=\s*4\b/i);
+    expect(wprepWin).toMatch(/num_bands\s*=\s*4\b/i);
+    expect(wprepWin).toMatch(/mp_grid\s*[:=]\s*2\s+2\s+2\b/i);
+    expect(wprepWin).toMatch(/f=0\.0,0\.0,0\.0:sp3/i);
+
+    const pw2wanIn = readArtifactFromCandidates(['pw2wannier', 'wannierprep'], /pw2wan\.in$/i);
+    expect(pw2wanIn.toLowerCase()).toContain('seedname');
+
+    const pw2wanOut = readArtifactFromCandidates(['pw2wannier', 'wannier'], /pw2wannier\.out$/i);
+    expect(pw2wanOut).toMatch(/PW2WANNIER/i);
+    expect(pw2wanOut).toMatch(/JOB DONE/i);
+
+    const wout = readArtifactFromCandidates(['wannier', 'wannierprep'], /wannierprep\.wout$/i);
+    expect(wout).toMatch(/All done:\s*wannier90 exiting/i);
+
+    // 10) Plot mode: verify SCF convergence is renderable and non-empty
     const plotTab = analysisPanel.locator('.calculation-analysis-panel__view-mode-tab').filter({ hasText: /^Plot$/i });
     await expect(plotTab).toBeVisible({ timeout: 5000 });
     await plotTab.click();
     await expect(plotTab).toHaveClass(/--active/, { timeout: 5000 });
+    await ensureReferenceOff();
 
-    // Ensure real run output, not reference
-    const referenceToggle = appPage.getByTestId('qv-analysis-reference-toggle');
-    if (await referenceToggle.isVisible().catch(() => false)) {
-      if (await referenceToggle.isChecked()) {
-        await referenceToggle.uncheck();
-      }
-      await expect(referenceToggle).not.toBeChecked();
-    }
-    await expect(appPage.getByTestId('qv-analysis-reference-banner')).toHaveCount(0);
-
-    // 10a) Explicitly validate SCF convergence plot in this multi-step workflow.
-    const scfStepChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-scf"]');
-    await expect(scfStepChip).toBeVisible({ timeout: 10000 });
-    await scfStepChip.click();
-    await expect(scfStepChip).toHaveClass(/--active/, { timeout: 5000 });
+    await selectStepInAnalysis('scf');
 
     const waitForConvergenceState = async (timeoutMs: number): Promise<'chart' | 'tile' | 'none' | 'timeout'> => {
-      const start = Date.now();
-      while (Date.now() - start < timeoutMs) {
-        const loadingVisible = await analysisPanel.getByTestId('qv-analysis-loading').isVisible().catch(() => false);
-        const digestLoading = await analysisPanel
-          .locator('.analysis-digest.analysis-surface__placeholder')
-          .filter({ hasText: /Loading step digest/i })
-          .isVisible()
-          .catch(() => false);
-        if (loadingVisible || digestLoading) {
-          await appPage.waitForTimeout(250);
-          continue;
-        }
-        if (await analysisPanel.getByTestId('qv-analysis-convergence-chart').isVisible().catch(() => false)) {
-          return 'chart';
-        }
-        if (await analysisPanel.locator('.analysis-viz__tile').filter({ hasText: /^convergence$/i }).first().isVisible().catch(() => false)) {
-          return 'tile';
-        }
-        if (await analysisPanel.getByTestId('qv-analysis-no-objects').isVisible().catch(() => false)) {
-          return 'none';
-        }
-        await appPage.waitForTimeout(250);
-      }
-      return 'timeout';
-    };
-
-    let convergenceState = await waitForConvergenceState(20000);
-    if (convergenceState === 'tile') {
-      const convergenceTile = analysisPanel.locator('.analysis-viz__tile').filter({ hasText: /^convergence$/i }).first();
-      await convergenceTile.click();
-      convergenceState = await waitForConvergenceState(10000);
-    }
-    expect(convergenceState, 'SCF convergence analysis state timed out').not.toBe('timeout');
-
-    if (convergenceState === 'chart') {
-      const convergenceChart = analysisPanel.getByTestId('qv-analysis-convergence-chart');
-      await expect(convergenceChart).toBeVisible({ timeout: 10000 });
-      await convergenceChart.scrollIntoViewIfNeeded();
-      await appPage.waitForTimeout(250);
-
-      const convergenceCurves = convergenceChart.locator(
-        '.recharts-line .recharts-line-curve, .recharts-area .recharts-area-curve, .recharts-line-curve, .recharts-area-curve',
-      );
-      await expect
-        .poll(async () => convergenceCurves.count(), {
-          timeout: 10000,
-          message: 'SCF convergence chart has no curve paths',
-        })
-        .toBeGreaterThan(0);
-      const nonEmptyConvergenceCurves = await convergenceCurves.evaluateAll((paths) =>
-        paths.filter((p) => (((p as SVGPathElement).getAttribute('d') || '').length > 20)).length,
-      );
-      expect(nonEmptyConvergenceCurves).toBeGreaterThan(0);
-      const convergenceTicks = convergenceChart.locator(
-        '.recharts-cartesian-axis.recharts-xAxis .recharts-cartesian-axis-tick-value',
-      );
-      await expect
-        .poll(async () => convergenceTicks.count(), {
-          timeout: 10000,
-          message: 'SCF convergence x-axis ticks did not render',
-        })
-        .toBeGreaterThan(1);
-    } else {
-      // Some valid QE bands workflows expose SCF convergence in digest only.
-      await expect(analysisPanel.getByTestId('qv-analysis-no-objects')).toBeVisible({ timeout: 10000 });
-      const digestTextRaw = await analysisPanel.locator('.analysis-digest').innerText();
-      const digestText = digestTextRaw.replace(/\s+/g, ' ').toLowerCase();
-      expect(digestText).toContain('n_iterations');
-      expect(digestText).toContain('converged');
-      expect(digestText).toContain('total_energy_ry');
-      const nIterMatch = digestText.match(/n_iterations\s+([0-9]+)/);
-      expect(nIterMatch).not.toBeNull();
-      const nIter = Number(nIterMatch?.[1] || '0');
-      expect(nIter).toBeGreaterThan(1);
-      expect(digestText).toMatch(/converged\s+true/);
-      expect(digestText).toMatch(/total_energy_ry\s+-[0-9.]+/);
-    }
-
-    const waitForBandsState = async (timeoutMs: number): Promise<'chart' | 'tile' | 'none' | 'timeout'> => {
       const start = Date.now();
       let noObjectsSince: number | null = null;
       while (Date.now() - start < timeoutMs) {
@@ -687,17 +848,18 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
           await appPage.waitForTimeout(250);
           continue;
         }
-        const chartVisible = await analysisPanel.getByTestId('qv-analysis-bands-chart').isVisible().catch(() => false);
+
+        const chartVisible = await analysisPanel.getByTestId('qv-analysis-convergence-chart').isVisible().catch(() => false);
         if (chartVisible) {
           return 'chart';
         }
-        const bandsTileVisible = await analysisPanel
+        const tileVisible = await analysisPanel
           .locator('.analysis-viz__tile')
-          .filter({ hasText: /^bands$/i })
+          .filter({ hasText: /^convergence$/i })
           .first()
           .isVisible()
           .catch(() => false);
-        if (bandsTileVisible) {
+        if (tileVisible) {
           return 'tile';
         }
         const noneVisible = await analysisPanel.getByTestId('qv-analysis-no-objects').isVisible().catch(() => false);
@@ -711,71 +873,47 @@ test.describe('Pair 3 E2E: Si Bands Real-Run (from scratch)', () => {
         } else {
           noObjectsSince = null;
         }
+
         await appPage.waitForTimeout(250);
       }
       return 'timeout';
     };
 
-    const candidateStepTabs = ['bandspw', 'bands', 'nscf', 'scf'] as const;
-    let selectedStepTab: (typeof candidateStepTabs)[number] | null = null;
-    for (const stepTab of candidateStepTabs) {
-      const stepChip = analysisPanel.locator(`[data-testid="qv-analysis-step-tab-${stepTab}"]`);
-      if (!(await stepChip.isVisible().catch(() => false))) {
-        continue;
-      }
-
-      await stepChip.click();
-      await expect(stepChip).toHaveClass(/--active/, { timeout: 5000 });
-      let state = await waitForBandsState(20000);
-      if (state === 'tile') {
-        const bandsTile = analysisPanel.locator('.analysis-viz__tile').filter({ hasText: /^bands$/i }).first();
-        await bandsTile.click();
-        state = await waitForBandsState(10000);
-      }
-      if (state === 'chart') {
-        selectedStepTab = stepTab;
-        break;
-      }
+    let convergenceState = await waitForConvergenceState(20000);
+    if (convergenceState === 'tile') {
+      const convergenceTile = analysisPanel.locator('.analysis-viz__tile').filter({ hasText: /^convergence$/i }).first();
+      await convergenceTile.click();
+      convergenceState = await waitForConvergenceState(10000);
     }
 
-    expect(selectedStepTab, 'No renderable bands chart found in analysis for any candidate step').not.toBeNull();
+    expect(convergenceState, 'SCF convergence chart was not available').toBe('chart');
 
-    const loadingIndicator = appPage.getByTestId('qv-analysis-loading');
-    const bandsChart = appPage.getByTestId('qv-analysis-bands-chart');
-    await expect(async () => {
-      const isLoading = await loadingIndicator.isVisible().catch(() => false);
-      const hasChart = await bandsChart.isVisible().catch(() => false);
-      if (isLoading && !hasChart) {
-        throw new Error('Still loading bands analysis...');
-      }
-    }).toPass({ timeout: 30000 });
-    await expect(bandsChart).toBeVisible({ timeout: 5000 });
+    const convergenceChart = analysisPanel.getByTestId('qv-analysis-convergence-chart');
+    await expect(convergenceChart).toBeVisible({ timeout: 10000 });
+    await convergenceChart.scrollIntoViewIfNeeded();
 
-    // 11) Assert non-empty curves and axis/tick presence
-    const curvePaths = bandsChart.locator('.recharts-line .recharts-line-curve');
+    const curves = convergenceChart.locator(
+      '.recharts-line .recharts-line-curve, .recharts-area .recharts-area-curve, .recharts-line-curve, .recharts-area-curve',
+    );
     await expect
-      .poll(async () => curvePaths.count(), {
+      .poll(async () => curves.count(), {
         timeout: 10000,
-        message: 'Bands plot has no line curves',
+        message: 'SCF convergence chart has no curve paths',
       })
       .toBeGreaterThan(0);
-
-    const nonEmptyCurves = await curvePaths.evaluateAll((paths) =>
+    const nonEmptyCurves = await curves.evaluateAll((paths) =>
       paths.filter((p) => (((p as SVGPathElement).getAttribute('d') || '').length > 20)).length,
     );
     expect(nonEmptyCurves).toBeGreaterThan(0);
 
-    const xAxisTicks = bandsChart.locator(
+    const xTicks = convergenceChart.locator(
       '.recharts-cartesian-axis.recharts-xAxis .recharts-cartesian-axis-tick-value',
     );
     await expect
-      .poll(async () => xAxisTicks.count(), {
+      .poll(async () => xTicks.count(), {
         timeout: 10000,
-        message: 'Bands plot x-axis ticks did not render',
+        message: 'SCF convergence x-axis ticks did not render',
       })
       .toBeGreaterThan(1);
-
-    await expect(appPage.getByTestId('qv-analysis-kpath')).toBeVisible({ timeout: 5000 });
-    await expect(appPage.getByTestId('qv-analysis-fermi')).toBeVisible({ timeout: 5000 });
   });
 });

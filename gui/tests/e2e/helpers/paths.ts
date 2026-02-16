@@ -6,6 +6,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { fileURLToPath } from 'url';
 
 // Get __dirname equivalent in ES modules
@@ -44,11 +45,25 @@ export function getGuiDir(): string {
 }
 
 /**
+ * Resolve the root folder for ephemeral E2E projects.
+ * Defaults to OS temp dir to avoid nesting test projects inside the repo.
+ *
+ * Override with QV_E2E_PROJECTS_ROOT when needed.
+ */
+export function getE2EProjectsRoot(): string {
+  const override = process.env.QV_E2E_PROJECTS_ROOT?.trim();
+  if (override) {
+    return path.resolve(override);
+  }
+  return path.join(os.tmpdir(), 'qv_e2e_projects');
+}
+
+/**
  * Get and ensure the E2E projects root directory exists
- * Creates <repo_root>/.tmp/e2e_projects if it doesn't exist
+ * Creates the configured E2E projects root if it doesn't exist.
  */
 export function ensureE2EProjectsRoot(): string {
-  const e2eRoot = path.join(getRepoRoot(), '.tmp', 'e2e_projects');
+  const e2eRoot = getE2EProjectsRoot();
   fs.mkdirSync(e2eRoot, { recursive: true });
   return e2eRoot;
 }
@@ -78,14 +93,13 @@ export function cleanupProjectDir(dirPath: string): void {
 
 /**
  * Clear all E2E test projects directory
- * Removes all contents of .tmp/e2e_projects/
+ * Removes all contents of the configured E2E projects root.
  */
 export function clearE2EProjectsRoot(): void {
-  const e2eRoot = path.join(getRepoRoot(), '.tmp', 'e2e_projects');
+  const e2eRoot = getE2EProjectsRoot();
   if (fs.existsSync(e2eRoot)) {
     fs.rmSync(e2eRoot, { recursive: true, force: true });
   }
   // Recreate the directory
   fs.mkdirSync(e2eRoot, { recursive: true });
 }
-

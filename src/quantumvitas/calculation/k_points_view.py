@@ -184,15 +184,17 @@ def parse_k_points(raw: str) -> KPointsViewModel:
             summary=f"{mode} (empty)"
         )
     
-    # First data line might be count (for crystal_b, tpiba_b, etc.)
+    # First data line might be count.
+    # QE list modes (including crystal/tpiba) accept a leading count line.
     start_idx = 0
-    if mode in ("crystal_b", "crystal_c", "tpiba_b", "tpiba_c"):
-        # First line is count, skip it
-        if data_lines:
-            try:
-                _ = int(data_lines[0])
+    if data_lines:
+        try:
+            maybe_count = int(float(data_lines[0].split()[0]))
+            # Treat a single-value first line as count if there are enough following lines.
+            if len(data_lines[0].split()) == 1 and maybe_count >= 0 and len(data_lines) >= (maybe_count + 1):
                 start_idx = 1
-            except ValueError:
+        except (ValueError, IndexError):
+            if mode in ("crystal_b", "crystal_c", "tpiba_b", "tpiba_c"):
                 warnings.append("Expected count line for band path mode")
     
     # Parse k-points
@@ -254,6 +256,9 @@ def format_k_points(view_model: KPointsViewModel) -> str:
     mode_str = view_model.mode.upper()
     if mode_str in ("TPIBA", "CRYSTAL"):
         lines.append(f"K_POINTS {{{mode_str.lower()}}}")
+        if view_model.points:
+            # QE list mode expects an explicit number-of-k-points line.
+            lines.append(str(len(view_model.points)))
     elif mode_str in ("TPIBA_B", "CRYSTAL_B", "TPIBA_C", "CRYSTAL_C"):
         # Band path modes need count line
         lines.append(f"K_POINTS {{{mode_str.lower()}}}")
@@ -344,4 +349,3 @@ def k_points_to_card_data(raw: str) -> Dict[str, Any]:
             "option": "",
             "data": [raw]
         }
-

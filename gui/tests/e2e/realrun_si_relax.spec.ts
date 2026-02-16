@@ -3,7 +3,7 @@
  *
  * Workflow:
  * create project → import Si structure → create QE calculation →
- * set pseudo mapping → add RELAX step → set CONTROL.calculation=vc-relax + ecutwfc →
+ * set pseudo mapping → add RELAX step → set VC-relax parameters →
  * run QE → verify convergence + trajectory analysis plots.
  *
  * No demo usage. All actions are GUI user operations.
@@ -37,8 +37,8 @@ test.describe('Pair 2 E2E: Si VC-Relax Real-Run (from scratch)', () => {
     };
 
     const repoRoot = getRepoRoot();
-    const siInputFile = path.join(repoRoot, 'tests', 'data', '0_Si_scf', 'si.scf.in');
-    expect(fs.existsSync(siInputFile), `Missing test input file at ${siInputFile}`).toBeTruthy();
+    const siCifFile = path.join(repoRoot, 'tests', 'data', 'structures', 'si_diamond.cif');
+    expect(fs.existsSync(siCifFile), `Missing test structure file at ${siCifFile}`).toBeTruthy();
 
     // 1) Create project
     await waitForHomeWelcome(appPage);
@@ -48,10 +48,10 @@ test.describe('Pair 2 E2E: Si VC-Relax Real-Run (from scratch)', () => {
     await appPage.getByTestId('qv-btn-confirm-create').click();
     await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 15000 });
 
-    // 2) Import Si structure
+    // 2) Import Si structure (local CIF)
     await navigateToView(appPage, 'structures');
     await appPage.getByTestId('qv-btn-import-structure').click();
-    await appPage.getByTestId('qv-import-structure-file').fill(siInputFile);
+    await appPage.getByTestId('qv-import-structure-file').fill(siCifFile);
     await appPage.getByTestId('qv-import-structure-name').fill('Si');
     await appPage.getByTestId('qv-btn-confirm-import-structure').click();
     await appPage.waitForTimeout(2000);
@@ -172,27 +172,91 @@ test.describe('Pair 2 E2E: Si VC-Relax Real-Run (from scratch)', () => {
     await stepButton.click();
     await expect(appPage.getByTestId('qv-step-detail')).toBeVisible({ timeout: 10000 });
 
-    // 8) Edit step params: ecutwfc=30.0, CONTROL.calculation=vc-relax
+    const ensureParamRow = async (section: string, param: string) => {
+      const sectionLower = section.toLowerCase();
+      const paramLower = param.toLowerCase();
+      const row = appPage.getByTestId(`qv-param-row-${sectionLower}-${paramLower}`);
+      if ((await row.count()) > 0) {
+        return row.first();
+      }
+
+      const addParamBtn = appPage.getByTestId('qv-add-parameter-trigger');
+      await expect(addParamBtn).toBeVisible({ timeout: 10000 });
+      await addParamBtn.click();
+
+      const searchInput = appPage.getByTestId('qv-add-parameter-search');
+      await expect(searchInput).toBeVisible({ timeout: 10000 });
+      await searchInput.fill(paramLower);
+
+      const result = appPage.getByTestId(`qv-add-parameter-result-${paramLower}`).first();
+      await expect(result).toBeVisible({ timeout: 10000 });
+      await result.click();
+
+      const addedRow = appPage.getByTestId(`qv-param-row-${sectionLower}-${paramLower}`).first();
+      await expect(addedRow).toBeVisible({ timeout: 10000 });
+      return addedRow;
+    };
+
+    const setNumericParam = async (section: string, param: string, value: string) => {
+      await ensureParamRow(section, param);
+      const input = appPage.getByTestId(`qv-param-input-${section.toLowerCase()}-${param.toLowerCase()}`).first();
+      await expect(input).toBeVisible({ timeout: 10000 });
+      await input.fill(value);
+      await input.press('Tab');
+    };
+
+    const setRawParam = async (section: string, param: string, value: string) => {
+      const row = await ensureParamRow(section, param);
+      const rawToggle = row.locator('.parameter-value-editor__raw-toggle, button[title=\"Edit raw value\"]').first();
+      if (await rawToggle.isVisible().catch(() => false)) {
+        await rawToggle.click();
+      }
+      const input = appPage.getByTestId(`qv-param-input-${section.toLowerCase()}-${param.toLowerCase()}`).first();
+      await expect(input).toBeVisible({ timeout: 10000 });
+      await input.fill(value);
+      await input.press('Tab');
+      await expect(input).toHaveValue(value);
+    };
+
+    const setAutomaticKMesh = async (nk1: number, nk2: number, nk3: number) => {
+      const kPointsEditor = appPage.getByTestId('qv-kpoints-editor');
+      await expect(kPointsEditor).toBeVisible({ timeout: 10000 });
+      await kPointsEditor.scrollIntoViewIfNeeded();
+
+      const modeSelect = appPage.getByTestId('qv-kpoints-mode-select');
+      await expect(modeSelect).toBeVisible({ timeout: 5000 });
+      await modeSelect.selectOption('automatic');
+
+      const nk1Input = appPage.getByTestId('qv-kpoints-auto-nk1');
+      const nk2Input = appPage.getByTestId('qv-kpoints-auto-nk2');
+      const nk3Input = appPage.getByTestId('qv-kpoints-auto-nk3');
+      await nk1Input.fill(String(nk1));
+      await nk2Input.fill(String(nk2));
+      await nk3Input.fill(String(nk3));
+      await expect(nk1Input).toHaveValue(String(nk1));
+      await expect(nk2Input).toHaveValue(String(nk2));
+      await expect(nk3Input).toHaveValue(String(nk3));
+
+      const kPointsApply = appPage.getByTestId('qv-kpoints-apply');
+      if (await kPointsApply.isVisible().catch(() => false)) {
+        if (await kPointsApply.isEnabled().catch(() => false)) {
+          await kPointsApply.click();
+        }
+      }
+    };
+
+    // 8) Edit step params to mirror Pair 2 RPC:
+    // CONTROL.calculation=vc-relax, CONTROL.nstep=3,
+    // SYSTEM.ecutwfc=30, SYSTEM.ecutrho=240, CELL.cell_dofree=all, K_POINTS 2x2x2.
     await appPage.getByTestId('qv-btn-edit-step-params').click();
     await appPage.waitForTimeout(1000);
 
-    const ecutwfcInput = appPage.getByTestId('qv-param-input-system-ecutwfc');
-    await expect(ecutwfcInput).toBeVisible({ timeout: 5000 });
-    await ecutwfcInput.fill('30.0');
-    await ecutwfcInput.press('Tab');
-
-    // CONTROL.calculation enum values are quoted in metadata; selecting from dropdown can double-quote.
-    // Force raw mode and type vc-relax so serializer writes a valid single-quoted QE CHARACTER value.
-    const calcModeRow = appPage.getByTestId('qv-param-row-control-calculation');
-    await expect(calcModeRow).toBeVisible({ timeout: 5000 });
-    const calcModeRawToggle = calcModeRow.locator('.parameter-value-editor__raw-toggle').first();
-    if (await calcModeRawToggle.isVisible().catch(() => false)) {
-      await calcModeRawToggle.click();
-    }
-    const calcModeInput = appPage.getByTestId('qv-param-input-control-calculation');
-    await expect(calcModeInput).toBeVisible({ timeout: 5000 });
-    await calcModeInput.fill('vc-relax');
-    await calcModeInput.press('Tab');
+    await setNumericParam('SYSTEM', 'ecutwfc', '30.0');
+    await setNumericParam('SYSTEM', 'ecutrho', '240.0');
+    await setRawParam('CONTROL', 'calculation', 'vc-relax');
+    await setNumericParam('CONTROL', 'nstep', '3');
+    await setRawParam('CELL', 'cell_dofree', 'all');
+    await setAutomaticKMesh(2, 2, 2);
 
     const applyParamsBtn = appPage.getByTestId('qv-btn-apply-step-params');
     await expect(applyParamsBtn).toBeVisible({ timeout: 5000 });

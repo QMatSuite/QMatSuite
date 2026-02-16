@@ -373,6 +373,11 @@ jobs:
             tests/e2e/demo_calculation.spec.ts \
             tests/e2e/demo_calculation_run.spec.ts \
             tests/e2e/realrun_si_scf.spec.ts \
+            tests/e2e/realrun_si_relax.spec.ts \
+            tests/e2e/realrun_si_bands.spec.ts \
+            tests/e2e/realrun_si_dos.spec.ts \
+            tests/e2e/realrun_al_dos.spec.ts \
+            tests/e2e/realrun_qe_wannier.spec.ts \
             tests/e2e/demo_gallery.spec.ts \
             tests/e2e/step_defaults.spec.ts \
             --project=electron
@@ -383,6 +388,11 @@ jobs:
             tests/e2e/demo_calculation.spec.ts \
             tests/e2e/demo_calculation_run.spec.ts \
             tests/e2e/realrun_si_scf.spec.ts \
+            tests/e2e/realrun_si_relax.spec.ts \
+            tests/e2e/realrun_si_bands.spec.ts \
+            tests/e2e/realrun_si_dos.spec.ts \
+            tests/e2e/realrun_al_dos.spec.ts \
+            tests/e2e/realrun_qe_wannier.spec.ts \
             tests/e2e/demo_gallery.spec.ts \
             tests/e2e/step_defaults.spec.ts \
             --project=electron

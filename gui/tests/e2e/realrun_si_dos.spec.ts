@@ -437,9 +437,6 @@ test.describe('Pair 4 E2E: Si DOS Real-Run (from scratch)', () => {
 
     await openStepByType('dos');
     await ensureEditMode();
-    // Keep DOS numeric window defaults from metadata materialization.
-    // Editing emin/emax through current add-parameter path serializes them as
-    // quoted strings in YAML, which produces invalid DOS namelist input.
     const dosFildos = await ensureDosParam('fildos');
     await dosFildos.fill('si.dos.dat');
     await dosFildos.press('Tab');

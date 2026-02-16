@@ -22,6 +22,7 @@ from quantumvitas.calculation.wannier90_kpoints import (
     format_kpoint_for_w90,
     find_nscf_input_file,
     extract_kpoints_from_nscf_step,
+    infer_mp_grid_from_kpoints,
 )
 from quantumvitas.io.parser.qe_parser import QEInputParser
 
@@ -108,12 +109,12 @@ def test_w90_kpoints_match_nscf_order(diamond_nscf_input, tmp_path):
     nscf_in_raw = raw_dir / "nscf.in"
     shutil.copy(diamond_nscf_input, nscf_in_raw)
     
-    # Create calculation.yaml with nscf step
+    # Create calculation.yaml with nscf step (SPEC representation)
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text(yaml.dump({
         "meta": {"ulid": "01TEST", "name": "test", "slug": "test", "path": "test", "kind": "calculation"},
         "steps": [
-            {"ulid": "01NSCF", "step_type_gen": "nscf", "input": "nscf.in"}
+            {"step_ulid": "01NSCF", "step_type_spec": "qe_nscf", "input": "nscf.in"}
         ]
     }))
     
@@ -198,8 +199,15 @@ def test_w90_kpoints_match_nscf_order(diamond_nscf_input, tmp_path):
     )
 
 
-def test_find_nscf_input_file(tmp_path):
-    """Test finding nscf input file from calculation directory."""
+@pytest.mark.parametrize(
+    "step_entry",
+    [
+        {"step_ulid": "01NSCF", "step_type_gen": "nscf", "input": "nscf.in"},
+        {"step_ulid": "01NSCF", "step_type_spec": "qe_nscf", "input": "nscf.in"},
+    ],
+)
+def test_find_nscf_input_file(tmp_path, step_entry):
+    """Test finding nscf input file for both GEN and SPEC step schemas."""
     calc_dir = tmp_path / "calc"
     calc_dir.mkdir()
     raw_dir = calc_dir / "raw"
@@ -209,9 +217,7 @@ def test_find_nscf_input_file(tmp_path):
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text(yaml.dump({
         "meta": {"ulid": "01TEST", "name": "test", "slug": "test", "path": "test", "kind": "calculation"},
-        "steps": [
-            {"ulid": "01NSCF", "step_type_gen": "nscf", "input": "nscf.in"}
-        ]
+        "steps": [step_entry]
     }))
     
     # Create nscf.in in raw directory
@@ -230,12 +236,12 @@ def test_extract_kpoints_from_nscf_step(tmp_path):
     raw_dir = calc_dir / "raw"
     raw_dir.mkdir()
     
-    # Create calculation.yaml
+    # Create calculation.yaml (SPEC representation)
     calc_yaml = calc_dir / "calculation.yaml"
     calc_yaml.write_text(yaml.dump({
         "meta": {"ulid": "01TEST", "name": "test", "slug": "test", "path": "test", "kind": "calculation"},
         "steps": [
-            {"ulid": "01NSCF", "step_type_gen": "nscf", "input": "nscf.in"}
+            {"step_ulid": "01NSCF", "step_type_spec": "qe_nscf", "input": "nscf.in"}
         ]
     }))
     
@@ -266,3 +272,29 @@ K_POINTS {crystal}
     assert kpoints[0] == [0.0, 0.0, 0.0], "First kpoint should be [0, 0, 0]"
     assert kpoints[1] == [0.0, 0.25, 0.0], "Second kpoint should be [0, 0.25, 0] (order preserved)"
 
+
+def test_infer_mp_grid_from_kpoints():
+    """Infer a regular Monkhorst-Pack grid from explicit kpoints."""
+    kpoints = [
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.5],
+        [0.0, 0.5, 0.0],
+        [0.0, 0.5, 0.5],
+        [0.5, 0.0, 0.0],
+        [0.5, 0.0, 0.5],
+        [0.5, 0.5, 0.0],
+        [0.5, 0.5, 0.5],
+    ]
+    inferred = infer_mp_grid_from_kpoints(kpoints)
+    assert inferred == [2, 2, 2], inferred
+
+
+def test_infer_mp_grid_from_kpoints_irregular_returns_none():
+    """Non-rectangular kpoint sets should not produce an inferred grid."""
+    kpoints = [
+        [0.0, 0.0, 0.0],
+        [0.2, 0.0, 0.0],
+        [0.4, 0.1, 0.0],
+    ]
+    inferred = infer_mp_grid_from_kpoints(kpoints)
+    assert inferred is None, inferred

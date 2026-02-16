@@ -12,6 +12,7 @@ import { useEngineParameterMetadata } from '../../hooks/useEngineParameterMetada
 import './AddParameterPalette.css';
 
 interface AddParameterPaletteProps {
+  engineFamily: string;
   module: string | null;
   stepParameters: Record<string, Record<string, unknown>>; // Current step parameters
   onAddParameter: (section: string, paramName: string) => void;
@@ -19,6 +20,7 @@ interface AddParameterPaletteProps {
 }
 
 export function AddParameterPalette({
+  engineFamily,
   module,
   stepParameters,
   onAddParameter,
@@ -34,7 +36,7 @@ export function AddParameterPalette({
     searchError,
     search,
     metadataInfo,
-  } = useEngineParameterMetadata('qe'); // QE-specific for now
+  } = useEngineParameterMetadata(engineFamily || 'qe');
   
   // Filter search results to only show parameters for the current module
   const filteredResults = module
@@ -117,7 +119,7 @@ export function AddParameterPalette({
         <div className="add-parameter-palette__overlay" onClick={() => setIsOpen(false)}>
           <div className="add-parameter-palette__popup" onClick={(e) => e.stopPropagation()}>
             <div className="add-parameter-palette__header">
-              <h3 className="add-parameter-palette__title">Add QE Parameter</h3>
+              <h3 className="add-parameter-palette__title">Add Parameter</h3>
               <button
                 className="add-parameter-palette__close"
                 onClick={() => setIsOpen(false)}
@@ -132,7 +134,7 @@ export function AddParameterPalette({
                 ref={searchInputRef}
                 type="text"
                 className="add-parameter-palette__search-input"
-                placeholder="Search by parameter name, description, section..."
+                placeholder="Search by parameter name, description, section/category..."
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 data-testid="qv-add-parameter-search"
@@ -237,7 +239,7 @@ export function AddParameterPalette({
             
             {!searchQuery.trim() && (
               <div className="add-parameter-palette__hint">
-                Start typing to search for QE parameters...
+                Start typing to search for parameters...
               </div>
             )}
           </div>

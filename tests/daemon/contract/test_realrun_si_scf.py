@@ -126,6 +126,51 @@ class TestRealRunSiSCF:
 
         print(f"Convergence state: {convergence['state']}")
 
+        # Deep payload assertions: verify real convergence data, not only instance existence.
+        latest_run = send_request(daemon, "get_latest_run_for_step", {
+            "project_root": str(project_root),
+            "step_ulid": step_ulid,
+        })
+        run_ulid = latest_run.get("run_ulid")
+        assert run_ulid, f"Missing run_ulid: {latest_run}"
+
+        convergence_payload = send_request(daemon, "get_analysis", {
+            "project_root": str(project_root),
+            "step_ulid": step_ulid,
+            "run_ulid": run_ulid,
+            "object_type": "convergence",
+        })
+        bundle = convergence_payload.get("bundle", {})
+        arrays = bundle.get("arrays", {})
+
+        # Accept schema aliases and select the first non-trivial energy vector.
+        energy_aliases = (
+            "scf_energy",
+            "energies",
+            "total_energy",
+            "total_energy_ry",
+            "etot",
+        )
+        energy_series = None
+        for key in energy_aliases:
+            candidate = arrays.get(key)
+            if isinstance(candidate, list) and len(candidate) > 1:
+                energy_series = candidate
+                break
+        assert energy_series is not None, f"No non-trivial energy series in convergence arrays: {arrays}"
+
+        numeric_energy = [float(v) for v in energy_series]
+        assert len(numeric_energy) > 1, numeric_energy
+        assert numeric_energy[-1] < 0.0, f"Final total energy should be negative for Si SCF: {numeric_energy[-5:]}"
+
+        # Convergence trend check: end-of-run energy differences should be smaller than early-run deltas.
+        deltas = [abs(numeric_energy[i + 1] - numeric_energy[i]) for i in range(len(numeric_energy) - 1)]
+        assert len(deltas) >= 1, deltas
+        if len(deltas) >= 2:
+            early_max = max(deltas[: min(3, len(deltas))])
+            late_min = min(deltas[-min(3, len(deltas)):])
+            assert late_min <= early_max, f"SCF deltas did not tighten toward the end: {deltas}"
+
     def test_si_scf_preflight_check(self, qe_project_with_si, daemon: QVDaemon):
         """
         Test that preflight check passes for a properly configured Si SCF calc.

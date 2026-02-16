@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import List
+from typing import List, Sequence
 
 import numpy as np
 
@@ -55,6 +55,51 @@ _CONVERGED_RE = re.compile(
 _ALGORITHM_RE = re.compile(
     r"^\s+(Davidson|CG|Lanczos|PPCG)\s+diagonalization"
 )
+
+
+def _select_output_file(raw_dir: Path, gen_steps: Sequence[str]) -> Path:
+    """Select the most relevant QE output file for convergence parsing."""
+    out_files = sorted(p for p in raw_dir.glob("*.out") if p.is_file())
+    if not out_files:
+        raise FileNotFoundError(f"No .out file found in {raw_dir}")
+
+    normalized_steps = [str(step or "").strip().lower() for step in gen_steps if str(step or "").strip()]
+
+    # 1) Prefer exact <gen_step>.out (e.g., scf.out, relax.out).
+    by_name = {p.name.lower(): p for p in out_files}
+    for step in normalized_steps:
+        exact = by_name.get(f"{step}.out")
+        if exact is not None:
+            return exact
+
+    # 2) Prefer names that clearly include the gen step token (e.g., si.relax.out).
+    for step in normalized_steps:
+        token_matches: list[Path] = []
+        for candidate in out_files:
+            stem = candidate.stem.lower()
+            if (
+                stem == step
+                or f".{step}." in candidate.name.lower()
+                or stem.endswith(f".{step}")
+                or stem.startswith(f"{step}.")
+                or stem.endswith(f"_{step}")
+                or stem.startswith(f"{step}_")
+                or f"-{step}-" in stem
+                or stem.endswith(f"-{step}")
+                or stem.startswith(f"{step}-")
+            ):
+                token_matches.append(candidate)
+        if token_matches:
+            # Stable choice: shortest name first, then lexical order.
+            return sorted(token_matches, key=lambda p: (len(p.name), p.name.lower()))[0]
+
+    # 3) Fallback: prefer non-empty output files; if multiple, choose largest.
+    non_empty = [p for p in out_files if p.stat().st_size > 0]
+    if non_empty:
+        return max(non_empty, key=lambda p: (p.stat().st_size, p.name.lower()))
+
+    # 4) Last resort.
+    return out_files[0]
 
 
 def parse_qe_convergence(output_path: Path) -> dict:
@@ -159,13 +204,10 @@ class QEConvergenceProvider:
 
     def parse(self, evidence: EvidenceBundle) -> Convergence:
         """Parse QE output and return Convergence object."""
-        # Find .out file
-        out_files = list(evidence.primary_raw_dir.glob("*.out"))
-        if not out_files:
-            raise FileNotFoundError(
-                f"No .out file found in {evidence.primary_raw_dir}"
-            )
-        output_path = out_files[0]
+        output_path = _select_output_file(
+            evidence.primary_raw_dir,
+            evidence.gen_steps,
+        )
 
         parsed = parse_qe_convergence(output_path)
 
