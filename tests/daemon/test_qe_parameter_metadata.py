@@ -176,8 +176,8 @@ def test_list_parameters_for_valid_module_and_section(daemon):
     response = daemon.handle_request(request)
 
     assert response.ok is True
-    assert "parameters" in response.data
-    parameters = response.data["parameters"]
+    assert "tags" in response.data
+    parameters = response.data["tags"]
     assert isinstance(parameters, list)
     assert len(parameters) > 0
 
@@ -206,8 +206,8 @@ def test_list_parameters_for_card_section(daemon):
     response = daemon.handle_request(request)
 
     assert response.ok is True
-    assert "parameters" in response.data
-    parameters = response.data["parameters"]
+    assert "tags" in response.data
+    parameters = response.data["tags"]
     assert isinstance(parameters, list)
 
     # If K_POINTS card metadata exists, verify structure
@@ -232,7 +232,7 @@ def test_list_parameters_with_array_indexing(daemon):
     if not response.ok:
         pytest.skip("Could not load parameters (metadata may be missing)")
 
-    parameters = response.data.get("parameters", [])
+    parameters = response.data.get("tags", [])
 
     # Look for celldm which should have indexing in v2 schema
     celldm_params = [p for p in parameters if p.get("name") == "celldm"]
@@ -318,6 +318,35 @@ def test_invalid_operation_returns_error(daemon):
     assert error is not None
 
 
+def test_list_parameters_without_section_returns_all(daemon):
+    """Test that list_tags with category but no section returns ALL params in the module."""
+    request = _generic_request("test-10a", "list_tags", category="pw")
+
+    response = daemon.handle_request(request)
+
+    assert response.ok is True
+    assert "tags" in response.data
+    tags = response.data["tags"]
+    assert isinstance(tags, list)
+    assert len(tags) > 0
+
+    # Should contain params from multiple sections (flattened 2-level view)
+    sections_seen = set()
+    for tag in tags:
+        assert "name" in tag
+        assert "section" in tag
+        assert "module" in tag
+        assert tag["module"] == "pw"
+        sections_seen.add(tag["section"])
+
+    # pw module should have at least &CONTROL and &SYSTEM namelists
+    assert len(sections_seen) > 1, f"Expected multiple sections, got: {sections_seen}"
+
+    # Common params should be present
+    names = [t["name"] for t in tags]
+    assert "ecutwfc" in names or "ibrav" in names
+
+
 def test_list_parameters_missing_category_returns_error(daemon):
     """Test that list_tags without category returns an error (no silent default)."""
     request = _generic_request("test-10", "list_tags", section="&SYSTEM")
@@ -330,11 +359,11 @@ def test_list_parameters_missing_category_returns_error(daemon):
 
 def test_error_not_raw_exception(daemon):
     """Test that errors are structured RPC errors, not raw Python exceptions."""
-    # Use QE internal handler for QE-specific error (invalid module)
+    # Missing category (module) — should return a structured error
     request = RPCRequest(
         id="test-11",
         type="list_engine_parameter_metadata",
-        payload={"engine_family": "qe", "operation": "list_tags", "category": "__nonexistent__"},
+        payload={"engine_family": "qe", "operation": "list_tags"},
     )
 
     response = daemon.handle_request(request)
@@ -346,6 +375,17 @@ def test_error_not_raw_exception(daemon):
         assert "NameError" not in error_str
         assert "Traceback" not in error_str
         assert isinstance(error, dict) or hasattr(error, "code") or hasattr(error, "message")
+
+
+def test_nonexistent_module_returns_empty_tags(daemon):
+    """Test that list_tags for a nonexistent module returns empty tags (not an error)."""
+    request = _generic_request("test-11b", "list_tags", category="__nonexistent__")
+
+    response = daemon.handle_request(request)
+
+    assert response.ok is True
+    assert "tags" in response.data
+    assert response.data["tags"] == []
 
 
 def test_missing_engine_family_returns_error(daemon):

@@ -246,15 +246,15 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
           return;
         }
         
-      if (response.data?.tags) {
-        const tagList = response.data.tags;
+      const tagList = response.data?.tags ?? response.data?.parameters ?? [];
+      if (tagList.length > 0) {
         setTags(tagList);
         console.debug('[EngineParamBrowser] tags loaded', {
           engineFamily,
           category: categoryToUse,
           count: tagList.length,
         });
-        
+
         // If there's a pending tag selection, select it now that tags are loaded
         if (pendingParamKeyRef.current) {
           const tagKey = pendingParamKeyRef.current;
@@ -1061,6 +1061,9 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
                           onClick={() => handleTagRowClick(rowKey)}
                         >
                           <td className="qv-param-cell qv-param-col-name">
+                          {'section' in tag && (tag as any).section && (
+                            <span className="qv-param-section-badge">{(tag as any).section}</span>
+                          )}
                           <strong>{tag.name}</strong>
                         </td>
                           <td className="qv-param-cell qv-param-col-type" title={tag.type || 'UNKNOWN'}>

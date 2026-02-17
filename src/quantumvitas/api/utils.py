@@ -1115,85 +1115,142 @@ def _qe_parameter_metadata(
 
             if not module:
                 raise ValueError("'category' (module) is required for list_tags operation")
-            if not section:
-                raise ValueError("'section' is required for list_tags operation")
 
-            section_normalized = section[1:].upper() if section.startswith("&") else section.upper()
-            is_namelist = section.startswith("&")
-
-            result = []
             raw_data = safe_load_metadata()
             modules_data = raw_data.get("modules", {})
             module_entry = modules_data.get(module)
 
             if not module_entry:
                 return {
-                    "parameters": [],
+                    "tags": [],
                     "metadata_path_abs": metadata_info.get("metadata_path_abs"),
                     "schema_version": metadata_info.get("schema_version"),
                 }
 
-            if is_namelist:
-                section_with_prefix = f"&{section_normalized}"
+            result = []
+
+            if not section:
+                # No section specified → return ALL parameters across all sections
+                # (unified 2-level view: module → flat param list)
                 params = _iter_params(module)
+                schema_ver = raw_data.get("schema_version", 0)
 
                 for param in params:
                     param_namelist = param.get("namelist", "")
                     param_section = f"&{param_namelist.upper()}" if param_namelist else ""
+                    param_name = param.get("name")
+                    param_dict = {
+                        "name": param_name,
+                        "type": param.get("type"),
+                        "default": param.get("default"),
+                        "enum": param.get("enum"),
+                        "description": param.get("description"),
+                        "section": param_section,
+                        "module": module,
+                    }
 
-                    if param_section == section_with_prefix or param_namelist.upper() == section_normalized:
-                        param_name = param.get("name")
-                        param_dict = {
-                            "name": param_name,
-                            "type": param.get("type"),
-                            "default": param.get("default"),
-                            "enum": param.get("enum"),
-                            "description": param.get("description"),
-                            "section": section_with_prefix,
-                            "module": module,
-                        }
+                    if schema_ver in (1, 2, 3):
+                        parameters_map = module_entry.get("parameters", {})
+                        param_key = f"{param_section}.{param_name}"
+                        param_meta = parameters_map.get(param_key)
+                        if param_meta and "indexing" in param_meta:
+                            param_dict["indexing"] = param_meta["indexing"]
 
-                        schema_ver = raw_data.get("schema_version", 0)
-                        if schema_ver in (1, 2, 3):
-                            parameters_map = module_entry.get("parameters", {})
-                            param_key = f"{section_with_prefix}.{param_name}"
-                            param_meta = parameters_map.get(param_key)
-                            if param_meta and "indexing" in param_meta:
-                                param_dict["indexing"] = param_meta["indexing"]
+                    # Managed-param annotations for &CONTROL
+                    is_managed = False
+                    managed_reason = None
+                    if param_namelist.upper() == "CONTROL":
+                        if param_name and param_name.lower() in ("prefix", "outdir", "pseudo_dir"):
+                            is_managed = True
+                            managed_reason = "runtime_overridden"
+                        elif param_name and param_name.lower() == "calculation":
+                            is_managed = True
+                            managed_reason = "step_type_owned"
+                    param_dict["is_managed"] = is_managed
+                    if managed_reason:
+                        param_dict["managed_reason"] = managed_reason
 
-                        is_managed = False
-                        managed_reason = None
-                        if section_normalized == "CONTROL":
-                            if param_name and param_name.lower() in ("prefix", "outdir", "pseudo_dir"):
-                                is_managed = True
-                                managed_reason = "runtime_overridden"
-                            elif param_name and param_name.lower() == "calculation":
-                                is_managed = True
-                                managed_reason = "step_type_owned"
+                    result.append(param_dict)
 
-                        param_dict["is_managed"] = is_managed
-                        if managed_reason:
-                            param_dict["managed_reason"] = managed_reason
-
-                        result.append(param_dict)
-            else:
+                # Also collect card entries
                 card_metadata = module_entry.get("card_metadata", {})
-                card_info = card_metadata.get(section_normalized)
-
-                if card_info:
+                for card_name, card_info in card_metadata.items():
                     result.append({
-                        "name": card_info.get("name", section_normalized),
+                        "name": card_info.get("name", card_name.upper()),
                         "type": card_info.get("type"),
                         "default": card_info.get("default"),
                         "enum": card_info.get("enum"),
                         "description": card_info.get("description"),
-                        "section": section_normalized,
+                        "section": card_name.upper(),
                         "module": module,
+                        "is_managed": False,
                     })
+            else:
+                # Section specified → existing per-section logic
+                section_normalized = section[1:].upper() if section.startswith("&") else section.upper()
+                is_namelist = section.startswith("&")
+
+                if is_namelist:
+                    section_with_prefix = f"&{section_normalized}"
+                    params = _iter_params(module)
+
+                    for param in params:
+                        param_namelist = param.get("namelist", "")
+                        param_section = f"&{param_namelist.upper()}" if param_namelist else ""
+
+                        if param_section == section_with_prefix or param_namelist.upper() == section_normalized:
+                            param_name = param.get("name")
+                            param_dict = {
+                                "name": param_name,
+                                "type": param.get("type"),
+                                "default": param.get("default"),
+                                "enum": param.get("enum"),
+                                "description": param.get("description"),
+                                "section": section_with_prefix,
+                                "module": module,
+                            }
+
+                            schema_ver = raw_data.get("schema_version", 0)
+                            if schema_ver in (1, 2, 3):
+                                parameters_map = module_entry.get("parameters", {})
+                                param_key = f"{section_with_prefix}.{param_name}"
+                                param_meta = parameters_map.get(param_key)
+                                if param_meta and "indexing" in param_meta:
+                                    param_dict["indexing"] = param_meta["indexing"]
+
+                            is_managed = False
+                            managed_reason = None
+                            if section_normalized == "CONTROL":
+                                if param_name and param_name.lower() in ("prefix", "outdir", "pseudo_dir"):
+                                    is_managed = True
+                                    managed_reason = "runtime_overridden"
+                                elif param_name and param_name.lower() == "calculation":
+                                    is_managed = True
+                                    managed_reason = "step_type_owned"
+
+                            param_dict["is_managed"] = is_managed
+                            if managed_reason:
+                                param_dict["managed_reason"] = managed_reason
+
+                            result.append(param_dict)
+                else:
+                    card_metadata = module_entry.get("card_metadata", {})
+                    card_info = card_metadata.get(section_normalized)
+
+                    if card_info:
+                        result.append({
+                            "name": card_info.get("name", section_normalized),
+                            "type": card_info.get("type"),
+                            "default": card_info.get("default"),
+                            "enum": card_info.get("enum"),
+                            "description": card_info.get("description"),
+                            "section": section_normalized,
+                            "module": module,
+                        })
 
             result.sort(key=lambda x: x.get("name", ""))
             return {
-                "parameters": result,
+                "tags": result,
                 "metadata_path_abs": metadata_info.get("metadata_path_abs"),
                 "schema_version": metadata_info.get("schema_version"),
             }
