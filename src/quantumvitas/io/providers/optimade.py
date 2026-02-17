@@ -67,7 +67,7 @@ CURATED_DEFAULT_PROVIDERS = [
     ProviderConfig(
         provider_key="alexandria",
         name="Alexandria",
-        base_url="https://alexandria.icams.rub.de/optimade/v1",
+        base_url="https://alexandria.icams.rub.de/pbe",
         enabled=True,  # Enabled by default (curated allowlist)
         trust_weight=0.8,  # Computed, large database
         source="curated",
@@ -91,7 +91,7 @@ CURATED_DEFAULT_PROVIDERS = [
     ProviderConfig(
         provider_key="mcloud",
         name="Materials Cloud",
-        base_url="https://www.materialscloud.org/optimade/main",
+        base_url="https://optimade.materialscloud.org/main/mc3d-pbe-v1",
         enabled=True,  # Enabled by default (curated allowlist)
         trust_weight=0.8,  # Computed
         source="curated",
@@ -411,40 +411,69 @@ def _query_single_provider(
             error=f"Formula normalization failed: {e}",
         )
     
-    # Build OPTIMADE filter
-    filter_value = f'chemical_formula_reduced="{reduced}"'
-    url = f"{provider.base_url}/v1/structures"
-    params = {
-        "filter": filter_value,
-        "page_limit": min(max_results, 100),  # OPTIMADE limit
-    }
-    
+    # Normalize base_url: avoid double /v1 if base already ends with it
+    base = provider.base_url.rstrip("/")
+    if base.endswith("/v1"):
+        url = f"{base}/structures"
+    else:
+        url = f"{base}/v1/structures"
+
+    # Build OPTIMADE filter — try chemical_formula_reduced first, fall back to elements HAS
+    filters_to_try = [f'chemical_formula_reduced="{reduced}"']
+
+    # Build elements fallback filter (e.g., 'elements HAS "Si"' or 'elements HAS ALL "Na","Cl"')
     try:
-        response = requests.get(url, params=params, timeout=timeout_s)
-        response.raise_for_status()
-        data = response.json()
-        
+        from pymatgen.core import Composition
+        comp = Composition(reduced)
+        elements = sorted(str(el) for el in comp.elements)
+        if len(elements) == 1:
+            filters_to_try.append(f'elements HAS "{elements[0]}"')
+        else:
+            quoted = ",".join(f'"{el}"' for el in elements)
+            filters_to_try.append(f'elements HAS ALL {quoted}')
+    except Exception:
+        pass  # Keep only the first filter
+
+    page_limit = min(max_results, 100)
+
+    try:
+        data = None
+        for filter_value in filters_to_try:
+            params = {"filter": filter_value, "page_limit": page_limit}
+            response = requests.get(url, params=params, timeout=timeout_s)
+            if response.status_code in (501, 400):
+                # Filter not supported by this provider — try next
+                logger.debug(
+                    f"Provider {provider.provider_key} returned {response.status_code} "
+                    f"for filter '{filter_value}', trying fallback"
+                )
+                continue
+            response.raise_for_status()
+            data = response.json()
+            break
+
+        if data is None:
+            return ProviderResult(
+                provider_id=provider.provider_key,
+                provider_name=provider.name,
+                error="No supported filter found",
+            )
+
         # Parse entries
         entries = data.get("data", [])
         candidates = []
-        
+
         for entry in entries:
             attrs = entry.get("attributes", {})
             entry_id = entry.get("id", "")
-            
+
             # Extract structure info
             formula = attrs.get("chemical_formula_reduced", reduced)
             nsites = attrs.get("nsites", 0)
             space_group = attrs.get("space_group_number")
-            
-            # Check for partial occupancy (simplified: check if any site has fractional occupancy)
+
             has_partial = False
-            sites = attrs.get("cartesian_site_positions", [])
-            if sites:
-                # Simple heuristic: if we have fractional coordinates, might have partial occupancy
-                # More accurate would be to check species_at_sites, but this is a v1 approximation
-                pass  # Default to False for v1
-            
+
             candidate = Candidate(
                 entry_id=entry_id,
                 provider_id=provider.provider_key,
@@ -455,13 +484,13 @@ def _query_single_provider(
                 metadata=attrs,
             )
             candidates.append(candidate)
-        
+
         return ProviderResult(
             provider_id=provider.provider_key,
             provider_name=provider.name,
             candidates=candidates,
         )
-        
+
     except requests.exceptions.Timeout:
         return ProviderResult(
             provider_id=provider.provider_key,

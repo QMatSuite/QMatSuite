@@ -97,6 +97,39 @@ def search_by_name(query: str, max_results: int = 10) -> List[str]:
         return []
 
 
+def _poll_pubchem_listkey(list_key: str, max_results: int, max_polls: int = 10, poll_interval: float = 2.0) -> List[str]:
+    """
+    Poll PubChem for async formula search results.
+
+    PubChem formula searches return HTTP 202 with a ListKey.
+    We must poll until the results are ready or we time out.
+    """
+    if not REQUESTS_AVAILABLE:
+        return []
+
+    poll_url = f"{PUBCHEM_BASE_URL}/compound/listkey/{list_key}/cids/JSON"
+    for attempt in range(max_polls):
+        time.sleep(poll_interval)
+        _rate_limit()
+        try:
+            resp = requests.get(poll_url, timeout=10)
+            if resp.status_code == 202:
+                # Still processing
+                continue
+            if resp.status_code == 404:
+                logger.warning(f"PubChem listkey {list_key} not found (expired?)")
+                return []
+            resp.raise_for_status()
+            data = resp.json()
+            cids = data.get("IdentifierList", {}).get("CID", [])
+            return [str(cid) for cid in cids[:max_results]]
+        except Exception as e:
+            logger.warning(f"PubChem listkey poll attempt {attempt + 1} failed: {e}")
+
+    logger.warning(f"PubChem listkey {list_key} timed out after {max_polls} polls")
+    return []
+
+
 def search_by_formula(query: str, max_results: int = 10) -> List[str]:
     """
     Search PubChem by molecular formula.
@@ -117,20 +150,29 @@ def search_by_formula(query: str, max_results: int = 10) -> List[str]:
     try:
         url = f"{PUBCHEM_BASE_URL}/compound/formula/{query}/cids/JSON"
         response = requests.get(url, timeout=10)
-        
+
         if response.status_code == 404:
             return []
-        
+
+        # PubChem formula search is async — 202 means "still processing"
+        if response.status_code == 202:
+            data = response.json()
+            list_key = data.get("Waiting", {}).get("ListKey")
+            if list_key:
+                cids = _poll_pubchem_listkey(list_key, max_results)
+                return cids
+            return []
+
         response.raise_for_status()
         data = response.json()
-        
+
         # Extract CIDs
         cids = data.get("IdentifierList", {}).get("CID", [])
         cid_strings = [str(cid) for cid in cids[:max_results]]
-        
+
         logger.info(f"PubChem formula search for '{query}' returned {len(cid_strings)} CIDs")
         return cid_strings
-        
+
     except Exception as e:
         logger.warning(f"PubChem formula search failed: {e}")
         return []
@@ -211,25 +253,28 @@ def _parse_sdf_manual(sdf_content: str) -> PMGMolecule:
     ```
     """
     lines = sdf_content.split('\n')
-    
-    # Find MOL block (starts after header, ends before $$$$)
-    mol_start = 0
-    for i, line in enumerate(lines):
-        if i >= 3:  # Skip header (3 lines)
-            mol_start = i
-            break
-    
-    # Parse counts line
-    counts_line = lines[mol_start + 1] if mol_start + 1 < len(lines) else ""
+
+    # SDF MOL block layout (V2000):
+    #   Line 0: molecule name
+    #   Line 1: program/timestamp
+    #   Line 2: comment (often blank)
+    #   Line 3: counts line  "aaabbblllfffcccsssxxxrrrpppiiimmmvvvvvv"
+    #   Lines 4..(4+num_atoms-1): atom block
+    #   Bond block follows
+    counts_idx = 3
+    if counts_idx >= len(lines):
+        raise ValueError("SDF too short — missing counts line")
+
+    counts_line = lines[counts_idx]
     parts = counts_line.split()
     if len(parts) < 2:
-        raise ValueError("Invalid SDF counts line")
-    
+        raise ValueError(f"Invalid SDF counts line: {counts_line!r}")
+
     num_atoms = int(parts[0])
     num_bonds = int(parts[1])
-    
-    # Parse atom lines
-    atoms_start = mol_start + 2
+
+    # Parse atom lines (start immediately after counts line)
+    atoms_start = counts_idx + 1
     species = []
     coords = []
     

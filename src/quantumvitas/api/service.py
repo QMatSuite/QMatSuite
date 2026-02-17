@@ -2562,7 +2562,7 @@ class QVService:
             mode: str = "auto",
             sources: Any = None,
             limit: int = 10,
-            timeout_s: float = 8.0,
+            timeout_s: float = 15.0,
             refresh_registry: bool = False,
         ) -> Any:
             """

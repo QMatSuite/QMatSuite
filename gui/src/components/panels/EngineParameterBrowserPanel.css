@@ -728,6 +728,19 @@
   /* Name column - already has strong tag for emphasis */
 }
 
+.qv-param-section-badge {
+  display: inline-block;
+  font-size: 0.7em;
+  font-weight: 500;
+  padding: 1px 4px;
+  margin-right: 4px;
+  border-radius: 3px;
+  background: var(--bg-tertiary, #e8e8e8);
+  color: var(--text-secondary, #666);
+  vertical-align: middle;
+  font-family: var(--font-mono, monospace);
+}
+
 .qv-param-col-type {
   font-family: var(--font-mono, monospace);
 }
