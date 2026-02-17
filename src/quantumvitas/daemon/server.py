@@ -1672,7 +1672,7 @@ class QVDaemon:
         from quantumvitas.api import QVService
 
         query = self._require_str(payload, "query")
-        max_results = payload.get("max_results", 10)
+        max_results = payload.get("limit", payload.get("max_results", 20))
         mode = payload.get("mode", "auto")
 
         result_dto = QVService.OnlineSearch.search_structures(

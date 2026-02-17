@@ -373,7 +373,7 @@ function Scene({ data, showBonds, showUnitCell, showLabels, atomScale, bondScale
       ))}
       
       {/* Unit Cell or Box Frame */}
-      {showUnitCell && data.lattice && (
+      {showUnitCell && data.lattice && data.pbc?.some(Boolean) !== false && (
         data.display_mode === 'box' && boxBounds ? (
           <BoxFrame bounds={boxBounds} />
         ) : (

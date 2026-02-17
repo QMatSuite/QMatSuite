@@ -321,7 +321,7 @@ export function AnalysisVizPanel({
                     label="E_F"
                     stroke="#c44"
                     strokeDasharray="6 3"
-                    y={fermiEnergy}
+                    {...(isDos ? { x: fermiEnergy } : { y: fermiEnergy })}
                   />
                 ) : null}
               </LineChart>

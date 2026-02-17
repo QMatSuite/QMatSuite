@@ -752,6 +752,7 @@ export interface QVCommandMap {
     };
     result: {
       categories?: Array<{ id: string; label: string }>;
+      modules?: Array<{ id: string; label: string }>;  // QE returns "modules" instead of "categories"
       tags?: Array<{ name: string; type: string; default: any; description: string; category: string }>;
       results?: Array<{ name: string; type: string; default: any; description: string; category: string }>;
     };

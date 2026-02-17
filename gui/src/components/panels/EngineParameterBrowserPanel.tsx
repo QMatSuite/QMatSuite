@@ -307,7 +307,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
           return;
         }
         
-        const categoryList = response.data?.categories ?? [];
+        const categoryList = response.data?.categories ?? response.data?.modules ?? [];
         setCategories(categoryList);
 
         // Auto-select first category ONCE if none is selected
