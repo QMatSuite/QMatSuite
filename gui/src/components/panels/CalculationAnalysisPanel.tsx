@@ -311,8 +311,6 @@ export function CalculationAnalysisPanel({
   }, [projectRoot, qv, runInfo?.run_ulid, selectedObjectType, shiftToFermi]);
 
   // Reference-only mode: when no run available, probe for reference types
-  const REFERENCE_PROBE_TYPES = ['convergence', 'dos', 'bands'];
-
   useEffect(() => {
     if (!calcSelector || !selectedStepId) {
       setReferenceOnlyMode(false);
@@ -339,12 +337,20 @@ export function CalculationAnalysisPanel({
       return;
     }
 
+    // Filter probe types to only those relevant for the selected step's type_gen
+    const stepTypeGen = (steps.find(s => s.ulid === selectedStepId)?.step_type_gen ?? '').toLowerCase();
+    const probeTypes = stepTypeGen.includes('band')
+      ? ['bands', 'convergence']
+      : stepTypeGen.includes('dos') || stepTypeGen === 'nscf'
+        ? ['dos', 'convergence']
+        : ['convergence'];
+
     let cancelled = false;
     const probeReferenceTypes = async () => {
       const matched: string[] = [];
       const refCache: Record<string, AnalysisResponse> = {};
 
-      for (const objType of REFERENCE_PROBE_TYPES) {
+      for (const objType of probeTypes) {
         const response = await qv.call('get_reference_analysis', {
           project_root: normalizedRoot,
           calculation: calcSelector,
@@ -378,7 +384,7 @@ export function CalculationAnalysisPanel({
 
     void probeReferenceTypes();
     return () => { cancelled = true; };
-  }, [calcSelector, projectRoot, qv, runInfo, runInfoError, selectedStepId]);
+  }, [calcSelector, projectRoot, qv, runInfo, runInfoError, selectedStepId, steps]);
 
   // Fetch reference data when selectedObjectType changes (for reference-only mode or overlay)
   const referenceCacheRef = useRef<Record<string, AnalysisResponse>>({});
