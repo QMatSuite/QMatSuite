@@ -1472,7 +1472,9 @@ class QVService:
                         fixtures_root = None
 
                 if fixtures_root is None:
-                    repo_root = _Path(__file__).resolve().parents[2]
+                    # service.py is at src/quantumvitas/api/service.py
+                    # parents[3] = repo root (not parents[2] which is src/)
+                    repo_root = _Path(__file__).resolve().parents[3]
                     fixtures_root = repo_root / "tests" / "data" / "wannier_3d_test"
                     attempted_paths.append(("repo_derived", str(fixtures_root)))
                     if not (fixtures_root.exists() and fixtures_root.is_dir()):
