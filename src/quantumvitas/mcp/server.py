@@ -24,5 +24,11 @@ import quantumvitas.mcp.tools.apply_preset  # noqa: F401, E402
 import quantumvitas.mcp.tools.inspect_calculation  # noqa: F401, E402
 import quantumvitas.mcp.tools.preview_compilation  # noqa: F401, E402
 
+# Stage 3: execution tools
+import quantumvitas.mcp.tools.run_calculation  # noqa: F401, E402
+import quantumvitas.mcp.tools.get_status  # noqa: F401, E402
+import quantumvitas.mcp.tools.get_results_summary  # noqa: F401, E402
+import quantumvitas.mcp.tools.quick_run  # noqa: F401, E402
+
 if __name__ == "__main__":
     mcp.run()
