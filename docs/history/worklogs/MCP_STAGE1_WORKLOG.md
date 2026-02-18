@@ -89,7 +89,7 @@ QE special: module-structured JSON at `data/qe_module_parameters.json` (schema v
 
 ---
 
-## Files Created (6 new)
+## Files Created (7 new)
 
 | File | Lines | Purpose |
 |------|-------|---------|
@@ -98,6 +98,7 @@ QE special: module-structured JSON at `data/qe_module_parameters.json` (schema v
 | `src/quantumvitas/mcp/tools/get_presets.py` | ~115 | get_presets tool |
 | `src/quantumvitas/mcp/tools/search_parameters.py` | ~50 | search_parameters tool |
 | `src/quantumvitas/mcp/search_index.py` | ~195 | BM25 index + tag loading |
+| `tests/mcp/conftest.py` | ~5 | Skip MCP tests when fastmcp not installed |
 | `tests/mcp/test_stage1.py` | ~150 | 14 Stage 1 tests |
 
 ## Files Modified (3 existing)
@@ -115,6 +116,15 @@ tests/mcp/test_stage0.py  — 6 passed (all green, no regressions)
 tests/mcp/test_stage1.py  — 14 passed
 Full suite               — 5680 passed, 4 skipped, 0 failed
 ```
+
+### CI Fix: fastmcp dependency skip
+
+CI installs `pip install -e '.[dev]'` which does NOT include the `[mcp]` optional extra.
+All MCP tests failed with `ModuleNotFoundError: No module named 'fastmcp'`.
+
+**Fix**: Added `tests/mcp/conftest.py` with `pytest.importorskip("fastmcp")`.
+This skips the entire `tests/mcp/` directory when `fastmcp` is not installed,
+matching the pattern used for other optional dependencies (`requires_orca`, `requires_pyscf`).
 
 ## Issues / Notes for Stage 2
 
