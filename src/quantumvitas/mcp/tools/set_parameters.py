@@ -62,5 +62,8 @@ def set_parameters(calc_ulid: str, params: dict, step: int = 0) -> dict:
             "step_ulid": step_ulid,
             "params_set": params,
         },
-        context_hint="Use inspect_calculation to review, or run_calculation to execute.",
+        context_hint=(
+            f"Use inspect_calculation(calc_ulid='{calc_ulid}') to review, "
+            f"or run_calculation(calc_ulid='{calc_ulid}') to execute."
+        ),
     )

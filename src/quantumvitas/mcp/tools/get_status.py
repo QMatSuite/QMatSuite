@@ -77,15 +77,16 @@ def get_status(calc_ulid: str) -> dict:
         overall_status = "partial"
 
     # Context hint depends on status
+    resolved_ulid = detail.get("calc_ulid") or detail.get("ulid", calc_ulid)
     if overall_status == "not_run":
-        hint = "Use run_calculation to execute this calculation."
+        hint = f"Use run_calculation(calc_ulid='{resolved_ulid}') to execute this calculation."
     elif overall_status == "completed":
         hint = (
-            f"Use get_results_summary(calc_ulid='{calc_ulid}') "
+            f"Use get_results_summary(calc_ulid='{resolved_ulid}') "
             "to see results."
         )
     else:
-        hint = "Some steps have not been run. Use run_calculation to execute."
+        hint = f"Some steps have not been run. Use run_calculation(calc_ulid='{resolved_ulid}') to execute."
 
     return make_response(
         {

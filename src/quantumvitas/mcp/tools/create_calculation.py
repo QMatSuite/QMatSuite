@@ -103,7 +103,8 @@ def create_calculation(
             "steps": steps_out,
         },
         context_hint=(
-            "Use set_parameters or apply_preset to configure, "
-            "then inspect_calculation to review."
+            f"Use apply_preset(calc_ulid='{calc_ulid}', presets=...) or "
+            f"set_parameters(calc_ulid='{calc_ulid}', params=...) to configure, "
+            f"then inspect_calculation(calc_ulid='{calc_ulid}') to review."
         ),
     )

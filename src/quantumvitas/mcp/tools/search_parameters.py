@@ -51,5 +51,8 @@ def search_parameters(
             "results": results_out,
             "total_results": len(results_out),
         },
-        context_hint="Refine your search with engine='...' or category='...' to narrow results.",
+        context_hint=(
+            "Use these parameters with set_parameters(calc_ulid, params=...) to configure a calculation, "
+            "or refine with engine='...' or category='...'."
+        ),
     )

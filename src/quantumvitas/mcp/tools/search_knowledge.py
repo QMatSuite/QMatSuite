@@ -83,7 +83,10 @@ def search_knowledge(
         items.append(item)
 
     if items:
-        hint = f"Found {len(items)} insight(s). Use get_by_id for full content."
+        hint = (
+            f"Found {len(items)} insight(s). "
+            "Use these insights to inform your parameter choices with set_parameters or apply_preset."
+        )
     else:
         hint = "No matching knowledge found. Try broader search terms or remove filters."
 
