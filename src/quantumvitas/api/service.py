@@ -4713,8 +4713,9 @@ class QVService:
             """
             try:
                 import yaml
-                from quantumvitas.api import PresetCompilationError, PrecisionContextError
-                from quantumvitas.api import DIMENSION_PRECISION, PrecisionOption
+                from quantumvitas.presets.compiler import PresetCompilationError
+                from quantumvitas.presets.precision_context import PrecisionContextError
+                from quantumvitas.presets.dimensions import DIMENSION_PRECISION, PrecisionOption
                 from quantumvitas.api.utils import (
                     apply_presets_to_step,
                     resolve_precision_context,
