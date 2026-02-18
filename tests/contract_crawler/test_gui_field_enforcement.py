@@ -79,9 +79,9 @@ HARD_REDLINE_FIELDS = {
         "top_level": ["dimensions", "schema_version"],
         "array_items": {"dimensions": ["dimension", "label"]},
     },
-    "list_qe_ui_parameters": {
+    "list_engine_ui_parameters": {
         "top_level": ["parameters"],
-        "array_items": {"parameters": ["name", "type"]},
+        "array_items": {"parameters": ["key", "type"]},
     },
 }
 

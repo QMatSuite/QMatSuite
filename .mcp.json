@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "qmatsuite": {
+      "type": "stdio",
+      "command": ".venv/bin/python",
+      "args": ["-m", "quantumvitas.mcp.server"]
+    }
+  }
+}

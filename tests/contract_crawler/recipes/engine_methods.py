@@ -125,7 +125,7 @@ class EngineMethodsRecipe(Recipe):
         if self.method_name == "get_structure_vis":
             return {
                 **base,
-                "selector": {"ulid": self.world["structure_ulid"]},
+                "selector": self.world["structure_ulid"],
             }
 
         return base

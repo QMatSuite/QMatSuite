@@ -24,9 +24,9 @@ class TestW90ParameterStructure:
         """Verify diamond demo w90_wannier step has flat parameters."""
         import yaml
 
-        demo_file = project_root_path / "resources" / "demo_projects" / "w90_diamond.yml"
+        demo_file = project_root_path / "resources" / "demo_projects" / "qe_diamond_wannier.yml"
         if not demo_file.exists():
-            pytest.skip("Diamond demo not found")
+            pytest.skip("Diamond Wannier demo not found")
 
         with open(demo_file) as f:
             demo = yaml.safe_load(f)
@@ -56,9 +56,9 @@ class TestW90ParameterStructure:
         """Verify diamond demo wannier_plot is a boolean, not iterated as string."""
         import yaml
 
-        demo_file = project_root_path / "resources" / "demo_projects" / "w90_diamond.yml"
+        demo_file = project_root_path / "resources" / "demo_projects" / "qe_diamond_wannier.yml"
         if not demo_file.exists():
-            pytest.skip("Diamond demo not found")
+            pytest.skip("Diamond Wannier demo not found")
 
         with open(demo_file) as f:
             demo = yaml.safe_load(f)

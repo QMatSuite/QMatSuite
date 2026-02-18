@@ -271,7 +271,7 @@ class TestDemoGeneration:
     def demo_path(self):
         """Path to the generated demo."""
         repo_root = Path(__file__).parent.parent.parent
-        return repo_root / "resources" / "demo_projects" / "w90_diamond.yml"
+        return repo_root / "resources" / "demo_projects" / "qe_diamond_wannier.yml"
 
     def test_demo_file_exists(self, demo_path):
         """Test that demo file was generated."""
