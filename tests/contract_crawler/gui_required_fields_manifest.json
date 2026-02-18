@@ -259,13 +259,13 @@
       },
       "evidence": "GUI TypeScript type at gui/src/types/qv.ts:1563-1584 shows result: { dimensions: Array<...>, schema_version: number }"
     },
-    "list_qe_ui_parameters": {
+    "list_engine_ui_parameters": {
       "file": "gui/src/hooks/useQVClient.ts",
       "invocation_line": 382,
-      "invocation_snippet": "call('list_qe_ui_parameters', { module, step_type })",
+      "invocation_snippet": "call('list_engine_ui_parameters', { engine_family, step_type_gen })",
       "required_fields": [
         "parameters",
-        "parameters[].name",
+        "parameters[].key",
         "parameters[].type"
       ],
       "field_access_snippets": {

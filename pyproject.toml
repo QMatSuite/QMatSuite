@@ -41,10 +41,15 @@ pyscf = [
 mp-api = [
     "mp-api>=0.30.0"
 ]
+# MCP server (Model Context Protocol)
+mcp = [
+    "fastmcp>=2,<3"
+]
 # All optional dependencies
 all = [
     "pyscf>=2.0.0",
-    "mp-api>=0.30.0"
+    "mp-api>=0.30.0",
+    "fastmcp>=2,<3"
 ]
 
 [tool.setuptools]
