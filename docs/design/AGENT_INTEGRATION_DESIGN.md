@@ -26,15 +26,37 @@ QMatSuite is becoming the first AI-native computational materials science platfo
 
 ## 2. Philosophical Foundation: The Intelligent Researcher Model
 
-### 2.1 Beyond Workflow Executors
+### 2.1 The Digital Twin Principle
+
+QMatSuite's agent integration is built on a single organizing principle: **the AI agent is a digital twin of the researcher's cognition.** Not a workflow executor (the competitor paradigm), not a chatbot with tools (the naive paradigm), but a virtual researcher with a complete cognitive architecture.
+
+This is not a metaphor. It is a structural mapping that determines every design decision:
+
+| Researcher Process | Cognitive Function | QMatSuite Component | Memory Layer |
+|---|---|---|---|
+| **Working on a problem** | Working memory | Agent context window | Layer 1: Ephemeral |
+| **Lab notebook** | Current experiment state | `calculation.yaml` + `step.yaml` | Layer 2: Present-tense SSOT |
+| **Publication record** | Immutable record of what was done | `.provenance/` SQLite + CAS | Layer 3: Append-only ledger |
+| **Domain expertise** | "I know metals need MP smearing" | `~/.qmatsuite/knowledge/` | Layer 4: Evolvable knowledge |
+| **Forms intent** | Planning | `record_intent` before runs | Layer 3 |
+| **Records observations** | Note-taking | `record_insight` after results | Layer 3 + conditionally Layer 4 |
+| **Reads papers/docs/forums** | Knowledge acquisition | Knowledge packs (literature, docs, community) | Layer 4 |
+| **Traces claims to evidence** | Scientific rigor | `source_origin` on every insight | Layer 3 ↔ Layer 4 |
+| **Decides: iterate or checkpoint** | Experimental judgment | Iterate in-place vs. duplicate_calculation | Layer 2 |
+
+A postdoc with 5 years of VASP experience "just knows" convergence tricks for different system types. This knowledge was built through dozens of convergence failures and successes — individual experiments (Layer 3) distilled into expertise (Layer 4). QMatSuite makes this accumulation explicit, queryable, and shareable.
+
+**The key differentiator**: AiiDA has provenance but no learning. ExpeL/Reflexion have learning but no provenance. QMatSuite's provenance is *generative* — it is the raw material for knowledge distillation, not a terminal archival endpoint. This is the "Provenance × Context Engineering" contribution.
+
+### 2.2 Beyond Workflow Executors
 
 The dominant paradigm in AI-for-science treats agents as workflow executors. El Agente decomposes tasks into a 58-agent hierarchy. ChemGraph builds LangGraph DAGs with conditional edges. DREAMS implements a supervisor-worker pattern. All encode the research process as a fixed graph that the agent traverses.
 
 This is backwards. A competent researcher does not follow a flowchart. They hold a mental model of their system, form hypotheses, design experiments to test them, interpret results through domain knowledge, and revise their approach. The graph emerges from reasoning, not the other way around.
 
-QMatSuite's agent integration is built on a different model: **the agent is an intelligent researcher who happens to have a well-equipped laboratory.** The laboratory (QMatSuite) provides instruments (tools), reference materials (resources), and a lab notebook (SSOT files + provenance). The researcher (the LLM) provides judgment, planning, and interpretation. Neither component tries to do the other's job.
+QMatSuite provides instruments (tools), reference materials (resources), and a lab notebook (SSOT files + provenance). The agent provides judgment, planning, and interpretation. Neither component tries to do the other's job.
 
-### 2.2 The Cognitive Architecture Mapping
+### 2.3 The Cognitive Architecture Mapping
 
 The CoALA framework (Sumers et al., 2023) maps human cognition to agent architecture along three axes: memory, action space, and decision-making. QMatSuite's existing infrastructure maps naturally onto this framework — not as an afterthought, but because well-designed simulation infrastructure already mirrors how researchers think.
 
@@ -63,7 +85,7 @@ External actions decompose into five categories that map to MCP tool groups:
 | Execute | Run the experiment | Execution tools (`run_calculation`, `get_status`) |
 | Analyze | Read the results | Analysis tools (`get_results_summary`, `get_band_structure`) |
 
-### 2.3 The Scientific Method as Agent Workflow
+### 2.4 The Scientific Method as Agent Workflow
 
 The scientific method is not a rigid sequence but a recursive loop: hypothesize, experiment, observe, reflect. This maps directly to agent workflow design:
 
@@ -75,9 +97,27 @@ The scientific method is not a rigid sequence but a recursive loop: hypothesize,
 
 **Observation** maps to result analysis. The agent calls `get_results_summary` for a token-efficient overview, then drills into specifics with `get_band_structure` or `get_dos`. Structured returns mean the agent can reason numerically: "The bandgap is 0.67 eV, which is below the experimental value of 1.12 eV. This is the well-known DFT underestimation."
 
-**Reflection** maps to knowledge accumulation. The agent records intent before running (`record_intent`), interpretation after analyzing (`record_interpretation`), and synthesized insights when patterns emerge (`record_insight`). This persists across sessions, building a personal computational expertise database.
+**Reflection** maps to knowledge accumulation. The agent records intent before running (`record_intent`) and insight after analyzing results (`record_insight`). Every insight writes to provenance (Layer 3). Insights graded `finding` or higher are automatically promoted to the knowledge base (Layer 4). This persists across sessions, building a personal computational expertise database.
 
-### 2.4 Context Engineering as Cognitive Resource Management
+### 2.5 Knowledge Sources: The Researcher Analogy
+
+A researcher's knowledge doesn't come only from their own experiments:
+
+| Researcher Source | Knowledge Type | QMatSuite Equivalent | Trust Level |
+|---|---|---|---|
+| **Textbooks** | Foundational | Builtin knowledge (shipped) | Highest |
+| **Their own experiments** | First-hand | Local knowledge (user's calcs) | Highest |
+| **Papers they've read** | Peer-reviewed | Literature knowledge packs | High |
+| **Official documentation** | Authoritative | Docs knowledge packs | High |
+| **Stack Overflow / mailing lists** | Community | Mailing list knowledge packs | Medium |
+| **Tutorials and courses** | Pedagogical | Tutorial knowledge packs | Medium-High |
+| **What colleagues shared** | Collaborative | Community contributions | Variable |
+
+Each source has different trust levels and different provenance types. The agent, like a real researcher, weighs sources appropriately and can always trace a claim back to its origin.
+
+**The Traceable Knowledge Principle**: Every knowledge entry must be traceable to its source. Local insights point to provenance journal entries. Literature insights carry DOIs. Mailing list insights carry URLs. Documentation insights cite version and section. This is not metadata decoration — it is the scientific method applied to the knowledge base itself. When the agent is unsure whether a piece of knowledge applies to its current situation, it can follow the provenance chain to the original evidence and make its own judgment.
+
+### 2.6 Context Engineering as Cognitive Resource Management
 
 Anthropic's context engineering framework treats the context window as an attention budget. Every token competes for the transformer's n-squared pairwise computation. Manus's 100:1 input-to-output ratio — 50 tool calls per task with ruthless output filtering — demonstrates that token efficiency is not optimization but architecture.
 
@@ -89,7 +129,7 @@ QMatSuite cooperates with context management through three mechanisms:
 
 **Filesystem as externalized memory.** Following Manus's principle, QMatSuite's SSOT files (`calculation.yaml`, `step.yaml`) serve as externalized agent memory. The agent can always re-read the current state from disk rather than maintaining it in context. The `get_project_history` tool queries the provenance database rather than relying on conversation history. This means context compaction (Claude Code's conversation summarization) loses no critical state.
 
-### 2.5 Why This Framing Matters
+### 2.7 Why This Framing Matters
 
 The "intelligent researcher" model is not marketing. It has three concrete engineering consequences:
 
@@ -216,6 +256,77 @@ QMatSuite supports cross-engine workflows through artifact resolution — output
 - `execution/executor.py` — JobGraph executor respects cross-engine dependencies (sequential with `deps` list)
 
 **Integration test**: `tests/integration/test_qmcpack_diamond_workflow.py` (387 lines) exercises the full QE SCF → pw2qmcpack → QMCPACK VMC chain with real executables and validates energy output.
+
+### 3.5 Two Operational Modes
+
+QMatSuite supports two operational modes that mirror how researchers manage their work:
+
+**Iterate in place** — Modify parameters and rerun within the same calculation. The present-tense SSOT (YAML + raw/) is overwritten with each run. Provenance records every mutation with before/after diffs. Use when: debugging convergence, tweaking parameters, iterative refinement where intermediate states have no standalone value.
+
+**Create new calculation** — Start a fresh calculation (empty via `create_calculation`, or copied via `duplicate_calculation`). The original calculation's present-tense files are preserved intact. Use when: the current state has value worth preserving (converged result, good baseline, reference point for comparison).
+
+`duplicate_calculation` records the parent calculation ID in provenance (informational lineage, not structural dependency). The duplicate is fully independent — steps can be added, removed, or completely replaced.
+
+**The agent decides which mode is appropriate** based on whether the current state is worth freezing. This mirrors real research: a researcher iterates in a scratch directory for debugging, but creates a new named directory when they have a result worth keeping.
+
+This is NOT a new mechanism. It falls out naturally from existing tools — `set_parameters` + `run_calculation` on the same calc = iterate in place; `create_calculation` or `duplicate_calculation` = new calc. The two modes are a mental model, not new API surface.
+
+### 3.6 Three Ways to Scan Parameters
+
+The agent has three approaches to parameter exploration, each suited to different situations:
+
+**Approach 1: Native Scan (preferred for systematic exploration)**
+
+QMatSuite's built-in scan system (Constitution §10, ~830 lines). The agent sets parameter values as lists instead of scalars. The MCP layer translates list values to `@scan:` tokens and `parameter_scan` entries in step.yaml. Before execution, the system computes the Cartesian product and creates sub-runs within the same calculation folder.
+
+```
+1. set_parameters(calc, step=0, params={LDAUU: [3, 4, 5]})   # list → scan
+2. preview_scan(calc) → "1 scan dimension (LDAUU) × 3 values = 3 sub-runs"
+3. run_calculation(calc) → executes all sub-runs sequentially
+4. get_scan_results(calc) → returns scan table (param values → properties)
+```
+
+Advantages: single tool call to run, results naturally grouped in `raw/scan/<variant_key>/`, feeds directly into Parameter Space Explorer visualization, minimal context window usage. Each variant gets a deterministic key (`scan_<16hex>`) and can be individually skipped on re-run via fingerprint matching.
+
+**Safety requirement**: The agent must call `preview_scan` before executing any scan. Cartesian products grow fast — 3 parameters × 5 values each = 125 sub-runs. The preview shows the expansion and warns if the count exceeds a threshold (suggest: warning at >20 sub-runs). No existing preview API exists; this is a new MCP tool reading `collect_scan_dimensions()` + `expand_variants()`.
+
+**Approach 2: Separate Calculations (for independently valuable variants)**
+
+Agent creates multiple independent calculations via `create_calculation` or `duplicate_calculation`, each with different parameters. Each calculation is a standalone entity with its own YAML, provenance, and folder.
+
+```
+for U in [3, 4, 5]:
+    create_calculation(engine="vasp", workflow="scf", name=f"FeO_U{U}")
+    set_parameters(params={LDAUU: U})     # scalar → no scan
+    run_calculation()
+```
+
+Use when: each variant needs independent follow-up work (e.g., the U=5 calculation will later have bands/DOS steps added), or when variants differ in ways beyond parameter values (different workflows, different structures).
+
+**Approach 3: In-Place Iteration (for throwaway exploration)**
+
+Agent modifies parameters and reruns within the same calculation. Present-tense files are overwritten; provenance records the history.
+
+```
+set_parameters(params={mixing_beta: 0.3})
+run_calculation()    # didn't converge
+set_parameters(params={mixing_beta: 0.5})
+run_calculation()    # converged
+```
+
+Use when: intermediate states have no standalone value (debugging convergence, testing solver settings). Provenance preserves the history if needed later.
+
+**Agent decision logic:**
+
+```
+Is this a systematic parameter exploration with known parameter space?
+  YES → Is each variant likely to need independent follow-up work?
+    YES → Approach 2 (separate calcs)
+    NO  → Approach 1 (native scan) ← preferred
+  NO → Approach 3 (in-place iteration)
+```
+
+The agent decides which approach fits. All three are always available.
 
 ---
 
@@ -1192,12 +1303,48 @@ These tools are discovered via Tool Search when needed. They add zero tokens to 
 
 Note: `list_structures` is on-demand, not always-loaded. The agent usually knows the structure or fetches it; this doesn't need to be in initial context.
 
+#### Parameter Scan Tools (Native Scan System)
+
+QMatSuite has a **native parameter scan system** (Constitution §10, ~830 lines across 6 modules). Parameters can be set as scan tokens (`@scan:<scan_id>`) referencing explicit value lists in a top-level `parameter_scan` section. Before execution, the system computes the Cartesian product and runs all variants within a single calculation, archiving each variant's outputs to `raw/scan/<variant_key>/`.
+
+| Tool | Description | Maps To |
+|---|---|---|
+| `set_parameters` (scan mode) | When a parameter value is a list, MCP translates it to a `@scan:` token + `parameter_scan` entry. `set_parameters(params={INCAR: {LDAUU: [3,4,5]}})` → sets `LDAUU: "@scan:ldauu"` + `parameter_scan: {ldauu: {values: [3,4,5]}}`. Scalar values set normally. | `QVService.Calculation.update_step_params()` with `parameter_scan` key (already accepts it) |
+| `preview_scan` | Show scan expansion before executing: number of dimensions, values per dimension, total variant count. **Safety gate** — warns if Cartesian product exceeds threshold (>20 variants). | **New tool needed** — reads step.yaml, calls `collect_scan_dimensions()` + `expand_variants()` to count, returns summary without executing. No new QVService method needed (pure read). |
+| `get_scan_results` | After scan completes, return aggregated results table: variant parameter values → computed properties (energy, bandgap, forces, convergence). | **New tool needed** — reads `raw/scan/slots.json` for variant list, calls `OutputParser.parse()` on each variant's output files in `raw/scan/<variant_key>/`, assembles table. |
+
+**How the native scan system works** (code-verified):
+
+1. **Specification**: Parameters reference scan tokens in step.yaml. `ecutwfc: "@scan:scan001"` points to `parameter_scan.scan001.values: [30, 40, 50, 60]`. Values are explicit enumerations only — no linspace/logspace in persisted YAML (Constitution §10.3).
+
+2. **Expansion**: `scan_expansion.py:expand_variants()` computes the Cartesian product of all scan dimensions. Ordering is deterministic: earlier steps vary slower (outer loop), later steps vary faster (inner loop). Each variant gets a deterministic key: `scan_<16hex>` from SHA256 of canonical assignments.
+
+3. **Execution**: `executor.py:JobExecutor.execute()` detects scan dimensions and loops over variants sequentially. Each variant executes through the normal handler (engine-agnostic). MVP policy: stop on first variant failure.
+
+4. **Archiving**: `post_job.py:ArchiveToSlotAction` snapshots the raw directory before/after each variant, diffs to find new/modified files, and copies them to `raw/scan/<variant_key>/`. Bookkeeping in `raw/scan/slots.json`.
+
+5. **Skip logic**: Per-variant fingerprinting via `build_effective_engine_params_view()` resolves `@scan:` tokens to concrete values, strips `parameter_scan` section, computes SHA. Previously completed variants with matching SHA are skipped.
+
+6. **Engine support**: Fully engine-agnostic. Scan tokens live in step.yaml; resolution happens before engine-specific materialization. All 15 engines supported.
+
+**Key source files**: `calculation/scan_tokens.py` (33 lines), `calculation/scan_validation.py` (261 lines), `execution/scan_expansion.py` (293 lines), `execution/post_job.py` (238 lines), `execution/executor.py` (scan path ~100 lines), `calculation/hash_utils.py` (effective params view).
+
+**Current limitations**:
+- Variant execution is sequential (no parallel variant execution within a scan)
+- `_execute_job_with_variant()` has a TODO for fully wiring variant assignments into the materialization path
+- No existing `preview_scan` or `get_scan_results` API — these need to be built as MCP tools
+- No existing `get_results_summary` aggregation across scan variants — each variant must be queried individually from its archived outputs
+
 #### Batch Tools
 
 | Tool | Description | Maps To |
 |---|---|---|
-| `submit_batch` | Submit multiple independent calculations in parallel. Creates and runs each as a separate job. Useful for parameter scans, convergence tests, screening. Input: array of calc specs. Output: array of {calc_ulid, job_id}. Internally loops over `create_calculation` + `run_calculation`. | MCP-side orchestration over `QVService.Calculation.create()` + `QVService.Run.run_calculation()` |
+| `submit_batch` | Submit multiple **independent calculations** in parallel. Each is a separate calculation entity with its own YAML, provenance, and folder. For parallel execution of structurally different calcs (different engines, workflows, structures). | MCP-side orchestration over `QVService.Calculation.create()` + `QVService.Run.run_calculation()` |
 | `get_batch_status` | Poll status of multiple jobs at once. Returns status array. | MCP-side loop over `QVService.Run.get_job_status()` |
+
+**Native scan vs. `submit_batch`** — these are complementary, not redundant:
+- **Native scan**: One calculation, multiple parameter values, sub-folders within same calc. For systematic parameter exploration with known parameter space.
+- **`submit_batch`**: Multiple independent calculations submitted together. For parallel execution of unrelated or structurally different calcs (different engines, different structures, different workflows).
 
 #### Parameter Tuning Tools
 
@@ -1213,16 +1360,16 @@ Note: `list_structures` is on-demand, not always-loaded. The agent usually knows
 | `get_project_history` | Query past calculations in the current project (timeline of runs, edits, pins) | `QVService.History.get_timeline()` + `list_run_history()` (already implemented, 5 methods) |
 | `get_provenance` | Full lineage of a calculation: run details, parameter snapshot, step results | `QVService.History.get_run_revision()` (already implemented) |
 | `annotate_calculation` | Add researcher notes to a calculation | Journal entry creation (needs new write API) |
-| `record_intent` | Record WHY a calculation is being run (before execution). Appends to provenance journal. | `QVService.History.add_journal_entry(calc_ulid, "intent", text)` (needs new method; Journal infra at `core/journal.py` exists) |
-| `record_interpretation` | Record WHAT the agent concluded (after analysis). Appends to provenance journal. | `QVService.History.add_journal_entry(calc_ulid, "interpretation", text)` (needs new method) |
+| `record_intent` | Record WHY a group of calculations is being run (before execution). Returns `intent_id` for linking runs. Optionally links `calc_ulids` retroactively. | `QVService.History.add_journal_entry(calc_ulid, "intent", text)` (needs new method; Journal infra at `core/journal.py` exists) |
 
 #### Knowledge Tools
 
+Two agent-authored entry types only — **intent** (before) and **insight** (after):
+
 | Tool | Description | Maps To |
 |---|---|---|
-| `search_knowledge` | Search accumulated insights by natural language query, material, engine, workflow, minimum grade, and confidence. Returns ranked results from all sources (builtin, local, community). Input: `{query_text?, material?, engine?, workflow?, grade_min?, source?, confidence_min?, limit?}`. | `~/.qmatsuite/knowledge.db` FTS5 query with scope filtering |
-| `record_insight` | Record a distilled insight with structured grade, scope, and provenance links. Input: `{grade, scope: {material, engine, workflow}, content, confidence, tags?, provenance_refs?}`. | `~/.qmatsuite/knowledge.db` insert |
-| `update_insight` | Update content/confidence or supersede an existing insight. Sets `superseded_by` on old entry, creates new entry. | `~/.qmatsuite/knowledge.db` update + insert |
+| `search_knowledge` | Search accumulated insights by natural language, engine, workflow, system_type, method, minimum grade, confidence. Returns ranked results from all enabled knowledge packs. Input: `{query_text?, engine?, workflow?, system_type?, method?, grade_min?, source_type?, confidence_min?, limit?}`. | `~/.qmatsuite/knowledge/` multi-DB FTS5 query with scope filtering |
+| `record_insight` | Record what the agent learned from results. ALWAYS writes to provenance (Layer 3). If grade ≥ finding, ALSO promotes to knowledge base (Layer 4). Input: `{run_refs: [str], content: str, grade: bookkeeping\|observation\|finding\|principle, scope?: {engine?, workflow?, system_type?, method?, extra?}, tags?: [str], intent_id?: str}`. Superseding: to update an old insight, record a new one with higher grade — the old entry gets `superseded_by` automatically. | Provenance journal insert + conditional `~/.qmatsuite/knowledge/local.db` insert |
 
 ### 5.5 API Surface Assessment and Gaps
 
@@ -1252,15 +1399,18 @@ Code review reveals that the existing QVService and infrastructure are more matu
 | **30 DTOs** across 9 files | Fail-closed serialization, reference pattern, metadata normalization | `api/types/` |
 | **Multi-engine artifact resolution** | Cross-engine data flow (QE→W90, QE→QMCPACK, QE→Yambo) | `drivers/*/artifact_resolver.py` |
 | **OperationContext** | 20+ operation types for all SSOT mutations | `provenance/opctx.py` |
+| **Native parameter scan** (~830 lines) | `@scan:` tokens, Cartesian expansion, per-variant archiving, skip logic | `calculation/scan_tokens.py`, `scan_validation.py`, `execution/scan_expansion.py`, `execution/post_job.py` |
 
 #### Gaps That Need New QVService Methods
 
 | MCP Tool | Required QVService Capability | Gap Description |
 |---|---|---|
 | `inspect_calculation(dry_run=true)` | Materialize input files to temp dir without executing | **New method needed** — `QVService.Calculation.materialize_preview()` wrapping `write_engine_inputs()` |
-| `record_intent` / `record_interpretation` | Write agent-authored journal entries to provenance | **New method needed** — `QVService.History.add_journal_entry(calc_ulid, entry_type, text)`. The Journal infrastructure (`core/journal.py`, 369 lines) provides append-only storage; the gap is exposing a typed write API. |
-| `search_knowledge` / `record_insight` | Knowledge Base CRUD | **New module needed** — `knowledge/` package with SQLite+FTS5 store. Phase 1: read builtin entries. Phase 3: full CRUD + search. |
+| `record_intent` / `record_insight` | Write agent-authored journal entries to provenance + conditionally promote to knowledge | **New method needed** — `QVService.History.add_journal_entry(calc_ulid, entry_type, text)`. The Journal infrastructure (`core/journal.py`, 369 lines) provides append-only storage; the gap is exposing a typed write API. `record_insight` with grade ≥ finding also writes to knowledge DB. |
+| `search_knowledge` | Read-only knowledge search (Phase 1: builtin only) | **New module needed** — `knowledge/` package with multi-DB SQLite+FTS5 store. Phase 1: read `builtin.db`. Phase 3: full write to `local.db` + multi-pack search. |
 | Error `suggested_fixes` | Knowledge-backed error recovery suggestions | **Enhancement needed** — MCP layer enriches existing `ErrorDTO` + `*Digest` with `suggested_fixes` from Knowledge Base. No kernel changes needed. |
+| `preview_scan` | Show scan expansion (dimensions, values, total variants) before executing | **New MCP tool needed** — pure read using `collect_scan_dimensions()` + `expand_variants()`. No new QVService method needed. |
+| `get_scan_results` | Aggregated results table across scan variants | **New MCP tool needed** — reads `raw/scan/slots.json` + parses each variant's outputs via `OutputParser`. Needs new QVService method or MCP-side assembly. |
 
 Per Section 3.2 (MCP as Equal Frontend), these capabilities should be added to `QVService`, not hacked around in the MCP layer. Both methods benefit all frontends: the GUI can use `materialize_preview` for input file inspection, and CLI can use journal entries for scripted workflows.
 
@@ -1397,7 +1547,7 @@ QMatSuite's SSOT files naturally serve as externalized agent memory:
 | Current calculation state | `calculation.yaml` | `inspect_calculation` |
 | Detailed step parameters | `step.yaml` (under `raw/`) | `inspect_calculation`, `set_parameters` |
 | Run history across calculations | `.provenance/` SQLite | `get_project_history` |
-| Accumulated insights | `~/.qmatsuite/knowledge.db` | `search_knowledge`, `record_insight` |
+| Accumulated insights | `~/.qmatsuite/knowledge/*.db` | `search_knowledge`, `record_insight` |
 
 This means context compaction (Claude Code's conversation summarization when approaching context limits) loses no critical state. The agent can always re-query the filesystem for current state. The conversation history is for reasoning traces; the SSOT files are for ground truth.
 
@@ -1460,242 +1610,310 @@ Layer 3 is the most mature layer — it already exists as a fully implemented, g
 
 | Category | Content | Source |
 |---|---|---|
-| Agent intent | WHY a calculation was submitted | Via `record_intent` tool (needs new journal write API) |
+| Agent intent | WHY a group of calculations is being run | Via `record_intent` tool (needs new journal write API) |
 | Operation events | Every SSOT mutation with before/after diff | Auto-recorded by `save_yaml_doc()` hook |
 | Run metadata | Start time, parameter snapshot (CAS Tier-0), engine version | Auto-recorded by Runner on `run_calculation` |
 | Step results | Per-step status, timing, exit code, digest SHA | Auto-recorded by Runner on step completion |
 | Result digest | Energy, convergence, forces, properties | Auto-recorded by OutputParser on completion |
 | Analysis pins | Plots and JSON data linked to specific runs | Via `pin_analysis()` |
-| Agent interpretation | WHAT the agent concluded from the results | Via `record_interpretation` tool (needs new journal write API) |
+| Agent insight (ALL grades) | WHAT the agent concluded from the results | Via `record_insight` tool → provenance journal. Grade ≥ finding also promoted to knowledge (Layer 4). |
 
 **Agent access**: `get_project_history`, `get_provenance`
 
-**Critical design point**: Intent is NOT part of present-tense SSOT. Presets encode intent structurally (e.g., "precision=high" IS the intent). But the textual rationale ("testing U=5 because literature suggests 4-6 eV range") lives ONLY in provenance.
+**Critical design point**: ALL insights — every grade from bookkeeping to principle — are written to provenance (Layer 3). The knowledge base (Layer 4) is a promoted subset containing only grade ≥ finding entries. This means provenance is the complete audit trail; knowledge is the curated, searchable distillation.
 
-**Gap for MCP**: The existing provenance system records *system events* (operation diffs, run metadata, step results) automatically. What's missing is the ability to record *agent-authored entries* — intent and interpretation. This requires a new `QVService.History.add_journal_entry(calc_ulid, entry_type, text)` method. The Journal infrastructure (`core/journal.py`) provides the append-only storage mechanism; the gap is exposing a write API through QVService.
+**Bookkeeping is system-generated**: The system auto-generates bookkeeping-grade entries from calculation digests. These are NOT agent-authored — they are mechanical records. The agent's minimum contribution is observation-grade (noticing something beyond raw numbers):
+- System writes: `"Si PBE SCF converged. E=-310.42 eV, gap=0.67 eV, 9 iterations, 45s."` (bookkeeping, auto)
+- Agent writes: `"Si gap of 0.67 eV is the expected PBE underestimate vs exp 1.12 eV."` (observation, agent-authored)
+
+**Intent is NOT part of present-tense SSOT.** Presets encode intent structurally (e.g., "precision=high" IS the intent). But the textual rationale ("testing U=5 because literature suggests 4-6 eV range") lives ONLY in provenance.
+
+**Gap for MCP**: The existing provenance system records *system events* (operation diffs, run metadata, step results) automatically. What's missing is the ability to record *agent-authored entries* — intent and insight. This requires a new `QVService.History.add_journal_entry(calc_ulid, entry_type, text)` method. The Journal infrastructure (`core/journal.py`) provides the append-only storage mechanism; the gap is exposing a write API through QVService.
 
 ### 7.4 Layer 4: Knowledge Base (Evolvable Best-Knowledge, Multi-Scope)
 
-**Storage**: `~/.qmatsuite/knowledge.db` (SQLite with FTS5, user-global, not project-specific)
+**Storage**: `~/.qmatsuite/knowledge/` directory — multiple SQLite databases, each a knowledge pack
 
 **Semantics**: "What have we LEARNED?" Distilled insights from accumulated experience.
 
-**Key property**: Unlike provenance, this IS mutable — insights can be updated, superseded, deduplicated. This is the agent's "best current understanding," not an audit trail.
+**Key property**: Knowledge entries are mirrors of provenance entries (same ULID) with grade ≥ finding. They have the same ID as the provenance entry they were promoted from. Unlike provenance, knowledge IS mutable — insights can be superseded, deprecated, or merged. This is the agent's "best current understanding," not an audit trail.
 
 #### The Insight Structure
 
 Every knowledge entry is a structured insight with grade, scope, source, and provenance links:
 
 ```yaml
-id: <ULID>                           # Unique identifier
+id: <ULID>                           # Same as provenance journal entry ID (for local insights)
 grade: bookkeeping | observation | finding | principle
 scope:
-  material: "Si" | "GaAs" | "*"      # What material family
-  engine: "QE" | "VASP" | "*"        # What engine
-  workflow: "scf" | "bands" | "*"    # What workflow type
+  engine: "QE" | "VASP" | "*"       # What engine
+  workflow: "scf" | "bands" | "*"   # What workflow type
+  system_type: "metal" | "semiconductor" | "molecule" | "*"  # Physics classification
+  method: "dft" | "dft+u" | "hse" | "gw" | "*"              # Method-level knowledge
+  extra: {}                          # JSON: material, property, basis_set, etc.
 content: "natural language description"
 confidence: low | medium | high       # Based on evidence count and consistency
-source: local | literature | community | builtin
-provenance_refs: [list of Layer 3 entry IDs]
+source_type: local | builtin | literature | mailinglist | docs | tutorial | community
+source_pack_id: "literature_qe_2026" | null   # Which knowledge pack
+source_origin: "<journal_entry_id>" | "doi:10.1103/..." | "https://..." | null
+status: active | superseded | deprecated | merged
+superseded_by: null | <ULID>          # Replaced by newer insight
+deprecated_reason: null | "Fixed in QE 7.4"  # No longer applicable
+merged_into: null | <ULID>           # Combined with other insights
 created_by: agent | user | paper_doi | system
 tags: [list of strings]
+upvotes: 0                            # For community voting (future)
 created_at: <ISO datetime>
 updated_at: <ISO datetime>
-upvotes: 0                            # For community voting (future)
-superseded_by: null | <ULID>          # If updated by newer knowledge
 ```
 
 **Grade semantics** — four levels of epistemic commitment:
 
 | Grade | Semantics | Example | Typical Source |
 |---|---|---|---|
-| **bookkeeping** | Pure record, no insight | "Si SCF with ecutwfc=60 converged in 12 steps" | Auto-digest after every calculation |
+| **bookkeeping** | Pure record, no insight | "Si SCF with ecutwfc=60 converged in 12 steps" | System auto-digest (NOT agent-authored) |
 | **observation** | Data without conclusion | "Increasing ecutwfc from 40→60 changed Si energy by 3 meV/atom" | Agent comparing two calculations |
 | **finding** | Conclusion with evidence | "Si ecutwfc converges to <1 meV/atom above 50 Ry" | Agent analyzing convergence scan |
-| **principle** | Cross-material/cross-engine general rule | "III-V semiconductors with PBE+SOC underestimate band gap by 30-40%" | Literature, accumulated findings |
+| **principle** | Cross-system general rule | "III-V semiconductors with PBE+SOC underestimate band gap by 30-40%" | Literature, accumulated findings |
 
-Grades form a knowledge hierarchy. Bookkeeping entries are raw data. Observations notice patterns. Findings draw conclusions. Principles generalize across systems. A real researcher progresses up this hierarchy as expertise accumulates — and so does the agent.
+Grades form a knowledge hierarchy. Bookkeeping entries are raw data (auto-generated, not agent-authored). Observations notice patterns (agent's minimum contribution). Findings draw conclusions. Principles generalize across systems. A real researcher progresses up this hierarchy as expertise accumulates — and so does the agent.
 
-**Scope** determines when an insight is relevant. An insight with `{material: "Si", engine: "QE", workflow: "scf"}` is surfaced when the agent configures a Si SCF calculation with QE. An insight with `{material: "*", engine: "VASP", workflow: "*"}` is surfaced for any VASP calculation. The wildcard `"*"` means "applies broadly."
+**Only grade ≥ finding entries are promoted to the knowledge base.** Bookkeeping and observation entries live exclusively in provenance (Layer 3). The knowledge base contains only findings and principles — the distilled, searchable wisdom.
 
-**Source** tracks provenance of the knowledge itself:
+**Scope** — 4 core indexed columns (cover 80% of search needs) + 1 flexible JSON column:
 
-| Source | Meaning | Trust Level |
+| Column | Purpose | Why Core |
 |---|---|---|
-| `local` | From user's own calculations | Highest (first-hand evidence) |
-| `builtin` | Shipped with QMatSuite (error recovery strategies, best practices) | High (curated by developers) |
-| `literature` | Extracted from papers (future: citation analysis) | High (peer-reviewed) |
-| `community` | Contributed by other researchers (future) | Variable (voted/curated) |
+| `scope_engine` | Engine-specific knowledge | Almost all DFT knowledge is engine-specific (QE param names ≠ VASP) |
+| `scope_workflow` | Workflow-specific knowledge | scf/bands/dos/relax/phonon determines which params are relevant |
+| `scope_system_type` | Physics classification | metal/semiconductor/insulator/molecule/surface/2d — most important for parameter choice ("metals need MP smearing") |
+| `scope_method` | Method-level knowledge | dft/dft+u/hse/gw/mp2/ccsd(t)/md — "GW needs dense k-mesh" is method-specific, not engine-specific |
+| `scope_extra` (JSON) | Everything else | material, property, basis_set, pseudopotential_family, or any dimension the agent finds relevant |
+
+**Source** — three fields for full traceability:
+
+| Field | Purpose | Examples |
+|---|---|---|
+| `source_type` | Category of knowledge origin | `local`, `builtin`, `literature`, `mailinglist`, `docs`, `tutorial`, `community` |
+| `source_pack_id` | Which knowledge pack | `"literature_qe_2026"`, `"mailinglist_vasp"`, `null` (for local) |
+| `source_origin` | Traceable pointer to original evidence | Journal entry ID, DOI, URL, "QE docs v7.4 §3.2" |
+
+**The traceability rule: `source_origin` is NEVER null for grade ≥ observation.** Bookkeeping (auto-generated) gets a provenance journal ID automatically. Agent-authored insights get the provenance journal ID of the `record_insight` call. Literature entries get DOIs. Mailing list entries get URLs. Doc entries get doc version + section.
+
+**Status** — knowledge evolves:
+
+| Status | Meaning | When Used |
+|---|---|---|
+| `active` | Current best understanding | Default |
+| `superseded` | Replaced by newer insight with better evidence | Agent records new insight that contradicts old one |
+| `deprecated` | No longer applicable | Engine version change, parameter renamed/removed |
+| `merged` | Combined with other insights into higher-grade entry | Multiple observations consolidated into a finding |
+
+Old entries aren't deleted — they're marked. This mirrors how scientific understanding progresses: old papers aren't retracted (usually), they're superseded by newer work.
 
 #### Schema
 
 ```sql
 CREATE TABLE insights (
-    id TEXT PRIMARY KEY,                -- ULID
+    id TEXT PRIMARY KEY,                -- ULID (same as provenance journal entry ID for local insights)
     grade TEXT NOT NULL,                -- bookkeeping, observation, finding, principle
-    scope_material TEXT DEFAULT '*',    -- Material family or '*'
-    scope_engine TEXT DEFAULT '*',      -- Engine name or '*'
-    scope_workflow TEXT DEFAULT '*',    -- Workflow type or '*'
-    content TEXT NOT NULL,              -- Natural language description
-    confidence TEXT DEFAULT 'medium',   -- low, medium, high
-    source TEXT NOT NULL DEFAULT 'local', -- local, builtin, literature, community
-    provenance_refs TEXT,               -- JSON array of Layer 3 entry IDs
-    created_by TEXT NOT NULL,           -- agent, user, paper_doi, system
-    tags TEXT,                          -- JSON array of string tags
-    upvotes INTEGER DEFAULT 0,         -- Community voting (future)
-    superseded_by TEXT,                 -- ULID of superseding insight
+    -- 4 core scope columns (indexed, cover 80% of queries)
+    scope_engine TEXT DEFAULT '*',
+    scope_workflow TEXT DEFAULT '*',
+    scope_system_type TEXT DEFAULT '*',
+    scope_method TEXT DEFAULT '*',
+    -- Flexible scope (JSON, covers remaining 20%)
+    scope_extra TEXT DEFAULT '{}',
+    content TEXT NOT NULL,
+    confidence TEXT DEFAULT 'medium',
+    -- Source traceability (3 fields)
+    source_type TEXT NOT NULL DEFAULT 'local',
+    source_pack_id TEXT,
+    source_origin TEXT,                 -- NEVER null for grade >= observation
+    -- Provenance link
+    provenance_ref TEXT,                -- SQLite journal entry ID (permanent, never CAS hash)
+    created_by TEXT NOT NULL,
+    tags TEXT,
+    -- Lifecycle
+    status TEXT DEFAULT 'active',       -- active, superseded, deprecated, merged
+    superseded_by TEXT,
+    deprecated_reason TEXT,
+    merged_into TEXT,
+    upvotes INTEGER DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (superseded_by) REFERENCES insights(id)
 );
 
 CREATE VIRTUAL TABLE insights_fts USING fts5(
-    content, tags, scope_material, scope_engine,
+    content, tags, scope_engine, scope_system_type,
     content='insights', content_rowid='rowid'
 );
 
 CREATE INDEX idx_insights_grade ON insights(grade);
-CREATE INDEX idx_insights_scope ON insights(scope_material, scope_engine, scope_workflow);
-CREATE INDEX idx_insights_source ON insights(source);
+CREATE INDEX idx_insights_scope ON insights(scope_engine, scope_workflow, scope_system_type, scope_method);
+CREATE INDEX idx_insights_source ON insights(source_type);
+CREATE INDEX idx_insights_status ON insights(status);
 CREATE INDEX idx_insights_confidence ON insights(confidence);
-CREATE INDEX idx_insights_superseded ON insights(superseded_by);
 ```
 
-**Deduplication**: When a new insight contradicts an existing one, the old insight is superseded (marked with `superseded_by` reference), not deleted. History is preserved. This mirrors how scientific understanding evolves — old findings aren't erased, they're refined.
+#### Multi-DB Knowledge Architecture
 
-**Agent access**: `search_knowledge`, `record_insight`, `update_insight`
+Knowledge is stored across multiple SQLite files, each a self-contained knowledge pack:
 
-### 7.5 The Distillation Pipeline: Four Triggers
+| Pack | File | Distribution | Trust |
+|---|---|---|---|
+| builtin | `~/.qmatsuite/knowledge/builtin.db` | Ships with QMatSuite | Highest |
+| local | `~/.qmatsuite/knowledge/local.db` | User's own, never distributed | Highest |
+| literature_qe | `~/.qmatsuite/knowledge/packs/literature_qe_2026.db` | Downloadable | High |
+| mailinglist_qe | `~/.qmatsuite/knowledge/packs/mailinglist_qe.db` | Downloadable | Medium |
+| docs_vasp | `~/.qmatsuite/knowledge/packs/docs_vasp_6.4.db` | Downloadable | High |
+| community | `~/.qmatsuite/knowledge/packs/community_v1.db` | Download + contribute | Variable |
 
-Knowledge doesn't just accumulate — it distills. Raw experience becomes organized understanding through four distinct triggers:
+`search_knowledge` searches across all enabled packs, weighting results by `source_type` trust level. Each pack has metadata (source_type, version, engine_coverage, entry_count, last_updated). All packs share the same schema — adding a new pack is just dropping a `.db` file into `packs/`.
+
+**Phase 1 reality**: Only two files exist: `builtin.db` (shipped, read-only) and `local.db` (user's). The multi-DB architecture is the DESIGN that makes future packs seamless — same schema, same search interface, just more `.db` files.
+
+**Future infrastructure (Phase 3-4)**: Pack registry (list available packs, versions), download/update mechanism, pack enable/disable per user preference, upload mechanism for community contributions (provenance stripped for privacy, scope/content/confidence preserved).
+
+**Agent access**: `search_knowledge`, `record_insight`
+
+### 7.5 The Distillation Pipeline: Provenance → Knowledge Promotion
+
+Knowledge distills from provenance through a single mechanism: **an insight with grade ≥ finding automatically promotes to the knowledge base.** There is no separate "distillation step" — the act of recording a finding IS the distillation.
 
 ```
-Layer 3 (Provenance)                    Layer 4 (Knowledge)
+Layer 3 (Provenance — ALL insights)     Layer 4 (Knowledge — findings + principles only)
 ┌──────────────────────┐               ┌──────────────────────┐
-│ Run records           │──[auto]──────>│ bookkeeping entries  │
-│ Parameter snapshots   │               │ (every calc)         │
-│ Result digests        │               │                      │
-│ Intent/interpretation │──[agent]─────>│ observations         │
-│                       │               │ findings             │
-│                       │──[review]────>│ principles           │
+│ System: bookkeeping   │               │                      │
+│   (auto-digest)       │               │                      │
+│ Agent: observation    │               │                      │
+│   (noticed something) │               │                      │
+│ Agent: finding ───────│──[auto-promote]─>│ findings            │
+│   (drew conclusion)   │               │                      │
+│ Agent: principle ─────│──[auto-promote]─>│ principles          │
+│   (generalized)       │               │                      │
+│ Intent records        │               │                      │
 └──────────────────────┘               └──────────────────────┘
 ```
 
-#### Trigger 1: Auto-Digest (Every Calculation Completion)
+#### Four Triggers That Produce Insights
 
-When a calculation completes, QMatSuite generates a structured digest (converged? energy? gap? forces? timing?). The agent reads this digest and SHOULD write at least one bookkeeping-level insight. This happens naturally in the INTERPRET step of the research cycle (Section 8).
-
-Example auto-generated bookkeeping:
+**Trigger 1: Auto-Digest (Every Calculation Completion).** The system auto-generates a bookkeeping-grade entry from the calculation digest. This is mechanical — no agent reasoning involved:
 ```
-grade: bookkeeping
-scope: {material: "Si", engine: "QE", workflow: "scf"}
+grade: bookkeeping, source_type: local, created_by: system
 content: "Si PBE SCF with ecutwfc=40 Ry, 8x8x8 k-mesh converged in 9 iterations.
           Energy: -310.42 eV. Bandgap: 0.67 eV. Wall time: 45s."
-source: local
-provenance_refs: ["01KC38MFJZ..."]
+```
+Stays in provenance only. Never promoted to knowledge.
+
+**Trigger 2: Agent Observation (After Analyzing Results).** The agent calls `record_insight` with grade=observation. This is the agent's minimum contribution — noticing something beyond raw numbers:
+```
+grade: observation, source_type: local, created_by: agent
+content: "Si gap of 0.67 eV is the expected PBE underestimate vs exp 1.12 eV."
+```
+Stays in provenance only. Not yet promoted to knowledge.
+
+**Trigger 3: Agent Finding/Principle (Pattern Recognition).** The agent calls `record_insight` with grade=finding or principle. **This automatically promotes to the knowledge base:**
+```
+grade: finding, source_type: local, created_by: agent
+content: "Si ecutwfc converges to <1 meV/atom above 50 Ry with PBE."
+scope: {engine: "QE", workflow: "scf", system_type: "semiconductor", method: "dft"}
+```
+Written to both provenance AND knowledge. Same ULID in both.
+
+**Trigger 4: User Pin / Review Session.** The user explicitly marks something important ("remember that U=5 works for FeO") or requests "summarize what we've learned." The agent converts to a structured insight with grade ≥ finding, which auto-promotes. Review sessions produce both a document (markdown) AND knowledge entries.
+
+#### Accumulation Review (Threshold Suggestion)
+
+When a scope (e.g., `{engine: "QE", system_type: "semiconductor"}`) accumulates N observation entries (e.g., N=5), the system suggests a review via `context_hint`:
+
+```
+System: "You have 7 observations about semiconductor/QE convergence. Consider
+         recording a finding to summarize what you've learned."
 ```
 
-#### Trigger 2: User Pin ("Remember This")
-
-The user explicitly marks something important: "remember that U=5 works for FeO" or "pin this finding." The agent converts the statement to a structured insight with grade ≥ finding. The pin action itself is recorded as a provenance event. (The existing `pin_analysis()` API at `provenance/pins.py` provides the infrastructure; knowledge pins extend this pattern.)
-
-#### Trigger 3: Accumulation Review (Threshold)
-
-When a scope (e.g., `{material: "Si", engine: "QE"}`) accumulates N bookkeeping/observation entries (e.g., N=5), the system suggests a review. The agent consolidates multiple observations into findings or principles:
-
-```
-System: "You have 7 observations about Si/QE convergence. Would you like me to
-         summarize what we've learned?"
-Agent: Queries provenance for all Si/QE runs → synthesizes patterns →
-       writes finding: "Si ecutwfc converges to <1 meV/atom above 50 Ry"
-```
-
-#### Trigger 4: Review Session (User-Initiated)
-
-The user requests "summarize what we've learned" or "generate a report." The agent:
-1. Queries knowledge base for the relevant scope
-2. Queries provenance for supporting evidence
-3. Produces both a document (markdown) AND knowledge entries
-4. Records the review session as a provenance event
-
-This mirrors how a researcher writes a lab report at the end of a project — the act of writing is itself a learning exercise that crystallizes understanding.
+The agent consolidates multiple observations into findings or principles. This is how bookkeeping/observation entries in provenance eventually become searchable knowledge.
 
 ### 7.6 Knowledge as Extensible Community Library
 
-The Knowledge Base is designed as a **searchable, contributable, extensible library** — not just a local cache.
+The Knowledge Base is designed as a **searchable, contributable, extensible library** — not just a local cache. The multi-DB architecture (Section 7.4) makes this possible: each knowledge source is a self-contained `.db` file with the same schema.
 
-#### Four Knowledge Sources
+#### Knowledge Sources by Phase
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                  Knowledge Base                      │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐          │
-│  │  Builtin  │  │  Local   │  │Literature│  ┌──────┐│
-│  │ (shipped) │  │ (user's  │  │ (papers) │  │Commty││
-│  │           │  │  calcs)  │  │          │  │      ││
-│  └──────────┘  └──────────┘  └──────────┘  └──────┘│
-│       Phase 1       Phase 1      Phase 3+   Phase 4 │
-└─────────────────────────────────────────────────────┘
+~/.qmatsuite/knowledge/
+├── builtin.db                          # Phase 1 — shipped with QMatSuite
+├── local.db                            # Phase 1 — user's own insights
+└── packs/                              # Phase 3+
+    ├── literature_qe_2026.db           # Extracted from QE papers
+    ├── literature_vasp_2026.db         # Extracted from VASP papers
+    ├── mailinglist_qe.db               # QE mailing list wisdom
+    ├── docs_vasp_6.4.db                # VASP manual, structured
+    └── community_v1.db                 # Community contributions
 ```
 
-**Builtin knowledge** (Phase 1): QMatSuite ships with a "starter pack" of curated principles. These are the error recovery suggestions, common best practices, and parameter guidelines that experienced practitioners know. Examples:
+**Builtin knowledge** (Phase 1, `builtin.db`): QMatSuite ships with a starter pack of curated principles. These are the error recovery suggestions, common best practices, and parameter guidelines that experienced practitioners know. Examples:
 
 ```yaml
 - grade: principle
-  scope: {material: "*", engine: "VASP", workflow: "scf"}
+  scope: {engine: "VASP", workflow: "scf", system_type: "metal", method: "dft"}
   content: "For metallic systems, use ISMEAR=1 (Methfessel-Paxton) with SIGMA=0.1-0.2.
             Gaussian smearing (ISMEAR=0) converges 2-3x slower for metals."
-  source: builtin
+  source_type: builtin
+  source_origin: "VASP manual §6.35"
   confidence: high
 
 - grade: principle
-  scope: {material: "*", engine: "*", workflow: "scf"}
+  scope: {engine: "*", workflow: "scf", system_type: "*", method: "dft"}
   content: "When SCF oscillates without converging, reduce mixing parameter by 50%.
             For QE: mixing_beta 0.7→0.3. For VASP: AMIX 0.4→0.2."
-  source: builtin
+  source_type: builtin
+  source_origin: "Community best practice, multiple mailing list reports"
   confidence: high
 ```
 
-**Local knowledge** (Phase 1): From the user's own calculations. Auto-generated bookkeeping plus agent-authored observations, findings, and principles.
+**Local knowledge** (Phase 1, `local.db`): From the user's own calculations. Agent-authored findings and principles promoted from provenance. Each entry's `source_origin` points to the provenance journal entry ID.
 
-**Literature knowledge** (Phase 3+): Extracted from paper analysis. Future: QE/VASP citation analysis projects could extract parameter statistics from thousands of published papers, creating a massive knowledge base of "what parameters does the community actually use for this system type?"
+**Literature knowledge** (Phase 3+): Extracted from paper analysis. QE/VASP citation analysis projects could extract parameter statistics from thousands of published papers. Each entry carries a DOI as `source_origin`.
 
 **Community knowledge** (Phase 4): Other researchers contribute findings. Distribution model:
 - Community packs downloadable (like a package manager for computational knowledge)
-- Users can upload their finding-and-above entries (provenance stripped to protect privacy, but scope/content/confidence preserved)
+- Users upload finding-and-above entries (provenance stripped for privacy, scope/content/confidence preserved)
 - Voting/curation mechanism for quality control
-- Moderated by domain experts
+- `source_origin` carries the original contributor's anonymized provenance pointer
 
 #### Search Interface
 
 ```
 search_knowledge(
   query_text?: str,          # Natural language FTS5 search
-  material?: str,            # Scope filter
-  engine?: str,              # Scope filter
-  workflow?: str,            # Scope filter
-  grade_min?: str,           # Minimum grade (e.g., "finding" excludes bookkeeping)
-  source?: str,              # Source filter
+  engine?: str,              # Scope filter (core column)
+  workflow?: str,            # Scope filter (core column)
+  system_type?: str,         # Scope filter (core column)
+  method?: str,              # Scope filter (core column)
+  grade_min?: str,           # Minimum grade (e.g., "finding" excludes bookkeeping/observation)
+  source_type?: str,         # Source filter
   confidence_min?: str,      # Minimum confidence
   limit?: int = 10
 ) → list[Insight]
 ```
 
-Results are ranked by `confidence × FTS5_relevance`, with `grade` as a secondary sort (principles first).
+Results are ranked by `confidence × FTS5_relevance × source_trust_weight`, with `grade` as a secondary sort (principles first). Trust weights: builtin=1.0, local=1.0, literature=0.9, docs=0.85, mailinglist=0.7, community=0.6.
 
 ### 7.7 Error System ↔ Knowledge System Connection
 
 **Key insight: Error recovery suggestions ARE knowledge entries.**
 
-The structured error suggestions that QMatSuite provides (Section 10) are `{source: "builtin", grade: "principle"}` knowledge entries. This connection has three consequences:
+The structured error suggestions that QMatSuite provides (Section 10) are `{source_type: "builtin", grade: "principle"}` knowledge entries stored in `builtin.db`. This connection has three consequences:
 
-1. **The error system is a downstream consumer of the Knowledge Base.** When a calculation fails with SCF_NOT_CONVERGED, the MCP error return's `suggested_fixes` are populated by querying the knowledge base for `{scope: {engine: X, workflow: "scf"}, grade: "principle", tags: ["error_recovery", "scf_convergence"]}`.
+1. **The error system is a downstream consumer of the Knowledge Base.** When a calculation fails with SCF_NOT_CONVERGED, the MCP error return's `suggested_fixes` are populated by querying the knowledge base for `{scope_engine: X, scope_workflow: "scf", grade: "principle", tags: ["error_recovery", "scf_convergence"]}`.
 
 2. **Community knowledge enriches error recovery without code changes.** As the community contributes recovery strategies, the `suggested_fixes` list grows automatically. A VASP user discovers that `ALGO=All` fixes a specific convergence pathology → contributes finding → all future users see this suggestion.
 
 3. **Agent can search knowledge after failure.** Beyond the rule-based suggestions in the error return, the agent can call `search_knowledge(query="SCF convergence failure metallic", engine="vasp")` to find both builtin and community strategies. This is Level 2 recovery (Section 10) powered by accumulated knowledge.
 
-**Phase 1 implementation**: Error suggestions are hardcoded rules in the MCP layer (as currently designed in Section 10). The knowledge base stores them as `source=builtin` entries, but the error system reads them directly (no DB query in the critical path).
+**Phase 1 implementation**: Error suggestions are stored as `source_type=builtin` entries in `builtin.db`. The error system reads them directly (no DB query in the critical path — `builtin.db` is loaded at server startup).
 
 **Phase 2+ implementation**: Error suggestions are dynamically queried from the knowledge base. New builtin entries added by developers. Community entries added by users. The error system becomes a live, growing repository of recovery wisdom.
 
@@ -1724,34 +1942,30 @@ When QMatSuite detects the material/engine/workflow of a new calculation, it can
       "grade": "principle",
       "content": "For metallic Fe with VASP, ISMEAR=1 (Methfessel-Paxton) converges 3x faster than Gaussian.",
       "confidence": "high",
-      "source": "builtin"
+      "source_type": "builtin"
     }
   ]
 }
 ```
 
-**Token budget management**: Only inject `finding` and `principle` grade entries. Limit to top-K (default K=3) by `confidence × scope_specificity`. A principle scoped to `{material: "Fe", engine: "VASP"}` ranks higher than one scoped to `{material: "*", engine: "VASP"}` when the agent creates an Fe/VASP calculation.
+**Token budget management**: Only inject `finding` and `principle` grade entries (never bookkeeping/observation — those aren't even in the knowledge base). Limit to top-K (default K=3) by `confidence × scope_specificity`. A principle scoped to `{system_type: "metal", engine: "VASP"}` ranks higher than one scoped to `{system_type: "*", engine: "VASP"}` when the agent creates a metallic VASP calculation.
 
 #### Error-Time Injection
 
 When a calculation fails, the error return includes `suggested_fixes` from the knowledge base (Section 7.7). This is the highest-value injection point — the agent needs help precisely when things go wrong, and accumulated knowledge is most useful here.
 
-### 7.9 The Researcher Expertise Analogy
+### 7.9 Implementation Phasing Summary
 
-The four-layer memory architecture mirrors how real researchers build expertise:
+The four-layer memory architecture is designed now but implemented incrementally:
 
-| Researcher Process | Memory Layer | Agent Equivalent |
+| Phase | Layer 3 (Provenance) | Layer 4 (Knowledge) |
 |---|---|---|
-| **Working on a problem** | Working memory (context window) | Layer 1: Ephemeral agent context |
-| **Lab notebook** | Current experiment state | Layer 2: Present-tense SSOT (YAML) |
-| **Publication record** | Immutable record of what was done | Layer 3: Provenance ledger (append-only) |
-| **Domain expertise** | "I just know metals need MP smearing" | Layer 4: Knowledge base (evolving) |
+| **Phase 1** | Auto-recording (already exists) | `search_knowledge` read-only against `builtin.db` (shipped). Used by error recovery. |
+| **Phase 2** | `record_intent` added | Error `suggested_fixes` dynamically query knowledge base |
+| **Phase 3** | Full intent→runs→insight protocol | `record_insight` writes to `local.db`. Multi-pack search across all enabled `.db` files. Literature/docs packs available. |
+| **Phase 4** | Complete audit trail | Community contributions. Pack download/update. Upload mechanism. |
 
-A postdoc with 5 years of VASP experience "just knows" convergence tricks for different system types. This knowledge was built through dozens of convergence failures and successes — individual experiments (Layer 3) distilled into expertise (Layer 4). QMatSuite makes this accumulation explicit, queryable, and shareable.
-
-The key difference from AiiDA (which has provenance but no learning) and ExpeL/Reflexion (which have learning but no provenance): **QMatSuite's provenance is *generative* — it's the raw material for knowledge distillation, not a terminal archival endpoint.**
-
-**Implementation note**: The full distillation pipeline is Phase 3+. Phase 1 needs only: (a) provenance auto-logging of tool calls (already exists), (b) `search_knowledge` querying a shipped builtin knowledge SQLite, (c) `record_insight` writing to local knowledge. The community/literature/distillation features are Phase 3-4. But the data model (structured insights with grade/scope/source/provenance_refs) is designed now so it's extensible without schema changes.
+The data model (structured insights with grade/scope/source_type/source_origin/provenance_ref) is designed in Phase 1 so it's extensible without schema changes. Adding a new knowledge source = dropping a `.db` file into `~/.qmatsuite/knowledge/packs/`.
 
 ---
 
@@ -1759,28 +1973,59 @@ The key difference from AiiDA (which has provenance but no learning) and ExpeL/R
 
 ### 8.1 The Research Cycle Protocol
 
-Every research cycle follows a four-step protocol that maps to MCP tool calls:
+Every research cycle follows a three-step protocol with two agent-authored entry types: **intent** (before) and **insight** (after).
 
 ```
-1. INTENT — Before running:
-   record_intent(calc_ulid, reason="Testing Hubbard U=5 eV for FeO to match exp. bandgap of 2.4 eV")
-   → Appended to provenance journal
+1. INTENT — Before running (groups a set of runs):
+   record_intent(text="Test U effect on FeO bandgap", calc_ulids=["01KC3A...", "01KC3B...", "01KC3C..."])
+   → Returns intent_id
+   → Written to provenance journal
 
 2. EXECUTE — During run:
-   run_calculation(calc_ulid)
+   run_calculation(calc_ulid, intent_id="01KC...")     # Links run to intent
    → QMatSuite auto-records: run start time, full parameter snapshot, engine version
    → QMatSuite auto-records on completion: result digest (energy, convergence, wall time, key properties)
+   → System auto-generates bookkeeping insight in provenance
 
-3. INTERPRET — After analyzing results:
-   record_interpretation(calc_ulid, interpretation="U=5 gives bandgap=2.5 eV, within 0.1 eV of experiment.
-   Acceptable for screening. HSE06 needed for publication-quality gaps.")
-   → Appended to provenance journal
-
-4. LEARN (optional) — When a pattern emerges across calculations:
-   record_insight(scope="project", insight="For this FeO system, PBE+U with U=5 eV reproduces
-   experimental bandgap within 5%", evidence=[calc_ulid_1, calc_ulid_2, ...])
-   → Written to knowledge base
+3. INSIGHT — After analyzing results (closes the intent):
+   record_insight(
+     run_refs=["01KC3A...", "01KC3B...", "01KC3C..."],
+     content="U=5 best matches exp bandgap. U=4 slightly underestimates (2.1 vs 2.4 eV).",
+     grade="finding",
+     scope={engine: "VASP", workflow: "scf", system_type: "transition_metal_oxide", method: "dft+u"},
+     intent_id="01KC..."
+   )
+   → ALWAYS written to provenance journal (Layer 3)
+   → grade=finding → ALSO promoted to knowledge base (Layer 4)
 ```
+
+**Intent → Runs → Insight grouping**: An intent logically groups a set of runs. An insight closes that group:
+
+```
+Intent("Test U effect on FeO bandgap") → intent_id
+  → run_calculation(U=3, intent_id) → run_1
+  → run_calculation(U=4, intent_id) → run_2
+  → run_calculation(U=5, intent_id) → run_3
+  → record_insight(run_refs=[run_1,2,3], intent_id, grade=finding, "U=5 best matches exp")
+```
+
+**Persistent nudge for uncovered runs**: If there are completed runs not covered by any insight, subsequent tool calls include a `context_hint`:
+
+```json
+{
+  "context_hint": "You have 3 completed runs under intent 'Test U effect on FeO bandgap' without a recorded insight. Consider calling record_insight before moving on.",
+  "uncovered_runs": ["01KC3A...", "01KC3B...", "01KC3C..."]
+}
+```
+
+This is NOT a hard block. The agent CAN proceed. But the nudge persists until insights are recorded — like git's "you have unstaged changes" warning.
+
+**Intent modes**:
+- **Pre-declared** (ideal): `record_intent` before runs, pass `intent_id` to `run_calculation`
+- **Retroactive** (exploratory): `record_intent` after runs, linking `calc_ulids` after the fact
+- **Implicit**: If agent runs without explicit intent, system creates a default intent per calc
+
+Intent does NOT apply to parameter-level operations (`set_parameters`, `apply_preset`). These are mechanical steps already auto-recorded by OperationContext. Intent is research-question level: "why this group of calculations?"
 
 ### 8.2 What Gets Auto-Recorded (No Tool Call Needed)
 
@@ -1794,14 +2039,31 @@ QMatSuite automatically records the following on every `run_calculation` call:
 | Result digest (energy, forces, convergence, etc.) | On job completion | `.provenance/` SQLite |
 | Run end timestamp + wall time | On job completion | `.provenance/` SQLite |
 
-### 8.3 Provenance Tools
+### 8.3 Agent-Authored Provenance Tools
 
-Two thin tools for agent-authored journal entries:
+Two tools for agent-authored journal entries — **intent** (before) and **insight** (after):
 
-- `record_intent(calc_ulid, reason: str)` — Record WHY this calculation is being run. Called before `run_calculation`. Thin wrapper around journal entry creation.
-- `record_interpretation(calc_ulid, interpretation: str)` — Record WHAT the agent concluded. Called after analyzing results. Thin wrapper around journal entry creation.
+```
+record_intent(
+    text: str,                    # "Testing U=5 for FeO to match exp bandgap"
+    calc_ulids?: [str]            # Runs this intent covers (can be added retroactively)
+) → intent_id
+  → ALWAYS writes to provenance journal
+  → Returns intent_id for linking future runs
 
-**Implementation note**: These require a new `QVService.History.add_journal_entry(calc_ulid, entry_type, text)` method (see Section 5.5). The Journal infrastructure (`core/journal.py`, 369 lines) provides append-only JSONL storage with before/after snapshots; the OperationContext system (`provenance/opctx.py`) defines 20+ operation types including `PIN_CREATE`. Adding `AGENT_INTENT` and `AGENT_INTERPRETATION` operation types and exposing them through QVService.History is a small extension of well-tested infrastructure. Both tools are on-demand (Phase 2+).
+record_insight(
+    run_refs: [str],              # Which runs this insight covers
+    content: str,                 # "FeO PBE predicts metallic. Need DFT+U."
+    grade: bookkeeping | observation | finding | principle,
+    scope?: {engine?, workflow?, system_type?, method?, extra?},
+    tags?: [str],
+    intent_id?: str               # Links back to the intent that motivated these runs
+) → insight_id
+  → ALWAYS writes to provenance journal (Layer 3)
+  → if grade ≥ finding: ALSO writes to knowledge base (Layer 4, local.db)
+```
+
+**Implementation note**: These require a new `QVService.History.add_journal_entry(calc_ulid, entry_type, text)` method (see Section 5.5). The Journal infrastructure (`core/journal.py`, 369 lines) provides append-only JSONL storage; the OperationContext system (`provenance/opctx.py`) defines 20+ operation types. Adding `AGENT_INTENT` and `AGENT_INSIGHT` operation types is a small extension of well-tested infrastructure. `record_intent` is Phase 2. `record_insight` with knowledge promotion is Phase 3.
 
 ---
 
@@ -1915,7 +2177,7 @@ For genuinely novel failures that no rule or knowledge entry covers, the agent u
 2. Reads output, searches parameters, queries knowledge (no match)
 3. Uses domain reasoning to hypothesize a fix
 4. Applies fix via set_parameters → inspect_calculation(dry_run) → run_calculation
-5. If fix works: record_insight(grade="finding", content="...", provenance_refs=[...])
+5. If fix works: record_insight(run_refs=[...], grade="finding", content="...")
 6. Future agents with the same failure pattern find this in search_knowledge
 ```
 
@@ -2088,10 +2350,14 @@ User: "How's my CsPbI3 calculation going?"
 3. get_results_summary(calc_ulid="...")
    → {converged: true, bandgap_eV: 1.73}
 
-4. record_interpretation(calc_ulid="...",
-     interpretation="HSE06 bandgap = 1.73 eV for CsPbI3, in excellent agreement
-                     with experimental value of 1.73 eV. Material is suitable
-                     for photovoltaic applications.")
+4. record_insight(
+     run_refs=["..."],
+     content="HSE06 bandgap = 1.73 eV for CsPbI3, in excellent agreement
+              with experimental value of 1.73 eV. Material is suitable
+              for photovoltaic applications.",
+     grade="observation",
+     scope={engine: "VASP", workflow: "bands", system_type: "semiconductor", method: "hse"},
+     intent_id="...")
 
 Agent: "Your HSE06 calculation completed. Bandgap = 1.73 eV, matching experiment.
         CsPbI3 looks promising for photovoltaic applications."
@@ -2105,43 +2371,70 @@ Agent: "Your HSE06 calculation completed. Bandgap = 1.73 eV, matching experiment
 
 **User**: "Find the optimal Hubbard U for FeO. Scan U from 2 to 6 eV and compare with experiment (2.4 eV bandgap)."
 
+**Primary approach: Native scan (7 tool calls)**
+
 ```
 1. search_knowledge(query="FeO Hubbard U") → check for past insights
 2. search_parameters(query="hubbard U VASP") → find LDAUTYPE, LDAUU syntax
 
-3-7. For U = 2, 3, 4, 5, 6:
-     create_calculation(engine="vasp", workflow="scf", ..., name=f"FeO_U{U}")
-     set_parameters(calc_ulid, step=0, params={
-       INCAR: {LDAU: true, LDAUTYPE: 2, LDAUL: [2,-1], LDAUU: [U, 0],
-               ISMEAR: -5, EDIFF: 1e-6}})
-     record_intent(calc_ulid, reason=f"Testing U={U} eV for FeO bandgap")
-     run_calculation(calc_ulid)
+3. create_calculation(engine="vasp", workflow="scf",
+     structure_ulid="...", name="FeO_U_scan")
 
-8-12. get_status for each job (polling)
+4. set_parameters(calc_ulid, step=0, params={
+     INCAR: {LDAU: true, LDAUTYPE: 2, LDAUL: [2,-1],
+             LDAUU: [2, 3, 4, 5, 6],     # ← list triggers scan
+             ISMEAR: -5, EDIFF: 1e-6}
+   })
+   → MCP layer translates: LDAUU → "@scan:ldauu" token
+     + parameter_scan: {ldauu: {values: [2, 3, 4, 5, 6]}}
 
-13-17. get_results_summary for each:
-     U=2: bandgap=0.8 eV
-     U=3: bandgap=1.4 eV
-     U=4: bandgap=2.1 eV
-     U=5: bandgap=2.5 eV
-     U=6: bandgap=3.0 eV
+5. preview_scan(calc_ulid)
+   → "1 scan dimension (INCAR.LDAUU) × 5 values = 5 sub-runs"
+   → Agent: "This will run 5 VASP SCF calculations. Proceed?"
 
-18. compare_calculations(calc_ulids=[...])
-    → Side-by-side comparison table
+6. run_calculation(calc_ulid)
+   → Executes all 5 variants sequentially
+   → Each variant archived to raw/scan/scan_<hex>/
+   → get_status reports: "3/5 variants complete..."
 
-19. record_insight(
-      scope="project",
-      category="hubbard_U",
-      engine="vasp",
-      system_type="transition_metal_oxide",
-      insight="For FeO with PBE+U (LDAUTYPE=2), U=5 eV gives bandgap closest
-               to experiment (2.5 vs 2.4 eV). U=4 slightly underestimates (2.1 eV).",
-      evidence=[calc_ulids],
-      confidence="high"
-    )
+7. get_scan_results(calc_ulid)
+   → Aggregated scan table:
+     LDAUU=2: bandgap=0.8 eV, E=-12.31 eV, converged=true
+     LDAUU=3: bandgap=1.4 eV, E=-12.45 eV, converged=true
+     LDAUU=4: bandgap=2.1 eV, E=-12.52 eV, converged=true
+     LDAUU=5: bandgap=2.5 eV, E=-12.48 eV, converged=true
+     LDAUU=6: bandgap=3.0 eV, E=-12.39 eV, converged=true
+
+8. record_insight(
+     run_refs=[variant_refs],
+     content="For FeO with PBE+U (LDAUTYPE=2), U=5 eV gives bandgap closest
+              to experiment (2.5 vs 2.4 eV). U=4 slightly underestimates (2.1 eV).",
+     grade="finding",
+     scope={engine: "VASP", workflow: "scf", system_type: "transition_metal_oxide",
+            method: "dft+u", extra: {material: "FeO"}},
+     tags=["hubbard_U", "bandgap"],
+     intent_id=intent_id
+   )
+   → Written to provenance AND promoted to knowledge base (grade=finding)
 ```
 
-**Note**: With `submit_batch` (on-demand tool, Phase 2), steps 3-7 could be a single batch call, reducing agent-side orchestration.
+**Total tool calls: 8.** Compare with 19+ tool calls if creating 5 separate calculations (Approach 2). The native scan keeps all variants in one calculation with one provenance entry, produces naturally structured data for the Parameter Space Explorer visualization, and minimizes context window usage.
+
+**Follow-up**: If the researcher wants to continue with U=5 (e.g., add bands calculation), the agent can `duplicate_calculation` from the scan calculation and set LDAUU to a scalar 5 — creating an independent calculation for further work.
+
+**Alternative: Separate calculations (when needed)**
+
+If each U value needs independent follow-up work (bands, DOS, relaxation), the agent uses Approach 2 instead:
+
+```
+For U in [2, 3, 4, 5, 6]:
+    create_calculation(engine="vasp", workflow="scf", name=f"FeO_U{U}")
+    set_parameters(params={LDAUU: U})     # scalar, no scan
+    record_intent(text=f"Testing U={U} eV for FeO bandgap")
+    run_calculation()
+```
+
+This creates 5 independent calculations, each with its own provenance, each ready for independent follow-up. More tool calls, but more flexibility.
 
 ---
 
@@ -2192,9 +2485,9 @@ QMatSuite already has a complete `AnalysisObject → canonical primitive → pro
 
 ### Parameter Space Explorer (Phase 4)
 
-**Data from tool**: Parameter scan results (e.g., U-parameter scan from Section 11.5).
+**Data from tool**: Parameter scan results from the native scan system (Section 3.6). Native scan produces naturally structured data: one calculation with N variant sub-runs, each with computed properties archived in `raw/scan/<variant_key>/`. This is cleaner than aggregating across N independent calculations — the scan table is a single `get_scan_results` call.
 
-**Visualization**: Interactive heatmap or line plot. X-axis: scanned parameter. Y-axis: property of interest (bandgap, energy, force). Experimental reference line if provided. Click to see individual calculation details.
+**Visualization**: Interactive heatmap or line plot. X-axis: scanned parameter. Y-axis: property of interest (bandgap, energy, force). Experimental reference line if provided. Click to see individual variant details. For 2D scans (two scan parameters), a color-mapped heatmap with interactive hover. Cartesian product structure maps directly to grid axes.
 
 ---
 
@@ -2370,7 +2663,7 @@ Measure total tokens consumed by typical workflows:
 
 **Tools implemented**:
 - Always-loaded: `list_engines`, `list_workflows`, `get_presets`, `create_calculation`, `set_parameters`, `apply_preset`, `preview_compilation`, `inspect_calculation` (with dry_run), `run_calculation`, `quick_run`, `get_status`, `get_results_summary`, `search_parameters`
-- On-demand: `list_structures`
+- On-demand: `list_structures`, `search_knowledge` (read-only, queries `builtin.db` only)
 
 **Infrastructure**:
 - FastMCP server at `src/quantumvitas/mcp/server.py`
@@ -2378,7 +2671,10 @@ Measure total tokens consumed by typical workflows:
 - `.mcp.json` configuration for Claude Code
 - Standard return envelope with `context_hint`
 - BM25 index over `*_tags.json` files at server startup
+- `~/.qmatsuite/knowledge/builtin.db` shipped with curated principles (error recovery, best practices)
 - Contract tests for all tools
+
+**Knowledge in Phase 1**: `search_knowledge` is available as a read-only tool querying `builtin.db`. This powers error recovery suggestions (Section 7.7 / Section 10) and proactive knowledge injection (Section 7.8). No agent-authored writes yet.
 
 **Core milestone**: The "wow" moment. Agent can do a simple calculation that would take a new user 30 minutes to set up manually.
 
@@ -2391,8 +2687,8 @@ Measure total tokens consumed by typical workflows:
 **Tools added**:
 - `submit_batch`, `get_batch_status` (batch parameter scans)
 - `compare_calculations` (multi-calc comparison)
-- `record_intent`, `record_interpretation` (provenance journaling)
-- Structured error diagnostics with `suggested_fixes` in error returns
+- `record_intent` (provenance journaling — intent groups runs)
+- Structured error diagnostics with `suggested_fixes` dynamically queried from knowledge base
 - Detailed analysis: `get_band_structure`, `get_dos`, `get_convergence_history`, `get_output_raw`
 
 **MCP Apps** (2D Plotly — simplest to implement):
@@ -2410,12 +2706,18 @@ Measure total tokens consumed by typical workflows:
 
 **Tools added**:
 - `get_project_history`, `get_provenance`, `annotate_calculation` (provenance access)
-- `search_knowledge`, `record_insight`, `update_insight` (knowledge base)
+- `record_insight` (write to `local.db` — grade ≥ finding auto-promotes to knowledge)
 - `fetch_structure`, `import_structure` (structure sourcing)
 - `diff_presets`, `get_parameter_detail` (parameter tuning)
-- Knowledge base SQLite + FTS5 implementation at `~/.qmatsuite/knowledge.db`
-- Full provenance interaction protocol
+- `search_knowledge` upgraded: multi-pack search across `builtin.db` + `local.db` + any installed packs
+- Full intent → runs → insight protocol with persistent nudge
 - `defer_loading` and Tool Search compatibility for the complete tool catalog
+- Literature/docs knowledge packs available for download
+
+**Infrastructure**:
+- `~/.qmatsuite/knowledge/local.db` for user's own insights
+- `~/.qmatsuite/knowledge/packs/` directory for downloadable knowledge packs
+- Multi-DB search with trust-weighted ranking
 
 **Core milestone**: Agent doesn't start from scratch. Accumulated wisdom persists across sessions and projects.
 
@@ -2432,6 +2734,8 @@ Measure total tokens consumed by typical workflows:
 - OAuth 2.0 authentication
 - SLURM integration for HPC job submission
 - Full MCP Notifications support (push instead of poll)
+- Community knowledge pack contributions (upload with privacy-stripped provenance)
+- Pack registry, download/update mechanism
 - Security hardening, rate limiting
 - Comprehensive documentation, tutorials
 - Paper: "QMatSuite: A Cognitive Architecture for AI-Driven Computational Materials Research"
