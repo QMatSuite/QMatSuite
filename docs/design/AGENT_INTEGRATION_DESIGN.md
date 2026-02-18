@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-QMatSuite is becoming the first AI-native computational materials science platform. Rather than building yet another AI orchestration framework, we expose QMatSuite's 15-engine simulation infrastructure as a Model Context Protocol (MCP) server. Any AI agent — Claude Code, GPT Codex CLI, Gemini CLI, or future systems — connects to QMatSuite through the standard MCP protocol and gains immediate access to the full power of density functional theory, quantum chemistry, and classical molecular dynamics.
+QMatSuite is becoming a **cognitive operating system for computational materials research** — the first platform where MCP serves as the user-space interface between artificial reasoning and deterministic simulation infrastructure. Rather than building yet another AI orchestration framework, we expose QMatSuite's 15-engine simulation infrastructure as a Model Context Protocol (MCP) server. Any AI agent — Claude Code, GPT Codex CLI, Gemini CLI, or future systems — connects to QMatSuite through the standard MCP protocol and gains immediate access to the full power of density functional theory, quantum chemistry, and classical molecular dynamics. This parallels AlabOS (operating system for experimental self-driving laboratories) on the computational side, forming a natural "experiment ↔ computation" dual.
 
 **The BYOE paradigm shift.** Every competitor (El Agente, ChemGraph, VASPilot, DREAMS, Masgent) bundles a specific LLM framework (LangGraph, CrewAI, pydantic-ai) and locks users into a particular agent architecture. QMatSuite inverts this: we build exceptional tools, and users Bring Your Own Engine. The agent is already intelligent; QMatSuite gives it hands, eyes, and a lab notebook.
 
@@ -45,6 +45,8 @@ This is not a metaphor. It is a structural mapping that determines every design 
 | **Decides: iterate or checkpoint** | Experimental judgment | Iterate in-place vs. duplicate_calculation | Layer 2 |
 
 A postdoc with 5 years of VASP experience "just knows" convergence tricks for different system types. This knowledge was built through dozens of convergence failures and successes — individual experiments (Layer 3) distilled into expertise (Layer 4). QMatSuite makes this accumulation explicit, queryable, and shareable.
+
+**The Rationale as a Third Scientific Output.** Traditional computational research produces two types of output: **Results** (energies, band structures, forces) and **Provenance** (what was computed, with what parameters, in what sequence). QMatSuite introduces a third: the **Rationale** — a fully traceable record of *why* computational decisions were made. The Reasoning Trace (intent → configuration decisions → execution → observation → insight) constitutes a structured audit trail that answers questions like: "Why was U=5 eV chosen?" "Why was Methfessel-Paxton smearing used instead of Gaussian?" "What evidence led to the conclusion that PBE underestimates this bandgap?" An `export_reasoning_trace` tool (Phase 3) can produce this as a structured report suitable for paper Supporting Information sections, where reviewers increasingly demand computational methodology justification.
 
 **The key differentiator**: AiiDA has provenance but no learning. ExpeL/Reflexion have learning but no provenance. QMatSuite's provenance is *generative* — it is the raw material for knowledge distillation, not a terminal archival endpoint. This is the "Provenance × Context Engineering" contribution.
 
@@ -99,7 +101,49 @@ The scientific method is not a rigid sequence but a recursive loop: hypothesize,
 
 **Reflection** maps to knowledge accumulation. The agent records intent before running (`record_intent`) and insight after analyzing results (`record_insight`). Every insight writes to provenance (Layer 3). Insights graded `finding` or higher are automatically promoted to the knowledge base (Layer 4). This persists across sessions, building a personal computational expertise database.
 
-### 2.5 Knowledge Sources: The Researcher Analogy
+### 2.5 The Agent Decision Hierarchy: From Demonstration to First Principles
+
+The agent, like a human researcher, follows a **progressive fallback strategy** from safest/easiest to most demanding. This hierarchy determines how the agent configures a calculation:
+
+```
+Level 1: Demo Store (pattern matching)
+  → Agent searches for a matching calculation pattern
+    (not just material, but {system_class, method, property_of_interest})
+  → If found: load demo into current project, inspect ref outputs, swap structure, run
+  → Demo is the "tutorial" — the structured equivalent of a researcher finding
+    a working input file online before attempting to write one from scratch
+  → Demo includes estimated wall time (from real generation runs), allowing
+    agents to estimate computational cost before submitting
+
+Level 2: Workflow Template (used in almost all scenarios)
+  → create_calculation with workflow="dos" generates scf→nscf→dos automatically
+  → Agent does NOT invent step sequences — workflows encode domain knowledge
+    about which steps are needed and in what order
+  → Agent can add/delete steps for special needs, but this is rare
+  → Workflow is engine-agnostic (dos = scf→nscf→dos regardless of engine)
+
+Level 3: Preset (if available)
+  → apply_preset fills in curated parameter values
+  → Currently QE has partial coverage; other engines have zero presets
+  → Preset absence does not block the agent — it falls through to Level 4
+
+Level 4: Parameter Metadata + Knowledge Base
+  → search_parameters returns per-parameter documentation from engine tag JSONs
+  → search_knowledge returns experiential knowledge (error recovery, method selection)
+  → LLM sets parameters informed by these sources
+  → This is the "hardest path" — LLM must make parameter decisions itself
+
+Level 5: Preflight Check (used in almost all scenarios)
+  → QMatSuite deterministically validates the complete configuration
+  → Reports blocking issues, warnings, advisories
+  → Agent fixes issues → re-preflight → passes → run
+```
+
+**Key insight**: Levels 2 and 5 are used in nearly every scenario. Demo and preset are accelerators that reduce the agent's cognitive load. Knowledge is the safety net when the agent must make parameter decisions. The LLM rarely needs to design parameters from scratch — most work is local adjustment on a sound skeleton provided by workflows and presets.
+
+This mirrors how human researchers work. A human encountering a new calculation type looks for tutorials and working examples first, not the reference manual. Only when no example exists does the researcher open the manual and construct parameters from first principles. QMatSuite structuralizes this natural workflow into a deterministic hierarchy that the agent traverses automatically.
+
+### 2.6 Knowledge Sources: The Researcher Analogy
 
 A researcher's knowledge doesn't come only from their own experiments:
 
@@ -117,7 +161,7 @@ Each source has different trust levels and different provenance types. The agent
 
 **The Traceable Knowledge Principle**: Every knowledge entry must be traceable to its source. Local insights point to provenance journal entries. Literature insights carry DOIs. Mailing list insights carry URLs. Documentation insights cite version and section. This is not metadata decoration — it is the scientific method applied to the knowledge base itself. When the agent is unsure whether a piece of knowledge applies to its current situation, it can follow the provenance chain to the original evidence and make its own judgment.
 
-### 2.6 Context Engineering as Cognitive Resource Management
+### 2.7 Context Engineering as Cognitive Resource Management
 
 Anthropic's context engineering framework treats the context window as an attention budget. Every token competes for the transformer's n-squared pairwise computation. Manus's 100:1 input-to-output ratio — 50 tool calls per task with ruthless output filtering — demonstrates that token efficiency is not optimization but architecture.
 
@@ -129,7 +173,7 @@ QMatSuite cooperates with context management through three mechanisms:
 
 **Filesystem as externalized memory.** Following Manus's principle, QMatSuite's SSOT files (`calculation.yaml`, `step.yaml`) serve as externalized agent memory. The agent can always re-read the current state from disk rather than maintaining it in context. The `get_project_history` tool queries the provenance database rather than relying on conversation history. This means context compaction (Claude Code's conversation summarization) loses no critical state.
 
-### 2.7 Why This Framing Matters
+### 2.8 Why This Framing Matters
 
 The "intelligent researcher" model is not marketing. It has three concrete engineering consequences:
 
@@ -271,7 +315,80 @@ QMatSuite supports two operational modes that mirror how researchers manage thei
 
 This is NOT a new mechanism. It falls out naturally from existing tools — `set_parameters` + `run_calculation` on the same calc = iterate in place; `create_calculation` or `duplicate_calculation` = new calc. The two modes are a mental model, not new API surface.
 
-### 3.6 Three Ways to Scan Parameters
+**Cognitive science parallel.** The two modes map to Kahneman's dual-process theory. Iterate in place corresponds to **System 1**: fast, intuitive trial-and-error where intermediate states have no standalone value — the researcher is "feeling out" the parameter space. Create new calculation corresponds to **System 2**: deliberate, reasoned decisions where the result is worth preserving and reasoning about — the researcher has formed a hypothesis worth testing carefully. This is not a post-hoc analogy; it explains *why* the two modes exist and *when* each is appropriate. System 1 is for convergence debugging, solver tuning, and quick exploration. System 2 is for systematic studies, parameter scans, and method comparisons.
+
+### 3.6 Demo Store Architecture
+
+The demo store provides a structured library of verified, runnable calculation examples that agents can use as starting points. This is the "tutorial" layer of the Agent Decision Hierarchy (Section 2.5) — the structured equivalent of a researcher finding a working input file online.
+
+**Two-layer design.** The demo store follows a strict two-layer architecture:
+
+| Layer | Location | Content | Editability |
+|---|---|---|---|
+| **Layer 1: Corpus** | `tests/inputformat/samples/` | Real input files collected from the web, tutorials, engine documentation, and community. Organized by engine and case. Each case has a `case.yaml` with metadata. | Manually curated. New entries added by collecting and normalizing web-sourced material. |
+| **Layer 2: Demo Snapshots** | `resources/demo_projects/` | QMatSuite-native `.yml` snapshots generated deterministically from Layer 1 via `tools/demo_store/generate_demos.py`. | **Never manually edited.** Any fix must be made in the corpus (Layer 1) and regenerated. This ensures demos are authentic reproductions, not hand-tweaked configurations. |
+
+The two-layer separation serves three purposes: (1) Layer 1 provides reference input examples for engine-direct users and parser/writer testing; (2) Layer 2 provides QMatSuite-native snapshots for the demo gallery; (3) the translation machinery validates that QMatSuite's parsers can faithfully reproduce community input files.
+
+**Metadata.** Each demo carries structured metadata:
+- **Engine and workflow**: Which engine and what type of calculation
+- **System description**: Material, system class (metal/semiconductor/molecule/surface), physics classification
+- **Structure info**: Formula, atom count, space group
+- **Wall-clock run time**: Real execution time on a reference machine (recorded during demo generation), enabling agents to estimate computational cost before submitting
+- **Reference outputs**: Pre-computed results (energy, convergence, bandgap) so agents can inspect outcomes without running
+
+**Coverage.** QE has the most demos as the most mature engine. Every other engine has at least 3 curated cases. Cross-engine workflows (QE→Wannier90, QE→QMCPACK) are included. All Layer 2 demos are verified runnable with reference outputs via `tools/demo_store/generate_ref_packs_realrun.py`.
+
+**Pattern matching.** Demos are searchable by calculation pattern — `{system_class, method, property_of_interest}` — not just by material name. A "solid + spin + PBE+U + DOS" demo is useful for *any* transition metal oxide, not just the specific material in the demo. The agent searches for matching patterns, inspects reference outputs to validate the match, then loads the demo and swaps the structure for its target material.
+
+**Loading model.** Currently QMatSuite supports loading demos as new projects via `create_demo_project()` (snapshot import). A core enhancement planned for Phase 1 is support for loading a demo as a new calculation within an existing project, adding the demo's structure to the project's structure library. Since calculations within a project are independent, this is architecturally clean and requires a new `QVService` method.
+
+### 3.7 Preflight Validation as Engine Plugin
+
+Each engine declares its own preflight validation rules as part of its plugin, alongside recipe, runner, parser, writer, and metadata:
+
+```
+drivers/
+  vasp/
+    recipe.py
+    runner.py
+    parser.py
+    writer.py
+    metadata.py
+    preflight.py  ← NEW: VASP-specific validation rules
+  qe/
+    preflight.py  ← NEW: QE-specific validation rules
+  orca/
+    preflight.py  ← NEW: ORCA-specific validation rules
+  ...
+```
+
+Each `preflight.py` implements a standard interface:
+
+```python
+class PreflightChecker(Protocol):
+    def check(
+        self,
+        step_params: dict,
+        structure: Structure | None,
+        workflow_context: WorkflowContext  # knows about preceding/following steps
+    ) -> list[PreflightIssue]:
+        ...
+```
+
+**Why Python code, not knowledge entries.** Preflight rules involve combinatorial logic that free-text knowledge entries cannot express:
+- "if ISMEAR == -5 AND structure.is_metal AND workflow == relax → error: tetrahedron method incompatible with relaxation"
+- "if ecutwfc < pp_recommended * 1.2 → advisory: cutoff below recommended minimum"
+- "if cell_volume > threshold AND kmesh_density > threshold → advisory: dense k-mesh on large cell will be slow"
+- "if nspin == 1 AND any(element in transition_metals) → warning: spin-unpolarized calculation for magnetic element"
+
+**Engine-maintained.** Rules live next to the engine code they validate, not in a central knowledge database. The person who knows VASP's pitfalls writes VASP's preflight rules. This follows the plugin architecture: adding engine-specific knowledge never requires modifying core code.
+
+**Scope.** Approximately 20-50 rules per engine. QE preflight is Phase 1 (20-30 rules). Other engines follow in Phase 2.
+
+**Integration.** Preflight results are included in `preview_compilation` and `inspect_calculation` output (Section 5.3). The agent sees blocking issues, warnings, and advisories before submitting compute time. This is the "pre-compilation" paradigm: catch problems before running, not after wasting compute.
+
+### 3.8 Three Ways to Scan Parameters
 
 The agent has three approaches to parameter exploration, each suited to different situations:
 
@@ -992,6 +1109,49 @@ Agent: Now I know to set EDIFF. I'll use set_parameters(calc_ulid, step=0, param
 | **Stateful read** | `inspect_calculation` | Calculation exists, YAML configured | "Show me what's currently set up." |
 | **Stateful materialization** | `inspect_calculation(dry_run=true)` | Calculation exists, writer generates files | "Generate actual input files so I can verify writer output." |
 
+**Preflight validation in output.** Both `preview_compilation` and `inspect_calculation` include preflight results when engine preflight rules are available (Section 3.7). The preflight output uses the following structure:
+
+```python
+@dataclass
+class PreflightIssue:
+    code: str                    # e.g., "METAL_FIXED_OCC", "MISSING_PSEUDO", "LOW_KMESH_TETRA"
+    severity: Literal["blocking", "warning", "advisory"]
+    message: str                 # Human/LLM-readable description
+    step: int | None             # Which step has the issue (None if cross-step)
+    parameter: str | None        # Which parameter is involved
+    suggestion: str | None       # Suggested fix (may reference a tool)
+    knowledge_ref: str | None    # Optional pointer to builtin.db entry for deeper explanation
+```
+
+Three severity levels:
+- **Blocking**: Calculation cannot/should not run. Missing pseudopotentials, missing k-points, missing structure, fundamentally incompatible settings. Message includes which tool to use to fix it.
+- **Warning**: Calculation will run but results are likely physically wrong. Metal + fixed occupation, spin-unpolarized magnetic system, tetrahedron method for relaxation.
+- **Advisory**: Calculation will run and may be fine, but there's a potential concern. Dense k-mesh for large cell (slow), cutoff below recommended, Gaussian smearing for DOS (tetrahedron usually better).
+
+The `preflight_issues` array is added to both tools' output schemas:
+
+```json
+{
+  "preflight_issues": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "severity": { "type": "string", "enum": ["blocking", "warning", "advisory"] },
+        "message": { "type": "string" },
+        "step": { "type": ["integer", "null"] },
+        "parameter": { "type": ["string", "null"] },
+        "suggestion": { "type": ["string", "null"] },
+        "knowledge_ref": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
+```
+
+Preflight runs deterministically from QMatSuite code. The agent does not need to query the knowledge base to discover these issues — QMatSuite finds them and reports them. The agent may optionally query knowledge (via `knowledge_ref`) for deeper understanding.
+
 ---
 
 #### `run_calculation`
@@ -1335,6 +1495,80 @@ QMatSuite has a **native parameter scan system** (Constitution §10, ~830 lines 
 - No existing `preview_scan` or `get_scan_results` API — these need to be built as MCP tools
 - No existing `get_results_summary` aggregation across scan variants — each variant must be queried individually from its archived outputs
 
+#### Demo Store Tools
+
+These tools implement Level 1 of the Agent Decision Hierarchy (Section 2.5), allowing agents to discover and reuse proven calculation patterns.
+
+##### `search_demos`
+
+**Description**: Search the demo store by calculation pattern. Matches on engine, workflow, system class, method, property of interest — not just material name. Returns matching demos with metadata including estimated run time.
+
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Natural language search (e.g., 'transition metal oxide DOS with U correction')"
+    },
+    "engine": {
+      "type": "string",
+      "description": "Optional: filter by engine"
+    },
+    "workflow": {
+      "type": "string",
+      "description": "Optional: filter by workflow type"
+    }
+  },
+  "required": ["query"]
+}
+```
+
+**Output**: List of matching demos with name, description, engine, workflow, structure summary, estimated run time, available reference outputs.
+
+##### `load_demo`
+
+**Description**: Load a demo into the current project as a new calculation. The demo's structure is added to the project's structure library. The calculation is fully configured and runnable — the agent can inspect it, swap the structure, modify parameters, or run directly.
+
+**Note**: Currently QMatSuite only supports loading demos as new projects via `create_demo_project()`. **A core enhancement is needed**: support loading a demo as a new calculation within the current project, adding the demo's structure to `project/structures/`. This requires a new `QVService` method. Calculations within a project are independent, so this is architecturally clean.
+
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "demo_id": {
+      "type": "string",
+      "description": "Demo identifier from search_demos"
+    },
+    "project_ulid": {
+      "type": "string",
+      "description": "Target project to add demo calculation into"
+    }
+  },
+  "required": ["demo_id"]
+}
+```
+
+##### `get_demo_results`
+
+**Description**: View a demo's reference outputs without loading it. Useful for the agent to decide if a demo matches its needs before committing. Returns energy, convergence status, bandgap, forces, and wall time from the demo's pre-computed reference run.
+
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "demo_id": {
+      "type": "string",
+      "description": "Demo identifier from search_demos"
+    }
+  },
+  "required": ["demo_id"]
+}
+```
+
 #### Batch Tools
 
 | Tool | Description | Maps To |
@@ -1369,7 +1603,28 @@ Two agent-authored entry types only — **intent** (before) and **insight** (aft
 | Tool | Description | Maps To |
 |---|---|---|
 | `search_knowledge` | Search accumulated insights by natural language, engine, workflow, system_type, method, minimum grade, confidence. Returns ranked results from all enabled knowledge packs. Input: `{query_text?, engine?, workflow?, system_type?, method?, grade_min?, source_type?, confidence_min?, limit?}`. | `~/.qmatsuite/knowledge/` multi-DB FTS5 query with scope filtering |
-| `record_insight` | Record what the agent learned from results. ALWAYS writes to provenance (Layer 3). If grade ≥ finding, ALSO promotes to knowledge base (Layer 4). Input: `{run_refs: [str], content: str, grade: bookkeeping\|observation\|finding\|principle, scope?: {engine?, workflow?, system_type?, method?, extra?}, tags?: [str], intent_id?: str}`. Superseding: to update an old insight, record a new one with higher grade — the old entry gets `superseded_by` automatically. | Provenance journal insert + conditional `~/.qmatsuite/knowledge/local.db` insert |
+| `record_insight` | Record what the agent learned from results. ALWAYS writes to provenance (Layer 3). If grade ≥ finding, ALSO promotes to knowledge base (Layer 4). Superseding: to update an old insight, record a new one with higher grade — the old entry gets `superseded_by` automatically. | Provenance journal insert + conditional `~/.qmatsuite/knowledge/local.db` insert |
+
+**`record_insight` schema — Separate content and reasoning:**
+
+```python
+@dataclass
+class InsightRecord:
+    content: str           # The conclusion: "U=4.0 gives bandgap closest to experiment"
+    reasoning: str | None  # The process: "Compared U=3,4,5. U=3 gives metallic, U=5 overestimates..."
+    grade: str             # bookkeeping | observation | finding | principle
+    scope: dict            # {engine?, workflow?, system_type?, method?, extra?}
+    run_refs: list[str]    # Associated calculation ULIDs
+    tags: list[str]
+    intent_id: str | None  # Links back to the intent this insight addresses
+```
+
+Key design: `content` and `reasoning` serve different purposes:
+- `content` is the distilled conclusion — short, important, enters knowledge base when grade ≥ finding
+- `reasoning` is the detailed thought process — potentially long and noisy, stays in provenance only
+- `search_knowledge` indexes `content` only, not `reasoning` (reduces noise in search results)
+- `export_reasoning_trace` (Phase 3 tool) pulls both content and reasoning from provenance to construct a full audit trail
+- Context compaction can discard `reasoning` but must preserve `content`
 
 ### 5.5 API Surface Assessment and Gaps
 
@@ -1725,7 +1980,10 @@ CREATE TABLE insights (
     -- Flexible scope (JSON, covers remaining 20%)
     scope_extra TEXT DEFAULT '{}',
     content TEXT NOT NULL,
-    confidence TEXT DEFAULT 'medium',
+    confidence REAL DEFAULT 0.7,        -- 0.0-1.0, replaces categorical medium/high/low
+    -- Knowledge decay / validation (Phase 3 active use)
+    last_validated TEXT,                 -- ISO-8601 datetime of last confirming observation
+    contradiction_count INTEGER DEFAULT 0, -- incremented when new results contradict this entry
     -- Source traceability (3 fields)
     source_type TEXT NOT NULL DEFAULT 'local',
     source_pack_id TEXT,
@@ -1755,7 +2013,18 @@ CREATE INDEX idx_insights_scope ON insights(scope_engine, scope_workflow, scope_
 CREATE INDEX idx_insights_source ON insights(source_type);
 CREATE INDEX idx_insights_status ON insights(status);
 CREATE INDEX idx_insights_confidence ON insights(confidence);
+CREATE INDEX idx_insights_validated ON insights(last_validated);
 ```
+
+#### Knowledge Decay and Validation (Phase 3)
+
+The three decay fields (`confidence`, `last_validated`, `contradiction_count`) enable knowledge entries to age gracefully rather than persist indefinitely at full trust:
+
+- **`confidence`** (REAL 0.0-1.0): Set at creation based on evidence strength. Builtin entries start at 0.85-0.95. Agent findings start at 0.6-0.8. Confidence decays when contradictions accumulate and increases when new observations confirm the entry.
+- **`last_validated`**: Updated whenever a new calculation result is consistent with the entry's claim. An entry not validated in 6+ months with low confidence is flagged for review.
+- **`contradiction_count`**: Incremented when the agent records a new observation that contradicts this entry. At threshold (e.g., 3 contradictions), the system suggests the agent re-evaluate the entry — potentially superseding it with a revised finding.
+
+**Phase 1-2**: These fields are present in the schema but passive — `confidence` is written at creation, `last_validated` and `contradiction_count` are reserved. **Phase 3**: Active decay logic uses these fields to weight search results (stale entries rank lower) and trigger review suggestions.
 
 #### Multi-DB Knowledge Architecture
 
@@ -1835,6 +2104,8 @@ System: "You have 7 observations about semiconductor/QE convergence. Consider
 
 The agent consolidates multiple observations into findings or principles. This is how bookkeeping/observation entries in provenance eventually become searchable knowledge.
 
+**Computational epistemology.** The knowledge system is not only accumulative but self-correcting. The `contradiction_count` mechanism (Section 7.4) mirrors Kuhn's model of anomaly accumulation leading to paradigm revision: when enough new results contradict an existing knowledge entry, it is flagged for review rather than silently trusted. Combined with the grade hierarchy (bookkeeping → observation → finding → principle) and the supersession mechanism (new findings explicitly replace old ones), this elevates QMatSuite from a tool that remembers past results to a framework for **computational epistemology** — a system that models how scientific understanding evolves through evidence accumulation, anomaly detection, and knowledge revision.
+
 ### 7.6 Knowledge as Extensible Community Library
 
 The Knowledge Base is designed as a **searchable, contributable, extensible library** — not just a local cache. The multi-DB architecture (Section 7.4) makes this possible: each knowledge source is a self-contained `.db` file with the same schema.
@@ -1853,7 +2124,20 @@ The Knowledge Base is designed as a **searchable, contributable, extensible libr
     └── community_v1.db                 # Community contributions
 ```
 
-**Builtin knowledge** (Phase 1, `builtin.db`): QMatSuite ships with a starter pack of curated principles. These are the error recovery suggestions, common best practices, and parameter guidelines that experienced practitioners know. Examples:
+**Builtin knowledge** (Phase 1, `builtin.db`): QMatSuite ships with ~30-50 curated entries of **experiential knowledge** — the kind of hard-won wisdom that experienced practitioners carry but that LLM training data may not cover well. Specifically:
+
+**builtin.db contains:**
+- Error recovery strategies (e.g., "reduce mixing parameter when SCF oscillates")
+- Cross-engine methodology (e.g., "metallic systems need smearing; which type depends on the engine")
+- Result interpretation aids (e.g., "PBE underestimates semiconductor band gaps by 30-50%")
+- Workflow sequencing wisdom (e.g., "always relax geometry before computing band structure")
+
+**builtin.db does NOT contain:**
+- Engine-specific parameter validation rules → those live in `drivers/*/preflight.py` (Section 3.7)
+- Parameter documentation (types, defaults, descriptions) → those live in `*_tags.json` via `search_parameters`
+- Workflow definitions or step sequences → those live in `WorkflowTemplate` (Section 3.3)
+
+This separation is deliberate: validation rules and parameter docs are structured data best served by dedicated tools. builtin.db is for the **unstructured experiential knowledge** that only makes sense as natural language. Examples:
 
 ```yaml
 - grade: principle
@@ -2663,6 +2947,7 @@ Measure total tokens consumed by typical workflows:
 
 **Tools implemented**:
 - Always-loaded: `list_engines`, `list_workflows`, `get_presets`, `create_calculation`, `set_parameters`, `apply_preset`, `preview_compilation`, `inspect_calculation` (with dry_run), `run_calculation`, `quick_run`, `get_status`, `get_results_summary`, `search_parameters`
+- Demo Store tools: `search_demos`, `load_demo`, `get_demo_results` (Section 5.4)
 - On-demand: `list_structures`, `search_knowledge` (read-only, queries `builtin.db` only)
 
 **Infrastructure**:
@@ -2671,7 +2956,13 @@ Measure total tokens consumed by typical workflows:
 - `.mcp.json` configuration for Claude Code
 - Standard return envelope with `context_hint`
 - BM25 index over `*_tags.json` files at server startup
-- `~/.qmatsuite/knowledge/builtin.db` shipped with curated principles (error recovery, best practices)
+- `~/.qmatsuite/knowledge/builtin.db` shipped with ~30-50 curated entries (error recovery, methodology, experiential knowledge)
+- QE preflight checker (`drivers/qe/preflight.py`) — first engine with preflight validation
+- Preflight integration in `preview_compilation` and `inspect_calculation` outputs
+- `load_demo` → `create_calculation` enhancement (demo becomes editable starting point)
+- Reserved schema fields: `last_validated`, `contradiction_count` (written at creation, active in Phase 3)
+- Advisory-level preflight issues surfaced as `context_hint` advisories (non-blocking)
+- `record_insight` schema with content/reasoning separation (Section 5.4)
 - Contract tests for all tools
 
 **Knowledge in Phase 1**: `search_knowledge` is available as a read-only tool querying `builtin.db`. This powers error recovery suggestions (Section 7.7 / Section 10) and proactive knowledge injection (Section 7.8). No agent-authored writes yet.
@@ -2685,12 +2976,17 @@ Measure total tokens consumed by typical workflows:
 **Milestone demo**: FeO U-parameter scan. Agent runs a native scan with 5 U-value variants in a single calculation, compares bandgaps, identifies optimal U.
 
 **Tools added**:
-- `preview_scan`, `get_scan_results` (native parameter scan — Section 3.6)
+- `preview_scan`, `get_scan_results` (native parameter scan — Section 3.8)
 - `submit_batch`, `get_batch_status` (batch independent calculations)
 - `compare_calculations` (multi-calc comparison)
 - `record_intent` (provenance journaling — intent groups runs)
 - Structured error diagnostics with `suggested_fixes` dynamically queried from knowledge base
 - Detailed analysis: `get_band_structure`, `get_dos`, `get_convergence_history`, `get_output_raw`
+
+**Infrastructure**:
+- Remaining engine preflight checkers (VASP, ABINIT, ORCA, etc. — following QE Phase 1 template)
+- Enhanced history: `get_project_history` with calculation timeline
+- `compare_calculations` for side-by-side multi-calc comparison
 
 **MCP Apps** (2D Plotly — simplest to implement):
 - Convergence dashboard
@@ -2708,6 +3004,7 @@ Measure total tokens consumed by typical workflows:
 **Tools added**:
 - `get_project_history`, `get_provenance`, `annotate_calculation` (provenance access)
 - `record_insight` (write to `local.db` — grade ≥ finding auto-promotes to knowledge)
+- `export_reasoning_trace` (export full intent→config→execution→observation→insight chain as structured document)
 - `fetch_structure`, `import_structure` (structure sourcing)
 - `diff_presets`, `get_parameter_detail` (parameter tuning)
 - `search_knowledge` upgraded: multi-pack search across `builtin.db` + `local.db` + any installed packs
@@ -2719,6 +3016,8 @@ Measure total tokens consumed by typical workflows:
 - `~/.qmatsuite/knowledge/local.db` for user's own insights
 - `~/.qmatsuite/knowledge/packs/` directory for downloadable knowledge packs
 - Multi-DB search with trust-weighted ranking
+- Knowledge decay logic: `confidence` adjusted by confirming/contradicting observations, `last_validated` updated on confirmation, `contradiction_count` triggers review suggestions at threshold
+- `reasoning` field from `record_insight` used for: knowledge consolidation (merging observations into findings), contradiction detection (comparing reasoning chains), review sessions (presenting full thought process)
 
 **Core milestone**: Agent doesn't start from scratch. Accumulated wisdom persists across sessions and projects.
 

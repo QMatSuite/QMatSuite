@@ -44,7 +44,7 @@ def apply_preset(calc_ulid: str, presets: dict) -> dict:
             "dimension_states": result.get("dimension_states", {}),
         },
         context_hint=(
-            "Use set_parameters to override specific values, "
-            "or inspect_calculation to review."
+            f"Use set_parameters(calc_ulid='{calc_ulid}', params=...) to override specific values, "
+            f"or inspect_calculation(calc_ulid='{calc_ulid}') to review."
         ),
     )

@@ -78,5 +78,8 @@ def inspect_calculation(calc_ulid: str, step: int = -1) -> dict:
 
     return make_response(
         payload,
-        context_hint="Use set_parameters to adjust, or run_calculation to execute.",
+        context_hint=(
+            f"Use set_parameters(calc_ulid='{calc_ulid}') to adjust, "
+            f"or run_calculation(calc_ulid='{calc_ulid}') to execute."
+        ),
     )

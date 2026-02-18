@@ -111,7 +111,10 @@ def get_presets(engine: str, workflow: str) -> dict:
                 "presets_available": False,
                 "dimensions": [],
             },
-            context_hint="This engine/workflow combination does not have configurable presets.",
+            context_hint=(
+                f"No presets for {engine}/{workflow}. Use search_parameters(engine='{engine}') "
+                f"to find parameters, then create_calculation + set_parameters to configure manually."
+            ),
         )
 
     # Build dimension details
@@ -142,5 +145,8 @@ def get_presets(engine: str, workflow: str) -> dict:
             "presets_available": True,
             "dimensions": dimensions_out,
         },
-        context_hint="Use search_parameters(query='...', engine='...') to find specific parameters to customize.",
+        context_hint=(
+            f"Use preview_compilation(engine='{engine}', workflow='{workflow}', presets=...) "
+            f"to preview, or quick_run(engine='{engine}', workflow='{workflow}', ...) to run directly."
+        ),
     )

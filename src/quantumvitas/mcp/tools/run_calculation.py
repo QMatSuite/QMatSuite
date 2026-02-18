@@ -14,6 +14,9 @@ def run_calculation(calc_ulid: str) -> dict:
     (completed or failed).  The calculation must already have steps
     configured via create_calculation + set_parameters / apply_preset.
 
+    On failure, returns structured diagnostics and knowledge-backed
+    suggested_fixes so the agent can diagnose and recover.
+
     Args:
         calc_ulid: ULID of the calculation to run.
     """
@@ -64,7 +67,39 @@ def run_calculation(calc_ulid: str) -> dict:
         "io_dir": result_dto.io_dir,
     }
 
+    # --- Resolve engine/workflow for enrichment ---
+    engine = detail.get("engine_family", "")
+    workflow = ""
+    steps_raw = detail.get("steps", [])
+    if steps_raw:
+        workflow = steps_raw[0].get("step_type_gen", "")
+
+    # --- Parse digest (needed for both success and failure analysis) ---
+    digest = _try_parse_digest(detail)
+
     if status == "completed":
+        # Check for "completed but not converged": QE exits normally
+        # but SCF didn't actually converge (no '!' total energy line).
+        if digest and digest.get("total_energy_ry") is None and digest.get("n_iterations", 0) > 0:
+            # QE ran to electron_maxstep but didn't converge
+            try:
+                from quantumvitas.mcp.error_enrichment import enrich_run_error
+
+                # Override the digest converged flag — QE said "JOB DONE"
+                # but there's no converged energy.
+                digest["converged"] = False
+                enriched = enrich_run_error(
+                    calc_ulid=calc_ulid,
+                    result_dto=result_dto,
+                    digest=digest,
+                    engine=engine,
+                    workflow=workflow,
+                )
+                enriched["data"] = payload
+                return enriched
+            except Exception:
+                pass
+
         return make_response(
             payload,
             context_hint=(
@@ -73,10 +108,59 @@ def run_calculation(calc_ulid: str) -> dict:
             ),
         )
 
-    # Failed — include error info
-    return make_response(
-        payload,
-        context_hint="Check step messages for failure details.",
-        warnings=["Calculation did not complete successfully."],
-        status="error",
-    )
+    # --- Failed: enrich with diagnostics + suggested_fixes ---
+    try:
+        from quantumvitas.mcp.error_enrichment import enrich_run_error
+
+        enriched = enrich_run_error(
+            calc_ulid=calc_ulid,
+            result_dto=result_dto,
+            digest=digest,
+            engine=engine,
+            workflow=workflow,
+        )
+        # Merge run payload into the enriched error for completeness
+        enriched["data"] = payload
+        return enriched
+    except Exception:
+        # Fallback to basic error if enrichment fails
+        return make_response(
+            payload,
+            context_hint="Check step messages for failure details.",
+            warnings=["Calculation did not complete successfully."],
+            status="error",
+        )
+
+
+def _try_parse_digest(detail: dict) -> dict | None:
+    """Attempt to parse QE output for the first step's digest."""
+    from pathlib import Path
+
+    calc_dir = detail.get("absolute_path")
+    if not calc_dir:
+        return None
+
+    calc_path = Path(calc_dir)
+    steps = detail.get("steps", [])
+    if not steps:
+        return None
+
+    step_info = steps[0]
+    step_slug = step_info.get("slug") or step_info.get("name", "")
+
+    candidates = [
+        calc_path / "raw" / step_slug,
+        calc_path / "raw",
+    ]
+    for candidate in candidates:
+        if candidate.is_dir():
+            try:
+                from quantumvitas.drivers.qe.parsers.output import QEOutputParser
+
+                parser = QEOutputParser()
+                if parser.can_parse(candidate):
+                    return parser.parse(candidate).to_dict()
+            except Exception:
+                pass
+
+    return None
