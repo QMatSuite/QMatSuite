@@ -197,6 +197,26 @@ This principle ensures that every capability exposed to the AI agent is also ava
 
 The MCP server is a thin adapter layer. It translates MCP tool calls into `QVService` method calls. No kernel code is modified. No new abstractions are introduced between MCP and the existing API. This follows Argonne's "thin adapter" pattern from their science-mcps work: wrap existing mature services rather than building new ones.
 
+### 3.4 Multi-Engine Workflows: Artifact Resolution
+
+QMatSuite supports cross-engine workflows through artifact resolution — output files from engine A are automatically discovered and staged as inputs for engine B. This is a production feature, not a design concept.
+
+**Verified multi-engine chains:**
+
+| Workflow | Steps | Artifact Flow |
+|---|---|---|
+| QE → Wannier90 | `scf → nscf → pw2wannier → wannier` | QE produces `.amn`, `.mmn`, `.eig`; W90 resolver finds and stages them |
+| QE → QMCPACK | `pw.x → pw2qmcpack → qmcpack` | QE produces wavefunctions; converter produces HDF5; QMCPACK reads via `href` |
+| QE → Yambo | `scf → yambo_setup → yambo_gw/bse` | Yambo resolver finds QE's `prefix.save/` directory; `p2y` converts to Yambo DB |
+
+**Mechanism** (code-verified):
+- `drivers/*/artifact_resolver.py` — Engine-specific resolvers search completed steps for required files
+- `calculation/step_artifacts.py` — Artifact rules registry: `wannierprep` produces `.nnkp`, `pw2wannier` produces `.amn/.mmn/.eig`
+- `execution/relax_artifacts.py` — Structure inheritance: relaxed geometry from step N becomes structure for step N+1
+- `execution/executor.py` — JobGraph executor respects cross-engine dependencies (sequential with `deps` list)
+
+**Integration test**: `tests/integration/test_qmcpack_diamond_workflow.py` (387 lines) exercises the full QE SCF → pw2qmcpack → QMCPACK VMC chain with real executables and validates energy output.
+
 ---
 
 ## 4. MCP Primitives Mapping
@@ -1186,27 +1206,61 @@ Note: `list_structures` is on-demand, not always-loaded. The agent usually knows
 | `diff_presets` | Show parameter differences between two preset levels | `presets/compiler.py:compile_presets()` diff |
 | `get_parameter_detail` | Full documentation for a specific engine parameter | `*_metadata.py:get_tag_info()` |
 
-#### Provenance and Knowledge Tools
+#### Provenance Tools
 
 | Tool | Description | Maps To |
 |---|---|---|
-| `get_project_history` | Query past calculations in the current project | `QVService.History.get_project_timeline()` via `.provenance/` SQLite |
-| `get_provenance` | Full lineage of a calculation (what led to it) | `QVService.History.get_run_revision()` |
-| `annotate_calculation` | Add researcher notes to a calculation | Journal entry creation |
-| `record_intent` | Record WHY a calculation is being run (before execution) | Journal entry creation (needs new `QVService.History` write API) |
-| `record_interpretation` | Record WHAT the agent concluded (after analysis) | Journal entry creation (needs new `QVService.History` write API) |
-| `search_knowledge` | Full-text search over accumulated insights | `~/.qmatsuite/knowledge.db` FTS5 query |
-| `record_insight` | Record a distilled insight with provenance links | `~/.qmatsuite/knowledge.db` insert |
-| `update_insight` | Update or supersede an existing insight | `~/.qmatsuite/knowledge.db` update |
+| `get_project_history` | Query past calculations in the current project (timeline of runs, edits, pins) | `QVService.History.get_timeline()` + `list_run_history()` (already implemented, 5 methods) |
+| `get_provenance` | Full lineage of a calculation: run details, parameter snapshot, step results | `QVService.History.get_run_revision()` (already implemented) |
+| `annotate_calculation` | Add researcher notes to a calculation | Journal entry creation (needs new write API) |
+| `record_intent` | Record WHY a calculation is being run (before execution). Appends to provenance journal. | `QVService.History.add_journal_entry(calc_ulid, "intent", text)` (needs new method; Journal infra at `core/journal.py` exists) |
+| `record_interpretation` | Record WHAT the agent concluded (after analysis). Appends to provenance journal. | `QVService.History.add_journal_entry(calc_ulid, "interpretation", text)` (needs new method) |
 
-### 5.5 API Gaps: What QVService Needs
+#### Knowledge Tools
 
-The fine-grained tool model maps to existing QVService methods for most operations. Two gaps need to be addressed:
+| Tool | Description | Maps To |
+|---|---|---|
+| `search_knowledge` | Search accumulated insights by natural language query, material, engine, workflow, minimum grade, and confidence. Returns ranked results from all sources (builtin, local, community). Input: `{query_text?, material?, engine?, workflow?, grade_min?, source?, confidence_min?, limit?}`. | `~/.qmatsuite/knowledge.db` FTS5 query with scope filtering |
+| `record_insight` | Record a distilled insight with structured grade, scope, and provenance links. Input: `{grade, scope: {material, engine, workflow}, content, confidence, tags?, provenance_refs?}`. | `~/.qmatsuite/knowledge.db` insert |
+| `update_insight` | Update content/confidence or supersede an existing insight. Sets `superseded_by` on old entry, creates new entry. | `~/.qmatsuite/knowledge.db` update + insert |
 
-| Tool | Required QVService Capability | Status |
+### 5.5 API Surface Assessment and Gaps
+
+Code review reveals that the existing QVService and infrastructure are more mature than initially assumed. The fine-grained tool model maps well to existing methods:
+
+#### What Already Exists
+
+| MCP Tool | QVService Method | Status |
+|---|---|---|
+| `create_calculation` | `QVService.Calculation.create()` | Fully implemented |
+| `set_parameters` | `QVService.Calculation.update_step_params()` | Fully implemented |
+| `apply_preset` | `QVService.Calculation.apply_presets()` | Fully implemented |
+| `inspect_calculation` (read) | `QVService.Calculation.get_detail()` + `get_step_detail()` | Fully implemented |
+| `run_calculation` | `QVService.Run.run_calculation()` | Fully implemented |
+| `get_status` | `QVService.Run.get_job_status()` | Fully implemented (via JobManager) |
+| `get_results_summary` | `QVService.Analysis.get_step_digest()` | Fully implemented (15 engine parsers) |
+| `get_project_history` | `QVService.History.get_timeline()` + `list_run_history()` | Fully implemented (5 History methods) |
+| `get_provenance` | `QVService.History.get_run_revision()` | Fully implemented |
+| `duplicate_calculation` | `QVService.Calculation.duplicate()` | Fully implemented (copies SSOT + raw/, regenerates ULIDs) |
+
+#### What Also Exists (Supporting Infrastructure)
+
+| Infrastructure | What It Provides | Location |
+|---|---|---|
+| **Provenance system** (3,600+ lines) | Append-only event log, CAS, snapshots, restore, query | `src/quantumvitas/provenance/` |
+| **ErrorDTO** with rich diagnostics | type, code, message, retryable, hint, context, cause | `api/types/error.py` |
+| **30 DTOs** across 9 files | Fail-closed serialization, reference pattern, metadata normalization | `api/types/` |
+| **Multi-engine artifact resolution** | Cross-engine data flow (QE→W90, QE→QMCPACK, QE→Yambo) | `drivers/*/artifact_resolver.py` |
+| **OperationContext** | 20+ operation types for all SSOT mutations | `provenance/opctx.py` |
+
+#### Gaps That Need New QVService Methods
+
+| MCP Tool | Required QVService Capability | Gap Description |
 |---|---|---|
 | `inspect_calculation(dry_run=true)` | Materialize input files to temp dir without executing | **New method needed** — `QVService.Calculation.materialize_preview()` wrapping `write_engine_inputs()` |
-| `record_intent` / `record_interpretation` | Write journal entries to provenance | **New method needed** — `QVService.History.add_journal_entry(calc_ulid, entry_type, text)` |
+| `record_intent` / `record_interpretation` | Write agent-authored journal entries to provenance | **New method needed** — `QVService.History.add_journal_entry(calc_ulid, entry_type, text)`. The Journal infrastructure (`core/journal.py`, 369 lines) provides append-only storage; the gap is exposing a typed write API. |
+| `search_knowledge` / `record_insight` | Knowledge Base CRUD | **New module needed** — `knowledge/` package with SQLite+FTS5 store. Phase 1: read builtin entries. Phase 3: full CRUD + search. |
+| Error `suggested_fixes` | Knowledge-backed error recovery suggestions | **Enhancement needed** — MCP layer enriches existing `ErrorDTO` + `*Digest` with `suggested_fixes` from Knowledge Base. No kernel changes needed. |
 
 Per Section 3.2 (MCP as Equal Frontend), these capabilities should be added to `QVService`, not hacked around in the MCP layer. Both methods benefit all frontends: the GUI can use `materialize_preview` for input file inspection, and CLI can use journal entries for scripted workflows.
 
@@ -1382,73 +1436,322 @@ The LLM's context window, managed by the client (Claude Code's compaction, Gemin
 
 **Key property**: Append-only. Never modified. Never used as runtime logic base. This is the "court of final record."
 
-**What gets recorded:**
+#### Existing Infrastructure (3,600+ lines, production-ready)
+
+Layer 3 is the most mature layer — it already exists as a fully implemented, gate-tested subsystem:
+
+| Component | Module | Status |
+|---|---|---|
+| **OperationContext** | `provenance/opctx.py` (256 lines) | Mandatory envelope for all SSOT writes. 20+ operation types (CALC_COPY, STEP_ADD, PRESET_APPLY, RESTORE, ROLLBACK, etc.). Frozen dataclass with actor, scope, payload, timestamp. |
+| **SQLite Schema** | `provenance/schema.py` (289 lines) | 5-table schema (v3): `operations` (append-only event log), `runs` (execution records), `run_steps` (per-step results), `analysis_snapshots` (object linkage), `cas_objects` (blob metadata). |
+| **CAS** | `provenance/cas.py` (220 lines) | Content-addressed store at `.provenance/.cas/objects/<sha256>`. Immutable blobs with 5 tiers (run snapshots → large optional). Dedup: same hash = no-op. |
+| **Recording** | `provenance/recording.py` (451 lines) | `record_operation_event()` computes diff summary and appends to `operations` table. Called after every SSOT write. |
+| **Snapshots** | `provenance/snapshots.py` (130 lines) | `create_run_snapshot()` serializes calculation.yaml + step.yaml to Tier-0 CAS (never auto-deleted). `get_run_snapshot()` retrieves from CAS. |
+| **Restore** | `provenance/restore.py` (158 lines) | Restore SSOT from any snapshot. Records RESTORE operation. |
+| **Journal** | `core/journal.py` (369 lines) | Append-only JSONL log with before/after snapshots. Hooks into `save_yaml_doc()`. |
+| **Query API** | `provenance/query.py` (376 lines) | `query_operations()`, `query_runs()`, `get_run_details()`, `build_timeline_entry()`. Graceful degradation: missing tables return empty results. |
+| **Pins** | `provenance/pins.py` (377 lines) | Pin analysis results (plots, JSON data) to run history with provenance linkage. |
+| **Scanner** | `provenance/scanner.py` (275 lines) | Tracks which run/step produced each output file in `raw/`. |
+| **Service API** | `api/service.py` QVService.History | 5 public methods: `get_timeline()`, `get_run_revision()`, `get_storage_summary()`, `list_run_history()`, `pin_analysis()`. |
+
+**Governance**: 9 binding laws (P1–P9) in `docs/laws/L1/PROVENANCE_VERSIONED_HISTORY_SPEC.md`, enforced by 7 gate tests in CI. Key laws: P1 (SSOT separation — deleting `.provenance/` leaves project runnable), P2 (OperationContext required on all saves), P4 (append-only timeline), P7 (graceful degradation).
+
+#### What Gets Recorded
 
 | Category | Content | Source |
 |---|---|---|
-| Agent intent | WHY a calculation was submitted | Via `record_intent` tool |
-| Run metadata | WHEN it ran, WHAT parameters were used | Auto-recorded by QMatSuite on `run_calculation` |
-| Result digest | WHAT came out — energy, convergence, properties | Auto-recorded by QMatSuite on completion |
-| Agent interpretation | WHAT the agent concluded from the results | Via `record_interpretation` tool |
+| Agent intent | WHY a calculation was submitted | Via `record_intent` tool (needs new journal write API) |
+| Operation events | Every SSOT mutation with before/after diff | Auto-recorded by `save_yaml_doc()` hook |
+| Run metadata | Start time, parameter snapshot (CAS Tier-0), engine version | Auto-recorded by Runner on `run_calculation` |
+| Step results | Per-step status, timing, exit code, digest SHA | Auto-recorded by Runner on step completion |
+| Result digest | Energy, convergence, forces, properties | Auto-recorded by OutputParser on completion |
+| Analysis pins | Plots and JSON data linked to specific runs | Via `pin_analysis()` |
+| Agent interpretation | WHAT the agent concluded from the results | Via `record_interpretation` tool (needs new journal write API) |
 
 **Agent access**: `get_project_history`, `get_provenance`
 
 **Critical design point**: Intent is NOT part of present-tense SSOT. Presets encode intent structurally (e.g., "precision=high" IS the intent). But the textual rationale ("testing U=5 because literature suggests 4-6 eV range") lives ONLY in provenance.
 
+**Gap for MCP**: The existing provenance system records *system events* (operation diffs, run metadata, step results) automatically. What's missing is the ability to record *agent-authored entries* — intent and interpretation. This requires a new `QVService.History.add_journal_entry(calc_ulid, entry_type, text)` method. The Journal infrastructure (`core/journal.py`) provides the append-only storage mechanism; the gap is exposing a write API through QVService.
+
 ### 7.4 Layer 4: Knowledge Base (Evolvable Best-Knowledge, Multi-Scope)
 
-**Storage**: `~/.qmatsuite/knowledge.db` (SQLite, user-global, not project-specific)
+**Storage**: `~/.qmatsuite/knowledge.db` (SQLite with FTS5, user-global, not project-specific)
 
 **Semantics**: "What have we LEARNED?" Distilled insights from accumulated experience.
 
 **Key property**: Unlike provenance, this IS mutable — insights can be updated, superseded, deduplicated. This is the agent's "best current understanding," not an audit trail.
 
-**Two scopes:**
+#### The Insight Structure
 
-- **Project-scope insights**: "For this specific FeO system, U=5 eV is optimal." Relevant within a project context.
-- **Global-scope insights**: "Transition metal oxides generally need U in the 4-6 eV range." "Methfessel-Paxton smearing converges faster for metals." Relevant across all projects.
+Every knowledge entry is a structured insight with grade, scope, source, and provenance links:
 
-**Relationship to provenance**: Knowledge is DISTILLED from provenance. The provenance ledger has individual entries like "U=5 gave bandgap=2.5 eV" and "U=7 gave bandgap=3.1 eV." The knowledge base synthesizes: "For FeO, U=5 eV best matches experiment." The agent can be asked to review provenance and generate knowledge entries.
+```yaml
+id: <ULID>                           # Unique identifier
+grade: bookkeeping | observation | finding | principle
+scope:
+  material: "Si" | "GaAs" | "*"      # What material family
+  engine: "QE" | "VASP" | "*"        # What engine
+  workflow: "scf" | "bands" | "*"    # What workflow type
+content: "natural language description"
+confidence: low | medium | high       # Based on evidence count and consistency
+source: local | literature | community | builtin
+provenance_refs: [list of Layer 3 entry IDs]
+created_by: agent | user | paper_doi | system
+tags: [list of strings]
+created_at: <ISO datetime>
+updated_at: <ISO datetime>
+upvotes: 0                            # For community voting (future)
+superseded_by: null | <ULID>          # If updated by newer knowledge
+```
 
-**Deduplication**: When a new insight contradicts an existing one, the old insight is superseded (marked with `superseded_by` reference), not deleted. History is preserved.
+**Grade semantics** — four levels of epistemic commitment:
 
-**Schema**:
+| Grade | Semantics | Example | Typical Source |
+|---|---|---|---|
+| **bookkeeping** | Pure record, no insight | "Si SCF with ecutwfc=60 converged in 12 steps" | Auto-digest after every calculation |
+| **observation** | Data without conclusion | "Increasing ecutwfc from 40→60 changed Si energy by 3 meV/atom" | Agent comparing two calculations |
+| **finding** | Conclusion with evidence | "Si ecutwfc converges to <1 meV/atom above 50 Ry" | Agent analyzing convergence scan |
+| **principle** | Cross-material/cross-engine general rule | "III-V semiconductors with PBE+SOC underestimate band gap by 30-40%" | Literature, accumulated findings |
+
+Grades form a knowledge hierarchy. Bookkeeping entries are raw data. Observations notice patterns. Findings draw conclusions. Principles generalize across systems. A real researcher progresses up this hierarchy as expertise accumulates — and so does the agent.
+
+**Scope** determines when an insight is relevant. An insight with `{material: "Si", engine: "QE", workflow: "scf"}` is surfaced when the agent configures a Si SCF calculation with QE. An insight with `{material: "*", engine: "VASP", workflow: "*"}` is surfaced for any VASP calculation. The wildcard `"*"` means "applies broadly."
+
+**Source** tracks provenance of the knowledge itself:
+
+| Source | Meaning | Trust Level |
+|---|---|---|
+| `local` | From user's own calculations | Highest (first-hand evidence) |
+| `builtin` | Shipped with QMatSuite (error recovery strategies, best practices) | High (curated by developers) |
+| `literature` | Extracted from papers (future: citation analysis) | High (peer-reviewed) |
+| `community` | Contributed by other researchers (future) | Variable (voted/curated) |
+
+#### Schema
+
 ```sql
 CREATE TABLE insights (
-    id TEXT PRIMARY KEY,           -- k_001, k_002, ...
-    scope TEXT NOT NULL,           -- 'project' or 'global'
-    category TEXT NOT NULL,        -- convergence_strategy, functional_choice, etc.
-    engine TEXT,                   -- 'vasp', 'qe', or NULL for engine-agnostic
-    system_type TEXT,              -- 'metallic', 'semiconductor', 'molecular', etc.
-    insight TEXT NOT NULL,         -- Natural language description
-    evidence TEXT,                 -- JSON array of calc_ulids
-    confidence TEXT DEFAULT 'medium', -- 'low', 'medium', 'high'
-    superseded_by TEXT,            -- ID of insight that supersedes this one
+    id TEXT PRIMARY KEY,                -- ULID
+    grade TEXT NOT NULL,                -- bookkeeping, observation, finding, principle
+    scope_material TEXT DEFAULT '*',    -- Material family or '*'
+    scope_engine TEXT DEFAULT '*',      -- Engine name or '*'
+    scope_workflow TEXT DEFAULT '*',    -- Workflow type or '*'
+    content TEXT NOT NULL,              -- Natural language description
+    confidence TEXT DEFAULT 'medium',   -- low, medium, high
+    source TEXT NOT NULL DEFAULT 'local', -- local, builtin, literature, community
+    provenance_refs TEXT,               -- JSON array of Layer 3 entry IDs
+    created_by TEXT NOT NULL,           -- agent, user, paper_doi, system
+    tags TEXT,                          -- JSON array of string tags
+    upvotes INTEGER DEFAULT 0,         -- Community voting (future)
+    superseded_by TEXT,                 -- ULID of superseding insight
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (superseded_by) REFERENCES insights(id)
 );
 
 CREATE VIRTUAL TABLE insights_fts USING fts5(
-    category, engine, system_type, insight,
+    content, tags, scope_material, scope_engine,
     content='insights', content_rowid='rowid'
 );
+
+CREATE INDEX idx_insights_grade ON insights(grade);
+CREATE INDEX idx_insights_scope ON insights(scope_material, scope_engine, scope_workflow);
+CREATE INDEX idx_insights_source ON insights(source);
+CREATE INDEX idx_insights_confidence ON insights(confidence);
+CREATE INDEX idx_insights_superseded ON insights(superseded_by);
 ```
+
+**Deduplication**: When a new insight contradicts an existing one, the old insight is superseded (marked with `superseded_by` reference), not deleted. History is preserved. This mirrors how scientific understanding evolves — old findings aren't erased, they're refined.
 
 **Agent access**: `search_knowledge`, `record_insight`, `update_insight`
 
-### 7.5 The Distillation Pipeline (Phase 3+)
+### 7.5 The Distillation Pipeline: Four Triggers
+
+Knowledge doesn't just accumulate — it distills. Raw experience becomes organized understanding through four distinct triggers:
 
 ```
-Provenance entries (raw experience)
-    ↓ Agent reviews and synthesizes
-Project-scope knowledge (specific to this system/project)
-    ↓ Agent generalizes across projects
-Global-scope knowledge (general computational wisdom)
+Layer 3 (Provenance)                    Layer 4 (Knowledge)
+┌──────────────────────┐               ┌──────────────────────┐
+│ Run records           │──[auto]──────>│ bookkeeping entries  │
+│ Parameter snapshots   │               │ (every calc)         │
+│ Result digests        │               │                      │
+│ Intent/interpretation │──[agent]─────>│ observations         │
+│                       │               │ findings             │
+│                       │──[review]────>│ principles           │
+└──────────────────────┘               └──────────────────────┘
 ```
 
-This mirrors how researchers build expertise: individual experiments → project-specific conclusions → general domain knowledge accumulated over a career.
+#### Trigger 1: Auto-Digest (Every Calculation Completion)
 
-**Implementation note**: The full distillation pipeline is Phase 3+. In Phase 1-2, provenance handles everything. The knowledge base is a "good to have" that makes the agent smarter over time. Provenance is the "court of final record" — all truth can be reconstructed from provenance even if the knowledge base is empty or wrong.
+When a calculation completes, QMatSuite generates a structured digest (converged? energy? gap? forces? timing?). The agent reads this digest and SHOULD write at least one bookkeeping-level insight. This happens naturally in the INTERPRET step of the research cycle (Section 8).
+
+Example auto-generated bookkeeping:
+```
+grade: bookkeeping
+scope: {material: "Si", engine: "QE", workflow: "scf"}
+content: "Si PBE SCF with ecutwfc=40 Ry, 8x8x8 k-mesh converged in 9 iterations.
+          Energy: -310.42 eV. Bandgap: 0.67 eV. Wall time: 45s."
+source: local
+provenance_refs: ["01KC38MFJZ..."]
+```
+
+#### Trigger 2: User Pin ("Remember This")
+
+The user explicitly marks something important: "remember that U=5 works for FeO" or "pin this finding." The agent converts the statement to a structured insight with grade ≥ finding. The pin action itself is recorded as a provenance event. (The existing `pin_analysis()` API at `provenance/pins.py` provides the infrastructure; knowledge pins extend this pattern.)
+
+#### Trigger 3: Accumulation Review (Threshold)
+
+When a scope (e.g., `{material: "Si", engine: "QE"}`) accumulates N bookkeeping/observation entries (e.g., N=5), the system suggests a review. The agent consolidates multiple observations into findings or principles:
+
+```
+System: "You have 7 observations about Si/QE convergence. Would you like me to
+         summarize what we've learned?"
+Agent: Queries provenance for all Si/QE runs → synthesizes patterns →
+       writes finding: "Si ecutwfc converges to <1 meV/atom above 50 Ry"
+```
+
+#### Trigger 4: Review Session (User-Initiated)
+
+The user requests "summarize what we've learned" or "generate a report." The agent:
+1. Queries knowledge base for the relevant scope
+2. Queries provenance for supporting evidence
+3. Produces both a document (markdown) AND knowledge entries
+4. Records the review session as a provenance event
+
+This mirrors how a researcher writes a lab report at the end of a project — the act of writing is itself a learning exercise that crystallizes understanding.
+
+### 7.6 Knowledge as Extensible Community Library
+
+The Knowledge Base is designed as a **searchable, contributable, extensible library** — not just a local cache.
+
+#### Four Knowledge Sources
+
+```
+┌─────────────────────────────────────────────────────┐
+│                  Knowledge Base                      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐          │
+│  │  Builtin  │  │  Local   │  │Literature│  ┌──────┐│
+│  │ (shipped) │  │ (user's  │  │ (papers) │  │Commty││
+│  │           │  │  calcs)  │  │          │  │      ││
+│  └──────────┘  └──────────┘  └──────────┘  └──────┘│
+│       Phase 1       Phase 1      Phase 3+   Phase 4 │
+└─────────────────────────────────────────────────────┘
+```
+
+**Builtin knowledge** (Phase 1): QMatSuite ships with a "starter pack" of curated principles. These are the error recovery suggestions, common best practices, and parameter guidelines that experienced practitioners know. Examples:
+
+```yaml
+- grade: principle
+  scope: {material: "*", engine: "VASP", workflow: "scf"}
+  content: "For metallic systems, use ISMEAR=1 (Methfessel-Paxton) with SIGMA=0.1-0.2.
+            Gaussian smearing (ISMEAR=0) converges 2-3x slower for metals."
+  source: builtin
+  confidence: high
+
+- grade: principle
+  scope: {material: "*", engine: "*", workflow: "scf"}
+  content: "When SCF oscillates without converging, reduce mixing parameter by 50%.
+            For QE: mixing_beta 0.7→0.3. For VASP: AMIX 0.4→0.2."
+  source: builtin
+  confidence: high
+```
+
+**Local knowledge** (Phase 1): From the user's own calculations. Auto-generated bookkeeping plus agent-authored observations, findings, and principles.
+
+**Literature knowledge** (Phase 3+): Extracted from paper analysis. Future: QE/VASP citation analysis projects could extract parameter statistics from thousands of published papers, creating a massive knowledge base of "what parameters does the community actually use for this system type?"
+
+**Community knowledge** (Phase 4): Other researchers contribute findings. Distribution model:
+- Community packs downloadable (like a package manager for computational knowledge)
+- Users can upload their finding-and-above entries (provenance stripped to protect privacy, but scope/content/confidence preserved)
+- Voting/curation mechanism for quality control
+- Moderated by domain experts
+
+#### Search Interface
+
+```
+search_knowledge(
+  query_text?: str,          # Natural language FTS5 search
+  material?: str,            # Scope filter
+  engine?: str,              # Scope filter
+  workflow?: str,            # Scope filter
+  grade_min?: str,           # Minimum grade (e.g., "finding" excludes bookkeeping)
+  source?: str,              # Source filter
+  confidence_min?: str,      # Minimum confidence
+  limit?: int = 10
+) → list[Insight]
+```
+
+Results are ranked by `confidence × FTS5_relevance`, with `grade` as a secondary sort (principles first).
+
+### 7.7 Error System ↔ Knowledge System Connection
+
+**Key insight: Error recovery suggestions ARE knowledge entries.**
+
+The structured error suggestions that QMatSuite provides (Section 10) are `{source: "builtin", grade: "principle"}` knowledge entries. This connection has three consequences:
+
+1. **The error system is a downstream consumer of the Knowledge Base.** When a calculation fails with SCF_NOT_CONVERGED, the MCP error return's `suggested_fixes` are populated by querying the knowledge base for `{scope: {engine: X, workflow: "scf"}, grade: "principle", tags: ["error_recovery", "scf_convergence"]}`.
+
+2. **Community knowledge enriches error recovery without code changes.** As the community contributes recovery strategies, the `suggested_fixes` list grows automatically. A VASP user discovers that `ALGO=All` fixes a specific convergence pathology → contributes finding → all future users see this suggestion.
+
+3. **Agent can search knowledge after failure.** Beyond the rule-based suggestions in the error return, the agent can call `search_knowledge(query="SCF convergence failure metallic", engine="vasp")` to find both builtin and community strategies. This is Level 2 recovery (Section 10) powered by accumulated knowledge.
+
+**Phase 1 implementation**: Error suggestions are hardcoded rules in the MCP layer (as currently designed in Section 10). The knowledge base stores them as `source=builtin` entries, but the error system reads them directly (no DB query in the critical path).
+
+**Phase 2+ implementation**: Error suggestions are dynamically queried from the knowledge base. New builtin entries added by developers. Community entries added by users. The error system becomes a live, growing repository of recovery wisdom.
+
+### 7.8 Knowledge Injection: Layer 4 → Layer 1
+
+Knowledge is only useful if it reaches the agent's context at the right time. Three injection mechanisms:
+
+#### On-Demand Retrieval
+
+The agent explicitly calls `search_knowledge` when it needs accumulated wisdom. Typical triggers:
+- Starting a new calculation for a material/engine combination the agent has seen before
+- Encountering an error and looking for recovery strategies
+- User asks "what do we know about X?"
+
+This is the simplest mechanism and sufficient for Phase 1-2.
+
+#### Proactive Injection
+
+When QMatSuite detects the material/engine/workflow of a new calculation, it can include relevant high-confidence knowledge in the tool response. For example, `create_calculation` could return:
+
+```json
+{
+  "calc_ulid": "01KC...",
+  "relevant_knowledge": [
+    {
+      "grade": "principle",
+      "content": "For metallic Fe with VASP, ISMEAR=1 (Methfessel-Paxton) converges 3x faster than Gaussian.",
+      "confidence": "high",
+      "source": "builtin"
+    }
+  ]
+}
+```
+
+**Token budget management**: Only inject `finding` and `principle` grade entries. Limit to top-K (default K=3) by `confidence × scope_specificity`. A principle scoped to `{material: "Fe", engine: "VASP"}` ranks higher than one scoped to `{material: "*", engine: "VASP"}` when the agent creates an Fe/VASP calculation.
+
+#### Error-Time Injection
+
+When a calculation fails, the error return includes `suggested_fixes` from the knowledge base (Section 7.7). This is the highest-value injection point — the agent needs help precisely when things go wrong, and accumulated knowledge is most useful here.
+
+### 7.9 The Researcher Expertise Analogy
+
+The four-layer memory architecture mirrors how real researchers build expertise:
+
+| Researcher Process | Memory Layer | Agent Equivalent |
+|---|---|---|
+| **Working on a problem** | Working memory (context window) | Layer 1: Ephemeral agent context |
+| **Lab notebook** | Current experiment state | Layer 2: Present-tense SSOT (YAML) |
+| **Publication record** | Immutable record of what was done | Layer 3: Provenance ledger (append-only) |
+| **Domain expertise** | "I just know metals need MP smearing" | Layer 4: Knowledge base (evolving) |
+
+A postdoc with 5 years of VASP experience "just knows" convergence tricks for different system types. This knowledge was built through dozens of convergence failures and successes — individual experiments (Layer 3) distilled into expertise (Layer 4). QMatSuite makes this accumulation explicit, queryable, and shareable.
+
+The key difference from AiiDA (which has provenance but no learning) and ExpeL/Reflexion (which have learning but no provenance): **QMatSuite's provenance is *generative* — it's the raw material for knowledge distillation, not a terminal archival endpoint.**
+
+**Implementation note**: The full distillation pipeline is Phase 3+. Phase 1 needs only: (a) provenance auto-logging of tool calls (already exists), (b) `search_knowledge` querying a shipped builtin knowledge SQLite, (c) `record_insight` writing to local knowledge. The community/literature/distillation features are Phase 3-4. But the data model (structured insights with grade/scope/source/provenance_refs) is designed now so it's extensible without schema changes.
 
 ---
 
@@ -1498,7 +1801,7 @@ Two thin tools for agent-authored journal entries:
 - `record_intent(calc_ulid, reason: str)` — Record WHY this calculation is being run. Called before `run_calculation`. Thin wrapper around journal entry creation.
 - `record_interpretation(calc_ulid, interpretation: str)` — Record WHAT the agent concluded. Called after analyzing results. Thin wrapper around journal entry creation.
 
-**Implementation note**: These require a new `QVService.History.add_journal_entry(calc_ulid, entry_type, text)` method (see Section 5.5). Both tools are on-demand (Phase 2+).
+**Implementation note**: These require a new `QVService.History.add_journal_entry(calc_ulid, entry_type, text)` method (see Section 5.5). The Journal infrastructure (`core/journal.py`, 369 lines) provides append-only JSONL storage with before/after snapshots; the OperationContext system (`provenance/opctx.py`) defines 20+ operation types including `PIN_CREATE`. Adding `AGENT_INTENT` and `AGENT_INTERPRETATION` operation types and exposing them through QVService.History is a small extension of well-tested infrastructure. Both tools are on-demand (Phase 2+).
 
 ---
 
@@ -1535,6 +1838,28 @@ Structured writers are inherently more reliable than hand-written input files be
 
 ## 10. Error Recovery Architecture
 
+### Codebase Assessment: What Exists Today
+
+Code review reveals a substantial error infrastructure already in place:
+
+**What exists (ready to use):**
+- Rich API error hierarchy with 8 error classes and stable error codes (`NOT_FOUND`, `VALIDATION_FAILED`, `ENGINE_EXEC_FAILED`, `ENGINE_OUTPUT_PARSE_FAILED`, `ENGINE_NOT_AVAILABLE`, `EDIT_LOCK_HELD`, `RUN_LOCK_HELD`, `INTERNAL_ERROR`)
+- `ErrorDTO` with structured fields: `type`, `code`, `message`, `retryable`, `hint`, `context`, `cause`
+- `RunResultDTO` with embedded `ErrorDTO` on failure
+- 15 engine output parsers (`@register_parser`) returning structured `*Digest` dataclasses with convergence flags (`converged_electronic`, `converged_ionic`, `converged_scf`), iteration counts, `error_message`, and energy/force metrics
+- Exception mapping layer (`api/_mapping/exc_mapping.py`) that transforms 20+ kernel exception types to API errors with stable context extraction
+- Input parse `Diagnostic` class (`inputformat/parser.py`) with level/message/file/line/code
+- Levenshtein-based "did you mean?" suggestions for step type errors
+- QE engine resolution diagnostics with multi-state model
+
+**What's missing (needed for MCP):**
+- No systematic `suggested_fixes` mechanism — parsers detect failure patterns but don't recommend parameter changes
+- No failure root-cause analysis beyond convergence flag extraction
+- No cross-engine error catalog with remediation metadata
+- `ErrorDTO.hint` field exists but is rarely populated with actionable recovery guidance
+
+**MCP bridge strategy**: The MCP error return layer enriches existing `ErrorDTO` + `*Digest` data with `suggested_fixes` drawn from the Knowledge Base (`source=builtin, grade=principle` entries). This adds recovery intelligence without modifying the kernel error system.
+
 ### Level 0: Prevention (Schema Validation)
 
 The first line of defense prevents malformed requests from reaching the kernel.
@@ -1545,32 +1870,58 @@ The first line of defense prevents malformed requests from reaching the kernel.
 
 **Elicitation for expensive operations.** Before submitting a large calculation (many atoms, many k-points, many steps), elicitation can interrupt the agent to ask the user for confirmation: "This 128-atom VASP hybrid calculation will take approximately 8 hours on 64 cores. Proceed?"
 
-### Level 1: Structured Diagnostics (Rule-Based)
+### Level 1: Structured Diagnostics (Rule-Based + Knowledge-Backed)
 
 When a calculation fails, QMatSuite's output parsers return structured diagnostics — not raw log files.
 
-The existing `OutputParser` classes (e.g., `VASPOutputParser` at `drivers/vasp/parsers/output.py`, `QEOutputParser` at `drivers/qe/parsers/output.py`) already parse convergence status, energy traces, and error conditions. The MCP error return extends this with `suggested_fixes`:
+The existing `OutputParser` classes (15 engines registered via `@register_parser`) already parse convergence status, energy traces, and error conditions. Each returns an engine-specific `*Digest` dataclass:
 
-| Error Pattern | Diagnostic | Suggested Fix | Confidence |
+- **VASP**: `VASPDigest` — `converged_electronic` (SCF iterations vs NELM), `converged_ionic` (ionic steps vs NSW), band gap, forces
+- **ORCA**: `ORCADigest` — `success` (normal termination check), `converged_scf`, `converged_geometry`, `error_message` (up to 500 chars)
+- **Gaussian**: `GaussianDigest` — 23 fields including `success`, `converged_scf`, `converged_geometry`, `error_message`, MP2 energies, Link1 chain detection
+- **LAMMPS**: `LAMMPSDigest` — `success`, `error_message`, `converged_minimize`, "lost atoms" detection
+
+The MCP error return enriches these digest flags with `suggested_fixes`. In Phase 1, these are hardcoded rules. In Phase 2+, they are dynamically queried from the Knowledge Base (Section 7.7):
+
+| Error Pattern | Digest Signal | Suggested Fix (from Knowledge Base) | Confidence |
 |---|---|---|---|
-| Energy oscillating | `energy_oscillating: true` | Reduce mixing_beta: 0.7 → 0.3 | High |
-| SCF not converging | `iterations: 100, max: 100` | Increase electron_maxstep: 100 → 200 | Medium |
-| Negative eigenvalue | `negative_eigenvalue: true` | Increase ecutwfc by 20% | Medium |
-| Out of memory | `oom_detected: true` | Reduce k-grid or use fewer bands | High |
-| POSCAR mismatch | `species_mismatch: true` | Verify structure + POTCAR consistency | High |
+| Energy oscillating | `converged_electronic=false`, oscillation in SCF trace | Reduce mixing_beta: 0.7 → 0.3 | High |
+| SCF not converging | `n_electronic_steps >= NELM` | Increase electron_maxstep: 100 → 200 | Medium |
+| Negative eigenvalue | Detected in output text | Increase ecutwfc by 20% | Medium |
+| Out of memory | Exit code + OOM pattern in stderr | Reduce k-grid or use fewer bands | High |
+| POSCAR mismatch | Species count mismatch | Verify structure + POTCAR consistency | High |
+| Lost atoms (LAMMPS) | `error_message` contains "lost atoms" | Reduce timestep or check potential cutoffs | High |
+| Error termination (ORCA) | `success=false`, `error_message` populated | Parse error type, suggest input correction | Medium |
 
 These are deterministic rules, not LLM reasoning. The agent can act on them directly: call `set_parameters` with the suggested parameter change, verify with `inspect_calculation`, and resubmit.
 
-### Level 2: Agent-Driven Recovery
+### Level 2: Knowledge-Assisted Recovery
 
-For complex failures that defy rule-based diagnosis, the agent uses its own reasoning:
+For failures where Level 1 rules are insufficient, the agent draws on accumulated knowledge:
 
-1. **Inspect output**: `get_output_raw(calc_ulid, section="convergence", lines=50)` to see the raw convergence trace
-2. **Search parameters**: `search_parameters(query="convergence acceleration methods")` to find relevant settings
-3. **Query knowledge**: `search_knowledge(query="convergence failure metallic")` to check for past solutions
+1. **Query knowledge base**: `search_knowledge(query="SCF convergence failure metallic", engine="vasp")` — finds both builtin recovery strategies and community-contributed solutions
+2. **Inspect output**: `get_output_raw(calc_ulid, section="convergence", lines=50)` — see the raw convergence trace
+3. **Search parameters**: `search_parameters(query="convergence acceleration methods")` — find relevant engine settings
 4. **Use sampling**: The MCP server can invoke `sampling/createMessage` to ask the client's LLM for interpretation, keeping the diagnostic reasoning separate from the main agent context
 
-This three-level architecture is more elegant than alternatives. El Agente requires 58 specialized agents to achieve error recovery. DREAMS requires a separate LLM call hardcoded into the tool. QMatSuite provides structured data at Level 1 that a single intelligent agent can act on, with Level 2 as an escape hatch for genuinely novel failures.
+As the Knowledge Base grows (community contributions, literature extraction), Level 2 becomes more powerful without code changes. A convergence pathology that was novel for user A becomes a cataloged finding for user B.
+
+### Level 3: Agent-Driven Recovery
+
+For genuinely novel failures that no rule or knowledge entry covers, the agent uses its own reasoning to form a hypothesis, test it, and (if successful) record the solution as a new knowledge entry:
+
+```
+1. Agent encounters novel failure
+2. Reads output, searches parameters, queries knowledge (no match)
+3. Uses domain reasoning to hypothesize a fix
+4. Applies fix via set_parameters → inspect_calculation(dry_run) → run_calculation
+5. If fix works: record_insight(grade="finding", content="...", provenance_refs=[...])
+6. Future agents with the same failure pattern find this in search_knowledge
+```
+
+This closes the learning loop: novel failures become cataloged knowledge through the Provenance → Knowledge distillation pipeline.
+
+**Architecture comparison**: El Agente requires 58 specialized agents for error recovery. DREAMS requires a separate LLM call hardcoded into the tool. QMatSuite provides structured data at Level 1, accumulated knowledge at Level 2, and a learning loop at Level 3 that makes the system smarter with every failure.
 
 ---
 
