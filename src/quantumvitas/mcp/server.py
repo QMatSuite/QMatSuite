@@ -41,5 +41,8 @@ import quantumvitas.mcp.tools.get_structure_detail   # noqa: F401, E402
 # Stage 9: promote structure
 import quantumvitas.mcp.tools.promote_structure      # noqa: F401, E402
 
+# Stage 10: demo store
+import quantumvitas.mcp.tools.demo_store             # noqa: F401, E402
+
 if __name__ == "__main__":
     mcp.run()
