@@ -30,5 +30,8 @@ import quantumvitas.mcp.tools.get_status  # noqa: F401, E402
 import quantumvitas.mcp.tools.get_results_summary  # noqa: F401, E402
 import quantumvitas.mcp.tools.quick_run  # noqa: F401, E402
 
+# Stage 4: knowledge infrastructure
+import quantumvitas.mcp.tools.search_knowledge  # noqa: F401, E402
+
 if __name__ == "__main__":
     mcp.run()
