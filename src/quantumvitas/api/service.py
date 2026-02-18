@@ -8602,6 +8602,283 @@ class QVService:
 
         return demos
 
+    def load_demo_as_calculation(
+        self, demo_id: str, name: str | None = None,
+    ) -> dict[str, Any]:
+        """Load a demo as a new calculation in the current project.
+
+        Directly materializes the demo snapshot's structure, calculation, and
+        step YAML files into the current project — mirroring how
+        ``materialize_project_from_snapshot`` works, but without creating a
+        new project.  Step YAML files are written verbatim from the snapshot
+        (via ``StructureStepSpec``), preserving engine-specific parameter
+        nesting exactly.
+
+        Args:
+            demo_id: Demo identifier (e.g., "qe_si_scf", "vasp_si_relax")
+            name: Optional name for the calculation (defaults to demo title)
+
+        Returns:
+            Dict with calc_ulid, structure_ulid, demo_id, engine, name, steps
+
+        Raises:
+            FileNotFoundError: If demo snapshot not found
+            ValueError: If demo snapshot is invalid or has no calculations
+        """
+        import json
+        import yaml
+        from quantumvitas.core.resources import (
+            ResourceMeta,
+            generate_resource_id,
+            get_resources_dir,
+            slugify,
+        )
+        from quantumvitas.core.models import (
+            CalculationEntry,
+            CalculationModel,
+            CalculationStepEntry,
+            StructureEntry,
+            load_project,
+            save_calculation,
+            save_project,
+            migrate_species_overrides_to_calc,
+        )
+        from quantumvitas.core.yamldoc import StepDoc
+        from quantumvitas.core.yaml_io import save_yaml_doc
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from quantumvitas.project.snapshot import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
+
+        # ── 1. Load demo YAML ──────────────────────────────────────
+        resources_dir = get_resources_dir()
+        demo_path = resources_dir / "demo_projects" / f"{demo_id}.yml"
+        if not demo_path.exists():
+            available = [
+                f.stem for f in (resources_dir / "demo_projects").glob("*.yml")
+            ]
+            raise FileNotFoundError(
+                f"Demo snapshot '{demo_id}' not found. "
+                f"Available: {', '.join(sorted(available)) or 'none'}"
+            )
+
+        with open(demo_path, "r") as f:
+            snapshot_data = yaml.safe_load(f)
+        if not snapshot_data:
+            raise ValueError(f"Demo snapshot '{demo_id}' is empty or invalid")
+
+        calcs = snapshot_data.get("calculations", [])
+        if not calcs:
+            raise ValueError(f"Demo snapshot '{demo_id}' has no calculations")
+
+        structures = snapshot_data.get("structures", [])
+        demo_meta = snapshot_data.get("meta", {})
+        calc_data = calcs[0]
+        engine = calc_data.get("engine_family", "")
+        project_root = self.project_root
+
+        # ── 2. Load current project model ──────────────────────────
+        project_model = load_project(project_root)
+
+        # Build set of existing slugs for dedup
+        existing_struct_slugs = {
+            e.meta.slug for e in project_model.structures
+        }
+        existing_calc_slugs = {
+            e.meta.slug for e in project_model.calculations
+        }
+
+        # ── 3. Import structure (write file + register in project) ─
+        structure_ulid: str | None = None
+        if structures:
+            struct_entry_data = structures[0]
+            struct_meta_data = struct_entry_data.get("meta", {})
+            struct_name = struct_meta_data.get("name", demo_id)
+            struct_slug = struct_meta_data.get("slug") or slugify(struct_name)
+
+            # Dedup slug
+            base_slug = struct_slug
+            suffix = 2
+            while struct_slug in existing_struct_slugs:
+                struct_slug = f"{base_slug}-{suffix}"
+                suffix += 1
+
+            structure_ulid = generate_resource_id()
+            struct_rel_path = f"structures/{struct_slug}.json"
+
+            # Write structure JSON (same format as snapshot materialiser)
+            structures_dir = project_root / "structures"
+            structures_dir.mkdir(exist_ok=True)
+            struct_file = structures_dir / f"{struct_slug}.json"
+            struct_json = {
+                STRUCTURE_META_KEY: {
+                    "ulid": structure_ulid,
+                    "name": struct_name,
+                    "slug": struct_slug,
+                    "path": struct_rel_path,
+                    "kind": "structure",
+                },
+                STRUCTURE_DATA_KEY: struct_entry_data.get("data", {}),
+            }
+            struct_file.write_text(json.dumps(struct_json, indent=2))
+
+            # Register in project model
+            project_model.structures.append(
+                StructureEntry(
+                    meta=ResourceMeta(
+                        ulid=structure_ulid,
+                        name=struct_name,
+                        slug=struct_slug,
+                        path=struct_rel_path,
+                        kind="structure",
+                    ),
+                    file=struct_rel_path,
+                    format="auto",
+                )
+            )
+
+        # ── 4. Create calculation directory + calculation.yaml ─────
+        calc_meta_data = calc_data.get("meta", {})
+        calc_name = name or demo_meta.get("title") or calc_meta_data.get("name") or demo_id
+        calc_slug = slugify(calc_name)
+
+        # Dedup slug
+        base_slug = calc_slug
+        suffix = 2
+        while calc_slug in existing_calc_slugs:
+            calc_slug = f"{base_slug}-{suffix}"
+            suffix += 1
+
+        calc_ulid = generate_resource_id()
+        calc_rel_path = f"calculations/{calc_slug}"
+
+        calc_dir = project_root / "calculations" / calc_slug
+        calc_dir.mkdir(parents=True, exist_ok=True)
+        steps_dir = calc_dir / "steps"
+        steps_dir.mkdir(exist_ok=True)
+        (calc_dir / "raw").mkdir(exist_ok=True)
+
+        # Resolve species_map (same logic as snapshot materialiser)
+        calc_species_map = calc_data.get("species_map")
+        if not calc_species_map:
+            step_species_list = [
+                s.get("species_overrides")
+                for s in calc_data.get("steps", [])
+            ]
+            if any(step_species_list):
+                temp_calc = CalculationModel(
+                    meta=ResourceMeta(
+                        ulid=calc_ulid, name=calc_name, slug=calc_slug,
+                        path=calc_rel_path, kind="calculation",
+                    ),
+                )
+                temp_calc = migrate_species_overrides_to_calc(
+                    temp_calc, step_species_list,
+                )
+                calc_species_map = temp_calc.species_map
+
+        calc_model = CalculationModel(
+            meta=ResourceMeta(
+                ulid=calc_ulid,
+                name=calc_name,
+                slug=calc_slug,
+                path=calc_rel_path,
+                kind="calculation",
+            ),
+            structure_ulid=structure_ulid,
+            engine_family=engine,
+            mode=calc_data.get("mode", "normal"),
+            working_dir=calc_data.get("working_dir", "raw"),
+            steps=[],
+            species_map=calc_species_map,
+        )
+
+        # ── 5. Write step YAML files directly (same as snapshot) ───
+        steps_out: list[dict[str, Any]] = []
+        for idx, step_data in enumerate(calc_data.get("steps", [])):
+            step_meta_data = step_data.get("meta", {})
+            step_type_spec = step_data.get("step_type_spec", "step")
+            step_name = step_meta_data.get("name") or step_type_spec
+            step_slug = step_meta_data.get("slug") or slugify(step_name)
+
+            # Dedup slug within this calculation
+            base_step_slug = step_slug
+            step_suffix = 1
+            while (steps_dir / f"{step_slug}.step.yaml").exists():
+                step_slug = f"{base_step_slug}-{step_suffix}"
+                step_suffix += 1
+
+            new_step_ulid = generate_resource_id()
+            step_rel_path = f"{calc_rel_path}/steps/{step_slug}.step.yaml"
+
+            # Build step spec dict — copy everything, update meta
+            step_spec_dict = dict(step_data)
+            step_spec_dict.pop("structure_ulid", None)
+            step_spec_dict.pop("parent_calculation_id", None)
+            step_spec_dict.pop("structure", None)
+
+            if "step_type_spec" not in step_spec_dict:
+                raise ValueError(
+                    f"Step spec missing 'step_type_spec': {step_spec_dict}"
+                )
+
+            step_spec_dict["meta"] = {
+                "ulid": new_step_ulid,
+                "name": step_name,
+                "slug": step_slug,
+                "path": step_rel_path,
+                "kind": "step",
+            }
+
+            # Roundtrip through StructureStepSpec for proper serialisation
+            step_spec = StructureStepSpec.from_dict(step_spec_dict)
+
+            step_file = steps_dir / f"{step_slug}.step.yaml"
+            step_doc = StepDoc(step_spec.to_dict())
+            save_yaml_doc(step_doc, step_file, skip_journal=True)
+
+            calc_model.steps.append(
+                CalculationStepEntry(
+                    step_ulid=new_step_ulid,
+                    step_type_spec=step_spec.step_type_spec,
+                )
+            )
+            steps_out.append({
+                "step_index": idx,
+                "step_type_spec": step_spec.step_type_spec,
+                "step_ulid": new_step_ulid,
+            })
+
+        # ── 6. Save calculation.yaml ───────────────────────────────
+        save_calculation(calc_model, calc_dir / "calculation.yaml")
+
+        # ── 7. Register calculation in project and save ────────────
+        project_model.calculations.append(
+            CalculationEntry(
+                meta=ResourceMeta(
+                    ulid=calc_ulid,
+                    name=calc_name,
+                    slug=calc_slug,
+                    path=calc_rel_path,
+                    kind="calculation",
+                ),
+            )
+        )
+        save_project(project_model, project_root)
+
+        # ── 8. Create pseudo directory (empty — resolved at run time)
+        pseudo_data = snapshot_data.get("pseudo")
+        if pseudo_data:
+            pseudo_dir = project_root / pseudo_data.get("directory", "pseudo")
+            pseudo_dir.mkdir(exist_ok=True)
+
+        return {
+            "calc_ulid": calc_ulid,
+            "structure_ulid": structure_ulid,
+            "demo_id": demo_id,
+            "engine": engine,
+            "name": calc_name,
+            "steps": steps_out,
+        }
+
     # -------------------------------------------------------------------------
     # Pseudo Management (Global Operations)
     # -------------------------------------------------------------------------
