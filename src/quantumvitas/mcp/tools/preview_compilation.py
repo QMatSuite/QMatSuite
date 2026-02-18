@@ -14,6 +14,9 @@ def preview_compilation(engine: str, workflow: str, presets: dict) -> dict:
     It shows the compiled QE-style namelist parameters that result from the
     given preset dimension choices.
 
+    If the engine has a preflight checker, the compiled parameters are also
+    validated and any issues are returned in ``preflight_issues``.
+
     Args:
         engine: Engine family identifier (e.g. 'qe', 'vasp').
         workflow: Workflow template id (e.g. 'scf', 'dos', 'bands').
@@ -47,8 +50,9 @@ def preview_compilation(engine: str, workflow: str, presets: dict) -> dict:
     # --- compile presets per step ---
     from quantumvitas.presets.compiler import compile_presets_for_step
 
+    gen_steps = list(template.step_sequence)
     steps_out: list[dict] = []
-    for gen_step in template.step_sequence:
+    for gen_step in gen_steps:
         try:
             compiled = compile_presets_for_step(gen_step, presets)
         except Exception:
@@ -58,12 +62,45 @@ def preview_compilation(engine: str, workflow: str, presets: dict) -> dict:
             "parameters": compiled,
         })
 
+    result_data: dict = {
+        "engine": engine,
+        "workflow": workflow,
+        "presets": presets,
+        "steps": steps_out,
+    }
+
+    # --- preflight (best-effort) ---
+    try:
+        driver = DriverRegistry.get_driver(engine)
+        checker = driver.get_preflight_checker()
+        if checker is not None:
+            all_issues: list[dict] = []
+            for idx, step_entry in enumerate(steps_out):
+                workflow_context = {
+                    "gen_steps": gen_steps,
+                    "current_step_index": idx,
+                    "current_step_gen": step_entry["step_type_gen"],
+                    "other_steps_params": {},
+                }
+                issues = checker.check(
+                    step_entry["parameters"], None, workflow_context,
+                )
+                for iss in issues:
+                    all_issues.append({
+                        "step_index": idx,
+                        "step_type_gen": step_entry["step_type_gen"],
+                        "code": iss.code,
+                        "severity": iss.severity,
+                        "message": iss.message,
+                        "parameter": iss.parameter,
+                        "suggestion": iss.suggestion,
+                    })
+            if all_issues:
+                result_data["preflight_issues"] = all_issues
+    except Exception:
+        pass  # Best-effort: never cause tool failure
+
     return make_response(
-        {
-            "engine": engine,
-            "workflow": workflow,
-            "presets": presets,
-            "steps": steps_out,
-        },
+        result_data,
         context_hint="To commit, call create_calculation + apply_preset.",
     )

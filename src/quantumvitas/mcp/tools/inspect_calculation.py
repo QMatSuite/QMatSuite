@@ -7,16 +7,21 @@ from quantumvitas.mcp.envelope import make_error, make_response
 
 
 @mcp.tool
-def inspect_calculation(calc_ulid: str, step: int = -1) -> dict:
+def inspect_calculation(calc_ulid: str, step: int = -1, dry_run: bool = False) -> dict:
     """Inspect a calculation's current configuration.
 
     With the default ``step=-1`` an overview of all steps is returned.
     Pass a zero-based step index to get the full parameter detail for that
     specific step.
 
+    When ``dry_run=True`` (requires ``step >= 0``), materializes the input
+    files to a temporary directory and returns their content, plus runs
+    the engine's preflight checker if available.
+
     Args:
         calc_ulid: ULID of the target calculation.
         step: Step index to inspect in detail (-1 = overview only).
+        dry_run: If True, materialize input files and return content.
     """
     from quantumvitas.mcp.project import ProjectNotFoundError, get_service
 
@@ -48,10 +53,12 @@ def inspect_calculation(calc_ulid: str, step: int = -1) -> dict:
         }
         steps_out.append(entry)
 
+    engine = detail.get("engine_family", "")
+
     payload: dict = {
         "calc_ulid": detail.get("calc_ulid") or detail.get("ulid", calc_ulid),
         "name": detail.get("name", ""),
-        "engine": detail.get("engine_family", ""),
+        "engine": engine,
         "structure": detail.get("structure_name") or detail.get("structure"),
         "n_steps": detail.get("n_steps", len(steps_out)),
         "steps": steps_out,
@@ -65,16 +72,31 @@ def inspect_calculation(calc_ulid: str, step: int = -1) -> dict:
                 f"Step index {step} out of range (calculation has {len(steps_raw)} step(s)).",
             )
         step_ulid = steps_out[step]["step_ulid"]
+        step_params: dict = {}
         try:
             step_detail = svc.calculation.get_step_detail(calc_ulid, step_ulid)
+            step_params = step_detail.get("parameters", {})
             payload["step_detail"] = {
                 "step_index": step,
                 "step_ulid": step_ulid,
-                "parameters": step_detail.get("parameters", {}),
+                "parameters": step_params,
                 "cards": step_detail.get("cards", {}),
             }
         except Exception as exc:
             payload["step_detail_error"] = str(exc)
+
+        step_type_gen = steps_out[step].get("step_type_gen", "")
+
+        # --- preflight ---
+        _run_preflight(
+            payload, engine, step_params, detail, steps_out, step, step_type_gen, svc,
+        )
+
+        # --- dry_run materialization ---
+        if dry_run:
+            _run_dry_run(
+                payload, engine, step_type_gen, step_params, detail, svc,
+            )
 
     return make_response(
         payload,
@@ -83,3 +105,155 @@ def inspect_calculation(calc_ulid: str, step: int = -1) -> dict:
             f"or run_calculation(calc_ulid='{calc_ulid}') to execute."
         ),
     )
+
+
+def _run_preflight(
+    payload: dict,
+    engine: str,
+    step_params: dict,
+    detail: dict,
+    steps_out: list[dict],
+    step_index: int,
+    step_type_gen: str,
+    svc: object,
+) -> None:
+    """Run the engine's preflight checker (best-effort, never fails the tool)."""
+    try:
+        import quantumvitas.drivers  # noqa: F401 — trigger registration
+        from quantumvitas.core.driver_registry import DriverRegistry
+
+        driver = DriverRegistry.get_driver(engine)
+        checker = driver.get_preflight_checker()
+        if checker is None:
+            return
+
+        # Build structure_info
+        structure_info = _build_structure_info(detail, svc)
+
+        # Build workflow_context
+        gen_steps = [s.get("step_type_gen", "") for s in steps_out]
+        workflow_context = {
+            "gen_steps": gen_steps,
+            "current_step_index": step_index,
+            "current_step_gen": step_type_gen,
+            "other_steps_params": {},
+        }
+
+        issues = checker.check(step_params, structure_info, workflow_context)
+        if issues:
+            payload["preflight_issues"] = [
+                {
+                    "code": iss.code,
+                    "severity": iss.severity,
+                    "message": iss.message,
+                    "parameter": iss.parameter,
+                    "suggestion": iss.suggestion,
+                }
+                for iss in issues
+            ]
+    except Exception:
+        pass  # Best-effort: never cause tool failure
+
+
+def _run_dry_run(
+    payload: dict,
+    engine: str,
+    step_type_gen: str,
+    step_params: dict,
+    detail: dict,
+    svc: object,
+) -> None:
+    """Materialize input files to a tmpdir and attach content to payload."""
+    import tempfile
+    from pathlib import Path
+
+    try:
+        import quantumvitas.drivers  # noqa: F401 — trigger registration
+        from quantumvitas.core.driver_registry import DriverRegistry
+        from quantumvitas.inputformat.writer import write_engine_inputs
+
+        driver = DriverRegistry.get_driver(engine)
+        spec = driver.get_input_spec(gen_type=step_type_gen)
+        if spec is None:
+            payload["dry_run_error"] = (
+                f"Engine '{engine}' does not provide an input spec for gen_type='{step_type_gen}'."
+            )
+            return
+
+        # Build StructureDoc from calculation's structure
+        structure_doc = _build_structure_doc(detail, svc)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            written = write_engine_inputs(
+                spec, Path(tmpdir), step_params, structure_doc,
+            )
+            input_files: list[dict] = []
+            for fpath in written:
+                try:
+                    content = fpath.read_text()
+                except Exception:
+                    content = "<binary or unreadable>"
+                input_files.append({
+                    "filename": fpath.name,
+                    "content": content,
+                })
+            payload["input_files"] = input_files
+
+    except Exception as exc:
+        payload["dry_run_error"] = str(exc)
+
+
+def _build_structure_info(detail: dict, svc: object) -> dict | None:
+    """Build a lightweight structure_info dict for the preflight checker."""
+    structure_ulid = detail.get("structure_ulid")
+    if not structure_ulid:
+        return None
+
+    try:
+        elements_raw = detail.get("structure_elements", [])
+        atoms = svc.structure.get_atoms(structure_ulid)
+        species = atoms.get("species", [])
+        n_atoms = atoms.get("num_atoms", len(species))
+        elements = set(elements_raw) if elements_raw else set(species)
+
+        return {
+            "species": species,
+            "n_atoms": n_atoms,
+            "elements": elements,
+            "is_periodic": atoms.get("lattice") is not None,
+        }
+    except Exception:
+        return None
+
+
+def _build_structure_doc(detail: dict, svc: object) -> dict | None:
+    """Build a StructureDoc dict (lattice, species, frac_coords) for materialization."""
+    structure_ulid = detail.get("structure_ulid")
+    if not structure_ulid:
+        return None
+
+    try:
+        import numpy as np
+
+        atoms = svc.structure.get_atoms(structure_ulid)
+        lattice = atoms.get("lattice")
+        species = atoms.get("species", [])
+        positions = atoms.get("positions", [])  # Cartesian, Angstrom
+
+        if lattice is None or not positions:
+            return None
+
+        # Convert Cartesian → fractional: frac = cart @ inv(lattice)
+        lat_matrix = np.array(lattice)
+        cart_coords = np.array(positions)
+        inv_lat = np.linalg.inv(lat_matrix)
+        frac_coords = cart_coords @ inv_lat
+
+        return {
+            "lattice": [list(row) for row in lat_matrix],
+            "species": species,
+            "frac_coords": [list(fc) for fc in frac_coords],
+            "comment": detail.get("name", ""),
+        }
+    except Exception:
+        return None

@@ -91,5 +91,10 @@ class QEDriver(BaseEngineDriver):
         from .inputspec import get_qe_input_spec
         return get_qe_input_spec(**context)
 
+    def get_preflight_checker(self):
+        """Return QE preflight parameter checker."""
+        from .preflight import QEPreflightChecker
+        return QEPreflightChecker()
+
     def get_workdir_policy(self) -> WorkdirPolicy:
         return WorkdirPolicy.SHARED

@@ -78,6 +78,22 @@ class PreflightRequirement:
     description: str = ""           # Human-readable description
 
 
+@dataclass(frozen=True)
+class PreflightIssue:
+    """A validation issue found during preflight parameter checking.
+
+    Immutable value object returned by engine-specific preflight checkers.
+    """
+
+    code: str               # Machine-readable code, e.g. "MISSING_ECUTWFC"
+    severity: str            # "blocking" | "warning" | "advisory"
+    message: str             # Human-readable explanation
+    step: int | None = None  # Step index where the issue was found
+    parameter: str | None = None   # Parameter name that triggered the issue
+    suggestion: str | None = None  # Suggested fix
+    knowledge_ref: str | None = None  # Reference to docs/knowledge base
+
+
 # StepContext is a placeholder type - actual implementation may vary
 # For now, we use a dict[str, Any] to match existing handler signatures
 StepContext = dict[str, Any]
@@ -245,6 +261,19 @@ class BaseEngineDriver:
 
         Returns:
             EngineInputSpec or None.
+        """
+        return None
+
+    def get_preflight_checker(self) -> Any:
+        """Return a preflight parameter checker for this engine.
+
+        Override to provide engine-specific parameter validation.
+        The returned checker must implement a ``check()`` method:
+
+            checker.check(step_params, structure_info, workflow_context)
+              -> list[PreflightIssue]
+
+        Returns None if the engine has no preflight checker.
         """
         return None
 
