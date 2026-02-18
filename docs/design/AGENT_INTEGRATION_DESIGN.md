@@ -2682,10 +2682,11 @@ Measure total tokens consumed by typical workflows:
 
 **User story**: Agent submits a calculation that fails SCF convergence → gets structured diagnostics → applies fix via `set_parameters` → inspects with dry_run → resubmits → succeeds. Also: agent does parameter scans (U-parameter, convergence testing).
 
-**Milestone demo**: FeO U-parameter scan. Agent submits 5 calculations, compares bandgaps, identifies optimal U.
+**Milestone demo**: FeO U-parameter scan. Agent runs a native scan with 5 U-value variants in a single calculation, compares bandgaps, identifies optimal U.
 
 **Tools added**:
-- `submit_batch`, `get_batch_status` (batch parameter scans)
+- `preview_scan`, `get_scan_results` (native parameter scan — Section 3.6)
+- `submit_batch`, `get_batch_status` (batch independent calculations)
 - `compare_calculations` (multi-calc comparison)
 - `record_intent` (provenance journaling — intent groups runs)
 - Structured error diagnostics with `suggested_fixes` dynamically queried from knowledge base
