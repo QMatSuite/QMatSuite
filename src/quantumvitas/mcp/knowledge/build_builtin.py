@@ -70,8 +70,9 @@ def build_builtin_db(output_path: Path | None = None) -> Path:
                     content, confidence,
                     source_type, source_origin,
                     created_by, tags,
-                    status, upvotes, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, ?, ?)
+                    status, last_validated, contradiction_count,
+                    upvotes, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, 0, 0, ?, ?)
                 """,
                 (
                     ulid,
@@ -86,6 +87,7 @@ def build_builtin_db(output_path: Path | None = None) -> Path:
                     entry.get("source_origin"),
                     entry.get("created_by", "qmatsuite-builtin"),
                     entry.get("tags"),
+                    now,
                     now,
                     now,
                 ),

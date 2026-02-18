@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS insights (
     superseded_by TEXT,
     deprecated_reason TEXT,
     merged_into TEXT,
+    last_validated TEXT,
+    contradiction_count INTEGER DEFAULT 0,
     upvotes INTEGER DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
