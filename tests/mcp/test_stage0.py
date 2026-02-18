@@ -21,7 +21,7 @@ def test_envelope_shape():
     from quantumvitas.mcp.envelope import make_response
 
     result = make_response({"x": 1})
-    assert result == {"data": {"x": 1}, "context_hint": None, "warnings": []}
+    assert result == {"status": "success", "data": {"x": 1}, "context_hint": None, "warnings": []}
 
 
 def test_envelope_with_hint():
@@ -47,6 +47,7 @@ def test_ping_tool_returns_envelope():
 
     # @mcp.tool wraps the function in a FunctionTool; call .fn() for the raw function
     result = ping.fn()
+    assert result["status"] == "success"
     assert "data" in result
     assert result["data"]["version"] == "0.1.0"
     assert result["data"]["status"] == "ok"
