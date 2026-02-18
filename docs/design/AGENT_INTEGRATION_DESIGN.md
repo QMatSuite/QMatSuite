@@ -139,6 +139,13 @@ Level 5: Preflight Check (used in almost all scenarios)
   → Agent fixes issues → re-preflight → passes → run
 ```
 
+**Structure readiness check (meta-step).** Before configuring a property calculation (bands, DOS, phonons), the agent should verify that the structure is geometry-optimized if needed. This sits above the five levels — it's about ensuring the *input* (structure) is ready before the calculation configuration begins:
+1. Check if a relaxed structure already exists at the project level (from a previous calc)
+2. If not, create a relax calculation first (Strategy A from Section 3.6), validate convergence, promote via `promote_structure`
+3. Then proceed with the property calculation using the promoted structure
+
+Downloaded structures from online databases are typically experimental or theoretical ground-state geometries — they may or may not need relaxation depending on the computational method and research goal. The agent uses judgment here: a methodology benchmark on a known crystal structure uses the experimental geometry directly, while a study of an unknown material requires relaxation first.
+
 **Key insight**: Levels 2 and 5 are used in nearly every scenario. Demo and preset are accelerators that reduce the agent's cognitive load. Knowledge is the safety net when the agent must make parameter decisions. The LLM rarely needs to design parameters from scratch — most work is local adjustment on a sound skeleton provided by workflows and presets.
 
 This mirrors how human researchers work. A human encountering a new calculation type looks for tutorials and working examples first, not the reference manual. Only when no example exists does the researcher open the manual and construct parameters from first principles. QMatSuite structuralizes this natural workflow into a deterministic hierarchy that the agent traverses automatically.
@@ -317,7 +324,67 @@ This is NOT a new mechanism. It falls out naturally from existing tools — `set
 
 **Cognitive science parallel.** The two modes map to Kahneman's dual-process theory. Iterate in place corresponds to **System 1**: fast, intuitive trial-and-error where intermediate states have no standalone value — the researcher is "feeling out" the parameter space. Create new calculation corresponds to **System 2**: deliberate, reasoned decisions where the result is worth preserving and reasoning about — the researcher has formed a hypothesis worth testing carefully. This is not a post-hoc analogy; it explains *why* the two modes exist and *when* each is appropriate. System 1 is for convergence debugging, solver tuning, and quick exploration. System 2 is for systematic studies, parameter scans, and method comparisons.
 
-### 3.6 Demo Store Architecture
+### 3.6 Structure Scoping: Calc-Local vs Project-Level
+
+Structures in QMatSuite exist at two scoping levels — a fundamental distinction the agent must understand:
+
+**Project-level structures** (`project/structures/<slug>.json`): Visible to all calculations in the project. Created by import (`import_structure`), online fetch (`fetch_structure`), or **promotion** from a completed relaxation. Each carries a ULID (canonical identity), a unique slug (human-friendly), and optional fingerprint for deduplication. These are the "official" structures the researcher works with.
+
+**Calc-local structures** (`calculations/<calc>/generated_structures/step_<step_ulid>/current.json`): Produced by relax steps within a calculation. Visible only to subsequent steps within the same calculation, via the artifact resolution mechanism (`relax_artifacts.py`). The executor's `_load_effective_structure_for_step()` scans backward through completed steps to find the most recent relaxed geometry. **Invisible to other calculations until explicitly promoted.**
+
+This scoping is deliberate, not a limitation. A relaxed structure may not be converged, may have been produced with wrong settings, or may be an intermediate state not worth sharing. Promotion is an intentional act that says "this structure is validated and ready for reuse."
+
+#### Two Strategies for Relaxation Workflows
+
+The agent should understand both strategies and choose based on intent:
+
+**Strategy A: Relax as independent calculation** (recommended when structure will be reused)
+```
+calc_relax:  [relax]               → run → validate convergence → promote structure
+calc_bands:  [scf → nscf → bands]  using promoted structure
+calc_dos:    [scf → nscf → dos]    using promoted structure
+```
+- Relax result is a first-class project resource, inspectable and reusable
+- Agent can verify forces/stress before promoting (quality gate)
+- Multiple downstream calcs share the same validated structure
+- This is the **System 2** approach: deliberate, with a checkpoint worth preserving
+
+**Strategy B: Relax embedded in workflow** (acceptable for one-off calculations)
+```
+calc_all: [relax → scf → nscf → dos]
+```
+- Artifact resolution handles structure inheritance automatically within the calc
+- Simpler when the relaxed structure is only needed for this one workflow
+- If another calc later needs this structure, agent must promote it retroactively
+- This is the **System 1** approach: quick exploration where the relax is just a means to an end
+
+#### The Promotion Operation
+
+After relax completes, the agent promotes the relaxed structure to project level via `promote_structure` (Section 5.4). The codebase provides two underlying methods:
+
+- **`QVService.Structure.promote_relax_structure()`**: Non-idempotent — creates a new project structure each time. Simple and direct.
+- **`QVService.Structure.save_relax_final_structure()`**: Idempotent — records `produced_structure_ulid` in the step YAML, so repeated calls return the same structure. Preferred when automation may retry.
+
+Both methods:
+1. Resolve the calculation and step (by ULID, slug, or name)
+2. Verify the step is a relax/vc-relax/md type
+3. Read the artifact from `generated_structures/step_<step_ulid>/current.json`
+4. Register the structure at project level via `import_file()`
+5. Record provenance: `relax_provenance: {parent_structure_ulid, source_calculation_ulid, source_step_ulid}`
+
+**Naming.** The promoted structure gets a unique slug via `generate_unique_name_and_slug()`. Multiple structures with the same formula can coexist — e.g., "Si" (original), "Si_relaxed_PBE" (promoted). ULID is the canonical identity; slug provides human-readable uniqueness. Fingerprint-based deduplication (`dedup_by_fingerprint=True`) prevents accidentally importing structurally identical structures.
+
+#### Validation Before Promotion
+
+The agent should check before promoting:
+- `max_force` below threshold (typically < 0.01 eV/Å for production, < 0.05 eV/Å for preliminary)
+- `max_stress` below threshold (if variable-cell relax)
+- SCF converged in the final ionic step
+- No imaginary frequencies if phonon check was done (advanced)
+
+This validation is a natural fit for preflight (Section 3.8): a preflight rule can warn if an agent tries to use an unrelaxed or poorly-relaxed structure for property calculations, and another can flag unconverged relax results before promotion.
+
+### 3.7 Demo Store Architecture
 
 The demo store provides a structured library of verified, runnable calculation examples that agents can use as starting points. This is the "tutorial" layer of the Agent Decision Hierarchy (Section 2.5) — the structured equivalent of a researcher finding a working input file online.
 
@@ -343,7 +410,7 @@ The two-layer separation serves three purposes: (1) Layer 1 provides reference i
 
 **Loading model.** Currently QMatSuite supports loading demos as new projects via `create_demo_project()` (snapshot import). A core enhancement planned for Phase 1 is support for loading a demo as a new calculation within an existing project, adding the demo's structure to the project's structure library. Since calculations within a project are independent, this is architecturally clean and requires a new `QVService` method.
 
-### 3.7 Preflight Validation as Engine Plugin
+### 3.8 Preflight Validation as Engine Plugin
 
 Each engine declares its own preflight validation rules as part of its plugin, alongside recipe, runner, parser, writer, and metadata:
 
@@ -382,13 +449,20 @@ class PreflightChecker(Protocol):
 - "if cell_volume > threshold AND kmesh_density > threshold → advisory: dense k-mesh on large cell will be slow"
 - "if nspin == 1 AND any(element in transition_metals) → warning: spin-unpolarized calculation for magnetic element"
 
+**Relaxation-specific rules.** Several preflight rules address the structure scoping semantics described in Section 3.6:
+- **Advisory**: "Structure has no relaxation provenance and is being used for bands/DOS/phonon calculation. Consider running a geometry relaxation first." (Checks whether the structure's metadata includes `relax_provenance` — structures promoted via `promote_structure` carry this automatically.)
+- **Warning**: "Relax step did not fully converge (max_force > threshold). Relaxed structure may be unreliable for downstream property calculations."
+- **Advisory**: "Relaxed structure from this calculation has not been promoted to project level. Other calculations cannot access it."
+
+Note: The first rule requires structure metadata to track relaxation provenance. Structures promoted via `save_relax_final_structure()` already carry `relax_provenance: {parent_structure_ulid, source_calculation_ulid, source_step_ulid}` in their metadata. Imported structures (CIF, POSCAR) lack this metadata, which is informational — absence means "unknown relaxation status," not "unrelaxed." The preflight rule triggers only when a structure is *known* to be unrelaxed (e.g., freshly fetched from Materials Project) and is used directly for property calculations that typically assume equilibrium geometry.
+
 **Engine-maintained.** Rules live next to the engine code they validate, not in a central knowledge database. The person who knows VASP's pitfalls writes VASP's preflight rules. This follows the plugin architecture: adding engine-specific knowledge never requires modifying core code.
 
 **Scope.** Approximately 20-50 rules per engine. QE preflight is Phase 1 (20-30 rules). Other engines follow in Phase 2.
 
 **Integration.** Preflight results are included in `preview_compilation` and `inspect_calculation` output (Section 5.3). The agent sees blocking issues, warnings, and advisories before submitting compute time. This is the "pre-compilation" paradigm: catch problems before running, not after wasting compute.
 
-### 3.8 Three Ways to Scan Parameters
+### 3.9 Three Ways to Scan Parameters
 
 The agent has three approaches to parameter exploration, each suited to different situations:
 
@@ -1109,7 +1183,7 @@ Agent: Now I know to set EDIFF. I'll use set_parameters(calc_ulid, step=0, param
 | **Stateful read** | `inspect_calculation` | Calculation exists, YAML configured | "Show me what's currently set up." |
 | **Stateful materialization** | `inspect_calculation(dry_run=true)` | Calculation exists, writer generates files | "Generate actual input files so I can verify writer output." |
 
-**Preflight validation in output.** Both `preview_compilation` and `inspect_calculation` include preflight results when engine preflight rules are available (Section 3.7). The preflight output uses the following structure:
+**Preflight validation in output.** Both `preview_compilation` and `inspect_calculation` include preflight results when engine preflight rules are available (Section 3.8). The preflight output uses the following structure:
 
 ```python
 @dataclass
@@ -1460,6 +1534,28 @@ These tools are discovered via Tool Search when needed. They add zero tokens to 
 | `fetch_structure` | Fetch structure from Materials Project, AFLOW, COD, or OPTIMADE | `QVService.OnlineSearch.search()` + `import_online_candidate()` |
 | `import_structure` | Import structure from local file (CIF, POSCAR, XYZ, etc.) | `QVService.Structure.import_file()` |
 | `get_structure_detail` | Full crystallographic data with visualization | `QVService.Structure.get()` + `get_structure_vis()` |
+| `promote_structure` | Extract relaxed structure from a completed calc step and register as project-level structure | `QVService.Structure.save_relax_final_structure()` |
+
+##### `promote_structure` Detail
+
+Extract a structure produced by a calculation step (typically a relax step) and register it as a project-level structure. The promoted structure becomes available to all calculations in the project. Records provenance: which calc, which step, what method produced it.
+
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "calc_ulid": { "type": "string", "description": "Calculation that produced the structure" },
+    "step_index": { "type": "integer", "description": "Step index (typically the relax step). Defaults to last relax step." },
+    "name": { "type": "string", "description": "Optional human-readable name (e.g., 'Si_relaxed_PBE')" }
+  },
+  "required": ["calc_ulid"]
+}
+```
+
+**Output**: The new project-level `structure_ulid`, lattice parameters, formula, space group, and a `context_hint` suggesting the agent can now use this structure in `create_calculation`. If the structure was already promoted (idempotent path), returns `already_exists: true` with the existing ULID.
+
+**Maps to**: `QVService.Structure.save_relax_final_structure()` (idempotent — records `produced_structure_ulid` in step YAML, so repeated calls return the same structure). The method verifies the step is a relax/vc-relax/md type before extracting.
 
 Note: `list_structures` is on-demand, not always-loaded. The agent usually knows the structure or fetches it; this doesn't need to be in initial context.
 
@@ -2133,7 +2229,7 @@ The Knowledge Base is designed as a **searchable, contributable, extensible libr
 - Workflow sequencing wisdom (e.g., "always relax geometry before computing band structure")
 
 **builtin.db does NOT contain:**
-- Engine-specific parameter validation rules → those live in `drivers/*/preflight.py` (Section 3.7)
+- Engine-specific parameter validation rules → those live in `drivers/*/preflight.py` (Section 3.8)
 - Parameter documentation (types, defaults, descriptions) → those live in `*_tags.json` via `search_parameters`
 - Workflow definitions or step sequences → those live in `WorkflowTemplate` (Section 3.3)
 
@@ -2146,7 +2242,7 @@ This separation is deliberate: validation rules and parameter docs are structure
             Gaussian smearing (ISMEAR=0) converges 2-3x slower for metals."
   source_type: builtin
   source_origin: "VASP manual §6.35"
-  confidence: high
+  confidence: 0.95
 
 - grade: principle
   scope: {engine: "*", workflow: "scf", system_type: "*", method: "dft"}
@@ -2154,7 +2250,18 @@ This separation is deliberate: validation rules and parameter docs are structure
             For QE: mixing_beta 0.7→0.3. For VASP: AMIX 0.4→0.2."
   source_type: builtin
   source_origin: "Community best practice, multiple mailing list reports"
-  confidence: high
+  confidence: 0.90
+
+- grade: principle
+  scope: {engine: "*", workflow: "relax", system_type: "*", method: "dft"}
+  content: "When the relaxed structure is needed by multiple calculations, run relax
+            as a standalone calculation, validate convergence (forces < 0.01 eV/Å),
+            then promote the structure to project level before creating downstream
+            calculations. This avoids re-relaxing and ensures all calcs use the
+            same validated geometry."
+  source_type: builtin
+  source_origin: "Computational materials science best practice"
+  confidence: 0.95
 ```
 
 **Local knowledge** (Phase 1, `local.db`): From the user's own calculations. Agent-authored findings and principles promoted from provenance. Each entry's `source_origin` points to the provenance journal entry ID.
@@ -2769,7 +2876,7 @@ QMatSuite already has a complete `AnalysisObject → canonical primitive → pro
 
 ### Parameter Space Explorer (Phase 4)
 
-**Data from tool**: Parameter scan results from the native scan system (Section 3.6). Native scan produces naturally structured data: one calculation with N variant sub-runs, each with computed properties archived in `raw/scan/<variant_key>/`. This is cleaner than aggregating across N independent calculations — the scan table is a single `get_scan_results` call.
+**Data from tool**: Parameter scan results from the native scan system (Section 3.9). Native scan produces naturally structured data: one calculation with N variant sub-runs, each with computed properties archived in `raw/scan/<variant_key>/`. This is cleaner than aggregating across N independent calculations — the scan table is a single `get_scan_results` call.
 
 **Visualization**: Interactive heatmap or line plot. X-axis: scanned parameter. Y-axis: property of interest (bandgap, energy, force). Experimental reference line if provided. Click to see individual variant details. For 2D scans (two scan parameters), a color-mapped heatmap with interactive hover. Cartesian product structure maps directly to grid axes.
 
@@ -2948,6 +3055,7 @@ Measure total tokens consumed by typical workflows:
 **Tools implemented**:
 - Always-loaded: `list_engines`, `list_workflows`, `get_presets`, `create_calculation`, `set_parameters`, `apply_preset`, `preview_compilation`, `inspect_calculation` (with dry_run), `run_calculation`, `quick_run`, `get_status`, `get_results_summary`, `search_parameters`
 - Demo Store tools: `search_demos`, `load_demo`, `get_demo_results` (Section 5.4)
+- Structure tools: `promote_structure` (extract relaxed structure to project level)
 - On-demand: `list_structures`, `search_knowledge` (read-only, queries `builtin.db` only)
 
 **Infrastructure**:
@@ -2963,6 +3071,8 @@ Measure total tokens consumed by typical workflows:
 - Reserved schema fields: `last_validated`, `contradiction_count` (written at creation, active in Phase 3)
 - Advisory-level preflight issues surfaced as `context_hint` advisories (non-blocking)
 - `record_insight` schema with content/reasoning separation (Section 5.4)
+- Structure relaxation provenance tracking (promoted structures carry link to source calc/step)
+- Relax convergence validation in QE preflight (max_force check on completed relax steps)
 - Contract tests for all tools
 
 **Knowledge in Phase 1**: `search_knowledge` is available as a read-only tool querying `builtin.db`. This powers error recovery suggestions (Section 7.7 / Section 10) and proactive knowledge injection (Section 7.8). No agent-authored writes yet.
@@ -2976,7 +3086,7 @@ Measure total tokens consumed by typical workflows:
 **Milestone demo**: FeO U-parameter scan. Agent runs a native scan with 5 U-value variants in a single calculation, compares bandgaps, identifies optimal U.
 
 **Tools added**:
-- `preview_scan`, `get_scan_results` (native parameter scan — Section 3.8)
+- `preview_scan`, `get_scan_results` (native parameter scan — Section 3.9)
 - `submit_batch`, `get_batch_status` (batch independent calculations)
 - `compare_calculations` (multi-calc comparison)
 - `record_intent` (provenance journaling — intent groups runs)
