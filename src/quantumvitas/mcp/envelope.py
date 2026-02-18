@@ -28,15 +28,33 @@ def make_error(
     message: str,
     context_hint: str | None = None,
     suggestions: list[str] | None = None,
+    *,
+    severity: str = "error",
+    diagnostics: list[dict[str, Any]] | None = None,
+    suggested_fixes: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build a standard error envelope.
 
     Returns ``{"status": "error", "error_type": ..., "message": ..., ...}``.
+
+    New keyword-only fields (backward-compatible — existing callers unaffected):
+
+    * *severity*: ``"error"`` (default), ``"warning"``, or ``"info"``.
+    * *diagnostics*: per-parameter issues, e.g.
+      ``[{"param": "ENCUT", "issue": "must be positive"}]``.
+    * *suggested_fixes*: machine-actionable fix hints, e.g.
+      ``[{"action": "set_parameters", "params": {"ENCUT": 520}}]``.
     """
-    return {
+    envelope: dict[str, Any] = {
         "status": "error",
         "error_type": error_type,
         "message": message,
+        "severity": severity,
         "context_hint": context_hint,
         "suggestions": suggestions if suggestions is not None else [],
     }
+    if diagnostics is not None:
+        envelope["diagnostics"] = diagnostics
+    if suggested_fixes is not None:
+        envelope["suggested_fixes"] = suggested_fixes
+    return envelope
