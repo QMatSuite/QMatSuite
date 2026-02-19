@@ -91,10 +91,13 @@ def get_results_summary(calc_ulid: str, step: int = -1) -> dict:
     # --- build compact summary ---
     summary = _build_summary(digest_data, step_idx, step_type_gen, run_ulid)
 
-    return make_response(
-        summary,
-        context_hint="Use inspect_calculation for parameter details.",
-    )
+    hint = f"Use inspect_calculation(calc_ulid='{calc_ulid}') for parameter details."
+    if step_type_gen in {"relax", "vc-relax", "vc_relax"}:
+        hint += (
+            f" Use promote_structure(calc_ulid='{calc_ulid}') to extract "
+            "the relaxed geometry as a new structure."
+        )
+    return make_response(summary, context_hint=hint)
 
 
 def _find_raw_dir(detail: dict, step_idx: int):

@@ -35,6 +35,7 @@ def create_calculation(
             "unknown_engine",
             f"Engine '{engine}' is not registered.",
             suggestions=known_engines,
+            context_hint="Use list_engines() to see all available engines.",
         )
 
     # --- validate workflow ---
@@ -46,6 +47,7 @@ def create_calculation(
             "unknown_workflow",
             f"Workflow '{workflow}' not found.",
             suggestions=known_workflows,
+            context_hint=f"Use list_workflows(engine='{engine}') to see available workflows.",
         )
 
     # --- get project service ---
@@ -71,6 +73,7 @@ def create_calculation(
                 "structure_not_found",
                 f"Structure '{structure_selector}' not found: {msg}",
                 suggestions=["Import a structure first, then retry."],
+                context_hint="Use import_structure() to import a structure, or list_structures() to see existing ones.",
             )
         return make_error("creation_failed", msg)
 

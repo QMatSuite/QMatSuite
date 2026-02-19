@@ -130,6 +130,15 @@ def quick_run(
             "status": s.status or "unknown",
         })
 
+    hint = (
+        f"Use get_results_summary(calc_ulid='{result_dto.calc_ulid}') "
+        "to see results."
+    )
+    if workflow in {"relax", "vc-relax", "vc_relax"}:
+        hint += (
+            f" For the relaxed geometry, use promote_structure(calc_ulid='{result_dto.calc_ulid}') "
+            "to extract and register it as a new structure."
+        )
     return make_response(
         {
             "calc_ulid": result_dto.calc_ulid,
@@ -139,8 +148,5 @@ def quick_run(
             "workflow": workflow,
             "steps": steps_out,
         },
-        context_hint=(
-            f"Use get_results_summary(calc_ulid='{result_dto.calc_ulid}') "
-            "to see results."
-        ),
+        context_hint=hint,
     )

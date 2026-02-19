@@ -94,12 +94,19 @@ def search_demos(
         d["ref_pack_types"] = list_ref_pack_types(demo_id) if has_ref else []
         filtered.append(d)
 
-    return make_response(
-        {"demos": filtered, "total": len(filtered)},
-        context_hint=(
+    if filtered:
+        hint = (
             "Use get_demo_results(demo_id=...) to preview pre-computed results, "
             "or load_demo(demo_id=...) to load a demo into your project."
-        ),
+        )
+    else:
+        hint = (
+            "No demos matched. Try broader filters, or use "
+            "create_calculation(...) to start from scratch."
+        )
+    return make_response(
+        {"demos": filtered, "total": len(filtered)},
+        context_hint=hint,
     )
 
 
