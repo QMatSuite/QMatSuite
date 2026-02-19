@@ -61,16 +61,17 @@ Tests added to verify.
 
 ---
 
-## Test Results
+## Test Results (after hardening)
 
 ```
-tests/mcp/test_stage_p3.py: 14 passed
-tests/mcp/test_stage_p1.py: 11 passed  (updated for init_project signature change)
+tests/mcp/test_stage_p3.py: 14 passed (MCP-level)
+tests/mcp/test_stage_p1.py: 11 passed (updated for init_project signature change)
 tests/mcp/:             385 passed, 0 failed
-Full suite:            6045 passed, 0 failed, 4 skipped
+New API tests:           57 passed, 0 failed
+Full suite:            6102 passed, 0 failed, 4 skipped
 ```
 
-## Files Modified
+## Files Modified (source)
 
 - `src/quantumvitas/mcp/tools/init_project.py` — rewritten (remove path param, load-or-create)
 - `src/quantumvitas/mcp/server.py` — added startup auto-load block
@@ -79,11 +80,55 @@ Full suite:            6045 passed, 0 failed, 4 skipped
 - `src/quantumvitas/mcp/tools/import_structure.py` — CIF error hints
 - `src/quantumvitas/mcp/tools/list_engines.py` — context hint update
 
-## Files Created
+## Files Created (MCP tests)
 
-- `tests/mcp/test_stage_p3.py` — 14 new tests
+- `tests/mcp/test_stage_p3.py` — 14 new MCP-level tests
 
 ## Files Updated (existing tests)
 
 - `tests/mcp/test_stage_p1.py` — init_project tests updated for new signature
 - `tests/mcp/test_stage8.py` — preflight test updated (false positive resolved)
+
+---
+
+## Test Hardening
+
+Added 57 API-level tests across 6 new files that verify P3 fixes at the
+kernel/service layer, not just through MCP tool wrappers.
+
+### Group 1: Demo Load Pipeline (6 tests)
+**File**: `tests/api/test_demo_pipeline.py`
+- `test_demo_loads_structure_into_project` — structure appears in svc.structure.list()
+- `test_demo_calc_structure_ulid_matches` — calc's structure_ulid is retrievable
+- `test_demo_calc_species_map_set` — demo has species configured
+- `test_demo_calc_has_steps` — at least one step with valid type
+- `test_demo_structure_reusable_in_new_calc` — demo structure works in new calc
+- `test_demo_calc_preflight_no_blocking` — no blocking preflight issues
+
+### Group 2: Project Lifecycle (11 tests)
+**File**: `tests/api/test_project_lifecycle.py`
+- `TestProjectLoadWalkUp` (5 tests): root, calc subdir, deep subdir, unrelated dir, stop_at boundary
+- `TestInitProjectIdempotency` (6 tests): marker, subdirs, name, structures list, calculations list, service usable
+
+### Group 3: Dry Run Materialization (6 tests)
+**File**: `tests/api/test_dryrun_materialization.py`
+- K_POINTS card present, nat/ntyp in SYSTEM, ATOMIC_POSITIONS, CELL_PARAMETERS
+- K_POINTS values match config, full pipeline through inspect API
+
+### Group 4: Preset Round-Trip (13 tests)
+**File**: `tests/api/test_preset_roundtrip.py`
+- `TestProfileToEnumMapping` (4 tests): all dimensions have enum mappings
+- `TestPresetRoundTrip` (6 tests): magnetism NM/COL, precision all, convergence all, occupations all, exhaustive
+- `TestNormalizationBridge` (3 tests): profile→enum value mapping, NM→nonmagnetic, COL→collinear_lsda
+- Note: precision requires species_map set (for pseudopotential cutoff resolution)
+
+### Group 5: CIF Parsing (10 tests)
+**File**: `tests/api/test_cif_parsing.py`
+- `TestCIFParsing` (6 tests): valid CIF, symmetry expansion, agent CIF behavior, broken CIF, POSCAR, lattice
+- `TestImportStructureAPI` (4 tests): valid CIF, POSCAR, broken CIF, pymatgen JSON import
+
+### Group 6: Preflight Accuracy (11 tests)
+**File**: `tests/api/test_preflight_accuracy.py`
+- `TestKPointsAccuracy` (7 tests): kpoints/KPOINTS/K_POINTS no warn, missing warns, blocking, non-periodic
+- `TestEcutwfcAccuracy` (3 tests): set no warn, missing warns, zero warns
+- `TestCleanPreflight` (1 test): well-configured no blocking, empty params has blocking
