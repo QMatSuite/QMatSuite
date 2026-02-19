@@ -48,5 +48,9 @@ import quantumvitas.mcp.tools.promote_structure      # noqa: F401, E402
 # Stage 10: demo store
 import quantumvitas.mcp.tools.demo_store             # noqa: F401, E402
 
+# Stage P2: resource management
+import quantumvitas.mcp.tools.list_resources          # noqa: F401, E402
+import quantumvitas.mcp.tools.resolve_species_map     # noqa: F401, E402
+
 if __name__ == "__main__":
     mcp.run()

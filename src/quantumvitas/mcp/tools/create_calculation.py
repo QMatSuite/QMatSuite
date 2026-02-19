@@ -97,6 +97,35 @@ def create_calculation(
             # Step not supported by this engine — skip silently
             pass
 
+    # --- auto-resolve species_map for pseudo engines ---
+    species_map_resolved = False
+    if engine in ("qe", "abinit", "siesta"):
+        try:
+            from quantumvitas.mcp.tools._resource_utils import auto_resolve_species_map_internal
+
+            resolved = auto_resolve_species_map_internal(calc_ulid, svc)
+            if resolved:
+                svc.calculation.update_species_map(calc_ulid, resolved)
+                species_map_resolved = True
+        except Exception:
+            pass
+
+    if species_map_resolved:
+        hint = (
+            f"Species map auto-resolved. "
+            f"Use apply_preset or set_parameters to configure, "
+            f"then inspect_calculation(calc_ulid='{calc_ulid}') to review, "
+            f"then run_calculation(calc_ulid='{calc_ulid}') to execute."
+        )
+    else:
+        hint = (
+            f"IMPORTANT: For engines using pseudopotentials (QE, ABINIT, Siesta, VASP), "
+            f"call auto_resolve_species_map(calc_ulid='{calc_ulid}') or "
+            f"set_species_map(calc_ulid='{calc_ulid}', species_map=...) first. "
+            f"Then use apply_preset or set_parameters to configure, "
+            f"then inspect_calculation(calc_ulid='{calc_ulid}') to review."
+        )
+
     return make_response(
         {
             "calc_ulid": calc_ulid,
@@ -104,11 +133,7 @@ def create_calculation(
             "engine": engine,
             "workflow": workflow,
             "steps": steps_out,
+            "species_map_resolved": species_map_resolved,
         },
-        context_hint=(
-            f"IMPORTANT: For engines using pseudopotentials (QE, ABINIT, Siesta, VASP), "
-            f"call set_species_map(calc_ulid='{calc_ulid}', species_map=...) first. "
-            f"Then use apply_preset or set_parameters to configure, "
-            f"then inspect_calculation(calc_ulid='{calc_ulid}') to review."
-        ),
+        context_hint=hint,
     )
