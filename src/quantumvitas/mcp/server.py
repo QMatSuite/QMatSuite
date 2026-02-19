@@ -52,6 +52,9 @@ import quantumvitas.mcp.tools.demo_store             # noqa: F401, E402
 import quantumvitas.mcp.tools.list_resources          # noqa: F401, E402
 import quantumvitas.mcp.tools.resolve_species_map     # noqa: F401, E402
 
+# Stage P4: pseudo download
+import quantumvitas.mcp.tools.download_pseudo_library  # noqa: F401, E402
+
 # ---------------------------------------------------------------------------
 # Startup auto-load: try to locate an existing project before the first tool
 # call so that tools don't fail with "no_project" when CWD is inside one.

@@ -71,6 +71,7 @@ def auto_resolve_species_map(
             ),
             context_hint=(
                 "Ensure the SSSP pseudo library is installed. "
+                "Use download_pseudo_library(flavor='efficiency') to install SSSP. "
                 "Internal pseudos are available for: Si, Al, C, H, O, Fe, Cu, Li, He. "
                 f"Or use set_species_map(calc_ulid='{calc_ulid}', ...) to set manually."
             ),

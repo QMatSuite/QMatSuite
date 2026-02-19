@@ -107,24 +107,40 @@ def _list_qe_resources(elements: list[str] | None) -> dict:
         options = svc.project.get_pseudo_options(elements)
         # Summarise: for each element, count variants and show first few names
         summary: dict = {}
+        total_installed = 0
         for elem, variants in options.items():
             names = [v.get("basename", v.get("filename", "?")) for v in variants[:5]]
+            n_installed = sum(
+                1 for v in variants
+                if v.get("availability", {}).get("any_installed")
+            )
+            total_installed += n_installed
             summary[elem] = {
                 "n_variants": len(variants),
+                "n_installed": n_installed,
                 "examples": names,
             }
+
+        hint = (
+            "Use auto_resolve_species_map(calc_ulid=...) to auto-select "
+            "pseudopotentials, or set_species_map() to choose manually."
+        )
+        if total_installed == 0:
+            hint = (
+                "No pseudo libraries installed. "
+                "Use download_pseudo_library(flavor='efficiency') to install SSSP first, "
+                "then auto_resolve_species_map() to auto-select."
+            )
 
         return make_response(
             {
                 "engine": "qe",
                 "resources_needed": True,
                 "managed": True,
+                "any_installed": total_installed > 0,
                 "elements": summary,
             },
-            context_hint=(
-                "Use auto_resolve_species_map(calc_ulid=...) to auto-select "
-                "pseudopotentials, or set_species_map() to choose manually."
-            ),
+            context_hint=hint,
         )
     except Exception as exc:
         return make_error(

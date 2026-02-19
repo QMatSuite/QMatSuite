@@ -3,11 +3,31 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from pathlib import Path
 from typing import Optional
 
 from quantumvitas.mcp.knowledge.schema import init_db
+
+# Regex to extract word tokens (alphanumeric + underscore) from a raw query.
+_FTS5_TOKEN_RE = re.compile(r"[a-zA-Z0-9_]+")
+
+# FTS5 boolean keywords that could interfere if left in the query.
+_FTS5_RESERVED = frozenset({"AND", "OR", "NOT", "NEAR"})
+
+
+def _sanitize_fts_query(raw: str) -> str:
+    """Strip FTS5 operators/punctuation; keep only word tokens.
+
+    FTS5 interprets ``-`` as NOT, ``"`` as phrase delimiter, and words like
+    AND/OR/NOT/NEAR as boolean operators.  This helper strips all of them so
+    that user queries such as ``"Quantum-ESPRESSO"`` or ``"SCF non-convergence"``
+    never trigger FTS5 syntax errors.
+    """
+    tokens = _FTS5_TOKEN_RE.findall(raw)
+    tokens = [t for t in tokens if t.upper() not in _FTS5_RESERVED]
+    return " ".join(tokens)
 
 # Confidence weights for ranking (higher = more trusted).
 _CONFIDENCE_WEIGHT = {"high": 3.0, "medium": 2.0, "low": 1.0}
@@ -125,6 +145,10 @@ class KnowledgeStore:
         limit: int,
     ) -> list[dict]:
         """FTS5-based search with scope filters."""
+        safe_query = _sanitize_fts_query(query_text)
+        if not safe_query.strip():
+            return []  # All tokens were stripped — nothing to match
+
         # Build FTS match expression — rank by bm25
         sql = """
             SELECT i.*, bm25(insights_fts) AS rank
@@ -133,7 +157,7 @@ class KnowledgeStore:
             WHERE insights_fts MATCH ?
               AND i.status = 'active'
         """
-        params: list = [query_text]
+        params: list = [safe_query]
 
         sql, params = self._add_scope_filters(
             sql, params, engine, workflow, system_type, method,

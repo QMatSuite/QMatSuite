@@ -190,8 +190,8 @@ class TestContextHints:
         # Either auto-resolved (mentions "auto-resolved") or manual (mentions "set_species_map")
         assert "species_map" in hint.lower() or "auto-resolved" in hint.lower()
 
-    def test_tool_count_26(self):
-        """Verify 26 tools registered (24 + list_available_resources + auto_resolve_species_map)."""
+    def test_tool_count_27(self):
+        """Verify 27 tools registered (26 + download_pseudo_library from P4)."""
         from quantumvitas.mcp import server  # noqa: F401 — triggers registration
         from quantumvitas.mcp.app import mcp
 
@@ -200,8 +200,8 @@ class TestContextHints:
             tools = loop.run_until_complete(mcp.get_tools())
         finally:
             loop.close()
-        assert len(tools) == 26, (
-            f"Expected 26 tools, got {len(tools)}: {sorted(tools.keys())}"
+        assert len(tools) == 27, (
+            f"Expected 27 tools, got {len(tools)}: {sorted(tools.keys())}"
         )
 
         # Verify the P1 tools exist
