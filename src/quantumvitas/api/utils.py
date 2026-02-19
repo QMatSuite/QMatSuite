@@ -2029,23 +2029,22 @@ def get_preset_catalog() -> dict:
 
 
 def resolve_precision_context(
-    structure,
-    pseudo_library: str | None = None,
-    elements: list | None = None,
-) -> dict:
-    """
-    Resolve precision context for a structure.
+    calculation_dir,
+    project_root=None,
+    calc_model=None,
+):
+    """Passthrough to quantumvitas.presets.precision_context.
 
     Args:
-        structure: pymatgen Structure
-        pseudo_library: Optional pseudo library name
-        elements: Optional list of elements
+        calculation_dir: Path to calculation directory
+        project_root: Optional path to project root
+        calc_model: Optional pre-loaded CalculationModel
 
     Returns:
-        Dict with precision context data
+        PrecisionContext with structure, species_map, lattice_matrix
     """
     from quantumvitas.presets.precision_context import resolve_precision_context as _resolve
-    return _resolve(structure, pseudo_library=pseudo_library, elements=elements)
+    return _resolve(calculation_dir, project_root=project_root, calc_model=calc_model)
 
 
 # =============================================================================

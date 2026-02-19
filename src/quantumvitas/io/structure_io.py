@@ -110,9 +110,11 @@ def read_structure(filepath: Path, format: Optional[str] = None) -> PMGStructure
     # This will return Structure for periodic formats
     try:
         return PMGStructure.from_file(str(filepath))
-    except Exception:
-        # If Structure fails, try Molecule (for xyz, etc.)
-        return PMGMolecule.from_file(str(filepath))
+    except Exception as struct_err:
+        try:
+            return PMGMolecule.from_file(str(filepath))
+        except Exception as mol_err:
+            raise struct_err from mol_err
 
 
 def write_structure(

@@ -4736,9 +4736,9 @@ class QVService:
                 from quantumvitas.presets.dimensions import DIMENSION_PRECISION, PrecisionOption
                 from quantumvitas.api.utils import (
                     apply_presets_to_step,
-                    resolve_precision_context,
                     get_calculation_preset_bundle,
                 )
+                from quantumvitas.presets.precision_context import resolve_precision_context
                 from quantumvitas.core.resolution import require_calculation
 
                 calc_resolved = require_calculation(self._service.project_root, calc_selector)

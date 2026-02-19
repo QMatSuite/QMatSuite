@@ -10,6 +10,9 @@ from __future__ import annotations
 from quantumvitas.mcp.app import mcp  # noqa: F401 — re-export for convenience
 
 # Register tools by importing their modules (side-effect registration).
+# Stage P1: project management
+import quantumvitas.mcp.tools.init_project  # noqa: F401, E402
+
 # Stage 0 + 1: read-only discovery tools
 import quantumvitas.mcp.tools.ping  # noqa: F401, E402
 import quantumvitas.mcp.tools.list_engines  # noqa: F401, E402
@@ -19,6 +22,7 @@ import quantumvitas.mcp.tools.search_parameters  # noqa: F401, E402
 
 # Stage 2: configuration tools
 import quantumvitas.mcp.tools.create_calculation  # noqa: F401, E402
+import quantumvitas.mcp.tools.set_species_map  # noqa: F401, E402
 import quantumvitas.mcp.tools.set_parameters  # noqa: F401, E402
 import quantumvitas.mcp.tools.apply_preset  # noqa: F401, E402
 import quantumvitas.mcp.tools.inspect_calculation  # noqa: F401, E402
