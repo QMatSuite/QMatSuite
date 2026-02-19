@@ -1307,14 +1307,32 @@ class QVService:
                 project_root = self._service.project_root
                 config = load_project_config(project_root)
 
-                # Check if project has demo_source (S11)
+                # Strategy 1: Check project-level demo_source (S11)
+                demo_id = None
                 project_settings = config.get("project", {}).get("settings", {})
                 demo_source = project_settings.get("demo_source")
+                if demo_source:
+                    demo_id = demo_source.get("demo_id")
 
-                if not demo_source:
-                    return None
+                # Strategy 2: Check per-calculation demo_origin
+                if not demo_id:
+                    from quantumvitas.core.models import load_calculation
+                    from quantumvitas.core.resolution import resolve_calculation
 
-                demo_id = demo_source.get("demo_id")
+                    try:
+                        resolved = resolve_calculation(
+                            project_root, calculation_selector, config=config,
+                        )
+                        calc_path = resolved.absolute_path
+                        if calc_path.name == "calculation.yaml":
+                            calc_model = load_calculation(calc_path, project_root=project_root)
+                        else:
+                            calc_model = load_calculation(calc_path / "calculation.yaml", project_root=project_root)
+                        if calc_model.demo_origin:
+                            demo_id = calc_model.demo_origin.get("demo_id")
+                    except Exception:
+                        pass
+
                 if not demo_id:
                     return None
 
@@ -8775,6 +8793,8 @@ class QVService:
                 )
                 calc_species_map = temp_calc.species_map
 
+        from datetime import datetime, timezone
+
         calc_model = CalculationModel(
             meta=ResourceMeta(
                 ulid=calc_ulid,
@@ -8789,6 +8809,11 @@ class QVService:
             working_dir=calc_data.get("working_dir", "raw"),
             steps=[],
             species_map=calc_species_map,
+            demo_origin={
+                "demo_id": demo_id,
+                "engine": engine,
+                "materialized_at": datetime.now(timezone.utc).isoformat(),
+            },
         )
 
         # ── 5. Write step YAML files directly (same as snapshot) ───
