@@ -94,9 +94,9 @@ class TestQEPreflightChecker:
         codes = [i.code for i in issues]
         assert "NSCF_WITHOUT_SCF" in codes
 
-    # W1
+    # W1 (softened to advisory in P4)
     def test_metal_fixed_occupations(self):
-        """Fixed occupations + metallic elements → warning METAL_FIXED_OCC."""
+        """Fixed occupations + metallic elements → advisory METAL_FIXED_OCC."""
         fe_structure = {
             "species": ["Fe", "Fe"],
             "n_atoms": 2,
@@ -114,7 +114,7 @@ class TestQEPreflightChecker:
         codes = [i.code for i in issues]
         assert "METAL_FIXED_OCC" in codes
         warn = [i for i in issues if i.code == "METAL_FIXED_OCC"]
-        assert warn[0].severity == "warning"
+        assert warn[0].severity == "advisory"
 
     # W2
     def test_spin_unpolarized_magnetic(self):

@@ -180,14 +180,14 @@ class QEPreflightChecker:
 
         # ── WARNING ─────────────────────────────────────────────────
 
-        # W1: METAL_FIXED_OCC
+        # W1: METAL_FIXED_OCC (advisory — fixed occupations is legitimate for bands/DOS)
         if occupations == "fixed" and elements & _METALLIC_ELEMENTS:
             metals = sorted(elements & _METALLIC_ELEMENTS)
             issues.append(PreflightIssue(
                 code="METAL_FIXED_OCC",
-                severity="warning",
+                severity="advisory",
                 message=f"Fixed occupations with metallic elements ({', '.join(metals)}). "
-                        "Metals typically need smearing.",
+                        "Consider using smearing for SCF convergence.",
                 parameter="SYSTEM.occupations",
                 suggestion="Use occupations='smearing' with an appropriate smearing method.",
             ))

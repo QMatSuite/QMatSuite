@@ -5,6 +5,13 @@ from __future__ import annotations
 from quantumvitas.mcp.app import mcp
 from quantumvitas.mcp.envelope import make_error, make_response
 
+# QE gen steps that map to pw.x — preflight and dry_run rules apply only to these.
+# Post-processing steps (dos.x, bands.x, projwfc.x, ph.x, etc.) have completely
+# different input formats and should not be checked with pw.x rules.
+_PW_X_GEN_STEPS = frozenset({
+    "scf", "nscf", "relax", "md", "bandspw", "neb", "custom",
+})
+
 
 @mcp.tool
 def inspect_calculation(calc_ulid: str, step: int = -1, dry_run: bool = False) -> dict:
@@ -96,18 +103,25 @@ def inspect_calculation(calc_ulid: str, step: int = -1, dry_run: bool = False) -
         step_type_gen = steps_out[step].get("step_type_gen", "")
         step_cards = step_detail.get("cards", {}) if "step_detail" in payload else {}
 
-        # --- preflight ---
-        _run_preflight(
-            payload, engine, step_params, detail, steps_out, step, step_type_gen, svc,
-            step_cards=step_cards,
-        )
+        # --- preflight (only for pw.x gen steps) ---
+        if engine != "qe" or step_type_gen in _PW_X_GEN_STEPS:
+            _run_preflight(
+                payload, engine, step_params, detail, steps_out, step, step_type_gen, svc,
+                step_cards=step_cards,
+            )
 
         # --- dry_run materialization ---
         if dry_run:
-            _run_dry_run(
-                payload, engine, step_type_gen, step_params, detail, svc,
-                step_cards=step_cards,
-            )
+            if engine == "qe" and step_type_gen not in _PW_X_GEN_STEPS:
+                payload["dry_run_note"] = (
+                    f"Step type '{step_type_gen}' maps to a post-processing executable "
+                    f"(not pw.x). Dry-run materialization is not applicable for this step type."
+                )
+            else:
+                _run_dry_run(
+                    payload, engine, step_type_gen, step_params, detail, svc,
+                    step_cards=step_cards,
+                )
 
     hint = (
         f"Use set_parameters(calc_ulid='{calc_ulid}') to adjust, "

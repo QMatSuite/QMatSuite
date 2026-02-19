@@ -57,10 +57,16 @@ def preview_compilation(engine: str, workflow: str, presets: dict) -> dict:
             compiled = compile_presets_for_step(gen_step, presets)
         except Exception:
             compiled = {}
-        steps_out.append({
+        entry: dict = {
             "step_type_gen": gen_step,
             "parameters": compiled,
-        })
+        }
+        if not compiled:
+            entry["note"] = (
+                "No parameters compiled for this step. "
+                "Use set_parameters() after creating the calculation to configure manually."
+            )
+        steps_out.append(entry)
 
     result_data: dict = {
         "engine": engine,
@@ -68,6 +74,12 @@ def preview_compilation(engine: str, workflow: str, presets: dict) -> dict:
         "presets": presets,
         "steps": steps_out,
     }
+
+    if all(not s["parameters"] for s in steps_out):
+        result_data["hint"] = (
+            "No parameters compiled. This may mean the presets don't apply to "
+            "these step types. Use set_parameters() to configure manually."
+        )
 
     # --- preflight (best-effort) ---
     try:
