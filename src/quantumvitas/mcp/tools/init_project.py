@@ -1,7 +1,8 @@
-"""init_project tool — create a new QMatSuite project directory."""
+"""init_project tool — initialise or load a QMatSuite project."""
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from quantumvitas.mcp.app import mcp
@@ -9,51 +10,58 @@ from quantumvitas.mcp.envelope import make_error, make_response
 
 
 @mcp.tool
-def init_project(
-    path: str,
-    name: str = "",
-) -> dict:
-    """Create a new QMatSuite project directory.
+def init_project(name: str = "") -> dict:
+    """Initialize or load a QMatSuite project in the current directory.
 
-    Initialises the project structure (project.qv.yml, standard subdirectories)
-    and sets the MCP session to use the new project.
+    Resolves the project directory from the ``QMATSUITE_PROJECT`` environment
+    variable (or CWD as fallback).  If a project already exists at or above
+    that directory it is loaded (idempotent).  Otherwise a new project is
+    created.
 
     Args:
-        path: Absolute path where the project directory will be created.
         name: Optional human-readable project name (defaults to directory name).
     """
-    from quantumvitas.api import QVService
-
-    target = Path(path)
-
-    # Reject if target is inside an existing project
     from quantumvitas.core.project_utils import find_project_root
+    from quantumvitas.mcp.project import set_project_root
 
-    existing = find_project_root(start=target if target.exists() else target.parent)
+    project_dir = Path(os.environ.get("QMATSUITE_PROJECT", ".")).resolve()
+
+    # Try to find an existing project at or above project_dir
+    existing = find_project_root(start=project_dir) if project_dir.exists() else None
+
     if existing is not None:
-        return make_error(
-            "invalid_path",
-            f"Path is inside an existing project at {existing}.",
-            context_hint="Choose a path outside any existing QMatSuite project.",
+        # Load existing project (idempotent)
+        set_project_root(existing)
+        return make_response(
+            {
+                "project_root": str(existing),
+                "name": name or existing.name,
+                "loaded": True,
+            },
+            context_hint=(
+                "Existing project loaded. Use list_structures() to see structures, "
+                "or search_demos() to find ready-made calculations."
+            ),
         )
 
+    # Create new project
+    from quantumvitas.api import QVService
+
     try:
-        project_root = QVService.init_project(target, name=name or None)
+        project_root = QVService.init_project(project_dir, name=name or None)
     except Exception as exc:
         return make_error("init_failed", f"Failed to create project: {exc}")
-
-    # Point MCP session at new project
-    from quantumvitas.mcp.project import set_project_root
 
     set_project_root(project_root)
 
     return make_response(
         {
             "project_root": str(project_root),
-            "name": name or target.name,
+            "name": name or project_dir.name,
+            "loaded": False,
         },
         context_hint=(
             "Project created. Use import_structure() to add a structure, "
-            "then create_calculation() to start computing."
+            "or search_demos() to find ready-made calculations."
         ),
     )
