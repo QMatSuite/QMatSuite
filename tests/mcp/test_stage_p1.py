@@ -125,43 +125,50 @@ class TestCifErrorMessage:
 # ---------------------------------------------------------------------------
 
 class TestInitProject:
-    """Tests for the init_project MCP tool."""
+    """Tests for the init_project MCP tool (P3: simplified, no path param)."""
 
     def test_creates_project(self, tmp_path, monkeypatch):
         """init_project creates project.qv.yml + subdirs."""
-        # Patch MCP project context to a dummy first
+        target = tmp_path / "new_project"
+        target.mkdir()
+        monkeypatch.setenv("QMATSUITE_PROJECT", str(target))
+
         from quantumvitas.mcp import project as mcp_project
-        monkeypatch.setattr(mcp_project, "_project_root_override", tmp_path)
+        monkeypatch.setattr(mcp_project, "_project_root_override", None)
 
         from quantumvitas.mcp.tools.init_project import init_project
 
-        target = tmp_path / "new_project"
-        result = init_project.fn(path=str(target), name="TestProject")
+        result = init_project.fn(name="TestProject")
         assert result["status"] == "success"
         assert result["data"]["name"] == "TestProject"
-
-        project_root = target
-        assert (project_root / "project.qv.yml").exists()
+        assert (target / "project.qv.yml").exists()
 
     def test_sets_mcp_context(self, tmp_path, monkeypatch):
         """After init_project, get_project_root() returns the new path."""
+        target = tmp_path / "ctx_project"
+        target.mkdir()
+        monkeypatch.setenv("QMATSUITE_PROJECT", str(target))
+
         from quantumvitas.mcp import project as mcp_project
-        monkeypatch.setattr(mcp_project, "_project_root_override", tmp_path)
+        monkeypatch.setattr(mcp_project, "_project_root_override", None)
 
         from quantumvitas.mcp.tools.init_project import init_project
 
-        target = tmp_path / "ctx_project"
-        init_project.fn(path=str(target))
-
+        init_project.fn()
         assert mcp_project.get_project_root() == target
 
-    def test_inside_existing_fails(self, qv_project):
-        """init_project inside an existing project returns invalid_path error."""
+    def test_loads_existing_project(self, qv_project, monkeypatch):
+        """init_project with an existing project returns loaded=True (idempotent)."""
+        monkeypatch.setenv("QMATSUITE_PROJECT", str(qv_project))
+
+        from quantumvitas.mcp import project as mcp_project
+        monkeypatch.setattr(mcp_project, "_project_root_override", None)
+
         from quantumvitas.mcp.tools.init_project import init_project
 
-        result = init_project.fn(path=str(qv_project / "sub"))
-        assert result["status"] == "error"
-        assert result["error_type"] == "invalid_path"
+        result = init_project.fn()
+        assert result["status"] == "success"
+        assert result["data"]["loaded"] is True
 
 
 # ---------------------------------------------------------------------------

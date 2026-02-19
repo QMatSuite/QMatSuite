@@ -25,8 +25,20 @@ def apply_preset(calc_ulid: str, presets: dict) -> dict:
     except ProjectNotFoundError as exc:
         return make_error("no_project", str(exc))
 
+    # Translate profile names (NM, COL, …) to enum values (nonmagnetic, …)
+    # so the compiler's _normalize_option() can resolve them.
+    from quantumvitas.presets.variants_registry import PROFILE_TO_ENUM
+
+    normalized: dict = {}
+    for dim, value in presets.items():
+        mapping = PROFILE_TO_ENUM.get(dim, {})
+        if value in mapping:
+            normalized[dim] = mapping[value].value  # enum → string value
+        else:
+            normalized[dim] = value  # pass through (may be enum value already)
+
     try:
-        result = svc.calculation.apply_presets(calc_ulid, presets)
+        result = svc.calculation.apply_presets(calc_ulid, normalized)
     except Exception as exc:
         msg = str(exc)
         if "not found" in msg.lower():

@@ -305,7 +305,12 @@ class TestPreflightIntegration:
     """Test that preflight issues surface through inspect + preview tools."""
 
     def test_inspect_includes_preflight_issues(self, qv_project):
-        """Freshly-created calc (no kpoints set) → preflight_issues in response."""
+        """Freshly-created calc → no false-positive MISSING_KPOINTS.
+
+        P3 Fix 2+7: inspect now merges step cards into preflight params, so
+        the K_POINTS card (set by default in create_calculation) is visible
+        to the preflight checker.  MISSING_KPOINTS should NOT appear.
+        """
         from quantumvitas.mcp.tools.create_calculation import create_calculation
         from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
 
@@ -315,16 +320,13 @@ class TestPreflightIntegration:
         assert result["status"] == "success"
         calc_ulid = result["data"]["calc_ulid"]
 
-        # Fresh calc has no kpoints → should trigger MISSING_KPOINTS (blocking)
         inspect_result = inspect_calculation.fn(calc_ulid=calc_ulid, step=0)
         assert inspect_result["status"] == "success"
         data = inspect_result["data"]
         issues = data.get("preflight_issues", [])
-        assert len(issues) > 0, "Expected preflight issues for unconfigured calculation"
-        codes = [i["code"] for i in issues]
-        assert "MISSING_KPOINTS" in codes
-        kp = [i for i in issues if i["code"] == "MISSING_KPOINTS"]
-        assert kp[0]["severity"] == "blocking"
+        # K_POINTS lives in cards → now merged → no false positive
+        kp_issues = [i for i in issues if i["code"] == "MISSING_KPOINTS"]
+        assert not kp_issues, f"False positive MISSING_KPOINTS: {kp_issues}"
 
     def test_preview_includes_preflight(self, qv_project):
         """preview_compilation with empty presets → preflight_issues for compiled params."""

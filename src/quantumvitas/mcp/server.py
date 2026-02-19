@@ -52,5 +52,23 @@ import quantumvitas.mcp.tools.demo_store             # noqa: F401, E402
 import quantumvitas.mcp.tools.list_resources          # noqa: F401, E402
 import quantumvitas.mcp.tools.resolve_species_map     # noqa: F401, E402
 
+# ---------------------------------------------------------------------------
+# Startup auto-load: try to locate an existing project before the first tool
+# call so that tools don't fail with "no_project" when CWD is inside one.
+# ---------------------------------------------------------------------------
+import os as _os
+from pathlib import Path as _Path
+
+_project_dir = _Path(_os.environ.get("QMATSUITE_PROJECT", ".")).resolve()
+try:
+    from quantumvitas.core.project_utils import find_project_root as _find_project_root
+    from quantumvitas.mcp.project import set_project_root as _set_project_root
+
+    _found = _find_project_root(start=_project_dir) if _project_dir.exists() else None
+    if _found is not None:
+        _set_project_root(_found)
+except Exception:
+    pass  # Best-effort: don't prevent server from starting
+
 if __name__ == "__main__":
     mcp.run()

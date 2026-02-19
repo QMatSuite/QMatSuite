@@ -94,16 +94,19 @@ def inspect_calculation(calc_ulid: str, step: int = -1, dry_run: bool = False) -
             payload["step_detail_error"] = str(exc)
 
         step_type_gen = steps_out[step].get("step_type_gen", "")
+        step_cards = step_detail.get("cards", {}) if "step_detail" in payload else {}
 
         # --- preflight ---
         _run_preflight(
             payload, engine, step_params, detail, steps_out, step, step_type_gen, svc,
+            step_cards=step_cards,
         )
 
         # --- dry_run materialization ---
         if dry_run:
             _run_dry_run(
                 payload, engine, step_type_gen, step_params, detail, svc,
+                step_cards=step_cards,
             )
 
     hint = (
@@ -127,6 +130,8 @@ def _run_preflight(
     step_index: int,
     step_type_gen: str,
     svc: object,
+    *,
+    step_cards: dict | None = None,
 ) -> None:
     """Run the engine's preflight checker (best-effort, never fails the tool)."""
     try:
@@ -141,6 +146,10 @@ def _run_preflight(
         # Build structure_info
         structure_info = _build_structure_info(detail, svc)
 
+        # Merge cards into a copy of step_params so preflight can see K_POINTS
+        merged_params = dict(step_params)
+        _merge_cards_into_params(merged_params, step_cards or {}, structure_info)
+
         # Build workflow_context
         gen_steps = [s.get("step_type_gen", "") for s in steps_out]
         workflow_context = {
@@ -150,7 +159,7 @@ def _run_preflight(
             "other_steps_params": {},
         }
 
-        issues = checker.check(step_params, structure_info, workflow_context)
+        issues = checker.check(merged_params, structure_info, workflow_context)
         if issues:
             payload["preflight_issues"] = [
                 {
@@ -173,6 +182,8 @@ def _run_dry_run(
     step_params: dict,
     detail: dict,
     svc: object,
+    *,
+    step_cards: dict | None = None,
 ) -> None:
     """Materialize input files to a tmpdir and attach content to payload."""
     import tempfile
@@ -194,9 +205,14 @@ def _run_dry_run(
         # Build StructureDoc from calculation's structure
         structure_doc = _build_structure_doc(detail, svc)
 
+        # Merge cards into a copy of step_params so the writer sees K_POINTS, nat, ntyp
+        merged_params = dict(step_params)
+        structure_info = _build_structure_info(detail, svc)
+        _merge_cards_into_params(merged_params, step_cards or {}, structure_info)
+
         with tempfile.TemporaryDirectory() as tmpdir:
             written = write_engine_inputs(
-                spec, Path(tmpdir), step_params, structure_doc,
+                spec, Path(tmpdir), merged_params, structure_doc,
             )
             input_files: list[dict] = []
             for fpath in written:
@@ -268,3 +284,42 @@ def _build_structure_doc(detail: dict, svc: object) -> dict | None:
         }
     except Exception:
         return None
+
+
+def _merge_cards_into_params(
+    params: dict,
+    cards: dict,
+    structure_info: dict | None,
+) -> None:
+    """Merge QE cards (K_POINTS, etc.) and structure counts into *params* in-place.
+
+    This bridges the gap between the step YAML representation (where cards and
+    parameters are separate) and the inputformat writer (which expects a flat
+    params dict with a ``kpoints`` key).
+
+    Also injects ``nat`` and ``ntyp`` from *structure_info* into the SYSTEM
+    namelist when they are missing — the actual run path does this in
+    ``QEInputGenerator`` but dry_run bypasses that path.
+    """
+    # --- K_POINTS ---
+    if "kpoints" not in params:
+        kp = cards.get("K_POINTS", {})
+        if kp:
+            data = kp.get("data", [[4, 4, 4, 0, 0, 0]])
+            row = data[0] if data else [4, 4, 4, 0, 0, 0]
+            params["kpoints"] = {
+                "mesh": list(row[:3]),
+                "shift": list(row[3:6]) if len(row) >= 6 else [0, 0, 0],
+            }
+
+    # --- nat / ntyp from structure ---
+    if structure_info is not None:
+        system = params.get("SYSTEM", {})
+        if "nat" not in system and "nat" not in params:
+            n_atoms = structure_info.get("n_atoms")
+            if n_atoms:
+                params.setdefault("SYSTEM", {})["nat"] = n_atoms
+        if "ntyp" not in system and "ntyp" not in params:
+            elements = structure_info.get("elements")
+            if elements:
+                params.setdefault("SYSTEM", {})["ntyp"] = len(elements)

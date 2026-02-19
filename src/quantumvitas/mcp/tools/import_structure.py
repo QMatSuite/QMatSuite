@@ -87,7 +87,22 @@ def import_structure(
         # Clean up temp file on failure
         if tmp_file is not None:
             Path(tmp_file.name).unlink(missing_ok=True)
-        return make_error("import_failed", f"Failed to import structure: {exc}")
+        msg = str(exc)
+        fmt_lower = format.lower() if format else ""
+        is_cif = "cif" in fmt_lower or (file_path and file_path.endswith(".cif"))
+        if is_cif:
+            hint = (
+                "CIF parse failed. Common issues: missing _atom_site_label column, "
+                "missing _cell_length_a, or incorrect symmetry tags. "
+                "Try POSCAR format for simple crystals, or use search_demos() "
+                "to find calculations with pre-configured structures."
+            )
+        else:
+            hint = (
+                "Check the structure file format. Use search_demos() "
+                "to find calculations with pre-configured structures."
+            )
+        return make_error("import_failed", f"Failed to import structure: {msg}", context_hint=hint)
     finally:
         # Always clean up temp file
         if tmp_file is not None:

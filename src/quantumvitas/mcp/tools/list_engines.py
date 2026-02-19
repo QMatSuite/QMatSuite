@@ -105,5 +105,8 @@ def list_engines(installed_only: bool = False) -> dict:
 
     return make_response(
         {"engines": engines_out, "total": len(engines_out)},
-        context_hint="Use list_workflows(engine='...') to see available workflows for a specific engine.",
+        context_hint=(
+            "Use list_workflows(engine='...') to see available workflows for a specific engine. "
+            "Use search_demos() to find ready-made calculations with pre-configured structures."
+        ),
     )
