@@ -11,20 +11,24 @@ def quick_run(
     engine: str,
     workflow: str,
     structure_selector: str,
+    species_map: dict | None = None,
     presets: dict | None = None,
     overrides: dict | None = None,
     name: str = "",
 ) -> dict:
     """Create and run a calculation in a single call.
 
-    Combines create_calculation + (optional) apply_preset +
-    (optional) set_parameters + run_calculation into one tool.
-    Blocks until the engine finishes.
+    Combines create_calculation + (optional) set_species_map +
+    (optional) apply_preset + (optional) set_parameters +
+    run_calculation into one tool.  Blocks until the engine finishes.
 
     Args:
         engine: Engine family identifier (e.g. 'qe', 'vasp', 'orca').
         workflow: Workflow template id (e.g. 'scf', 'dos', 'bands').
         structure_selector: Name or ULID of an already-imported structure.
+        species_map: Optional element-to-pseudopotential mapping.
+            Required for QE, ABINIT, Siesta, VASP.
+            Example: {"Si": {"pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"}}
         presets: Optional dict of dimension -> value for preset compilation.
         overrides: Optional engine-native parameter overrides (applied to step 0).
         name: Optional human-readable name for the calculation.
@@ -80,6 +84,13 @@ def quick_run(
 
     calc_ulid = calc_resolved.ulid
 
+    # --- set species_map ---
+    if species_map:
+        try:
+            svc.calculation.update_species_map(calc_ulid, species_map)
+        except Exception as exc:
+            return make_error("species_map_failed", f"Failed to set species_map: {exc}")
+
     # --- add workflow steps ---
     step_ulids: list[str] = []
     for gen_step in template.step_sequence:
@@ -117,7 +128,11 @@ def quick_run(
         return make_error(
             "execution_failed",
             f"Calculation run failed: {exc}",
-            context_hint="Check engine installation and calculation parameters.",
+            context_hint=(
+                "Check engine installation and calculation parameters. "
+                "For pseudopotential engines (QE, ABINIT, Siesta, VASP), "
+                "ensure species_map is set."
+            ),
         )
 
     # Build step summaries

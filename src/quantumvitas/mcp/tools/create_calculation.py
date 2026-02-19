@@ -106,8 +106,9 @@ def create_calculation(
             "steps": steps_out,
         },
         context_hint=(
-            f"Use apply_preset(calc_ulid='{calc_ulid}', presets=...) or "
-            f"set_parameters(calc_ulid='{calc_ulid}', params=...) to configure, "
+            f"IMPORTANT: For engines using pseudopotentials (QE, ABINIT, Siesta, VASP), "
+            f"call set_species_map(calc_ulid='{calc_ulid}', species_map=...) first. "
+            f"Then use apply_preset or set_parameters to configure, "
             f"then inspect_calculation(calc_ulid='{calc_ulid}') to review."
         ),
     )
