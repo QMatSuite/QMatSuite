@@ -76,6 +76,10 @@ def get_status(calc_ulid: str) -> dict:
     else:
         overall_status = "partial"
 
+    # Detect relax workflow from step types
+    gen_types = {s.get("step_type_gen", "") for s in steps_raw}
+    is_relax = bool(gen_types & {"relax", "vc-relax", "vc_relax"})
+
     # Context hint depends on status
     resolved_ulid = detail.get("calc_ulid") or detail.get("ulid", calc_ulid)
     if overall_status == "not_run":
@@ -85,6 +89,11 @@ def get_status(calc_ulid: str) -> dict:
             f"Use get_results_summary(calc_ulid='{resolved_ulid}') "
             "to see results."
         )
+        if is_relax:
+            hint += (
+                f" Use promote_structure(calc_ulid='{resolved_ulid}') to extract "
+                "the relaxed geometry as a new structure."
+            )
     else:
         hint = f"Some steps have not been run. Use run_calculation(calc_ulid='{resolved_ulid}') to execute."
 

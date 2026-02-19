@@ -100,13 +100,16 @@ def run_calculation(calc_ulid: str) -> dict:
             except Exception:
                 pass
 
-        return make_response(
-            payload,
-            context_hint=(
-                f"Use get_results_summary(calc_ulid='{result_dto.calc_ulid}') "
-                "to see results."
-            ),
+        hint = (
+            f"Use get_results_summary(calc_ulid='{result_dto.calc_ulid}') "
+            "to see results."
         )
+        if _is_relax_workflow(workflow):
+            hint += (
+                f" For the relaxed geometry, use promote_structure(calc_ulid='{result_dto.calc_ulid}') "
+                "to extract and register it as a new structure."
+            )
+        return make_response(payload, context_hint=hint)
 
     # --- Failed: enrich with diagnostics + suggested_fixes ---
     try:
@@ -130,6 +133,11 @@ def run_calculation(calc_ulid: str) -> dict:
             warnings=["Calculation did not complete successfully."],
             status="error",
         )
+
+
+def _is_relax_workflow(workflow: str) -> bool:
+    """Check if the workflow involves structural relaxation."""
+    return workflow in {"relax", "vc-relax", "vc_relax"}
 
 
 def _try_parse_digest(detail: dict) -> dict | None:

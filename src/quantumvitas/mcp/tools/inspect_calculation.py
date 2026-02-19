@@ -98,13 +98,16 @@ def inspect_calculation(calc_ulid: str, step: int = -1, dry_run: bool = False) -
                 payload, engine, step_type_gen, step_params, detail, svc,
             )
 
-    return make_response(
-        payload,
-        context_hint=(
-            f"Use set_parameters(calc_ulid='{calc_ulid}') to adjust, "
-            f"or run_calculation(calc_ulid='{calc_ulid}') to execute."
-        ),
+    hint = (
+        f"Use set_parameters(calc_ulid='{calc_ulid}') to adjust, "
+        f"or run_calculation(calc_ulid='{calc_ulid}') to execute."
     )
+    if step >= 0:
+        hint += (
+            f" Use inspect_calculation(calc_ulid='{calc_ulid}', step={step}, dry_run=True) "
+            "to preview input files and run preflight checks."
+        )
+    return make_response(payload, context_hint=hint)
 
 
 def _run_preflight(
