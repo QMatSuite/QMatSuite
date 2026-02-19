@@ -36,6 +36,19 @@ def run_calculation(calc_ulid: str) -> dict:
             f"Calculation '{calc_ulid}' not found: {exc}",
         )
 
+    # --- validate species_map for pseudo engines ---
+    engine = detail.get("engine_family", "")
+    species_map = detail.get("species_map") or {}
+    if engine in ("qe", "abinit", "siesta") and not species_map:
+        return make_error(
+            "missing_species_map",
+            "No species_map configured. Pseudopotential engines require species_map.",
+            context_hint=(
+                f"Call auto_resolve_species_map(calc_ulid='{calc_ulid}') or "
+                f"set_species_map(calc_ulid='{calc_ulid}', ...) first."
+            ),
+        )
+
     # --- run ---
     try:
         result_dto = svc.run.run_calculation(calc_ulid)
@@ -67,8 +80,7 @@ def run_calculation(calc_ulid: str) -> dict:
         "io_dir": result_dto.io_dir,
     }
 
-    # --- Resolve engine/workflow for enrichment ---
-    engine = detail.get("engine_family", "")
+    # --- Resolve workflow for enrichment ---
     workflow = ""
     steps_raw = detail.get("steps", [])
     if steps_raw:

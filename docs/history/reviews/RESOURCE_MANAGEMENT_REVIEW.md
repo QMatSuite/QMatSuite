@@ -731,3 +731,55 @@ The QE pseudo system is designed for SSSP but the architecture supports any libr
 - No code changes to the resolution chain
 
 **Recommendation:** Add when there's demand. The architecture is ready.
+
+## 7. Architectural Decisions (2026-02-18)
+
+Decisions made during Stage P2 implementation planning.
+
+### D1: App Data Location — Platform-Specific, NOT ~/.qmatsuite/
+
+- **Decision**: Use platform-specific application data directories, not a visible dotfile in home.
+- **Rationale**: `~/.qmatsuite/` is too visible and too easy for users to accidentally delete or corrupt.
+- **Paths**: macOS `~/Library/Application Support/QMatSuite/`, Windows `%LOCALAPPDATA%\QMatSuite\`, Linux `~/.local/share/qmatsuite/`, Dev mode `repo_root/.qmatsuite/`, Override via `QMATSUITE_HOME` env var.
+- **Resolution order**: (1) `QMATSUITE_HOME` env var, (2) Platform-specific app data, (3) `repo_root/.qmatsuite/` dev fallback.
+- **Implementation**: Single `get_qmatsuite_home() -> Path` function in `paths.py`.
+
+### D2: Program vs Resources Separation
+
+- **Decision**: QMatSuite program binaries and user/engine resources are fully separated. App updates do NOT touch the resource directory.
+- Program goes in platform install location; Resources go in `get_qmatsuite_home()`.
+- Updating version never re-downloads pseudo libraries; uninstalling optionally preserves resources; multiple versions can share the same resource directory.
+
+### D3: External Engine Pointer Mechanism
+
+- **Decision**: User-installed engines (VASP, ORCA, etc.) are NOT copied into the resource directory. Instead, an `engine.json` pointer file records their location.
+- Defines the full directory layout under `get_qmatsuite_home()` (engines, bin, libraries, knowledge, config, logs).
+- Defines `engine.json` format with engine, version, source, paths (binary, potcar_root), configured_at, configured_by.
+- Runner resolution chain: (1) QMatSuite-managed binary, (2) engine.json pointer, (3) PATH lookup, (4) Error with hint.
+
+### D4: Auto-Resolve Species Map Uses SSSP Precision
+
+- **Decision**: Auto-resolution defaults to SSSP 1.3.0 Precision library (not Efficiency).
+- **Rationale**: One pseudo per element (no ambiguity), higher cutoffs are safer, full distribution ships with it, efficiency library has multiple choices per element in some cases.
+- If SSSP Precision is not installed, auto-resolve returns an actionable error with download instructions.
+
+### D5: Download Requires User Consent (Client-Side)
+
+- **Decision**: The `download_pseudo_library` tool itself does NOT block for consent. It is the client's responsibility to confirm with the user before executing side-effect operations.
+- Follows the BYOE principle.
+
+### D6: No Agent Self-Download Mechanism
+
+- **Decision**: Agents must NOT use curl/wget to download resources directly. All resource downloads go through QMatSuite tools.
+- **Rationale**: Bypasses SHA verification, won't be in resolution chain, no provenance record, not reproducible.
+
+### D7: Distribution Strategy (Lite vs Full)
+
+- **Lite version**: QMatSuite program only, empty resource directory, user downloads engines and pseudos on demand.
+- **Full version**: QMatSuite program + pre-populated resource directory including QE binary + SSSP 1.3.0 Precision, out-of-box `quick_run(engine="qe", ...)` works immediately.
+- Both versions include micromamba binary.
+
+### D8: Micromamba Placement
+
+- **Decision**: Micromamba binary lives at `get_qmatsuite_home()/bin/micromamba`. Conda environments go to `engines/conda-envs/`.
+- Micromamba is very stable (C++ reimplementation of conda) with strong backward compatibility. Pin a version and update rarely.

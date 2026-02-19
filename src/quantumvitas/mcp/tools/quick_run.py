@@ -91,6 +91,17 @@ def quick_run(
         except Exception as exc:
             return make_error("species_map_failed", f"Failed to set species_map: {exc}")
 
+    # --- auto-resolve species_map for pseudo engines ---
+    if not species_map:
+        try:
+            from quantumvitas.mcp.tools._resource_utils import auto_resolve_species_map_internal
+
+            resolved = auto_resolve_species_map_internal(calc_ulid, svc)
+            if resolved:
+                svc.calculation.update_species_map(calc_ulid, resolved)
+        except Exception:
+            pass  # Best-effort: agent can set manually if auto-resolve fails
+
     # --- add workflow steps ---
     step_ulids: list[str] = []
     for gen_step in template.step_sequence:

@@ -172,17 +172,19 @@ class TestContextHints:
     """Verify context hints mention the right follow-up tools."""
 
     def test_create_calc_mentions_species_map(self, qv_project):
-        """create_calculation hint must mention set_species_map."""
+        """create_calculation hint must mention species_map (auto-resolved or manual)."""
         from quantumvitas.mcp.tools.create_calculation import create_calculation
 
         result = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="silicon",
         )
         assert result["status"] == "success"
-        assert "set_species_map" in result["context_hint"]
+        hint = result["context_hint"]
+        # Either auto-resolved (mentions "auto-resolved") or manual (mentions "set_species_map")
+        assert "species_map" in hint.lower() or "auto-resolved" in hint.lower()
 
-    def test_tool_count_24(self):
-        """Verify 24 tools registered (was 22, +set_species_map, +init_project)."""
+    def test_tool_count_26(self):
+        """Verify 26 tools registered (24 + list_available_resources + auto_resolve_species_map)."""
         from quantumvitas.mcp import server  # noqa: F401 — triggers registration
         from quantumvitas.mcp.app import mcp
 
@@ -191,10 +193,10 @@ class TestContextHints:
             tools = loop.run_until_complete(mcp.get_tools())
         finally:
             loop.close()
-        assert len(tools) == 24, (
-            f"Expected 24 tools, got {len(tools)}: {sorted(tools.keys())}"
+        assert len(tools) == 26, (
+            f"Expected 26 tools, got {len(tools)}: {sorted(tools.keys())}"
         )
 
-        # Verify the two new tools exist
+        # Verify the P1 tools exist
         assert "set_species_map" in tools
         assert "init_project" in tools

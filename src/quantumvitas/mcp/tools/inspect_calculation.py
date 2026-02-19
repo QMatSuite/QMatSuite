@@ -64,6 +64,14 @@ def inspect_calculation(calc_ulid: str, step: int = -1, dry_run: bool = False) -
         "steps": steps_out,
     }
 
+    # --- resource status (best-effort) ---
+    try:
+        from quantumvitas.mcp.tools._resource_utils import check_resource_status
+
+        payload["resource_status"] = check_resource_status(calc_ulid, svc)
+    except Exception:
+        pass
+
     # --- optional step detail ---
     if step >= 0:
         if step >= len(steps_raw):
