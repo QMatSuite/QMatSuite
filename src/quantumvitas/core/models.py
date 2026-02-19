@@ -207,6 +207,11 @@ class CalculationModel:
     # This is the authoritative source of truth for LAMMPS potential assets.
     # Similar to species_map, but for classical potentials (EAM, Tersoff, etc.)
     potential_map: Optional[Dict[str, Dict[str, Any]]] = None
+
+    # Demo origin tracking: records which demo this calculation was loaded from.
+    # Set by load_demo_as_calculation(); None for user-created calculations.
+    # Format: {"demo_id": str, "engine": str, "materialized_at": str (ISO 8601)}
+    demo_origin: Optional[Dict[str, Any]] = None
     
     @property
     def id(self) -> str:
@@ -251,6 +256,9 @@ class CalculationModel:
         # Write potential_map (LAMMPS potential mapping)
         if self.potential_map:
             result["potential_map"] = self.potential_map
+        # Write demo_origin (demo provenance tracking)
+        if self.demo_origin:
+            result["demo_origin"] = self.demo_origin
         return result
     
     @classmethod
@@ -320,6 +328,9 @@ class CalculationModel:
         
         # Load potential_map (LAMMPS potential mapping)
         potential_map = data.get("potential_map") or calculation_section.get("potential_map")
+
+        # Load demo_origin (demo provenance tracking)
+        demo_origin = data.get("demo_origin")
         
         # Phase 3A: Load structure_kind and engine_family with best-effort recovery
         structure_kind = data.get("structure_kind")
@@ -373,6 +384,7 @@ class CalculationModel:
             engine_family=engine_family,
             species_map=species_map,
             potential_map=potential_map,
+            demo_origin=demo_origin,
         )
     
     # Legacy resolve_step_ulids method removed - all steps must have step_ulid (ULID) at load time

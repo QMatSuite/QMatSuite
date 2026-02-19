@@ -605,6 +605,116 @@ class TestLoadDemoMetaConsistency:
 # ===========================================================================
 
 
+class TestDemoOrigin:
+    """Tests for per-calculation demo_origin provenance tracking."""
+
+    def test_load_demo_has_demo_origin(self, qv_project):
+        """Loading a demo → calculation.yaml has demo_origin with correct fields."""
+        import yaml
+        from quantumvitas.mcp.tools.demo_store import load_demo
+
+        result = load_demo.fn(demo_id="qe_si_scf")
+        assert result["status"] == "success"
+        data = result["data"]
+
+        # Read calculation.yaml directly to verify demo_origin persisted
+        svc = QVService(qv_project)
+        detail = svc.calculation.get_detail(data["calc_ulid"])
+        calc_slug = detail.get("slug", "")
+        calc_yaml_path = qv_project / "calculations" / calc_slug / "calculation.yaml"
+        with open(calc_yaml_path) as f:
+            calc_config = yaml.safe_load(f)
+
+        demo_origin = calc_config.get("demo_origin")
+        assert demo_origin is not None, "demo_origin missing from calculation.yaml"
+        assert demo_origin["demo_id"] == "qe_si_scf"
+        assert demo_origin["engine"] == "qe"
+        assert "materialized_at" in demo_origin
+        # materialized_at should be an ISO 8601 timestamp
+        from datetime import datetime
+        datetime.fromisoformat(demo_origin["materialized_at"])
+
+    def test_regular_calc_no_demo_origin(self, qv_project):
+        """A normal (non-demo) calculation has no demo_origin."""
+        from quantumvitas.core.models import CalculationModel, save_calculation, load_calculation
+        from quantumvitas.core.resources import ResourceMeta, generate_resource_id, slugify
+
+        calc_ulid = generate_resource_id()
+        calc_name = "Manual Calculation"
+        calc_slug = slugify(calc_name)
+        calc_dir = qv_project / "calculations" / calc_slug
+        calc_dir.mkdir(parents=True, exist_ok=True)
+
+        model = CalculationModel(
+            meta=ResourceMeta(
+                ulid=calc_ulid,
+                name=calc_name,
+                slug=calc_slug,
+                path=f"calculations/{calc_slug}",
+                kind="calculation",
+            ),
+            engine_family="qe",
+        )
+        save_calculation(model, calc_dir / "calculation.yaml")
+
+        # Reload and verify demo_origin is None
+        reloaded = load_calculation(calc_dir / "calculation.yaml", project_root=qv_project)
+        assert reloaded.demo_origin is None
+
+    def test_demo_origin_preserved_on_reload(self, qv_project):
+        """demo_origin survives save → reload cycle via CalculationModel."""
+        from quantumvitas.mcp.tools.demo_store import load_demo
+        from quantumvitas.core.models import load_calculation
+
+        result = load_demo.fn(demo_id="qe_si_scf")
+        assert result["status"] == "success"
+        data = result["data"]
+
+        svc = QVService(qv_project)
+        detail = svc.calculation.get_detail(data["calc_ulid"])
+        calc_slug = detail.get("slug", "")
+        calc_yaml_path = qv_project / "calculations" / calc_slug / "calculation.yaml"
+
+        # Reload via CalculationModel (not raw YAML) — tests from_dict roundtrip
+        model = load_calculation(calc_yaml_path, project_root=qv_project)
+        assert model.demo_origin is not None
+        assert model.demo_origin["demo_id"] == "qe_si_scf"
+        assert model.demo_origin["engine"] == "qe"
+        assert "materialized_at" in model.demo_origin
+
+    def test_get_reference_analysis_via_calc_demo_origin(self, qv_project):
+        """get_reference_analysis() finds ref pack via calculation.demo_origin."""
+        from quantumvitas.demo_store.ref_packs import list_all_ref_packs, list_ref_pack_types
+        from quantumvitas.mcp.tools.demo_store import load_demo
+
+        # Find a demo that has a ref pack
+        packs = list_all_ref_packs()
+        if not packs:
+            pytest.skip("No ref packs available")
+
+        # Pick a demo with a ref pack and load it
+        demo_id = packs[0]
+        types = list_ref_pack_types(demo_id)
+        if not types:
+            pytest.skip(f"Ref pack {demo_id} has no object types")
+
+        result = load_demo.fn(demo_id=demo_id)
+        assert result["status"] == "success"
+        calc_ulid = result["data"]["calc_ulid"]
+
+        # The project is NOT a demo project (no project-level demo_source),
+        # so get_reference_analysis should find the ref pack via demo_origin
+        svc = QVService(qv_project)
+        ref = svc.analysis.get_reference_analysis(calc_ulid, types[0])
+        assert ref is not None, (
+            f"get_reference_analysis returned None for demo {demo_id}, type {types[0]}. "
+            "Expected demo_origin fallback to find ref pack."
+        )
+        assert ref["_is_reference"] is True
+        assert ref["_reference_source"] == demo_id
+        assert ref["object_type"] == types[0]
+
+
 class TestDemoStoreIntegration:
     """Integration tests — search → load → inspect."""
 
