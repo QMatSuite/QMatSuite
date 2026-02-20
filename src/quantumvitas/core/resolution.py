@@ -517,24 +517,43 @@ def _is_path_like(s: str) -> bool:
 # ResourceIndex building
 # ---------------------------------------------------------------------------
 
+_last_index_warnings: list[str] = []
+
+
+def get_last_index_warnings() -> list[str]:
+    """Return warnings from the most recent ``build_resource_index()`` call.
+
+    Warnings are collected (not raised) so that callers can decide how to
+    surface them.  The list is reset on every ``build_resource_index()``
+    invocation.
+    """
+    return list(_last_index_warnings)
+
+
 def build_resource_index(project_root: Path) -> ResourceIndex:
     """
     Build a ResourceIndex by scanning resource files in the project.
-    
+
     Scans:
     - calculations/**/calculation.yaml
     - calculations/**/steps/*.step.yaml
     - structures/*.json
-    
+
     Reads meta blocks from each resource file and indexes them.
     This is the authoritative source for selector → ID resolution.
-    
+
+    Corrupt or unreadable files are skipped and recorded as warnings
+    retrievable via ``get_last_index_warnings()``.
+
     Args:
         project_root: Path to project root directory
-        
+
     Returns:
         ResourceIndex with all resources indexed
     """
+    global _last_index_warnings
+    _last_index_warnings = []
+
     import time
     start_time = time.time()
     project_root = project_root.resolve()
@@ -581,7 +600,9 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
                         )
                         index.add_resource(meta, calculation_yaml)
                 except Exception as e:
-                    # Skip invalid calculation files (log in debug mode if needed)
+                    _last_index_warnings.append(
+                        f"Skipped corrupt calculation '{calculation_dir.name}': {e}"
+                    )
                     continue
             
             # Scan steps in this calculation
@@ -613,8 +634,10 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
                                 default_path=default_path,
                             )
                             index.add_resource(meta, step_file)
-                    except Exception:
-                        # Skip invalid step files
+                    except Exception as e:
+                        _last_index_warnings.append(
+                            f"Skipped corrupt step file '{step_file.name}': {e}"
+                        )
                         continue
     
     # Scan structures
@@ -646,8 +669,10 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
                         default_path=default_path,
                     )
                     index.add_resource(meta, struct_file)
-            except Exception:
-                # Skip invalid structure files
+            except Exception as e:
+                _last_index_warnings.append(
+                    f"Skipped corrupt structure file '{struct_file.name}': {e}"
+                )
                 continue
     
     duration = time.time() - start_time

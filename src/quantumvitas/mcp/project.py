@@ -45,4 +45,7 @@ def get_service() -> QVService:
     """Return a QVService bound to the active project root."""
     from quantumvitas.api import QVService
 
-    return QVService(get_project_root())
+    try:
+        return QVService(get_project_root())
+    except ValueError as exc:
+        raise ProjectNotFoundError(str(exc)) from exc

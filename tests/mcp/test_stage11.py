@@ -303,8 +303,8 @@ class TestRealQEScenarios:
 class TestToolRegistration:
     """Test 7: All 22 tools registered."""
 
-    def test_all_30_tools_registered(self):
-        """Verify all 30 tools are registered in the FastMCP server."""
+    def test_all_31_tools_registered(self):
+        """Verify all 31 tools are registered in the FastMCP server."""
         from quantumvitas.mcp import server  # noqa: F401 — triggers registration
         from quantumvitas.mcp.app import mcp
 
@@ -313,8 +313,8 @@ class TestToolRegistration:
             tools = loop.run_until_complete(mcp.get_tools())
         finally:
             loop.close()
-        assert len(tools) == 30, (
-            f"Expected 30 tools, got {len(tools)}: {sorted(tools.keys())}"
+        assert len(tools) == 31, (
+            f"Expected 31 tools, got {len(tools)}: {sorted(tools.keys())}"
         )
 
         expected_names = {
@@ -348,6 +348,7 @@ class TestToolRegistration:
             "list_analyses",
             "plot_analysis",
             "generate_kpath",
+            "cleanup_project",
         }
         actual_names = set(tools.keys())
         assert actual_names == expected_names, (
