@@ -312,7 +312,7 @@ class TestC3GenerateKpath:
 
 
 class TestC2FilbandInjection:
-    """C2: filband injection into QE bands.x input."""
+    """C2: filband/fildos unconditional runtime injection."""
 
     def test_filband_injection_present_in_schema(self):
         """The BANDS QE module should define filband as a parameter."""
@@ -325,6 +325,18 @@ class TestC2FilbandInjection:
             all_params.update(p.lower() for p in params)
         assert "filband" in all_params, (
             f"filband not found in BANDS module. Available: {sorted(all_params)}"
+        )
+
+    def test_fildos_injection_present_in_schema(self):
+        """The DOS QE module should define fildos as a parameter."""
+        from quantumvitas.data import get_module_param_sections
+
+        sections = get_module_param_sections("dos")
+        all_params = set()
+        for params in sections.values():
+            all_params.update(p.lower() for p in params)
+        assert "fildos" in all_params, (
+            f"fildos not found in DOS module. Available: {sorted(all_params)}"
         )
 
     def test_evidence_glob_widened(self):
@@ -341,6 +353,144 @@ class TestC2FilbandInjection:
         evidence = bands_caps[0].evidence_files
         assert "*.bands.dat.gnu" in evidence
         assert "*.bands.out.gnu" in evidence
+
+    def test_filband_unconditional_injection(self):
+        """filband is unconditionally injected from input_name, even without user value."""
+        import logging
+        from quantumvitas.calculation.structure_steps import (
+            _inject_calculation_prefix_outdir,
+        )
+        from quantumvitas.drivers.qe.io.model import QEInput, QENamelist
+
+        # bands.x input with BANDS namelist but no filband set
+        namelist = QENamelist(name="BANDS", parameters={})
+        qe_input = QEInput(namelists=[namelist], cards=[], module=None)
+        qe_input.module_name = "bands"
+
+        _inject_calculation_prefix_outdir(
+            qe_input=qe_input,
+            step_type_spec="qe_bands",
+            calculation_prefix="qvtest1",
+            calculation_outdir="./outdir",
+            spec_params={},
+            logger=logging.getLogger("test"),
+            input_name="bands.bands.in",
+        )
+        assert namelist.parameters.get("filband") == "bands.bands.dat"
+
+    def test_filband_overrides_user_value(self):
+        """User-set filband is overridden by runtime injection."""
+        import logging
+        from quantumvitas.calculation.structure_steps import (
+            _inject_calculation_prefix_outdir,
+        )
+        from quantumvitas.drivers.qe.io.model import QEInput, QENamelist
+
+        namelist = QENamelist(
+            name="BANDS", parameters={"filband": "user_custom.dat"},
+        )
+        qe_input = QEInput(namelists=[namelist], cards=[], module=None)
+        qe_input.module_name = "bands"
+
+        _inject_calculation_prefix_outdir(
+            qe_input=qe_input,
+            step_type_spec="qe_bands",
+            calculation_prefix="qvtest1",
+            calculation_outdir="./outdir",
+            spec_params={"BANDS": {"filband": "user_custom.dat"}},
+            logger=logging.getLogger("test"),
+            input_name="bands.bands.in",
+        )
+        # Runtime-managed: user value overridden
+        assert namelist.parameters["filband"] == "bands.bands.dat"
+
+    def test_fildos_unconditional_injection(self):
+        """fildos is unconditionally injected from input_name."""
+        import logging
+        from quantumvitas.calculation.structure_steps import (
+            _inject_calculation_prefix_outdir,
+        )
+        from quantumvitas.drivers.qe.io.model import QEInput, QENamelist
+
+        namelist = QENamelist(name="DOS", parameters={})
+        qe_input = QEInput(namelists=[namelist], cards=[], module=None)
+        qe_input.module_name = "dos"
+
+        _inject_calculation_prefix_outdir(
+            qe_input=qe_input,
+            step_type_spec="qe_dos",
+            calculation_prefix=None,
+            calculation_outdir="./outdir",
+            spec_params={},
+            logger=logging.getLogger("test"),
+            input_name="dos.dos.in",
+        )
+        assert namelist.parameters.get("fildos") == "dos.dos.dat"
+
+    def test_fildos_overrides_user_value(self):
+        """User-set fildos is overridden by runtime injection."""
+        import logging
+        from quantumvitas.calculation.structure_steps import (
+            _inject_calculation_prefix_outdir,
+        )
+        from quantumvitas.drivers.qe.io.model import QEInput, QENamelist
+
+        namelist = QENamelist(
+            name="DOS", parameters={"fildos": "si.dos.dat"},
+        )
+        qe_input = QEInput(namelists=[namelist], cards=[], module=None)
+        qe_input.module_name = "dos"
+
+        _inject_calculation_prefix_outdir(
+            qe_input=qe_input,
+            step_type_spec="qe_dos",
+            calculation_prefix=None,
+            calculation_outdir="./outdir",
+            spec_params={"DOS": {"fildos": "si.dos.dat"}},
+            logger=logging.getLogger("test"),
+            input_name="dos.dos.in",
+        )
+        assert namelist.parameters["fildos"] == "dos.dos.dat"
+
+    def test_no_injection_without_input_name(self):
+        """Without input_name, filband/fildos injection is skipped."""
+        import logging
+        from quantumvitas.calculation.structure_steps import (
+            _inject_calculation_prefix_outdir,
+        )
+        from quantumvitas.drivers.qe.io.model import QEInput, QENamelist
+
+        namelist = QENamelist(
+            name="BANDS", parameters={"filband": "user.dat"},
+        )
+        qe_input = QEInput(namelists=[namelist], cards=[], module=None)
+        qe_input.module_name = "bands"
+
+        _inject_calculation_prefix_outdir(
+            qe_input=qe_input,
+            step_type_spec="qe_bands",
+            calculation_prefix="qvtest1",
+            calculation_outdir="./outdir",
+            spec_params={},
+            logger=logging.getLogger("test"),
+            input_name=None,  # No input name → no fil* injection
+        )
+        # User value preserved since no input_name available
+        assert namelist.parameters["filband"] == "user.dat"
+
+    def test_filband_fildos_in_runtime_keys(self):
+        """filband and fildos should be in RUNTIME_KEYS for detection."""
+        from quantumvitas.calculation.structure_steps import detect_runtime_control_keys
+
+        # filband/fildos are not in CONTROL section — they're in BANDS/DOS namelists.
+        # RUNTIME_KEYS set is used for user warning messages, not for blocking.
+        # Just verify the constant includes them.
+        from quantumvitas.calculation import structure_steps
+        src = structure_steps.__file__
+        import inspect
+        source = inspect.getsource(detect_runtime_control_keys)
+        assert "filband" in source
+        assert "fildos" in source
 
 
 # ===========================================================================

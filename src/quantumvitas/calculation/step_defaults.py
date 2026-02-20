@@ -62,7 +62,6 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
             "DOS": {
                 "emax": 16.0,
                 "emin": -9.0,
-                "fildos": "dos.dat",
                 "outdir": "./outdir/",
             },
         },

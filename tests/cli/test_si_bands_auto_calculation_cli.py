@@ -245,45 +245,27 @@ class TestSiBandsCalculationAutoKpath:
                 f"STDERR:\n{result.stderr}"
             )
         
-        # Verify the bands output exists; if not, fail with diagnostics
-        bands_gnu = raw_dir / "si.bands.dat.gnu"
-        if not bands_gnu.exists():
-            # Try alternative naming patterns
-            alternative_patterns = [
-                "si.bands.dat.gnu",
-                "*bands*.gnu",
-                "*.bands.dat.gnu",
-                "*.gnu",
-            ]
-            found_bands_file = None
-            for pattern in alternative_patterns:
-                matches = list(raw_dir.glob(pattern))
-                # Filter to .gnu files (bands post-processing output)
-                gnu_matches = [m for m in matches if m.suffix == ".gnu" or "gnu" in m.name]
-                if gnu_matches:
-                    found_bands_file = gnu_matches[0]
-                    bands_gnu = found_bands_file
-                    break
-            
-            if not bands_gnu.exists():
-                raw_files = sorted(p.name for p in raw_dir.glob("*")) if raw_dir.exists() else []
-                # Check if bands.x step ran but failed
-                bands_in_files = list(raw_dir.glob("*bands*.in")) if raw_dir.exists() else []
-                bands_out_files = list(raw_dir.glob("*bands*.out")) if raw_dir.exists() else []
-                crash_files = sorted(p.name for p in raw_dir.glob("CRASH*")) if raw_dir.exists() else []
-                error_msg = (
-                    f"Bands output (.gnu file) not found after running auto k-path calculation.\n"
-                    f"Expected: {raw_dir / 'si.bands.dat.gnu'}\n"
-                    f"Files in raw/: {raw_files}\n"
-                )
-                if bands_in_files:
-                    error_msg += f"Bands.x input files found: {[f.name for f in bands_in_files]}\n"
-                if bands_out_files:
-                    error_msg += f"Bands.x output files found: {[f.name for f in bands_out_files]}\n"
-                if crash_files:
-                    error_msg += f"CRASH files found (bands.x may have failed): {[f.name for f in crash_files]}\n"
-                error_msg += "Calculation may have failed at bands.x step or output has different name."
-                pytest.fail(error_msg)
+        # Verify the bands output exists; filband is runtime-managed so use glob
+        gnu_matches = list(raw_dir.glob("*.bands.dat.gnu")) + list(raw_dir.glob("*.gnu"))
+        if gnu_matches:
+            bands_gnu = gnu_matches[0]
+        else:
+            raw_files = sorted(p.name for p in raw_dir.glob("*")) if raw_dir.exists() else []
+            bands_in_files = list(raw_dir.glob("*bands*.in")) if raw_dir.exists() else []
+            bands_out_files = list(raw_dir.glob("*bands*.out")) if raw_dir.exists() else []
+            crash_files = sorted(p.name for p in raw_dir.glob("CRASH*")) if raw_dir.exists() else []
+            error_msg = (
+                f"Bands output (.gnu file) not found after running auto k-path calculation.\n"
+                f"Files in raw/: {raw_files}\n"
+            )
+            if bands_in_files:
+                error_msg += f"Bands.x input files found: {[f.name for f in bands_in_files]}\n"
+            if bands_out_files:
+                error_msg += f"Bands.x output files found: {[f.name for f in bands_out_files]}\n"
+            if crash_files:
+                error_msg += f"CRASH files found (bands.x may have failed): {[f.name for f in crash_files]}\n"
+            error_msg += "Calculation may have failed at bands.x step or output has different name."
+            pytest.fail(error_msg)
         
         # Find the bands.x output for symmetry points
         # Multiple naming conventions: *.bands.out, *bandspp*.out

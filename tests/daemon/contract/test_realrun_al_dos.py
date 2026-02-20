@@ -270,7 +270,8 @@ class TestRealRunAlDOS:
         dos_in = _read_step_input(step_map["dos"], ["dos.in", "dos.dos.in"])
         assert "4 4 4 0 0 0" in scf_in, scf_in
         assert "6 6 6 0 0 0" in nscf_in, nscf_in
-        assert "fildos = 'al.dos.dat'" in dos_in or "fildos='al.dos.dat'" in dos_in, dos_in
+        # fildos is runtime-managed: derived from input filename stem, not user value
+        assert "fildos" in dos_in.lower(), f"fildos not found in materialized dos input: {dos_in}"
         assert "emin = -15.0" in dos_in or "emin=-15.0" in dos_in, dos_in
         assert "emax = 35.0" in dos_in or "emax=35.0" in dos_in, dos_in
 

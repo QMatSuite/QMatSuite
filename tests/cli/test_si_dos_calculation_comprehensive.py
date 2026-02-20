@@ -213,17 +213,17 @@ class TestSiDosCalculation:
                 f"STDERR:\n{result.stderr}"
             )
         
-        # Verify the DOS output exists; if not, fail with diagnostics
-        dos_file = raw_dir / "si.dos.dat"
-        if not dos_file.exists():
+        # Verify the DOS output exists; fildos is runtime-managed so use glob
+        dos_matches = list(raw_dir.glob("*.dos.dat")) + list(raw_dir.glob("*dos*.dat"))
+        if not dos_matches:
             raw_files = sorted(p.name for p in raw_dir.glob("*")) if raw_dir.exists() else []
             crash_files = sorted(p.name for p in raw_dir.glob("CRASH*")) if raw_dir.exists() else []
             pytest.fail(
                 "DOS output not found after running calculation:\n"
-                f"Expected: {dos_file}\n"
                 f"Files in raw/: {raw_files}\n"
                 f"CRASH files: {crash_files}"
             )
+        dos_file = dos_matches[0]
         
         # Find NSCF output for Fermi energy (preferred over SCF for accuracy)
         fermi_file = None

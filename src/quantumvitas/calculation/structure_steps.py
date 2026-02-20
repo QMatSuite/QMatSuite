@@ -306,7 +306,7 @@ def detect_runtime_control_keys(parameters: Dict[str, Dict[str, Any]]) -> list[s
     Returns:
         List of found runtime keys (e.g., ["prefix", "outdir"])
     """
-    RUNTIME_KEYS = {"prefix", "outdir", "pseudo_dir"}
+    RUNTIME_KEYS = {"prefix", "outdir", "pseudo_dir", "filband", "fildos"}
     found_keys = []
     
     # Check CONTROL section (case-insensitive)
@@ -357,16 +357,18 @@ def _inject_calculation_prefix_outdir(
     calculation_outdir: str,
     spec_params: Dict[str, Any],
     logger,
+    input_name: Optional[str] = None,
 ) -> None:
     """
     R2-R4: Inject calculation-level prefix/outdir into QE input if schema supports it.
-    
+
     This implements the calculation-level prefix/outdir propagation rule:
     - R1: Canonical prefix = stable id-derived prefix (from calculation.meta.ulid ULID)
     - R2: Only inject if the step's QE module schema defines prefix/outdir parameters
     - R3: Step-level prefix/outdir in spec_params are ignored (overridden by calculation-level)
     - R4: Outdir defaults to "./outdir" if not provided
-    
+    - R5: filband/fildos are unconditionally runtime-managed (derived from input filename stem)
+
     Args:
         qe_input: QEInput object to modify
         step_type_spec: Spec step type (e.g., "qe_scf", "qe_pw2wannier")
@@ -374,6 +376,7 @@ def _inject_calculation_prefix_outdir(
         calculation_outdir: Calculation-level outdir (defaults to "./outdir")
         spec_params: Step spec parameters (to detect ignored step-level prefix/outdir)
         logger: Logger instance for diagnostic messages
+        input_name: Optional input filename (e.g. "bands.bands.in") for deriving fil* values
     """
     # Determine which QE module this step uses
     step_type_lower = step_type_spec.lower()
@@ -458,25 +461,52 @@ def _inject_calculation_prefix_outdir(
                 f"into {target_section}.outdir (step_type_spec={step_type_spec}, module={module.value})"
             )
 
-    # Inject filband for BANDS module: {prefix}.bands.dat → output *.bands.dat.gnu
-    # Unlike prefix/outdir (which always override per R3), filband is only a
-    # default — if the user already set filband explicitly, we respect that.
-    if calculation_prefix and "filband" in param_to_sections:
+    # R5: Unconditionally inject filband/fildos derived from input filename stem.
+    # These are runtime-managed like prefix/outdir — user values are overridden
+    # so that analysis evidence globs reliably find output files.
+    input_stem = Path(input_name).stem if input_name else None  # e.g. "bands.bands"
+
+    if input_stem and "filband" in param_to_sections:
         filband_sections = param_to_sections["filband"]
         if filband_sections:
             target_section = filband_sections[0]
             namelist = qe_input.get_namelist(target_section)
-            existing_filband = namelist.parameters.get("filband") if namelist else None
-            if not existing_filband:
-                if not namelist:
-                    namelist = QENamelist(name=target_section)
-                    qe_input.namelists.append(namelist)
-                filband_value = f"{calculation_prefix}.bands.dat"
-                namelist.parameters["filband"] = filband_value
+            if not namelist:
+                namelist = QENamelist(name=target_section)
+                qe_input.namelists.append(namelist)
+            filband_value = f"{input_stem}.dat"
+            existing = namelist.parameters.get("filband")
+            if existing and existing != filband_value:
                 logger.info(
-                    f"[FILBAND_INJECTION] Injected filband '{filband_value}' "
-                    f"into {target_section}.filband"
+                    f"[FILBAND_INJECTION] Overriding user filband '{existing}' → "
+                    f"'{filband_value}' (runtime-managed)"
                 )
+            namelist.parameters["filband"] = filband_value
+            logger.info(
+                f"[FILBAND_INJECTION] Injected filband '{filband_value}' "
+                f"into {target_section}.filband"
+            )
+
+    if input_stem and "fildos" in param_to_sections:
+        fildos_sections = param_to_sections["fildos"]
+        if fildos_sections:
+            target_section = fildos_sections[0]
+            namelist = qe_input.get_namelist(target_section)
+            if not namelist:
+                namelist = QENamelist(name=target_section)
+                qe_input.namelists.append(namelist)
+            fildos_value = f"{input_stem}.dat"
+            existing = namelist.parameters.get("fildos")
+            if existing and existing != fildos_value:
+                logger.info(
+                    f"[FILDOS_INJECTION] Overriding user fildos '{existing}' → "
+                    f"'{fildos_value}' (runtime-managed)"
+                )
+            namelist.parameters["fildos"] = fildos_value
+            logger.info(
+                f"[FILDOS_INJECTION] Injected fildos '{fildos_value}' "
+                f"into {target_section}.fildos"
+            )
 
 
 def _generate_postprocessing_input(
@@ -1505,6 +1535,7 @@ def materialize_step_spec(
             calculation_outdir=calculation_outdir,
             spec_params=spec_obj.parameters or {},
             logger=logger,
+            input_name=input_name,
         )
 
     # Set outdir and pseudo_dir if project_root is provided
