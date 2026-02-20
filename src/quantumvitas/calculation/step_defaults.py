@@ -24,6 +24,9 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
             },
             "SYSTEM": {
                 "ecutwfc": 50,
+                "occupations": "smearing",
+                "smearing": "gaussian",
+                "degauss": 0.01,
             },
         },
         "cards": {
@@ -46,7 +49,9 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
             },
             "SYSTEM": {
                 "ecutwfc": 50,
-                # occupations: removed from defaults - only include if explicitly set
+                "occupations": "smearing",
+                "smearing": "gaussian",
+                "degauss": 0.01,
             },
         },
         "cards": {
@@ -100,7 +105,9 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
             },
             "SYSTEM": {
                 "ecutwfc": 50,
-                # occupations: removed from defaults - only include if explicitly set
+                "occupations": "smearing",
+                "smearing": "gaussian",
+                "degauss": 0.01,
             },
         },
         "cards": {
@@ -123,6 +130,9 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
             },
             "SYSTEM": {
                 "ecutwfc": 50,
+                "occupations": "smearing",
+                "smearing": "gaussian",
+                "degauss": 0.01,
             },
             "IONS": {
                 "ion_dynamics": "bfgs",
@@ -150,6 +160,9 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
             },
             "SYSTEM": {
                 "ecutwfc": 50,
+                "occupations": "smearing",
+                "smearing": "gaussian",
+                "degauss": 0.01,
             },
             "IONS": {
                 "ion_dynamics": "verlet",

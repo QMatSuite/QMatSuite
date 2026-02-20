@@ -95,11 +95,24 @@ def _plot_dos(bundle: CanonicalPrimitiveBundle):
     ax.set_ylabel(y_label)
     ax.set_title("Density of States")
 
-    for marker in bundle.render_meta.markers:
-        if "fermi" in marker.label.lower():
-            ax.axvline(marker.position, color="red", linestyle="--", label=marker.label)
+    # Fermi energy: prefer reference_energy, fall back to markers
+    fermi_drawn = False
+    if bundle.render_meta.reference_energy is not None:
+        ax.axvline(
+            bundle.render_meta.reference_energy,
+            color="red", linestyle="--", linewidth=1.0,
+            label=f"E_F = {bundle.render_meta.reference_energy:.4f}",
+        )
+        fermi_drawn = True
 
-    if len(bundle.series) > 1 or bundle.render_meta.markers:
+    if not fermi_drawn:
+        for marker in bundle.render_meta.markers:
+            if "fermi" in marker.label.lower():
+                ax.axvline(marker.position, color="red", linestyle="--", label=marker.label)
+                fermi_drawn = True
+                break
+
+    if len(bundle.series) > 1 or fermi_drawn:
         ax.legend()
 
     ax.grid(True, alpha=0.3)
@@ -108,7 +121,7 @@ def _plot_dos(bundle: CanonicalPrimitiveBundle):
 
 
 def _plot_bands(bundle: CanonicalPrimitiveBundle):
-    """Multi-line plot: k-distance vs energy for each band."""
+    """Band structure plot with Fermi level, k-point labels, and E-shift."""
     import matplotlib.pyplot as plt
 
     if not bundle.series:
@@ -116,23 +129,57 @@ def _plot_bands(bundle: CanonicalPrimitiveBundle):
 
     fig, ax = plt.subplots(figsize=(8, 6))
 
+    # Determine Fermi energy for shifting
+    e_fermi = bundle.render_meta.reference_energy  # may be None
+
+    # Separate k-point markers (axis="x") from other markers
+    kpoint_markers = []
+    other_markers = []
+    for marker in bundle.render_meta.markers:
+        if marker.axis == "x":
+            kpoint_markers.append(marker)
+        else:
+            other_markers.append(marker)
+
+    # Plot bands — shift by Fermi energy if available
     for s in bundle.series:
-        ax.plot(s.x, s.y, color="steelblue", linewidth=0.8)
+        y_data = s.y
+        if e_fermi is not None:
+            y_data = s.y - e_fermi
+        ax.plot(s.x, y_data, color="steelblue", linewidth=0.8)
 
-    x_label = bundle.series[0].x_label or "k-distance"
-    y_label = bundle.series[0].y_label or "Energy"
-    if bundle.series[0].y_unit:
-        y_label += f" ({bundle.series[0].y_unit})"
+    # Y-axis label
+    if e_fermi is not None:
+        y_label = "E \u2212 E\u2082 (eV)"  # E − E_F (eV) — use subscript F
+        y_label = "E \u2212 E_F (eV)"
+    else:
+        y_label = bundle.series[0].y_label or "Energy"
+        if bundle.series[0].y_unit:
+            y_label += f" ({bundle.series[0].y_unit})"
 
-    ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
     ax.set_title("Band Structure")
 
-    for marker in bundle.render_meta.markers:
-        if "fermi" in marker.label.lower():
-            ax.axhline(marker.position, color="red", linestyle="--", label=marker.label)
+    # Fermi level reference line (at 0 after shift, or at E_F if no shift)
+    if e_fermi is not None:
+        ax.axhline(0.0, color="red", linestyle="--", linewidth=0.8, label="E_F")
 
-    ax.grid(True, alpha=0.3)
+    # High-symmetry k-point labels on x-axis
+    if kpoint_markers:
+        tick_positions = [m.position for m in kpoint_markers]
+        tick_labels = [m.label for m in kpoint_markers]
+
+        # Draw vertical lines at high-symmetry points
+        for pos in tick_positions:
+            ax.axvline(pos, color="gray", linewidth=0.5, alpha=0.7)
+
+        ax.set_xticks(tick_positions)
+        ax.set_xticklabels(tick_labels)
+        ax.set_xlim(tick_positions[0], tick_positions[-1])
+    else:
+        ax.set_xlabel(bundle.series[0].x_label or "k-path")
+
+    ax.grid(True, axis="y", alpha=0.3)
     fig.tight_layout()
     return fig
 

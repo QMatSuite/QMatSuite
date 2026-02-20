@@ -15,6 +15,7 @@ dependencies = [
     "scipy",
     "ase",
     "matplotlib",
+    "plotext>=5.2",
     "PyYAML",
     "typer>=0.12",
     "beautifulsoup4>=4.12",
