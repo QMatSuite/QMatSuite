@@ -349,3 +349,65 @@ class TestErrorHandlingGraceful:
 
         result = apply_preset.fn(calc_ulid="NONEXISTENT", presets={"precision": "LOW"})
         assert result["status"] == "error"
+
+
+# ===========================================================================
+# Analysis & visualization — real QE run (Phase 2A)
+# ===========================================================================
+
+
+class TestAnalysisAfterRealRun:
+    """Run a real QE SCF, then exercise list_analyses + plot_analysis."""
+
+    def test_list_and_plot_convergence(self, qe_project_with_si):
+        """Full journey: create → run → list_analyses → plot_analysis convergence."""
+        from quantumvitas.mcp.tools.list_analyses import list_analyses
+        from quantumvitas.mcp.tools.plot_analysis import plot_analysis
+        from quantumvitas.mcp.tools.run_calculation import run_calculation
+
+        calc_ulid = _setup_si_scf_calc(qe_project_with_si)
+
+        # Run the calculation
+        run_result = run_calculation.fn(calc_ulid=calc_ulid)
+        assert run_result["status"] == "success", f"run failed: {run_result}"
+        assert run_result["data"]["status"] == "completed"
+
+        # list_analyses — should find convergence (at minimum)
+        la_result = list_analyses.fn(calc_ulid=calc_ulid, step=0)
+        assert la_result["status"] == "success"
+        analyses = la_result["data"]["analyses"]
+        obj_types = [a["object_type"] for a in analyses]
+        assert "convergence" in obj_types
+        # At least one analysis should have evidence available
+        conv_entry = next(a for a in analyses if a["object_type"] == "convergence")
+        assert conv_entry["evidence_available"] is True
+
+        # plot_analysis convergence — should produce ASCII + PNG
+        pa_result = plot_analysis.fn(
+            calc_ulid=calc_ulid, object_type="convergence", step=0,
+        )
+        assert pa_result["status"] == "success", f"plot_analysis failed: {pa_result}"
+        data = pa_result["data"]
+        assert data["object_type"] == "convergence"
+        assert "=== Convergence ===" in data["ascii_plot"]
+        assert "Sparkline:" in data["ascii_plot"]
+        assert data["primitive_meta"]["n_series"] >= 1
+
+        # Summary should have final energy value
+        assert "final_value" in data["summary"]
+        assert data["summary"]["n_points"] >= 1
+
+        # Evidence files with mtime for staleness detection
+        assert len(data["evidence_files"]) >= 1
+        assert "mtime" in data["evidence_files"][0]
+        assert "size_bytes" in data["evidence_files"][0]
+
+        # PNG should have been generated
+        if data["plot_files"]:
+            assert Path(data["plot_files"][0]).exists()
+
+        # No raw array data in response
+        assert "bundle" not in data
+
+        # Context hint should mention list_analyses
+        assert "list_analyses" in pa_result.get("context_hint", "")

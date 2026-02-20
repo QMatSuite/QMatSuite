@@ -257,6 +257,30 @@ class TestRunCalcValidation:
         assert r["error_type"] == "missing_species_map"
         assert "auto_resolve_species_map" in r["context_hint"]
 
+    def test_run_calculation_accepts_run_mode(self, qv_project):
+        """run_calculation accepts run_mode parameter without validation error."""
+        from quantumvitas.mcp.tools.run_calculation import run_calculation
+
+        # Create calc with species_map
+        svc = QVService(qv_project)
+        from quantumvitas.mcp.tools.create_calculation import create_calculation
+
+        r = create_calculation.fn(
+            engine="qe", workflow="scf", structure_selector="Silicon",
+        )
+        assert r["status"] == "success"
+        calc_ulid = r["data"]["calc_ulid"]
+
+        # Test run_mode="full" is accepted (no validation error about unknown param)
+        r = run_calculation.fn(calc_ulid=calc_ulid, run_mode="full")
+        # May fail for other reasons (no QE) but NOT invalid_run_mode
+        assert r.get("error_type") != "invalid_run_mode"
+
+        # Test invalid run_mode returns proper error
+        r = run_calculation.fn(calc_ulid=calc_ulid, run_mode="bogus")
+        assert r["status"] == "error"
+        assert r["error_type"] == "invalid_run_mode"
+
     def test_with_species_map_no_validation_error(self, qv_project):
         """QE calc with species_map does not get missing_species_map error."""
         from quantumvitas.mcp.tools.create_calculation import create_calculation
@@ -344,8 +368,8 @@ class TestInspectResourceStatus:
 class TestToolCount:
     """Test that all 27 tools are registered."""
 
-    def test_27_tools(self):
-        """Verify 27 tools are registered (26 P2 + 1 P4: download_pseudo_library)."""
+    def test_29_tools(self):
+        """Verify 29 tools registered (27 P4 + 2 Phase 2A: list_analyses, plot_analysis)."""
         from quantumvitas.mcp import server  # noqa: F401
         from quantumvitas.mcp.app import mcp
 
@@ -354,8 +378,8 @@ class TestToolCount:
             tools = loop.run_until_complete(mcp.get_tools())
         finally:
             loop.close()
-        assert len(tools) == 27, (
-            f"Expected 27 tools, got {len(tools)}: {sorted(tools.keys())}"
+        assert len(tools) == 29, (
+            f"Expected 29 tools, got {len(tools)}: {sorted(tools.keys())}"
         )
 
         # Verify P2 tools

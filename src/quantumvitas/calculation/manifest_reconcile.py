@@ -247,6 +247,14 @@ def reconcile_manifest(
             if first_changed_idx > i:
                 first_changed_idx = i
     
+    # Cascade: if any step changed, force all downstream steps to done=False.
+    # Constitution §5: once a step needs re-running, all downstream must too.
+    if first_changed_idx < len(new_steps):
+        for i in range(first_changed_idx, len(new_steps)):
+            if new_steps[i].done:
+                new_steps[i].done = False
+                new_steps[i].done_at = None
+
     # Create new manifest (only contains entries up to len(calculation_steps))
     # Topo shorter than old manifest is handled by only processing len(calculation_steps) entries
     new_manifest = Manifest(steps=new_steps)

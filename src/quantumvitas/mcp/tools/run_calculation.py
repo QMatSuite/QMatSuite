@@ -7,7 +7,7 @@ from quantumvitas.mcp.envelope import make_error, make_response
 
 
 @mcp.tool
-def run_calculation(calc_ulid: str) -> dict:
+def run_calculation(calc_ulid: str, run_mode: str = "incremental") -> dict:
     """Run a calculation synchronously.
 
     Blocks until the engine finishes and returns the final status
@@ -19,8 +19,16 @@ def run_calculation(calc_ulid: str) -> dict:
 
     Args:
         calc_ulid: ULID of the calculation to run.
+        run_mode: Run mode — "incremental" (default) skips unchanged steps,
+            "full" reruns everything from step 0.
     """
     from quantumvitas.mcp.project import ProjectNotFoundError, get_service
+
+    if run_mode not in ("incremental", "full"):
+        return make_error(
+            "invalid_run_mode",
+            f"run_mode must be 'incremental' or 'full', got '{run_mode}'",
+        )
 
     try:
         svc = get_service()
@@ -51,7 +59,7 @@ def run_calculation(calc_ulid: str) -> dict:
 
     # --- run ---
     try:
-        result_dto = svc.run.run_calculation(calc_ulid)
+        result_dto = svc.run.run_calculation(calc_ulid, run_mode=run_mode)
     except Exception as exc:
         return make_error(
             "execution_failed",

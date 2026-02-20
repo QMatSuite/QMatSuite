@@ -663,6 +663,13 @@ class CalculationRunner:
 
                 step_summaries.append(summary)
 
+        # Constitution §5.3: TARGET mode — invalidate downstream steps after target executes
+        if target_step_ulid is not None and result.success:
+            target_idx = self._find_step_index(calculation, target_step_ulid)
+            if target_idx is not None:
+                from quantumvitas.calculation.manifest import clear_manifest_from_step
+                clear_manifest_from_step(calculation.dir, target_idx + 1)
+
         logger.info(f"[CALCULATION_RUNNER] JobGraph execution complete: success={result.success}, summaries={len(step_summaries)}")
         return step_summaries
 
