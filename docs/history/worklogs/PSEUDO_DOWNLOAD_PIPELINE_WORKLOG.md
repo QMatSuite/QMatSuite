@@ -96,14 +96,96 @@ Key properties:
 - Looks for UPFs in `<Library>/<variant>/<version>/`
 - Pure filesystem scanning — no imports from `pseudo/`
 
-## Test Results
+## Integration Test Results — Real Downloads
 
-- 5916 passed, 0 failed, 4 skipped (non-integration suite)
-- 20 registry unit tests pass (no network)
-- Integration tests available for SSSP + representative libraries (network required)
+### Test Count Investigation
+
+- Baseline: 6259 passed (included integration tests)
+- Non-integration only: 5916 passed, 4 skipped — **no tests deleted**
+- 5920 collected excluding integration, 6295 total — delta is exactly the 375 integration tests
+- Final full run: **6291 passed, 4 skipped, 0 failed** (+32 net new tests)
+
+### SSSP Precision Download (mandatory, ~60MB)
+
+- **Status**: PASS
+- **UPFs installed**: 103 (41 `.UPF` + 62 `.upf`)
+- **Seed cached**: `SSSP_1.3.0_PBE_precision.tar.gz` (62,963,841 bytes) + companion `.json`
+- **SHA256 verified**: `d91db6b4b3788501...`
+- **head.json**: Written at both library root and install dir
+- **Element spot-check**: Al, Si, Fe, Cu, Pb, O, C, N all found (H uses `H_ONCV_PBE-1.0.oncvpsp.upf` naming)
+- **Cutoffs companion**: `SSSP_1.3.0_PBE_precision.json` installed alongside UPFs
+- **Orphan temp dirs**: 0 (cleaned 7 old `sssp_download_*` orphans from prior broken system)
+- **Idempotent rerun**: Correctly detected "Already installed (103 UPFs)"
+
+### Representative Library Downloads
+
+| Library | Format | Size | UPFs | Time | Status |
+|---------|--------|------|------|------|--------|
+| PseudoDojo nc-sr_pbe_standard | .tgz | 5.0 MB | 72 | 0.6s | PASS |
+| GBRV pbe | .tar.gz | 12.5 MB | 65 | 1.0s | PASS |
+| SG15 oncv | .tar.gz | 5.7 MB | 219 | 0.6s | PASS |
+| SCAN_TM default | .zip | 1.0 MB | 32 | 0.3s | PASS |
+| GIPAW default | .zip | 21.5 MB | 146 | 1.1s | PASS |
+| HGH default | .tar.gz | 30.4 MB | 266 | 1.9s | PASS |
+
+All 4 archive formats tested: `.tar.gz`, `.tgz`, `.tar` (PseudoDojo FR variants), `.zip`
+
+### Resolution Integration Test
+
+- Tested `resolve_project_pseudos()` step 3b with 5 elements NOT in `resources/pseudo`
+- Elements: Ag, Ba, Ga, Ti, Zn — all resolved from installed SG15 library
+- Messages confirmed: "Copied from library SG15" for each element
+- Step 3b (new library layout via head.json) verified working independently
+
+### GIPAW Note
+
+- GIPAW zip contains macOS resource fork files (`._Li.pbe-paw-gipaw-nh.UPF`, 212 bytes)
+- These are extracted as UPFs (match `.upf` extension) but are harmless metadata
+- Validation correctly flagged them as size warnings
+
+### Bugs Found (Pre-existing, NOT introduced)
+
+- `resolve_project_pseudos()` glob pattern `f"{element}*.UPF"` is too loose: `C*` matches `Cu*`
+- This causes Carbon to sometimes resolve to a Copper pseudopotential
+- Fix needed: use `f"{element}[._-]*"` pattern — tracked as separate issue, not part of this rewrite
+
+### Formal Integration Test Suite
+
+```
+tests/integration/test_pseudo_download_pipeline.py — 32 passed, 0 failed
+  TestRegistry: 20 tests (no network)
+  TestSSPPrecisionDownload: 5 tests (real download)
+  TestRepresentativeLibraries: 6 tests (real downloads)
+  TestResolutionIntegration: 1 test (resolution after download)
+```
+
+### Full Regression
+
+```
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
+6291 passed, 4 skipped, 0 failed (4:50 wall time)
+```
+
+The 4 skipped are pre-existing engine execution tests (require installed engine binaries).
 
 ## Existing Code Reused (NOT modified)
 
 - `compute_sha256()`, `download_github_release_asset()`, `get_ssl_context()` from `core/pseudo_config.py`
 - `home_pseudo_libraries_dir()`, `home_pseudo_seeds_dir()`, `tmp_downloads_dir()` from `core/paths.py`
 - Vendored manifest at `resources/pseudo_libinfo/assets-2025-12-26/MANIFEST_PSEUDO_SEED.json`
+
+## Installed Libraries Summary
+
+After all tests, 7 libraries installed in `.qmatsuite/libraries/pseudo/`:
+
+| Library | Variant | Version | UPFs |
+|---------|---------|---------|------|
+| SSSP | precision | 1.3.0 | 103 |
+| PseudoDojo | nc-sr_pbe_standard | 0.4 | 72 |
+| GBRV | pbe | 1.5 | 65 |
+| SG15 | oncv | 2020-02-06 | 219 |
+| SCAN_TM | default | 2017 | 32 |
+| GIPAW | default | current | 146 |
+| HGH | default | current | 266 |
+
+Seed cache: 8 archives in `.qmatsuite/seeds/pseudo/` (includes SSSP efficiency from prior runs)

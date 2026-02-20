@@ -110,6 +110,8 @@ def _list_qe_resources(elements: list[str] | None) -> dict:
     # Discover installed libraries via head.json scanning
     installed_libraries: list[dict] = []
     try:
+        from quantumvitas.pseudo.registry import resolve_element_from_index
+
         libraries_root = home_pseudo_libraries_dir()
         if libraries_root.is_dir():
             for lib_dir in sorted(libraries_root.iterdir()):
@@ -120,7 +122,10 @@ def _list_qe_resources(elements: list[str] | None) -> dict:
                     continue
                 try:
                     head = json.loads(head_path.read_text())
-                    upf_dir = lib_dir / head["variant"] / head["version"]
+                    lib_key = head.get("library_key", "")
+                    variant = head.get("variant", "")
+                    version = head.get("version", "")
+                    upf_dir = lib_dir / variant / version
                     upf_count = 0
                     if upf_dir.is_dir():
                         upf_count = sum(
@@ -128,14 +133,26 @@ def _list_qe_resources(elements: list[str] | None) -> dict:
                             for f in upf_dir.iterdir()
                             if f.suffix.lower() == ".upf"
                         )
-                    installed_libraries.append(
-                        {
-                            "name": lib_dir.name,
-                            "variant": head.get("variant", ""),
-                            "version": head.get("version", ""),
-                            "upf_count": upf_count,
-                        }
-                    )
+
+                    # Check which requested elements are available in this library
+                    available_elements: list[str] = []
+                    if lib_key and elements:
+                        for elem in elements:
+                            fname = resolve_element_from_index(
+                                lib_key, variant, version, elem
+                            )
+                            if fname:
+                                available_elements.append(elem)
+
+                    lib_info: dict = {
+                        "name": lib_dir.name,
+                        "variant": variant,
+                        "version": version,
+                        "upf_count": upf_count,
+                    }
+                    if available_elements:
+                        lib_info["available_elements"] = available_elements
+                    installed_libraries.append(lib_info)
                 except (json.JSONDecodeError, KeyError, OSError):
                     continue
     except Exception:

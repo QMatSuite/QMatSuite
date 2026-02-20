@@ -11,6 +11,17 @@ Public API::
 """
 
 from quantumvitas.pseudo.pipeline import download_and_install
-from quantumvitas.pseudo.registry import ArchiveInfo, PseudoRegistry
+from quantumvitas.pseudo.registry import (
+    ArchiveInfo,
+    PseudoRegistry,
+    archive_install_relpath,
+    resolve_element_from_index,
+)
 
-__all__ = ["ArchiveInfo", "PseudoRegistry", "download_and_install"]
+__all__ = [
+    "ArchiveInfo",
+    "PseudoRegistry",
+    "archive_install_relpath",
+    "download_and_install",
+    "resolve_element_from_index",
+]

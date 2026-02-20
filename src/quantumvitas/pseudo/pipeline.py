@@ -28,7 +28,7 @@ from quantumvitas.core.pseudo_config import (
     compute_sha256,
     download_github_release_asset,
 )
-from quantumvitas.pseudo.registry import ArchiveInfo, PseudoRegistry
+from quantumvitas.pseudo.registry import ArchiveInfo, PseudoRegistry, archive_install_relpath
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +120,7 @@ def download_and_install(
 
     libraries_root = home_pseudo_libraries_dir()
     seeds_root = home_pseudo_seeds_dir()
-    install_dir = libraries_root / info.dir_name / info.variant / info.version
+    install_dir = libraries_root / archive_install_relpath(info)
     result["install_dir"] = str(install_dir)
 
     # Check if already installed
