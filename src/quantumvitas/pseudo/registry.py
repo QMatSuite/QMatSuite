@@ -123,6 +123,107 @@ def _compute_version(entry: dict[str, Any], category: str) -> str:
     return str(raw)
 
 
+def archive_install_relpath(info: ArchiveInfo) -> str:
+    """Return the relative install path: ``<dir_name>/<variant>/<version>``.
+
+    Single source of truth for computing install paths from an ArchiveInfo.
+    Used by both pipeline.py (install step) and resolution (lookup step).
+    """
+    return f"{info.dir_name}/{info.variant}/{info.version}"
+
+
+# ---------------------------------------------------------------------------
+# Deterministic element → filename lookup from PSEUDO_FILE_INDEX.json
+# ---------------------------------------------------------------------------
+_element_index: dict[tuple[str, str, str, str], str] | None = None
+
+
+def _find_file_index_path() -> Path:
+    """Find the vendored PSEUDO_FILE_INDEX.json on disk."""
+    current = Path(__file__).resolve().parent
+    while current != current.parent:
+        resources = current / "resources" / "pseudo_libinfo"
+        if resources.is_dir():
+            current_file = resources / "CURRENT"
+            if current_file.exists():
+                tag = current_file.read_text().strip()
+                index_path = resources / tag / "PSEUDO_FILE_INDEX.json"
+                if index_path.exists():
+                    return index_path
+        current = current.parent
+    raise FileNotFoundError(
+        "Could not find vendored PSEUDO_FILE_INDEX.json. "
+        "Expected resources/pseudo_libinfo/{CURRENT}/PSEUDO_FILE_INDEX.json"
+    )
+
+
+def _load_file_index() -> dict[tuple[str, str, str, str], str]:
+    """Load PSEUDO_FILE_INDEX.json and build (library_key, variant, version, element) → filename."""
+    global _element_index
+    if _element_index is not None:
+        return _element_index
+
+    index_path = _find_file_index_path()
+    data = json.loads(index_path.read_text())
+
+    # Build sha256 → element lookup from files[]
+    sha_to_element: dict[str, str] = {}
+    for f in data.get("files", []):
+        sha_to_element[f["sha256"]] = f["element"]
+
+    # Build the index from occurrences[]
+    idx: dict[tuple[str, str, str, str], str] = {}
+    for occ in data.get("occurrences", []):
+        sha = occ["sha256"]
+        element = sha_to_element.get(sha)
+        if element is None:
+            continue
+
+        lib = occ.get("library", {})
+        category = lib.get("category", "")
+        if category not in _CATEGORY_MAP:
+            continue
+
+        library_key, _dir_name = _CATEGORY_MAP[category]
+
+        # Build a pseudo entry dict for _compute_variant / _compute_version
+        entry: dict[str, Any] = {
+            "quality": lib.get("quality"),
+            "type": lib.get("type"),
+            "relativistic": lib.get("relativistic"),
+            "xc": lib.get("xc"),
+            "library_version": lib.get("library_version"),
+            "relative_path": occ.get("archive", {}).get("relative_path", ""),
+        }
+        variant = _compute_variant(entry, category)
+        version = _compute_version(entry, category)
+        filename = Path(occ["path_in_archive"]).name
+
+        key = (library_key, variant, version, element)
+        # First occurrence wins (deterministic since index is ordered)
+        if key not in idx:
+            idx[key] = filename
+
+    _element_index = idx
+    logger.debug("Loaded pseudo file index: %d entries", len(idx))
+    return _element_index
+
+
+def resolve_element_from_index(
+    library_key: str,
+    variant: str,
+    version: str,
+    element: str,
+) -> str | None:
+    """Return the exact pseudo filename for an element in a library.
+
+    Uses PSEUDO_FILE_INDEX.json for deterministic lookup (no globs).
+    Returns None if the element is not found in the specified library.
+    """
+    idx = _load_file_index()
+    return idx.get((library_key, variant, version, element))
+
+
 class PseudoRegistry:
     """Registry of downloadable pseudo libraries from the vendored manifest."""
 

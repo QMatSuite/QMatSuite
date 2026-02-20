@@ -102,6 +102,7 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
             },
             "ELECTRONS": {
                 "conv_thr": 1.0e-08,
+                "diago_full_acc": True,
             },
             "SYSTEM": {
                 "ecutwfc": 50,

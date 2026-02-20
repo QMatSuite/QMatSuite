@@ -307,11 +307,8 @@ class TestRepresentativeLibraries:
         assert result["success"], f"GIPAW failed: {result.get('errors')}"
         assert result["upf_count"] >= 5
 
-    @pytest.mark.skipif(
-        os.environ.get("QMATSUITE_SKIP_LARGE_DOWNLOAD") != "0",
-        reason="HGH is 30MB, set QMATSUITE_SKIP_LARGE_DOWNLOAD=0 to run",
-    )
     def test_download_hgh(self):
+        """HGH is ~30MB tar.gz — tests another tar.gz extraction path."""
         from quantumvitas.pseudo.pipeline import download_and_install
 
         result = download_and_install(library="hgh")

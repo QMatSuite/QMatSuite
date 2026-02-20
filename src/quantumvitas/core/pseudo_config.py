@@ -1323,50 +1323,73 @@ class PseudoResolutionResult:
         return asdict(self)
 
 
+def _find_file_in_dir(directory: Path, exact_filename: str | None, element: str) -> Path | None:
+    """Find a pseudo file in a directory using exact filename or tight glob fallback.
+
+    Resolution order:
+    1. Exact filename from index (if provided)
+    2. Tight glob: ``{element}[._-]*.[Uu][Pp][Ff]`` — matches ``Si.pbe-...UPF``
+       but NOT ``Si`` matching ``Siesta`` etc.
+    """
+    if exact_filename:
+        candidate = directory / exact_filename
+        if candidate.exists():
+            return candidate
+
+    # Tight glob fallback — element must be followed by a separator
+    for pp_file in directory.glob(f"{element}[._-]*.[Uu][Pp][Ff]"):
+        return pp_file
+    return None
+
+
 def resolve_project_pseudos(
     config: PseudoConfig,
     request: PseudoResolutionRequest,
 ) -> PseudoResolutionResult:
     """
     Resolve pseudopotentials for a project.
-    
-    Resolution order:
-    1. resources/pseudo (committed; always available for demos/tests)
-    2. project pseudos folder (project-local copies; reproducibility)
-    3. global pseudo store (store_dir)
-    4. seed (seed_dir) - install to store if found
-    5. if allowed, download → install into store → copy into project
-    
+
+    Resolution order (deterministic, no loose globs):
+    1. project pseudo dir — check for exact filename or tight glob
+    2. resources/pseudo — committed bundled pseudos (for demos/tests)
+    3. installed libraries — deterministic index lookup + head.json scan
+    4. seed — if library not installed but seed cached, install then retry
+    5. not found — error
+
+    The core fix: uses ``resolve_element_from_index()`` from the vendored
+    PSEUDO_FILE_INDEX.json for exact element→filename mapping.  This
+    eliminates the ``C`` matching ``Cu`` bug from glob-based resolution.
+
     Args:
         config: Pseudo configuration with store/seed paths
         request: Resolution request with project and elements
-    
+
     Returns:
         PseudoResolutionResult with mapping and cutoffs
     """
+    from quantumvitas.pseudo.registry import (
+        archive_install_relpath,
+        resolve_element_from_index,
+    )
+
     result = PseudoResolutionResult()
-    
+
     project_pseudo_dir = request.project_root / "pseudo"
     result.project_pseudo_dir = str(project_pseudo_dir)
-    
+
     repo_root = _find_quantumvitas_root()
     repo_pseudo_dir = repo_root / "resources" / "pseudo" if repo_root else None
-    
+
     store_dir = Path(config.store_dir) if config.store_dir else None
     seed_dir = Path(config.seed_dir) if config.seed_dir else None
-    
-    # Get library path in store
-    library_path = None
+
+    # Load cutoffs from the old SSSP store layout (if available)
     if store_dir:
         lib_base = get_sssp_library_path(store_dir, request.version, request.flavor)
-        library_path = lib_base / "library"
-        
-        # Load cutoffs if available
         cutoffs_path = lib_base / "cutoffs.json"
         if cutoffs_path.exists():
             try:
                 cutoffs_data = json.loads(cutoffs_path.read_text())
-                # SSSP cutoffs format varies - try to extract
                 for elem_data in cutoffs_data if isinstance(cutoffs_data, list) else []:
                     if "element" in elem_data:
                         elem = elem_data["element"]
@@ -1376,81 +1399,57 @@ def resolve_project_pseudos(
                         }
             except Exception as e:
                 result.warnings.append(f"Failed to load cutoffs: {e}")
-    
+
     # Ensure project pseudo dir exists
     project_pseudo_dir.mkdir(parents=True, exist_ok=True)
-    
+
+    # Pre-resolve the requested library's key/variant/version for index lookup.
+    # Map request.library to a library_key via the same mapping the registry uses.
+    _lib_key_map: dict[str, str] = {
+        "sssp": "sssp",
+        "pseudodojo": "pseudodojo",
+        "gbrv": "gbrv",
+        "sg15": "sg15",
+        "hgh": "hgh",
+        "ps-library": "ps-library",
+        "gipaw": "gipaw",
+        "scan_tm": "scan_tm",
+    }
+    req_library_key = _lib_key_map.get(request.library.lower(), request.library.lower())
+    req_variant = request.flavor
+    req_version = request.version
+
     for element in request.elements:
         found = False
-        
-        # 1. Check project pseudo dir
-        for pp_file in project_pseudo_dir.glob(f"{element}*.UPF"):
+
+        # Get exact filename from index for the requested library
+        exact_filename = resolve_element_from_index(
+            req_library_key, req_variant, req_version, element
+        )
+
+        # 1. Check project pseudo dir (already has the file?)
+        pp_file = _find_file_in_dir(project_pseudo_dir, exact_filename, element)
+        if pp_file is not None:
             result.mapping[element] = pp_file.name
             result.messages.append(f"{element}: Found in project ({pp_file.name})")
             found = True
-            break
-        if found:
-            continue
-        
-        for pp_file in project_pseudo_dir.glob(f"{element}*.upf"):
-            result.mapping[element] = pp_file.name
-            result.messages.append(f"{element}: Found in project ({pp_file.name})")
-            found = True
-            break
-        if found:
-            continue
-        
-        # 2. Check repo/pseudo
-        if repo_pseudo_dir and repo_pseudo_dir.exists():
-            for pp_file in repo_pseudo_dir.glob(f"{element}*.UPF"):
-                # Copy to project
+
+        # 2. Check bundled resources/pseudo
+        if not found and repo_pseudo_dir and repo_pseudo_dir.exists():
+            pp_file = _find_file_in_dir(repo_pseudo_dir, exact_filename, element)
+            if pp_file is not None:
                 dest = project_pseudo_dir / pp_file.name
                 shutil.copy(pp_file, dest)
                 result.mapping[element] = pp_file.name
                 result.messages.append(f"{element}: Copied from repo ({pp_file.name})")
                 found = True
-                break
-            if found:
-                continue
-            
-            for pp_file in repo_pseudo_dir.glob(f"{element}*.upf"):
-                dest = project_pseudo_dir / pp_file.name
-                shutil.copy(pp_file, dest)
-                result.mapping[element] = pp_file.name
-                result.messages.append(f"{element}: Copied from repo ({pp_file.name})")
-                found = True
-                break
-            if found:
-                continue
-        
-        # 3. Check store library
-        if library_path and library_path.exists():
-            for pp_file in library_path.glob(f"{element}*.UPF"):
-                # Copy to project
-                dest = project_pseudo_dir / pp_file.name
-                shutil.copy(pp_file, dest)
-                result.mapping[element] = pp_file.name
-                result.messages.append(f"{element}: Copied from store ({pp_file.name})")
-                found = True
-                break
-            if found:
-                continue
-            
-            for pp_file in library_path.glob(f"{element}*.upf"):
-                dest = project_pseudo_dir / pp_file.name
-                shutil.copy(pp_file, dest)
-                result.mapping[element] = pp_file.name
-                result.messages.append(f"{element}: Copied from store ({pp_file.name})")
-                found = True
-                break
-            if found:
-                continue
-        
-        # 3b. Search new library layout: libraries/pseudo/<Library>/head.json
-        if not found and store_dir:
+
+        # 3. Check installed libraries via deterministic index lookup
+        if not found and store_dir and exact_filename:
             libraries_root = Path(store_dir)
             if libraries_root.is_dir():
-                for lib_dir in libraries_root.iterdir():
+                # Scan head.json files to find installed libraries
+                for lib_dir in sorted(libraries_root.iterdir()):
                     if not lib_dir.is_dir():
                         continue
                     head_path = lib_dir / "head.json"
@@ -1458,20 +1457,40 @@ def resolve_project_pseudos(
                         continue
                     try:
                         head = json.loads(head_path.read_text())
-                        upf_dir = lib_dir / head["variant"] / head["version"]
+                        head_variant = head.get("variant", "")
+                        head_version = head.get("version", "")
+                        upf_dir = lib_dir / head_variant / head_version
+
                         if not upf_dir.is_dir():
                             continue
-                        for pp_file in upf_dir.glob(f"{element}*.UPF"):
-                            dest = project_pseudo_dir / pp_file.name
-                            shutil.copy(pp_file, dest)
-                            result.mapping[element] = pp_file.name
-                            result.messages.append(
-                                f"{element}: Copied from library {lib_dir.name} ({pp_file.name})"
+
+                        # Use index to get the exact filename for THIS library
+                        # (the head.json library may differ from the requested one)
+                        lib_key_from_head = head.get("library_key", "")
+                        if lib_key_from_head:
+                            lib_filename = resolve_element_from_index(
+                                lib_key_from_head, head_variant, head_version, element
                             )
-                            found = True
-                            break
+                        else:
+                            # Fallback: try the requested library's exact filename
+                            lib_filename = exact_filename
+
+                        if lib_filename:
+                            candidate = upf_dir / lib_filename
+                            if candidate.exists():
+                                dest = project_pseudo_dir / candidate.name
+                                shutil.copy(candidate, dest)
+                                result.mapping[element] = candidate.name
+                                result.messages.append(
+                                    f"{element}: Copied from library {lib_dir.name} ({candidate.name})"
+                                )
+                                found = True
+                                break
+
+                        # Tight glob fallback for this library dir
                         if not found:
-                            for pp_file in upf_dir.glob(f"{element}*.upf"):
+                            pp_file = _find_file_in_dir(upf_dir, None, element)
+                            if pp_file is not None:
                                 dest = project_pseudo_dir / pp_file.name
                                 shutil.copy(pp_file, dest)
                                 result.mapping[element] = pp_file.name
@@ -1482,50 +1501,55 @@ def resolve_project_pseudos(
                                 break
                     except (json.JSONDecodeError, KeyError):
                         continue
-                    if found:
-                        break
-            if found:
-                continue
 
         # 4. Try to install from seed if library not present
-        if seed_dir and not (library_path and library_path.exists()):
+        if not found and seed_dir and store_dir:
             seed_path = get_sssp_seed_path(seed_dir, request.version, request.flavor)
             if seed_path.exists():
-                result.messages.append(f"Installing SSSP {request.version}/{request.flavor} from seed...")
+                result.messages.append(
+                    f"Installing SSSP {request.version}/{request.flavor} from seed..."
+                )
                 install_result = install_sssp_from_seed(
                     seed_dir, store_dir, request.version, request.flavor
                 )
                 if install_result["success"]:
-                    result.messages.append(f"Installed {install_result['files_installed']} files from seed")
-                    # Retry from store
-                    if library_path and library_path.exists():
-                        for pp_file in library_path.glob(f"{element}*.UPF"):
-                            dest = project_pseudo_dir / pp_file.name
-                            shutil.copy(pp_file, dest)
-                            result.mapping[element] = pp_file.name
-                            result.messages.append(f"{element}: Copied from store ({pp_file.name})")
-                            found = True
-                            break
-                        if found:
+                    result.messages.append(
+                        f"Installed {install_result['files_installed']} files from seed"
+                    )
+                    # Retry with deterministic lookup
+                    libraries_root = Path(store_dir)
+                    for lib_dir in sorted(libraries_root.iterdir()):
+                        if not lib_dir.is_dir():
                             continue
-                        for pp_file in library_path.glob(f"{element}*.upf"):
-                            dest = project_pseudo_dir / pp_file.name
-                            shutil.copy(pp_file, dest)
-                            result.mapping[element] = pp_file.name
-                            result.messages.append(f"{element}: Copied from store ({pp_file.name})")
-                            found = True
-                            break
-                        if found:
+                        head_path = lib_dir / "head.json"
+                        if not head_path.exists():
                             continue
-        
+                        try:
+                            head = json.loads(head_path.read_text())
+                            upf_dir = lib_dir / head["variant"] / head["version"]
+                            if not upf_dir.is_dir():
+                                continue
+                            pp_file = _find_file_in_dir(upf_dir, exact_filename, element)
+                            if pp_file is not None:
+                                dest = project_pseudo_dir / pp_file.name
+                                shutil.copy(pp_file, dest)
+                                result.mapping[element] = pp_file.name
+                                result.messages.append(
+                                    f"{element}: Copied from store ({pp_file.name})"
+                                )
+                                found = True
+                                break
+                        except (json.JSONDecodeError, KeyError):
+                            continue
+
         # 5. Download if allowed (TODO - stubbed for now)
         if config.allow_download and not found:
             result.warnings.append(f"{element}: Download not yet implemented")
-        
+
         # Not found
         if not found:
             result.errors.append(f"{element}: Not found in any location")
             result.success = False
-    
+
     return result
 
