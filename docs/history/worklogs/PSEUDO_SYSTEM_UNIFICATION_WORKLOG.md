@@ -102,3 +102,51 @@ Unify three incompatible pseudo install/resolve systems into ONE pipeline (`src/
 - `tests/integration/test_pseudo_resolution.py`
 - `tests/mcp/test_stage_p2.py`
 - `tests/unit/test_pseudo_options.py`
+
+---
+
+## Patch: Shared Utility + Missing Tests + Cleanup
+
+### Part 1: Shared three-level walk utility — DONE
+- **Created**: `src/quantumvitas/pseudo/layout.py`
+  - `InstalledLibrary` dataclass (frozen, install_dir + library_key + variant + version + head)
+  - `iter_installed_libraries(libraries_root)` — single canonical three-level walk
+  - `find_installed_library(libraries_root, library_key, variant, version)` — targeted lookup
+  - `find_upf_in_libraries(libraries_root, filename)` — exact filename search
+  - `find_upf_in_libraries_casefold(libraries_root, filename)` — case-insensitive fallback
+- **Updated**: `src/quantumvitas/pseudo/__init__.py` — exports all 5 new symbols
+- **Replaced 9 inline walks in 7 files**:
+  - `core/pseudo_config.py` — `_scan_installed_libraries()` now delegates
+  - `core/library_manager.py` — `_scan_installed_for_library()` now delegates
+  - `core/pseudo_options.py` — `_find_upf_in_libraries()` and `_find_upf_by_sha256_in_libraries()` now delegate
+  - `core/pseudo_materialization.py` — step 3 inline walk replaced
+  - `core/pseudo_runtime.py` — `_resolve_lib_source_path()` now delegates
+  - `mcp/tools/list_resources.py` — `_list_qe_resources()` inline walk replaced
+  - `api/service.py` — two SSSP-specific inline walks replaced (lines ~5562, ~6057)
+- **Verification**: three-level walk exists in EXACTLY ONE place (`pseudo/layout.py`)
+
+### Part 2: Delete remaining `flavor` fallbacks — DONE
+- Deleted 3 backward-compat fallbacks in `daemon/server.py` (lines 852, 906, 1199)
+- Fixed 3 stale `flavor` references in daemon docstrings
+- **Verification**: `grep -rn "flavor" src/quantumvitas/ --include="*.py"` returns 0 pseudo-related hits (only CP2K binary flavors remain, which are legitimate)
+
+### Part 3: Fix cutoffs loading — DONE
+- **BUG FOUND**: SSSP cutoffs JSON is a dict keyed by element (`{"Ac": {...}, "Ag": {...}}`), but parser at `pseudo_config.py:555` used `isinstance(cutoffs_data, list)` which always evaluated to empty `[]` for dicts. **Cutoffs were NEVER loaded.**
+- **FIX**: Added dict branch that iterates `cutoffs_data.items()` with `isinstance(elem_data, dict)` guard. List branch preserved for backward compatibility.
+
+### Part 4: Confirm diago_full_acc — DONE
+- Confirmed `diago_full_acc=True` at `step_defaults.py:105` in `qe_bandspw` defaults.
+
+### Part 5: Integration tests — DONE
+- **Created**: `tests/integration/test_pseudo_unification.py` (23 tests in 7 classes)
+  - `TestNoRootHeadJson` (3 tests) — root head.json NOT created, install-level exists with library_key
+  - `TestTwoVariantsCoexist` (4 tests) — both precision + efficiency discoverable, separate dirs
+  - `TestNoOldLayoutReferences` (8 tests) — deleted modules/functions, no flavor field, variant default=precision, no flavor in src/
+  - `TestSeedFallback` (1 test) — resolution succeeds with installed SSSP
+  - `TestListResourcesShowsInstalled` (2 tests) — MCP list_resources shows installed lib with elements
+  - `TestRealSCFSmoke` (3 tests) — Tl (rare element) preconditions + full QE SCF pipeline
+  - `TestGaAsEndToEnd` (2 tests) — GaAs bands auto_resolve + cutoffs dict-vs-list fix verification
+
+### Results
+- **Python tests**: 6327 passed, 0 failed, 4 skipped (+23 new tests)
+- **GUI e2e tests**: 16 passed, 0 failed

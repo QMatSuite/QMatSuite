@@ -91,35 +91,26 @@ def _resolve_lib_source_path(
     Returns:
         Path to source file if found, None otherwise
     """
-    libraries_root = home_pseudo_libraries_dir()
-    if not libraries_root.is_dir():
-        return None
+    from quantumvitas.pseudo.layout import iter_installed_libraries
 
-    # Three-level walk: library / variant / version
-    for lib_dir in libraries_root.iterdir():
-        if not lib_dir.is_dir():
-            continue
-        for variant_dir in lib_dir.iterdir():
-            if not variant_dir.is_dir():
+    libraries_root = home_pseudo_libraries_dir()
+    for lib in iter_installed_libraries(libraries_root):
+        upf_path = lib.install_dir / requested_basename
+        if not upf_path.is_file():
+            # Try case-insensitive match
+            target_lower = requested_basename.lower()
+            for f in lib.install_dir.iterdir():
+                if f.name.lower() == target_lower and f.is_file():
+                    upf_path = f
+                    break
+            else:
                 continue
-            for version_dir in variant_dir.iterdir():
-                if not version_dir.is_dir():
-                    continue
-                upf_path = version_dir / requested_basename
-                if not upf_path.is_file():
-                    # Try case-insensitive match
-                    for f in version_dir.iterdir():
-                        if f.name.lower() == requested_basename.lower() and f.is_file():
-                            upf_path = f
-                            break
-                    else:
-                        continue
-                # Optionally verify sha_family
-                if requested_sha_family:
-                    file_sha_family = compute_sha_family_file(upf_path)
-                    if file_sha_family != requested_sha_family:
-                        continue
-                return upf_path
+        # Optionally verify sha_family
+        if requested_sha_family:
+            file_sha_family = compute_sha_family_file(upf_path)
+            if file_sha_family != requested_sha_family:
+                continue
+        return upf_path
 
     return None
 

@@ -5559,37 +5559,34 @@ class QVService:
                             available_pseudos.append(file.name)
                 available_pseudos.sort()
 
-                # Check SSSP libraries (NEW layout)
+                # Check SSSP libraries (NEW layout via shared utility)
                 sssp_defaults: dict[str, dict[str, str]] = {}
                 sssp_installed: dict[str, bool] = {"precision": False, "efficiency": False}
                 try:
+                    from quantumvitas.pseudo.layout import iter_installed_libraries
+
                     libraries_root = home_pseudo_libraries_dir()
-                    sssp_dir = libraries_root / "SSSP"
-                    if sssp_dir.is_dir():
-                        for variant in ["precision", "efficiency"]:
-                            variant_dir = sssp_dir / variant
-                            if not variant_dir.is_dir():
-                                continue
-                            for version_dir in variant_dir.iterdir():
-                                if not version_dir.is_dir():
-                                    continue
-                                upf_files = [f for f in version_dir.iterdir() if f.suffix.lower() == ".upf"]
-                                if upf_files:
-                                    sssp_installed[variant] = True
-                                # Check cutoffs JSON companion
-                                for cutoffs_candidate in version_dir.glob("*cutoffs*.json"):
-                                    try:
-                                        cutoffs_data = json.loads(cutoffs_candidate.read_text())
-                                        for species in species_list:
-                                            if species not in sssp_defaults:
-                                                sssp_defaults[species] = {"precision": "", "efficiency": ""}
-                                            element_data = cutoffs_data.get(species, {})
-                                            filename = element_data.get("filename", "")
-                                            if filename and (version_dir / filename).exists():
-                                                sssp_defaults[species][variant] = filename
-                                    except Exception:
-                                        pass
-                                break  # Use first version found
+                    for lib in iter_installed_libraries(libraries_root):
+                        if lib.library_key.lower() != "sssp":
+                            continue
+                        if lib.variant not in sssp_installed:
+                            continue
+                        upf_files = [f for f in lib.install_dir.iterdir() if f.suffix.lower() == ".upf"]
+                        if upf_files:
+                            sssp_installed[lib.variant] = True
+                        # Check cutoffs JSON companion
+                        for cutoffs_candidate in lib.install_dir.glob("*cutoffs*.json"):
+                            try:
+                                cutoffs_data = json.loads(cutoffs_candidate.read_text())
+                                for species in species_list:
+                                    if species not in sssp_defaults:
+                                        sssp_defaults[species] = {"precision": "", "efficiency": ""}
+                                    element_data = cutoffs_data.get(species, {})
+                                    filename = element_data.get("filename", "")
+                                    if filename and (lib.install_dir / filename).exists():
+                                        sssp_defaults[species][lib.variant] = filename
+                            except Exception:
+                                pass
                 except Exception:
                     pass
 
@@ -6060,19 +6057,16 @@ class QVService:
                 sssp_defaults: dict[str, dict[str, str]] = {}
                 sssp_installed = {"precision": False, "efficiency": False}
                 try:
+                    from quantumvitas.pseudo.layout import iter_installed_libraries
+
                     libraries_root = home_pseudo_libraries_dir()
-                    sssp_dir = libraries_root / "SSSP"
-                    if sssp_dir.is_dir():
-                        for variant in ["precision", "efficiency"]:
-                            variant_dir = sssp_dir / variant
-                            if not variant_dir.is_dir():
-                                continue
-                            for version_dir in variant_dir.iterdir():
-                                if not version_dir.is_dir():
-                                    continue
-                                if any(f.suffix.lower() == ".upf" for f in version_dir.iterdir() if f.is_file()):
-                                    sssp_installed[variant] = True
-                                break
+                    for lib in iter_installed_libraries(libraries_root):
+                        if lib.library_key.lower() != "sssp":
+                            continue
+                        if lib.variant not in sssp_installed:
+                            continue
+                        if any(f.suffix.lower() == ".upf" for f in lib.install_dir.iterdir() if f.is_file()):
+                            sssp_installed[lib.variant] = True
                 except Exception:
                     pass
 

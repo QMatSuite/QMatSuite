@@ -178,29 +178,17 @@ def materialize_calc_pseudos(
                             resolved_sha_family = compute_sha_family_file(pseudo_file)
                             break
             
-            # 3. Check installed libraries (NEW layout: three-level walk)
+            # 3. Check installed libraries (NEW layout via shared utility)
             if not source_path:
-                libraries_root = home_pseudo_libraries_dir()
-                if libraries_root.is_dir():
-                    for lib_dir in libraries_root.iterdir():
-                        if not lib_dir.is_dir():
-                            continue
-                        for variant_dir in lib_dir.iterdir():
-                            if not variant_dir.is_dir():
-                                continue
-                            for version_dir in variant_dir.iterdir():
-                                if not version_dir.is_dir():
-                                    continue
-                                upf_path = version_dir / legacy_pseudopot
-                                if upf_path.is_file():
-                                    source_path = upf_path
-                                    resolved_sha256 = compute_sha256_file(upf_path)
-                                    resolved_sha_family = compute_sha_family_file(upf_path)
-                                    break
-                            if source_path:
-                                break
-                        if source_path:
-                            break
+                from quantumvitas.pseudo.layout import find_upf_in_libraries
+
+                upf_path = find_upf_in_libraries(
+                    home_pseudo_libraries_dir(), legacy_pseudopot
+                )
+                if upf_path is not None:
+                    source_path = upf_path
+                    resolved_sha256 = compute_sha256_file(upf_path)
+                    resolved_sha_family = compute_sha_family_file(upf_path)
             
             if not source_path:
                 raise RuntimeError(

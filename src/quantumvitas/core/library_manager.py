@@ -83,49 +83,37 @@ def get_supported_libraries() -> List[LibraryMetadata]:
 def _scan_installed_for_library(
     libraries_root: Path, library_dir_name: str
 ) -> List[dict]:
-    """Three-level walk for a specific library directory.
+    """Scan installed variants/versions for a specific library.
 
     Returns list of dicts with variant, version, upf_count, size_bytes, path.
     """
+    from quantumvitas.pseudo.layout import iter_installed_libraries
+
     results: List[dict] = []
-    lib_dir = libraries_root / library_dir_name
-    if not lib_dir.is_dir():
-        return results
-
-    for variant_dir in sorted(lib_dir.iterdir()):
-        if not variant_dir.is_dir():
+    for lib in iter_installed_libraries(libraries_root):
+        if lib.install_dir.parent.parent.name != library_dir_name:
             continue
-        for version_dir in sorted(variant_dir.iterdir()):
-            if not version_dir.is_dir():
-                continue
-            head_path = version_dir / "head.json"
-            if not head_path.exists():
-                continue
+        upf_count = sum(
+            1 for f in lib.install_dir.iterdir()
+            if f.suffix.lower() == ".upf"
+        )
+        size_bytes = None
+        if upf_count > 0:
             try:
-                head = json.loads(head_path.read_text())
-                upf_count = sum(
-                    1 for f in version_dir.iterdir()
-                    if f.suffix.lower() == ".upf"
+                size_bytes = sum(
+                    f.stat().st_size for f in lib.install_dir.rglob("*")
+                    if f.is_file()
                 )
-                size_bytes = None
-                if upf_count > 0:
-                    try:
-                        size_bytes = sum(
-                            f.stat().st_size for f in version_dir.rglob("*")
-                            if f.is_file()
-                        )
-                    except Exception:
-                        pass
+            except Exception:
+                pass
 
-                results.append({
-                    "variant": head.get("variant", variant_dir.name),
-                    "version": head.get("version", version_dir.name),
-                    "upf_count": upf_count,
-                    "size_bytes": size_bytes,
-                    "path": version_dir,
-                })
-            except (json.JSONDecodeError, KeyError):
-                continue
+        results.append({
+            "variant": lib.variant,
+            "version": lib.version,
+            "upf_count": upf_count,
+            "size_bytes": size_bytes,
+            "path": lib.install_dir,
+        })
     return results
 
 
