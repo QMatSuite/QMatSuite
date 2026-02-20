@@ -18,7 +18,7 @@ def auto_resolve_species_map_internal(
     calc_ulid: str,
     svc: Any,
     library: str = "sssp",
-    flavor: str = "precision",
+    variant: str = "precision",
 ) -> dict | None:
     """Resolve species_map for a calculation.  Returns dict or None.
 
@@ -53,7 +53,8 @@ def auto_resolve_species_map_internal(
             project_root=svc.project_root,
             elements=list(elements),
             library=library,
-            flavor=flavor,
+            variant=variant,
+            version="1.3.0",
         )
         result = resolve_project_pseudos(config, request)
 

@@ -22,20 +22,13 @@ from typing import Any, Dict, List, Literal, Optional
 
 from quantumvitas.core.pseudo import get_system_pseudo_dir
 from quantumvitas.core.pseudo_config import load_pseudo_config
-from quantumvitas.core.pseudo_installs import (
-    check_archive_status,
-    get_archives_dir,
-    get_pseudo_install_root,
-    load_manifest_archives,
-)
 from quantumvitas.core.pseudo_libinfo import load_pseudo_libinfo_bundle
 from quantumvitas.core.pseudo_provenance import (
     _build_occurrences_index,
     compute_sha256_file,
     compute_sha_family_file,
 )
-import tarfile
-import zipfile
+from quantumvitas.core.paths import home_pseudo_libraries_dir
 
 
 class PseudoSourceKind(str, Enum):
@@ -92,112 +85,42 @@ def _resolve_lib_source_path(
 ) -> Optional[Path]:
     """
     Resolve a lib source path for a given element/basename/sha_family.
-    
-    Searches installed archives for matching pseudo.
-    
+
+    Searches installed pseudo libraries (NEW layout) for matching UPF file.
+
     Returns:
         Path to source file if found, None otherwise
     """
-    bundle = load_pseudo_libinfo_bundle()
-    occurrences_index = _build_occurrences_index(bundle)
-    files_index = {f.get("sha256"): f for f in bundle.index.get("files", [])}
-    
-    install_root = get_pseudo_install_root(config)
-    if not install_root:
+    libraries_root = home_pseudo_libraries_dir()
+    if not libraries_root.is_dir():
         return None
-    
-    archives_dir = get_archives_dir(install_root)
-    manifest_archives = load_manifest_archives()
-    
-    # Search files by sha_family if provided, else by basename
-    for file_entry in bundle.index.get("files", []):
-        basenames = file_entry.get("basenames", [])
-        file_sha256 = file_entry.get("sha256")
-        file_sha_family = file_entry.get("sha_family")
-        
-        # Match by basename and optionally sha_family
-        if requested_basename not in basenames:
+
+    # Three-level walk: library / variant / version
+    for lib_dir in libraries_root.iterdir():
+        if not lib_dir.is_dir():
             continue
-        
-        if requested_sha_family and file_sha_family != requested_sha_family:
-            continue
-        
-        # Find occurrences in archives
-        if file_sha256 in occurrences_index:
-            for occ in occurrences_index[file_sha256]:
-                archive_name = occ.get("archive", {}).get("name", "")
-                path_in_archive = occ.get("path_in_archive", "")
-                
-                # Find archive in manifest
-                archive_status = None
-                for arch in manifest_archives:
-                    if arch.asset_name == archive_name:
-                        archive_status = arch
-                        break
-                
-                if archive_status:
-                    # Check if installed and not corrupt
-                    status = check_archive_status(
-                        archive_status.asset_name,
-                        archive_status.sha256,
-                        install_root=install_root,
-                        config=config,
-                    )
-                    
-                    if status["installed"] and not status["corrupt"]:
-                        # Extract from archive to temp location
-                        import tempfile
-                        archive_path = archives_dir / archive_status.asset_name
-                        temp_dir = Path(tempfile.gettempdir()) / "quantumvitas_pseudo_extract"
-                        temp_dir.mkdir(parents=True, exist_ok=True)
-                        temp_extract = temp_dir / f".temp_{requested_basename}"
-                        
-                        try:
-                            if archive_path.suffixes[-2:] == [".tar", ".gz"] or archive_path.suffix == ".tgz":
-                                with tarfile.open(archive_path, "r:gz") as tar:
-                                    member = None
-                                    for m in tar.getmembers():
-                                        if m.name == path_in_archive or m.name.endswith(path_in_archive):
-                                            member = m
-                                            break
-                                    if member:
-                                        extracted = tar.extractfile(member)
-                                        if extracted:
-                                            temp_extract.write_bytes(extracted.read())
-                            elif archive_path.suffix == ".tar":
-                                with tarfile.open(archive_path, "r") as tar:
-                                    member = None
-                                    for m in tar.getmembers():
-                                        if m.name == path_in_archive or m.name.endswith(path_in_archive):
-                                            member = m
-                                            break
-                                    if member:
-                                        extracted = tar.extractfile(member)
-                                        if extracted:
-                                            temp_extract.write_bytes(extracted.read())
-                            elif archive_path.suffix == ".zip":
-                                with zipfile.ZipFile(archive_path, "r") as zipf:
-                                    try:
-                                        zipf.extract(path_in_archive, temp_dir)
-                                        extracted_path = temp_dir / path_in_archive
-                                        if extracted_path.exists():
-                                            extracted_path.rename(temp_extract)
-                                    except KeyError:
-                                        for name in zipf.namelist():
-                                            if name.endswith(path_in_archive) or name.endswith(requested_basename):
-                                                zipf.extract(name, temp_dir)
-                                                extracted_path = temp_dir / name
-                                                if extracted_path.exists():
-                                                    extracted_path.rename(temp_extract)
-                                                break
-                            
-                            if temp_extract.exists():
-                                return temp_extract
-                        except Exception:
-                            if temp_extract.exists():
-                                temp_extract.unlink()
-                            continue
-    
+        for variant_dir in lib_dir.iterdir():
+            if not variant_dir.is_dir():
+                continue
+            for version_dir in variant_dir.iterdir():
+                if not version_dir.is_dir():
+                    continue
+                upf_path = version_dir / requested_basename
+                if not upf_path.is_file():
+                    # Try case-insensitive match
+                    for f in version_dir.iterdir():
+                        if f.name.lower() == requested_basename.lower() and f.is_file():
+                            upf_path = f
+                            break
+                    else:
+                        continue
+                # Optionally verify sha_family
+                if requested_sha_family:
+                    file_sha_family = compute_sha_family_file(upf_path)
+                    if file_sha_family != requested_sha_family:
+                        continue
+                return upf_path
+
     return None
 
 

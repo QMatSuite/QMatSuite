@@ -229,15 +229,16 @@ class TestSSPPrecisionDownload:
         assert result["version"] == "1.3.0"
 
     def test_head_json_exists(self):
-        """After download, head.json should exist at library root."""
+        """After download, head.json should exist at install level (not root)."""
         from quantumvitas.core.paths import home_pseudo_libraries_dir
 
-        lib_root = home_pseudo_libraries_dir() / "SSSP"
-        head = lib_root / "head.json"
+        install_dir = home_pseudo_libraries_dir() / "SSSP" / "precision" / "1.3.0"
+        head = install_dir / "head.json"
         assert head.exists(), f"head.json not found at {head}"
         data = json.loads(head.read_text())
         assert data["variant"] == "precision"
         assert data["version"] == "1.3.0"
+        assert data.get("library_key") == "sssp"
 
     def test_upfs_in_install_dir(self):
         """UPF files should be in the variant/version subdirectory."""
@@ -353,7 +354,7 @@ class TestResolutionIntegration:
             elements=["Si"],
             library="sssp",
             version="1.3.0",
-            flavor="precision",
+            variant="precision",
         )
         result = resolve_project_pseudos(config, request)
         assert "Si" in result.mapping, (

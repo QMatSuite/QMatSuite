@@ -178,13 +178,14 @@ export function StepDetailPanel({
   // UI parameters now use generic list_engine_ui_parameters RPC
   const module = stepDetail && effectiveEngineFamily === 'qe' ? (() => {
     const stepTypeLower = stepDetail.step_type_gen.toLowerCase();
-    if (['scf', 'nscf', 'relax', 'vc-relax', 'md', 'bandspw', 'bands_pw', 'dos'].includes(stepTypeLower)) {
+    if (['scf', 'nscf', 'relax', 'vc-relax', 'md', 'bandspw', 'bands_pw'].includes(stepTypeLower)) {
       return 'pw';
     }
     if (stepTypeLower === 'bands') {
       return 'bands';
     }
     const moduleMap: Record<string, string> = {
+      'dos': 'dos',
       'ph': 'ph',
       'projwfc': 'projwfc',
       'pp': 'pp',

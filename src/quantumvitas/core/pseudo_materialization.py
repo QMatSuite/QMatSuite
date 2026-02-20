@@ -51,15 +51,8 @@ def materialize_calc_pseudos(
     """
     from quantumvitas.core.pseudo_config import load_pseudo_config
     from quantumvitas.core.pseudo_provenance import _build_occurrences_index
-    from quantumvitas.core.pseudo_installs import (
-        check_archive_status,
-        get_archives_dir,
-        get_pseudo_install_root,
-        load_manifest_archives,
-    )
     from quantumvitas.core.pseudo import get_system_pseudo_dir
-    import tarfile
-    import zipfile
+    from quantumvitas.core.paths import home_pseudo_libraries_dir
     
     # GUARD: Never use repo_root/pseudo
     if repo_root is None:
@@ -185,96 +178,29 @@ def materialize_calc_pseudos(
                             resolved_sha_family = compute_sha_family_file(pseudo_file)
                             break
             
-            # 3. Check installed archives (by basename match in occurrences)
+            # 3. Check installed libraries (NEW layout: three-level walk)
             if not source_path:
-                install_root = get_pseudo_install_root(config)
-                if install_root:
-                    archives_dir = get_archives_dir(install_root)
-                    manifest_archives = load_manifest_archives()
-                    
-                    # Find occurrences that match this basename
-                    for file_entry in bundle.index.get("files", []):
-                        basenames = file_entry.get("basenames", [])
-                        if legacy_pseudopot in basenames:
-                            file_sha256 = file_entry.get("sha256")
-                            if file_sha256 in occurrences_index:
-                                # Find installed archive containing this file
-                                for occ in occurrences_index[file_sha256]:
-                                    archive_name = occ.get("archive", {}).get("name", "")
-                                    path_in_archive = occ.get("path_in_archive", "")
-                                    
-                                    # Find archive in manifest
-                                    archive_status = None
-                                    for arch in manifest_archives:
-                                        if arch.asset_name == archive_name:
-                                            archive_status = arch
-                                            break
-                                    
-                                    if archive_status:
-                                        # Check if installed and not corrupt
-                                        status = check_archive_status(
-                                            archive_status.asset_name,
-                                            archive_status.sha256,
-                                            install_root=install_root,
-                                            config=config,
-                                        )
-                                        
-                                        if status["installed"] and not status["corrupt"]:
-                                            # Extract from archive
-                                            archive_path = archives_dir / archive_status.asset_name
-                                            
-                                            try:
-                                                # Extract to temp location first
-                                                temp_extract = pseudo_dir / f".temp_{legacy_pseudopot}"
-                                                
-                                                if archive_path.suffixes[-2:] == [".tar", ".gz"] or archive_path.suffix == ".tgz":
-                                                    with tarfile.open(archive_path, "r:gz") as tar:
-                                                        member = None
-                                                        for m in tar.getmembers():
-                                                            if m.name == path_in_archive or m.name.endswith(path_in_archive):
-                                                                member = m
-                                                                break
-                                                        if member:
-                                                            extracted = tar.extractfile(member)
-                                                            if extracted:
-                                                                temp_extract.write_bytes(extracted.read())
-                                                elif archive_path.suffix == ".tar":
-                                                    with tarfile.open(archive_path, "r") as tar:
-                                                        member = None
-                                                        for m in tar.getmembers():
-                                                            if m.name == path_in_archive or m.name.endswith(path_in_archive):
-                                                                member = m
-                                                                break
-                                                        if member:
-                                                            extracted = tar.extractfile(member)
-                                                            if extracted:
-                                                                temp_extract.write_bytes(extracted.read())
-                                                elif archive_path.suffix == ".zip":
-                                                    with zipfile.ZipFile(archive_path, "r") as zipf:
-                                                        try:
-                                                            zipf.extract(path_in_archive, pseudo_dir)
-                                                            extracted_path = pseudo_dir / path_in_archive
-                                                            if extracted_path.exists():
-                                                                extracted_path.rename(temp_extract)
-                                                        except KeyError:
-                                                            for name in zipf.namelist():
-                                                                if name.endswith(path_in_archive) or name.endswith(legacy_pseudopot):
-                                                                    zipf.extract(name, pseudo_dir)
-                                                                    extracted_path = pseudo_dir / name
-                                                                    if extracted_path.exists():
-                                                                        extracted_path.rename(temp_extract)
-                                                                    break
-                                                
-                                                if temp_extract.exists():
-                                                    resolved_sha256 = compute_sha256_file(temp_extract)
-                                                    resolved_sha_family = compute_sha_family_file(temp_extract)
-                                                    source_path = temp_extract
-                                                    break
-                                            except Exception:
-                                                continue
-                                
-                                if source_path:
+                libraries_root = home_pseudo_libraries_dir()
+                if libraries_root.is_dir():
+                    for lib_dir in libraries_root.iterdir():
+                        if not lib_dir.is_dir():
+                            continue
+                        for variant_dir in lib_dir.iterdir():
+                            if not variant_dir.is_dir():
+                                continue
+                            for version_dir in variant_dir.iterdir():
+                                if not version_dir.is_dir():
+                                    continue
+                                upf_path = version_dir / legacy_pseudopot
+                                if upf_path.is_file():
+                                    source_path = upf_path
+                                    resolved_sha256 = compute_sha256_file(upf_path)
+                                    resolved_sha_family = compute_sha_family_file(upf_path)
                                     break
+                            if source_path:
+                                break
+                        if source_path:
+                            break
             
             if not source_path:
                 raise RuntimeError(

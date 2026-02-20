@@ -119,7 +119,7 @@ class TestAutoResolveSpeciesMap:
         assert "Si" in data["species_map"]
         assert "pseudopot" in data["species_map"]["Si"]
         assert data["library"] == "sssp"
-        assert data["flavor"] == "precision"
+        assert data["variant"] == "precision"
 
     def test_qe_resolve_metadata(self, qv_project):
         """Auto-resolve returns calc_ulid in the response."""
