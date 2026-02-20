@@ -92,6 +92,10 @@ def list_available_resources(
 
 def _list_qe_resources(elements: list[str] | None) -> dict:
     """List available QE pseudopotentials."""
+    import json
+    from pathlib import Path
+
+    from quantumvitas.core.paths import home_pseudo_libraries_dir
     from quantumvitas.mcp.project import ProjectNotFoundError, get_service
 
     try:
@@ -102,6 +106,40 @@ def _list_qe_resources(elements: list[str] | None) -> dict:
     if not elements:
         # Default to common elements available in internal resources
         elements = ["Si", "Al", "C", "H", "O", "Fe", "Cu", "Li", "He"]
+
+    # Discover installed libraries via head.json scanning
+    installed_libraries: list[dict] = []
+    try:
+        libraries_root = home_pseudo_libraries_dir()
+        if libraries_root.is_dir():
+            for lib_dir in sorted(libraries_root.iterdir()):
+                if not lib_dir.is_dir():
+                    continue
+                head_path = lib_dir / "head.json"
+                if not head_path.exists():
+                    continue
+                try:
+                    head = json.loads(head_path.read_text())
+                    upf_dir = lib_dir / head["variant"] / head["version"]
+                    upf_count = 0
+                    if upf_dir.is_dir():
+                        upf_count = sum(
+                            1
+                            for f in upf_dir.iterdir()
+                            if f.suffix.lower() == ".upf"
+                        )
+                    installed_libraries.append(
+                        {
+                            "name": lib_dir.name,
+                            "variant": head.get("variant", ""),
+                            "version": head.get("version", ""),
+                            "upf_count": upf_count,
+                        }
+                    )
+                except (json.JSONDecodeError, KeyError, OSError):
+                    continue
+    except Exception:
+        pass
 
     try:
         options = svc.project.get_pseudo_options(elements)
@@ -121,14 +159,16 @@ def _list_qe_resources(elements: list[str] | None) -> dict:
                 "examples": names,
             }
 
+        has_any = total_installed > 0 or len(installed_libraries) > 0
+
         hint = (
             "Use auto_resolve_species_map(calc_ulid=...) to auto-select "
             "pseudopotentials, or set_species_map() to choose manually."
         )
-        if total_installed == 0:
+        if not has_any:
             hint = (
                 "No pseudo libraries installed. "
-                "Use download_pseudo_library(flavor='efficiency') to install SSSP first, "
+                "Use download_pseudo_library(library='sssp') to install SSSP first, "
                 "then auto_resolve_species_map() to auto-select."
             )
 
@@ -137,7 +177,8 @@ def _list_qe_resources(elements: list[str] | None) -> dict:
                 "engine": "qe",
                 "resources_needed": True,
                 "managed": True,
-                "any_installed": total_installed > 0,
+                "any_installed": has_any,
+                "installed_libraries": installed_libraries,
                 "elements": summary,
             },
             context_hint=hint,
