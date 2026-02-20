@@ -58,6 +58,7 @@ import quantumvitas.mcp.tools.download_pseudo_library  # noqa: F401, E402
 # Stage 2A: analysis & visualization tools
 import quantumvitas.mcp.tools.list_analyses             # noqa: F401, E402
 import quantumvitas.mcp.tools.plot_analysis             # noqa: F401, E402
+import quantumvitas.mcp.tools.generate_kpath            # noqa: F401, E402
 
 # ---------------------------------------------------------------------------
 # Startup auto-load: try to locate an existing project before the first tool

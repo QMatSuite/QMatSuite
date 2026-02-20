@@ -458,6 +458,26 @@ def _inject_calculation_prefix_outdir(
                 f"into {target_section}.outdir (step_type_spec={step_type_spec}, module={module.value})"
             )
 
+    # Inject filband for BANDS module: {prefix}.bands.dat → output *.bands.dat.gnu
+    # Unlike prefix/outdir (which always override per R3), filband is only a
+    # default — if the user already set filband explicitly, we respect that.
+    if calculation_prefix and "filband" in param_to_sections:
+        filband_sections = param_to_sections["filband"]
+        if filband_sections:
+            target_section = filband_sections[0]
+            namelist = qe_input.get_namelist(target_section)
+            existing_filband = namelist.parameters.get("filband") if namelist else None
+            if not existing_filband:
+                if not namelist:
+                    namelist = QENamelist(name=target_section)
+                    qe_input.namelists.append(namelist)
+                filband_value = f"{calculation_prefix}.bands.dat"
+                namelist.parameters["filband"] = filband_value
+                logger.info(
+                    f"[FILBAND_INJECTION] Injected filband '{filband_value}' "
+                    f"into {target_section}.filband"
+                )
+
 
 def _generate_postprocessing_input(
     spec: "StructureStepSpec",

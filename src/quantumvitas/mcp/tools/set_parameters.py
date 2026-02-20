@@ -5,6 +5,12 @@ from __future__ import annotations
 from quantumvitas.mcp.app import mcp
 from quantumvitas.mcp.envelope import make_error, make_response
 
+# QE card keys that should be routed to the ``cards`` namespace, not ``parameters``.
+_QE_CARD_KEYS = frozenset({
+    "K_POINTS", "ATOMIC_SPECIES", "ATOMIC_POSITIONS",
+    "CELL_PARAMETERS", "CONSTRAINTS", "OCCUPATIONS", "ATOMIC_FORCES",
+})
+
 
 @mcp.tool
 def set_parameters(calc_ulid: str, params: dict, step: int = 0) -> dict:
@@ -13,6 +19,11 @@ def set_parameters(calc_ulid: str, params: dict, step: int = 0) -> dict:
     Parameters are written into the step's ``parameters`` namespace in the
     step YAML.  For QE this means namelist keys like
     ``{"SYSTEM": {"ecutwfc": 40}}``.  For VASP: ``{"INCAR": {"ENCUT": 520}}``.
+
+    QE card keys (K_POINTS, ATOMIC_SPECIES, etc.) are auto-routed to the
+    ``cards`` namespace.  You can also use explicit namespaces::
+
+        {"cards": {"K_POINTS": {...}}, "parameters": {"SYSTEM": {...}}}
 
     Args:
         calc_ulid: ULID of the target calculation.
@@ -45,12 +56,33 @@ def set_parameters(calc_ulid: str, params: dict, step: int = 0) -> dict:
 
     step_ulid = steps[step].get("step_ulid") or steps[step].get("ulid", "")
 
+    # --- classify top-level keys into parameters vs cards ---
+    params_dict: dict = {}
+    cards_dict: dict = {}
+    for key, value in params.items():
+        if key == "cards":
+            cards_dict.update(value)       # explicit cards namespace
+        elif key == "parameters":
+            params_dict.update(value)      # explicit parameters namespace
+        elif key in _QE_CARD_KEYS:
+            cards_dict[key] = value        # auto-route to cards
+        else:
+            params_dict[key] = value       # default to parameters (covers namelists + non-QE)
+
+    patch: dict = {}
+    if params_dict:
+        patch["parameters"] = params_dict
+    if cards_dict:
+        patch["cards"] = cards_dict
+    if not patch:
+        patch = {"parameters": params}    # backward compat: empty dict → parameters
+
     # --- apply parameters ---
     try:
         svc.calculation.update_step_params(
             calc_selector=calc_ulid,
             step_selector=step_ulid,
-            params={"parameters": params},
+            params=patch,
         )
     except Exception as exc:
         return make_error("update_failed", str(exc))

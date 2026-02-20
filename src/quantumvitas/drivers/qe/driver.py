@@ -18,7 +18,7 @@ class QEDriver(BaseEngineDriver):
         AnalysisCapability(
             object_type="bands",
             gen_step_sequence=["bandspw"],
-            evidence_files=["*.bands.dat.gnu"],
+            evidence_files=["*.bands.dat.gnu", "*.bands.out.gnu", "*.gnu"],
         ),
         AnalysisCapability(
             object_type="dos",
