@@ -55,6 +55,9 @@ import quantumvitas.mcp.tools.resolve_species_map     # noqa: F401, E402
 # Stage P4: pseudo download
 import quantumvitas.mcp.tools.download_pseudo_library  # noqa: F401, E402
 
+# Stage P1b: project health
+import quantumvitas.mcp.tools.cleanup_project         # noqa: F401, E402
+
 # Stage 2A: analysis & visualization tools
 import quantumvitas.mcp.tools.list_analyses             # noqa: F401, E402
 import quantumvitas.mcp.tools.plot_analysis             # noqa: F401, E402

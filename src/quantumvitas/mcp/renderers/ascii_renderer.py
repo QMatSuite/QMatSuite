@@ -1,9 +1,14 @@
 """Builtin unicode-block ASCII renderer for CanonicalPrimitiveBundle.
 
 Pure stdlib — no external dependencies. Renders 80-column fixed-width text.
+
+Series1D-bearing analysis types (convergence, dos, bands, trajectory) are
+rendered as 2D terminal charts via :class:`TerminalChart`.  Other types
+(scf_digest, field3d) use their own bespoke formatters.
 """
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -11,6 +16,9 @@ if TYPE_CHECKING:
 
 # Block characters for bar charts (5 levels: empty → full)
 _BLOCKS = " ░▒▓█"
+
+# Object types that carry Series1D data and should be rendered as 2D charts
+_CHART_TYPES = {"convergence", "dos", "bands", "trajectory"}
 
 
 def _sparkline(values: list[float], width: int = 40) -> str:
@@ -53,121 +61,61 @@ def _unicode_bar(value: float, max_val: float, width: int = 40) -> str:
     return bar
 
 
+def render_bundle_to_ascii(bundle: CanonicalPrimitiveBundle,
+                           width: int = 78, height: int = 16) -> str:
+    """Render any bundle with Series1D data to a 2D terminal chart string."""
+    from quantumvitas.mcp.renderers.terminal_chart import TerminalChart
+
+    if not bundle.series:
+        return f"=== {bundle.object_type.upper()} ===\n\n(no data)"
+
+    chart = TerminalChart(width=width, height=height,
+                          title=bundle.object_type.upper())
+
+    for series in bundle.series:
+        xy = [
+            (xi, yi)
+            for xi, yi in zip(series.x.tolist(), series.y.tolist())
+            if math.isfinite(xi) and math.isfinite(yi)
+        ]
+        if xy:
+            xs, ys = zip(*xy)
+            chart.add_series(list(xs), list(ys), label=series.name or "")
+
+    if bundle.render_meta:
+        xl = bundle.render_meta.axis_labels.get("x", "")
+        yl = bundle.render_meta.axis_labels.get("y", "")
+        if xl:
+            chart.set_xlabel(xl)
+        if yl:
+            chart.set_ylabel(yl)
+        for marker in bundle.render_meta.markers:
+            if marker.axis == "y":
+                chart.add_hline(marker.position, label=marker.label)
+            else:
+                chart.add_vline(marker.position, label=marker.label)
+        if bundle.render_meta.reference_energy is not None:
+            chart.add_hline(bundle.render_meta.reference_energy, label="E_ref")
+
+    return chart.render()
+
+
 def render_bundle_ascii(bundle: CanonicalPrimitiveBundle) -> str:
     """Render a CanonicalPrimitiveBundle as 80-column ASCII text.
 
-    Dispatches on ``bundle.object_type`` to specialized formatters.
+    Series1D-bearing types (convergence, dos, bands, trajectory) are rendered
+    as 2D terminal charts.  Other types use bespoke formatters.
     """
     obj_type = bundle.object_type.lower()
 
+    if obj_type in _CHART_TYPES:
+        return render_bundle_to_ascii(bundle)
+
     dispatch = {
-        "convergence": _render_convergence,
-        "dos": _render_dos,
-        "bands": _render_bands,
         "scf_digest": _render_scf_digest,
-        "trajectory": _render_trajectory,
         "field3d": _render_field3d,
     }
-
-    renderer = dispatch.get(obj_type, _render_generic)
-    return renderer(bundle)
-
-
-def _render_convergence(bundle: CanonicalPrimitiveBundle) -> str:
-    """Convergence: iteration vs energy table + sparkline."""
-    lines = ["=== Convergence ===", ""]
-
-    if not bundle.series:
-        lines.append("(no data)")
-        return "\n".join(lines)
-
-    s = bundle.series[0]
-    x_vals = s.x.tolist()
-    y_vals = s.y.tolist()
-
-    x_label = s.x_label or "Iteration"
-    y_label = s.y_label or "Energy"
-    y_unit = f" ({s.y_unit})" if s.y_unit else ""
-
-    lines.append(f"  {x_label:<12s}  {y_label}{y_unit}")
-    lines.append("  " + "-" * 40)
-
-    for x, y in zip(x_vals, y_vals):
-        x_str = f"{int(x)}" if x == int(x) else f"{x:.2f}"
-        lines.append(f"  {x_str:<12s}  {y:.8f}")
-
-    lines.append("")
-    lines.append("Sparkline: " + _sparkline(y_vals))
-    lines.append(f"  range: {min(y_vals):.6f} .. {max(y_vals):.6f}")
-
-    return "\n".join(lines)
-
-
-def _render_dos(bundle: CanonicalPrimitiveBundle) -> str:
-    """DOS: horizontal bar chart."""
-    lines = ["=== Density of States ===", ""]
-
-    if not bundle.series:
-        lines.append("(no data)")
-        return "\n".join(lines)
-
-    s = bundle.series[0]
-    energies = s.x.tolist()
-    dos_vals = s.y.tolist()
-
-    y_unit = f" ({s.y_unit})" if s.y_unit else ""
-    lines.append(f"  Energy ({s.x_unit or 'eV'}) vs DOS{y_unit}")
-    lines.append("")
-
-    # Sample ~20 rows for display
-    n = len(energies)
-    step = max(1, n // 20)
-    max_dos = max(abs(v) for v in dos_vals) if dos_vals else 1.0
-
-    for i in range(0, n, step):
-        e = energies[i]
-        d = dos_vals[i]
-        bar = _unicode_bar(abs(d), max_dos, width=30)
-        lines.append(f"  {e:8.3f} | {bar} {d:.3f}")
-
-    # Fermi marker
-    for marker in bundle.render_meta.markers:
-        if "fermi" in marker.label.lower():
-            lines.append(f"\n  Fermi energy: {marker.position:.4f}")
-
-    return "\n".join(lines)
-
-
-def _render_bands(bundle: CanonicalPrimitiveBundle) -> str:
-    """Bands: summary text (not renderable as ASCII chart)."""
-    lines = ["=== Band Structure ===", ""]
-
-    n_bands = len(bundle.series)
-    if n_bands == 0:
-        lines.append("(no data)")
-        return "\n".join(lines)
-
-    n_kpoints = len(bundle.series[0].x) if bundle.series else 0
-
-    all_energies = []
-    for s in bundle.series:
-        all_energies.extend(s.y.tolist())
-
-    e_min = min(all_energies) if all_energies else 0.0
-    e_max = max(all_energies) if all_energies else 0.0
-
-    lines.append(f"  Bands:    {n_bands}")
-    lines.append(f"  K-points: {n_kpoints}")
-    lines.append(f"  Energy range: {e_min:.4f} .. {e_max:.4f}")
-
-    if bundle.series[0].y_unit:
-        lines.append(f"  Energy unit: {bundle.series[0].y_unit}")
-
-    for marker in bundle.render_meta.markers:
-        if "fermi" in marker.label.lower():
-            lines.append(f"  Fermi energy: {marker.position:.4f}")
-
-    return "\n".join(lines)
+    return dispatch.get(obj_type, _render_generic)(bundle)
 
 
 def _render_scf_digest(bundle: CanonicalPrimitiveBundle) -> str:
@@ -183,34 +131,6 @@ def _render_scf_digest(bundle: CanonicalPrimitiveBundle) -> str:
         s = bundle.series[0]
         lines.append(f"  {s.y_label or 'Value'}: {s.y.tolist()[-1]:.8f} {s.y_unit or ''}")
     else:
-        lines.append("(no data)")
-
-    return "\n".join(lines)
-
-
-def _render_trajectory(bundle: CanonicalPrimitiveBundle) -> str:
-    """Trajectory: frame count + energy sparkline."""
-    lines = ["=== Trajectory ===", ""]
-
-    if bundle.geometry_frames is not None:
-        n_frames = len(bundle.geometry_frames.frames)
-        lines.append(f"  Frames: {n_frames}")
-        if bundle.geometry_frames.frames:
-            n_atoms = bundle.geometry_frames.frames[0].n_atoms
-            lines.append(f"  Atoms:  {n_atoms}")
-
-    if bundle.series:
-        s = bundle.series[0]
-        y_vals = s.y.tolist()
-        lines.append(f"  {s.y_label or 'Energy'} ({s.y_unit or 'eV'}):")
-        lines.append(f"    first: {y_vals[0]:.6f}")
-        lines.append(f"    last:  {y_vals[-1]:.6f}")
-        lines.append(f"    min:   {min(y_vals):.6f}")
-        lines.append(f"    max:   {max(y_vals):.6f}")
-        lines.append("")
-        lines.append("  Sparkline: " + _sparkline(y_vals))
-
-    if not bundle.series and bundle.geometry_frames is None:
         lines.append("(no data)")
 
     return "\n".join(lines)

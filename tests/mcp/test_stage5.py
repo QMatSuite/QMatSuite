@@ -389,8 +389,7 @@ class TestAnalysisAfterRealRun:
         assert pa_result["status"] == "success", f"plot_analysis failed: {pa_result}"
         data = pa_result["data"]
         assert data["object_type"] == "convergence"
-        assert "=== Convergence ===" in data["ascii_plot"]
-        assert "Sparkline:" in data["ascii_plot"]
+        assert len(data["ascii_plot"].strip().split("\n")) >= 8  # 2D chart
         assert data["primitive_meta"]["n_series"] >= 1
 
         # Summary should have final energy value

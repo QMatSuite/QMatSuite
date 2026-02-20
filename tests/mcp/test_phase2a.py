@@ -173,33 +173,25 @@ class TestAsciiRenderer:
 
         bundle = _make_convergence_bundle()
         text = render_bundle_ascii(bundle)
-        assert "=== Convergence ===" in text
-        assert "Iteration" in text
-        assert "Sparkline:" in text
-        # Should have iteration numbers
-        assert "1" in text
-        assert "10" in text
+        lines = text.strip().split("\n")
+        assert len(lines) >= 8  # 2D chart, not a one-line sparkline
+        assert "CONVERGENCE" in text or "Iteration" in text
 
     def test_dos(self):
         from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_ascii
 
         bundle = _make_dos_bundle()
         text = render_bundle_ascii(bundle)
-        assert "=== Density of States ===" in text
-        assert "Fermi energy:" in text
-        # Should have bar chart characters
-        assert "█" in text
+        lines = text.strip().split("\n")
+        assert len(lines) >= 8
 
     def test_bands_summary(self):
         from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_ascii
 
         bundle = _make_bands_bundle()
         text = render_bundle_ascii(bundle)
-        assert "=== Band Structure ===" in text
-        assert "Bands:    5" in text
-        assert "K-points: 20" in text
-        assert "Energy range:" in text
-        assert "Fermi energy:" in text
+        lines = text.strip().split("\n")
+        assert len(lines) >= 8
 
     def test_scf_digest(self):
         from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_ascii
@@ -215,8 +207,8 @@ class TestAsciiRenderer:
 
         bundle = _make_trajectory_bundle()
         text = render_bundle_ascii(bundle)
-        assert "=== Trajectory ===" in text
-        assert "Sparkline:" in text
+        lines = text.strip().split("\n")
+        assert len(lines) >= 8  # 2D chart, not a one-line sparkline
 
     def test_empty_series(self):
         from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_ascii
@@ -570,8 +562,7 @@ class TestPlotAnalysis:
         data = result["data"]
         assert data["object_type"] == "convergence"
         assert "ascii_plot" in data
-        assert "=== Convergence ===" in data["ascii_plot"]
-        assert "Sparkline:" in data["ascii_plot"]
+        assert len(data["ascii_plot"].strip().split("\n")) >= 8  # 2D chart
         # Context-window safe: no raw arrays, only metadata
         assert "primitive_meta" in data
         assert data["primitive_meta"]["n_series"] == 1
@@ -605,7 +596,7 @@ class TestPlotAnalysis:
         result = plot_analysis.fn(calc_ulid=calc_ulid, object_type="dos")
         assert result["status"] == "success"
         data = result["data"]
-        assert "Density of States" in data["ascii_plot"]
+        assert len(data["ascii_plot"].strip().split("\n")) >= 8  # 2D chart
         assert data["primitive_meta"]["n_series"] == 1
         # DOS summary should have Fermi marker
         assert "fermi_energy" in data["summary"]
@@ -633,7 +624,7 @@ class TestPlotAnalysis:
         result = plot_analysis.fn(calc_ulid=calc_ulid, object_type="bands")
         assert result["status"] == "success"
         data = result["data"]
-        assert "Band Structure" in data["ascii_plot"]
+        assert len(data["ascii_plot"].strip().split("\n")) >= 8  # 2D chart
         assert data["primitive_meta"]["n_series"] == 5
         assert "x_range" in data["primitive_meta"]
         assert "y_range" in data["primitive_meta"]

@@ -49,8 +49,13 @@ def load_project_config(project_root: Path) -> dict:
     config_file = project_root / "project.qv.yml"
     if not config_file.exists():
         raise ProjectConfigError(f"project.qv.yml not found under {project_root}")
-    from quantumvitas.core.yamldoc import ProjectDoc
-    return ProjectDoc.load(config_file).to_dict()
+    try:
+        from quantumvitas.core.yamldoc import ProjectDoc
+        return ProjectDoc.load(config_file).to_dict()
+    except Exception as exc:
+        raise ProjectConfigError(
+            f"Failed to parse project.qv.yml: {exc}"
+        ) from exc
 
 
 def save_project_config(project_root: Path, data: dict) -> None:
